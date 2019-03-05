@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Semi-Analytic Galaxy Evolution (SAGE)
 
 [![Build Status](https://travis-ci.org/manodeep/sage.svg?branch=lhvt)](https://travis-ci.org/manodeep/sage)
