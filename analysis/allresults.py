@@ -462,7 +462,6 @@ class Model:
         # When we create some plots, we do a scatter plot. For these, we only plot a
         # subset of galaxies. We need to ensure we get a representative sample from each
         # file.
-        # TODO: Again confirm how we want to handle skipped files.
         file_sample_size = int(len(gals) / self.num_gals * self.sample_size) 
 
         if plot_toggles["SMF"] or plot_toggles["sSFR"]:
@@ -481,17 +480,22 @@ class Model:
                 (counts, binedges) = np.histogram(red_mass, bins=self.stellar_mass_bins)
                 self.red_SMF += counts
 
-                blue_gals = np.where(sSFR < 10.0**sSFRcut)[0]
+                blue_gals = np.where(sSFR > 10.0**sSFRcut)[0]
                 blue_mass = stellar_mass[blue_gals]
                 (counts, binedges) = np.histogram(blue_mass, bins=self.stellar_mass_bins)
                 self.blue_SMF += counts
 
             if plot_toggles["sSFR"]:
-                if len(non_zero_stellar) > file_sample_size:
-                    non_zero_stellar = np.random.choice(len(non_zero_stellar), size=file_sample_size)
 
-                self.sSFR_mass.extend(list(stellar_mass[non_zero_stellar]))
-                self.sSFR_sSFR.extend(list(np.log10(sSFR[non_zero_stellar])))
+                # `stellar_mass` and `sSFR` have length < length(gals).
+                # Hence when we take a random sample, we use length of those arrays. 
+                if len(non_zero_stellar) > file_sample_size:
+                    random_inds = np.random.choice(np.arange(len(non_zero_stellar)), size=file_sample_size)
+                else:
+                    random_inds = np.arange(len(non_zero_stellar))
+
+                self.sSFR_mass.extend(list(stellar_mass[random_inds]))
+                self.sSFR_sSFR.extend(list(np.log10(sSFR[random_inds])))
 
         if plot_toggles["BMF"]:
             non_zero_baryon = np.where(gals["StellarMass"] + gals["ColdGas"] > 0.0)[0]
@@ -636,7 +640,7 @@ class Results:
 
             model.get_galaxy_struct()
             model.set_cosmology(model_dict["simulation"],
-                                model_dict["last_file"]-model_dict["first_file"]-1)
+                                model_dict["last_file"]-model_dict["first_file"]+1)
 
             # To be more memory concious, we calculate the required properties on a
             # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory. 
@@ -792,7 +796,7 @@ class Results:
                 ax.plot(bin_middles[:-1], model.red_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
                         'r:', lw=2, label=tag + " - Red")
                 ax.plot(bin_middles[:-1], model.blue_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
-                        'r:', lw=2, label=tag + " - Blue")
+                        'b:', lw=2, label=tag + " - Blue")
 
         ax.set_yscale('log', nonposy='clip')
         ax.set_xlim([8.0, 12.5])
