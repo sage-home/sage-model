@@ -264,25 +264,28 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
 
     /* const int64_t nhalos = (int64_t) forests_info->lht.nhalos_per_forest[forestnr];/\* the array itself contains int32_t, since the LHT format*\/ */
     hid_t fd = forests_info->lht.h5_fd[forestnr];
+    /* CHECK: HDF5 file pointer is valid */
+    if(fd <= 0 ) {
+        fprintf(stderr,"Error: File pointer is NULL (i.e., you need to open the file before reading).\n"
+                "This error should already have been caught before reaching this line\n");
+        ABORT(INVALID_FILE_POINTER);
+    }
+
 
     /* Figure out nhalos by checking the size of the 'Descendant' dataset */
     /* https://stackoverflow.com/questions/15786626/get-the-dimensions-of-a-hdf5-dataset */
     const char field_name[] = "Descendant";
     snprintf(dataset_name, MAX_STRING_LEN - 1, "tree_%03d/%s", forestnr, field_name);
-    hid_t dspace = H5Dget_space(dataset_name);
+    hid_t dataset = H5Dopen(fd, dataset_name, H5P_DEFAULT);
+    hid_t dspace = H5Dget_space(dataset);
     const int ndims = H5Sget_simple_extent_ndims(dspace);
     XASSERT(ndims == 0, -1,
             "Error: Expected field = '%s' to be 1-D array\n",
             field_name);
     hsize_t dims[ndims];
     H5Sget_simple_extent_dims(dspace, dims, NULL);
+    H5Dclose(dataset);
     const int64_t nhalos = dims[0];
-
-    /* CHECK: HDF5 file pointer is valid */
-    /* if(fd <= 0 ) { */
-    /*     fprintf(stderr,"Error: File pointer is NULL (i.e., you need to open the file before reading) \n"); */
-    /*     ABORT(INVALID_FILE_POINTER); */
-    /* } */
 
     /* allocate the entire memory space required to store the halos*/
     *halos = mymalloc(sizeof(struct halo_data) * nhalos); 
