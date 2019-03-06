@@ -52,8 +52,11 @@ install:
 
 before_script:
   - cd src/auxdata/trees/mini-millennium
-  - wget https://data-portal.hpc.swin.edu.au/dataset/7bab038b-1d1f-4e79-8cfc-ea171dd1492f/resource/7ff28a50-c401-4a07-9041-13524cbac5c9/download/mini-millennium.tar
-  - tar xvf mini-millennium.tar && cd ../../../../
+  - wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
+  - tar xvf "mini-millennium-treefiles.tar"
+  - wget "https://www.dropbox.com/s/lkkyez8ttk2j65b/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
+  - tar xvf "mini-millennium-sage-correct-output.tar"
+  - cd ../../../../
 
 script:
   - make -r CC=$COMPILER
