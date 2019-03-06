@@ -25,14 +25,14 @@ static int32_t fill_metadata_names(struct METADATA_NAMES *metadata_names, enum V
 static int32_t read_attribute_int(hid_t my_hdf5_file, const char *groupname, const char *attr_name, int *attribute);
 static int32_t read_dataset(hid_t fd, const char *dataset_name, const hid_t datatype, void *buffer);
 
-void get_forests_filename_lht_hdf5(char *filename, const size_t len, const int filenr)
+void get_forests_filename_lht_hdf5(char *filename, const size_t len, const int filenr,  const struct params *run_params)
 {
-    snprintf(filename, len - 1, "%s/%s.%d%s", run_params.SimulationDir, run_params.TreeName, filenr, run_params.TreeExtension);
+    snprintf(filename, len - 1, "%s/%s.%d%s", run_params->SimulationDir, run_params->TreeName, filenr, run_params->TreeExtension);
 }
 
 
 int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstfile, const int lastfile,
-                              const int ThisTask, const int NTasks)
+                              const int ThisTask, const int NTasks, const struct params *run_params)
 {
 
     const int numfiles = lastfile - firstfile + 1;
@@ -51,14 +51,14 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
     int64_t totnforests = 0;
     for(int filenr=firstfile;filenr<=lastfile;filenr++) {
         char filename[4*MAX_STRING_LEN];
-        get_forests_filename_lht_hdf5(filename, 4*MAX_STRING_LEN, filenr);
+        get_forests_filename_lht_hdf5(filename, 4*MAX_STRING_LEN, filenr, run_params);
         hid_t fd = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
         if(fd < 0) {
             fprintf(stderr, "Error: can't open file `%s'\n", filename);
             perror(NULL);
             ABORT(FILE_NOT_FOUND);
         }
-        int status = fill_metadata_names(&metadata_names, run_params.TreeType);
+        int status = fill_metadata_names(&metadata_names, run_params->TreeType);
         if (status != EXIT_SUCCESS) {
             ABORT(status);
         }
@@ -172,7 +172,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
 
         int file_index = filenr - start_filenum;
         char filename[4*MAX_STRING_LEN];
-        get_forests_filename_lht_hdf5(filename, 4*MAX_STRING_LEN, filenr);
+        get_forests_filename_lht_hdf5(filename, 4*MAX_STRING_LEN, filenr, run_params);
         hid_t fd = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
         if(fd < 0) {
             fprintf(stderr, "Error: can't open file `%s'\n", filename);
@@ -284,6 +284,11 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
     /*     ABORT(INVALID_FILE_POINTER); */
     /* } */
 
+    /* allocate the entire memory space required to store the halos*/
+    *halos = mymalloc(sizeof(struct halo_data) * nhalos); 
+    struct halo_data *local_halos = *halos;
+
+    
     buffer = malloc(nhalos * sizeof(buffer[0]));
     if (buffer == NULL) {
         fprintf(stderr, "Error:Could not allocate memory for %"PRId64" halos in the HDF5 buffer.\n", nhalos);

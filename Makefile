@@ -116,7 +116,7 @@ ifeq ($(DO_CHECKS), 1)
       endif
     endif
 
-    H5_SRC := io/read_tree_hdf5.c io/read_tree_genesis_standard_hdf5.c
+    H5_SRC := io/read_tree_hdf5.c #io/read_tree_genesis_standard_hdf5.c
     H5_INCL := $(H5_SRC:.c=.h)
     H5_OBJS := $(H5_SRC:.c=.o)
 
