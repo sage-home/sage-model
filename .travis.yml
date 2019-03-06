@@ -5,6 +5,7 @@ notifications:
   email:
     recipients:
       - manodeep@gmail.com
+      - jseiler@swin.edu.au
     on_success: change
     on_failure: always
 
