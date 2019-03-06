@@ -163,12 +163,14 @@ static void sage_per_forest(const int ThisTask, const int forestnr, int *TotGala
     /* /\* need to actually set the nhalos value for CTREES*\/ */
     /* forests_info->totnhalos_per_forest[forestnr] = nhalos; */
 
+#ifdef PROCESS_LHVT_STYLE
     /* re-arrange the halos into a locally horizontal vertical forest */
     int32_t *file_ordering_of_halos=NULL;
     int status = reorder_lhalo_to_lhvt(nhalos, Halo, 0, &file_ordering_of_halos);/* the 3rd parameter is for testing the reorder code */
     if(status != EXIT_SUCCESS) {
         ABORT(status);
     }
+#endif
     
     int maxgals = (int)(MAXGALFAC * nhalos);
     if(maxgals < 10000) maxgals = 10000;
@@ -181,10 +183,15 @@ static void sage_per_forest(const int ThisTask, const int forestnr, int *TotGala
         HaloAux[i].HaloFlag = 0;
         HaloAux[i].NGalaxies = 0;
         HaloAux[i].DoneFlag = 0;
+#ifdef PROCESS_LHVT_STYLE        
         HaloAux[i].orig_index = file_ordering_of_halos[i];
+#endif        
     }
+
+#ifdef PROCESS_LHVT_STYLE    
     free(file_ordering_of_halos);
     /* done with re-ordering the halos into a locally horizontal vertical tree format */
+#endif    
     
     
     /* getting the number of FOF halos at each snapshot */

@@ -164,7 +164,9 @@ struct halo_aux_data
     int HaloFlag;
     int NGalaxies;
     int FirstGalaxy;
+#ifdef PROCESS_LHVT_STYLE
     int orig_index;
+#endif    
     int output_snap_n;
 };
 
