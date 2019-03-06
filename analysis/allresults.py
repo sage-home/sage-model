@@ -20,28 +20,10 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import observations as obs
 
-np.warnings.filterwarnings('ignore')
-# TODO: How do we want to handle sampling of galaxies. Previously, we would load in all
-# galaxies and then take a sample of this.  However, since we're reading in galaxies on a
-# file-by-file basis, we perhaps should a sample of each. But some files have more
-# galaxies than others which could lead to bias. Should we flick through all the files at
-# the start, read the header and determine how many galaxies we have, and then take
-# samples based on the proportion?
+#np.warnings.filterwarnings('ignore')
 
-# TODO: How do we want to handle missing files?
-# Skip or throw errors?  This is important because if we skip, we will need to
-# manually count the number of files read rather than doing (last_file -
-# first_file) + 1.
-
-# TODO: Do we want to add lines showing the mean/std values for things such as BTF and
-# sSFR?
-
-# TODO: For all plots, ensure that x attributes are set first, then y.
-
-# TODO: Do we care about warnings about dividing by 0?  Should we just pull all those
-# galaxies out of the analaysis at the very beginning?
-
-# TODO: Change all single quotes to double quotes.
+# Refer to the project for a list of TODO's, issues and other notes.
+# https://github.com/sage-home/sage-model/projects/7
 
 # ================================================================================
 # Basic variables
