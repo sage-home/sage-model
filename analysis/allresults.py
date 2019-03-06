@@ -45,7 +45,7 @@ class Model:
     """
     Handles all the galaxy data (including calculated properties).
 
-    The first 8 attributes (from ``model_path`` to ``line_style``) are
+    The first 8 attributes (from ``model_path`` to ``linestyle``) are
     passed in a single dictionary (``model_dict``) to the class ``__init__``
     method.
 
@@ -80,7 +80,7 @@ class Model:
     color : string
         Line color used for this model.
 
-    line_style : string
+    linestyle : string
         Line style used for this model
 
     hubble_h : float
@@ -146,10 +146,11 @@ class Model:
         # How should we bin Stellar mass.
         self.stellar_bin_low      = 7.0 
         self.stellar_bin_high     = 13.0 
-        self.stellar_bin_width    = 0.1 
+        self.stellar_bin_width    = 0.1
         self.stellar_mass_bins    = np.arange(self.stellar_bin_low,
                                               self.stellar_bin_high + self.stellar_bin_width,
                                               self.stellar_bin_width)
+        self.N_stellar_mass_bins = len(self.stellar_mass_bins)
 
         # When making histograms, the right-most bin is closed. Hence the length of the
         # produced histogram will be `len(bins)-1`.
@@ -174,6 +175,15 @@ class Model:
 
         self.bh_mass = []
         self.bulge_mass = []
+
+        self.quiescent_mass_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
+        self.quiescent_mass_quiescent_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
+
+        self.quiescent_mass_centrals_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
+        self.quiescent_mass_centrals_quiescent_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
+
+        self.quiescent_mass_satellites_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
+        self.quiescent_mass_satellites_quiescent_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
 
     def get_galaxy_struct(self):
 
@@ -264,7 +274,7 @@ class Model:
         if simulation == 0:    # Mini-Millennium
             self.hubble_h = 0.73
             self.box_size = 62.5
-            self.total_num_files = 8
+            self.total_num_files = 1
 
         elif simulation == 1:  # Full Millennium
             self.hubble_h = 0.73
@@ -390,7 +400,10 @@ class Model:
 
         # The `tqdm` package provides a beautiful progress bar.
         try:
-            pbar = tqdm(total=self.num_gals, unit="Gals", unit_scale=True)
+            if debug:
+                pbar = None
+            else:
+                pbar = tqdm(total=self.num_gals, unit="Gals", unit_scale=True)
         except NameError:
             pbar = None
         else:
@@ -472,17 +485,17 @@ class Model:
                    (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
 
             if plot_toggles["SMF"]:
-                (counts, binedges) = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
+                counts, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
                 self.SMF += counts
 
                 red_gals = np.where(sSFR < 10.0**sSFRcut)[0]
                 red_mass = stellar_mass[red_gals]
-                (counts, binedges) = np.histogram(red_mass, bins=self.stellar_mass_bins)
+                counts, _ = np.histogram(red_mass, bins=self.stellar_mass_bins)
                 self.red_SMF += counts
 
                 blue_gals = np.where(sSFR > 10.0**sSFRcut)[0]
                 blue_mass = stellar_mass[blue_gals]
-                (counts, binedges) = np.histogram(blue_mass, bins=self.stellar_mass_bins)
+                counts, _ = np.histogram(blue_mass, bins=self.stellar_mass_bins)
                 self.blue_SMF += counts
 
             if plot_toggles["sSFR"]:
@@ -570,6 +583,44 @@ class Model:
                     
             self.bh_mass.extend(list(bh))
             self.bulge_mass.extend(list(bulge))
+
+        if plot_toggles["quiescent"]:
+
+            non_zero_stellar = np.where(gals["StellarMass"] > 0.0)[0]
+
+            mass = np.log10(gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
+            type = gals["Type"][non_zero_stellar]
+
+            # For the sSFR, we will create a mask that is True for quiescent galaxies and
+            # False for star-forming galaxies.
+            sSFR = (gals["SfrDisk"][non_zero_stellar] + gals["SfrBulge"][non_zero_stellar]) / \
+                   (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
+            quiescent = sSFR < 10.0 ** sSFRcut
+
+            # There may be some duplication of calculations here with other
+            # `plot_toggles`. However, the computational overhead is neglible compared to
+            # ensuring that we're ALWAYS calculating the required values regardless of the
+            # `plot_toggles` parameters.
+
+            mass_counts, _ = np.histogram(mass, bins=self.stellar_mass_bins)
+            mass_quiescent_counts, _ = np.histogram(mass[quiescent], bins=self.stellar_mass_bins)
+            self.quiescent_mass_counts += mass_counts
+            self.quiescent_mass_quiescent_counts += mass_quiescent_counts
+
+            #print(self.quiescent_mass_quiescent_counts / self.quiescent_mass_counts)
+
+            mass_centrals_counts, _ = np.histogram(mass[type == 0], bins=self.stellar_mass_bins)
+            mass_centrals_quiescent_counts, _ = np.histogram(mass[(type == 0) & (quiescent == True)],
+                                                             bins=self.stellar_mass_bins)
+            self.quiescent_mass_centrals_counts += mass_centrals_counts
+            self.quiescent_mass_centrals_quiescent_counts += mass_centrals_quiescent_counts
+
+            mass_satellites_counts, _ = np.histogram(mass[type == 1], bins=self.stellar_mass_bins)
+            mass_satellites_quiescent_counts, _ = np.histogram(mass[(type == 1) & (quiescent == True)],
+                                                               bins=self.stellar_mass_bins)
+            self.quiescent_mass_satellites_counts += mass_satellites_counts
+            self.quiescent_mass_satellites_quiescent_counts += mass_satellites_quiescent_counts
+
 
 class Results:
     """
@@ -746,7 +797,10 @@ class Results:
         if plot_toggles["bh_bulge"] == 1:
             print("Plotting the black hole-bulge relationship.")
             self.plot_bh_bulge()
-        #res.QuiescentFraction(model.gals)
+
+        if plot_toggles["quiescent"] == 1:
+            print("Plotting the fraction of quiescent galaxies.")
+            self.plot_quiescent()
         #res.BulgeMassFraction(model.gals)
         #res.BaryonFraction(model.gals)
         #res.SpinDistribution(model.gals)
@@ -779,7 +833,7 @@ class Results:
             # sub-populations.
             if len(self.models) > 1:
                 color = model.color
-                ls = model.line_style
+                ls = model.linestyle
             else:
                 color = "k"
                 ls = "-"
@@ -837,7 +891,7 @@ class Results:
 
             tag = model.tag
             color = model.color
-            ls = model.line_style
+            ls = model.linestyle
 
             # Set the x-axis values to be the centre of the bins.
             bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
@@ -881,7 +935,7 @@ class Results:
 
             tag = model.tag
             color = model.color
-            ls = model.line_style
+            ls = model.linestyle
 
             # Set the x-axis values to be the centre of the bins.
             bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
@@ -1089,7 +1143,6 @@ class Results:
         ax.set_ylim([6.0, 10.0])
             
         self.adjust_legend(ax, location="upper right", scatter_plot=1)
-
             
         outputFile = "{0}/8.BlackHoleBulgeRelationship{1}".format(zeroth_output_path, self.output_format) 
         fig.savefig(outputFile)
@@ -1098,106 +1151,48 @@ class Results:
             
 # ---------------------------------------------------------
     
-    def QuiescentFraction(self, G):
+    def plot_quiescent(self):
     
-        print("Plotting the quiescent fraction vs stellar mass")
-    
-        seed(2222)
-    
-        plt.figure()  # New figure
-        ax = plt.subplot(111)  # 1 plot on the figure
 
-        groupscale = 12.5
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
 
-        w = np.where(G.StellarMass > 0.0)[0]
-        StellarMass = np.log10(G.StellarMass[w] * 1.0e10 / self.hubble_h)
-        CentralMvir = np.log10(G.CentralMvir[w] * 1.0e10 / self.hubble_h)
-        Type = G.Type[w]
-        sSFR = (G.SfrDisk[w] + G.SfrBulge[w]) / (G.StellarMass[w] * 1.0e10 / self.hubble_h)
+        # We save the plots into the output directory of the zeroth model. 
+        zeroth_output_path = (self.models)[0].output_path       
 
-        MinRange = 9.5
-        MaxRange = 12.0
-        Interval = 0.1
-        Nbins = int((MaxRange-MinRange)/Interval)
-        Range = np.arange(MinRange, MaxRange, Interval)
-        
-        Mass = []
-        Fraction = []
-        CentralFraction = []
-        SatelliteFraction = []
-        SatelliteFractionLo = []
-        SatelliteFractionHi = []
+        for model in self.models:
 
-        for i in range(Nbins-1):
+            tag = model.tag
+            color = model.color
+            linestyle = model.linestyle
 
-            w = np.where((StellarMass >= Range[i]) & (StellarMass < Range[i+1]))[0]
-            if len(w) > 0:
-                wQ = np.where((StellarMass >= Range[i]) & (StellarMass < Range[i+1]) & (sSFR < 10.0**sSFRcut))[0]
-                Fraction.append(1.0*len(wQ) / len(w))
-            else:
-                Fraction.append(0.0)
+            # Set the x-axis values to be the centre of the bins.
+            bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
 
-            w = np.where((Type == 0) & (StellarMass >= Range[i]) & (StellarMass < Range[i+1]))[0]
-            if len(w) > 0:
-                wQ = np.where((Type == 0) & (StellarMass >= Range[i]) & (StellarMass < Range[i+1]) & (sSFR < 10.0**sSFRcut))[0]
-                CentralFraction.append(1.0*len(wQ) / len(w))
-            else:
-                CentralFraction.append(0.0)
+            # We will keep the colour scheme consistent, but change the line styles.
+            ax.plot(bin_middles[:-1], model.quiescent_mass_quiescent_counts / model.quiescent_mass_counts,
+                    label=tag + " All", color=color, linestyle='-') 
 
-            w = np.where((Type == 1) & (StellarMass >= Range[i]) & (StellarMass < Range[i+1]))[0]
-            if len(w) > 0:
-                wQ = np.where((Type == 1) & (StellarMass >= Range[i]) & (StellarMass < Range[i+1]) & (sSFR < 10.0**sSFRcut))[0]
-                SatelliteFraction.append(1.0*len(wQ) / len(w))
-                wQ = np.where((Type == 1) & (StellarMass >= Range[i]) & (StellarMass < Range[i+1]) & (sSFR < 10.0**sSFRcut) & (CentralMvir < groupscale))[0]
-                SatelliteFractionLo.append(1.0*len(wQ) / len(w))
-                wQ = np.where((Type == 1) & (StellarMass >= Range[i]) & (StellarMass < Range[i+1]) & (sSFR < 10.0**sSFRcut) & (CentralMvir > groupscale))[0]
-                SatelliteFractionHi.append(1.0*len(wQ) / len(w))                
-            else:
-                SatelliteFraction.append(0.0)
-                SatelliteFractionLo.append(0.0)
-                SatelliteFractionHi.append(0.0)
-                
-            Mass.append((Range[i] + Range[i+1]) / 2.0)                
-            # print '  ', Mass[i], Fraction[i], CentralFraction[i], SatelliteFraction[i]
-        
-        Mass = np.array(Mass)
-        Fraction = np.array(Fraction)
-        CentralFraction = np.array(CentralFraction)
-        SatelliteFraction = np.array(SatelliteFraction)
-        SatelliteFractionLo = np.array(SatelliteFractionLo)
-        SatelliteFractionHi = np.array(SatelliteFractionHi)
-        
-        w = np.where(Fraction > 0)[0]
-        plt.plot(Mass[w], Fraction[w], label='All')
+            ax.plot(bin_middles[:-1], model.quiescent_mass_centrals_quiescent_counts / model.quiescent_mass_centrals_counts,
+                    label=tag + " Centrals", color=color, linestyle='--') 
 
-        w = np.where(CentralFraction > 0)[0]
-        plt.plot(Mass[w], CentralFraction[w], color='Blue', label='Centrals')
+            ax.plot(bin_middles[:-1], model.quiescent_mass_satellites_quiescent_counts / model.quiescent_mass_satellites_counts,
+                    label=tag + " Satellites", color=color, linestyle='-.') 
 
-        w = np.where(SatelliteFraction > 0)[0]
-        plt.plot(Mass[w], SatelliteFraction[w], color='Red', label='Satellites')
-
-        w = np.where(SatelliteFractionLo > 0)[0]
-        plt.plot(Mass[w], SatelliteFractionLo[w], 'r--', label='Satellites-Lo')
-
-        w = np.where(SatelliteFractionHi > 0)[0]
-        plt.plot(Mass[w], SatelliteFractionHi[w], 'r-.', label='Satellites-Hi')
-        
-        plt.xlabel(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')  # Set the x-axis label
-        plt.ylabel(r'$\mathrm{Quescient\ Fraction}$')  # Set the y-axis label
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$\mathrm{Quescient\ Fraction}$')
             
         # Set the x and y axis minor ticks
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
         ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+
+        ax.set_xlim([8.0, 12.0])
+        ax.set_ylim([0.0, 1.05])
+
+        self.adjust_legend(ax, location="upper left", scatter_plot=0)
             
-        plt.axis([9.5, 12.0, 0.0, 1.05])
-            
-        leg = plt.legend(loc='lower right')
-        leg.draw_frame(False)  # Don't want a box frame
-        for t in leg.get_texts():  # Reduce the size of the text
-            t.set_fontsize('medium')
-            
-        outputFile = OutputDir + '9.QuiescentFraction' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
+        outputFile = "{0}/9.QuiescentFraction{1}".format(zeroth_output_path, self.output_format) 
+        fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
 
@@ -1570,18 +1565,18 @@ if __name__ == '__main__':
     model0_IMF = 1
     model0_tag = r"$\mathbf{Genesis}$"
     model0_color = "r"
-    model0_line_style = "-"
+    model0_linestyle = "-"
     model0_marker = "x"
 
-    model1_dir_name = "millennium/"
+    model1_dir_name = "../output/millennium/"
     model1_file_name = "model_z0.000"
     model1_first_file = 0
-    model1_last_file = 7
+    model1_last_file = 0
     model1_simulation = 0
     model1_IMF = 1
     model1_tag = r"$\mathbf{Mini-Millennium}$"
     model1_color = "b"
-    model1_line_style = "--"
+    model1_linestyle = "--"
     model1_marker = "o"
 
     dir_names = [model0_dir_name, model1_dir_name]
@@ -1592,7 +1587,7 @@ if __name__ == '__main__':
     IMFs = [model0_IMF, model1_IMF]
     tags = [model0_tag, model1_tag]
     colors = [model0_color, model1_color]
-    line_styles = [model0_line_style, model1_line_style]
+    linestyles = [model0_linestyle, model1_linestyle]
     markers = [model0_marker, model1_marker]
 
     model_paths = []
@@ -1621,19 +1616,20 @@ if __name__ == '__main__':
                    "IMF"         : IMFs,
                    "tag"         : tags,
                    "color"       : colors,
-                   "line_style"  : line_styles,
+                   "linestyle"  : linestyles,
                    "marker"      : markers}
 
-    plot_toggles = {"SMF"      : 1,
-                    "BMF"      : 1,
-                    "GMF"      : 1,
-                    "BTF"      : 1,
-                    "sSFR"     : 1,
-                    "gas_frac" : 1,
-                    "metallicity" : 1,
-                    "bh_bulge" : 1}
+    plot_toggles = {"SMF"      : 0,
+                    "BMF"      : 0,
+                    "GMF"      : 0,
+                    "BTF"      : 0,
+                    "sSFR"     : 0,
+                    "gas_frac" : 0,
+                    "metallicity" : 0,
+                    "bh_bulge" : 0,
+                    "quiescent" : 1}
 
     output_format = ".png"
 
-    results = Results(model_dict, plot_toggles, output_format, debug=0)
+    results = Results(model_dict, plot_toggles, output_format, debug=1)
     results.do_plots()
