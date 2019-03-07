@@ -214,6 +214,7 @@ enum sage_error_types {
     INVALID_FILE_DESCRIPTOR,
     INVALID_VALUE_READ_FROM_FILE,
     PARSE_ERROR,
+    INVALID_MEMORY_ACCESS_REQUESTED,
 };
 
 struct lhalotree_info {

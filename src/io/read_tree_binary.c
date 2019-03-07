@@ -95,6 +95,10 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         start_forestnum_to_process_per_file[filenr] = 0;
         num_forests_to_process_per_file[filenr] = nforests_this_file;
 
+        /* Check if this task should be reading from this file (referred by filenr)
+           If the starting forest number (start_forestnum, which is cumulative across all files)
+           is located within this file, then the task will need to read from this file. 
+         */
         if(start_forestnum >= nforests_so_far && start_forestnum < end_forestnum_this_file) {
             start_filenum = filenr;
             start_forestnum_to_process_per_file[filenr] = start_forestnum - nforests_so_far;
@@ -104,7 +108,12 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         
         if(end_forestnum >= nforests_so_far && end_forestnum <= end_forestnum_this_file) {
             end_filenum = filenr;
-            num_forests_to_process_per_file[filenr] = end_forestnum - nforests_so_far;/* does this need a + 1? */
+            if(end_filenum == start_filenum) {
+                num_forests_to_process_per_file[filenr] = nforests_this_task;/* does this need a + 1? */
+            } else {
+                num_forests_to_process_per_file[filenr] = end_forestnum - nforests_so_far;/* does this need a + 1? */
+            }
+            /* MS & JS: 07/03/2019 -- Probably okay to break here but might need to complete loop for validation */
         }
         nforests_so_far += nforests_this_file;
     }
@@ -124,7 +133,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     lht->open_fds = mymalloc(lht->numfiles * sizeof(lht->open_fds[0]));
 
     nforests_so_far = 0;
-    int *forestnhalos = lht->nhalos_per_forest;
+    int32_t *forestnhalos = lht->nhalos_per_forest;
     for(int filenr=start_filenum;filenr<=end_filenum;filenr++) {
         XASSERT(start_forestnum_to_process_per_file[filenr] >= 0 && start_forestnum_to_process_per_file[filenr] < totnforests_per_file[filenr],
                 EXIT_FAILURE,
@@ -170,8 +179,16 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         free(nhalos_per_forest);
         
         nforests_so_far = forestnhalos - lht->nhalos_per_forest;
+        if(filenr == start_filenum) {
+            XASSERT(nforests_so_far == 0, EXIT_FAILURE,
+                    "For the first iteration total forests already processed should be identically zero. Instead we got = %"PRId64"\n",
+                    nforests_so_far);
+        }
+                    
         for(int64_t i=0;i<nforests;i++) {
             lht->bytes_offset_for_forest[i + nforests_so_far] = byte_offset_to_halos;
+            XASSERT(i + nforests_so_far < lht->nforests, EXIT_FAILURE,
+                    "ThisTask = %d Assigning to index = %"PRId64" but only space of %"PRId64" forest fds\n", ThisTask, i + nforests_so_far, lht->nforests);
             lht->fd[i + nforests_so_far] = fd;
             byte_offset_to_halos += forestnhalos[i]*sizeof(struct halo_data);
         }
@@ -194,6 +211,12 @@ int64_t load_forest_lht_binary(const int64_t forestnr, struct halo_data **halos,
                 nhalos, forestnr);
         ABORT(MALLOC_FAILURE);
     }
+    if(forestnr >= forests_info->lht.nforests) {
+        fprintf(stderr,"Error: Attempting to access forest = %"PRId64" but memory is allocated for only %"PRId64"\n"
+                "Perhaps, the starting forest offset was not accounted for?\n", forestnr, forests_info->lht.nforests);
+        ABORT(INVALID_MEMORY_ACCESS_REQUESTED);
+    }
+
     int fd = forests_info->lht.fd[forestnr];
 
     /* must have a valid file pointer  */
