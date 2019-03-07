@@ -8,6 +8,7 @@ import h5py as h5
 import numpy as np
 import pylab as plt
 from os.path import getsize as getFileSize
+from scipy import stats
 
 try:
     from tqdm import tqdm
@@ -184,6 +185,12 @@ class Model:
 
         self.quiescent_mass_satellites_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
         self.quiescent_mass_satellites_quiescent_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
+
+        self.fraction_bulge_mean = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
+        self.fraction_bulge_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
+
+        self.fraction_disk_mean = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
+        self.fraction_disk_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
 
     def get_galaxy_struct(self):
 
@@ -621,6 +628,38 @@ class Model:
             self.quiescent_mass_satellites_counts += mass_satellites_counts
             self.quiescent_mass_satellites_quiescent_counts += mass_satellites_quiescent_counts
 
+        if plot_toggles["bulge_fraction"]:
+
+            non_zero_stellar = np.where(gals["StellarMass"] > 0.0)[0]
+
+            if plot_toggles["SMF"]:
+                pass
+            else:
+                stellar_mass = np.log10(gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
+                sSFR = (gals["SfrDisk"][non_zero_stellar] + gals["SfrBulge"][non_zero_stellar]) / \
+                       (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
+
+
+            fraction_bulge = gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar]
+            fraction_disk = 1.0 - (gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar])
+
+            # We calculate the mean value in each stellar mass bin.
+            fraction_bulge_mean, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
+                                                               statistic=np.mean, bins=self.stellar_mass_bins)
+            self.fraction_bulge_mean += fraction_bulge_mean
+
+            fraction_bulge_var, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
+                                                              statistic=np.var, bins=self.stellar_mass_bins)
+            self.fraction_bulge_var += fraction_bulge_var
+
+            fraction_disk_mean, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
+                                                              statistic=np.mean, bins=self.stellar_mass_bins)
+            self.fraction_disk_mean += fraction_disk_mean
+
+            fraction_disk_var, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
+                                                             statistic=np.var, bins=self.stellar_mass_bins)
+            self.fraction_disk_var += fraction_disk_var
+
 
 class Results:
     """
@@ -801,7 +840,10 @@ class Results:
         if plot_toggles["quiescent"] == 1:
             print("Plotting the fraction of quiescent galaxies.")
             self.plot_quiescent()
-        #res.BulgeMassFraction(model.gals)
+
+        if plot_toggles["bulge_fraction"]:
+            print("Plotting the bulge mass fraction.")
+            self.plot_bulge_mass_fraction()
         #res.BaryonFraction(model.gals)
         #res.SpinDistribution(model.gals)
         #res.VelocityDistribution(model.gals)
@@ -1152,7 +1194,6 @@ class Results:
 # ---------------------------------------------------------
     
     def plot_quiescent(self):
-    
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -1198,62 +1239,46 @@ class Results:
 
 # --------------------------------------------------------
 
-    def BulgeMassFraction(self, G):
-    
-        print("Plotting the mass fraction of galaxies")
-    
-        seed(2222)
+    def plot_bulge_mass_fraction(self):
 
-        fBulge = G.BulgeMass / G.StellarMass
-        fDisk = 1.0 - (G.BulgeMass) / G.StellarMass
-        mass = np.log10(G.StellarMass * 1.0e10 / self.hubble_h)
-        sSFR = np.log10((G.SfrDisk + G.SfrBulge) / (G.StellarMass * 1.0e10 / self.hubble_h))
-        
-        binwidth = 0.2
-        shift = binwidth/2.0
-        mass_range = np.arange(8.5-shift, 12.0+shift, binwidth)
-        bins = len(mass_range)
-        
-        fBulge_ave = np.zeros(bins)
-        fBulge_var = np.zeros(bins)
-        fDisk_ave = np.zeros(bins)
-        fDisk_var = np.zeros(bins)
-        
-        for i in range(bins-1):
-            w = np.where( (mass >= mass_range[i]) & (mass < mass_range[i+1]))[0]
-            # w = np.where( (mass >= mass_range[i]) & (mass < mass_range[i+1]) & (sSFR < sSFRcut))[0]
-            if(len(w) > 0):
-                fBulge_ave[i] = np.mean(fBulge[w])
-                fBulge_var[i] = np.var(fBulge[w])
-                fDisk_ave[i] = np.mean(fDisk[w])
-                fDisk_var[i] = np.var(fDisk[w])
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
 
-        w = np.where(fBulge_ave > 0.0)[0]
-        plt.plot(mass_range[w]+shift, fBulge_ave[w], 'r-', label='bulge')
-        plt.fill_between(mass_range[w]+shift, 
-            fBulge_ave[w]+fBulge_var[w], 
-            fBulge_ave[w]-fBulge_var[w], 
-            facecolor='red', alpha=0.25)
+        # We save the plots into the output directory of the zeroth model. 
+        zeroth_output_path = (self.models)[0].output_path       
 
-        w = np.where(fDisk_ave > 0.0)[0]
-        plt.plot(mass_range[w]+shift, fDisk_ave[w], 'k-', label='disk stars')
-        plt.fill_between(mass_range[w]+shift, 
-            fDisk_ave[w]+fDisk_var[w], 
-            fDisk_ave[w]-fDisk_var[w], 
-            facecolor='black', alpha=0.25)
+        for model in self.models:
 
-        plt.axis([mass_range[0], mass_range[bins-1], 0.0, 1.05])
+            tag = model.tag
+            color = model.color
+            linestyle = model.linestyle
 
-        plt.ylabel(r'$\mathrm{Stellar\ Mass\ Fraction}$')  # Set the y...
-        plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
+            # Set the x-axis values to be the centre of the bins.
+            bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
 
-        leg = plt.legend(loc='upper right', numpoints=1, labelspacing=0.1)
-        leg.draw_frame(False)  # Don't want a box frame
-        for t in leg.get_texts():  # Reduce the size of the text
-                t.set_fontsize('medium')
+            # We will keep the colour scheme consistent, but change the line styles.
+            ax.plot(bin_middles[:-1], model.fraction_bulge_mean, label=tag + " bulge",
+                    color=color, linestyle="-")
+            ax.fill_between(bin_middles[:-1], model.fraction_bulge_mean+model.fraction_bulge_var,
+                            model.fraction_bulge_mean-model.fraction_bulge_var,
+                            facecolor=color, alpha=0.25)
 
-        outputFile = OutputDir + '10.BulgeMassFraction' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
+            ax.plot(bin_middles[:-1], model.fraction_disk_mean, label=tag + " disk",
+                    color=color, linestyle="--")
+            ax.fill_between(bin_middles[:-1], model.fraction_disk_mean+model.fraction_disk_var,
+                            model.fraction_disk_mean-model.fraction_disk_var,
+                            facecolor=color, alpha=0.25)
+
+        ax.set_xlim([8.0, 12.0])
+        ax.set_ylim([0.0, 1.05])
+
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$\mathrm{Stellar\ Mass\ Fraction}$')
+
+        self.adjust_legend(ax, location="upper left", scatter_plot=0)
+
+        outputFile = "{0}/10.BulgeMassFraction{1}".format(zeroth_output_path, self.output_format) 
+        fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
 
@@ -1627,7 +1652,8 @@ if __name__ == '__main__':
                     "gas_frac" : 0,
                     "metallicity" : 0,
                     "bh_bulge" : 0,
-                    "quiescent" : 1}
+                    "quiescent" : 0,
+                    "bulge_fraction" : 1}
 
     output_format = ".png"
 
