@@ -31,6 +31,8 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         perror(NULL);
         return MALLOC_FAILURE;
     }
+
+    // First go through each file and determine the total number of forests across all files.
     int64_t totnforests = 0;
     for(int filenr=firstfile;filenr<=lastfile;filenr++) {
         char filename[4*MAX_STRING_LEN];
@@ -48,6 +50,8 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     }
     forests_info->totnforests = totnforests;
 
+    // Assign each task an equal number of forests. If we can't equally assign each task
+    // the EXACT same number of forests, give each task an extra forest (if required).
     const int64_t nforests_per_cpu = (int64_t) (totnforests/NTasks);
     const int64_t rem_nforests = totnforests % NTasks;
     int64_t nforests_this_task = nforests_per_cpu;
@@ -56,17 +60,17 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     }
 
     int64_t start_forestnum = nforests_per_cpu * ThisTask;
-    /* Add in the remainder forests that also need to be processed
-       equivalent to the loop
 
-       for(int task=0;task<ThisTask;task++) {
-           if(task < rem_nforests) start_forestnum++;
-       }
+    if(ThisTask < rem_nforests) {
+        start_forestnum += ThisTask;
+    }
+    else {
+        start_forestnum += rem_nforests;  // All tasks that weren't given an extra forest will be offset by a constant amount.
+    }
 
-     */
-    start_forestnum += ThisTask <= rem_nforests ? ThisTask:rem_nforests; /* assumes that "0<= ThisTask < NTasks" */
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
     
+    // Now that we know the number of trees being processed by each task, let's set up and malloc the structs.
     struct lhalotree_info *lht = &(forests_info->lht);
     forests_info->nforests_this_task = nforests_this_task;
     lht->nforests = nforests_this_task;
@@ -87,6 +91,8 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         start_forestnum_to_process_per_file[i] = -1;
     }
     
+    // Now for each task, we know the starting forest number it needs to start reading from.
+    // So let's determine what file and forest number within the file each task needs to start/end reading from.
     int start_filenum = -1, end_filenum = -1;
     int64_t nforests_so_far = 0;
     for(int filenr=firstfile;filenr<=lastfile;filenr++) {
@@ -105,19 +111,26 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
             num_forests_to_process_per_file[filenr] = nforests_this_file - (start_forestnum - nforests_so_far);
         }
 
-        
+        /* Similar to above, if the end forst number (end_forestnum, again cumulative across all files)
+           is located with this file, then the task will need to read from this file.
+        */
+
         if(end_forestnum >= nforests_so_far && end_forestnum <= end_forestnum_this_file) {
             end_filenum = filenr;
+
+            // In the scenario where this task reads ALL forests from a single file, then the number
+            // of forests read from this file will be the number of forests assigned to it.
             if(end_filenum == start_filenum) {
-                num_forests_to_process_per_file[filenr] = nforests_this_task;/* does this need a + 1? */
+                num_forests_to_process_per_file[filenr] = nforests_this_task;
             } else {
-                num_forests_to_process_per_file[filenr] = end_forestnum - nforests_so_far;/* does this need a + 1? */
+                num_forests_to_process_per_file[filenr] = end_forestnum - nforests_so_far;
             }
             /* MS & JS: 07/03/2019 -- Probably okay to break here but might need to complete loop for validation */
         }
         nforests_so_far += nforests_this_file;
     }
 
+    // Make sure we found a file to start/end reading for this task.
     if(start_filenum == -1 || end_filenum == -1 ) {
         fprintf(stderr,"Error: Could not locate start or end file number for the lhalotree binary files\n");
         fprintf(stderr,"Printing debug info\n");
@@ -134,6 +147,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
 
     nforests_so_far = 0;
     int32_t *forestnhalos = lht->nhalos_per_forest;
+
     for(int filenr=start_filenum;filenr<=end_filenum;filenr++) {
         XASSERT(start_forestnum_to_process_per_file[filenr] >= 0 && start_forestnum_to_process_per_file[filenr] < totnforests_per_file[filenr],
                 EXIT_FAILURE,
@@ -163,11 +177,13 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         const int64_t nforests = num_forests_to_process_per_file[filenr];
         const size_t nbytes = totnforests_per_file[filenr] * sizeof(int32_t);
         int32_t *nhalos_per_forest = malloc(nbytes);
+
         if(nhalos_per_forest == NULL) {
             fprintf(stderr,"Error: Could not allocate memory to read nhalos per forest. Bytes requested = %zu\n", nbytes);
             perror(NULL);
             ABORT(MALLOC_FAILURE);
         }
+
         mypread(fd, nhalos_per_forest, nbytes, 8); /* the last argument says to start after sizeof(totntrees) + sizeof(totnhalos) */
         memcpy(forestnhalos, &(nhalos_per_forest[start_forestnum_to_process_per_file[filenr]]), nforests * sizeof(forestnhalos[0]));
 
