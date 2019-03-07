@@ -27,7 +27,7 @@ if [ ! -f trees_063.7 ]; then
         exit 1
     fi
 
-    tar --warning=no-unknown-keyword -xvf mini-millennium-sage-correct-output.tar
+    tar -xvf mini-millennium-sage-correct-output.tar
     if [[ $? != 0 ]]; then
         echo "Could not untar the correct model output...aborting tests"
         echo "Failed"
