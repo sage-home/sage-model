@@ -50,6 +50,18 @@ ifneq ($(filter $(CLEAN_CMDS),$(MAKECMDGOALS)),)
   DO_CHECKS := 0
 endif
 
+# Files required for HDF5 -> needs to be defined outside of the
+# if condition (for DO_CHECKS); otherwise `make clean` will not
+# clean the H5_OBJS
+H5_SRC := io/read_tree_hdf5.c #io/read_tree_genesis_standard_hdf5.c
+H5_INCL := $(H5_SRC:.c=.h)
+H5_OBJS := $(H5_SRC:.c=.o)
+
+H5_SRC := $(addprefix $(SRC_PREFIX)/, $(H5_SRC))
+H5_INCL := $(addprefix $(SRC_PREFIX)/, $(H5_INCL))
+H5_OBJS := $(addprefix $(SRC_PREFIX)/, $(H5_OBJS))
+
+
 ## Only set everything if the command is not "make clean" (or related to "make clean")
 ifeq ($(DO_CHECKS), 1)
   ON_CI := false
@@ -116,14 +128,6 @@ ifeq ($(DO_CHECKS), 1)
       endif
     endif
 
-    H5_SRC := io/read_tree_hdf5.c #io/read_tree_genesis_standard_hdf5.c
-    H5_INCL := $(H5_SRC:.c=.h)
-    H5_OBJS := $(H5_SRC:.c=.o)
-
-    H5_SRC := $(addprefix $(SRC_PREFIX)/, $(H5_SRC))
-    H5_INCL := $(addprefix $(SRC_PREFIX)/, $(H5_INCL))
-    H5_OBJS := $(addprefix $(SRC_PREFIX)/, $(H5_OBJS))
-
     LIBSRC += $(H5_SRC)
     SRC += $(H5_SRC)
 
@@ -172,6 +176,13 @@ ifeq ($(DO_CHECKS), 1)
 
   CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags 
   LIBS   +=   -lm
+else
+  # something like `make clean` is in effet -> need to also the HDF5 objects
+  # if HDF5 is requested
+  ifdef USE-HDF5
+    OBJS += $(H5_OBJS)
+  endif
+
 endif # End of DO_CHECKS if condition -> i.e., we do need to care about paths and such
 
 all:  $(EXEC) $(SAGELIB)
