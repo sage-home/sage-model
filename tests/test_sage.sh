@@ -1,31 +1,45 @@
 #!/bin/bash
 cwd=`pwd`
-datadir=../auxdata/trees/mini-millennium
+datadir=./test_data/
 # the bash way of figuring out the absolute path to this file
-# (irrespective of cwd). parent_path should be $SAGEROOT/src/tests
+# (irrespective of cwd). parent_path should be $SAGEROOT/tests
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$parent_path"/$datadir
 if [ ! -f trees_063.7 ]; then
-    curl -O https://data-portal.hpc.swin.edu.au/dataset/7bab038b-1d1f-4e79-8cfc-ea171dd1492f/resource/7ff28a50-c401-4a07-9041-13524cbac5c9/download/mini-millennium.tar 
+    wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
     if [[ $? != 0 ]]; then
-        echo "Could not download tree files from the Swinburne data portal...aborting tests"
+        echo "Could not download tree files from the Manodeep Sinha's Dropbox...aborting tests"
         echo "Failed"
         exit 1
     fi
-    
-    tar xvf mini-millennium.tar
+
+    tar xvf mini-millennium-treefiles.tar
     if [[ $? != 0 ]]; then
         echo "Could not untar the mini-millennium tree files...aborting tests"
         echo "Failed"
         exit 1
     fi
+
+    wget "https://www.dropbox.com/s/lkkyez8ttk2j65b/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
+    if [[ $? != 0 ]]; then
+        echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests"
+        echo "Failed"
+        exit 1
+    fi
+
+    tar --warning=no-unknown-keyword -xvf mini-millennium-sage-correct-output.tar
+    if [[ $? != 0 ]]; then
+        echo "Could not untar the correct model output...aborting tests"
+        echo "Failed"
+        exit 1
+    fi
+
 fi
 
-
-rm -f model_z*
+#rm -f model_z*
 
 # cd back into the sage root directory and then run sage
-cd ../../../../
+cd ../../
 ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests"
@@ -35,21 +49,24 @@ fi
 
 # now cd into the output directory for this sage-run
 cd "$parent_path"/$datadir
-files=`ls model_z*`
-testdata_dir=combined_output
+
+# These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
+test_files=($(ls -d test_sage_z*))
+correct_files=($(ls -d model_z*))
+
 if [[ $? == 0 ]]; then
     npassed=0
     nbitwise=0
     nfiles=0
     nfailed=0
-    for f in $files; do
+    for f in ${test_files[@]}; do
         ((nfiles++))
-        diff -q   $f  $testdata_dir/$f
+        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} 
         if [[ $? == 0 ]]; then
             ((npassed++))
             ((nbitwise++))
         else
-            python "$parent_path"/sagediff.py $f $testdata_dir/$f         
+            python "$parent_path"/sagediff.py ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]}         
             if [[ $? == 0 ]]; then 
                 ((npassed++))
             else

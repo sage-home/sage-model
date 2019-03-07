@@ -52,17 +52,13 @@ install:
   - conda install -q --yes -c conda-forge hdf5
 
 before_script:
-  - cd src/auxdata/trees/mini-millennium
+  - cd tests/
   - wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
   - tar xvf "mini-millennium-treefiles.tar"
   - wget "https://www.dropbox.com/s/lkkyez8ttk2j65b/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
   - tar xvf "mini-millennium-sage-correct-output.tar"
-  - cd ../../../../
+  - cd ../
 
 script:
   - make -r CC=$COMPILER
   - make tests
-  
-
-
-  

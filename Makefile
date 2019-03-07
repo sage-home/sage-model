@@ -196,18 +196,15 @@ $(EXEC): $(OBJS) $(SAGELIB)
 $(SAGELIB): $(LIBOBJS)
 	ar rcs $@ $(LIBOBJS) 
 
-.phony: clean celan celna clena tests
+.phony: clean celan celna clena do_tests
 celan celna clena: clean
 clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB)
 
-tests: $(EXEC)
+tests: do_tests
+do_tests: $(EXEC)
 ifdef GSL_FOUND
-	./src/tests/test_sage.sh
+	./tests/test_sage.sh
 else
 	$(error GSL is required to run the tests)
 endif
-
-
-
-
