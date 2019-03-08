@@ -237,6 +237,10 @@ class Model:
         self.reservoir_ejected = []
         self.reservoir_ICS = []
 
+        self.x_pos = []
+        self.y_pos = []
+        self.z_pos = []
+
 
     def get_galaxy_struct(self):
 
@@ -342,7 +346,7 @@ class Model:
         elif simulation == 3:
             self.hubble_h = 0.6751
             self.box_size = 500.00
-            self.total_num_files = 128
+            self.total_num_files = 64 
 
         else:
           print("Please pick a valid simulation!")
@@ -529,7 +533,6 @@ class Model:
         # subset of galaxies. We need to ensure we get a representative sample from each
         # file.
         file_sample_size = int(len(gals) / self.num_gals * self.sample_size) 
-        print(file_sample_size)
 
         if plot_toggles["SMF"] or plot_toggles["sSFR"]:
 
@@ -800,9 +803,26 @@ class Model:
 
                 # Extend the previous list of masses with these new values. 
                 attr_name = "reservoir_{0}".format(attribute_name)
-                old_attribute_value = getattr(self, attr_name) 
-                new_attribute_value = old_attribute_value.extend(list(mass))
-                setattr(self, attribute_name, new_attribute_value)
+                attribute_value = getattr(self, attr_name) 
+                attribute_value.extend(list(mass))
+                setattr(self, attribute_name, attribute_value)
+
+        if plot_toggles["spatial"]:
+
+            non_zero = np.where((gals["Mvir"] > 0.0) & (gals["StellarMass"] > 0.1))[0] 
+
+            if len(non_zero) > file_sample_size:
+                non_zero = np.random.choice(non_zero, size=file_sample_size)
+
+            attribute_names = ["x_pos", "y_pos", "z_pos"]
+
+            for (dim, attribute_name) in enumerate(attribute_names):
+
+                pos = gals["Pos"][non_zero, dim]
+
+                attribute_value = getattr(self, attribute_name)
+                attribute_value.extend(list(pos))
+                setattr(self, attribute_name, attribute_value)
 
 
 class Results:
@@ -925,7 +945,6 @@ class Results:
         # For scatter plots, we want to increase the marker size.
         if scatter_plot:
             for handle in handles:
-
                 # We may have lines in the legend which we don't want to touch here.
                 if isinstance(handle, matplotlib.collections.PathCollection):
                     handle.set_alpha(1.0) 
@@ -1007,7 +1026,9 @@ class Results:
             print("Plotting a scatter of the mass reservoirs.")
             self.plot_mass_reservoirs()
 
-        #res.SpatialDistribution(model.gals)
+        if plot_toggles["spatial"]:
+            print("Plotting the spatial distribution.")
+            self.plot_spatial_distribution()
 
 # --------------------------------------------------------
 
@@ -1500,11 +1521,11 @@ class Results:
             bin_middles = model.spin_bins + 0.5 * model.spin_bin_width
 
             # Normalize by number of galaxies; allows better comparison between models.
-            norm_count = model.spin_counts / model.num_gals / model.spin_bin_width
+            norm_counts = model.spin_counts / model.num_gals / model.spin_bin_width
             ax.plot(bin_middles[:-1], norm_counts, label=tag, color=color, linestyle=linestyle)
 
-            if np.max(norm_count):
-                max_counts = np.max(norm_count)
+            if np.max(norm_counts):
+                max_counts = np.max(norm_counts)
 
         ax.set_xlim([-0.02, 0.5])
         ax.set_ylim([0.0, max_counts*1.15])
@@ -1614,45 +1635,59 @@ class Results:
 
 # --------------------------------------------------------
 
-    def SpatialDistribution(self, G):
-    
-        print("Plotting the spatial distribution of all galaxies")
-    
-        seed(2222)
-    
-        plt.figure()  # New figure
-    
-        w = np.where((G.Mvir > 0.0) & (G.StellarMass > 0.1))[0]
-        if(len(w) > dilute): w = sample(w, dilute)
+    def plot_spatial_distribution(self):
 
-        xx = G.Pos[w,0]
-        yy = G.Pos[w,1]
-        zz = G.Pos[w,2]
+        fig = plt.figure()
+        ax1 = fig.add_subplot(221)
+        ax2 = fig.add_subplot(222)
+        ax3 = fig.add_subplot(223)
+        ax4 = fig.add_subplot(224)
 
-        buff = self.BoxSize*0.1
+        max_box = -999
 
-        ax = plt.subplot(221)  # 1 plot on the figure
-        plt.scatter(xx, yy, marker='o', s=0.3, c='k', alpha=0.5)
-        plt.axis([0.0-buff, self.BoxSize+buff, 0.0-buff, self.BoxSize+buff])
+        for model in self.models:
 
-        plt.ylabel(r'$\mathrm{x}$')  # Set the y...
-        plt.xlabel(r'$\mathrm{y}$')  # and the x-axis labels
-        
-        ax = plt.subplot(222)  # 1 plot on the figure
-        plt.scatter(xx, zz, marker='o', s=0.3, c='k', alpha=0.5)
-        plt.axis([0.0-buff, self.BoxSize+buff, 0.0-buff, self.BoxSize+buff])
+            tag = model.tag
+            color = model.color
+            linestyle = model.linestyle
+            marker = model.marker
 
-        plt.ylabel(r'$\mathrm{x}$')  # Set the y...
-        plt.xlabel(r'$\mathrm{z}$')  # and the x-axis labels
-        
-        ax = plt.subplot(223)  # 1 plot on the figure
-        plt.scatter(yy, zz, marker='o', s=0.3, c='k', alpha=0.5)
-        plt.axis([0.0-buff, self.BoxSize+buff, 0.0-buff, self.BoxSize+buff])
-        plt.ylabel(r'$\mathrm{y}$')  # Set the y...
-        plt.xlabel(r'$\mathrm{z}$')  # and the x-axis labels
-            
-        outputFile = OutputDir + '15.SpatialDistribution' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
+            ax1.scatter(model.x_pos, model.y_pos, marker=marker, s=0.3, color=color,
+                        alpha=0.5)
+            ax2.scatter(model.x_pos, model.z_pos, marker=marker, s=0.3, color=color,
+                        alpha=0.5)
+            ax3.scatter(model.y_pos, model.z_pos, marker=marker, s=0.3, color=color,
+                        alpha=0.5)
+
+            # The bottom right panel will only contain the legend.
+            # For some odd reason, plotting `np.nan` causes some legend entries to not
+            # appear. Plot junk and we'll adjust the axis to not show it.
+            ax4.scatter(-999, -999, marker=marker, color=color, label=tag)
+            ax4.axis("off")
+
+            if model.box_size > max_box:
+                max_box = model.box_size
+
+        buffer = max_box*0.05
+        for ax in [ax1, ax2, ax3, ax4]:
+            ax.set_xlim([0.0-buffer, max_box+buffer])
+            ax.set_ylim([0.0-buffer, max_box+buffer])
+
+        ax1.set_xlabel(r"$\mathrm{x}$")
+        ax1.set_ylabel(r"$\mathrm{y}$")
+
+        ax2.set_xlabel(r"$\mathrm{x}$")
+        ax2.set_ylabel(r"$\mathrm{z}$")
+
+        ax3.set_xlabel(r"$\mathrm{y}$")
+        ax3.set_ylabel(r"$\mathrm{z}$")
+
+        self.adjust_legend(ax4, location="upper left", scatter_plot=1)
+
+        fig.tight_layout()
+
+        outputFile = "{0}/15.SpatialDistribution{1}".format(self.plot_output_path, self.output_format)
+        fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
 
@@ -1673,8 +1708,8 @@ if __name__ == '__main__':
     model0_linestyle = "-"
     model0_marker = "x"
 
-    model1_dir_name = "../output/millennium/"
-    model1_file_name = "model_z0.000"
+    model1_dir_name = "/fred/oz004/jseiler/millennium_test_data/"
+    model1_file_name = "correct-mini-millennium-output_z0.000"
     model1_first_file = 0
     model1_last_file = 0
     model1_simulation = 0
@@ -1724,7 +1759,7 @@ if __name__ == '__main__':
                    "linestyle"  : linestyles,
                    "marker"      : markers}
 
-    plot_toggles = {"SMF"      : 0,
+    plot_toggles = {"SMF"      : 1,
                     "BMF"      : 0,
                     "GMF"      : 0,
                     "BTF"      : 0,
@@ -1737,11 +1772,12 @@ if __name__ == '__main__':
                     "baryon_fraction" : 0,
                     "spin" : 0,
                     "velocity" : 0,
-                    "reservoirs" : 1}
+                    "reservoirs" : 0,
+                    "spatial" : 0}
 
     output_format = ".png"
     plot_output_path = "./plots"
 
     results = Results(model_dict, plot_toggles, plot_output_path, output_format,
-                      debug=1)
+                      debug=0)
     results.do_plots()
