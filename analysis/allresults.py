@@ -152,7 +152,7 @@ class Model:
                                               self.stellar_bin_high + self.stellar_bin_width,
                                               self.stellar_bin_width)
 
-        # How should we bin Stellar mass.
+        # How should we bin Halo mass.
         self.halo_bin_low      = 8.0 
         self.halo_bin_high     = 14.0 
         self.halo_bin_width    = 0.2
@@ -208,6 +208,15 @@ class Model:
         self.halo_ejected_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
         self.halo_ICS_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
         self.halo_bh_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
+
+        # How should we bin the SpinParameter?
+        self.spin_bin_low   = -0.02
+        self.spin_bin_high  = 0.5
+        self.spin_bin_width = 0.01
+        self.spin_bins      = np.arange(self.spin_bin_low,
+                                        self.spin_bin_high + self.spin_bin_width,
+                                        self.spin_bin_width)
+        self.spin_counts = np.zeros(len(self.spin_bins)-1, dtype=np.int64)
 
 
     def get_galaxy_struct(self):
@@ -656,7 +665,7 @@ class Model:
             fraction_disk = 1.0 - (gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar])
 
             # We want the mean bulge/disk fraction as a function of stellar mass. To allow
-            # us to sum across each file, we will record sum in each bin and then average later.
+            # us to sum across each file, we will record the sum in each bin and then average later.
             if plot_toggles["SMF"]:
                 pass
             else:
@@ -683,61 +692,51 @@ class Model:
 
         if plot_toggles["baryon_fraction"]:
 
-            # Bin the galaxies based on halo mass (Mvir).
-            # For every halo within each bin, find galaxies inside the halo.
-            # Calculates properties based on the total number of baryons/cold gas/etc
-            # in that halo.
-
-            #non_zero_stellar = np.where((gals["StellarMass"] > 0.0) & (gals["ColdGas"] > 0.0) & \
-            #                            (gals["HotGas"] > 0.0) & (gals["EjectedMass"] > 0.0) & \
-            #                            (gals["IntraClusterStars"] > 0.0) & (gals["BlackHoleMass"] > 0.0))[0]
-
-            non_zero_stellar = np.where((gals["CentralMvir"] > 0.0))[0]
-
-            baryons = gals["StellarMass"][non_zero_stellar] + gals["ColdGas"][non_zero_stellar] + \
-                      gals["HotGas"][non_zero_stellar] + gals["EjectedMass"][non_zero_stellar] + \
-                      gals["IntraClusterStars"][non_zero_stellar] + gals["BlackHoleMass"][non_zero_stellar]
-            stellar_mass = gals["StellarMass"][non_zero_stellar]
-            cold_gas = gals["ColdGas"][non_zero_stellar]
-            hot_gas = gals["HotGas"][non_zero_stellar]
-            ejected_gas = gals["EjectedMass"][non_zero_stellar]
-            intracluster_stars = gals["IntraClusterStars"][non_zero_stellar]
-            bh_mass = gals["BlackHoleMass"][non_zero_stellar]
-
-            fof_halo_mass = gals["CentralMvir"][non_zero_stellar]
-            fof_halo_mass_log = np.log10(gals["CentralMvir"][non_zero_stellar] * 1.0e10 / self.hubble_h)
-
+            # Careful here, our "Halo Mass Function" is only counting the *BACKGROUND FOF HALOS*.
             centrals = np.where(gals["Type"] == 0)[0]
-            halos_binned, _ = np.histogram(np.log10(gals["Mvir"][centrals]*1.0e10/self.hubble_h), bins=self.halo_mass_bins)
+            centrals_fof_mass = np.log10(gals["Mvir"][centrals] * 1.0e10 / self.hubble_h)
+            halos_binned, _ = np.histogram(centrals_fof_mass, bins=self.halo_mass_bins)
             self.fof_HMF += halos_binned
 
+            non_zero_mvir = np.where((gals["CentralMvir"] > 0.0))[0]  # Will only be dividing by this value.
+
+            # These are the *BACKGROUND FOF HALO* for each galaxy.
+            fof_halo_mass = gals["CentralMvir"][non_zero_mvir]
+            fof_halo_mass_log = np.log10(gals["CentralMvir"][non_zero_mvir] * 1.0e10 / self.hubble_h)
+
+            # We want to calculate the fractions as a function of the FoF mass. To allow
+            # us to sum across each file, we will record the sum in each bin and then
+            # average later.
+            components = ["StellarMass", "ColdGas", "HotGas", "EjectedMass",
+                          "IntraClusterStars", "BlackHoleMass"]
+            attrs_different_name = ["stars", "cold", "hot", "ejected", "ICS", "bh"]
+
+            for (component_key, attr_name) in zip(components, attrs_different_name):
+
+                # The bins are defined in log. However the other properties are all in 1.0e10 Msun/h.
+                fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log,
+                                                            gals[component_key][non_zero_mvir] / fof_halo_mass,
+                                                            statistic=np.sum, bins=self.halo_mass_bins)
+
+                attribute_name = "halo_{0}_fraction_sum".format(attr_name)
+                new_attribute_value = fraction_sum + getattr(self, attribute_name)
+                setattr(self, attribute_name, new_attribute_value)
+
+            # Finally want the sum across all components.
+            baryons = np.sum(gals[component_key][non_zero_mvir] for component_key in components)
             baryon_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, baryons / fof_halo_mass,
                                                                 statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_baryon_fraction_sum += baryon_fraction_sum
 
-            stars_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, stellar_mass / fof_halo_mass,
-                                                              statistic=np.sum, bins=self.halo_mass_bins)
-            self.halo_stars_fraction_sum += stars_fraction_sum
+        if plot_toggles["spin"]:
 
-            cold_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, cold_gas / fof_halo_mass,
-                                                             statistic=np.sum, bins=self.halo_mass_bins)
-            self.halo_cold_fraction_sum += cold_fraction_sum
+            spin_param = np.sqrt(gals["Spin"][:,0]*gals["Spin"][:,0] + \
+                                 gals["Spin"][:,1]*gals["Spin"][:,1] + \
+                                 gals["Spin"][:,2]*gals["Spin"][:,2]) / \
+                                (np.sqrt(2) * gals["Vvir"] * gals["Rvir"]);
 
-            hot_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, hot_gas / fof_halo_mass,
-                                                            statistic=np.sum, bins=self.halo_mass_bins)
-            self.halo_hot_fraction_sum += hot_fraction_sum
-
-            ejected_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, ejected_gas / fof_halo_mass,
-                                                                statistic=np.sum, bins=self.halo_mass_bins)
-            self.halo_ejected_fraction_sum += ejected_fraction_sum
-
-            ICS_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, intracluster_stars / fof_halo_mass,
-                                                                statistic=np.sum, bins=self.halo_mass_bins)
-            self.halo_ICS_fraction_sum += ICS_fraction_sum
-
-            bh_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, bh_mass / fof_halo_mass,
-                                                                statistic=np.sum, bins=self.halo_mass_bins)
-            self.halo_bh_fraction_sum += bh_fraction_sum
+            spin_counts, _ = np.histogram(spin_param, bins=self.spin_bins)
+            self.spin_counts += spin_counts
 
 
 class Results:
@@ -927,8 +926,12 @@ class Results:
             self.plot_bulge_mass_fraction()
 
         if plot_toggles["baryon_fraction"]:
+            print("Plotting the baryon fraction as a function of FoF Halo mass.")
             self.plot_baryon_fraction()
-        #res.SpinDistribution(model.gals)
+
+        if plot_toggles["spin"]:
+            print("Plotting the Spin distribution.")
+            self.plot_spin_distribution()
         #res.VelocityDistribution(model.gals)
         #res.MassReservoirScatter(G)
         #res.SpatialDistribution(model.gals)
@@ -1400,44 +1403,46 @@ class Results:
 
         self.adjust_legend(ax, location="upper left", scatter_plot=0)
 
-        outputFile = "{0}/11.BaryonFraction{1}".format(self.plot_output_path, self.output_format) 
+        outputFile = "{0}/11.BaryonFraction{1}".format(self.plot_output_path, self.output_format)
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
 
 # --------------------------------------------------------
 
-    def SpinDistribution(self, G):
-    
-        print("Plotting the spin distribution of all galaxies")
+    def plot_spin_distribution(self):
 
-        # set up figure
-        plt.figure()
-        ax = plt.subplot(111)
-    
-        SpinParameter = np.sqrt(G.Spin[:,0]*G.Spin[:,0] + G.Spin[:,1]*G.Spin[:,1] + G.Spin[:,2]*G.Spin[:,2]) / (np.sqrt(2) * G.Vvir * G.Rvir);
-        
-        mi = -0.02
-        ma = 0.5
-        binwidth = 0.01
-        NB = (ma - mi) / binwidth
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
 
-        (counts, binedges) = np.histogram(SpinParameter, range=(mi, ma), bins=NB)
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-        plt.plot(xaxeshisto, counts, 'k-', label='simulation')
+        max_counts = -999
 
-        plt.axis([mi, ma, 0.0, max(counts)*1.15])
+        for model in self.models:
 
-        plt.ylabel(r'$\mathrm{Number}$')  # Set the y...
-        plt.xlabel(r'$\mathrm{Spin\ Parameter}$')  # and the x-axis labels
+            tag = model.tag
+            color = model.color
+            linestyle = model.linestyle
 
-        leg = plt.legend(loc='upper right', numpoints=1, labelspacing=0.1)
-        leg.draw_frame(False)  # Don't want a box frame
-        for t in leg.get_texts():  # Reduce the size of the text
-                t.set_fontsize('medium')
+            # Set the x-axis values to be the centre of the bins.
+            bin_middles = model.spin_bins + 0.5 * model.spin_bin_width
 
-        outputFile = OutputDir + '12.SpinDistribution' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
+            # Normalize by number of galaxies; allows better comparison between models.
+            ax.plot(bin_middles[:-1], model.spin_counts / model.num_gals, label=tag, color=color,
+                    linestyle=linestyle)
+
+            if np.max(model.spin_counts / model.num_gals) > max_counts:
+                max_counts = np.max(model.spin_counts / model.num_gals)
+
+        ax.set_xlim([-0.02, 0.5])
+        ax.set_ylim([0.0, max_counts*1.15])
+
+        ax.set_xlabel(r"$\mathrm{Spin\ Parameter}$")
+        ax.set_ylabel(r"$\mathrm{Normalized Count}$")
+
+        self.adjust_legend(ax, location="upper left", scatter_plot=0)
+
+        outputFile = "{0}/12.SpinDistribution{1}".format(self.plot_output_path, self.output_format)
+        fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
 
@@ -1667,7 +1672,8 @@ if __name__ == '__main__':
                     "bh_bulge" : 0,
                     "quiescent" : 0,
                     "bulge_fraction" : 0,
-                    "baryon_fraction" : 1}
+                    "baryon_fraction" : 1,
+                    "spin" : 1}
 
     output_format = ".png"
     plot_output_path = "./plots"
