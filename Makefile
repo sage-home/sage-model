@@ -172,7 +172,10 @@ ifeq ($(DO_CHECKS), 1)
   # This decision was driven by the fact the adding the `-march=native` flag
   # produces test failures on ozstar (https://supercomputing.swin.edu.au/ozstar/)
   # Good news is that even at -O3 the tests pass
-  OPTIMIZE := -O2 -march=native -mno-fma
+  OPTIMIZE := -O2
+  ifeq ($(filter tests,$(MAKECMDGOALS)),)
+    OPTIMIZE += -march=native
+  endif
 
   CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags 
   LIBS   +=   -lm
@@ -203,11 +206,7 @@ clean:
 
 tests: $(EXEC)
 ifdef GSL_FOUND
-	./src/tests/test_sage.sh
+	./tests/test_sage.sh
 else
 	$(error GSL is required to run the tests)
 endif
-
-
-
-

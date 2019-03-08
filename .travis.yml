@@ -14,16 +14,9 @@ matrix:
 
   include:
     - os: osx
-      osx_image: xcode8
-      compiler: gcc
-      env: COMPILER=gcc PYTHON_VERSION=2.7
-      before_install:
-        - wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh
-
-    - os: osx
       osx_image: xcode9.3
       compiler: clang
-      env: COMPILER=clang FAMILY=clang V='Apple LLVM 7.0.0' PYTHON_VERSION=3.6
+      env: COMPILER=clang FAMILY=clang V='Apple LLVM 7.0.0' PYTHON_VERSION=3.7
       before_install:
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh
         
@@ -31,15 +24,7 @@ matrix:
       dist: trusty
       sudo: required
       compiler: gcc
-      env: COMPILER=gcc PYTHON_VERSION=2.7
-      before_install:
-        - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-        
-    - os: linux
-      dist: trusty
-      sudo: required
-      compiler: gcc
-      env: COMPILER=gcc PYTHON_VERSION=3.6
+      env: COMPILER=gcc PYTHON_VERSION=3.7
       before_install:
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
@@ -51,18 +36,5 @@ install:
   - conda install -q --yes -c anaconda gsl
   - conda install -q --yes -c conda-forge hdf5
 
-before_script:
-  - cd src/auxdata/trees/mini-millennium
-  - wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
-  - tar xvf "mini-millennium-treefiles.tar"
-  - wget "https://www.dropbox.com/s/lkkyez8ttk2j65b/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
-  - tar xvf "mini-millennium-sage-correct-output.tar"
-  - cd ../../../../
-
 script:
-  - make -r CC=$COMPILER
-  - make tests
-  
-
-
-  
+  - make -r CC=$COMPILER tests
