@@ -6,7 +6,21 @@ datadir=test_data/
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 echo "Printing current directory"
 pwd
+
+mkdir -p "$parent_path"/$datadir
+if [[ $? != 0 ]]; then
+    echo "Could not create directory $parent_path/$datadir"
+    echo "Failed"
+    exit 1
+fi
+
 cd "$parent_path"/$datadir
+if [[ $? != 0 ]]; then
+    echo "Could not cd into directory $parent_path/$datadir"
+    echo "Failed"
+    exit 1
+fi
+
 if [ ! -f trees_063.7 ]; then
     wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
     if [[ $? != 0 ]]; then
