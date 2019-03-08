@@ -255,7 +255,7 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
             "nwanted = %d should be equal to nwanted_offs = %d\n",
             nwanted, nwanted_offs);
 
-    char filename[MAX_STRING_LEN];
+    char filename[2*MAX_STRING_LEN + 1];
     get_forests_filename_ctr_ascii(filename, sizeof(filename), run_params);
     status = parse_header_ctrees(column_names, dest_field_types, base_ptr_idx, dest_offset_to_element,
                                  nwanted, filename, (struct ctrees_column_to_ptr *) ctr->column_info);
