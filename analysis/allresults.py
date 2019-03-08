@@ -200,7 +200,7 @@ class Model:
         self.fraction_disk_sum = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
         self.fraction_disk_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
 
-        self.HMF = np.zeros(len(self.halo_mass_bins)-1, dtype=np.int64) 
+        self.fof_HMF = np.zeros(len(self.halo_mass_bins)-1, dtype=np.int64) 
         self.halo_baryon_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
         self.halo_stars_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
         self.halo_cold_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
@@ -688,55 +688,54 @@ class Model:
             # Calculates properties based on the total number of baryons/cold gas/etc
             # in that halo.
 
+            #non_zero_stellar = np.where((gals["StellarMass"] > 0.0) & (gals["ColdGas"] > 0.0) & \
+            #                            (gals["HotGas"] > 0.0) & (gals["EjectedMass"] > 0.0) & \
+            #                            (gals["IntraClusterStars"] > 0.0) & (gals["BlackHoleMass"] > 0.0))[0]
+
+            non_zero_stellar = np.where((gals["CentralMvir"] > 0.0))[0]
+
+            baryons = gals["StellarMass"][non_zero_stellar] + gals["ColdGas"][non_zero_stellar] + \
+                      gals["HotGas"][non_zero_stellar] + gals["EjectedMass"][non_zero_stellar] + \
+                      gals["IntraClusterStars"][non_zero_stellar] + gals["BlackHoleMass"][non_zero_stellar]
+            stellar_mass = gals["StellarMass"][non_zero_stellar]
+            cold_gas = gals["ColdGas"][non_zero_stellar]
+            hot_gas = gals["HotGas"][non_zero_stellar]
+            ejected_gas = gals["EjectedMass"][non_zero_stellar]
+            intracluster_stars = gals["IntraClusterStars"][non_zero_stellar]
+            bh_mass = gals["BlackHoleMass"][non_zero_stellar]
+
+            fof_halo_mass = gals["CentralMvir"][non_zero_stellar]
+            fof_halo_mass_log = np.log10(gals["CentralMvir"][non_zero_stellar] * 1.0e10 / self.hubble_h)
+
             centrals = np.where(gals["Type"] == 0)[0]
-            mvir = np.log10(gals["Mvir"] * 1.0e10 / self.hubble_h) 
+            halos_binned, _ = np.histogram(np.log10(gals["Mvir"][centrals]*1.0e10/self.hubble_h), bins=self.halo_mass_bins)
+            self.fof_HMF += halos_binned
 
-            halos_binned, _ = np.histogram(mvir, bins=self.halo_mass_bins)
-            self.HMF += halos_binned
-
-            centrals_mvir_binned = np.digitize(mvir, bins=self.halo_mass_bins)
-
-            # Now for every central galaxy, we want to find all galaxies that share that
-            # central.  That is, we want to find the entire FoF group of each central.
-            central_galaxy_index = gals["CentralGalaxyIndex"]
-
-            # We're doing fractions throughout here so we'll work in 1.0e10 Msun/h.
-            baryons = gals["StellarMass"] + gals["ColdGas"] + gals["EjectedMass"] + \
-                      gals["IntraClusterStars"] + gals["BlackHoleMass"]
-            stellar_mass = gals["StellarMass"]
-            cold_gas = gals["ColdGas"]
-            hot_gas = gals["HotGas"]
-            ejected_gas = gals["EjectedMass"]
-            intracluster_stars = gals["IntraClusterStars"]
-            bh_mass = gals["BlackHoleMass"] 
-
-            fof_halo_mass = gals["CentralMvir"]
-
-            baryon_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, baryons / fof_halo_mass,
+            baryon_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, baryons / fof_halo_mass,
                                                                 statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_baryon_fraction_sum += baryon_fraction_sum
 
-            stars_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, stellar_mass / fof_halo_mass,
+            stars_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, stellar_mass / fof_halo_mass,
                                                               statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_stars_fraction_sum += stars_fraction_sum
 
-            cold_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, cold_gas / fof_halo_mass,
+            cold_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, cold_gas / fof_halo_mass,
                                                              statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_cold_fraction_sum += cold_fraction_sum
 
-            hot_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, hot_gas / fof_halo_mass,
+            hot_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, hot_gas / fof_halo_mass,
                                                             statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_hot_fraction_sum += hot_fraction_sum
 
-            ejected_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, ejected_gas / fof_halo_mass,
+            ejected_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, ejected_gas / fof_halo_mass,
                                                                 statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_ejected_fraction_sum += ejected_fraction_sum
 
-            ICS_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, intracluster_stars / fof_halo_mass,
+            ICS_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, intracluster_stars / fof_halo_mass,
                                                                 statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_ICS_fraction_sum += ICS_fraction_sum
 
-            bh_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, bh_mass / fof_halo_mass,
+            bh_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, bh_mass / fof_halo_mass,
                                                                 statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_bh_fraction_sum += bh_fraction_sum
 
@@ -1367,12 +1366,12 @@ class Results:
             bin_middles = model.halo_mass_bins + 0.5 * model.halo_bin_width
 
             # Remember we need to average the properties in each bin.
-            baryon_mean = model.halo_baryon_fraction_sum / model.HMF
-            stars_mean = model.halo_stars_fraction_sum / model.HMF
-            cold_mean = model.halo_cold_fraction_sum / model.HMF
-            hot_mean = model.halo_hot_fraction_sum / model.HMF
-            ejected_mean = model.halo_ejected_fraction_sum / model.HMF
-            ICS_mean = model.halo_ICS_fraction_sum / model.HMF
+            baryon_mean = model.halo_baryon_fraction_sum / model.fof_HMF
+            stars_mean = model.halo_stars_fraction_sum / model.fof_HMF
+            cold_mean = model.halo_cold_fraction_sum / model.fof_HMF
+            hot_mean = model.halo_hot_fraction_sum / model.fof_HMF
+            ejected_mean = model.halo_ejected_fraction_sum / model.fof_HMF
+            ICS_mean = model.halo_ICS_fraction_sum / model.fof_HMF
 
             # We will keep the linestyle constant but change the color. 
             ax.plot(bin_middles[:-1], baryon_mean, label=tag + " Total",
@@ -1387,7 +1386,7 @@ class Results:
                         color='r', linestyle=linestyle)
                 ax.plot(bin_middles[:-1], ejected_mean, label=tag + " Ejected",
                         color='g', linestyle=linestyle)
-                ax.plot(bin_middles[:-1], ejected_mean, label=tag + " ICS",
+                ax.plot(bin_middles[:-1], ICS_mean, label=tag + " ICS",
                         color='y', linestyle=linestyle)
 
         ax.set_xlabel(r"$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$")
