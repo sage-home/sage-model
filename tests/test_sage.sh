@@ -1,9 +1,11 @@
 #!/bin/bash
 cwd=`pwd`
-datadir=./test_data/
+datadir=test_data/
 # the bash way of figuring out the absolute path to this file
 # (irrespective of cwd). parent_path should be $SAGEROOT/tests
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+echo "Printing current directory"
+pwd
 cd "$parent_path"/$datadir
 if [ ! -f trees_063.7 ]; then
     wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
@@ -39,8 +41,11 @@ fi
 rm -f test_sage_z*
 
 # cd back into the sage root directory and then run sage
+echo "Printing current directory before I jump up two directories"
+pwd
 cd ../../
-echo $PWD
+echo "Printing current directory"
+pwd
 ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests"
