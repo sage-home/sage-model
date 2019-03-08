@@ -261,9 +261,13 @@ def compare_catalogs(g1, g2):
 
             msg = "Field = `{0}` not the same between the two catalogs\n"\
                 .format(fld)
-            # if np.allclose(f1, f2, rtol=rtol,  atol=atol): continue
-            if np.array_equal(f1, f2): continue
+            if np.array_equal(f1, f2):
+                continue
 
+            print("A `numpy.array_equal` failed. Attempting a `np.allclose` with rtol={0} "
+                  "and atol={1}\n".format(rtol, atol), file=sys.stderr)
+            if np.allclose(f1, f2, rtol=rtol,  atol=atol):
+                continue
 
             # If control reaches here, then the arrays are not equal
             print("Printing values that were different side-by side\n",
