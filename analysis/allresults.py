@@ -230,6 +230,13 @@ class Model:
         self.y_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
         self.z_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
 
+        self.reservoir_mvir = []
+        self.reservoir_stars = []
+        self.reservoir_cold = []
+        self.reservoir_hot = []
+        self.reservoir_ejected = []
+        self.reservoir_ICS = []
+
 
     def get_galaxy_struct(self):
 
@@ -522,6 +529,7 @@ class Model:
         # subset of galaxies. We need to ensure we get a representative sample from each
         # file.
         file_sample_size = int(len(gals) / self.num_gals * self.sample_size) 
+        print(file_sample_size)
 
         if plot_toggles["SMF"] or plot_toggles["sSFR"]:
 
@@ -774,6 +782,28 @@ class Model:
                 new_attribute_value = counts + getattr(self, attribute_name)
                 setattr(self, attribute_name, new_attribute_value)
 
+        if plot_toggles["reservoirs"]:
+
+            centrals = np.where((gals["Type"] == 0) & (gals["Mvir"] > 1.0) & \
+                                (gals["StellarMass"] > 0.0))[0]
+
+            if len(centrals) > file_sample_size:
+                centrals = np.random.choice(centrals, size=file_sample_size)
+
+            components = ["Mvir", "StellarMass", "ColdGas", "HotGas",
+                          "EjectedMass", "IntraClusterStars"]
+            attribute_names = ["mvir", "stars", "cold", "hot", "ejected", "ICS"]
+
+            for (component, attribute_name) in zip(components, attribute_names):
+
+                mass = np.log10(gals[component][centrals] * 1.0e10 / self.hubble_h)
+
+                # Extend the previous list of masses with these new values. 
+                attr_name = "reservoir_{0}".format(attribute_name)
+                old_attribute_value = getattr(self, attr_name) 
+                new_attribute_value = old_attribute_value.extend(list(mass))
+                setattr(self, attribute_name, new_attribute_value)
+
 
 class Results:
     """
@@ -970,8 +1000,13 @@ class Results:
             self.plot_spin_distribution()
 
         if plot_toggles["velocity"]:
+            print("Plotting the velocity distribution.")
             self.plot_velocity_distribution()
-        #res.MassReservoirScatter(G)
+
+        if plot_toggles["reservoirs"]:
+            print("Plotting a scatter of the mass reservoirs.")
+            self.plot_mass_reservoirs()
+
         #res.SpatialDistribution(model.gals)
 
 # --------------------------------------------------------
@@ -1491,8 +1526,6 @@ class Results:
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        max_counts = -999
-
         # First do some junk plotting to get legend correct. We keep the linestyles but
         # use different colours.
         for model in self.models:
@@ -1540,41 +1573,44 @@ class Results:
 
 # --------------------------------------------------------
 
-    def MassReservoirScatter(self, G):
-    
-        print("Plotting the mass in stellar, cold, hot, ejected, ICS reservoirs")
-    
-        seed(2222)
-    
-        plt.figure()  # New figure
-        ax = plt.subplot(111)  # 1 plot on the figure
-    
-        w = np.where((G.Type == 0) & (G.Mvir > 1.0) & (G.StellarMass > 0.0))[0]
-        if(len(w) > dilute): w = sample(w, dilute)
+    def plot_mass_reservoirs(self):
 
-        mvir = np.log10(G.Mvir[w] * 1.0e10)
-        plt.scatter(mvir, np.log10(G.StellarMass[w] * 1.0e10), marker='o', s=0.3, c='k', alpha=0.5, label='Stars')
-        plt.scatter(mvir, np.log10(G.ColdGas[w] * 1.0e10), marker='o', s=0.3, color='blue', alpha=0.5, label='Cold gas')
-        plt.scatter(mvir, np.log10(G.HotGas[w] * 1.0e10), marker='o', s=0.3, color='red', alpha=0.5, label='Hot gas')
-        plt.scatter(mvir, np.log10(G.EjectedMass[w] * 1.0e10), marker='o', s=0.3, color='green', alpha=0.5, label='Ejected gas')
-        plt.scatter(mvir, np.log10(G.IntraClusterStars[w] * 1.0e10), marker='o', s=10, color='yellow', alpha=0.5, label='Intracluster stars')    
+        # This scatter plot will be messy so we're going to make one for each model.
+        for model in self.models:
 
-        plt.ylabel(r'$\mathrm{stellar,\ cold,\ hot,\ ejected,\ ICS\ mass}$')  # Set the y...
-        plt.xlabel(r'$\log\ M_{\mathrm{vir}}\ (h^{-1}\ M_{\odot})$')  # and the x-axis labels
-        
-        plt.axis([10.0, 14.0, 7.5, 12.5])
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
 
-        leg = plt.legend(loc='upper left')
-        leg.draw_frame(False)  # Don't want a box frame
-        for t in leg.get_texts():  # Reduce the size of the text
-            t.set_fontsize('medium')
+            tag = model.tag
+            marker = model.marker
 
-        plt.text(13.5, 8.0, r'$\mathrm{All}')
-            
-        outputFile = OutputDir + '14.MassReservoirScatter' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
-        print("Saved file to {0}".format(outputFile))
-        plt.close()
+            components = ["StellarMass", "ColdGas", "HotGas", "EjectedMass",
+                          "IntraClusterStars"]
+            attribute_names = ["stars", "cold", "hot", "ejected", "ICS"]
+            labels = ["Stars", "Cold Gas", "Hot Gas", "Ejected Gas", "Intracluster Stars"]
+            colors = ["k", "b", "r", "g", "y"]
+
+            for (component, attribute_name, color, label) in zip(components,
+                                                                 attribute_names, colors,
+                                                                 labels):
+
+                attr_name = "reservoir_{0}".format(attribute_name)
+                ax.scatter(model.reservoir_mvir, getattr(model, attr_name), marker=marker,
+                           s=0.3, color=color, label=label)
+
+            ax.set_xlabel(r"$\log\ M_{\mathrm{vir}}\ (M_{\odot})$")
+            ax.set_ylabel(r"$\mathrm{Reservoir\ Mass\ (M_{\odot})}$")
+
+            ax.set_xlim([10.0, 14.0])
+            ax.set_ylim([7.5, 12.5])
+
+            self.adjust_legend(ax, location="upper left", scatter_plot=1)
+
+            outputFile = "{0}/14.MassReservoirs_{1}{2}".format(self.plot_output_path, tag,
+                                                               self.output_format)
+            fig.savefig(outputFile)
+            print("Saved file to {0}".format(outputFile))
+            plt.close()
 
 # --------------------------------------------------------
 
@@ -1700,7 +1736,8 @@ if __name__ == '__main__':
                     "bulge_fraction" : 0,
                     "baryon_fraction" : 0,
                     "spin" : 0,
-                    "velocity" : 1}
+                    "velocity" : 0,
+                    "reservoirs" : 1}
 
     output_format = ".png"
     plot_output_path = "./plots"
