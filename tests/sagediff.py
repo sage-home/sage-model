@@ -250,7 +250,7 @@ def compare_catalogs(g1, g2):
         
         # set the error tolerance
         rtol = 1e-9
-        atol = 1e-13
+        atol = 5e-5
         
         for fld in g1.dtype.names:
             if fld in ignored_fields:
