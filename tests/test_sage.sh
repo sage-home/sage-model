@@ -20,7 +20,7 @@ if [ ! -f trees_063.7 ]; then
         exit 1
     fi
 
-    wget "https://www.dropbox.com/s/lkkyez8ttk2j65b/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
+    wget "https://www.dropbox.com/s/i6y03mbqz664dka/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
     if [[ $? != 0 ]]; then
         echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests"
         echo "Failed"
@@ -36,7 +36,7 @@ if [ ! -f trees_063.7 ]; then
 
 fi
 
-#rm -f model_z*
+rm -f test_sage_z*
 
 # cd back into the sage root directory and then run sage
 cd ../../
@@ -52,7 +52,7 @@ cd "$parent_path"/$datadir
 
 # These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
 test_files=($(ls -d test_sage_z*))
-correct_files=($(ls -d model_z*))
+correct_files=($(ls -d correct-mini-millennium-output_z*))
 
 if [[ $? == 0 ]]; then
     npassed=0
