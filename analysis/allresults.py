@@ -186,11 +186,12 @@ class Model:
         self.quiescent_mass_satellites_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
         self.quiescent_mass_satellites_quiescent_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
 
-        self.fraction_bulge_mean = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
+        self.fraction_bulge_sum = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
         self.fraction_bulge_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
 
-        self.fraction_disk_mean = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
+        self.fraction_disk_sum = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
         self.fraction_disk_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+
 
     def get_galaxy_struct(self):
 
@@ -492,8 +493,8 @@ class Model:
                    (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
 
             if plot_toggles["SMF"]:
-                counts, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
-                self.SMF += counts
+                gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
+                self.SMF += gals_per_bin 
 
                 red_gals = np.where(sSFR < 10.0**sSFRcut)[0]
                 red_mass = stellar_mass[red_gals]
@@ -614,8 +615,6 @@ class Model:
             self.quiescent_mass_counts += mass_counts
             self.quiescent_mass_quiescent_counts += mass_quiescent_counts
 
-            #print(self.quiescent_mass_quiescent_counts / self.quiescent_mass_counts)
-
             mass_centrals_counts, _ = np.histogram(mass[type == 0], bins=self.stellar_mass_bins)
             mass_centrals_quiescent_counts, _ = np.histogram(mass[(type == 0) & (quiescent == True)],
                                                              bins=self.stellar_mass_bins)
@@ -639,26 +638,34 @@ class Model:
                 sSFR = (gals["SfrDisk"][non_zero_stellar] + gals["SfrBulge"][non_zero_stellar]) / \
                        (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
 
-
             fraction_bulge = gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar]
             fraction_disk = 1.0 - (gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar])
 
-            # We calculate the mean value in each stellar mass bin.
-            fraction_bulge_mean, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
-                                                               statistic=np.mean, bins=self.stellar_mass_bins)
-            self.fraction_bulge_mean += fraction_bulge_mean
+            # We want the mean bulge/disk fraction as a function of stellar mass. To allow
+            # us to sum across each file, we will record sum in each bin and then average later.
+            if plot_toggles["SMF"]:
+                pass
+            else:
+                gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
+                self.SMF += gals_per_bin 
 
+            fraction_bulge_sum, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
+                                                              statistic=np.sum, bins=self.stellar_mass_bins)
+            self.fraction_bulge_sum += fraction_bulge_sum
+
+            fraction_disk_sum, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
+                                                             statistic=np.sum, bins=self.stellar_mass_bins)
+            self.fraction_disk_sum += fraction_disk_sum
+
+            # For the variance, weight these by the total number of samples we will be
+            # averaging over (i.e., number of files). 
             fraction_bulge_var, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
                                                               statistic=np.var, bins=self.stellar_mass_bins)
-            self.fraction_bulge_var += fraction_bulge_var
-
-            fraction_disk_mean, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
-                                                              statistic=np.mean, bins=self.stellar_mass_bins)
-            self.fraction_disk_mean += fraction_disk_mean
+            self.fraction_bulge_var += fraction_bulge_var / self.total_num_files
 
             fraction_disk_var, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
                                                              statistic=np.var, bins=self.stellar_mass_bins)
-            self.fraction_disk_var += fraction_disk_var
+            self.fraction_disk_var += fraction_disk_var / self.total_num_files
 
 
 class Results:
@@ -1256,17 +1263,24 @@ class Results:
             # Set the x-axis values to be the centre of the bins.
             bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
 
+            # Remember we need to average the properties in each bin.
+            bulge_mean = np.divide(model.fraction_bulge_sum, model.SMF)
+            disk_mean = np.divide(model.fraction_disk_sum, model.SMF)
+
+            # The variance has already been weighted when we calculated it.
+            bulge_var = model.fraction_bulge_var
+            disk_var = model.fraction_disk_var
+
             # We will keep the colour scheme consistent, but change the line styles.
-            ax.plot(bin_middles[:-1], model.fraction_bulge_mean, label=tag + " bulge",
+            ax.plot(bin_middles[:-1], bulge_mean, label=tag + " bulge",
                     color=color, linestyle="-")
-            ax.fill_between(bin_middles[:-1], model.fraction_bulge_mean+model.fraction_bulge_var,
-                            model.fraction_bulge_mean-model.fraction_bulge_var,
+
+            ax.fill_between(bin_middles[:-1], bulge_mean+bulge_var, bulge_mean-bulge_var,
                             facecolor=color, alpha=0.25)
 
-            ax.plot(bin_middles[:-1], model.fraction_disk_mean, label=tag + " disk",
+            ax.plot(bin_middles[:-1], disk_mean, label=tag + " disk",
                     color=color, linestyle="--")
-            ax.fill_between(bin_middles[:-1], model.fraction_disk_mean+model.fraction_disk_var,
-                            model.fraction_disk_mean-model.fraction_disk_var,
+            ax.fill_between(bin_middles[:-1], disk_mean+disk_var, disk_mean-disk_var,
                             facecolor=color, alpha=0.25)
 
         ax.set_xlim([8.0, 12.0])
@@ -1657,5 +1671,5 @@ if __name__ == '__main__':
 
     output_format = ".png"
 
-    results = Results(model_dict, plot_toggles, output_format, debug=1)
+    results = Results(model_dict, plot_toggles, output_format, debug=0)
     results.do_plots()
