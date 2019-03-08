@@ -209,7 +209,7 @@ class Model:
         self.halo_ICS_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
         self.halo_bh_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
 
-        # How should we bin the SpinParameter?
+        # How should we bin the Spin Parameter?
         self.spin_bin_low   = -0.02
         self.spin_bin_high  = 0.5
         self.spin_bin_width = 0.01
@@ -217,6 +217,18 @@ class Model:
                                         self.spin_bin_high + self.spin_bin_width,
                                         self.spin_bin_width)
         self.spin_counts = np.zeros(len(self.spin_bins)-1, dtype=np.int64)
+
+        # How should we bin the Velocity?
+        self.vel_bin_low   = -40.0
+        self.vel_bin_high  = 40.0
+        self.vel_bin_width = 0.5
+        self.vel_bins      = np.arange(self.vel_bin_low,
+                                       self.vel_bin_high + self.vel_bin_width,
+                                       self.vel_bin_width)
+        self.los_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
+        self.x_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
+        self.y_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
+        self.z_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
 
 
     def get_galaxy_struct(self):
@@ -738,6 +750,30 @@ class Model:
             spin_counts, _ = np.histogram(spin_param, bins=self.spin_bins)
             self.spin_counts += spin_counts
 
+        if plot_toggles["velocity"]:
+
+            pos_x = gals["Pos"][:,0] / self.hubble_h
+            pos_y = gals["Pos"][:,1] / self.hubble_h
+            pos_z = gals["Pos"][:,2] / self.hubble_h
+
+            vel_x = gals["Vel"][:,0]
+            vel_y = gals["Vel"][:,1]
+            vel_z = gals["Vel"][:,2]
+
+            los_dist = np.sqrt(pos_x*pos_x + pos_y*pos_y + pos_z*pos_z)
+            los_vel = (pos_x/los_dist)*vel_x + (pos_y/los_dist)*vel_y + (pos_z/los_dist)*vel_z
+
+            attr_names = ["los", "x", "y", "z"]
+            vels = [los_vel, vel_x, vel_y, vel_z]
+
+            for (attr_name, vel) in zip(attr_names, vels):
+
+                counts, _ = np.histogram(vel / (self.hubble_h*100.0), bins=self.vel_bins)
+
+                attribute_name = "{0}_vel_counts".format(attr_name)
+                new_attribute_value = counts + getattr(self, attribute_name)
+                setattr(self, attribute_name, new_attribute_value)
+
 
 class Results:
     """
@@ -932,7 +968,9 @@ class Results:
         if plot_toggles["spin"]:
             print("Plotting the Spin distribution.")
             self.plot_spin_distribution()
-        #res.VelocityDistribution(model.gals)
+
+        if plot_toggles["velocity"]:
+            self.plot_velocity_distribution()
         #res.MassReservoirScatter(G)
         #res.SpatialDistribution(model.gals)
 
@@ -1427,11 +1465,11 @@ class Results:
             bin_middles = model.spin_bins + 0.5 * model.spin_bin_width
 
             # Normalize by number of galaxies; allows better comparison between models.
-            ax.plot(bin_middles[:-1], model.spin_counts / model.num_gals, label=tag, color=color,
-                    linestyle=linestyle)
+            norm_count = model.spin_counts / model.num_gals / model.spin_bin_width
+            ax.plot(bin_middles[:-1], norm_counts, label=tag, color=color, linestyle=linestyle)
 
-            if np.max(model.spin_counts / model.num_gals) > max_counts:
-                max_counts = np.max(model.spin_counts / model.num_gals)
+            if np.max(norm_count):
+                max_counts = np.max(norm_count)
 
         ax.set_xlim([-0.02, 0.5])
         ax.set_ylim([0.0, max_counts*1.15])
@@ -1448,67 +1486,55 @@ class Results:
 
 # --------------------------------------------------------
 
-    def VelocityDistribution(self, G):
+    def plot_velocity_distribution(self):
     
-        print("Plotting the velocity distribution of all galaxies")
-    
-        seed(2222)
-    
-        mi = -40.0
-        ma = 40.0
-        binwidth = 0.5
-        NB = (ma - mi) / binwidth
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
 
-        # set up figure
-        plt.figure()
-        ax = plt.subplot(111)
+        max_counts = -999
 
-        pos_x = G.Pos[:,0] / self.hubble_h
-        pos_y = G.Pos[:,1] / self.hubble_h
-        pos_z = G.Pos[:,2] / self.hubble_h
+        # First do some junk plotting to get legend correct. We keep the linestyles but
+        # use different colours.
+        for model in self.models:
+            ax.plot(np.nan, np.nan, color='m', linestyle=model.linestyle,
+                    label=model.tag)
 
-        vel_x = G.Vel[:,0]
-        vel_y = G.Vel[:,1]
-        vel_z = G.Vel[:,2]
+        for (num_model, model) in enumerate(self.models):
 
-        dist_los = np.sqrt(pos_x*pos_x + pos_y*pos_y + pos_z*pos_z)
-        vel_los = (pos_x/dist_los)*vel_x + (pos_y/dist_los)*vel_y + (pos_z/dist_los)*vel_z
-        dist_red = dist_los + vel_los/(self.hubble_h*100.0)
+            linestyle = model.linestyle
 
-        tot_gals = len(pos_x)
+            # Set the x-axis values to be the centre of the bins.
+            bin_middles = model.vel_bins + 0.5 * model.vel_bin_width
 
+            labels = ["los", "x", "y", "z"]
+            colors = ["k", "r", "g", "b"]
+            vels = [model.los_vel_counts, model.x_vel_counts,
+                    model.y_vel_counts, model.z_vel_counts]
+            normalization = model.vel_bin_width * model.num_gals
 
-        (counts, binedges) = np.histogram(vel_los/(self.hubble_h*100.0), range=(mi, ma), bins=NB)
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-        plt.plot(xaxeshisto, counts / binwidth / tot_gals, 'k-', label='los-velocity')
+            for (vel, label, color) in zip(vels, labels, colors):
 
-        (counts, binedges) = np.histogram(vel_x/(self.hubble_h*100.0), range=(mi, ma), bins=NB)
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-        plt.plot(xaxeshisto, counts / binwidth / tot_gals, 'r-', label='x-velocity')
+                # We only want the labels to be plotted once.
+                if self.num_models == 0:
+                    label = label
+                else:
+                    label = ""
 
-        (counts, binedges) = np.histogram(vel_y/(self.hubble_h*100.0), range=(mi, ma), bins=NB)
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-        plt.plot(xaxeshisto, counts / binwidth / tot_gals, 'g-', label='y-velocity')
+                ax.plot(bin_middles[:-1], vel / normalization, color=color, label=label,
+                        linestyle=linestyle)
 
-        (counts, binedges) = np.histogram(vel_z/(self.hubble_h*100.0), range=(mi, ma), bins=NB)
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-        plt.plot(xaxeshisto, counts / binwidth / tot_gals, 'b-', label='z-velocity')
+        ax.set_yscale("log", nonposy="clip")
 
+        ax.set_xlim([-40, 40])
+        ax.set_ylim([1e-5, 0.5])
 
-        plt.yscale('log', nonposy='clip')
-        plt.axis([mi, ma, 1e-5, 0.5])
-        # plt.axis([mi, ma, 0, 0.13])
+        ax.set_xlabel(r"$\mathrm{Velocity / H}_{0}$")
+        ax.set_ylabel(r"$\mathrm{Box\ Normalised\ Count}$")
 
-        plt.ylabel(r'$\mathrm{Box\ Normalised\ Count}$')  # Set the y...
-        plt.xlabel(r'$\mathrm{Velocity / H}_{0}$')  # and the x-axis labels
+        self.adjust_legend(ax, location="upper left", scatter_plot=0)
 
-        leg = plt.legend(loc='upper left', numpoints=1, labelspacing=0.1)
-        leg.draw_frame(False)  # Don't want a box frame
-        for t in leg.get_texts():  # Reduce the size of the text
-                t.set_fontsize('medium')
-
-        outputFile = OutputDir + '13.VelocityDistribution' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
+        outputFile = "{0}/13.VelocityDistribution{1}".format(self.plot_output_path, self.output_format)
+        fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
 
@@ -1672,8 +1698,9 @@ if __name__ == '__main__':
                     "bh_bulge" : 0,
                     "quiescent" : 0,
                     "bulge_fraction" : 0,
-                    "baryon_fraction" : 1,
-                    "spin" : 1}
+                    "baryon_fraction" : 0,
+                    "spin" : 0,
+                    "velocity" : 1}
 
     output_format = ".png"
     plot_output_path = "./plots"
