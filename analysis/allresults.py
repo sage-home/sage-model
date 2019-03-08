@@ -631,12 +631,9 @@ class Model:
 
             non_zero_stellar = np.where(gals["StellarMass"] > 0.0)[0]
 
-            if plot_toggles["SMF"]:
-                pass
-            else:
-                stellar_mass = np.log10(gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
-                sSFR = (gals["SfrDisk"][non_zero_stellar] + gals["SfrBulge"][non_zero_stellar]) / \
-                       (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
+            stellar_mass = np.log10(gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
+            sSFR = (gals["SfrDisk"][non_zero_stellar] + gals["SfrBulge"][non_zero_stellar]) / \
+                   (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
 
             fraction_bulge = gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar]
             fraction_disk = 1.0 - (gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar])
@@ -689,7 +686,8 @@ class Results:
         Format the plots are saved as.
     """
 
-    def __init__(self, all_models_dict, plot_toggles, output_format=".png", debug=0):
+    def __init__(self, all_models_dict, plot_toggles, plot_output_path,
+                 output_format=".png", debug=0):
         """
         Initialises the individual ``Model`` class instances and adds them to
         the ``Results`` class instance.
@@ -720,6 +718,7 @@ class Results:
         """
 
         self.num_models = len(all_models_dict["model_path"])
+        self.plot_output_path = plot_output_path
         self.output_format = output_format
 
         # We will create a list that holds the Model class for each model.
@@ -869,7 +868,6 @@ class Results:
         # model. 
         zeroth_hubble_h = (self.models)[0].hubble_h
         zeroth_IMF = (self.models)[0].IMF
-        zeroth_output_path = (self.models)[0].output_path
 
         ax = obs.plot_smf_data(ax, zeroth_hubble_h, zeroth_IMF) 
 
@@ -914,7 +912,7 @@ class Results:
 
         self.adjust_legend(ax, location="lower left", scatter_plot=0)
 
-        outputFile = "{0}/1.StellarMassFunction{1}".format(zeroth_output_path,
+        outputFile = "{0}/1.StellarMassFunction{1}".format(self.plot_output_path,
                                                            self.output_format)
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
@@ -932,7 +930,6 @@ class Results:
         # model. 
         zeroth_hubble_h = (self.models)[0].hubble_h
         zeroth_IMF = (self.models)[0].IMF
-        zeroth_output_path = (self.models)[0].output_path
 
         ax = obs.plot_bmf_data(ax, zeroth_hubble_h, zeroth_IMF) 
 
@@ -960,7 +957,7 @@ class Results:
 
         self.adjust_legend(ax, location="lower left", scatter_plot=0)
 
-        outputFile = "{0}/2.BaryonicMassFunction{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/2.BaryonicMassFunction{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -976,7 +973,6 @@ class Results:
         # model. We also save the plots into the output directory of the zeroth
         # model. 
         zeroth_hubble_h = (self.models)[0].hubble_h
-        zeroth_output_path = (self.models)[0].output_path
 
         obs.plot_gmf_data(ax, zeroth_hubble_h)
 
@@ -1005,7 +1001,7 @@ class Results:
 
         self.adjust_legend(ax, location="lower left", scatter_plot=0)
 
-        outputFile = "{0}/3.GasMassFunction{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/3.GasMassFunction{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)  # Save the figure
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -1016,9 +1012,6 @@ class Results:
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
-
-        # We save the plots into the output directory of the zeroth model. 
-        zeroth_output_path = (self.models)[0].output_path
 
         ax = obs.plot_btf_data(ax) 
 
@@ -1042,7 +1035,7 @@ class Results:
 
         self.adjust_legend(ax, scatter_plot=1)
             
-        outputFile = "{0}/4.BaryonicTullyFisher{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/4.BaryonicTullyFisher{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -1053,9 +1046,6 @@ class Results:
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
-
-        # We save the plots into the output directory of the zeroth model. 
-        zeroth_output_path = (self.models)[0].output_path
 
         for model in self.models:
 
@@ -1082,7 +1072,7 @@ class Results:
 
         self.adjust_legend(ax, scatter_plot=1)
             
-        outputFile = "{0}/5.SpecificStarFormationRate{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/5.SpecificStarFormationRate{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -1093,9 +1083,6 @@ class Results:
         
         fig = plt.figure()
         ax = fig.add_subplot(111)
-
-        # We save the plots into the output directory of the zeroth model. 
-        zeroth_output_path = (self.models)[0].output_path
 
         for model in self.models:
 
@@ -1117,7 +1104,7 @@ class Results:
 
         self.adjust_legend(ax, scatter_plot=1)
            
-        outputFile = "{0}/6.GasFraction{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/6.GasFraction{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -1129,8 +1116,6 @@ class Results:
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        # We save the plots into the output directory of the zeroth model. 
-        zeroth_output_path = (self.models)[0].output_path       
         zeroth_IMF = (self.models)[0].IMF
 
         ax = obs.plot_metallicity_data(ax, zeroth_IMF) 
@@ -1155,7 +1140,7 @@ class Results:
 
         self.adjust_legend(ax, location="upper right", scatter_plot=1)
        
-        outputFile = "{0}/7.Metallicity{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/7.Metallicity{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -1166,9 +1151,6 @@ class Results:
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
-
-        # We save the plots into the output directory of the zeroth model. 
-        zeroth_output_path = (self.models)[0].output_path       
 
         ax = obs.plot_bh_bulge_data(ax) 
 
@@ -1193,7 +1175,7 @@ class Results:
             
         self.adjust_legend(ax, location="upper right", scatter_plot=1)
             
-        outputFile = "{0}/8.BlackHoleBulgeRelationship{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/8.BlackHoleBulgeRelationship{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -1204,9 +1186,6 @@ class Results:
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
-
-        # We save the plots into the output directory of the zeroth model. 
-        zeroth_output_path = (self.models)[0].output_path       
 
         for model in self.models:
 
@@ -1239,7 +1218,7 @@ class Results:
 
         self.adjust_legend(ax, location="upper left", scatter_plot=0)
             
-        outputFile = "{0}/9.QuiescentFraction{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/9.QuiescentFraction{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -1250,9 +1229,6 @@ class Results:
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
-
-        # We save the plots into the output directory of the zeroth model. 
-        zeroth_output_path = (self.models)[0].output_path       
 
         for model in self.models:
 
@@ -1291,7 +1267,7 @@ class Results:
 
         self.adjust_legend(ax, location="upper left", scatter_plot=0)
 
-        outputFile = "{0}/10.BulgeMassFraction{1}".format(zeroth_output_path, self.output_format) 
+        outputFile = "{0}/10.BulgeMassFraction{1}".format(self.plot_output_path, self.output_format) 
         fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
@@ -1658,18 +1634,20 @@ if __name__ == '__main__':
                    "linestyle"  : linestyles,
                    "marker"      : markers}
 
-    plot_toggles = {"SMF"      : 0,
-                    "BMF"      : 0,
-                    "GMF"      : 0,
-                    "BTF"      : 0,
-                    "sSFR"     : 0,
-                    "gas_frac" : 0,
-                    "metallicity" : 0,
-                    "bh_bulge" : 0,
-                    "quiescent" : 0,
+    plot_toggles = {"SMF"      : 1,
+                    "BMF"      : 1,
+                    "GMF"      : 1,
+                    "BTF"      : 1,
+                    "sSFR"     : 1,
+                    "gas_frac" : 1,
+                    "metallicity" : 1,
+                    "bh_bulge" : 1,
+                    "quiescent" : 1,
                     "bulge_fraction" : 1}
 
     output_format = ".png"
+    plot_output_path = "./plots"
 
-    results = Results(model_dict, plot_toggles, output_format, debug=0)
+    results = Results(model_dict, plot_toggles, plot_output_path, output_format,
+                      debug=1)
     results.do_plots()
