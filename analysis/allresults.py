@@ -21,7 +21,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import observations as obs
 
-#np.warnings.filterwarnings('ignore')
+np.warnings.filterwarnings('ignore')
 
 # Refer to the project for a list of TODO's, issues and other notes.
 # https://github.com/sage-home/sage-model/projects/7
@@ -151,7 +151,15 @@ class Model:
         self.stellar_mass_bins    = np.arange(self.stellar_bin_low,
                                               self.stellar_bin_high + self.stellar_bin_width,
                                               self.stellar_bin_width)
-        self.N_stellar_mass_bins = len(self.stellar_mass_bins)
+
+        # How should we bin Stellar mass.
+        self.halo_bin_low      = 8.0 
+        self.halo_bin_high     = 14.0 
+        self.halo_bin_width    = 0.2
+        self.halo_mass_bins    = np.arange(self.halo_bin_low,
+                                           self.halo_bin_high + self.halo_bin_width,
+                                           self.halo_bin_width)
+
 
         # When making histograms, the right-most bin is closed. Hence the length of the
         # produced histogram will be `len(bins)-1`.
@@ -191,6 +199,15 @@ class Model:
 
         self.fraction_disk_sum = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
         self.fraction_disk_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+
+        self.HMF = np.zeros(len(self.halo_mass_bins)-1, dtype=np.int64) 
+        self.halo_baryon_fraction = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+        self.halo_stars_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+        self.halo_cold_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+        self.halo_hot_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+        self.halo_ejected_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+        self.halo_ICS_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+        self.halo_bh_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
 
 
     def get_galaxy_struct(self):
@@ -664,6 +681,70 @@ class Model:
                                                              statistic=np.var, bins=self.stellar_mass_bins)
             self.fraction_disk_var += fraction_disk_var / self.total_num_files
 
+        if plot_toggles["baryon_fraction"]:
+
+            # Bin the galaxies based on halo mass (Mvir).
+            # For every halo within each bin, find galaxies inside the halo.
+            # Calculates properties based on the total number of baryons/cold gas/etc
+            # in that halo.
+
+            centrals = np.where(gals["Type"] == 0)[0]
+            mvir = np.log10(gals["Mvir"] * 1.0e10 / self.hubble_h) 
+
+            halos_binned, _ = np.histogram(mvir, bins=self.halo_mass_bins)
+            self.HMF += halos_binned
+
+            centrals_mvir_binned = np.digitize(mvir, bins=self.halo_mass_bins)
+
+            # Now for every central galaxy, we want to find all galaxies that share that
+            # central.  That is, we want to find the entire FoF group of each central.
+            central_galaxy_index = gals["CentralGalaxyIndex"]
+
+            # We're doing fractions throughout here so we'll work in 1.0e10 Msun/h.
+            baryons = gals["StellarMass"] + gals["ColdGas"] + gals["EjectedMass"] + \
+                      gals["IntraClusterStars"] + gals["BlackHoleMass"]
+            stellar_mass = gals["StellarMass"]
+            cold_gas = gals["ColdGas"]
+            hot_gas = gals["HotGas"]
+            ejected_gas = gals["EjectedMass"]
+            intracluster_stars = gals["IntraClusterStars"]
+            bh_mass = gals["BlackHoleMass"] 
+
+            fof_halo_mass = gals["CentralMvir"]
+
+            central_galaxy_indices = gals["CentralGalaxyIndex"][centrals] 
+
+            print(len(central_galaxy_indices))
+
+            for (idx, central_galaxy) in enumerate(central_galaxy_indices):
+
+                fof_gals = np.where(central_galaxy_index == central_galaxy)[0]
+                this_mvir = mvir[idx]
+                mvir_bin = centrals_mvir_binned[idx]
+
+                # Find the fraction of halo mass that each baryonic component has.
+                baryon_fraction = sum(baryons[fof_gals]) / this_mvir
+                stars = sum(stellar_mass[fof_gals]) / this_mvir
+                cold = sum(cold_gas[fof_gals]) / this_mvir
+                hot = sum(hot_gas[fof_gals]) / this_mvir
+                ejected = sum(ejected_gas[fof_gals]) / this_mvir
+                ICS = sum(intracluster_stars[fof_gals]) / this_mvir
+                bh = sum(bh_mass[fof_gals]) / this_mvir
+
+                # Add these values to the correct halo mass bin.
+                self.halo_baryon_fraction[mvir_bin] += baryon_fraction
+                self.halo_stars_mass[mvir_bin] += stars
+                self.halo_cold_mass[mvir_bin] += cold
+                self.halo_hot_mass[mvir_bin] += hot
+                self.halo_ejected_mass[mvir_bin] += ejected
+                self.halo_ICS_mass[mvir_bin] += ICS
+                self.halo_bh_mass[mvir_bin] += bh
+
+
+            print(halo_baryon_fraction)
+            exit()
+
+
 
 class Results:
     """
@@ -850,7 +931,9 @@ class Results:
         if plot_toggles["bulge_fraction"]:
             print("Plotting the bulge mass fraction.")
             self.plot_bulge_mass_fraction()
-        #res.BaryonFraction(model.gals)
+
+        if plot_toggles["baryon_fraction"]:
+            self.plot_baryon_fraction()
         #res.SpinDistribution(model.gals)
         #res.VelocityDistribution(model.gals)
         #res.MassReservoirScatter(G)
@@ -1274,7 +1357,7 @@ class Results:
 
 # ---------------------------------------------------------
     
-    def BaryonFraction(self, G):
+    def plot_baryon_fraction(self):
     
         print("Plotting the average baryon fraction vs halo mass")
     
@@ -1634,16 +1717,17 @@ if __name__ == '__main__':
                    "linestyle"  : linestyles,
                    "marker"      : markers}
 
-    plot_toggles = {"SMF"      : 1,
-                    "BMF"      : 1,
-                    "GMF"      : 1,
-                    "BTF"      : 1,
-                    "sSFR"     : 1,
-                    "gas_frac" : 1,
-                    "metallicity" : 1,
-                    "bh_bulge" : 1,
-                    "quiescent" : 1,
-                    "bulge_fraction" : 1}
+    plot_toggles = {"SMF"      : 0,
+                    "BMF"      : 0,
+                    "GMF"      : 0,
+                    "BTF"      : 0,
+                    "sSFR"     : 0,
+                    "gas_frac" : 0,
+                    "metallicity" : 0,
+                    "bh_bulge" : 0,
+                    "quiescent" : 0,
+                    "bulge_fraction" : 0,
+                    "baryon_fraction" : 1}
 
     output_format = ".png"
     plot_output_path = "./plots"
