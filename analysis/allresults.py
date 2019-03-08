@@ -201,13 +201,13 @@ class Model:
         self.fraction_disk_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
 
         self.HMF = np.zeros(len(self.halo_mass_bins)-1, dtype=np.int64) 
-        self.halo_baryon_fraction = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
-        self.halo_stars_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
-        self.halo_cold_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
-        self.halo_hot_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
-        self.halo_ejected_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
-        self.halo_ICS_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
-        self.halo_bh_mass = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
+        self.halo_baryon_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
+        self.halo_stars_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
+        self.halo_cold_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
+        self.halo_hot_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
+        self.halo_ejected_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
+        self.halo_ICS_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
+        self.halo_bh_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
 
 
     def get_galaxy_struct(self):
@@ -712,38 +712,33 @@ class Model:
 
             fof_halo_mass = gals["CentralMvir"]
 
-            central_galaxy_indices = gals["CentralGalaxyIndex"][centrals] 
+            baryon_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, baryons / fof_halo_mass,
+                                                                statistic=np.sum, bins=self.halo_mass_bins)
+            self.halo_baryon_fraction_sum += baryon_fraction_sum
 
-            print(len(central_galaxy_indices))
+            stars_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, stellar_mass / fof_halo_mass,
+                                                              statistic=np.sum, bins=self.halo_mass_bins)
+            self.halo_stars_fraction_sum += stars_fraction_sum
 
-            for (idx, central_galaxy) in enumerate(central_galaxy_indices):
+            cold_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, cold_gas / fof_halo_mass,
+                                                             statistic=np.sum, bins=self.halo_mass_bins)
+            self.halo_cold_fraction_sum += cold_fraction_sum
 
-                fof_gals = np.where(central_galaxy_index == central_galaxy)[0]
-                this_mvir = mvir[idx]
-                mvir_bin = centrals_mvir_binned[idx]
+            hot_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, hot_gas / fof_halo_mass,
+                                                            statistic=np.sum, bins=self.halo_mass_bins)
+            self.halo_hot_fraction_sum += hot_fraction_sum
 
-                # Find the fraction of halo mass that each baryonic component has.
-                baryon_fraction = sum(baryons[fof_gals]) / this_mvir
-                stars = sum(stellar_mass[fof_gals]) / this_mvir
-                cold = sum(cold_gas[fof_gals]) / this_mvir
-                hot = sum(hot_gas[fof_gals]) / this_mvir
-                ejected = sum(ejected_gas[fof_gals]) / this_mvir
-                ICS = sum(intracluster_stars[fof_gals]) / this_mvir
-                bh = sum(bh_mass[fof_gals]) / this_mvir
+            ejected_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, ejected_gas / fof_halo_mass,
+                                                                statistic=np.sum, bins=self.halo_mass_bins)
+            self.halo_ejected_fraction_sum += ejected_fraction_sum
 
-                # Add these values to the correct halo mass bin.
-                self.halo_baryon_fraction[mvir_bin] += baryon_fraction
-                self.halo_stars_mass[mvir_bin] += stars
-                self.halo_cold_mass[mvir_bin] += cold
-                self.halo_hot_mass[mvir_bin] += hot
-                self.halo_ejected_mass[mvir_bin] += ejected
-                self.halo_ICS_mass[mvir_bin] += ICS
-                self.halo_bh_mass[mvir_bin] += bh
+            ICS_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, intracluster_stars / fof_halo_mass,
+                                                                statistic=np.sum, bins=self.halo_mass_bins)
+            self.halo_ICS_fraction_sum += ICS_fraction_sum
 
-
-            print(halo_baryon_fraction)
-            exit()
-
+            bh_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass, bh_mass / fof_halo_mass,
+                                                                statistic=np.sum, bins=self.halo_mass_bins)
+            self.halo_bh_fraction_sum += bh_fraction_sum
 
 
 class Results:
@@ -1323,8 +1318,8 @@ class Results:
             bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
 
             # Remember we need to average the properties in each bin.
-            bulge_mean = np.divide(model.fraction_bulge_sum, model.SMF)
-            disk_mean = np.divide(model.fraction_disk_sum, model.SMF)
+            bulge_mean = model.fraction_bulge_sum / model.SMF
+            disk_mean = model.fraction_disk_sum / model.SMF
 
             # The variance has already been weighted when we calculated it.
             bulge_var = model.fraction_bulge_var
@@ -1357,111 +1352,57 @@ class Results:
 
 # ---------------------------------------------------------
     
-    def plot_baryon_fraction(self):
-    
-        print("Plotting the average baryon fraction vs halo mass")
-    
-        seed(2222)
-    
-        plt.figure()  # New figure
-        ax = plt.subplot(111)  # 1 plot on the figure
-        
-        HaloMass = np.log10(G.Mvir * 1.0e10 / self.hubble_h)
-        Baryons = G.StellarMass + G.ColdGas + G.HotGas + G.EjectedMass + G.IntraClusterStars + G.BlackHoleMass
+    def plot_baryon_fraction(self, plot_sub_populations=1):
 
-        MinHalo = 11.0
-        MaxHalo = 16.0
-        Interval = 0.1
-        Nbins = int((MaxHalo-MinHalo)/Interval)
-        HaloRange = np.arange(MinHalo, MaxHalo, Interval)
-        
-        MeanCentralHaloMass = []
-        MeanBaryonFraction = []
-        MeanBaryonFractionU = []
-        MeanBaryonFractionL = []
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
 
-        MeanStars = []
-        MeanCold = []
-        MeanHot = []
-        MeanEjected = []
-        MeanICS = []
-        MeanBH = []
+        for model in self.models:
 
-        for i in range(Nbins-1):
-            
-            w1 = np.where((G.Type == 0) & (HaloMass >= HaloRange[i]) & (HaloMass < HaloRange[i+1]))[0]
-            HalosFound = len(w1)
-            
-            if HalosFound > 2:  
-                
-                BaryonFraction = []
-                CentralHaloMass = []
-                
-                Stars = []
-                Cold = []
-                Hot = []
-                Ejected = []
-                ICS = []
-                BH = []
-                
-                for j in range(HalosFound):
-                    
-                    w2 = np.where(G.CentralGalaxyIndex == G.CentralGalaxyIndex[w1[j]])[0]
-                    CentralAndSatellitesFound = len(w2)
-                    
-                    if CentralAndSatellitesFound > 0:
-                        BaryonFraction.append(sum(Baryons[w2]) / G.Mvir[w1[j]])
-                        CentralHaloMass.append(np.log10(G.Mvir[w1[j]] * 1.0e10 / self.hubble_h))
+            tag = model.tag
+            color = model.color
+            linestyle = model.linestyle
 
-                        Stars.append(sum(G.StellarMass[w2]) / G.Mvir[w1[j]])
-                        Cold.append(sum(G.ColdGas[w2]) / G.Mvir[w1[j]])
-                        Hot.append(sum(G.HotGas[w2]) / G.Mvir[w1[j]])
-                        Ejected.append(sum(G.EjectedMass[w2]) / G.Mvir[w1[j]])
-                        ICS.append(sum(G.IntraClusterStars[w2]) / G.Mvir[w1[j]])
-                        BH.append(sum(G.BlackHoleMass[w2]) / G.Mvir[w1[j]])                        
-                                
-                MeanCentralHaloMass.append(np.mean(CentralHaloMass))
-                MeanBaryonFraction.append(np.mean(BaryonFraction))
-                MeanBaryonFractionU.append(np.mean(BaryonFraction) + np.var(BaryonFraction))
-                MeanBaryonFractionL.append(np.mean(BaryonFraction) - np.var(BaryonFraction))
-                
-                MeanStars.append(np.mean(Stars))
-                MeanCold.append(np.mean(Cold))
-                MeanHot.append(np.mean(Hot))
-                MeanEjected.append(np.mean(Ejected))
-                MeanICS.append(np.mean(ICS))
-                MeanBH.append(np.mean(BH))
-                
-                print("{0} {1} {2} {3}".format(i, HaloRange[i], HalosFound,
-                                               np.mean(BaryonFraction)))
-        
-        plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='TOTAL')#, color='purple', alpha=0.3)
-        plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL, 
-            facecolor='purple', alpha=0.25, label='TOTAL')
-        
-        plt.plot(MeanCentralHaloMass, MeanStars, 'k--', label='Stars')
-        plt.plot(MeanCentralHaloMass, MeanCold, label='Cold', color='blue')
-        plt.plot(MeanCentralHaloMass, MeanHot, label='Hot', color='red')
-        plt.plot(MeanCentralHaloMass, MeanEjected, label='Ejected', color='green')
-        plt.plot(MeanCentralHaloMass, MeanICS, label='ICS', color='yellow')
-        # plt.plot(MeanCentralHaloMass, MeanBH, 'k:', label='BH')
-        
-        plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')  # Set the x-axis label
-        plt.ylabel(r'$\mathrm{Baryon\ Fraction}$')  # Set the y-axis label
-            
-        # Set the x and y axis minor ticks
+            # Set the x-axis values to be the centre of the bins.
+            bin_middles = model.halo_mass_bins + 0.5 * model.halo_bin_width
+
+            # Remember we need to average the properties in each bin.
+            baryon_mean = model.halo_baryon_fraction_sum / model.HMF
+            stars_mean = model.halo_stars_fraction_sum / model.HMF
+            cold_mean = model.halo_cold_fraction_sum / model.HMF
+            hot_mean = model.halo_hot_fraction_sum / model.HMF
+            ejected_mean = model.halo_ejected_fraction_sum / model.HMF
+            ICS_mean = model.halo_ICS_fraction_sum / model.HMF
+
+            # We will keep the linestyle constant but change the color. 
+            ax.plot(bin_middles[:-1], baryon_mean, label=tag + " Total",
+                    color=color, linestyle=linestyle)
+
+            if self.num_models == 1 or plot_sub_populations:
+                ax.plot(bin_middles[:-1], stars_mean, label=tag + " Stars",
+                        color='k', linestyle=linestyle)
+                ax.plot(bin_middles[:-1], cold_mean, label=tag + " Cold",
+                        color='b', linestyle=linestyle)
+                ax.plot(bin_middles[:-1], hot_mean, label=tag + " Hot",
+                        color='r', linestyle=linestyle)
+                ax.plot(bin_middles[:-1], ejected_mean, label=tag + " Ejected",
+                        color='g', linestyle=linestyle)
+                ax.plot(bin_middles[:-1], ejected_mean, label=tag + " ICS",
+                        color='y', linestyle=linestyle)
+
+        ax.set_xlabel(r"$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$\mathrm{Baryon\ Fraction}$")
+
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
         ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
-            
-        plt.axis([10.8, 15.0, 0.0, 0.23])
-            
-        leg = plt.legend(bbox_to_anchor=[0.99, 0.6])
-        leg.draw_frame(False)  # Don't want a box frame
-        for t in leg.get_texts():  # Reduce the size of the text
-            t.set_fontsize('medium')
-            
-        outputFile = OutputDir + '11.BaryonFraction' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
+
+        ax.set_xlim([8.0, 14.0])
+        ax.set_ylim([0.0, 0.23])
+
+        self.adjust_legend(ax, location="upper left", scatter_plot=0)
+
+        outputFile = "{0}/11.BaryonFraction{1}".format(self.plot_output_path, self.output_format) 
+        fig.savefig(outputFile)
         print("Saved file to {0}".format(outputFile))
         plt.close()
 
