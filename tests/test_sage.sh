@@ -40,6 +40,7 @@ rm -f test_sage_z*
 
 # cd back into the sage root directory and then run sage
 cd ../../
+echo $PWD
 ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests"

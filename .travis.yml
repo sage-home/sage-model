@@ -37,5 +37,4 @@ install:
   - conda install -q --yes -c conda-forge hdf5
 
 script:
-  - make -r CC=$COMPILER
-  - make tests
+  - make CC=$COMPILER tests
