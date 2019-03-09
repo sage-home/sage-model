@@ -135,6 +135,18 @@ class Model:
                                               self.stellar_bin_high + self.stellar_bin_width,
                                               self.stellar_bin_width)
 
+        # These attributes will be binned on stellar mass.
+        attr_names = ["SMF", "red_SMF", "blue_SMF", "BMF", "GMF",
+                      "centrals_MF", "satellites_MF", "quiescent_galaxy_counts",
+                      "quiescent_centrals_counts", "quiescent_satellites_counts",
+                      "fraction_bulge_sum", "fraction_bulge_var",
+                      "fraction_disk_sum", "fraction_disk_var"] 
+
+        # When making histograms, the right-most bin is closed. Hence the length of the
+        # produced histogram will be `len(bins)-1`.
+        for attr in attr_names:
+            setattr(self, attr, np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64))
+
         # How should we bin Halo mass.
         self.halo_bin_low      = 8.0 
         self.halo_bin_high     = 14.0 
@@ -143,53 +155,13 @@ class Model:
                                            self.halo_bin_high + self.halo_bin_width,
                                            self.halo_bin_width)
 
-        # When making histograms, the right-most bin is closed. Hence the length of the
-        # produced histogram will be `len(bins)-1`.
-        self.SMF = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-        self.red_SMF = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-        self.blue_SMF = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
+        # These attributes will be binnned on halo mass.
+        attr_names = ["fof_HMF"]
+        component_names = ["halo_{0}_fraction_sum".format(component) for component in
+                            ["baryon", "stars", "cold", "hot", "ejected", "ICS", "bh"]]
 
-        self.BMF = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-        self.GMF = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-
-        self.BTF_mass = []
-        self.BTF_vel = []
-
-        self.sSFR_mass = []
-        self.sSFR_sSFR = []
-
-        self.gas_frac_mass = []
-        self.gas_frac = []
-
-        self.metallicity_mass = []
-        self.metallicity = []
-
-        self.bh_mass = []
-        self.bulge_mass = []
-
-        self.quiescent_mass_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-        self.quiescent_mass_quiescent_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-
-        self.quiescent_mass_centrals_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-        self.quiescent_mass_centrals_quiescent_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-
-        self.quiescent_mass_satellites_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-        self.quiescent_mass_satellites_quiescent_counts = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.int64)
-
-        self.fraction_bulge_sum = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
-        self.fraction_bulge_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
-
-        self.fraction_disk_sum = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64)
-        self.fraction_disk_var = np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64) 
-
-        self.fof_HMF = np.zeros(len(self.halo_mass_bins)-1, dtype=np.int64) 
-        self.halo_baryon_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
-        self.halo_stars_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
-        self.halo_cold_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
-        self.halo_hot_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
-        self.halo_ejected_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
-        self.halo_ICS_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
-        self.halo_bh_fraction_sum = np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64) 
+        for attr in (attr_names + component_names):
+            setattr(self, attr, np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64))
 
         # How should we bin the Spin Parameter?
         self.spin_bin_low   = -0.02
@@ -207,21 +179,22 @@ class Model:
         self.vel_bins      = np.arange(self.vel_bin_low,
                                        self.vel_bin_high + self.vel_bin_width,
                                        self.vel_bin_width)
-        self.los_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
-        self.x_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
-        self.y_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
-        self.z_vel_counts = np.zeros(len(self.vel_bins)-1, dtype=np.int64)
 
-        self.reservoir_mvir = []
-        self.reservoir_stars = []
-        self.reservoir_cold = []
-        self.reservoir_hot = []
-        self.reservoir_ejected = []
-        self.reservoir_ICS = []
+        # These attributes will be binned on velocity.
+        attr_names = ["los_vel_counts", "x_vel_counts", "y_vel_counts", "z_vel_counts"]
+        for attr in attr_names:
+            setattr(self, attr, np.zeros(len(self.vel_bins)-1, dtype=np.float64)
 
-        self.x_pos = []
-        self.y_pos = []
-        self.z_pos = []
+        # Some plots use scattered points. For these, we will continually add to lists. 
+        attr_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR", "gas_frac_mass", "gas_frac",
+                      "metallicity_mass", "metallicity", "bh_mass", "bulge_mass",
+                      "reservoir_mvir", "reservoir_stars", "reservoir_cold",
+                      "reservoir_hot", "reservoir_ejected", "reservoir_ICS",
+                      "x_pos", "y_pos", "z_pos"]
+
+        # Hence let's initialize empty lists.
+        for attr in attr_names:
+            setattr(self, attr, [])
 
 
     def get_galaxy_struct(self):
@@ -310,22 +283,22 @@ class Model:
         None.
         """
 
-        if simulation == 0:    # Mini-Millennium
+        if simulation == 0:  # Mini-Millennium.
             self.hubble_h = 0.73
             self.box_size = 62.5
             self.total_num_files = 1
 
-        elif simulation == 1:  # Full Millennium
+        elif simulation == 1:  # Full Millennium.
             self.hubble_h = 0.73
             self.box_size = 500
             self.total_num_files = 512
 
-        elif simulation == 2: # Kali 512
+        elif simulation == 2:  # Kali 512.
             self.hubble_h = 0.681
             self.box_size = 108.96
             self.total_num_files = 8
 
-        elif simulation == 3:
+        elif simulation == 3:  # Genesis (L = 500 Mpc/h, N = 2160^3).
             self.hubble_h = 0.6751
             self.box_size = 500.00
             self.total_num_files = 64 
@@ -358,22 +331,22 @@ class Model:
 
         if not os.path.isfile(fname):
             print("File\t{0} \tdoes not exist!".format(fname))
-            raise FileNotFoundError 
+            raise FileNotFoundError
 
         if getFileSize(fname) == 0:
             print("File\t{0} \tis empty!".format(fname))
-            raise ValueError 
-
-        if plot_galaxies:
-            from mpl_toolkits.mplot3d import Axes3D
+            raise ValueError
 
         with open(fname, "rb") as f:
+            # First read the header information.
             Ntrees = np.fromfile(f, np.dtype(np.int32),1)[0]
             num_gals = np.fromfile(f, np.dtype(np.int32),1)[0]
             gals_per_tree = np.fromfile(f, np.dtype((np.int32, Ntrees)), 1)
 
+            # Then the actual galaxies.
             gals = np.fromfile(f, self.galaxy_struct, num_gals)
 
+            # If we're using the `tqdm` package, update the progress bar.
             if pbar:
                 pbar.set_postfix(file=fname, refresh=False)
                 pbar.update(num_gals)
@@ -387,25 +360,9 @@ class Model:
 
         if plot_galaxies:
 
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection="3d")
-
-            w = sample(list(np.arange(len(gals))), 10000)
-
-            ax.scatter(gals["Pos"][w,0], gals["Pos"][w,1], gals["Pos"][w,2], alpha=0.5)
-
-            ax.set_xlim([0.0, self.box_size])
-            ax.set_ylim([0.0, self.box_size])
-            ax.set_zlim([0.0, self.box_size])
-
-            ax.set_xmodel_label(r"$\mathbf{x \: [h^{-1}Mpc]}$")
-            ax.set_ymodel_label(r"$\mathbf{y \: [h^{-1}Mpc]}$")
-            ax.set_zmodel_label(r"$\mathbf{z \: [h^{-1}Mpc]}$")
-
-            outputFile = "./galaxies_{0}{1}".format(file_num, self.output_format)
-            fig.savefig(outputFile)
-            print("Saved file to {0}".format(outputFile))
-            plt.close()
+            # Show the distribution of galaxies in 3D.
+            output_file = "./galaxies_{0}{1}".format(file_num, self.output_format)
+            plots.plot_spatial_3d(gals, output_file, self.box_size)
 
         return gals
 
@@ -639,27 +596,29 @@ class Model:
                    (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
             quiescent = sSFR < 10.0 ** self.sSFRcut
 
-            # There may be some duplication of calculations here with other
-            # `plot_toggles`. However, the computational overhead is neglible compared to
-            # ensuring that we're ALWAYS calculating the required values regardless of the
-            # `plot_toggles` parameters.
+            if plot_toggles["SMF"]:
+                pass
+            else:
+                gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
+                self.SMF += gals_per_bin 
 
-            mass_counts, _ = np.histogram(mass, bins=self.stellar_mass_bins)
-            mass_quiescent_counts, _ = np.histogram(mass[quiescent], bins=self.stellar_mass_bins)
-            self.quiescent_mass_counts += mass_counts
-            self.quiescent_mass_quiescent_counts += mass_quiescent_counts
+            centrals_counts, _ = np.histogram(mass[type == 0], bins=self.stellar_mass_bins)
+            self.centrals_MF += centrals_counts
 
-            mass_centrals_counts, _ = np.histogram(mass[type == 0], bins=self.stellar_mass_bins)
-            mass_centrals_quiescent_counts, _ = np.histogram(mass[(type == 0) & (quiescent == True)],
-                                                             bins=self.stellar_mass_bins)
-            self.quiescent_mass_centrals_counts += mass_centrals_counts
-            self.quiescent_mass_centrals_quiescent_counts += mass_centrals_quiescent_counts
+            satellites_counts, _ = np.histogram(mass[type == 1], bins=self.stellar_mass_bins)
+            self.satellites_MF += satellites_counts
 
-            mass_satellites_counts, _ = np.histogram(mass[type == 1], bins=self.stellar_mass_bins)
-            mass_satellites_quiescent_counts, _ = np.histogram(mass[(type == 1) & (quiescent == True)],
-                                                               bins=self.stellar_mass_bins)
-            self.quiescent_mass_satellites_counts += mass_satellites_counts
-            self.quiescent_mass_satellites_quiescent_counts += mass_satellites_quiescent_counts
+            quiescent_counts, _ = np.histogram(mass[quiescent], bins=self.stellar_mass_bins)
+            self.quiescent_galaxy_counts += quiescent_counts
+
+            quiescent_centrals_counts, _ = np.histogram(mass[(type == 0) & (quiescent == True)],
+                                                        bins=self.stellar_mass_bins)
+            self.quiescent_centrals_counts += quiescent_centrals_counts
+
+            quiescent_satellites_counts, _ = np.histogram(mass[(type == 1) & (quiescent == True)],
+                                                          bins=self.stellar_mass_bins)
+
+            self.quiescent_satellites_counts += quiescent_satellites_counts 
 
         if plot_toggles["bulge_fraction"]:
 

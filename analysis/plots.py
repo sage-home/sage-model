@@ -112,10 +112,10 @@ def plot_SMF(results, plot_sub_populations=0):
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
-    outputFile = "{0}/1.StellarMassFunction{1}".format(results.plot_output_path,
+    output_file = "{0}/1.StellarMassFunction{1}".format(results.plot_output_path,
                                                        results.output_format)
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -158,9 +158,9 @@ def plot_BMF(results):
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
-    outputFile = "{0}/2.BaryonicMassFunction{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/2.BaryonicMassFunction{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -202,9 +202,9 @@ def plot_GMF(results):
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
-    outputFile = "{0}/3.GasMassFunction{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)  # Save the figure
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/3.GasMassFunction{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)  # Save the figure
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -235,9 +235,9 @@ def plot_BTF(results):
 
     adjust_legend(ax, scatter_plot=1)
         
-    outputFile = "{0}/4.BaryonicTullyFisher{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/4.BaryonicTullyFisher{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
         
 
@@ -271,9 +271,9 @@ def plot_sSFR(results):
 
     adjust_legend(ax, scatter_plot=1)
 
-    outputFile = "{0}/5.SpecificStarFormationRate{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/5.SpecificStarFormationRate{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -302,9 +302,9 @@ def plot_gas_frac(results):
 
     adjust_legend(ax, scatter_plot=1)
        
-    outputFile = "{0}/6.GasFraction{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/6.GasFraction{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
         
 
@@ -337,9 +337,9 @@ def plot_metallicity(results):
 
     adjust_legend(ax, location="upper right", scatter_plot=1)
    
-    outputFile = "{0}/7.Metallicity{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/7.Metallicity{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
         
 
@@ -370,9 +370,9 @@ def plot_bh_bulge(results):
 
     adjust_legend(ax, location="upper right", scatter_plot=1)
         
-    outputFile = "{0}/8.BlackHoleBulgeRelationship{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/8.BlackHoleBulgeRelationship{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
         
 
@@ -391,14 +391,14 @@ def plot_quiescent(results, plot_sub_populations=1):
         bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
 
         # We will keep the colour scheme consistent, but change the line styles.
-        ax.plot(bin_middles[:-1], model.quiescent_mass_quiescent_counts / model.quiescent_mass_counts,
+        ax.plot(bin_middles[:-1], model.quiescent_galaxy_counts / model.SMF,
                 label=model_label + " All", color=color, linestyle="-") 
 
         if results.num_models == 1 or plot_sub_populations:
-            ax.plot(bin_middles[:-1], model.quiescent_mass_centrals_quiescent_counts / model.quiescent_mass_centrals_counts,
+            ax.plot(bin_middles[:-1], model.quiescent_centrals_counts / model.centrals_MF,
                     label=model_label + " Centrals", color=color, linestyle="--") 
 
-            ax.plot(bin_middles[:-1], model.quiescent_mass_satellites_quiescent_counts / model.quiescent_mass_satellites_counts,
+            ax.plot(bin_middles[:-1], model.quiescent_satellites_counts / model.satellites_MF,
                     label=model_label + " Satellites", color=color, linestyle="-.") 
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$")
@@ -412,9 +412,9 @@ def plot_quiescent(results, plot_sub_populations=1):
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
         
-    outputFile = "{0}/9.QuiescentFraction{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/9.QuiescentFraction{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -463,9 +463,9 @@ def plot_bulge_mass_fraction(results, plot_var=1):
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
 
-    outputFile = "{0}/10.BulgeMassFraction{1}".format(results.plot_output_path, results.output_format) 
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/10.BulgeMassFraction{1}".format(results.plot_output_path, results.output_format) 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -517,9 +517,9 @@ def plot_baryon_fraction(results, plot_sub_populations=1):
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
 
-    outputFile = "{0}/11.BaryonFraction{1}".format(results.plot_output_path, results.output_format)
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/11.BaryonFraction{1}".format(results.plot_output_path, results.output_format)
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -554,9 +554,9 @@ def plot_spin_distribution(results):
 
     adjust_legend(ax, location="upper right", scatter_plot=0)
 
-    outputFile = "{0}/12.SpinDistribution{1}".format(results.plot_output_path, results.output_format)
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/12.SpinDistribution{1}".format(results.plot_output_path, results.output_format)
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -610,9 +610,9 @@ def plot_velocity_distribution(results):
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
 
-    outputFile = "{0}/13.VelocityDistribution{1}".format(results.plot_output_path, results.output_format)
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/13.VelocityDistribution{1}".format(results.plot_output_path, results.output_format)
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
 
 
@@ -652,10 +652,10 @@ def plot_mass_reservoirs(results):
 
         adjust_legend(ax, location="upper left", scatter_plot=1)
 
-        outputFile = "{0}/14.MassReservoirs_{1}{2}".format(results.plot_output_path,
+        output_file = "{0}/14.MassReservoirs_{1}{2}".format(results.plot_output_path,
                                                            model_label, results.output_format)
-        fig.savefig(outputFile)
-        print("Saved file to {0}".format(outputFile))
+        fig.savefig(output_file)
+        print("Saved file to {0}".format(output_file))
         plt.close()
 
 
@@ -713,7 +713,32 @@ def plot_spatial_distribution(results):
     # Make sure everything remains nicely layed out.
     fig.tight_layout()
 
-    outputFile = "{0}/15.SpatialDistribution{1}".format(results.plot_output_path, results.output_format)
-    fig.savefig(outputFile)
-    print("Saved file to {0}".format(outputFile))
+    output_file = "{0}/15.SpatialDistribution{1}".format(results.plot_output_path, results.output_format)
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
     plt.close()
+
+
+def plot_spatial_3d(gals, output_file, box_size):
+
+    from mpl_toolkits.mplot3d import Axes3D
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+
+    w = sample(list(np.arange(len(gals))), 10000)
+
+    ax.scatter(gals["Pos"][w,0], gals["Pos"][w,1], gals["Pos"][w,2], alpha=0.5)
+
+    ax.set_xlim([0.0, box_size])
+    ax.set_ylim([0.0, box_size])
+    ax.set_zlim([0.0, box_size])
+
+    ax.set_xlabel(r"$\mathbf{x \: [h^{-1}Mpc]}$")
+    ax.set_ylabel(r"$\mathbf{y \: [h^{-1}Mpc]}$")
+    ax.set_zlabel(r"$\mathbf{z \: [h^{-1}Mpc]}$")
+
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
+    plt.close()
+
