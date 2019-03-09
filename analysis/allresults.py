@@ -994,47 +994,35 @@ if __name__ == "__main__":
 
     # We support the plotting of an arbitrary number of models. To do so, simply add the
     # extra variables specifying the path to the model directory and other variables.
-    model0_dir_name = "/fred/oz070/jseiler/astro3d/jan2019/L500_N2160_take2/SAGE_output/"
-    model0_file_name = "subvolume_SF0.10_z0.000"
+    model0_dir_name   = "../output/millennium/"
+    model0_file_name  = "model_z0.000"
     model0_first_file = 0
-    model0_last_file = 63 
-    model0_simulation = 3
-    model0_IMF = 1
-    model0_sSFRcut = -11.0
+    model0_last_file  = 0 
+    model0_simulation = 0  # Mini-millennium.
+    model0_IMF        = 0  # Chabrier.
+    model0_sSFRcut    = -11.0
 
-    model0_model_label = r"$\mathbf{Genesis}$"
-    model0_color = "r"
-    model0_linestyle = "-"
-    model0_marker = "x"
-
-    model1_dir_name = "/fred/oz004/jseiler/millennium_test_data/"
-    model1_file_name = "correct-mini-millennium-output_z0.000"
-    model1_first_file = 0
-    model1_last_file = 0
-    model1_simulation = 0
-    model1_IMF = 1
-    model1_sSFRcut = -11.0
-
-    model1_model_label = r"$\mathbf{Mini-Millennium}$"
-    model1_color = "b"
-    model1_linestyle = "--"
-    model1_marker = "o"
+    # Aesthetic variables for plotting pretty plots.
+    model0_model_label = r"Mini-Millennium$"
+    model0_color       = "r"
+    model0_linestyle   = "-"
+    model0_marker      = "x"
 
     # Then extend each of these lists for all the models that you want to plot.
-    dir_names = [model0_dir_name, model1_dir_name]
-    file_names = [model0_file_name, model1_file_name]
-    first_files = [model0_first_file, model1_first_file]
-    last_files = [model0_last_file, model1_last_file]
-    simulations = [model0_simulation, model1_simulation]
-    IMFs = [model0_IMF, model1_IMF]
-    sSFRcuts = [model0_sSFRcut, model1_sSFRcut]
-    model_labels = [model0_model_label, model1_model_label]
-    colors = [model0_color, model1_color]
-    linestyles = [model0_linestyle, model1_linestyle]
-    markers = [model0_marker, model1_marker]
+    dir_names    = [model0_dir_name]
+    file_names   = [model0_file_name]
+    first_files  = [model0_first_file]
+    last_files   = [model0_last_file]
+    simulations  = [model0_simulation]
+    IMFs         = [model0_IMF]
+    sSFRcuts     = [model0_sSFRcut]
+    model_labels = [model0_model_label]
+    colors       = [model0_color]
+    linestyles   = [model0_linestyle]
+    markers      = [model0_marker]
 
     # A couple of extra variables...
-    output_format = ".png"
+    output_format    = ".png"
     plot_output_path = "./plots"
 
     # These toggles specify which plots you want to be made.
