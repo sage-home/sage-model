@@ -111,8 +111,8 @@ class Model:
         self.sample_size = 10000  # How many values should we plot on scatter plots?
 
         # How should we bin Stellar mass.
-        self.stellar_bin_low      = 7.0 
-        self.stellar_bin_high     = 13.0 
+        self.stellar_bin_low      = 7.5 
+        self.stellar_bin_high     = 12.0 
         self.stellar_bin_width    = 0.1
         self.stellar_mass_bins    = np.arange(self.stellar_bin_low,
                                               self.stellar_bin_high + self.stellar_bin_width,
@@ -131,7 +131,7 @@ class Model:
             setattr(self, attr, np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64))
 
         # How should we bin Halo mass.
-        self.halo_bin_low      = 8.0 
+        self.halo_bin_low      = 9.8 
         self.halo_bin_high     = 14.0 
         self.halo_bin_width    = 0.2
         self.halo_mass_bins    = np.arange(self.halo_bin_low,
@@ -874,8 +874,8 @@ class Results:
         self.num_models = len(all_models_dict["model_path"])
         self.plot_output_path = plot_output_path
 
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+        if not os.path.exists(self.plot_output_path):
+            os.makedirs(self.plot_output_path)
 
         self.output_format = output_format
 

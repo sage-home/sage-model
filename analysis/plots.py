@@ -103,8 +103,8 @@ def plot_SMF(results, plot_sub_populations=0):
     ax.set_yscale("log", nonposy="clip")
 
     # Find the models that have the smallest/largest stellar mass bin.
-    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.5
-    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.5
+    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.2
+    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.2
     ax.set_xlim([xlim_min, xlim_max])
     ax.set_ylim([1.0e-6, 1.0e-1])
 
@@ -149,8 +149,8 @@ def plot_BMF(results):
     ax.set_yscale("log", nonposy="clip")
 
     # Find the models that have the smallest/largest stellar mass bin.
-    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.5
-    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.5
+    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.2
+    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.2
     ax.set_xlim([xlim_min, xlim_max])
     ax.set_ylim([1.0e-6, 1.0e-1])
 
@@ -193,8 +193,8 @@ def plot_GMF(results):
     ax.set_yscale("log", nonposy="clip")
 
     # Find the models that have the smallest/largest stellar mass bin.
-    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.5
-    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.5
+    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.2
+    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.2
     ax.set_xlim([xlim_min, xlim_max])
     ax.set_ylim([1.0e-6, 1.0e-1])
 
@@ -233,7 +233,7 @@ def plot_BTF(results):
 
     ax = obs.plot_btf_data(ax) 
 
-    adjust_legend(ax, scatter_plot=1)
+    adjust_legend(ax, location="upper left", scatter_plot=1)
         
     output_file = "{0}/4.BaryonicTullyFisher{1}".format(results.plot_output_path, results.output_format) 
     fig.savefig(output_file)
@@ -507,8 +507,8 @@ def plot_baryon_fraction(results, plot_sub_populations=1):
     ax.set_ylabel(r"$\mathrm{Baryon\ Fraction}$")
 
     # Find the models that have the smallest/largest stellar mass bin.
-    xlim_min = np.min([model.halo_mass_bins for model in results.models]) - 0.5
-    xlim_max = np.max([model.halo_mass_bins for model in results.models]) + 0.5
+    xlim_min = np.min([model.halo_mass_bins for model in results.models]) - 0.2
+    xlim_max = np.max([model.halo_mass_bins for model in results.models]) + 0.2
     ax.set_xlim([xlim_min, xlim_max])
     ax.set_ylim([0.0, 0.23])
 
@@ -689,14 +689,14 @@ def plot_spatial_distribution(results):
         ax4.scatter(-999, -999, marker=marker, color=color, label=model_label)
         ax4.axis("off")
 
-    ax1.set_xlabel(r"$\mathrm{x}$")
-    ax1.set_ylabel(r"$\mathrm{y}$")
+    ax1.set_xlabel(r"$\mathrm{x}\ [\mathrm{Mpc}/h]$")
+    ax1.set_ylabel(r"$\mathrm{y}\ [\mathrm{Mpc}/h]$")
 
-    ax2.set_xlabel(r"$\mathrm{x}$")
-    ax2.set_ylabel(r"$\mathrm{z}$")
+    ax2.set_xlabel(r"$\mathrm{x}\ [\mathrm{Mpc}/h]$")
+    ax2.set_ylabel(r"$\mathrm{z}\ [\mathrm{Mpc}/h]$")
 
-    ax3.set_xlabel(r"$\mathrm{y}$")
-    ax3.set_ylabel(r"$\mathrm{z}$")
+    ax3.set_xlabel(r"$\mathrm{y}\ [\mathrm{Mpc}/h]$")
+    ax3.set_ylabel(r"$\mathrm{z}\ [\mathrm{Mpc}/h]$")
 
     # Find the model with the largest box. 
     max_box = np.min([model.box_size for model in results.models]) - 0.5
