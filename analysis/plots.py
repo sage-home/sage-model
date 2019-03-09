@@ -63,14 +63,6 @@ def plot_SMF(results):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    # For scaling the observational data, we use the values of the zeroth
-    # model. We also save the plots into the output directory of the zeroth
-    # model. 
-    zeroth_hubble_h = (results.models)[0].hubble_h
-    zeroth_IMF = (results.models)[0].IMF
-
-    ax = obs.plot_smf_data(ax, zeroth_hubble_h, zeroth_IMF) 
-
     # Go through each of the models and plot. 
     for model in results.models:
 
@@ -99,17 +91,24 @@ def plot_SMF(results):
             ax.plot(bin_middles[:-1], model.blue_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
                     "b:", lw=2, label=model_label + " - Blue")
 
-    ax.set_yscale("log", nonposy="clip")
-
-    ax.set_xlim([8.0, 12.5])
-    ax.set_ylim([1.0e-6, 1.0e-1])
-
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    # For scaling the observational data, we use the values of the zeroth
+    # model.
+    zeroth_hubble_h = (results.models)[0].hubble_h
+    zeroth_IMF = (results.models)[0].IMF
+    ax = obs.plot_smf_data(ax, zeroth_hubble_h, zeroth_IMF) 
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
 
-    ax.text(12.2, 0.03, model.simulation, size = "large")
+    ax.set_yscale("log", nonposy="clip")
+
+    # Find the models that have the smallest/largest stellar mass bin.
+    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.5
+    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.5
+    ax.set_xlim([xlim_min, xlim_max])
+    ax.set_ylim([1.0e-6, 1.0e-1])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
@@ -119,20 +118,11 @@ def plot_SMF(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
 
-# ---------------------------------------------------------
 
 def plot_BMF(results):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-
-    # For scaling the observational data, we use the values of the zeroth
-    # model. We also save the plots into the output directory of the zeroth
-    # model. 
-    zeroth_hubble_h = (results.models)[0].hubble_h
-    zeroth_IMF = (results.models)[0].IMF
-
-    ax = obs.plot_bmf_data(ax, zeroth_hubble_h, zeroth_IMF) 
 
     for model in results.models:
 
@@ -147,15 +137,24 @@ def plot_BMF(results):
         ax.plot(bin_middles[:-1], model.BMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
                 color=color, ls=ls, label=model_label + " - All")
 
-    ax.set_yscale("log", nonposy="clip")
-
-    ax.set_xlim([8.0, 12.5])
-    ax.set_ylim([1.0e-6, 1.0e-1])
-
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    # For scaling the observational data, we use the values of the zeroth
+    # model.
+    zeroth_hubble_h = (results.models)[0].hubble_h
+    zeroth_IMF = (results.models)[0].IMF
+    ax = obs.plot_bmf_data(ax, zeroth_hubble_h, zeroth_IMF) 
 
     ax.set_xlabel(r"$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
+
+    ax.set_yscale("log", nonposy="clip")
+
+    # Find the models that have the smallest/largest stellar mass bin.
+    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.5
+    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.5
+    ax.set_xlim([xlim_min, xlim_max])
+    ax.set_ylim([1.0e-6, 1.0e-1])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
@@ -164,19 +163,11 @@ def plot_BMF(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
 
-# ---------------------------------------------------------
 
 def plot_GMF(results):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-
-    # For scaling the observational data, we use the values of the zeroth
-    # model. We also save the plots into the output directory of the zeroth
-    # model. 
-    zeroth_hubble_h = (results.models)[0].hubble_h
-
-    obs.plot_gmf_data(ax, zeroth_hubble_h)
 
     for model in results.models:
 
@@ -191,15 +182,23 @@ def plot_GMF(results):
         ax.plot(bin_middles[:-1], model.GMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
                 color=color, ls=ls, label=model_label + " - Cold Gas")
 
-    ax.set_yscale("log", nonposy="clip")
-
-    ax.set_xlim([8.0, 11.5])
-    ax.set_ylim([1.0e-6, 1.0e-1])
-
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    # For scaling the observational data, we use the values of the zeroth
+    # model.
+    zeroth_hubble_h = (results.models)[0].hubble_h
+    obs.plot_gmf_data(ax, zeroth_hubble_h)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{X}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
+
+    ax.set_yscale("log", nonposy="clip")
+
+    # Find the models that have the smallest/largest stellar mass bin.
+    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.5
+    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.5
+    ax.set_xlim([xlim_min, xlim_max])
+    ax.set_ylim([1.0e-6, 1.0e-1])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
@@ -208,14 +207,11 @@ def plot_GMF(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
 
-# ---------------------------------------------------------
 
 def plot_BTF(results):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-
-    ax = obs.plot_btf_data(ax) 
 
     for model in results.models:
 
@@ -226,15 +222,16 @@ def plot_BTF(results):
         ax.scatter(model.BTF_vel, model.BTF_mass, marker=marker, s=1,
                    color=color, alpha=0.5, label=model_label + " Sb/c galaxies")
 
-    ax.set_xlabel(r"$\log_{10}V_{max}\ (km/s)$")
-    ax.set_ylabel(r"$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$")
-
+    ax.set_xlim([1.4, 2.6])
+    ax.set_ylim([8.0, 12.0])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
-    ax.set_xlim([1.4, 2.6])
-    ax.set_ylim([8.0, 12.0])
+    ax.set_xlabel(r"$\log_{10}V_{max}\ (km/s)$")
+    ax.set_ylabel(r"$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$")
+
+    ax = obs.plot_btf_data(ax) 
 
     adjust_legend(ax, scatter_plot=1)
         
@@ -243,7 +240,6 @@ def plot_BTF(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
         
-# ---------------------------------------------------------
 
 def plot_sSFR(results):
 
@@ -259,7 +255,7 @@ def plot_sSFR(results):
         ax.scatter(model.sSFR_mass, model.sSFR_sSFR, marker=marker, s=1, color=color,
                    alpha=0.5, label=model_label + "galaxies")
 
-    # overplot dividing line between SF and passive
+    # Overplot a dividing line between passive and SF galaxies. 
     w = np.arange(7.0, 13.0, 1.0)
     min_sSFRcut = np.min([model.sSFRcut for model in results.models]) 
     ax.plot(w, w/w*min_sSFRcut, "b:", lw=2.0)
@@ -267,21 +263,19 @@ def plot_sSFR(results):
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\log_{10}\ s\mathrm{SFR}\ (\mathrm{yr^{-1}})$")
 
-    # Set the x and y axis minor ticks
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
-    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
-
     ax.set_xlim([8.0, 12.0])
     ax.set_ylim([-16.0, -8.0])
 
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+
     adjust_legend(ax, scatter_plot=1)
-        
+
     outputFile = "{0}/5.SpecificStarFormationRate{1}".format(results.plot_output_path, results.output_format) 
     fig.savefig(outputFile)
     print("Saved file to {0}".format(outputFile))
     plt.close()
-        
-# ---------------------------------------------------------
+
 
 def plot_gas_frac(results):
     
@@ -300,11 +294,11 @@ def plot_gas_frac(results):
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Cold\ Mass\ /\ (Cold+Stellar\ Mass)}$")
 
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
-    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
-
     ax.set_xlim([8.0, 12.0])
     ax.set_ylim([0.0, 1.0])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
     adjust_legend(ax, scatter_plot=1)
        
@@ -313,16 +307,11 @@ def plot_gas_frac(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
         
-# ---------------------------------------------------------
 
 def plot_metallicity(results):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-
-    zeroth_IMF = (results.models)[0].IMF
-
-    ax = obs.plot_metallicity_data(ax, zeroth_IMF) 
 
     for model in results.models:
 
@@ -333,14 +322,18 @@ def plot_metallicity(results):
         ax.scatter(model.metallicity_mass, model.metallicity, marker=marker, s=1, color=color,
                    alpha=0.5, label=model_label + " galaxies")
 
+    # Use the IMF of the zeroth model to scale the observational results.
+    zeroth_IMF = (results.models)[0].IMF
+    ax = obs.plot_metallicity_data(ax, zeroth_IMF) 
+
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$12\ +\ \log_{10}[\mathrm{O/H}]$")
 
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
-    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
-
     ax.set_xlim([8.0, 12.0])
     ax.set_ylim([8.0, 9.5])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
     adjust_legend(ax, location="upper right", scatter_plot=1)
    
@@ -349,14 +342,11 @@ def plot_metallicity(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
         
-# ---------------------------------------------------------
 
 def plot_bh_bulge(results):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-
-    ax = obs.plot_bh_bulge_data(ax) 
 
     for model in results.models:
 
@@ -367,16 +357,17 @@ def plot_bh_bulge(results):
         ax.scatter(model.bulge_mass, model.bh_mass, marker=marker, s=1, color=color,
                    alpha=0.5, label=model_label + " galaxies")
 
+    ax = obs.plot_bh_bulge_data(ax) 
+
     ax.set_xlabel(r"$\log\ M_{\mathrm{bulge}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\log\ M_{\mathrm{BH}}\ (M_{\odot})$")
 
-    # Set the x and y axis minor ticks
+    ax.set_xlim([8.0, 12.0])
+    ax.set_ylim([6.0, 10.0])
+
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
-    ax.set_xlim([8.0, 12.0])
-    ax.set_ylim([6.0, 10.0])
-        
     adjust_legend(ax, location="upper right", scatter_plot=1)
         
     outputFile = "{0}/8.BlackHoleBulgeRelationship{1}".format(results.plot_output_path, results.output_format) 
@@ -384,7 +375,6 @@ def plot_bh_bulge(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
         
-# ---------------------------------------------------------
 
 def plot_quiescent(results):
 
@@ -412,13 +402,12 @@ def plot_quiescent(results):
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Quescient\ Fraction}$")
-        
-    # Set the x and y axis minor ticks
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
-    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
     ax.set_xlim([8.0, 12.0])
     ax.set_ylim([0.0, 1.05])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.10))
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
         
@@ -427,7 +416,6 @@ def plot_quiescent(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
 
-# --------------------------------------------------------
 
 def plot_bulge_mass_fraction(results):
 
@@ -463,11 +451,14 @@ def plot_bulge_mass_fraction(results):
         ax.fill_between(bin_middles[:-1], disk_mean+disk_var, disk_mean-disk_var,
                         facecolor=color, alpha=0.25)
 
+    ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
+    ax.set_ylabel(r"$\mathrm{Stellar\ Mass\ Fraction}$")
+
     ax.set_xlim([8.0, 12.0])
     ax.set_ylim([0.0, 1.05])
 
-    ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
-    ax.set_ylabel(r"$\mathrm{Stellar\ Mass\ Fraction}$")
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.10))
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
 
@@ -476,7 +467,6 @@ def plot_bulge_mass_fraction(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
 
-# ---------------------------------------------------------
 
 def plot_baryon_fraction(results, plot_sub_populations=1):
 
@@ -494,36 +484,35 @@ def plot_baryon_fraction(results, plot_sub_populations=1):
 
         # Remember we need to average the properties in each bin.
         baryon_mean = model.halo_baryon_fraction_sum / model.fof_HMF
-        stars_mean = model.halo_stars_fraction_sum / model.fof_HMF
-        cold_mean = model.halo_cold_fraction_sum / model.fof_HMF
-        hot_mean = model.halo_hot_fraction_sum / model.fof_HMF
-        ejected_mean = model.halo_ejected_fraction_sum / model.fof_HMF
-        ICS_mean = model.halo_ICS_fraction_sum / model.fof_HMF
 
         # We will keep the linestyle constant but change the color. 
         ax.plot(bin_middles[:-1], baryon_mean, label=model_label + " Total",
                 color=color, linestyle=linestyle)
 
+        # If we have multiple models, we want to be careful of overcrowding the plot.
         if results.num_models == 1 or plot_sub_populations:
-            ax.plot(bin_middles[:-1], stars_mean, label=model_label + " Stars",
-                    color="k", linestyle=linestyle)
-            ax.plot(bin_middles[:-1], cold_mean, label=model_label + " Cold",
-                    color="b", linestyle=linestyle)
-            ax.plot(bin_middles[:-1], hot_mean, label=model_label + " Hot",
-                    color="r", linestyle=linestyle)
-            ax.plot(bin_middles[:-1], ejected_mean, label=model_label + " Ejected",
-                    color="g", linestyle=linestyle)
-            ax.plot(bin_middles[:-1], ICS_mean, label=model_label + " ICS",
-                    color="y", linestyle=linestyle)
+            attrs = ["stars", "cold", "hot", "ejected", "ICS"]
+            labels = ["Stars", "Cold", "Hot", "Ejected", "ICS"]
+            colors = ["k", "b", "r", "g", "y"]
+
+            for (attr, label, color) in zip(attrs, labels, colors):
+                attrname = "halo_{0}_fraction_sum".format(attr) 
+                mean = getattr(model, attrname) / model.fof_HMF
+
+                ax.plot(bin_middles[:-1], mean, label=model_label + " " + label,
+                        color=color, linestyle=linestyle)
 
     ax.set_xlabel(r"$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Baryon\ Fraction}$")
 
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
-    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
-
-    ax.set_xlim([8.0, 14.0])
+    # Find the models that have the smallest/largest stellar mass bin.
+    xlim_min = np.min([model.halo_mass_bins for model in results.models]) - 0.5
+    xlim_max = np.max([model.halo_mass_bins for model in results.models]) + 0.5
+    ax.set_xlim([xlim_min, xlim_max])
     ax.set_ylim([0.0, 0.23])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.05))
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
 
@@ -532,7 +521,6 @@ def plot_baryon_fraction(results, plot_sub_populations=1):
     print("Saved file to {0}".format(outputFile))
     plt.close()
 
-# --------------------------------------------------------
 
 def plot_spin_distribution(results):
 
@@ -557,11 +545,11 @@ def plot_spin_distribution(results):
         if np.max(norm_counts) > max_counts:
             max_counts = np.max(norm_counts)
 
-    ax.set_xlim([-0.02, 0.5])
-    ax.set_ylim([0.0, max_counts*1.15])
-
     ax.set_xlabel(r"$\mathrm{Spin\ Parameter}$")
     ax.set_ylabel(r"$\mathrm{Normalized\ Count}$")
+
+    ax.set_xlim([-0.02, 0.5])
+    ax.set_ylim([0.0, max_counts*1.15])
 
     adjust_legend(ax, location="upper right", scatter_plot=0)
 
@@ -570,7 +558,6 @@ def plot_spin_distribution(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
 
-# --------------------------------------------------------
 
 def plot_velocity_distribution(results):
 
@@ -583,7 +570,7 @@ def plot_velocity_distribution(results):
         ax.plot(np.nan, np.nan, color="m", linestyle=model.linestyle,
                 label=model.model_label)
 
-    for (num_model, model) in enumerate(results.models):
+    for (model_num, model) in enumerate(results.models):
 
         linestyle = model.linestyle
 
@@ -599,7 +586,7 @@ def plot_velocity_distribution(results):
         for (vel, label, color) in zip(vels, labels, colors):
 
             # We only want the labels to be plotted once.
-            if results.num_models == 0:
+            if model_num == 0:
                 label = label
             else:
                 label = ""
@@ -607,13 +594,18 @@ def plot_velocity_distribution(results):
             ax.plot(bin_middles[:-1], vel / normalization, color=color, label=label,
                     linestyle=linestyle)
 
-    ax.set_yscale("log", nonposy="clip")
-
-    ax.set_xlim([-40, 40])
-    ax.set_ylim([1e-5, 0.5])
-
     ax.set_xlabel(r"$\mathrm{Velocity / H}_{0}$")
     ax.set_ylabel(r"$\mathrm{Box\ Normalised\ Count}$")
+
+    ax.set_yscale("log", nonposy="clip")
+
+    # Find the models that have the smallest/largest stellar mass bin.
+    xlim_min = np.min([model.vel_bins for model in results.models]) - 3
+    xlim_max = np.max([model.vel_bins for model in results.models]) + 3
+    ax.set_xlim([xlim_min, xlim_max])
+    ax.set_ylim([1e-5, 0.5])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(5))
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
 
@@ -622,7 +614,6 @@ def plot_velocity_distribution(results):
     print("Saved file to {0}".format(outputFile))
     plt.close()
 
-# --------------------------------------------------------
 
 def plot_mass_reservoirs(results):
 
@@ -655,6 +646,9 @@ def plot_mass_reservoirs(results):
         ax.set_xlim([10.0, 14.0])
         ax.set_ylim([7.5, 12.5])
 
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
+        ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+
         adjust_legend(ax, location="upper left", scatter_plot=1)
 
         outputFile = "{0}/14.MassReservoirs_{1}{2}".format(results.plot_output_path,
@@ -663,17 +657,16 @@ def plot_mass_reservoirs(results):
         print("Saved file to {0}".format(outputFile))
         plt.close()
 
-# --------------------------------------------------------
 
 def plot_spatial_distribution(results):
 
     fig = plt.figure()
+
+    # 4-panel plot.
     ax1 = fig.add_subplot(221)
     ax2 = fig.add_subplot(222)
     ax3 = fig.add_subplot(223)
     ax4 = fig.add_subplot(224)
-
-    max_box = -999
 
     for model in results.models:
 
@@ -695,14 +688,6 @@ def plot_spatial_distribution(results):
         ax4.scatter(-999, -999, marker=marker, color=color, label=model_label)
         ax4.axis("off")
 
-        if model.box_size > max_box:
-            max_box = model.box_size
-
-    buffer = max_box*0.05
-    for ax in [ax1, ax2, ax3, ax4]:
-        ax.set_xlim([0.0-buffer, max_box+buffer])
-        ax.set_ylim([0.0-buffer, max_box+buffer])
-
     ax1.set_xlabel(r"$\mathrm{x}$")
     ax1.set_ylabel(r"$\mathrm{y}$")
 
@@ -712,8 +697,19 @@ def plot_spatial_distribution(results):
     ax3.set_xlabel(r"$\mathrm{y}$")
     ax3.set_ylabel(r"$\mathrm{z}$")
 
+    # Find the model with the largest box. 
+    max_box = np.min([model.box_size for model in results.models]) - 0.5
+    buffer = max_box*0.05
+    for ax in [ax1, ax2, ax3, ax4]:
+        ax.set_xlim([0.0-buffer, max_box+buffer])
+        ax.set_ylim([0.0-buffer, max_box+buffer])
+
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(5))
+        ax.yaxis.set_minor_locator(plt.MultipleLocator(5))
+
     adjust_legend(ax4, location="upper left", scatter_plot=1)
 
+    # Make sure everything remains nicely layed out.
     fig.tight_layout()
 
     outputFile = "{0}/15.SpatialDistribution{1}".format(results.plot_output_path, results.output_format)
