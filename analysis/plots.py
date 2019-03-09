@@ -58,7 +58,7 @@ def adjust_legend(ax, location="upper right", scatter_plot=0):
                 handle.set_sizes([10.0])
 
 
-def plot_SMF(results):
+def plot_SMF(results, plot_sub_populations=0):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -84,8 +84,8 @@ def plot_SMF(results):
         ax.plot(bin_middles[:-1], model.SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
                 color=color, ls=ls, label=model_label + " - All")
 
-        # If we only have one model, plot the sub-populations.
-        if results.num_models == 1:
+        # Be careful to not overcrowd the plot. 
+        if results.num_models == 1 or plot_sub_populations:
             ax.plot(bin_middles[:-1], model.red_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
                     "r:", lw=2, label=model_label + " - Red")
             ax.plot(bin_middles[:-1], model.blue_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
@@ -376,7 +376,7 @@ def plot_bh_bulge(results):
     plt.close()
         
 
-def plot_quiescent(results):
+def plot_quiescent(results, plot_sub_populations=1):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -394,11 +394,12 @@ def plot_quiescent(results):
         ax.plot(bin_middles[:-1], model.quiescent_mass_quiescent_counts / model.quiescent_mass_counts,
                 label=model_label + " All", color=color, linestyle="-") 
 
-        ax.plot(bin_middles[:-1], model.quiescent_mass_centrals_quiescent_counts / model.quiescent_mass_centrals_counts,
-                label=model_label + " Centrals", color=color, linestyle="--") 
+        if results.num_models == 1 or plot_sub_populations:
+            ax.plot(bin_middles[:-1], model.quiescent_mass_centrals_quiescent_counts / model.quiescent_mass_centrals_counts,
+                    label=model_label + " Centrals", color=color, linestyle="--") 
 
-        ax.plot(bin_middles[:-1], model.quiescent_mass_satellites_quiescent_counts / model.quiescent_mass_satellites_counts,
-                label=model_label + " Satellites", color=color, linestyle="-.") 
+            ax.plot(bin_middles[:-1], model.quiescent_mass_satellites_quiescent_counts / model.quiescent_mass_satellites_counts,
+                    label=model_label + " Satellites", color=color, linestyle="-.") 
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Quescient\ Fraction}$")
@@ -417,7 +418,7 @@ def plot_quiescent(results):
     plt.close()
 
 
-def plot_bulge_mass_fraction(results):
+def plot_bulge_mass_fraction(results, plot_var=1):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -442,14 +443,14 @@ def plot_bulge_mass_fraction(results):
         # We will keep the colour scheme consistent, but change the line styles.
         ax.plot(bin_middles[:-1], bulge_mean, label=model_label + " bulge",
                 color=color, linestyle="-")
-
-        ax.fill_between(bin_middles[:-1], bulge_mean+bulge_var, bulge_mean-bulge_var,
-                        facecolor=color, alpha=0.25)
-
         ax.plot(bin_middles[:-1], disk_mean, label=model_label + " disk",
                 color=color, linestyle="--")
-        ax.fill_between(bin_middles[:-1], disk_mean+disk_var, disk_mean-disk_var,
-                        facecolor=color, alpha=0.25)
+
+        if plot_var:
+            ax.fill_between(bin_middles[:-1], bulge_mean+bulge_var, bulge_mean-bulge_var,
+                            facecolor=color, alpha=0.25)
+            ax.fill_between(bin_middles[:-1], disk_mean+disk_var, disk_mean-disk_var,
+                            facecolor=color, alpha=0.25)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Stellar\ Mass\ Fraction}$")
