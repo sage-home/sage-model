@@ -166,7 +166,7 @@ class Model:
         # These attributes will be binned on velocity.
         attr_names = ["los_vel_counts", "x_vel_counts", "y_vel_counts", "z_vel_counts"]
         for attr in attr_names:
-            setattr(self, attr, np.zeros(len(self.vel_bins)-1, dtype=np.float64)
+            setattr(self, attr, np.zeros(len(self.vel_bins)-1, dtype=np.float64))
 
         # Some plots use scattered points. For these, we will continually add to lists. 
         attr_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR", "gas_frac_mass", "gas_frac",
@@ -410,7 +410,7 @@ class Model:
         start_time = time.time()
 
         # First determine how many galaxies are in each file.
-        self.num_gals = self.determine_num_gals(model_path, first_file, last_file), debug=debug)
+        self.num_gals = self.determine_num_gals(model_path, first_file, last_file)
 
         # The `tqdm` package provides a beautiful progress bar.
         try:
@@ -1003,7 +1003,7 @@ if __name__ == "__main__":
     model0_sSFRcut    = -11.0
 
     # Aesthetic variables for plotting pretty plots.
-    model0_model_label = r"Mini-Millennium$"
+    model0_model_label = "Mini-Millennium"
     model0_color       = "r"
     model0_linestyle   = "-"
     model0_marker      = "x"

@@ -253,7 +253,7 @@ def plot_sSFR(results):
         marker = model.marker
 
         ax.scatter(model.sSFR_mass, model.sSFR_sSFR, marker=marker, s=1, color=color,
-                   alpha=0.5, label=model_label + "galaxies")
+                   alpha=0.5, label=model_label)
 
     # Overplot a dividing line between passive and SF galaxies. 
     w = np.arange(7.0, 13.0, 1.0)
