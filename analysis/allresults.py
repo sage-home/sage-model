@@ -14,92 +14,74 @@ else:
 
 import plots as plots
 
+# Sometimes we divide a galaxy that has zero mass (e.g., no cold gas). Ignore these
+# warnings as they spam stdout.
 np.warnings.filterwarnings("ignore")
 
 # Refer to the project for a list of TODO's, issues and other notes.
 # https://github.com/sage-home/sage-model/projects/7
 
-# ================================================================================
-# Basic variables
-# ================================================================================
-
-# Set up some basic attributes of the run
 
 class Model:
     """
-    Handles all the galaxy data (including calculated properties).
+    Handles all the galaxy data (including calculated properties) for a SAGE model.
 
-    The first 8 attributes (from ``model_path`` to ``linestyle``) are
+    The first 11 attributes (from ``model_path`` to ``marker``) are
     passed in a single dictionary (``model_dict``) to the class ``__init__``
     method.
 
     Attributes
     ----------
 
-    model_path : string 
+    model_path : String
         File path to the galaxy files.
 
         ..note:: Does not include the file number.
 
-    output_path : string
-        Directory path to where the plots will be saved.
+    output_path : String
+        Directory path to where the some plots will be saved.  This will only be used in
+        certain circumstances. In general, plots will be saved to the ``plot_output_path``
+        path defined in the ``Results`` class.
 
-    first_file, last_file : int
+    first_file, last_file : Integer
         Range (inclusive) of files that are read.
 
-    simulation : {0, 1, 2}
+    simulation : {0, 1, 2, 3}
         Specifies which simulation this model corresponds to.
         0: Mini-millennium,
         1: Millennium,
-        2: Kali (512^3 particles).
+        2: Kali (512^3 particles),
+        3: Genesis (L = 500 Mpc/h, N = 2160^3).
 
-    IMF : {0, 1} 
-        Specifies which IMF to used for this model.
+    sSFRcut : Float
+        The specific star formation rate which defines a "quiescent" galaxy. Units are
+        log10.
+
+    IMF : {0, 1}
+        Specifies which IMF to use for this model.
         0: Salpeter,
         1: Chabrier.
 
-    model_label : string
-        Tag placed on the legend for this model.
+    model_label : String
+        Label placed on the legend for this model.
 
-    color : string
-        Line color used for this model.
+    color, linestyle : Strings
+        Line color and style used for this model.
 
-    linestyle : string
-        Line style used for this model
+    marker : String
+        The marker used for scatter plots for this model.
 
-    hubble_h : float
+    hubble_h : Float
         Hubble 'little h' value. Between 0 and 1.
 
-    BoxSize : float
+    BoxSize : Float
         Size of the simulation box for this model. Mpc/h.
 
-    MaxTreeFiles : int
+    MaxTreeFiles : Integer
         Number of files generated from SAGE for this model.
 
-    gals : Galaxy numpy structured array
-        Galaxies read for this model.
-
-    mass : List of floats, length is number of galaxies
-        Mass of each galaxy. 1.0e10 Msun.
-
-    stellar_sSFR : List of floats, length is number of galaxies with non-zero
-                   stellar mass
-        Specific star formation rate of those galaxies with a non-zero stellar
-        mass. 
-
-    baryon_mass : list of floats, length is number of galaxies with non-zero
-                  stellar mass or cold gas
-        Mass of the baryons (stellar mass + cold gas) of each galaxy. 1.0e10
-        Msun.
-
-    cold_mass : list of floats, length is the number of galaxies with non-zero
-                cold gas.
-        Mass of the cold gas within each galaxy. 1.0e10 Msun.
-
-    cold_sSFR : List of floats, length is number of galaxies with non-zero cold
-                gas mass
-        Specific star formation rate of those galaxies with a non-zero cold gas 
-        mass. 
+    TODO: Should I list ALL the properties here? i.e., all the arrays and lists that hold
+    the data?
     """
 
     def __init__(self, model_dict):
@@ -112,7 +94,8 @@ class Model:
         model_dict : Dictionary 
             Dictionary containing the parameter values for each ``Model``
             instance. Refer to the class-level documentation for a full
-            description of this dictionary.
+            description of this dictionary or to ``model_dict`` in the ``__main__`` call
+            of this Module.
 
         Returns
         -------
@@ -198,6 +181,19 @@ class Model:
 
 
     def get_galaxy_struct(self):
+        """
+        Sets the ``numpy`` structured array for holding the galaxy data.
+
+        Parameters 
+        ----------
+
+        None.
+
+        Returns
+        -------
+
+        None. The attribute ``Model.galaxy_struct`` is updated within the function.
+        """
 
         galdesc_full = [
             ("SnapNum"                      , np.int32),
@@ -312,7 +308,7 @@ class Model:
         self.volume = pow(self.box_size, 3) * (num_files_read / self.total_num_files)
 
 
-    def read_gals(self, fname, pbar=None, file_num=None, debug=0, plot_galaxies=0):
+    def read_gals(self, fname, pbar=None, plot_galaxies=False, file_num=0, debug=False):
         """
         Reads a single galaxy file.
 
@@ -322,10 +318,26 @@ class Model:
         fname : String
             Name of the file we're reading.
 
+        pbar : ``tqdm`` class instance
+            Bar showing the progress of galaxy reading.
+
+        plot_galaxies : Boolean, default False
+            If set, plots and saves the 3D distribution of galaxies for this file.
+
+        file_num : Integer, default 0
+            If ``plot_galaxies`` is set, this variable is used to name the output file
+            showing the 3D distribution of galaxies.
+
+        debug : Boolean, default False
+            If set, prints out extra useful debug information.
+
+            ..note:: ``tqdm`` does not play nicely with printing to stdout. Hence we
+            disable the ``tqdm`` progress bar if ``debug=True``.
+
         Returns
         -------
 
-        gals : ``numpy`` structured array with format given by ``get_galaxy_struct()``
+        gals : ``numpy`` structured array with format given by ``Model.get_galaxy_struct()``
             The galaxies for this file.
         """
 
@@ -368,7 +380,7 @@ class Model:
 
 
     def calc_properties_all_files(self, plot_toggles, model_path, first_file, last_file,
-                                  debug=0):
+                                  debug=False):
         """
         Calculates galaxy properties for all files of a single Model.
 
@@ -385,6 +397,9 @@ class Model:
         first_file, last_file : Integers
             The file range to read.
 
+        debug : Boolean, default False
+            If set, prints out extra useful debug information.
+
         Returns
         -------
 
@@ -395,7 +410,7 @@ class Model:
         start_time = time.time()
 
         # First determine how many galaxies are in each file.
-        self.num_gals = self.determine_num_gals(model_path, range(first_file, last_file+1), debug=debug)
+        self.num_gals = self.determine_num_gals(model_path, first_file, last_file), debug=debug)
 
         # The `tqdm` package provides a beautiful progress bar.
         try:
@@ -408,6 +423,7 @@ class Model:
         else:
             pass
 
+        # Now read the galaxies and calculate the properties.
         for file_num in range(first_file, last_file+1):
             fname = "{0}_{1}".format(model_path, file_num)                
             gals = self.read_gals(fname, pbar=pbar, file_num=file_num, debug=debug)
@@ -419,11 +435,29 @@ class Model:
         print("")
 
 
-    def determine_num_gals(self, model_path, file_iterator, debug=0):
+    def determine_num_gals(self, model_path, first_file, last_file):
+        """
+        Determines the number of galaxies in all files for this model.
+
+        Parameters 
+        ----------
+
+        model_path : String
+            Base path to the galaxy files.  Does not include the file number or
+            trailing underscore.
+
+        first_file, last_file : Integers
+            The file range to read.
+
+        Returns
+        -------
+
+        None.
+        """
 
         num_gals = 0
 
-        for file_num in file_iterator:
+        for file_num in range(first_file, last_file+1):
 
             fname = "{0}_{1}".format(model_path, file_num)
 
@@ -447,7 +481,7 @@ class Model:
 
     def calc_properties(self, plot_toggles, gals):
         """
-        Calculates galaxy properties for single Model.
+        Calculates galaxy properties for a single file of galaxies.
 
         ..note:: Refer to the class-level documentation for a full list of the
                  properties calculated and their associated units.
@@ -456,14 +490,11 @@ class Model:
         ----------
 
         plot_toggles : Dictionary 
-            Specifies which plots will be generated.
+            Specifies which plots will be generated. Used to determine which properties to
+            calculate.
 
-        model_path : String
-            Base path to the galaxy files.  Does not include the file number or
-            trailing underscore.
-
-        first_file, last_file : Integers
-            The file range to read.
+        gals : ``numpy`` structured array with format given by ``Model.get_galaxy_struct()``
+            The galaxies for this file.
 
         Returns
         -------
@@ -472,8 +503,7 @@ class Model:
         """
 
         # When we create some plots, we do a scatter plot. For these, we only plot a
-        # subset of galaxies. We need to ensure we get a representative sample from each
-        # file.
+        # subset of galaxies. We need to ensure we get a representative sample from each file.
         file_sample_size = int(len(gals) / self.num_gals * self.sample_size) 
 
         if plot_toggles["SMF"] or plot_toggles["sSFR"]:
@@ -487,6 +517,7 @@ class Model:
                 gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
                 self.SMF += gals_per_bin 
 
+                # We often want to plot the red and blue subpopulations. So bin them as well.
                 red_gals = np.where(sSFR < 10.0**self.sSFRcut)[0]
                 red_mass = stellar_mass[red_gals]
                 counts, _ = np.histogram(red_mass, bins=self.stellar_mass_bins)
@@ -510,6 +541,7 @@ class Model:
                 self.sSFR_sSFR.extend(list(np.log10(sSFR[random_inds])))
 
         if plot_toggles["BMF"]:
+
             non_zero_baryon = np.where(gals["StellarMass"] + gals["ColdGas"] > 0.0)[0]
             baryon_mass = np.log10((gals["StellarMass"][non_zero_baryon] + gals["ColdGas"][non_zero_baryon]) * 1.0e10 \
                                    / self.hubble_h)
@@ -518,6 +550,7 @@ class Model:
             self.BMF += counts
 
         if plot_toggles["GMF"]:
+
             non_zero_cold = np.where(gals["ColdGas"] > 0.0)[0]
             cold_mass = np.log10(gals["ColdGas"][non_zero_cold] * 1.0e10 / self.hubble_h)
 
@@ -526,38 +559,42 @@ class Model:
 
         if plot_toggles["BTF"]:
 
-            centrals = np.where((gals["Type"] == 0) & (gals["StellarMass"] + gals["ColdGas"] > 0.0) & \
-                                (gals["StellarMass"] > 0.0) & (gals["ColdGas"] > 0.0) & \
-                                (gals["BulgeMass"] / gals["StellarMass"] > 0.1) & \
-                                (gals["BulgeMass"] / gals["StellarMass"] < 0.5))[0]
+            # Make sure we're getting spiral galaxies. That is, don't include galaxies
+            # that are too bulgy.
+            spirals = np.where((gals["Type"] == 0) & (gals["StellarMass"] + gals["ColdGas"] > 0.0) & \
+                               (gals["StellarMass"] > 0.0) & (gals["ColdGas"] > 0.0) & \
+                               (gals["BulgeMass"] / gals["StellarMass"] > 0.1) & \
+                               (gals["BulgeMass"] / gals["StellarMass"] < 0.5))[0]
 
-            if len(centrals) > file_sample_size:
-                centrals = np.random.choice(centrals, size=file_sample_size)
+            if len(spirals) > file_sample_size:
+                spirals = np.random.choice(spirals, size=file_sample_size)
 
-            baryon_mass = np.log10((gals["StellarMass"][centrals] + gals["ColdGas"][centrals]) * 1.0e10 / self.hubble_h)
-            velocity = np.log10(gals["Vmax"][centrals])
+            baryon_mass = np.log10((gals["StellarMass"][spirals] + gals["ColdGas"][spirals]) * 1.0e10 / self.hubble_h)
+            velocity = np.log10(gals["Vmax"][spirals])
 
             self.BTF_mass.extend(list(baryon_mass))
             self.BTF_vel.extend(list(velocity))
 
         if plot_toggles["gas_frac"]:
 
-            
-            centrals = np.where((gals["Type"] == 0) & (gals["StellarMass"] + gals["ColdGas"] > 0.0) & 
+            # Make sure we're getting spiral galaxies. That is, don't include galaxies
+            # that are too bulgy.
+            spirals = np.where((gals["Type"] == 0) & (gals["StellarMass"] + gals["ColdGas"] > 0.0) & 
                                 (gals["BulgeMass"] / gals["StellarMass"] > 0.1) & \
                                 (gals["BulgeMass"] / gals["StellarMass"] < 0.5))[0]
 
-            if len(centrals) > file_sample_size:
-                centrals = np.random.choice(centrals, size=file_sample_size)
+            if len(spirals) > file_sample_size:
+                spirals = np.random.choice(spirals, size=file_sample_size)
         
-            stellar_mass = np.log10(gals["StellarMass"][centrals] * 1.0e10 / self.hubble_h)
-            gas_fraction = gals["ColdGas"][centrals] / (gals["StellarMass"][centrals] + gals["ColdGas"][centrals])
+            stellar_mass = np.log10(gals["StellarMass"][spirals] * 1.0e10 / self.hubble_h)
+            gas_fraction = gals["ColdGas"][spirals] / (gals["StellarMass"][spirals] + gals["ColdGas"][spirals])
 
             self.gas_frac_mass.extend(list(stellar_mass))
             self.gas_frac.extend(list(gas_fraction))
 
         if plot_toggles["metallicity"]:
 
+            # Only care about central galaxies (Type 0) that have appreciable mass.
             centrals = np.where((gals["Type"] == 0) & (gals["ColdGas"] / (gals["StellarMass"] + gals["ColdGas"]) > 0.1) & \
                                 (gals["StellarMass"] > 0.01))[0]
 
@@ -572,6 +609,7 @@ class Model:
 
         if plot_toggles["bh_bulge"]:
 
+            # Only care about galaxies that have appreciable masses.
             my_gals = np.where((gals["BulgeMass"] > 0.01) & (gals["BlackHoleMass"] > 0.00001))[0]
 
             if len(my_gals) > file_sample_size:
@@ -602,12 +640,14 @@ class Model:
                 gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
                 self.SMF += gals_per_bin 
 
+            # Mass function for number of centrals/satellites.
             centrals_counts, _ = np.histogram(mass[type == 0], bins=self.stellar_mass_bins)
             self.centrals_MF += centrals_counts
 
             satellites_counts, _ = np.histogram(mass[type == 1], bins=self.stellar_mass_bins)
             self.satellites_MF += satellites_counts
 
+            # Then bin those galaxies/centrals/satellites that are quiescent.
             quiescent_counts, _ = np.histogram(mass[quiescent], bins=self.stellar_mass_bins)
             self.quiescent_galaxy_counts += quiescent_counts
 
@@ -707,10 +747,12 @@ class Model:
 
         if plot_toggles["velocity"]:
 
+            # Position units are Mpc/h.
             pos_x = gals["Pos"][:,0] / self.hubble_h
             pos_y = gals["Pos"][:,1] / self.hubble_h
             pos_z = gals["Pos"][:,2] / self.hubble_h
 
+            # Velocity units are km/s.
             vel_x = gals["Vel"][:,0]
             vel_y = gals["Vel"][:,1]
             vel_z = gals["Vel"][:,2]
@@ -731,19 +773,20 @@ class Model:
 
         if plot_toggles["reservoirs"]:
 
+            # To reduce scatter, only use galaxies in halos with mass > 1.0e10 Msun/h.
             centrals = np.where((gals["Type"] == 0) & (gals["Mvir"] > 1.0) & \
                                 (gals["StellarMass"] > 0.0))[0]
 
             if len(centrals) > file_sample_size:
                 centrals = np.random.choice(centrals, size=file_sample_size)
 
-            components = ["Mvir", "StellarMass", "ColdGas", "HotGas",
+            reservoirs = ["Mvir", "StellarMass", "ColdGas", "HotGas",
                           "EjectedMass", "IntraClusterStars"]
             attribute_names = ["mvir", "stars", "cold", "hot", "ejected", "ICS"]
 
-            for (component, attribute_name) in zip(components, attribute_names):
+            for (reservoir, attribute_name) in zip(reservoirs, attribute_names):
 
-                mass = np.log10(gals[component][centrals] * 1.0e10 / self.hubble_h)
+                mass = np.log10(gals[reservoir][centrals] * 1.0e10 / self.hubble_h)
 
                 # Extend the previous list of masses with these new values. 
                 attr_name = "reservoir_{0}".format(attribute_name)
@@ -762,6 +805,7 @@ class Model:
 
             for (dim, attribute_name) in enumerate(attribute_names):
 
+                # Units are Mpc/h.
                 pos = gals["Pos"][non_zero, dim]
 
                 attribute_value = getattr(self, attribute_name)
@@ -794,7 +838,7 @@ class Results:
     """
 
     def __init__(self, all_models_dict, plot_toggles, plot_output_path="./plots",
-                 output_format=".png", debug=0):
+                 output_format=".png", debug=False):
         """
         Initialises the individual ``Model`` class instances and adds them to
         the ``Results`` class instance.
@@ -948,6 +992,8 @@ if __name__ == "__main__":
 
     import os
 
+    # We support the plotting of an arbitrary number of models. To do so, simply add the
+    # extra variables specifying the path to the model directory and other variables.
     model0_dir_name = "/fred/oz070/jseiler/astro3d/jan2019/L500_N2160_take2/SAGE_output/"
     model0_file_name = "subvolume_SF0.10_z0.000"
     model0_first_file = 0
@@ -974,6 +1020,7 @@ if __name__ == "__main__":
     model1_linestyle = "--"
     model1_marker = "o"
 
+    # Then extend each of these lists for all the models that you want to plot.
     dir_names = [model0_dir_name, model1_dir_name]
     file_names = [model0_file_name, model1_file_name]
     first_files = [model0_first_file, model1_first_file]
@@ -986,36 +1033,11 @@ if __name__ == "__main__":
     linestyles = [model0_linestyle, model1_linestyle]
     markers = [model0_marker, model1_marker]
 
-    model_paths = []
-    output_paths = []
+    # A couple of extra variables...
+    output_format = ".png"
+    plot_output_path = "./plots"
 
-    for dir_name, file_name  in zip(dir_names, file_names):
-
-        model_path = "{0}/{1}".format(dir_name, file_name) 
-        model_paths.append(model_path)
-
-        output_path = dir_name + "plots/"
-
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-
-        output_paths.append(output_path)
-
-    print("Running allresults...")
-
-    # First lets build a dictionary out of all the model parameters passed.
-    model_dict = { "model_path"  : model_paths,
-                   "output_path" : output_paths,
-                   "first_file"  : first_files,
-                   "last_file"   : last_files,
-                   "simulation"  : simulations,
-                   "sSFRcut"     : sSFRcuts,
-                   "IMF"         : IMFs,
-                   "model_label" : model_labels,
-                   "color"       : colors,
-                   "linestyle"   : linestyles,
-                   "marker"      : markers}
-
+    # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,
                     "BMF"             : 1,
                     "GMF"             : 1,
@@ -1032,9 +1054,39 @@ if __name__ == "__main__":
                     "reservoirs"      : 1,
                     "spatial"         : 1}
 
-    output_format = ".png"
-    plot_output_path = "./plots"
+    ############################
+    ## DON'T TOUCH BELOW HERE ##
+    ############################
 
+    model_paths = []
+    output_paths = []
+
+    # Determine paths for each model.
+    for dir_name, file_name  in zip(dir_names, file_names):
+
+        model_path = "{0}/{1}".format(dir_name, file_name) 
+        model_paths.append(model_path)
+
+        output_path = dir_name + "plots/"
+
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        output_paths.append(output_path)
+
+    model_dict = { "model_path"  : model_paths,
+                   "output_path" : output_paths,
+                   "first_file"  : first_files,
+                   "last_file"   : last_files,
+                   "simulation"  : simulations,
+                   "sSFRcut"     : sSFRcuts,
+                   "IMF"         : IMFs,
+                   "model_label" : model_labels,
+                   "color"       : colors,
+                   "linestyle"   : linestyles,
+                   "marker"      : markers}
+
+    # Read in the galaxies and calculate properties for each model.
     results = Results(model_dict, plot_toggles, plot_output_path, output_format,
-                      debug=0)
+                      debug=False)
     results.do_plots()
