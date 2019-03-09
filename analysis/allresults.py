@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 
 import time
 import h5py as h5
@@ -21,7 +21,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import observations as obs
 
-np.warnings.filterwarnings('ignore')
+np.warnings.filterwarnings("ignore")
 
 # Refer to the project for a list of TODO's, issues and other notes.
 # https://github.com/sage-home/sage-model/projects/7
@@ -35,11 +35,11 @@ np.warnings.filterwarnings('ignore')
 sSFRcut = -11.0     # Divide quiescent from star forming galaxies (when plotmags=0)
 
 matplotlib.rcdefaults()
-plt.rc('xtick', labelsize='x-large')
-plt.rc('ytick', labelsize='x-large')
-plt.rc('lines', linewidth='2.0')
-plt.rc('legend', numpoints=1, fontsize='x-large')
-plt.rc('text', usetex=True)
+plt.rc("xtick", labelsize="x-large")
+plt.rc("ytick", labelsize="x-large")
+plt.rc("lines", linewidth="2.0")
+plt.rc("legend", numpoints=1, fontsize="x-large")
+plt.rc("text", usetex=True)
 
 
 class Model:
@@ -75,7 +75,7 @@ class Model:
         0: Salpeter,
         1: Chabrier.
 
-    tag : string
+    label : string
         Tag placed on the legend for this model.
 
     color : string
@@ -245,58 +245,58 @@ class Model:
     def get_galaxy_struct(self):
 
         galdesc_full = [
-            ('SnapNum'                      , np.int32),
-            ('Type'                         , np.int32),
-            ('GalaxyIndex'                  , np.int64),
-            ('CentralGalaxyIndex'           , np.int64),
-            ('SAGEHaloIndex'                , np.int32),
-            ('SAGETreeIndex'                , np.int32),
-            ('SimulationHaloIndex'          , np.int64),
-            ('mergeType'                    , np.int32),
-            ('mergeIntoID'                  , np.int32),
-            ('mergeIntoSnapNum'             , np.int32),
-            ('dT'                           , np.float32),
-            ('Pos'                          , (np.float32, 3)),
-            ('Vel'                          , (np.float32, 3)),
-            ('Spin'                         , (np.float32, 3)),
-            ('Len'                          , np.int32),
-            ('Mvir'                         , np.float32),
-            ('CentralMvir'                  , np.float32),
-            ('Rvir'                         , np.float32),
-            ('Vvir'                         , np.float32),
-            ('Vmax'                         , np.float32),
-            ('VelDisp'                      , np.float32),
-            ('ColdGas'                      , np.float32),
-            ('StellarMass'                  , np.float32),
-            ('BulgeMass'                    , np.float32),
-            ('HotGas'                       , np.float32),
-            ('EjectedMass'                  , np.float32),
-            ('BlackHoleMass'                , np.float32),
-            ('IntraClusterStars'            , np.float32),
-            ('MetalsColdGas'                , np.float32),
-            ('MetalsStellarMass'            , np.float32),
-            ('MetalsBulgeMass'              , np.float32),
-            ('MetalsHotGas'                 , np.float32),
-            ('MetalsEjectedMass'            , np.float32),
-            ('MetalsIntraClusterStars'      , np.float32),
-            ('SfrDisk'                      , np.float32),
-            ('SfrBulge'                     , np.float32),
-            ('SfrDiskZ'                     , np.float32),
-            ('SfrBulgeZ'                    , np.float32),
-            ('DiskRadius'                   , np.float32),
-            ('Cooling'                      , np.float32),
-            ('Heating'                      , np.float32),
-            ('QuasarModeBHaccretionMass'    , np.float32),
-            ('TimeOfLastMajorMerger'        , np.float32),
-            ('TimeOfLastMinorMerger'        , np.float32),
-            ('OutflowRate'                  , np.float32),
-            ('infallMvir'                   , np.float32),
-            ('infallVvir'                   , np.float32),
-            ('infallVmax'                   , np.float32)
+            ("SnapNum"                      , np.int32),
+            ("Type"                         , np.int32),
+            ("GalaxyIndex"                  , np.int64),
+            ("CentralGalaxyIndex"           , np.int64),
+            ("SAGEHaloIndex"                , np.int32),
+            ("SAGETreeIndex"                , np.int32),
+            ("SimulationHaloIndex"          , np.int64),
+            ("mergeType"                    , np.int32),
+            ("mergeIntoID"                  , np.int32),
+            ("mergeIntoSnapNum"             , np.int32),
+            ("dT"                           , np.float32),
+            ("Pos"                          , (np.float32, 3)),
+            ("Vel"                          , (np.float32, 3)),
+            ("Spin"                         , (np.float32, 3)),
+            ("Len"                          , np.int32),
+            ("Mvir"                         , np.float32),
+            ("CentralMvir"                  , np.float32),
+            ("Rvir"                         , np.float32),
+            ("Vvir"                         , np.float32),
+            ("Vmax"                         , np.float32),
+            ("VelDisp"                      , np.float32),
+            ("ColdGas"                      , np.float32),
+            ("StellarMass"                  , np.float32),
+            ("BulgeMass"                    , np.float32),
+            ("HotGas"                       , np.float32),
+            ("EjectedMass"                  , np.float32),
+            ("BlackHoleMass"                , np.float32),
+            ("IntraClusterStars"            , np.float32),
+            ("MetalsColdGas"                , np.float32),
+            ("MetalsStellarMass"            , np.float32),
+            ("MetalsBulgeMass"              , np.float32),
+            ("MetalsHotGas"                 , np.float32),
+            ("MetalsEjectedMass"            , np.float32),
+            ("MetalsIntraClusterStars"      , np.float32),
+            ("SfrDisk"                      , np.float32),
+            ("SfrBulge"                     , np.float32),
+            ("SfrDiskZ"                     , np.float32),
+            ("SfrBulgeZ"                    , np.float32),
+            ("DiskRadius"                   , np.float32),
+            ("Cooling"                      , np.float32),
+            ("Heating"                      , np.float32),
+            ("QuasarModeBHaccretionMass"    , np.float32),
+            ("TimeOfLastMajorMerger"        , np.float32),
+            ("TimeOfLastMinorMerger"        , np.float32),
+            ("OutflowRate"                  , np.float32),
+            ("infallMvir"                   , np.float32),
+            ("infallVvir"                   , np.float32),
+            ("infallVmax"                   , np.float32)
             ]
         names = [galdesc_full[i][0] for i in range(len(galdesc_full))]
         formats = [galdesc_full[i][1] for i in range(len(galdesc_full))]
-        galdesc = np.dtype({'names':names, 'formats':formats}, align=True)
+        galdesc = np.dtype({"names":names, "formats":formats}, align=True)
 
         self.galaxy_struct = galdesc
 
@@ -403,7 +403,7 @@ class Model:
         if plot_galaxies:
 
             fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
+            ax = fig.add_subplot(111, projection="3d")
 
             w = sample(list(np.arange(len(gals))), 10000)
 
@@ -449,7 +449,7 @@ class Model:
         None.
         """
 
-        print("Processing galaxies and calculating properties for Model {0}".format(self.tag))
+        print("Processing galaxies and calculating properties for Model {0}".format(self.label))
         start_time = time.time()
 
         # First determine how many galaxies are in each file.
@@ -940,7 +940,7 @@ class Results:
 
         # First adjust the text sizes.
         for t in legend.get_texts():
-            t.set_fontsize('medium')
+            t.set_fontsize("medium")
 
         # For scatter plots, we want to increase the marker size.
         if scatter_plot:
@@ -1048,7 +1048,7 @@ class Results:
         # Go through each of the models and plot. 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
 
             # If we only have one model, we will split it into red and blue
             # sub-populations.
@@ -1064,25 +1064,26 @@ class Results:
 
             # The SMF is normalized by the simulation volume which is in Mpc/h. 
             ax.plot(bin_middles[:-1], model.SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
-                    color=color, ls=ls, label=tag + " - All")
+                    color=color, ls=ls, label=label + " - All")
 
             # If we only have one model, plot the sub-populations.
             if self.num_models == 1:
                 ax.plot(bin_middles[:-1], model.red_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
-                        'r:', lw=2, label=tag + " - Red")
+                        "r:", lw=2, label=label + " - Red")
                 ax.plot(bin_middles[:-1], model.blue_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
-                        'b:', lw=2, label=tag + " - Blue")
+                        "b:", lw=2, label=label + " - Blue")
 
-        ax.set_yscale('log', nonposy='clip')
+        ax.set_yscale("log", nonposy="clip")
+
         ax.set_xlim([8.0, 12.5])
         ax.set_ylim([1.0e-6, 1.0e-1])
 
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
 
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
+        ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
 
-        ax.text(12.2, 0.03, model.simulation, size = 'large')
+        ax.text(12.2, 0.03, model.simulation, size = "large")
 
         self.adjust_legend(ax, location="lower left", scatter_plot=0)
 
@@ -1109,7 +1110,7 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             ls = model.linestyle
 
@@ -1118,16 +1119,17 @@ class Results:
 
             # The MF is normalized by the simulation volume which is in Mpc/h. 
             ax.plot(bin_middles[:-1], model.BMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
-                    color=color, ls=ls, label=tag + " - All")
+                    color=color, ls=ls, label=label + " - All")
 
-        ax.set_yscale('log', nonposy='clip')
+        ax.set_yscale("log", nonposy="clip")
+
         ax.set_xlim([8.0, 12.5])
         ax.set_ylim([1.0e-6, 1.0e-1])
 
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
 
-        ax.set_xlabel(r'$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
+        ax.set_xlabel(r"$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
 
         self.adjust_legend(ax, location="lower left", scatter_plot=0)
 
@@ -1152,7 +1154,7 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             ls = model.linestyle
 
@@ -1161,17 +1163,17 @@ class Results:
 
             # The MMF is normalized by the simulation volume which is in Mpc/h. 
             ax.plot(bin_middles[:-1], model.GMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
-                    color=color, ls=ls, label=tag + " - Cold Gas")
+                    color=color, ls=ls, label=label + " - Cold Gas")
 
-        ax.set_yscale('log', nonposy='clip')
+        ax.set_yscale("log", nonposy="clip")
+
         ax.set_xlim([8.0, 11.5])
         ax.set_ylim([1.0e-6, 1.0e-1])
 
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
 
-        ax.set_ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{X}}\ (M_{\odot})$')
-
+        ax.set_xlabel(r"$\log_{10} M_{\mathrm{X}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
 
         self.adjust_legend(ax, location="lower left", scatter_plot=0)
 
@@ -1191,15 +1193,16 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             marker = model.marker
 
             ax.scatter(model.BTF_vel, model.BTF_mass, marker=marker, s=1,
-                       color=color, alpha=0.5, label=tag + " Sb/c galaxies")
+                       color=color, alpha=0.5, label=label + " Sb/c galaxies")
 
-        ax.set_ylabel(r'$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$')
-        ax.set_xlabel(r'$\log_{10}V_{max}\ (km/s)$')
+        ax.set_xlabel(r"$\log_{10}V_{max}\ (km/s)$")
+        ax.set_ylabel(r"$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$")
+
 
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
         ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
@@ -1223,16 +1226,16 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             marker = model.marker
 
             ax.scatter(model.sSFR_mass, model.sSFR_sSFR, marker=marker, s=1, color=color,
-                       alpha=0.5, label=tag + "galaxies")
+                       alpha=0.5, label=label + "galaxies")
 
         # overplot dividing line between SF and passive
         w = np.arange(7.0, 13.0, 1.0)
-        ax.plot(w, w/w*sSFRcut, 'b:', lw=2.0)
+        ax.plot(w, w/w*sSFRcut, "b:", lw=2.0)
 
         ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
         ax.set_ylabel(r"$\log_{10}\ s\mathrm{SFR}\ (\mathrm{yr^{-1}})$")
@@ -1260,15 +1263,15 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             marker = model.marker
 
             ax.scatter(model.gas_frac_mass, model.gas_frac, marker=marker, s=1, color=color,
-                       alpha=0.5, label=tag + " Sb/c galaxies")
+                       alpha=0.5, label=label + " Sb/c galaxies")
 
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$\mathrm{Cold\ Mass\ /\ (Cold+Stellar\ Mass)}$')
+        ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$\mathrm{Cold\ Mass\ /\ (Cold+Stellar\ Mass)}$")
 
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
         ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
@@ -1296,15 +1299,15 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             marker = model.marker
 
             ax.scatter(model.metallicity_mass, model.metallicity, marker=marker, s=1, color=color,
-                       alpha=0.5, label=tag + " galaxies")
+                       alpha=0.5, label=label + " galaxies")
 
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$12\ +\ \log_{10}[\mathrm{O/H}]$')
+        ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$12\ +\ \log_{10}[\mathrm{O/H}]$")
 
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
         ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
@@ -1330,15 +1333,15 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             marker = model.marker
 
             ax.scatter(model.bulge_mass, model.bh_mass, marker=marker, s=1, color=color,
-                       alpha=0.5, label=tag + " galaxies")
+                       alpha=0.5, label=label + " galaxies")
 
-        ax.set_xlabel(r'$\log\ M_{\mathrm{bulge}}\ (M_{\odot})$')  # and the x-axis labels
-        ax.set_ylabel(r'$\log\ M_{\mathrm{BH}}\ (M_{\odot})$')  # Set the y...
+        ax.set_xlabel(r"$\log\ M_{\mathrm{bulge}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$\log\ M_{\mathrm{BH}}\ (M_{\odot})$")
 
         # Set the x and y axis minor ticks
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
@@ -1363,7 +1366,7 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             linestyle = model.linestyle
 
@@ -1372,16 +1375,16 @@ class Results:
 
             # We will keep the colour scheme consistent, but change the line styles.
             ax.plot(bin_middles[:-1], model.quiescent_mass_quiescent_counts / model.quiescent_mass_counts,
-                    label=tag + " All", color=color, linestyle='-') 
+                    label=label + " All", color=color, linestyle="-") 
 
             ax.plot(bin_middles[:-1], model.quiescent_mass_centrals_quiescent_counts / model.quiescent_mass_centrals_counts,
-                    label=tag + " Centrals", color=color, linestyle='--') 
+                    label=label + " Centrals", color=color, linestyle="--") 
 
             ax.plot(bin_middles[:-1], model.quiescent_mass_satellites_quiescent_counts / model.quiescent_mass_satellites_counts,
-                    label=tag + " Satellites", color=color, linestyle='-.') 
+                    label=label + " Satellites", color=color, linestyle="-.") 
 
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$\mathrm{Quescient\ Fraction}$')
+        ax.set_xlabel(r"$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$\mathrm{Quescient\ Fraction}$")
             
         # Set the x and y axis minor ticks
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
@@ -1406,7 +1409,7 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             linestyle = model.linestyle
 
@@ -1422,13 +1425,13 @@ class Results:
             disk_var = model.fraction_disk_var
 
             # We will keep the colour scheme consistent, but change the line styles.
-            ax.plot(bin_middles[:-1], bulge_mean, label=tag + " bulge",
+            ax.plot(bin_middles[:-1], bulge_mean, label=label + " bulge",
                     color=color, linestyle="-")
 
             ax.fill_between(bin_middles[:-1], bulge_mean+bulge_var, bulge_mean-bulge_var,
                             facecolor=color, alpha=0.25)
 
-            ax.plot(bin_middles[:-1], disk_mean, label=tag + " disk",
+            ax.plot(bin_middles[:-1], disk_mean, label=label + " disk",
                     color=color, linestyle="--")
             ax.fill_between(bin_middles[:-1], disk_mean+disk_var, disk_mean-disk_var,
                             facecolor=color, alpha=0.25)
@@ -1436,8 +1439,8 @@ class Results:
         ax.set_xlim([8.0, 12.0])
         ax.set_ylim([0.0, 1.05])
 
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$\mathrm{Stellar\ Mass\ Fraction}$')
+        ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
+        ax.set_ylabel(r"$\mathrm{Stellar\ Mass\ Fraction}$")
 
         self.adjust_legend(ax, location="upper left", scatter_plot=0)
 
@@ -1455,7 +1458,7 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             linestyle = model.linestyle
 
@@ -1471,20 +1474,20 @@ class Results:
             ICS_mean = model.halo_ICS_fraction_sum / model.fof_HMF
 
             # We will keep the linestyle constant but change the color. 
-            ax.plot(bin_middles[:-1], baryon_mean, label=tag + " Total",
+            ax.plot(bin_middles[:-1], baryon_mean, label=label + " Total",
                     color=color, linestyle=linestyle)
 
             if self.num_models == 1 or plot_sub_populations:
-                ax.plot(bin_middles[:-1], stars_mean, label=tag + " Stars",
-                        color='k', linestyle=linestyle)
-                ax.plot(bin_middles[:-1], cold_mean, label=tag + " Cold",
-                        color='b', linestyle=linestyle)
-                ax.plot(bin_middles[:-1], hot_mean, label=tag + " Hot",
-                        color='r', linestyle=linestyle)
-                ax.plot(bin_middles[:-1], ejected_mean, label=tag + " Ejected",
-                        color='g', linestyle=linestyle)
-                ax.plot(bin_middles[:-1], ICS_mean, label=tag + " ICS",
-                        color='y', linestyle=linestyle)
+                ax.plot(bin_middles[:-1], stars_mean, label=label + " Stars",
+                        color="k", linestyle=linestyle)
+                ax.plot(bin_middles[:-1], cold_mean, label=label + " Cold",
+                        color="b", linestyle=linestyle)
+                ax.plot(bin_middles[:-1], hot_mean, label=label + " Hot",
+                        color="r", linestyle=linestyle)
+                ax.plot(bin_middles[:-1], ejected_mean, label=label + " Ejected",
+                        color="g", linestyle=linestyle)
+                ax.plot(bin_middles[:-1], ICS_mean, label=label + " ICS",
+                        color="y", linestyle=linestyle)
 
         ax.set_xlabel(r"$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$")
         ax.set_ylabel(r"$\mathrm{Baryon\ Fraction}$")
@@ -1513,7 +1516,7 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             linestyle = model.linestyle
 
@@ -1522,7 +1525,7 @@ class Results:
 
             # Normalize by number of galaxies; allows better comparison between models.
             norm_counts = model.spin_counts / model.num_gals / model.spin_bin_width
-            ax.plot(bin_middles[:-1], norm_counts, label=tag, color=color, linestyle=linestyle)
+            ax.plot(bin_middles[:-1], norm_counts, label=label, color=color, linestyle=linestyle)
 
             if np.max(norm_counts):
                 max_counts = np.max(norm_counts)
@@ -1550,8 +1553,8 @@ class Results:
         # First do some junk plotting to get legend correct. We keep the linestyles but
         # use different colours.
         for model in self.models:
-            ax.plot(np.nan, np.nan, color='m', linestyle=model.linestyle,
-                    label=model.tag)
+            ax.plot(np.nan, np.nan, color="m", linestyle=model.linestyle,
+                    label=model.label)
 
         for (num_model, model) in enumerate(self.models):
 
@@ -1602,7 +1605,7 @@ class Results:
             fig = plt.figure()
             ax = fig.add_subplot(111)
 
-            tag = model.tag
+            label = model.label
             marker = model.marker
 
             components = ["StellarMass", "ColdGas", "HotGas", "EjectedMass",
@@ -1627,7 +1630,7 @@ class Results:
 
             self.adjust_legend(ax, location="upper left", scatter_plot=1)
 
-            outputFile = "{0}/14.MassReservoirs_{1}{2}".format(self.plot_output_path, tag,
+            outputFile = "{0}/14.MassReservoirs_{1}{2}".format(self.plot_output_path, label,
                                                                self.output_format)
             fig.savefig(outputFile)
             print("Saved file to {0}".format(outputFile))
@@ -1647,7 +1650,7 @@ class Results:
 
         for model in self.models:
 
-            tag = model.tag
+            label = model.label
             color = model.color
             linestyle = model.linestyle
             marker = model.marker
@@ -1662,7 +1665,7 @@ class Results:
             # The bottom right panel will only contain the legend.
             # For some odd reason, plotting `np.nan` causes some legend entries to not
             # appear. Plot junk and we'll adjust the axis to not show it.
-            ax4.scatter(-999, -999, marker=marker, color=color, label=tag)
+            ax4.scatter(-999, -999, marker=marker, color=color, label=label)
             ax4.axis("off")
 
             if model.box_size > max_box:
@@ -1693,7 +1696,7 @@ class Results:
 
 # =================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     import os
 
@@ -1703,7 +1706,7 @@ if __name__ == '__main__':
     model0_last_file = 63 
     model0_simulation = 3
     model0_IMF = 1
-    model0_tag = r"$\mathbf{Genesis}$"
+    model0_label = r"$\mathbf{Genesis}$"
     model0_color = "r"
     model0_linestyle = "-"
     model0_marker = "x"
@@ -1714,7 +1717,7 @@ if __name__ == '__main__':
     model1_last_file = 0
     model1_simulation = 0
     model1_IMF = 1
-    model1_tag = r"$\mathbf{Mini-Millennium}$"
+    model1_label = r"$\mathbf{Mini-Millennium}$"
     model1_color = "b"
     model1_linestyle = "--"
     model1_marker = "o"
@@ -1725,7 +1728,7 @@ if __name__ == '__main__':
     last_files = [model0_last_file, model1_last_file]
     simulations = [model0_simulation, model1_simulation]
     IMFs = [model0_IMF, model1_IMF]
-    tags = [model0_tag, model1_tag]
+    labels = [model0_label, model1_label]
     colors = [model0_color, model1_color]
     linestyles = [model0_linestyle, model1_linestyle]
     markers = [model0_marker, model1_marker]
@@ -1754,26 +1757,26 @@ if __name__ == '__main__':
                    "last_file"   : last_files,
                    "simulation"  : simulations,
                    "IMF"         : IMFs,
-                   "tag"         : tags,
+                   "label"         : labels,
                    "color"       : colors,
                    "linestyle"  : linestyles,
                    "marker"      : markers}
 
     plot_toggles = {"SMF"      : 1,
-                    "BMF"      : 0,
-                    "GMF"      : 0,
-                    "BTF"      : 0,
-                    "sSFR"     : 0,
-                    "gas_frac" : 0,
-                    "metallicity" : 0,
-                    "bh_bulge" : 0,
-                    "quiescent" : 0,
-                    "bulge_fraction" : 0,
-                    "baryon_fraction" : 0,
-                    "spin" : 0,
-                    "velocity" : 0,
-                    "reservoirs" : 0,
-                    "spatial" : 0}
+                    "BMF"      : 1,
+                    "GMF"      : 1,
+                    "BTF"      : 1,
+                    "sSFR"     : 1,
+                    "gas_frac" : 1,
+                    "metallicity" : 1,
+                    "bh_bulge" : 1,
+                    "quiescent" : 1,
+                    "bulge_fraction" : 1,
+                    "baryon_fraction" : 1,
+                    "spin" : 1,
+                    "velocity" : 1,
+                    "reservoirs" : 1,
+                    "spatial" : 1}
 
     output_format = ".png"
     plot_output_path = "./plots"
