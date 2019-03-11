@@ -47,7 +47,7 @@ if [ ! -f trees_063.7 ]; then
     echo ""
 
     rm mini-millennium-treefiles.tar
-    echo "Mini-Millennium trees successfully gathered and placed into ${PWD}"
+    echo "Mini-Millennium trees successfully gathered and placed into '${PWD}'"
 else
     echo "Mini-Millennium trees already present in 'input/millennium/trees'."
 fi
