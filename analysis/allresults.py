@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+"""
+Main driver script to handle plotting the output of the ``SAGE`` model.  Multiple models
+can be placed onto the plots by extending the variables in the ``__main__`` function call.
+
+Authors: Jacob Seiler, Manodeep Sinha, Darren Croton
+"""
+
 import time
 import numpy as np
 
@@ -665,9 +672,6 @@ class Model:
             non_zero_stellar = np.where(gals["StellarMass"] > 0.0)[0]
 
             stellar_mass = np.log10(gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
-            sSFR = (gals["SfrDisk"][non_zero_stellar] + gals["SfrBulge"][non_zero_stellar]) / \
-                   (gals["StellarMass"][non_zero_stellar] * 1.0e10 / self.hubble_h)
-
             fraction_bulge = gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar]
             fraction_disk = 1.0 - (gals["BulgeMass"][non_zero_stellar] / gals["StellarMass"][non_zero_stellar])
 
@@ -1026,21 +1030,21 @@ if __name__ == "__main__":
     plot_output_path = "./plots"
 
     # These toggles specify which plots you want to be made.
-    plot_toggles = {"SMF"             : 1,
-                    "BMF"             : 1,
-                    "GMF"             : 1,
-                    "BTF"             : 1,
-                    "sSFR"            : 1,
-                    "gas_frac"        : 1,
-                    "metallicity"     : 1,
-                    "bh_bulge"        : 1,
-                    "quiescent"       : 1,
-                    "bulge_fraction"  : 1,
-                    "baryon_fraction" : 1,
-                    "spin"            : 1,
-                    "velocity"        : 1,
-                    "reservoirs"      : 1,
-                    "spatial"         : 1}
+    plot_toggles = {"SMF"             : 1,  # Stellar mass function.
+                    "BMF"             : 1,  # Baryonic mass function.
+                    "GMF"             : 1,  # Gas mass function (cold gas).
+                    "BTF"             : 1,  # Baryonic Tully-Fisher.
+                    "sSFR"            : 1,  # Specific star formation rate.
+                    "gas_frac"        : 1,  # Fraction of galaxy that is cold gas.
+                    "metallicity"     : 1,  # Metallicity scatter plot.
+                    "bh_bulge"        : 1,  # Black hole-bulge relationship.
+                    "quiescent"       : 1,  # Fraction of galaxies that are quiescent.
+                    "bulge_fraction"  : 1,  # Fraction of galaxies that are bulge/disc dominated.
+                    "baryon_fraction" : 1,  # Fraction of baryons in galaxy/reservoir.
+                    "spin"            : 1,  # Distribution of galaxy spins.
+                    "velocity"        : 1,  # Distribution of velocities.
+                    "reservoirs"      : 1,  # Mass in each reservoir.
+                    "spatial"         : 1}  # Spatial distribution of galaxies.
 
     ############################
     ## DON'T TOUCH BELOW HERE ##
@@ -1055,6 +1059,7 @@ if __name__ == "__main__":
         model_path = "{0}/{1}".format(dir_name, file_name) 
         model_paths.append(model_path)
 
+        # These are model specific. Used for rare circumstances and debugging.
         output_path = dir_name + "plots/"
 
         if not os.path.exists(output_path):

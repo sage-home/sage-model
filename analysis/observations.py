@@ -1,6 +1,12 @@
+#!/usr/bin/env python
+"""
+Module to handle plotting of observational data.
+
+Authors: Jacob Seiler, Manodeep Sinha, Darren Croton
+"""
+
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
 
 
 def plot_smf_data(ax, hubble_h, imf):
