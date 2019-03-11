@@ -7,8 +7,8 @@ echo ""
 # Hence let's first ensure that we're actually there.
 current_dir=${PWD##*/}  # This is the current directory without the base-name.
 if [[ $current_dir != "sage-model" ]]; then
-   echo "This setup script should be run from inside the `sage-model` directory."
-   echo "Please `cd` there first and execute again."
+   echo "This setup script should be run from inside the 'sage-model' directory."
+   echo "Please 'cd' there first and execute again."
    exit 1
 fi
 
@@ -51,3 +51,11 @@ if [ ! -f trees_063.7 ]; then
 else
     echo "Mini-Millennium trees already present in 'input/millennium/trees'."
 fi
+
+echo "SAGE should be compiled with the 'make' command."
+echo "Once compiled, it can be ran by executing './sage input/millennium.par'"
+echo "Afterwards, 'cd' into the 'analysis' directory and make some gorgeous plots using 'python allresults.py'"
+echo ""
+
+echo "If you have any questions, queuries or comments, please feel free to open an Issue on GitHub!"
+echo "Have fun!"
