@@ -18,8 +18,8 @@ For testing purposes, treefiles for the `mini-Millennium Simulation <http://arxi
 Galaxy formation models built using ``SAGE`` on the Millennium, Bolshoi and simulations can be downloaded at the
 `Theoretical Astrophysical Observatory (TAO) <https://tao.asvo.org.au/>`_. You can also find SAGE on `ascl.net <http://ascl.net/1601.006>`_.
 
-Installation 
-============
+Getting Started
+===============
 
 Pre-Requisites
 --------------
@@ -30,6 +30,8 @@ Pre-Requisites
 Downloading 
 -----------
 
+``SAGE`` can be installed by cloning the GitHub repository:
+
 .. code::
 
     $ git clone https://github.com/sage-home/sage-model
@@ -38,37 +40,36 @@ Downloading
 Building
 --------
 
+To create the ``sage`` executable, simply run the following command:
+
 .. code::
     $ make
-
-This command will create a single ``sage`` executable in the ``sage-model``
-root directory.
 
 ``SAGE`` is MPI compatible which can be enabled setting ``USE-MPI = yes`` in
 the ``Makefile``.  To run in parallel, ensure that you have a parallel compiler
 downloaded and installed on your system (insert link to ``MPICC``?).  
 
-Addtionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting ``USE-HDF5 = yes`` in the ``Makefile``.
-Ensure that HDF5 is installed on your system (insert link to ``HDF5``?).
+Addtionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting
+``USE-HDF5 = yes`` in the ``Makefile``. Ensure that HDF5 is installed on your system (insert link to ``HDF5``?).
 
 Running the code
 ================
 
 If this the first time running the code, we recommend executing
 ``first_run.sh``.  This script will initialize the directories for the default
-parameter file and download the Mini-millennium dark matter halo trees.
+parameter file and download the Mini-millennium dark matter halo trees:
 
 .. code::
 
     $ ./first_run.sh
 
-After this, the model can be run using
+After this, the model can be run using:
 
 .. code::
 
     $ ./sage input/millennium.par
 
-or in parallel as,
+or in parallel as:
 
 .. code::
 
@@ -79,7 +80,7 @@ Plotting the Output
 
 In the ``analysis`` directory are a number of Python scripts to read and parse
 the ``SAGE`` output.  The most important file is ``allresults.py`` which  acts
-as the driver file.  It can be executed as,
+as the driver file.  It can be executed as:
 
 .. code::
 
