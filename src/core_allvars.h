@@ -196,6 +196,13 @@ enum Valid_TreeTypes
   num_tree_types
 };
 
+enum Valid_OutputFormats
+{
+  binary = 0,
+  hdf5 = 1,
+  num_format_types
+};
+
 /* do not use '0' as an enum since that '0' usually
    indicates 'success' on POSIX systems */
 enum sage_error_types {
@@ -352,6 +359,7 @@ struct params
     int NOUT;
     int Snaplistlen;
     enum Valid_TreeTypes TreeType;
+    enum Valid_OutputFormats OutputFormat;
 
     int ListOutputSnaps[ABSOLUTEMAXSNAPS];
     double ZZ[ABSOLUTEMAXSNAPS];
