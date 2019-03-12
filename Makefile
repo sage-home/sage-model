@@ -1,5 +1,5 @@
 #USE-MPI = yes  # set this if you want to run in embarrassingly parallel
-#USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
+USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 LIBS :=
@@ -54,7 +54,7 @@ endif
 # Files required for HDF5 -> needs to be defined outside of the
 # if condition (for DO_CHECKS); otherwise `make clean` will not
 # clean the H5_OBJS
-H5_SRC := io/read_tree_hdf5.c #io/read_tree_genesis_standard_hdf5.c
+H5_SRC := io/read_tree_hdf5.c io/save_gals_hdf5.c
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
 

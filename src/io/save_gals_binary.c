@@ -12,7 +12,7 @@
 
 /* Externally visible Functions */
 
-void initialize_binary_galaxy_files(const int rank, const int ntrees, struct save_info *save_info, const struct params *run_params)
+void initialize_binary_galaxy_files(const int filenr, const int ntrees, struct save_info *save_info, const struct params *run_params)
 {
 
     // We open up files for each output. We'll store the file IDs of each of these file. 
@@ -22,7 +22,7 @@ void initialize_binary_galaxy_files(const int rank, const int ntrees, struct sav
     /* Open all the output files */
     for(int n = 0; n < run_params->NOUT; n++) {
         snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies,
-                 run_params->ZZ[run_params->ListOutputSnaps[n]], rank);
+                 run_params->ZZ[run_params->ListOutputSnaps[n]], filenr);
 
         /* the last argument sets permissions as "rw-r--r--" (read/write owner, read group, read other)*/
         save_info->save_fd[n] = open(buffer,  O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);

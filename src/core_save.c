@@ -15,6 +15,10 @@
 
 #include "io/save_gals_binary.h"
 
+#ifdef HDF5
+#include "io/save_gals_hdf5.h"
+#endif
+
 #define TREE_MUL_FAC        (1000000000LL)
 #define THISTASK_MUL_FAC      (1000000000000000LL)
 
@@ -34,8 +38,8 @@ void initialize_galaxy_files(const int rank, const int ntrees, struct save_info 
       break;
 
     case(hdf5):
-      printf("HDF5 writing not yet implemented.\n");
-      ABORT(INVALID_OPTION_IN_PARAMS);
+      initialize_hdf5_galaxy_files(rank, ntrees, save_info, run_params);
+      break;
 
     default:
       fprintf(stderr, "Error: Unknown OutputFormat.\n");
