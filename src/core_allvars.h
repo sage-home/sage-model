@@ -282,7 +282,6 @@ struct genesis_info {
     void *some_yet_to_be_implemented_ptr;
 };
 
-
 struct forest_info {
     union {
         struct lhalotree_info lht;
@@ -294,6 +293,15 @@ struct forest_info {
     int64_t nforests_this_task;
 };
 
+struct save_info {
+    union {
+        int *save_fd; // Contains the open file to write to for each output.
+#ifdef HDF5
+        hid_t h5_save_fd;  // HDF5 only writes to a single file per processor.
+#endif
+    };
+
+};
 
 struct params
 {

@@ -19,7 +19,7 @@
 #include "core_tree_utils.h"
 
 /* main sage -> not exposed externally */
-static void sage_per_forest(const int ThisTask, const int forestnr, int *TotGalaxies, int **ForestNgals, int *save_fd,
+static void sage_per_forest(const int ThisTask, const int forestnr, int *TotGalaxies, int **ForestNgals, struct save_info *save_info,
                             struct forest_info *forests_info, struct params *run_params);
 
 int init_sage(const int ThisTask, const char *param_file, struct params *run_params)
@@ -39,6 +39,8 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     memset(&forests_info, 0, sizeof(struct forest_info));
     forests_info.totnforests = 0;
     forests_info.nforests_this_task = 0;
+
+    struct save_info save_info;
     /* forests_info.nsnapshots = 0; */
     /* forests_info.totnhalos_per_forest = NULL; */
 
@@ -55,7 +57,6 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     int TotGalaxies[ABSOLUTEMAXSNAPS] = { 0 };
     int *ForestNgals[ABSOLUTEMAXSNAPS] = { NULL };
-    int save_fd[ABSOLUTEMAXSNAPS] = { -1 };
 
     /* setup the forests reading, and then distribute the forests over the Ntasks */
     int status = EXIT_FAILURE;
@@ -85,7 +86,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     fprintf(stderr,"ThisTask = %d working on %"PRId64" forests\n", ThisTask, Nforests);
     
     /* open all the output files corresponding to this tree file (specified by rank) */
-    initialize_galaxy_files(ThisTask, Nforests, save_fd, run_params);
+    initialize_galaxy_files(ThisTask, Nforests, &save_info, run_params);
 
     run_params->interrupted = 0;
     if(NTasks == 1 && ThisTask == 0) {
@@ -99,11 +100,11 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         }
         
         /* the millennium tree is really a collection of trees, viz., a forest */
-        sage_per_forest(ThisTask, forestnr, TotGalaxies, ForestNgals, save_fd, &forests_info, run_params);
+        sage_per_forest(ThisTask, forestnr, TotGalaxies, ForestNgals, &save_info, &forests_info, run_params);
 
         nforests_done++;
     }
-    finalize_galaxy_file(Nforests, (const int *) TotGalaxies, (const int **) ForestNgals, save_fd, run_params);
+    finalize_galaxy_file(Nforests, (const int *) TotGalaxies, (const int **) ForestNgals, &save_info, run_params);
 
     for(int n = 0; n < run_params->NOUT; n++) {
         myfree(ForestNgals[n]);
@@ -142,7 +143,7 @@ cleanup:
 }
 
 
-static void sage_per_forest(const int ThisTask, const int forestnr, int *TotGalaxies, int **ForestNgals, int *save_fd,
+static void sage_per_forest(const int ThisTask, const int forestnr, int *TotGalaxies, int **ForestNgals, struct save_info *save_info,
                             struct forest_info *forests_info, struct params *run_params)
 {
     
@@ -231,7 +232,7 @@ static void sage_per_forest(const int ThisTask, const int forestnr, int *TotGala
 
 #endif /* PROCESS_LHVT_STYLE */    
 
-    save_galaxies(ThisTask, forestnr, numgals, Halo, HaloAux, HaloGal, (int **) ForestNgals, (int *) TotGalaxies, save_fd, run_params);
+    save_galaxies(ThisTask, forestnr, numgals, Halo, HaloAux, HaloGal, (int **) ForestNgals, (int *) TotGalaxies, save_info, run_params);
 
     /* free galaxies and the forest */
     myfree(Gal);

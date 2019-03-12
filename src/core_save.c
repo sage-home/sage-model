@@ -18,7 +18,7 @@
 #define TREE_MUL_FAC        (1000000000LL)
 #define THISTASK_MUL_FAC      (1000000000000000LL)
 
-void initialize_galaxy_files(const int rank, const int ntrees, int *save_fd, const struct params *run_params)
+void initialize_galaxy_files(const int rank, const int ntrees, struct save_info *save_info, const struct params *run_params)
 {
     if(run_params->NOUT > ABSOLUTEMAXSNAPS) {
         fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
@@ -30,10 +30,11 @@ void initialize_galaxy_files(const int rank, const int ntrees, int *save_fd, con
     switch(run_params->OutputFormat) {
 
     case(binary):
-      initialize_binary_galaxy_files(rank, ntrees, save_fd, run_params);
+      initialize_binary_galaxy_files(rank, ntrees, save_info, run_params);
+      break;
 
     case(hdf5):
-      printf("RJEOJR\n");
+      printf("HDF5 writing not yet implemented.\n");
       ABORT(INVALID_OPTION_IN_PARAMS);
 
     default:
@@ -45,7 +46,7 @@ void initialize_galaxy_files(const int rank, const int ntrees, int *save_fd, con
 
 void save_galaxies(const int ThisTask, const int tree, const int numgals, struct halo_data *halos,
                    struct halo_aux_data *haloaux, struct GALAXY *halogal, int **treengals, int *totgalaxies,
-                   const int *save_fd, const struct params *run_params)
+                   struct save_info *save_info, const struct params *run_params)
 {
     int OutputGalCount[run_params->MAXSNAPS];
     // reset the output galaxy count and total number of output galaxies
@@ -118,17 +119,32 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
         // Shift the offset pointer depending upon how many galaxies have been written out.
         struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n];
 
-        // Then write out the chunk of galaxies for this redshift output.
-        ssize_t nwritten = mywrite(save_fd[n], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n]);
-        if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n])) { 
-            fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
-                            "Meant to write out %d elements with a total of %"PRId64" bytes (%zu bytes for each element). "
-                            "However, I wrote out a total of %"PRId64" bytes.\n",
-                            n, OutputGalCount[n], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n], sizeof(struct GALAXY_OUTPUT),
-                            nwritten);
-            perror(NULL);
-            ABORT(FILE_WRITE_ERROR);            
+
+        switch(run_params->OutputFormat) {
+
+        case(binary):;
+          // Then write out the chunk of galaxies for this redshift output.
+          ssize_t nwritten = mywrite(save_info->save_fd[n], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n]);
+          if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n])) { 
+              fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
+                              "Meant to write out %d elements with a total of %"PRId64" bytes (%zu bytes for each element). "
+                              "However, I wrote out a total of %"PRId64" bytes.\n",
+                              n, OutputGalCount[n], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n], sizeof(struct GALAXY_OUTPUT),
+                              nwritten);
+              perror(NULL);
+              ABORT(FILE_WRITE_ERROR);            
+          }
+          break;
+
+        case(hdf5):
+          printf("HDF5 writing not yet implemented.\n");
+          ABORT(INVALID_OPTION_IN_PARAMS);
+
+        default:
+          fprintf(stderr, "Error: Unknown OutputFormat.\n");
+          ABORT(INVALID_OPTION_IN_PARAMS);
         }
+
 
     }
 
@@ -269,7 +285,7 @@ void prepare_galaxy_for_output(int ThisTask, int tree, struct GALAXY *g, struct 
 }
 
 
-int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **treengals, int *save_fd, const struct params *run_params) 
+int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **treengals, struct save_info *save_info, const struct params *run_params) 
 {
     if(run_params->NOUT > ABSOLUTEMAXSNAPS) {
         fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
@@ -280,11 +296,11 @@ int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **t
 
     for(int n = 0; n < run_params->NOUT; n++) {
         // file must already be open.
-        XASSERT( save_fd[n] > 0, EXIT_FAILURE, "Error: for output # %d, output file pointer is NULL\n", n);
+        XASSERT( save_info->save_fd[n] > 0, EXIT_FAILURE, "Error: for output # %d, output file pointer is NULL\n", n);
 
-        mypwrite(save_fd[n], &ntrees, sizeof(ntrees), 0);
-        mypwrite(save_fd[n], &totgalaxies[n], sizeof(int), sizeof(int));
-        mypwrite(save_fd[n], treengals[n], sizeof(int)*ntrees, sizeof(int) + sizeof(int));
+        mypwrite(save_info->save_fd[n], &ntrees, sizeof(ntrees), 0);
+        mypwrite(save_info->save_fd[n], &totgalaxies[n], sizeof(int), sizeof(int));
+        mypwrite(save_info->save_fd[n], treengals[n], sizeof(int)*ntrees, sizeof(int) + sizeof(int));
         /* int nwritten = myfwrite(&ntrees, sizeof(int), 1, save_fd[n]); */
         /* if (nwritten != 1) { */
         /*     fprintf(stderr, "Error: Failed to write out 1 element for the number of trees for the header of file %d.\n" */
@@ -305,8 +321,8 @@ int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **t
 
 
         // close the file and clear handle after everything has been written
-        close( save_fd[n] );
-        save_fd[n] = -1;
+        close( save_info->save_fd[n] );
+        save_info->save_fd[n] = -1;
     }
 
     return EXIT_SUCCESS;
