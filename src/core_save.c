@@ -93,7 +93,7 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
         cumul_output_ngal[n] = num_output_gals;
         num_output_gals += OutputGalCount[n];
     }
-    
+
     for(int i = 0; i < numgals; i++) {
         if(halogal[i].mergeIntoID > -1) {
             halogal[i].mergeIntoID = OutputGalOrder[halogal[i].mergeIntoID];
@@ -106,31 +106,41 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
         ABORT(MALLOC_FAILURE);
     }
 
+    // Prepare all the galaxies for output.
     for(int i = 0; i < numgals; i++) {
         if(haloaux[i].output_snap_n < 0) continue;
         int n = haloaux[i].output_snap_n;
+
+        // Here we move the offset pointer depending upon the number of galaxies processed up to this point. 
         struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n] + num_gals_processed[n];
         prepare_galaxy_for_output(ThisTask, tree, &halogal[i], galaxy_output, halos, haloaux, halogal, run_params);
+
         num_gals_processed[n]++;
         totgalaxies[n]++;
         treengals[n][tree]++;	      
     }    
 
-    /* now write galaxies */
+    // Now perform one write action for each redshift output.
     for(int n=0;n<run_params->NOUT;n++) {
+
+        // Shift the offset pointer depending upon how many galaxies have been written out.
         struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n];
-        mywrite(save_fd[n], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n]);
-        /* int nwritten = myfwrite(galaxy_output, sizeof(struct GALAXY_OUTPUT), OutputGalCount[n], save_fd[n]); */
-        /* if (nwritten != OutputGalCount[n]) { */
-        /*     fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. " */
-        /*             " Meant to write %d elements but only wrote %d elements.\n", n, OutputGalCount[n], nwritten); */
-        /*     perror(NULL); */
-        /*     ABORT(FILE_WRITE_ERROR); */
-        /* } */
+
+        // Then write out the chunk of galaxies for this redshift output.
+        ssize_t nwritten = mywrite(save_fd[n], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n]);
+        if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n])) { 
+            fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
+                            "Meant to write out %d elements with a total of %"PRId64" bytes (%zu bytes for each element). "
+                            "However, I wrote out a total of %"PRId64" bytes.\n",
+                            n, OutputGalCount[n], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n], sizeof(struct GALAXY_OUTPUT),
+                            nwritten);
+            perror(NULL);
+            ABORT(FILE_WRITE_ERROR);            
+        }
     }
 
     // don't forget to free the workspace.
-    free( OutputGalOrder );
+    free(OutputGalOrder);
     free(all_outputgals);
 }
 
