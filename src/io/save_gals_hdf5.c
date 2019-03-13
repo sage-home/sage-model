@@ -15,21 +15,36 @@
 
 // Externally Visible Functions //
 
-#define CREATE_HDF5_SINGLE_ATTRIBUTE(group_id, attribute_value, attribute_name, h5_dtype) \
+#define MAX_ATTRIBUTE_LEN 10000
+
+#define CREATE_SINGLE_ATTRIBUTE(group_id, attribute_name, attribute_value,  h5_dtype) \
     {                                                                    \
-        dataspace_id = H5Screate(H5S_SCALAR);                            \
-        attribute_id = H5Acreate(group_id, attribute_name, h5_dtype, dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
-        H5Awrite(attribute_id, h5_dtype, attribute_value);               \
-        H5Aclose(attribute_id);                                          \
-        H5Sclose(dataspace_id);                                          \
+        macro_dataspace_id = H5Screate(H5S_SCALAR);                      \
+        macro_attribute_id = H5Acreate(group_id, attribute_name, h5_dtype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
+        H5Awrite(macro_attribute_id, h5_dtype, attribute_value);               \
+        H5Aclose(macro_attribute_id);                                    \
+        H5Sclose(macro_dataspace_id);                                    \
+    }
+
+#define CREATE_STRING_ATTRIBUTE(group_id, attribute_name, attribute_value) \
+    {                                                                    \
+        macro_dataspace_id = H5Screate(H5S_SCALAR);                      \
+        atype = H5Tcopy(H5T_C_S1);\
+        H5Tset_size(atype, MAX_ATTRIBUTE_LEN-1);\
+        H5Tset_strpad(atype, H5T_STR_NULLTERM);\
+        macro_attribute_id = H5Acreate(group_id, attribute_name, atype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
+        H5Awrite(macro_attribute_id, atype, attribute_value);               \
+        H5Aclose(macro_attribute_id);                                    \
+        H5Sclose(macro_dataspace_id);                                    \
     }
 
 int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct save_info *save_info,
                                      const struct params *run_params)
 {
 
+    hid_t atype;
     hid_t prop, dataset_id, filespace, memspace;
-    hid_t file_id, group_id, dataspace_id, attribute_id;
+    hid_t file_id, group_id, macro_dataspace_id, macro_attribute_id, dataspace_id;
     char buffer[4*MAX_STRING_LEN + 1];
 
     snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
@@ -45,7 +60,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
 
     group_id = H5Gcreate(file_id, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    CREATE_HDF5_SINGLE_ATTRIBUTE(group_id, &ntrees, "Ntrees", H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", &ntrees, H5T_NATIVE_INT);
 
     float *tmp_data;
     tmp_data = malloc(sizeof(float));
@@ -67,7 +82,12 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
     dataspace_id = H5Screate_simple(1, dims, maxdims);
     status = H5Pset_chunk(prop, 1, chunk_dims);
 
-    dataset_id = H5Dcreate2(file_id, "MyArray", H5T_NATIVE_FLOAT, dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT); 
+    dataset_id = H5Dcreate2(file_id, "MyArray", H5T_NATIVE_FLOAT, dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT);
+
+    char buf[10000];
+    snprintf(buf, 9999, "Mass of stars");
+
+    CREATE_STRING_ATTRIBUTE(dataset_id, "Description", buf); 
     status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, tmp_data);
 
     new_dims[0] = dims[0] + dimsext[0];
