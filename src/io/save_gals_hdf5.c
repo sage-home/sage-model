@@ -28,6 +28,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
                                      const struct params *run_params)
 {
 
+    hid_t prop, dataset_id, filespace, memspace;
     hid_t file_id, group_id, dataspace_id, attribute_id;
     char buffer[4*MAX_STRING_LEN + 1];
 
@@ -46,6 +47,47 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
 
     CREATE_HDF5_SINGLE_ATTRIBUTE(group_id, &ntrees, "Ntrees", H5T_NATIVE_INT);
 
+    float *tmp_data;
+    tmp_data = malloc(sizeof(float));
+    tmp_data[0] = 134.0;
+    tmp_data[1] = -134.0;
+    tmp_data[2] = 104.0;
+    tmp_data[3] = 4.0;
+    tmp_data[4] = 13414.49;
+
+    hsize_t dims[1] = {5};
+    hsize_t dimsext[1] = {5};
+    hsize_t new_dims[1];
+    hsize_t offset[1];
+    hsize_t maxdims[1] = {H5S_UNLIMITED};
+    hsize_t chunk_dims[1] = {1};
+    herr_t status;
+
+    prop = H5Pcreate(H5P_DATASET_CREATE);
+    dataspace_id = H5Screate_simple(1, dims, maxdims);
+    status = H5Pset_chunk(prop, 1, chunk_dims);
+
+    dataset_id = H5Dcreate2(file_id, "MyArray", H5T_NATIVE_FLOAT, dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT); 
+    status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, tmp_data);
+
+    new_dims[0] = dims[0] + dimsext[0];
+    status = H5Dset_extent(dataset_id, new_dims);
+
+    filespace = H5Dget_space(dataset_id);
+    
+    offset[0] = 5;
+    status = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, dimsext, NULL);
+
+    memspace = H5Screate_simple(1, dimsext, NULL);
+
+    status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, tmp_data); 
+
+    status = H5Dclose(dataset_id);
+    status = H5Pclose(prop);
+    status = H5Sclose(dataspace_id);
+    if (status == 0)
+     printf("RERO\n"); 
+    /*
     group_id = H5Gcreate(file_id, "/Galaxies", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 
@@ -55,9 +97,6 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
     save_info->field_names = malloc(sizeof(char *)*2);
     save_info->field_types = malloc(sizeof(hid_t)*2);
 
-    float *tmp_data;
-    tmp_data = malloc(sizeof(float));
-    tmp_data[0] = 134.0;
     tmp_data[1] = -13340.34049;
 
     save_info->offsets[0] = 0; 
@@ -74,6 +113,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
     H5TBwrite_records(group_id, "Data", 0, 1, save_info->dst_size, save_info->offsets, save_info->field_sizes, tmp_data);
     //save_info->offsets[0] = sizeof(float); 
     H5TBappend_records(group_id, "Data", 1, save_info->dst_size, save_info->offsets, save_info->field_sizes, tmp_data);
+    */
 
     return EXIT_SUCCESS; 
 }
