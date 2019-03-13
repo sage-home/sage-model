@@ -22,29 +22,35 @@
 #define TREE_MUL_FAC        (1000000000LL)
 #define THISTASK_MUL_FAC      (1000000000000000LL)
 
-void initialize_galaxy_files(const int rank, const int ntrees, struct save_info *save_info, const struct params *run_params)
+int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_info *save_info, const struct params *run_params)
 {
+    int32_t status;
+
     if(run_params->NOUT > ABSOLUTEMAXSNAPS) {
         fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
                 run_params->NOUT, ABSOLUTEMAXSNAPS);
         fprintf(stderr,"To fix this error, simply increase the value of `ABSOLUTEMAXSNAPS` and recompile\n");
-        ABORT(INVALID_OPTION_IN_PARAMS);
+        return INVALID_OPTION_IN_PARAMS;
     }
 
     switch(run_params->OutputFormat) {
 
     case(binary):
-      initialize_binary_galaxy_files(rank, ntrees, save_info, run_params);
+      status = initialize_binary_galaxy_files(rank, ntrees, save_info, run_params);
       break;
 
     case(hdf5):
-      initialize_hdf5_galaxy_files(rank, ntrees, save_info, run_params);
-      break;
+      status = initialize_hdf5_galaxy_files(rank, ntrees, save_info, run_params);
+      break; 
 
     default:
       fprintf(stderr, "Error: Unknown OutputFormat.\n");
-      ABORT(INVALID_OPTION_IN_PARAMS);
+      status = INVALID_OPTION_IN_PARAMS;
+      break;
+
     }
+
+    return status; 
 }
 
 

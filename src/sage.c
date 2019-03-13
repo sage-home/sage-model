@@ -86,7 +86,10 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     fprintf(stderr,"ThisTask = %d working on %"PRId64" forests\n", ThisTask, Nforests);
     
     /* open all the output files corresponding to this tree file (specified by rank) */
-    initialize_galaxy_files(ThisTask, Nforests, &save_info, run_params);
+    status = initialize_galaxy_files(ThisTask, Nforests, &save_info, run_params);
+    if(status != EXIT_SUCCESS) {
+        ABORT(status);
+    }
 
     run_params->interrupted = 0;
     if(NTasks == 1 && ThisTask == 0) {

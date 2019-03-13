@@ -289,8 +289,8 @@ struct forest_info {
         struct ahf_info ahf;
         struct genesis_info gen;
     };
-    int64_t totnforests;
-    int64_t nforests_this_task;
+    int64_t totnforests;  // Total number of forests across **all** input tree files.
+    int64_t nforests_this_task; // Total number of forests processed by **this** task.
 };
 
 struct save_info {
@@ -300,6 +300,15 @@ struct save_info {
         hid_t h5_save_fd;  // HDF5 only writes to a single file per processor.
 #endif
     };
+
+#ifdef HDF5
+    int32_t num_fields;
+    size_t *offsets;
+    size_t *field_sizes;
+    const char **field_names;
+    hid_t *field_types;
+    size_t dst_size;
+#endif
 
 };
 

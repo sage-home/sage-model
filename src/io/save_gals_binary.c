@@ -9,10 +9,12 @@
 #include "../core_mymalloc.h"
 #include "../core_utils.h"
 
+// Local Proto-Types //
 
-/* Externally visible Functions */
+// Externally Visible Functions //
 
-void initialize_binary_galaxy_files(const int filenr, const int ntrees, struct save_info *save_info, const struct params *run_params)
+int32_t initialize_binary_galaxy_files(const int filenr, const int ntrees, struct save_info *save_info,
+                                       const struct params *run_params)
 {
 
     // We open up files for each output. We'll store the file IDs of each of these file. 
@@ -28,7 +30,7 @@ void initialize_binary_galaxy_files(const int filenr, const int ntrees, struct s
         save_info->save_fd[n] = open(buffer,  O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
         if (save_info->save_fd[n] < 0) {
             fprintf(stderr, "Error: Can't open file `%s'\n", buffer);
-            ABORT(FILE_NOT_FOUND);
+            return FILE_NOT_FOUND;
         }
         
         // write out placeholders for the header data.
@@ -38,7 +40,9 @@ void initialize_binary_galaxy_files(const int filenr, const int ntrees, struct s
             fprintf(stderr, "Error: Failed to write out %d elements for header information for file %d. "
                     "Attempted to write %"PRId64" bytes\n", ntrees + 2, n, off);
             perror(NULL);
-            ABORT(FILE_WRITE_ERROR);
+            return FILE_WRITE_ERROR;
         }
     }
+
+    return EXIT_SUCCESS;
 }

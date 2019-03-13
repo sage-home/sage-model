@@ -139,7 +139,7 @@ ifeq ($(DO_CHECKS), 1)
     INCL += $(H5_INCL)
 
     HDF5_INCL := -I$(HDF5_DIR)/include
-    HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
+    HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -lhdf5_hl -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
 
     OPTS += -DHDF5
     LIBS += $(HDF5_LIB)
