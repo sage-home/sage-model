@@ -128,7 +128,8 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
 
         // Shift the offset pointer depending upon how many galaxies have been written out.
         struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n];
-
+        fprintf(stderr, "SIZE OF OUTPUT %zu\n", sizeof(struct GALAXY_OUTPUT));
+        ABORT(104);
 
         switch(run_params->OutputFormat) {
 

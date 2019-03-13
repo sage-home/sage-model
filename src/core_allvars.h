@@ -302,12 +302,7 @@ struct save_info {
     };
 
 #ifdef HDF5
-    int32_t num_fields;
-    size_t *offsets;
-    size_t *field_sizes;
-    const char **field_names;
-    hid_t *field_types;
-    size_t dst_size;
+    hid_t *dataset_ids;
 #endif
 
 };
