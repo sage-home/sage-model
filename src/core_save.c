@@ -77,91 +77,144 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
         OutputGalOrder[i] = -1;
         haloaux[i].output_snap_n = -1;
     }
-  
-    // first update mergeIntoID to point to the correct galaxy in the output
-    for(int n = 0; n < run_params->NOUT; n++) {
-        for(int i = 0; i < numgals; i++) {
-            if(halogal[i].SnapNum == run_params->ListOutputSnaps[n]) {
-                OutputGalOrder[i] = OutputGalCount[n];
-                OutputGalCount[n]++;
-                haloaux[i].output_snap_n = n;
-            }
-        }
-    }
 
-    int num_output_gals = 0;
-    int num_gals_processed[run_params->MAXSNAPS];
-    memset(num_gals_processed, 0, sizeof(num_gals_processed[0])*run_params->MAXSNAPS);
-    for(int n = 0; n < run_params->NOUT; n++) {
-        cumul_output_ngal[n] = num_output_gals;
-        num_output_gals += OutputGalCount[n];
-    }
 
-    for(int i = 0; i < numgals; i++) {
-        if(halogal[i].mergeIntoID > -1) {
-            halogal[i].mergeIntoID = OutputGalOrder[halogal[i].mergeIntoID];
-        }
-    }
-
-    struct GALAXY_OUTPUT *all_outputgals  = calloc(num_output_gals, sizeof(struct GALAXY_OUTPUT));
-    if(all_outputgals == NULL) {
-        fprintf(stderr,"Error: Could not allocate enough memory to hold all %d output galaxies\n",num_output_gals);
-        ABORT(MALLOC_FAILURE);
-    }
-
-    // Prepare all the galaxies for output.
-    for(int i = 0; i < numgals; i++) {
-        if(haloaux[i].output_snap_n < 0) continue;
-        int n = haloaux[i].output_snap_n;
-
-        // Here we move the offset pointer depending upon the number of galaxies processed up to this point. 
-        struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n] + num_gals_processed[n];
-        prepare_galaxy_for_output(ThisTask, tree, &halogal[i], galaxy_output, halos, haloaux, halogal, run_params);
-
-        num_gals_processed[n]++;
-        totgalaxies[n]++;
-        treengals[n][tree]++;	      
-    }    
-
-    // Now perform one write action for each redshift output.
-    for(int n=0;n<run_params->NOUT;n++) {
-
-        // Shift the offset pointer depending upon how many galaxies have been written out.
-        struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n];
-        fprintf(stderr, "SIZE OF OUTPUT %zu\n", sizeof(struct GALAXY_OUTPUT));
-        ABORT(104);
-
-        switch(run_params->OutputFormat) {
-
-        case(binary):;
-          // Then write out the chunk of galaxies for this redshift output.
-          ssize_t nwritten = mywrite(save_info->save_fd[n], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n]);
-          if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n])) { 
-              fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
-                              "Meant to write out %d elements with a total of %"PRId64" bytes (%zu bytes for each element). "
-                              "However, I wrote out a total of %"PRId64" bytes.\n",
-                              n, OutputGalCount[n], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n], sizeof(struct GALAXY_OUTPUT),
-                              nwritten);
-              perror(NULL);
-              ABORT(FILE_WRITE_ERROR);            
+      // first update mergeIntoID to point to the correct galaxy in the output
+      for(int n = 0; n < run_params->NOUT; n++) {
+          for(int i = 0; i < numgals; i++) {
+              if(halogal[i].SnapNum == run_params->ListOutputSnaps[n]) {
+                  OutputGalOrder[i] = OutputGalCount[n];
+                  OutputGalCount[n]++;
+                  haloaux[i].output_snap_n = n;
+              }
           }
-          break;
+      }
 
-        case(hdf5):
-          printf("HDF5 writing not yet implemented.\n");
-          ABORT(INVALID_OPTION_IN_PARAMS);
+      int num_output_gals = 0;
+      int num_gals_processed[run_params->MAXSNAPS];
+      memset(num_gals_processed, 0, sizeof(num_gals_processed[0])*run_params->MAXSNAPS);
+      for(int n = 0; n < run_params->NOUT; n++) {
+          cumul_output_ngal[n] = num_output_gals;
+          num_output_gals += OutputGalCount[n];
+      }
 
-        default:
-          fprintf(stderr, "Error: Unknown OutputFormat.\n");
-          ABORT(INVALID_OPTION_IN_PARAMS);
-        }
+      for(int i = 0; i < numgals; i++) {
+          if(halogal[i].mergeIntoID > -1) {
+              halogal[i].mergeIntoID = OutputGalOrder[halogal[i].mergeIntoID];
+          }
+      }
 
+      struct GALAXY_OUTPUT *all_outputgals  = calloc(num_output_gals, sizeof(struct GALAXY_OUTPUT));
+      if(all_outputgals == NULL) {
+          fprintf(stderr,"Error: Could not allocate enough memory to hold all %d output galaxies\n",num_output_gals);
+          ABORT(MALLOC_FAILURE);
+      }
 
-    }
+      // Prepare all the galaxies for output.
+      for(int i = 0; i < numgals; i++) {
+          if(haloaux[i].output_snap_n < 0) continue;
+          int n = haloaux[i].output_snap_n;
 
-    // don't forget to free the workspace.
-    free(OutputGalOrder);
-    free(all_outputgals);
+          switch(run_params->OutputFormat) {
+
+          case(binary):;
+              // Here we move the offset pointer depending upon the number of galaxies processed up to this point. 
+              struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n] + num_gals_processed[n];
+              prepare_galaxy_for_output(ThisTask, tree, &halogal[i], galaxy_output, halos, haloaux, halogal, run_params);
+              break;
+
+          case(hdf5):;
+              struct GALAXY_OUTPUT hdf5_galaxy_output;
+              prepare_galaxy_for_output(ThisTask, tree, &halogal[i], &hdf5_galaxy_output, halos, haloaux, halogal, run_params);
+
+              save_info->buffer_output_gals[n][save_info->num_gals_in_buffer[n]] = hdf5_galaxy_output;
+              save_info->num_gals_in_buffer[n]++;
+
+              //fprintf(stderr, "num_gals Snap %d = %d\n", n, save_info->num_gals_in_buffer[n]);
+              if(save_info->num_gals_in_buffer[n] == save_info->buffer_size) {
+
+                // To save the galaxies, we must first extend the size of the dataset to accomodate the new data.
+                herr_t status;
+                hsize_t dims_extend[1];
+                dims_extend[0] = (hsize_t) save_info->buffer_size;
+
+                hsize_t old_dims[1];
+                old_dims[0] = (hsize_t) save_info->gals_written_snap[n];
+                hsize_t new_dims[1];
+                new_dims[0] = old_dims[0] + (hsize_t) save_info->buffer_size;
+                hid_t dataset_id = save_info->dataset_ids[0];
+
+                fprintf(stderr, "Gals written %"PRId64"\n", save_info->gals_written_snap[n]);
+                status = H5Dset_extent(dataset_id, new_dims);
+                hid_t filespace = H5Dget_space(dataset_id);
+                status = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, old_dims, NULL, dims_extend, NULL);
+
+                hid_t memspace = H5Screate_simple(1, dims_extend, NULL);
+
+                int32_t *tmp_buffer;
+                tmp_buffer = calloc(sizeof(*(tmp_buffer)), save_info->buffer_size);
+                for(int32_t j = 0; j < save_info->buffer_size; j++) {
+                  tmp_buffer[j] = save_info->buffer_output_gals[n][j].Len;
+                }
+                status = H5Dwrite(dataset_id, H5T_NATIVE_INT, memspace, filespace, H5P_DEFAULT, tmp_buffer);
+                status = H5Dclose(dataset_id);
+
+                save_info->num_gals_in_buffer[n] = 0; 
+                free(tmp_buffer);
+
+              } 
+
+              break;
+
+          default:
+              fprintf(stderr, "Uknown OutputFormat.\n");
+              ABORT(10341);
+          }
+
+          num_gals_processed[n]++;
+          totgalaxies[n]++;
+          treengals[n][tree]++;	      
+      }    
+
+      // Now perform one write action for each redshift output.
+      for(int n=0;n<run_params->NOUT;n++) {
+
+          // Shift the offset pointer depending upon how many galaxies have been written out.
+          struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n];
+
+          // Then write out the chunk of galaxies for this redshift output.
+          
+          switch(run_params->OutputFormat) {
+
+          case(binary):;
+              ssize_t nwritten = mywrite(save_info->save_fd[n], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n]);
+              if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n])) { 
+                  fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
+                                  "Meant to write out %d elements with a total of %"PRId64" bytes (%zu bytes for each element). "
+                                  "However, I wrote out a total of %"PRId64" bytes.\n",
+                                  n, OutputGalCount[n], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n], sizeof(struct GALAXY_OUTPUT),
+                                  nwritten);
+                  perror(NULL);
+                  ABORT(FILE_WRITE_ERROR);            
+              }
+
+          case(hdf5):
+              // Add the galaxy_output to the buffer.
+              // Update the counter.
+              // If we're at or beyond the buffer, size, extend and write.
+              //fprintf(stderr, "NOT IMPLEMENTED\n");
+              break;
+
+          default:
+              fprintf(stderr, "Uknown OutputFormat.\n");
+              ABORT(10341);
+          }
+      }
+
+      // don't forget to free the workspace.
+      free(OutputGalOrder);
+      free(all_outputgals);
+
 }
 
 

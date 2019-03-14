@@ -303,6 +303,11 @@ struct save_info {
 
 #ifdef HDF5
     hid_t *dataset_ids;
+    int64_t *gals_written_snap;
+
+    int32_t buffer_size;
+    int32_t *num_gals_in_buffer;
+    struct GALAXY_OUTPUT **buffer_output_gals;
 #endif
 
 };

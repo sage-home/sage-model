@@ -24,19 +24,18 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
 #define CREATE_SINGLE_ATTRIBUTE(group_id, attribute_name, attribute_value,  h5_dtype) {\
         macro_dataspace_id = H5Screate(H5S_SCALAR);                      \
         macro_attribute_id = H5Acreate(group_id, attribute_name, h5_dtype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
-        H5Awrite(macro_attribute_id, h5_dtype, attribute_value);               \
+        H5Awrite(macro_attribute_id, h5_dtype, attribute_value);         \
         H5Aclose(macro_attribute_id);                                    \
         H5Sclose(macro_dataspace_id);                                    \
     }
 
-#define CREATE_STRING_ATTRIBUTE(group_id, attribute_name, attribute_value) \
-    {                                                                    \
+#define CREATE_STRING_ATTRIBUTE(group_id, attribute_name, attribute_value) {\
         macro_dataspace_id = H5Screate(H5S_SCALAR);                      \
-        atype = H5Tcopy(H5T_C_S1);\
-        H5Tset_size(atype, MAX_ATTRIBUTE_LEN-1);\
-        H5Tset_strpad(atype, H5T_STR_NULLTERM);\
+        atype = H5Tcopy(H5T_C_S1);                                       \
+        H5Tset_size(atype, MAX_ATTRIBUTE_LEN-1);                         \
+        H5Tset_strpad(atype, H5T_STR_NULLTERM);                          \
         macro_attribute_id = H5Acreate(group_id, attribute_name, atype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
-        H5Awrite(macro_attribute_id, atype, attribute_value);               \
+        H5Awrite(macro_attribute_id, atype, attribute_value);            \
         H5Aclose(macro_attribute_id);                                    \
         H5Sclose(macro_dataspace_id);                                    \
     }
@@ -46,7 +45,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
 {
 
     hid_t atype;
-    hid_t prop, dataset_id, filespace, memspace;
+    hid_t prop, dataset_id;
     hid_t file_id, group_id, macro_dataspace_id, macro_attribute_id, dataspace_id;
     char buffer[4*MAX_STRING_LEN + 1];
 
@@ -73,10 +72,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
     tmp_data[3] = 4.0;
     tmp_data[4] = 13414.49;
 
-    hsize_t dims[1] = {5};
-    hsize_t dimsext[1] = {5};
-    hsize_t new_dims[1];
-    hsize_t offset[1];
+    hsize_t dims[1] = {0};
     hsize_t maxdims[1] = {H5S_UNLIMITED};
     hsize_t chunk_dims[1] = {1};
     herr_t status;
@@ -87,24 +83,29 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
 
     generate_field_metadata(field_names, field_descriptions, field_units);
 
+    // First create datasets for each output field.
     save_info->dataset_ids = malloc(sizeof(hid_t) * NUM_OUTPUT_FIELDS);
     char *name;
     char *description;
     char *unit;
  
-    for(int32_t i = 0; i < NUM_OUTPUT_FIELDS; ++i) {
+    for(int32_t i = 0; i < NUM_OUTPUT_FIELDS; i++) {
 
         name = field_names[i];
         description = field_descriptions[i];
         unit = field_units[i];
 
         prop = H5Pcreate(H5P_DATASET_CREATE);
+
+        // Create a dataspace with 0 dimension.  We will extend the datasets when necessary.
         dataspace_id = H5Screate_simple(1, dims, maxdims);
         status = H5Pset_chunk(prop, 1, chunk_dims);
 
         dataset_id = H5Dcreate2(file_id, name, H5T_NATIVE_FLOAT, dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT);
+
         save_info->dataset_ids[i] = dataset_id;
 
+        // Set metadata attributes for each dataset.
         CREATE_STRING_ATTRIBUTE(dataset_id, "Description", description); 
         CREATE_STRING_ATTRIBUTE(dataset_id, "Units", unit); 
 
@@ -112,25 +113,48 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
         status = H5Sclose(dataspace_id);
     }
 
-    char buf[10000];
-    snprintf(buf, 9999, "Mass of stars");
+    // Initialize the number of galaxies written for each snapshot.
+    save_info->gals_written_snap = malloc(sizeof(*(save_info->gals_written_snap)) * run_params->MAXSNAPS);
+    if(save_info->gals_written_snap == NULL) {
+        fprintf(stderr, "Could not allocate %.2fMB for the number of galaxies written per snapshot.\n",
+                sizeof(*(save_info->gals_written_snap))*run_params->MAXSNAPS / 1024.0);
+        return MALLOC_FAILURE;
+    }
 
-    status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, tmp_data);
+    for(int32_t i = 0; i < run_params->MAXSNAPS; i++) {
+      save_info->gals_written_snap[i] = 0;
+    }
 
+    // Now for each snapshot, we process `buffer_count` galaxies into RAM for every snapshot before
+    // writing a single chunk.  So we need to initialize these.
+    save_info->buffer_size = 1000;
+    save_info->num_gals_in_buffer = calloc(run_params->NOUT, sizeof(*(save_info->num_gals_in_buffer))); 
+    save_info->buffer_output_gals = malloc(sizeof(*(save_info->buffer_output_gals)) * run_params->NOUT); 
+    for(int32_t i = 0; i < run_params->NOUT; i++) {
+
+      save_info->buffer_output_gals[i] = calloc(save_info->buffer_size, sizeof(struct GALAXY_OUTPUT));
+    }
+
+    //status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, tmp_data);
+
+    /*
+    hsize_t dimsext[1] = {5};
+    hsize_t new_dims[1];
+    hsize_t offset[1];
     new_dims[0] = dims[0] + dimsext[0];
     status = H5Dset_extent(dataset_id, new_dims);
 
-    filespace = H5Dget_space(dataset_id);
+    hid_t filespace = H5Dget_space(dataset_id);
     
     offset[0] = 5;
     status = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, dimsext, NULL);
 
-    memspace = H5Screate_simple(1, dimsext, NULL);
+    hid_t memspace = H5Screate_simple(1, dimsext, NULL);
 
     status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, tmp_data); 
 
     status = H5Dclose(dataset_id);
-
+    */
     if (status == 0)
      printf("RERO\n"); 
     /*
