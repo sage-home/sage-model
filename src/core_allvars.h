@@ -12,6 +12,7 @@
 #include "core_simulation.h"
 
 // This structure contains the properties that are output
+
 struct GALAXY_OUTPUT  
 {
   int   SnapNum;
@@ -84,6 +85,85 @@ struct GALAXY_OUTPUT
   float infallVmax;
 };
 
+#ifdef HDF5
+struct HDF5_GALAXY_OUTPUT  
+{
+  int   *SnapNum;
+
+#if 0    
+  short Type;
+  short isFlyby;
+#else
+  int *Type;
+#endif    
+
+  long long   *GalaxyIndex;
+  long long   *CentralGalaxyIndex;
+  int   *SAGEHaloIndex;
+  int   *SAGETreeIndex;
+  long long   *SimulationHaloIndex;
+  
+  int   *mergeType;  /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
+  int   *mergeIntoID;
+  int   *mergeIntoSnapNum;
+  float *dT;
+
+  /* (sub)halo properties */
+  float *Posx;
+  float *Posy;
+  float *Posz;
+  float *Velx;
+  float *Vely;
+  float *Velz;
+  float *Spinx;
+  float *Spiny;
+  float *Spinz;
+  int   *Len;   
+  float *Mvir;
+  float *CentralMvir;
+  float *Rvir;
+  float *Vvir;
+  float *Vmax;
+  float *VelDisp;
+
+  /* baryonic reservoirs */
+  float *ColdGas;
+  float *StellarMass;
+  float *BulgeMass;
+  float *HotGas;
+  float *EjectedMass;
+  float *BlackHoleMass;
+  float *ICS;
+
+  /* metals */
+  float *MetalsColdGas;
+  float *MetalsStellarMass;
+  float *MetalsBulgeMass;
+  float *MetalsHotGas;
+  float *MetalsEjectedMass;
+  float *MetalsICS;
+
+  /* to calculate magnitudes */
+  float *SfrDisk;
+  float *SfrBulge;
+  float *SfrDiskZ;
+  float *SfrBulgeZ;
+  
+  /* misc */
+  float *DiskScaleRadius;
+  float *Cooling;
+  float *Heating;
+  float *QuasarModeBHaccretionMass;
+  float *TimeOfLastMajorMerger;
+  float *TimeOfLastMinorMerger;
+  float *OutflowRate;
+
+  /* infall properties */
+  float *infallMvir;
+  float *infallVvir;
+  float *infallVmax;
+};
+#endif
 
 /* This structure contains the properties used within the code */
 struct GALAXY
@@ -302,12 +382,16 @@ struct save_info {
     };
 
 #ifdef HDF5
+    char **name_output_fields;
+    hsize_t *field_dtypes;
+
+    int32_t num_output_fields;
     hid_t *dataset_ids;
     int64_t *gals_written_snap;
 
     int32_t buffer_size;
     int32_t *num_gals_in_buffer;
-    struct GALAXY_OUTPUT **buffer_output_gals;
+    struct HDF5_GALAXY_OUTPUT *buffer_output_gals;
 #endif
 
 };
