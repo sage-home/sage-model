@@ -22,20 +22,20 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
 #define MAX_ATTRIBUTE_LEN 10000
 #define NUM_GALS_PER_BUFFER 1000
 
-#define CREATE_SINGLE_ATTRIBUTE(group_id, attribute_name, attribute_value,  h5_dtype) {\
-        macro_dataspace_id = H5Screate(H5S_SCALAR);                      \
-        macro_attribute_id = H5Acreate(group_id, attribute_name, h5_dtype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
-        H5Awrite(macro_attribute_id, h5_dtype, attribute_value);         \
+#define CREATE_SINGLE_ATTRIBUTE(group_id, attribute_name, attribute_value, h5_dtype) {\
+        hid_t macro_dataspace_id = H5Screate(H5S_SCALAR);                      \
+        hid_t macro_attribute_id = H5Acreate(group_id, attribute_name, h5_dtype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
+        H5Awrite(macro_attribute_id, h5_dtype, &attribute_value);         \
         H5Aclose(macro_attribute_id);                                    \
         H5Sclose(macro_dataspace_id);                                    \
     }
 
 #define CREATE_STRING_ATTRIBUTE(group_id, attribute_name, attribute_value) {\
-        macro_dataspace_id = H5Screate(H5S_SCALAR);                      \
-        atype = H5Tcopy(H5T_C_S1);                                       \
+        hid_t macro_dataspace_id = H5Screate(H5S_SCALAR);                \
+        hid_t atype = H5Tcopy(H5T_C_S1);                                 \
         H5Tset_size(atype, MAX_ATTRIBUTE_LEN-1);                         \
         H5Tset_strpad(atype, H5T_STR_NULLTERM);                          \
-        macro_attribute_id = H5Acreate(group_id, attribute_name, atype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
+        hid_t macro_attribute_id = H5Acreate(group_id, attribute_name, atype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
         H5Awrite(macro_attribute_id, atype, attribute_value);            \
         H5Aclose(macro_attribute_id);                                    \
         H5Sclose(macro_dataspace_id);                                    \
@@ -45,13 +45,11 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
     (save_info->buffer_output_gals[snap_idx]).field_name = calloc(save_info->buffer_size, sizeof(*(save_info->buffer_output_gals[snap_idx].field_name)));\
     }
 
-int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct save_info *save_info,
-                                     const struct params *run_params)
+int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_info, const struct params *run_params)
 {
 
-    hid_t atype;
     hid_t prop, dataset_id;
-    hid_t file_id, group_id, macro_dataspace_id, macro_attribute_id, dataspace_id;
+    hid_t file_id, group_id, dataspace_id;
     char buffer[4*MAX_STRING_LEN + 1];
 
     snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
@@ -63,11 +61,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
     }
 
     // Write here all the attributes/headers/information regarding data types of fields.
-    save_info->h5_save_fd = file_id;
-
-    group_id = H5Gcreate(file_id, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-    CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", &ntrees, H5T_NATIVE_INT);
+    save_info->file_id = file_id;
 
     hsize_t dims[1] = {0};
     hsize_t maxdims[1] = {H5S_UNLIMITED};
@@ -86,6 +80,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
     save_info->field_dtypes = field_dtypes;
 
     // First create datasets for each output field. We will have these datasets for EACH snapshot.
+    save_info->group_ids = malloc(sizeof(hid_t) * run_params->NOUT);
     save_info->dataset_ids = malloc(sizeof(hid_t) * NUM_OUTPUT_FIELDS * run_params->NOUT);
     char full_field_name[MAX_STRING_LEN];
     char *name;
@@ -97,7 +92,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
 
         // First create a snapshot group.
         snprintf(full_field_name, MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[n]);
-        H5Gcreate2(file_id, full_field_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT); 
+        group_id = H5Gcreate2(file_id, full_field_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        save_info->group_ids[n] = group_id;
+
         for(int32_t i = 0; i < NUM_OUTPUT_FIELDS; i++) {
 
             name = field_names[i];
@@ -113,7 +110,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
             status = H5Pset_chunk(prop, 1, chunk_dims);
 
             // Need to specify datatype here.
-            dataset_id = H5Dcreate2(file_id, full_field_name, save_info->field_dtypes[i], dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT);
+            dataset_id = H5Dcreate2(file_id, full_field_name, dtype, dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT);
 
             save_info->dataset_ids[n*NUM_OUTPUT_FIELDS + i] = dataset_id;
 
@@ -124,18 +121,6 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
             status = H5Pclose(prop);
             status = H5Sclose(dataspace_id);
         }
-    }
-
-    // Initialize the number of galaxies written for each snapshot.
-    save_info->gals_written_snap = malloc(sizeof(*(save_info->gals_written_snap)) * run_params->MAXSNAPS);
-    if(save_info->gals_written_snap == NULL) {
-        fprintf(stderr, "Could not allocate %.2fMB for the number of galaxies written per snapshot.\n",
-                sizeof(*(save_info->gals_written_snap))*run_params->MAXSNAPS / 1024.0);
-        return MALLOC_FAILURE;
-    }
-
-    for(int32_t i = 0; i < run_params->MAXSNAPS; i++) {
-      save_info->gals_written_snap[i] = 0;
     }
 
     // Now for each snapshot, we process `buffer_count` galaxies into RAM for every snapshot before
@@ -204,57 +189,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
         CALLOC_GALAXY_OUTPUT_INNER_ARRAY(n, infallVmax);
 
     }
-    //status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, tmp_data);
-
-    /*
-    hsize_t dimsext[1] = {5};
-    hsize_t new_dims[1];
-    hsize_t offset[1];
-    new_dims[0] = dims[0] + dimsext[0];
-    status = H5Dset_extent(dataset_id, new_dims);
-
-    hid_t filespace = H5Dget_space(dataset_id);
-    
-    offset[0] = 5;
-    status = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, dimsext, NULL);
-
-    hid_t memspace = H5Screate_simple(1, dimsext, NULL);
-
-    status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, tmp_data); 
-
-    status = H5Dclose(dataset_id);
-    */
-    /*
-    group_id = H5Gcreate(file_id, "/Galaxies", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-
-    save_info->dst_size = sizeof(float)*2;
-    save_info->offsets = malloc(sizeof(size_t)*2);
-    save_info->field_sizes = malloc(sizeof(size_t)*2);
-    save_info->field_names = malloc(sizeof(char *)*2);
-    save_info->field_types = malloc(sizeof(hid_t)*2);
-
-    tmp_data[1] = -13340.34049;
-
-    save_info->offsets[0] = 0; 
-    save_info->field_sizes[0] = sizeof(float);
-    save_info->field_names[0] = "Field1";
-    save_info->field_types[0] = H5T_NATIVE_FLOAT;
-
-    save_info->offsets[1] = sizeof(float); 
-    save_info->field_sizes[1] = sizeof(float);
-    save_info->field_names[1] = "Field2";
-    save_info->field_types[1] = H5T_NATIVE_FLOAT;
-
-    H5TBmake_table("Data", group_id, "Data", (hsize_t) 2, (hsize_t) 1, save_info->dst_size, save_info->field_names, save_info->offsets, save_info->field_types, (hsize_t) 1, NULL, 1, NULL);
-    H5TBwrite_records(group_id, "Data", 0, 1, save_info->dst_size, save_info->offsets, save_info->field_sizes, tmp_data);
-    //save_info->offsets[0] = sizeof(float); 
-    H5TBappend_records(group_id, "Data", 1, save_info->dst_size, save_info->offsets, save_info->field_sizes, tmp_data);
-    */
 
     return EXIT_SUCCESS; 
 }
-
 
 #define EXTEND_AND_WRITE_GALAXY_DATASET(field_name, h5_dtype) { \
     hid_t dataset_id = save_info->dataset_ids[snap_idx*save_info->num_output_fields + field_idx]; \
@@ -266,8 +203,12 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, const int ntrees, struct 
     field_idx++; \
 }
 
-int32_t finalize_hdf5_galaxy_files(struct save_info *save_info,
+int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info,
                                    const struct params *run_params) {
+
+    // I've tried to put this manually into the function but it keeps hanging...
+    hsize_t dims[1];
+    dims[0] = ntrees;
 
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
 
@@ -278,7 +219,7 @@ int32_t finalize_hdf5_galaxy_files(struct save_info *save_info,
         dims_extend[0] = (hsize_t) num_gals_to_write;
 
         hsize_t old_dims[1];
-        old_dims[0] = (hsize_t) save_info->gals_written_snap[snap_idx];
+        old_dims[0] = (hsize_t) save_info->tot_ngals[snap_idx];
 
         hsize_t new_dims[1];
         new_dims[0] = old_dims[0] + (hsize_t) num_gals_to_write;
@@ -341,11 +282,41 @@ int32_t finalize_hdf5_galaxy_files(struct save_info *save_info,
         EXTEND_AND_WRITE_GALAXY_DATASET(infallVmax, H5T_NATIVE_FLOAT);
 
         save_info->num_gals_in_buffer[snap_idx] = 0;
-        save_info->gals_written_snap[snap_idx] += num_gals_to_write; 
+        save_info->tot_ngals[snap_idx] += num_gals_to_write;
+
+        // We're going to be a bit sneaky here so we don't need to pass the tree number to this function. 
+        int32_t tree = save_info->buffer_output_gals[snap_idx].SAGETreeIndex[0];
+        save_info->forest_ngals[snap_idx][tree] += num_gals_to_write;
 
         // Write attributes showing how many galaxies we wrote for this snapshot.
+        CREATE_SINGLE_ATTRIBUTE(save_info->group_ids[snap_idx], "ngals", save_info->tot_ngals[snap_idx], H5T_NATIVE_INT);
 
+        // Attributes can only be 64kb in size (strict rule enforced by the HDF5 group).
+        // For larger simulations, we will have so many trees, that the number of galaxies per tree
+        // array (`save_info->forest_ngals`) will exceed 64kb.  Hence we will write this data to a
+        // dataset rather than into an attribute.
+        char field_name[MAX_STRING_LEN];
+        char description[MAX_STRING_LEN];
+        char unit[MAX_STRING_LEN];
+
+        snprintf(field_name, MAX_STRING_LEN -  1, "Snap_%d/NumGalsPerTree", run_params->ListOutputSnaps[snap_idx]);
+        snprintf(description, MAX_STRING_LEN -  1, "The number of galaxies per tree.");
+        snprintf(unit, MAX_STRING_LEN-  1, "Unitless");
+
+        hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
+        hid_t dataset_id = H5Dcreate2(save_info->file_id, field_name, H5T_NATIVE_INT, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        status = H5Dwrite(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &save_info->forest_ngals[snap_idx]); 
+
+        H5Dclose(dataset_id);
     }
+
+    // Finally let's write some header attributes here.
+    // We do this here rather than in ``initialize()`` because we need the number of galaxies per tree.
+    hid_t group_id;
+    group_id = H5Gcreate(save_info->file_id, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", ntrees, H5T_NATIVE_INT);
+
+    H5Fclose(save_info->file_id);
 
     return EXIT_SUCCESS;
 

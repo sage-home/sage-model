@@ -377,17 +377,21 @@ struct save_info {
     union {
         int *save_fd; // Contains the open file to write to for each output.
 #ifdef HDF5
-        hid_t h5_save_fd;  // HDF5 only writes to a single file per processor.
+        hid_t file_id;  // HDF5 only writes to a single file per processor.
 #endif
     };
+
+    int64_t *tot_ngals;
+    int32_t **forest_ngals;
 
 #ifdef HDF5
     char **name_output_fields;
     hsize_t *field_dtypes;
 
+    hid_t *group_ids;
+
     int32_t num_output_fields;
     hid_t *dataset_ids;
-    int64_t *gals_written_snap;
 
     int32_t buffer_size;
     int32_t *num_gals_in_buffer;

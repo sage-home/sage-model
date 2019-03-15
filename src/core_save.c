@@ -48,7 +48,7 @@ int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_in
 
 #ifdef HDF5
     case(hdf5):
-      status = initialize_hdf5_galaxy_files(rank, ntrees, save_info, run_params);
+      status = initialize_hdf5_galaxy_files(rank, save_info, run_params);
       break; 
 #endif
 
@@ -73,7 +73,7 @@ int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_in
 }
 
 void save_galaxies(const int ThisTask, const int tree, const int numgals, struct halo_data *halos,
-                   struct halo_aux_data *haloaux, struct GALAXY *halogal, int **treengals, int *totgalaxies,
+                   struct halo_aux_data *haloaux, struct GALAXY *halogal,
                    struct save_info *save_info, const struct params *run_params)
 {
     int OutputGalCount[run_params->MAXSNAPS];
@@ -139,6 +139,10 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
               // Here we move the offset pointer depending upon the number of galaxies processed up to this point. 
               struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx] + num_gals_processed[snap_idx];
               prepare_galaxy_for_output(ThisTask, tree, &halogal[i], galaxy_output, halos, haloaux, halogal, run_params);
+
+              save_info->tot_ngals[snap_idx]++;
+              save_info->forest_ngals[snap_idx][tree]++;
+              num_gals_processed[snap_idx]++;
               break;
 
 #ifdef HDF5
@@ -146,13 +150,17 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
               prepare_galaxy_for_hdf5_output(ThisTask, tree, &halogal[i], save_info, snap_idx, halos, haloaux, halogal, run_params);
               save_info->num_gals_in_buffer[snap_idx]++;
 
+              // We can't guarantee that this tree will contain enough galaxies to trigger a write.
+              // Hence we need to increment this here.
+              save_info->forest_ngals[snap_idx][tree]++;
+
               herr_t status;
 
               hsize_t dims_extend[1];
               dims_extend[0] = (hsize_t) save_info->buffer_size;
 
               hsize_t old_dims[1];
-              old_dims[0] = (hsize_t) save_info->gals_written_snap[snap_idx];
+              old_dims[0] = (hsize_t) save_info->tot_ngals[snap_idx];
 
               hsize_t new_dims[1];
               new_dims[0] = old_dims[0] + (hsize_t) save_info->buffer_size;
@@ -220,7 +228,7 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
                   EXTEND_AND_WRITE_GALAXY_DATASET(infallVmax, H5T_NATIVE_FLOAT);
 
                   save_info->num_gals_in_buffer[snap_idx] = 0;
-                  save_info->gals_written_snap[snap_idx] += save_info->buffer_size; 
+                  save_info->tot_ngals[snap_idx] += save_info->buffer_size;
               }
               break;
 #endif
@@ -228,10 +236,6 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
               fprintf(stderr, "Uknown OutputFormat.\n");
               ABORT(10341);
           }
-
-          num_gals_processed[snap_idx]++;
-          totgalaxies[snap_idx]++;
-          treengals[snap_idx][tree]++;
       }    
 
       // Now perform one write action for each redshift output.
@@ -537,7 +541,7 @@ void prepare_galaxy_for_hdf5_output(int ThisTask, int tree, struct GALAXY *g, st
 }
 #endif
 
-int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **treengals, struct save_info *save_info, const struct params *run_params) 
+int finalize_galaxy_file(const int ntrees, struct save_info *save_info, const struct params *run_params) 
 {
 
 
@@ -556,8 +560,8 @@ int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **t
             XASSERT( save_info->save_fd[n] > 0, EXIT_FAILURE, "Error: for output # %d, output file pointer is NULL\n", n);
 
             mypwrite(save_info->save_fd[n], &ntrees, sizeof(ntrees), 0);
-            mypwrite(save_info->save_fd[n], &totgalaxies[n], sizeof(int), sizeof(int));
-            mypwrite(save_info->save_fd[n], treengals[n], sizeof(int)*ntrees, sizeof(int) + sizeof(int));
+            mypwrite(save_info->save_fd[n], &save_info->tot_ngals[n], sizeof(int), sizeof(int));
+            mypwrite(save_info->save_fd[n], save_info->forest_ngals[n], sizeof(int)*ntrees, sizeof(int) + sizeof(int));
             /* int nwritten = myfwrite(&ntrees, sizeof(int), 1, save_fd[n]); */
             /* if (nwritten != 1) { */
             /*     fprintf(stderr, "Error: Failed to write out 1 element for the number of trees for the header of file %d.\n" */
@@ -578,14 +582,14 @@ int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **t
 
 
             // close the file and clear handle after everything has been written
-            close( save_info->save_fd[n] );
+            close(save_info->save_fd[n]);
             save_info->save_fd[n] = -1;
         }
         break;
 
 #ifdef HDF5
     case(hdf5):
-        finalize_hdf5_galaxy_files(save_info, run_params);
+        finalize_hdf5_galaxy_files(ntrees, save_info, run_params);
         break;
 #endif
 
