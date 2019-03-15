@@ -46,9 +46,11 @@ int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_in
       status = initialize_binary_galaxy_files(rank, ntrees, save_info, run_params);
       break;
 
+#ifdef HDF5
     case(hdf5):
       status = initialize_hdf5_galaxy_files(rank, ntrees, save_info, run_params);
       break; 
+#endif
 
     default:
       fprintf(stderr, "Error: Unknown OutputFormat.\n");
@@ -60,8 +62,14 @@ int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_in
     return status; 
 }
 
-#define WRITE_GALAXY_DATASET(snap_idx, field_name, h5_dtype) { \
+#define EXTEND_AND_WRITE_GALAXY_DATASET(field_name, h5_dtype) { \
+    hid_t dataset_id = save_info->dataset_ids[snap_idx*save_info->num_output_fields + field_idx]; \
+    status = H5Dset_extent(dataset_id, new_dims); \
+    hid_t filespace = H5Dget_space(dataset_id); \
+    status = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, old_dims, NULL, dims_extend, NULL); \
+    hid_t memspace = H5Screate_simple(1, dims_extend, NULL); \
     status = H5Dwrite(dataset_id, h5_dtype, memspace, filespace, H5P_DEFAULT, (save_info->buffer_output_gals[snap_idx]).field_name); \
+    field_idx++; \
 }
 
 void save_galaxies(const int ThisTask, const int tree, const int numgals, struct halo_data *halos,
@@ -123,168 +131,107 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
       // Prepare all the galaxies for output.
       for(int i = 0; i < numgals; i++) {
           if(haloaux[i].output_snap_n < 0) continue;
-          int n = haloaux[i].output_snap_n;
+          int32_t snap_idx = haloaux[i].output_snap_n;
 
           switch(run_params->OutputFormat) {
 
           case(binary):;
               // Here we move the offset pointer depending upon the number of galaxies processed up to this point. 
-              struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n] + num_gals_processed[n];
+              struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx] + num_gals_processed[snap_idx];
               prepare_galaxy_for_output(ThisTask, tree, &halogal[i], galaxy_output, halos, haloaux, halogal, run_params);
               break;
 
+#ifdef HDF5
           case(hdf5):
-              prepare_galaxy_for_hdf5_output(ThisTask, tree, &halogal[i], save_info, n, halos, haloaux, halogal, run_params);
-              save_info->num_gals_in_buffer[n]++;
+              prepare_galaxy_for_hdf5_output(ThisTask, tree, &halogal[i], save_info, snap_idx, halos, haloaux, halogal, run_params);
+              save_info->num_gals_in_buffer[snap_idx]++;
+
+              herr_t status;
+
+              hsize_t dims_extend[1];
+              dims_extend[0] = (hsize_t) save_info->buffer_size;
+
+              hsize_t old_dims[1];
+              old_dims[0] = (hsize_t) save_info->gals_written_snap[snap_idx];
+
+              hsize_t new_dims[1];
+              new_dims[0] = old_dims[0] + (hsize_t) save_info->buffer_size;
 
               //fprintf(stderr, "num_gals Snap %d = %d\n", n, save_info->num_gals_in_buffer[n]);
-              if(save_info->num_gals_in_buffer[n] == save_info->buffer_size) {
 
+              if(save_info->num_gals_in_buffer[snap_idx] == save_info->buffer_size) {
 
-                  for(int32_t field_idx = 0; field_idx < save_info->num_output_fields; ++field_idx) {
-                    // To save the galaxies, we must first extend the size of the dataset to accomodate the new data.
-                    herr_t status;
-                    hsize_t dims_extend[1];
-                    dims_extend[0] = (hsize_t) save_info->buffer_size;
+                  // To save the galaxies, we must first extend the size of the dataset to accomodate the new data.
+                  int32_t field_idx = 0;
 
-                    hsize_t old_dims[1];
-                    old_dims[0] = (hsize_t) save_info->gals_written_snap[n];
-                    hsize_t new_dims[1];
-                    new_dims[0] = old_dims[0] + (hsize_t) save_info->buffer_size;
-                    hid_t dataset_id = save_info->dataset_ids[n*save_info->num_output_fields + field_idx];
+                  EXTEND_AND_WRITE_GALAXY_DATASET(SnapNum, H5T_NATIVE_INT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Type, H5T_NATIVE_INT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(GalaxyIndex, H5T_NATIVE_LLONG);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(CentralGalaxyIndex, H5T_NATIVE_LLONG);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(SAGEHaloIndex, H5T_NATIVE_INT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(SAGETreeIndex, H5T_NATIVE_INT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(SimulationHaloIndex, H5T_NATIVE_LLONG);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(mergeType, H5T_NATIVE_INT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(mergeIntoID, H5T_NATIVE_INT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(mergeIntoSnapNum, H5T_NATIVE_INT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(dT, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Posx, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Posy, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Posz, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Velx, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Vely, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Velz, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Spinx, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Spiny, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Spinz, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Len, H5T_NATIVE_INT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Mvir, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(CentralMvir, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Rvir, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Vvir, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Vmax, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(VelDisp, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(ColdGas, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(StellarMass, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(BulgeMass, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(HotGas, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(EjectedMass, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(BlackHoleMass, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(ICS, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsColdGas, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsStellarMass, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsBulgeMass, H5T_NATIVE_FLOAT); 
+                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsHotGas, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsEjectedMass, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsICS, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(SfrDisk, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(SfrBulge, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(SfrDiskZ, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(SfrBulgeZ, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(DiskScaleRadius, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Cooling, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(Heating, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(QuasarModeBHaccretionMass, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(TimeOfLastMajorMerger, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(TimeOfLastMinorMerger, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(OutflowRate, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(infallMvir, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(infallVvir, H5T_NATIVE_FLOAT);
+                  EXTEND_AND_WRITE_GALAXY_DATASET(infallVmax, H5T_NATIVE_FLOAT);
 
-                    status = H5Dset_extent(dataset_id, new_dims);
-
-                    hid_t filespace = H5Dget_space(dataset_id);
-                    status = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, old_dims, NULL, dims_extend, NULL);
-
-                    hid_t memspace = H5Screate_simple(1, dims_extend, NULL);
-
-                    hsize_t dtype = save_info->field_dtypes[field_idx];
-                    if(field_idx == 0) {
-                      WRITE_GALAXY_DATASET(n, SnapNum, H5T_NATIVE_INT); 
-                    } else if (field_idx == 1) {
-                      WRITE_GALAXY_DATASET(n, Type, H5T_NATIVE_INT); 
-                    } else if (field_idx == 2) {
-                      WRITE_GALAXY_DATASET(n, GalaxyIndex, H5T_NATIVE_LLONG); 
-                    } else if (field_idx == 3) {
-                      WRITE_GALAXY_DATASET(n, CentralGalaxyIndex, H5T_NATIVE_LLONG); 
-                    } else if (field_idx == 4) {
-                      WRITE_GALAXY_DATASET(n, SAGEHaloIndex, H5T_NATIVE_INT);
-                    } else if (field_idx == 5) {
-                      WRITE_GALAXY_DATASET(n, SAGETreeIndex, H5T_NATIVE_INT);
-                    } else if (field_idx == 6) {
-                      WRITE_GALAXY_DATASET(n, SimulationHaloIndex, H5T_NATIVE_INT); 
-                    } else if (field_idx == 7) {
-                      WRITE_GALAXY_DATASET(n, mergeType, H5T_NATIVE_INT); 
-                    } else if (field_idx == 8) {
-                      WRITE_GALAXY_DATASET(n, mergeIntoID, H5T_NATIVE_INT); 
-                    } else if (field_idx == 9) {
-                      WRITE_GALAXY_DATASET(n, mergeIntoSnapNum, H5T_NATIVE_INT);
-                    } else if (field_idx == 10) {
-                      WRITE_GALAXY_DATASET(n, dT, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 11) {
-                      WRITE_GALAXY_DATASET(n, Posx, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 12) {
-                      WRITE_GALAXY_DATASET(n, Posy, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 13) {
-                      WRITE_GALAXY_DATASET(n, Posz, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 14) {
-                      WRITE_GALAXY_DATASET(n, Velx, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 15) {
-                      WRITE_GALAXY_DATASET(n, Vely, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 16) {
-                      WRITE_GALAXY_DATASET(n, Velz, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 17) {
-                      WRITE_GALAXY_DATASET(n, Spinx, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 18) {
-                      WRITE_GALAXY_DATASET(n, Spiny, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 19) {
-                      WRITE_GALAXY_DATASET(n, Spinz, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 20) {
-                      WRITE_GALAXY_DATASET(n, Len, H5T_NATIVE_INT); 
-                    } else if (field_idx == 21) {
-                      WRITE_GALAXY_DATASET(n, Mvir, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 22) {
-                      WRITE_GALAXY_DATASET(n, CentralMvir, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 23) {
-                      WRITE_GALAXY_DATASET(n, Rvir, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 24) {
-                      WRITE_GALAXY_DATASET(n, Vvir, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 25) {
-                      WRITE_GALAXY_DATASET(n, Vmax, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 26) {
-                      WRITE_GALAXY_DATASET(n, VelDisp, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 27) {
-                      WRITE_GALAXY_DATASET(n, ColdGas, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 28) {
-                      WRITE_GALAXY_DATASET(n, StellarMass, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 29) {
-                      WRITE_GALAXY_DATASET(n, BulgeMass, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 30) {
-                      WRITE_GALAXY_DATASET(n, HotGas, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 31) {
-                      WRITE_GALAXY_DATASET(n, EjectedMass, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 32) {
-                      WRITE_GALAXY_DATASET(n, BlackHoleMass, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 33) {
-                      WRITE_GALAXY_DATASET(n, ICS, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 34) {
-                      WRITE_GALAXY_DATASET(n, MetalsColdGas, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 35) {
-                      WRITE_GALAXY_DATASET(n, MetalsStellarMass, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 36) {
-                      WRITE_GALAXY_DATASET(n, MetalsBulgeMass, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 37) {
-                      WRITE_GALAXY_DATASET(n, MetalsHotGas, H5T_NATIVE_FLOAT);
-                    } else if (field_idx == 38) {
-                      WRITE_GALAXY_DATASET(n, MetalsEjectedMass, H5T_NATIVE_FLOAT);
-                    } else if (field_idx == 39) {
-                      WRITE_GALAXY_DATASET(n, MetalsICS, H5T_NATIVE_FLOAT);
-                    } else if (field_idx == 40) {
-                      WRITE_GALAXY_DATASET(n, SfrDisk, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 41) {
-                      WRITE_GALAXY_DATASET(n, SfrBulge, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 42) {
-                      WRITE_GALAXY_DATASET(n, SfrDiskZ, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 43) {
-                      WRITE_GALAXY_DATASET(n, SfrBulgeZ, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 44) {
-                      WRITE_GALAXY_DATASET(n, DiskScaleRadius, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 45) {
-                      WRITE_GALAXY_DATASET(n, Cooling, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 46) {
-                      WRITE_GALAXY_DATASET(n, Heating, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 47) {
-                      WRITE_GALAXY_DATASET(n, QuasarModeBHaccretionMass, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 48) {
-                      WRITE_GALAXY_DATASET(n, TimeOfLastMajorMerger, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 49) {
-                      WRITE_GALAXY_DATASET(n, TimeOfLastMajorMerger, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 50) {
-                      WRITE_GALAXY_DATASET(n, OutflowRate, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 51) {
-                      WRITE_GALAXY_DATASET(n, infallMvir, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 52) {
-                      WRITE_GALAXY_DATASET(n, infallVvir, H5T_NATIVE_FLOAT); 
-                    } else if (field_idx == 53) {
-                      WRITE_GALAXY_DATASET(n, infallVmax, H5T_NATIVE_FLOAT); 
-                    }
-                  }
-
-                  save_info->num_gals_in_buffer[n] = 0;
-                  save_info->gals_written_snap[n] = save_info->gals_written_snap[n] + save_info->buffer_size; 
+                  save_info->num_gals_in_buffer[snap_idx] = 0;
+                  save_info->gals_written_snap[snap_idx] += save_info->buffer_size; 
               }
               break;
-
+#endif
           default:
               fprintf(stderr, "Uknown OutputFormat.\n");
               ABORT(10341);
           }
 
-          num_gals_processed[n]++;
-          totgalaxies[n]++;
-          treengals[n][tree]++;	      
+          num_gals_processed[snap_idx]++;
+          totgalaxies[snap_idx]++;
+          treengals[snap_idx][tree]++;
       }    
 
       // Now perform one write action for each redshift output.
@@ -452,6 +399,7 @@ void prepare_galaxy_for_output(int ThisTask, int tree, struct GALAXY *g, struct 
     }
 }
 
+#ifdef HDF5
 void prepare_galaxy_for_hdf5_output(int ThisTask, int tree, struct GALAXY *g, struct save_info *save_info,
                                     int32_t output_snap_idx, 
                                     struct halo_data *halos,
@@ -528,7 +476,7 @@ void prepare_galaxy_for_hdf5_output(int ThisTask, int tree, struct GALAXY *g, st
     save_info->buffer_output_gals[output_snap_idx].MetalsBulgeMass[gals_in_buffer] = g->MetalsBulgeMass;
     save_info->buffer_output_gals[output_snap_idx].MetalsHotGas[gals_in_buffer] = g->MetalsHotGas;
     save_info->buffer_output_gals[output_snap_idx].MetalsEjectedMass[gals_in_buffer] = g->MetalsEjectedMass;
-    save_info->buffer_output_gals[output_snap_idx].ICS[gals_in_buffer] = g->ICS;
+    save_info->buffer_output_gals[output_snap_idx].MetalsICS[gals_in_buffer] = g->MetalsICS;
 
     float tmp_SfrDisk = 0.0;
     float tmp_SfrBulge = 0.0;
@@ -587,7 +535,7 @@ void prepare_galaxy_for_hdf5_output(int ThisTask, int tree, struct GALAXY *g, st
     }
 
 }
-
+#endif
 
 int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **treengals, struct save_info *save_info, const struct params *run_params) 
 {
@@ -635,12 +583,11 @@ int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **t
         }
         break;
 
+#ifdef HDF5
     case(hdf5):
-        // Write the remaining galaxies still in the buffer.
-        // Close/free all the datasets.
-        // Close the file.
-        ABORT(100);
+        finalize_hdf5_galaxy_files(save_info, run_params);
         break;
+#endif
 
     default:
         fprintf(stderr, "Uknown OutputFormat.\n");
