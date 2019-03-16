@@ -110,7 +110,11 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
         nforests_done++;
     }
-    finalize_galaxy_file(Nforests, &save_info, run_params);
+
+    status = finalize_galaxy_files(Nforests, &save_info, run_params);
+    if(status != EXIT_SUCCESS) {
+      ABORT(status);
+    }
 
     for(int snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
         myfree(save_info.forest_ngals[snap_idx]);
