@@ -4,8 +4,6 @@ datadir=test_data/
 # the bash way of figuring out the absolute path to this file
 # (irrespective of cwd). parent_path should be $SAGEROOT/tests
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-echo "Printing current directory"
-pwd
 
 mkdir -p "$parent_path"/$datadir
 if [[ $? != 0 ]]; then
@@ -55,11 +53,7 @@ fi
 rm -f test_sage_z*
 
 # cd back into the sage root directory and then run sage
-echo "Printing current directory before I jump up two directories"
-pwd
 cd ../../
-echo "Printing current directory"
-pwd
 ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests"
