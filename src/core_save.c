@@ -76,211 +76,228 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
                    struct halo_aux_data *haloaux, struct GALAXY *halogal,
                    struct save_info *save_info, const struct params *run_params)
 {
-    int OutputGalCount[run_params->MAXSNAPS];
-    // reset the output galaxy count and total number of output galaxies
-    int cumul_output_ngal[run_params->MAXSNAPS];
-    for(int i = 0; i < run_params->MAXSNAPS; i++) {
-        OutputGalCount[i] = 0;
-        cumul_output_ngal[i] = 0;
+
+    // Reset the output galaxy count.
+    int32_t OutputGalCount[run_params->MAXSNAPS];
+    for(int32_t snap_idx = 0; snap_idx < run_params->MAXSNAPS; snap_idx++) {
+        OutputGalCount[snap_idx] = 0;
     }
 
-    // track the order in which galaxies are written
-    int *OutputGalOrder = calloc(numgals, sizeof(OutputGalOrder[0]));
+    // Track the order in which galaxies are written.
+    int32_t *OutputGalOrder = calloc(numgals, sizeof(*(OutputGalOrder)));
     if(OutputGalOrder == NULL) {
         fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `OutputGalOrder`\n", numgals);
         ABORT(MALLOC_FAILURE);
     }
 
-    for(int i = 0; i < numgals; i++) {
-        OutputGalOrder[i] = -1;
-        haloaux[i].output_snap_n = -1;
+    for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
+        OutputGalOrder[gal_idx] = -1;
+        haloaux[gal_idx].output_snap_n = -1;
     }
 
+    // First update mergeIntoID to point to the correct galaxy in the output.
+    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+        for(int32_t gal_idx  = 0; gal_idx < numgals; gal_idx++) {
+            if(halogal[gal_idx].SnapNum == run_params->ListOutputSnaps[snap_idx]) {
+                OutputGalOrder[gal_idx] = OutputGalCount[snap_idx];
+                OutputGalCount[snap_idx]++;
+                haloaux[gal_idx].output_snap_n = snap_idx;
+            }
+        }
+    }
 
-      // first update mergeIntoID to point to the correct galaxy in the output
-      for(int n = 0; n < run_params->NOUT; n++) {
-          for(int i = 0; i < numgals; i++) {
-              if(halogal[i].SnapNum == run_params->ListOutputSnaps[n]) {
-                  OutputGalOrder[i] = OutputGalCount[n];
-                  OutputGalCount[n]++;
-                  haloaux[i].output_snap_n = n;
-              }
-          }
-      }
+    for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
+        if(halogal[gal_idx].mergeIntoID > -1) {
+            halogal[gal_idx].mergeIntoID = OutputGalOrder[halogal[gal_idx].mergeIntoID];
+        }
+    }
 
-      int num_output_gals = 0;
-      int num_gals_processed[run_params->MAXSNAPS];
-      memset(num_gals_processed, 0, sizeof(num_gals_processed[0])*run_params->MAXSNAPS);
-      for(int n = 0; n < run_params->NOUT; n++) {
-          cumul_output_ngal[n] = num_output_gals;
-          num_output_gals += OutputGalCount[n];
-      }
+    switch(run_params->OutputFormat) {
 
-      for(int i = 0; i < numgals; i++) {
-          if(halogal[i].mergeIntoID > -1) {
-              halogal[i].mergeIntoID = OutputGalOrder[halogal[i].mergeIntoID];
-          }
-      }
+    case(binary):;
 
-      struct GALAXY_OUTPUT *all_outputgals  = calloc(num_output_gals, sizeof(struct GALAXY_OUTPUT));
-      if(all_outputgals == NULL) {
-          fprintf(stderr,"Error: Could not allocate enough memory to hold all %d output galaxies\n",num_output_gals);
-          ABORT(MALLOC_FAILURE);
-      }
+        // Determine the offset to the block of galaxies for each snapshot.
+        int32_t num_output_gals = 0;
+        int32_t *num_gals_processed = calloc(run_params->MAXSNAPS, sizeof(*(num_gals_processed)));
+        if(num_gals_processed == NULL) {
+            fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `num_gals_proccessed`\n", run_params->MAXSNAPS);
+            ABORT(MALLOC_FAILURE);
+        }
 
-      // Prepare all the galaxies for output.
-      for(int i = 0; i < numgals; i++) {
-          if(haloaux[i].output_snap_n < 0) continue;
-          int32_t snap_idx = haloaux[i].output_snap_n;
+        int32_t *cumul_output_ngal = calloc(run_params->NOUT, sizeof(*(cumul_output_ngal)));
+        if(cumul_output_ngal == NULL) {
+            fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `cumul_output_ngal`\n", run_params->NOUT);
+            ABORT(MALLOC_FAILURE);
+        }
 
-          switch(run_params->OutputFormat) {
+        for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+            cumul_output_ngal[snap_idx] = num_output_gals;
+            num_output_gals += OutputGalCount[snap_idx];
+        }
 
-          case(binary):;
-              // Here we move the offset pointer depending upon the number of galaxies processed up to this point. 
-              struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx] + num_gals_processed[snap_idx];
-              prepare_galaxy_for_output(ThisTask, tree, &halogal[i], galaxy_output, halos, haloaux, halogal, run_params);
+        // We store all the galaxies to be written for this tree in a single memory block.  Later we
+        // will then perform a single write for each snapshot, pointing to the correct position in
+        // the block.
+        struct GALAXY_OUTPUT *all_outputgals  = calloc(num_output_gals, sizeof(struct GALAXY_OUTPUT));
+        if(all_outputgals == NULL) {
+            fprintf(stderr,"Error: Could not allocate enough memory to hold all %d output galaxies\n",num_output_gals);
+            ABORT(MALLOC_FAILURE);
+        }
 
-              save_info->tot_ngals[snap_idx]++;
-              save_info->forest_ngals[snap_idx][tree]++;
-              num_gals_processed[snap_idx]++;
-              break;
+        // Prepare all the galaxies for output.
+        for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
+            if(haloaux[gal_idx].output_snap_n < 0) {
+                continue;
+            }
+            int32_t snap_idx = haloaux[gal_idx].output_snap_n;
+
+            // Here we move the offset pointer depending upon the number of galaxies processed up to this point.
+            struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx] + num_gals_processed[snap_idx];
+            prepare_galaxy_for_output(ThisTask, tree, &halogal[gal_idx], galaxy_output, halos, haloaux, halogal, run_params);
+
+            // Update the running totals.
+            save_info->tot_ngals[snap_idx]++;
+            save_info->forest_ngals[snap_idx][tree]++;
+            num_gals_processed[snap_idx]++;
+        }
+
+        // Now perform one write action for each redshift output.
+        for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+
+            // Shift the offset pointer depending upon how many galaxies have been written out.
+            struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx];
+
+            // Then write out the chunk of galaxies for this redshift output.
+            ssize_t nwritten = mywrite(save_info->save_fd[snap_idx], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx]);
+            if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx])) {
+                fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
+                                "Meant to write out %d elements with a total of %"PRId64" bytes (%zu bytes for each element). "
+                                "However, I wrote out a total of %"PRId64" bytes.\n",
+                                snap_idx, OutputGalCount[snap_idx], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx], sizeof(struct GALAXY_OUTPUT),
+                                nwritten);
+                perror(NULL);
+                ABORT(FILE_WRITE_ERROR);
+            }
+        }
+        free(all_outputgals);
+        free(cumul_output_ngal);
+        free(num_gals_processed);
+        break;
 
 #ifdef HDF5
-          case(hdf5):
-              prepare_galaxy_for_hdf5_output(ThisTask, tree, &halogal[i], save_info, snap_idx, halos, haloaux, halogal, run_params);
-              save_info->num_gals_in_buffer[snap_idx]++;
+    case(hdf5):
+        for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
+            if(haloaux[gal_idx].output_snap_n < 0) {
+                continue;
+            }
 
-              // We can't guarantee that this tree will contain enough galaxies to trigger a write.
-              // Hence we need to increment this here.
-              save_info->forest_ngals[snap_idx][tree]++;
+            int32_t snap_idx = haloaux[gal_idx].output_snap_n;
+            prepare_galaxy_for_hdf5_output(ThisTask, tree, &halogal[gal_idx], save_info, snap_idx, halos, haloaux, halogal, run_params);
+            save_info->num_gals_in_buffer[snap_idx]++;
 
-              herr_t status;
+            // We can't guarantee that this tree will contain enough galaxies to trigger a write.
+            // Hence we need to increment this here.
+            save_info->forest_ngals[snap_idx][tree]++;
 
-              hsize_t dims_extend[1];
-              dims_extend[0] = (hsize_t) save_info->buffer_size;
+            herr_t status;
 
-              hsize_t old_dims[1];
-              old_dims[0] = (hsize_t) save_info->tot_ngals[snap_idx];
+            if(save_info->num_gals_in_buffer[snap_idx] == save_info->buffer_size) {
 
-              hsize_t new_dims[1];
-              new_dims[0] = old_dims[0] + (hsize_t) save_info->buffer_size;
+                // To save the galaxies, we must first extend the size of the dataset to accomodate the new data.
 
-              //fprintf(stderr, "num_gals Snap %d = %d\n", n, save_info->num_gals_in_buffer[n]);
+                // This is the length which we will extended the dataset by.
+                hsize_t dims_extend[1];
+                dims_extend[0] = (hsize_t) save_info->buffer_size;
 
-              if(save_info->num_gals_in_buffer[snap_idx] == save_info->buffer_size) {
+                // The previous length of the dataset.
+                hsize_t old_dims[1];
+                old_dims[0] = (hsize_t) save_info->tot_ngals[snap_idx];
 
-                  // To save the galaxies, we must first extend the size of the dataset to accomodate the new data.
-                  int32_t field_idx = 0;
+                // Then this is the new length.
+                // JS 16/03/19: I've attempted to put these into the HDF5 function calls directly
+                // (rather than specifying as arrays).  However, it causes errors...
+                hsize_t new_dims[1];
+                new_dims[0] = old_dims[0] + (hsize_t) save_info->buffer_size;
 
-                  EXTEND_AND_WRITE_GALAXY_DATASET(SnapNum, H5T_NATIVE_INT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Type, H5T_NATIVE_INT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(GalaxyIndex, H5T_NATIVE_LLONG);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(CentralGalaxyIndex, H5T_NATIVE_LLONG);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(SAGEHaloIndex, H5T_NATIVE_INT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(SAGETreeIndex, H5T_NATIVE_INT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(SimulationHaloIndex, H5T_NATIVE_LLONG);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(mergeType, H5T_NATIVE_INT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(mergeIntoID, H5T_NATIVE_INT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(mergeIntoSnapNum, H5T_NATIVE_INT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(dT, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Posx, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Posy, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Posz, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Velx, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Vely, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Velz, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Spinx, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Spiny, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Spinz, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Len, H5T_NATIVE_INT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Mvir, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(CentralMvir, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Rvir, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Vvir, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Vmax, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(VelDisp, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(ColdGas, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(StellarMass, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(BulgeMass, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(HotGas, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(EjectedMass, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(BlackHoleMass, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(ICS, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsColdGas, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsStellarMass, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsBulgeMass, H5T_NATIVE_FLOAT); 
-                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsHotGas, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsEjectedMass, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(MetalsICS, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(SfrDisk, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(SfrBulge, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(SfrDiskZ, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(SfrBulgeZ, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(DiskScaleRadius, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Cooling, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(Heating, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(QuasarModeBHaccretionMass, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(TimeOfLastMajorMerger, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(TimeOfLastMinorMerger, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(OutflowRate, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(infallMvir, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(infallVvir, H5T_NATIVE_FLOAT);
-                  EXTEND_AND_WRITE_GALAXY_DATASET(infallVmax, H5T_NATIVE_FLOAT);
+                // This parameter is incremented in every Macro call. It is used to ensure we are
+                // accessing the correct dataset.
+                int32_t field_idx = 0;
 
-                  save_info->num_gals_in_buffer[snap_idx] = 0;
-                  save_info->tot_ngals[snap_idx] += save_info->buffer_size;
-              }
-              break;
+                EXTEND_AND_WRITE_GALAXY_DATASET(SnapNum, H5T_NATIVE_INT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Type, H5T_NATIVE_INT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(GalaxyIndex, H5T_NATIVE_LLONG);
+                EXTEND_AND_WRITE_GALAXY_DATASET(CentralGalaxyIndex, H5T_NATIVE_LLONG);
+                EXTEND_AND_WRITE_GALAXY_DATASET(SAGEHaloIndex, H5T_NATIVE_INT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(SAGETreeIndex, H5T_NATIVE_INT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(SimulationHaloIndex, H5T_NATIVE_LLONG);
+                EXTEND_AND_WRITE_GALAXY_DATASET(mergeType, H5T_NATIVE_INT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(mergeIntoID, H5T_NATIVE_INT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(mergeIntoSnapNum, H5T_NATIVE_INT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(dT, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Posx, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Posy, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Posz, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Velx, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Vely, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Velz, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Spinx, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Spiny, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Spinz, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Len, H5T_NATIVE_INT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Mvir, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(CentralMvir, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Rvir, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Vvir, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Vmax, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(VelDisp, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(ColdGas, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(StellarMass, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(BulgeMass, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(HotGas, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(EjectedMass, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(BlackHoleMass, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(ICS, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(MetalsColdGas, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(MetalsStellarMass, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(MetalsBulgeMass, H5T_NATIVE_FLOAT); 
+                EXTEND_AND_WRITE_GALAXY_DATASET(MetalsHotGas, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(MetalsEjectedMass, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(MetalsICS, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(SfrDisk, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(SfrBulge, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(SfrDiskZ, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(SfrBulgeZ, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(DiskScaleRadius, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Cooling, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(Heating, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(QuasarModeBHaccretionMass, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(TimeOfLastMajorMerger, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(TimeOfLastMinorMerger, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(OutflowRate, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(infallMvir, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(infallVvir, H5T_NATIVE_FLOAT);
+                EXTEND_AND_WRITE_GALAXY_DATASET(infallVmax, H5T_NATIVE_FLOAT);
+
+                // We've performed a write, so future galaxies will overwrite the old data.
+                save_info->num_gals_in_buffer[snap_idx] = 0;
+                save_info->tot_ngals[snap_idx] += save_info->buffer_size;
+            }
+        }
+        break;
 #endif
-          default:
-              fprintf(stderr, "Uknown OutputFormat.\n");
-              ABORT(10341);
-          }
-      }    
+    default:
+        fprintf(stderr, "Uknown OutputFormat when attempting to save.\n");
+        ABORT(INVALID_OPTION_IN_PARAMS);
 
-      // Now perform one write action for each redshift output.
-      for(int n=0;n<run_params->NOUT;n++) {
-
-          // Shift the offset pointer depending upon how many galaxies have been written out.
-          struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n];
-
-          // Then write out the chunk of galaxies for this redshift output.
-          
-          switch(run_params->OutputFormat) {
-
-          case(binary):;
-              ssize_t nwritten = mywrite(save_info->save_fd[n], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n]);
-              if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n])) { 
-                  fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
-                                  "Meant to write out %d elements with a total of %"PRId64" bytes (%zu bytes for each element). "
-                                  "However, I wrote out a total of %"PRId64" bytes.\n",
-                                  n, OutputGalCount[n], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n], sizeof(struct GALAXY_OUTPUT),
-                                  nwritten);
-                  perror(NULL);
-                  ABORT(FILE_WRITE_ERROR);            
-              }
-
-          case(hdf5):
-              break;
-
-          default:
-              fprintf(stderr, "Uknown OutputFormat.\n");
-              ABORT(10341);
-          }
-      }
-
-      // don't forget to free the workspace.
-      free(OutputGalOrder);
-      free(all_outputgals);
+    }
+    // don't forget to free the workspace.
+    free(OutputGalOrder);
 
 }
 
 
-
-void prepare_galaxy_for_output(int ThisTask, int tree, struct GALAXY *g, struct GALAXY_OUTPUT *o,
-                               struct halo_data *halos,
-                               struct halo_aux_data *haloaux, struct GALAXY *halogal,
-                               const struct params *run_params)
+void prepare_galaxy_for_output(int ThisTask, int tree, struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
+                               struct halo_aux_data *haloaux, struct GALAXY *halogal, const struct params *run_params)
 {
     o->SnapNum = g->SnapNum;
     if(g->Type < SHRT_MIN || g->Type > SHRT_MAX) {

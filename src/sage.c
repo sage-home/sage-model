@@ -47,6 +47,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     char buffer[4*MAX_STRING_LEN + 1];
     snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies, run_params->ZZ[run_params->ListOutputSnaps[0]], ThisTask);
 
+    /*
     FILE *fp = fopen(buffer, "w");
     if(fp != NULL) {
         fclose(fp);
@@ -54,6 +55,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         fprintf(stderr,"Error: Could not open output file `%s`\n", buffer);
         ABORT(FILE_NOT_FOUND);
     }
+    */
 
     /* setup the forests reading, and then distribute the forests over the Ntasks */
     int status = EXIT_FAILURE;
