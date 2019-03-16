@@ -26,6 +26,8 @@
 
 // Externally Visible Functions //
 
+// Open up all the required output files and remember their file handles.  These are placed into
+// `save_info` for access later.
 int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_info *save_info, const struct params *run_params)
 {
     int32_t status;
@@ -60,6 +62,7 @@ int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_in
 }
 
 
+// Write all the galaxy properties to file.
 int32_t save_galaxies(const int ThisTask, const int tree, const int numgals, struct halo_data *halos,
                       struct halo_aux_data *haloaux, struct GALAXY *halogal,
                       struct save_info *save_info, const struct params *run_params)
@@ -101,6 +104,7 @@ int32_t save_galaxies(const int ThisTask, const int tree, const int numgals, str
         }
     }
 
+    // All of the tracking arrays set up, time to perform the actual writing.
     switch(run_params->OutputFormat) {
 
     case(binary):
@@ -126,6 +130,8 @@ int32_t save_galaxies(const int ThisTask, const int tree, const int numgals, str
 }
 
 
+// Write any remaining attributes or header information, close all the open files and free all the
+// relevant dataspaces.
 int32_t finalize_galaxy_files(const int32_t ntrees, struct save_info *save_info, const struct params *run_params) 
 {
 

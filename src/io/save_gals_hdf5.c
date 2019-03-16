@@ -32,6 +32,8 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 #define MAX_ATTRIBUTE_LEN 10000
 #define NUM_GALS_PER_BUFFER 1000
 
+// HDF5 is a self-describing data format.  Each dataset will contain a number of attributes to
+// describe properties such as units or number of elements.
 #define CREATE_SINGLE_ATTRIBUTE(group_id, attribute_name, attribute_value, h5_dtype) { \
     hid_t macro_dataspace_id = H5Screate(H5S_SCALAR);                 \
     if(macro_dataspace_id < 0) {                                      \
@@ -129,6 +131,9 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
     }                                                                 \
 }
 
+// Unlike the binary output where we generate an array of output struct instances, the HDF5 workflow has
+// a single output struct (for each snapshot) where the **properties** of the struct are arrays.
+// This macro callocs (i.e., allocates and zeros) space for these inner arrays.
 #define CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, field_name) {     \
     save_info->buffer_output_gals[snap_idx].field_name = calloc(save_info->buffer_size, sizeof(*(save_info->buffer_output_gals[snap_idx].field_name))); \
     if(save_info->buffer_output_gals[snap_idx].field_name == NULL) { \
@@ -137,12 +142,17 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
     }                                                                \
 }
 
+
+// Creates the HDF5 file, groups and the datasets.  The heirachy for the HDF5 file is
+// File->Group->Datasets.  For example, File->"Snap_43"->"StellarMass"->**Data**.
+// The handles for all of these are stored in `save_info` so we can write later.
 int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_info, const struct params *run_params)
 {
     hid_t prop, dataset_id;
     hid_t file_id, group_id, dataspace_id;
     char buffer[4*MAX_STRING_LEN + 1];
 
+    // Create the file.
     snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
 
     file_id = H5Fcreate(buffer, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -152,25 +162,30 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     }
     save_info->file_id = file_id;
 
-    hsize_t dims[1] = {0};
-    hsize_t maxdims[1] = {H5S_UNLIMITED};
-    hsize_t chunk_dims[1] = {NUM_GALS_PER_BUFFER};
-    herr_t status;
-
+    // Generate the names, description and HDF5 data types for each of the output fields.
     char *field_names[NUM_OUTPUT_FIELDS];
     char *field_descriptions[NUM_OUTPUT_FIELDS];
     char *field_units[NUM_OUTPUT_FIELDS];
     hsize_t field_dtypes[NUM_OUTPUT_FIELDS];
 
-    save_info->num_output_fields = NUM_OUTPUT_FIELDS;
     generate_field_metadata(field_names, field_descriptions, field_units, field_dtypes);
 
+    save_info->num_output_fields = NUM_OUTPUT_FIELDS;
     save_info->name_output_fields = field_names;
     save_info->field_dtypes = field_dtypes;
 
-    // First create datasets for each output field. We will have these datasets for EACH snapshot.
+    // We will have groups for each output snapshot, and then inside those groups, a dataset for
+    // each field.
     save_info->group_ids = malloc(sizeof(hid_t) * run_params->NOUT);
     save_info->dataset_ids = malloc(sizeof(hid_t) * NUM_OUTPUT_FIELDS * run_params->NOUT);
+
+    // A couple of variables before we enter the loop.
+    // JS 17/03/19: I've attempted to put these directly into the function calls and things blew up.
+    hsize_t dims[1] = {0};
+    hsize_t maxdims[1] = {H5S_UNLIMITED};
+    hsize_t chunk_dims[1] = {NUM_GALS_PER_BUFFER};
+    herr_t status;
+
     char full_field_name[MAX_STRING_LEN];
     char *name;
     char *description;
@@ -179,7 +194,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
 
-        // First create a snapshot group.
+        // Create a snapshot group.
         snprintf(full_field_name, MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
         group_id = H5Gcreate2(file_id, full_field_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         if(group_id < 0) {
@@ -191,6 +206,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
+            // Then create each field inside.
             name = field_names[field_idx];
             snprintf(full_field_name, MAX_STRING_LEN-  1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], name);
 
@@ -318,6 +334,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 }
 
 
+// Add all the galaxies for this tree to the buffer.  If we hit the buffer limit, write all the
+// galaxies to file.
 int32_t save_hdf5_galaxies(const int32_t filenr, const int32_t treenr, const int32_t num_gals,
                            struct halo_data *halos, struct halo_aux_data *haloaux, struct GALAXY *halogal,
                            struct save_info *save_info, const struct params *run_params)
@@ -325,10 +343,13 @@ int32_t save_hdf5_galaxies(const int32_t filenr, const int32_t treenr, const int
     int32_t status = EXIT_FAILURE;
 
     for(int32_t gal_idx = 0; gal_idx < num_gals; gal_idx++) {
+
+        // Only processing galaxies at selected snapshots. This field was generated in `save_galaxies()`.
         if(haloaux[gal_idx].output_snap_n < 0) {
             continue;
         }
 
+        // Add galaxies to buffer.
         int32_t snap_idx = haloaux[gal_idx].output_snap_n;
         prepare_galaxy_for_hdf5_output(filenr, treenr, &halogal[gal_idx], save_info, snap_idx, halos, haloaux, halogal, run_params);
         save_info->num_gals_in_buffer[snap_idx]++;
@@ -350,6 +371,8 @@ int32_t save_hdf5_galaxies(const int32_t filenr, const int32_t treenr, const int
 }
 
 
+// We may still have galaxies in the buffer.  Here we write them.  Then fill out the final
+// attributes that are required, close all the files and release all the datasets/groups/file.
 int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info,
                                    const struct params *run_params)
 {
@@ -427,7 +450,6 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", ntrees, H5T_NATIVE_INT);
 
-
     // Now we need to ensure we free all of the HDF5 IDs.  The heirachy is File->Groups->Datasets.
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
 
@@ -467,21 +489,23 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
 
 // Local Functions //
 
+// Give more transparent control over the names of the fields, their descriptions and what units we
+// use.  To allow easy comparison with  the binary output format (e.g., for testing purposes), we
+// use identical field names to the script that reads the binary data (e.g., 'tests/sagediff.py').
 int32_t generate_field_metadata(char **field_names, char **field_descriptions, char **field_units, hsize_t *field_dtypes) {
 
-    // These need to be indentical to the fields in GALAXY_OUTPUT struct.
-
     char *tmp_names[NUM_OUTPUT_FIELDS] = {"SnapNum", "Type", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
-                                            "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
-                                            "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
-                                            "Spinx", "Spiny", "Spinz", "Len", "Mvir", "CentralMvir", "Rvir", "Vvir",
-                                            "Vmax", "VelDisp", "ColdGas", "StellarMass", "BulgeMass", "HotGas", "EjectedMass",
-                                            "BlackHoleMass", "IntraClusterStars", "MetalsColdGas", "MetalsStellarMass", "MetalsBulgeMass",
-                                            "MetalsHotGas", "MetalsEjectedMass", "MetalsIntraClusterStars", "SfrDisk", "SfrBulge", "SfrDiskZ",
-                                            "SfrBulgeZ", "DiskRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
-                                            "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
-                                            "infallVvir", "infallVmax"};
+                                          "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
+                                          "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
+                                          "Spinx", "Spiny", "Spinz", "Len", "Mvir", "CentralMvir", "Rvir", "Vvir",
+                                          "Vmax", "VelDisp", "ColdGas", "StellarMass", "BulgeMass", "HotGas", "EjectedMass",
+                                          "BlackHoleMass", "IntraClusterStars", "MetalsColdGas", "MetalsStellarMass", "MetalsBulgeMass",
+                                          "MetalsHotGas", "MetalsEjectedMass", "MetalsIntraClusterStars", "SfrDisk", "SfrBulge", "SfrDiskZ",
+                                          "SfrBulgeZ", "DiskRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
+                                          "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
+                                          "infallVvir", "infallVmax"};
 
+    // Must accurately describe what exactly each field is and any special considerations.
     char *tmp_descriptions[NUM_OUTPUT_FIELDS] = {"SnapNum", "Type", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
                                             "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
                                             "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
@@ -504,8 +528,7 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
                                             "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
                                             "infallVvir", "infallVmax"};
 
-    // May be able to determine this properly as `tmp_names` has all the output fields.
-    // Could then use 'if' statements...
+    // These are the HDF5 datatypes for each field.
     hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT, 
                                          H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_INT, H5T_NATIVE_INT, 
                                          H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
@@ -531,6 +554,8 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
 #define TREE_MUL_FAC        (1000000000LL)
 #define THISTASK_MUL_FAC      (1000000000000000LL)
 
+// Take all the properties of the galaxy `*g` and add them to the buffered galaxies
+// properties `save_info->buffer_output_gals`.
 int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GALAXY *g, struct save_info *save_info,
                                        int32_t output_snap_idx,  struct halo_data *halos, struct halo_aux_data *haloaux,
                                        struct GALAXY *halogal, const struct params *run_params)
@@ -670,6 +695,14 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GA
 #undef TREE_MUL_FAC
 #undef THISTASK_MUL_FAC
 
+// We created the datasets (e.g., "Snap_43/StellarMass") with 'infinite' dimensions.
+// Before we write, we must extend the current dimensions to account for the new values.
+// The basic flow for this is:
+// Get the dataset ID -> Extend the dataset to the new dimensions -> Get the filespace of the dataset
+// -> Select a block of memory that we will add to the current filespace, this is the hyperslab.
+// -> Create a dataspace that will hold the data -> Write the data to the group using the new spaces.
+// Please refer to the HDF5 documentation for comprehensive explanations. I've probably butchered this...
+
 #define EXTEND_AND_WRITE_GALAXY_DATASET(field_name, h5_dtype) { \
     hid_t dataset_id = save_info->dataset_ids[snap_idx*save_info->num_output_fields + field_idx]; \
     if(dataset_id < 0) {                          \
@@ -722,6 +755,9 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GA
     field_idx++;                                  \
 }
 
+// Extend the length of each dataset in our file and write the data to it.
+// We have to specify the number of items to write `num_to_write` because this function is called
+// both when we reach the buffer limit and during finalization where we write the remaining galaxies.
 int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num_already_written,
                              struct save_info *save_info)
 {
@@ -749,6 +785,8 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
     // accessing the correct dataset.
     int32_t field_idx = 0;
 
+    // We now need to write each property to file.  This is performed in a stack of macros because
+    // it's not possible to loop through the members of a struct.
     EXTEND_AND_WRITE_GALAXY_DATASET(SnapNum, H5T_NATIVE_INT);
     EXTEND_AND_WRITE_GALAXY_DATASET(Type, H5T_NATIVE_INT);
     EXTEND_AND_WRITE_GALAXY_DATASET(GalaxyIndex, H5T_NATIVE_LLONG);
