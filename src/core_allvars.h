@@ -302,6 +302,7 @@ enum sage_error_types {
     INVALID_VALUE_READ_FROM_FILE,
     PARSE_ERROR,
     INVALID_MEMORY_ACCESS_REQUESTED,
+    HDF5_ERROR,
 };
 
 struct lhalotree_info {

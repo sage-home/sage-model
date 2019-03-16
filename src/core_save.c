@@ -60,10 +60,11 @@ int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_in
 }
 
 
-void save_galaxies(const int ThisTask, const int tree, const int numgals, struct halo_data *halos,
-                   struct halo_aux_data *haloaux, struct GALAXY *halogal,
-                   struct save_info *save_info, const struct params *run_params)
+int32_t save_galaxies(const int ThisTask, const int tree, const int numgals, struct halo_data *halos,
+                      struct halo_aux_data *haloaux, struct GALAXY *halogal,
+                      struct save_info *save_info, const struct params *run_params)
 {
+    int32_t status = EXIT_FAILURE;
 
     // Reset the output galaxy count.
     int32_t OutputGalCount[run_params->MAXSNAPS];
@@ -75,7 +76,7 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
     int32_t *OutputGalOrder = calloc(numgals, sizeof(*(OutputGalOrder)));
     if(OutputGalOrder == NULL) {
         fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `OutputGalOrder`\n", numgals);
-        ABORT(MALLOC_FAILURE);
+        return MALLOC_FAILURE;
     }
 
     for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
@@ -103,23 +104,25 @@ void save_galaxies(const int ThisTask, const int tree, const int numgals, struct
     switch(run_params->OutputFormat) {
 
     case(binary):
-        save_binary_galaxies(ThisTask, tree, numgals, OutputGalCount, halos, haloaux,
-                             halogal, save_info, run_params);
+        status = save_binary_galaxies(ThisTask, tree, numgals, OutputGalCount, halos, haloaux,
+                                      halogal, save_info, run_params);
         break;
 
 #ifdef HDF5
     case(hdf5):
-        save_hdf5_galaxies(ThisTask, tree, numgals, halos, haloaux, halogal, save_info, run_params);   
+        status = save_hdf5_galaxies(ThisTask, tree, numgals, halos, haloaux, halogal, save_info, run_params);
         break;
 #endif
+
     default:
-        fprintf(stderr, "Uknown OutputFormat when attempting to save.\n");
-        ABORT(INVALID_OPTION_IN_PARAMS);
+        fprintf(stderr, "Uknown OutputFormat in `save_galaxies()`.\n");
+        status = INVALID_OPTION_IN_PARAMS;
 
     }
-    // don't forget to free the workspace.
+
     free(OutputGalOrder);
 
+    return status;
 }
 
 
@@ -148,4 +151,3 @@ int32_t finalize_galaxy_files(const int32_t ntrees, struct save_info *save_info,
 
     return status;
 }
-

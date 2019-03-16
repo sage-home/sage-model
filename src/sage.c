@@ -19,8 +19,8 @@
 #include "core_tree_utils.h"
 
 /* main sage -> not exposed externally */
-static void sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
-                            struct forest_info *forests_info, struct params *run_params);
+int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
+                        struct forest_info *forests_info, struct params *run_params);
 
 int init_sage(const int ThisTask, const char *param_file, struct params *run_params)
 {
@@ -106,14 +106,17 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         }
         
         /* the millennium tree is really a collection of trees, viz., a forest */
-        sage_per_forest(ThisTask, forestnr, &save_info, &forests_info, run_params);
+        status = sage_per_forest(ThisTask, forestnr, &save_info, &forests_info, run_params);
+        if(status != EXIT_SUCCESS) {
+            ABORT(status);
+        }
 
         nforests_done++;
     }
 
     status = finalize_galaxy_files(Nforests, &save_info, run_params);
     if(status != EXIT_SUCCESS) {
-      ABORT(status);
+        ABORT(status);
     }
 
     for(int snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
@@ -156,10 +159,11 @@ cleanup:
 }
 
 
-static void sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
-                            struct forest_info *forests_info, struct params *run_params)
+int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
+                        struct forest_info *forests_info, struct params *run_params)
 {
-    
+    int32_t status = EXIT_FAILURE;
+
     /*  galaxy data  */
     struct GALAXY  *Gal = NULL, *HaloGal = NULL;
     
@@ -245,13 +249,18 @@ static void sage_per_forest(const int ThisTask, const int forestnr, struct save_
 
 #endif /* PROCESS_LHVT_STYLE */    
 
-    save_galaxies(ThisTask, forestnr, numgals, Halo, HaloAux, HaloGal, save_info, run_params);
+    status = save_galaxies(ThisTask, forestnr, numgals, Halo, HaloAux, HaloGal, save_info, run_params);
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
 
     /* free galaxies and the forest */
     myfree(Gal);
     myfree(HaloGal);
     myfree(HaloAux);
     myfree(Halo);
+
+    return EXIT_SUCCESS;
 }    
 
 
