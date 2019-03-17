@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
+import h5py
 import numpy as np
 import os
 import sys
@@ -168,7 +169,8 @@ class BinarySage(object):
         return tree
 
 
-def compare_catalogs(fname1, fname2, mode, ignored_fields):
+def compare_catalogs(fname1, fname2, mode, ignored_fields, multidim_fields=None,
+                     rtol=1e-9, atol=5e-5):
     """
     Compares two SAGE catalogs exactly
     """
@@ -179,13 +181,111 @@ def compare_catalogs(fname1, fname2, mode, ignored_fields):
     # The second file will be either binary or HDF5.
     if mode == "binary-binary":
         g2 = BinarySage(fname2, ignored_fields)
-        compare_binary_catalogs(g1, g2)
-
+        compare_binary_catalogs(g1, g2, rtol, atol)
     else:
-        g2 = h5py.File(fname2, "r")
+        with h5py.File(fname2, "r") as hdf5_file:
+            compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields,
+                                         rtol, atol)
 
 
-def compare_binary_catalogs(g1, g2):
+def determine_binary_redshift(fname):
+
+    # We assume the file name for the binary file is of the form
+    # /base/path/<ModelPrefix>_zW.XYZ.
+
+    # First pull out the model name fully.
+    model_name = fname.split("/")[-1]
+
+    # Then get the redshift in string form.
+    redshift_string = model_name.split("z")[-1]
+
+    # Cast and return.
+    redshift = float(redshift_string)
+
+    return redshift
+
+
+def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
+                                 atol=5e-5):
+
+    # We need to first determine the snapshot that corresponds to the redshift we're
+    # checking.  This is because the HDF5 file will contain multiple snapshots of data
+    # whereas we only passed a single redshift binary file.
+    binary_redshift = determine_binary_redshift(g1.filename)
+    snap_key = determine_snap_key(hdf5_file, binary_redshift)
+
+    # Load all the galaxies from all trees in the binary file.
+    binary_gals = g1.read_tree(None)
+
+    # Check that number of galaxies is equal.
+    ngals_binary = g1.totngals
+    ngals_hdf5 = hdf5_file[snap_key].attrs["ngals"]
+    if ngals_binary != ngals_hdf5:
+        print("The binary file had {0} galaxies whereas the HDF5 file had {1} galaxies. "
+              "We determined that the binary file was at redshift {2} and that the "
+              "corresponding dataset in the HDF5 file was {3}".format(ngals_binary,
+              ngals_hdf5, binary_redshift, snap_key))
+        raise ValueError
+
+    # We will key via the binary file because the HDF5 file has some multidimensional
+    # fields split across mutliple datasets.
+    dim_names = ["x", "y", "z"]
+    for key in g1.dtype.names:
+
+        # Check if this is a multidimensional field.
+        if key in multidim_fields:
+
+            hdf5_data = np.zeros((ngals_hdf5, 3))
+
+            # In the HDF5 file, the fields are named <BaseKey><x/y/z>. We will slice the
+            # data from each dimension into a single Nx3 array identical to how the binary
+            # data is formatted.
+            for dim_num, dim_name in enumerate(dim_names):
+                hdf5_name = "{0}{1}".format(key, dim_name)
+
+                hdf5_data[:, dim_num] = hdf5_file[snap_key][hdf5_name][:]
+
+        else:
+            hdf5_data = hdf5_file[snap_key][key][:]
+
+        binary_data = binary_gals[key]
+
+        # The two arrays should now have the identical shape. Compare them.
+        if binary_data.shape != hdf5_data.shape:
+            print("For field {0}, the shape of the binary and HDF5 data were not "
+                  "identical.  The binary data had a shape of {1} and the HDF5 had shape "
+                  "of {2}".format(key, binary_data.shape, hdf5_data.shape))
+            raise ValueError
+
+        compare_fields(binary_data, hdf5_data, key, rtol, atol)
+
+
+def determine_snap_key(hdf5_file, redshift):
+
+    hdf5_snap_keys = []
+    hdf5_redshifts = []
+    for key in hdf5_file.keys():
+
+        # We need to be careful here. We have a "Header" group that we don't want to count
+        # when we're trying to work out the correct snapshot.
+        if key == "Header":
+            continue
+        hdf5_snap_keys.append(key)
+        hdf5_redshifts.append(hdf5_file[key].attrs["redshift"])
+
+    # Find the snapshot that is closest to the redshift.
+    z_array = np.array(hdf5_redshifts)
+    idx = (np.abs(z_array - redshift)).argmin()
+    snap_key = hdf5_snap_keys[idx]
+
+    print("")
+    print("Determined {0} corresponds to the binary file at redshift {1}".format(snap_key, redshift))
+    print("")
+
+    return snap_key
+
+
+def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
 
     if not (isinstance(g1, BinarySage) and 
             isinstance(g2, BinarySage)):
@@ -228,11 +328,7 @@ def compare_binary_catalogs(g1, g2):
     # Load all the galaxies in from all trees.
     gals1 = g1.read_tree(None)
     gals2 = g2.read_tree(None)
-        
-    # set the error tolerance
-    rtol = 1e-9
-    atol = 5e-5
-    
+
     for field in g1.dtype.names:
         if field in ignored_fields:
             continue
@@ -282,10 +378,7 @@ def compare_fields(field1, field2, field_name, rtol, atol):
     #raise ValueError(msg)
     return                    
                 
-    
-#  'Main' section of code.  This if statement executes
-#   if the code is run from the 
-#   shell command line, i.e. with 'python allresults.py'
+
 if __name__ == '__main__':
 
     import argparse
@@ -307,4 +400,23 @@ if __name__ == '__main__':
 
     ignored_fields = ["GalaxyIndex", "CentralGalaxyIndex"]
 
-    compare_catalogs(args.file1, args.file2, args.mode, ignored_fields)
+    # Some multi-dimensional values (e.g., Position) are saved in multiple datasets for
+    # the HDF5 file.
+    multidim_fields = ["Pos", "Vel", "Spin"]
+
+    # Tolerance levels for the comparisons.
+    rtol = 1e-9
+    atol = 5e-5
+
+    print("")
+    print("Running sagediff on files {0} and {1} in mode {2}".format(args.file1,
+          args.file2, args.mode))
+    print("")
+
+    compare_catalogs(args.file1, args.file2, args.mode, ignored_fields, multidim_fields,
+                     rtol, atol)
+
+    print("")
+    print("========================")
+    print("All tests passed. Yay!")
+    print("========================")

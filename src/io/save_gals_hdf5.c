@@ -204,7 +204,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         }
         save_info->group_ids[snap_idx] = group_id;
 
-        CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", run_params->ZZ[ListOutputSnaps[[snap_idx]]], H5T_NATIVE_FLOAT);
+        float redshift = run_params->ZZ[run_params->ListOutputSnaps[snap_idx]];
+        CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", redshift, H5T_NATIVE_FLOAT);
 
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
@@ -389,7 +390,7 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
         // We still have galaxies remaining in the buffer. Need to write them.
         int32_t num_gals_to_write = save_info->num_gals_in_buffer[snap_idx];
 
-        status = trigger_buffer_write(snap_idx, save_info->num_gals_in_buffer[snap_idx],
+        status = trigger_buffer_write(snap_idx, num_gals_to_write,
                                       save_info->tot_ngals[snap_idx], save_info);
         if(status != EXIT_SUCCESS) {
             return status;
@@ -763,7 +764,6 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GA
 int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num_already_written,
                              struct save_info *save_info)
 {
-
     herr_t status;
 
     // To save the galaxies, we must first extend the size of the dataset to accomodate the new data.
@@ -781,7 +781,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 
     // Then this is the new length.
     hsize_t new_dims[1];
-    new_dims[0] = old_dims[0] + (hsize_t) num_to_write;
+    new_dims[0] = old_dims[0] + dims_extend[0]; 
 
     // This parameter is incremented in every Macro call. It is used to ensure we are
     // accessing the correct dataset.
@@ -846,7 +846,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 
     // We've performed a write, so future galaxies will overwrite the old data.
     save_info->num_gals_in_buffer[snap_idx] = 0;
-    save_info->tot_ngals[snap_idx] += save_info->buffer_size;
+    save_info->tot_ngals[snap_idx] += num_to_write; 
 
     return EXIT_SUCCESS;
 }
