@@ -204,6 +204,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         }
         save_info->group_ids[snap_idx] = group_id;
 
+        CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", run_params->ZZ[ListOutputSnaps[[snap_idx]]], H5T_NATIVE_FLOAT);
+
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
             // Then create each field inside.

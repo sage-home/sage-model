@@ -10,10 +10,8 @@ try:
 except NameError:
     xrange = range
 
-class sageResults(object):
+class BinarySage(object):
 
-    """ The following methods of this class generate the figures and plot them.
-    """
 
     def __init__(self, filename, ignored_fields=[]):
         """
@@ -143,53 +141,62 @@ class sageResults(object):
         
     def read_tree(self, treenum):
         """
-        Read a single tree specified by the tree number
+        Read a single tree specified by the tree number.
+
+        If ``trenum`` is ``None``, all trees are read.
         """
         import os
         if self.totntrees is None:
             self.read_header()
 
-        if treenum < 0 or treenum >= self.totntrees:
-            msg = "The requested tree index = {0} should be within [0, {2})"\
-                .format(treenum, self.totntrees)
-            raise ValueError(msg)
-        
-        ngal = self.ngal_per_tree[treenum]
+        if treenum is not None:
+            if treenum < 0 or treenum >= self.totntrees:
+                msg = "The requested tree index = {0} should be within [0, {2})"\
+                    .format(treenum, self.totntrees)
+                raise ValueError(msg)
+
+        if treenum is not None:
+            ngal = self.ngal_per_tree[treenum]
+        else:
+            ngal = self.totngals
+
         if ngal == 0:
             return None
 
-        # This section could have been used to
-        # read trees in arbitrary order.
-        ## WARNING: DO NOT mix reads from self.fd
-        ## and self.fp 
-        # nbytes = ngal * self.dtype.itemsize
-        # offset = self.bytes_offset_per_tree[treenum]
-        # try:
-        #     tree = os.pread(self.fd, nbytes, offset)
-        # except AttributeError:
-        #     # seek to the offset (where offset is
-        #     # defined from the beginnng of file)
-        #     os.lseek(self.fd, offset, os.SEEK_SET)
-        #     tree = os.read(self.fd, nbytes)
-        # 
-        # tree = np.asarray(tree, dtype=self.dtype)
-        
         # This assumes sequential reads
         tree = np.fromfile(self.fp, dtype=self.dtype, count=ngal)
         return tree
 
-def compare_catalogs(g1, g2):
+
+def compare_catalogs(fname1, fname2, mode, ignored_fields):
     """
     Compares two SAGE catalogs exactly
     """
-    
-    if not (isinstance(g1, sageResults) and 
-            isinstance(g2, sageResults)):
-        msg = "Both inputs must be objects the class 'sageResults'"\
+
+    # For both modes, the first file will be binary.  So lets initialize it.
+    g1 = BinarySage(fname1, ignored_fields)
+
+    # The second file will be either binary or HDF5.
+    if mode == "binary-binary":
+        g2 = BinarySage(fname2, ignored_fields)
+        compare_binary_catalogs(g1, g2)
+
+    else:
+        g2 = h5py.File(fname2, "r")
+
+
+def compare_binary_catalogs(g1, g2):
+
+    if not (isinstance(g1, BinarySage) and 
+            isinstance(g2, BinarySage)):
+        msg = "Both inputs must be objects the class 'BinarySage'"\
             "type(Object1) = {0} type(Object2) = {1}\n"\
             .format(type(g1), type(g2))
         raise ValueError
-    
+
+    g1.read_header()
+    g2.read_header()
+
     msg = "Total number of trees must be identical\n"
     if g1.totntrees != g2.totntrees:
         msg += "catalog1 has {0} trees while catalog2 has {1} trees\n"\
@@ -217,78 +224,63 @@ def compare_catalogs(g1, g2):
         trange = xrange
 
     ignored_fields = [a for a in g1.ignored_fields if a in g2.ignored_fields]
-    for treenum in trange(g1.totntrees):
-        if g1.ngal_per_tree[treenum] == 0:
+
+    # Load all the galaxies in from all trees.
+    gals1 = g1.read_tree(None)
+    gals2 = g2.read_tree(None)
+        
+    # set the error tolerance
+    rtol = 1e-9
+    atol = 5e-5
+    
+    for field in g1.dtype.names:
+        if field in ignored_fields:
             continue
-        
-        t1 = g1.read_tree(treenum)
-        t2 = g2.read_tree(treenum)
-        if (t1 is None and t1 != t2) or \
-           (t2 is None and t1 != t2):
-            msg = "Error: Exactly one of the trees contains "\
-                  "no galaxies.\nt1 = {0}\nt2 = {1}\n"\
-                  .format(t1, t2)
-            raise ValueError(msg)
 
-        xx = np.argsort(t1['SimulationHaloIndex'])
-        t1 = t1[xx]
+        field1 = gals1[field]
+        field2 = gals2[field]
 
-        xx = np.argsort(t2['SimulationHaloIndex'])
-        t2 = t2[xx]
-        
-        if t1.shape != t2.shape:
-            msg = "Error: Bug in read routine or corrupted/truncated file\n"\
-                "Expected to find exactly {0} galaxies in both catalogs\n"\
-                "Instead first catalog has the shape {1}\n"\
-                "and the second catalog has the shape {2}\n"\
-                .format(g1.ngal_per_tree[treenum],
-                        t1.shape,
-                        t2.shape)
-            raise ValueError(msg)
-        
-        dtype = g1.dtype
-        
-        # set the error tolerance
-        rtol = 1e-9
-        atol = 5e-5
-        
-        for fld in g1.dtype.names:
-            if fld in ignored_fields:
-                continue
+        compare_fields(field1, field2, field, rtol, atol)
 
-            f1 = t1[fld]
-            f2 = t2[fld]
 
-            msg = "Field = `{0}` not the same between the two catalogs\n"\
-                .format(fld)
-            if np.array_equal(f1, f2):
-                continue
+def compare_fields(field1, field2, field_name, rtol, atol):
 
-            print("A `numpy.array_equal` failed. Attempting a `np.allclose` with rtol={0} "
-                  "and atol={1}\n".format(rtol, atol), file=sys.stderr)
-            if np.allclose(f1, f2, rtol=rtol,  atol=atol):
-                continue
+    msg = "Field = `{0}` not the same between the two catalogs\n"\
+        .format(field_name)
+    if np.array_equal(field1, field2):
+        return
 
-            # If control reaches here, then the arrays are not equal
-            print("Printing values that were different side-by side\n",
-                  file=sys.stderr)
-            print("#######################################", file=sys.stderr)
-            print("# index          {0}1          {0}2".format(fld),
-                  file=sys.stderr)
-            numbad = 0
-            for _ii, (_f1, _f2) in enumerate(zip(f1, f2)):
-                if np.allclose(_f1, _f2, rtol=rtol,  atol=atol): continue
+    print("A `numpy.array_equal` failed. Attempting a `np.allclose` with rtol={0} "
+          "and atol={1}\n".format(rtol, atol), file=sys.stderr)
+    if np.allclose(field1, field2, rtol=rtol,  atol=atol):
+        return
 
-                # if control reaches here -> not equal values
-                print("{0} {1} {2}".format(_ii, _f1, _f2), file=sys.stderr)
-                numbad += 1
+    # If control reaches here, then the arrays are not equal
+    print("Printing values that were different side-by side\n",
+          file=sys.stderr)
+    print("#######################################", file=sys.stderr)
+    print("# index          {0}1          {0}2       Diff".format(field_name),
+          file=sys.stderr)
+    numbad = 0
 
-            print("------ Found {0} mis-matched values out of a total of {1} "
-                  "------".format(numbad, len(f1)), file=sys.stderr)
-            print("#######################################\n", file=sys.stderr)
-            # printed out the offending values
-            # now raise the error
-            raise ValueError(msg)
+    # `isclose` is True for all elements of `field1` that are close to the corresponding
+    # element in `field2`.
+    bool_mask = np.isclose(field1, field2, rtol=rtol, atol=atol)
+
+    bad_field1 = field1[bool_mask == False]
+    bad_field2 = field2[bool_mask == False]
+
+    for idx, (field1_val, field2_val) in enumerate(zip(bad_field1, bad_field2)):
+        print("{0} {1} {2} {3}".format(idx, field1_val, field2_val,
+              field1_val-field2_val), file=sys.stderr)
+
+    print("------ Found {0} mis-matched values out of a total of {1} "
+          "------".format(len(bad_field1), len(field1)), file=sys.stderr)
+    print("#######################################\n", file=sys.stderr)
+    # printed out the offending values
+    # now raise the error
+    #raise ValueError(msg)
+    return                    
                 
     
 #  'Main' section of code.  This if statement executes
@@ -299,23 +291,20 @@ if __name__ == '__main__':
     import argparse
     description = "Show differences between two SAGE catalogs"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('file1', metavar='FILE',
-                        help='the basename for the first set of files (say, model1_z0.000)')
-    parser.add_argument('file2', metavar='FILE',
-                        help='the basename for the second set of files (say, model2_z0.000)')
+    parser.add_argument("file1", metavar="FILE",
+                        help="the basename for the first set of files (say, model1_z0.000)")
+    parser.add_argument("file2", metavar="FILE",
+                        help="the basename for the second set of files (say, model2_z0.000)")
+    parser.add_argument("mode", metavar="MODE",
+                        help="Either 'binary-binary' or 'binary-hdf5'.")
 
     args = parser.parse_args()
 
+    if not (args.mode == "binary-binary" or args.mode == "binary-hdf5"):
+        print("We only accept comparisons between binary-binary files or binary-hdf5 "
+              "files.  Please set the 'mode' argument to one of these options.")
+        raise ValueError
+
     ignored_fields = ["GalaxyIndex", "CentralGalaxyIndex"]
-    
-    g1 = sageResults(args.file1, ignored_fields)
-    g2 = sageResults(args.file2, ignored_fields)
 
-    g1.read_header()
-    g2.read_header()
-    
-    print('Running sagediff on files {0} and {1}'.format(args.file1,
-                                                         args.file2))
-
-    compare_catalogs(g1, g2)
-    print("")
+    compare_catalogs(args.file1, args.file2, args.mode, ignored_fields)
