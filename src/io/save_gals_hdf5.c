@@ -142,6 +142,9 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
     }                                                                \
 }
 
+#define FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, field_name) {     \
+    free(save_info->buffer_output_gals[snap_idx].field_name);      \
+}
 
 // Creates the HDF5 file, groups and the datasets.  The heirachy for the HDF5 file is
 // File->Group->Datasets.  For example, File->"Snap_43"->"StellarMass"->**Data**.
@@ -430,7 +433,7 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
             return (int32_t) dataset_id;
         }
 
-        status = H5Dwrite(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &save_info->forest_ngals[snap_idx]); 
+        status = H5Dwrite(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, save_info->forest_ngals[snap_idx]);
         if(status < 0) {
             fprintf(stderr, "Failed to write a dataset for the number of galaxies per tree.\n"
                             "The dimensions of the dataset was %d\nThe file ID was %d\n."
@@ -482,6 +485,73 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
        fprintf(stderr, "Failed to close the HDF5 file.\nThe file ID was %d\n", (int32_t) save_info->file_id);
        return status; 
     }
+
+    // Then the memory for the IDs.
+    free(save_info->dataset_ids);
+    free(save_info->group_ids);
+
+    // Free all the other memory.
+    free(save_info->num_gals_in_buffer);
+
+    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, GalaxyIndex);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralGalaxyIndex);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGEHaloIndex);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGETreeIndex);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SimulationHaloIndex);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeType);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeIntoID);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeIntoSnapNum);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, dT);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posx);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posy);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posz);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Velx);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vely);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Velz);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spinx);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spiny);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spinz);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Len);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Mvir);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralMvir);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Rvir);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vvir);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vmax);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, VelDisp);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ColdGas);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, StellarMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BulgeMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, HotGas);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, EjectedMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BlackHoleMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ICS);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsColdGas);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsStellarMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsBulgeMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsHotGas);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsEjectedMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsICS);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDisk);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulge);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDiskZ);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulgeZ);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, DiskScaleRadius);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Cooling);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Heating);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, QuasarModeBHaccretionMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TimeOfLastMajorMerger);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TimeOfLastMinorMerger);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, OutflowRate);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallMvir);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVvir);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVmax);
+    }
+
+    free(save_info->buffer_output_gals);
 
     return EXIT_SUCCESS;
 
