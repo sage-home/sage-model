@@ -153,28 +153,6 @@ class Model:
         for attr in (attr_names + component_names):
             setattr(self, attr, np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64))
 
-        # How should we bin the Spin Parameter?
-        self.spin_bin_low   = -0.02
-        self.spin_bin_high  = 0.5
-        self.spin_bin_width = 0.01
-        self.spin_bins      = np.arange(self.spin_bin_low,
-                                        self.spin_bin_high + self.spin_bin_width,
-                                        self.spin_bin_width)
-        self.spin_counts = np.zeros(len(self.spin_bins)-1, dtype=np.int64)
-
-        # How should we bin the Velocity?
-        self.vel_bin_low   = -40.0
-        self.vel_bin_high  = 40.0
-        self.vel_bin_width = 0.5
-        self.vel_bins      = np.arange(self.vel_bin_low,
-                                       self.vel_bin_high + self.vel_bin_width,
-                                       self.vel_bin_width)
-
-        # These attributes will be binned on velocity.
-        attr_names = ["los_vel_counts", "x_vel_counts", "y_vel_counts", "z_vel_counts"]
-        for attr in attr_names:
-            setattr(self, attr, np.zeros(len(self.vel_bins)-1, dtype=np.float64))
-
         # Some plots use scattered points. For these, we will continually add to lists. 
         attr_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR", "gas_frac_mass", "gas_frac",
                       "metallicity_mass", "metallicity", "bh_mass", "bulge_mass",
@@ -739,42 +717,6 @@ class Model:
                                                                 statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_baryon_fraction_sum += baryon_fraction_sum
 
-        if plot_toggles["spin"]:
-
-            spin_param = np.sqrt(gals["Spin"][:,0]*gals["Spin"][:,0] + \
-                                 gals["Spin"][:,1]*gals["Spin"][:,1] + \
-                                 gals["Spin"][:,2]*gals["Spin"][:,2]) / \
-                                (np.sqrt(2) * gals["Vvir"] * gals["Rvir"]);
-
-            spin_counts, _ = np.histogram(spin_param, bins=self.spin_bins)
-            self.spin_counts += spin_counts
-
-        if plot_toggles["velocity"]:
-
-            # Position units are Mpc/h.
-            pos_x = gals["Pos"][:,0] / self.hubble_h
-            pos_y = gals["Pos"][:,1] / self.hubble_h
-            pos_z = gals["Pos"][:,2] / self.hubble_h
-
-            # Velocity units are km/s.
-            vel_x = gals["Vel"][:,0]
-            vel_y = gals["Vel"][:,1]
-            vel_z = gals["Vel"][:,2]
-
-            los_dist = np.sqrt(pos_x*pos_x + pos_y*pos_y + pos_z*pos_z)
-            los_vel = (pos_x/los_dist)*vel_x + (pos_y/los_dist)*vel_y + (pos_z/los_dist)*vel_z
-
-            attr_names = ["los", "x", "y", "z"]
-            vels = [los_vel, vel_x, vel_y, vel_z]
-
-            for (attr_name, vel) in zip(attr_names, vels):
-
-                counts, _ = np.histogram(vel / (self.hubble_h*100.0), bins=self.vel_bins)
-
-                attribute_name = "{0}_vel_counts".format(attr_name)
-                new_attribute_value = counts + getattr(self, attribute_name)
-                setattr(self, attribute_name, new_attribute_value)
-
         if plot_toggles["reservoirs"]:
 
             # To reduce scatter, only use galaxies in halos with mass > 1.0e10 Msun/h.
@@ -975,14 +917,6 @@ class Results:
             print("Plotting the baryon fraction as a function of FoF Halo mass.")
             plots.plot_baryon_fraction(self)
 
-        if plot_toggles["spin"]:
-            print("Plotting the Spin distribution.")
-            plots.plot_spin_distribution(self)
-
-        if plot_toggles["velocity"]:
-            print("Plotting the velocity distribution.")
-            plots.plot_velocity_distribution(self)
-
         if plot_toggles["reservoirs"]:
             print("Plotting a scatter of the mass reservoirs.")
             plots.plot_mass_reservoirs(self)
@@ -1041,8 +975,6 @@ if __name__ == "__main__":
                     "quiescent"       : 1,  # Fraction of galaxies that are quiescent.
                     "bulge_fraction"  : 1,  # Fraction of galaxies that are bulge/disc dominated.
                     "baryon_fraction" : 1,  # Fraction of baryons in galaxy/reservoir.
-                    "spin"            : 1,  # Distribution of galaxy spins.
-                    "velocity"        : 1,  # Distribution of velocities.
                     "reservoirs"      : 1,  # Mass in each reservoir.
                     "spatial"         : 1}  # Spatial distribution of galaxies.
 
