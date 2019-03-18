@@ -5,3 +5,4 @@ tests/test_data/
 libsage.a
 *.ipynb_checkpoints
 *.dSYM
+analysis/plots/
