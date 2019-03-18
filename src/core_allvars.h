@@ -278,8 +278,8 @@ enum Valid_TreeTypes
 
 enum Valid_OutputFormats
 {
-  binary = 0,
-  hdf5 = 1,
+  sage_binary = 0,
+  sage_hdf5 = 1,
   num_format_types
 };
 

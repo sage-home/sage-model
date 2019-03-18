@@ -230,6 +230,8 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
     # We will key via the binary file because the HDF5 file has some multidimensional
     # fields split across mutliple datasets.
     dim_names = ["x", "y", "z"]
+    failed_fields = []
+
     for key in g1.dtype.names:
 
         # Check if this is a multidimensional field.
@@ -257,7 +259,14 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
                   "of {2}".format(key, binary_data.shape, hdf5_data.shape))
             raise ValueError
 
-        compare_fields(binary_data, hdf5_data, key, rtol, atol)
+        return_value = compare_field_equality(binary_data, hdf5_data, key, rtol, atol)
+
+        if not return_value: 
+            failed_fields.append(key)
+
+    if failed_fields:
+        print("The following fields failed: {0}".format(failed_fields))
+        raise ValueError
 
 
 def determine_snap_key(hdf5_file, redshift):
@@ -329,6 +338,8 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
     gals1 = g1.read_tree(None)
     gals2 = g2.read_tree(None)
 
+    failed_fields = [] 
+
     for field in g1.dtype.names:
         if field in ignored_fields:
             continue
@@ -336,20 +347,26 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
         field1 = gals1[field]
         field2 = gals2[field]
 
-        compare_fields(field1, field2, field, rtol, atol)
+        return_value = compare_field_equality(field1, field2, field, rtol, atol)
 
+        if not return_value: 
+            failed_fields.append(field)
 
-def compare_fields(field1, field2, field_name, rtol, atol):
+    if failed_fields:
+        print("The following fields failed: {0}".format(failed_fields))
+        raise ValueError
+
+def compare_field_equality(field1, field2, field_name, rtol, atol):
 
     msg = "Field = `{0}` not the same between the two catalogs\n"\
         .format(field_name)
     if np.array_equal(field1, field2):
-        return
+        return True
 
     print("A `numpy.array_equal` failed. Attempting a `np.allclose` with rtol={0} "
           "and atol={1}\n".format(rtol, atol), file=sys.stderr)
     if np.allclose(field1, field2, rtol=rtol,  atol=atol):
-        return
+        return True
 
     # If control reaches here, then the arrays are not equal
     print("Printing values that were different side-by side\n",
@@ -370,13 +387,12 @@ def compare_fields(field1, field2, field_name, rtol, atol):
         print("{0} {1} {2} {3}".format(idx, field1_val, field2_val,
               field1_val-field2_val), file=sys.stderr)
 
+    # printed out the offending values
     print("------ Found {0} mis-matched values out of a total of {1} "
           "------".format(len(bad_field1), len(field1)), file=sys.stderr)
     print("#######################################\n", file=sys.stderr)
-    # printed out the offending values
-    # now raise the error
-    #raise ValueError(msg)
-    return                    
+
+    return False
                 
 
 if __name__ == '__main__':
@@ -405,8 +421,8 @@ if __name__ == '__main__':
     multidim_fields = ["Pos", "Vel", "Spin"]
 
     # Tolerance levels for the comparisons.
-    rtol = 1e-9
-    atol = 5e-5
+    rtol = 1e-07
+    atol = 1e-11
 
     print("")
     print("Running sagediff on files {0} and {1} in mode {2}".format(args.file1,

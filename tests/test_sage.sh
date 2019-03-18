@@ -34,7 +34,7 @@ if [ ! -f trees_063.7 ]; then
         exit 1
     fi
 
-    wget "https://www.dropbox.com/s/i6y03mbqz664dka/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
+    wget "https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
     if [[ $? != 0 ]]; then
         echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests"
         echo "Failed"
@@ -54,6 +54,7 @@ rm -f test_sage_z*
 
 # cd back into the sage root directory and then run sage
 cd ../../
+
 ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests"
@@ -62,7 +63,7 @@ if [[ $? != 0 ]]; then
 fi
 
 # now cd into the output directory for this sage-run
-cd "$parent_path"/$datadir
+pushd "$parent_path"/$datadir
 
 # These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
 test_files=($(ls -d test_sage_z*))
@@ -73,14 +74,14 @@ if [[ $? == 0 ]]; then
     nbitwise=0
     nfiles=0
     nfailed=0
-    for f in ${test_files[@]}; do
+    for f in ${correct_files[@]}; do
         ((nfiles++))
         diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} 
         if [[ $? == 0 ]]; then
             ((npassed++))
             ((nbitwise++))
         else
-            python "$parent_path"/sagediff.py ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} binary-binary
+            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary
             if [[ $? == 0 ]]; then 
                 ((npassed++))
             else
@@ -96,11 +97,69 @@ else
     # use the knowledge that there should have been 64
     # files for mini-millennium test case
     # This will need to be changed once the files get combined -- MS: 10/08/2018
-    nfiles=64
+    nfiles=8
     nfailed=$nfiles
 fi
 echo "Passed: $npassed. Bitwise identical: $nbitwise"
-echo "Failed: $nfailed"
+echo "Failed: $nfailed."
+
+if [[ $nfailed > 0 ]]; then
+    echo "The binary-binary check failed."
+    echo "Uh oh...I'm outta here!"
+    exit 1
+fi
+
+# Now that we've checked the binary output, also check the HDF5 output format.
+# First replace the "OutputFormat" argument with HDF5 in the parameter file.
+popd
+tmpfile="$(mktemp)"
+sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
+
+# Run SAGE on this new parameter file.
+./sage ${tmpfile}
+if [[ $? != 0 ]]; then
+    echo "sage exited abnormally...aborting tests"
+    echo "Failed"
+    cat ${tmpfile}
+    exit 1
+fi
+
+rm -f ${tmpfile}
+
+# now cd into the output directory for this sage-run
+cd "$parent_path"/$datadir
+
+# Update this comment future Jacob. 
+test_file=`ls test_sage_*.hdf5*`
+correct_files=($(ls -d correct-mini-millennium-output_z*))
+
+if [[ $? == 0 ]]; then
+    npassed=0
+    nfiles=0
+    nfailed=0
+    for f in ${correct_files[@]}; do
+        ((nfiles++))
+        python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5
+        if [[ $? == 0 ]]; then
+            ((npassed++))
+        else
+            ((nfailed++))
+        fi
+    done
+else
+    # even the simple ls model_z* failed
+    # which means the code didnt produce the output files
+    # everything failed
+    npassed=0
+    # use the knowledge that there should have been 64
+    # files for mini-millennium test case
+    # This will need to be changed once the files get combined -- MS: 10/08/2018
+    nfiles=8
+    nfailed=$nfiles
+fi
+echo "Passed: $npassed."
+echo "Failed: $nfailed."
+
 # restore the original working dir
 cd "$cwd"
 exit $nfailed

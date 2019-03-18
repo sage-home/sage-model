@@ -364,8 +364,8 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     }
 #endif
 
-    const char format_names[][MAX_STRING_LEN] = {"binary", "hdf5"};
-    const enum Valid_OutputFormats format_enums[] = {binary, hdf5};
+    const char format_names[][MAX_STRING_LEN] = {"sage_binary", "sage_hdf5"};
+    const enum Valid_OutputFormats format_enums[] = {sage_binary, sage_hdf5};
     const int nvalid_format_types  = sizeof(format_names)/(MAX_STRING_LEN*sizeof(char));
     XASSERT(nvalid_format_types == 2, EXIT_FAILURE, "nvalid_format_types = %d should have been 2\n", nvalid_format_types);
     found = 0;

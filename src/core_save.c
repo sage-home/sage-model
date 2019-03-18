@@ -41,12 +41,12 @@ int32_t initialize_galaxy_files(const int rank, const int ntrees, struct save_in
 
     switch(run_params->OutputFormat) {
 
-    case(binary):
+    case(sage_binary):
       status = initialize_binary_galaxy_files(rank, ntrees, save_info, run_params);
       break;
 
 #ifdef HDF5
-    case(hdf5):
+    case(sage_hdf5):
       status = initialize_hdf5_galaxy_files(rank, save_info, run_params);
       break; 
 #endif
@@ -107,13 +107,13 @@ int32_t save_galaxies(const int ThisTask, const int tree, const int numgals, str
     // All of the tracking arrays set up, time to perform the actual writing.
     switch(run_params->OutputFormat) {
 
-    case(binary):
+    case(sage_binary):
         status = save_binary_galaxies(ThisTask, tree, numgals, OutputGalCount, halos, haloaux,
                                       halogal, save_info, run_params);
         break;
 
 #ifdef HDF5
-    case(hdf5):
+    case(sage_hdf5):
         status = save_hdf5_galaxies(ThisTask, tree, numgals, halos, haloaux, halogal, save_info, run_params);
         break;
 #endif
@@ -139,12 +139,12 @@ int32_t finalize_galaxy_files(const int32_t ntrees, struct save_info *save_info,
 
     switch(run_params->OutputFormat) {
 
-    case(binary):
+    case(sage_binary):
         status = finalize_binary_galaxy_files(ntrees, save_info, run_params);
         break;
 
 #ifdef HDF5
-    case(hdf5):
+    case(sage_hdf5):
         status = finalize_hdf5_galaxy_files(ntrees, save_info, run_params);
         break;
 #endif
