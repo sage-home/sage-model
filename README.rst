@@ -40,9 +40,10 @@ Downloading
 Building
 --------
 
-To create the ``sage`` executable, simply run the following command:
+To create the ``SAGE`` executable, simply run the following command:
 
 .. code::
+
     $ make
 
 ``SAGE`` is MPI compatible which can be enabled setting ``USE-MPI = yes`` in
