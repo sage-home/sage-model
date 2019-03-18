@@ -66,8 +66,8 @@ fi
 pushd "$parent_path"/$datadir
 
 # These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
-test_files=($(ls -d test_sage_z*))
 correct_files=($(ls -d correct-mini-millennium-output_z*))
+test_files=($(ls -d test_sage_z*))
 
 if [[ $? == 0 ]]; then
     npassed=0
@@ -129,9 +129,9 @@ rm -f ${tmpfile}
 # now cd into the output directory for this sage-run
 cd "$parent_path"/$datadir
 
-# Update this comment future Jacob. 
-test_file=`ls test_sage_*.hdf5*`
+# Update this comment future Jacob.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
+test_file=`ls test_sage_*.hdf5*`
 
 if [[ $? == 0 ]]; then
     npassed=0
