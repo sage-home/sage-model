@@ -7,7 +7,7 @@
 #include <math.h>
 #include <limits.h>
 
-#include "read_tree_binary.h"
+#include "save_gals_binary.h"
 #include "../core_mymalloc.h"
 #include "../core_utils.h"
 #include "../model_misc.h"

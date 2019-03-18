@@ -8,7 +8,7 @@
 #include <hdf5_hl.h>
 #include <math.h>
 
-#include "read_tree_binary.h"
+#include "save_gals_hdf5.h"
 #include "../core_mymalloc.h"
 #include "../core_utils.h"
 #include "../model_misc.h"
