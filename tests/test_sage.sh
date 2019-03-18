@@ -80,7 +80,7 @@ if [[ $? == 0 ]]; then
             ((npassed++))
             ((nbitwise++))
         else
-            python "$parent_path"/sagediff.py ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]}         
+            python "$parent_path"/sagediff.py ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} binary-binary
             if [[ $? == 0 ]]; then 
                 ((npassed++))
             else

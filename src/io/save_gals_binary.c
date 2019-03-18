@@ -119,8 +119,8 @@ int32_t save_binary_galaxies(const int32_t filenr, const int32_t treenr, const i
         ssize_t nwritten = mywrite(save_info->save_fd[snap_idx], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx]);
         if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx])) {
             fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
-                            "Meant to write out %d elements with a total of %"PRId64" bytes (%zu bytes for each element). "
-                            "However, I wrote out a total of %"PRId64" bytes.\n",
+                            "Meant to write out %d elements with a total of %zu bytes (%zu bytes for each element). "
+                            "However, I wrote out a total of %zd bytes.\n",
                             snap_idx, OutputGalCount[snap_idx], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx], sizeof(struct GALAXY_OUTPUT),
                             nwritten);
             perror(NULL);
