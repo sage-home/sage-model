@@ -43,6 +43,17 @@ int main(int argc, char **argv)
     }
 
 #ifdef MPI
+    // Wait until all tasks are done before we do final tasks/checks. 
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    // Perform some final checks.
+    status = finalize_sage(ThisTask, NTasks, &run_params);
+    if(status != EXIT_SUCCESS) {
+        goto err;
+    }
+
+#ifdef MPI
     MPI_Finalize();
 #endif
     return EXIT_SUCCESS;

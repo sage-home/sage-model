@@ -18,6 +18,10 @@
 #include "progressbar.h"
 #include "core_tree_utils.h"
 
+#ifdef HDF5
+#include "io/save_gals_hdf5.h"
+#endif
+
 /* main sage -> not exposed externally */
 int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
                         struct forest_info *forests_info, struct params *run_params);
@@ -41,21 +45,9 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     forests_info.nforests_this_task = 0;
 
     struct save_info save_info;
-    /* forests_info.nsnapshots = 0; */
-    /* forests_info.totnhalos_per_forest = NULL; */
 
     char buffer[4*MAX_STRING_LEN + 1];
     snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies, run_params->ZZ[run_params->ListOutputSnaps[0]], ThisTask);
-
-    /*
-    FILE *fp = fopen(buffer, "w");
-    if(fp != NULL) {
-        fclose(fp);
-    } else {
-        fprintf(stderr,"Error: Could not open output file `%s`\n", buffer);
-        ABORT(FILE_NOT_FOUND);
-    }
-    */
 
     /* setup the forests reading, and then distribute the forests over the Ntasks */
     int status = EXIT_FAILURE;
@@ -134,21 +126,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 cleanup:    
     /* sage is done running -> do the cleanup */
     cleanup_forests_io(run_params->TreeType, &forests_info);
-    if(status == EXIT_SUCCESS) {
-        
-#if 0
-        if(HDF5Output) {
-            free_hdf5_ids();
-            
-#ifdef MPI
-            // Create a single master HDF5 file with links to the other files...
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (ThisTask == 0)
-#endif
-                write_master_file();
-        }
-#endif /* commented out the section for hdf5 output */    
-        
+    if(status == EXIT_SUCCESS) {               
         //free Ages. But first
         //reset Age to the actual allocated address
         run_params->Age--;
@@ -158,6 +136,34 @@ cleanup:
     return status;
 }
 
+
+int32_t finalize_sage(const int ThisTask, const int NTasks, struct params *run_params)
+{
+
+    int32_t status;
+
+    switch(run_params->OutputFormat) {
+
+    case(sage_binary):
+      status = EXIT_SUCCESS; 
+      break;
+
+#ifdef HDF5
+    case(sage_hdf5):
+      status = create_hdf5_master_file(ThisTask, NTasks, run_params);
+      break; 
+#endif
+
+    default:
+      status = EXIT_SUCCESS;
+      break;
+
+    }
+
+    return status;
+}
+
+// Local Functions //
 
 int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
                         struct forest_info *forests_info, struct params *run_params)

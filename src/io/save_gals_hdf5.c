@@ -33,7 +33,8 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 #define NUM_GALS_PER_BUFFER 1000
 
 // HDF5 is a self-describing data format.  Each dataset will contain a number of attributes to
-// describe properties such as units or number of elements.
+// describe properties such as units or number of elements. These macros create attributes for a
+// single number or a string.
 #define CREATE_SINGLE_ATTRIBUTE(group_id, attribute_name, attribute_value, h5_dtype) { \
     hid_t macro_dataspace_id = H5Screate(H5S_SCALAR);                 \
     if(macro_dataspace_id < 0) {                                      \
@@ -153,13 +154,14 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 {
     hid_t prop, dataset_id;
     hid_t file_id, group_id, dataspace_id;
-    char buffer[4*MAX_STRING_LEN + 1];
+    char buffer[2*MAX_STRING_LEN + 10];
 
     // Create the file.
-    snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
+    // Use 2*MAX_STRING_LEN+10 because OutputDir and FileNameGalaxies can be MAX_STRING_LEN.  Add a bit more buffer for the filenr and '.hdf5'.
+    snprintf(buffer, 2*MAX_STRING_LEN + 9, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
 
     file_id = H5Fcreate(buffer, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    if(file_id == -1) {
+    if(file_id < 0) {
         fprintf(stderr, "\n\nError: Can't open file `%s'\n\n\n", buffer);
         return FILE_NOT_FOUND;
     }
@@ -339,6 +341,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     return EXIT_SUCCESS; 
 }
 
+#undef CALLOC_GALAXY_OUTPUT_INNER_ARRAY
 
 // Add all the galaxies for this tree to the buffer.  If we hit the buffer limit, write all the
 // galaxies to file.
@@ -556,9 +559,98 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
     return EXIT_SUCCESS;
 
 }
+
+#undef FREE_GALAXY_OUTPUT_INNER_ARRAY
+
+
+int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, const struct params *run_params)
+{
+    // Only Task 0 needs to do stuff from here.
+    if(ThisTask > 0) {
+        return EXIT_SUCCESS;
+    }
+
+    hid_t file_id, group_id;
+    char master_fname[2*MAX_STRING_LEN];
+    herr_t status;
+
+    // Create the file.
+    snprintf(master_fname, 2*MAX_STRING_LEN, "%s/%s.hdf5", run_params->OutputDir, run_params->FileNameGalaxies);
+
+    file_id = H5Fcreate(master_fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if(file_id < 0) {
+        fprintf(stderr, "\n\nError: Can't open file `%s'\n\n\n", master_fname);
+        return FILE_NOT_FOUND;
+    }
+
+    // Create some attributes.
+    group_id = H5Gcreate2(file_id, "Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if(group_id < 0) {
+        fprintf(stderr, "Failed to create the Header group for the master file.\nThe file ID was %d\n",
+                        (int32_t) file_id);
+        return group_id;
+    }
+    CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
+
+    status = H5Gclose(group_id);
+    if(status < 0) {
+        fprintf(stderr, "Failed to close the Header group for master file\n"
+                        "The group ID was %d\n", (int32_t) group_id); 
+        return status;
+    }
+
+
+    // The master file will be accessed as (e.g.,) f["Core0"]["Snap_63"]["StellarMass"].
+    // Hence we want to store the external links to the **root** group (i.e., "/"). 
+    group_id = H5Gopen2(file_id, "/", H5P_DEFAULT);
+    if(group_id < 0) {
+        fprintf(stderr, "Failed to open the root group for the master file.\nThe file ID was %d\n",
+                        (int32_t) file_id);
+        return group_id;
+    }
+
+    // At this point, all the files of all other processors have been created. So iterate over the
+    // number of processors and create links within this master file to those files.
+    char target_fname[3*MAX_STRING_LEN];
+    char core_fname[MAX_STRING_LEN];
+    for(int32_t task_idx = 0; task_idx < NTasks; ++task_idx) {
+
+        snprintf(core_fname, MAX_STRING_LEN - 1, "Core_%d", task_idx);
+        snprintf(target_fname, 3*MAX_STRING_LEN, ROOT_DIR "/%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, task_idx);
+
+        // At this point, we don't have knowledge about how many snapshots were written.
+        // Hence we will make a symlink to the root of the target file.
+        status = H5Lcreate_external(target_fname, "/", group_id, core_fname, H5P_DEFAULT, H5P_DEFAULT);
+        if(status < 0) {
+            fprintf(stderr, "Failed to create an external link to file %s from the master file.\n" 
+                            "The group ID was %d and the group name was %s\n", target_fname, (int32_t) group_id, core_fname);
+            return status;
+        }
+    }
+
+
+    // Finished creating links.
+    status = H5Gclose(group_id);
+    if(status < 0) {
+        fprintf(stderr, "Failed to close root group for the master file %s\n" 
+                        "The group ID was %d and the file ID was %d\n", master_fname, (int32_t) group_id, (int32_t) file_id); 
+        return status;
+    }
+
+    // Cleanup cause we're considerate programmers.
+    status = H5Fclose(file_id);
+    if(status < 0) {
+       fprintf(stderr, "Failed to close the Master HDF5 file.\nThe file ID was %d\n", (int32_t) file_id);
+       return status; 
+    }
+
+
+    return EXIT_SUCCESS;
+
+}
+
 #undef CREATE_SINGLE_ATTRIBUTE
 #undef CREATE_STRING_ATTRIBUTE 
-#undef CALLOC_GALAXY_OUTPUT_INNER_ARRAY
 
 // Local Functions //
 
