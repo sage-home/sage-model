@@ -157,8 +157,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     char buffer[2*MAX_STRING_LEN + 10];
 
     // Create the file.
-    // Use 2*MAX_STRING_LEN+10 because OutputDir and FileNameGalaxies can be MAX_STRING_LEN.  Add a bit more buffer for the filenr and '.hdf5'.
-    snprintf(buffer, 2*MAX_STRING_LEN + 9, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
+    // Use 3*MAX_STRING_LEN because OutputDir and FileNameGalaxies can be MAX_STRING_LEN.  Add a bit more buffer for the filenr and '.hdf5'.
+    snprintf(buffer, 3*MAX_STRING_LEN, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
 
     file_id = H5Fcreate(buffer, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if(file_id < 0) {
@@ -570,7 +570,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
         return EXIT_SUCCESS;
     }
 
-    hid_t file_id, group_id;
+    hid_t file_id, group_id, root_group_id;
     char master_fname[2*MAX_STRING_LEN];
     herr_t status;
 
@@ -599,41 +599,46 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
         return status;
     }
 
+    // We will keep track of how many galaxies were saved across all files per snapshot.
+    int64_t *ngals_allfiles_snap;
+    ngals_allfiles_snap = calloc(run_params->MAXSNAPS, sizeof(*(ngals_allfiles_snap)));
 
     // The master file will be accessed as (e.g.,) f["Core0"]["Snap_63"]["StellarMass"].
     // Hence we want to store the external links to the **root** group (i.e., "/"). 
-    group_id = H5Gopen2(file_id, "/", H5P_DEFAULT);
-    if(group_id < 0) {
+    root_group_id = H5Gopen2(file_id, "/", H5P_DEFAULT);
+    if(root_group_id < 0) {
         fprintf(stderr, "Failed to open the root group for the master file.\nThe file ID was %d\n",
                         (int32_t) file_id);
-        return group_id;
+        return root_group_id;
     }
 
     // At this point, all the files of all other processors have been created. So iterate over the
     // number of processors and create links within this master file to those files.
     char target_fname[3*MAX_STRING_LEN];
     char core_fname[MAX_STRING_LEN];
+    char snap_fname[2*MAX_STRING_LEN];
+    char tmp_fname[2*MAX_STRING_LEN];
+
     for(int32_t task_idx = 0; task_idx < NTasks; ++task_idx) {
 
         snprintf(core_fname, MAX_STRING_LEN - 1, "Core_%d", task_idx);
-        snprintf(target_fname, 3*MAX_STRING_LEN, ROOT_DIR "/%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, task_idx);
+        snprintf(target_fname, 3*MAX_STRING_LEN, "./%s_%d.hdf5", run_params->FileNameGalaxies, task_idx);
 
-        // At this point, we don't have knowledge about how many snapshots were written.
-        // Hence we will make a symlink to the root of the target file.
-        status = H5Lcreate_external(target_fname, "/", group_id, core_fname, H5P_DEFAULT, H5P_DEFAULT);
+        // Make a symlink to the root of the target file.
+        status = H5Lcreate_external(target_fname, "/", root_group_id, core_fname, H5P_DEFAULT, H5P_DEFAULT);
         if(status < 0) {
             fprintf(stderr, "Failed to create an external link to file %s from the master file.\n" 
-                            "The group ID was %d and the group name was %s\n", target_fname, (int32_t) group_id, core_fname);
+                            "The group ID was %d and the group name was %s\n", target_fname, (int32_t) root_group_id, core_fname);
             return status;
         }
+
     }
 
-
     // Finished creating links.
-    status = H5Gclose(group_id);
+    status = H5Gclose(root_group_id);
     if(status < 0) {
         fprintf(stderr, "Failed to close root group for the master file %s\n" 
-                        "The group ID was %d and the file ID was %d\n", master_fname, (int32_t) group_id, (int32_t) file_id); 
+                        "The group ID was %d and the file ID was %d\n", master_fname, (int32_t) root_group_id, (int32_t) file_id); 
         return status;
     }
 
@@ -644,6 +649,55 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
        return status; 
     }
 
+    file_id = H5Fopen(master_fname, H5F_ACC_RDONLY, H5P_DEFAULT);
+    for(int32_t task_idx = 0; task_idx < NTasks; ++task_idx) {
+        // Count number of galaxies saved per snapshot.
+        for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; ++snap_idx) {
+
+            snprintf(snap_fname, 2*MAX_STRING_LEN - 1, "Core_%d/Snap_%d", task_idx, run_params->ListOutputSnaps[snap_idx]);
+            group_id = H5Gopen(file_id, snap_fname, H5P_DEFAULT);
+            if(group_id < 0) {
+                fprintf(stderr, "Failed to open group %s from within the master file.\nThe file ID was %d\n",
+                                snap_fname, (int32_t) file_id);
+                return group_id;
+            }
+
+            hid_t attr_id = H5Aopen(group_id, "ngals", H5P_DEFAULT);
+            if(attr_id < 0) {
+                fprintf(stderr, "Failed to open the ngals attribute from within the master file.\n"
+                                "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
+                return group_id;
+            }
+
+            int64_t ngals_this_snap;
+            status = H5Aread(attr_id, H5T_NATIVE_LLONG, &ngals_this_snap);
+
+            fprintf(stderr, "Group %s has %"PRId64" gals.\n", snap_fname, ngals_this_snap);
+
+            ngals_allfiles_snap[run_params->ListOutputSnaps[snap_idx]] += ngals_this_snap;
+
+            status = H5Aclose(attr_id);
+            if(status < 0) {
+              fprintf(stderr, "Failed to close ngals attribute from within the master file.\n"
+                              "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
+              return status;
+            }
+
+            status = H5Gclose(group_id);
+            if(status < 0) {
+              fprintf(stderr, "Failed to close group %s from within the master file.\n"
+                              "The group ID was %d.\n", snap_fname, (int32_t) group_id);
+              return status;
+            }
+        }
+
+    }
+
+    status = H5Fclose(file_id);
+    if(status < 0) {
+       fprintf(stderr, "Failed to close the Master HDF5 file.\nThe file ID was %d\n", (int32_t) file_id);
+       return status; 
+    }
 
     return EXIT_SUCCESS;
 
