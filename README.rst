@@ -1,5 +1,4 @@
 |TRAVIS|
-|DOI|
 
 *************************************
 Semi-Analytic Galaxy Evolution (SAGE)
@@ -47,11 +46,11 @@ To create the ``SAGE`` executable, simply run the following command:
     $ make
 
 ``SAGE`` is MPI compatible which can be enabled setting ``USE-MPI = yes`` in
-the ``Makefile``.  To run in parallel, ensure that you have a parallel compiler
-downloaded and installed on your system (insert link to ``MPICC``?).  
+the ``Makefile``.  To run in parallel, ensure that you have a installed an MPI distribution (OpenMPI, MPICH, Intel MPI etc). 
+When compiling with MPI support, the ``Makefile`` expects that the MPI compiler is called ``mpicc`` and is configured appropriately. 
 
 Addtionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting
-``USE-HDF5 = yes`` in the ``Makefile``. Ensure that HDF5 is installed on your system (insert link to ``HDF5``?).
+``USE-HDF5 = yes`` in the ``Makefile``. If the input trees are in HDF5 format, or you wish to output the catalogs in HDF5 (rather than the default binary format), then please compile with the ``USE-HDF5 = yes`` option. 
 
 Running the code
 ================
@@ -95,39 +94,45 @@ We also include the ability to compare the properties of a number of different
 models.  See the documenation in the ``__main__`` function call of ``allresults.py`` to use this functionality.
 
 Citation
-====================
+=========
 
 If you use SAGE in a publication, please cite the following items:
 
 .. code::
 
     @ARTICLE{2016ApJS..222...22C,
-    author = {{Croton}, D.~J. and {Stevens}, A.~R.~H. and {Tonini}, C. and 
-	{Garel}, T. and {Bernyk}, M. and {Bibiano}, A. and {Hodkinson}, L. and 
-	{Mutch}, S.~J. and {Poole}, G.~B. and {Shattow}, G.~M.},
-    title = "{Semi-Analytic Galaxy Evolution (SAGE): Model Calibration and Basic Results}",
-    journal = {\apjs},
-    archivePrefix = "arXiv",
-    eprint = {1601.04709},
-    keywords = {galaxies: active, galaxies: evolution, galaxies: halos, methods: numerical},
-    year = 2016,
-    month = feb,
-    volume = 222,
-    eid = {22},
-    pages = {22},
-    doi = {10.3847/0067-0049/222/2/22},
-    adsurl = {http://adsabs.harvard.edu/abs/2016ApJS..222...22C},
-    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    	author = {{Croton}, D.~J. and {Stevens}, A.~R.~H. and {Tonini}, C. and 
+		{Garel}, T. and {Bernyk}, M. and {Bibiano}, A. and {Hodkinson}, L. and 
+		{Mutch}, S.~J. and {Poole}, G.~B. and {Shattow}, G.~M.},
+	title = "{Semi-Analytic Galaxy Evolution (SAGE): Model Calibration and Basic Results}",
+    	journal = {\apjs},
+    	archivePrefix = "arXiv",
+    	eprint = {1601.04709},
+    	keywords = {galaxies: active, galaxies: evolution, galaxies: halos, methods: numerical},
+    	year = 2016,
+    	month = feb,
+    	volume = 222,
+    	eid = {22},
+    	pages = {22},
+    	doi = {10.3847/0067-0049/222/2/22},
+    	adsurl = {http://adsabs.harvard.edu/abs/2016ApJS..222...22C},
+    	adsnote = {Provided by the SAO/NASA Astrophysics Data System}
     }
 
-Maintainer 
-====================
+Author
+=======
 
 Questions and comments can be sent to Darren Croton: dcroton@astro.swin.edu.au.
 
-.. |TRAVIS| image:: https://travis-ci.org/manodeep/sage.svg?branch=lhvt
-    :target: https://travis-ci.org/manodeep/sage
 
-.. |DOI| image:: https://zenodo.org/badge/13542/darrencroton/sage.svg
-    :target: https://zenodo.org/badge/latestdoi/13542/darrencroton/sage
+Maintainers 
+============
+
+- Jacob Seiler (@jacobseiler)
+- Manodeep Sinha (@manodeep)
+- Darren Croton (@darrencroton)
+
+
+.. |TRAVIS| image:: https://travis-ci.com/sage-home/sage-model.svg?branch=master
+    :target: https://travis-ci.com/sage-home/sage-model
 
