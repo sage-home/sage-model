@@ -60,10 +60,6 @@ class Model:
         2: Kali (512^3 particles),
         3: Genesis (L = 500 Mpc/h, N = 2160^3).
 
-    sSFRcut : Float
-        The specific star formation rate which defines a "quiescent" galaxy. Units are
-        log10.
-
     IMF : {0, 1}
         Specifies which IMF to use for this model.
         0: Salpeter,
@@ -115,6 +111,7 @@ class Model:
             setattr(self, key, model_dict[key])
 
         # Then set default values.
+        self.sSFRcut = -11.0  # Above this sSFR, a galaxy is 'star-forming'.
         self.sample_size = 10000  # How many values should we plot on scatter plots?
 
         # How should we bin Stellar mass.
@@ -938,7 +935,6 @@ if __name__ == "__main__":
     model0_last_file  = 0 
     model0_simulation = 0  # Mini-millennium.
     model0_IMF        = 0  # Chabrier.
-    model0_sSFRcut    = -11.0
 
     # Aesthetic variables for plotting pretty plots.
     model0_model_label = "Mini-Millennium"
@@ -953,7 +949,6 @@ if __name__ == "__main__":
     last_files   = [model0_last_file]
     simulations  = [model0_simulation]
     IMFs         = [model0_IMF]
-    sSFRcuts     = [model0_sSFRcut]
     model_labels = [model0_model_label]
     colors       = [model0_color]
     linestyles   = [model0_linestyle]
@@ -1004,7 +999,6 @@ if __name__ == "__main__":
                    "first_file"  : first_files,
                    "last_file"   : last_files,
                    "simulation"  : simulations,
-                   "sSFRcut"     : sSFRcuts,
                    "IMF"         : IMFs,
                    "model_label" : model_labels,
                    "color"       : colors,
