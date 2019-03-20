@@ -154,11 +154,11 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 {
     hid_t prop, dataset_id;
     hid_t file_id, group_id, dataspace_id;
-    char buffer[2*MAX_STRING_LEN + 10];
+    char buffer[3*MAX_STRING_LEN];
 
     // Create the file.
     // Use 3*MAX_STRING_LEN because OutputDir and FileNameGalaxies can be MAX_STRING_LEN.  Add a bit more buffer for the filenr and '.hdf5'.
-    snprintf(buffer, 3*MAX_STRING_LEN, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
+    snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
 
     file_id = H5Fcreate(buffer, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if(file_id < 0) {
@@ -605,7 +605,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     for(int32_t task_idx = 0; task_idx < NTasks; ++task_idx) {
 
         snprintf(core_fname, MAX_STRING_LEN - 1, "Core_%d", task_idx);
-        snprintf(target_fname, 3*MAX_STRING_LEN, "./%s_%d.hdf5", run_params->FileNameGalaxies, task_idx);
+        snprintf(target_fname, 3*MAX_STRING_LEN - 1, "./%s_%d.hdf5", run_params->FileNameGalaxies, task_idx);
 
         // Make a symlink to the root of the target file.
         status = H5Lcreate_external(target_fname, "/", root_group_id, core_fname, H5P_DEFAULT, H5P_DEFAULT);
