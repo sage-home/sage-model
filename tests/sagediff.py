@@ -14,7 +14,7 @@ except NameError:
 class BinarySage(object):
 
 
-    def __init__(self, filename, ignored_fields=[]):
+    def __init__(self, filename, ignored_fields=[], num_files=1):
         """
         Set up instance variables
         """
@@ -74,6 +74,7 @@ class BinarySage(object):
         _galdesc = np.dtype({'names':_names, 'formats':_formats}, align=True)
         
         self.filename = filename
+        self.num_files = num_files
         self.dtype = _galdesc
         self.totntrees = None
         self.totngals = None
@@ -84,32 +85,25 @@ class BinarySage(object):
             _mode = os.O_RDONLY | os.O_BINARY
         except AttributeError:
             _mode = os.O_RDONLY
-            
-        self.fd = os.open(filename, _mode)
-        self.fp = open(filename, 'rb')
         
 
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
-        os.close(self.fd)
-        close(self.fp)
-
-    def read_header(self):
+    def read_header(self, fp):
         """
         Read the initial header from the LHaloTree binary file
         """
         import numpy as np
 
         # Read number of trees in file
-        totntrees = np.fromfile(self.fp, dtype=np.int32, count=1)[0]
+        totntrees = np.fromfile(fp, dtype=np.int32, count=1)[0]
         
         # Read number of gals in file.
-        totngals = np.fromfile(self.fp, dtype=np.int32, count=1)[0]
+        totngals = np.fromfile(fp, dtype=np.int32, count=1)[0]
     
         # Read the number of gals in each tree
-        ngal_per_tree = np.fromfile(self.fp, dtype=np.int32, count=totntrees)
+        ngal_per_tree = np.fromfile(fp, dtype=np.int32, count=totntrees)
         
         self.totntrees = totntrees
         self.totngals = totngals
@@ -140,15 +134,22 @@ class BinarySage(object):
         # Now assign to the instance variable
         self.bytes_offset_per_tree = bytes_offset_per_tree
         
-    def read_tree(self, treenum):
+    def read_tree(self, treenum, fp=None):
         """
         Read a single tree specified by the tree number.
 
         If ``trenum`` is ``None``, all trees are read.
         """
+
         import os
+
+        close_file = False
+        if fp is None:
+            fp = open(self.filename, "rb")
+            close_file = True
+
         if self.totntrees is None:
-            self.read_header()
+            self.read_header(fp)
 
         if treenum is not None:
             if treenum < 0 or treenum >= self.totntrees:
@@ -165,11 +166,76 @@ class BinarySage(object):
             return None
 
         # This assumes sequential reads
-        tree = np.fromfile(self.fp, dtype=self.dtype, count=ngal)
+        tree = np.fromfile(fp, dtype=self.dtype, count=ngal)
+
+        # If we had to open up the file, close it.
+        if close_file:
+            fp.close()
+
         return tree
 
 
-def compare_catalogs(fname1, fname2, mode, ignored_fields, multidim_fields=None,
+    def update_metadata(self):
+        """
+        The binary galaxies can be split up over multiple files.  In this method, we
+        iterate over the files and collect info that is spread across them.
+        """
+
+        self.totntrees_all_files = 0
+        self.totngals_all_files = 0
+        self.ngal_per_tree_all_files = []
+
+        for file_idx in range(self.num_files):
+
+            # Cut off the number at the end of the file.
+            fname_base = self.filename[:-2]
+
+            # Then append this file number.
+            fname = "{0}_{1}".format(fname_base, file_idx)
+
+            # Open and read the header.
+            fp = open(fname, "rb")
+
+            self.read_header(fp)
+
+            # Then update the global parameters.
+            self.totntrees_all_files += self.totntrees
+            self.totngals_all_files += self.totngals
+            self.ngal_per_tree_all_files.extend(self.ngal_per_tree)
+
+            fp.close() 
+
+
+    def read_gals(self):
+
+        # First determine the number of galaxies across all files.
+        totngals_all_files = 0
+
+        # Initialize an empty array.
+        gals = np.empty(self.totngals_all_files, dtype=self.dtype)
+
+        # Then slice all the galaxies in.
+        offset = 0
+        for file_idx in range(self.num_files):
+
+            fname_base = self.filename[:-2]
+            fname = "{0}_{1}".format(fname_base, file_idx)
+            fp = open(fname, "rb")
+
+            self.read_header(fp)
+            gals_file = self.read_tree(None, fp)
+
+            gals_this_file = len(gals_file)
+
+            gals[offset:offset+gals_this_file] = gals_file
+            offset += gals_this_file 
+
+            fp.close()
+
+        return gals
+
+
+def compare_catalogs(fname1, fname2, mode, num_files, ignored_fields, multidim_fields=None,
                      rtol=1e-9, atol=5e-5):
     """
     Compares two SAGE catalogs exactly
@@ -180,7 +246,7 @@ def compare_catalogs(fname1, fname2, mode, ignored_fields, multidim_fields=None,
 
     # The second file will be either binary or HDF5.
     if mode == "binary-binary":
-        g2 = BinarySage(fname2, ignored_fields)
+        g2 = BinarySage(fname2, ignored_fields, num_files)
         compare_binary_catalogs(g1, g2, rtol, atol)
     else:
         with h5py.File(fname2, "r") as hdf5_file:
@@ -212,14 +278,14 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
     # checking.  This is because the HDF5 file will contain multiple snapshots of data
     # whereas we only passed a single redshift binary file.
     binary_redshift = determine_binary_redshift(g1.filename)
-    snap_key = determine_snap_key(hdf5_file, binary_redshift)
+    snap_num, snap_key = determine_snap_from_binary_z(hdf5_file, binary_redshift)
 
     # Load all the galaxies from all trees in the binary file.
     binary_gals = g1.read_tree(None)
 
     # Check that number of galaxies is equal.
     ngals_binary = g1.totngals
-    ngals_hdf5 = hdf5_file[snap_key].attrs["ngals"]
+    ngals_hdf5 = hdf5_file["Header"]["totgals_per_snap"][snap_num]
     if ngals_binary != ngals_hdf5:
         print("The binary file had {0} galaxies whereas the HDF5 file had {1} galaxies. "
               "We determined that the binary file was at redshift {2} and that the "
@@ -232,23 +298,43 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
     dim_names = ["x", "y", "z"]
     failed_fields = []
 
+    # SAGE could have been run in parallel in which the HDF5 master file will have
+    # multiple core datasets.
+    ncores = hdf5_file["Header"].attrs["Ncores"]
+
     for key in g1.dtype.names:
 
-        # Check if this is a multidimensional field.
+        if key in g1.ignored_fields:
+            continue
+
+        offset = 0
+
+        # Create an array to hold all the HDF5 data.  This may need to be an Nx3 array... 
         if key in multidim_fields:
-
             hdf5_data = np.zeros((ngals_hdf5, 3))
-
-            # In the HDF5 file, the fields are named <BaseKey><x/y/z>. We will slice the
-            # data from each dimension into a single Nx3 array identical to how the binary
-            # data is formatted.
-            for dim_num, dim_name in enumerate(dim_names):
-                hdf5_name = "{0}{1}".format(key, dim_name)
-
-                hdf5_data[:, dim_num] = hdf5_file[snap_key][hdf5_name][:]
-
         else:
-            hdf5_data = hdf5_file[snap_key][key][:]
+            hdf5_data = np.zeros((ngals_hdf5))
+
+        # Iterate through all the core groups and slice the data into the array.
+        for core_idx in range(ncores):
+
+            core_name = "Core_{0}".format(core_idx)
+            ngals_this_file = hdf5_file[core_name][snap_key].attrs["ngals"]
+
+            if key in multidim_fields:
+                # In the HDF5 file, the fields are named <BaseKey><x/y/z>.
+                for dim_num, dim_name in enumerate(dim_names):
+                    hdf5_name = "{0}{1}".format(key, dim_name)
+
+                    data_this_file = hdf5_file[core_name][snap_key][hdf5_name][:]
+                    hdf5_data[offset:offset+ngals_this_file, dim_num] = data_this_file
+
+            else:
+                data_this_file = hdf5_file[core_name][snap_key][key][:]
+
+                hdf5_data[offset:offset+ngals_this_file] = data_this_file
+
+            offset += ngals_this_file
 
         binary_data = binary_gals[key]
 
@@ -269,29 +355,104 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
         raise ValueError
 
 
-def determine_snap_key(hdf5_file, redshift):
+def determine_snap_from_binary_z(hdf5_file, redshift):
 
     hdf5_snap_keys = []
     hdf5_redshifts = []
-    for key in hdf5_file.keys():
+
+    # We're handling the HDF5 master file. Hence let's look at the Core_0 group because
+    # it's guaranteed to always be present.
+
+    for key in hdf5_file["Core_0"].keys():
 
         # We need to be careful here. We have a "Header" group that we don't want to count
         # when we're trying to work out the correct snapshot.
         if key == "Header":
             continue
         hdf5_snap_keys.append(key)
-        hdf5_redshifts.append(hdf5_file[key].attrs["redshift"])
+        hdf5_redshifts.append(hdf5_file["Core_0"][key].attrs["redshift"])
 
     # Find the snapshot that is closest to the redshift.
     z_array = np.array(hdf5_redshifts)
     idx = (np.abs(z_array - redshift)).argmin()
     snap_key = hdf5_snap_keys[idx]
+    snap_num = snap_key_to_snap_num(snap_key)
 
     print("")
-    print("Determined {0} corresponds to the binary file at redshift {1}".format(snap_key, redshift))
+    print("Determined Snapshot {0} with Key {1} corresponds to the binary file at redshift "
+          "{1}".format(snap_num, snap_key, redshift))
     print("")
 
-    return snap_key
+    return snap_num, snap_key
+
+
+def snap_key_to_snap_num(snap_key):
+    """
+    Given the name of a snapshot key, finds the associated snapshot number.
+
+    This is necessary because the 0th snapshot key may not be snapshot 000 and
+    there could be missing snapshots. This function searches backwards for a
+    group of digits that identify the snapshot number.  If there are numbers
+    outside of this cluster they will be disregarded and a warning raised.
+
+    For example, if the key is "Snap1_030", the function will return 30 and
+    issue a warning that there were digits ignored.
+
+    Parameters
+    ----------
+
+    snap_key: String.
+        The name of the snapshot key.
+
+    Returns
+    ----------
+
+    snapnum: Integer.
+        The snapshot number that corresponds to the snapshot key.
+
+    Examples
+    ----------
+
+    >>> snap_key_to_snapnum('Snap_018')
+    18
+
+    >>> snap_key_to_snapnum('018_Snap')
+    18
+
+    >>> snap_key_to_snapnum('Sn3p_018')
+    --WARNING--
+    For Snapshot key 'Sn3p_018' there were numbers that were not \
+clustered together at the end of the key.
+    We assume the snapshot number corresponding to this key is 18; \
+please check that this is correct.
+    18
+    """
+
+    snapnum = ""
+    reached_numbers = None
+
+    for letter in reversed(snap_key):  # Go backwards through the key.
+        if letter.isdigit():
+            if reached_numbers == False and len(snapnum):
+                print("--WARNING--")
+                print("For Snapshot key '{0}' there were numbers that were not"
+                      " clustered together at the end of the key.\nWe assume "
+                      "the snapshot number corresponding to this key is {1}; "
+                      "please check that this is correct."
+                      .format(snap_key, int(snapnum[::-1])))
+                break 
+            # When a number is found, we concatenate it with the others and
+            # flag that we have encountered a cluster of numbers.
+            snapnum = "{0}{1}".format(snapnum, letter)
+            reached_numbers = True 
+
+        else:
+            # When we reach something that's not a number, turn flag off.
+            reached_numbers = False
+
+    snapnum = snapnum[::-1]  # We searched backwards so flip the string around.
+
+    return int(snapnum)  # Cast as integer before returning.
 
 
 def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
@@ -303,23 +464,26 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
             .format(type(g1), type(g2))
         raise ValueError
 
-    g1.read_header()
-    g2.read_header()
+    # If SAGE we run in parallel, the data is split over multiple files.  To ensure
+    # correct comparisons, sum basic info (such as total number of trees/galaxies)
+    # across all these files. 
+    g1.update_metadata()
+    g2.update_metadata()
 
     msg = "Total number of trees must be identical\n"
-    if g1.totntrees != g2.totntrees:
+    if g1.totntrees_all_files != g2.totntrees_all_files:
         msg += "catalog1 has {0} trees while catalog2 has {1} trees\n"\
-            .format(g1.totntrees, g2.totntrees)
+            .format(g1.totntrees_all_files, g2.totntrees_all_files)
         raise ValueError(msg)
     
     msg = "Total number of galaxies must be identical\n"    
-    if g1.totngals != g2.totngals:
+    if g1.totngals_all_files != g2.totngals_all_files:
         msg += "catalog1 has {0} galaxies while catalog2 has {1} "\
-               "galaxies\n".format(g1.totngals, g2.totngals)
+               "galaxies\n".format(g1.totngals_all_files, g2.totngals_all_files)
         raise ValueError(msg)
 
-    for treenum, (n1, n2) in enumerate(zip(g1.ngal_per_tree,
-                                           g2.ngal_per_tree)):
+    for treenum, (n1, n2) in enumerate(zip(g1.ngal_per_tree_all_files,
+                                           g2.ngal_per_tree_all_files)):
         msg = "Treenumber {0} should have exactly the same number of "\
             "galaxies\n".format(treenum)
         if n1 != n2:
@@ -334,11 +498,11 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
 
     ignored_fields = [a for a in g1.ignored_fields if a in g2.ignored_fields]
 
-    # Load all the galaxies in from all trees.
-    gals1 = g1.read_tree(None)
-    gals2 = g2.read_tree(None)
-
     failed_fields = [] 
+
+    # Load all the galaxies in from all trees.
+    gals1 = g1.read_gals()
+    gals2 = g2.read_gals()
 
     for field in g1.dtype.names:
         if field in ignored_fields:
@@ -355,6 +519,7 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
     if failed_fields:
         print("The following fields failed: {0}".format(failed_fields))
         raise ValueError
+
 
 def compare_field_equality(field1, field2, field_name, rtol, atol):
 
@@ -406,7 +571,8 @@ if __name__ == '__main__':
                         help="the basename for the second set of files (say, model2_z0.000)")
     parser.add_argument("mode", metavar="MODE",
                         help="Either 'binary-binary' or 'binary-hdf5'.")
-
+    parser.add_argument("num_files", metavar="NUM_FILES", type=int,
+                        help="Number of files the second file was split over.")
     args = parser.parse_args()
 
     if not (args.mode == "binary-binary" or args.mode == "binary-hdf5"):
@@ -414,7 +580,13 @@ if __name__ == '__main__':
               "files.  Please set the 'mode' argument to one of these options.")
         raise ValueError
 
-    ignored_fields = ["GalaxyIndex", "CentralGalaxyIndex"]
+    if args.mode == "binary-hdf5" and args.num_files > 1:
+        print("You're comparing a binary with a HDF5 file but are saying the HDF5 file is "
+              "split over multiple files. This shouldn't be the case; simply specify the "
+              "master file and set 'num_files' to 1.")
+        raise ValueError
+
+    ignored_fields = ["SAGETreeIndex", "GalaxyIndex", "CentralGalaxyIndex"]
 
     # Some multi-dimensional values (e.g., Position) are saved in multiple datasets for
     # the HDF5 file.
@@ -425,12 +597,12 @@ if __name__ == '__main__':
     atol = 1e-11
 
     print("")
-    print("Running sagediff on files {0} and {1} in mode {2}".format(args.file1,
-          args.file2, args.mode))
+    print("Running sagediff on files {0} and {1} in mode {2}. The second file " 
+          "was split over {3} files.".format(args.file1, args.file2, args.mode, args.num_files))
     print("")
 
-    compare_catalogs(args.file1, args.file2, args.mode, ignored_fields, multidim_fields,
-                     rtol, atol)
+    compare_catalogs(args.file1, args.file2, args.mode, args.num_files, ignored_fields,
+                     multidim_fields, rtol, atol)
 
     print("")
     print("========================")

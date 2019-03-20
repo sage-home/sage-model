@@ -55,7 +55,7 @@ rm -f test_sage_z*
 # cd back into the sage root directory and then run sage
 cd ../../
 
-./sage "$parent_path"/$datadir/mini-millennium.par
+$BEFORE_SAGE ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests"
     echo "Failed"
@@ -67,7 +67,20 @@ pushd "$parent_path"/$datadir
 
 # These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
-test_files=($(ls -d test_sage_z*))
+test_files=($(ls -d test_sage_z* | sort -k 1.18))
+
+echo "Test files"
+echo ${test_files[0]}
+echo ${test_files[1]}
+echo ${test_files[2]}
+echo ${test_files[3]}
+echo ${test_files[4]}
+echo ${test_files[5]}
+echo ${test_files[6]}
+echo ${test_files[7]}
+echo "Correct files"
+echo ${correct_files}
+exit 1
 
 if [[ $? == 0 ]]; then
     npassed=0
@@ -81,7 +94,7 @@ if [[ $? == 0 ]]; then
             ((npassed++))
             ((nbitwise++))
         else
-            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary
+            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary $AFTER_PYTHON
             if [[ $? == 0 ]]; then 
                 ((npassed++))
             else
@@ -116,7 +129,7 @@ tmpfile="$(mktemp)"
 sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
 
 # Run SAGE on this new parameter file.
-./sage ${tmpfile}
+$BEFORE_SAGE ./sage ${tmpfile}
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests"
     echo "Failed"
@@ -139,7 +152,7 @@ if [[ $? == 0 ]]; then
     nfailed=0
     for f in ${correct_files[@]}; do
         ((nfiles++))
-        python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5
+        python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5 1
         if [[ $? == 0 ]]; then
             ((npassed++))
         else
