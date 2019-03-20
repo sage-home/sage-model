@@ -583,22 +583,6 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
         return FILE_NOT_FOUND;
     }
 
-    // Create some attributes.
-    group_id = H5Gcreate2(file_id, "Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if(group_id < 0) {
-        fprintf(stderr, "Failed to create the Header group for the master file.\nThe file ID was %d\n",
-                        (int32_t) file_id);
-        return group_id;
-    }
-    CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
-
-    status = H5Gclose(group_id);
-    if(status < 0) {
-        fprintf(stderr, "Failed to close the Header group for master file\n"
-                        "The group ID was %d\n", (int32_t) group_id); 
-        return status;
-    }
-
     // We will keep track of how many galaxies were saved across all files per snapshot.
     int64_t *ngals_allfiles_snap;
     ngals_allfiles_snap = calloc(run_params->MAXSNAPS, sizeof(*(ngals_allfiles_snap)));
@@ -617,7 +601,6 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     char target_fname[3*MAX_STRING_LEN];
     char core_fname[MAX_STRING_LEN];
     char snap_fname[2*MAX_STRING_LEN];
-    char tmp_fname[2*MAX_STRING_LEN];
 
     for(int32_t task_idx = 0; task_idx < NTasks; ++task_idx) {
 
@@ -632,25 +615,6 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
             return status;
         }
 
-    }
-
-    // Finished creating links.
-    status = H5Gclose(root_group_id);
-    if(status < 0) {
-        fprintf(stderr, "Failed to close root group for the master file %s\n" 
-                        "The group ID was %d and the file ID was %d\n", master_fname, (int32_t) root_group_id, (int32_t) file_id); 
-        return status;
-    }
-
-    // Cleanup cause we're considerate programmers.
-    status = H5Fclose(file_id);
-    if(status < 0) {
-       fprintf(stderr, "Failed to close the Master HDF5 file.\nThe file ID was %d\n", (int32_t) file_id);
-       return status; 
-    }
-
-    file_id = H5Fopen(master_fname, H5F_ACC_RDONLY, H5P_DEFAULT);
-    for(int32_t task_idx = 0; task_idx < NTasks; ++task_idx) {
         // Count number of galaxies saved per snapshot.
         for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; ++snap_idx) {
 
@@ -693,11 +657,75 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
 
     }
 
+    // We've finished with the linking. Now let's create some attributes and datasets inside the header group.
+
+    // Create some attributes.
+    group_id = H5Gcreate2(file_id, "Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if(group_id < 0) {
+        fprintf(stderr, "Failed to create the Header group for the master file.\nThe file ID was %d\n",
+                        (int32_t) file_id);
+        return group_id;
+    }
+    CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
+
+    hsize_t dims[1];
+    dims[0] = run_params->MAXSNAPS;
+    hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
+    if(dataspace_id < 0) {
+        fprintf(stderr, "Could not create a dataspace for the number of galaxies per snapshot within the master file.\n"
+                        "The dimensions of the dataspace was %d\n", (int32_t) dims[0]);
+        return (int32_t) dataspace_id;
+    }
+
+    hid_t dataset_id = H5Dcreate2(file_id, "totgals_per_snap", H5T_NATIVE_LLONG, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if(dataset_id < 0) {
+        fprintf(stderr, "Could not create a dataset for the number of galaxies per snapshot within the master file.\n"
+                        "The dimensions of the dataset was %d\nThe file id was %d\n.",
+                        (int32_t) dims[0], (int32_t) file_id);
+        return (int32_t) dataset_id;
+    }
+
+    status = H5Dwrite(dataset_id, H5T_NATIVE_LLONG, H5S_ALL, H5S_ALL, H5P_DEFAULT, ngals_allfiles_snap);
+    if(status < 0) {
+        fprintf(stderr, "Failed to write a dataset for the number of galaxies per snapshot within the master file.\n"
+                        "The dimensions of the dataset was %d\nThe file ID was %d\n."
+                        "The dataset ID was %d.", (int32_t) dims[0], (int32_t) file_id,
+                        (int32_t) dataset_id);
+        return (int32_t) status;
+    }
+
+    status = H5Dclose(dataset_id);
+    if(status < 0) {
+        fprintf(stderr, "Failed to close the number of galaxies per snapshot group within the master file.\n"
+                        "The dimensions of the dataset was %d\nThe file ID was %d\n."
+                        "The dataset ID was %d.", (int32_t) dims[0], (int32_t) file_id,
+                        (int32_t) dataset_id);
+        return (int32_t) status;
+    }
+
+    status = H5Gclose(group_id);
+    if(status < 0) {
+        fprintf(stderr, "Failed to close the Header group for master file\n"
+                        "The group ID was %d\n", (int32_t) group_id); 
+        return status;
+    }
+
+    // Finished creating links.
+    status = H5Gclose(root_group_id);
+    if(status < 0) {
+        fprintf(stderr, "Failed to close root group for the master file %s\n" 
+                        "The group ID was %d and the file ID was %d\n", master_fname, (int32_t) root_group_id, (int32_t) file_id); 
+        return status;
+    }
+
+    // Cleanup cause we're considerate programmers.
     status = H5Fclose(file_id);
     if(status < 0) {
        fprintf(stderr, "Failed to close the Master HDF5 file.\nThe file ID was %d\n", (int32_t) file_id);
        return status; 
     }
+
+    free(ngals_allfiles_snap);
 
     return EXIT_SUCCESS;
 
