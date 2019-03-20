@@ -28,6 +28,17 @@ matrix:
       before_install:
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
+    - os: linux
+      dist: trusty
+      sudo: required
+      compiler: mpicc
+      env: COMPILER=mpicc PYTHON_VERSION=3.7
+      before_install:
+        - sudo apt-get update -q
+        - sudo apt-get install -y mpich2 libmpich2-3 libmpich2-dev
+        - which mpicc
+        - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+
 install:
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"

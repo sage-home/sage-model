@@ -1,4 +1,4 @@
-#USE-MPI = yes  # set this if you want to run in embarrassingly parallel
+#USE-MPI = yes # set this if you want to run in embarrassingly parallel
 USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
@@ -31,6 +31,10 @@ SAGELIB := lib$(LIBNAME).a
 EXEC := $(LIBNAME)
 
 UNAME := $(shell uname)
+ifeq ($(CC), mpicc)
+	USE-MPI = yes
+endif
+
 ifdef USE-MPI
     OPTS += -DMPI  #  This creates an MPI version that can be used to process files in parallel
     CC := mpicc  # sets the C-compiler
