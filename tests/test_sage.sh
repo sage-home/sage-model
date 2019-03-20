@@ -67,20 +67,11 @@ pushd "$parent_path"/$datadir
 
 # These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
-test_files=($(ls -d test_sage_z* | sort -k 1.18))
 
-echo "Test files"
-echo ${test_files[0]}
-echo ${test_files[1]}
-echo ${test_files[2]}
-echo ${test_files[3]}
-echo ${test_files[4]}
-echo ${test_files[5]}
-echo ${test_files[6]}
-echo ${test_files[7]}
-echo "Correct files"
-echo ${correct_files}
-exit 1
+# Now if we ran SAGE in MPI, there will be multiple 'test_sage' for each redshift.
+# We will iterate over 'correct_files' and hence we want the first entries 8 entries of 'test_files' to be all the different redshifts
+# with file extension '_0'.
+test_files=($(ls -d test_sage_z* | sort -k 1.18))
 
 if [[ $? == 0 ]]; then
     npassed=0
@@ -144,7 +135,7 @@ cd "$parent_path"/$datadir
 
 # Update this comment future Jacob.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
-test_file=`ls test_sage_*.hdf5*`
+test_file="test_sage.hdf5*"
 
 if [[ $? == 0 ]]; then
     npassed=0
