@@ -142,10 +142,10 @@
   } while (0)
 #endif
 
-#define CHECK_STATUS(status, return_value, ...) \
-    do {                                        \
-        if(status < 0) {                        \
-            fprintf(stderr, __VA_ARGS__);       \
-            return status;                      \
-        }                                       \
+#define CHECK_STATUS_AND_RETURN_ON_FAIL(status, return_value, ...) \
+    do {                                                           \
+        if(status < 0) {                                           \
+            fprintf(stderr, __VA_ARGS__);                          \
+            return status;                                         \
+        }                                                          \
   } while (0)
