@@ -39,7 +39,7 @@ int32_t initialize_binary_galaxy_files(const int filenr, const int ntrees, struc
 
         // write out placeholders for the header data.
         const off_t off = (ntrees + 2) * sizeof(int32_t);
-        /onsj off_t status = lseek(save_info->save_fd[n], off, SEEK_SET);
+        const off_t status = lseek(save_info->save_fd[n], off, SEEK_SET);
         CHECK_STATUS_AND_RETURN_ON_FAIL(status, FILE_WRITE_ERROR,
                                         "Error: Failed to write out %d elements for header information for file %d.\n"
                                         "Attempted to write %"PRId64" bytes\n", ntrees + 2, n, off);
