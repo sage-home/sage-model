@@ -11,6 +11,7 @@
 #include "save_gals_hdf5.h"
 #include "../core_mymalloc.h"
 #include "../core_utils.h"
+#include "../macros.h"
 #include "../model_misc.h"
 
 #define NUM_OUTPUT_FIELDS 54
@@ -27,7 +28,6 @@ int32_t prepare_galaxy_for_hdf5_output(int ThisTask, int tree, struct GALAXY *g,
 
 int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num_already_written,
                              struct save_info *save_info);
-// Externally Visible Functions //
 
 #define MAX_ATTRIBUTE_LEN 10000
 #define NUM_GALS_PER_BUFFER 1000
@@ -37,99 +37,73 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 // single number or a string.
 #define CREATE_SINGLE_ATTRIBUTE(group_id, attribute_name, attribute_value, h5_dtype) { \
     hid_t macro_dataspace_id = H5Screate(H5S_SCALAR);                 \
-    if(macro_dataspace_id < 0) {                                      \
-        fprintf(stderr, "Could not create an attribute dataspace.\n"  \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
-        return (int32_t) macro_dataspace_id;                          \
-    }                                                                 \
+    CHECK_STATUS(macro_dataspace_id, (int32_t) macro_dataspace_id,    \
+                 "Could not create an attribute dataspace.\n"         \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
     hid_t macro_attribute_id = H5Acreate(group_id, attribute_name, h5_dtype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
-    if(macro_attribute_id < 0) {                                      \
-        fprintf(stderr, "Could not create an attribute ID.\n"         \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
-        return (int32_t) macro_dataspace_id;                          \
-    }                                                                 \
+    CHECK_STATUS(macro_attribute_id, (int32_t) macro_attribute_Id,    \
+                 "Could not create an attribute ID.\n"                \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
     status = H5Awrite(macro_attribute_id, h5_dtype, &attribute_value);\
-    if(status < 0) {                                                  \
-        fprintf(stderr, "Could not write an attribute.\n"             \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
-        return (int32_t) status;                                      \
-    }                                                                 \
+    CHECK_STATUS(status, (int32_t) status,                            \
+                 "Could not write an attribute.\n"                    \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
     status = H5Aclose(macro_attribute_id);                            \
-    if(status < 0) {                                                  \
-        fprintf(stderr, "Could not close an attribute ID.\n"          \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
-        return (int32_t) status;                                      \
-    }                                                                 \
+    CHECK_STATUS(status, (int32_t) status,                            \
+                 "Could not close an attribute ID.\n"                 \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
     status = H5Sclose(macro_dataspace_id);                            \
-    if(status < 0) {                                                  \
-        fprintf(stderr, "Could not close an attribute dataspace.\n"   \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
-        return (int32_t) status;                                      \
-    }                                                                 \
+    CHECK_STATUS(status, (int32_t) status,                            \
+                 "Could not close an attribute dataspace.\n"          \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
 }
 
 #define CREATE_STRING_ATTRIBUTE(group_id, attribute_name, attribute_value) { \
     hid_t macro_dataspace_id = H5Screate(H5S_SCALAR);                 \
-    if(macro_dataspace_id < 0) {                                      \
-        fprintf(stderr, "Could not create an attribute dataspace.\n"  \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id.\n");             \
-        return (int32_t) macro_dataspace_id;                          \
-    }                                                                 \
+    CHECK_STATUS(macro_dataspace_id, (int32_t) macro_dataspace_id,    \
+                 "Could not create an attribute dataspace.\n"         \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
     hid_t atype = H5Tcopy(H5T_C_S1);                                  \
-    if(atype < 0) {                                                   \
-        fprintf(stderr, "Could not copy an existing data type when creating a String attribute.\n" \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id.\n");             \
-        return (int32_t) atype;                                       \
-    }                                                                 \
+    CHECK_STATUS(atype, (int32_t) atype,                              \
+                 "Could not copy an existing data type when creating a String attribute.\n" \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id.\n");                    \
     status = H5Tset_size(atype, MAX_ATTRIBUTE_LEN-1);                 \
-    if(status < 0) {                                                  \
-        fprintf(stderr, "Could not set the total size of a datatype when creating a String attribute.\n" \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id.\n");             \
-        return (int32_t) status;                                      \
-    }                                                                 \
+    CHECK_STATUS(status, (int32_t) status,                            \
+                 "Could not set the total size of a datatype when creating a String attribute.\n" \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id.\n");                    \
     status = H5Tset_strpad(atype, H5T_STR_NULLTERM);                  \
-    if(status < 0) {                                                  \
-        fprintf(stderr, "Could not set the padding when creating a String attribute.\n" \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id.\n");             \
-        return (int32_t) status;                                      \
-    }                                                                 \
+    CHECK_STATUS(status, (int32_t) status,                            \
+                 "Could not set the padding when creating a String attribute.\n" \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id.\n");                    \
     hid_t macro_attribute_id = H5Acreate(group_id, attribute_name, atype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
-    if(macro_attribute_id < 0) {                                      \
-        fprintf(stderr, "Could not create an attribute ID.\n"         \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id.\n");             \
-        return (int32_t) macro_dataspace_id;                          \
-    }                                                                 \
-    H5Awrite(macro_attribute_id, atype, attribute_value);             \
-    if(status < 0) {                                                  \
-        fprintf(stderr, "Could not write an attribute.\n"             \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id.\n");             \
-        return (int32_t) status;                                      \
-    }                                                                 \
-    H5Aclose(macro_attribute_id);                                     \
-    if(status < 0) {                                                  \
-        fprintf(stderr, "Could not close an attribute ID.\n"          \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id.\n");             \
-        return (int32_t) status;                                      \
-    }                                                                 \
-    H5Sclose(macro_dataspace_id);                                     \
-    if(status < 0) {                                                  \
-        fprintf(stderr, "Could not close an attribute dataspace.\n"   \
-                        "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                        "The group_id was #group_id #h5_dtype.\n");   \
-        return (int32_t) status;                                      \
-    }                                                                 \
+    CHECK_STATUS(macro_attribute_id, (int32_t) macro_attribute_id,    \
+                 "Could not create an attribute ID.\n"                \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id.\n");                    \
+    status = H5Awrite(macro_attribute_id, atype, attribute_value);    \
+    CHECK_STATUS(status, (int32_t) status,                            \
+                 "Could not write an attribute.\n"                    \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id.\n");                    \
+    status = H5Aclose(macro_attribute_id);                            \
+    CHECK_STATUS(status, (int32_t) status,                            \
+                 "Could not close an attribute ID.\n"                 \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id.\n");                    \
+    status = H5Sclose(macro_dataspace_id);                            \
+    CHECK_STATUS(status, (int32_t) status,                            \
+                 "Could not close an attribute dataspace.\n"          \
+                 "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                 "The group_id was #group_id #h5_dtype.\n");          \
 }
 
 // Unlike the binary output where we generate an array of output struct instances, the HDF5 workflow has
@@ -147,6 +121,8 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
     free(save_info->buffer_output_gals[snap_idx].field_name);      \
 }
 
+// Externally Visible Functions //
+
 // Creates the HDF5 file, groups and the datasets.  The heirachy for the HDF5 file is
 // File->Group->Datasets.  For example, File->"Snap_43"->"StellarMass"->**Data**.
 // The handles for all of these are stored in `save_info` so we can write later.
@@ -161,10 +137,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
 
     file_id = H5Fcreate(buffer, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    if(file_id < 0) {
-        fprintf(stderr, "\n\nError: Can't open file `%s'\n\n\n", buffer);
-        return FILE_NOT_FOUND;
-    }
+    CHECK_STATUS(file_id, FILE_NOT_FOUND,
+                 "Can't open file %s for initialization.\n", buffer);
     save_info->file_id = file_id;
 
     // Generate the names, description and HDF5 data types for each of the output fields.
@@ -202,11 +176,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         // Create a snapshot group.
         snprintf(full_field_name, MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
         group_id = H5Gcreate2(file_id, full_field_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        if(group_id < 0) {
-            fprintf(stderr, "Failed to create the %s group.\nThe file ID was %d\n", full_field_name,
-                    (int32_t) file_id);
-            return group_id;
-        }
+        CHECK_STATUS(group_id, (int32_t) group_id,
+                     "Failed to create the %s group.\nThe file ID was %d\n", full_field_name,
+                     (int32_t) file_id);
         save_info->group_ids[snap_idx] = group_id;
 
         float redshift = run_params->ZZ[run_params->ListOutputSnaps[snap_idx]];
@@ -223,35 +195,26 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             dtype = field_dtypes[field_idx];
 
             prop = H5Pcreate(H5P_DATASET_CREATE);
-            if(prop < 0) {
-                fprintf(stderr, "Could not create the property list for output snapshot number %d.\n", snap_idx);
-                return (int32_t) prop;
-            }
+            CHECK_STATUS(prop, (int32_t) prop,
+                         "Could not create the property list for output snapshot number %d.\n", snap_idx);
 
             // Create a dataspace with 0 dimension.  We will extend the datasets before every write.
             dataspace_id = H5Screate_simple(1, dims, maxdims);
-            if(dataspace_id < 0) {
-                fprintf(stderr, "Could not create a dataspace for output snapshot number %d.\n"
-                                "The requested initial size was %d with an unlimited maximum upper bound.",
-                                snap_idx, (int32_t) dims[0]);
-                return (int32_t) dataspace_id;
-            }
+            CHECK_STATUS(dataspace_id, (int32_t) dataspace_id,
+                         "Could not create a dataspace for output snapshot number %d.\n"
+                         "The requested initial size was %d with an unlimited maximum upper bound.",
+                         snap_idx, (int32_t) dims[0]);
 
             // To increase reading/writing speed, we chunk the HDF5 file.
             status = H5Pset_chunk(prop, 1, chunk_dims);
-            if(status < 0) {
-                fprintf(stderr, "Could not set the HDF5 chunking for output snapshot number %d.  Chunk size was %d.\n",
-                                snap_idx, (int32_t) chunk_dims[0]);
-                return (int32_t) status;
-            }
+            CHECK_STATUS(status, (int32_t) status,
+                         "Could not set the HDF5 chunking for output snapshot number %d.  Chunk size was %d.\n",
+                         snap_idx, (int32_t) chunk_dims[0]);
 
             // Now create the dataset.
             dataset_id = H5Dcreate2(file_id, full_field_name, dtype, dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT);
-            if(dataset_id < 0) {
-                fprintf(stderr, "Could not create the %s dataset.\n", full_field_name);
-                return (int32_t) dataset_id;
-            }
-
+            CHECK_STATUS(dataset_id, (int32_t) dataset_id,
+                         "Could not create the %s dataset.\n", full_field_name);
             save_info->dataset_ids[snap_idx*NUM_OUTPUT_FIELDS + field_idx] = dataset_id;
 
             // Set metadata attributes for each dataset.
@@ -259,16 +222,12 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             CREATE_STRING_ATTRIBUTE(dataset_id, "Units", unit); 
 
             status = H5Pclose(prop);
-            if(status < 0) {
-                fprintf(stderr, "Failed to close the property list for output snapshot number %d.\n", snap_idx);
-                return (int32_t) status;
-            }
+            CHECK_STATUS(status, (int32_t) status,
+                         "Failed to close the property list for output snapshot number %d.\n", snap_idx);
 
             status = H5Sclose(dataspace_id);
-            if(status < 0) {
-                fprintf(stderr, "Failed to close the dataspace for output snapshot number %d.\n", snap_idx);
-                return (int32_t) status;
-            }
+            CHECK_STATUS(status, (int32_t) status,
+                         "Failed to close the dataspace for output snapshot number %d.\n", snap_idx);
         }
     }
 
@@ -422,40 +381,44 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
         snprintf(unit, MAX_STRING_LEN-  1, "Unitless");
 
         hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
-        if(dataspace_id < 0) {
-            fprintf(stderr, "Could not create a dataspace for the number of galaxies per tree.\n"
-                            "The dimensions of the dataspace was %d\n", (int32_t) dims[0]);
-            return (int32_t) dataspace_id;
-        }
+        CHECK_STATUS(dataspace_id, (int32_t) dataspace_id,
+                     "Could not create a dataspace for the number of galaxies per tree.\n"
+                     "The dimensions of the dataspace was %d\n", (int32_t) dims[0]);
 
         hid_t dataset_id = H5Dcreate2(save_info->file_id, field_name, H5T_NATIVE_INT, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        if(dataset_id < 0) {
-            fprintf(stderr, "Could not create a dataset for the number of galaxies per tree.\n"
-                            "The dimensions of the dataset was %d\nThe file id was %d\n.",
-                            (int32_t) dims[0], (int32_t) save_info->file_id);
-            return (int32_t) dataset_id;
-        }
+        CHECK_STATUS(dataspace_id, (int32_t) dataspace_id,
+                     "Could not create a dataset for the number of galaxies per tree.\n"
+                     "The dimensions of the dataset was %d\nThe file id was %d\n.",
+                     (int32_t) dims[0], (int32_t) save_info->file_id);
 
         status = H5Dwrite(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, save_info->forest_ngals[snap_idx]);
-        if(status < 0) {
-            fprintf(stderr, "Failed to write a dataset for the number of galaxies per tree.\n"
-                            "The dimensions of the dataset was %d\nThe file ID was %d\n."
-                            "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
-                            (int32_t) dataset_id);
-            return (int32_t) status;
-        }
-        H5Dclose(dataset_id);
-        H5Sclose(dataspace_id);
+        CHECK_STATUS(status, (int32_t) status,
+                     "Failed to write a dataset for the number of galaxies per tree.\n"
+                     "The dimensions of the dataset was %d\nThe file ID was %d\n."
+                     "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
+                     (int32_t) dataset_id);
+
+        status = H5Dclose(dataset_id);
+        CHECK_STATUS(status, (int32_t) status,
+                     "Failed to close the dataset for the number of galaxies per tree.\n" 
+                     "The dimensions of the dataset was %d\nThe file ID was %d\n."
+                     "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
+                     (int32_t) dataset_id);
+
+        status = H5Sclose(dataspace_id);
+        CHECK_STATUS(status, (int32_t) status,
+                     "Failed to close the dataspace for the number of galaxies per tree.\n" 
+                     "The dimensions of the dataset was %d\nThe file ID was %d\n."
+                     "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
+                     (int32_t) dataset_id);
     }
 
     // Finally let's write some header attributes here.
     // We do this here rather than in ``initialize()`` because we need the number of galaxies per tree.
     hid_t group_id;
     group_id = H5Gcreate(save_info->file_id, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if(group_id < 0) {
-        fprintf(stderr, "Failed to create the Header group.\nThe file ID was %d\n", (int32_t) save_info->file_id);
-        return group_id;
-    }
+    CHECK_STATUS(group_id, (int32_t) group_id,
+                 "Failed to create the Header group.\nThe file ID was %d\n", (int32_t) save_info->file_id);
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", ntrees, H5T_NATIVE_INT);
 
@@ -466,28 +429,23 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
         for(int32_t field_idx = 0; field_idx < save_info->num_output_fields; ++field_idx) {
             int32_t access_idx = snap_idx*NUM_OUTPUT_FIELDS + field_idx;
             status = H5Dclose(save_info->dataset_ids[access_idx]);
-            if(status < 0) {
-               fprintf(stderr, "Failed to close field number %d for output snapshot number %d\n"
-                               "The dataset ID was %d\n", field_idx, snap_idx, (int32_t) save_info->dataset_ids[access_idx]);
-               return status; 
-            }
+            CHECK_STATUS(status, (int32_t) status,
+                         "Failed to close field number %d for output snapshot number %d\n"
+                         "The dataset ID was %d\n", field_idx, snap_idx,
+                         (int32_t) save_info->dataset_ids[access_idx]);
         }
 
         // Then the group.
         status = H5Gclose(save_info->group_ids[snap_idx]);
-        if(status < 0) {
-           fprintf(stderr, "Failed to close the group for output snapshot number %d\n"
-                           "The group ID was %d\n", snap_idx, (int32_t) save_info->group_ids[snap_idx]);
-           return status;
-        }
+        CHECK_STATUS(status, (int32_t) status,
+                     "Failed to close the group for output snapshot number %d\n"
+                     "The group ID was %d\n", snap_idx, (int32_t) save_info->group_ids[snap_idx]);
     }
 
     // Finally the file itself.
     status = H5Fclose(save_info->file_id);
-    if(status < 0) {
-       fprintf(stderr, "Failed to close the HDF5 file.\nThe file ID was %d\n", (int32_t) save_info->file_id);
-       return status; 
-    }
+    CHECK_STATUS(status, (int32_t) status,
+                 "Failed to close the HDF5 file.\nThe file ID was %d\n", (int32_t) save_info->file_id);
 
     // Then the memory for the IDs.
     free(save_info->dataset_ids);
@@ -579,10 +537,8 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     snprintf(master_fname, 2*MAX_STRING_LEN, "%s/%s.hdf5", run_params->OutputDir, run_params->FileNameGalaxies);
 
     master_file_id = H5Fcreate(master_fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    if(master_file_id < 0) {
-        fprintf(stderr, "\n\nError: Can't open file `%s'\n\n\n", master_fname);
-        return FILE_NOT_FOUND;
-    }
+    CHECK_STATUS(master_file_id, FILE_NOT_FOUND,
+                 "Can't open file %s for master file writing.\n", master_fname);
 
     // We will keep track of how many galaxies were saved across all files per snapshot.
     int64_t *ngals_allfiles_snap;
@@ -591,11 +547,9 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     // The master file will be accessed as (e.g.,) f["Core0"]["Snap_63"]["StellarMass"].
     // Hence we want to store the external links to the **root** group (i.e., "/"). 
     root_group_id = H5Gopen2(master_file_id, "/", H5P_DEFAULT);
-    if(root_group_id < 0) {
-        fprintf(stderr, "Failed to open the root group for the master file.\nThe file ID was %d\n",
-                        (int32_t) master_file_id);
-        return root_group_id;
-    }
+    CHECK_STATUS(root_group_id, (int32_t) root_group_id,
+                 "Failed to open the root group for the master file.\nThe file ID was %d\n",
+                 (int32_t) master_file_id);
 
     // At this point, all the files of all other processors have been created. So iterate over the
     // number of processors and create links within this master file to those files.
@@ -610,117 +564,97 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
 
         // Make a symlink to the root of the target file.
         status = H5Lcreate_external(target_fname, "/", root_group_id, core_fname, H5P_DEFAULT, H5P_DEFAULT);
-        if(status < 0) {
-            fprintf(stderr, "Failed to create an external link to file %s from the master file.\n" 
-                            "The group ID was %d and the group name was %s\n", target_fname, (int32_t) root_group_id, core_fname);
-            return status;
-        }
+        CHECK_STATUS(status, (int32_t) status,
+                     "Failed to create an external link to file %s from the master file.\n" 
+                     "The group ID was %d and the group name was %s\n", target_fname,
+                     (int32_t) root_group_id, core_fname);
 
         // Count number of galaxies saved per snapshot.
         for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; ++snap_idx) {
 
             snprintf(snap_fname, MAX_STRING_LEN - 1, "Core_%d/Snap_%d", task_idx, run_params->ListOutputSnaps[snap_idx]);
             group_id = H5Gopen(master_file_id, snap_fname, H5P_DEFAULT);
-            if(group_id < 0) {
-                fprintf(stderr, "Failed to open group %s from within the master file.\nThe file ID was %d\n",
-                                snap_fname, (int32_t) master_file_id);
-                return group_id;
-            }
+            CHECK_STATUS(group_id, (int32_t) group_id,
+                         "Failed to open group %s from within the master file.\nThe file ID was %d\n",
+                         snap_fname, (int32_t) master_file_id);
 
             hid_t attr_id = H5Aopen(group_id, "ngals", H5P_DEFAULT);
-            if(attr_id < 0) {
-                fprintf(stderr, "Failed to open the ngals attribute from within the master file.\n"
-                                "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
-                return group_id;
-            }
+            CHECK_STATUS(attr_id, (int32_t) attr_id,
+                         "Failed to open the ngals attribute from within the master file.\n"
+                         "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
 
             int64_t ngals_this_snap;
             status = H5Aread(attr_id, H5T_NATIVE_LLONG, &ngals_this_snap);
+            CHECK_STATUS(status, (int32_t) status,
+                         "Failed to read the ngals attribute from within the master file.\n"
+                         "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
 
             ngals_allfiles_snap[run_params->ListOutputSnaps[snap_idx]] += ngals_this_snap;
 
             status = H5Aclose(attr_id);
-            if(status < 0) {
-              fprintf(stderr, "Failed to close ngals attribute from within the master file.\n"
-                              "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
-              return status;
-            }
+            CHECK_STATUS(status, (int32_t) status,
+                         "Failed to close ngals attribute from within the master file.\n"
+                         "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
 
             status = H5Gclose(group_id);
-            if(status < 0) {
-              fprintf(stderr, "Failed to close group %s from within the master file.\n"
-                              "The group ID was %d.\n", snap_fname, (int32_t) group_id);
-              return status;
-            }
+            CHECK_STATUS(status, (int32_t) status,
+                         "Failed to close group %s from within the master file.\n"
+                         "The group ID was %d.\n", snap_fname, (int32_t) group_id);
         }
-
     }
 
     // We've finished with the linking. Now let's create some attributes and datasets inside the header group.
     group_id = H5Gcreate2(master_file_id, "Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if(group_id < 0) {
-        fprintf(stderr, "Failed to create the Header group for the master file.\nThe file ID was %d\n",
-                        (int32_t) master_file_id);
-        return group_id;
-    }
+    CHECK_STATUS(group_id, (int32_t) group_id,
+                 "Failed to create the Header group for the master file.\nThe file ID was %d\n",
+                 (int32_t) master_file_id);
+
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
 
     hsize_t dims[1];
     dims[0] = run_params->MAXSNAPS;
     hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
-    if(dataspace_id < 0) {
-        fprintf(stderr, "Could not create a dataspace for the number of galaxies per snapshot within the master file.\n"
-                        "The dimensions of the dataspace was %d\n", (int32_t) dims[0]);
-        return (int32_t) dataspace_id;
-    }
+    CHECK_STATUS(dataspace_id, (int32_t) dataspace_id,
+                 "Could not create a dataspace for the number of galaxies per snapshot within the master file.\n"
+                 "The dimensions of the dataspace was %d\n", (int32_t) dims[0]);
 
     hid_t dataset_id = H5Dcreate2(master_file_id, "Header/totgals_per_snap", H5T_NATIVE_LLONG, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if(dataset_id < 0) {
-        fprintf(stderr, "Could not create a dataset for the number of galaxies per snapshot within the master file.\n"
-                        "The dimensions of the dataset was %d\nThe file id was %d\n.",
-                        (int32_t) dims[0], (int32_t) master_file_id);
-        return (int32_t) dataset_id;
-    }
+    CHECK_STATUS(dataset_id, (int32_t) dataset_id,
+                 "Could not create a dataset for the number of galaxies per snapshot within the master file.\n"
+                 "The dimensions of the dataset was %d\nThe file id was %d\n.",
+                 (int32_t) dims[0], (int32_t) master_file_id);
 
     status = H5Dwrite(dataset_id, H5T_NATIVE_LLONG, H5S_ALL, H5S_ALL, H5P_DEFAULT, ngals_allfiles_snap);
-    if(status < 0) {
-        fprintf(stderr, "Failed to write a dataset for the number of galaxies per snapshot within the master file.\n"
-                        "The dimensions of the dataset was %d\nThe file ID was %d\n."
-                        "The dataset ID was %d.", (int32_t) dims[0], (int32_t) master_file_id,
-                        (int32_t) dataset_id);
-        return (int32_t) status;
-    }
+    CHECK_STATUS(status, (int32_t) status,
+                 "Failed to write a dataset for the number of galaxies per snapshot within the master file.\n"
+                 "The dimensions of the dataset was %d\nThe file ID was %d\n."
+                 "The dataset ID was %d.", (int32_t) dims[0], (int32_t) master_file_id,
+                 (int32_t) dataset_id);
 
     status = H5Dclose(dataset_id);
-    if(status < 0) {
-        fprintf(stderr, "Failed to close the number of galaxies per snapshot group within the master file.\n"
-                        "The dimensions of the dataset was %d\nThe file ID was %d\n."
-                        "The dataset ID was %d.", (int32_t) dims[0], (int32_t) master_file_id,
-                        (int32_t) dataset_id);
-        return (int32_t) status;
-    }
+    CHECK_STATUS(status, (int32_t) status,
+                 "Failed to close the number of galaxies per snapshot group within the master file.\n"
+                 "The dimensions of the dataset was %d\nThe file ID was %d\n."
+                 "The dataset ID was %d.", (int32_t) dims[0], (int32_t) master_file_id,
+                 (int32_t) dataset_id);
 
     status = H5Gclose(group_id);
-    if(status < 0) {
-        fprintf(stderr, "Failed to close the Header group for master file\n"
-                        "The group ID was %d\n", (int32_t) group_id); 
-        return status;
-    }
+    CHECK_STATUS(status, (int32_t) status,
+                 "Failed to close the Header group for master file\n"
+                 "The group ID was %d\n", (int32_t) group_id);
 
     // Finished creating links.
     status = H5Gclose(root_group_id);
-    if(status < 0) {
-        fprintf(stderr, "Failed to close root group for the master file %s\n" 
-                        "The group ID was %d and the file ID was %d\n", master_fname, (int32_t) root_group_id, (int32_t) master_file_id); 
-        return status;
-    }
+    CHECK_STATUS(status, (int32_t) status,
+                 "Failed to close root group for the master file %s\n" 
+                 "The group ID was %d and the file ID was %d\n", master_fname,
+                 (int32_t) root_group_id, (int32_t) master_file_id); 
 
     // Cleanup cause we're considerate programmers.
     status = H5Fclose(master_file_id);
-    if(status < 0) {
-       fprintf(stderr, "Failed to close the Master HDF5 file.\nThe file ID was %d\n", (int32_t) master_file_id);
-       return status; 
-    }
+    CHECK_STATUS(status, (int32_t) status,
+                 "Failed to close the Master HDF5 file.\nThe file ID was %d\n",
+                 (int32_t) master_file_id);
 
     free(ngals_allfiles_snap);
 

@@ -34,20 +34,15 @@ int32_t initialize_binary_galaxy_files(const int filenr, const int ntrees, struc
 
         /* the last argument sets permissions as "rw-r--r--" (read/write owner, read group, read other)*/
         save_info->save_fd[n] = open(buffer,  O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-        if (save_info->save_fd[n] < 0) {
-            fprintf(stderr, "Error: Can't open file `%s'\n", buffer);
-            return FILE_NOT_FOUND;
-        }
-        
+        CHECK_STATUS(save_info->save_fd[n], FILE_NOT_FOUND,
+                     "Can't open file %s for initialization.\n", buffer);
+
         // write out placeholders for the header data.
         const off_t off = (ntrees + 2) * sizeof(int32_t);
         const off_t status = lseek(save_info->save_fd[n], off, SEEK_SET);
-        if(status < 0) {
-            fprintf(stderr, "Error: Failed to write out %d elements for header information for file %d. "
-                    "Attempted to write %"PRId64" bytes\n", ntrees + 2, n, off);
-            perror(NULL);
-            return FILE_WRITE_ERROR;
-        }
+        CHECK_STATUS(status, FILE_WRITE_ERROR,
+                     "Error: Failed to write out %d elements for header information for file %d. "
+                      "Attempted to write %"PRId64" bytes\n", ntrees + 2, n, off);
     }
 
     return EXIT_SUCCESS;
@@ -123,7 +118,6 @@ int32_t save_binary_galaxies(const int32_t filenr, const int32_t treenr, const i
                             "However, I wrote out a total of %zd bytes.\n",
                             snap_idx, OutputGalCount[snap_idx], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx], sizeof(struct GALAXY_OUTPUT),
                             nwritten);
-            perror(NULL);
             return FILE_WRITE_ERROR;
         }
     }

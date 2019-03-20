@@ -142,3 +142,10 @@
   } while (0)
 #endif
 
+#define CHECK_STATUS(status, return_value, ...) \
+    do {                                        \
+        if(status < 0) {                        \
+            fprintf(stderr, __VA_ARGS__);       \
+            return status;                      \
+        }                                       \
+  } while (0)
