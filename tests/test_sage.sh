@@ -55,63 +55,7 @@ rm -f test_sage_z*
 # cd back into the sage root directory and then run sage
 cd ../../
 
-$BEFORE_SAGE ./sage "$parent_path"/$datadir/mini-millennium.par
-if [[ $? != 0 ]]; then
-    echo "sage exited abnormally...aborting tests"
-    echo "Failed"
-    exit 1
-fi
-
-# now cd into the output directory for this sage-run
 pushd "$parent_path"/$datadir
-
-# These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
-correct_files=($(ls -d correct-mini-millennium-output_z*))
-
-# Now if we ran SAGE in MPI, there will be multiple 'test_sage' for each redshift.
-# We will iterate over 'correct_files' and hence we want the first entries 8 entries of 'test_files' to be all the different redshifts
-# with file extension '_0'.
-test_files=($(ls -d test_sage_z* | sort -k 1.18))
-
-if [[ $? == 0 ]]; then
-    npassed=0
-    nbitwise=0
-    nfiles=0
-    nfailed=0
-    for f in ${correct_files[@]}; do
-        ((nfiles++))
-        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} 
-        if [[ $? == 0 ]]; then
-            ((npassed++))
-            ((nbitwise++))
-        else
-            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary $AFTER_PYTHON
-            if [[ $? == 0 ]]; then 
-                ((npassed++))
-            else
-                ((nfailed++))
-            fi
-        fi
-    done
-else
-    # even the simple ls model_z* failed
-    # which means the code didnt produce the output files
-    # everything failed
-    npassed=0
-    # use the knowledge that there should have been 64
-    # files for mini-millennium test case
-    # This will need to be changed once the files get combined -- MS: 10/08/2018
-    nfiles=8
-    nfailed=$nfiles
-fi
-echo "Passed: $npassed. Bitwise identical: $nbitwise"
-echo "Failed: $nfailed."
-
-if [[ $nfailed > 0 ]]; then
-    echo "The binary-binary check failed."
-    echo "Uh oh...I'm outta here!"
-    exit 1
-fi
 
 # Now that we've checked the binary output, also check the HDF5 output format.
 # First replace the "OutputFormat" argument with HDF5 in the parameter file.
