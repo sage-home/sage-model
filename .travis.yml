@@ -40,7 +40,7 @@ matrix:
       env: COMPILER=mpicc PYTHON_VERSION=3.7 BEFORE_SAGE='mpirun -np 3' AFTER_PYTHON=3
       before_install:
         - sudo apt-get update -q
-        - sudo apt-get install -y libmpich-dev 
+        - sudo apt-get install -y libopenmpi-dev 
         - which mpicc
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
