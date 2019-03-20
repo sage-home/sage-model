@@ -53,16 +53,8 @@ class Model:
     first_file, last_file : Integer
         Range (inclusive) of files that are read.
 
-    simulation : {0, 1, 2, 3}
-        Specifies which simulation this model corresponds to.
-        0: Mini-millennium,
-        1: Millennium,
-        2: Kali (512^3 particles),
-        3: Genesis (L = 500 Mpc/h, N = 2160^3).
-
-    sSFRcut : Float
-        The specific star formation rate which defines a "quiescent" galaxy. Units are
-        log10.
+    simulation : {"Mini-Millennium", "Millennium", "Genesis-L500-N2160"}
+        Flags which simulation we are using.
 
     IMF : {0, 1}
         Specifies which IMF to use for this model.
@@ -116,6 +108,8 @@ class Model:
 
         # Then set default values.
         self.sample_size = 10000  # How many values should we plot on scatter plots?
+        self.sSFRcut = -11.0  # The specific star formation rate above which a galaxy is
+                              # 'star forming'.  Units are log10.
 
         # How should we bin Stellar mass.
         self.stellar_bin_low      = 7.5 
@@ -247,12 +241,8 @@ class Model:
         Parameters 
         ----------
 
-        simulation : {0, 1, 2, 3}
+        simulation : {"Mini-Millennium", "Millennium", "Genesis-L500-N2160"}
             Flags which simulation we are using.
-            0: Mini-Millennium,
-            1: Full Millennium,
-            2: Kali (512^3 particles),
-            3: Genesis (L = 500 Mpc/h, N = 2160^3).
 
         num_files_read : Integer
             How many files will be read for this model. Used to determine the effective
@@ -264,29 +254,24 @@ class Model:
         None.
         """
 
-        if simulation == 0:  # Mini-Millennium.
+        if simulation == "Mini-Millennium":
             self.hubble_h = 0.73
             self.box_size = 62.5
             self.total_num_files = 1
 
-        elif simulation == 1:  # Full Millennium.
+        elif simulation == "Millennium":
             self.hubble_h = 0.73
             self.box_size = 500
             self.total_num_files = 512
 
-        elif simulation == 2:  # Kali 512.
-            self.hubble_h = 0.681
-            self.box_size = 108.96
-            self.total_num_files = 8
-
-        elif simulation == 3:  # Genesis (L = 500 Mpc/h, N = 2160^3).
+        elif simulation == "Genesis-L500-N2160":
             self.hubble_h = 0.6751
             self.box_size = 500.00
             self.total_num_files = 64 
 
         else:
-          print("Please pick a valid simulation!")
-          exit(1)
+            print("Please pick a valid simulation!")
+            raise ValueError
 
         # Scale the volume by the number of files that we will read. Used to ensure
         # properties scaled by volume (e.g., SMF) gives sensible results.
@@ -940,28 +925,26 @@ if __name__ == "__main__":
 
     # We support the plotting of an arbitrary number of models. To do so, simply add the
     # extra variables specifying the path to the model directory and other variables.
+    # E.g., 'model1_dir_name = ..."
     model0_dir_name   = "../output/millennium/"
     model0_file_name  = "model_z0.000"
     model0_first_file = 0
     model0_last_file  = 0 
-    model0_simulation = 0  # Mini-millennium.
+    model0_simulation = "Mini-Millennium"
     model0_IMF        = 0  # Chabrier.
-    model0_sSFRcut    = -11.0
-
-    # Aesthetic variables for plotting pretty plots.
     model0_model_label = "Mini-Millennium"
     model0_color       = "r"
     model0_linestyle   = "-"
     model0_marker      = "x"
 
     # Then extend each of these lists for all the models that you want to plot.
+    # E.g., 'dir_names = [model0_dir_name, model1_dir_name, ..., modelN_dir_name]
     dir_names    = [model0_dir_name]
     file_names   = [model0_file_name]
     first_files  = [model0_first_file]
     last_files   = [model0_last_file]
     simulations  = [model0_simulation]
     IMFs         = [model0_IMF]
-    sSFRcuts     = [model0_sSFRcut]
     model_labels = [model0_model_label]
     colors       = [model0_color]
     linestyles   = [model0_linestyle]
@@ -969,7 +952,7 @@ if __name__ == "__main__":
 
     # A couple of extra variables...
     output_format    = ".png"
-    plot_output_path = "./plots"
+    plot_output_path = "./plots"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.
@@ -1012,7 +995,6 @@ if __name__ == "__main__":
                    "first_file"  : first_files,
                    "last_file"   : last_files,
                    "simulation"  : simulations,
-                   "sSFRcut"     : sSFRcuts,
                    "IMF"         : IMFs,
                    "model_label" : model_labels,
                    "color"       : colors,
