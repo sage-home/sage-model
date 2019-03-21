@@ -42,6 +42,7 @@ matrix:
         - sudo apt-get update -q
         - sudo apt-get install -y libmpich-dev
         - which mpicc
+        - mpicc --showme
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
 install:
@@ -50,8 +51,13 @@ install:
   - conda create -q --yes -n test python=$PYTHON_VERSION nomkl
   - source activate test
   - conda install -q --yes -c anaconda gsl
-  - sh ./tests/install_hdf5.sh
+  - if [[ “$COMPILER” != “mpicc” ]]; then conda install -q --yes -c conda-forge hdf5 ; fi
+  - if [[ “$COMPILER” == “mpicc” ]]; then sh ./tests/install_hdf5.sh; fi
+  - echo "About to Echo $PATH before exporting."
+  - echo $PATH
   - export PATH="$HDF5_PREFIX/bin:$PATH"
+  - echo "About to Echo $PATH after exporting."
+  - echo $PATH
   - pip install -r requirements.txt 
 
 script:
