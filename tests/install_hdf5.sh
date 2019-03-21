@@ -1,6 +1,8 @@
 # Just a small script to install the parallel HDF5 library.
 
-if [[ -d $HDF5_DIR ]]; then
+if [ -d $HDF5_DIR ]; then
+    echo "Parallel HDF5 library already installed in cache directory ${HDF5_DIR}."
+else
     echo "Parallel HDF5 library not installed in cache directory ${HDF5_DIR}."
     echo "Downloading and building."
 
@@ -10,6 +12,4 @@ if [[ -d $HDF5_DIR ]]; then
     ./configure --prefix=$HDF5_DIR --enable-shared --enable-parallel CC=mpicc
     make
     make install
-else
-    echo "Parallel HDF5 library already installed in cache directory ${HDF5_DIR}."
 fi
