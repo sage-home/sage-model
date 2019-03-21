@@ -329,7 +329,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 #ifndef HDF5
         fprintf(stderr, "You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled.\n");
         fprintf(stderr, "Please check your file type and compiler options.\n");
-        ABORT(0);
+        ABORT(EXIT_FAILURE);
 #endif
     }
 
@@ -357,10 +357,20 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     // Check output data type is valid.
 #ifndef HDF5
-    if(strncmp(my_outputformat, "hdf5", MAX_STRING_LEN-1) == 0) {
-      fprintf(stderr, "You have specified to use HDF5 output format but have not compiled with the HDF5 option enabled.\n");
-      fprintf(stderr, "Please check your file type and compiler options.\n");
-      ABORT(0);
+    if(strncmp(my_outputformat, "sage_hdf5", MAX_STRING_LEN-1) == 0) {
+        fprintf(stderr, "You have specified to use HDF5 output format but have not compiled with the HDF5 option enabled.\n");
+        fprintf(stderr, "Please check your file type and compiler options.\n");
+        ABORT(EXIT_FAILURE);
+    }
+#endif
+
+#ifndef H5_HAVE_PARALLEL
+    if((strncmp(my_outputformat, "sage_hdf5", MAX_STRING_LEN-1) == 0) && (ThisTask > 0)){
+        fprintf(stderr, "You have selected HDF5 output and are running on multiple processors.\n"
+                        "However, your HDF5 library has not been built with parallelization enabled.\n"
+                        "Either rebuild the HDF5 library with `--enable-parallel --enable-shared` "
+                        "or select a non-HDF5 output format.\n");
+        ABORT(EXIT_FAILURE);
     }
 #endif
 

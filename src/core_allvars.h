@@ -8,6 +8,10 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#ifdef HDF5
+#include <hdf5.h>
+#endif
+
 #include "macros.h"
 #include "core_simulation.h"
 
