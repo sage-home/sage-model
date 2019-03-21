@@ -572,13 +572,19 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                         (int32_t) root_group_id, core_fname);
 
         // Count number of galaxies saved per snapshot.
+        snprintf(target_fname, 3*MAX_STRING_LEN - 1, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, task_idx);
+        hid_t target_file_id = H5Fopen(target_fname, H5F_ACC_RDONLY, H5P_DEFAULT);
+        CHECK_STATUS_AND_RETURN_ON_FAIL(target_file_id, (int32_t) target_file_id,
+                                        "Failed to open file %s for reading the attribute.\n", 
+                                        target_fname); 
         for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; ++snap_idx) {
 
-            snprintf(snap_fname, MAX_STRING_LEN - 1, "Core_%d/Snap_%d", task_idx, run_params->ListOutputSnaps[snap_idx]);
-            group_id = H5Gopen(master_file_id, snap_fname, H5P_DEFAULT);
+            //snprintf(snap_fname, MAX_STRING_LEN - 1, "Core_%d/Snap_%d", task_idx, run_params->ListOutputSnaps[snap_idx]);
+            snprintf(snap_fname, MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
+            group_id = H5Gopen(target_file_id, snap_fname, H5P_DEFAULT);
             CHECK_STATUS_AND_RETURN_ON_FAIL(group_id, (int32_t) group_id,
                                             "Failed to open group %s from within the master file.\nThe file ID was %d\n",
-                                            snap_fname, (int32_t) master_file_id);
+                                            snap_fname, (int32_t) target_file_id);
 
             hid_t attr_id = H5Aopen(group_id, "ngals", H5P_DEFAULT);
             CHECK_STATUS_AND_RETURN_ON_FAIL(attr_id, (int32_t) attr_id,
@@ -603,6 +609,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                             "Failed to close group %s from within the master file.\n"
                                             "The group ID was %d.\n", snap_fname, (int32_t) group_id);
         }
+        H5Fclose(target_file_id);
     }
 
     // We've finished with the linking. Now let's create some attributes and datasets inside the header group.
