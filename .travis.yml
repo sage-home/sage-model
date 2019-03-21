@@ -52,11 +52,6 @@ install:
   - conda install -q --yes -c anaconda gsl
   - if [[ “$COMPILER” != “mpicc” ]]; then conda install -q --yes -c conda-forge hdf5 ; fi
   - if [[ “$COMPILER” == “mpicc” ]]; then sh ./tests/install_hdf5.sh; fi
-  - echo "About to Echo $PATH before exporting."
-  - echo $PATH
-  - export PATH="$HDF5_DIR/bin:$PATH"
-  - echo "About to Echo $PATH after exporting."
-  - echo $PATH
   - pip install -r requirements.txt 
 
 script:
