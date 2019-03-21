@@ -37,7 +37,7 @@ matrix:
       dist: trusty
       sudo: required
       compiler: mpicc
-      env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
+      env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='/usr/lib/openmpi/bin/mpirun -np 5'
       before_install:
         - sudo apt-get update -q
         - sudo apt-get install -y libopenmpi-dev
