@@ -6,6 +6,10 @@ env:
         HDF5_DIR=$HOME/hdf5
         MPI_RUN_COMMAND=''
 
+cache:
+  directories:
+    - $HDF5_DIR
+
 notifications:
   email:
     recipients:
