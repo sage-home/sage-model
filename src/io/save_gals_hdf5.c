@@ -140,6 +140,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     CHECK_STATUS_AND_RETURN_ON_FAIL(file_id, FILE_NOT_FOUND,
                                     "Can't open file %s for initialization.\n", buffer);
     save_info->file_id = file_id;
+    fprintf(stderr, "Task %d created file %s\n", filenr, buffer);
 
     // Generate the names, description and HDF5 data types for each of the output fields.
     char *field_names[NUM_OUTPUT_FIELDS];
