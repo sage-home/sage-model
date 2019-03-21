@@ -1,10 +1,12 @@
 #!/bin/bash
 cwd=`pwd`
 datadir=test_data/
-# the bash way of figuring out the absolute path to this file
+
+# The bash way of figuring out the absolute path to this file
 # (irrespective of cwd). parent_path should be $SAGEROOT/tests
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 
+# Create the directories to host all the data.
 mkdir -p "$parent_path"/$datadir
 if [[ $? != 0 ]]; then
     echo "Could not create directory $parent_path/$datadir"
@@ -19,6 +21,7 @@ if [[ $? != 0 ]]; then
     exit 1
 fi
 
+# If there isn't a Mini-Millennium tree, then download them.
 if [ ! -f trees_063.7 ]; then
     wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
     if [[ $? != 0 ]]; then
@@ -34,6 +37,7 @@ if [ ! -f trees_063.7 ]; then
         exit 1
     fi
 
+    # If there aren't trees, there's no way there is the 'correct' data files.
     wget "https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
     if [[ $? != 0 ]]; then
         echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests"
@@ -57,6 +61,7 @@ cd ../../
 
 # The 'MPI_RUN_COMMAND' environment variable allows us to run in mpi.
 # When running 'sagediff.py', we need knowledge of the number of processors SAGE ran on.
+# This command queurues MPI_RUN_COMMAND and gets the last entry which will be the number of processors.
 NUM_SAGE_PROCS=$(echo ${MPI_RUN_COMMAND} | awk '{print $NF}')
 
 # If we're running on serial, MPI_RUN_COMMAND shouldn't be set.  Hence set the number of processors to 1. 
@@ -64,6 +69,7 @@ if [[ -z "${NUM_SAGE_PROCS}" ]]; then
    NUM_SAGE_PROCS=1
 fi
 
+# Execute SAGE (potentially in parallel).
 ${MPI_RUN_COMMAND} ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests"
@@ -71,12 +77,12 @@ if [[ $? != 0 ]]; then
     exit 1
 fi
 
-# now cd into the output directory for this sage-run
+# Now cd into the output directory for this run.
 pushd "$parent_path"/$datadir
 
 # These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
 # We will iterate over 'correct_files' and hence we want the first entries 8 entries of 'test_files' to be all the different redshifts
-# with file extension '_0'.
+# with file extension '_0'.  This is what the `sort` command does.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
 test_files=($(ls -d test_sage_z* | sort -k 1.18))
 
@@ -87,11 +93,14 @@ if [[ $? == 0 ]]; then
     nfailed=0
     for f in ${correct_files[@]}; do
         ((nfiles++))
+
+        # First check if the correct and tests files are bitwise identical.
         diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} 
         if [[ $? == 0 ]]; then
             ((npassed++))
             ((nbitwise++))
         else
+            # If they're not identical, manually check all the fields for differences.
             python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary $NUM_SAGE_PROCS
             if [[ $? == 0 ]]; then 
                 ((npassed++))
@@ -120,8 +129,6 @@ if [[ $nfailed > 0 ]]; then
     exit 1
 fi
 
-
-
 # Now that we've checked the binary output, also check the HDF5 output format.
 # First replace the "OutputFormat" argument with HDF5 in the parameter file.
 popd
@@ -142,16 +149,18 @@ rm -f ${tmpfile}
 # now cd into the output directory for this sage-run
 cd "$parent_path"/$datadir
 
-# Update this comment future Jacob.
+# For the binary output, there are multiple redshift files.  However for HDF5, there is a single file.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
-test_file="test_sage.hdf5*"
+test_file=`ls test_sage.hdf5`
 
+# Now run the comparison between each correct binary file and the single HDF5 file.
 if [[ $? == 0 ]]; then
     npassed=0
     nfiles=0
     nfailed=0
     for f in ${correct_files[@]}; do
         ((nfiles++))
+        # The `1` at the end here denotes that SAGE was output to a single file.
         python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5 1
         if [[ $? == 0 ]]; then
             ((npassed++))
@@ -160,13 +169,9 @@ if [[ $? == 0 ]]; then
         fi
     done
 else
-    # even the simple ls model_z* failed
-    # which means the code didnt produce the output files
-    # everything failed
+    # Even the simple ls failed which means the code didnt produce the output file
     npassed=0
-    # use the knowledge that there should have been 64
-    # files for mini-millennium test case
-    # This will need to be changed once the files get combined -- MS: 10/08/2018
+    # Use the knowledge that there is 8 SAGE output files we were trying to check against.
     nfiles=8
     nfailed=$nfiles
 fi
