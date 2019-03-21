@@ -1,6 +1,6 @@
 # Just a small script to install the parallel HDF5 library.
 
-if [ -d $HDF5_DIR ]; then
+if [ -d $HDF5_DIR/lib ]; then
     echo "Parallel HDF5 library already installed in cache directory ${HDF5_DIR}."
 else
     echo "Parallel HDF5 library not installed in cache directory ${HDF5_DIR}."
