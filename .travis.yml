@@ -37,10 +37,9 @@ matrix:
       dist: trusty
       sudo: required
       compiler: mpicc
-      env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='/usr/lib/openmpi/bin/mpirun -np 5'
+      env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
       before_install:
-        - sudo apt-get update -q
-        - sudo apt-get install -y libopenmpi-dev
+        - sudo apt-get install -y -q openmpi-bin libopenmpi-dev
         - which mpicc
         - mpicc --showme
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
