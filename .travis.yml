@@ -11,6 +11,7 @@ notifications:
 
 env:
     global:
+        HDF5_PREFIX=$HOME/hdf5
         MPI_RUN_COMMAND=''
 
 matrix:
@@ -36,7 +37,7 @@ matrix:
       dist: trusty
       sudo: required
       compiler: mpicc
-      env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpiexec -np 3'
+      env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
       before_install:
         - sudo apt-get update -q
         - sudo apt-get install -y libmpich-dev
@@ -49,7 +50,8 @@ install:
   - conda create -q --yes -n test python=$PYTHON_VERSION nomkl
   - source activate test
   - conda install -q --yes -c anaconda gsl
-  - conda install -q --yes -c conda-forge hdf5
+  - sh ./tests/install_hdf5.sh
+  - export PATH="$HDF5_PREFIX/bin:$PATH"
   - pip install -r requirements.txt 
 
 script:
