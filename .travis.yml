@@ -40,19 +40,21 @@ matrix:
             - gcc-5
       env: COMPILER=gcc-5 PYTHON_VERSION=3.7
       before_install:
-        - gcc --version
+        - gcc-5 --version
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
     - os: linux
       dist: xenial 
       sudo: required
-      compiler: mpicc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-5
       env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
       before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - sudo apt-get update -q
-        - sudo apt-get install -y gcc-7
-        - export CC=/usr/bin/gcc-7
+        - export CC=/usr/bin/gcc-5
         - sudo apt-get install -y -q openmpi-bin libopenmpi-dev
         - export CC=mpicc
         - which mpicc
