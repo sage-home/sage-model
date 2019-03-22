@@ -32,13 +32,12 @@ matrix:
     - os: linux
       dist: trusty 
       sudo: required
-        addons:
-          apt:
-            sources:
-              - ubuntu-toolchain-r-test
-            packages:
-              - gcc-5
-      compiler: gcc-5
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-5
       env: COMPILER=gcc-5 PYTHON_VERSION=3.7
       before_install:
         - gcc --version
