@@ -628,7 +628,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                     (int32_t) master_file_id);
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
-    fprintf(stderr, "Created Master Ncores attribute.\n", filenr); 
+    fprintf(stderr, "Created Master Ncores attribute.\n"); 
 
     /*
     hsize_t dims[1];
