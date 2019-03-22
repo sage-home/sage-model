@@ -48,6 +48,7 @@ int main(int argc, char **argv)
 #endif
 
     // Perform some final checks.
+    fprintf(stderr, "About to finalize SAGE. ThisTask = %d\n", ThisTask);
     status = finalize_sage(ThisTask, NTasks, &run_params);
     if(status != EXIT_SUCCESS) {
         goto err;

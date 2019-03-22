@@ -49,6 +49,7 @@ install:
   - conda create -q --yes -n test python=$PYTHON_VERSION nomkl
   - source activate test
   - conda install -q --yes -c anaconda gsl
+  - conda install -q --yes gcc
   - conda install -q --yes -c conda-forge hdf5
   - pip install -r requirements.txt 
 
