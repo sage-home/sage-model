@@ -1,3 +1,8 @@
+# Branch blocklist
+branches:
+  except:
+    - class_clean
+
 language: c
 sudo: required
 
@@ -33,6 +38,7 @@ matrix:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - sudo apt-get update -q
         - sudo apt-get install -y gcc-7
+        - gcc --version
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
     - os: linux
@@ -45,6 +51,7 @@ matrix:
         - sudo apt-get update -q
         - sudo apt-get install -y gcc-7
         - sudo apt-get install -y -q openmpi-bin libopenmpi-dev
+        - gcc --version
         - which mpicc
         - mpicc --showme
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
