@@ -15,6 +15,7 @@
 #include "../model_misc.h"
 
 #define NUM_OUTPUT_FIELDS 54
+#define DATA_VERSION 1.0
 
 // Local Proto-Types //
 
@@ -46,7 +47,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
                                     "Could not create an attribute ID.\n"                \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
                                     "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
-    status = H5Awrite(macro_attribute_id, h5_dtype, &attribute_value);\
+    status = H5Awrite(macro_attribute_id, h5_dtype, attribute_value);\
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,                            \
                                     "Could not write an attribute.\n"                    \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
@@ -104,6 +105,36 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
                                     "Could not close an attribute dataspace.\n"          \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
                                     "The group_id was #group_id #h5_dtype.\n");          \
+}
+
+#define CREATE_AND_WRITE_DATASET(file_id, field_name, dims, h5_dtype, data) { \
+    hid_t macro_dataspace_id = H5Screate_simple(1, dims, NULL); \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(macro_dataspace_id, (int32_t) dataspace_id, \
+                                    "Could not create a dataspace for field #field_name.\n" \
+                                    "The dimensions of the dataspace was %d\n", (int32_t) dims[0]);\
+    hid_t macro_dataset_id = H5Dcreate2(file_id, field_name, h5_dtype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT); \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(macro_dataset_id, (int32_t) dataset_id, \
+                                    "Could not create a dataset for field #field_name.\n" \
+                                    "The dimensions of the dataset was %d\nThe file id was %d\n.", \
+                                    (int32_t) dims[0], (int32_t) file_id); \
+    status = H5Dwrite(macro_dataset_id, h5_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, data); \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status, \
+                                    "Failed to write a dataset for field #field_name.\n" \
+                                    "The dimensions of the dataset was %d\nThe file ID was %d\n." \
+                                    "The dataset ID was %d.", (int32_t) dims[0], (int32_t) file_id, \
+                                    (int32_t) macro_dataset_id); \
+    status = H5Dclose(macro_dataset_id); \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status, \
+                                    "Failed to close the dataset for field #field_name.\n" \
+                                    "The dimensions of the dataset was %d\nThe file ID was %d\n." \
+                                    "The dataset ID was %d.", (int32_t) dims[0], (int32_t) file_id, \
+                                    (int32_t) macro_dataset_id); \
+    status = H5Sclose(macro_dataspace_id); \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status, \
+                                    "Failed to close the dataspace for field #field_name.\n" \
+                                    "The dimensions of the dataset was %d\nThe file ID was %d\n." \
+                                    "The dataspace ID was %d.", (int32_t) dims[0], (int32_t) file_id, \
+                                    (int32_t) macro_dataspace_id);\
 }
 
 // Unlike the binary output where we generate an array of output struct instances, the HDF5 workflow has
@@ -182,7 +213,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         save_info->group_ids[snap_idx] = group_id;
 
         float redshift = run_params->ZZ[run_params->ListOutputSnaps[snap_idx]];
-        CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", redshift, H5T_NATIVE_FLOAT);
+        CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", &redshift, H5T_NATIVE_FLOAT);
 
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
@@ -229,7 +260,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
                                             "Failed to close the dataspace for output snapshot number %d.\n", snap_idx);
         }
-    }
+    }    
 
     // Now for each snapshot, we process `buffer_count` galaxies into RAM for every snapshot before
     // writing a single chunk. Unlike the binary instance where we have a single GALAXY_OUTPUT
@@ -366,7 +397,7 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
         save_info->forest_ngals[snap_idx][tree] += num_gals_to_write;
 
         // Write attributes showing how many galaxies we wrote for this snapshot.
-        CREATE_SINGLE_ATTRIBUTE(save_info->group_ids[snap_idx], "ngals", save_info->tot_ngals[snap_idx], H5T_NATIVE_INT);
+        CREATE_SINGLE_ATTRIBUTE(save_info->group_ids[snap_idx], "ngals", &save_info->tot_ngals[snap_idx], H5T_NATIVE_INT);
 
         // Attributes can only be 64kb in size (strict rule enforced by the HDF5 group).
         // For larger simulations, we will have so many trees, that the number of galaxies per tree
@@ -421,7 +452,23 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
                                     "Failed to create the Header group.\nThe file ID was %d\n",
                                     (int32_t) save_info->file_id);
 
-    CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", ntrees, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", &ntrees, H5T_NATIVE_INT);
+
+    // Redshift at each snapshot.
+    dims[0] = run_params->MAXSNAPS;
+    float *ZZ_snapshot;
+    ZZ_snapshot = calloc(run_params->MAXSNAPS, sizeof(*(ZZ_snapshot)));
+    for (int32_t snap_idx = 0; snap_idx < run_params->MAXSNAPS; ++snap_idx){
+        ZZ_snapshot[snap_idx] = run_params->ZZ[snap_idx];
+    }
+
+    CREATE_AND_WRITE_DATASET(save_info->file_id, "Header/snapshot_redshift", dims, H5T_NATIVE_FLOAT, ZZ_snapshot);
+    free(ZZ_snapshot);
+
+    // This data version number is arbitrary but will allow us to point to a useful reference point
+    // for future debugging and validation.
+    double data_version = DATA_VERSION;
+    CREATE_SINGLE_ATTRIBUTE(group_id, "data_version", &data_version, H5T_NATIVE_DOUBLE);
 
     // Now we need to ensure we free all of the HDF5 IDs.  The heirachy is File->Groups->Datasets.
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
@@ -576,7 +623,24 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                     "Failed to create the Header group for the master file.\nThe file ID was %d\n",
                                     (int32_t) master_file_id);
 
-    CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", &NTasks, H5T_NATIVE_INT);
+
+    // Redshift at each snapshot.
+    hsize_t dims[1];
+    dims[0] = run_params->MAXSNAPS;
+    float *ZZ_snapshot;
+    ZZ_snapshot = calloc(run_params->MAXSNAPS, sizeof(*(ZZ_snapshot)));
+    for (int32_t snap_idx = 0; snap_idx < run_params->MAXSNAPS; ++snap_idx){
+        ZZ_snapshot[snap_idx] = run_params->ZZ[snap_idx];
+    }
+
+    CREATE_AND_WRITE_DATASET(master_file_id, "Header/snapshot_redshift", dims, H5T_NATIVE_FLOAT, ZZ_snapshot);
+    free(ZZ_snapshot);
+
+    // This data version number is arbitrary but will allow us to point to a useful reference point
+    // for future debugging and validation.
+    double data_version = DATA_VERSION;
+    CREATE_SINGLE_ATTRIBUTE(group_id, "data_version", &data_version, H5T_NATIVE_DOUBLE);
 
     // Finished creating links.
     status = H5Gclose(root_group_id);
@@ -597,6 +661,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
 
 }
 
+#undef CREATE_AND_WRITE_DATASET
 #undef CREATE_SINGLE_ATTRIBUTE
 #undef CREATE_STRING_ATTRIBUTE 
 
