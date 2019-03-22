@@ -355,6 +355,8 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
     hsize_t dims[1];
     dims[0] = ntrees;
 
+    fprintf(stderr, "Finalizing\n");
+
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
 
         // We still have galaxies remaining in the buffer. Need to write them.
@@ -372,7 +374,6 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
 
         // Write attributes showing how many galaxies we wrote for this snapshot.
         CREATE_SINGLE_ATTRIBUTE(save_info->group_ids[snap_idx], "ngals", save_info->tot_ngals[snap_idx], H5T_NATIVE_INT);
-        fprintf(stderr, "Task %d created ngals attribute.\n"); 
 
         // Attributes can only be 64kb in size (strict rule enforced by the HDF5 group).
         // For larger simulations, we will have so many trees, that the number of galaxies per tree
@@ -428,7 +429,6 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
                                     (int32_t) save_info->file_id);
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", ntrees, H5T_NATIVE_INT);
-    fprintf(stderr, "Task %d created Ntrees attribute.\n", filenr);
 
     // Now we need to ensure we free all of the HDF5 IDs.  The heirachy is File->Groups->Datasets.
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
