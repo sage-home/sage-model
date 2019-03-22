@@ -372,7 +372,7 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
 
         // Write attributes showing how many galaxies we wrote for this snapshot.
         CREATE_SINGLE_ATTRIBUTE(save_info->group_ids[snap_idx], "ngals", save_info->tot_ngals[snap_idx], H5T_NATIVE_INT);
-        fprintf(stderr, "Task %d created ngals attribute.\n", filenr); 
+        fprintf(stderr, "Task %d created ngals attribute.\n"); 
 
         // Attributes can only be 64kb in size (strict rule enforced by the HDF5 group).
         // For larger simulations, we will have so many trees, that the number of galaxies per tree
