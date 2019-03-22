@@ -66,7 +66,7 @@ def plot_smf_data(ax, hubble_h, imf):
         ], dtype=np.float32)
 
     Baldry_xval = np.log10(10 ** Baldry[:, 0] / hubble_h / hubble_h)
-    if(imf == 1):
+    if(imf == "Salpeter"):
         Baldry_xval = Baldry_xval - 0.26  # convert back to Chabrier IMF
 
     Baldry_yvalU = (Baldry[:, 1]+Baldry[:, 2]) * pow(hubble_h, 3)
@@ -111,11 +111,11 @@ def plot_bmf_data(ax, hubble_h, imf):
     xval = 10.0 ** (M-Mstar)
     yval = np.log(10.) * phistar * xval ** (alpha+1) * np.exp(-xval)
 
-    if(imf == 0):
+    if(imf == "Salpeter"):
         # Converted diet Salpeter IMF to Salpeter IMF.
         ax.plot(np.log10(10.0**M /0.7), yval, 'b-', lw=2.0,
                 label='Bell et al. 2003')
-    elif(imf == 1):
+    elif(imf == "Chabrier"):
         # Converted diet Salpeter IMF to Salpeter IMF, then to Chabrier IMF
         ax.plot(np.log10(10.0**M /0.7 /1.8), yval, 'g--', lw=1.5,
                 label='Bell et al. 2003')
@@ -211,10 +211,10 @@ def plot_metallicity_data(ax, imf):
     # Tremonti et al. 2003 (h=0.7)
     w = np.arange(7.0, 13.0, 0.1)
     Zobs = -1.492 + 1.847*w - 0.08026*w*w
-    if imf == 0:
+    if imf == "Salpeter":
         # Conversion from Kroupa IMF to Salpeter IMF
         ax.plot(np.log10((10**w *1.5)), Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
-    elif imf == 1:
+    elif imf == "Chabrier":
         # Conversion from Kroupa IMF to Salpeter IMF to Chabrier IMF
         ax.plot(np.log10((10**w *1.5 /1.8)), Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
 

@@ -56,10 +56,8 @@ class Model:
     simulation : {"Mini-Millennium", "Millennium", "Genesis-L500-N2160"}
         Flags which simulation we are using.
 
-    IMF : {0, 1}
+    IMF : {"Salpeter", "Chabrier"}
         Specifies which IMF to use for this model.
-        0: Salpeter,
-        1: Chabrier.
 
     model_label : String
         Label placed on the legend for this model.
@@ -105,6 +103,11 @@ class Model:
         # Set the attributes we were passed.
         for key in model_dict:
             setattr(self, key, model_dict[key])
+
+        # Some error checks.
+        acceptable_IMF = ["Chabrier", "Salpeter"]
+        if model_dict["IMF"] not in ["Chabrier", "Salpeter"]:
+            print("Invalid IMF entered.  Only {0} are allowed.".format(acceptable_IMF)) 
 
         # Then set default values.
         self.sample_size = 10000  # How many values should we plot on scatter plots?
@@ -902,14 +905,6 @@ class Results:
             print("Plotting the baryon fraction as a function of FoF Halo mass.")
             plots.plot_baryon_fraction(self)
 
-        if plot_toggles["spin"]:
-            print("Plotting the Spin distribution.")
-            plots.plot_spin_distribution(self)
-
-        if plot_toggles["velocity"]:
-            print("Plotting the velocity distribution.")
-            plots.plot_velocity_distribution(self)
-
         if plot_toggles["reservoirs"]:
             print("Plotting a scatter of the mass reservoirs.")
             plots.plot_mass_reservoirs(self)
@@ -931,7 +926,7 @@ if __name__ == "__main__":
     model0_first_file = 0
     model0_last_file  = 0 
     model0_simulation = "Mini-Millennium"
-    model0_IMF        = 0  # Chabrier.
+    model0_IMF        = "Chabrier"  # Chabrier.
     model0_model_label = "Mini-Millennium"
     model0_color       = "r"
     model0_linestyle   = "-"
