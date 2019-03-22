@@ -670,7 +670,7 @@ class Model:
         if plot_toggles["baryon_fraction"]:
 
             # Careful here, our "Halo Mass Function" is only counting the *BACKGROUND FOF HALOS*.
-            centrals = np.where(gals["Type"] == 0)[0]
+            centrals = np.where((gals["Type"] == 0) & (gals["Mvir"] > 0.0))[0]
             centrals_fof_mass = np.log10(gals["Mvir"][centrals] * 1.0e10 / self.hubble_h)
             halos_binned, _ = np.histogram(centrals_fof_mass, bins=self.halo_mass_bins)
             self.fof_HMF += halos_binned
