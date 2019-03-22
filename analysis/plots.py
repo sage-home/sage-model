@@ -16,7 +16,6 @@ plt.rc("xtick", labelsize="x-large")
 plt.rc("ytick", labelsize="x-large")
 plt.rc("lines", linewidth="2.0")
 plt.rc("legend", numpoints=1, fontsize="x-large")
-plt.rc("text", usetex=True)
 
 
 def adjust_legend(ax, location="upper right", scatter_plot=0): 
