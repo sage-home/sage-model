@@ -280,12 +280,19 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
     binary_redshift = determine_binary_redshift(g1.filename)
     snap_num, snap_key = determine_snap_from_binary_z(hdf5_file, binary_redshift)
 
+    # SAGE could have been run in parallel in which the HDF5 master file will have
+    # multiple core datasets.
+    ncores = hdf5_file["Header"].attrs["Ncores"]
+
     # Load all the galaxies from all trees in the binary file.
     binary_gals = g1.read_tree(None)
 
     # Check that number of galaxies is equal.
     ngals_binary = g1.totngals
     ngals_hdf5 = hdf5_file["Header"]["totgals_per_snap"][snap_num]
+    ngals_hdf5_new = determine_ngals_at_snap(hdf5_file, ncores, snap_key)
+    print("Ngals old {0}\tNgals New {1}".format(ngals_hdf5, ngals_hdf5_new))
+
     if ngals_binary != ngals_hdf5:
         print("The binary file had {0} galaxies whereas the HDF5 file had {1} galaxies. "
               "We determined that the binary file was at redshift {2} and that the "
@@ -297,10 +304,6 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
     # fields split across mutliple datasets.
     dim_names = ["x", "y", "z"]
     failed_fields = []
-
-    # SAGE could have been run in parallel in which the HDF5 master file will have
-    # multiple core datasets.
-    ncores = hdf5_file["Header"].attrs["Ncores"]
 
     for key in g1.dtype.names:
 
@@ -353,6 +356,18 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
     if failed_fields:
         print("The following fields failed: {0}".format(failed_fields))
         raise ValueError
+
+
+def determine_ngals_at_snap(hdf5_file, ncores, snap_key):
+
+    ngals = 0
+
+    for core_idx in range(ncores):
+
+        core_key = "Core_{0}".format(core_idx)
+        ngals += hdf5_file[core_key][snap_key].attrs["ngals"]
+
+    return ngals
 
 
 def determine_snap_from_binary_z(hdf5_file, redshift):

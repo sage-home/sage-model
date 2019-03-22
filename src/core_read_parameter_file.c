@@ -364,16 +364,6 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     }
 #endif
 
-#ifndef H5_HAVE_PARALLEL
-    if((strncmp(my_outputformat, "sage_hdf5", MAX_STRING_LEN-1) == 0) && (ThisTask > 0)){
-        fprintf(stderr, "You have selected HDF5 output and are running on multiple processors.\n"
-                        "However, your HDF5 library has not been built with parallelization enabled.\n"
-                        "Either rebuild the HDF5 library with `--enable-parallel --enable-shared` "
-                        "or select a non-HDF5 output format.\n");
-        ABORT(EXIT_FAILURE);
-    }
-#endif
-
     const char format_names[][MAX_STRING_LEN] = {"sage_binary", "sage_hdf5"};
     const enum Valid_OutputFormats format_enums[] = {sage_binary, sage_hdf5};
     const int nvalid_format_types  = sizeof(format_names)/(MAX_STRING_LEN*sizeof(char));
