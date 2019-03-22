@@ -184,6 +184,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
         float redshift = run_params->ZZ[run_params->ListOutputSnaps[snap_idx]];
         CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", redshift, H5T_NATIVE_FLOAT);
+        fprintf(stderr, "Task %d created redshift attribute.\n", filenr); 
+
 
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
@@ -220,7 +222,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
             // Set metadata attributes for each dataset.
             CREATE_STRING_ATTRIBUTE(dataset_id, "Description", description); 
+            fprintf(stderr, "Task %d created Description attribute for field %s.\n", filenr, full_field_name); 
             CREATE_STRING_ATTRIBUTE(dataset_id, "Units", unit); 
+            fprintf(stderr, "Task %d created Units attribute for field %s.\n", filenr, full_field_name); 
 
             status = H5Pclose(prop);
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
@@ -368,6 +372,7 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
 
         // Write attributes showing how many galaxies we wrote for this snapshot.
         CREATE_SINGLE_ATTRIBUTE(save_info->group_ids[snap_idx], "ngals", save_info->tot_ngals[snap_idx], H5T_NATIVE_INT);
+        fprintf(stderr, "Task %d created ngals attribute.\n", filenr); 
 
         // Attributes can only be 64kb in size (strict rule enforced by the HDF5 group).
         // For larger simulations, we will have so many trees, that the number of galaxies per tree
@@ -423,6 +428,7 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
                                     (int32_t) save_info->file_id);
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", ntrees, H5T_NATIVE_INT);
+    fprintf(stderr, "Task %d created Ntrees attribute.\n", filenr);
 
     // Now we need to ensure we free all of the HDF5 IDs.  The heirachy is File->Groups->Datasets.
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
@@ -622,6 +628,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                     (int32_t) master_file_id);
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
+    fprintf(stderr, "Created Master Ncores attribute.\n", filenr); 
 
     /*
     hsize_t dims[1];
