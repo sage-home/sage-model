@@ -558,7 +558,6 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     // number of processors and create links within this master file to those files.
     char target_fname[3*MAX_STRING_LEN];
     char core_fname[MAX_STRING_LEN];
-    char snap_fname[MAX_STRING_LEN];
 
     for(int32_t task_idx = 0; task_idx < NTasks; ++task_idx) {
 
@@ -572,6 +571,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                         "The group ID was %d and the group name was %s\n", target_fname,
                                         (int32_t) root_group_id, core_fname);
 
+        /*
         // Count number of galaxies saved per snapshot.
         snprintf(target_fname, 3*MAX_STRING_LEN - 1, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, task_idx);
         hid_t target_file_id = H5Fopen(target_fname, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -580,6 +580,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                         target_fname); 
         for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; ++snap_idx) {
 
+            char snap_fname[MAX_STRING_LEN];
             //snprintf(snap_fname, MAX_STRING_LEN - 1, "Core_%d/Snap_%d", task_idx, run_params->ListOutputSnaps[snap_idx]);
             snprintf(snap_fname, MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
             group_id = H5Gopen(target_file_id, snap_fname, H5P_DEFAULT);
@@ -611,6 +612,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                             "The group ID was %d.\n", snap_fname, (int32_t) group_id);
         }
         H5Fclose(target_file_id);
+        */
     }
 
     // We've finished with the linking. Now let's create some attributes and datasets inside the header group.
@@ -621,6 +623,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
 
+    /*
     hsize_t dims[1];
     dims[0] = run_params->MAXSNAPS;
     hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
@@ -652,7 +655,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
                                     "Failed to close the Header group for master file\n"
                                     "The group ID was %d\n", (int32_t) group_id);
-
+    */
     // Finished creating links.
     status = H5Gclose(root_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,

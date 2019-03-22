@@ -289,9 +289,9 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
 
     # Check that number of galaxies is equal.
     ngals_binary = g1.totngals
-    ngals_hdf5 = hdf5_file["Header"]["totgals_per_snap"][snap_num]
-    ngals_hdf5_new = determine_ngals_at_snap(hdf5_file, ncores, snap_key)
-    print("Ngals old {0}\tNgals New {1}".format(ngals_hdf5, ngals_hdf5_new))
+    #ngals_hdf5 = hdf5_file["Header"]["totgals_per_snap"][snap_num]
+    ngals_hdf5 = determine_ngals_at_snap(hdf5_file, ncores, snap_key)
+    #print("Ngals old {0}\tNgals New {1}".format(ngals_hdf5, ngals_hdf5_new))
 
     if ngals_binary != ngals_hdf5:
         print("The binary file had {0} galaxies whereas the HDF5 file had {1} galaxies. "
