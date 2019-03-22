@@ -140,7 +140,6 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     CHECK_STATUS_AND_RETURN_ON_FAIL(file_id, FILE_NOT_FOUND,
                                     "Can't open file %s for initialization.\n", buffer);
     save_info->file_id = file_id;
-    fprintf(stderr, "Task %d created file %s\n", filenr, buffer);
 
     // Generate the names, description and HDF5 data types for each of the output fields.
     char *field_names[NUM_OUTPUT_FIELDS];
@@ -184,8 +183,6 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
         float redshift = run_params->ZZ[run_params->ListOutputSnaps[snap_idx]];
         CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", redshift, H5T_NATIVE_FLOAT);
-        fprintf(stderr, "Task %d created redshift attribute.\n", filenr); 
-
 
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
@@ -222,9 +219,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
             // Set metadata attributes for each dataset.
             CREATE_STRING_ATTRIBUTE(dataset_id, "Description", description); 
-            fprintf(stderr, "Task %d created Description attribute for field %s.\n", filenr, full_field_name); 
             CREATE_STRING_ATTRIBUTE(dataset_id, "Units", unit); 
-            fprintf(stderr, "Task %d created Units attribute for field %s.\n", filenr, full_field_name); 
 
             status = H5Pclose(prop);
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
@@ -354,8 +349,6 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
     // I've tried to put this manually into the function but it keeps hanging...
     hsize_t dims[1];
     dims[0] = ntrees;
-
-    fprintf(stderr, "Finalizing\n");
 
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
 
@@ -534,7 +527,6 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
 {
     // Only Task 0 needs to do stuff from here.
     if(ThisTask > 0) {
-        fprintf(stderr, "I am Task %d and returning from 'create_hdf5_master_file'.\n", ThisTask);
         return EXIT_SUCCESS;
     }
 
@@ -576,49 +568,6 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                         "Failed to create an external link to file %s from the master file.\n" 
                                         "The group ID was %d and the group name was %s\n", target_fname,
                                         (int32_t) root_group_id, core_fname);
-
-        /*
-        // Count number of galaxies saved per snapshot.
-        snprintf(target_fname, 3*MAX_STRING_LEN - 1, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, task_idx);
-        hid_t target_file_id = H5Fopen(target_fname, H5F_ACC_RDONLY, H5P_DEFAULT);
-        CHECK_STATUS_AND_RETURN_ON_FAIL(target_file_id, (int32_t) target_file_id,
-                                        "Failed to open file %s for reading the attribute.\n", 
-                                        target_fname); 
-        for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; ++snap_idx) {
-
-            char snap_fname[MAX_STRING_LEN];
-            //snprintf(snap_fname, MAX_STRING_LEN - 1, "Core_%d/Snap_%d", task_idx, run_params->ListOutputSnaps[snap_idx]);
-            snprintf(snap_fname, MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
-            group_id = H5Gopen(target_file_id, snap_fname, H5P_DEFAULT);
-            CHECK_STATUS_AND_RETURN_ON_FAIL(group_id, (int32_t) group_id,
-                                            "Failed to open group %s from within the master file.\nThe file ID was %d\n",
-                                            snap_fname, (int32_t) target_file_id);
-
-            hid_t attr_id = H5Aopen(group_id, "ngals", H5P_DEFAULT);
-            CHECK_STATUS_AND_RETURN_ON_FAIL(attr_id, (int32_t) attr_id,
-                                            "Failed to open the ngals attribute from within the master file.\n"
-                                            "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
-
-            int64_t ngals_this_snap;
-            status = H5Aread(attr_id, H5T_NATIVE_LLONG, &ngals_this_snap);
-            CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                            "Failed to read the ngals attribute from within the master file.\n"
-                                            "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
-
-            ngals_allfiles_snap[run_params->ListOutputSnaps[snap_idx]] += ngals_this_snap;
-
-            status = H5Aclose(attr_id);
-            CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                            "Failed to close ngals attribute from within the master file.\n"
-                                            "The group ID was %d for group %s\n", (int32_t) group_id, snap_fname);
-
-            status = H5Gclose(group_id);
-            CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                            "Failed to close group %s from within the master file.\n"
-                                            "The group ID was %d.\n", snap_fname, (int32_t) group_id);
-        }
-        H5Fclose(target_file_id);
-        */
     }
 
     // We've finished with the linking. Now let's create some attributes and datasets inside the header group.
@@ -628,41 +577,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                     (int32_t) master_file_id);
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", NTasks, H5T_NATIVE_INT);
-    fprintf(stderr, "Created Master Ncores attribute.\n"); 
 
-    /*
-    hsize_t dims[1];
-    dims[0] = run_params->MAXSNAPS;
-    hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
-    CHECK_STATUS_AND_RETURN_ON_FAIL(dataspace_id, (int32_t) dataspace_id,
-                                    "Could not create a dataspace for the number of galaxies per snapshot within the master file.\n"
-                                    "The dimensions of the dataspace was %d\n", (int32_t) dims[0]);
-
-    hid_t dataset_id = H5Dcreate2(master_file_id, "Header/totgals_per_snap", H5T_NATIVE_LLONG, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    CHECK_STATUS_AND_RETURN_ON_FAIL(dataset_id, (int32_t) dataset_id,
-                                    "Could not create a dataset for the number of galaxies per snapshot within the master file.\n"
-                                    "The dimensions of the dataset was %d\nThe file id was %d\n.",
-                                    (int32_t) dims[0], (int32_t) master_file_id);
-
-    status = H5Dwrite(dataset_id, H5T_NATIVE_LLONG, H5S_ALL, H5S_ALL, H5P_DEFAULT, ngals_allfiles_snap);
-    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                    "Failed to write a dataset for the number of galaxies per snapshot within the master file.\n"
-                                    "The dimensions of the dataset was %d\nThe file ID was %d\n."
-                                    "The dataset ID was %d.", (int32_t) dims[0], (int32_t) master_file_id,
-                                    (int32_t) dataset_id);
-
-    status = H5Dclose(dataset_id);
-    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                    "Failed to close the number of galaxies per snapshot group within the master file.\n"
-                                    "The dimensions of the dataset was %d\nThe file ID was %d\n."
-                                    "The dataset ID was %d.", (int32_t) dims[0], (int32_t) master_file_id,
-                                    (int32_t) dataset_id);
-
-    status = H5Gclose(group_id);
-    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                    "Failed to close the Header group for master file\n"
-                                    "The group ID was %d\n", (int32_t) group_id);
-    */
     // Finished creating links.
     status = H5Gclose(root_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,

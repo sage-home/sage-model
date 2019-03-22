@@ -11,6 +11,7 @@ try:
 except NameError:
     xrange = range
 
+
 class BinarySage(object):
 
 
@@ -90,6 +91,7 @@ class BinarySage(object):
     def __enter__(self):
         return self
 
+
     def read_header(self, fp):
         """
         Read the initial header from the LHaloTree binary file
@@ -133,7 +135,8 @@ class BinarySage(object):
 
         # Now assign to the instance variable
         self.bytes_offset_per_tree = bytes_offset_per_tree
-        
+
+
     def read_tree(self, treenum, fp=None):
         """
         Read a single tree specified by the tree number.
@@ -393,10 +396,8 @@ def determine_snap_from_binary_z(hdf5_file, redshift):
     snap_key = hdf5_snap_keys[idx]
     snap_num = snap_key_to_snap_num(snap_key)
 
-    print("")
     print("Determined Snapshot {0} with Key {1} corresponds to the binary file at redshift "
           "{1}".format(snap_num, snap_key, redshift))
-    print("")
 
     return snap_num, snap_key
 
@@ -611,15 +612,13 @@ if __name__ == '__main__':
     rtol = 1e-07
     atol = 1e-11
 
-    print("")
     print("Running sagediff on files {0} and {1} in mode {2}. The second file " 
           "was split over {3} files.".format(args.file1, args.file2, args.mode, args.num_files))
-    print("")
 
     compare_catalogs(args.file1, args.file2, args.mode, args.num_files, ignored_fields,
                      multidim_fields, rtol, atol)
 
+    print("========================")
+    print("All tests passed for files {0} and {1}. Yay!".format(args.file1, args.file2))
+    print("========================")
     print("")
-    print("========================")
-    print("All tests passed. Yay!")
-    print("========================")
