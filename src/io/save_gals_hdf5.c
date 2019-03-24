@@ -785,6 +785,7 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GA
             fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
                             "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
                             g->GalaxyNr, g->HaloNr);
+            return EXIT_FAILURE;
         }
 
         save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
@@ -794,6 +795,7 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GA
             fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
                             "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
                             g->GalaxyNr, g->HaloNr);
+            return EXIT_FAILURE;
         }
 
         save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;

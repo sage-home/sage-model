@@ -161,18 +161,6 @@ int32_t finalize_binary_galaxy_files(const int ntrees, struct save_info *save_in
             return FILE_WRITE_ERROR;
         }
 
-        /* nwritten = myfwrite(&totgalaxies[n], sizeof(int), 1, save_fd[n]);  */
-        /* if (nwritten != 1) { */
-        /*     fprintf(stderr, "Error: Failed to write out 1 element for the number of galaxies for the header of file %d.\n" */
-        /*             "Only wrote %d elements.\n", n, nwritten); */
-        /* } */
-        
-        /* nwritten = myfwrite(treengals[n], sizeof(int), ntrees, save_fd[n]); */
-        /* if (nwritten != ntrees) { */
-        /*     fprintf(stderr, "Error: Failed to write out %d elements for the number of galaxies per tree for the header of file %d.\n" */
-        /*             "Only wrote %d elements.\n", ntrees, n, nwritten); */
-        /* } */
-
         // Close the file and clear handle after everything has been written.
         close(save_info->save_fd[snap_idx]);
         save_info->save_fd[snap_idx] = -1;
@@ -206,6 +194,7 @@ int32_t prepare_galaxy_for_output(int32_t filenr, int32_t treenr, struct GALAXY 
             fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
                             "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
                             g->GalaxyNr, g->HaloNr);
+            return EXIT_FAILURE;
         }
 
         o->GalaxyIndex = g->GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
@@ -215,6 +204,7 @@ int32_t prepare_galaxy_for_output(int32_t filenr, int32_t treenr, struct GALAXY 
             fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
                             "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
                             g->GalaxyNr, g->HaloNr);
+            return EXIT_FAILURE;
         }
         o->GalaxyIndex = g->GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
         o->CentralGalaxyIndex = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
