@@ -232,7 +232,7 @@ struct save_info {
 #endif
     };
 
-    int64_t *tot_ngals;
+    int32_t *tot_ngals;
     int32_t **forest_ngals;
 
 #ifdef HDF5

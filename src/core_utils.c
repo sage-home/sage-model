@@ -233,8 +233,7 @@ ssize_t mypwrite(int fd, const void *ptr, const size_t nbytes, off_t offset)
             offset += bytes_written;
             tot_nbytes_written += bytes_written;
         } else {
-            perror(NULL);
-            ABORT(FILE_WRITE_ERROR);
+            return FILE_WRITE_ERROR;
         }
     }
 

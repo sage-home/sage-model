@@ -131,18 +131,35 @@ int32_t save_binary_galaxies(const int32_t filenr, const int32_t treenr, const i
 int32_t finalize_binary_galaxy_files(const int ntrees, struct save_info *save_info, const struct params *run_params)
 {
 
+    int32_t nwritten;
+
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
         // File must already be open.
-        XASSERT( save_info->save_fd[snap_idx] > 0, EXIT_FAILURE, "Error: for output # %d, output file pointer is NULL\n", snap_idx);
+        CHECK_STATUS_AND_RETURN_ON_FAIL(save_info->save_fd[snap_idx], EXIT_FAILURE,
+                                        "Error trying to write to output number %d.\nThe save pointer is %d.\n",
+                                        snap_idx, save_info->save_fd[snap_idx]);
 
-        mypwrite(save_info->save_fd[snap_idx], &ntrees, sizeof(ntrees), 0);
-        mypwrite(save_info->save_fd[snap_idx], &save_info->tot_ngals[snap_idx], sizeof(int), sizeof(int));
-        mypwrite(save_info->save_fd[snap_idx], save_info->forest_ngals[snap_idx], sizeof(int)*ntrees, sizeof(int) + sizeof(int));
-        /* int nwritten = myfwrite(&ntrees, sizeof(int), 1, save_fd[n]); */
-        /* if (nwritten != 1) { */
-        /*     fprintf(stderr, "Error: Failed to write out 1 element for the number of trees for the header of file %d.\n" */
-        /*             "Only wrote %d elements.\n", n, nwritten); */
-        /* } */
+        // Write the header data.
+        nwritten = mypwrite(save_info->save_fd[snap_idx], &ntrees, sizeof(ntrees), 0);
+        if(nwritten != sizeof(int32_t)) {
+            fprintf(stderr, "Error: Failed to write out 1 element for the number of trees for the header of file %d.\n"
+                            "Wrote %d bytes instead of %zu.\n", snap_idx, nwritten, sizeof(ntrees));
+            return FILE_WRITE_ERROR;
+        }
+
+        nwritten = mypwrite(save_info->save_fd[snap_idx], &save_info->tot_ngals[snap_idx], sizeof(int32_t), sizeof(int32_t));
+        if(nwritten != sizeof(int32_t)) {
+            fprintf(stderr, "Error: Failed to write out 1 element for the total number of galaxies for the header of file %d.\n"
+                            "Wrote %d bytes instead of %zu.\n", snap_idx, nwritten, sizeof(*(save_info->tot_ngals)));
+            return FILE_WRITE_ERROR;
+        }
+
+        nwritten = mypwrite(save_info->save_fd[snap_idx], save_info->forest_ngals[snap_idx], sizeof(int32_t)*ntrees, sizeof(int32_t) + sizeof(int32_t));
+        if(nwritten != (int32_t) (ntrees * sizeof(int32_t))) {
+            fprintf(stderr, "Error: Failed to write out %d elements for the number of galaxies per tree for the header of file %d.\n"
+                            "Wrote %d bytes instead of %zu.\n", ntrees, snap_idx, nwritten, sizeof(*(save_info->forest_ngals))*ntrees);
+            return FILE_WRITE_ERROR;
+        }
 
         /* nwritten = myfwrite(&totgalaxies[n], sizeof(int), 1, save_fd[n]);  */
         /* if (nwritten != 1) { */
@@ -178,36 +195,34 @@ int32_t prepare_galaxy_for_output(int32_t filenr, int32_t treenr, struct GALAXY 
     if(g->Type < SHRT_MIN || g->Type > SHRT_MAX) {
         fprintf(stderr,"Error: Galaxy type = %d can not be represented in 2 bytes\n", g->Type);
         fprintf(stderr,"Converting galaxy type while saving from integer to short will result in data corruption");
-        ABORT(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
     o->Type = g->Type;
 
     // assume that because there are so many files, the trees per file will be less than 100000
     // required for limits of long long
     if(run_params->LastFile>=10000) {
-        assert( g->GalaxyNr < TREE_MUL_FAC ); // breaking treenr size assumption
-        assert(treenr < (THISTASK_MUL_FAC/10)/TREE_MUL_FAC);
+        if(g->GalaxyNr > TREE_MUL_FAC || treenr > (THISTASK_MUL_FAC/10)/TREE_MUL_FAC) {
+            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
+                            "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
+                            g->GalaxyNr, g->HaloNr);
+        }
+
         o->GalaxyIndex = g->GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
-        assert( (o->GalaxyIndex - g->GalaxyNr - TREE_MUL_FAC*treenr)/(THISTASK_MUL_FAC/10) == filenr);
-        assert( (o->GalaxyIndex - g->GalaxyNr -(THISTASK_MUL_FAC/10)*filenr) / TREE_MUL_FAC == treenr );
-        assert( o->GalaxyIndex - TREE_MUL_FAC*treenr - (THISTASK_MUL_FAC/10)*filenr== g->GalaxyNr );
         o->CentralGalaxyIndex = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
     } else {
-        assert( g->GalaxyNr < TREE_MUL_FAC ); // breaking treenr size assumption
-        assert(treenr < THISTASK_MUL_FAC/TREE_MUL_FAC);
+        if(g->GalaxyNr > TREE_MUL_FAC || treenr > THISTASK_MUL_FAC/TREE_MUL_FAC) {
+            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
+                            "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
+                            g->GalaxyNr, g->HaloNr);
+        }
         o->GalaxyIndex = g->GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
-        assert( (o->GalaxyIndex - g->GalaxyNr - TREE_MUL_FAC*treenr)/THISTASK_MUL_FAC == filenr);
-        assert( (o->GalaxyIndex - g->GalaxyNr -THISTASK_MUL_FAC*filenr) / TREE_MUL_FAC == treenr );
-        assert( o->GalaxyIndex - TREE_MUL_FAC*treenr - THISTASK_MUL_FAC*filenr== g->GalaxyNr );
         o->CentralGalaxyIndex = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
     }
 
     o->SAGEHaloIndex = g->HaloNr;/* if the original input halonr is required, then use haloaux[halonr].orig_index: MS 29/6/2018 */
     o->SAGETreeIndex = treenr;
     o->SimulationHaloIndex = llabs(halos[g->HaloNr].MostBoundID);
-#if 0
-    o->isFlyby = halos[g->HaloNr].MostBoundID < 0 ? 1:0;
-#endif  
 
     o->mergeType = g->mergeType;
     o->mergeIntoID = g->mergeIntoID;

@@ -704,7 +704,7 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
                                                  "0: Central galaxy of the main FoF halo. 1: Central of a sub-halo. 2: Orphan galaxy that will merge within the current timestep.",
                                                  "Galaxy ID, unique across all trees and files. Calculated as local galaxy number + tree number * factor + file number * factor ",
                                                  "GalaxyIndex of the central galaxy within this galaxy's FoF group.  Calculated the same as 'GalaxyIndex'.",
-                                                 "Halo number from the original tree file. Note: This is the host halo, not necessarily the main FoF halo.",
+                                                 "Halo number from the restructured trees. This is different to the tree file because we order the trees. Note: This is the host halo, not necessarily the main FoF halo.",
                                                  "Tree number this galaxy belongs to.", "Most bound particle ID from the tree files.",
                                                  "Denotes how this galaxy underwent a merger. 0: None. 1: Minor merger. 2: Major merger. 3: Disk instability. 4: Disrupt to intra-cluster stars.",
                                                  "Galaxy ID this galaxy is merging into.", "Snapshot number of the galaxy this galaxy is merging into.", "Time between this snapshot and when the galaxy was last evolved.",
@@ -781,9 +781,21 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GA
     // assume that because there are so many files, the trees per file will be less than 100000
     // required for limits of long long
     if(run_params->LastFile>=10000) {
+        if(g->GalaxyNr > TREE_MUL_FAC || treenr > (THISTASK_MUL_FAC/10)/TREE_MUL_FAC) {
+            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
+                            "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
+                            g->GalaxyNr, g->HaloNr);
+        }
+
         save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
         save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
         } else {
+        if(g->GalaxyNr > TREE_MUL_FAC || treenr > THISTASK_MUL_FAC/TREE_MUL_FAC) {
+            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
+                            "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
+                            g->GalaxyNr, g->HaloNr);
+        }
+
         save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
         save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
     }
