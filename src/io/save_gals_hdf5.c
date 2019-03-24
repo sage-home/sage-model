@@ -186,8 +186,12 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
     // We will have groups for each output snapshot, and then inside those groups, a dataset for
     // each field.
-    save_info->group_ids = malloc(sizeof(hid_t) * run_params->NOUT);
-    save_info->dataset_ids = malloc(sizeof(hid_t) * NUM_OUTPUT_FIELDS * run_params->NOUT);
+    save_info->group_ids = malloc(run_params->NOUT * sizeof(hid_t));
+
+    save_info->dataset_ids = malloc(run_params->NOUT * sizeof(*(save_info->dataset_ids)));
+    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; ++snap_idx) {
+        save_info->dataset_ids[snap_idx] = malloc(NUM_OUTPUT_FIELDS * sizeof(hid_t));
+    }
 
     // A couple of variables before we enter the loop.
     // JS 17/03/19: I've attempted to put these directly into the function calls and things blew up.
@@ -246,7 +250,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             dataset_id = H5Dcreate2(file_id, full_field_name, dtype, dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT);
             CHECK_STATUS_AND_RETURN_ON_FAIL(dataset_id, (int32_t) dataset_id,
                                             "Could not create the %s dataset.\n", full_field_name);
-            save_info->dataset_ids[snap_idx*NUM_OUTPUT_FIELDS + field_idx] = dataset_id;
+            save_info->dataset_ids[snap_idx][field_idx] = dataset_id;
 
             // Set metadata attributes for each dataset.
             CREATE_STRING_ATTRIBUTE(dataset_id, "Description", description); 
@@ -454,6 +458,16 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", &ntrees, H5T_NATIVE_INT);
 
+    CREATE_SINGLE_ATTRIBUTE(group_id, "first_tree_file_processed", &run_params->FirstFile, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "last_tree_file_processed", &run_params->LastFile, H5T_NATIVE_INT);
+
+    // Attributes of the underlying simulation.
+    CREATE_SINGLE_ATTRIBUTE(group_id, "omega_matter", &run_params->Omega, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "omega_lambda", &run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "particle_mass", &run_params->PartMass, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "hubble_h", &run_params->Hubble_h, H5T_NATIVE_DOUBLE);
+
+
     // Redshift at each snapshot.
     dims[0] = run_params->MAXSNAPS;
     float *ZZ_snapshot;
@@ -475,12 +489,11 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
 
         // For each snapshot, close the datasets for each field.
         for(int32_t field_idx = 0; field_idx < save_info->num_output_fields; ++field_idx) {
-            int32_t access_idx = snap_idx*NUM_OUTPUT_FIELDS + field_idx;
-            status = H5Dclose(save_info->dataset_ids[access_idx]);
+            status = H5Dclose(save_info->dataset_ids[snap_idx][field_idx]);
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
                                             "Failed to close field number %d for output snapshot number %d\n"
                                             "The dataset ID was %d\n", field_idx, snap_idx,
-                                            (int32_t) save_info->dataset_ids[access_idx]);
+                                            (int32_t) save_info->dataset_ids[snap_idx][field_idx]);
         }
 
         // Then the group.
@@ -497,6 +510,9 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
                                     (int32_t) save_info->file_id);
 
     // Then the memory for the IDs.
+    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+        free(save_info->dataset_ids[snap_idx]);
+    }
     free(save_info->dataset_ids);
     free(save_info->group_ids);
 
@@ -684,27 +700,39 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
                                           "infallVvir", "infallVmax"};
 
     // Must accurately describe what exactly each field is and any special considerations.
-    char *tmp_descriptions[NUM_OUTPUT_FIELDS] = {"SnapNum", "Type", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
-                                            "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
-                                            "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
-                                            "Spinx", "Spiny", "Spinz", "Len", "Mvir", "CentralMvir", "Rvir", "Vvir",
-                                            "Vmax", "VelDisp", "ColdGas", "StellarMass", "BulgeMass", "HotGas", "EjectedMass",
-                                            "BlackHoleMass", "ICS", "MetalsColdGas", "MetalsStellarMass", "MetalsBulgeMass",
-                                            "MetalsHotGas", "MetalsEjectedMass", "MetalsICS", "SfrDisk", "SfrBulge", "SfrDiskZ",
-                                            "SfrBulgeZ", "DiskScaleRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
-                                            "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
-                                            "infallVvir", "infallVmax"};
+    char *tmp_descriptions[NUM_OUTPUT_FIELDS] = {"Snapshot the galaxy is located at.",
+                                                 "0: Central galaxy of the main FoF halo. 1: Central of a sub-halo. 2: Orphan galaxy that will merge within the current timestep.",
+                                                 "Galaxy ID, unique across all trees and files. Calculated as local galaxy number + tree number * factor + file number * factor ",
+                                                 "GalaxyIndex of the central galaxy within this galaxy's FoF group.  Calculated the same as 'GalaxyIndex'.",
+                                                 "Halo number from the original tree file. Note: This is the host halo, not necessarily the main FoF halo.",
+                                                 "Tree number this galaxy belongs to.", "Most bound particle ID from the tree files.",
+                                                 "Denotes how this galaxy underwent a merger. 0: None. 1: Minor merger. 2: Major merger. 3: Disk instability. 4: Disrupt to intra-cluster stars.",
+                                                 "Galaxy ID this galaxy is merging into.", "Snapshot number of the galaxy this galaxy is merging into.", "Time between this snapshot and when the galaxy was last evolved.",
+                                                 "Galaxy spatial x position.", "Galaxy spatial y position.", "Galaxy sSpatial z position.",
+                                                 "Galaxy velocity in x direction.", "Galaxy velocity in y direction.", "Galaxy velocity in z direction.",
+                                                 "Halo spin in the x direction.", "Halo spin in the y direction.", "Halo spin in the z direction.", "Number of particles in this galaxy's halo.",
+                                                 "Virial mass of this galaxy's halo.", "Virial mass of the main FoF halo.", "Virial radius of this galaxy's halo.", "Virial velocity of this galaxy's halo.",
+                                                 "Vmax?", "VelDisp?", "Mass of gas in the cold reseroivr.", "Mass of stars.", "Mass of stars in the bulge. Bulge stars are added either through disk instabilities or mergers.",
+                                                 "Mass of gas in the hot reservoir.", "Mass of gass in the ejected reseroivr.",
+                                                 "Mass of this galaxy's black hole.", "Mass of intra-cluster stars.", "Mass of metals in the cold reseroivr.", "Mass of metals in stars.", "Mass of metals in the bulge.",
+                                                 "Mass of metals in the hot reservoir.", "Mass of metals in the ejected reseroivr.", "Mass of metals in intra-cluster stars.",
+                                                 "Star formation rate within the disk.", "Star formation rate within the bulge.", "SfrDiskZ?",
+                                                 "SfrBulgeZ?", "Disk scale radius based on Mo, Shude & White (1998)", "Energy rate for gas cooling in the galaxy.", "Energy rate for gas heating in the galaxy.",
+                                                 "Mass that this galaxy's black hole accreted during the last time step.",
+                                                 "Time since this galaxy had a major merger.", "Time since this galaxy had a minor merger.", "Rate at which cold gas is reheated to hot gas?.",
+                                                 "Virial mass of this galaxy's halo at the previous timestep.",
+                                                 "Virial velocity of this galaxy's halo at the previous timestep.", "infallVmax?"};
 
-    char *tmp_units[NUM_OUTPUT_FIELDS] = {"SnapNum", "Type", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
-                                            "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
-                                            "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
-                                            "Spinx", "Spiny", "Spinz", "Len", "Mvir", "CentralMvir", "Rvir", "Vvir",
-                                            "Vmax", "VelDisp", "ColdGas", "StellarMass", "BulgeMass", "HotGas", "EjectedMass",
-                                            "BlackHoleMass", "ICS", "MetalsColdGas", "MetalsStellarMass", "MetalsBulgeMass",
-                                            "MetalsHotGas", "MetalsEjectedMass", "MetalsICS", "SfrDisk", "SfrBulge", "SfrDiskZ",
-                                            "SfrBulgeZ", "DiskScaleRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
-                                            "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
-                                            "infallVvir", "infallVmax"};
+    char *tmp_units[NUM_OUTPUT_FIELDS] = {"Unitless", "Unitless", "Unitless", "Unitless", "Unitless",
+                                          "Unitless", "Unitless", "Unitless", "Unitless",
+                                          "Unitless", "Myr", "Mpc/h", "Mpc/h", "Mpc/h", "km/s", "km/s", "km/s",
+                                          "Unitless?Spinx", "Unitless?Spiny", "Unitless?Spinz", "Unitless", "1.0e10 Msun/h", "1.0e10 Msun/h",
+                                          "Rvir?", "km/s",
+                                          "km/s", "km/s", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
+                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
+                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "Msun/yr", "Msun/yr", "Msun/yr",
+                                          "Msun/yr", "DiskScaleRadius?", "Cooling?", "Heating?", "1.0e10 Msun/h",
+                                          "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "infallVvir?", "infallVmax?"};
 
     // These are the HDF5 datatypes for each field.
     hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT, 
@@ -882,7 +910,7 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GA
 // Please refer to the HDF5 documentation for comprehensive explanations. I've probably butchered this...
 
 #define EXTEND_AND_WRITE_GALAXY_DATASET(field_name, h5_dtype) { \
-    hid_t dataset_id = save_info->dataset_ids[snap_idx*save_info->num_output_fields + field_idx]; \
+    hid_t dataset_id = save_info->dataset_ids[snap_idx][field_idx]; \
     if(dataset_id < 0) {                          \
         fprintf(stderr, "Could not access the #field_name dataset for output snapshot %d.\n" \
                         "The HDF5 datatype was #h5_dtype.\n", snap_idx); \
