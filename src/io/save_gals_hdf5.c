@@ -376,14 +376,14 @@ int32_t save_hdf5_galaxies(const int32_t filenr, const int32_t treenr, const int
 
 // We may still have galaxies in the buffer.  Here we write them.  Then fill out the final
 // attributes that are required, close all the files and release all the datasets/groups/file.
-int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info,
+int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info,
                                    const struct params *run_params)
 {
     herr_t status;
 
     // I've tried to put this manually into the function but it keeps hanging...
     hsize_t dims[1];
-    dims[0] = ntrees;
+    dims[0] = forest_info->nforests_this_task;;
 
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
 
@@ -456,7 +456,7 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
                                     "Failed to create the Header group.\nThe file ID was %d\n",
                                     (int32_t) save_info->file_id);
 
-    CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", &ntrees, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", &forest_info->nforests_this_task, H5T_NATIVE_LLONG);
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "first_tree_file_processed", &run_params->FirstFile, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(group_id, "last_tree_file_processed", &run_params->LastFile, H5T_NATIVE_INT);
@@ -580,7 +580,6 @@ int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info
     free(save_info->buffer_output_gals);
 
     return EXIT_SUCCESS;
-
 }
 
 #undef FREE_GALAXY_OUTPUT_INNER_ARRAY
@@ -808,9 +807,6 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GA
     save_info->buffer_output_gals[output_snap_idx].SAGEHaloIndex[gals_in_buffer] = g->HaloNr; 
     save_info->buffer_output_gals[output_snap_idx].SAGETreeIndex[gals_in_buffer] = treenr; 
     save_info->buffer_output_gals[output_snap_idx].SimulationHaloIndex[gals_in_buffer] = llabs(halos[g->HaloNr].MostBoundID);
-#if 0
-    o->isFlyby = halos[g->HaloNr].MostBoundID < 0 ? 1:0;
-#endif  
 
     save_info->buffer_output_gals[output_snap_idx].mergeType[gals_in_buffer] = g->mergeType; 
     save_info->buffer_output_gals[output_snap_idx].mergeIntoID[gals_in_buffer] = g->mergeIntoID; 

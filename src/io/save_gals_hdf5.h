@@ -93,7 +93,8 @@ extern "C" {
                                       struct halo_data *halos, struct halo_aux_data *haloaux, struct GALAXY *halogal,
                                       struct save_info *save_info, const struct params *run_params);
 
-    extern int32_t finalize_hdf5_galaxy_files(const int ntrees, struct save_info *save_info, const struct params *run_params);
+    extern int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info,
+                                              const struct params *run_params);
 
     extern int32_t create_hdf5_master_file(const int ThisTask, const int32_t NTasks, const struct params *run_params);
 

@@ -24,7 +24,7 @@
 
 /* main sage -> not exposed externally */
 int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
-                        struct forest_info *forests_info, struct params *run_params);
+                        struct forest_info *forest_info, struct params *run_params);
 
 int init_sage(const int ThisTask, const char *param_file, struct params *run_params)
 {
@@ -39,10 +39,10 @@ int init_sage(const int ThisTask, const char *param_file, struct params *run_par
 
 int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 {
-    struct forest_info forests_info;
-    memset(&forests_info, 0, sizeof(struct forest_info));
-    forests_info.totnforests = 0;
-    forests_info.nforests_this_task = 0;
+    struct forest_info forest_info;
+    memset(&forest_info, 0, sizeof(struct forest_info));
+    forest_info.totnforests = 0;
+    forest_info.nforests_this_task = 0;
 
     struct save_info save_info;
 
@@ -51,22 +51,22 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     /* setup the forests reading, and then distribute the forests over the Ntasks */
     int status = EXIT_FAILURE;
-    status = setup_forests_io(run_params, &forests_info, ThisTask, NTasks);
+    status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);
     if(status != EXIT_SUCCESS) {
         ABORT(status);
     }
-    if(forests_info.totnforests < 0 || forests_info.nforests_this_task < 0) {
+    if(forest_info.totnforests < 0 || forest_info.nforests_this_task < 0) {
         fprintf(stderr,"Error: Bug in code totnforests = %"PRId64" and nforests (on this task) = %"PRId64" should both be at least 0\n",
-                forests_info.totnforests, forests_info.nforests_this_task);
+                forest_info.totnforests, forest_info.nforests_this_task);
         ABORT(EXIT_FAILURE);
     }
 
-    if(forests_info.nforests_this_task == 0) {
+    if(forest_info.nforests_this_task == 0) {
         fprintf(stderr,"ThisTask=%d no forests to process...skipping\n",ThisTask);
         goto cleanup;
     }
 
-    const int64_t Nforests = forests_info.nforests_this_task;
+    const int64_t Nforests = forest_info.nforests_this_task;
 
     // Allocate memory for the total number of galaxies for each snapshot (across all forests) //
     save_info.tot_ngals = calloc(run_params->NOUT, sizeof(*(save_info.tot_ngals)));
@@ -78,17 +78,18 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         save_info.forest_ngals[snap_idx] = mycalloc(Nforests, sizeof(*(save_info.forest_ngals[snap_idx])));/* must be calloc*/
     }
 
-    fprintf(stderr,"ThisTask = %d working on %"PRId64" forests\n", ThisTask, Nforests);
+    fprintf(stderr,"Task %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
+            ThisTask, Nforests, forest_info.frac_volume_processed);
     
     /* open all the output files corresponding to this tree file (specified by rank) */
-    status = initialize_galaxy_files(ThisTask, Nforests, &save_info, run_params);
+    status = initialize_galaxy_files(ThisTask, &forest_info, &save_info, run_params);
     if(status != EXIT_SUCCESS) {
         ABORT(status);
     }
 
     run_params->interrupted = 0;
     if(NTasks == 1 && ThisTask == 0) {
-        init_my_progressbar(stderr, forests_info.totnforests, &(run_params->interrupted));
+        init_my_progressbar(stderr, forest_info.totnforests, &(run_params->interrupted));
     }
 
     int64_t nforests_done = 0;
@@ -98,7 +99,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         }
         
         /* the millennium tree is really a collection of trees, viz., a forest */
-        status = sage_per_forest(ThisTask, forestnr, &save_info, &forests_info, run_params);
+        status = sage_per_forest(ThisTask, forestnr, &save_info, &forest_info, run_params);
         if(status != EXIT_SUCCESS) {
             ABORT(status);
         }
@@ -106,7 +107,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         nforests_done++;
     }
 
-    status = finalize_galaxy_files(Nforests, &save_info, run_params);
+    status = finalize_galaxy_files(&forest_info, &save_info, run_params);
     if(status != EXIT_SUCCESS) {
         ABORT(status);
     }
@@ -125,7 +126,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
 cleanup:    
     /* sage is done running -> do the cleanup */
-    cleanup_forests_io(run_params->TreeType, &forests_info);
+    cleanup_forests_io(run_params->TreeType, &forest_info);
     if(status == EXIT_SUCCESS) {               
         //free Ages. But first
         //reset Age to the actual allocated address
@@ -166,7 +167,7 @@ int32_t finalize_sage(const int ThisTask, const int NTasks, struct params *run_p
 // Local Functions //
 
 int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
-                        struct forest_info *forests_info, struct params *run_params)
+                        struct forest_info *forest_info, struct params *run_params)
 {
     int32_t status = EXIT_FAILURE;
 
@@ -182,10 +183,10 @@ int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info
     int nfofs_all_snaps[ABSOLUTEMAXSNAPS] = {0};
 
     /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
-    const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forests_info);
+    const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
 
     /* /\* need to actually set the nhalos value for CTREES*\/ */
-    /* forests_info->totnhalos_per_forest[forestnr] = nhalos; */
+    /* forest_info->totnhalos_per_forest[forestnr] = nhalos; */
 
 #ifdef PROCESS_LHVT_STYLE
     /* re-arrange the halos into a locally horizontal vertical forest */

@@ -176,7 +176,6 @@ struct lhalotree_info {
 #endif        
     };
     int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
-    int32_t unused;/* unused, but present here for alignment */
 };
 
 struct ctrees_info {
@@ -222,6 +221,7 @@ struct forest_info {
     };
     int64_t totnforests;  // Total number of forests across **all** input tree files.
     int64_t nforests_this_task; // Total number of forests processed by **this** task.
+    float frac_volume_processed; // Fraction of the simulation volume processed by **this** task.
 };
 
 struct save_info {

@@ -19,14 +19,17 @@ int32_t prepare_galaxy_for_output(int32_t filenr, int32_t treenr, struct GALAXY 
 
 // Externally Visible Functions //
 
-int32_t initialize_binary_galaxy_files(const int filenr, const int ntrees, struct save_info *save_info,
+int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_info *forest_info, struct save_info *save_info,
                                        const struct params *run_params)
 {
 
+    int32_t ntrees = forest_info->nforests_this_task;
+
     // We open up files for each output. We'll store the file IDs of each of these file. 
-    save_info->save_fd = malloc(sizeof(int32_t) * run_params->NOUT);
+    save_info->save_fd = malloc(run_params->NOUT * sizeof(int32_t));
 
     char buffer[4*MAX_STRING_LEN + 1];
+
     /* Open all the output files */
     for(int n = 0; n < run_params->NOUT; n++) {
         snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies,
@@ -128,10 +131,11 @@ int32_t save_binary_galaxies(const int32_t filenr, const int32_t treenr, const i
     return EXIT_SUCCESS;
 }
 
-int32_t finalize_binary_galaxy_files(const int ntrees, struct save_info *save_info, const struct params *run_params)
+int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
 {
 
     int32_t nwritten;
+    int32_t ntrees = forest_info->nforests_this_task;
 
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
         // File must already be open.
