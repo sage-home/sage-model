@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,6 +60,17 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         fprintf(stderr,"Error: Bug in code totnforests = %"PRId64" and nforests (on this task) = %"PRId64" should both be at least 0\n",
                 forest_info.totnforests, forest_info.nforests_this_task);
         ABORT(EXIT_FAILURE);
+    }
+
+    // If we're creating a binary output, we need to be careful.
+    // The binary output contains an 32 bit header that contains the number of trees processed.
+    // Hence let's make sure that the number of trees assigned to this task doesn't exceed an 32 bit number.
+    if((run_params->OutputFormat == "sage_binary") & (forest_info.nforests_this_task > INT_MAX)) {
+        fprintf(stderr, "When creating the binary output, we must write a 32 bit header describing the number of trees processed.\n"
+                        "However, task %d is processing %"PRId64" forests which is above the 32 bit limit.\n"
+                        "Either change the output format to HDF5 or increase the number of cores processing your trees.\n",
+                        ThisTask, forest_info.nforests_this_task);
+        return EXIT_FAILURE;
     }
 
     if(forest_info.nforests_this_task == 0) {

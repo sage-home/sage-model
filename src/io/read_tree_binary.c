@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "read_tree_binary.h"
 #include "../core_mymalloc.h"
@@ -45,7 +46,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         }
         mypread(fd, &(totnforests_per_file[filenr]), sizeof(int), 0);
         totnforests += totnforests_per_file[filenr];
-        
+
         close(fd);
     }
     forests_info->totnforests = totnforests;
@@ -214,7 +215,6 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     // Sum over each file (Number forests processed by this task from this file / Number forests in file). 
     forests_info->frac_volume_processed = 0.0;
     for(int32_t filenr = start_filenum; filenr <= end_filenum; filenr++) {
-        //fprintf(stderr, "File %d, I process %"PRId64" forests out of a total %d forests.Fraction of %.3f\n", filenr, num_forests_to_process_per_file[filenr], totnforests_per_file[filenr], (double) num_forests_to_process_per_file[filenr] / (double) totnforests_per_file[filenr]); 
         forests_info->frac_volume_processed += (float) num_forests_to_process_per_file[filenr] / (float) totnforests_per_file[filenr];
     }
 
