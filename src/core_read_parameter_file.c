@@ -60,6 +60,10 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     ParamAddr[NParam] = &(run_params->LastFile);
     ParamID[NParam++] = INT;
 
+    strcpy(ParamTag[NParam], "NumSimulationTreeFiles");
+    ParamAddr[NParam] = &(run_params->NumSimulationTreeFiles);
+    ParamID[NParam++] = INT;
+
     strcpy(ParamTag[NParam], "ThreshMajorMerger");
     ParamAddr[NParam] = &(run_params->ThreshMajorMerger);
     ParamID[NParam++] = DOUBLE;
@@ -122,6 +126,10 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     strcpy(ParamTag[NParam], "PartMass");
     ParamAddr[NParam] = &(run_params->PartMass);
+    ParamID[NParam++] = DOUBLE;
+
+    strcpy(ParamTag[NParam], "BoxSize");
+    ParamAddr[NParam] = &(run_params->BoxSize);
     ParamID[NParam++] = DOUBLE;
 
     strcpy(ParamTag[NParam], "EnergySN");

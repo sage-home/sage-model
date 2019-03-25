@@ -30,6 +30,9 @@ int32_t prepare_galaxy_for_hdf5_output(int ThisTask, int tree, struct GALAXY *g,
 int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num_already_written,
                              struct save_info *save_info);
 
+int32_t write_header_attributes(hid_t group_id, const struct forest_info *forest_info,
+                                const struct params *run_params);
+
 #define MAX_ATTRIBUTE_LEN 10000
 #define NUM_GALS_PER_BUFFER 1000
 
@@ -379,7 +382,8 @@ int32_t save_hdf5_galaxies(const int32_t filenr, const int32_t treenr, const int
 int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info,
                                    const struct params *run_params)
 {
-    herr_t status;
+    int32_t status;
+    herr_t h5_status;
 
     // I've tried to put this manually into the function but it keeps hanging...
     hsize_t dims[1];
@@ -390,10 +394,10 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         // We still have galaxies remaining in the buffer. Need to write them.
         int32_t num_gals_to_write = save_info->num_gals_in_buffer[snap_idx];
 
-        status = trigger_buffer_write(snap_idx, num_gals_to_write,
+        h5_status = trigger_buffer_write(snap_idx, num_gals_to_write,
                                       save_info->tot_ngals[snap_idx], save_info);
-        if(status != EXIT_SUCCESS) {
-            return status;
+        if(h5_status != EXIT_SUCCESS) {
+            return h5_status;
         }
 
         // We're going to be a bit sneaky here so we don't need to pass the tree number to this function. 
@@ -426,22 +430,22 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
                                         "The dimensions of the dataset was %d\nThe file id was %d\n.",
                                         (int32_t) dims[0], (int32_t) save_info->file_id);
 
-        status = H5Dwrite(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, save_info->forest_ngals[snap_idx]);
-        CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
+        h5_status = H5Dwrite(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, save_info->forest_ngals[snap_idx]);
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_status, (int32_t) h5_status,
                                         "Failed to write a dataset for the number of galaxies per tree.\n"
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n."
                                         "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
                                         (int32_t) dataset_id);
 
-        status = H5Dclose(dataset_id);
-        CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
+        h5_status = H5Dclose(dataset_id);
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_status, (int32_t) h5_status,
                                         "Failed to close the dataset for the number of galaxies per tree.\n" 
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n."
                                         "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
                                         (int32_t) dataset_id);
 
-        status = H5Sclose(dataspace_id);
-        CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
+        h5_status = H5Sclose(dataspace_id);
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_status, (int32_t) h5_status,
                                         "Failed to close the dataspace for the number of galaxies per tree.\n" 
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n."
                                         "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
@@ -456,17 +460,10 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
                                     "Failed to create the Header group.\nThe file ID was %d\n",
                                     (int32_t) save_info->file_id);
 
-    CREATE_SINGLE_ATTRIBUTE(group_id, "Ntrees", &forest_info->nforests_this_task, H5T_NATIVE_LLONG);
-
-    CREATE_SINGLE_ATTRIBUTE(group_id, "first_tree_file_processed", &run_params->FirstFile, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "last_tree_file_processed", &run_params->LastFile, H5T_NATIVE_INT);
-
-    // Attributes of the underlying simulation.
-    CREATE_SINGLE_ATTRIBUTE(group_id, "omega_matter", &run_params->Omega, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "omega_lambda", &run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "particle_mass", &run_params->PartMass, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "hubble_h", &run_params->Hubble_h, H5T_NATIVE_DOUBLE);
-
+    status = write_header_attributes(group_id, forest_info, run_params);
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
 
     // Redshift at each snapshot.
     dims[0] = run_params->MAXSNAPS;
@@ -638,7 +635,14 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
                                     "Failed to create the Header group for the master file.\nThe file ID was %d\n",
                                     (int32_t) master_file_id);
 
-    CREATE_SINGLE_ATTRIBUTE(group_id, "Ncores", &NTasks, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "num_cores", &NTasks, H5T_NATIVE_INT);
+
+    // If we're writing the header attributes for the master file, we don't have knowledge of trees.
+    // So pass a NULL pointer here instead of `forest_info`.
+    status = write_header_attributes(group_id, NULL, run_params);
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
 
     // Redshift at each snapshot.
     hsize_t dims[1];
@@ -677,8 +681,6 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
 }
 
 #undef CREATE_AND_WRITE_DATASET
-#undef CREATE_SINGLE_ATTRIBUTE
-#undef CREATE_STRING_ATTRIBUTE 
 
 // Local Functions //
 
@@ -1065,3 +1067,31 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 }
 
 #undef EXTEND_AND_WRITE_GALAXY_DATASET
+
+int32_t write_header_attributes(hid_t group_id, const struct forest_info *forest_info,
+                                const struct params *run_params) {
+
+    herr_t status;
+
+    // If we're writing the header attributes for the master file, we don't have knowledge of trees.
+    if(forest_info != NULL) {
+        CREATE_SINGLE_ATTRIBUTE(group_id, "num_trees", &forest_info->nforests_this_task, H5T_NATIVE_LLONG);
+        CREATE_SINGLE_ATTRIBUTE(group_id, "frac_volume_processed", &forest_info->frac_volume_processed, H5T_NATIVE_FLOAT);
+    }
+
+    CREATE_SINGLE_ATTRIBUTE(group_id, "first_tree_file_processed", &run_params->FirstFile, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "last_tree_file_processed", &run_params->LastFile, H5T_NATIVE_INT);
+
+    // Attributes of the underlying simulation.
+    CREATE_SINGLE_ATTRIBUTE(group_id, "omega_matter", &run_params->Omega, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "omega_lambda", &run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "particle_mass", &run_params->PartMass, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "hubble_h", &run_params->Hubble_h, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "num_simulation_tree_files", &run_params->NumSimulationTreeFiles, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "box_size", &run_params->BoxSize, H5T_NATIVE_DOUBLE);
+
+    return EXIT_SUCCESS;
+}
+
+#undef CREATE_SINGLE_ATTRIBUTE
+#undef CREATE_STRING_ATTRIBUTE

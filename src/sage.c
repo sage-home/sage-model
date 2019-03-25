@@ -65,7 +65,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     // If we're creating a binary output, we need to be careful.
     // The binary output contains an 32 bit header that contains the number of trees processed.
     // Hence let's make sure that the number of trees assigned to this task doesn't exceed an 32 bit number.
-    if((run_params->OutputFormat == "sage_binary") & (forest_info.nforests_this_task > INT_MAX)) {
+    if((run_params->OutputFormat == sage_binary) & (forest_info.nforests_this_task > INT_MAX)) {
         fprintf(stderr, "When creating the binary output, we must write a 32 bit header describing the number of trees processed.\n"
                         "However, task %d is processing %"PRId64" forests which is above the 32 bit limit.\n"
                         "Either change the output format to HDF5 or increase the number of cores processing your trees.\n",

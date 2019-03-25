@@ -217,6 +217,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     for(int32_t filenr = start_filenum; filenr <= end_filenum; filenr++) {
         forests_info->frac_volume_processed += (float) num_forests_to_process_per_file[filenr] / (float) totnforests_per_file[filenr];
     }
+    forests_info->frac_volume_processed /= (float) run_params->NumSimulationTreeFiles;
 
     free(num_forests_to_process_per_file);
     free(start_forestnum_to_process_per_file);

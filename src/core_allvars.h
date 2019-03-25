@@ -176,6 +176,7 @@ struct lhalotree_info {
 #endif        
     };
     int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
+    int32_t unused;/* unused, but present for alignment */
 };
 
 struct ctrees_info {
@@ -267,6 +268,8 @@ struct params
     double OmegaLambda;
     double PartMass;
     double Hubble_h;
+    double BoxSize;
+    int32_t NumSimulationTreeFiles;
     double EnergySNcode;
     double EnergySN;
     double EtaSNcode;
