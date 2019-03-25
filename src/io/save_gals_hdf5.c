@@ -590,11 +590,11 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     }
 
     hid_t master_file_id, group_id, root_group_id;
-    char master_fname[2*MAX_STRING_LEN];
+    char master_fname[2*MAX_STRING_LEN + 6];
     herr_t status;
 
     // Create the file.
-    snprintf(master_fname, 2*MAX_STRING_LEN, "%s/%s.hdf5", run_params->OutputDir, run_params->FileNameGalaxies);
+    snprintf(master_fname, 2*MAX_STRING_LEN + 5, "%s/%s.hdf5", run_params->OutputDir, run_params->FileNameGalaxies);
 
     master_file_id = H5Fcreate(master_fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     CHECK_STATUS_AND_RETURN_ON_FAIL(master_file_id, FILE_NOT_FOUND,

@@ -45,7 +45,7 @@ matrix:
         - gcc-5 --version
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
-    - name: "Linux gcc-6 Xenial distrubution."
+    - name: "Linux gcc-6 Xenial distrubution"
       os: linux
       dist: xenial
       sudo: required
@@ -60,7 +60,7 @@ matrix:
         - gcc-6 --version
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
-    - name: "Linux gcc-7 Xenial distrubution."
+    - name: "Linux gcc-7 Xenial distrubution"
       os: linux
       dist: xenial
       sudo: required
@@ -75,59 +75,13 @@ matrix:
         - gcc-7 --version
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
-    - name: "Linux gcc-5 MPI Xenial distribution"
+    - name: "Linux MPI Xenial distribution"
       os: linux
       dist: xenial 
       sudo: required
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-5
       env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
       before_install:
-        - export CC=/usr/bin/gcc-5
         - sudo apt-get install -y -q openmpi-bin libopenmpi-dev
-        - export CC=mpicc
-        - which mpicc
-        - mpicc --version
-        - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-
-    - name: "Linux gcc-6 MPI Xenial distribution"
-      os: linux
-      dist: xenial
-      sudo: required
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-6
-      env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
-      before_install:
-        - export CC=/usr/bin/gcc-6
-        - sudo apt-get install -y -q openmpi-bin libopenmpi-dev
-        - export CC=mpicc
-        - which mpicc
-        - mpicc --version
-        - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-
-    - name: "Linux gcc-7 MPI Xenial distribution"
-      os: linux
-      dist: xenial
-      sudo: required
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-7
-      env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
-      before_install:
-        - export CC=/usr/bin/gcc-7
-        - sudo apt-get install -y -q openmpi-bin libopenmpi-dev
-        - export CC=mpicc
         - which mpicc
         - mpicc --version
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
