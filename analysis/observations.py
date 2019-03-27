@@ -66,7 +66,7 @@ def plot_smf_data(ax, hubble_h, imf):
         ], dtype=np.float32)
 
     Baldry_xval = np.log10(10 ** Baldry[:, 0] / hubble_h / hubble_h)
-    if(imf == "Salpeter"):
+    if imf == "Chabrier":
         Baldry_xval = Baldry_xval - 0.26  # convert back to Chabrier IMF
 
     Baldry_yvalU = (Baldry[:, 1]+Baldry[:, 2]) * pow(hubble_h, 3)
@@ -111,11 +111,11 @@ def plot_bmf_data(ax, hubble_h, imf):
     xval = 10.0 ** (M-Mstar)
     yval = np.log(10.) * phistar * xval ** (alpha+1) * np.exp(-xval)
 
-    if(imf == "Salpeter"):
+    if imf == "Salpeter":
         # Converted diet Salpeter IMF to Salpeter IMF.
         ax.plot(np.log10(10.0**M /0.7), yval, 'b-', lw=2.0,
                 label='Bell et al. 2003')
-    elif(imf == "Chabrier"):
+    elif imf == "Chabrier":
         # Converted diet Salpeter IMF to Salpeter IMF, then to Chabrier IMF
         ax.plot(np.log10(10.0**M /0.7 /1.8), yval, 'g--', lw=1.5,
                 label='Bell et al. 2003')

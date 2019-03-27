@@ -195,9 +195,9 @@ if __name__ == "__main__":
     # E.g., 'model1_dir_name = ...",
     # "first_file", "last_file", "simulation" and "num_tree_files" only need to be
     # specified if using binary output. HDF5 will automatically detect these.
-    model0_output_format       = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
+    model0_output_format       = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
     model0_dir_name            = "../tests/test_data/"
-    model0_file_name           = "model_z0.000"
+    model0_file_name           = "test_sage_z0.000"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "r"
@@ -228,7 +228,7 @@ if __name__ == "__main__":
 
     # A couple of extra variables...
     output_format    = ".png"
-    plot_output_path = "./plots"  # Will be created if path doesn't exist.
+    plot_output_path = "./plots_binary"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.

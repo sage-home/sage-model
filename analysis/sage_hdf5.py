@@ -1,6 +1,7 @@
 from model import Model
 
 import numpy as np
+import h5py
 
 import os
 
@@ -41,9 +42,16 @@ class SageHdf5Model(Model):
         self.hubble_h = f["Header"].attrs["hubble_h"]
         self.box_size = f["Header"].attrs["box_size"]
 
+        # Each core may have processed a different fraction of the volume. Hence find out
+        # total volume processed.
+        volume_processed = 0.0
+        for core_num in range(self.first_file, self.last_file+1):
+            core_key = "Core_{0}".format(core_num)
+            volume_processed += f[core_key]["Header"].attrs["frac_volume_processed"]
+
         # Scale the volume by the number of files that we will read. Used to ensure
         # properties scaled by volume (e.g., SMF) gives sensible results.
-        self.volume = pow(self.box_size, 3) * f["Header"].attrs["frac_volume_processed"] 
+        self.volume = pow(self.box_size, 3) * volume_processed 
 
 
     def determine_num_gals(self):
@@ -61,7 +69,7 @@ class SageHdf5Model(Model):
         None.
         """
 
-    def determine_ngals_at_snap(self):
+    def determine_num_gals(self):
 
         ngals = 0
         snap_key = "Snap_{0}".format(self.hdf5_snapshot)
@@ -72,7 +80,7 @@ class SageHdf5Model(Model):
             ngals += self.hdf5_file[core_key][snap_key].attrs["ngals"]
 
 
-        self.num_gals = num_gals
+        self.num_gals = ngals 
 
 
     def read_gals(self, core_num, pbar=None, plot_galaxies=False, debug=False):
@@ -107,14 +115,44 @@ class SageHdf5Model(Model):
         core_key = "Core_{0}".format(core_num)
         snap_key = "Snap_{0}".format(self.hdf5_snapshot)
 
-
         # Then the actual galaxies.
         gals = self.hdf5_file[core_key][snap_key]
         num_gals_read = self.hdf5_file[core_key][snap_key].attrs["ngals"]
 
+        # For the HDF5 file, some data sets have dimensions Nx1 rather than Nx3
+        # (e.g., Position). To ensure the galaxy data format is identical to the binary
+        # output, we will create new datasets that are Nx3.
+        multidim_fields = ["Pos", "Vel", "Spin"]
+        dim_names = ["x", "y", "z"]
+
+        for field in multidim_fields:
+
+            # The user may have already joined these fields together.  Hence first check
+            # that it doesn't exist.  If it does exist, check it has the correct shape.
+            try:
+                field_shape = gals[field].shape
+            except KeyError:
+                pass
+            else:
+                if field_shape != (num_gals_read, 3):
+                    print("For field {0} in the HDF5 file {1} we had a shape of {2}. We "
+                          "expected ({3}, 3)".format(field, self.model_path, field_shape,
+                                                     num_gals_read))
+                    raise ValueError
+                continue
+
+            # If it doesn't exist, create it.
+            array = np.empty((num_gals_read, 3))
+
+            for dim_num, dim_name in enumerate(dim_names):
+                field_name = "{0}{1}".format(field, dim_name)
+                array[:, dim_num] = gals[field_name][:]
+
+            gals[field] = array
+
         # If we're using the `tqdm` package, update the progress bar.
         if pbar:
-            pbar.set_postfix(file=fname, refresh=False)
+            pbar.set_postfix(file=core_key, refresh=False)
             pbar.update(num_gals_read)
 
         if debug:
