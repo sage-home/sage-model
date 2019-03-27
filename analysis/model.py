@@ -1,8 +1,18 @@
-import numpy as np
+#!/usr/bin/env python
+"""
+In this module, we define the ``Model`` superclass.  This class contains all the attributes
+and methods for ingesting galaxy data and calculating properties.
 
+The methods for reading setting the simulation cosmology and reading galaxy data are kept
+in their own subclass modules (e.g., ``sage_binary.py``).  If you wish to provide your own
+data format, copy the format inside one of those modules.
+
+Author: Jacob Seiler.
+"""
+
+import numpy as np
 import time
 from scipy import stats
-from os.path import getsize as getFileSize
 
 try:
     from tqdm import tqdm
@@ -10,6 +20,7 @@ except ImportError:
     print("Package 'tqdm' not found. Not showing pretty progress bars :(")
 else:
     pass
+
 
 class Model:
     """
@@ -25,7 +36,7 @@ class Model:
     model_path : String
         File path to the galaxy files.
 
-        ..note:: Does not include the file number.
+        Note: Does not include the file number.
 
     output_path : String
         Directory path to where the some plots will be saved.  This will only be used in
@@ -93,10 +104,10 @@ class Model:
         if model_dict["IMF"] not in acceptable_IMF:
             print("Invalid IMF entered.  Only {0} are allowed.".format(acceptable_IMF)) 
 
-        acceptable_output_formats = ["sage_binary", "sage_hdf5"]
-        if model_dict["output_format"] not in acceptable_output_formats: 
+        acceptable_sage_output_formats = ["sage_binary", "sage_hdf5"]
+        if model_dict["sage_output_format"] not in acceptable_sage_output_formats:
             print("Invalid output format entered.  Only {0} are "
-                   "allowed.".format(acceptable_output_format)) 
+                   "allowed.".format(acceptable_sage_output_format))
 
         # Then set default values.
         self.sample_size = 10000  # How many values should we plot on scatter plots?
@@ -190,7 +201,19 @@ class Model:
         # Now read the galaxies and calculate the properties.
         for file_num in range(self.first_file, self.last_file+1):
             gals = self.read_gals(file_num, pbar=pbar, debug=debug)
+
+            # We may have skipped a file.
+            if gals is None:
+                continue
+
             self.calc_properties(plot_toggles, gals)
+
+        # Some data formats (e.g., HDF5) have a single file we read from.
+        # For other formats, this method doesn't exist.
+        try:
+            self.close_file()
+        except AttributeError:
+            pass
 
         end_time = time.time()
         duration = end_time - start_time
@@ -202,8 +225,8 @@ class Model:
         """
         Calculates galaxy properties for a single file of galaxies.
 
-        ..note:: Refer to the class-level documentation for a full list of the
-                 properties calculated and their associated units.
+        Note: Refer to the class-level documentation for a full list of the properties
+              calculated and their associated units.
 
         Parameters 
         ----------
@@ -228,10 +251,13 @@ class Model:
         if plot_toggles["SMF"] or plot_toggles["sSFR"]:
 
             non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+            non_zero_SFR = np.where(gals["SfrDisk"][:] + gals["SfrBulge"][:] > 0.0)[0]
 
+            # `stellar_mass` and `sSFR` aren't strictly the same length. However the
+            # difference is neglible and will not impact the results.
             stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
-            sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
-                   (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
+            sSFR = (gals["SfrDisk"][:][non_zero_SFR] + gals["SfrBulge"][:][non_zero_SFR]) / \
+                   (gals["StellarMass"][:][non_zero_SFR] * 1.0e10 / self.hubble_h)
 
             if plot_toggles["SMF"]:
                 gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
@@ -253,9 +279,9 @@ class Model:
                 # `stellar_mass` and `sSFR` have length < length(gals).
                 # Hence when we take a random sample, we use length of those arrays. 
                 if len(non_zero_stellar) > file_sample_size:
-                    random_inds = np.random.choice(np.arange(len(non_zero_stellar)), size=file_sample_size)
+                    random_inds = np.random.choice(np.arange(len(non_zero_SFR)), size=file_sample_size)
                 else:
-                    random_inds = np.arange(len(non_zero_stellar))
+                    random_inds = np.arange(len(non_zero_SFR))
 
                 self.sSFR_mass.extend(list(stellar_mass[random_inds]))
                 self.sSFR_sSFR.extend(list(np.log10(sSFR[random_inds])))

@@ -3,19 +3,30 @@
 Main driver script to handle plotting the output of the ``SAGE`` model.  Multiple models
 can be placed onto the plots by extending the variables in the ``__main__`` function call.
 
-Authors: Jacob Seiler, Manodeep Sinha, Darren Croton
+To add your own data format, create a subclass module (e.g., ``sage_binary.py``) and add an
+option to ``Results.__init__``.  This subclass module needs methods ``set_cosmology()``,
+``determine_num_gals()`` and  ``read_gals()``.
+
+Authors: Jacob Seiler
 """
-
-from sage_binary import SageBinaryModel
-from sage_hdf5 import SageHdf5Model 
-
-import numpy as np
 
 import plots as plots
 
+# Import the subclasses that handle the different SAGE output formats.
+from sage_binary import SageBinaryModel
+
+try:
+    from sage_hdf5 import SageHdf5Model
+except ImportError:
+    print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
+          "this package.")
+
+import numpy as np
+
 # Sometimes we divide a galaxy that has zero mass (e.g., no cold gas). Ignore these
 # warnings as they spam stdout.
-np.warnings.filterwarnings("ignore")
+old_error_settings = np.seterr()
+np.seterr(all="ignore")
 
 # Refer to the project for a list of TODO's, issues and other notes.
 # https://github.com/sage-home/sage-model/projects/7
@@ -31,7 +42,8 @@ class Results:
         Number of models being plotted.
 
     models : List of ``Model`` class instances with length ``num_models``
-        Models that we will be plotting.
+        Models that we will be plotting.  Depending upon the format ``SAGE`` output in,
+        this will be a ``Model`` subclass with methods to parse the specific data format.
 
     plot_toggles : Dictionary
         Specifies which plots will be generated. An entry of `1` denotes
@@ -40,20 +52,20 @@ class Results:
     plot_output_path : String
         Base path where the plots will be saved.
 
-    output_format : String
+    plot_output_format : String
         Format the plots are saved as.
     """
 
     def __init__(self, all_models_dict, plot_toggles, plot_output_path="./plots",
-                 output_format=".png", debug=False):
+                 plot_output_format=".png", debug=False):
         """
         Initialises the individual ``Model`` class instances and adds them to
         the ``Results`` class instance.
 
-        Parameters 
+        Parameters
         ----------
 
-        all_models_dict : Dictionary 
+        all_models_dict : Dictionary
             Dictionary containing the parameter values for each ``Model``
             instance. Refer to the ``Model`` class for full details on this
             dictionary. Each field of this dictionary must have length equal to
@@ -66,7 +78,7 @@ class Results:
         plot_output_path : String, default "./plots"
             The path where the plots will be saved.
 
-        output_format : String, default ".png"
+        plot_output_format : String, default ".png"
             Format the plots will be saved as.
 
         debug : {0, 1}, default 0
@@ -84,7 +96,7 @@ class Results:
         if not os.path.exists(self.plot_output_path):
             os.makedirs(self.plot_output_path)
 
-        self.output_format = output_format
+        self.plot_output_format = plot_output_format
 
         # We will create a list that holds the Model class for each model.
         all_models = []
@@ -97,15 +109,18 @@ class Results:
             for field in all_models_dict.keys():
                 model_dict[field] = all_models_dict[field][model_num]
 
-            if model_dict["output_format"] == "sage_binary":      
+            # Use the correct subclass depending upon the format SAGE wrote in.
+            if model_dict["sage_output_format"] == "sage_binary":
                 model = SageBinaryModel(model_dict)
-            elif model_dict["output_format"] == "sage_hdf5":
+            elif model_dict["sage_output_format"] == "sage_hdf5":
                 model = SageHdf5Model(model_dict)
 
-            model.set_cosmology()                              
+            model.plot_output_format = plot_output_format
+
+            model.set_cosmology()
 
             # To be more memory concious, we calculate the required properties on a
-            # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory. 
+            # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
             model.calc_properties_all_files(plot_toggles, debug=debug)
 
             all_models.append(model)
@@ -121,18 +136,18 @@ class Results:
         Parameters
         ----------
 
-        None
+        None.
 
-        Returns 
+        Returns
         -------
 
         None. The plots are saved individually by each method.
         """
 
         plot_toggles = self.plot_toggles
+        plots.setup_matplotlib_options()
 
         # Depending upon the toggles, make the plots.
-
         if plot_toggles["SMF"] == 1:
             print("Plotting the Stellar Mass Function.")
             plots.plot_SMF(self)
@@ -192,12 +207,14 @@ if __name__ == "__main__":
 
     # We support the plotting of an arbitrary number of models. To do so, simply add the
     # extra variables specifying the path to the model directory and other variables.
-    # E.g., 'model1_dir_name = ...",
-    # "first_file", "last_file", "simulation" and "num_tree_files" only need to be
+    # E.g., 'model1_sage_output_format = ...", "model1_dir_name = ...".
+    # `first_file`, `last_file`, `simulation` and `num_tree_files` only need to be
     # specified if using binary output. HDF5 will automatically detect these.
-    model0_output_format       = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
+    # `hdf5_snapshot` is only nedded if using HDF5 output.
+
+    model0_sage_output_format  = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
     model0_dir_name            = "../tests/test_data/"
-    model0_file_name           = "test_sage_z0.000"
+    model0_file_name           = "test_sage.hdf5"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "r"
@@ -206,12 +223,12 @@ if __name__ == "__main__":
     model0_first_file          = 0  # The files read in will be [first_file, last_file]
     model0_last_file           = 0  # This is a closed interval.
     model0_simulation          = "Mini-Millennium"  # Sets the cosmology.
-    model0_hdf5_snapshot       = 63
+    model0_hdf5_snapshot       = 63  # Snapshot we're plotting the data at.
     model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
 
     # Then extend each of these lists for all the models that you want to plot.
     # E.g., 'dir_names = [model0_dir_name, model1_dir_name, ..., modelN_dir_name]
-    output_formats      = [model0_output_format]
+    sage_output_formats = [model0_sage_output_format]
     dir_names           = [model0_dir_name]
     file_names          = [model0_file_name]
     IMFs                = [model0_IMF]
@@ -225,9 +242,8 @@ if __name__ == "__main__":
     hdf5_snapshots      = [model0_hdf5_snapshot]
     num_tree_files_used = [model0_num_tree_files_used]
 
-
     # A couple of extra variables...
-    output_format    = ".png"
+    plot_output_format    = ".png"
     plot_output_path = "./plots_binary"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
@@ -266,7 +282,7 @@ if __name__ == "__main__":
 
         output_paths.append(output_path)
 
-    model_dict = { "output_format"       : output_formats,
+    model_dict = { "sage_output_format"  : sage_output_formats,
                    "model_path"          : model_paths,
                    "output_path"         : output_paths,
                    "IMF"                 : IMFs,
@@ -281,6 +297,10 @@ if __name__ == "__main__":
                    "num_tree_files_used" : num_tree_files_used}
 
     # Read in the galaxies and calculate properties for each model.
-    results = Results(model_dict, plot_toggles, plot_output_path, output_format,
+    results = Results(model_dict, plot_toggles, plot_output_path, plot_output_format,
                       debug=False)
     results.do_plots()
+
+    # Set the error settings to the previous ones so we don't annoy the user.
+    np.seterr(divide=old_error_settings["divide"], over=old_error_settings["over"],
+              under=old_error_settings["under"], invalid=old_error_settings["invalid"])

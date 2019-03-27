@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+"""
+In this module, we define the ``SageBinaryModel`` class, a subclass of the ``Model`` class
+defined in the ``model.py`` module.  This subclass contains methods for setting the
+simulation cosmology and reading galaxy data. If you wish to provide your own data format,
+you require ``set_cosmology()``, ``determine_num_gals()`` and ``read_gals()`` methods.
+
+Author: Jacob Seiler.
+"""
+
 from model import Model
 
 import numpy as np
@@ -5,25 +15,30 @@ import numpy as np
 import os
 
 class SageBinaryModel(Model):
+    """
+    Subclass of the ``Model`` class from the ``model.py`` module.  It contains methods
+    specifically for reading in the ``sage_hdf5`` output from ``SAGE``.
+
+    Extra Attributes
+    ================
+
+    galaxy_struct : ``numpy`` structured array
+        Struct that describes how the binary file is parsed into the galaxy data.
+    """
 
     def __init__(self, model_dict):
+        """
+        Initializes the super ``Model`` class and generates the array that describes the
+        binary file contract.
+        """
 
         Model.__init__(self, model_dict)
         self.get_galaxy_struct()
 
     def get_galaxy_struct(self):
         """
-        Sets the ``numpy`` structured array for holding the galaxy data.
-
-        Parameters 
-        ----------
-
-        None.
-
-        Returns
-        -------
-
-        None. The attribute ``Model.galaxy_struct`` is updated within the function.
+        Sets the ``numpy`` structured array for holding the galaxy data. The attribute
+        ``galaxy_struct`` is updated within the function.
         """
 
         galdesc_full = [
@@ -82,22 +97,14 @@ class SageBinaryModel(Model):
 
         self.galaxy_struct = galdesc
 
+
     def set_cosmology(self):
         """
         Sets the relevant cosmological values, size of the simulation box and
-        number of galaxy files.
+        number of galaxy files. The ``hubble_h``, ``box_size``, ``total_num_files``
+        and ``volume`` attributes are updated directly.
 
-        ..note:: ``box_size`` is in units of Mpc/h.
-
-        Parameters 
-        ----------
-
-        None.
-
-        Returns
-        -------
-
-        None.
+        ..note :: ``box_size`` is in units of Mpc/h.
         """
 
         if self.simulation == "Mini-Millennium":
@@ -119,24 +126,16 @@ class SageBinaryModel(Model):
             print("Please pick a valid simulation!")
             raise ValueError
 
-        # Scale the volume by the number of files that we will read. Used to ensure
-        # properties scaled by volume (e.g., SMF) gives sensible results.
-        self.volume = pow(self.box_size, 3) * (self.num_tree_files_used/ self.total_num_tree_files)
+        # Scale the volume by the number of tree files used compared to the number that
+        # were used for the entire simulation.  This ensures properties scaled by volume
+        # (e.g., SMF) gives sensible results.
+        self.volume = pow(self.box_size, 3) * (self.num_tree_files_used / self.total_num_tree_files)
 
 
     def determine_num_gals(self):
         """
-        Determines the number of galaxies in all files for this model.
-
-        Parameters 
-        ----------
-
-        None.
-
-        Returns
-        -------
-
-        None.
+        Determines the number of galaxies in all files for this model. The ``num_gals``
+        attribute is updated directly.
         """
 
         first_file = self.first_file
@@ -171,9 +170,9 @@ class SageBinaryModel(Model):
 
         file_num : Integer
             Suffix of the file we're reading.  The file name will be
-            ``self.fname_<file_num>``.
+            ``self.model_path_<file_num>``.
 
-        pbar : ``tqdm`` class instance
+        pbar : ``tqdm`` class instance, default Off
             Bar showing the progress of galaxy reading.
 
         plot_galaxies : Boolean, default False
@@ -182,18 +181,19 @@ class SageBinaryModel(Model):
         debug : Boolean, default False
             If set, prints out extra useful debug information.
 
-            ..note:: ``tqdm`` does not play nicely with printing to stdout. Hence we
-            disable the ``tqdm`` progress bar if ``debug=True``.
+        ..note:: ``tqdm`` does not play nicely with printing to stdout. Hence we 
+        disable the ``tqdm`` progress bar if ``debug=True``.
 
         Returns
         -------
 
-        gals : ``numpy`` structured array with format given by ``Model.get_galaxy_struct()``
+        gals : ``numpy`` structured array with format given by ``get_galaxy_struct()``
             The galaxies for this file.
         """
 
         fname = "{0}_{1}".format(self.model_path, file_num)
 
+        # We allow the skipping of files.  If we skip, don't increment a counter.
         if not os.path.isfile(fname):
             print("File\t{0} \tdoes not exist!".format(fname))
             return None
@@ -224,7 +224,8 @@ class SageBinaryModel(Model):
         if plot_galaxies:
 
             # Show the distribution of galaxies in 3D.
+            pos = gals["Pos"][:]
             output_file = "./galaxies_{0}{1}".format(file_num, self.output_format)
-            plots.plot_spatial_3d(gals, output_file, self.box_size)
+            plots.plot_spatial_3d(pos, output_file, self.box_size)
 
         return gals
