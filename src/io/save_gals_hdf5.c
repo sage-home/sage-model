@@ -1112,7 +1112,7 @@ int32_t write_header_attributes(hid_t file_id, const struct forest_info *forest_
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SupernovaRecipeOn", &run_params->SupernovaRecipeOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReionizationOn", &run_params->ReionizationOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "DiskInstabilityOn", &run_params->DiskInstabilityOn, H5T_NATIVE_INT);
-    
+
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", &run_params->SfrEfficiency, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackReheatingEpsilon", &run_params->FeedbackReheatingEpsilon, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackEjectionEfficiency", &run_params->FeedbackEjectionEfficiency, H5T_NATIVE_DOUBLE);
@@ -1132,12 +1132,12 @@ int32_t write_header_attributes(hid_t file_id, const struct forest_info *forest_
 
     status = H5Gclose(sim_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                    "Failed to close Header/Simulation group.\n" 
+                                    "Failed to close Header/Simulation group.\n"
                                     "The group ID was %d\n", (int32_t) sim_group_id);
 
     status = H5Gclose(runtime_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                    "Failed to close Header/Runtime group.\n" 
+                                    "Failed to close Header/Runtime group.\n"
                                     "The group ID was %d\n", (int32_t) sim_group_id);
 
     return EXIT_SUCCESS;
