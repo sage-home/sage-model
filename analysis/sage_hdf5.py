@@ -181,6 +181,13 @@ class SageHdf5Model(Model):
 
         return gals
 
+
+    def update_snapshot(self, snapshot):
+        """
+        Updates the HDF5 snapshot to ``snapshot``.
+        """
+        self.hdf5_snapshot = snapshot
+
     def close_file(self):
         """
         Closes the open HDF5 file.

@@ -229,3 +229,28 @@ class SageBinaryModel(Model):
             plots.plot_spatial_3d(pos, output_file, self.box_size)
 
         return gals
+
+    def update_snapshot(self, snapshot):
+        """
+        Updates the ``model_path`` attribute to point to the file at the redshift given by
+        ``snapshot``.
+
+        ..note :: This method must only be called if the ``redshifts`` attribute is
+        defined. 
+
+        Parameters
+        ==========
+
+        snapshot : Integer
+            Snapshot we're updating the ``model_path`` string to point to.
+
+        Returns
+        =======
+
+        None.  ``model_path`` is updated directly.
+        """
+
+        # model_path is of the form "<Initial/Path/To/File_zX.XXX>"
+        # Hence need to update the last 5 characters.
+        new_redshift = self.redshifts[snapshot]
+        self.model_path = "{0}{1:.3f}".format(self.model_path[:-5], new_redshift)

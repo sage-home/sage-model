@@ -106,6 +106,16 @@ class Model:
             print("Invalid output format entered.  Only {0} are "
                    "allowed.".format(acceptable_sage_output_format))
 
+        # If we're plotting temporal values (i.e., running with ``history.py``) then we
+        # were passed a scale factor file.
+        try:
+            alist_fname = self.alist_file
+        except AttributeError:
+            pass
+        else:
+            alist = np.loadtxt(alist_fname)
+            self.redshifts = 1.0/alist - 1.0
+
         # Then set default values.
         self.sample_size = 10000  # How many values should we plot on scatter plots?
         self.sSFRcut = -11.0  # The specific star formation rate above which a galaxy is
@@ -197,6 +207,8 @@ class Model:
 
         # Now read the galaxies and calculate the properties.
         for file_num in range(self.first_file, self.last_file+1):
+
+            # This is subclass specific. Refer to the relevant module for implementation.
             gals = self.read_gals(file_num, pbar=pbar, debug=debug)
 
             # We may have skipped a file.

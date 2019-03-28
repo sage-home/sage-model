@@ -3,7 +3,17 @@
 import matplotlib
 matplotlib.use('Agg')
 
-import h5py as h5
+import plots as plots
+
+# Import the subclasses that handle the different SAGE output formats.
+from sage_binary import SageBinaryModel
+
+try:
+    from sage_hdf5 import SageHdf5Model
+except ImportError:
+    print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
+          "this package.")
+
 import numpy as np
 import pylab as plt
 from random import sample, seed
@@ -19,211 +29,162 @@ whichsimulation = 0
 whichimf = 1        # 0=Slapeter; 1=Chabrier
 
 
-matplotlib.rcdefaults()
-plt.rc('axes', color_cycle=[
-    'k',
-    'b',
-    'r',
-    'g',
-    'm',
-    '0.5',
-    ], labelsize='x-large')
-plt.rc('xtick', labelsize='x-large')
-plt.rc('ytick', labelsize='x-large')
-plt.rc('lines', linewidth='2.0')
-# plt.rc('font', variant='monospace')
-plt.rc('legend', numpoints=1, fontsize='x-large')
-plt.rc('text', usetex=True)
+class TemporalResults:
+    """
+    Defines all the parameters used to plot the models.
 
-OutputDir = '' # set in main below
+    Attributes
+    ----------
 
-OutputFormat = '.png'
-TRANSPARENT = False
+    num_models : Integer
+        Number of models being plotted.
 
-OutputList = []
+    models : List of ``Model`` class instances with length ``num_models``
+        Models that we will be plotting.  Depending upon the format ``SAGE`` output in,
+        this will be a ``Model`` subclass with methods to parse the specific data format.
 
+    plot_toggles : Dictionary
+        Specifies which plots will be generated. An entry of `1` denotes
+        plotting, otherwise it will be skipped.
 
-class Results:
+    plot_output_path : String
+        Base path where the plots will be saved.
 
-    """ The following methods of this class generate the figures and plot them.
+    plot_output_format : String
+        Format the plots are saved as.
     """
 
-    def __init__(self):
-        """Here we set up some of the variables which will be global to this
-        class."""
+    def __init__(self, all_models_dict, plot_toggles, plot_output_path="./plots",
+                 plot_output_format=".png", debug=False):
+        """
+        Initialises the individual ``Model`` class instances and adds them to
+        the ``Results`` class instance.
 
-        if whichsimulation == 0:    # Mini-Millennium
-          self.Hubble_h = 0.73
-          self.BoxSize = 62.5       # Mpc/h
-          self.MaxTreeFiles = 8     # FilesPerSnapshot
+        Parameters
+        ----------
 
-        elif whichsimulation == 1:  # Full Millennium
-          self.Hubble_h = 0.73
-          self.BoxSize = 500        # Mpc/h
-          self.MaxTreeFiles = 512   # FilesPerSnapshot
+        all_models_dict : Dictionary
+            Dictionary containing the parameter values for each ``Model``
+            instance. Refer to the ``Model`` class for full details on this
+            dictionary. Each field of this dictionary must have length equal to
+            the number of models we're plotting.
 
-        else:
-          print "Please pick a valid simulation!"
-          exit(1)
+        plot_toggles : Dictionary
+            Specifies which plots will be generated. An entry of 1 denotes
+            plotting, otherwise it will be skipped.
 
+        plot_output_path : String, default "./plots"
+            The path where the plots will be saved.
 
-        if whichsimulation == 0 or whichsimulation == 1 :
-          
-          self.SMFsnaps = [63, 37, 32, 27, 23, 20, 18, 16]
+        plot_output_format : String, default ".png"
+            Format the plots will be saved as.
 
-          self.redshift_file = ['_z127.000', '_z79.998', '_z50.000', '_z30.000', '_z19.916', '_z18.244', '_z16.725', '_z15.343', '_z14.086', '_z12.941', '_z11.897', '_z10.944', '_z10.073', '_z9.278', '_z8.550', '_z7.883', '_z7.272', '_z6.712', '_z6.197', '_z5.724', '_z5.289', '_z4.888', '_z4.520', '_z4.179', '_z3.866', '_z3.576', '_z3.308', '_z3.060', '_z2.831', '_z2.619', '_z2.422', '_z2.239', '_z2.070', '_z1.913', '_z1.766', '_z1.630', '_z1.504', '_z1.386', '_z1.276', '_z1.173', '_z1.078', '_z0.989', '_z0.905', '_z0.828', '_z0.755', '_z0.687', '_z0.624', '_z0.564', '_z0.509', '_z0.457', '_z0.408', '_z0.362', '_z0.320', '_z0.280', '_z0.242', '_z0.208', '_z0.175', '_z0.144', '_z0.116', '_z0.089', '_z0.064', '_z0.041', '_z0.020', '_z0.000']
+        debug : {0, 1}, default 0
+            Flag whether to print out useful debugging information.
 
-          self.redshift = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 0.116, 0.089, 0.064, 0.041, 0.020, 0.000]
+        Returns
+        -------
 
+        None.
+        """
 
-    def read_gals(self, model_name, first_file, last_file, thissnap):
+        self.num_models = len(all_models_dict["model_path"])
+        self.plot_output_path = plot_output_path
 
-        # The input galaxy structure:
-        Galdesc_full = [
-            ('SnapNum'                      , np.int32),                    
-            ('Type'                         , np.int16),                    
-            ('isFlyby'                      , np.int16),                    
-            ('GalaxyIndex'                  , np.int64),                    
-            ('CentralGalaxyIndex'           , np.int64),                    
-            ('SAGEHaloIndex'                , np.int32),                    
-            ('SAGETreeIndex'                , np.int32),                    
-            ('SimulationHaloIndex'          , np.int64),                    
-            ('mergeType'                    , np.int32),                    
-            ('mergeIntoID'                  , np.int32),                    
-            ('mergeIntoSnapNum'             , np.int32),                    
-            ('dT'                           , np.float32),                    
-            ('Pos'                          , (np.float32, 3)),             
-            ('Vel'                          , (np.float32, 3)),             
-            ('Spin'                         , (np.float32, 3)),             
-            ('Len'                          , np.int32),                    
-            ('Mvir'                         , np.float32),                  
-            ('CentralMvir'                  , np.float32),                  
-            ('Rvir'                         , np.float32),                  
-            ('Vvir'                         , np.float32),                  
-            ('Vmax'                         , np.float32),                  
-            ('VelDisp'                      , np.float32),                  
-            ('ColdGas'                      , np.float32),                  
-            ('StellarMass'                  , np.float32),                  
-            ('BulgeMass'                    , np.float32),                  
-            ('HotGas'                       , np.float32),                  
-            ('EjectedMass'                  , np.float32),                  
-            ('BlackHoleMass'                , np.float32),                  
-            ('IntraClusterStars'            , np.float32),                  
-            ('MetalsColdGas'                , np.float32),                  
-            ('MetalsStellarMass'            , np.float32),                  
-            ('MetalsBulgeMass'              , np.float32),                  
-            ('MetalsHotGas'                 , np.float32),                  
-            ('MetalsEjectedMass'            , np.float32),                  
-            ('MetalsIntraClusterStars'      , np.float32),                  
-            ('SfrDisk'                      , np.float32),                  
-            ('SfrBulge'                     , np.float32),                  
-            ('SfrDiskZ'                     , np.float32),                  
-            ('SfrBulgeZ'                    , np.float32),                  
-            ('DiskRadius'                   , np.float32),                  
-            ('Cooling'                      , np.float32),                  
-            ('Heating'                      , np.float32),
-            ('QuasarModeBHaccretionMass'    , np.float32),
-            ('TimeOfLastMajorMerger'         , np.float32),
-            ('TimeOfLastMinorMerger'         , np.float32),
-            ('OutflowRate'                  , np.float32),
-            ('infallMvir'                   , np.float32),
-            ('infallVvir'                   , np.float32),
-            ('infallVmax'                   , np.float32)
-            ]
-        names = [Galdesc_full[i][0] for i in xrange(len(Galdesc_full))]
-        formats = [Galdesc_full[i][1] for i in xrange(len(Galdesc_full))]
-        Galdesc = np.dtype({'names':names, 'formats':formats}, align=True)
+        if not os.path.exists(self.plot_output_path):
+            os.makedirs(self.plot_output_path)
 
+        self.plot_output_format = plot_output_format
 
-        # Initialize variables.
-        TotNTrees = 0
-        TotNGals = 0
-        FileIndexRanges = []
-        goodfiles = 0
-            
-        if thissnap in self.SMFsnaps:
+        # We will create a list that holds the Model class for each model.
+        all_models = []
 
-            print
-            print "Determining array storage requirements."
-        
-            # Read each file and determine the total number of galaxies to be read in
-            for fnr in xrange(first_file,last_file+1):
-                fname = model_name+'_'+str(fnr)  # Complete filename
-                
-                if not os.path.isfile(fname):
-                    # print "File\t%s  \tdoes not exist!  Skipping..." % (fname)
-                    continue
-                
-                if getFileSize(fname) == 0:
-                    print "File\t%s  \tis empty!  Skipping..." % (fname)
-                    continue
-                
-                fin = open(fname, 'rb')  # Open the file
-                Ntrees = np.fromfile(fin,np.dtype(np.int32),1)  # Read number of trees in file
-                NtotGals = np.fromfile(fin,np.dtype(np.int32),1)[0]  # Read number of gals in file.
-                TotNTrees = TotNTrees + Ntrees  # Update total sim trees number
-                TotNGals = TotNGals + NtotGals  # Update total sim gals number
-                goodfiles = goodfiles + 1  # Update number of files read for volume calculation
-                fin.close()
+        # Now let's go through each model, build an individual dictionary for
+        # that model and then create a Model instance using it.
+        for model_num in range(self.num_models):
 
-            print "Input files contain:\t%d trees ;\t%d galaxies ." % (TotNTrees, TotNGals)
+            model_dict = {}
+            for field in all_models_dict.keys():
+                model_dict[field] = all_models_dict[field][model_num]
 
-        # Initialize the storage array
-        G = np.empty(TotNGals, dtype=Galdesc)
+            # Use the correct subclass depending upon the format SAGE wrote in.
+            if model_dict["sage_output_format"] == "sage_binary":
+                model = SageBinaryModel(model_dict, plot_toggles)
+            elif model_dict["sage_output_format"] == "sage_hdf5":
+                model = SageHdf5Model(model_dict, plot_toggles)
 
-        if thissnap in self.SMFsnaps:
+            # We may be plotting the density at all snapshots...
+            if model.density_redshifts is None:
+                model.density_redshifts = model.redshifts
 
-            offset = 0  # Offset index for storage array
+            model.plot_output_format = plot_output_format
 
-            # Open each file in turn and read in the preamble variables and structure.
-            print "Reading in files."
-            for fnr in xrange(first_file,last_file+1):
-                fname = model_name+'_'+str(fnr)  # Complete filename
-    
-                if not os.path.isfile(fname):
-                    continue
-        
-                if getFileSize(fname) == 0:
-                    continue
-        
-                fin = open(fname, 'rb')  # Open the file
-                Ntrees = np.fromfile(fin, np.dtype(np.int32), 1)  # Read number of trees in file
-                NtotGals = np.fromfile(fin, np.dtype(np.int32), 1)[0]  # Read number of gals in file.
-                GalsPerTree = np.fromfile(fin, np.dtype((np.int32, Ntrees)),1) # Read the number of gals in each tree
-                print ":   Reading N=", NtotGals, "   \tgalaxies from file: ", fname
-                GG = np.fromfile(fin, Galdesc, NtotGals)  # Read in the galaxy structures
-        
-                FileIndexRanges.append((offset,offset+NtotGals))
-        
-                # Slice the file array into the global array
-                # N.B. the copy() part is required otherwise we simply point to
-                # the GG data which changes from file to file
-                # NOTE THE WAY PYTHON WORKS WITH THESE INDICES!
-                G[offset:offset+NtotGals]=GG[0:NtotGals].copy()
-            
-                del(GG)
-                offset = offset + NtotGals  # Update the offset position for the global array
-        
-                fin.close()  # Close the file
+            model.set_cosmology()
+
+            # To be more memory concious, we calculate the required properties on a
+            # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
+            plot_toggles_tmp = plot_toggles
+
+            # The SMF and the Density plots may have different snapshot requirements.
+            model.SMF_snaps = [(np.abs(model.redshifts - SMF_redshift)).argmin() for
+                              SMF_redshift in model.SMF_redshifts]
+            model.SMF_array = np.zeros((len(model.SMF_snaps),
+                                        len(model.stellar_mass_bins)-1), dtype=np.float64)
+
+            model.density_snaps = [(np.abs(model.redshifts - density_redshift)).argmin() for
+                                  density_redshift in model.density_redshifts]
+            model.SFRD = np.zeros(len(model.density_snaps), dtype=np.float64)
+            model.SMD = np.zeros(len(model.density_snaps), dtype=np.float64)
+
+            # We'll need to loop all snapshots, ignoring duplicates.
+            snaps_to_loop = np.unique(model.SMF_snaps + model.density_snaps)
+
+            snap_idx = 0
+            for snap in snaps_to_loop:
+
+                # Update the snapshot we're reading from. Subclass specific.
+                model.update_snapshot(snap)
+
+                # Calculate all the properties.
+                model.calc_properties_all_files(plot_toggles, debug=debug)
+
+                # We need to place the SMF inside the array to carry through.
+                if snap in model.SMF_snap:
+                    model.SMF_array[snap_idx, :] = model.SMF
+                    snap_idx += 1
+                exit()
+            all_models.append(model)
+
+        self.models = all_models
+        self.plot_toggles = plot_toggles
 
 
-            print "Total galaxies considered:", TotNGals
-            print
+    def do_plots(self):
+        """
+        Wrapper method to perform all the plotting for the models.
 
-        # Convert the Galaxy array into a recarray
-        G = G.view(np.recarray)
+        Parameters
+        ----------
 
-        # Calculate the volume given the first_file and last_file
-        self.volume = self.BoxSize**3.0 * goodfiles / self.MaxTreeFiles
+        None.
 
-        return G
+        Returns
+        -------
 
+        None. The plots are saved individually by each method.
+        """
+
+        plot_toggles = self.plot_toggles
+        plots.setup_matplotlib_options()
+
+        # Depending upon the toggles, make the plots.
+        if plot_toggles["SMF"] == 1:
+            print("Plotting the Stellar Mass Function.")
+            plots.plot_SMF(self)
 
 # --------------------------------------------------------
 
     def StellarMassFunction(self, G_history):
-
-        print 'Plotting the stellar mass function'
 
         plt.figure()  # New figure
         ax = plt.subplot(111)  # 1 plot on the figure
@@ -365,7 +326,6 @@ class Results:
 
         outputFile = OutputDir + 'A.StellarMassFunction_z' + OutputFormat
         plt.savefig(outputFile)  # Save the figure
-        print 'Saved file to', outputFile
         plt.close()
 
         # Add this plot to our output list
@@ -376,8 +336,6 @@ class Results:
 # ---------------------------------------------------------
 
     def PlotHistory_SFRdensity(self, G_history):
-    
-        print 'Plotting SFR density evolution for all galaxies'
 
         plt.figure()  # New figure
         ax = plt.subplot(111)  # 1 plot on the figure
@@ -446,7 +404,6 @@ class Results:
     
         outputFile = OutputDir + 'B.History-SFR-density' + OutputFormat
         plt.savefig(outputFile)  # Save the figure
-        print 'Saved file to', outputFile
         plt.close()
     
         # Add this plot to our output list
@@ -457,7 +414,6 @@ class Results:
 
     def StellarMassDensityEvolution(self, G_history):
 
-        print 'Plotting stellar mass density evolution'
 
         plt.figure()  # New figure
         ax = plt.subplot(111)  # 1 plot on the figure
@@ -542,7 +498,6 @@ class Results:
 
         outputFile = OutputDir + 'C.History-stellar-mass-density' + OutputFormat
         plt.savefig(outputFile)  # Save the figure
-        print 'Saved file to', outputFile
         plt.close()
 
         # Add this plot to our output list
@@ -551,88 +506,104 @@ class Results:
 
 # =================================================================
 
-
-#  'Main' section of code.  This if statement executes if the code is run from the 
-#   shell command line, i.e. with 'python allresults.py'
-
 if __name__ == '__main__':
 
-    from optparse import OptionParser
     import os
 
-    parser = OptionParser()
-    parser.add_option(
-        '-d',
-        '--dir_name',
-        dest='DirName',
-        default='./millennium/',
-        help='input directory name (default: ./results/millennium/)',
-        metavar='DIR',
-        )
-    parser.add_option(
-        '-f',
-        '--file_base',
-        dest='FileName',
-        default='model',
-        help='filename base (default: model)',
-        metavar='FILE',
-        )
-    parser.add_option(
-        '-n',
-        '--file_range',
-        type='int',
-        nargs=2,
-        dest='FileRange',
-        default=(0, 7),
-        help='first and last filenumbers (default: 0 7)',
-        metavar='FIRST LAST',
-        )
-    parser.add_option(
-        '-s',
-        '--snap_range',
-        type='int',
-        nargs=2,
-        dest='SnapRange',
-        default=(0, 63),
-        help='first and last snapshots (default: 0 63)',
-        metavar='FIRST LAST',
-        )
+    # We support the plotting of an arbitrary number of models. To do so, simply add the
+    # extra variables specifying the path to the model directory and other variables.
+    # E.g., 'model1_sage_output_format = ...", "model1_dir_name = ...".
+    # `first_file`, `last_file`, `simulation` and `num_tree_files` only need to be
+    # specified if using binary output. HDF5 will automatically detect these.
+    # `hdf5_snapshot` is only nedded if using HDF5 output.
 
+    model0_SMF_z               = [0.0, 1.38, 1.38]  # Redshifts you wish to plot the stellar mass function at.
+                                                  # Will search for the closest simulation redshift.
+    model0_density_z           = [0.0, 1.38, 1.38]  # Redshifts you wish to plot the evolution of
+                                       # densities at. Set to `None` for all redshifts.
+    model0_alist_file          = "../input/millennium/trees/millennium.a_list"
+    model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
+    model0_dir_name            = "../tests/test_data/"
+    model0_file_name           = "test_sage_z0.000"
+    model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
+    model0_model_label         = "Mini-Millennium"
+    model0_color               = "c"
+    model0_linestyle           = "-"
+    model0_marker              = "x"
+    model0_first_file          = 0  # The files read in will be [first_file, last_file]
+    model0_last_file           = 0  # This is a closed interval.
+    model0_simulation          = "Mini-Millennium"  # Sets the cosmology.
+    model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
 
-    (opt, args) = parser.parse_args()
+    # Then extend each of these lists for all the models that you want to plot.
+    # E.g., 'dir_names = [model0_dir_name, model1_dir_name, ..., modelN_dir_name]
+    SMF_zs               = [model0_SMF_z]
+    density_zs           = [model0_density_z]
+    alist_files          = [model0_alist_file]
+    sage_output_formats  = [model0_sage_output_format]
+    dir_names            = [model0_dir_name]
+    file_names           = [model0_file_name]
+    IMFs                 = [model0_IMF]
+    model_labels         = [model0_model_label]
+    colors               = [model0_color]
+    linestyles           = [model0_linestyle]
+    markers              = [model0_marker]
+    first_files          = [model0_first_file]
+    last_files           = [model0_last_file]
+    simulations          = [model0_simulation]
+    num_tree_files_used  = [model0_num_tree_files_used]
 
-    if opt.DirName[-1] != '/':
-        opt.DirName += '/'
+    # A couple of extra variables...
+    plot_output_format    = ".png"
+    plot_output_path = "./plots_hdf5"  # Will be created if path doesn't exist.
 
-    OutputDir = opt.DirName + '/plots/'
+    # These toggles specify which plots you want to be made.
+    plot_toggles = {"SMF"             : 1,  # Stellar mass function at specified redshifts.
+                    "SFRD"            : 1,  # Star formation rate density at specified snapshots. 
+                    "SMD"             : 1}  # Stellar mass density at specified snapshots. 
 
-    if not os.path.exists(OutputDir):
-      os.makedirs(OutputDir)
+    ############################
+    ## DON'T TOUCH BELOW HERE ##
+    ############################
 
-    res = Results()
+    model_paths = []
+    output_paths = []
 
-    print 'Running history...'
+    # Determine paths for each model.
+    for dir_name, file_name  in zip(dir_names, file_names):
 
-    FirstFile = opt.FileRange[0]
-    LastFile = opt.FileRange[1]
-    FirstSnap = opt.SnapRange[0]
-    LastSnap = opt.SnapRange[1]
+        model_path = "{0}/{1}".format(dir_name, file_name)
+        model_paths.append(model_path)
 
-    # read in all files and put in G_history
-    G_history = [0]*(LastSnap-FirstSnap+1)
-    for snap in xrange(FirstSnap,LastSnap+1):
+        # These are model specific. Used for rare circumstances and debugging.
+        output_path = dir_name + "plots/"
 
-      print
-      print 'SNAPSHOT NUMBER:  ', snap
-      
-      fin_base = opt.DirName + opt.FileName + res.redshift_file[snap]
-      G_history[snap] = res.read_gals(fin_base, FirstFile, LastFile, snap)
-      
-    print
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
 
-    res.StellarMassFunction(G_history)
-    res.PlotHistory_SFRdensity(G_history)
-    res.StellarMassDensityEvolution(G_history)
-    
-    
+        output_paths.append(output_path)
 
+    model_dict = { "SMF_redshifts"       : SMF_zs,
+                   "density_redshifts"   : density_zs,
+                   "alist_file"          : alist_files,
+                   "sage_output_format"  : sage_output_formats,
+                   "model_path"          : model_paths,
+                   "output_path"         : output_paths,
+                   "IMF"                 : IMFs,
+                   "model_label"         : model_labels,
+                   "color"               : colors,
+                   "linestyle"           : linestyles,
+                   "marker"              : markers,
+                   "first_file"          : first_files,
+                   "last_file"           : last_files,
+                   "simulation"          : simulations,
+                   "num_tree_files_used" : num_tree_files_used}
+
+    # Read in the galaxies and calculate properties for each model.
+    results = TemporalResults(model_dict, plot_toggles, plot_output_path, plot_output_format,
+                              debug=False)
+    results.do_plots()
+
+    # Set the error settings to the previous ones so we don't annoy the user.
+    np.seterr(divide=old_error_settings["divide"], over=old_error_settings["over"],
+              under=old_error_settings["under"], invalid=old_error_settings["invalid"])
