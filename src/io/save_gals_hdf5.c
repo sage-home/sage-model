@@ -30,7 +30,7 @@ int32_t prepare_galaxy_for_hdf5_output(int ThisTask, int tree, struct GALAXY *g,
 int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num_already_written,
                              struct save_info *save_info);
 
-int32_t write_header_attributes(hid_t group_id, const struct forest_info *forest_info,
+int32_t write_header_attributes(hid_t file_id, const struct forest_info *forest_info,
                                 const struct params *run_params);
 
 #define MAX_ATTRIBUTE_LEN 10000
@@ -460,7 +460,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
                                     "Failed to create the Header group.\nThe file ID was %d\n",
                                     (int32_t) save_info->file_id);
 
-    status = write_header_attributes(group_id, forest_info, run_params);
+    status = write_header_attributes(save_info->file_id, forest_info, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }
@@ -480,6 +480,11 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
     // for future debugging and validation.
     double data_version = DATA_VERSION;
     CREATE_SINGLE_ATTRIBUTE(group_id, "data_version", &data_version, H5T_NATIVE_DOUBLE);
+
+    status = H5Gclose(group_id);
+    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
+                                    "Failed to close the Header group."
+                                    "The group ID was %d.\n", (int32_t) group_id);
 
     // Now we need to ensure we free all of the HDF5 IDs.  The heirachy is File->Groups->Datasets.
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
@@ -637,9 +642,9 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
 
     CREATE_SINGLE_ATTRIBUTE(group_id, "num_cores", &NTasks, H5T_NATIVE_INT);
 
-    // If we're writing the header attributes for the master file, we don't have knowledge of trees.
+    // When we're writing the header attributes for the master file, we don't have knowledge of trees.
     // So pass a NULL pointer here instead of `forest_info`.
-    status = write_header_attributes(group_id, NULL, run_params);
+    status = write_header_attributes(master_file_id, NULL, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }
@@ -660,6 +665,11 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     // for future debugging and validation.
     double data_version = DATA_VERSION;
     CREATE_SINGLE_ATTRIBUTE(group_id, "data_version", &data_version, H5T_NATIVE_DOUBLE);
+
+    status = H5Gclose(group_id);
+    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
+                                    "Failed to close the Header group for the master file."
+                                    "The group ID was %d\n", (int32_t) group_id);
 
     // Finished creating links.
     status = H5Gclose(root_group_id);
@@ -1068,27 +1078,67 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 
 #undef EXTEND_AND_WRITE_GALAXY_DATASET
 
-int32_t write_header_attributes(hid_t group_id, const struct forest_info *forest_info,
+int32_t write_header_attributes(hid_t file_id, const struct forest_info *forest_info,
                                 const struct params *run_params) {
 
     herr_t status;
 
+    // Inside the "Header" group, we split the attributes up inside different groups for usability.
+    hid_t sim_group_id = H5Gcreate2(file_id, "Header/Simulation", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    CHECK_STATUS_AND_RETURN_ON_FAIL(sim_group_id, (int32_t) group_id,
+                                    "Failed to create the Header/Simulation group.\nThe file ID was %d\n",
+                                    (int32_t) file_id);
+
+    hid_t runtime_group_id = H5Gcreate2(file_id, "Header/Runtime", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    CHECK_STATUS_AND_RETURN_ON_FAIL(runtime_group_id, (int32_t) group_id,
+                                    "Failed to create the Header/Runtime group.\nThe file ID was %d\n",
+                                    (int32_t) file_id);
+
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_matter", &run_params->Omega, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_lambda", &run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "particle_mass", &run_params->PartMass, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "hubble_h", &run_params->Hubble_h, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "num_simulation_tree_files", &run_params->NumSimulationTreeFiles, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "box_size", &run_params->BoxSize, H5T_NATIVE_DOUBLE);
+
     // If we're writing the header attributes for the master file, we don't have knowledge of trees.
     if(forest_info != NULL) {
-        CREATE_SINGLE_ATTRIBUTE(group_id, "num_trees", &forest_info->nforests_this_task, H5T_NATIVE_LLONG);
-        CREATE_SINGLE_ATTRIBUTE(group_id, "frac_volume_processed", &forest_info->frac_volume_processed, H5T_NATIVE_FLOAT);
+        CREATE_SINGLE_ATTRIBUTE(sim_group_id, "num_trees", &forest_info->nforests_this_task, H5T_NATIVE_LLONG);
+        CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "frac_volume_processed", &forest_info->frac_volume_processed, H5T_NATIVE_FLOAT);
     }
 
-    CREATE_SINGLE_ATTRIBUTE(group_id, "first_tree_file_processed", &run_params->FirstFile, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "last_tree_file_processed", &run_params->LastFile, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SFprescription", &run_params->SFprescription, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "AGNrecipeOn", &run_params->AGNrecipeOn, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SupernovaRecipeOn", &run_params->SupernovaRecipeOn, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReionizationOn", &run_params->ReionizationOn, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "DiskInstabilityOn", &run_params->DiskInstabilityOn, H5T_NATIVE_INT);
+    
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", &run_params->SfrEfficiency, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackReheatingEpsilon", &run_params->FeedbackReheatingEpsilon, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackEjectionEfficiency", &run_params->FeedbackEjectionEfficiency, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReIncorporationFactor", &run_params->ReIncorporationFactor, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RadioModeEfficiency", &run_params->RadioModeEfficiency, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "QuasarModeEfficiency", &run_params->QuasarModeEfficiency, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "BlackHoleGrowthRate", &run_params->BlackHoleGrowthRate, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ThreshMajorMerger", &run_params->ThreshMajorMerger, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ThresholdSatDisruption", &run_params->ThresholdSatDisruption, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Yield", &run_params->Yield, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RecycleFraction", &run_params->RecycleFraction, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FracZleaveDisk", &run_params->FracZleaveDisk, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Reionization_z0", &run_params->Reionization_z0, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Reionization_zr", &run_params->Reionization_zr, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EnergySN", &run_params->EnergySN, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EtaSN", &run_params->EtaSN, H5T_NATIVE_DOUBLE);
 
-    // Attributes of the underlying simulation.
-    CREATE_SINGLE_ATTRIBUTE(group_id, "omega_matter", &run_params->Omega, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "omega_lambda", &run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "particle_mass", &run_params->PartMass, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "hubble_h", &run_params->Hubble_h, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "num_simulation_tree_files", &run_params->NumSimulationTreeFiles, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "box_size", &run_params->BoxSize, H5T_NATIVE_DOUBLE);
+    status = H5Gclose(sim_group_id);
+    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
+                                    "Failed to close Header/Simulation group.\n" 
+                                    "The group ID was %d\n", (int32_t) sim_group_id);
+
+    status = H5Gclose(runtime_group_id);
+    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
+                                    "Failed to close Header/Runtime group.\n" 
+                                    "The group ID was %d\n", (int32_t) sim_group_id);
 
     return EXIT_SUCCESS;
 }

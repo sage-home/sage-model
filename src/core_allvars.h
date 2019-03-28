@@ -276,11 +276,11 @@ struct params
     double EtaSN;
 
     /* recipe flags */
-    int    ReionizationOn;
-    int    SupernovaRecipeOn;
-    int    DiskInstabilityOn;
-    int    AGNrecipeOn;
     int    SFprescription;
+    int    AGNrecipeOn;
+    int    SupernovaRecipeOn;
+    int    ReionizationOn;
+    int    DiskInstabilityOn;
     
     double RecycleFraction;
     double Yield;

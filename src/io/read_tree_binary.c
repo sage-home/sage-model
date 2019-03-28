@@ -212,7 +212,9 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         forestnhalos += nforests;
     }
 
-    // Sum over each file (Number forests processed by this task from this file / Number forests in file). 
+    // Sum over each file (Number forests processed by this task from this file / Number forests in file).
+    // We sum in this manner rather than (Total number of forests processed by this task / Total number of forests in all files)
+    // because some files will have a different number of trees.
     forests_info->frac_volume_processed = 0.0;
     for(int32_t filenr = start_filenum; filenr <= end_filenum; filenr++) {
         forests_info->frac_volume_processed += (float) num_forests_to_process_per_file[filenr] / (float) totnforests_per_file[filenr];
