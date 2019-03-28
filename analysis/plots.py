@@ -768,15 +768,13 @@ def plot_mass_reservoirs(results):
                       "IntraClusterStars"]
         attribute_names = ["stars", "cold", "hot", "ejected", "ICS"]
         labels = ["Stars", "Cold Gas", "Hot Gas", "Ejected Gas", "Intracluster Stars"]
-        colors = ["k", "b", "r", "g", "y"]
 
-        for (component, attribute_name, color, label) in zip(components,
-                                                             attribute_names, colors,
-                                                             labels):
+        for (component, attribute_name, label) in zip(components,
+                                                             attribute_names, labels):
 
             attr_name = "reservoir_{0}".format(attribute_name)
             ax.scatter(model.reservoir_mvir, getattr(model, attr_name), marker=marker,
-                       s=0.3, color=color, label=label)
+                       s=0.3, label=label)
 
         ax.set_xlabel(r"$\log\ M_{\mathrm{vir}}\ (M_{\odot})$")
         ax.set_ylabel(r"$\mathrm{Reservoir\ Mass\ (M_{\odot})}$")

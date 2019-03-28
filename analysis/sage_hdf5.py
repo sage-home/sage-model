@@ -37,8 +37,9 @@ class SageHdf5Model(Model):
 
         Model.__init__(self, model_dict)
 
-        # Open the HDF5 file.
-        self.hdf5_file = h5py.File(self.model_path, "r")
+        # We require write intent because we may be combining fields such as "Posx",
+        # "Posy", "Posz" into "Pos".
+        self.hdf5_file = h5py.File(self.model_path, "r+")
 
         # For the HDF5 file, "first_file" and "last_file" correspond to the "Core_%d"
         # groups.
@@ -58,15 +59,15 @@ class SageHdf5Model(Model):
 
         f = self.hdf5_file
 
-        self.hubble_h = f["Header"].attrs["hubble_h"]
-        self.box_size = f["Header"].attrs["box_size"]
+        self.hubble_h = f["Header"]["Simulation"].attrs["hubble_h"]
+        self.box_size = f["Header"]["Simulation"].attrs["box_size"]
 
         # Each core may have processed a different fraction of the volume. Hence find out
         # total volume processed.
         volume_processed = 0.0
         for core_num in range(self.first_file, self.last_file + 1):
             core_key = "Core_{0}".format(core_num)
-            volume_processed += f[core_key]["Header"].attrs["frac_volume_processed"]
+            volume_processed += f[core_key]["Header"]["Runtime"].attrs["frac_volume_processed"]
 
         # Scale the volume by the number of files that we will read. Used to ensure
         # properties scaled by volume (e.g., SMF) gives sensible results.

@@ -26,12 +26,16 @@ class Model:
     """
     Handles all the galaxy data (including calculated properties) for a SAGE model.
 
-    The first 11 attributes (from ``model_path`` to ``marker``) are
-    passed in a single dictionary (``model_dict``) to the class ``__init__``
-    method.
+    We have only listed the attributes set by the ``model_dict`` dictionary passed into
+    the ``__init__`` method.  There are a large number of attributes dealing with all the
+    calculated data that we have excluded for brevity.  Refer to ``__init__`` for a full
+    list of these calculated property attributes.
 
     Attributes
     ----------
+
+    sage_output_format : {"sage_binary", "sage_hdf5"}
+        The output format that ``SAGE`` wrote in.
 
     model_path : String
         File path to the galaxy files.
@@ -43,32 +47,25 @@ class Model:
         certain circumstances. In general, plots will be saved to the ``plot_output_path``
         path defined in the ``Results`` class.
 
-    first_file, last_file : Integer
-        Range (inclusive) of files that are read.
-
-    simulation : {"Mini-Millennium", "Millennium", "Genesis-L500-N2160"}
-        Flags which simulation we are using.
-
     IMF : {"Salpeter", "Chabrier"}
-        Specifies which IMF to use for this model.
+        Specifies which IMF to use.
 
     model_label : String
-        Label placed on the legend for this model.
+        Label placed on the legend.
 
     color, linestyle : Strings
-        Line color and style used for this model.
+        Line color and style to be used in the plots.
 
     marker : String
         The marker used for scatter plots for this model.
 
-    hubble_h : Float
-        Hubble 'little h' value. Between 0 and 1.
+    first_file, last_file : Integer
+        Range (inclusive) of files that are read. Only required if ``sage_output_format``
+        isn't ``sage_hdf5``.
 
-    BoxSize : Float
-        Size of the simulation box for this model. Mpc/h.
-
-    MaxTreeFiles : Integer
-        Number of files generated from SAGE for this model.
+    simulation : {"Mini-Millennium", "Millennium"}
+        Flags which simulation we are using. Only required if ``sage_output_format`` isn't
+        ``sage_hdf5``.
 
     TODO: Should I list ALL the properties here? i.e., all the arrays and lists that hold
     the data?
@@ -85,7 +82,7 @@ class Model:
             Dictionary containing the parameter values for each ``Model``
             instance. Refer to the class-level documentation for a full
             description of this dictionary or to ``model_dict`` in the ``__main__`` call
-            of this Module.
+            of the ``allresults.py`` module.
 
         Returns
         -------

@@ -217,13 +217,13 @@ if __name__ == "__main__":
     model0_file_name           = "test_sage.hdf5"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
-    model0_color               = "r"
+    model0_color               = "c"
     model0_linestyle           = "-"
     model0_marker              = "x"
     model0_first_file          = 0  # The files read in will be [first_file, last_file]
     model0_last_file           = 0  # This is a closed interval.
     model0_simulation          = "Mini-Millennium"  # Sets the cosmology.
-    model0_hdf5_snapshot       = 63  # Snapshot we're plotting the data at.
+    model0_hdf5_snapshot       = 63  # Snapshot we're plotting the HDF5 data at.
     model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
 
     # Then extend each of these lists for all the models that you want to plot.
@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
     # A couple of extra variables...
     plot_output_format    = ".png"
-    plot_output_path = "./plots_binary"  # Will be created if path doesn't exist.
+    plot_output_path = "./plots_hdf5"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.
