@@ -66,14 +66,12 @@ class Model:
     simulation : {"Mini-Millennium", "Millennium"}
         Flags which simulation we are using. Only required if ``sage_output_format`` isn't
         ``sage_hdf5``.
-
-    TODO: Should I list ALL the properties here? i.e., all the arrays and lists that hold
-    the data?
     """
 
-    def __init__(self, model_dict):
+    def __init__(self, model_dict, plot_toggles):
         """
-        Sets the galaxy path and number of files to be read for a model.
+        Sets the galaxy path and number of files to be read for a model. Also initialises
+        the plot toggles that dictates which properties will be calculated.
 
         Parameters 
         ----------
@@ -83,6 +81,9 @@ class Model:
             instance. Refer to the class-level documentation for a full
             description of this dictionary or to ``model_dict`` in the ``__main__`` call
             of the ``allresults.py`` module.
+
+        plot_toggles : Dictionary 
+            Specifies which plots will be generated.
 
         Returns
         -------
@@ -105,6 +106,20 @@ class Model:
         if model_dict["sage_output_format"] not in acceptable_sage_output_formats:
             print("Invalid output format entered.  Only {0} are "
                    "allowed.".format(acceptable_sage_output_format))
+
+        # Set the initial plot toggles.
+        allowed_plots = ["SMF", "BMF", "GMF", "BTF", "sSFR", "gas_frac", "metallicity",
+                         "bh_bulge", "quiescent", "bulge_fraction", "baryon_fraction",
+                         "reservoirs", "spatial", "SFRD", "SMFD"]
+        for plot in allowed_plots:
+            toggle_name = "{0}_toggle".format(plot)
+            setattr(self, toggle_name, 0)
+
+
+        # Then update based on what we were passed.
+        for plot in plot_toggles.keys():
+            toggle_name = "{0}_toggle".format(plot)
+            setattr(self, toggle_name, 1)
 
         # If we're plotting temporal values (i.e., running with ``history.py``) then we
         # were passed a scale factor file.
@@ -168,16 +183,17 @@ class Model:
         for attr in attr_names:
             setattr(self, attr, [])
 
+        # Densities are the sum across the entire redshift.
+        self.SFRD = 0.0
+        self.SMFD = 0.0
 
-    def calc_properties_all_files(self, plot_toggles, debug=False):
+
+    def calc_properties_all_files(self, debug=False):
         """
         Calculates galaxy properties for all files of a single Model.
 
         Parameters 
         ----------
-
-        plot_toggles : Dictionary 
-            Specifies which plots will be generated.
 
         debug : Boolean, default False
             If set, prints out extra useful debug information.
@@ -215,7 +231,7 @@ class Model:
             if gals is None:
                 continue
 
-            self.calc_properties(plot_toggles, gals)
+            self.calc_properties(gals)
 
         # Some data formats (e.g., HDF5) have a single file we read from.
         # For other formats, this method doesn't exist.
@@ -230,19 +246,12 @@ class Model:
         print("")
 
 
-    def calc_properties(self, plot_toggles, gals):
+    def calc_properties(self, gals):
         """
         Calculates galaxy properties for a single file of galaxies.
 
-        Note: Refer to the class-level documentation for a full list of the properties
-              calculated and their associated units.
-
         Parameters 
         ----------
-
-        plot_toggles : Dictionary 
-            Specifies which plots will be generated. Used to determine which properties to
-            calculate.
 
         gals : ``numpy`` structured array with format given by ``Model.get_galaxy_struct()``
             The galaxies for this file.
@@ -257,7 +266,7 @@ class Model:
         # subset of galaxies. We need to ensure we get a representative sample from each file.
         file_sample_size = int(len(gals["StellarMass"][:]) / self.num_gals * self.sample_size) 
 
-        if plot_toggles["SMF"] or plot_toggles["sSFR"]:
+        if self.SMF_toggle or self.sSFR_toggle: 
 
             non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
             non_zero_SFR = np.where(gals["SfrDisk"][:] + gals["SfrBulge"][:] > 0.0)[0]
@@ -268,7 +277,7 @@ class Model:
             sSFR = (gals["SfrDisk"][:][non_zero_SFR] + gals["SfrBulge"][:][non_zero_SFR]) / \
                    (gals["StellarMass"][:][non_zero_SFR] * 1.0e10 / self.hubble_h)
 
-            if plot_toggles["SMF"]:
+            if self.SMF_toggle:
                 gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
                 self.SMF += gals_per_bin 
 
@@ -283,7 +292,7 @@ class Model:
                 counts, _ = np.histogram(blue_mass, bins=self.stellar_mass_bins)
                 self.blue_SMF += counts
 
-            if plot_toggles["sSFR"]:
+            if self.sSFR_toggle:
 
                 # `stellar_mass` and `sSFR` have length < length(gals).
                 # Hence when we take a random sample, we use length of those arrays. 
@@ -295,7 +304,7 @@ class Model:
                 self.sSFR_mass.extend(list(stellar_mass[random_inds]))
                 self.sSFR_sSFR.extend(list(np.log10(sSFR[random_inds])))
 
-        if plot_toggles["BMF"]:
+        if self.BMF_toggle:
 
             non_zero_baryon = np.where(gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0)[0]
             baryon_mass = np.log10((gals["StellarMass"][:][non_zero_baryon] + gals["ColdGas"][:][non_zero_baryon]) * 1.0e10 \
@@ -304,7 +313,7 @@ class Model:
             (counts, binedges) = np.histogram(baryon_mass, bins=self.stellar_mass_bins)
             self.BMF += counts
 
-        if plot_toggles["GMF"]:
+        if self.GMF_toggle:
 
             non_zero_cold = np.where(gals["ColdGas"][:] > 0.0)[0]
             cold_mass = np.log10(gals["ColdGas"][:][non_zero_cold] * 1.0e10 / self.hubble_h)
@@ -312,7 +321,7 @@ class Model:
             (counts, binedges) = np.histogram(cold_mass, bins=self.stellar_mass_bins)
             self.GMF += counts
 
-        if plot_toggles["BTF"]:
+        if self.BTF_toggle:
 
             # Make sure we're getting spiral galaxies. That is, don't include galaxies
             # that are too bulgy.
@@ -330,7 +339,7 @@ class Model:
             self.BTF_mass.extend(list(baryon_mass))
             self.BTF_vel.extend(list(velocity))
 
-        if plot_toggles["gas_frac"]:
+        if self.gas_frac_toggle:
 
             # Make sure we're getting spiral galaxies. That is, don't include galaxies
             # that are too bulgy.
@@ -347,7 +356,7 @@ class Model:
             self.gas_frac_mass.extend(list(stellar_mass))
             self.gas_frac.extend(list(gas_fraction))
 
-        if plot_toggles["metallicity"]:
+        if self.metallicity_toggle:
 
             # Only care about central galaxies (Type 0) that have appreciable mass.
             centrals = np.where((gals["Type"][:] == 0) & \
@@ -363,7 +372,7 @@ class Model:
             self.metallicity_mass.extend(list(stellar_mass))
             self.metallicity.extend(list(Z))
 
-        if plot_toggles["bh_bulge"]:
+        if self.bh_bulge_toggle:
 
             # Only care about galaxies that have appreciable masses.
             my_gals = np.where((gals["BulgeMass"][:] > 0.01) & (gals["BlackHoleMass"][:] > 0.00001))[0]
@@ -377,7 +386,7 @@ class Model:
             self.bh_mass.extend(list(bh))
             self.bulge_mass.extend(list(bulge))
 
-        if plot_toggles["quiescent"]:
+        if self.quiescent_toggle:
 
             non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
@@ -390,7 +399,7 @@ class Model:
                    (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
             quiescent = sSFR < 10.0 ** self.sSFRcut
 
-            if plot_toggles["SMF"]:
+            if self.SMF_toggle:
                 pass
             else:
                 gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
@@ -416,7 +425,7 @@ class Model:
 
             self.quiescent_satellites_counts += quiescent_satellites_counts 
 
-        if plot_toggles["bulge_fraction"]:
+        if self.bulge_fraction_toggle:
 
             non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
@@ -426,7 +435,7 @@ class Model:
 
             # We want the mean bulge/disk fraction as a function of stellar mass. To allow
             # us to sum across each file, we will record the sum in each bin and then average later.
-            if plot_toggles["SMF"]:
+            if self.SMF_toggle:
                 pass
             else:
                 gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
@@ -450,7 +459,7 @@ class Model:
                                                              statistic=np.var, bins=self.stellar_mass_bins)
             self.fraction_disk_var += fraction_disk_var / self.num_files
 
-        if plot_toggles["baryon_fraction"]:
+        if self.baryon_fraction_toggle:
 
             # Careful here, our "Halo Mass Function" is only counting the *BACKGROUND FOF HALOS*.
             centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 0.0))[0]
@@ -488,7 +497,7 @@ class Model:
                                                                 statistic=np.sum, bins=self.halo_mass_bins)
             self.halo_baryon_fraction_sum += baryon_fraction_sum
 
-        if plot_toggles["reservoirs"]:
+        if self.reservoirs_toggle:
 
             # To reduce scatter, only use galaxies in halos with mass > 1.0e10 Msun/h.
             centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 1.0) & \
@@ -511,7 +520,7 @@ class Model:
                 attribute_value.extend(list(mass))
                 setattr(self, attribute_name, attribute_value)
 
-        if plot_toggles["spatial"]:
+        if self.spatial_toggle:
 
             non_zero = np.where((gals["Mvir"][:] > 0.0) & (gals["StellarMass"][:] > 0.1))[0] 
 
@@ -528,3 +537,17 @@ class Model:
                 attribute_value = getattr(self, attribute_name)
                 attribute_value.extend(list(pos))
                 setattr(self, attribute_name, attribute_value)
+
+        if self.SFRD_toggle:
+
+            non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+            SFR = gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]
+
+            self.SFRD += np.sum(SFR)
+
+        if self.SMFD_toggle:
+
+            non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+            stellar_mass = gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h
+
+            self.SMFD += np.sum(stellar_mass)

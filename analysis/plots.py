@@ -150,6 +150,72 @@ def plot_SMF(results, plot_sub_populations=False):
     plt.close()
 
 
+def plot_temporal_SMF(temporal_results):
+    """
+    Plots the evolution of the stellar mass function for the models within the ``TemporalResults``
+    class instance.
+
+    Parameters
+    ==========
+
+    temporal_results : ``TemporalResults`` class instance
+        Class instance that contains the calculated properties for all the models.  The
+        class is defined in the ``history.py`` with the individual ``Model`` classes
+        and properties defined and calculated in the ``model.py`` module.
+
+    Returns
+    =======
+
+    None.  The plot will be saved as "<results.plot_output_path>/A.StellarMassFunction<results.plot_output_path>"
+    """
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    # Go through each of the models and plot. 
+    for model in temporal_results.models:
+
+        ls = model.linestyle
+
+        # Set the x-axis values to be the centre of the bins.
+        bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
+
+        # Iterate over the snapshots.
+        for snap in model.SMF_snaps:
+            model_label = "{0} z = {1:.3f}".format(model.model_label, model.redshifts[snap])
+
+            # The SMF is normalized by the simulation volume which is in Mpc/h.
+            ax.plot(bin_middles[:-1], model.SMF_dict[snap] / model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
+                    ls=ls, label=model_label)
+
+    # For scaling the observational data, we use the values of the zeroth
+    # model.
+    zeroth_hubble_h = (temporal_results.models)[0].hubble_h
+    zeroth_IMF = (temporal_results.models)[0].IMF
+    ax = obs.plot_temporal_smf_data(ax, zeroth_hubble_h, zeroth_IMF) 
+
+    ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
+    ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
+
+    ax.set_yscale("log", nonposy="clip")
+
+    # Find the models that have the smallest/largest stellar mass bin.
+    xlim_min = np.min([model.stellar_mass_bins for model in temporal_results.models]) - 0.2
+    xlim_max = np.max([model.stellar_mass_bins for model in temporal_results.models]) + 0.2
+    ax.set_xlim([xlim_min, xlim_max])
+    ax.set_ylim([1.0e-6, 1.0e-1])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+
+    adjust_legend(ax, location="lower left", scatter_plot=0)
+
+    output_file = "{0}/A.StellarMassFunction{1}".format(temporal_results.plot_output_path,
+                                                        temporal_results.plot_output_format)
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
+    plt.close()
+
+
 def plot_BMF(results):
     """
     Plots the baryonic mass function for the models within the ``Results`` class instance.

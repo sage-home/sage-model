@@ -30,12 +30,12 @@ class SageHdf5Model(Model):
         ``model.py`` after all galaxies have been read and their properties calculated.
     """
 
-    def __init__(self, model_dict):
+    def __init__(self, model_dict, plot_toggles):
         """
         Initializes the super ``Model`` class and opens the HDF5 file.
         """
 
-        Model.__init__(self, model_dict)
+        Model.__init__(self, model_dict, plot_toggles)
 
         # We require write intent because we may be combining fields such as "Posx",
         # "Posy", "Posz" into "Pos".

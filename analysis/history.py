@@ -123,13 +123,11 @@ class TemporalResults:
 
             # To be more memory concious, we calculate the required properties on a
             # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
-            plot_toggles_tmp = plot_toggles
 
             # The SMF and the Density plots may have different snapshot requirements.
             model.SMF_snaps = [(np.abs(model.redshifts - SMF_redshift)).argmin() for
                               SMF_redshift in model.SMF_redshifts]
-            model.SMF_array = np.zeros((len(model.SMF_snaps),
-                                        len(model.stellar_mass_bins)-1), dtype=np.float64)
+            model.SMF_dict = {}
 
             model.density_snaps = [(np.abs(model.redshifts - density_redshift)).argmin() for
                                   density_redshift in model.density_redshifts]
@@ -139,20 +137,21 @@ class TemporalResults:
             # We'll need to loop all snapshots, ignoring duplicates.
             snaps_to_loop = np.unique(model.SMF_snaps + model.density_snaps)
 
-            snap_idx = 0
             for snap in snaps_to_loop:
+
+                # Reset the SMF
+                model.SMF = np.zeros(len(model.stellar_mass_bins)-1, dtype=np.float64)
 
                 # Update the snapshot we're reading from. Subclass specific.
                 model.update_snapshot(snap)
 
                 # Calculate all the properties.
-                model.calc_properties_all_files(plot_toggles, debug=debug)
+                model.calc_properties_all_files(debug=debug)
 
                 # We need to place the SMF inside the array to carry through.
-                if snap in model.SMF_snap:
-                    model.SMF_array[snap_idx, :] = model.SMF
-                    snap_idx += 1
-                exit()
+                if snap in model.SMF_snaps:
+                    model.SMF_dict[snap] = model.SMF
+
             all_models.append(model)
 
         self.models = all_models
@@ -179,8 +178,17 @@ class TemporalResults:
 
         # Depending upon the toggles, make the plots.
         if plot_toggles["SMF"] == 1:
-            print("Plotting the Stellar Mass Function.")
-            plots.plot_SMF(self)
+            print("Plotting the evolution of the Stellar Mass Function.")
+            plots.plot_temporal_SMF(self)
+
+        if plot_toggles["SFRD"] == 1:
+            print("Plotting the evolution of the Star Formation Rate Density.")
+            plots.plot_SFRD(self)
+
+        if plot_toggles["SMFD"] == 1:
+            print("Plotting the evolution of the Stellar Mass Function Density.")
+            plots.plot_SFRD(self)
+
 
 # --------------------------------------------------------
 
@@ -190,18 +198,6 @@ class TemporalResults:
         ax = plt.subplot(111)  # 1 plot on the figure
 
         binwidth = 0.1  # mass function histogram bin width
-
-        # Marchesini et al. 2009ApJ...701.1765M SMF, h=0.7
-        M = np.arange(7.0, 11.8, 0.01)
-        Mstar = np.log10(10.0**10.96)
-        alpha = -1.18
-        phistar = 30.87*1e-4
-        xval = 10.0 ** (M-Mstar)
-        yval = np.log(10.) * phistar * xval ** (alpha+1) * np.exp(-xval)
-        if(whichimf == 0):
-            plt.plot(np.log10(10.0**M *1.6), yval, ':', lw=10, alpha=0.5, label='Marchesini et al. 2009 z=[0.1]')
-        elif(whichimf == 1):
-            plt.plot(np.log10(10.0**M *1.6 /1.8), yval, ':', lw=10, alpha=0.5, label='Marchesini et al. 2009 z=[0.1]')
             
 
         M = np.arange(9.3, 11.8, 0.01)
@@ -517,15 +513,15 @@ if __name__ == '__main__':
     # specified if using binary output. HDF5 will automatically detect these.
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
-    model0_SMF_z               = [0.0, 1.38, 1.38]  # Redshifts you wish to plot the stellar mass function at.
-                                                  # Will search for the closest simulation redshift.
-    model0_density_z           = [0.0, 1.38, 1.38]  # Redshifts you wish to plot the evolution of
+    model0_SMF_z               = [0.0, 1.38, 2.00]  # Redshifts you wish to plot the stellar mass function at.
+                                              # Will search for the closest simulation redshift.
+    model0_density_z           = [0.0, 1.38, 2.00]  # Redshifts you wish to plot the evolution of
                                        # densities at. Set to `None` for all redshifts.
     model0_alist_file          = "../input/millennium/trees/millennium.a_list"
     model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
     model0_dir_name            = "../tests/test_data/"
-    model0_file_name           = "test_sage_z0.000"
-    model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
+    model0_file_name           = "test_sage_z0.000"  # If using "sage_binary", pick an arbitrary "zX.XXX" file. 
+    model0_IMF                 = "Salpeter"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "c"
     model0_linestyle           = "-"
@@ -555,7 +551,7 @@ if __name__ == '__main__':
 
     # A couple of extra variables...
     plot_output_format    = ".png"
-    plot_output_path = "./plots_hdf5"  # Will be created if path doesn't exist.
+    plot_output_path = "./plots_history"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function at specified redshifts.

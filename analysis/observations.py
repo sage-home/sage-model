@@ -101,6 +101,46 @@ def plot_smf_data(ax, hubble_h, imf):
 
     return ax
 
+def plot_temporal_smf_data(ax, hubble_h, imf):
+
+    # Marchesini et al. 2009ApJ...701.1765M SMF, h=0.7
+
+    # We add plots for z=[0.1], z=[1.3,2.0], z=[2.0,3.0] and z=[3.0,4.0].
+    labels = ["Marchesini et al. 2009 z=[0.1]", "... z=[1.3,2.0]",
+              "... z=[2.0,3.0]", "... z=[3.0,4.0]"]
+    colors = ["k", "b", "g", "r"]
+    Mstar_exponent = [10.96, 10.91, 10.96, 11.38]
+    alpha = [-1.18, -0.99, -1.01, -1.39]
+    phistar = [30.87*1e-4, 10.17*1e-4, 3.95*1e-4, 0.53*1e-4]
+
+    # Each redshift is valid over a slightly different mass range.
+    M = [np.arange(7.0, 11.8, 0.01), np.arange(9.3, 11.8, 0.01),
+         np.arange(9.7, 11.8, 0.01), np.arange(10.0, 11.8, 0.01)]
+
+    # When we're plotting, need to check which IMF we're using.
+    if imf == "Salpeter":
+        M_plot = [np.log10(10.0**M_vals * 1.6) for M_vals in M]
+    elif imf == "Chabrier":
+        M_plot = [np.log10(10.0**M_vals * 1.6/1.8) for M_vals in M]
+
+    # Shift the mass by Mstar for each.
+    shifted_mass = []
+    for (mass, Mstar) in zip(M, Mstar_exponent):
+        shifted_mass.append(10 ** (mass - Mstar))
+
+    # Then calculate the Phi.
+    phi = []
+    for (shifted_M, phi_val, alpha_val) in zip(shifted_mass, phistar, alpha):
+        phi.append(np.log(10.0) * phi_val * shifted_M ** (alpha_val + 1) * np.exp(-shifted_M))
+
+    # Then plot!
+    for (M_vals, phi_vals, label, color) in zip(M_plot, phi, labels, colors):
+
+        ax.plot(M_vals, phi_vals, color=color, label=label, lw=10, ls=":", alpha=0.3)
+
+    return ax
+
+
 def plot_bmf_data(ax, hubble_h, imf):
 
     # Bell et al. 2003 BMF. They assume h=1.0.
