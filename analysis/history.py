@@ -131,16 +131,18 @@ class TemporalResults:
 
             model.density_snaps = [(np.abs(model.redshifts - density_redshift)).argmin() for
                                   density_redshift in model.density_redshifts]
-            model.SFRD = np.zeros(len(model.density_snaps), dtype=np.float64)
-            model.SMD = np.zeros(len(model.density_snaps), dtype=np.float64)
+            model.SFRD_dict = {} 
+            model.SMD_dict = {} 
 
             # We'll need to loop all snapshots, ignoring duplicates.
             snaps_to_loop = np.unique(model.SMF_snaps + model.density_snaps)
 
             for snap in snaps_to_loop:
 
-                # Reset the SMF
+                # Reset the tracking.
                 model.SMF = np.zeros(len(model.stellar_mass_bins)-1, dtype=np.float64)
+                model.SFRD = 0.0
+                model.SMD = 0.0
 
                 # Update the snapshot we're reading from. Subclass specific.
                 model.update_snapshot(snap)
@@ -148,9 +150,17 @@ class TemporalResults:
                 # Calculate all the properties.
                 model.calc_properties_all_files(debug=debug)
 
-                # We need to place the SMF inside the array to carry through.
+                # We need to place the SMF inside the dictionary to carry through.
                 if snap in model.SMF_snaps:
                     model.SMF_dict[snap] = model.SMF
+
+                # Same with the densities.
+                if snap in model.density_snaps:
+                    if model.SFRD_toggle:
+                        model.SFRD_dict[snap] = model.SFRD
+
+                    if model.SMD_toggle:
+                        model.SMD_dict[snap] = model.SMD
 
             all_models.append(model)
 
@@ -185,151 +195,9 @@ class TemporalResults:
             print("Plotting the evolution of the Star Formation Rate Density.")
             plots.plot_SFRD(self)
 
-        if plot_toggles["SMFD"] == 1:
+        if plot_toggles["SMD"] == 1:
             print("Plotting the evolution of the Stellar Mass Function Density.")
-            plots.plot_SFRD(self)
-
-
-# --------------------------------------------------------
-
-    def StellarMassFunction(self, G_history):
-
-        plt.figure()  # New figure
-        ax = plt.subplot(111)  # 1 plot on the figure
-
-        binwidth = 0.1  # mass function histogram bin width
-            
-
-        M = np.arange(9.3, 11.8, 0.01)
-        Mstar = np.log10(10.0**10.91)
-        alpha = -0.99
-        phistar = 10.17*1e-4
-        xval = 10.0 ** (M-Mstar)
-        yval = np.log(10.) * phistar * xval ** (alpha+1) * np.exp(-xval)
-        if(whichimf == 0):
-            plt.plot(np.log10(10.0**M *1.6), yval, 'b:', lw=10, alpha=0.5, label='... z=[1.3,2.0]')
-        elif(whichimf == 1):
-            plt.plot(np.log10(10.0**M *1.6/1.8), yval, 'b:', lw=10, alpha=0.5, label='... z=[1.3,2.0]')
-
-        M = np.arange(9.7, 11.8, 0.01)
-        Mstar = np.log10(10.0**10.96)
-        alpha = -1.01
-        phistar = 3.95*1e-4
-        xval = 10.0 ** (M-Mstar)
-        yval = np.log(10.) * phistar * xval ** (alpha+1) * np.exp(-xval)
-        if(whichimf == 0):
-            plt.plot(np.log10(10.0**M *1.6), yval, 'g:', lw=10, alpha=0.5, label='... z=[2.0,3.0]')
-        elif(whichimf == 1):
-            plt.plot(np.log10(10.0**M *1.6/1.8), yval, 'g:', lw=10, alpha=0.5, label='... z=[2.0,3.0]')
-
-        M = np.arange(10.0, 11.8, 0.01)
-        Mstar = np.log10(10.0**11.38)
-        alpha = -1.39
-        phistar = 0.53*1e-4
-        xval = 10.0 ** (M-Mstar)
-        yval = np.log(10.) * phistar * xval ** (alpha+1) * np.exp(-xval)
-        if(whichimf == 0):
-            plt.plot(np.log10(10.0**M *1.6), yval, 'r:', lw=10, alpha=0.5, label='... z=[3.0,4.0]')
-        elif(whichimf == 1):
-            plt.plot(np.log10(10.0**M *1.6/1.8), yval, 'r:', lw=10, alpha=0.5, label='... z=[3.0,4.0]')
-
-
-        ###### z=0
-        
-        w = np.where(G_history[self.SMFsnaps[0]].StellarMass > 0.0)[0]
-        mass = np.log10(G_history[self.SMFsnaps[0]].StellarMass[w] * 1.0e10 /self.Hubble_h)
-
-        mi = np.floor(min(mass)) - 2
-        ma = np.floor(max(mass)) + 2
-        NB = (ma - mi) / binwidth
-
-        (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-
-        # Set the x-axis values to be the centre of the bins
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-        # Overplot the model histograms
-        plt.plot(xaxeshisto, counts / self.volume *self.Hubble_h*self.Hubble_h*self.Hubble_h / binwidth, 'k-', label='Model galaxies')
-
-        ###### z=1.3
-        
-        w = np.where(G_history[self.SMFsnaps[1]].StellarMass > 0.0)[0]
-        mass = np.log10(G_history[self.SMFsnaps[1]].StellarMass[w] * 1.0e10 /self.Hubble_h)
-
-        mi = np.floor(min(mass)) - 2
-        ma = np.floor(max(mass)) + 2
-        NB = (ma - mi) / binwidth
-
-        (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-
-        # Set the x-axis values to be the centre of the bins
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-        # Overplot the model histograms
-        plt.plot(xaxeshisto, counts / self.volume *self.Hubble_h*self.Hubble_h*self.Hubble_h / binwidth, 'b-')
-
-        ###### z=2
-        
-        w = np.where(G_history[self.SMFsnaps[2]].StellarMass > 0.0)[0]
-        mass = np.log10(G_history[self.SMFsnaps[2]].StellarMass[w] * 1.0e10 /self.Hubble_h)
-
-        mi = np.floor(min(mass)) - 2
-        ma = np.floor(max(mass)) + 2
-        NB = (ma - mi) / binwidth
-
-        (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-
-        # Set the x-axis values to be the centre of the bins
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-        # Overplot the model histograms
-        plt.plot(xaxeshisto, counts / self.volume *self.Hubble_h*self.Hubble_h*self.Hubble_h / binwidth, 'g-')
-
-        ###### z=3
-        
-        w = np.where(G_history[self.SMFsnaps[3]].StellarMass > 0.0)[0]
-        mass = np.log10(G_history[self.SMFsnaps[3]].StellarMass[w] * 1.0e10 /self.Hubble_h)
-
-        mi = np.floor(min(mass)) - 2
-        ma = np.floor(max(mass)) + 2
-        NB = (ma - mi) / binwidth
-
-        (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-
-        # Set the x-axis values to be the centre of the bins
-        xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-        # Overplot the model histograms
-        plt.plot(xaxeshisto, counts / self.volume *self.Hubble_h*self.Hubble_h*self.Hubble_h / binwidth, 'r-')
-
-        ######        
-
-        plt.yscale('log', nonposy='clip')
-
-        plt.axis([8.0, 12.5, 1.0e-6, 1.0e-1])
-
-        # Set the x-axis minor ticks
-        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
-
-        plt.ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1}$)')  # Set the y...
-        plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
-
-        leg = plt.legend(loc='lower left', numpoints=1,
-                         labelspacing=0.1)
-        leg.draw_frame(False)  # Don't want a box frame
-        for t in leg.get_texts():  # Reduce the size of the text
-            t.set_fontsize('medium')
-
-        outputFile = OutputDir + 'A.StellarMassFunction_z' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
-        plt.close()
-
-        # Add this plot to our output list
-        OutputList.append(outputFile)
-
-
-
-# ---------------------------------------------------------
+            plots.plot_SMD(self)
 
     def PlotHistory_SFRdensity(self, G_history):
 
@@ -520,7 +388,7 @@ if __name__ == '__main__':
     model0_alist_file          = "../input/millennium/trees/millennium.a_list"
     model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
     model0_dir_name            = "../tests/test_data/"
-    model0_file_name           = "test_sage_z0.000"  # If using "sage_binary", pick an arbitrary "zX.XXX" file. 
+    model0_file_name           = "test_sage"  # If using "sage_binary", doesn't have to end in "_zX.XXX" 
     model0_IMF                 = "Salpeter"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "c"

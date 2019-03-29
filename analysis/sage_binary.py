@@ -264,7 +264,17 @@ class SageBinaryModel(Model):
         None.  ``model_path`` is updated directly.
         """
 
+        new_redshift = self.redshifts[snapshot]
+
         # model_path is of the form "<Initial/Path/To/File_zX.XXX>"
         # Hence need to update the last 5 characters.
-        new_redshift = self.redshifts[snapshot]
-        self.model_path = "{0}{1:.3f}".format(self.model_path[:-5], new_redshift)
+
+        # If this is the first time we're calling this method, then we will need to set
+        # the path fully.
+        try:
+            dummy = self.set_redshift
+        except AttributeError:
+            self.set_redshift = True
+            self.model_path = "{0}_z{1:.3f}".format(self.model_path, new_redshift)
+        else:
+            self.model_path = "{0}{1:.3f}".format(self.model_path[:-5], new_redshift)

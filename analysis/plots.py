@@ -166,7 +166,8 @@ def plot_temporal_SMF(temporal_results):
     Returns
     =======
 
-    None.  The plot will be saved as "<results.plot_output_path>/A.StellarMassFunction<results.plot_output_path>"
+    None.  The plot will be saved as
+    "<temporal_results.plot_output_path>/A.StellarMassFunction<temporal_results.plot_output_path>"
     """
 
     fig = plt.figure()
@@ -190,9 +191,8 @@ def plot_temporal_SMF(temporal_results):
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
-    zeroth_hubble_h = (temporal_results.models)[0].hubble_h
     zeroth_IMF = (temporal_results.models)[0].IMF
-    ax = obs.plot_temporal_smf_data(ax, zeroth_hubble_h, zeroth_IMF) 
+    ax = obs.plot_temporal_smf_data(ax, zeroth_IMF) 
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
@@ -982,6 +982,61 @@ def plot_spatial_3d(pos, output_file, box_size):
     ax.set_ylabel(r"$\mathbf{y \: [h^{-1}Mpc]}$")
     ax.set_zlabel(r"$\mathbf{z \: [h^{-1}Mpc]}$")
 
+    fig.savefig(output_file)
+    print("Saved file to {0}".format(output_file))
+    plt.close()
+
+def plot_SFRD(temporal_results):
+    """
+    Plots the evolution of the star formation rate for the models within the ``TemporalResults``
+    class instance.
+
+    Parameters
+    ==========
+
+    temporal_results : ``TemporalResults`` class instance
+        Class instance that contains the calculated properties for all the models.  The
+        class is defined in the ``history.py`` with the individual ``Model`` classes
+        and properties defined and calculated in the ``model.py`` module.
+
+    Returns
+    =======
+
+    None.  The plot will be saved as
+    "<temporal_results.plot_output_path>/B.History-SFR-Density<temporal_results.plot_output_path>"
+    """
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    for model in temporal_results.models:
+
+        label = model.model_label
+        color = model.color
+        linestyle = model.linestyle
+
+        # The SFRD is in a dictionary. Pull it out into a array for plotting.
+        SFRD = np.array([model.SFRD_dict[snap] for snap in model.SFRD_dict.keys()])
+        print(np.log10(SFRD / model.volume*pow(model.hubble_h, 3)))
+        print(model.volume)
+        ax.plot(model.redshifts[model.density_snaps], np.log10(SFRD / model.volume*pow(model.hubble_h, 3)),
+                label=label, color=color, ls=linestyle)
+
+    ax = obs.plot_sfrd_data(ax) 
+
+    ax.set_xlabel(r"$\mathrm{redshift}$")
+    ax.set_ylabel(r"$\log_{10} \mathrm{SFR\ density}\ (M_{\odot}\ \mathrm{yr}^{-1}\ \mathrm{Mpc}^{-3})$")
+
+    ax.set_xlim([0.0, 8.0])
+    ax.set_ylim([-3.0, -0.4])
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    
+    adjust_legend(ax, location="lower left", scatter_plot=0)
+
+    output_file = "{0}/B.History-SFR-Density{1}".format(temporal_results.plot_output_path,
+                                                        temporal_results.plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()

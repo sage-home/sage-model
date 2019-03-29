@@ -110,7 +110,7 @@ class Model:
         # Set the initial plot toggles.
         allowed_plots = ["SMF", "BMF", "GMF", "BTF", "sSFR", "gas_frac", "metallicity",
                          "bh_bulge", "quiescent", "bulge_fraction", "baryon_fraction",
-                         "reservoirs", "spatial", "SFRD", "SMFD"]
+                         "reservoirs", "spatial", "SFRD", "SMD"]
         for plot in allowed_plots:
             toggle_name = "{0}_toggle".format(plot)
             setattr(self, toggle_name, 0)
@@ -185,7 +185,7 @@ class Model:
 
         # Densities are the sum across the entire redshift.
         self.SFRD = 0.0
-        self.SMFD = 0.0
+        self.SMD = 0.0
 
 
     def calc_properties_all_files(self, debug=False):
@@ -539,16 +539,19 @@ class Model:
                 attribute_value.extend(list(pos))
                 setattr(self, attribute_name, attribute_value)
 
-        if self.SFRD_toggle:
+        # Check if we're plotting the SFRD and the snapshot is requested.
+        if self.SFRD_toggle and gals["SnapNum"][0] in self.density_snaps:
 
-            non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
-            SFR = gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]
-
+            SFR = gals["SfrDisk"][:] + gals["SfrBulge"][:]
             self.SFRD += np.sum(SFR)
 
-        if self.SMFD_toggle:
+            print(np.max(SFR))
+            print(np.sum(SFR))
+            print(np.sum(SFR) / 244140.625)
+
+        if self.SMD_toggle and gals["SnapNum"][0] in self.density_snaps:
 
             non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
             stellar_mass = gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h
 
-            self.SMFD += np.sum(stellar_mass)
+            self.SMD += np.sum(stellar_mass)
