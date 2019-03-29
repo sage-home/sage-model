@@ -528,11 +528,12 @@ class Model:
                 non_zero = np.random.choice(non_zero, size=file_sample_size)
 
             attribute_names = ["x_pos", "y_pos", "z_pos"]
+            data_names = ["Posx", "Posy", "Posz"]
 
-            for (dim, attribute_name) in enumerate(attribute_names):
+            for (attribute_name, data_name) in zip(attribute_names, data_names):
 
                 # Units are Mpc/h.
-                pos = gals["Pos"][:][non_zero, dim]
+                pos = gals[data_name][:][non_zero]
 
                 attribute_value = getattr(self, attribute_name)
                 attribute_value.extend(list(pos))

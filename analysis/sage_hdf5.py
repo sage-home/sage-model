@@ -128,37 +128,6 @@ class SageHdf5Model(Model):
         gals = self.hdf5_file[core_key][snap_key]
         num_gals_read = self.hdf5_file[core_key][snap_key].attrs["ngals"]
 
-        # For the HDF5 file, some data sets have dimensions Nx1 rather than Nx3
-        # (e.g., Position). To ensure the galaxy data format is identical to the binary
-        # output, we will create new datasets that are Nx3.
-        multidim_fields = ["Pos", "Vel", "Spin"]
-        dim_names = ["x", "y", "z"]
-
-        for field in multidim_fields:
-
-            # The user may have already joined these fields together.  Hence first check
-            # that it doesn't exist.  If it does exist, check it has the correct shape.
-            try:
-                field_shape = gals[field].shape
-            except KeyError:
-                pass
-            else:
-                if field_shape != (num_gals_read, 3):
-                    print("For field {0} in the HDF5 file {1} we had a shape of {2}. We "
-                          "expected ({3}, 3)".format(field, self.model_path, field_shape,
-                                                     num_gals_read))
-                    raise ValueError
-                continue
-
-            # If it doesn't exist, create it.
-            array = np.empty((num_gals_read, 3))
-
-            for dim_num, dim_name in enumerate(dim_names):
-                field_name = "{0}{1}".format(field, dim_name)
-                array[:, dim_num] = gals[field_name][:]
-
-            gals[field] = array
-
         # If we're using the `tqdm` package, update the progress bar.
         if pbar:
             pbar.set_postfix(file=core_key, refresh=False)

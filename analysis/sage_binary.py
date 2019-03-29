@@ -38,7 +38,7 @@ class SageBinaryModel(Model):
     def get_galaxy_struct(self):
         """
         Sets the ``numpy`` structured array for holding the galaxy data. The attribute
-        ``galaxy_struct`` is updated within the function.
+        ``galaxy_struct`` and ``galaxy_multi_fields`` are updated within the function.
         """
 
         galdesc_full = [
@@ -227,6 +227,20 @@ class SageBinaryModel(Model):
             pos = gals["Pos"][:]
             output_file = "./galaxies_{0}{1}".format(file_num, self.output_format)
             plots.plot_spatial_3d(pos, output_file, self.box_size)
+
+        # For the HDF5 file, some data sets have dimensions Nx1 rather than Nx3
+        # (e.g., Position). To ensure the galaxy data format is identical to the binary
+        # output, we will split the binary fields into Nx1. This is simpler than creating
+        # a new dataset within the HDF5 regime.
+        from numpy.lib import recfunctions as rfn
+        multidim_fields = ["Pos", "Vel", "Spin"]
+        dim_names = ["x", "y", "z"]
+
+        for field in multidim_fields:
+            for dim_num, dim_name in enumerate(dim_names):
+                dim_field = "{0}{1}".format(field, dim_name)
+                gals = rfn.rec_append_fields(gals, dim_field,
+                                             gals[field][:, dim_num])
 
         return gals
 
