@@ -207,7 +207,6 @@ class Model:
         None.
         """
 
-        print("Processing galaxies and calculating properties for Model {0}".format(self.model_label))
         start_time = time.time()
 
         # First determine how many galaxies are in all files.
@@ -247,8 +246,10 @@ class Model:
 
         end_time = time.time()
         duration = end_time - start_time
-        print("Took {0:.2f} seconds ({1:.2f} minutes)".format(duration, duration/60.0))
-        print("")
+
+        if debug:
+            print("Took {0:.2f} seconds ({1:.2f} minutes)".format(duration, duration/60.0))
+            print("")
 
 
     def calc_properties(self, gals):

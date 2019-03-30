@@ -7,7 +7,7 @@ To add your own data format, create a subclass module (e.g., ``sage_binary.py``)
 option to ``Results.__init__``.  This subclass module needs methods ``set_cosmology()``,
 ``determine_num_gals()`` and  ``read_gals()``.
 
-Authors: Jacob Seiler
+Author: Jacob Seiler
 """
 
 import plots as plots
@@ -213,8 +213,8 @@ if __name__ == "__main__":
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
     model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
-    model0_dir_name            = "../tests/test_data/"
-    model0_file_name           = "test_sage_z0.000"
+    model0_dir_name            = "../output/millennium/"
+    model0_file_name           = "model_z0.000"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "c"
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     model0_marker              = "x"
     model0_first_file          = 0  # The files read in will be [first_file, last_file]
     model0_last_file           = 0  # This is a closed interval.
-    model0_simulation          = "Mini-Millennium"  # Sets the cosmology.
+    model0_simulation          = "Mini-Millennium"  # Sets the cosmology. Required for "sage_binary".
     model0_hdf5_snapshot       = 63  # Snapshot we're plotting the HDF5 data at.
     model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
 

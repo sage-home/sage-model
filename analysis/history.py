@@ -1,7 +1,15 @@
 #!/usr/bin/env python
+"""
+Handles plotting properties over multiple redshifts.  Multiple models can be placed onto
+the plots by extending the variables in the ``__main__`` function call.
 
-import matplotlib
-matplotlib.use('Agg')
+To add your own data format, create a subclass module (e.g., ``sage_binary.py``) and add an
+option to ``Results.__init__``.  This subclass module needs methods ``set_cosmology()``,
+``determine_num_gals()``, ``read_gals()`` and ``update_redshift()``.
+
+Author: Jacob Seiler
+"""
+
 
 import plots as plots
 
@@ -14,19 +22,19 @@ except ImportError:
     print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
           "this package.")
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    print("Package 'tqdm' not found. Not showing pretty progress bars :(")
+else:
+    pass
+
 import numpy as np
-import pylab as plt
-from random import sample, seed
-from os.path import getsize as getFileSize
 
-# ================================================================================
-# Basic variables
-# ================================================================================
-
-# Set up some basic attributes of the run
-
-whichsimulation = 0
-whichimf = 1        # 0=Slapeter; 1=Chabrier
+# Sometimes we divide a galaxy that has zero mass (e.g., no cold gas). Ignore these
+# warnings as they spam stdout.
+old_error_settings = np.seterr()
+np.seterr(all="ignore")
 
 
 class TemporalResults:
@@ -113,31 +121,36 @@ class TemporalResults:
             elif model_dict["sage_output_format"] == "sage_hdf5":
                 model = SageHdf5Model(model_dict, plot_toggles)
 
+            print("Processing data for model {0}".format(model.model_label))
+
             # We may be plotting the density at all snapshots...
             if model.density_redshifts == -1:
                 model.density_redshifts = model.redshifts
 
             model.plot_output_format = plot_output_format
-
             model.set_cosmology()
 
-            # To be more memory concious, we calculate the required properties on a
-            # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
-
             # The SMF and the Density plots may have different snapshot requirements.
+            # Find the snapshots that most closely match the requested redshifts.
             model.SMF_snaps = [(np.abs(model.redshifts - SMF_redshift)).argmin() for
                               SMF_redshift in model.SMF_redshifts]
             model.SMF_dict = {}
 
             model.density_snaps = [(np.abs(model.redshifts - density_redshift)).argmin() for
                                   density_redshift in model.density_redshifts]
-            model.SFRD_dict = {} 
-            model.SMD_dict = {} 
+            model.SFRD_dict = {}
+            model.SMD_dict = {}
 
             # We'll need to loop all snapshots, ignoring duplicates.
             snaps_to_loop = np.unique(model.SMF_snaps + model.density_snaps)
 
-            for snap in snaps_to_loop:
+            # Use a tqdm progress bar if possible.
+            try:
+                snap_iter = tqdm(snaps_to_loop, unit="Snapshot")
+            except NameError:
+                snap_iter = snaps_to_loop
+
+            for snap in snap_iter:
 
                 # Reset the tracking.
                 model.SMF = np.zeros(len(model.stellar_mass_bins)-1, dtype=np.float64)
@@ -199,176 +212,6 @@ class TemporalResults:
             print("Plotting the evolution of the Stellar Mass Function Density.")
             plots.plot_SMD(self)
 
-    def PlotHistory_SFRdensity(self, G_history):
-
-        plt.figure()  # New figure
-        ax = plt.subplot(111)  # 1 plot on the figure
-
-        ObsSFRdensity = np.array([
-            [0, 0.0158489, 0, 0, 0.0251189, 0.01000000],
-            [0.150000, 0.0173780, 0, 0.300000, 0.0181970, 0.0165959],
-            [0.0425000, 0.0239883, 0.0425000, 0.0425000, 0.0269153, 0.0213796],
-            [0.200000, 0.0295121, 0.100000, 0.300000, 0.0323594, 0.0269154],
-            [0.350000, 0.0147911, 0.200000, 0.500000, 0.0173780, 0.0125893],
-            [0.625000, 0.0275423, 0.500000, 0.750000, 0.0331131, 0.0229087],
-            [0.825000, 0.0549541, 0.750000, 1.00000, 0.0776247, 0.0389045],
-            [0.625000, 0.0794328, 0.500000, 0.750000, 0.0954993, 0.0660693],
-            [0.700000, 0.0323594, 0.575000, 0.825000, 0.0371535, 0.0281838],
-            [1.25000, 0.0467735, 1.50000, 1.00000, 0.0660693, 0.0331131],
-            [0.750000, 0.0549541, 0.500000, 1.00000, 0.0389045, 0.0776247],
-            [1.25000, 0.0741310, 1.00000, 1.50000, 0.0524807, 0.104713],
-            [1.75000, 0.0562341, 1.50000, 2.00000, 0.0398107, 0.0794328],
-            [2.75000, 0.0794328, 2.00000, 3.50000, 0.0562341, 0.112202],
-            [4.00000, 0.0309030, 3.50000, 4.50000, 0.0489779, 0.0194984],
-            [0.250000, 0.0398107, 0.00000, 0.500000, 0.0239883, 0.0812831],
-            [0.750000, 0.0446684, 0.500000, 1.00000, 0.0323594, 0.0776247],
-            [1.25000, 0.0630957, 1.00000, 1.50000, 0.0478630, 0.109648],
-            [1.75000, 0.0645654, 1.50000, 2.00000, 0.0489779, 0.112202],
-            [2.50000, 0.0831764, 2.00000, 3.00000, 0.0512861, 0.158489],
-            [3.50000, 0.0776247, 3.00000, 4.00000, 0.0416869, 0.169824],
-            [4.50000, 0.0977237, 4.00000, 5.00000, 0.0416869, 0.269153],
-            [5.50000, 0.0426580, 5.00000, 6.00000, 0.0177828, 0.165959],
-            [3.00000, 0.120226, 2.00000, 4.00000, 0.173780, 0.0831764],
-            [3.04000, 0.128825, 2.69000, 3.39000, 0.151356, 0.109648],
-            [4.13000, 0.114815, 3.78000, 4.48000, 0.144544, 0.0912011],
-            [0.350000, 0.0346737, 0.200000, 0.500000, 0.0537032, 0.0165959],
-            [0.750000, 0.0512861, 0.500000, 1.00000, 0.0575440, 0.0436516],
-            [1.50000, 0.0691831, 1.00000, 2.00000, 0.0758578, 0.0630957],
-            [2.50000, 0.147911, 2.00000, 3.00000, 0.169824, 0.128825],
-            [3.50000, 0.0645654, 3.00000, 4.00000, 0.0776247, 0.0512861],
-            ], dtype=np.float32)
- 
-        ObsRedshift = ObsSFRdensity[:, 0]
-        xErrLo = ObsSFRdensity[:, 0]-ObsSFRdensity[:, 2]
-        xErrHi = ObsSFRdensity[:, 3]-ObsSFRdensity[:, 0]
-
-        ObsSFR = np.log10(ObsSFRdensity[:, 1])
-        yErrLo = np.log10(ObsSFRdensity[:, 1])-np.log10(ObsSFRdensity[:, 4])
-        yErrHi = np.log10(ObsSFRdensity[:, 5])-np.log10(ObsSFRdensity[:, 1])
-
-        # plot observational data (compilation used in Croton et al. 2006)
-        plt.errorbar(ObsRedshift, ObsSFR, yerr=[yErrLo, yErrHi], xerr=[xErrLo, xErrHi], color='g', lw=1.0, alpha=0.3, marker='o', ls='none', label='Observations')
-
-        SFR_density = np.zeros((LastSnap+1-FirstSnap))       
-        for snap in xrange(FirstSnap,LastSnap+1):
-          SFR_density[snap-FirstSnap] = sum(G_history[snap].SfrDisk+G_history[snap].SfrBulge) / self.volume * self.Hubble_h*self.Hubble_h*self.Hubble_h
-    
-        z = np.array(self.redshift)
-        nonzero = np.where(SFR_density > 0.0)[0]
-        plt.plot(z[nonzero], np.log10(SFR_density[nonzero]), lw=3.0)
-   
-        plt.ylabel(r'$\log_{10} \mathrm{SFR\ density}\ (M_{\odot}\ \mathrm{yr}^{-1}\ \mathrm{Mpc}^{-3})$')  # Set the y...
-        plt.xlabel(r'$\mathrm{redshift}$')  # and the x-axis labels
-    
-        # Set the x and y axis minor ticks
-        ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
-        ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
-    
-        plt.axis([0.0, 8.0, -3.0, -0.4])            
-    
-        outputFile = OutputDir + 'B.History-SFR-density' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
-        plt.close()
-    
-        # Add this plot to our output list
-        OutputList.append(outputFile)
-
-
-# ---------------------------------------------------------
-
-    def StellarMassDensityEvolution(self, G_history):
-
-
-        plt.figure()  # New figure
-        ax = plt.subplot(111)  # 1 plot on the figure
-
-        # SMD observations taken from Marchesini+ 2009, h=0.7
-        # Values are (minz, maxz, rho,-err,+err)
-        dickenson2003 = np.array(((0.6,1.4,8.26,0.08,0.08),
-                         (1.4,2.0,7.86,0.22,0.33),
-                         (2.0,2.5,7.58,0.29,0.54),
-                         (2.5,3.0,7.52,0.51,0.48)),float)
-        drory2005 = np.array(((0.25,0.75,8.3,0.15,0.15),
-                    (0.75,1.25,8.16,0.15,0.15),
-                    (1.25,1.75,8.0,0.16,0.16),
-                    (1.75,2.25,7.85,0.2,0.2),
-                    (2.25,3.0,7.75,0.2,0.2),
-                    (3.0,4.0,7.58,0.2,0.2)),float)
-        # Perez-Gonzalez (2008)
-        pg2008 = np.array(((0.2,0.4,8.41,0.06,0.06),
-                 (0.4,0.6,8.37,0.04,0.04),
-                 (0.6,0.8,8.32,0.05,0.05),
-                 (0.8,1.0,8.24,0.05,0.05),
-                 (1.0,1.3,8.15,0.05,0.05),
-                 (1.3,1.6,7.95,0.07,0.07),
-                 (1.6,2.0,7.82,0.07,0.07),
-                 (2.0,2.5,7.67,0.08,0.08),
-                 (2.5,3.0,7.56,0.18,0.18),
-                 (3.0,3.5,7.43,0.14,0.14),
-                 (3.5,4.0,7.29,0.13,0.13)),float)
-        glazebrook2004 = np.array(((0.8,1.1,7.98,0.14,0.1),
-                         (1.1,1.3,7.62,0.14,0.11),
-                         (1.3,1.6,7.9,0.14,0.14),
-                         (1.6,2.0,7.49,0.14,0.12)),float)
-        fontana2006 = np.array(((0.4,0.6,8.26,0.03,0.03),
-                      (0.6,0.8,8.17,0.02,0.02),
-                      (0.8,1.0,8.09,0.03,0.03),
-                      (1.0,1.3,7.98,0.02,0.02),
-                      (1.3,1.6,7.87,0.05,0.05),
-                      (1.6,2.0,7.74,0.04,0.04),
-                      (2.0,3.0,7.48,0.04,0.04),
-                      (3.0,4.0,7.07,0.15,0.11)),float)
-        rudnick2006 = np.array(((0.0,1.0,8.17,0.27,0.05),
-                      (1.0,1.6,7.99,0.32,0.05),
-                      (1.6,2.4,7.88,0.34,0.09),
-                      (2.4,3.2,7.71,0.43,0.08)),float)
-        elsner2008 = np.array(((0.25,0.75,8.37,0.03,0.03),
-                     (0.75,1.25,8.17,0.02,0.02),
-                     (1.25,1.75,8.02,0.03,0.03),
-                     (1.75,2.25,7.9,0.04,0.04),
-                     (2.25,3.0,7.73,0.04,0.04),
-                     (3.0,4.0,7.39,0.05,0.05)),float)
-
-        obs = (dickenson2003,drory2005,pg2008,glazebrook2004,
-               fontana2006,rudnick2006,elsner2008)
-
-        for o in obs:
-            xval = ((o[:,1]-o[:,0])/2.)+o[:,0]
-            if(whichimf == 0):
-                ax.errorbar(xval, np.log10(10**o[:,2] *1.6), xerr=(xval-o[:,0], o[:,1]-xval), yerr=(o[:,3], o[:,4]), alpha=0.3, lw=1.0, marker='o', ls='none')
-            elif(whichimf == 1):
-                ax.errorbar(xval, np.log10(10**o[:,2] *1.6/1.8), xerr=(xval-o[:,0], o[:,1]-xval), yerr=(o[:,3], o[:,4]), alpha=0.3, lw=1.0, marker='o', ls='none')
-                
-
-        smd = np.zeros((LastSnap+1-FirstSnap))       
-
-        for snap in xrange(FirstSnap,LastSnap+1):
-          w = np.where((G_history[snap].StellarMass/self.Hubble_h > 0.01) & (G_history[snap].StellarMass/self.Hubble_h < 1000.0))[0]
-          if(len(w) > 0):
-            smd[snap-FirstSnap] = sum(G_history[snap].StellarMass[w]) *1.0e10/self.Hubble_h / (self.volume /self.Hubble_h/self.Hubble_h/self.Hubble_h)
-
-        z = np.array(self.redshift)
-        nonzero = np.where(smd > 0.0)[0]
-        plt.plot(z[nonzero], np.log10(smd[nonzero]), 'k-', lw=3.0)
-
-        plt.ylabel(r'$\log_{10}\ \phi\ (M_{\odot}\ \mathrm{Mpc}^{-3})$')  # Set the y...
-        plt.xlabel(r'$\mathrm{redshift}$')  # and the x-axis labels
-
-        # Set the x and y axis minor ticks
-        ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
-        ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
-
-        plt.axis([0.0, 4.2, 6.5, 9.0])   
-
-        outputFile = OutputDir + 'C.History-stellar-mass-density' + OutputFormat
-        plt.savefig(outputFile)  # Save the figure
-        plt.close()
-
-        # Add this plot to our output list
-        OutputList.append(outputFile)
-
-
-# =================================================================
 
 if __name__ == '__main__':
 
@@ -379,16 +222,15 @@ if __name__ == '__main__':
     # E.g., 'model1_sage_output_format = ...", "model1_dir_name = ...".
     # `first_file`, `last_file`, `simulation` and `num_tree_files` only need to be
     # specified if using binary output. HDF5 will automatically detect these.
-    # `hdf5_snapshot` is only nedded if using HDF5 output.
 
     model0_SMF_z               = [0.0, 0.5, 1.00, 2.00, 3.00]  # Redshifts you wish to plot the stellar mass function at.
-                                              # Will search for the closest simulation redshift.
+                                 # Will search for the closest simulation redshift.
     model0_density_z           = -1  # Redshifts you wish to plot the evolution of
-                                       # densities at. Set to -1 for all redshifts.
+                                     # densities at. Set to -1 for all redshifts.
     model0_alist_file          = "../input/millennium/trees/millennium.a_list"
-    model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
+    model0_sage_output_format  = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
     model0_dir_name            = "../output/millennium/"
-    model0_file_name           = "model"  # If using "sage_binary", doesn't have to end in "_zX.XXX" 
+    model0_file_name           = "model.hdf5"  # If using "sage_binary", doesn't have to end in "_zX.XXX" 
     model0_IMF                 = "Salpeter"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "c"
@@ -396,7 +238,7 @@ if __name__ == '__main__':
     model0_marker              = "x"
     model0_first_file          = 0  # The files read in will be [first_file, last_file]
     model0_last_file           = 0  # This is a closed interval.
-    model0_simulation          = "Mini-Millennium"  # Sets the cosmology.
+    model0_simulation          = "Mini-Millennium"  # Sets the cosmology for "sage_binary".
     model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
 
     # Then extend each of these lists for all the models that you want to plot.
