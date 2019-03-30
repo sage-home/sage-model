@@ -326,6 +326,9 @@ struct params
     double *Age;
 
     int interrupted;/* to re-print the progress-bar */
+
+    int32_t ThisTask;
+    int32_t NTasks;
 };
 
 

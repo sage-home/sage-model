@@ -114,7 +114,7 @@ int32_t save_galaxies(const int ThisTask, const int tree, const int numgals, str
 
 #ifdef HDF5
     case(sage_hdf5):
-        status = save_hdf5_galaxies(ThisTask, tree, numgals, halos, haloaux, halogal, save_info, run_params);
+        status = save_hdf5_galaxies(tree, numgals, halos, haloaux, halogal, save_info, run_params);
         break;
 #endif
 

@@ -22,7 +22,7 @@
 int32_t generate_field_metadata(char **field_names, char **field_descriptions, char **field_units,
                                 hsize_t *field_dtypes);
 
-int32_t prepare_galaxy_for_hdf5_output(int ThisTask, int tree, struct GALAXY *g, struct save_info *save_info,
+int32_t prepare_galaxy_for_hdf5_output(int tree, struct GALAXY *g, struct save_info *save_info,
                                        int32_t output_snap_idx, struct halo_data *halos,
                                        struct halo_aux_data *haloaux, struct GALAXY *halogal,
                                        const struct params *run_params);
@@ -342,7 +342,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
 // Add all the galaxies for this tree to the buffer.  If we hit the buffer limit, write all the
 // galaxies to file.
-int32_t save_hdf5_galaxies(const int32_t filenr, const int32_t treenr, const int32_t num_gals,
+int32_t save_hdf5_galaxies(const int32_t treenr, const int32_t num_gals,
                            struct halo_data *halos, struct halo_aux_data *haloaux, struct GALAXY *halogal,
                            struct save_info *save_info, const struct params *run_params)
 {
@@ -357,7 +357,7 @@ int32_t save_hdf5_galaxies(const int32_t filenr, const int32_t treenr, const int
 
         // Add galaxies to buffer.
         int32_t snap_idx = haloaux[gal_idx].output_snap_n;
-        prepare_galaxy_for_hdf5_output(filenr, treenr, &halogal[gal_idx], save_info, snap_idx, halos, haloaux, halogal, run_params);
+        prepare_galaxy_for_hdf5_output(treenr, &halogal[gal_idx], save_info, snap_idx, halos, haloaux, halogal, run_params);
         save_info->num_gals_in_buffer[snap_idx]++;
 
         // We can't guarantee that this tree will contain enough galaxies to trigger a write.
@@ -587,10 +587,10 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
 #undef FREE_GALAXY_OUTPUT_INNER_ARRAY
 
 
-int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, const struct params *run_params)
+int32_t create_hdf5_master_file(const struct params *run_params)
 {
     // Only Task 0 needs to do stuff from here.
-    if(ThisTask > 0) {
+    if(run_params->ThisTask > 0) {
         return EXIT_SUCCESS;
     }
 
@@ -621,7 +621,7 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     char target_fname[3*MAX_STRING_LEN];
     char core_fname[MAX_STRING_LEN];
 
-    for(int32_t task_idx = 0; task_idx < NTasks; ++task_idx) {
+    for(int32_t task_idx = 0; task_idx < run_params->NTasks; ++task_idx) {
 
         snprintf(core_fname, MAX_STRING_LEN - 1, "Core_%d", task_idx);
         snprintf(target_fname, 3*MAX_STRING_LEN - 1, "./%s_%d.hdf5", run_params->FileNameGalaxies, task_idx);
@@ -639,8 +639,6 @@ int32_t create_hdf5_master_file(const int32_t ThisTask, const int32_t NTasks, co
     CHECK_STATUS_AND_RETURN_ON_FAIL(group_id, (int32_t) group_id,
                                     "Failed to create the Header group for the master file.\nThe file ID was %d\n",
                                     (int32_t) master_file_id);
-
-    CREATE_SINGLE_ATTRIBUTE(group_id, "num_cores", &NTasks, H5T_NATIVE_INT);
 
     // When we're writing the header attributes for the master file, we don't have knowledge of trees.
     // So pass a NULL pointer here instead of `forest_info`.
@@ -773,10 +771,12 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
 
 // Take all the properties of the galaxy `*g` and add them to the buffered galaxies
 // properties `save_info->buffer_output_gals`.
-int32_t prepare_galaxy_for_hdf5_output(int32_t filenr, int32_t treenr, struct GALAXY *g, struct save_info *save_info,
+int32_t prepare_galaxy_for_hdf5_output(int32_t treenr, struct GALAXY *g, struct save_info *save_info,
                                        int32_t output_snap_idx,  struct halo_data *halos, struct halo_aux_data *haloaux,
                                        struct GALAXY *halogal, const struct params *run_params)
 {
+
+    int32_t filenr = run_params->ThisTask;
 
     int64_t gals_in_buffer = save_info->num_gals_in_buffer[output_snap_idx];
 
@@ -1106,6 +1106,8 @@ int32_t write_header_attributes(hid_t file_id, const struct forest_info *forest_
         CREATE_SINGLE_ATTRIBUTE(sim_group_id, "num_trees", &forest_info->nforests_this_task, H5T_NATIVE_LLONG);
         CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "frac_volume_processed", &forest_info->frac_volume_processed, H5T_NATIVE_FLOAT);
     }
+
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "num_cores", &run_params->NTasks, H5T_NATIVE_INT);
 
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SFprescription", &run_params->SFprescription, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "AGNrecipeOn", &run_params->AGNrecipeOn, H5T_NATIVE_INT);

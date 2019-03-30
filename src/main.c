@@ -36,6 +36,9 @@ int main(int argc, char **argv)
         goto err;
     }
 
+    run_params.ThisTask = ThisTask;
+    run_params.NTasks = NTasks;
+
     /* run sage over all files */
     status = run_sage(ThisTask, NTasks, &run_params);
     if(status != EXIT_SUCCESS) {
@@ -48,7 +51,7 @@ int main(int argc, char **argv)
 #endif
 
     // Perform some final checks.
-    status = finalize_sage(ThisTask, NTasks, &run_params);
+    status = finalize_sage(&run_params);
     if(status != EXIT_SUCCESS) {
         goto err;
     }

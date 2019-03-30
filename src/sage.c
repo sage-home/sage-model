@@ -150,7 +150,7 @@ cleanup:
 }
 
 
-int32_t finalize_sage(const int ThisTask, const int NTasks, struct params *run_params)
+int32_t finalize_sage(struct params *run_params)
 {
 
     int32_t status;
@@ -163,7 +163,7 @@ int32_t finalize_sage(const int ThisTask, const int NTasks, struct params *run_p
 
 #ifdef HDF5
     case(sage_hdf5):
-      status = create_hdf5_master_file(ThisTask, NTasks, run_params);
+      status = create_hdf5_master_file(run_params);
       break; 
 #endif
 

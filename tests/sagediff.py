@@ -285,7 +285,7 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
 
     # SAGE could have been run in parallel in which the HDF5 master file will have
     # multiple core datasets.
-    ncores = hdf5_file["Header"].attrs["num_cores"]
+    ncores = hdf5_file["Header"]["Runtime"].attrs["num_cores"]
 
     # Load all the galaxies from all trees in the binary file.
     binary_gals = g1.read_tree(None)
