@@ -36,10 +36,7 @@ class SageHdf5Model(Model):
         """
 
         Model.__init__(self, model_dict, plot_toggles)
-
-        # We require write intent because we may be combining fields such as "Posx",
-        # "Posy", "Posz" into "Pos".
-        self.hdf5_file = h5py.File(self.model_path, "r+")
+        self.hdf5_file = h5py.File(self.model_path, "r")
 
         # For the HDF5 file, "first_file" and "last_file" correspond to the "Core_%d"
         # groups.
@@ -86,9 +83,8 @@ class SageHdf5Model(Model):
 
         for core_idx in range(self.first_file, self.last_file + 1):
 
-            core_key = "Core_{0}".format(core_idx)
+            core_key = "Core_{0}".format(core_idx)            
             ngals += self.hdf5_file[core_key][snap_key].attrs["ngals"]
-
 
         self.num_gals = ngals 
 

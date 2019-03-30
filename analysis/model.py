@@ -188,12 +188,16 @@ class Model:
         self.SMD = 0.0
 
 
-    def calc_properties_all_files(self, use_pbar=True, debug=False):
+    def calc_properties_all_files(self, close_file=True, use_pbar=True, debug=False):
         """
         Calculates galaxy properties for all files of a single Model.
 
         Parameters 
         ----------
+
+        close_file : Boolean, default True
+            If the ``Model`` class contains an open file, closes it upon completion of
+            this function.
 
         use_pbar : Boolean, default True
             If set, uses the ``tqdm`` package to create a progress bar.
@@ -238,11 +242,13 @@ class Model:
             self.calc_properties(gals)
 
         # Some data formats (e.g., HDF5) have a single file we read from.
-        # For other formats, this method doesn't exist.
-        try:
-            self.close_file()
-        except AttributeError:
-            pass
+        # For other formats, this method doesn't exist. Note: If we're calculating
+        # temporal results (i.e., running `history.py`) then we won't close here.
+        if close_file:
+            try:
+                self.close_file()
+            except AttributeError:
+                pass
 
         end_time = time.time()
         duration = end_time - start_time

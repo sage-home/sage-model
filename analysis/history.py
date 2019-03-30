@@ -160,8 +160,8 @@ class TemporalResults:
                 # Update the snapshot we're reading from. Subclass specific.
                 model.update_snapshot(snap)
 
-                # Calculate all the properties.
-                model.calc_properties_all_files(use_pbar=False, debug=debug)
+                # Calculate all the properties. Keep the HDF5 file open always.
+                model.calc_properties_all_files(close_file=False, use_pbar=False, debug=debug)
 
                 # We need to place the SMF inside the dictionary to carry through.
                 if snap in model.SMF_snaps:
@@ -176,6 +176,12 @@ class TemporalResults:
                         model.SMD_dict[snap] = model.SMD
 
             all_models.append(model)
+
+            # If we used a HDF5 file, close it.
+            try:
+                self.close_file()
+            except AttributeError:
+                pass
 
         self.models = all_models
         self.plot_toggles = plot_toggles
