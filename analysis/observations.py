@@ -10,6 +10,28 @@ import matplotlib
 
 
 def plot_smf_data(ax, hubble_h, imf):
+    """
+    Plots stellar mass function observational data. Uses data from Balry et al., 2008.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    hubble_h : Float
+        Little h value (between 0 and 1). Used to scale the y-values of the Baldry data
+        which is irrespective of h.
+
+    imf : {"Salpeter", "Chabrier"}
+        If "Chabrier", reduces the x-values of the Baldry data by 0.26 dex.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
 
     # Baldry+ 2008 modified data used for the MCMC fitting
     Baldry = np.array([
@@ -67,41 +89,42 @@ def plot_smf_data(ax, hubble_h, imf):
 
     Baldry_xval = np.log10(10 ** Baldry[:, 0] / hubble_h / hubble_h)
     if imf == "Chabrier":
-        Baldry_xval = Baldry_xval - 0.26  # convert back to Chabrier IMF
+        # Convert the Baldry data to Chabrier.
+        Baldry_xval = Baldry_xval - 0.26
 
     Baldry_yvalU = (Baldry[:, 1]+Baldry[:, 2]) * pow(hubble_h, 3)
-    Baldry_yvalL = (Baldry[:, 1]-Baldry[:, 2]) * pow(hubble_h, 3) 
+    Baldry_yvalL = (Baldry[:, 1]-Baldry[:, 2]) * pow(hubble_h, 3)
 
     ax.fill_between(Baldry_xval, Baldry_yvalU, Baldry_yvalL,
                     facecolor='purple', alpha=0.25,
                     label='Baldry et al. 2008 (z=0.1)')
 
-    # This next line is just to get the shaded region to appear correctly in the legend
+    # This next line is just to get the shaded region to appear correctly in the legend.
     ax.plot(np.nan, np.nan, label='Baldry et al. 2008', color='purple', alpha=0.3)
-
-    # Finally plot the data
-    # plt.errorbar(
-    #     Baldry[:, 0],
-    #     Baldry[:, 1],
-    #     yerr=Baldry[:, 2],
-    #     color='g',
-    #     linestyle=':',
-    #     lw = 1.5,
-    #     label='Baldry et al. 2008',
-    #     )
-
-    # # Cole et al. 2001 SMF (h=1.0 converted to h=0.73)
-    # M = np.arange(7.0, 13.0, 0.01)
-    # Mstar = np.log10(7.07*1.0e10 /model.Hubble_h/model.Hubble_h)
-    # alpha = -1.18
-    # phistar = 0.009 *model.Hubble_h*model.Hubble_h*model.Hubble_h
-    # xval = 10.0 ** (M-Mstar)
-    # yval = np.log(10.) * phistar * xval ** (alpha+1) * np.exp(-xval)      
-    # plt.plot(M, yval, 'g--', lw=1.5, label='Cole et al. 2001')  # Plot the SMF
 
     return ax
 
 def plot_temporal_smf_data(ax, imf):
+    """
+    Plots stellar mass function observational data at a variety of redshifts. Uses data
+    from Marchesini et al., 2009.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    imf : {"Salpeter", "Chabrier"}
+         If "Salpeter", scales the x-values of the Marchesini data by a factor of 1.6.
+         If "Chabrier", scales the x-values of the Marchesini data by a factor of 1.6 / 1.8.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
 
     # Marchesini et al. 2009ApJ...701.1765M SMF, h=0.7
 
@@ -122,6 +145,10 @@ def plot_temporal_smf_data(ax, imf):
         M_plot = [np.log10(10.0**M_vals * 1.6) for M_vals in M]
     elif imf == "Chabrier":
         M_plot = [np.log10(10.0**M_vals * 1.6/1.8) for M_vals in M]
+    else:
+        print("plot_temporal_smf_data() called with an IMF value of {0}.  Only Salpeter "
+              "or Chabrier allowed.".format(imf))
+        raise ValueError
 
     # Shift the mass by Mstar for each.
     shifted_mass = []
@@ -142,6 +169,29 @@ def plot_temporal_smf_data(ax, imf):
 
 
 def plot_bmf_data(ax, hubble_h, imf):
+    """
+    Plots baryonic mass function observational data. Uses data from Bell et al., 2003.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    hubble_h : Float
+        Little h value (between 0 and 1). Used to scale the y-values of the Bell data
+        which is irrespective of h.
+
+    imf : {"Salpeter", "Chabrier"}
+        If "Salpeter", scales the x-values of the Bell data by a factor of 0.7.
+        If "Chabrier", scales the x-values of the Bell data by a factor of 0.7 / 1.8.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
 
     # Bell et al. 2003 BMF. They assume h=1.0.
     M = np.arange(7.0, 13.0, 0.01)
@@ -151,18 +201,42 @@ def plot_bmf_data(ax, hubble_h, imf):
     xval = 10.0 ** (M-Mstar)
     yval = np.log(10.) * phistar * xval ** (alpha+1) * np.exp(-xval)
 
+    # Bell use a diet Salpeter IMF.
     if imf == "Salpeter":
-        # Converted diet Salpeter IMF to Salpeter IMF.
-        ax.plot(np.log10(10.0**M /0.7), yval, 'b-', lw=2.0,
-                label='Bell et al. 2003')
+        # Then to Salpeter.
+        mass_shifted = np.log10(10.0**M / 0.7)
     elif imf == "Chabrier":
-        # Converted diet Salpeter IMF to Salpeter IMF, then to Chabrier IMF
-        ax.plot(np.log10(10.0**M /0.7 /1.8), yval, 'g--', lw=1.5,
-                label='Bell et al. 2003')
+        # To Salpeter then to Chabrier.
+        mass_shifted = np.log10(10.0**M / 0.7 / 1.8)
+    else:
+        print("plot_bmf_data() called with an IMF value of {0}.  Only Salpeter or "
+              "Chabrier allowed.".format(imf))
+
+    ax.plot(np.log10(10.0**M /0.7 /1.8), yval, 'g--', lw=1.5,
+            label='Bell et al. 2003')
 
     return ax
 
 def plot_gmf_data(ax, hubble_h):
+    """
+    Plots gas mass function observational data. Uses data from Baldry et al., 2008.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    hubble_h : Float
+        Little h value (between 0 and 1). Used to scale the y-values of the Baldry data
+        which is irrespective of h.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
 
     # Baldry+ 2008 modified data used for the MCMC fitting
     Zwaan = np.array([[6.933,   -0.333],
@@ -238,6 +312,22 @@ def plot_gmf_data(ax, hubble_h):
 
 
 def plot_btf_data(ax):
+    """
+    Plots baryonic Tully-Fisher observational data. Uses data from Stark, McGaugh &
+    Swatter, 2009.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
 
     w = np.arange(0.5, 10.0, 0.5)
     TF = 3.94*w + 1.79
@@ -247,21 +337,64 @@ def plot_btf_data(ax):
 
 
 def plot_metallicity_data(ax, imf):
+    """
+    Plots metallicity observational data. Uses data from Tremonti et al., 2003.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    imf : {"Salpeter", "Chabrier"}
+        If "Salpeter", scales the x-values of the Tremonti data by a factor of 1.5.
+        If "Chabrier", scales the x-values of the Tremonti data by a factor of 1.5 / 1.8.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
 
     # Tremonti et al. 2003 (h=0.7)
-    w = np.arange(7.0, 13.0, 0.1)
-    Zobs = -1.492 + 1.847*w - 0.08026*w*w
+    M = np.arange(7.0, 13.0, 0.1)
+    Zobs = -1.492 + 1.847*w - 0.08026*M*M
+    # Tremonti use a Kroupa IMF.
     if imf == "Salpeter":
-        # Conversion from Kroupa IMF to Salpeter IMF
-        ax.plot(np.log10((10**w *1.5)), Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
+        # Conversion from Kroupa IMF to Salpeter IMF.
+        mass_shifted = np.log10(10**M * 1.5)
     elif imf == "Chabrier":
-        # Conversion from Kroupa IMF to Salpeter IMF to Chabrier IMF
-        ax.plot(np.log10((10**w *1.5 /1.8)), Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
+        # Conversion from Kroupa IMF to Salpeter IMF to Chabrier IMF.
+        mass_shifted = np.log10(10**M * 1.5 / 1.8)
+    else:
+        print("plot_metallicity_data() called with an IMF value of {0}.  Only Salpeter "
+              "or Chabrier allowed.".format(imf))
+        raise ValueError
+
+    ax.plot(mass_shifted, Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
 
     return ax
 
 
 def plot_bh_bulge_data(ax): 
+    """
+    Plots black hole-bulge relationship observational data. Uses data from Haring & Rix
+    2004.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
+
     # Haring & Rix 2004
     w = 10. ** np.arange(20)
     BHdata = 10. ** (8.2 + 1.12 * np.log10(w / 1.0e11))
@@ -271,6 +404,21 @@ def plot_bh_bulge_data(ax):
 
 
 def plot_sfrd_data(ax):
+    """
+    Plots observational data for the evolution of the star formation rate density.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
 
     ObsSFRdensity = np.array([
         [0, 0.0158489, 0, 0, 0.0251189, 0.01000000],
@@ -320,6 +468,27 @@ def plot_sfrd_data(ax):
 
 
 def plot_smd_data(ax, imf):
+    """
+    Plots observational data for the evolution of the stellar mass density. Uses data from
+    Dickenson et al., 2003; Drory et al., 2005; Perez-Gonzalez et al., 2008; Glazebrook et
+    al., 2004; Fontana et al., 2006; Rudnick et al., 2006; Elsner et al., 2008.
+
+    Parameters
+    ==========
+
+    ax : ``matplotlib`` axes object
+        Axis to plot the data on.
+
+    imf : {"Salpeter", "Chabrier"}
+        If "Salpeter", scales the x-values by a factor of 1.6.
+        If "Chabrier", scales the x-values by a factor of 1.6 / 1.8.
+
+    Returns
+    =======
+
+    ax : ``matplotlib`` axes object
+        Axis with the data plotted on it.
+    """
 
     # SMD observations taken from Marchesini+ 2009, h=0.7
     # Values are (minz, maxz, rho,-err,+err)
@@ -327,12 +496,14 @@ def plot_smd_data(ax, imf):
                      (1.4,2.0,7.86,0.22,0.33),
                      (2.0,2.5,7.58,0.29,0.54),
                      (2.5,3.0,7.52,0.51,0.48)),float)
+
     drory2005 = np.array(((0.25,0.75,8.3,0.15,0.15),
                 (0.75,1.25,8.16,0.15,0.15),
                 (1.25,1.75,8.0,0.16,0.16),
                 (1.75,2.25,7.85,0.2,0.2),
                 (2.25,3.0,7.75,0.2,0.2),
                 (3.0,4.0,7.58,0.2,0.2)),float)
+
     # Perez-Gonzalez (2008)
     pg2008 = np.array(((0.2,0.4,8.41,0.06,0.06),
              (0.4,0.6,8.37,0.04,0.04),
@@ -345,10 +516,12 @@ def plot_smd_data(ax, imf):
              (2.5,3.0,7.56,0.18,0.18),
              (3.0,3.5,7.43,0.14,0.14),
              (3.5,4.0,7.29,0.13,0.13)),float)
+
     glazebrook2004 = np.array(((0.8,1.1,7.98,0.14,0.1),
                      (1.1,1.3,7.62,0.14,0.11),
                      (1.3,1.6,7.9,0.14,0.14),
                      (1.6,2.0,7.49,0.14,0.12)),float)
+
     fontana2006 = np.array(((0.4,0.6,8.26,0.03,0.03),
                   (0.6,0.8,8.17,0.02,0.02),
                   (0.8,1.0,8.09,0.03,0.03),
@@ -357,10 +530,12 @@ def plot_smd_data(ax, imf):
                   (1.6,2.0,7.74,0.04,0.04),
                   (2.0,3.0,7.48,0.04,0.04),
                   (3.0,4.0,7.07,0.15,0.11)),float)
+
     rudnick2006 = np.array(((0.0,1.0,8.17,0.27,0.05),
                   (1.0,1.6,7.99,0.32,0.05),
                   (1.6,2.4,7.88,0.34,0.09),
                   (2.4,3.2,7.71,0.43,0.08)),float)
+
     elsner2008 = np.array(((0.25,0.75,8.37,0.03,0.03),
                  (0.75,1.25,8.17,0.02,0.02),
                  (1.25,1.75,8.02,0.03,0.03),
@@ -378,6 +553,6 @@ def plot_smd_data(ax, imf):
         elif imf == "Chabrier":
             yval = np.log10(10**o[:, 2] * 1.6 / 1.8)
 
-        ax.errorbar(xval, np.log10(10**o[:,2] *1.6), xerr=(xval-o[:,0], o[:,1]-xval), yerr=(o[:,3], o[:,4]), alpha=0.3, lw=1.0, marker='o', ls='none')
+        ax.errorbar(xval, yval, xerr=(xval-o[:,0], o[:,1]-xval), yerr=(o[:,3], o[:,4]), alpha=0.3, lw=1.0, marker='o', ls='none')
 
     return ax
