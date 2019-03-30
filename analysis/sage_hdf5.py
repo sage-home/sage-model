@@ -121,8 +121,12 @@ class SageHdf5Model(Model):
         core_key = "Core_{0}".format(core_num)
         snap_key = "Snap_{0}".format(self.hdf5_snapshot)
 
-        gals = self.hdf5_file[core_key][snap_key]
         num_gals_read = self.hdf5_file[core_key][snap_key].attrs["ngals"]
+        if num_gals_read == 0:
+            return None
+
+        gals = self.hdf5_file[core_key][snap_key]
+
 
         # If we're using the `tqdm` package, update the progress bar.
         if pbar:
