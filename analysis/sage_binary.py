@@ -244,6 +244,7 @@ class SageBinaryModel(Model):
 
         return gals
 
+
     def update_snapshot(self, snapshot):
         """
         Updates the ``model_path`` attribute to point to the file at the redshift given by
@@ -266,9 +267,6 @@ class SageBinaryModel(Model):
 
         new_redshift = self.redshifts[snapshot]
 
-        # model_path is of the form "<Initial/Path/To/File_zX.XXX>"
-        # Hence need to update the last 5 characters.
-
         # If this is the first time we're calling this method, then we will need to set
         # the path fully.
         try:
@@ -277,4 +275,13 @@ class SageBinaryModel(Model):
             self.set_redshift = True
             self.model_path = "{0}_z{1:.3f}".format(self.model_path, new_redshift)
         else:
-            self.model_path = "{0}{1:.3f}".format(self.model_path[:-5], new_redshift)
+
+            # model_path is of the form "<Initial/Path/To/File_zXXX.XXX>"
+            # The number of characters after "z" is arbitrary, we could be at z8.539 or z127.031.
+            # Hence walk backwards through the model path until we reach a "z".
+            letters_from_end = 0
+            letter = self.model_path[-(letters_from_end+1)]
+            while letter != "z":
+                letters_from_end += 1
+                letter = self.model_path[-(letters_from_end+1)]
+            self.model_path = "{0}z{1:.3f}".format(self.model_path[:-(letters_from_end+1)], new_redshift)

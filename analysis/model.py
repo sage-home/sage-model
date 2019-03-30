@@ -188,12 +188,15 @@ class Model:
         self.SMD = 0.0
 
 
-    def calc_properties_all_files(self, debug=False):
+    def calc_properties_all_files(self, use_pbar=True, debug=False):
         """
         Calculates galaxy properties for all files of a single Model.
 
         Parameters 
         ----------
+
+        use_pbar : Boolean, default True
+            If set, uses the ``tqdm`` package to create a progress bar.
 
         debug : Boolean, default False
             If set, prints out extra useful debug information.
@@ -209,10 +212,12 @@ class Model:
 
         # First determine how many galaxies are in all files.
         self.determine_num_gals()
+        if self.num_gals == 0:
+            return
 
         # The `tqdm` package provides a beautiful progress bar.
         try:
-            if debug:
+            if debug or not use_pbar:
                 pbar = None
             else:
                 pbar = tqdm(total=self.num_gals, unit="Gals", unit_scale=True)
@@ -544,10 +549,6 @@ class Model:
 
             SFR = gals["SfrDisk"][:] + gals["SfrBulge"][:]
             self.SFRD += np.sum(SFR)
-
-            print(np.max(SFR))
-            print(np.sum(SFR))
-            print(np.sum(SFR) / 244140.625)
 
         if self.SMD_toggle and gals["SnapNum"][0] in self.density_snaps:
 

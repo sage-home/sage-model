@@ -114,7 +114,7 @@ class TemporalResults:
                 model = SageHdf5Model(model_dict, plot_toggles)
 
             # We may be plotting the density at all snapshots...
-            if model.density_redshifts is None:
+            if model.density_redshifts == -1:
                 model.density_redshifts = model.redshifts
 
             model.plot_output_format = plot_output_format
@@ -148,7 +148,7 @@ class TemporalResults:
                 model.update_snapshot(snap)
 
                 # Calculate all the properties.
-                model.calc_properties_all_files(debug=debug)
+                model.calc_properties_all_files(use_pbar=False, debug=debug)
 
                 # We need to place the SMF inside the dictionary to carry through.
                 if snap in model.SMF_snaps:
@@ -381,14 +381,14 @@ if __name__ == '__main__':
     # specified if using binary output. HDF5 will automatically detect these.
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
-    model0_SMF_z               = [0.0, 1.38, 2.00]  # Redshifts you wish to plot the stellar mass function at.
+    model0_SMF_z               = [0.0, 0.5, 1.00, 2.00, 3.00]  # Redshifts you wish to plot the stellar mass function at.
                                               # Will search for the closest simulation redshift.
-    model0_density_z           = [0.0, 1.38, 2.00]  # Redshifts you wish to plot the evolution of
-                                       # densities at. Set to `None` for all redshifts.
+    model0_density_z           = -1  # Redshifts you wish to plot the evolution of
+                                       # densities at. Set to -1 for all redshifts.
     model0_alist_file          = "../input/millennium/trees/millennium.a_list"
     model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
-    model0_dir_name            = "../tests/test_data/"
-    model0_file_name           = "test_sage"  # If using "sage_binary", doesn't have to end in "_zX.XXX" 
+    model0_dir_name            = "../output/millennium/"
+    model0_file_name           = "model"  # If using "sage_binary", doesn't have to end in "_zX.XXX" 
     model0_IMF                 = "Salpeter"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "c"
