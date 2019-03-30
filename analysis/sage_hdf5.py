@@ -41,8 +41,8 @@ class SageHdf5Model(Model):
         # For the HDF5 file, "first_file" and "last_file" correspond to the "Core_%d"
         # groups.
         self.first_file = 0
-        self.last_file = self.hdf5_file["Header"].attrs["num_cores"] - 1
-        self.num_files = self.hdf5_file["Header"].attrs["num_cores"]
+        self.last_file = self.hdf5_file["Header"]["Runtime"].attrs["num_cores"] - 1
+        self.num_files = self.hdf5_file["Header"]["Runtime"].attrs["num_cores"]
 
 
     def set_cosmology(self):
@@ -140,7 +140,13 @@ class SageHdf5Model(Model):
             # Show the distribution of galaxies in 3D.
             import plots
 
-            pos = gals["Pos"][:]
+            pos = np.empty((len(gals["Posx"]), 3), dtype=np.float32)
+
+            dim_name = ["x", "y", "z"]
+            for (dim_num, dim_name) in enumerate(dim_name):
+                key = "Pos{0}".format(dim_num)
+                pos[:, dim_num] = gals[key][:]
+
             output_file = "./galaxies_{0}{1}".format(core_num, self.plot_output_format)
             plots.plot_spatial_3d(pos, output_file, self.box_size)
 
