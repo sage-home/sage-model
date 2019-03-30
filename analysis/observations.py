@@ -359,7 +359,7 @@ def plot_metallicity_data(ax, imf):
 
     # Tremonti et al. 2003 (h=0.7)
     M = np.arange(7.0, 13.0, 0.1)
-    Zobs = -1.492 + 1.847*w - 0.08026*M*M
+    Zobs = -1.492 + 1.847*M - 0.08026*M*M
     # Tremonti use a Kroupa IMF.
     if imf == "Salpeter":
         # Conversion from Kroupa IMF to Salpeter IMF.
