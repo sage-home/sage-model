@@ -206,6 +206,10 @@ class SageBinaryModel(Model):
             num_gals = np.fromfile(f, np.dtype(np.int32),1)[0]
             gals_per_tree = np.fromfile(f, np.dtype((np.int32, Ntrees)), 1)
 
+            # If there aren't any galaxies, exit here.
+            if num_gals == 0:
+                return None
+
             # Then the actual galaxies.
             gals = np.fromfile(f, self.galaxy_struct, num_gals)
 

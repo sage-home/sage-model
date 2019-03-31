@@ -143,6 +143,8 @@ def plot_SMF(results, plot_sub_populations=False):
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
+    fig.tight_layout()
+
     output_file = "{0}/1.StellarMassFunction{1}".format(results.plot_output_path,
                                                        results.plot_output_format)
     fig.savefig(output_file)
@@ -274,6 +276,8 @@ def plot_BMF(results):
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
+    fig.tight_layout()
+
     output_file = "{0}/2.BaryonicMassFunction{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
@@ -335,6 +339,8 @@ def plot_GMF(results):
 
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
+    fig.tight_layout()
+
     output_file = "{0}/3.GasMassFunction{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)  # Save the figure
     print("Saved file to {0}".format(output_file))
@@ -384,7 +390,9 @@ def plot_BTF(results):
     ax = obs.plot_btf_data(ax) 
 
     adjust_legend(ax, location="upper left", scatter_plot=1)
-        
+
+    fig.tight_layout()
+
     output_file = "{0}/4.BaryonicTullyFisher{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
@@ -438,6 +446,8 @@ def plot_sSFR(results):
 
     adjust_legend(ax, scatter_plot=1)
 
+    fig.tight_layout()
+
     output_file = "{0}/5.SpecificStarFormationRate{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
@@ -485,7 +495,9 @@ def plot_gas_frac(results):
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
     adjust_legend(ax, scatter_plot=1)
-       
+
+    fig.tight_layout()
+
     output_file = "{0}/6.GasFraction{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
@@ -538,7 +550,9 @@ def plot_metallicity(results):
 
     # Since we're doing a scatter plot, we need to resize the legend points.
     adjust_legend(ax, location="upper right", scatter_plot=1)
-   
+
+    fig.tight_layout()
+
     output_file = "{0}/7.Metallicity{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
@@ -587,7 +601,9 @@ def plot_bh_bulge(results):
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
     adjust_legend(ax, location="upper right", scatter_plot=1)
-        
+
+    fig.tight_layout()
+
     output_file = "{0}/8.BlackHoleBulgeRelationship{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
@@ -650,7 +666,9 @@ def plot_quiescent(results, plot_sub_populations=False):
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.10))
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
-        
+
+    fig.tight_layout()
+
     output_file = "{0}/9.QuiescentFraction{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
@@ -721,6 +739,8 @@ def plot_bulge_mass_fraction(results, plot_var=False):
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.10))
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
+
+    fig.tight_layout()
 
     output_file = "{0}/10.BulgeMassFraction{1}".format(results.plot_output_path, results.plot_output_format)
     fig.savefig(output_file)
@@ -855,6 +875,8 @@ def plot_mass_reservoirs(results):
 
         adjust_legend(ax, location="upper left", scatter_plot=1)
 
+        fig.tight_layout()
+
         output_file = "{0}/12.MassReservoirs_{1}{2}".format(results.plot_output_path,
                                                             model_label, results.plot_output_format)
         fig.savefig(output_file)
@@ -984,6 +1006,8 @@ def plot_spatial_3d(pos, output_file, box_size):
     ax.set_ylabel(r"$\mathbf{y \: [h^{-1}Mpc]}$")
     ax.set_zlabel(r"$\mathbf{z \: [h^{-1}Mpc]}$")
 
+    fig.tight_layout()
+
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -1076,7 +1100,7 @@ def plot_SMD(temporal_results):
 
         # The SMD is in a dictionary. Pull it out into a array for plotting.
         SMD = np.array([model.SMD_dict[snap] for snap in model.SMD_dict.keys()])
-        ax.plot(model.redshifts[model.density_snaps], np.log10(SMD / model.volume*pow(model.hubble_h, 3)),
+        ax.plot(model.redshifts[model.density_snaps], np.log10(SMD / model.volume * pow(model.hubble_h, 3)),
                 label=label, color=color, ls=linestyle)
 
     # For scaling the observational data, we use the values of the zeroth

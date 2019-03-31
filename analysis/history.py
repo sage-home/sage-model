@@ -229,7 +229,7 @@ if __name__ == '__main__':
     # `first_file`, `last_file`, `simulation` and `num_tree_files` only need to be
     # specified if using binary output. HDF5 will automatically detect these.
 
-    model0_SMF_z               = [0.0, 0.5, 1.00, 2.00, 3.00]  # Redshifts you wish to plot the stellar mass function at.
+    model0_SMF_z               = [0.0, 1.0, 2.0, 3.0]  # Redshifts you wish to plot the stellar mass function at.
                                  # Will search for the closest simulation redshift.
     model0_density_z           = -1  # Redshifts you wish to plot the evolution of
                                      # densities at. Set to -1 for all redshifts.

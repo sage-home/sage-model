@@ -281,13 +281,10 @@ class Model:
         if self.SMF_toggle or self.sSFR_toggle: 
 
             non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
-            non_zero_SFR = np.where(gals["SfrDisk"][:] + gals["SfrBulge"][:] > 0.0)[0]
 
-            # `stellar_mass` and `sSFR` aren't strictly the same length. However the
-            # difference is neglible and will not impact the results.
             stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
-            sSFR = (gals["SfrDisk"][:][non_zero_SFR] + gals["SfrBulge"][:][non_zero_SFR]) / \
-                   (gals["StellarMass"][:][non_zero_SFR] * 1.0e10 / self.hubble_h)
+            sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
+                   (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
 
             if self.SMF_toggle:
                 gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
@@ -309,9 +306,9 @@ class Model:
                 # `stellar_mass` and `sSFR` have length < length(gals).
                 # Hence when we take a random sample, we use length of those arrays. 
                 if len(non_zero_stellar) > file_sample_size:
-                    random_inds = np.random.choice(np.arange(len(non_zero_SFR)), size=file_sample_size)
+                    random_inds = np.random.choice(np.arange(len(non_zero_stellar)), size=file_sample_size)
                 else:
-                    random_inds = np.arange(len(non_zero_SFR))
+                    random_inds = np.arange(len(non_zero_stellar))
 
                 self.sSFR_mass.extend(list(stellar_mass[random_inds]))
                 self.sSFR_sSFR.extend(list(np.log10(sSFR[random_inds])))

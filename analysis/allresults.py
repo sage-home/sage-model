@@ -217,7 +217,7 @@ if __name__ == "__main__":
     model0_file_name           = "model_z0.000"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
-    model0_color               = "c"
+    model0_color               = "r"
     model0_linestyle           = "-"
     model0_marker              = "x"
     model0_first_file          = 0  # The files read in will be [first_file, last_file]
