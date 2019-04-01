@@ -31,8 +31,7 @@ int32_t prepare_galaxy_for_hdf5_output(int tree, struct GALAXY *g, struct save_i
 int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num_already_written,
                              struct save_info *save_info);
 
-int32_t write_header_attributes(hid_t file_id, hid_t header_group_id, const struct forest_info *forest_info,
-                                const struct params *run_params);
+int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params);
 
 #define MAX_ATTRIBUTE_LEN 10000
 #define NUM_GALS_PER_BUFFER 1000
@@ -461,7 +460,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
                                     "Failed to create the Header group.\nThe file ID was %d\n",
                                     (int32_t) save_info->file_id);
 
-    status = write_header_attributes(save_info->file_id, group_id, forest_info, run_params);
+    status = write_header(save_info->file_id, forest_info, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }
@@ -627,7 +626,7 @@ int32_t create_hdf5_master_file(const struct params *run_params)
 
     // When we're writing the header attributes for the master file, we don't have knowledge of trees.
     // So pass a NULL pointer here instead of `forest_info`.
-    status = write_header_attributes(master_file_id, group_id, NULL, run_params);
+    status = write_header(master_file_id, NULL, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }
@@ -1056,8 +1055,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 
 #undef EXTEND_AND_WRITE_GALAXY_DATASET
 
-int32_t write_header_attributes(hid_t file_id, hid_t header_group_id, const struct forest_info *forest_info,
-                                const struct params *run_params) {
+int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params) {
 
     herr_t status;
 
@@ -1077,6 +1075,11 @@ int32_t write_header_attributes(hid_t file_id, hid_t header_group_id, const stru
                                     "Failed to create the Header/Miscgroup.\nThe file ID was %d\n",
                                     (int32_t) file_id);
 
+    // Simulation information.
+    CREATE_STRING_ATTRIBUTE(sim_group_id, "SimulationDir", &run_params->SimulationDir);
+    CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->FileWithSnapList);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapShotNr", &run_params->LastSnapShotNr, H5T_NATIVE_INT);
+
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_matter", &run_params->Omega, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_lambda", &run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "particle_mass", &run_params->PartMass, H5T_NATIVE_DOUBLE);
@@ -1094,13 +1097,20 @@ int32_t write_header_attributes(hid_t file_id, hid_t header_group_id, const stru
     CREATE_STRING_ATTRIBUTE(misc_group_id, "data_version", SAGE_DATA_VERSION);
     CREATE_STRING_ATTRIBUTE(misc_group_id, "sage_data_version", SAGE_VERSION);
 
+    // Output file info.
+    CREATE_STRING_ATTRIBUTE(runtime_group_id, "FileNameGalaxies", &run_params->FileNameGalaxies);
+    CREATE_STRING_ATTRIBUTE(runtime_group_id, "OutputDir", &run_params->OutputDir);
+    CREATE_STRING_ATTRIBUTE(runtime_group_id, "FirstFile", &run_params->FirstFile);
+    CREATE_STRING_ATTRIBUTE(runtime_group_id, "LastFile", &run_params->LastFile);
 
+    // Recipe flags.
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SFprescription", &run_params->SFprescription, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "AGNrecipeOn", &run_params->AGNrecipeOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SupernovaRecipeOn", &run_params->SupernovaRecipeOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReionizationOn", &run_params->ReionizationOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "DiskInstabilityOn", &run_params->DiskInstabilityOn, H5T_NATIVE_INT);
 
+    // Model parameters.
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", &run_params->SfrEfficiency, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackReheatingEpsilon", &run_params->FeedbackReheatingEpsilon, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackEjectionEfficiency", &run_params->FeedbackEjectionEfficiency, H5T_NATIVE_DOUBLE);
@@ -1118,12 +1128,20 @@ int32_t write_header_attributes(hid_t file_id, hid_t header_group_id, const stru
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EnergySN", &run_params->EnergySN, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EtaSN", &run_params->EtaSN, H5T_NATIVE_DOUBLE);
 
+    // Misc runtime Parameters.
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitLength_in_cm", &run_params->UnitLength_in_cm, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitMass_in_g", &run_params->UnitMass_in_g, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitVelocity_in_cm_per_s", &run_params->UnitVelocity_in_cm_per_s, H5T_NATIVE_DOUBLE);
 
     // Redshift at each snapshot.
     hsize_t dims[1];
     dims[0] = run_params->MAXSNAPS;
     CREATE_AND_WRITE_DATASET(file_id, "Header/snapshot_redshift", dims, H5T_NATIVE_FLOAT, run_params->ZZ);
 
+    // Output snapshots.
+    dims[0] = run_params->MAXSNAPS;
+    CREATE_AND_WRITE_DATASET(file_id, "Header/output_snapshots", dims, H5T_NATIVE_FLOAT, run_params->ListOutputSnaps);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", &run_params->MAXSNAPS, H5T_NATIVE_INT);
 
     status = H5Gclose(sim_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
