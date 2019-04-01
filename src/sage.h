@@ -2,6 +2,9 @@
 
 #include "core_allvars.h"
 
+#define SAGE_DATA_VERSION "1.00"
+#define SAGE_VERSION "1.00"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

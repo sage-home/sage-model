@@ -285,14 +285,14 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
 
     # SAGE could have been run in parallel in which the HDF5 master file will have
     # multiple core datasets.
-    ncores = hdf5_file["Header"]["Runtime"].attrs["num_cores"]
+    ncores = hdf5_file["Header"]["Misc"].attrs["num_cores"]
 
     # Load all the galaxies from all trees in the binary file.
     binary_gals = g1.read_tree(None)
 
     # Check that number of galaxies is equal.
     ngals_binary = g1.totngals
-    ngals_hdf5 = determine_ngals_at_snap(hdf5_file, ncores, snap_key)
+    ngals_hdf5 = determine_num_gals_at_snap(hdf5_file, ncores, snap_key)
 
     if ngals_binary != ngals_hdf5:
         print("The binary file had {0} galaxies whereas the HDF5 file had {1} galaxies. "
@@ -323,7 +323,7 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
         for core_idx in range(ncores):
 
             core_name = "Core_{0}".format(core_idx)
-            ngals_this_file = hdf5_file[core_name][snap_key].attrs["ngals"]
+            num_gals_this_file = hdf5_file[core_name][snap_key].attrs["num_gals"]
 
             if key in multidim_fields:
                 # In the HDF5 file, the fields are named <BaseKey><x/y/z>.
@@ -331,14 +331,14 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
                     hdf5_name = "{0}{1}".format(key, dim_name)
 
                     data_this_file = hdf5_file[core_name][snap_key][hdf5_name][:]
-                    hdf5_data[offset:offset+ngals_this_file, dim_num] = data_this_file
+                    hdf5_data[offset:offset+num_gals_this_file, dim_num] = data_this_file
 
             else:
                 data_this_file = hdf5_file[core_name][snap_key][key][:]
 
-                hdf5_data[offset:offset+ngals_this_file] = data_this_file
+                hdf5_data[offset:offset+num_gals_this_file] = data_this_file
 
-            offset += ngals_this_file
+            offset += num_gals_this_file
 
         binary_data = binary_gals[key]
 
@@ -359,16 +359,16 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
         raise ValueError
 
 
-def determine_ngals_at_snap(hdf5_file, ncores, snap_key):
+def determine_num_gals_at_snap(hdf5_file, ncores, snap_key):
 
-    ngals = 0
+    num_gals = 0
 
     for core_idx in range(ncores):
 
         core_key = "Core_{0}".format(core_idx)
-        ngals += hdf5_file[core_key][snap_key].attrs["ngals"]
+        num_gals += hdf5_file[core_key][snap_key].attrs["num_gals"]
 
-    return ngals
+    return num_gals
 
 
 def determine_snap_from_binary_z(hdf5_file, redshift):
