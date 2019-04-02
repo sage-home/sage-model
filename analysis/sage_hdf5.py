@@ -46,10 +46,10 @@ class SageHdf5Model(Model):
 
         # Check that this module is current for the SAGE data version.
         if self.sage_data_version != sage_data_version:
-            msg = "The 'sage_hdf5.py' module was written to be compatible with "
-                  "sage_data_version {0}.  Your version of SAGE HDF5 has data version "
-                  "{1}. Please update your version of SAGE or submit an issue at "
-                  "https://github.com/sage-home/sage-model/issues".format(sage_data_version,
+            msg = "The 'sage_hdf5.py' module was written to be compatible with " \
+                  "sage_data_version {0}.  Your version of SAGE HDF5 has data version " \
+                  "{1}. Please update your version of SAGE or submit an issue at " \
+                  "https://github.com/sage-home/sage-model/issues".format(sage_data_version, \
                   self.sage_data_version)
             raise ValueError(msg)
 
