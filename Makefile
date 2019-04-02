@@ -166,7 +166,7 @@ ifeq ($(DO_CHECKS), 1)
     CCFLAGS += $(HDF5_INCL) 
   endif
 
-  GITREF = -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
+  OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
 
   ifdef USE-MPI
     MPI_LINK_FLAGS:=$(firstword $(shell mpicc --showme:link 2>/dev/null))

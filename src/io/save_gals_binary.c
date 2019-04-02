@@ -14,8 +14,8 @@
 
 // Local Proto-Types //
 
-int32_t prepare_galaxy_for_output(int32_t filenr, int32_t treenr, struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
-                                  struct halo_aux_data *haloaux, struct GALAXY *halogal, const struct params *run_params);
+int32_t prepare_galaxy_for_output(int32_t treenr, struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
+                                  const struct params *run_params);
 
 // Externally Visible Functions //
 
@@ -52,7 +52,7 @@ int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_inf
 }
 
 
-int32_t save_binary_galaxies(const int32_t filenr, const int32_t treenr, const int32_t num_gals, const int32_t *OutputGalCount,
+int32_t save_binary_galaxies(const int32_t treenr, const int32_t num_gals, const int32_t *OutputGalCount,
                              struct halo_data *halos, struct halo_aux_data *haloaux, struct GALAXY *halogal,
                              struct save_info *save_info, const struct params *run_params)
 {
@@ -96,7 +96,7 @@ int32_t save_binary_galaxies(const int32_t filenr, const int32_t treenr, const i
 
         // Here we move the offset pointer depending upon the number of galaxies processed up to this point.
         struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx] + num_gals_processed[snap_idx];
-        status = prepare_galaxy_for_output(filenr, treenr, &halogal[gal_idx], galaxy_output, halos, haloaux, halogal, run_params);
+        status = prepare_galaxy_for_output(treenr, &halogal[gal_idx], galaxy_output, halos, run_params);
         if(status != EXIT_SUCCESS) {
           return status;
         }
@@ -177,11 +177,8 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
 
 // Local Functions //
 
-#define TREE_MUL_FAC        (1000000000LL)
-#define THISTASK_MUL_FAC      (1000000000000000LL)
-
-int32_t prepare_galaxy_for_output(int32_t filenr, int32_t treenr, struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
-                                  struct halo_aux_data *haloaux, struct GALAXY *halogal, const struct params *run_params)
+int32_t prepare_galaxy_for_output(int32_t treenr, struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
+                                  const struct params *run_params)
 {
     o->SnapNum = g->SnapNum;
     if(g->Type < SHRT_MIN || g->Type > SHRT_MAX) {
@@ -191,28 +188,8 @@ int32_t prepare_galaxy_for_output(int32_t filenr, int32_t treenr, struct GALAXY 
     }
     o->Type = g->Type;
 
-    // assume that because there are so many files, the trees per file will be less than 100000
-    // required for limits of long long
-    if(run_params->LastFile>=10000) {
-        if(g->GalaxyNr > TREE_MUL_FAC || treenr > (THISTASK_MUL_FAC/10)/TREE_MUL_FAC) {
-            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
-                            "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
-                            g->GalaxyNr, g->HaloNr);
-            return EXIT_FAILURE;
-        }
-
-        o->GalaxyIndex = g->GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
-        o->CentralGalaxyIndex = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
-    } else {
-        if(g->GalaxyNr > TREE_MUL_FAC || treenr > THISTASK_MUL_FAC/TREE_MUL_FAC) {
-            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
-                            "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
-                            g->GalaxyNr, g->HaloNr);
-            return EXIT_FAILURE;
-        }
-        o->GalaxyIndex = g->GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
-        o->CentralGalaxyIndex = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
-    }
+    o->GalaxyIndex = g->GalaxyIndex;
+    o->CentralGalaxyIndex = g->CentralGalaxyIndex;
 
     o->SAGEHaloIndex = g->HaloNr;/* if the original input halonr is required, then use haloaux[halonr].orig_index: MS 29/6/2018 */
     o->SAGETreeIndex = treenr;

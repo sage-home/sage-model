@@ -78,6 +78,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     lht->nhalos_per_forest = mymalloc(nforests_this_task * sizeof(lht->nhalos_per_forest[0]));
     lht->bytes_offset_for_forest = mymalloc(nforests_this_task * sizeof(lht->bytes_offset_for_forest[0]));
     lht->fd = mymalloc(nforests_this_task * sizeof(lht->fd[0]));
+    lht->FileNr = mymalloc(nforests_this_task * sizeof(*(lht->FileNr)));
     
     int64_t *num_forests_to_process_per_file = calloc(lastfile + 1, sizeof(num_forests_to_process_per_file[0]));/* calloc is required */
     int64_t *start_forestnum_to_process_per_file = malloc((lastfile + 1) * sizeof(start_forestnum_to_process_per_file[0]));
@@ -208,13 +209,19 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
                     "ThisTask = %d Assigning to index = %"PRId64" but only space of %"PRId64" forest fds\n", ThisTask, i + nforests_so_far, lht->nforests);
             lht->fd[i + nforests_so_far] = fd;
             byte_offset_to_halos += forestnhalos[i]*sizeof(struct halo_data);
+
+            // Can't guarantee that the `FileNr` variable in the tree file is correct.
+            // Hence let's track it explicitly here.
+            lht->FileNr[i + nforests_so_far] = filenr;
         }
         forestnhalos += nforests;
     }
 
-    // Sum over each file (Number forests processed by this task from this file / Number forests in file).
-    // We sum in this manner rather than (Total number of forests processed by this task / Total number of forests in all files)
-    // because some files will have a different number of trees.
+    // We assume that each of the input tree files span the same volume. Hence by summing the
+    // number of trees processed by each task from each file, we can determine the
+    // fraction of the simulation volume that this task processes.  We weight this summation by the
+    // number of trees in each file because some files may have more/less trees whilst still spanning the
+    // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
     forests_info->frac_volume_processed = 0.0;
     for(int32_t filenr = start_filenum; filenr <= end_filenum; filenr++) {
         forests_info->frac_volume_processed += (float) num_forests_to_process_per_file[filenr] / (float) totnforests_per_file[filenr];
@@ -272,7 +279,8 @@ void cleanup_forests_io_lht_binary(struct forest_info *forests_info)
     myfree(lht->nhalos_per_forest);
     myfree(lht->bytes_offset_for_forest);
     myfree(lht->fd);
-    
+    free(lht->FileNr);
+
     for(int32_t i=0;i<lht->numfiles;i++) {
         close(lht->open_fds[i]);
     }

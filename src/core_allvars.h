@@ -25,6 +25,11 @@ struct GALAXY
   int   CentralGal;
   int   HaloNr;
   long long MostBoundID;
+  int64_t GalaxyIndex; // This is a unique value based on the tree local galaxy number,
+                       // file local tree number and the file number itself.
+                       // See ``generate_galaxy_index()`` in ``core_save.c``.
+  int64_t CentralGalaxyIndex; // Same as above, except the ``GalaxyIndex`` value for the CentralGalaxy
+                              // of this galaxy's FoF group.
 
   int   mergeType;  /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
   int   mergeIntoID;
@@ -177,6 +182,7 @@ struct lhalotree_info {
     };
     int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
     int32_t unused;/* unused, but present for alignment */
+    int32_t *FileNr; // The file number that each forest was read from.
 };
 
 struct ctrees_info {
@@ -223,6 +229,11 @@ struct forest_info {
     int64_t totnforests;  // Total number of forests across **all** input tree files.
     int64_t nforests_this_task; // Total number of forests processed by **this** task.
     float frac_volume_processed; // Fraction of the simulation volume processed by **this** task.
+    // We assume that each of the input tree files span the same volume. Hence by summing the
+    // number of trees processed by each task from each file, we can determine the
+    // fraction of the simulation volume that this task processes.  We weight this summation by the
+    // number of trees in each file because some files may have more/less trees whilst still spanning the
+    // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
 };
 
 struct save_info {

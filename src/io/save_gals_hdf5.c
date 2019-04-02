@@ -23,9 +23,8 @@
 int32_t generate_field_metadata(char **field_names, char **field_descriptions, char **field_units,
                                 hsize_t *field_dtypes);
 
-int32_t prepare_galaxy_for_hdf5_output(int tree, struct GALAXY *g, struct save_info *save_info,
+int32_t prepare_galaxy_for_hdf5_output(const int32_t treenr, struct GALAXY *g, struct save_info *save_info,
                                        int32_t output_snap_idx, struct halo_data *halos,
-                                       struct halo_aux_data *haloaux, struct GALAXY *halogal,
                                        const struct params *run_params);
 
 int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num_already_written,
@@ -357,7 +356,7 @@ int32_t save_hdf5_galaxies(const int32_t treenr, const int32_t num_gals,
 
         // Add galaxies to buffer.
         int32_t snap_idx = haloaux[gal_idx].output_snap_n;
-        prepare_galaxy_for_hdf5_output(treenr, &halogal[gal_idx], save_info, snap_idx, halos, haloaux, halogal, run_params);
+        prepare_galaxy_for_hdf5_output(treenr, &halogal[gal_idx], save_info, snap_idx, halos, run_params);
         save_info->num_gals_in_buffer[snap_idx]++;
 
         // We can't guarantee that this tree will contain enough galaxies to trigger a write.
@@ -742,19 +741,12 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
     return EXIT_SUCCESS;
 }
 
-
-#define TREE_MUL_FAC        (1000000000LL)
-#define THISTASK_MUL_FAC      (1000000000000000LL)
-
 // Take all the properties of the galaxy `*g` and add them to the buffered galaxies
 // properties `save_info->buffer_output_gals`.
-int32_t prepare_galaxy_for_hdf5_output(int32_t treenr, struct GALAXY *g, struct save_info *save_info,
-                                       int32_t output_snap_idx,  struct halo_data *halos, struct halo_aux_data *haloaux,
-                                       struct GALAXY *halogal, const struct params *run_params)
+int32_t prepare_galaxy_for_hdf5_output(const int32_t treenr, struct GALAXY *g, struct save_info *save_info,
+                                       int32_t output_snap_idx,  struct halo_data *halos,
+                                       const struct params *run_params)
 {
-
-    int32_t filenr = run_params->ThisTask;
-
     int64_t gals_in_buffer = save_info->num_gals_in_buffer[output_snap_idx];
 
     save_info->buffer_output_gals[output_snap_idx].SnapNum[gals_in_buffer] = g->SnapNum;
@@ -766,32 +758,8 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t treenr, struct GALAXY *g, struct 
     }
     save_info->buffer_output_gals[output_snap_idx].Type[gals_in_buffer] = g->Type;
 
-    // assume that because there are so many files, the trees per file will be less than 100000
-    // required for limits of long long
-    if(run_params->LastFile>=10000) {
-        if(g->GalaxyNr > TREE_MUL_FAC || treenr > (THISTASK_MUL_FAC/10)/TREE_MUL_FAC) {
-            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
-                            "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
-                            g->GalaxyNr, g->HaloNr);
-            return EXIT_FAILURE;
-        }
-
-        save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
-        save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * filenr;
-        } else {
-        if(g->GalaxyNr > TREE_MUL_FAC || treenr > THISTASK_MUL_FAC/TREE_MUL_FAC) {
-            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
-                            "File number %d\ttree number %d\tGalaxy Number %d\tHalo number %d\n", filenr, treenr,
-                            g->GalaxyNr, g->HaloNr);
-            return EXIT_FAILURE;
-        }
-
-        save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
-        save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * filenr;
-    }
-
-#undef TREE_MUL_FAC
-#undef THISTASK_MUL_FAC
+    save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyIndex;
+    save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = g->CentralGalaxyIndex;
 
     save_info->buffer_output_gals[output_snap_idx].SAGEHaloIndex[gals_in_buffer] = g->HaloNr; 
     save_info->buffer_output_gals[output_snap_idx].SAGETreeIndex[gals_in_buffer] = treenr; 
@@ -895,10 +863,6 @@ int32_t prepare_galaxy_for_hdf5_output(int32_t treenr, struct GALAXY *g, struct 
 
     return EXIT_SUCCESS;
 }
-
-
-#undef TREE_MUL_FAC
-#undef THISTASK_MUL_FAC
 
 // We created the datasets (e.g., "Snap_43/StellarMass") with 'infinite' dimensions.
 // Before we write, we must extend the current dimensions to account for the new values.
@@ -1093,9 +1057,11 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
         CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "frac_volume_processed", &forest_info->frac_volume_processed, H5T_NATIVE_FLOAT);
     }
 
+    // Data and version information.
     CREATE_SINGLE_ATTRIBUTE(misc_group_id, "num_cores", &run_params->NTasks, H5T_NATIVE_INT);
     CREATE_STRING_ATTRIBUTE(misc_group_id, "data_version", SAGE_DATA_VERSION);
     CREATE_STRING_ATTRIBUTE(misc_group_id, "sage_data_version", SAGE_VERSION);
+    CREATE_STRING_ATTRIBUTE(misc_group_id, "git_SHA_reference", GITREF_STR);
 
     // Output file info.
     CREATE_STRING_ATTRIBUTE(runtime_group_id, "FileNameGalaxies", &run_params->FileNameGalaxies);

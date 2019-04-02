@@ -24,7 +24,7 @@
 #endif
 
 /* main sage -> not exposed externally */
-int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
+int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
                         struct forest_info *forest_info, struct params *run_params);
 
 int init_sage(const int ThisTask, const char *param_file, struct params *run_params)
@@ -111,7 +111,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         }
         
         /* the millennium tree is really a collection of trees, viz., a forest */
-        status = sage_per_forest(ThisTask, forestnr, &save_info, &forest_info, run_params);
+        status = sage_per_forest(forestnr, &save_info, &forest_info, run_params);
         if(status != EXIT_SUCCESS) {
             ABORT(status);
         }
@@ -178,7 +178,7 @@ int32_t finalize_sage(struct params *run_params)
 
 // Local Functions //
 
-int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info *save_info,
+int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
                         struct forest_info *forest_info, struct params *run_params)
 {
     int32_t status = EXIT_FAILURE;
@@ -268,7 +268,7 @@ int32_t sage_per_forest(const int ThisTask, const int forestnr, struct save_info
 
 #endif /* PROCESS_LHVT_STYLE */    
 
-    status = save_galaxies(ThisTask, forestnr, numgals, Halo, HaloAux, HaloGal, save_info, run_params);
+    status = save_galaxies(forestnr, numgals, Halo, HaloAux, HaloGal, save_info, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }
