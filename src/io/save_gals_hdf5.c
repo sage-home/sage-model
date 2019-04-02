@@ -1059,8 +1059,8 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 
     // Data and version information.
     CREATE_SINGLE_ATTRIBUTE(misc_group_id, "num_cores", &run_params->NTasks, H5T_NATIVE_INT);
-    CREATE_STRING_ATTRIBUTE(misc_group_id, "data_version", SAGE_DATA_VERSION);
-    CREATE_STRING_ATTRIBUTE(misc_group_id, "sage_data_version", SAGE_VERSION);
+    CREATE_STRING_ATTRIBUTE(misc_group_id, "sage_data_version", SAGE_DATA_VERSION);
+    CREATE_STRING_ATTRIBUTE(misc_group_id, "sage_version", SAGE_VERSION);
     CREATE_STRING_ATTRIBUTE(misc_group_id, "git_SHA_reference", GITREF_STR);
 
     // Output file info.
