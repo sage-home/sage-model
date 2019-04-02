@@ -91,12 +91,6 @@ class Model:
         None.
         """
 
-        # Set the attributes we were passed.
-        for key in model_dict:
-            setattr(self, key, model_dict[key])
-
-        self.num_files = 0
-
         # Some error checks.
         acceptable_IMF = ["Chabrier", "Salpeter"]
         if model_dict["IMF"] not in acceptable_IMF:
@@ -107,19 +101,15 @@ class Model:
             print("Invalid output format entered.  Only {0} are "
                    "allowed.".format(acceptable_sage_output_format))
 
-        # Set the initial plot toggles.
-        allowed_plots = ["SMF", "BMF", "GMF", "BTF", "sSFR", "gas_frac", "metallicity",
-                         "bh_bulge", "quiescent", "bulge_fraction", "baryon_fraction",
-                         "reservoirs", "spatial", "SFRD", "SMD"]
-        for plot in allowed_plots:
-            toggle_name = "{0}_toggle".format(plot)
-            setattr(self, toggle_name, 0)
 
+        # Set the attributes we were passed.
+        for key in model_dict:
+            setattr(self, key, model_dict[key])
 
-        # Then update based on what we were passed.
-        for plot in plot_toggles.keys():
-            toggle_name = "{0}_toggle".format(plot)
-            setattr(self, toggle_name, 1)
+        self.num_files = 0
+
+        # This decides what plots we make and which properties we calculate.
+        self.plot_toggles = plot_toggles
 
         # If we're plotting temporal values (i.e., running with ``history.py``) then we
         # were passed a scale factor file.
@@ -136,56 +126,66 @@ class Model:
         self.sSFRcut = -11.0  # The specific star formation rate above which a galaxy is
                               # 'star forming'.  Units are log10.
 
-        # How should we bin Stellar mass.
-        self.stellar_bin_low      = 8.0 
-        self.stellar_bin_high     = 12.0 
-        self.stellar_bin_width    = 0.1
-        self.stellar_mass_bins    = np.arange(self.stellar_bin_low,
-                                              self.stellar_bin_high + self.stellar_bin_width,
-                                              self.stellar_bin_width)
+        self.properties = {}
 
-        # These attributes will be binned on stellar mass.
-        attr_names = ["SMF", "red_SMF", "blue_SMF", "BMF", "GMF",
-                      "centrals_MF", "satellites_MF", "quiescent_galaxy_counts",
-                      "quiescent_centrals_counts", "quiescent_satellites_counts",
-                      "fraction_bulge_sum", "fraction_bulge_var",
-                      "fraction_disk_sum", "fraction_disk_var"] 
+        # Properties can be binned (e.g., how many galaxies with mass between 10^8.0 and
+        # 10^8.1), scatter plotted (e.g., for 1000 galaxies plot the specific star
+        # formation rate versus stellar mass) or a single number (e.g., the sum
+        # of the star formation rate at a snapshot).
+        self.init_binned_properties()
+        self.init_scatter_properties()
+        self.init_single_properties()
 
-        # When making histograms, the right-most bin is closed. Hence the length of the
-        # produced histogram will be `len(bins)-1`.
-        for attr in attr_names:
-            setattr(self, attr, np.zeros(len(self.stellar_mass_bins)-1, dtype=np.float64))
 
-        # How should we bin Halo mass.
-        self.halo_bin_low      = 9.8 
-        self.halo_bin_high     = 14.0 
-        self.halo_bin_width    = 0.2
-        self.halo_mass_bins    = np.arange(self.halo_bin_low,
-                                           self.halo_bin_high + self.halo_bin_width,
-                                           self.halo_bin_width)
+    def init_binned_properties(self):
 
-        # These attributes will be binnned on halo mass.
-        attr_names = ["fof_HMF"]
+        # Parameters that define stellar/halo mass bins. 
+        self.mass_bin_low      = 8.0 
+        self.mass_bin_high     = 12.0 
+        self.mass_bin_width    = 0.1
+        self.mass_bins    = np.arange(self.mass_bin_low,
+                                      self.mass_bin_high + self.mass_bin_width,
+                                      self.mass_bin_width)
+
+        # These properties will be binned on stellar mass.
+        stellar_property_names = ["SMF", "red_SMF", "blue_SMF", "BMF", "GMF",
+                                  "centrals_MF", "satellites_MF", "quiescent_galaxy_counts",
+                                  "quiescent_centrals_counts", "quiescent_satellites_counts",
+                                  "fraction_bulge_sum", "fraction_bulge_var",
+                                  "fraction_disk_sum", "fraction_disk_var"] 
+
+        # The following properties are binned on halo mass but use the same bins.
+        halo_property_names = ["fof_HMF"]
+
+        # These are the reservoir components, binned on halo mass.
         component_names = ["halo_{0}_fraction_sum".format(component) for component in
                             ["baryon", "stars", "cold", "hot", "ejected", "ICS", "bh"]]
 
-        for attr in (attr_names + component_names):
-            setattr(self, attr, np.zeros(len(self.halo_mass_bins)-1, dtype=np.float64))
+        # When making histograms, the right-most bin is closed. Hence the length of the
+        # produced histogram will be `len(bins)-1`.
+        for my_property in (stellar_property_names + halo_property_names + component_names):
+            self.properties[my_property] = np.zeros(len(self.mass_bins) - 1, dtype=np.float64)
 
-        # Some plots use scattered points. For these, we will continually add to lists. 
-        attr_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR", "gas_frac_mass", "gas_frac",
-                      "metallicity_mass", "metallicity", "bh_mass", "bulge_mass",
-                      "reservoir_mvir", "reservoir_stars", "reservoir_cold",
-                      "reservoir_hot", "reservoir_ejected", "reservoir_ICS",
-                      "x_pos", "y_pos", "z_pos"]
 
-        # Hence let's initialize empty lists.
-        for attr in attr_names:
-            setattr(self, attr, [])
+    def init_scatter_properties(self):
 
-        # Densities are the sum across the entire redshift.
-        self.SFRD = 0.0
-        self.SMD = 0.0
+        property_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR", "gas_frac_mass",
+                          "gas_frac", "metallicity_mass", "metallicity", "bh_mass", "bulge_mass",
+                          "reservoir_mvir", "reservoir_stars", "reservoir_cold",
+                          "reservoir_hot", "reservoir_ejected", "reservoir_ICS",
+                          "x_pos", "y_pos", "z_pos"]
+
+        # Initialize empty lists.
+        for my_property in property_names:
+            self.properties[my_property] = []
+
+
+    def init_single_properties(self):
+
+        property_names = ["SFRD", "SMD"]
+
+        for my_property in property_names:
+            self.properties[my_property] = 0.0
 
 
     def calc_properties_all_files(self, close_file=True, use_pbar=True, debug=False):
@@ -274,33 +274,52 @@ class Model:
         None.
         """
 
+        import inspect
+
         # When we create some plots, we do a scatter plot. For these, we only plot a
         # subset of galaxies. We need to ensure we get a representative sample from each file.
-        file_sample_size = int(len(gals["StellarMass"][:]) / self.num_gals * self.sample_size) 
+        self.file_sample_size = int(len(gals["StellarMass"][:]) / self.num_gals * self.sample_size) 
 
-        if self.SMF_toggle or self.sSFR_toggle: 
+        # Now check which plots the user is creating and hence decide which properties
+        # they need. 
+        for toggle in self.plot_toggles.keys():
+            if self.plot_toggles[toggle]:
+                method_name = "calc_{0}".format(toggle)
 
-            non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+                # If the method doesn't exist, we will hit an `AttributeError`.
+                try:
+                    getattr(self, method_name)(gals)
+                except AttributeError:
+                    msg = "Tried to calculate properties for plot '{0}'.  However, no " \
+                          "method named '{1}' exists in the 'model.py' module.\n " \
+                          "Check either that your plot toggles are set correctly or add " \
+                          "a method called '{1}' to the 'model.py' module.".format(toggle, \
+                          method_name)
+                    raise AttributeError(msg)
 
-            stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
-            sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
+    def calc_SMF(self, gals):
+
+        non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+
+        stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
+        sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
                    (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
 
-            if self.SMF_toggle:
-                gals_per_bin, _ = np.histogram(stellar_mass, bins=self.stellar_mass_bins)
-                self.SMF += gals_per_bin 
+        gals_per_bin, _ = np.histogram(stellar_mass, bins=self.mass_bins)
+        self.properties["SMF"] += gals_per_bin 
 
-                # We often want to plot the red and blue subpopulations. So bin them as well.
-                red_gals = np.where(sSFR < 10.0**self.sSFRcut)[0]
-                red_mass = stellar_mass[red_gals]
-                counts, _ = np.histogram(red_mass, bins=self.stellar_mass_bins)
-                self.red_SMF += counts
+        # We often want to plot the red and blue subpopulations. So bin them as well.
+        red_gals = np.where(sSFR < 10.0**self.sSFRcut)[0]
+        red_mass = stellar_mass[red_gals]
+        counts, _ = np.histogram(red_mass, bins=self.mass_bins)
+        self.properties["red_SMF"] += counts
 
-                blue_gals = np.where(sSFR > 10.0**self.sSFRcut)[0]
-                blue_mass = stellar_mass[blue_gals]
-                counts, _ = np.histogram(blue_mass, bins=self.stellar_mass_bins)
-                self.blue_SMF += counts
+        blue_gals = np.where(sSFR > 10.0**self.sSFRcut)[0]
+        blue_mass = stellar_mass[blue_gals]
+        counts, _ = np.histogram(blue_mass, bins=self.mass_bins)
+        self.properties["blue_SMF"] += counts
 
+        """
             if self.sSFR_toggle:
 
                 # `stellar_mass` and `sSFR` have length < length(gals).
@@ -560,3 +579,4 @@ class Model:
             stellar_mass = gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h
 
             self.SMD += np.sum(stellar_mass)
+        """

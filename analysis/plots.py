@@ -109,17 +109,17 @@ def plot_SMF(results, plot_sub_populations=False):
             ls = "-"
 
         # Set the x-axis values to be the centre of the bins.
-        bin_middles = model.stellar_mass_bins + 0.5 * model.stellar_bin_width
+        bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
 
         # The SMF is normalized by the simulation volume which is in Mpc/h. 
-        ax.plot(bin_middles[:-1], model.SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
+        ax.plot(bin_middles[:-1], model.properties["SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
                 color=color, ls=ls, label=model_label + " - All")
 
         # Be careful to not overcrowd the plot. 
         if results.num_models == 1 or plot_sub_populations:
-            ax.plot(bin_middles[:-1], model.red_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
+            ax.plot(bin_middles[:-1], model.properties["red_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
                     "r:", lw=2, label=model_label + " - Red")
-            ax.plot(bin_middles[:-1], model.blue_SMF/model.volume*pow(model.hubble_h, 3)/model.stellar_bin_width,
+            ax.plot(bin_middles[:-1], model.properties["blue_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
                     "b:", lw=2, label=model_label + " - Blue")
 
     # For scaling the observational data, we use the values of the zeroth
@@ -134,8 +134,8 @@ def plot_SMF(results, plot_sub_populations=False):
     ax.set_yscale("log", nonposy="clip")
 
     # Find the models that have the smallest/largest stellar mass bin.
-    xlim_min = np.min([model.stellar_mass_bins for model in results.models]) - 0.2
-    xlim_max = np.max([model.stellar_mass_bins for model in results.models]) + 0.2
+    xlim_min = np.min([model.mass_bins for model in results.models]) - 0.2
+    xlim_max = np.max([model.mass_bins for model in results.models]) + 0.2
     ax.set_xlim([xlim_min, xlim_max])
     ax.set_ylim([1.0e-6, 1.0e-1])
 
