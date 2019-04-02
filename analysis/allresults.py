@@ -7,6 +7,9 @@ To add your own data format, create a subclass module (e.g., ``sage_binary.py``)
 option to ``Results.__init__``.  This subclass module needs methods ``set_cosmology()``,
 ``determine_num_gals()`` and  ``read_gals()``.
 
+To calculate and plot extra properties, refer to the documentation inside the ``model.py``
+and ``plot.py`` module respectively.
+
 Author: Jacob Seiler
 """
 
@@ -144,61 +147,26 @@ class Results:
         None. The plots are saved individually by each method.
         """
 
-        plot_toggles = self.plot_toggles
         plots.setup_matplotlib_options()
 
-        # Depending upon the toggles, make the plots.
-        if plot_toggles["SMF"] == 1:
-            print("Plotting the Stellar Mass Function.")
-            plots.plot_SMF(self)
+        # Go through all the plot toggles and seach for a plot routine named
+        # "plot_<Toggle>".
+        for toggle in self.plot_toggles.keys():
+            if self.plot_toggles[toggle]:
+                method_name = "plot_{0}".format(toggle)
 
-        if plot_toggles["BMF"] == 1:
-            print("Plotting the Baryon Mass Function.")
-            plots.plot_BMF(self)
-
-        if plot_toggles["GMF"] == 1:
-            print("Plotting the Cold Gas Mass Function.")
-            plots.plot_GMF(self)
-
-        if plot_toggles["BTF"] == 1:
-            print("Plotting the Baryonic Tully-Fisher relation.")
-            plots.plot_BTF(self)
-
-        if plot_toggles["sSFR"] == 1:
-            print("Plotting the specific star formation rate.")
-            plots.plot_sSFR(self)
-
-        if plot_toggles["gas_frac"] == 1:
-            print("Plotting the gas fraction.")
-            plots.plot_gas_frac(self)
-
-        if plot_toggles["metallicity"] == 1:
-            print("Plotting the metallicity.")
-            plots.plot_metallicity(self)
-
-        if plot_toggles["bh_bulge"] == 1:
-            print("Plotting the black hole-bulge relationship.")
-            plots.plot_bh_bulge(self)
-
-        if plot_toggles["quiescent"] == 1:
-            print("Plotting the fraction of quiescent galaxies.")
-            plots.plot_quiescent(self)
-
-        if plot_toggles["bulge_fraction"]:
-            print("Plotting the bulge mass fraction.")
-            plots.plot_bulge_mass_fraction(self)
-
-        if plot_toggles["baryon_fraction"]:
-            print("Plotting the baryon fraction as a function of FoF Halo mass.")
-            plots.plot_baryon_fraction(self)
-
-        if plot_toggles["reservoirs"]:
-            print("Plotting a scatter of the mass reservoirs.")
-            plots.plot_mass_reservoirs(self)
-
-        if plot_toggles["spatial"]:
-            print("Plotting the spatial distribution.")
-            plots.plot_spatial_distribution(self)
+                # If the method doesn't exist, we will hit an `AttributeError`.
+                try:
+                    getattr(plots, method_name)(self)
+                except AttributeError:
+                    msg = "Tried to plot '{0}'.  However, no " \
+                          "method named '{1}' exists in the 'plots.py' module.\n" \
+                          "Check either that your plot toggles are set correctly or add " \
+                          "a method called '{1}' to the 'plots.py' module.".format(toggle, \
+                          method_name)
+                    msg += "\nPLEASE SCROLL UP AND MAKE SURE YOU'RE READING ALL ERROR " \
+                           "MESSAGES! THEY'RE EASY TO MISS! :)"
+                    raise AttributeError(msg)
 
 
 if __name__ == "__main__":
@@ -212,16 +180,16 @@ if __name__ == "__main__":
     # specified if using binary output. HDF5 will automatically detect these.
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
-    model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
+    model0_sage_output_format  = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
     model0_dir_name            = "../output/millennium/"
-    model0_file_name           = "model_z0.000"
+    model0_file_name           = "model.hdf5"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "r"
     model0_linestyle           = "-"
     model0_marker              = "x"
     model0_first_file          = 0  # The files read in will be [first_file, last_file]
-    model0_last_file           = 0  # This is a closed interval.
+    model0_last_file           = 4  # This is a closed interval.
     model0_simulation          = "Mini-Millennium"  # Sets the cosmology. Required for "sage_binary".
     model0_hdf5_snapshot       = 63  # Snapshot we're plotting the HDF5 data at.
     model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
@@ -244,7 +212,7 @@ if __name__ == "__main__":
 
     # A couple of extra variables...
     plot_output_format    = ".png"
-    plot_output_path = "./plots_hdf5"  # Will be created if path doesn't exist.
+    plot_output_path = "./dict_plots"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.
@@ -298,7 +266,7 @@ if __name__ == "__main__":
 
     # Read in the galaxies and calculate properties for each model.
     results = Results(model_dict, plot_toggles, plot_output_path, plot_output_format,
-                      debug=False)
+                      debug=True)
     results.do_plots()
 
     # Set the error settings to the previous ones so we don't annoy the user.

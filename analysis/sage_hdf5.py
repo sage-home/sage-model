@@ -16,6 +16,9 @@ import h5py
 
 import os
 
+## DO NOT TOUCH ##
+sage_data_version = "1.00"
+## DO NOT TOUCH ##
 
 class SageHdf5Model(Model):
     """
@@ -38,11 +41,23 @@ class SageHdf5Model(Model):
         Model.__init__(self, model_dict, plot_toggles)
         self.hdf5_file = h5py.File(self.model_path, "r")
 
+        self.sage_version = self.hdf5_file["Header"]["Misc"].attrs["sage_version"]
+        self.sage_data_version = self.hdf5_file["Header"]["Misc"].attrs["data_version"]
+
+        # Check that this module is current for the SAGE data version.
+        if self.sage_data_version != sage_data_version:
+            msg = "The 'sage_hdf5.py' module was written to be compatible with "
+                  "sage_data_version {0}.  Your version of SAGE HDF5 has data version "
+                  "{1}. Please update your version of SAGE or submit an issue at "
+                  "https://github.com/sage-home/sage-model/issues".format(sage_data_version,
+                  self.sage_data_version)
+            raise ValueError(msg)
+
         # For the HDF5 file, "first_file" and "last_file" correspond to the "Core_%d"
         # groups.
         self.first_file = 0
-        self.last_file = self.hdf5_file["Header"]["Runtime"].attrs["num_cores"] - 1
-        self.num_files = self.hdf5_file["Header"]["Runtime"].attrs["num_cores"]
+        self.last_file = self.hdf5_file["Header"]["Misc"].attrs["num_cores"] - 1
+        self.num_files = self.hdf5_file["Header"]["Misc"].attrs["num_cores"]
 
 
     def set_cosmology(self):
@@ -84,7 +99,7 @@ class SageHdf5Model(Model):
         for core_idx in range(self.first_file, self.last_file + 1):
 
             core_key = "Core_{0}".format(core_idx)            
-            ngals += self.hdf5_file[core_key][snap_key].attrs["ngals"]
+            ngals += self.hdf5_file[core_key][snap_key].attrs["num_gals"]
 
         self.num_gals = ngals 
 
@@ -121,7 +136,7 @@ class SageHdf5Model(Model):
         core_key = "Core_{0}".format(core_num)
         snap_key = "Snap_{0}".format(self.hdf5_snapshot)
 
-        num_gals_read = self.hdf5_file[core_key][snap_key].attrs["ngals"]
+        num_gals_read = self.hdf5_file[core_key][snap_key].attrs["num_gals"]
         if num_gals_read == 0:
             return None
 

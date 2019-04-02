@@ -134,12 +134,12 @@ class TemporalResults:
             # Find the snapshots that most closely match the requested redshifts.
             model.SMF_snaps = [(np.abs(model.redshifts - SMF_redshift)).argmin() for
                               SMF_redshift in model.SMF_redshifts]
-            model.SMF_dict = {}
+            model.properties["SMF_dict"] = {}
 
             model.density_snaps = [(np.abs(model.redshifts - density_redshift)).argmin() for
                                   density_redshift in model.density_redshifts]
-            model.SFRD_dict = {}
-            model.SMD_dict = {}
+            model.properties["SFRD_dict"] = {}
+            model.properties["SMD_dict"] = {}
 
             # We'll need to loop all snapshots, ignoring duplicates.
             snaps_to_loop = np.unique(model.SMF_snaps + model.density_snaps)
@@ -153,9 +153,9 @@ class TemporalResults:
             for snap in snap_iter:
 
                 # Reset the tracking.
-                model.SMF = np.zeros(len(model.stellar_mass_bins)-1, dtype=np.float64)
-                model.SFRD = 0.0
-                model.SMD = 0.0
+                model.properties["SMF"] = np.zeros(len(model.mass_bins)-1, dtype=np.float64)
+                model.properties["SFRD"] = 0.0
+                model.properties["SMD"] = 0.0
 
                 # Update the snapshot we're reading from. Subclass specific.
                 model.update_snapshot(snap)
@@ -165,15 +165,17 @@ class TemporalResults:
 
                 # We need to place the SMF inside the dictionary to carry through.
                 if snap in model.SMF_snaps:
-                    model.SMF_dict[snap] = model.SMF
+                    model.properties["SMF_dict"][snap] = model.properties["SMF"]
 
                 # Same with the densities.
                 if snap in model.density_snaps:
-                    if model.SFRD_toggle:
-                        model.SFRD_dict[snap] = model.SFRD
 
-                    if model.SMD_toggle:
-                        model.SMD_dict[snap] = model.SMD
+                    # It's slightly wasteful here because the user may only want the SFRD
+                    # and not the SMD. However the wasted compute time is neglible
+                    # compared to the time taken to read the galaxies + compute the
+                    # properties.
+                    model.properties["SFRD_dict"][snap] = model.properties["SFRD"]
+                    model.properties["SMD_dict"][snap] = model.properties["SMD"]
 
             all_models.append(model)
 
@@ -202,21 +204,26 @@ class TemporalResults:
         None. The plots are saved individually by each method.
         """
 
-        plot_toggles = self.plot_toggles
         plots.setup_matplotlib_options()
 
-        # Depending upon the toggles, make the plots.
-        if plot_toggles["SMF"] == 1:
-            print("Plotting the evolution of the Stellar Mass Function.")
-            plots.plot_temporal_SMF(self)
+        # Go through all the plot toggles and seach for a plot routine named
+        # "plot_<Toggle>".
+        for toggle in self.plot_toggles.keys():
+            if self.plot_toggles[toggle]:
+                method_name = "plot_{0}".format(toggle)
 
-        if plot_toggles["SFRD"] == 1:
-            print("Plotting the evolution of the Star Formation Rate Density.")
-            plots.plot_SFRD(self)
-
-        if plot_toggles["SMD"] == 1:
-            print("Plotting the evolution of the Stellar Mass Function Density.")
-            plots.plot_SMD(self)
+                # If the method doesn't exist, we will hit an `AttributeError`.
+                try:
+                    getattr(plots, method_name)(self)
+                except AttributeError:
+                    msg = "Tried to plot '{0}'.  However, no " \
+                          "method named '{1}' exists in the 'plots.py' module.\n" \
+                          "Check either that your plot toggles are set correctly or add " \
+                          "a method called '{1}' to the 'plots.py' module.".format(toggle, \
+                          method_name)
+                    msg += "\nPLEASE SCROLL UP AND MAKE SURE YOU'RE READING ALL ERROR " \
+                           "MESSAGES! THEY'RE EASY TO MISS! :)"
+                    raise AttributeError(msg)
 
 
 if __name__ == '__main__':
@@ -267,7 +274,7 @@ if __name__ == '__main__':
 
     # A couple of extra variables...
     plot_output_format    = ".png"
-    plot_output_path = "./plots_history"  # Will be created if path doesn't exist.
+    plot_output_path = "./plots"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function at specified redshifts.
