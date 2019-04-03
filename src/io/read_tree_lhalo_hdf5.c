@@ -368,7 +368,7 @@ void cleanup_forests_io_lht_hdf5(struct forest_info *forests_info)
 static int32_t fill_metadata_names(struct METADATA_NAMES *metadata_names, enum Valid_TreeTypes my_TreeType)
 {
     switch (my_TreeType) {
-    case genesis_lhalo_hdf5: 
+    case lhalo_hdf5: 
         
         snprintf(metadata_names->name_NTrees, MAX_STRING_LEN - 1, "NTrees"); // Total number of forests within the file.
         snprintf(metadata_names->name_totNHalos, MAX_STRING_LEN - 1, "totNHalos"); // Total number of halos within the file.

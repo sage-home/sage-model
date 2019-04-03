@@ -27,7 +27,7 @@ int open_forests_file(struct params *run_params, const int filenr)
     char filename[4*MAX_STRING_LEN];
     switch(TreeType) {
 #ifdef HDF5
-    case(genesis_lhalo_hdf5):
+    case(lhalo_hdf5):
         get_forests_filename_lht_hdf5(filename, 4*MAX_STRING_LEN, filenr, run_params);
         break;
     /* case genesis_standard_hdf5: */
@@ -69,7 +69,7 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     switch (TreeType)
         {
 #ifdef HDF5
-        case genesis_lhalo_hdf5:
+        case lhalo_hdf5:
             status = setup_forests_io_lht_hdf5(forests_info, firstfile, lastfile, ThisTask, NTasks, run_params);
             break;
             
@@ -105,7 +105,7 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
     /* Don't forget to free the open file handle */
     switch (TreeType) {
 #ifdef HDF5
-    case genesis_lhalo_hdf5:
+    case lhalo_hdf5:
         break;
         
     /* case genesis_standard_hdf5: */
@@ -143,7 +143,7 @@ int64_t load_forest(struct params *run_params, const int forestnr, struct halo_d
     switch (TreeType) {
         
 #ifdef HDF5
-    case genesis_lhalo_hdf5:
+    case lhalo_hdf5:
         nhalos = load_forest_hdf5(forestnr, halos, forests_info);
         break;
         
