@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include "read_tree_hdf5.h"
+#include "read_tree_lhalo_hdf5.h"
 #include "../core_mymalloc.h"
 
 

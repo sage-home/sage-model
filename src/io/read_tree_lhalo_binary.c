@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <limits.h>
 
-#include "read_tree_binary.h"
+#include "read_tree_lhalo_binary.h"
 #include "../core_mymalloc.h"
 #include "../core_utils.h"
 
