@@ -142,8 +142,8 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 // Unlike the binary output where we generate an array of output struct instances, the HDF5 workflow has
 // a single output struct (for each snapshot) where the **properties** of the struct are arrays.
 // This macro callocs (i.e., allocates and zeros) space for these inner arrays.
-#define CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, field_name) {     \
-    save_info->buffer_output_gals[snap_idx].field_name = calloc(save_info->buffer_size, sizeof(*(save_info->buffer_output_gals[snap_idx].field_name))); \
+#define MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, field_name) {     \
+    save_info->buffer_output_gals[snap_idx].field_name = malloc(save_info->buffer_size * sizeof(*(save_info->buffer_output_gals[snap_idx].field_name))); \
     if(save_info->buffer_output_gals[snap_idx].field_name == NULL) { \
         fprintf(stderr, "Could not allocate %d elements for the #field_name GALAXY_OUTPUT field for output snapshot #snap_idx\n", save_info->buffer_size);\
         return MALLOC_FAILURE;                                       \
@@ -189,10 +189,20 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     // We will have groups for each output snapshot, and then inside those groups, a dataset for
     // each field.
     save_info->group_ids = malloc(run_params->NOUT * sizeof(hid_t));
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info->group_ids,
+                                     "Failed to allocate %d elements of size %zu for save_info->group_ids", run_params->NOUT,
+                                     sizeof(*(ngals_allfiles_snap)));
 
     save_info->dataset_ids = malloc(run_params->NOUT * sizeof(*(save_info->dataset_ids)));
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info->dataset_ids,
+                                     "Failed to allocate %d elements of size %zu for save_info->dataset_ids", run_params->NOUT,
+                                     sizeof(*(save_info->dataset_ids)));
+
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; ++snap_idx) {
         save_info->dataset_ids[snap_idx] = malloc(NUM_OUTPUT_FIELDS * sizeof(hid_t));
+        CHECK_POINTER_AND_RETURN_ON_NULL(save_info->dataset_ids[snap_idx],
+                                         "Failed to allocate %d elements of size %zu for save_info->dataset_ids[%d]", NUM_OUTPUT_FIELDS,
+                                         sizeof(hid_t), snap_idx);
     }
 
     // A couple of variables before we enter the loop.
@@ -272,72 +282,79 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     // writing a single chunk. Unlike the binary instance where we have a single GALAXY_OUTPUT
     // struct instance per galaxy, here HDF5_GALAXY_OUTPUT is a **struct of arrays**. 
     save_info->buffer_size = NUM_GALS_PER_BUFFER;
-    save_info->num_gals_in_buffer = calloc(run_params->NOUT, sizeof(*(save_info->num_gals_in_buffer))); 
-    save_info->buffer_output_gals = calloc(run_params->NOUT, sizeof(struct HDF5_GALAXY_OUTPUT));
+    save_info->num_gals_in_buffer = calloc(run_params->NOUT, sizeof(*(save_info->num_gals_in_buffer))); // Calloced because initially no galaxies in buffer.
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info->num_gals_in_buffer,
+                                     "Failed to allocate %d elements of size %zu for save_info->num_gals_in_buffer", run_params->NOUT,
+                                     sizeof(*(save_info->num_gals_in_buffer)));
+
+    save_info->buffer_output_gals = malloc(run_params->NOUT * sizeof(struct HDF5_GALAXY_OUTPUT));
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info->buffer_output_gals,
+                                     "Failed to allocate %d elements of size %zu for save_info->buffer_output_gals", run_params->NOUT,
+                                     sizeof(struct HDF5_GALAXY_OUTPUT));
 
     // Now we need to malloc all the arrays **inside** the GALAXY_OUTPUT struct.
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
 
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, GalaxyIndex);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralGalaxyIndex);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGEHaloIndex);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGETreeIndex);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SimulationHaloIndex);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeType);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeIntoID);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeIntoSnapNum);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, dT);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posx);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posy);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posz);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Velx);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vely);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Velz);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spinx);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spiny);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spinz);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Len);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Mvir);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralMvir);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Rvir);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vvir);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vmax);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, VelDisp);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ColdGas);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, StellarMass);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BulgeMass);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, HotGas);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, EjectedMass);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BlackHoleMass);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ICS);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsColdGas);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsStellarMass);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsBulgeMass);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsHotGas);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsEjectedMass);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsICS);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDisk);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulge);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDiskZ);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulgeZ);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, DiskScaleRadius);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Cooling);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Heating);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, QuasarModeBHaccretionMass);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TimeOfLastMajorMerger);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TimeOfLastMinorMerger);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, OutflowRate);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallMvir);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVvir);
-        CALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVmax);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, GalaxyIndex);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralGalaxyIndex);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGEHaloIndex);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGETreeIndex);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SimulationHaloIndex);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeType);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeIntoID);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, mergeIntoSnapNum);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, dT);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posx);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posy);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Posz);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Velx);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vely);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Velz);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spinx);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spiny);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Spinz);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Len);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Mvir);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralMvir);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Rvir);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vvir);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vmax);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, VelDisp);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ColdGas);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, StellarMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BulgeMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, HotGas);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, EjectedMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BlackHoleMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ICS);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsColdGas);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsStellarMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsBulgeMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsHotGas);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsEjectedMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsICS);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDisk);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulge);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDiskZ);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulgeZ);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, DiskScaleRadius);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Cooling);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Heating);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, QuasarModeBHaccretionMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TimeOfLastMajorMerger);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TimeOfLastMinorMerger);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, OutflowRate);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallMvir);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVvir);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVmax);
     }
 
     return EXIT_SUCCESS; 
 }
 
-#undef CALLOC_GALAXY_OUTPUT_INNER_ARRAY
+#undef MALLOC_GALAXY_OUTPUT_INNER_ARRAY
 
 // Add all the galaxies for this tree to the buffer.  If we hit the buffer limit, write all the
 // galaxies to file.
@@ -589,8 +606,13 @@ int32_t create_hdf5_master_file(const struct params *run_params)
                                     "Can't open file %s for master file writing.\n", master_fname);
 
     // We will keep track of how many galaxies were saved across all files per snapshot.
+    // We do this for each snapshot in the simulation, not only those that are output, to allow easy
+    // checking of which snapshots were output.
     int64_t *ngals_allfiles_snap;
-    ngals_allfiles_snap = calloc(run_params->MAXSNAPS, sizeof(*(ngals_allfiles_snap)));
+    ngals_allfiles_snap = calloc(run_params->MAXSNAPS, sizeof(*(ngals_allfiles_snap))); // Calloced because initially no galaxies.
+    CHECK_POINTER_AND_RETURN_ON_NULL(ngals_allfiles_snap,
+                                     "Failed to allocate %d elements of size %zu for ngals_allfiles_snaps.", run_params->MAXSNAPS,
+                                     sizeof(*(ngals_allfiles_snap)));
 
     // The master file will be accessed as (e.g.,) f["Core0"]["Snap_63"]["StellarMass"].
     // Hence we want to store the external links to the **root** group (i.e., "/"). 

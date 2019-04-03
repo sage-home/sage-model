@@ -137,3 +137,13 @@
             return status;                                         \
         }                                                          \
   } while (0)
+
+#define CHECK_POINTER_AND_RETURN_ON_NULL(pointer, ...)         \
+    do {                                                       \
+        if(pointer == NULL) {                                  \
+            fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %d'\n",        \
+                    __FILE__, __FUNCTION__, __LINE__);         \
+            fprintf(stderr, __VA_ARGS__);                      \
+            return MALLOC_FAILURE;                             \
+        }                                                      \
+  } while (0)
