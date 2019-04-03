@@ -1,5 +1,8 @@
 sage
 tests/test_data/
+input/millennium/
+output/
+
 *.o
 *.*~
 libsage.a
