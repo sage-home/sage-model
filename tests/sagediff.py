@@ -206,7 +206,7 @@ class BinarySage(object):
             self.totngals_all_files += self.totngals
             self.ngal_per_tree_all_files.extend(self.ngal_per_tree)
 
-            fp.close() 
+            fp.close()
 
 
     def read_gals(self):
@@ -223,6 +223,7 @@ class BinarySage(object):
 
             fname_base = self.filename[:-2]
             fname = "{0}_{1}".format(fname_base, file_idx)
+
             fp = open(fname, "rb")
 
             self.read_header(fp)

@@ -29,9 +29,9 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
 
 int init_sage(const int ThisTask, const char *param_file, struct params *run_params)
 {
-    int status = read_parameter_file(ThisTask, param_file, run_params);
+    int32_t status = read_parameter_file(ThisTask, param_file, run_params);
     if(status != EXIT_SUCCESS) {
-        ABORT(status);
+        return status;
     }
     init(ThisTask, run_params);
 
@@ -54,12 +54,12 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     int status = EXIT_FAILURE;
     status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);
     if(status != EXIT_SUCCESS) {
-        ABORT(status);
+        return status;
     }
     if(forest_info.totnforests < 0 || forest_info.nforests_this_task < 0) {
         fprintf(stderr,"Error: Bug in code totnforests = %"PRId64" and nforests (on this task) = %"PRId64" should both be at least 0\n",
                 forest_info.totnforests, forest_info.nforests_this_task);
-        ABORT(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     // If we're creating a binary output, we need to be careful.
@@ -80,14 +80,25 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     const int64_t Nforests = forest_info.nforests_this_task;
 
-    // Allocate memory for the total number of galaxies for each snapshot (across all forests) //
+    // Allocate memory for the total number of galaxies for each output snapshot (across all forests).
+    // Calloc because we start with no galaxies.
     save_info.tot_ngals = calloc(run_params->NOUT, sizeof(*(save_info.tot_ngals)));
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info.tot_ngals,
+                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
+                                     sizeof(*(save_info.tot_ngals)));
 
-    // Allocate memory for the number of galaxies at each output snapshot. //
-    save_info.forest_ngals = malloc(run_params->NOUT * sizeof(*(save_info.forest_ngals))); 
-    for(int snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
-        /* using calloc removes the need to zero out the memory explicitly*/
-        save_info.forest_ngals[snap_idx] = mycalloc(Nforests, sizeof(*(save_info.forest_ngals[snap_idx])));/* must be calloc*/
+    // Allocate memory for the number of galaxies at each output snapshot for each forest.
+    save_info.forest_ngals = calloc(run_params->NOUT, sizeof(*(save_info.forest_ngals))); 
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals,
+                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
+                                     sizeof(*(save_info.forest_ngals)));
+
+    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+        // Using calloc removes the need to zero out the memory explicitly.
+        save_info.forest_ngals[snap_idx] = mycalloc(Nforests, sizeof(*(save_info.forest_ngals[snap_idx])));
+        CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals[snap_idx],
+                                         "Failed to allocate %"PRId64" elements of size %zu for save_info.tot_ngals[%d]", Nforests,
+                                         sizeof(*(save_info.forest_ngals[snap_idx])), snap_idx);
     }
 
     fprintf(stderr,"Task %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
@@ -96,7 +107,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     /* open all the output files corresponding to this tree file (specified by rank) */
     status = initialize_galaxy_files(ThisTask, &forest_info, &save_info, run_params);
     if(status != EXIT_SUCCESS) {
-        ABORT(status);
+        return status;
     }
 
     run_params->interrupted = 0;
@@ -113,7 +124,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         /* the millennium tree is really a collection of trees, viz., a forest */
         status = sage_per_forest(forestnr, &save_info, &forest_info, run_params);
         if(status != EXIT_SUCCESS) {
-            ABORT(status);
+            return status;
         }
 
         nforests_done++;
@@ -121,7 +132,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     status = finalize_galaxy_files(&forest_info, &save_info, run_params);
     if(status != EXIT_SUCCESS) {
-        ABORT(status);
+        return status;
     }
 
     for(int snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
@@ -205,7 +216,7 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
     int32_t *file_ordering_of_halos=NULL;
     int status = reorder_lhalo_to_lhvt(nhalos, Halo, 0, &file_ordering_of_halos);/* the 3rd parameter is for testing the reorder code */
     if(status != EXIT_SUCCESS) {
-        ABORT(status);
+        return status;
     }
 #endif
     

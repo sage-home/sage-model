@@ -24,9 +24,9 @@
 
 // Local Proto-Types //
 
-int32_t generate_galaxy_index(const int32_t tree_filenr, const int32_t treenr, const int32_t GalaxyNr,
-                              const int32_t CentralGalaxyNr, const int32_t LastFile, int64_t *GalaxyIndex,
-                              int64_t *CentralGalaxyIndex);
+int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo_aux_data *haloaux,
+                                struct GALAXY *halogal, const int32_t treenr, const int32_t LastFile,
+                                const int32_t numgals); 
 
 // Externally Visible Functions //
 
@@ -110,14 +110,9 @@ int32_t save_galaxies(const int treenr, const int numgals, struct halo_data *hal
 
 
     // Generate a unique GalaxyIndex for each galaxy.
-    for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
-        int32_t CentralGalaxyNr = haloaux[halos[halogal[gal_idx].HaloNr].FirstHaloInFOFgroup].FirstGalaxy;
-        status = generate_galaxy_index(halos[halogal[gal_idx].HaloNr].FileNr, treenr,
-                                       halogal[gal_idx].GalaxyNr, CentralGalaxyNr, run_params->LastFile,
-                                       &halogal[gal_idx].GalaxyIndex, &halogal[gal_idx].CentralGalaxyIndex);
-        if(status != EXIT_SUCCESS) {
-            return EXIT_FAILURE;
-        }
+    status = generate_galaxy_indices(halos, haloaux, halogal, treenr, run_params->LastFile, numgals); 
+    if(status != EXIT_SUCCESS) {
+        return EXIT_FAILURE;
     }
 
     // All of the tracking arrays set up, time to perform the actual writing.
@@ -179,35 +174,45 @@ int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save
 #define TREE_MUL_FAC        (1000000000LL)
 #define THISTASK_MUL_FAC      (1000000000000000LL)
 
-int32_t generate_galaxy_index(const int32_t tree_filenr, const int32_t treenr, const int32_t GalaxyNr,
-                              const int32_t CentralGalaxyNr, const int32_t LastFile,
-                              int64_t *GalaxyIndex, int64_t *CentralGalaxyIndex){
+int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo_aux_data *haloaux,
+                                struct GALAXY *halogal, const int32_t treenr, const int32_t LastFile,
+                                const int32_t numgals) 
+{
 
     // Assume that there are so many files, that there aren't as many trees.
-    // Required for 64 bit limit.
+    int64_t my_thistask_mul_fac;
     if(LastFile>=10000) {
-        if(GalaxyNr > TREE_MUL_FAC || treenr > (THISTASK_MUL_FAC/10)/TREE_MUL_FAC) {
+        my_thistask_mul_fac = THISTASK_MUL_FAC/10;
+    } else {
+        my_thistask_mul_fac = THISTASK_MUL_FAC;
+    }
+
+    // Now generate the unique index for each galaxy. 
+    for(int32_t gal_idx = 0; gal_idx < numgals; ++gal_idx) { 
+
+        struct GALAXY *this_gal = &halogal[gal_idx];
+
+        // This corresponds to the file number of the **original tree files** this halo is from.
+        int32_t tree_filenr = halos[this_gal->HaloNr].FileNr;
+
+        int32_t GalaxyNr = this_gal->GalaxyNr;
+        int32_t CentralGalaxyNr = halogal[haloaux[halos[this_gal->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr;
+
+        // Check that the index would actually fit in a 64 bit number.
+        if(GalaxyNr > TREE_MUL_FAC || treenr > my_thistask_mul_fac/TREE_MUL_FAC) {
             fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
                             "File number %d\ttree number %d\tGalaxy Number %d\n", tree_filenr, treenr,
                             GalaxyNr);
-            return EXIT_FAILURE;
+          return EXIT_FAILURE;
         }
 
-        *GalaxyIndex = GalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * tree_filenr;
-        *CentralGalaxyIndex = CentralGalaxyNr + TREE_MUL_FAC * treenr + (THISTASK_MUL_FAC/10) * tree_filenr;
-        } else {
-        if(GalaxyNr > TREE_MUL_FAC || treenr > THISTASK_MUL_FAC/TREE_MUL_FAC) {
-            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
-                            "File number %d\ttree number %d\tGalaxy Number %d\n", tree_filenr, treenr,
-                            GalaxyNr);
-            return EXIT_FAILURE;
-        }
-
-        *GalaxyIndex = GalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * tree_filenr;
-        *CentralGalaxyIndex = CentralGalaxyNr + TREE_MUL_FAC * treenr + THISTASK_MUL_FAC * tree_filenr;        
+        // Everything is good, generate the index.
+        this_gal->GalaxyIndex = GalaxyNr + TREE_MUL_FAC * treenr + my_thistask_mul_fac * tree_filenr;
+        this_gal->CentralGalaxyIndex= CentralGalaxyNr + TREE_MUL_FAC * treenr + my_thistask_mul_fac * tree_filenr;
     }
 
     return EXIT_SUCCESS;
+
 }
 
 #undef TREE_MUL_FAC

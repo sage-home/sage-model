@@ -191,7 +191,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     save_info->group_ids = malloc(run_params->NOUT * sizeof(hid_t));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->group_ids,
                                      "Failed to allocate %d elements of size %zu for save_info->group_ids", run_params->NOUT,
-                                     sizeof(*(ngals_allfiles_snap)));
+                                     sizeof(*(save_info->group_ids)));
 
     save_info->dataset_ids = malloc(run_params->NOUT * sizeof(*(save_info->dataset_ids)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->dataset_ids,
