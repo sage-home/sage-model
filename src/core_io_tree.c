@@ -131,6 +131,10 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
         
     }
 
+    // Finally, things that are common across forest types.
+    free(forests_info->FileNr);
+    free(forests_info->original_treenr);
+
     return;
 }
 

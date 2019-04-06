@@ -233,7 +233,7 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
         HaloAux[i].DoneFlag = 0;
 #ifdef PROCESS_LHVT_STYLE        
         HaloAux[i].orig_index = file_ordering_of_halos[i];
-#endif        
+#endif
     }
 
 #ifdef PROCESS_LHVT_STYLE    
@@ -279,7 +279,7 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
 
 #endif /* PROCESS_LHVT_STYLE */    
 
-    status = save_galaxies(forestnr, numgals, Halo, HaloAux, HaloGal, save_info, run_params);
+    status = save_galaxies(forestnr, numgals, Halo, forest_info, HaloAux, HaloGal, save_info, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }

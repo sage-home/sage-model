@@ -68,6 +68,7 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 
 // Write all the galaxy properties to file.
 int32_t save_galaxies(const int treenr, const int numgals, struct halo_data *halos,
+                      struct forest_info *forest_info,
                       struct halo_aux_data *haloaux, struct GALAXY *halogal,
                       struct save_info *save_info, const struct params *run_params)
 {
@@ -119,13 +120,13 @@ int32_t save_galaxies(const int treenr, const int numgals, struct halo_data *hal
     switch(run_params->OutputFormat) {
 
     case(sage_binary):
-        status = save_binary_galaxies(treenr, numgals, OutputGalCount, halos, haloaux,
-                                      halogal, save_info, run_params);
+        status = save_binary_galaxies(treenr, numgals, OutputGalCount, forest_info,
+                                      halos, haloaux, halogal, save_info, run_params);
         break;
 
 #ifdef HDF5
     case(sage_hdf5):
-        status = save_hdf5_galaxies(treenr, numgals, halos, haloaux, halogal, save_info, run_params);
+        status = save_hdf5_galaxies(treenr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
         break;
 #endif
 
@@ -199,16 +200,20 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
         int32_t CentralGalaxyNr = halogal[haloaux[halos[this_gal->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr;
 
         // Check that the index would actually fit in a 64 bit number.
+        /*
         if(GalaxyNr > TREE_MUL_FAC || treenr > my_thistask_mul_fac/TREE_MUL_FAC) {
-            fprintf(stderr, "We assume there is a maximum of 2^64 - 1 trees.  This assumption has been broken.\n"
-                            "File number %d\ttree number %d\tGalaxy Number %d\n", tree_filenr, treenr,
-                            GalaxyNr);
+            fprintf(stderr, "When determining a unique Galaxy Number, we assume that the number of trees are less than %"PRId64
+                            "This assumption has been broken.\n File number %d\ttree number %d\tGalaxy Number %d\n",
+                            my_thistask_mul_fac, tree_filenr, treenr, GalaxyNr);
           return EXIT_FAILURE;
         }
 
-        // Everything is good, generate the index.
         this_gal->GalaxyIndex = GalaxyNr + TREE_MUL_FAC * treenr + my_thistask_mul_fac * tree_filenr;
         this_gal->CentralGalaxyIndex= CentralGalaxyNr + TREE_MUL_FAC * treenr + my_thistask_mul_fac * tree_filenr;
+        */
+        // Everything is good, generate the index.
+        this_gal->GalaxyIndex = 0; 
+        this_gal->CentralGalaxyIndex= 0; 
     }
 
     return EXIT_SUCCESS;

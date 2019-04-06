@@ -601,7 +601,7 @@ if __name__ == '__main__':
               "master file and set 'num_files' to 1.")
         raise ValueError
 
-    ignored_fields = ["GalaxyIndex", "CentralGalaxyIndex"]
+    ignored_fields = ["SAGETreeIndex", "GalaxyIndex", "CentralGalaxyIndex"]
 
     # Some multi-dimensional values (e.g., Position) are saved in multiple datasets for
     # the HDF5 file.

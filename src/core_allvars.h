@@ -182,7 +182,6 @@ struct lhalotree_info {
     };
     int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
     int32_t unused;/* unused, but present for alignment */
-    int32_t *FileNr; // The file number that each forest was read from.
 };
 
 struct ctrees_info {
@@ -234,6 +233,9 @@ struct forest_info {
     // fraction of the simulation volume that this task processes.  We weight this summation by the
     // number of trees in each file because some files may have more/less trees whilst still spanning the
     // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
+    int32_t *FileNr; // The file number that each forest was read from.
+    int32_t *original_treenr; // The tree number from the original tree files.
+                              // Necessary because Task N's "Tree 0" could start at the middle of a file.
 };
 
 struct save_info {

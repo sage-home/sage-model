@@ -74,11 +74,13 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     // Now that we know the number of trees being processed by each task, let's set up and malloc the structs.
     struct lhalotree_info *lht = &(forests_info->lht);
     forests_info->nforests_this_task = nforests_this_task;
+    forests_info->FileNr = malloc(nforests_this_task * sizeof(*(forests_info->FileNr)));
+    forests_info->original_treenr = malloc(nforests_this_task * sizeof(*(forests_info->original_treenr)));
+
     lht->nforests = nforests_this_task;
     lht->nhalos_per_forest = mymalloc(nforests_this_task * sizeof(lht->nhalos_per_forest[0]));
     lht->bytes_offset_for_forest = mymalloc(nforests_this_task * sizeof(lht->bytes_offset_for_forest[0]));
     lht->fd = mymalloc(nforests_this_task * sizeof(lht->fd[0]));
-    lht->FileNr = mymalloc(nforests_this_task * sizeof(*(lht->FileNr)));
     
     int64_t *num_forests_to_process_per_file = calloc(lastfile + 1, sizeof(num_forests_to_process_per_file[0]));/* calloc is required */
     int64_t *start_forestnum_to_process_per_file = malloc((lastfile + 1) * sizeof(start_forestnum_to_process_per_file[0]));
@@ -176,7 +178,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         }
         lht->open_fds[file_index] = fd;/* keep the file open, will be closed at the cleanup stage */
         
-        const int64_t nforests = num_forests_to_process_per_file[filenr];
+        const int64_t nforests_to_process_this_file = num_forests_to_process_per_file[filenr];
         const size_t nbytes = totnforests_per_file[filenr] * sizeof(int32_t);
         int32_t *nhalos_per_forest = malloc(nbytes);
 
@@ -187,7 +189,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         }
 
         mypread(fd, nhalos_per_forest, nbytes, 8); /* the last argument says to start after sizeof(totntrees) + sizeof(totnhalos) */
-        memcpy(forestnhalos, &(nhalos_per_forest[start_forestnum_to_process_per_file[filenr]]), nforests * sizeof(forestnhalos[0]));
+        memcpy(forestnhalos, &(nhalos_per_forest[start_forestnum_to_process_per_file[filenr]]), nforests_to_process_this_file * sizeof(forestnhalos[0]));
 
         /* first compute the byte offset to the halos in start_forestnum */
         size_t byte_offset_to_halos = sizeof(int32_t) + sizeof(int32_t) + nbytes;/* start at the beginning of halo #0 in tree #0 */
@@ -203,7 +205,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
                     nforests_so_far);
         }
                     
-        for(int64_t i=0;i<nforests;i++) {
+        for(int64_t i=0; i<nforests_to_process_this_file; i++) {
             lht->bytes_offset_for_forest[i + nforests_so_far] = byte_offset_to_halos;
             XASSERT(i + nforests_so_far < lht->nforests, EXIT_FAILURE,
                     "ThisTask = %d Assigning to index = %"PRId64" but only space of %"PRId64" forest fds\n", ThisTask, i + nforests_so_far, lht->nforests);
@@ -212,9 +214,17 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
 
             // Can't guarantee that the `FileNr` variable in the tree file is correct.
             // Hence let's track it explicitly here.
-            lht->FileNr[i + nforests_so_far] = filenr;
+            forests_info->FileNr[i + nforests_so_far] = filenr;
+
+            // We want to track the original tree number from these files.  Since we split multiple
+            // files across tasks, we can't guarantee that tree N processed by a certain task is
+            // actually the Nth tree in any arbitrary file.
+            forests_info->original_treenr[i + nforests_so_far] = i + start_forestnum_to_process_per_file[filenr];
+            // We add `start_forestnum...`` because we could start reading from the middle of a
+            // forest file.  Hence we would want "Forest 0" processed by that task to be
+            // appropriately shifted.
         }
-        forestnhalos += nforests;
+        forestnhalos += nforests_to_process_this_file;
     }
 
     // We assume that each of the input tree files span the same volume. Hence by summing the
@@ -279,7 +289,6 @@ void cleanup_forests_io_lht_binary(struct forest_info *forests_info)
     myfree(lht->nhalos_per_forest);
     myfree(lht->bytes_offset_for_forest);
     myfree(lht->fd);
-    free(lht->FileNr);
 
     for(int32_t i=0;i<lht->numfiles;i++) {
         close(lht->open_fds[i]);

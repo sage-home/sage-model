@@ -14,8 +14,8 @@
 
 // Local Proto-Types //
 
-int32_t prepare_galaxy_for_output(int32_t treenr, struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
-                                  const struct params *run_params);
+int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
+                                  const int32_t original_treenr, const struct params *run_params);
 
 // Externally Visible Functions //
 
@@ -52,9 +52,9 @@ int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_inf
 }
 
 
-int32_t save_binary_galaxies(const int32_t treenr, const int32_t num_gals, const int32_t *OutputGalCount,
-                             struct halo_data *halos, struct halo_aux_data *haloaux, struct GALAXY *halogal,
-                             struct save_info *save_info, const struct params *run_params)
+int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, const int32_t *OutputGalCount,
+                             struct forest_info *forest_info, struct halo_data *halos, struct halo_aux_data *haloaux,
+                             struct GALAXY *halogal, struct save_info *save_info, const struct params *run_params)
 {
 
     int32_t status = EXIT_FAILURE;
@@ -96,14 +96,15 @@ int32_t save_binary_galaxies(const int32_t treenr, const int32_t num_gals, const
 
         // Here we move the offset pointer depending upon the number of galaxies processed up to this point.
         struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx] + num_gals_processed[snap_idx];
-        status = prepare_galaxy_for_output(treenr, &halogal[gal_idx], galaxy_output, halos, run_params);
+        status = prepare_galaxy_for_output(&halogal[gal_idx],  galaxy_output, halos,
+                                           forest_info->original_treenr[task_treenr], run_params);
         if(status != EXIT_SUCCESS) {
           return status;
         }
 
         // Update the running totals.
         save_info->tot_ngals[snap_idx]++;
-        save_info->forest_ngals[snap_idx][treenr]++;
+        save_info->forest_ngals[snap_idx][task_treenr]++;
         num_gals_processed[snap_idx]++;
     }
 
@@ -177,8 +178,8 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
 
 // Local Functions //
 
-int32_t prepare_galaxy_for_output(int32_t treenr, struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
-                                  const struct params *run_params)
+int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
+                                  const int32_t original_treenr, const struct params *run_params)
 {
     o->SnapNum = g->SnapNum;
     if(g->Type < SHRT_MIN || g->Type > SHRT_MAX) {
@@ -192,7 +193,7 @@ int32_t prepare_galaxy_for_output(int32_t treenr, struct GALAXY *g, struct GALAX
     o->CentralGalaxyIndex = g->CentralGalaxyIndex;
 
     o->SAGEHaloIndex = g->HaloNr;/* if the original input halonr is required, then use haloaux[halonr].orig_index: MS 29/6/2018 */
-    o->SAGETreeIndex = treenr;
+    o->SAGETreeIndex = original_treenr;
     o->SimulationHaloIndex = llabs(halos[g->HaloNr].MostBoundID);
 
     o->mergeType = g->mergeType;

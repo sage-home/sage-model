@@ -23,8 +23,9 @@
 int32_t generate_field_metadata(char **field_names, char **field_descriptions, char **field_units,
                                 hsize_t *field_dtypes);
 
-int32_t prepare_galaxy_for_hdf5_output(const int32_t treenr, struct GALAXY *g, struct save_info *save_info,
+int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_info,
                                        int32_t output_snap_idx, struct halo_data *halos,
+                                       const int32_t original_treenr,
                                        const struct params *run_params);
 
 int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num_already_written,
@@ -358,7 +359,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
 // Add all the galaxies for this tree to the buffer.  If we hit the buffer limit, write all the
 // galaxies to file.
-int32_t save_hdf5_galaxies(const int32_t treenr, const int32_t num_gals,
+int32_t save_hdf5_galaxies(const int32_t task_treenr, const int32_t num_gals, struct forest_info *forest_info,
                            struct halo_data *halos, struct halo_aux_data *haloaux, struct GALAXY *halogal,
                            struct save_info *save_info, const struct params *run_params)
 {
@@ -373,12 +374,13 @@ int32_t save_hdf5_galaxies(const int32_t treenr, const int32_t num_gals,
 
         // Add galaxies to buffer.
         int32_t snap_idx = haloaux[gal_idx].output_snap_n;
-        prepare_galaxy_for_hdf5_output(treenr, &halogal[gal_idx], save_info, snap_idx, halos, run_params);
+        prepare_galaxy_for_hdf5_output(&halogal[gal_idx], save_info, snap_idx, halos,
+                                       forest_info->original_treenr[task_treenr], run_params);
         save_info->num_gals_in_buffer[snap_idx]++;
 
         // We can't guarantee that this tree will contain enough galaxies to trigger a write.
         // Hence we need to increment this here.
-        save_info->forest_ngals[snap_idx][treenr]++;
+        save_info->forest_ngals[snap_idx][task_treenr]++;
 
         // Check to see if we need to write.
         if(save_info->num_gals_in_buffer[snap_idx] == save_info->buffer_size) {
@@ -765,8 +767,9 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
 
 // Take all the properties of the galaxy `*g` and add them to the buffered galaxies
 // properties `save_info->buffer_output_gals`.
-int32_t prepare_galaxy_for_hdf5_output(const int32_t treenr, struct GALAXY *g, struct save_info *save_info,
+int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_info,
                                        int32_t output_snap_idx,  struct halo_data *halos,
+                                       const int32_t original_treenr,
                                        const struct params *run_params)
 {
     int64_t gals_in_buffer = save_info->num_gals_in_buffer[output_snap_idx];
@@ -784,7 +787,7 @@ int32_t prepare_galaxy_for_hdf5_output(const int32_t treenr, struct GALAXY *g, s
     save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = g->CentralGalaxyIndex;
 
     save_info->buffer_output_gals[output_snap_idx].SAGEHaloIndex[gals_in_buffer] = g->HaloNr; 
-    save_info->buffer_output_gals[output_snap_idx].SAGETreeIndex[gals_in_buffer] = treenr; 
+    save_info->buffer_output_gals[output_snap_idx].SAGETreeIndex[gals_in_buffer] = original_treenr;
     save_info->buffer_output_gals[output_snap_idx].SimulationHaloIndex[gals_in_buffer] = llabs(halos[g->HaloNr].MostBoundID);
 
     save_info->buffer_output_gals[output_snap_idx].mergeType[gals_in_buffer] = g->mergeType; 
