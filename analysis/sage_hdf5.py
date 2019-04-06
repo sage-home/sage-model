@@ -41,8 +41,10 @@ class SageHdf5Model(Model):
         Model.__init__(self, model_dict, plot_toggles)
         self.hdf5_file = h5py.File(self.model_path, "r")
 
-        self.sage_version = self.hdf5_file["Header"]["Misc"].attrs["sage_version"]
-        self.sage_data_version = self.hdf5_file["Header"]["Misc"].attrs["data_version"]
+        # Due to how attributes are created in C, they will need to be decoded to get cast
+        # to a string.
+        self.sage_version = self.hdf5_file["Header"]["Misc"].attrs["sage_version"].decode("ascii")
+        self.sage_data_version = self.hdf5_file["Header"]["Misc"].attrs["sage_data_version"].decode("ascii")
 
         # Check that this module is current for the SAGE data version.
         if self.sage_data_version != sage_data_version:

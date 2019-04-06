@@ -266,7 +266,7 @@ if __name__ == "__main__":
 
     # Read in the galaxies and calculate properties for each model.
     results = Results(model_dict, plot_toggles, plot_output_path, plot_output_format,
-                      debug=True)
+                      debug=False)
     results.do_plots()
 
     # Set the error settings to the previous ones so we don't annoy the user.
