@@ -197,22 +197,17 @@ class BinarySage(object):
             fname = "{0}_{1}".format(fname_base, file_idx)
 
             # Open and read the header.
-            fp = open(fname, "rb")
+            with open(fname, "rb") as fp:
 
-            self.read_header(fp)
+                self.read_header(fp)
 
-            # Then update the global parameters.
-            self.totntrees_all_files += self.totntrees
-            self.totngals_all_files += self.totngals
-            self.ngal_per_tree_all_files.extend(self.ngal_per_tree)
-
-            fp.close()
+                # Then update the global parameters.
+                self.totntrees_all_files += self.totntrees
+                self.totngals_all_files += self.totngals
+                self.ngal_per_tree_all_files.extend(self.ngal_per_tree)
 
 
     def read_gals(self):
-
-        # First determine the number of galaxies across all files.
-        totngals_all_files = 0
 
         # Initialize an empty array.
         gals = np.empty(self.totngals_all_files, dtype=self.dtype)
@@ -224,17 +219,15 @@ class BinarySage(object):
             fname_base = self.filename[:-2]
             fname = "{0}_{1}".format(fname_base, file_idx)
 
-            fp = open(fname, "rb")
+            with open(fname, "rb") as fp:
 
-            self.read_header(fp)
-            gals_file = self.read_tree(None, fp)
+                self.read_header(fp)
+                gals_file = self.read_tree(None, fp)
 
-            gals_this_file = len(gals_file)
+                gals_this_file = len(gals_file)
 
-            gals[offset:offset+gals_this_file] = gals_file
-            offset += gals_this_file 
-
-            fp.close()
+                gals[offset:offset+gals_this_file] = gals_file
+                offset += gals_this_file
 
         return gals
 
