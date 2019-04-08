@@ -38,7 +38,7 @@ if [ ! -f trees_063.7 ]; then
     fi
 
     # If there aren't trees, there's no way there is the 'correct' data files.
-    wget "https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
+    wget "https://www.dropbox.com/s/n7wkkydqlyrhy59/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
     if [[ $? != 0 ]]; then
         echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests"
         echo "Failed"
