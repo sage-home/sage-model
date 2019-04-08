@@ -16,7 +16,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_
 	assert(halonr == halos[halonr].FirstHaloInFOFgroup);
     
     galaxies[p].Type = 0;
-    
+
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;
     

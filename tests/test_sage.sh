@@ -101,7 +101,8 @@ if [[ $? == 0 ]]; then
             ((nbitwise++))
         else
             # If they're not identical, manually check all the fields for differences.
-            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary $NUM_SAGE_PROCS
+            # The two `1` at the end here denotes that the 'correct' SAGE files are in one file.
+            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary 1 $NUM_SAGE_PROCS
             if [[ $? == 0 ]]; then 
                 ((npassed++))
             else
@@ -160,8 +161,9 @@ if [[ $? == 0 ]]; then
     nfailed=0
     for f in ${correct_files[@]}; do
         ((nfiles++))
-        # The `1` at the end here denotes that SAGE was output to a single file.
-        python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5 1
+        # The two `1` at the end here denotes that the 'correct' SAGE files are in one file and
+        # the SAGE output we're testing was written to a single file.
+        python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5 1 1
         if [[ $? == 0 ]]; then
             ((npassed++))
         else

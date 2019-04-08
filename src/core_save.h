@@ -11,7 +11,7 @@ extern "C" {
                                            struct save_info *save_info,
                                            const struct params *run_params);
 
-    extern int32_t save_galaxies(const int treenr, const int numgals, struct halo_data *halos, struct forest_info *forest_info,
+    extern int32_t save_galaxies(const int task_forestnr, const int numgals, struct halo_data *halos, struct forest_info *forest_info,
                                  struct halo_aux_data *haloaux, struct GALAXY *halogal, struct save_info *save_info,
                                  const struct params *run_params);
 

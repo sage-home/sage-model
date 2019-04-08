@@ -26,7 +26,7 @@
 
 int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo_aux_data *haloaux,
                                 struct GALAXY *halogal, const int32_t treenr, const int32_t filenr,
-                                const int32_t LastFile, const int32_t numgals); 
+                                const int32_t LastFile, const int32_t numgals);
 
 // Externally Visible Functions //
 
@@ -67,7 +67,7 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 
 
 // Write all the galaxy properties to file.
-int32_t save_galaxies(const int treenr, const int numgals, struct halo_data *halos,
+int32_t save_galaxies(const int task_forestnr, const int numgals, struct halo_data *halos,
                       struct forest_info *forest_info,
                       struct halo_aux_data *haloaux, struct GALAXY *halogal,
                       struct save_info *save_info, const struct params *run_params)
@@ -115,14 +115,16 @@ int32_t save_galaxies(const int treenr, const int numgals, struct halo_data *hal
     // within SAGE; that ``forestnr`` is **task local** and potentially does **NOT** correspond to
     // the tree number in the original simulation file.
 
-    // Because trees are confined to a single file, we can simply use the file number of the 0th
-    // halo. Furthermore, all galaxies are in the same tree (by definition) so use the tree of the
-    // 0th halo as well.
-    int32_t original_treenr = forest_info->original_treenr[halogal[0].HaloNr];
-    int32_t original_filenr = forest_info->FileNr[halogal[0].HaloNr];
+    // When we allocated the trees to each task, we stored the correct tree and file numbers in
+    // arrays indexed by the ``forestnr`` parameter.  Furthermore, since all galaxies being
+    // processed belong to a single tree (by definition) and because trees cannot be split over
+    // multiple files, we can access the tree + fiel number once and use it for all galaxies being
+    // saved.
+    int32_t original_treenr = forest_info->original_treenr[task_forestnr];
+    int32_t original_filenr = forest_info->FileNr[task_forestnr];
 
     status = generate_galaxy_indices(halos, haloaux, halogal, original_treenr, original_filenr,
-                                     run_params->LastFile, numgals); 
+                                     run_params->LastFile, numgals);
     if(status != EXIT_SUCCESS) {
         return EXIT_FAILURE;
     }
@@ -131,13 +133,13 @@ int32_t save_galaxies(const int treenr, const int numgals, struct halo_data *hal
     switch(run_params->OutputFormat) {
 
     case(sage_binary):
-        status = save_binary_galaxies(treenr, numgals, OutputGalCount, forest_info,
+        status = save_binary_galaxies(task_forestnr, numgals, OutputGalCount, forest_info,
                                       halos, haloaux, halogal, save_info, run_params);
         break;
 
 #ifdef HDF5
     case(sage_hdf5):
-        status = save_hdf5_galaxies(treenr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
+        status = save_hdf5_galaxies(task_forestnr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
         break;
 #endif
 

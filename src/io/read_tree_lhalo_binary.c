@@ -224,6 +224,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
             // forest file.  Hence we would want "Forest 0" processed by that task to be
             // appropriately shifted.
         }
+
         forestnhalos += nforests_to_process_this_file;
     }
 

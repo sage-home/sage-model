@@ -239,18 +239,18 @@ class BinarySage(object):
         return gals
 
 
-def compare_catalogs(fname1, fname2, mode, num_files, ignored_fields, multidim_fields=None,
+def compare_catalogs(fname1, num_files_file1, fname2, num_files_file2, mode, ignored_fields, multidim_fields=None,
                      rtol=1e-9, atol=5e-5):
     """
     Compares two SAGE catalogs exactly
     """
 
     # For both modes, the first file will be binary.  So lets initialize it.
-    g1 = BinarySage(fname1, ignored_fields)
+    g1 = BinarySage(fname1, ignored_fields, num_files_file1)
 
     # The second file will be either binary or HDF5.
     if mode == "binary-binary":
-        g2 = BinarySage(fname2, ignored_fields, num_files)
+        g2 = BinarySage(fname2, ignored_fields, num_files_file2)
         compare_binary_catalogs(g1, g2, rtol, atol)
     else:
         with h5py.File(fname2, "r") as hdf5_file:
@@ -586,7 +586,9 @@ if __name__ == '__main__':
                         help="the basename for the second set of files (say, model2_z0.000)")
     parser.add_argument("mode", metavar="MODE",
                         help="Either 'binary-binary' or 'binary-hdf5'.")
-    parser.add_argument("num_files", metavar="NUM_FILES", type=int,
+    parser.add_argument("num_files_file1", metavar="NUM_FILES_FILE1", type=int,
+                        help="Number of files the first file was split over.")
+    parser.add_argument("num_files_file2", metavar="NUM_FILES_FILE2", type=int,
                         help="Number of files the second file was split over.")
     args = parser.parse_args()
 
@@ -595,10 +597,10 @@ if __name__ == '__main__':
               "files.  Please set the 'mode' argument to one of these options.")
         raise ValueError
 
-    if args.mode == "binary-hdf5" and args.num_files > 1:
+    if args.mode == "binary-hdf5" and args.num_files_file2 > 1:
         print("You're comparing a binary with a HDF5 file but are saying the HDF5 file is "
               "split over multiple files. This shouldn't be the case; simply specify the "
-              "master file and set 'num_files' to 1.")
+              "master file and set 'num_files_file2' to 1.")
         raise ValueError
 
     ignored_fields = ["SAGETreeIndex", "GalaxyIndex", "CentralGalaxyIndex"]
@@ -611,11 +613,13 @@ if __name__ == '__main__':
     rtol = 1e-07
     atol = 1e-11
 
-    print("Running sagediff on files {0} and {1} in mode {2}. The second file " 
-          "was split over {3} files.".format(args.file1, args.file2, args.mode, args.num_files))
+    print("Running sagediff on files {0} and {1} in mode {2}. The first file "
+          "was split over {3} files and the second file was split over {3} "
+          "files.".format(args.file1, args.file2, args.mode, args.num_files_file1,
+          args.num_files_file2))
 
-    compare_catalogs(args.file1, args.file2, args.mode, args.num_files, ignored_fields,
-                     multidim_fields, rtol, atol)
+    compare_catalogs(args.file1, args.num_files_file1, args.file2, args.num_files_file2,
+                     args.mode, ignored_fields, multidim_fields, rtol, atol)
 
     print("========================")
     print("All tests passed for files {0} and {1}. Yay!".format(args.file1, args.file2))
