@@ -68,7 +68,6 @@ int main(int argc, char **argv)
 #endif
     perror(NULL);
     return status;
-       
-}
 
+}
 

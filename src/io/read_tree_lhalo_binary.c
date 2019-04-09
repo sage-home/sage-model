@@ -74,8 +74,16 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     // Now that we know the number of trees being processed by each task, let's set up and malloc the structs.
     struct lhalotree_info *lht = &(forests_info->lht);
     forests_info->nforests_this_task = nforests_this_task;
+
     forests_info->FileNr = malloc(nforests_this_task * sizeof(*(forests_info->FileNr)));
+    CHECK_POINTER_AND_RETURN_ON_NULL(forests_info->FileNr,
+                                     "Failed to allocate %"PRId64" elements of size %zu for forests_info->FileNr", nforests_this_task,
+                                     sizeof(*(forests_info->FileNr)));
+
     forests_info->original_treenr = malloc(nforests_this_task * sizeof(*(forests_info->original_treenr)));
+    CHECK_POINTER_AND_RETURN_ON_NULL(forests_info->original_treenr,
+                                     "Failed to allocate %"PRId64" elements of size %zu for forests_info->original_treenr", nforests_this_task,
+                                     sizeof(*(forests_info->original_treenr)));
 
     lht->nforests = nforests_this_task;
     lht->nhalos_per_forest = mymalloc(nforests_this_task * sizeof(lht->nhalos_per_forest[0]));
