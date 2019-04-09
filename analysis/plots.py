@@ -289,7 +289,7 @@ def plot_BMF(results):
 
 def plot_GMF(results):
     """
-    Plots the baryonic mass function for the models within the ``Results`` class instance.
+    Plots the gas mass function for the models within the ``Results`` class instance.
     This is the mass function for the cold gas.
 
     Parameters
@@ -404,7 +404,7 @@ def plot_BTF(results):
 
 def plot_sSFR(results):
     """
-    Plots the baryonic specific star formation rate as a function of stellar mass for the models within the
+    Plots the specific star formation rate as a function of stellar mass for the models within the
     ``Results`` class instance.
 
     Parameters
