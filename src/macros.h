@@ -1,30 +1,18 @@
 /* File: macros.h */
-/*
-  This file is a part of the Corrfunc package
-  Copyright (C) 2015-- Manodeep Sinha (manodeep@gmail.com)
-  License: MIT LICENSE. See LICENSE file under the top-level
-  directory at https://github.com/manodeep/Corrfunc/
-*/
-
 
 #pragma once
-
-
-#ifdef HDF5
-#include <hdf5.h>
-#define MODELNAME        "SAGE"
-#endif
+#include <stdio.h>
 
 #define NDIM 3
 
-#define ABORT(sigterm)                                              \
-    do {                                                                \
-        printf("Error in file: %s\tfunc: %s\tline: %i\n", __FILE__, __FUNCTION__, __LINE__); \
-        printf("exit code = %d\n", sigterm);                            \
-        perror(NULL);                                                   \
-        exit(sigterm);                                                  \
+#define ABORT(sigterm)                             \
+    do {                                           \
+        fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %i\n", __FILE__, __FUNCTION__, __LINE__); \
+        fprintf(stderr, "exit code = %d\n", sigterm);       \
+        fprintf(stderr, "Printing the value of perror..."); \
+        perror(NULL);                              \
+        exit(sigterm);                             \
     } while(0)
-
 
 #define MEMORY_INCREASE_FAC   1.2 
 
@@ -142,3 +130,20 @@
   } while (0)
 #endif
 
+#define CHECK_STATUS_AND_RETURN_ON_FAIL(status, return_value, ...) \
+    do {                                                           \
+        if(status < 0) {                                           \
+            fprintf(stderr, __VA_ARGS__);                          \
+            return status;                                         \
+        }                                                          \
+  } while (0)
+
+#define CHECK_POINTER_AND_RETURN_ON_NULL(pointer, ...)         \
+    do {                                                       \
+        if(pointer == NULL) {                                  \
+            fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %d'\n",        \
+                    __FILE__, __FUNCTION__, __LINE__);         \
+            fprintf(stderr, __VA_ARGS__);                      \
+            return MALLOC_FAILURE;                             \
+        }                                                      \
+  } while (0)

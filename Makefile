@@ -1,5 +1,5 @@
-#USE-MPI = yes  # set this if you want to run in embarrassingly parallel
-#USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
+#USE-MPI = yes # set this if you want to run in embarrassingly parallel
+USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 LIBS :=
@@ -12,7 +12,8 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            core_cool_func.c core_build_model.c core_save.c core_mymalloc.c core_utils.c progressbar.c \
            core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
-           io/read_tree_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c 
+           io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
+		   io/save_gals_binary.c 
 LIBINCL := $(LIBSRC:.c=.h)
 LIBINCL += io/parse_ctrees.h 
 
@@ -30,6 +31,10 @@ SAGELIB := lib$(LIBNAME).a
 EXEC := $(LIBNAME)
 
 UNAME := $(shell uname)
+ifeq ($(CC), mpicc)
+	USE-MPI = yes
+endif
+
 ifdef USE-MPI
     OPTS += -DMPI  #  This creates an MPI version that can be used to process files in parallel
     CC := mpicc  # sets the C-compiler
@@ -53,7 +58,7 @@ endif
 # Files required for HDF5 -> needs to be defined outside of the
 # if condition (for DO_CHECKS); otherwise `make clean` will not
 # clean the H5_OBJS
-H5_SRC := io/read_tree_hdf5.c #io/read_tree_genesis_standard_hdf5.c
+H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
 
@@ -101,6 +106,22 @@ ifeq ($(DO_CHECKS), 1)
   endif
   ## end of checking is CC 
 
+  # This automatic detection of GSL needs to be before HDF5 checking.  
+  # This allows HDF5 to be installed in a different directory than Miniconda.
+  GSL_FOUND := $(shell gsl-config --version 2>/dev/null)
+  ifdef GSL_FOUND
+    OPTS += -DGSL_FOUND
+    # GSL is probably configured correctly, pick up the locations automatically
+    GSL_INCL := $(shell gsl-config --cflags)
+    GSL_LIBDIR := $(shell gsl-config --prefix)/lib
+    GSL_LIBS   := $(shell gsl-config --libs) -Xlinker -rpath -Xlinker $(GSL_LIBDIR)
+  else
+    $(warning GSL not found in $$PATH environment variable. Tests will be disabled)
+  endif
+  CCFLAGS += $(GSL_INCL)
+  LIBS += $(GSL_LIBS)
+
+
   ifdef USE-HDF5
     ifndef HDF5_DIR
       ifeq ($(ON_CI), true)
@@ -138,28 +159,14 @@ ifeq ($(DO_CHECKS), 1)
     INCL += $(H5_INCL)
 
     HDF5_INCL := -I$(HDF5_DIR)/include
-    HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
+    HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -lhdf5_hl -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
 
     OPTS += -DHDF5
     LIBS += $(HDF5_LIB)
     CCFLAGS += $(HDF5_INCL) 
   endif
 
-  GITREF = -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
-
-  # GSL automatic detection
-  GSL_FOUND := $(shell gsl-config --version 2>/dev/null)
-  ifdef GSL_FOUND
-    OPTS += -DGSL_FOUND
-    # GSL is probably configured correctly, pick up the locations automatically
-    GSL_INCL := $(shell gsl-config --cflags)
-    GSL_LIBDIR := $(shell gsl-config --prefix)/lib
-    GSL_LIBS   := $(shell gsl-config --libs) -Xlinker -rpath -Xlinker $(GSL_LIBDIR)
-  else
-    $(warning GSL not found in $$PATH environment variable. Tests will be disabled)
-  endif
-  CCFLAGS += $(GSL_INCL)
-  LIBS += $(GSL_LIBS)
+  OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
 
   ifdef USE-MPI
     MPI_LINK_FLAGS:=$(firstword $(shell mpicc --showme:link 2>/dev/null))

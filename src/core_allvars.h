@@ -8,82 +8,12 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#ifdef HDF5
+#include <hdf5.h>
+#endif
+
 #include "macros.h"
 #include "core_simulation.h"
-
-// This structure contains the properties that are output
-struct GALAXY_OUTPUT  
-{
-  int   SnapNum;
-
-#if 0    
-  short Type;
-  short isFlyby;
-#else
-  int Type;
-#endif    
-
-  long long   GalaxyIndex;
-  long long   CentralGalaxyIndex;
-  int   SAGEHaloIndex;
-  int   SAGETreeIndex;
-  long long   SimulationHaloIndex;
-  
-  int   mergeType;  /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
-  int   mergeIntoID;
-  int   mergeIntoSnapNum;
-  float dT;
-
-  /* (sub)halo properties */
-  float Pos[3];
-  float Vel[3];
-  float Spin[3];
-  int   Len;   
-  float Mvir;
-  float CentralMvir;
-  float Rvir;
-  float Vvir;
-  float Vmax;
-  float VelDisp;
-
-  /* baryonic reservoirs */
-  float ColdGas;
-  float StellarMass;
-  float BulgeMass;
-  float HotGas;
-  float EjectedMass;
-  float BlackHoleMass;
-  float ICS;
-
-  /* metals */
-  float MetalsColdGas;
-  float MetalsStellarMass;
-  float MetalsBulgeMass;
-  float MetalsHotGas;
-  float MetalsEjectedMass;
-  float MetalsICS;
-
-  /* to calculate magnitudes */
-  float SfrDisk;
-  float SfrBulge;
-  float SfrDiskZ;
-  float SfrBulgeZ;
-  
-  /* misc */
-  float DiskScaleRadius;
-  float Cooling;
-  float Heating;
-  float QuasarModeBHaccretionMass;
-  float TimeOfLastMajorMerger;
-  float TimeOfLastMinorMerger;
-  float OutflowRate;
-
-  /* infall properties */
-  float infallMvir;
-  float infallVvir;
-  float infallVmax;
-};
-
 
 /* This structure contains the properties used within the code */
 struct GALAXY
@@ -95,6 +25,11 @@ struct GALAXY
   int   CentralGal;
   int   HaloNr;
   long long MostBoundID;
+  int64_t GalaxyIndex; // This is a unique value based on the tree local galaxy number,
+                       // file local tree number and the file number itself.
+                       // See ``generate_galaxy_index()`` in ``core_save.c``.
+  int64_t CentralGalaxyIndex; // Same as above, except the ``GalaxyIndex`` value for the CentralGalaxy
+                              // of this galaxy's FoF group.
 
   int   mergeType;  /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
   int   mergeIntoID;
@@ -196,6 +131,13 @@ enum Valid_TreeTypes
   num_tree_types
 };
 
+enum Valid_OutputFormats
+{
+  sage_binary = 0,
+  sage_hdf5 = 1,
+  num_output_format_types
+};
+
 /* do not use '0' as an enum since that '0' usually
    indicates 'success' on POSIX systems */
 enum sage_error_types {
@@ -215,6 +157,7 @@ enum sage_error_types {
     INVALID_VALUE_READ_FROM_FILE,
     PARSE_ERROR,
     INVALID_MEMORY_ACCESS_REQUESTED,
+    HDF5_ERROR,
 };
 
 struct lhalotree_info {
@@ -238,7 +181,7 @@ struct lhalotree_info {
 #endif        
     };
     int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
-    int32_t unused;/* unused, but present here for alignment */
+    int32_t unused;/* unused, but present for alignment */
 };
 
 struct ctrees_info {
@@ -275,7 +218,6 @@ struct genesis_info {
     void *some_yet_to_be_implemented_ptr;
 };
 
-
 struct forest_info {
     union {
         struct lhalotree_info lht;
@@ -283,10 +225,45 @@ struct forest_info {
         struct ahf_info ahf;
         struct genesis_info gen;
     };
-    int64_t totnforests;
-    int64_t nforests_this_task;
+    int64_t totnforests;  // Total number of forests across **all** input tree files.
+    int64_t nforests_this_task; // Total number of forests processed by **this** task.
+    float frac_volume_processed; // Fraction of the simulation volume processed by **this** task.
+    // We assume that each of the input tree files span the same volume. Hence by summing the
+    // number of trees processed by each task from each file, we can determine the
+    // fraction of the simulation volume that this task processes.  We weight this summation by the
+    // number of trees in each file because some files may have more/less trees whilst still spanning the
+    // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
+    int32_t *FileNr; // The file number that each forest was read from.
+    int32_t *original_treenr; // The tree number from the original tree files.
+                              // Necessary because Task N's "Tree 0" could start at the middle of a file.
 };
 
+struct save_info {
+    union {
+        int *save_fd; // Contains the open file to write to for each output.
+#ifdef HDF5
+        hid_t file_id;  // HDF5 only writes to a single file per processor.
+#endif
+    };
+
+    int32_t *tot_ngals; // Number of galaxies **per snapshot**.
+    int32_t **forest_ngals; // Number of galaxies **per snapshot** **per tree**; fores_ngals[snap][forest].
+
+#ifdef HDF5
+    char **name_output_fields;
+    hsize_t *field_dtypes;
+
+    hid_t *group_ids;
+
+    int32_t num_output_fields;
+    hid_t **dataset_ids;
+
+    int32_t buffer_size;
+    int32_t *num_gals_in_buffer;
+    struct HDF5_GALAXY_OUTPUT *buffer_output_gals;
+#endif
+
+};
 
 struct params
 {
@@ -304,17 +281,19 @@ struct params
     double OmegaLambda;
     double PartMass;
     double Hubble_h;
+    double BoxSize;
+    int32_t NumSimulationTreeFiles; // This will be (e.g.,) 8 for Mini-Millennium and 512 for Millnnium.
     double EnergySNcode;
     double EnergySN;
     double EtaSNcode;
     double EtaSN;
 
     /* recipe flags */
-    int    ReionizationOn;
-    int    SupernovaRecipeOn;
-    int    DiskInstabilityOn;
-    int    AGNrecipeOn;
     int    SFprescription;
+    int    AGNrecipeOn;
+    int    SupernovaRecipeOn;
+    int    ReionizationOn;
+    int    DiskInstabilityOn;
     
     double RecycleFraction;
     double Yield;
@@ -352,6 +331,7 @@ struct params
     int NOUT;
     int Snaplistlen;
     enum Valid_TreeTypes TreeType;
+    enum Valid_OutputFormats OutputFormat;
 
     int ListOutputSnaps[ABSOLUTEMAXSNAPS];
     double ZZ[ABSOLUTEMAXSNAPS];
@@ -359,6 +339,9 @@ struct params
     double *Age;
 
     int interrupted;/* to re-print the progress-bar */
+
+    int32_t ThisTask;
+    int32_t NTasks;
 };
 
 

@@ -13,299 +13,224 @@
 #include "core_utils.h"
 #include "model_misc.h"
 
+#include "io/save_gals_binary.h"
+
+#ifdef HDF5
+#include "io/save_gals_hdf5.h"
+#endif
+
 #define TREE_MUL_FAC        (1000000000LL)
 #define THISTASK_MUL_FAC      (1000000000000000LL)
 
-void initialize_galaxy_files(const int rank, const int ntrees, int *save_fd, const struct params *run_params)
+// Local Proto-Types //
+
+int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo_aux_data *haloaux,
+                                struct GALAXY *halogal, const int32_t treenr, const int32_t filenr,
+                                const int32_t LastFile, const int32_t numgals);
+
+// Externally Visible Functions //
+
+// Open up all the required output files and remember their file handles.  These are placed into
+// `save_info` for access later.
+int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
 {
+    int32_t status;
+
     if(run_params->NOUT > ABSOLUTEMAXSNAPS) {
         fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
                 run_params->NOUT, ABSOLUTEMAXSNAPS);
         fprintf(stderr,"To fix this error, simply increase the value of `ABSOLUTEMAXSNAPS` and recompile\n");
-        ABORT(INVALID_OPTION_IN_PARAMS);
+        return INVALID_OPTION_IN_PARAMS;
     }
 
-    char buffer[4*MAX_STRING_LEN + 1];
-    /* Open all the output files */
-    for(int n = 0; n < run_params->NOUT; n++) {
-        snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies,
-                 run_params->ZZ[run_params->ListOutputSnaps[n]], rank);
+    switch(run_params->OutputFormat) {
 
-        /* the last argument sets permissions as "rw-r--r--" (read/write owner, read group, read other)*/
-        save_fd[n] = open(buffer,  O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-        if (save_fd[n] < 0) {
-            fprintf(stderr, "Error: Can't open file `%s'\n", buffer);
-            ABORT(FILE_NOT_FOUND);
-        }
-        
-        // write out placeholders for the header data.
-        const off_t off = (ntrees + 2) * sizeof(int32_t);
-        const off_t status = lseek(save_fd[n], off, SEEK_SET);
-        if(status < 0) {
-            fprintf(stderr, "Error: Failed to write out %d elements for header information for file %d. "
-                    "Attempted to write %"PRId64" bytes\n", ntrees + 2, n, off);
-            perror(NULL);
-            ABORT(FILE_WRITE_ERROR);
-        }
+    case(sage_binary):
+      status = initialize_binary_galaxy_files(rank, forest_info, save_info, run_params);
+      break;
+
+#ifdef HDF5
+    case(sage_hdf5):
+      status = initialize_hdf5_galaxy_files(rank, save_info, run_params);
+      break; 
+#endif
+
+    default:
+      fprintf(stderr, "Error: Unknown OutputFormat in `initialize_galaxy_files()`.\n");
+      status = INVALID_OPTION_IN_PARAMS;
+      break;
+
     }
+
+    return status; 
 }
 
 
-void save_galaxies(const int ThisTask, const int tree, const int numgals, struct halo_data *halos,
-                   struct halo_aux_data *haloaux, struct GALAXY *halogal, int **treengals, int *totgalaxies,
-                   const int *save_fd, const struct params *run_params)
+// Write all the galaxy properties to file.
+int32_t save_galaxies(const int task_forestnr, const int numgals, struct halo_data *halos,
+                      struct forest_info *forest_info,
+                      struct halo_aux_data *haloaux, struct GALAXY *halogal,
+                      struct save_info *save_info, const struct params *run_params)
 {
-    int OutputGalCount[run_params->MAXSNAPS];
-    // reset the output galaxy count and total number of output galaxies
-    int cumul_output_ngal[run_params->MAXSNAPS];
-    for(int i = 0; i < run_params->MAXSNAPS; i++) {
-        OutputGalCount[i] = 0;
-        cumul_output_ngal[i] = 0;
+    int32_t status = EXIT_FAILURE;
+
+    // Reset the output galaxy count.
+    int32_t OutputGalCount[run_params->MAXSNAPS];
+    for(int32_t snap_idx = 0; snap_idx < run_params->MAXSNAPS; snap_idx++) {
+        OutputGalCount[snap_idx] = 0;
     }
 
-    // track the order in which galaxies are written
-    int *OutputGalOrder = calloc(numgals, sizeof(OutputGalOrder[0]));
+    // Track the order in which galaxies are written.
+    int32_t *OutputGalOrder = calloc(numgals, sizeof(*(OutputGalOrder)));
     if(OutputGalOrder == NULL) {
         fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `OutputGalOrder`\n", numgals);
-        ABORT(MALLOC_FAILURE);
+        return MALLOC_FAILURE;
     }
 
-    for(int i = 0; i < numgals; i++) {
-        OutputGalOrder[i] = -1;
-        haloaux[i].output_snap_n = -1;
+    for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
+        OutputGalOrder[gal_idx] = -1;
+        haloaux[gal_idx].output_snap_n = -1;
     }
-  
-    // first update mergeIntoID to point to the correct galaxy in the output
-    for(int n = 0; n < run_params->NOUT; n++) {
-        for(int i = 0; i < numgals; i++) {
-            if(halogal[i].SnapNum == run_params->ListOutputSnaps[n]) {
-                OutputGalOrder[i] = OutputGalCount[n];
-                OutputGalCount[n]++;
-                haloaux[i].output_snap_n = n;
+
+    // First update mergeIntoID to point to the correct galaxy in the output.
+    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+        for(int32_t gal_idx  = 0; gal_idx < numgals; gal_idx++) {
+            if(halogal[gal_idx].SnapNum == run_params->ListOutputSnaps[snap_idx]) {
+                OutputGalOrder[gal_idx] = OutputGalCount[snap_idx];
+                OutputGalCount[snap_idx]++;
+                haloaux[gal_idx].output_snap_n = snap_idx;
             }
         }
     }
 
-    int num_output_gals = 0;
-    int num_gals_processed[run_params->MAXSNAPS];
-    memset(num_gals_processed, 0, sizeof(num_gals_processed[0])*run_params->MAXSNAPS);
-    for(int n = 0; n < run_params->NOUT; n++) {
-        cumul_output_ngal[n] = num_output_gals;
-        num_output_gals += OutputGalCount[n];
-    }
-    
-    for(int i = 0; i < numgals; i++) {
-        if(halogal[i].mergeIntoID > -1) {
-            halogal[i].mergeIntoID = OutputGalOrder[halogal[i].mergeIntoID];
+    for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
+        if(halogal[gal_idx].mergeIntoID > -1) {
+            halogal[gal_idx].mergeIntoID = OutputGalOrder[halogal[gal_idx].mergeIntoID];
         }
     }
 
-    struct GALAXY_OUTPUT *all_outputgals  = calloc(num_output_gals, sizeof(struct GALAXY_OUTPUT));
-    if(all_outputgals == NULL) {
-        fprintf(stderr,"Error: Could not allocate enough memory to hold all %d output galaxies\n",num_output_gals);
-        ABORT(MALLOC_FAILURE);
+    // Generate a unique GalaxyIndex for each galaxy.  To do this, we need to know a) the tree
+    // number **from the original file** and b) the file number the tree is from.  Note: The tree
+    // number we need is different from the ``forestnr`` parameter being used to process the forest
+    // within SAGE; that ``forestnr`` is **task local** and potentially does **NOT** correspond to
+    // the tree number in the original simulation file.
+
+    // When we allocated the trees to each task, we stored the correct tree and file numbers in
+    // arrays indexed by the ``forestnr`` parameter.  Furthermore, since all galaxies being
+    // processed belong to a single tree (by definition) and because trees cannot be split over
+    // multiple files, we can access the tree + fiel number once and use it for all galaxies being
+    // saved.
+    int32_t original_treenr = forest_info->original_treenr[task_forestnr];
+    int32_t original_filenr = forest_info->FileNr[task_forestnr];
+
+    status = generate_galaxy_indices(halos, haloaux, halogal, original_treenr, original_filenr,
+                                     run_params->LastFile, numgals);
+    if(status != EXIT_SUCCESS) {
+        return EXIT_FAILURE;
     }
 
-    for(int i = 0; i < numgals; i++) {
-        if(haloaux[i].output_snap_n < 0) continue;
-        int n = haloaux[i].output_snap_n;
-        struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n] + num_gals_processed[n];
-        prepare_galaxy_for_output(ThisTask, tree, &halogal[i], galaxy_output, halos, haloaux, halogal, run_params);
-        num_gals_processed[n]++;
-        totgalaxies[n]++;
-        treengals[n][tree]++;	      
-    }    
+    // All of the tracking arrays set up, time to perform the actual writing.
+    switch(run_params->OutputFormat) {
 
-    /* now write galaxies */
-    for(int n=0;n<run_params->NOUT;n++) {
-        struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[n];
-        mywrite(save_fd[n], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[n]);
-        /* int nwritten = myfwrite(galaxy_output, sizeof(struct GALAXY_OUTPUT), OutputGalCount[n], save_fd[n]); */
-        /* if (nwritten != OutputGalCount[n]) { */
-        /*     fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. " */
-        /*             " Meant to write %d elements but only wrote %d elements.\n", n, OutputGalCount[n], nwritten); */
-        /*     perror(NULL); */
-        /*     ABORT(FILE_WRITE_ERROR); */
-        /* } */
+    case(sage_binary):
+        status = save_binary_galaxies(task_forestnr, numgals, OutputGalCount, forest_info,
+                                      halos, haloaux, halogal, save_info, run_params);
+        break;
+
+#ifdef HDF5
+    case(sage_hdf5):
+        status = save_hdf5_galaxies(task_forestnr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
+        break;
+#endif
+
+    default:
+        fprintf(stderr, "Uknown OutputFormat in `save_galaxies()`.\n");
+        status = INVALID_OPTION_IN_PARAMS;
+
     }
 
-    // don't forget to free the workspace.
-    free( OutputGalOrder );
-    free(all_outputgals);
+    free(OutputGalOrder);
+
+    return status;
 }
 
 
-
-void prepare_galaxy_for_output(int ThisTask, int tree, struct GALAXY *g, struct GALAXY_OUTPUT *o,
-                               struct halo_data *halos,
-                               struct halo_aux_data *haloaux, struct GALAXY *halogal,
-                               const struct params *run_params)
+// Write any remaining attributes or header information, close all the open files and free all the
+// relevant dataspaces.
+int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params) 
 {
-    o->SnapNum = g->SnapNum;
-    if(g->Type < SHRT_MIN || g->Type > SHRT_MAX) {
-        fprintf(stderr,"Error: Galaxy type = %d can not be represented in 2 bytes\n", g->Type);
-        fprintf(stderr,"Converting galaxy type while saving from integer to short will result in data corruption");
-        ABORT(EXIT_FAILURE);
-    }
-    o->Type = g->Type;
 
-    // assume that because there are so many files, the trees per file will be less than 100000
-    // required for limits of long long
-    if(run_params->LastFile>=10000) {
-        assert( g->GalaxyNr < TREE_MUL_FAC ); // breaking tree size assumption
-        assert(tree < (THISTASK_MUL_FAC/10)/TREE_MUL_FAC);
-        o->GalaxyIndex = g->GalaxyNr + TREE_MUL_FAC * tree + (THISTASK_MUL_FAC/10) * ThisTask;
-        assert( (o->GalaxyIndex - g->GalaxyNr - TREE_MUL_FAC*tree)/(THISTASK_MUL_FAC/10) == ThisTask );
-        assert( (o->GalaxyIndex - g->GalaxyNr -(THISTASK_MUL_FAC/10)*ThisTask) / TREE_MUL_FAC == tree );
-        assert( o->GalaxyIndex - TREE_MUL_FAC*tree - (THISTASK_MUL_FAC/10)*ThisTask == g->GalaxyNr );
-        o->CentralGalaxyIndex = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * tree + (THISTASK_MUL_FAC/10) * ThisTask;
-    } else {
-        assert( g->GalaxyNr < TREE_MUL_FAC ); // breaking tree size assumption
-        assert(tree < THISTASK_MUL_FAC/TREE_MUL_FAC);
-        o->GalaxyIndex = g->GalaxyNr + TREE_MUL_FAC * tree + THISTASK_MUL_FAC * ThisTask;
-        assert( (o->GalaxyIndex - g->GalaxyNr - TREE_MUL_FAC*tree)/THISTASK_MUL_FAC == ThisTask );
-        assert( (o->GalaxyIndex - g->GalaxyNr -THISTASK_MUL_FAC*ThisTask) / TREE_MUL_FAC == tree );
-        assert( o->GalaxyIndex - TREE_MUL_FAC*tree - THISTASK_MUL_FAC*ThisTask == g->GalaxyNr );
-        o->CentralGalaxyIndex = halogal[haloaux[halos[g->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr + TREE_MUL_FAC * tree + THISTASK_MUL_FAC * ThisTask;
+    int32_t status = EXIT_FAILURE;
+
+    switch(run_params->OutputFormat) {
+
+    case(sage_binary):
+        status = finalize_binary_galaxy_files(forest_info, save_info, run_params);
+        break;
+
+#ifdef HDF5
+    case(sage_hdf5):
+        status = finalize_hdf5_galaxy_files(forest_info, save_info, run_params);
+        break;
+#endif
+
+    default:
+        fprintf(stderr, "Error: Unknown OutputFormat in `finalize_galaxy_files()`.\n");
+        status = INVALID_OPTION_IN_PARAMS;
+        break;
     }
 
-#undef TREE_MUL_FAC
-#undef THISTASK_MUL_FAC
-
-    o->SAGEHaloIndex = g->HaloNr;/* if the original input halonr is required, then use haloaux[halonr].orig_index: MS 29/6/2018 */
-    o->SAGETreeIndex = tree;
-    o->SimulationHaloIndex = llabs(halos[g->HaloNr].MostBoundID);
-#if 0
-    o->isFlyby = halos[g->HaloNr].MostBoundID < 0 ? 1:0;
-#endif  
-
-    o->mergeType = g->mergeType;
-    o->mergeIntoID = g->mergeIntoID;
-    o->mergeIntoSnapNum = g->mergeIntoSnapNum;
-    o->dT = g->dT * run_params->UnitTime_in_s / SEC_PER_MEGAYEAR;
-
-    for(int j = 0; j < 3; j++) {
-        o->Pos[j] = g->Pos[j];
-        o->Vel[j] = g->Vel[j];
-        o->Spin[j] = halos[g->HaloNr].Spin[j];
-    }
-    
-    o->Len = g->Len;
-    o->Mvir = g->Mvir;
-    o->CentralMvir = get_virial_mass(halos[g->HaloNr].FirstHaloInFOFgroup, halos, run_params);
-    o->Rvir = get_virial_radius(g->HaloNr, halos, run_params);  // output the actual Rvir, not the maximum Rvir
-    o->Vvir = get_virial_velocity(g->HaloNr, halos, run_params);  // output the actual Vvir, not the maximum Vvir
-    o->Vmax = g->Vmax;
-    o->VelDisp = halos[g->HaloNr].VelDisp;
-
-    o->ColdGas = g->ColdGas;
-    o->StellarMass = g->StellarMass;
-    o->BulgeMass = g->BulgeMass;
-    o->HotGas = g->HotGas;
-    o->EjectedMass = g->EjectedMass;
-    o->BlackHoleMass = g->BlackHoleMass;
-    o->ICS = g->ICS;
-
-    o->MetalsColdGas = g->MetalsColdGas;
-    o->MetalsStellarMass = g->MetalsStellarMass;
-    o->MetalsBulgeMass = g->MetalsBulgeMass;
-    o->MetalsHotGas = g->MetalsHotGas;
-    o->MetalsEjectedMass = g->MetalsEjectedMass;
-    o->MetalsICS = g->MetalsICS;
-  
-    o->SfrDisk = 0.0;
-    o->SfrBulge = 0.0;
-    o->SfrDiskZ = 0.0;
-    o->SfrBulgeZ = 0.0;
-  
-    // NOTE: in Msun/yr
-    for(int step = 0; step < STEPS; step++) {
-        o->SfrDisk += g->SfrDisk[step] * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
-        o->SfrBulge += g->SfrBulge[step] * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
-        
-        if(g->SfrDiskColdGas[step] > 0.0) {
-            o->SfrDiskZ += g->SfrDiskColdGasMetals[step] / g->SfrDiskColdGas[step] / STEPS;
-        }
-        
-        if(g->SfrBulgeColdGas[step] > 0.0) {
-            o->SfrBulgeZ += g->SfrBulgeColdGasMetals[step] / g->SfrBulgeColdGas[step] / STEPS;
-        }
-    }
-
-    o->DiskScaleRadius = g->DiskScaleRadius;
-
-    if (g->Cooling > 0.0) {
-        o->Cooling = log10(g->Cooling * run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s);
-    } else {
-        o->Cooling = 0.0;
-    }
-
-    if (g->Heating > 0.0) {
-        o->Heating = log10(g->Heating * run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s);
-    } else {
-        o->Heating = 0.0;
-    }
-
-    o->QuasarModeBHaccretionMass = g->QuasarModeBHaccretionMass;
-
-    o->TimeOfLastMajorMerger = g->TimeOfLastMajorMerger * run_params->UnitTime_in_Megayears;
-    o->TimeOfLastMinorMerger = g->TimeOfLastMinorMerger * run_params->UnitTime_in_Megayears;
-	
-    o->OutflowRate = g->OutflowRate * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS;
-
-    //infall properties
-    if(g->Type != 0) {
-        o->infallMvir = g->infallMvir;
-        o->infallVvir = g->infallVvir;
-        o->infallVmax = g->infallVmax;
-    } else {
-        o->infallMvir = 0.0;
-        o->infallVvir = 0.0;
-        o->infallVmax = 0.0;
-    }
+    return status;
 }
 
+// Local Functions //
 
-int finalize_galaxy_file(const int ntrees, const int *totgalaxies, const int **treengals, int *save_fd, const struct params *run_params) 
+#define TREE_MUL_FAC        (1000000000LL)
+#define THISTASK_MUL_FAC      (1000000000000000LL)
+
+
+// Generate a unique GalaxyIndex for each galaxy based on the file number, the file-local
+// tree number and the tree-local galaxy number.  NOTE: Both the file number and the tree number are
+// based on the **original simulation files**.  These may be different from the ``forestnr``
+// parameter being used to process the forest within SAGE; that ``forestnr`` is **task local** and
+// potentially does **NOT** correspond to the tree number in the original simulation file.
+int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo_aux_data *haloaux,
+                                struct GALAXY *halogal, const int32_t treenr, const int32_t filenr,
+                                const int32_t LastFile, const int32_t numgals)
 {
-    if(run_params->NOUT > ABSOLUTEMAXSNAPS) {
-        fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
-                run_params->NOUT, ABSOLUTEMAXSNAPS);
-        fprintf(stderr,"To fix this error, simply increase the value of `ABSOLUTEMAXSNAPS` and recompile\n");
-        ABORT(INVALID_OPTION_IN_PARAMS);
+
+    // Assume that there are so many files, that there aren't as many trees.
+    int64_t my_thistask_mul_fac;
+    if(LastFile>=10000) {
+        my_thistask_mul_fac = THISTASK_MUL_FAC/10;
+    } else {
+        my_thistask_mul_fac = THISTASK_MUL_FAC;
     }
 
-    for(int n = 0; n < run_params->NOUT; n++) {
-        // file must already be open.
-        XASSERT( save_fd[n] > 0, EXIT_FAILURE, "Error: for output # %d, output file pointer is NULL\n", n);
+    // Now generate the unique index for each galaxy. 
+    for(int32_t gal_idx = 0; gal_idx < numgals; ++gal_idx) { 
 
-        mypwrite(save_fd[n], &ntrees, sizeof(ntrees), 0);
-        mypwrite(save_fd[n], &totgalaxies[n], sizeof(int), sizeof(int));
-        mypwrite(save_fd[n], treengals[n], sizeof(int)*ntrees, sizeof(int) + sizeof(int));
-        /* int nwritten = myfwrite(&ntrees, sizeof(int), 1, save_fd[n]); */
-        /* if (nwritten != 1) { */
-        /*     fprintf(stderr, "Error: Failed to write out 1 element for the number of trees for the header of file %d.\n" */
-        /*             "Only wrote %d elements.\n", n, nwritten); */
-        /* } */
+        struct GALAXY *this_gal = &halogal[gal_idx];
 
-        /* nwritten = myfwrite(&totgalaxies[n], sizeof(int), 1, save_fd[n]);  */
-        /* if (nwritten != 1) { */
-        /*     fprintf(stderr, "Error: Failed to write out 1 element for the number of galaxies for the header of file %d.\n" */
-        /*             "Only wrote %d elements.\n", n, nwritten); */
-        /* } */
-        
-        /* nwritten = myfwrite(treengals[n], sizeof(int), ntrees, save_fd[n]); */
-        /* if (nwritten != ntrees) { */
-        /*     fprintf(stderr, "Error: Failed to write out %d elements for the number of galaxies per tree for the header of file %d.\n" */
-        /*             "Only wrote %d elements.\n", ntrees, n, nwritten); */
-        /* } */
+        int32_t GalaxyNr = this_gal->GalaxyNr;
+        int32_t CentralGalaxyNr = halogal[haloaux[halos[this_gal->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr;
 
+        // Check that the index would actually fit in a 64 bit number.
+        if(GalaxyNr > TREE_MUL_FAC || treenr > my_thistask_mul_fac/TREE_MUL_FAC) {
+            fprintf(stderr, "When determining a unique Galaxy Number, we assume that the number of trees are less than %"PRId64
+                            "This assumption has been broken.\n Simulation trees file number %d\tOriginal tree number %d\tGalaxy Number %d\n",
+                            my_thistask_mul_fac, filenr, treenr, GalaxyNr);
+          return EXIT_FAILURE;
+        }
 
-        // close the file and clear handle after everything has been written
-        close( save_fd[n] );
-        save_fd[n] = -1;
+        // Everything is good, generate the index.
+        this_gal->GalaxyIndex = GalaxyNr + TREE_MUL_FAC * treenr + my_thistask_mul_fac * filenr;
+        this_gal->CentralGalaxyIndex= CentralGalaxyNr + TREE_MUL_FAC * treenr + my_thistask_mul_fac * filenr;
     }
 
     return EXIT_SUCCESS;
+
 }
 
+#undef TREE_MUL_FAC
+#undef THISTASK_MUL_FAC

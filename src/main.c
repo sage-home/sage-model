@@ -36,8 +36,22 @@ int main(int argc, char **argv)
         goto err;
     }
 
+    run_params.ThisTask = ThisTask;
+    run_params.NTasks = NTasks;
+
     /* run sage over all files */
     status = run_sage(ThisTask, NTasks, &run_params);
+    if(status != EXIT_SUCCESS) {
+        goto err;
+    }
+
+#ifdef MPI
+    // Wait until all tasks are done before we do final tasks/checks. 
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    // Perform some final checks.
+    status = finalize_sage(&run_params);
     if(status != EXIT_SUCCESS) {
         goto err;
     }
@@ -52,8 +66,8 @@ int main(int argc, char **argv)
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
     MPI_Finalize();
 #endif
+    perror(NULL);
     return status;
-       
-}
 
+}
 
