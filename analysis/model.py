@@ -327,8 +327,6 @@ class Model:
         None.
         """
 
-        import inspect
-
         # When we create some plots, we do a scatter plot. For these, we only plot a
         # subset of galaxies. We need to ensure we get a representative sample from each file.
         self.file_sample_size = int(len(gals["StellarMass"][:]) / self.num_gals * self.sample_size) 

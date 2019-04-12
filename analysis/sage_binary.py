@@ -17,7 +17,7 @@ import os
 class SageBinaryModel(Model):
     """
     Subclass of the ``Model`` class from the ``model.py`` module.  It contains methods
-    specifically for reading in the ``sage_hdf5`` output from ``SAGE``.
+    specifically for reading in the ``sage_binary`` output from ``SAGE``.
 
     Extra Attributes
     ================
@@ -34,6 +34,7 @@ class SageBinaryModel(Model):
 
         Model.__init__(self, model_dict, plot_toggles)
         self.get_galaxy_struct()
+
 
     def get_galaxy_struct(self):
         """
