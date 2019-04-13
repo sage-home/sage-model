@@ -116,12 +116,12 @@ class SageBinaryModel(Model):
         elif self.simulation == "Millennium":
             self.hubble_h = 0.73
             self.box_size = 500
-            self.total_num_files = 512
+            self.total_num_tree_files = 512
 
         elif self.simulation == "Genesis-L500-N2160":
             self.hubble_h = 0.6751
             self.box_size = 500.00
-            self.total_num_files = 64 
+            self.total_num_tree_files = 64 
 
         else:
             print("Please pick a valid simulation!")
