@@ -169,9 +169,9 @@ class Results:
                     getattr(plots, method_name)(self)
                 except AttributeError:
                     msg = "Tried to plot '{0}'.  However, no " \
-                          "method named '{1}' exists in the 'plots.py' module.\n" \
+                          "method/function named '{1}' exists in the 'plots.py' module.\n" \
                           "Check either that your plot toggles are set correctly or add " \
-                          "a method called '{1}' to the 'plots.py' module.".format(toggle, \
+                          "a method/function called '{1}' to the 'plots.py' module.".format(toggle, \
                           method_name)
                     msg += "\nPLEASE SCROLL UP AND MAKE SURE YOU'RE READING ALL ERROR " \
                            "MESSAGES! THEY'RE EASY TO MISS! :)"

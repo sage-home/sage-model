@@ -94,16 +94,16 @@ class Model:
         Sets the galaxy path and number of files to be read for a model. Also initialises
         the plot toggles that dictates which properties will be calculated.
 
-        Parameters 
+        Parameters
         ----------
 
-        model_dict : Dictionary 
+        model_dict : Dictionary
             Dictionary containing the parameter values for each ``Model``
             instance. Refer to the class-level documentation for a full
             description of this dictionary or to ``model_dict`` in the ``__main__`` call
             of the ``allresults.py`` module.
 
-        plot_toggles : Dictionary 
+        plot_toggles : Dictionary
             Specifies which plots will be generated.
 
         Returns
@@ -115,7 +115,7 @@ class Model:
         # Some error checks.
         acceptable_IMF = ["Chabrier", "Salpeter"]
         if model_dict["IMF"] not in acceptable_IMF:
-            print("Invalid IMF entered.  Only {0} are allowed.".format(acceptable_IMF)) 
+            print("Invalid IMF entered.  Only {0} are allowed.".format(acceptable_IMF))
 
         acceptable_sage_output_formats = ["sage_binary", "sage_hdf5"]
         if model_dict["sage_output_format"] not in acceptable_sage_output_formats:
@@ -178,8 +178,8 @@ class Model:
         ```
         """
 
-        # Parameters that define stellar/halo mass bins. 
-        self.mass_bin_low      = 8.0 
+        # Parameters that define stellar/halo mass bins.
+        self.mass_bin_low      = 8.0
         self.mass_bin_high     = 14.0
         self.mass_bin_width    = 0.1
         self.mass_bins    = np.arange(self.mass_bin_low,
@@ -191,7 +191,7 @@ class Model:
                                   "centrals_MF", "satellites_MF", "quiescent_galaxy_counts",
                                   "quiescent_centrals_counts", "quiescent_satellites_counts",
                                   "fraction_bulge_sum", "fraction_bulge_var",
-                                  "fraction_disk_sum", "fraction_disk_var"] 
+                                  "fraction_disk_sum", "fraction_disk_var"]
 
         # The following properties are binned on halo mass but use the same bins.
         halo_property_names = ["fof_HMF"]
@@ -245,7 +245,7 @@ class Model:
         """
         Calculates galaxy properties for all files of a single Model.
 
-        Parameters 
+        Parameters
         ----------
 
         close_file : Boolean, default True
@@ -315,7 +315,7 @@ class Model:
         """
         Calculates galaxy properties for a single file of galaxies.
 
-        Parameters 
+        Parameters
         ----------
 
         gals : ``numpy`` structured array with format given by ``Model.get_galaxy_struct()``
@@ -329,10 +329,10 @@ class Model:
 
         # When we create some plots, we do a scatter plot. For these, we only plot a
         # subset of galaxies. We need to ensure we get a representative sample from each file.
-        self.file_sample_size = int(len(gals["StellarMass"][:]) / self.num_gals * self.sample_size) 
+        self.file_sample_size = int(len(gals["StellarMass"][:]) / self.num_gals * self.sample_size)
 
         # Now check which plots the user is creating and hence decide which properties
-        # they need. 
+        # they need.
         for toggle in self.plot_toggles.keys():
             if self.plot_toggles[toggle]:
                 method_name = "calc_{0}".format(toggle)
@@ -342,9 +342,9 @@ class Model:
                     getattr(self, method_name)(gals)
                 except AttributeError:
                     msg = "Tried to calculate properties for plot '{0}'.  However, no " \
-                          "method named '{1}' exists in the 'model.py' module.\n" \
+                          "method/function named '{1}' exists in the 'model.py' module.\n" \
                           "Check either that your plot toggles are set correctly or add " \
-                          "a method called '{1}' to the 'model.py' module.".format(toggle, \
+                          "a method/function  called '{1}' to the 'model.py' module.".format(toggle, \
                           method_name)
                     msg += "\nPLEASE SCROLL UP AND MAKE SURE YOU'RE READING ALL ERROR " \
                            "MESSAGES! THEY'RE EASY TO MISS! :)"
@@ -360,7 +360,7 @@ class Model:
                    (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
 
         gals_per_bin, _ = np.histogram(stellar_mass, bins=self.mass_bins)
-        self.properties["SMF"] += gals_per_bin 
+        self.properties["SMF"] += gals_per_bin
 
         # We often want to plot the red and blue subpopulations. So bin them as well.
         red_gals = np.where(sSFR < 10.0**self.sSFRcut)[0]

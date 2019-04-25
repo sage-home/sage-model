@@ -377,7 +377,7 @@ def plot_metallicity_data(ax, imf):
     return ax
 
 
-def plot_bh_bulge_data(ax): 
+def plot_bh_bulge_data(ax):
     """
     Plots black hole-bulge relationship observational data. Uses data from Haring & Rix
     2004.

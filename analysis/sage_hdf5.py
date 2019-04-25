@@ -85,7 +85,7 @@ class SageHdf5Model(Model):
 
         # Scale the volume by the number of files that we will read. Used to ensure
         # properties scaled by volume (e.g., SMF) gives sensible results.
-        self.volume = pow(self.box_size, 3) * volume_processed 
+        self.volume = pow(self.box_size, 3) * volume_processed
 
 
     def determine_num_gals(self):
@@ -100,17 +100,17 @@ class SageHdf5Model(Model):
 
         for core_idx in range(self.first_file, self.last_file + 1):
 
-            core_key = "Core_{0}".format(core_idx)            
+            core_key = "Core_{0}".format(core_idx)
             ngals += self.hdf5_file[core_key][snap_key].attrs["num_gals"]
 
-        self.num_gals = ngals 
+        self.num_gals = ngals
 
 
     def read_gals(self, core_num, pbar=None, plot_galaxies=False, debug=False):
         """
         Reads the galaxies of a single core at the snapshot spoecified ``hdf5_snapshot``.
 
-        Parameters 
+        Parameters
         ----------
 
         core_num : Integer

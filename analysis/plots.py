@@ -38,7 +38,7 @@ def setup_matplotlib_options():
     plt.rc('legend', numpoints=1, fontsize='x-large')
 
 
-def adjust_legend(ax, location="upper right", scatter_plot=0): 
+def adjust_legend(ax, location="upper right", scatter_plot=0):
     """
     Adjusts the legend of a specified axis.
 
@@ -75,7 +75,7 @@ def adjust_legend(ax, location="upper right", scatter_plot=0):
         for handle in handles:
             # We may have lines in the legend which we don't want to touch here.
             if isinstance(handle, matplotlib.collections.PathCollection):
-                handle.set_alpha(1.0) 
+                handle.set_alpha(1.0)
                 handle.set_sizes([10.0])
 
 
@@ -103,7 +103,7 @@ def plot_SMF(results, plot_sub_populations=False):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    # Go through each of the models and plot. 
+    # Go through each of the models and plot.
     for model in results.models:
 
         model_label = model.model_label
@@ -120,11 +120,11 @@ def plot_SMF(results, plot_sub_populations=False):
         # Set the x-axis values to be the centre of the bins.
         bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
 
-        # The SMF is normalized by the simulation volume which is in Mpc/h. 
+        # The SMF is normalized by the simulation volume which is in Mpc/h.
         ax.plot(bin_middles[:-1], model.properties["SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
                 color=color, ls=ls, label=model_label + " - All")
 
-        # Be careful to not overcrowd the plot. 
+        # Be careful to not overcrowd the plot.
         if results.num_models == 1 or plot_sub_populations:
             ax.plot(bin_middles[:-1], model.properties["red_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
                     "r:", lw=2, label=model_label + " - Red")
@@ -135,7 +135,7 @@ def plot_SMF(results, plot_sub_populations=False):
     # model.
     zeroth_hubble_h = (results.models)[0].hubble_h
     zeroth_IMF = (results.models)[0].IMF
-    ax = obs.plot_smf_data(ax, zeroth_hubble_h, zeroth_IMF) 
+    ax = obs.plot_smf_data(ax, zeroth_hubble_h, zeroth_IMF)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
@@ -181,7 +181,7 @@ def plot_temporal_SMF(temporal_results):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    # Go through each of the models and plot. 
+    # Go through each of the models and plot.
     for model in temporal_results.models:
 
         ls = model.linestyle
@@ -200,7 +200,7 @@ def plot_temporal_SMF(temporal_results):
     # For scaling the observational data, we use the values of the zeroth
     # model.
     zeroth_IMF = (temporal_results.models)[0].IMF
-    ax = obs.plot_temporal_smf_data(ax, zeroth_IMF) 
+    ax = obs.plot_temporal_smf_data(ax, zeroth_IMF)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
@@ -254,7 +254,7 @@ def plot_BMF(results):
         # Set the x-axis values to be the centre of the bins.
         bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
 
-        # The MF is normalized by the simulation volume which is in Mpc/h. 
+        # The MF is normalized by the simulation volume which is in Mpc/h.
         ax.plot(bin_middles[:-1], model.properties["BMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
                 color=color, ls=ls, label=model_label + " - All")
 
@@ -262,7 +262,7 @@ def plot_BMF(results):
     # model.
     zeroth_hubble_h = (results.models)[0].hubble_h
     zeroth_IMF = (results.models)[0].IMF
-    ax = obs.plot_bmf_data(ax, zeroth_hubble_h, zeroth_IMF) 
+    ax = obs.plot_bmf_data(ax, zeroth_hubble_h, zeroth_IMF)
 
     ax.set_xlabel(r"$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$")
@@ -318,7 +318,7 @@ def plot_GMF(results):
         # Set the x-axis values to be the centre of the bins.
         bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
 
-        # The MMF is normalized by the simulation volume which is in Mpc/h. 
+        # The MMF is normalized by the simulation volume which is in Mpc/h.
         ax.plot(bin_middles[:-1], model.properties["GMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
                 color=color, ls=ls, label=model_label + " - Cold Gas")
 
@@ -390,7 +390,7 @@ def plot_BTF(results):
     ax.set_xlabel(r"$\log_{10}V_{max}\ (km/s)$")
     ax.set_ylabel(r"$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$")
 
-    ax = obs.plot_btf_data(ax) 
+    ax = obs.plot_btf_data(ax)
 
     adjust_legend(ax, location="upper left", scatter_plot=1)
 
@@ -400,7 +400,7 @@ def plot_BTF(results):
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
-        
+
 
 def plot_sSFR(results):
     """
@@ -433,9 +433,9 @@ def plot_sSFR(results):
         ax.scatter(model.properties["sSFR_mass"], model.properties["sSFR_sSFR"], marker=marker, s=1, color=color,
                    alpha=0.5, label=model_label)
 
-    # Overplot a dividing line between passive and SF galaxies. 
+    # Overplot a dividing line between passive and SF galaxies.
     w = np.arange(7.0, 13.0, 1.0)
-    min_sSFRcut = np.min([model.sSFRcut for model in results.models]) 
+    min_sSFRcut = np.min([model.sSFRcut for model in results.models])
     ax.plot(w, w/w*min_sSFRcut, "b:", lw=2.0)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
@@ -505,7 +505,7 @@ def plot_gas_frac(results):
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
-        
+
 
 def plot_metallicity(results):
     """
@@ -540,7 +540,7 @@ def plot_metallicity(results):
 
     # Use the IMF of the zeroth model to scale the observational results.
     zeroth_IMF = (results.models)[0].IMF
-    ax = obs.plot_metallicity_data(ax, zeroth_IMF) 
+    ax = obs.plot_metallicity_data(ax, zeroth_IMF)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$12\ +\ \log_{10}[\mathrm{O/H}]$")
@@ -560,7 +560,7 @@ def plot_metallicity(results):
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
-        
+
 
 def plot_bh_bulge(results):
     """
@@ -592,7 +592,7 @@ def plot_bh_bulge(results):
         ax.scatter(model.properties["bulge_mass"], model.properties["bh_mass"], marker=marker, s=1, color=color,
                    alpha=0.5, label=model_label + " galaxies")
 
-    ax = obs.plot_bh_bulge_data(ax) 
+    ax = obs.plot_bh_bulge_data(ax)
 
     ax.set_xlabel(r"$\log\ M_{\mathrm{bulge}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\log\ M_{\mathrm{BH}}\ (M_{\odot})$")
@@ -611,7 +611,7 @@ def plot_bh_bulge(results):
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
-        
+
 
 def plot_quiescent(results, plot_sub_populations=False):
     """
@@ -650,14 +650,14 @@ def plot_quiescent(results, plot_sub_populations=False):
 
         # We will keep the colour scheme consistent, but change the line styles.
         ax.plot(bin_middles[:-1], model.properties["quiescent_galaxy_counts"] / model.properties["SMF"],
-                label=model_label + " All", color=color, linestyle="-") 
+                label=model_label + " All", color=color, linestyle="-")
 
         if results.num_models == 1 or plot_sub_populations:
             ax.plot(bin_middles[:-1], model.properties["quiescent_centrals_counts"] / model.properties["centrals_MF"],
-                    label=model_label + " Centrals", color=color, linestyle="--") 
+                    label=model_label + " Centrals", color=color, linestyle="--")
 
             ax.plot(bin_middles[:-1], model.properties["quiescent_satellites_counts"] / model.properties["satellites_MF"],
-                    label=model_label + " Satellites", color=color, linestyle="-.") 
+                    label=model_label + " Satellites", color=color, linestyle="-.")
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Quescient\ Fraction}$")
@@ -788,7 +788,7 @@ def plot_baryon_fraction(results, plot_sub_populations=1):
         # Remember we need to average the properties in each bin.
         baryon_mean = model.properties["halo_baryon_fraction_sum"] / model.properties["fof_HMF"]
 
-        # We will keep the linestyle constant but change the color. 
+        # We will keep the linestyle constant but change the color.
         ax.plot(bin_middles[:-1], baryon_mean, label=model_label + " Total",
                 color=color, linestyle=linestyle)
 
@@ -942,7 +942,7 @@ def plot_spatial(results):
     ax3.set_xlabel(r"$\mathrm{y}\ [\mathrm{Mpc}/h]$")
     ax3.set_ylabel(r"$\mathrm{z}\ [\mathrm{Mpc}/h]$")
 
-    # Find the model with the largest box. 
+    # Find the model with the largest box.
     max_box = np.min([model.box_size for model in results.models]) - 0.5
     buffer = max_box*0.05
     for ax in [ax1, ax2, ax3, ax4]:
@@ -989,7 +989,7 @@ def plot_spatial_3d(pos, output_file, box_size):
     ax = fig.add_subplot(111, projection="3d")
 
     # Generate a subsample if necessary.
-    num_gals = len(pos) 
+    num_gals = len(pos)
     sample_size = 10000
     if num_gals > sample_size:
         w = sample(list(np.arange(num_gals)), sample_size)
@@ -1047,7 +1047,7 @@ def plot_SFRD(temporal_results):
         ax.plot(model.redshifts[model.density_snaps], np.log10(SFRD / model.volume*pow(model.hubble_h, 3)),
                 label=label, color=color, ls=linestyle)
 
-    ax = obs.plot_sfrd_data(ax) 
+    ax = obs.plot_sfrd_data(ax)
 
     ax.set_xlabel(r"$\mathrm{redshift}$")
     ax.set_ylabel(r"$\log_{10} \mathrm{SFR\ density}\ (M_{\odot}\ \mathrm{yr}^{-1}\ \mathrm{Mpc}^{-3})$")
@@ -1057,7 +1057,7 @@ def plot_SFRD(temporal_results):
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
-    
+
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
     fig.tight_layout()
@@ -1116,7 +1116,7 @@ def plot_SMD(temporal_results):
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
-    
+
     adjust_legend(ax, location="lower left", scatter_plot=0)
 
     fig.tight_layout()

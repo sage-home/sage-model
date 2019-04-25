@@ -7,6 +7,18 @@ To add your own data format, create a subclass module (e.g., ``sage_binary.py``)
 option to ``Results.__init__``.  This subclass module needs methods ``set_cosmology()``,
 ``determine_num_gals()``, ``read_gals()`` and ``update_redshift()``.
 
+To calculate and plot extra properties, first add the name of your new plot to the
+``plot_toggles`` dictionary.  You will need to create a method in ``model.py`` to
+calculate your properties and name it ``calc_<Name of your plot toggle>``.  To plot your
+new property, you will need to create a function in ``plots.py`` called ``plot_<Name of
+your plot toggle>``.
+
+For example, to generate and plot data for the ``SMF`` plot, we have methods ``calc_SMF()``
+and ``plot_SMF()``.
+
+Refer to the documentation inside the ``model.py`` and ``plot.py`` modules for more
+details.
+
 Author: Jacob Seiler
 """
 
@@ -278,8 +290,8 @@ if __name__ == '__main__':
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function at specified redshifts.
-                    "SFRD"            : 1,  # Star formation rate density at specified snapshots. 
-                    "SMD"             : 1}  # Stellar mass density at specified snapshots. 
+                    "SFRD"            : 1,  # Star formation rate density at specified snapshots.
+                    "SMD"             : 1}  # Stellar mass density at specified snapshots.
 
     ############################
     ## DON'T TOUCH BELOW HERE ##

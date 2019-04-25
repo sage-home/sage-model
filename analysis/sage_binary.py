@@ -121,7 +121,7 @@ class SageBinaryModel(Model):
         elif self.simulation == "Genesis-L500-N2160":
             self.hubble_h = 0.6751
             self.box_size = 500.00
-            self.total_num_tree_files = 64 
+            self.total_num_tree_files = 64
 
         else:
             print("Please pick a valid simulation!")
@@ -151,7 +151,7 @@ class SageBinaryModel(Model):
 
             if not os.path.isfile(fname):
                 print("File\t{0} \tdoes not exist!".format(fname))
-                raise FileNotFoundError 
+                raise FileNotFoundError
 
             with open(fname, "rb") as f:
                 Ntrees = np.fromfile(f, np.dtype(np.int32),1)[0]
@@ -166,7 +166,7 @@ class SageBinaryModel(Model):
         """
         Reads a single galaxy file.
 
-        Parameters 
+        Parameters
         ----------
 
         file_num : Integer
@@ -182,7 +182,7 @@ class SageBinaryModel(Model):
         debug : Boolean, default False
             If set, prints out extra useful debug information.
 
-        ..note:: ``tqdm`` does not play nicely with printing to stdout. Hence we 
+        ..note:: ``tqdm`` does not play nicely with printing to stdout. Hence we
         disable the ``tqdm`` progress bar if ``debug=True``.
 
         Returns
@@ -256,7 +256,7 @@ class SageBinaryModel(Model):
         ``snapshot``.
 
         ..note :: This method must only be called if the ``redshifts`` attribute is
-        defined. 
+        defined.
 
         Parameters
         ==========
