@@ -10,7 +10,9 @@ parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 mkdir -p "$parent_path"/$datadir
 if [[ $? != 0 ]]; then
     echo "Could not create directory $parent_path/$datadir"
-    echo "Failed"
+    echo "Failed."
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 fi
 
@@ -25,30 +27,38 @@ fi
 if [ ! -f trees_063.7 ]; then
     wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
     if [[ $? != 0 ]]; then
-        echo "Could not download tree files from the Manodeep Sinha's Dropbox...aborting tests"
-        echo "Failed"
+        echo "Could not download tree files from the Manodeep Sinha's Dropbox...aborting tests."
+        echo "Failed."
+        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+        echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
     fi
 
     tar xvf mini-millennium-treefiles.tar
     if [[ $? != 0 ]]; then
-        echo "Could not untar the mini-millennium tree files...aborting tests"
-        echo "Failed"
+        echo "Could not untar the mini-millennium tree files...aborting tests."
+        echo "Failed."
+        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+        echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
     fi
 
     # If there aren't trees, there's no way there is the 'correct' data files.
     wget "https://www.dropbox.com/s/n7wkkydqlyrhy59/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
     if [[ $? != 0 ]]; then
-        echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests"
-        echo "Failed"
+        echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests."
+        echo "Failed."
+        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+        echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
     fi
 
     tar -xvf mini-millennium-sage-correct-output.tar
     if [[ $? != 0 ]]; then
-        echo "Could not untar the correct model output...aborting tests"
-        echo "Failed"
+        echo "Could not untar the correct model output...aborting tests."
+        echo "Failed."
+        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+        echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
     fi
 
@@ -72,8 +82,10 @@ fi
 # Execute SAGE (potentially in parallel).
 ${MPI_RUN_COMMAND} ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
-    echo "sage exited abnormally...aborting tests"
-    echo "Failed"
+    echo "sage exited abnormally...aborting tests."
+    echo "Failed."
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 fi
 
@@ -127,6 +139,8 @@ echo "Failed: $nfailed."
 if [[ $nfailed > 0 ]]; then
     echo "The binary-binary check failed."
     echo "Uh oh...I'm outta here!"
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 fi
 
@@ -139,9 +153,11 @@ sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datad
 # Run SAGE on this new parameter file.
 $MPI_RUN_COMMAND ./sage ${tmpfile}
 if [[ $? != 0 ]]; then
-    echo "sage exited abnormally...aborting tests"
-    echo "Failed"
-    cat ${tmpfile}
+    echo "sage exited abnormally when running on the HDF5 output format."
+    echo "Here is the input file for this run."
+    cat $tmpfile
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 fi
 

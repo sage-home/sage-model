@@ -67,7 +67,8 @@ int main(int argc, char **argv)
     MPI_Finalize();
 #endif
     perror(NULL);
+    fprintf(stderr, "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page.\n"
+                    "https://github.com/sage-home/sage-model/issues/new\n");
     return status;
 
 }
-

@@ -10,6 +10,8 @@
         fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %i\n", __FILE__, __FUNCTION__, __LINE__); \
         fprintf(stderr, "exit code = %d\n", sigterm);       \
         fprintf(stderr, "Printing the value of perror..."); \
+        fprintf(stderr, "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page.\n" \
+                        "https://github.com/sage-home/sage-model/issues/new\n"); \
         perror(NULL);                              \
         exit(sigterm);                             \
     } while(0)
@@ -85,9 +87,8 @@
             fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %d with expression `" #EXP "'\n", \
                     __FILE__, __FUNCTION__, __LINE__);                  \
             fprintf(stderr, __VA_ARGS__);                               \
-            fprintf(stderr, ANSI_COLOR_BLUE "Hopefully, input validation. Otherwise, bug in code: " \
-                    "please email Manodeep Sinha "                      \
-                    "<manodeep@gmail.com>" ANSI_COLOR_RESET "\n");      \
+            fprintf(stderr, "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page.\n" \
+                            "https://github.com/sage-home/sage-model/issues/new\n"); \
             ABORT(EXIT_STATUS);                                         \
         }                                                               \
   } while (0)
