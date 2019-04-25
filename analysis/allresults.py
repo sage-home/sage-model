@@ -77,11 +77,10 @@ class Results:
         Parameters
         ----------
 
-        all_models_dict : Dictionary
-            Dictionary containing the parameter values for each ``Model``
-            instance. Refer to the ``Model`` class for full details on this
-            dictionary. Each field of this dictionary must have length equal to
-            the number of models we're plotting.
+        model_dicts : List of dictionaries. Length is the number of models
+            Each element of this list is a dictionary containing the parameter values for
+            the resepctive ``Model`` Refer to the ``Model`` class for full details on this
+            dictionary.
 
         plot_toggles : Dictionary
             Specifies which plots will be generated. An entry of 1 denotes
@@ -102,7 +101,7 @@ class Results:
         None.
         """
 
-        self.num_models = len(all_models_dict["model_path"])
+        self.num_models = len(model_dicts)
         self.plot_output_path = plot_output_path
 
         if not os.path.exists(self.plot_output_path):
@@ -115,11 +114,7 @@ class Results:
 
         # Now let's go through each model, build an individual dictionary for
         # that model and then create a Model instance using it.
-        for model_num in range(self.num_models):
-
-            model_dict = {}
-            for field in all_models_dict.keys():
-                model_dict[field] = all_models_dict[field][model_num]
+        for model_dict in model_dicts:
 
             # Use the correct subclass depending upon the format SAGE wrote in.
             if model_dict["sage_output_format"] == "sage_binary":
@@ -259,22 +254,28 @@ if __name__ == "__main__":
 
         output_paths.append(output_path)
 
-    model_dict = { "sage_output_format"  : sage_output_formats,
-                   "model_path"          : model_paths,
-                   "output_path"         : output_paths,
-                   "IMF"                 : IMFs,
-                   "model_label"         : model_labels,
-                   "color"               : colors,
-                   "linestyle"           : linestyles,
-                   "marker"              : markers,
-                   "first_file"          : first_files,
-                   "last_file"           : last_files,
-                   "simulation"          : simulations,
-                   "hdf5_snapshot"       : hdf5_snapshots,
-                   "num_tree_files_used" : num_tree_files_used}
+    # Generate a dictionary for each model containing the required information.
+    # We store these in `model_dicts` which will be a list of dictionaries.
+    model_dicts = []
+    for model_num in range(len(model_paths)):
+        this_model_dict = { "sage_output_format"  : sage_output_formats[model_num],
+                            "model_path"          : model_paths[model_num],
+                            "output_path"         : output_paths[model_num],
+                            "IMF"                 : IMFs[model_num],
+                            "model_label"         : model_labels[model_num],
+                            "color"               : colors[model_num],
+                            "linestyle"           : linestyles[model_num],
+                            "marker"              : markers[model_num],
+                            "first_file"          : first_files[model_num],
+                            "last_file"           : last_files[model_num],
+                            "simulation"          : simulations[model_num],
+                            "hdf5_snapshot"       : hdf5_snapshots[model_num],
+                            "num_tree_files_used" : num_tree_files_used[model_num]}
+
+        model_dicts.append(this_model_dict)
 
     # Read in the galaxies and calculate properties for each model.
-    results = Results(model_dict, plot_toggles, plot_output_path, plot_output_format,
+    results = Results(model_dicts, plot_toggles, plot_output_path, plot_output_format,
                       debug=False)
     results.do_plots()
 
