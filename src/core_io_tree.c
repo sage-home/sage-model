@@ -13,10 +13,10 @@
 #include "core_mymalloc.h"
 #include "core_io_tree.h"
 
-#include "io/read_tree_binary.h"
+#include "io/read_tree_lhalo_binary.h"
 #include "io/read_tree_consistentrees_ascii.h"
 #ifdef HDF5
-#include "io/read_tree_hdf5.h"
+#include "io/read_tree_lhalo_hdf5.h"
 #include "io/read_tree_genesis_standard_hdf5.h"
 #endif
 
@@ -130,6 +130,10 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
         ABORT(EXIT_FAILURE);
         
     }
+
+    // Finally, things that are common across forest types.
+    free(forests_info->FileNr);
+    free(forests_info->original_treenr);
 
     return;
 }

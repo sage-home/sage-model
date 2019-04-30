@@ -1,6 +1,8 @@
 #!/bin/bash
 
 echo "Welcome the Semi Analytic Galaxy Evolution model!"
+echo "Always keep up to date by visiting our main Github page."
+echo "https://github.com/sage-home"
 echo ""
 
 # We're going to execute things assuming we're in the root directory.
@@ -58,4 +60,6 @@ echo "Afterwards, 'cd' into the 'analysis' directory and make some gorgeous plot
 echo ""
 
 echo "If you have any questions, queuries or comments, please feel free to open an Issue on GitHub!"
+echo "https://github.com/sage-home/sage-model/issues/new"
+echo ""
 echo "Have fun!"

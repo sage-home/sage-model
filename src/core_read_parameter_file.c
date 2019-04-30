@@ -11,7 +11,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 {
     int errorFlag = 0;
     int *used_tag = 0;
-    char my_treetype[MAX_STRING_LEN];
+    char my_treetype[MAX_STRING_LEN], my_outputformat[MAX_STRING_LEN];
     /*  recipe parameters  */
     int NParam = 0;
     char ParamTag[MAXTAGS][50];
@@ -58,6 +58,10 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     strcpy(ParamTag[NParam], "LastFile");
     ParamAddr[NParam] = &(run_params->LastFile);
+    ParamID[NParam++] = INT;
+
+    strcpy(ParamTag[NParam], "NumSimulationTreeFiles");
+    ParamAddr[NParam] = &(run_params->NumSimulationTreeFiles);
     ParamID[NParam++] = INT;
 
     strcpy(ParamTag[NParam], "ThreshMajorMerger");
@@ -124,6 +128,10 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     ParamAddr[NParam] = &(run_params->PartMass);
     ParamID[NParam++] = DOUBLE;
 
+    strcpy(ParamTag[NParam], "BoxSize");
+    ParamAddr[NParam] = &(run_params->BoxSize);
+    ParamID[NParam++] = DOUBLE;
+
     strcpy(ParamTag[NParam], "EnergySN");
     ParamAddr[NParam] = &(run_params->EnergySN);
     ParamID[NParam++] = DOUBLE;
@@ -179,6 +187,10 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     strcpy(ParamTag[NParam], "NumOutputs");
     ParamAddr[NParam] = &(run_params->NOUT);
     ParamID[NParam++] = INT;
+
+    strcpy(ParamTag[NParam], "OutputFormat");
+    ParamAddr[NParam] = my_outputformat;
+    ParamID[NParam++] = STRING;
 
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
@@ -316,15 +328,16 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
        gets written to "treeextension", we need to 
        null terminate tree-extension first  */
     run_params->TreeExtension[0] = '\0';
-    // Check file type is valid. 
+
+    // Check tree type is valid. 
     if (strncmp(my_treetype, "genesis_lhalo_hdf5", 511) == 0) {
         // strncmp returns 0 if the two strings are equal.
         // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
         snprintf(run_params->TreeExtension, 511, ".hdf5");
 #ifndef HDF5
-        fprintf(stderr, "You have specified to use a HDF5 file but have no compiled with the HDF5 option enabled.\n");
+        fprintf(stderr, "You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled.\n");
         fprintf(stderr, "Please check your file type and compiler options.\n");
-        ABORT(0);
+        ABORT(EXIT_FAILURE);
 #endif
     }
 
@@ -349,9 +362,38 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         }
         ABORT(EXIT_FAILURE);
     }
+
+    // Check output data type is valid.
+#ifndef HDF5
+    if(strncmp(my_outputformat, "sage_hdf5", MAX_STRING_LEN-1) == 0) {
+        fprintf(stderr, "You have specified to use HDF5 output format but have not compiled with the HDF5 option enabled.\n");
+        fprintf(stderr, "Please check your file type and compiler options.\n");
+        ABORT(EXIT_FAILURE);
+    }
+#endif
+
+    const char format_names[][MAX_STRING_LEN] = {"sage_binary", "sage_hdf5"};
+    const enum Valid_OutputFormats format_enums[] = {sage_binary, sage_hdf5};
+    const int nvalid_format_types  = sizeof(format_names)/(MAX_STRING_LEN*sizeof(char));
+    XASSERT(nvalid_format_types == 2, EXIT_FAILURE, "nvalid_format_types = %d should have been 2\n", nvalid_format_types);
+    found = 0;
+    for(int i=0;i<nvalid_format_types;i++) {
+        if (strcasecmp(my_outputformat, format_names[i]) == 0) {
+            run_params->OutputFormat = format_enums[i];
+            found = 1;
+            break;
+        }
+    }
+
+    if(found == 0) {
+        fprintf(stderr, "OutputFormat %s is not supported\n", my_outputformat);
+        fprintf(stderr," Please choose one of the supported output formats -- \n");
+        for(int i=0;i<nvalid_format_types;i++) {
+            fprintf(stderr,"OutputFormat = %s\n", format_names[i]);
+        }
+        ABORT(EXIT_FAILURE);
+    }
     myfree(used_tag);
 
-    
     return EXIT_SUCCESS;
 }
-

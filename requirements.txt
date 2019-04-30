@@ -1,7 +1,5 @@
 numpy
+tqdm
 matplotlib
 scipy
 h5py
-
-
-

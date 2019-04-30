@@ -23,10 +23,6 @@ void set_units(struct params *run_params);
 void read_snap_list(const int ThisTask, struct params *run_params);
 double time_to_present(const double z, struct params *run_params);
 
-#ifdef HDF5
-#include "io/io_save_hdf5.h"
-#endif
-
 void init(const int ThisTask, struct params *run_params)
 {
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
@@ -52,15 +48,6 @@ void init(const int ThisTask, struct params *run_params)
     if(ThisTask == 0) {
         printf("cooling functions read\n\n");
     }
-
-#if 0    
-#ifdef HDF5
-    if(HDF5Output) {
-        calc_hdf5_props();
-    }
-#endif
-#endif
-
 }
 
 

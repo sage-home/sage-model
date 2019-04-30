@@ -549,7 +549,7 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
 
                 fprintf(stderr,"i = %"PRId64" id = %"PRId64" pid = %"PRId64" fof_id = %"PRId64" upid = %"PRId64" FirstHaloInFOFgroup = %"PRId64"\n",
                         i, info[i].id, info[i].pid, fof_id, info[i].upid, FirstHaloInFOFgroup); 
-                exit(EXIT_FAILURE);
+                ABORT(EXIT_FAILURE);
             }
             int64_t insertion_point = FirstHaloInFOFgroup;
             while(forest[insertion_point].NextHaloInFOFgroup != -1) {
