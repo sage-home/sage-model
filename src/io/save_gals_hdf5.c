@@ -110,7 +110,7 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
                                     "The group_id was #group_id #h5_dtype.\n");          \
 }
 
-#define CREATE_AND_WRITE_DATASET(file_id, field_name, dims, h5_dtype, data) { \
+#define CREATE_AND_WRITE_DATASET(file_id, field_name, dims, data, h5_dtype) { \
     hid_t macro_dataspace_id = H5Screate_simple(1, dims, NULL); \
     CHECK_STATUS_AND_RETURN_ON_FAIL(macro_dataspace_id, (int32_t) dataspace_id, \
                                     "Could not create a dataspace for field #field_name.\n" \
@@ -1127,11 +1127,11 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     // Redshift at each snapshot.
     hsize_t dims[1];
     dims[0] = run_params->MAXSNAPS;
-    CREATE_AND_WRITE_DATASET(file_id, "Header/snapshot_redshift", dims, H5T_NATIVE_FLOAT, run_params->ZZ);
+    CREATE_AND_WRITE_DATASET(file_id, "Header/snapshot_redshift", dims, &run_params->ZZ, H5T_NATIVE_FLOAT);
 
     // Output snapshots.
     dims[0] = run_params->MAXSNAPS;
-    CREATE_AND_WRITE_DATASET(file_id, "Header/output_snapshots", dims, H5T_NATIVE_FLOAT, run_params->ListOutputSnaps);
+    CREATE_AND_WRITE_DATASET(file_id, "Header/output_snapshots", dims, &run_params->ListOutputSnaps, H5T_NATIVE_FLOAT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", &run_params->MAXSNAPS, H5T_NATIVE_INT);
 
     status = H5Gclose(sim_group_id);
