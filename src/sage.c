@@ -111,13 +111,17 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     }
 
     run_params->interrupted = 0;
-    if(NTasks == 1 && ThisTask == 0) {
-        init_my_progressbar(stderr, forest_info.totnforests, &(run_params->interrupted));
+    if(ThisTask == 0) {
+        init_my_progressbar(stderr, forest_info.nforests_this_task, &(run_params->interrupted));
+#ifdef MPI
+        fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
+                        "It should be used as a general indicator only.\n");
+#endif
     }
 
     int64_t nforests_done = 0;
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
-        if(NTasks == 1 && ThisTask == 0) {
+        if(ThisTask == 0) {
             my_progressbar(stderr, nforests_done, &(run_params->interrupted));
         }
         
@@ -142,7 +146,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     free(save_info.tot_ngals);
 
-    if(NTasks == 1 && ThisTask == 0) {
+    if(ThisTask == 0) {
         finish_myprogressbar(stderr, &(run_params->interrupted));
     }
 
