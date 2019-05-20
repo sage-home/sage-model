@@ -144,9 +144,9 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 // a single output struct (for each snapshot) where the **properties** of the struct are arrays.
 // This macro callocs (i.e., allocates and zeros) space for these inner arrays.
 #define MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, field_name) {     \
-    save_info->buffer_output_gals[snap_idx].field_name = malloc(save_info->buffer_size * sizeof(*(save_info->buffer_output_gals[snap_idx].field_name))); \
+    save_info->buffer_output_gals[snap_idx].field_name = malloc(save_info->buffer_size * sizeof(*(save_info->buffer_output_gals[snap_idx].field_name)));                                                          \
     if(save_info->buffer_output_gals[snap_idx].field_name == NULL) { \
-        fprintf(stderr, "Could not allocate %d elements for the #field_name GALAXY_OUTPUT field for output snapshot #snap_idx\n", save_info->buffer_size);\
+        fprintf(stderr, "Could not allocate %d elements for the #field_name GALAXY_OUTPUT field for output snapshot #snap_idx\n", save_info->buffer_size);                                                        \
         return MALLOC_FAILURE;                                       \
     }                                                                \
 }
@@ -1126,12 +1126,30 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 
     // Redshift at each snapshot.
     hsize_t dims[1];
-    dims[0] = run_params->MAXSNAPS;
-    CREATE_AND_WRITE_DATASET(file_id, "Header/snapshot_redshift", dims, &run_params->ZZ, H5T_NATIVE_FLOAT);
+    dims[0] = run_params->Snaplistlen;
+
+    // Now for some reason, attempting to pass and write the `run_params->ZZ` array directly yields
+    // garbage being written.  Hence I'm going to create a temp array and write this instead.
+    float *tmp;
+    tmp = malloc(dims[0] * sizeof(float));
+    for(int32_t i = 0; i < run_params->Snaplistlen; ++i) {
+        tmp[i] = run_params->ZZ[i];
+    }
+    CREATE_AND_WRITE_DATASET(file_id, "Header/snapshot_redshifts", dims, tmp, H5T_NATIVE_FLOAT);
+    free(tmp);
 
     // Output snapshots.
-    dims[0] = run_params->MAXSNAPS;
-    CREATE_AND_WRITE_DATASET(file_id, "Header/output_snapshots", dims, &run_params->ListOutputSnaps, H5T_NATIVE_FLOAT);
+    dims[0] = run_params->NOUT;
+
+    // Same as above, garbage was being written for `run_params->ListOutputSnaps`. 
+    int32_t *int_tmp;
+    int_tmp = malloc(run_params->NOUT * sizeof(int32_t));
+    for(int32_t i = 0; i < run_params->NOUT; ++i) {
+        int_tmp[i] = run_params->ListOutputSnaps[i];
+    }
+    CREATE_AND_WRITE_DATASET(file_id, "Header/output_snapshots", dims, int_tmp, H5T_NATIVE_INT);
+    free(int_tmp);
+
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", &run_params->MAXSNAPS, H5T_NATIVE_INT);
 
     status = H5Gclose(sim_group_id);
