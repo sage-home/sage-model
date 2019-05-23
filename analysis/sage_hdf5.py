@@ -81,7 +81,12 @@ class SageHdf5Model(Model):
         volume_processed = 0.0
         for core_num in range(self.first_file, self.last_file + 1):
             core_key = "Core_{0}".format(core_num)
-            volume_processed += f[core_key]["Header"]["Runtime"].attrs["frac_volume_processed"]
+
+            processed_this_core = f[core_key]["Header"]["Runtime"].attrs["frac_volume_processed"]
+            volume_processed += processed_this_core
+
+            print(f"Core {core_num} processed {processed_this_core}. Total is "
+                  f"{volume_processed}")
 
         # Scale the volume by the number of files that we will read. Used to ensure
         # properties scaled by volume (e.g., SMF) gives sensible results.

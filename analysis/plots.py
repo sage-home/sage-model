@@ -121,15 +121,16 @@ def plot_SMF(results, plot_sub_populations=False):
         bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
 
         # The SMF is normalized by the simulation volume which is in Mpc/h.
-        ax.plot(bin_middles[:-1], model.properties["SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
-                color=color, ls=ls, label=model_label + " - All")
+        norm_SMF = model.properties["SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width
+        ax.plot(bin_middles[:-1], norm_SMF, color=color, ls=ls, label=model_label + " - All")
 
         # Be careful to not overcrowd the plot.
         if results.num_models == 1 or plot_sub_populations:
-            ax.plot(bin_middles[:-1], model.properties["red_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
-                    "r:", lw=2, label=model_label + " - Red")
-            ax.plot(bin_middles[:-1], model.properties["blue_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
-                    "b:", lw=2, label=model_label + " - Blue")
+            norm_red = model.properties["red_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width
+            norm_blue = model.properties["blue_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width
+
+            ax.plot(bin_middles[:-1], norm_red, "r:", lw=2, label=model_label + " - Red")
+            ax.plot(bin_middles[:-1], norm_blue, "b:", lw=2, label=model_label + " - Blue")
 
     # For scaling the observational data, we use the values of the zeroth
     # model.

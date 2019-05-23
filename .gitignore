@@ -9,3 +9,6 @@ libsage.a
 *.ipynb_checkpoints
 *.dSYM
 analysis/plots/
+*.txt
+*.log
+*.out
