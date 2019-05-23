@@ -133,6 +133,6 @@ Maintainers
 - Darren Croton (@darrencroton)
 
 
-.. |TRAVIS| image:: https://travis-ci.com/sage-home/sage-model.svg?branch=master
+.. |TRAVIS| image:: https://img.shields.io/travis/com/sage-home/sage-model/master.svg?logo=travis&logoColor=white&label=Travis%20CI
     :target: https://travis-ci.com/sage-home/sage-model
 
