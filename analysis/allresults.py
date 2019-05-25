@@ -126,10 +126,6 @@ class Results:
 
             model.set_cosmology()
 
-            # To be more memory concious, we calculate the required properties on a
-            # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
-            model.calc_properties_all_files(debug=debug)
-
             all_models.append(model)
 
         self.models = all_models
@@ -274,9 +270,44 @@ if __name__ == "__main__":
 
         model_dicts.append(this_model_dict)
 
-    # Read in the galaxies and calculate properties for each model.
+    # First initialise all the Models. This will set the cosmologies, the paths etc.
     results = Results(model_dicts, plot_toggles, plot_output_path, plot_output_format,
                       debug=False)
+
+    # Then calculate all the required property for each model.
+    for model in results.models:
+
+        # First populate the `calculation_methods` dictionary. This dictionary will control
+        # which properties each model will calculate.
+        model.calculation_methods = {}
+
+        # Only populate those methods that have been marked in the `plot_toggles`
+        # dictionary.
+        for toggle in results.plot_toggles.keys():
+            if results.plot_toggles[toggle]:
+
+                # Each toggle has a corresponding `calc_<toggle>` method inside the
+                # `Method` class.
+                method_name = "calc_{0}".format(toggle)
+
+                # Be careful.  Maybe the method for a specified `plot_toggle` value wasn't
+                # added to the `model.py` module.
+                try:
+                    method = getattr(model, method_name)
+                except AttributeError:
+                    msg = "Tried to get the method named '{0}' corresponding to "
+                          "'plot_toggle' value '{1}'.  However, no method named '{0}' "
+                          "could be found in 'model.py' module.".format(method_name,
+                          toggle)
+                    raise AttributeError(msg)
+
+                # Then add this method to the `calculation_methods` dictionary.
+                model.add_method(method_name, method)
+
+        # To be more memory concious, we calculate the required properties on a
+        # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
+        model.calc_properties_all_files(debug=False)
+
     results.do_plots()
 
     # Set the error settings to the previous ones so we don't annoy the user.
