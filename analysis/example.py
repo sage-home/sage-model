@@ -9,6 +9,17 @@ Author: Jacob Seiler.
 """
 
 import model
+import plots
+
+# Import the subclasses that handle the different SAGE output formats.
+from sage_binary import SageBinaryModel
+
+try:
+    from sage_hdf5 import SageHdf5Model
+except ImportError:
+    print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
+          "this package.")
+
 from results import Results
 
 import numpy as np
@@ -19,29 +30,44 @@ old_error_settings = np.seterr()
 np.seterr(all="ignore")
 
 
-def populate_calculation_functions(plot_toggles, my_model, module_prefix=""):
+def check_and_get_func(module_prefix, toggle, calculation):
+
+    # If we're getting the function for calculating galaxy properties (e.g., calculating
+    # the SMF), then the function is `calc_<toggle>`.
+    if calculation:
+        func_name = "{0}calc_{1}".format(module_prefix, toggle)
+    else:
+        func_name = "{0}plot_{1}".format(module_prefix, toggle)
+
+    # Be careful.  Maybe the func for a specified `plot_toggle` value wasn't
+    # added to the module.
+    try:
+        func = eval(func_name)
+    except AttributeError:
+        msg = "Tried to get the func named '{0}' corresponding to " \
+              "'plot_toggle' value '{1}'.  However, no func named '{0}' " \
+              "could be found in '{2}' module.".format(func_name,
+              toggle, module_prefix)
+        raise AttributeError(msg)
+
+    return func_name, func
+
+
+def populate_calculation_functions(plot_toggles, my_model, calculation_module_prefix="",
+                                   plotting_module_prefix=""):
+
     # Only populate those methods that have been marked in the `plot_toggles`
     # dictionary.
     for toggle in plot_toggles.keys():
         if plot_toggles[toggle]:
 
-            # Each toggle has a corresponding `calc_<toggle>` function inside the
-            # `method` module.
-            function_name = "{0}calc_{1}".format(module_prefix, toggle)
+            # Get the function names for both calculating and plotting the toggle.
+            calc_name, calc_func = check_and_get_func(calculation_module_prefix, toggle, True)
+            plot_name, plot_func = check_and_get_func(plotting_module_prefix, toggle, False)
 
-            # Be careful.  Maybe the method for a specified `plot_toggle` value wasn't
-            # added to the specified module.
-            try:
-                function = eval(function_name)
-            except AttributeError:
-                msg = "Tried to get the function named '{0}' corresponding to " \
-                      "'plot_toggle' value '{1}'.  However, no function named '{0}' " \
-                      "could be found in '{2}py' module.".format(function_name,
-                      toggle, module_prefix)
-                raise AttributeError(msg)
-
-            # Then add this function to the `calculation_functions` dictionary.
-            my_model.add_function(function_name, function)
+            # Then add these to the respective dictionaries.
+            my_model.calculation_functions[calc_name] = calc_func
+            my_model.plotting_functions[plot_name] = plot_func
 
 
 def init_binned_properties(my_model, bin_low, bin_high, bin_width, bin_name):
@@ -102,9 +128,9 @@ if __name__ == "__main__":
     # specified if using binary output. HDF5 will automatically detect these.
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
-    model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
+    model0_sage_output_format  = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
     model0_dir_name            = "../output/millennium/"
-    model0_file_name           = "model_z0.000"
+    model0_file_name           = "model.hdf5"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "r"
@@ -138,18 +164,18 @@ if __name__ == "__main__":
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.
-                    "BMF"             : 1,  # Baryonic mass function.
-                    "GMF"             : 1,  # Gas mass function (cold gas).
-                    "BTF"             : 1,  # Baryonic Tully-Fisher.
-                    "sSFR"            : 1,  # Specific star formation rate.
-                    "gas_frac"        : 1,  # Fraction of galaxy that is cold gas.
-                    "metallicity"     : 1,  # Metallicity scatter plot.
-                    "bh_bulge"        : 1,  # Black hole-bulge relationship.
-                    "quiescent"       : 1,  # Fraction of galaxies that are quiescent.
-                    "bulge_fraction"  : 1,  # Fraction of galaxies that are bulge/disc dominated.
-                    "baryon_fraction" : 1,  # Fraction of baryons in galaxy/reservoir.
-                    "reservoirs"      : 1,  # Mass in each reservoir.
-                    "spatial"         : 1}  # Spatial distribution of galaxies.
+                    "BMF"             : 0,  # Baryonic mass function.
+                    "GMF"             : 0,  # Gas mass function (cold gas).
+                    "BTF"             : 0,  # Baryonic Tully-Fisher.
+                    "sSFR"            : 0,  # Specific star formation rate.
+                    "gas_frac"        : 0,  # Fraction of galaxy that is cold gas.
+                    "metallicity"     : 0,  # Metallicity scatter plot.
+                    "bh_bulge"        : 0,  # Black hole-bulge relationship.
+                    "quiescent"       : 0,  # Fraction of galaxies that are quiescent.
+                    "bulge_fraction"  : 0,  # Fraction of galaxies that are bulge/disc dominated.
+                    "baryon_fraction" : 0,  # Fraction of baryons in galaxy/reservoir.
+                    "reservoirs"      : 0,  # Mass in each reservoir.
+                    "spatial"         : 0}  # Spatial distribution of galaxies.
 
     ############## DO NOT TOUCH BELOW #############
     ### IF NOT ADDING EXTRA PROPERTIES OR PLOTS ###
@@ -196,18 +222,35 @@ if __name__ == "__main__":
     # First initialise all the Models. This will set the cosmologies, the paths etc.
     results = Results(model_dicts, plot_toggles, plot_output_path, plot_output_format,
                       debug=False)
-    
-    # Then calculate all the required property for each model.
-    for my_model in results.models:
 
-        # First populate the `calculation_methods` dictionary. This dictionary will control
+    # Now go through each model and calculate all the required properties.
+    models = []
+    for model_dict in model_dicts:
+
+        # Initialize a Model class and set all the paths.
+        # Note: Use the correct subclass depending upon the format SAGE wrote in.
+        if model_dict["sage_output_format"] == "sage_binary":
+            my_model = SageBinaryModel(model_dict, plot_toggles)
+        elif model_dict["sage_output_format"] == "sage_hdf5":
+            my_model = SageHdf5Model(model_dict, plot_toggles)
+        else:
+            msg = "Invalid value for `sage_output_format`. Value was " \
+                  "{0}".format(model-dict["sage_output_format"])
+            raise ValueError(msg)
+
+        my_model.set_cosmology()
+
+        # Then populate the `calculation_methods` dictionary. This dictionary will control
         # which properties each model will calculate.  The dictionary is populated using
         # the plot_toggles defined above.
         my_model.calculation_functions = {}
+        my_model.plotting_functions = {}
 
         # Our functions are inside the `model.py` module.  If your functions are in a
         # different module, change the prefix here (remembering the full stop).
-        populate_calculation_functions(results.plot_toggles, my_model, module_prefix="model.")
+        populate_calculation_functions(results.plot_toggles, my_model,
+                                       calculation_module_prefix="model.",
+                                       plotting_module_prefix="plots.")
 
         # Finally, before we calculate the properties, we need to decide how each property
         # is stored. Properties can be binned (e.g., how many galaxies with mass between 10^8.0
@@ -222,8 +265,14 @@ if __name__ == "__main__":
         # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
         my_model.calc_properties_all_files(debug=False)
 
-    # All properties have been calculated! Finally do the plots.
-    results.do_plots()
+        models.append(my_model)
+
+    print("DONE!")
+
+    # All properties have been calculated! Do the plots.
+    for plot_func in models[0].plotting_functions.keys():
+        models[0].plotting_functions[plot_func](models, plot_output_path,
+                                                plot_output_format)
 
     # Set the error settings to the previous ones so we don't annoy the user.
     np.seterr(divide=old_error_settings["divide"], over=old_error_settings["over"],

@@ -79,7 +79,7 @@ def adjust_legend(ax, location="upper right", scatter_plot=0):
                 handle.set_sizes([10.0])
 
 
-def plot_SMF(results, plot_sub_populations=False):
+def plot_SMF(models, plot_output_path, plot_output_format, plot_sub_populations=False):
     """
     Plots the stellar mass function for the models within the ``Results`` class instance.
 
@@ -104,13 +104,13 @@ def plot_SMF(results, plot_sub_populations=False):
     ax = fig.add_subplot(111)
 
     # Go through each of the models and plot.
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
 
         # If we only have one model, we will split it into red and blue
         # sub-populations.
-        if len(results.models) > 1:
+        if len(models) > 1:
             color = model.color
             ls = model.linestyle
         else:
@@ -125,7 +125,7 @@ def plot_SMF(results, plot_sub_populations=False):
         ax.plot(bin_middles[:-1], norm_SMF, color=color, ls=ls, label=model_label + " - All")
 
         # Be careful to not overcrowd the plot.
-        if results.num_models == 1 or plot_sub_populations:
+        if len(models) == 1 or plot_sub_populations:
             norm_red = model.properties["red_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width
             norm_blue = model.properties["blue_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width
 
@@ -134,8 +134,8 @@ def plot_SMF(results, plot_sub_populations=False):
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
-    zeroth_hubble_h = (results.models)[0].hubble_h
-    zeroth_IMF = (results.models)[0].IMF
+    zeroth_hubble_h = models[0].hubble_h
+    zeroth_IMF = models[0].IMF
     ax = obs.plot_smf_data(ax, zeroth_hubble_h, zeroth_IMF)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
@@ -152,8 +152,8 @@ def plot_SMF(results, plot_sub_populations=False):
 
     fig.tight_layout()
 
-    output_file = "{0}/1.StellarMassFunction{1}".format(results.plot_output_path,
-                                                       results.plot_output_format)
+    output_file = "{0}/1.StellarMassFunction{1}".format(plot_output_path,
+                                                        plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
