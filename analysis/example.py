@@ -8,7 +8,7 @@ To calculate and plot extra properties, see the documentation at the top of the
 Author: Jacob Seiler.
 """
 
-from model import Model
+import model
 from results import Results
 
 import numpy as np
@@ -17,6 +17,78 @@ import numpy as np
 # warnings as they spam stdout.
 old_error_settings = np.seterr()
 np.seterr(all="ignore")
+
+
+def populate_calculation_functions(plot_toggles, my_model, module_prefix=""):
+    # Only populate those methods that have been marked in the `plot_toggles`
+    # dictionary.
+    for toggle in plot_toggles.keys():
+        if plot_toggles[toggle]:
+
+            # Each toggle has a corresponding `calc_<toggle>` function inside the
+            # `method` module.
+            function_name = "{0}calc_{1}".format(module_prefix, toggle)
+
+            # Be careful.  Maybe the method for a specified `plot_toggle` value wasn't
+            # added to the specified module.
+            try:
+                function = eval(function_name)
+            except AttributeError:
+                msg = "Tried to get the function named '{0}' corresponding to " \
+                      "'plot_toggle' value '{1}'.  However, no function named '{0}' " \
+                      "could be found in '{2}py' module.".format(function_name,
+                      toggle, module_prefix)
+                raise AttributeError(msg)
+
+            # Then add this function to the `calculation_functions` dictionary.
+            my_model.add_function(function_name, function)
+
+
+def init_binned_properties(my_model, bin_low, bin_high, bin_width, bin_name):
+
+
+    # These properties will be binned on stellar mass.
+    stellar_property_names = ["SMF", "red_SMF", "blue_SMF", "BMF", "GMF",
+                              "centrals_MF", "satellites_MF", "quiescent_galaxy_counts",
+                              "quiescent_centrals_counts", "quiescent_satellites_counts",
+                              "fraction_bulge_sum", "fraction_bulge_var",
+                              "fraction_disk_sum", "fraction_disk_var"]
+
+    # The following properties are binned on halo mass but use the same bins.
+    halo_property_names = ["fof_HMF"]
+
+    # These are the reservoir components, binned on halo mass.
+    component_names = ["halo_{0}_fraction_sum".format(component) for component in
+                        ["baryon", "stars", "cold", "hot", "ejected", "ICS", "bh"]]
+
+    # Now combine them all and create the bins for each.
+    property_names = stellar_property_names + halo_property_names + component_names
+    my_model.init_binned_properties(bin_low, bin_high, bin_width, bin_name,
+                                    property_names)
+
+
+    return
+
+
+def init_scatter_properties(my_model):
+
+    property_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR",
+                      "gas_frac_mass", "gas_frac", "metallicity_mass",
+                      "metallicity", "bh_mass", "bulge_mass", "reservoir_mvir",
+                      "reservoir_stars", "reservoir_cold", "reservoir_hot",
+                      "reservoir_ejected", "reservoir_ICS", "x_pos",
+                      "y_pos", "z_pos"]
+    my_model.init_scatter_properties(property_names)
+
+    return
+
+
+def init_single_properties(my_model):
+
+    property_names = ["SFRD", "SMD"]
+    my_model.init_single_properties(property_names)
+
+    return
 
 
 if __name__ == "__main__":
@@ -79,6 +151,10 @@ if __name__ == "__main__":
                     "reservoirs"      : 1,  # Mass in each reservoir.
                     "spatial"         : 1}  # Spatial distribution of galaxies.
 
+    ############## DO NOT TOUCH BELOW #############
+    ### IF NOT ADDING EXTRA PROPERTIES OR PLOTS ###
+    ############## DO NOT TOUCH BELOW #############
+
     # Everything has been specified, now initialize.
     model_paths = []
     output_paths = []
@@ -122,39 +198,31 @@ if __name__ == "__main__":
                       debug=False)
     
     # Then calculate all the required property for each model.
-    for model in results.models:
+    for my_model in results.models:
 
         # First populate the `calculation_methods` dictionary. This dictionary will control
-        # which properties each model will calculate.
-        model.calculation_methods = {}
+        # which properties each model will calculate.  The dictionary is populated using
+        # the plot_toggles defined above.
+        my_model.calculation_functions = {}
 
-        # Only populate those methods that have been marked in the `plot_toggles`
-        # dictionary.
-        for toggle in results.plot_toggles.keys():
-            if results.plot_toggles[toggle]:
+        # Our functions are inside the `model.py` module.  If your functions are in a
+        # different module, change the prefix here (remembering the full stop).
+        populate_calculation_functions(results.plot_toggles, my_model, module_prefix="model.")
 
-                # Each toggle has a corresponding `calc_<toggle>` method inside the
-                # `Method` class.
-                method_name = "calc_{0}".format(toggle)
-
-                # Be careful.  Maybe the method for a specified `plot_toggle` value wasn't
-                # added to the `model.py` module.
-                try:
-                    method = getattr(model, method_name)
-                except AttributeError:
-                    msg = "Tried to get the method named '{0}' corresponding to " \
-                          "'plot_toggle' value '{1}'.  However, no method named '{0}' " \
-                          "could be found in 'model.py' module.".format(method_name,
-                          toggle)
-                    raise AttributeError(msg)
-
-                # Then add this method to the `calculation_methods` dictionary.
-                model.add_method(method_name, method)
+        # Finally, before we calculate the properties, we need to decide how each property
+        # is stored. Properties can be binned (e.g., how many galaxies with mass between 10^8.0
+        # and 10^8.1), scatter plotted (e.g., for 1000 galaxies plot the specific star
+        # formation rate versus stellar mass) or a single number (e.g., the sum
+        # of the star formation rate at a snapshot).
+        init_binned_properties(my_model, 8.0, 14.0, 0.1, "mass_bins")
+        init_scatter_properties(my_model)
+        init_single_properties(my_model)
 
         # To be more memory concious, we calculate the required properties on a
         # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
-        model.calc_properties_all_files(debug=False)
+        my_model.calc_properties_all_files(debug=False)
 
+    # All properties have been calculated! Finally do the plots.
     results.do_plots()
 
     # Set the error settings to the previous ones so we don't annoy the user.

@@ -149,96 +149,79 @@ class Model:
 
         self.properties = {}
 
-        # Properties can be binned (e.g., how many galaxies with mass between 10^8.0 and
-        # 10^8.1), scatter plotted (e.g., for 1000 galaxies plot the specific star
-        # formation rate versus stellar mass) or a single number (e.g., the sum
-        # of the star formation rate at a snapshot).
-        self.init_binned_properties()
-        self.init_scatter_properties()
-        self.init_single_properties()
 
-
-    def init_binned_properties(self):
+    def init_binned_properties(self, bin_low, bin_high, bin_width, bin_name,
+                               property_names):
         """
         Initializes the ``Model`` properties that will binned on some variable.  For
         example, the stellar mass function (SMF) will describe the number of galaxies
         within a stellar mass bin.
 
-        To add another property that is binned on stellar mass, add its name to the
-        ``stellar_property_names`` list.
+        Parameters
+        ----------
 
-        If you wish to define a property binned on a different variable (e.g., binned on
-        star formation rate), simply define (e.g.,) ``self.SFR_bins``, a list of
-        ``SFR_property_names`` and then iterate through the list in an identical manner
-        to above below.  For example:
+        bin_low, bin_high, bin_width : floats
+            Values that define the minimum, maximum and width of the bins respectively.
+            This defines the binning axis that the ``property_names`` properties will be
+            binned on.
 
-        ```
-        for my_property in SFR_property_names:
-            self.properties[my_property] = np.zeros(len(self.SFR_bins) - 1, dtype=np.float64)
-        ```
+        bin_name : string
+            Name of the binning axis.
+
+        property_names : list of strings
+            Name of the properties that will be binned along the defined binning axis,
+            accessed by ``Model.bin_name``.
         """
 
-        # Parameters that define stellar/halo mass bins.
-        self.mass_bin_low      = 8.0
-        self.mass_bin_high     = 14.0
-        self.mass_bin_width    = 0.1
-        self.mass_bins    = np.arange(self.mass_bin_low,
-                                      self.mass_bin_high + self.mass_bin_width,
-                                      self.mass_bin_width)
+        # Parameters that define the specified binning axis.
+        self.mass_bin_low      = bin_low
+        self.mass_bin_high     = bin_high
+        self.mass_bin_width    = bin_width
+        bins =  np.arange(self.mass_bin_low,
+                          self.mass_bin_high + self.mass_bin_width,
+                          self.mass_bin_width)
 
-        # These properties will be binned on stellar mass.
-        stellar_property_names = ["SMF", "red_SMF", "blue_SMF", "BMF", "GMF",
-                                  "centrals_MF", "satellites_MF", "quiescent_galaxy_counts",
-                                  "quiescent_centrals_counts", "quiescent_satellites_counts",
-                                  "fraction_bulge_sum", "fraction_bulge_var",
-                                  "fraction_disk_sum", "fraction_disk_var"]
-
-        # The following properties are binned on halo mass but use the same bins.
-        halo_property_names = ["fof_HMF"]
-
-        # These are the reservoir components, binned on halo mass.
-        component_names = ["halo_{0}_fraction_sum".format(component) for component in
-                            ["baryon", "stars", "cold", "hot", "ejected", "ICS", "bh"]]
+        # Now set the Model attribute using the created bins.
+        setattr(self, bin_name, bins)
 
         # When making histograms, the right-most bin is closed. Hence the length of the
         # produced histogram will be `len(bins)-1`.
-        for my_property in (stellar_property_names + halo_property_names + component_names):
-            self.properties[my_property] = np.zeros(len(self.mass_bins) - 1, dtype=np.float64)
+        for property in property_names:
+            self.properties[property] = np.zeros(len(bins) - 1, dtype=np.float64)
 
 
-    def init_scatter_properties(self):
+    def init_scatter_properties(self, property_names):
         """
         Initializes the ``Model`` properties that will be extended as lists.  This is used
         to plot (e.g.,) a the star formation rate versus stellar mass for a subset of 1000
         galaxies.
 
-        To add another property, add its name to the ``scatter_property_names`` list.
+        Parameters
+        ----------
+
+        property_names : list of strings
+            Name of the properties that will be extended as lists.
         """
 
-        scatter_property_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR",
-                                  "gas_frac_mass", "gas_frac", "metallicity_mass",
-                                  "metallicity", "bh_mass", "bulge_mass", "reservoir_mvir",
-                                  "reservoir_stars", "reservoir_cold", "reservoir_hot",
-                                  "reservoir_ejected", "reservoir_ICS", "x_pos",
-                                  "y_pos", "z_pos"]
-
         # Initialize empty lists.
-        for my_property in scatter_property_names:
-            self.properties[my_property] = []
+        for property in property_names:
+            self.properties[property] = []
 
 
-    def init_single_properties(self):
+    def init_single_properties(self, property_names):
         """
         Initializes the ``Model`` properties that are described using a single number.
         This is used to plot (e.g.,) a the sum of stellar mass across all galaxies.
 
-        To add another property, add its name to the ``single_property_names`` list.
+        Parameters
+        ----------
+
+        property_names : list of strings
+            Name of the properties that will be described using a single number.
         """
 
-        single_property_names = ["SFRD", "SMD"]
-
-        for my_property in single_property_names:
-            self.properties[my_property] = 0.0
+        for property in property_names:
+            self.properties[property] = 0.0
 
 
     def calc_properties_all_files(self, close_file=True, use_pbar=True, debug=False):
@@ -318,13 +301,25 @@ class Model:
         Parameters
         ----------
 
-        gals : ``numpy`` structured array with format given by ``Model.get_galaxy_struct()``
+        gals : ``numpy`` structured array with format given by
+               ``Model.get_galaxy_struct()`` if using ``SageBinary`` subclass or an open
+               HDF5 group if using ``SageHDF5`` subclass.
             The galaxies for this file.
 
         Returns
-        -------
+            property_names = stellar_property_names + halo_property_names +
+            component_names
+            my_model.-------
 
         None.
+
+        Notes
+        -----
+
+        The properties are calculated are dictated by the functions in the
+        ``calculation_method`` dictionary.  This dictionary contains a function name (key)
+        and the corresponding function to be called. To add a function to this dictionary,
+        use ``Model.add_method``.
         """
 
         # When we create some plots, we do a scatter plot. For these, we only plot a
@@ -333,22 +328,22 @@ class Model:
 
         # Now check which plots the user is creating and hence decide which properties
         # they need.
-        for method in self.calculation_methods.keys():
-            self.calculation_methods[method](gals)
+        for func in self.calculation_functions.keys():
+            self.calculation_functions[func](self, gals)
 
 
-    def add_method(self, name, func):
+    def add_function(self, name, func):
         """
-        Adds function ``func`` named ``name`` to the ``calculation_methods`` dictionary.
-        Methods in this dictionary are called inside ``calc_properties``.  The first
-        argument of the function **MUST** be the ``gals``.
+        Adds function ``func`` named ``name`` to the ``calculation_functions`` dictionary.
+        Funtions in this dictionary are called inside ``calc_properties``.  The
+        arguments of the function **MUST** be ``(Model Class, gals)``.
         """
 
-        new_method = {name: func}
-        self.calculation_methods.update(new_method)
+        new_function = {name: func}
+        self.calculation_functions.update(new_function)
 
 
-    def remove_method(self, name):
+    def remove_function(self, name):
         """
         Removes function named ``name`` from the ``calculation_methods`` dictionary.
         """
@@ -363,321 +358,321 @@ class Model:
         return self.calculation_methods.keys()
 
 
-    def calc_SMF(self, gals):
+def calc_SMF(model, gals):
 
-        non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+    non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
-        stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
-        sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
-                   (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
+    stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
+    sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
+               (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
 
-        gals_per_bin, _ = np.histogram(stellar_mass, bins=self.mass_bins)
-        self.properties["SMF"] += gals_per_bin
+    gals_per_bin, _ = np.histogram(stellar_mass, bins=model.mass_bins)
+    model.properties["SMF"] += gals_per_bin
 
-        # We often want to plot the red and blue subpopulations. So bin them as well.
-        red_gals = np.where(sSFR < 10.0**self.sSFRcut)[0]
-        red_mass = stellar_mass[red_gals]
-        counts, _ = np.histogram(red_mass, bins=self.mass_bins)
-        self.properties["red_SMF"] += counts
+    # We often want to plot the red and blue subpopulations. So bin them as well.
+    red_gals = np.where(sSFR < 10.0**model.sSFRcut)[0]
+    red_mass = stellar_mass[red_gals]
+    counts, _ = np.histogram(red_mass, bins=model.mass_bins)
+    model.properties["red_SMF"] += counts
 
-        blue_gals = np.where(sSFR > 10.0**self.sSFRcut)[0]
-        blue_mass = stellar_mass[blue_gals]
-        counts, _ = np.histogram(blue_mass, bins=self.mass_bins)
-        self.properties["blue_SMF"] += counts
-
-
-    def calc_BMF(self, gals):
-
-        non_zero_baryon = np.where(gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0)[0]
-        baryon_mass = np.log10((gals["StellarMass"][:][non_zero_baryon] + gals["ColdGas"][:][non_zero_baryon]) * 1.0e10 \
-                               / self.hubble_h)
-
-        (counts, binedges) = np.histogram(baryon_mass, bins=self.mass_bins)
-        self.properties["BMF"] += counts
+    blue_gals = np.where(sSFR > 10.0**model.sSFRcut)[0]
+    blue_mass = stellar_mass[blue_gals]
+    counts, _ = np.histogram(blue_mass, bins=model.mass_bins)
+    model.properties["blue_SMF"] += counts
 
 
-    def calc_GMF(self, gals):
+def calc_BMF(model, gals):
 
-        non_zero_cold = np.where(gals["ColdGas"][:] > 0.0)[0]
-        cold_mass = np.log10(gals["ColdGas"][:][non_zero_cold] * 1.0e10 / self.hubble_h)
+    non_zero_baryon = np.where(gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0)[0]
+    baryon_mass = np.log10((gals["StellarMass"][:][non_zero_baryon] + gals["ColdGas"][:][non_zero_baryon]) * 1.0e10 \
+                           / model.hubble_h)
 
-        (counts, binedges) = np.histogram(cold_mass, bins=self.mass_bins)
-        self.properties["GMF"] += counts
-
-
-    def calc_BTF(self, gals):
-
-        # Make sure we're getting spiral galaxies. That is, don't include galaxies
-        # that are too bulgy.
-        spirals = np.where((gals["Type"][:] == 0) & (gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0) & \
-                           (gals["StellarMass"][:] > 0.0) & (gals["ColdGas"][:] > 0.0) & \
-                           (gals["BulgeMass"][:] / gals["StellarMass"][:] > 0.1) & \
-                           (gals["BulgeMass"][:] / gals["StellarMass"][:] < 0.5))[0]
-
-        if len(spirals) > self.file_sample_size:
-            spirals = np.random.choice(spirals, size=self.file_sample_size)
-
-        baryon_mass = np.log10((gals["StellarMass"][:][spirals] + gals["ColdGas"][:][spirals]) * 1.0e10 / self.hubble_h)
-        velocity = np.log10(gals["Vmax"][:][spirals])
-
-        self.properties["BTF_mass"].extend(list(baryon_mass))
-        self.properties["BTF_vel"].extend(list(velocity))
+    (counts, binedges) = np.histogram(baryon_mass, bins=model.mass_bins)
+    model.properties["BMF"] += counts
 
 
-    def calc_sSFR(self, gals):
+def calc_GMF(model, gals):
 
-        non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+    non_zero_cold = np.where(gals["ColdGas"][:] > 0.0)[0]
+    cold_mass = np.log10(gals["ColdGas"][:][non_zero_cold] * 1.0e10 / model.hubble_h)
 
-        stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
-        sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
-                   (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
+    (counts, binedges) = np.histogram(cold_mass, bins=model.mass_bins)
+    model.properties["GMF"] += counts
 
-        # `stellar_mass` and `sSFR` have length < length(gals).
-        # Hence when we take a random sample, we use length of those arrays.
-        if len(non_zero_stellar) > self.file_sample_size:
-            random_inds = np.random.choice(np.arange(len(non_zero_stellar)), size=self.file_sample_size)
+
+def calc_BTF(model, gals):
+
+    # Make sure we're getting spiral galaxies. That is, don't include galaxies
+    # that are too bulgy.
+    spirals = np.where((gals["Type"][:] == 0) & (gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0) & \
+                       (gals["StellarMass"][:] > 0.0) & (gals["ColdGas"][:] > 0.0) & \
+                       (gals["BulgeMass"][:] / gals["StellarMass"][:] > 0.1) & \
+                       (gals["BulgeMass"][:] / gals["StellarMass"][:] < 0.5))[0]
+
+    if len(spirals) > model.file_sample_size:
+        spirals = np.random.choice(spirals, size=model.file_sample_size)
+
+    baryon_mass = np.log10((gals["StellarMass"][:][spirals] + gals["ColdGas"][:][spirals]) * 1.0e10 / model.hubble_h)
+    velocity = np.log10(gals["Vmax"][:][spirals])
+
+    model.properties["BTF_mass"].extend(list(baryon_mass))
+    model.properties["BTF_vel"].extend(list(velocity))
+
+
+def calc_sSFR(model, gals):
+
+    non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+
+    stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
+    sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
+               (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
+
+    # `stellar_mass` and `sSFR` have length < length(gals).
+    # Hence when we take a random sample, we use length of those arrays.
+    if len(non_zero_stellar) > model.file_sample_size:
+        random_inds = np.random.choice(np.arange(len(non_zero_stellar)), size=model.file_sample_size)
+    else:
+        random_inds = np.arange(len(non_zero_stellar))
+
+    model.properties["sSFR_mass"].extend(list(stellar_mass[random_inds]))
+    model.properties["sSFR_sSFR"].extend(list(np.log10(sSFR[random_inds])))
+
+
+def calc_gas_frac(model, gals):
+
+    # Make sure we're getting spiral galaxies. That is, don't include galaxies
+    # that are too bulgy.
+    spirals = np.where((gals["Type"][:] == 0) & (gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0) &
+                       (gals["BulgeMass"][:] / gals["StellarMass"][:] > 0.1) & \
+                       (gals["BulgeMass"][:] / gals["StellarMass"][:] < 0.5))[0]
+
+    if len(spirals) > model.file_sample_size:
+        spirals = np.random.choice(spirals, size=model.file_sample_size)
+
+    stellar_mass = np.log10(gals["StellarMass"][:][spirals] * 1.0e10 / model.hubble_h)
+    gas_fraction = gals["ColdGas"][:][spirals] / (gals["StellarMass"][:][spirals] + gals["ColdGas"][:][spirals])
+
+    model.properties["gas_frac_mass"].extend(list(stellar_mass))
+    model.properties["gas_frac"].extend(list(gas_fraction))
+
+
+def calc_metallicity(model, gals):
+
+    # Only care about central galaxies (Type 0) that have appreciable mass.
+    centrals = np.where((gals["Type"][:] == 0) & \
+                        (gals["ColdGas"][:] / (gals["StellarMass"][:] + gals["ColdGas"][:]) > 0.1) & \
+                        (gals["StellarMass"][:] > 0.01))[0]
+
+    if len(centrals) > model.file_sample_size:
+        centrals = np.random.choice(centrals, size=model.file_sample_size)
+
+    stellar_mass = np.log10(gals["StellarMass"][:][centrals] * 1.0e10 / model.hubble_h)
+    Z = np.log10((gals["MetalsColdGas"][:][centrals] / gals["ColdGas"][:][centrals]) / 0.02) + 9.0
+
+    model.properties["metallicity_mass"].extend(list(stellar_mass))
+    model.properties["metallicity"].extend(list(Z))
+
+
+def calc_bh_bulge(model, gals):
+
+    # Only care about galaxies that have appreciable masses.
+    my_gals = np.where((gals["BulgeMass"][:] > 0.01) & (gals["BlackHoleMass"][:] > 0.00001))[0]
+
+    if len(my_gals) > model.file_sample_size:
+        my_gals = np.random.choice(my_gals, size=model.file_sample_size)
+
+    bh = np.log10(gals["BlackHoleMass"][:][my_gals] * 1.0e10 / model.hubble_h)
+    bulge = np.log10(gals["BulgeMass"][:][my_gals] * 1.0e10 / model.hubble_h)
+
+    model.properties["bh_mass"].extend(list(bh))
+    model.properties["bulge_mass"].extend(list(bulge))
+
+
+def calc_quiescent(model, gals):
+
+    non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+
+    mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
+    gal_type = gals["Type"][:][non_zero_stellar]
+
+    # For the sSFR, we will create a mask that is True for quiescent galaxies and
+    # False for star-forming galaxies.
+    sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
+           (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
+    quiescent = sSFR < 10.0 ** model.sSFRcut
+
+    # When plotting, we scale the number of quiescent galaxies by the total number of
+    # galaxies in that bin.  This is the Stellar Mass Function.
+    # So check if we're calculating the SMF already, and if not, calculate it here.
+    try:
+        if model.plot_toggles["SMF"]:
+            pass
         else:
-            random_inds = np.arange(len(non_zero_stellar))
+            model.calc_SMF(gals)
+    # Maybe the user removed "SMF" from the plot toggles...
+    except KeyError:
+        model.calc_SMF(gals)
 
-        self.properties["sSFR_mass"].extend(list(stellar_mass[random_inds]))
-        self.properties["sSFR_sSFR"].extend(list(np.log10(sSFR[random_inds])))
+    # Mass function for number of centrals/satellites.
+    centrals_counts, _ = np.histogram(mass[gal_type == 0], bins=model.mass_bins)
+    model.properties["centrals_MF"] += centrals_counts
 
+    satellites_counts, _ = np.histogram(mass[gal_type == 1], bins=model.mass_bins)
+    model.properties["satellites_MF"] += satellites_counts
 
-    def calc_gas_frac(self, gals):
+    # Then bin those galaxies/centrals/satellites that are quiescent.
+    quiescent_counts, _ = np.histogram(mass[quiescent], bins=model.mass_bins)
+    model.properties["quiescent_galaxy_counts"] += quiescent_counts
 
-        # Make sure we're getting spiral galaxies. That is, don't include galaxies
-        # that are too bulgy.
-        spirals = np.where((gals["Type"][:] == 0) & (gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0) &
-                           (gals["BulgeMass"][:] / gals["StellarMass"][:] > 0.1) & \
-                           (gals["BulgeMass"][:] / gals["StellarMass"][:] < 0.5))[0]
+    quiescent_centrals_counts, _ = np.histogram(mass[(gal_type == 0) & (quiescent == True)],
+                                                bins=model.mass_bins)
+    model.properties["quiescent_centrals_counts"] += quiescent_centrals_counts
 
-        if len(spirals) > self.file_sample_size:
-            spirals = np.random.choice(spirals, size=self.file_sample_size)
+    quiescent_satellites_counts, _ = np.histogram(mass[(gal_type == 1) & (quiescent == True)],
+                                                  bins=model.mass_bins)
 
-        stellar_mass = np.log10(gals["StellarMass"][:][spirals] * 1.0e10 / self.hubble_h)
-        gas_fraction = gals["ColdGas"][:][spirals] / (gals["StellarMass"][:][spirals] + gals["ColdGas"][:][spirals])
-
-        self.properties["gas_frac_mass"].extend(list(stellar_mass))
-        self.properties["gas_frac"].extend(list(gas_fraction))
-
-
-    def calc_metallicity(self, gals):
-
-        # Only care about central galaxies (Type 0) that have appreciable mass.
-        centrals = np.where((gals["Type"][:] == 0) & \
-                            (gals["ColdGas"][:] / (gals["StellarMass"][:] + gals["ColdGas"][:]) > 0.1) & \
-                            (gals["StellarMass"][:] > 0.01))[0]
-
-        if len(centrals) > self.file_sample_size:
-            centrals = np.random.choice(centrals, size=self.file_sample_size)
-
-        stellar_mass = np.log10(gals["StellarMass"][:][centrals] * 1.0e10 / self.hubble_h)
-        Z = np.log10((gals["MetalsColdGas"][:][centrals] / gals["ColdGas"][:][centrals]) / 0.02) + 9.0
-
-        self.properties["metallicity_mass"].extend(list(stellar_mass))
-        self.properties["metallicity"].extend(list(Z))
+    model.properties["quiescent_satellites_counts"] += quiescent_satellites_counts
 
 
-    def calc_bh_bulge(self, gals):
+def calc_bulge_fraction(model, gals):
 
-        # Only care about galaxies that have appreciable masses.
-        my_gals = np.where((gals["BulgeMass"][:] > 0.01) & (gals["BlackHoleMass"][:] > 0.00001))[0]
+    non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
-        if len(my_gals) > self.file_sample_size:
-            my_gals = np.random.choice(my_gals, size=self.file_sample_size)
+    stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
+    fraction_bulge = gals["BulgeMass"][:][non_zero_stellar] / gals["StellarMass"][:][non_zero_stellar]
+    fraction_disk = 1.0 - (gals["BulgeMass"][:][non_zero_stellar] / gals["StellarMass"][:][non_zero_stellar])
 
-        bh = np.log10(gals["BlackHoleMass"][:][my_gals] * 1.0e10 / self.hubble_h)
-        bulge = np.log10(gals["BulgeMass"][:][my_gals] * 1.0e10 / self.hubble_h)
+    # When plotting, we scale the fraction of each galaxy type the total number of
+    # galaxies in that bin. This is the Stellar Mass Function.
+    # So check if we're calculating the SMF already, and if not, calculate it here.
+    try:
+        if model.plot_toggles["SMF"]:
+            pass
+        else:
+            model.calc_SMF(gals)
+    # Maybe the user removed "SMF" from the plot toggles...
+    except KeyError:
+        model.calc_SMF(gals)
 
-        self.properties["bh_mass"].extend(list(bh))
-        self.properties["bulge_mass"].extend(list(bulge))
+    # We want the mean bulge/disk fraction as a function of stellar mass. To allow
+    # us to sum across each file, we will record the sum in each bin and then average later.
+    fraction_bulge_sum, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
+                                                      statistic=np.sum, bins=model.mass_bins)
+    model.properties["fraction_bulge_sum"] += fraction_bulge_sum
+
+    fraction_disk_sum, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
+                                                     statistic=np.sum, bins=model.mass_bins)
+    model.properties["fraction_disk_sum"] += fraction_disk_sum
+
+    # For the variance, weight these by the total number of samples we will be
+    # averaging over (i.e., number of files).
+    fraction_bulge_var, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
+                                                      statistic=np.var, bins=model.mass_bins)
+    model.properties["fraction_bulge_var"] += fraction_bulge_var / model.num_files
+
+    fraction_disk_var, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
+                                                     statistic=np.var, bins=model.mass_bins)
+    model.properties["fraction_disk_var"] += fraction_disk_var / model.num_files
 
 
-    def calc_quiescent(self, gals):
+def calc_baryon_fraction(model, gals):
+
+    # Careful here, our "Halo Mass Function" is only counting the *BACKGROUND FOF HALOS*.
+    centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 0.0))[0]
+    centrals_fof_mass = np.log10(gals["Mvir"][:][centrals] * 1.0e10 / model.hubble_h)
+    halos_binned, _ = np.histogram(centrals_fof_mass, bins=model.mass_bins)
+    model.properties["fof_HMF"] += halos_binned
+
+    non_zero_mvir = np.where((gals["CentralMvir"][:] > 0.0))[0]  # Will only be dividing by this value.
+
+    # These are the *BACKGROUND FOF HALO* for each galaxy.
+    fof_halo_mass = gals["CentralMvir"][:][non_zero_mvir]
+    fof_halo_mass_log = np.log10(gals["CentralMvir"][:][non_zero_mvir] * 1.0e10 / model.hubble_h)
+
+    # We want to calculate the fractions as a function of the FoF mass. To allow
+    # us to sum across each file, we will record the sum in each bin and then
+    # average later.
+    components = ["StellarMass", "ColdGas", "HotGas", "EjectedMass",
+                  "IntraClusterStars", "BlackHoleMass"]
+    attrs_different_name = ["stars", "cold", "hot", "ejected", "ICS", "bh"]
+
+    for (component_key, attr_name) in zip(components, attrs_different_name):
+
+        # The bins are defined in log. However the other properties are all in 1.0e10 Msun/h.
+        fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log,
+                                                    gals[component_key][:][non_zero_mvir] / fof_halo_mass,
+                                                    statistic=np.sum, bins=model.mass_bins)
+
+        dict_key = "halo_{0}_fraction_sum".format(attr_name)
+        new_attribute_value = fraction_sum + model.properties[dict_key]
+        model.properties[dict_key] = new_attribute_value
+
+    # Finally want the sum across all components.
+    baryons = np.sum(gals[component_key][:][non_zero_mvir] for component_key in components)
+    baryon_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, baryons / fof_halo_mass,
+                                                        statistic=np.sum, bins=model.mass_bins)
+    model.properties["halo_baryon_fraction_sum"] += baryon_fraction_sum
+
+
+def calc_reservoirs(model, gals):
+
+    # To reduce scatter, only use galaxies in halos with mass > 1.0e10 Msun/h.
+    centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 1.0) & \
+                        (gals["StellarMass"][:] > 0.0))[0]
+
+    if len(centrals) > model.file_sample_size:
+        centrals = np.random.choice(centrals, size=model.file_sample_size)
+
+    reservoirs = ["Mvir", "StellarMass", "ColdGas", "HotGas",
+                  "EjectedMass", "IntraClusterStars"]
+    attribute_names = ["mvir", "stars", "cold", "hot", "ejected", "ICS"]
+
+    for (reservoir, attribute_name) in zip(reservoirs, attribute_names):
+
+        mass = np.log10(gals[reservoir][:][centrals] * 1.0e10 / model.hubble_h)
+
+        # Extend the previous list of masses with these new values.
+        dict_key = "reservoir_{0}".format(attribute_name)
+        attribute_value = model.properties[dict_key]
+        attribute_value.extend(list(mass))
+        model.properties[dict_key] = attribute_value
+
+
+def calc_spatial(model, gals):
+
+    non_zero = np.where((gals["Mvir"][:] > 0.0) & (gals["StellarMass"][:] > 0.1))[0]
+
+    if len(non_zero) > model.file_sample_size:
+        non_zero = np.random.choice(non_zero, size=model.file_sample_size)
+
+    attribute_names = ["x_pos", "y_pos", "z_pos"]
+    data_names = ["Posx", "Posy", "Posz"]
+
+    for (attribute_name, data_name) in zip(attribute_names, data_names):
+
+        # Units are Mpc/h.
+        pos = gals[data_name][:][non_zero]
+
+        attribute_value = model.properties[attribute_name]
+        attribute_value.extend(list(pos))
+        model.properties[attribute_name] = attribute_value
+
+
+def calc_SFRD(model, gals):
+
+    # Check if the Snapshot is required.
+    if gals["SnapNum"][0] in model.density_snaps:
+
+        SFR = gals["SfrDisk"][:] + gals["SfrBulge"][:]
+        model.properties["SFRD"] += np.sum(SFR)
+
+
+def calc_SMD(model, gals):
+
+    # Check if the Snapshot is required.
+    if gals["SnapNum"][0] in model.density_snaps:
 
         non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
+        stellar_mass = gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h
 
-        mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
-        gal_type = gals["Type"][:][non_zero_stellar]
-
-        # For the sSFR, we will create a mask that is True for quiescent galaxies and
-        # False for star-forming galaxies.
-        sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
-               (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
-        quiescent = sSFR < 10.0 ** self.sSFRcut
-
-        # When plotting, we scale the number of quiescent galaxies by the total number of
-        # galaxies in that bin.  This is the Stellar Mass Function.
-        # So check if we're calculating the SMF already, and if not, calculate it here.
-        try:
-            if self.plot_toggles["SMF"]:
-                pass
-            else:
-                self.calc_SMF(gals)
-        # Maybe the user removed "SMF" from the plot toggles...
-        except KeyError:
-            self.calc_SMF(gals)
-
-        # Mass function for number of centrals/satellites.
-        centrals_counts, _ = np.histogram(mass[gal_type == 0], bins=self.mass_bins)
-        self.properties["centrals_MF"] += centrals_counts
-
-        satellites_counts, _ = np.histogram(mass[gal_type == 1], bins=self.mass_bins)
-        self.properties["satellites_MF"] += satellites_counts
-
-        # Then bin those galaxies/centrals/satellites that are quiescent.
-        quiescent_counts, _ = np.histogram(mass[quiescent], bins=self.mass_bins)
-        self.properties["quiescent_galaxy_counts"] += quiescent_counts
-
-        quiescent_centrals_counts, _ = np.histogram(mass[(gal_type == 0) & (quiescent == True)],
-                                                    bins=self.mass_bins)
-        self.properties["quiescent_centrals_counts"] += quiescent_centrals_counts
-
-        quiescent_satellites_counts, _ = np.histogram(mass[(gal_type == 1) & (quiescent == True)],
-                                                      bins=self.mass_bins)
-
-        self.properties["quiescent_satellites_counts"] += quiescent_satellites_counts
-
-
-    def calc_bulge_fraction(self, gals):
-
-        non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
-
-        stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h)
-        fraction_bulge = gals["BulgeMass"][:][non_zero_stellar] / gals["StellarMass"][:][non_zero_stellar]
-        fraction_disk = 1.0 - (gals["BulgeMass"][:][non_zero_stellar] / gals["StellarMass"][:][non_zero_stellar])
-
-        # When plotting, we scale the fraction of each galaxy type the total number of
-        # galaxies in that bin. This is the Stellar Mass Function.
-        # So check if we're calculating the SMF already, and if not, calculate it here.
-        try:
-            if self.plot_toggles["SMF"]:
-                pass
-            else:
-                self.calc_SMF(gals)
-        # Maybe the user removed "SMF" from the plot toggles...
-        except KeyError:
-            self.calc_SMF(gals)
-
-        # We want the mean bulge/disk fraction as a function of stellar mass. To allow
-        # us to sum across each file, we will record the sum in each bin and then average later.
-        fraction_bulge_sum, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
-                                                          statistic=np.sum, bins=self.mass_bins)
-        self.properties["fraction_bulge_sum"] += fraction_bulge_sum
-
-        fraction_disk_sum, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
-                                                         statistic=np.sum, bins=self.mass_bins)
-        self.properties["fraction_disk_sum"] += fraction_disk_sum
-
-        # For the variance, weight these by the total number of samples we will be
-        # averaging over (i.e., number of files).
-        fraction_bulge_var, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
-                                                          statistic=np.var, bins=self.mass_bins)
-        self.properties["fraction_bulge_var"] += fraction_bulge_var / self.num_files
-
-        fraction_disk_var, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
-                                                         statistic=np.var, bins=self.mass_bins)
-        self.properties["fraction_disk_var"] += fraction_disk_var / self.num_files
-
-
-    def calc_baryon_fraction(self, gals):
-
-        # Careful here, our "Halo Mass Function" is only counting the *BACKGROUND FOF HALOS*.
-        centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 0.0))[0]
-        centrals_fof_mass = np.log10(gals["Mvir"][:][centrals] * 1.0e10 / self.hubble_h)
-        halos_binned, _ = np.histogram(centrals_fof_mass, bins=self.mass_bins)
-        self.properties["fof_HMF"] += halos_binned
-
-        non_zero_mvir = np.where((gals["CentralMvir"][:] > 0.0))[0]  # Will only be dividing by this value.
-
-        # These are the *BACKGROUND FOF HALO* for each galaxy.
-        fof_halo_mass = gals["CentralMvir"][:][non_zero_mvir]
-        fof_halo_mass_log = np.log10(gals["CentralMvir"][:][non_zero_mvir] * 1.0e10 / self.hubble_h)
-
-        # We want to calculate the fractions as a function of the FoF mass. To allow
-        # us to sum across each file, we will record the sum in each bin and then
-        # average later.
-        components = ["StellarMass", "ColdGas", "HotGas", "EjectedMass",
-                      "IntraClusterStars", "BlackHoleMass"]
-        attrs_different_name = ["stars", "cold", "hot", "ejected", "ICS", "bh"]
-
-        for (component_key, attr_name) in zip(components, attrs_different_name):
-
-            # The bins are defined in log. However the other properties are all in 1.0e10 Msun/h.
-            fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log,
-                                                        gals[component_key][:][non_zero_mvir] / fof_halo_mass,
-                                                        statistic=np.sum, bins=self.mass_bins)
-
-            dict_key = "halo_{0}_fraction_sum".format(attr_name)
-            new_attribute_value = fraction_sum + self.properties[dict_key]
-            self.properties[dict_key] = new_attribute_value
-
-        # Finally want the sum across all components.
-        baryons = np.sum(gals[component_key][:][non_zero_mvir] for component_key in components)
-        baryon_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, baryons / fof_halo_mass,
-                                                            statistic=np.sum, bins=self.mass_bins)
-        self.properties["halo_baryon_fraction_sum"] += baryon_fraction_sum
-
-
-    def calc_reservoirs(self, gals):
-
-        # To reduce scatter, only use galaxies in halos with mass > 1.0e10 Msun/h.
-        centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 1.0) & \
-                            (gals["StellarMass"][:] > 0.0))[0]
-
-        if len(centrals) > self.file_sample_size:
-            centrals = np.random.choice(centrals, size=self.file_sample_size)
-
-        reservoirs = ["Mvir", "StellarMass", "ColdGas", "HotGas",
-                      "EjectedMass", "IntraClusterStars"]
-        attribute_names = ["mvir", "stars", "cold", "hot", "ejected", "ICS"]
-
-        for (reservoir, attribute_name) in zip(reservoirs, attribute_names):
-
-            mass = np.log10(gals[reservoir][:][centrals] * 1.0e10 / self.hubble_h)
-
-            # Extend the previous list of masses with these new values.
-            dict_key = "reservoir_{0}".format(attribute_name)
-            attribute_value = self.properties[dict_key]
-            attribute_value.extend(list(mass))
-            self.properties[dict_key] = attribute_value
-
-
-    def calc_spatial(self, gals):
-
-        non_zero = np.where((gals["Mvir"][:] > 0.0) & (gals["StellarMass"][:] > 0.1))[0]
-
-        if len(non_zero) > self.file_sample_size:
-            non_zero = np.random.choice(non_zero, size=self.file_sample_size)
-
-        attribute_names = ["x_pos", "y_pos", "z_pos"]
-        data_names = ["Posx", "Posy", "Posz"]
-
-        for (attribute_name, data_name) in zip(attribute_names, data_names):
-
-            # Units are Mpc/h.
-            pos = gals[data_name][:][non_zero]
-
-            attribute_value = self.properties[attribute_name]
-            attribute_value.extend(list(pos))
-            self.properties[attribute_name] = attribute_value
-
-
-    def calc_SFRD(self, gals):
-
-        # Check if the Snapshot is required.
-        if gals["SnapNum"][0] in self.density_snaps:
-
-            SFR = gals["SfrDisk"][:] + gals["SfrBulge"][:]
-            self.properties["SFRD"] += np.sum(SFR)
-
-
-    def calc_SMD(self, gals):
-
-        # Check if the Snapshot is required.
-        if gals["SnapNum"][0] in self.density_snaps:
-
-            non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
-            stellar_mass = gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / self.hubble_h
-
-            self.properties["SMD"] += np.sum(stellar_mass)
+        model.properties["SMD"] += np.sum(stellar_mass)
