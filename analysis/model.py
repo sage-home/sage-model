@@ -334,35 +334,33 @@ class Model:
         # Now check which plots the user is creating and hence decide which properties
         # they need.
         for method in self.calculation_methods.keys():
-
             self.calculation_methods[method](gals)
 
-            """
-            method_name = "calc_{0}".format(toggle)
-
-            # If the method doesn't exist, we will hit an `AttributeError`.
-            try:
-                getattr(self, method_name)(gals)
-            except AttributeError:
-                msg = "Tried to calculate properties for plot '{0}'.  However, no " \
-                      "method/function named '{1}' exists in the 'model.py' module.\n" \
-                      "Check either that your plot toggles are set correctly or add " \
-                      "a method/function  called '{1}' to the 'model.py' module.".format(toggle, \
-                      method_name)
-                msg += "\nPLEASE SCROLL UP AND MAKE SURE YOU'RE READING ALL ERROR " \
-                       "MESSAGES! THEY'RE EASY TO MISS! :)"
-                raise AttributeError(msg)
-            """
 
     def add_method(self, name, func):
+        """
+        Adds function ``func`` named ``name`` to the ``calculation_methods`` dictionary.
+        Methods in this dictionary are called inside ``calc_properties``.  The first
+        argument of the function **MUST** be the ``gals``.
+        """
 
-        new_method = {name : func}
+        new_method = {name: func}
         self.calculation_methods.update(new_method)
 
 
     def remove_method(self, name):
+        """
+        Removes function named ``name`` from the ``calculation_methods`` dictionary.
+        """
 
         del self.calculation_methods[name]
+
+    def list_calculation_methods(self):
+        """
+        Returns the names of all methods in the ``calculation_methods`` dictionary.
+        """
+
+        return self.calculation_methods.keys()
 
 
     def calc_SMF(self, gals):
