@@ -30,48 +30,101 @@ old_error_settings = np.seterr()
 np.seterr(all="ignore")
 
 
-def check_and_get_func(module_prefix, toggle, calculation):
+def generate_func_dict(plot_toggles, module_prefix, function_prefix):
+    """
+    Generates a dictionary where the keys are the function name and the value is the
+    function itself.  Functions are only generated when the ``plot_toggles`` value is
+    specified.
 
-    # If we're getting the function for calculating galaxy properties (e.g., calculating
-    # the SMF), then the function is `calc_<toggle>`.
-    if calculation:
-        func_name = "{0}calc_{1}".format(module_prefix, toggle)
-    else:
-        func_name = "{0}plot_{1}".format(module_prefix, toggle)
+    Functions are required to be named ``<module_prefix><function_prefix><plot_toggle_key>``
+    For example, the default calculation function are kept in the ``model.py`` module and
+    are named ``calc_<toggle>``.  E.g., ``model.calc_SMF()``, ``model.calc_BTF()``,
+    ``model.calc_sSFR()`` etc.
 
-    # Be careful.  Maybe the func for a specified `plot_toggle` value wasn't
-    # added to the module.
-    try:
-        func = eval(func_name)
-    except AttributeError:
-        msg = "Tried to get the func named '{0}' corresponding to " \
-              "'plot_toggle' value '{1}'.  However, no func named '{0}' " \
-              "could be found in '{2}' module.".format(func_name,
-              toggle, module_prefix)
-        raise AttributeError(msg)
+    Parameters
+    ----------
 
-    return func_name, func
+    plot_toggles : dictionary
+        Dictionary specifying the name of each property/plot and whether the values
+        will be generated + plotted. A value of 1 denotes plotting, whilst a value of
+        0 denotes not plotting.  Entries with a value of 1 will be added to the function
+        dictionary.
 
+        Example
+        -------
 
-def populate_calculation_functions(plot_toggles, my_model, calculation_module_prefix="",
-                                   plotting_module_prefix=""):
+        plot_toggles = {"SMF" : 0,
+                        "BTF" : 1,
+                        "sSFR" : 1}
+
+    module_prefix : string
+        Name of the module where the functions are located. Must include the trailing full
+        stop.
+
+        Example
+        -------
+
+        module_prefix = "model."
+
+    function_prefix : string
+        Prefix that is added to the start of each function.
+
+        Example
+        -------
+
+        function_prefix = "calc_"
+    """
 
     # Only populate those methods that have been marked in the `plot_toggles`
     # dictionary.
+    func_dict = {}
     for toggle in plot_toggles.keys():
         if plot_toggles[toggle]:
 
-            # Get the function names for both calculating and plotting the toggle.
-            calc_name, calc_func = check_and_get_func(calculation_module_prefix, toggle, True)
-            plot_name, plot_func = check_and_get_func(plotting_module_prefix, toggle, False)
+            func_name = "{0}{1}{2}".format(module_prefix, function_prefix, toggle)
 
-            # Then add these to the respective dictionaries.
-            my_model.calculation_functions[calc_name] = calc_func
-            my_model.plotting_functions[plot_name] = plot_func
+            # Be careful.  Maybe the func for a specified `plot_toggle` value wasn't
+            # added to the module.
+            try:
+                func = eval(func_name)
+            except AttributeError:
+                msg = "Tried to get the func named '{0}' corresponding to " \
+                      "'plot_toggle' value '{1}'.  However, no func named '{0}' " \
+                      "could be found in '{2}' module.".format(func_name,
+                      toggle, module_prefix)
+                raise AttributeError(msg)
+
+            func_dict[func_name] = func
+
+    return func_dict
 
 
 def init_binned_properties(my_model, bin_low, bin_high, bin_width, bin_name):
+    """
+    Initializes the ``Model`` properties that will binned on some variable.  For
+    example, the stellar mass function (SMF) will describe the number of galaxies
+    within a stellar mass bin.
 
+    The bins can be accessed using ``Model.bin_name``.  The properties will be initialized
+    as an array of zeroes with length equal to the number of bins minus 1.  These
+    properties can be accessed using ``Model.properties["property_name"]``; e.g.,
+    ``Model.properties["SMF"]`` would return the stellar mass function that is binned
+    using the ``bin_name`` bins.
+
+    Parameters
+    ----------
+
+    my_model : ``Model`` class instance
+        The ``Model`` class we're adding the bins for.
+
+    bin_low, bin_high, bin_width : floats
+        Values that define the minimum, maximum and width of the bins respectively.
+        This defines the binning axis that the ``property_names`` properties will be
+        binned on.
+
+    bin_name : string
+        Name of the binning axis, accessed by ``Model.bin_name``.
+    """
 
     # These properties will be binned on stellar mass.
     stellar_property_names = ["SMF", "red_SMF", "blue_SMF", "BMF", "GMF",
@@ -92,11 +145,26 @@ def init_binned_properties(my_model, bin_low, bin_high, bin_width, bin_name):
     my_model.init_binned_properties(bin_low, bin_high, bin_width, bin_name,
                                     property_names)
 
-
     return
 
 
 def init_scatter_properties(my_model):
+    """
+    Initializes the ``Model`` properties that will be extended as lists.  This is used
+    to plot (e.g.,) a the star formation rate versus stellar mass for a subset of 1000
+    galaxies.
+
+    The properties will be initialized as empty lists and can be accessed using
+    ``Model.properties["property_name"]``; e.g., ``Model.properties["bh_mass"]`` would
+    return a list of galaxy black hole masses.  The length of these lists are dictated by
+    the ``Model.sample_size`` attribute, defaulted to 10,000.
+
+    Parameters
+    ----------
+
+    my_model : ``Model`` class instance
+        The ``Model`` class we're adding the properties for.
+    """
 
     property_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR",
                       "gas_frac_mass", "gas_frac", "metallicity_mass",
@@ -110,6 +178,20 @@ def init_scatter_properties(my_model):
 
 
 def init_single_properties(my_model):
+    """
+    Initializes the ``Model`` properties that are described using a single number.
+    This is used to plot (e.g.,) a the sum of stellar mass across all galaxies.
+
+    The properties will be initialized as 0.0 and can be accessed using
+    ``Model.properties["property_name"]``; e.g., ``Model.properties["SFRD"]`` would
+    return sum of the star formation rate across all galaxies.
+
+    Parameters
+    ----------
+
+    my_model : ``Model`` class instance
+        The ``Model`` class we're adding the properties for.
+    """
 
     property_names = ["SFRD", "SMD"]
     my_model.init_single_properties(property_names)
@@ -243,14 +325,11 @@ if __name__ == "__main__":
         # Then populate the `calculation_methods` dictionary. This dictionary will control
         # which properties each model will calculate.  The dictionary is populated using
         # the plot_toggles defined above.
-        my_model.calculation_functions = {}
-        my_model.plotting_functions = {}
-
-        # Our functions are inside the `model.py` module.  If your functions are in a
-        # different module, change the prefix here (remembering the full stop).
-        populate_calculation_functions(results.plot_toggles, my_model,
-                                       calculation_module_prefix="model.",
-                                       plotting_module_prefix="plots.")
+        # Our functions are inside the `model.py` module and are named "calc_<toggle>". If
+        # your functions are in a different module or different function prefix, change it
+        # here (remembering the full stop after the `module_prefix`).
+        my_model.calculation_functions = generate_func_dict(results.plot_toggles, module_prefix="model.",
+                                                            function_prefix="calc_")
 
         # Finally, before we calculate the properties, we need to decide how each property
         # is stored. Properties can be binned (e.g., how many galaxies with mass between 10^8.0
@@ -267,12 +346,13 @@ if __name__ == "__main__":
 
         models.append(my_model)
 
-    print("DONE!")
+    # Similar to the calculation functions, all of the plotting functions are in the
+    # `plots.py` module and are labelled `plot_<toggle>`.
+    plot_dict = generate_func_dict(results.plot_toggles, module_prefix="plots.",
+                                   function_prefix="plot_")
 
-    # All properties have been calculated! Do the plots.
-    for plot_func in models[0].plotting_functions.keys():
-        models[0].plotting_functions[plot_func](models, plot_output_path,
-                                                plot_output_format)
+    for plot_func in plot_dict.values():
+        plot_func(models, plot_output_path, plot_output_format)
 
     # Set the error settings to the previous ones so we don't annoy the user.
     np.seterr(divide=old_error_settings["divide"], over=old_error_settings["over"],

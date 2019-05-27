@@ -97,14 +97,23 @@ class Model:
         Parameters
         ----------
 
-        model_dict : Dictionary
+        model_dict : dictionary
             Dictionary containing the parameter values for each ``Model``
             instance. Refer to the class-level documentation for a full
             description of this dictionary or to ``model_dict`` in the ``__main__`` call
             of the ``allresults.py`` module.
 
-        plot_toggles : Dictionary
-            Specifies which plots will be generated.
+        plot_toggles : dictionary
+            Dictionary specifying the name of each property/plot and whether the values
+            will be generated + plotted. A value of 1 denotes plotting, whilst a value of
+            0 denotes not plotting.
+
+            Example
+            ------
+
+            plot_toggles = {"SMF" : 0,
+                            "BTF" : 1,
+                            "sSFR" : 1}
 
         Returns
         -------
@@ -166,11 +175,13 @@ class Model:
             binned on.
 
         bin_name : string
-            Name of the binning axis.
+            Name of the binning axis, accessed by ``Model.bin_name``.
 
         property_names : list of strings
-            Name of the properties that will be binned along the defined binning axis,
-            accessed by ``Model.bin_name``.
+            Name of the properties that will be binned along the defined binning axis.
+            Properties can be accessed using ``Model.properties["property_name"]``; e.g.,
+            ``Model.properties["SMF"]`` would return the stellar mass function that is binned
+            using the ``bin_name`` bins.
         """
 
         # Parameters that define the specified binning axis.
