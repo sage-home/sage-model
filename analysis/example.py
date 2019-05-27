@@ -146,18 +146,18 @@ if __name__ == "__main__":
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.
-                    "BMF"             : 0,  # Baryonic mass function.
-                    "GMF"             : 0,  # Gas mass function (cold gas).
-                    "BTF"             : 0,  # Baryonic Tully-Fisher.
-                    "sSFR"            : 0,  # Specific star formation rate.
-                    "gas_frac"        : 0,  # Fraction of galaxy that is cold gas.
-                    "metallicity"     : 0,  # Metallicity scatter plot.
-                    "bh_bulge"        : 0,  # Black hole-bulge relationship.
-                    "quiescent"       : 0,  # Fraction of galaxies that are quiescent.
-                    "bulge_fraction"  : 0,  # Fraction of galaxies that are bulge/disc dominated.
-                    "baryon_fraction" : 0,  # Fraction of baryons in galaxy/reservoir.
-                    "reservoirs"      : 0,  # Mass in each reservoir.
-                    "spatial"         : 0}  # Spatial distribution of galaxies.
+                    "BMF"             : 1,  # Baryonic mass function.
+                    "GMF"             : 1,  # Gas mass function (cold gas).
+                    "BTF"             : 1,  # Baryonic Tully-Fisher.
+                    "sSFR"            : 1,  # Specific star formation rate.
+                    "gas_frac"        : 1,  # Fraction of galaxy that is cold gas.
+                    "metallicity"     : 1,  # Metallicity scatter plot.
+                    "bh_bulge"        : 1,  # Black hole-bulge relationship.
+                    "quiescent"       : 1,  # Fraction of galaxies that are quiescent.
+                    "bulge_fraction"  : 1,  # Fraction of galaxies that are bulge/disc dominated.
+                    "baryon_fraction" : 1,  # Fraction of baryons in galaxy/reservoir.
+                    "reservoirs"      : 1,  # Mass in each reservoir.
+                    "spatial"         : 1}  # Spatial distribution of galaxies.
 
     ############## DO NOT TOUCH BELOW #############
     ### IF NOT ADDING EXTRA PROPERTIES OR PLOTS ###
@@ -253,7 +253,7 @@ if __name__ == "__main__":
         halo_properties = ["fof_HMF"]
         component_properties = ["halo_{0}_fraction_sum".format(component) for component in
                                ["baryon", "stars", "cold", "hot", "ejected", "ICS", "bh"]]
-        my_model.init_binned_properties(8.0, 14.0, 0.1, "halo_mass_bins",
+        my_model.init_binned_properties(10.0, 14.0, 0.1, "halo_mass_bins",
                                         halo_properties+component_properties)
 
         # Now properties that will be extended as lists.

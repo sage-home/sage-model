@@ -79,25 +79,30 @@ def adjust_legend(ax, location="upper right", scatter_plot=0):
                 handle.set_sizes([10.0])
 
 
-def plot_SMF(models, plot_output_path, plot_output_format, plot_sub_populations=False):
+def plot_SMF(models, plot_output_path, plot_output_format=".png", plot_sub_populations=False):
     """
-    Plots the stellar mass function for the models within the ``Results`` class instance.
+    Plots the stellar mass function for the specified models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
+
+    plot_output_path : string
+        Path to where the plot will be saved.
+
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
 
     plot_sub_populations : Boolean, default False
         If ``True``, plots the stellar mass function for red and blue sub-populations.
 
-    Returns
-    =======
+    Generates
+    ---------
 
-    None.  The plot will be saved as "<results.plot_output_path>/1.StellarMassFunction<results.plot_output_path>"
+    The plot will be saved as "<plot_output_path>/1.StellarMassFunction<plot_output_format>"
     """
 
     fig = plt.figure()
@@ -225,45 +230,51 @@ def plot_temporal_SMF(temporal_results):
     plt.close()
 
 
-def plot_BMF(results):
+def plot_BMF(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the baryonic mass function for the models within the ``Results`` class instance.
-    This is the mass function for the stellar mass + cold gas.
+    Plots the baryonic mass function for the specified models. This is the mass
+    function for the stellar mass + cold gas.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as "<results.plot_output_path>/2.BaryonicMassFunction<results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/2.BaryonicMassFunction<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
         ls = model.linestyle
 
         # Set the x-axis values to be the centre of the bins.
-        bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
+        bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
+        bin_middles = model.bins["stellar_mass_bins"] + bin_width
 
         # The MF is normalized by the simulation volume which is in Mpc/h.
-        ax.plot(bin_middles[:-1], model.properties["BMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
+        ax.plot(bin_middles[:-1], model.properties["BMF"]/model.volume*pow(model.hubble_h, 3)/bin_width,
                 color=color, ls=ls, label=model_label + " - All")
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
-    zeroth_hubble_h = (results.models)[0].hubble_h
-    zeroth_IMF = (results.models)[0].IMF
+    zeroth_hubble_h = models[0].hubble_h
+    zeroth_IMF = models[0].IMF
     ax = obs.plot_bmf_data(ax, zeroth_hubble_h, zeroth_IMF)
 
     ax.set_xlabel(r"$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$")
@@ -271,10 +282,7 @@ def plot_BMF(results):
 
     ax.set_yscale("log", nonposy="clip")
 
-    # Find the models that have the smallest/largest stellar mass bin.
-    xlim_min = np.min([model.mass_bins for model in results.models]) - 0.2
-    xlim_max = np.max([model.mass_bins for model in results.models]) + 0.2
-    ax.set_xlim([xlim_min, xlim_max])
+    ax.set_xlim([7.8, 12.2])
     ax.set_ylim([1.0e-6, 1.0e-1])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
@@ -283,50 +291,55 @@ def plot_BMF(results):
 
     fig.tight_layout()
 
-    output_file = "{0}/2.BaryonicMassFunction{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/2.BaryonicMassFunction{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_GMF(results):
+def plot_GMF(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the gas mass function for the models within the ``Results`` class instance.
-    This is the mass function for the cold gas.
+    Plots the gas mass function for the specified models. This is the mass function for the cold gas.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as "<results.plot_output_path>/3.GasMassFunction<results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/3.GasMassFunction<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
         ls = model.linestyle
 
         # Set the x-axis values to be the centre of the bins.
-        bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
+        bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
+        bin_middles = model.bins["stellar_mass_bins"] + bin_width
 
         # The MMF is normalized by the simulation volume which is in Mpc/h.
-        ax.plot(bin_middles[:-1], model.properties["GMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
+        ax.plot(bin_middles[:-1], model.properties["GMF"]/model.volume*pow(model.hubble_h, 3)/bin_width,
                 color=color, ls=ls, label=model_label + " - Cold Gas")
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
-    zeroth_hubble_h = (results.models)[0].hubble_h
+    zeroth_hubble_h = models[0].hubble_h
     obs.plot_gmf_data(ax, zeroth_hubble_h)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{X}}\ (M_{\odot})$")
@@ -335,9 +348,7 @@ def plot_GMF(results):
     ax.set_yscale("log", nonposy="clip")
 
     # Find the models that have the smallest/largest stellar mass bin.
-    xlim_min = np.min([model.mass_bins for model in results.models]) - 0.2
-    xlim_max = np.max([model.mass_bins for model in results.models]) + 0.2
-    ax.set_xlim([xlim_min, xlim_max])
+    ax.set_xlim([7.8, 12.2])
     ax.set_ylim([1.0e-6, 1.0e-1])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
@@ -346,35 +357,39 @@ def plot_GMF(results):
 
     fig.tight_layout()
 
-    output_file = "{0}/3.GasMassFunction{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/3.GasMassFunction{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)  # Save the figure
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_BTF(results):
+def plot_BTF(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the baryonic Tully-Fisher relationship for the models within the ``Results`` class instance.
-    This is the mass function for the cold gas.
+    Plots the baryonic Tully-Fisher relationship for the specified models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as "<results.plot_output_path>/4.BaryonicTullyFisher<results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/4.BaryonicTullyFisher<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
@@ -398,35 +413,40 @@ def plot_BTF(results):
 
     fig.tight_layout()
 
-    output_file = "{0}/4.BaryonicTullyFisher{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/4.BaryonicTullyFisher{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_sSFR(results):
+def plot_sSFR(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the specific star formation rate as a function of stellar mass for the models within the
-    ``Results`` class instance.
+    Plots the specific star formation rate as a function of stellar mass for the specified
+    models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as "<results.plot_output_path>/5.SpecificStarFormationRate<results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/5.SpecificStarFormationRate<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
@@ -437,7 +457,7 @@ def plot_sSFR(results):
 
     # Overplot a dividing line between passive and SF galaxies.
     w = np.arange(7.0, 13.0, 1.0)
-    min_sSFRcut = np.min([model.sSFRcut for model in results.models])
+    min_sSFRcut = np.min([model.sSFRcut for model in models])
     ax.plot(w, w/w*min_sSFRcut, "b:", lw=2.0)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
@@ -453,35 +473,40 @@ def plot_sSFR(results):
 
     fig.tight_layout()
 
-    output_file = "{0}/5.SpecificStarFormationRate{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/5.SpecificStarFormationRate{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_gas_frac(results):
+def plot_gas_frac(models, plot_output_path, plot_output_format=".png"):
     """
     Plots the fraction of baryons that are in the cold gas reservoir as a function of
-    stellar mass for the models within the ``Results`` class instance.
+    stellar mass for the specified models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as "<results.plot_output_path>/6.GasFraction<results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/6.GasFraction<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
@@ -493,7 +518,7 @@ def plot_gas_frac(results):
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Cold\ Mass\ /\ (Cold+Stellar\ Mass)}$")
 
-    ax.set_xlim([8.0, 12.0])
+    ax.set_xlim([7.8, 12.2])
     ax.set_ylim([0.0, 1.0])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
@@ -503,35 +528,39 @@ def plot_gas_frac(results):
 
     fig.tight_layout()
 
-    output_file = "{0}/6.GasFraction{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/6.GasFraction{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_metallicity(results):
+def plot_metallicity(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the metallicity as a function of stellar mass for the models within the
-    ``Results`` class instance.
+    Plots the metallicity as a function of stellar mass for the speicifed models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as "<results.plot_output_path>/7.Metallicity<results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/7.Metallicity<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
@@ -541,13 +570,13 @@ def plot_metallicity(results):
                    marker=marker, s=1, color=color, alpha=0.5, label=model_label + " galaxies")
 
     # Use the IMF of the zeroth model to scale the observational results.
-    zeroth_IMF = (results.models)[0].IMF
+    zeroth_IMF = models[0].IMF
     ax = obs.plot_metallicity_data(ax, zeroth_IMF)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$12\ +\ \log_{10}[\mathrm{O/H}]$")
 
-    ax.set_xlim([8.0, 12.0])
+    ax.set_xlim([7.8, 12.2])
     ax.set_ylim([8.0, 9.5])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
@@ -558,34 +587,39 @@ def plot_metallicity(results):
 
     fig.tight_layout()
 
-    output_file = "{0}/7.Metallicity{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/7.Metallicity{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_bh_bulge(results):
+def plot_bh_bulge(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the black-hole bulge relationship for the models within the ``Results`` class instance.
+    Plots the black-hole bulge relationship for the specified models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as "<results.plot_output_path>/8.BlackHoleBulgeRelationship<results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/8.BlackHoleBulgeRelationship<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
@@ -599,7 +633,7 @@ def plot_bh_bulge(results):
     ax.set_xlabel(r"$\log\ M_{\mathrm{bulge}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\log\ M_{\mathrm{BH}}\ (M_{\odot})$")
 
-    ax.set_xlim([8.0, 12.0])
+    ax.set_xlim([7.8, 12.2])
     ax.set_ylim([6.0, 10.0])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
@@ -609,52 +643,58 @@ def plot_bh_bulge(results):
 
     fig.tight_layout()
 
-    output_file = "{0}/8.BlackHoleBulgeRelationship{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/8.BlackHoleBulgeRelationship{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_quiescent(results, plot_sub_populations=False):
+def plot_quiescent(models, plot_output_path, plot_output_format=".png",
+                   plot_sub_populations=False):
     """
     Plots the fraction of galaxies that are quiescent as a function of stellar mass for the
-    models within the ``Results`` class instance.  The 'quiescent' cut is defined in
-    ``model.py`` as ``sSFRcut``.
+    specified models.  The quiescent cut is defined by ``Model.sSFRcut``.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
+
+    plot_output_path : string
+        Path to where the plot will be saved.
+
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
 
     plot_sub_populations : Boolean, default False
         If ``True``, plots the centrals and satellite sub-populations.
 
-    Returns
-    =======
+    Generates
+    ---------
 
-    None.  The plot will be saved as "<results.plot_output_path>/9.QuiescentFraction<results.plot_output_path>"
+    The plot will be saved as "<plot_output_path>/9.QuiescentFraction<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
         linestyle = model.linestyle
 
         # Set the x-axis values to be the centre of the bins.
-        bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
+        bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
+        bin_middles = model.bins["stellar_mass_bins"] + bin_width
 
         # We will keep the colour scheme consistent, but change the line styles.
         ax.plot(bin_middles[:-1], model.properties["quiescent_galaxy_counts"] / model.properties["SMF"],
                 label=model_label + " All", color=color, linestyle="-")
 
-        if results.num_models == 1 or plot_sub_populations:
+        if len(models) == 1 or plot_sub_populations:
             ax.plot(bin_middles[:-1], model.properties["quiescent_centrals_counts"] / model.properties["centrals_MF"],
                     label=model_label + " Centrals", color=color, linestyle="--")
 
@@ -664,7 +704,7 @@ def plot_quiescent(results, plot_sub_populations=False):
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Quescient\ Fraction}$")
 
-    ax.set_xlim([8.0, 12.0])
+    ax.set_xlim([7.8, 12.2])
     ax.set_ylim([0.0, 1.05])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
@@ -674,45 +714,52 @@ def plot_quiescent(results, plot_sub_populations=False):
 
     fig.tight_layout()
 
-    output_file = "{0}/9.QuiescentFraction{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/9.QuiescentFraction{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_bulge_fraction(results, plot_var=False):
+def plot_bulge_fraction(models, plot_output_path, plot_output_format=".png",
+                        plot_var=False):
     """
     Plots the fraction of the stellar mass that is located in the bulge/disk as a function
-    of stellar mass for the models within the ``Results`` class instance.
+    of stellar mass for the specified models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
+
+    plot_output_path : string
+        Path to where the plot will be saved.
+
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
 
     plot_var : Boolean, default False
         If ``True``, plots the variance as shaded regions.
 
-    Returns
-    =======
+    Generates
+    ---------
 
-    None.  The plot will be saved as "<results.plot_output_path>/10.BulgeMassFraction<results.plot_output_path>"
+    The plot will be saved as "<plot_output_path>/10.BulgeMassFraction<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
         linestyle = model.linestyle
 
         # Set the x-axis values to be the centre of the bins.
-        bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
+        bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
+        bin_middles = model.bins["stellar_mass_bins"] + bin_width
 
         # Remember we need to average the properties in each bin.
         bulge_mean = model.properties["fraction_bulge_sum"] / model.properties["SMF"]
@@ -737,7 +784,7 @@ def plot_bulge_fraction(results, plot_var=False):
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Stellar\ Mass\ Fraction}$")
 
-    ax.set_xlim([8.0, 12.0])
+    ax.set_xlim([7.8, 12.2])
     ax.set_ylim([0.0, 1.05])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
@@ -747,45 +794,52 @@ def plot_bulge_fraction(results, plot_var=False):
 
     fig.tight_layout()
 
-    output_file = "{0}/10.BulgeMassFraction{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/10.BulgeMassFraction{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_baryon_fraction(results, plot_sub_populations=1):
+def plot_baryon_fraction(models, plot_output_path, plot_output_format=".png",
+                         plot_sub_populations=False):
     """
-    Plots the total baryon fraction and the baryon fraction in each reservoir as a
-    function of halo mass for the models within the ``Results`` class instance.
+    Plots the total baryon fraction as afunction of halo mass for the specified models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    plot_var : Boolean, default False
-        If ``True``, plots the variance as shaded regions.
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    Returns
-    =======
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
 
-    None.  The plot will be saved as "<results.plot_output_path>/11.BaryonFraction<results.plot_output_path>"
+    plot_sub_populations : Boolean, default False
+        If ``True``, plots the baryon fraction for each reservoir. Otherwise, only plots
+        the total baryon fraction.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/11.BaryonFraction<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
         linestyle = model.linestyle
 
         # Set the x-axis values to be the centre of the bins.
-        bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
+        bin_width = model.bins["halo_mass_bins"][1] - model.bins["halo_mass_bins"][0]
+        bin_middles = model.bins["halo_mass_bins"] + bin_width
 
         # Remember we need to average the properties in each bin.
         baryon_mean = model.properties["halo_baryon_fraction_sum"] / model.properties["fof_HMF"]
@@ -795,7 +849,7 @@ def plot_baryon_fraction(results, plot_sub_populations=1):
                 color=color, linestyle=linestyle)
 
         # If we have multiple models, we want to be careful of overcrowding the plot.
-        if results.num_models == 1 or plot_sub_populations:
+        if len(models) == 1 or plot_sub_populations:
             attrs = ["stars", "cold", "hot", "ejected", "ICS"]
             labels = ["Stars", "Cold", "Hot", "Ejected", "ICS"]
             colors = ["k", "b", "r", "g", "y"]
@@ -810,7 +864,7 @@ def plot_baryon_fraction(results, plot_sub_populations=1):
     ax.set_xlabel(r"$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Baryon\ Fraction}$")
 
-    ax.set_xlim([10.0, 14.0])
+    ax.set_xlim([9.8, 14.2])
     ax.set_ylim([0.0, 0.23])
 
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
@@ -818,35 +872,40 @@ def plot_baryon_fraction(results, plot_sub_populations=1):
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
 
-    output_file = "{0}/11.BaryonFraction{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/11.BaryonFraction{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_reservoirs(results):
+def plot_reservoirs(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the mass in each reservoir as a function of galaxy stellar mass for the models
-    within the ``Results`` class instance.
+    Plots the mass in each reservoir as a function of halo mass for the
+    specified models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  A plot will be saved as
-    "<results.plot_output_path>/12.MassReservoirs<model.model_label><results.plot_output_path>"
-    for each model in ``results``.
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    A plot will be saved as
+    "<plot_output_path>/12.MassReservoirs<model.model_label><plot_output_path>"
+    for each mode.
     """
 
     # This scatter plot will be messy so we're going to make one for each model.
-    for model in results.models:
+    for model in models:
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -869,7 +928,7 @@ def plot_reservoirs(results):
         ax.set_xlabel(r"$\log\ M_{\mathrm{vir}}\ (M_{\odot})$")
         ax.set_ylabel(r"$\mathrm{Reservoir\ Mass\ (M_{\odot})}$")
 
-        ax.set_xlim([10.0, 14.0])
+        ax.set_xlim([9.8, 14.2])
         ax.set_ylim([7.5, 12.5])
 
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
@@ -879,32 +938,36 @@ def plot_reservoirs(results):
 
         fig.tight_layout()
 
-        output_file = "{0}/12.MassReservoirs_{1}{2}".format(results.plot_output_path,
-                                                            model_label, results.plot_output_format)
+        output_file = "{0}/12.MassReservoirs_{1}{2}".format(plot_output_path, model_label,
+                                                            plot_output_format)
         fig.savefig(output_file)
         print("Saved file to {0}".format(output_file))
         plt.close()
 
 
-def plot_spatial(results):
+def plot_spatial(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the spatial distribution of the galaxies for the models within the ``Results``
-    class instance.
+    Plots the spatial distribution of the galaxies for specified models.
 
     Parameters
-    ==========
+    ----------
 
-    results : ``Results`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``allresults.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  A plot will be saved as
-    "<results.plot_output_path>/13.SpatialDistribution<model.model_label><results.plot_output_path>"
-    for each model in ``results``.
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    A plot will be saved as
+    "<plot_output_path>/13.SpatialDistribution<model.model_label><plot_output_path>"
+    for each model.
     """
 
     fig = plt.figure()
@@ -915,7 +978,7 @@ def plot_spatial(results):
     ax3 = fig.add_subplot(223)
     ax4 = fig.add_subplot(224)
 
-    for model in results.models:
+    for model in models:
 
         model_label = model.model_label
         color = model.color
@@ -945,7 +1008,7 @@ def plot_spatial(results):
     ax3.set_ylabel(r"$\mathrm{z}\ [\mathrm{Mpc}/h]$")
 
     # Find the model with the largest box.
-    max_box = np.min([model.box_size for model in results.models]) - 0.5
+    max_box = np.min([model.box_size for model in models]) - 0.5
     buffer = max_box*0.05
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xlim([0.0-buffer, max_box+buffer])
@@ -959,7 +1022,7 @@ def plot_spatial(results):
     # Make sure everything remains nicely layed out.
     fig.tight_layout()
 
-    output_file = "{0}/13.SpatialDistribution{1}".format(results.plot_output_path, results.plot_output_format)
+    output_file = "{0}/13.SpatialDistribution{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
