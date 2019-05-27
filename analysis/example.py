@@ -99,106 +99,6 @@ def generate_func_dict(plot_toggles, module_prefix, function_prefix):
     return func_dict
 
 
-def init_binned_properties(my_model, bin_low, bin_high, bin_width, bin_name):
-    """
-    Initializes the ``Model`` properties that will binned on some variable.  For
-    example, the stellar mass function (SMF) will describe the number of galaxies
-    within a stellar mass bin.
-
-    The bins can be accessed using ``Model.bin_name``.  The properties will be initialized
-    as an array of zeroes with length equal to the number of bins minus 1.  These
-    properties can be accessed using ``Model.properties["property_name"]``; e.g.,
-    ``Model.properties["SMF"]`` would return the stellar mass function that is binned
-    using the ``bin_name`` bins.
-
-    Parameters
-    ----------
-
-    my_model : ``Model`` class instance
-        The ``Model`` class we're adding the bins for.
-
-    bin_low, bin_high, bin_width : floats
-        Values that define the minimum, maximum and width of the bins respectively.
-        This defines the binning axis that the ``property_names`` properties will be
-        binned on.
-
-    bin_name : string
-        Name of the binning axis, accessed by ``Model.bin_name``.
-    """
-
-    # These properties will be binned on stellar mass.
-    stellar_property_names = ["SMF", "red_SMF", "blue_SMF", "BMF", "GMF",
-                              "centrals_MF", "satellites_MF", "quiescent_galaxy_counts",
-                              "quiescent_centrals_counts", "quiescent_satellites_counts",
-                              "fraction_bulge_sum", "fraction_bulge_var",
-                              "fraction_disk_sum", "fraction_disk_var"]
-
-    # The following properties are binned on halo mass but use the same bins.
-    halo_property_names = ["fof_HMF"]
-
-    # These are the reservoir components, binned on halo mass.
-    component_names = ["halo_{0}_fraction_sum".format(component) for component in
-                        ["baryon", "stars", "cold", "hot", "ejected", "ICS", "bh"]]
-
-    # Now combine them all and create the bins for each.
-    property_names = stellar_property_names + halo_property_names + component_names
-    my_model.init_binned_properties(bin_low, bin_high, bin_width, bin_name,
-                                    property_names)
-
-    return
-
-
-def init_scatter_properties(my_model):
-    """
-    Initializes the ``Model`` properties that will be extended as lists.  This is used
-    to plot (e.g.,) a the star formation rate versus stellar mass for a subset of 1000
-    galaxies.
-
-    The properties will be initialized as empty lists and can be accessed using
-    ``Model.properties["property_name"]``; e.g., ``Model.properties["bh_mass"]`` would
-    return a list of galaxy black hole masses.  The length of these lists are dictated by
-    the ``Model.sample_size`` attribute, defaulted to 10,000.
-
-    Parameters
-    ----------
-
-    my_model : ``Model`` class instance
-        The ``Model`` class we're adding the properties for.
-    """
-
-    property_names = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR",
-                      "gas_frac_mass", "gas_frac", "metallicity_mass",
-                      "metallicity", "bh_mass", "bulge_mass", "reservoir_mvir",
-                      "reservoir_stars", "reservoir_cold", "reservoir_hot",
-                      "reservoir_ejected", "reservoir_ICS", "x_pos",
-                      "y_pos", "z_pos"]
-    my_model.init_scatter_properties(property_names)
-
-    return
-
-
-def init_single_properties(my_model):
-    """
-    Initializes the ``Model`` properties that are described using a single number.
-    This is used to plot (e.g.,) a the sum of stellar mass across all galaxies.
-
-    The properties will be initialized as 0.0 and can be accessed using
-    ``Model.properties["property_name"]``; e.g., ``Model.properties["SFRD"]`` would
-    return sum of the star formation rate across all galaxies.
-
-    Parameters
-    ----------
-
-    my_model : ``Model`` class instance
-        The ``Model`` class we're adding the properties for.
-    """
-
-    property_names = ["SFRD", "SMD"]
-    my_model.init_single_properties(property_names)
-
-    return
-
-
 if __name__ == "__main__":
 
     import os
@@ -328,6 +228,7 @@ if __name__ == "__main__":
         # Our functions are inside the `model.py` module and are named "calc_<toggle>". If
         # your functions are in a different module or different function prefix, change it
         # here (remembering the full stop after the `module_prefix`).
+        # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals)`.
         my_model.calculation_functions = generate_func_dict(results.plot_toggles, module_prefix="model.",
                                                             function_prefix="calc_")
 
@@ -335,10 +236,38 @@ if __name__ == "__main__":
         # is stored. Properties can be binned (e.g., how many galaxies with mass between 10^8.0
         # and 10^8.1), scatter plotted (e.g., for 1000 galaxies plot the specific star
         # formation rate versus stellar mass) or a single number (e.g., the sum
-        # of the star formation rate at a snapshot).
-        init_binned_properties(my_model, 8.0, 14.0, 0.1, "mass_bins")
-        init_scatter_properties(my_model)
-        init_single_properties(my_model)
+        # of the star formation rate at a snapshot). Properties can be accessed using
+        # `Model.properties["property_name"]`; e.g., `Model.properties["SMF"]`.
+
+        # First let's do the properties binned on stellar mass. The bins themselves can be
+        # accessed using `Model.bins["bin_name"]`; e.g., `Model.bins["stellar_mass_bins"]
+        stellar_properties = ["SMF", "red_SMF", "blue_SMF", "BMF", "GMF",
+                              "centrals_MF", "satellites_MF", "quiescent_galaxy_counts",
+                              "quiescent_centrals_counts", "quiescent_satellites_counts",
+                              "fraction_bulge_sum", "fraction_bulge_var",
+                              "fraction_disk_sum", "fraction_disk_var"]
+        my_model.init_binned_properties(8.0, 12.0, 0.1, "stellar_mass_bins",
+                                        stellar_properties)
+
+        # Properties binned on halo mass.
+        halo_properties = ["fof_HMF"]
+        component_properties = ["halo_{0}_fraction_sum".format(component) for component in
+                               ["baryon", "stars", "cold", "hot", "ejected", "ICS", "bh"]]
+        my_model.init_binned_properties(8.0, 14.0, 0.1, "halo_mass_bins",
+                                        halo_properties+component_properties)
+
+        # Now properties that will be extended as lists.
+        scatter_properties = ["BTF_mass", "BTF_vel", "sSFR_mass", "sSFR_sSFR",
+                              "gas_frac_mass", "gas_frac", "metallicity_mass",
+                              "metallicity", "bh_mass", "bulge_mass", "reservoir_mvir",
+                              "reservoir_stars", "reservoir_cold", "reservoir_hot",
+                              "reservoir_ejected", "reservoir_ICS", "x_pos",
+                              "y_pos", "z_pos"]
+        my_model.init_scatter_properties(scatter_properties)
+
+        # Finally those properties that are stored as a single number.
+        single_properties = []
+        my_model.init_single_properties(single_properties)
 
         # To be more memory concious, we calculate the required properties on a
         # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
@@ -351,6 +280,7 @@ if __name__ == "__main__":
     plot_dict = generate_func_dict(results.plot_toggles, module_prefix="plots.",
                                    function_prefix="plot_")
 
+    # Now do the plotting.
     for plot_func in plot_dict.values():
         plot_func(models, plot_output_path, plot_output_format)
 

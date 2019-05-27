@@ -156,6 +156,7 @@ class Model:
         self.sSFRcut = -11.0  # The specific star formation rate above which a galaxy is
                               # 'star forming'.  Units are log10.
 
+        self.bins = {}
         self.properties = {}
 
 
@@ -166,6 +167,9 @@ class Model:
         example, the stellar mass function (SMF) will describe the number of galaxies
         within a stellar mass bin.
 
+        Also initializes the bins required for this.  These bins can be accessed by
+        ``Model.bins["bin_name"]``.
+
         Parameters
         ----------
 
@@ -175,7 +179,7 @@ class Model:
             binned on.
 
         bin_name : string
-            Name of the binning axis, accessed by ``Model.bin_name``.
+            Name of the binning axis, accessed by ``Model.bins["bin_name"]``.
 
         property_names : list of strings
             Name of the properties that will be binned along the defined binning axis.
@@ -185,20 +189,15 @@ class Model:
         """
 
         # Parameters that define the specified binning axis.
-        self.mass_bin_low      = bin_low
-        self.mass_bin_high     = bin_high
-        self.mass_bin_width    = bin_width
-        bins =  np.arange(self.mass_bin_low,
-                          self.mass_bin_high + self.mass_bin_width,
-                          self.mass_bin_width)
+        bins =  np.arange(bin_low, bin_high + bin_width, bin_width)
 
-        # Now set the Model attribute using the created bins.
-        setattr(self, bin_name, bins)
+        # Add the bins to the dictionary.
+        self.bins[bin_name] = bins
 
         # When making histograms, the right-most bin is closed. Hence the length of the
         # produced histogram will be `len(bins)-1`.
-        for property in property_names:
-            self.properties[property] = np.zeros(len(bins) - 1, dtype=np.float64)
+        for my_property in property_names:
+            self.properties[my_property] = np.zeros(len(bins) - 1, dtype=np.float64)
 
 
     def init_scatter_properties(self, property_names):
@@ -328,9 +327,8 @@ class Model:
         -----
 
         The properties are calculated are dictated by the functions in the
-        ``calculation_method`` dictionary.  This dictionary contains a function name (key)
-        and the corresponding function to be called. To add a function to this dictionary,
-        use ``Model.add_method``.
+        ``calculation_functions`` dictionary.  This dictionary contains a function name (key)
+        and the corresponding function to be called.
         """
 
         # When we create some plots, we do a scatter plot. For these, we only plot a
@@ -339,8 +337,8 @@ class Model:
 
         # Now check which plots the user is creating and hence decide which properties
         # they need.
-        for func in self.calculation_functions.keys():
-            self.calculation_functions[func](self, gals)
+        for func in self.calculation_functions.values():
+            func(self, gals)
 
 
     def add_function(self, name, func):
@@ -377,18 +375,18 @@ def calc_SMF(model, gals):
     sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
                (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
 
-    gals_per_bin, _ = np.histogram(stellar_mass, bins=model.mass_bins)
+    gals_per_bin, _ = np.histogram(stellar_mass, bins=model.bins["stellar_mass_bins"])
     model.properties["SMF"] += gals_per_bin
 
     # We often want to plot the red and blue subpopulations. So bin them as well.
     red_gals = np.where(sSFR < 10.0**model.sSFRcut)[0]
     red_mass = stellar_mass[red_gals]
-    counts, _ = np.histogram(red_mass, bins=model.mass_bins)
+    counts, _ = np.histogram(red_mass, bins=model.bins["stellar_mass_bins"])
     model.properties["red_SMF"] += counts
 
     blue_gals = np.where(sSFR > 10.0**model.sSFRcut)[0]
     blue_mass = stellar_mass[blue_gals]
-    counts, _ = np.histogram(blue_mass, bins=model.mass_bins)
+    counts, _ = np.histogram(blue_mass, bins=model.bins["stellar_mass_bins"])
     model.properties["blue_SMF"] += counts
 
 
@@ -398,7 +396,7 @@ def calc_BMF(model, gals):
     baryon_mass = np.log10((gals["StellarMass"][:][non_zero_baryon] + gals["ColdGas"][:][non_zero_baryon]) * 1.0e10 \
                            / model.hubble_h)
 
-    (counts, binedges) = np.histogram(baryon_mass, bins=model.mass_bins)
+    (counts, binedges) = np.histogram(baryon_mass, bins=model.bins["stellar_mass_bins"])
     model.properties["BMF"] += counts
 
 
@@ -407,7 +405,7 @@ def calc_GMF(model, gals):
     non_zero_cold = np.where(gals["ColdGas"][:] > 0.0)[0]
     cold_mass = np.log10(gals["ColdGas"][:][non_zero_cold] * 1.0e10 / model.hubble_h)
 
-    (counts, binedges) = np.histogram(cold_mass, bins=model.mass_bins)
+    (counts, binedges) = np.histogram(cold_mass, bins=model.bins["stellar_mass_bins"])
     model.properties["GMF"] += counts
 
 
@@ -525,22 +523,22 @@ def calc_quiescent(model, gals):
         model.calc_SMF(gals)
 
     # Mass function for number of centrals/satellites.
-    centrals_counts, _ = np.histogram(mass[gal_type == 0], bins=model.mass_bins)
+    centrals_counts, _ = np.histogram(mass[gal_type == 0], bins=model.bins["stellar_mass_bins"])
     model.properties["centrals_MF"] += centrals_counts
 
-    satellites_counts, _ = np.histogram(mass[gal_type == 1], bins=model.mass_bins)
+    satellites_counts, _ = np.histogram(mass[gal_type == 1], bins=model.bins["stellar_mass_bins"])
     model.properties["satellites_MF"] += satellites_counts
 
     # Then bin those galaxies/centrals/satellites that are quiescent.
-    quiescent_counts, _ = np.histogram(mass[quiescent], bins=model.mass_bins)
+    quiescent_counts, _ = np.histogram(mass[quiescent], bins=model.bins["stellar_mass_bins"])
     model.properties["quiescent_galaxy_counts"] += quiescent_counts
 
     quiescent_centrals_counts, _ = np.histogram(mass[(gal_type == 0) & (quiescent == True)],
-                                                bins=model.mass_bins)
+                                                bins=model.bins["stellar_mass_bins"])
     model.properties["quiescent_centrals_counts"] += quiescent_centrals_counts
 
     quiescent_satellites_counts, _ = np.histogram(mass[(gal_type == 1) & (quiescent == True)],
-                                                  bins=model.mass_bins)
+                                                  bins=model.bins["stellar_mass_bins"])
 
     model.properties["quiescent_satellites_counts"] += quiescent_satellites_counts
 
@@ -568,21 +566,25 @@ def calc_bulge_fraction(model, gals):
     # We want the mean bulge/disk fraction as a function of stellar mass. To allow
     # us to sum across each file, we will record the sum in each bin and then average later.
     fraction_bulge_sum, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
-                                                      statistic=np.sum, bins=model.mass_bins)
+                                                      statistic=np.sum,
+                                                      bins=model.bins["stellar_mass_bins"])
     model.properties["fraction_bulge_sum"] += fraction_bulge_sum
 
     fraction_disk_sum, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
-                                                     statistic=np.sum, bins=model.mass_bins)
+                                                     statistic=np.sum,
+                                                     bins=model.bins["stellar_mass_bins"])
     model.properties["fraction_disk_sum"] += fraction_disk_sum
 
     # For the variance, weight these by the total number of samples we will be
     # averaging over (i.e., number of files).
     fraction_bulge_var, _, _ = stats.binned_statistic(stellar_mass, fraction_bulge,
-                                                      statistic=np.var, bins=model.mass_bins)
+                                                      statistic=np.var,
+                                                      bins=model.bins["stellar_mass_bins"])
     model.properties["fraction_bulge_var"] += fraction_bulge_var / model.num_files
 
     fraction_disk_var, _, _ = stats.binned_statistic(stellar_mass, fraction_disk,
-                                                     statistic=np.var, bins=model.mass_bins)
+                                                     statistic=np.var,
+                                                     bins=model.bins["stellar_mass_bins"])
     model.properties["fraction_disk_var"] += fraction_disk_var / model.num_files
 
 
@@ -591,7 +593,7 @@ def calc_baryon_fraction(model, gals):
     # Careful here, our "Halo Mass Function" is only counting the *BACKGROUND FOF HALOS*.
     centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 0.0))[0]
     centrals_fof_mass = np.log10(gals["Mvir"][:][centrals] * 1.0e10 / model.hubble_h)
-    halos_binned, _ = np.histogram(centrals_fof_mass, bins=model.mass_bins)
+    halos_binned, _ = np.histogram(centrals_fof_mass, bins=model.bins["halo_mass_bins"])
     model.properties["fof_HMF"] += halos_binned
 
     non_zero_mvir = np.where((gals["CentralMvir"][:] > 0.0))[0]  # Will only be dividing by this value.
@@ -612,7 +614,8 @@ def calc_baryon_fraction(model, gals):
         # The bins are defined in log. However the other properties are all in 1.0e10 Msun/h.
         fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log,
                                                     gals[component_key][:][non_zero_mvir] / fof_halo_mass,
-                                                    statistic=np.sum, bins=model.mass_bins)
+                                                    statistic=np.sum,
+                                                    bins=model.bins["halo_mass_bins"])
 
         dict_key = "halo_{0}_fraction_sum".format(attr_name)
         new_attribute_value = fraction_sum + model.properties[dict_key]
@@ -621,7 +624,8 @@ def calc_baryon_fraction(model, gals):
     # Finally want the sum across all components.
     baryons = np.sum(gals[component_key][:][non_zero_mvir] for component_key in components)
     baryon_fraction_sum, _, _ = stats.binned_statistic(fof_halo_mass_log, baryons / fof_halo_mass,
-                                                        statistic=np.sum, bins=model.mass_bins)
+                                                        statistic=np.sum,
+                                                        bins=model.bins["halo_mass_bins"])
     model.properties["halo_baryon_fraction_sum"] += baryon_fraction_sum
 
 

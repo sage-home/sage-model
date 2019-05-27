@@ -118,16 +118,17 @@ def plot_SMF(models, plot_output_path, plot_output_format, plot_sub_populations=
             ls = "-"
 
         # Set the x-axis values to be the centre of the bins.
-        bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
+        bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
+        bin_middles = model.bins["stellar_mass_bins"] + bin_width
 
         # The SMF is normalized by the simulation volume which is in Mpc/h.
-        norm_SMF = model.properties["SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width
+        norm_SMF = model.properties["SMF"]/model.volume*pow(model.hubble_h, 3)/bin_width
         ax.plot(bin_middles[:-1], norm_SMF, color=color, ls=ls, label=model_label + " - All")
 
         # Be careful to not overcrowd the plot.
         if len(models) == 1 or plot_sub_populations:
-            norm_red = model.properties["red_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width
-            norm_blue = model.properties["blue_SMF"]/model.volume*pow(model.hubble_h, 3)/model.mass_bin_width
+            norm_red = model.properties["red_SMF"]/model.volume*pow(model.hubble_h, 3)/bin_width
+            norm_blue = model.properties["blue_SMF"]/model.volume*pow(model.hubble_h, 3)/bin_width
 
             ax.plot(bin_middles[:-1], norm_red, "r:", lw=2, label=model_label + " - Red")
             ax.plot(bin_middles[:-1], norm_blue, "b:", lw=2, label=model_label + " - Blue")
