@@ -10,21 +10,28 @@ data format, copy the format inside one of those modules.
 To calculate extra properties, you need to specify both the x- and y-axes on which the
 properties are calculated.
 
-We offer three options for how the x-data is handled:
-    * Binned properties defined in ``init_binned_properties()``. We natively support properties
-      binned on stellar mass, simply add your property to the ``stellar_property_names`` list.
-    * Scatter properties defined in ``init_scatter_properties()``.  These properties are
-      useful if you want to (e.g.,) plot the star formation rate versus stellar mass for 1000
-      randomly selected points. Simply add your property to the ``scatter_property_names``
-      list.
-    * Single values for an entire redshift in ``init_single_properties()``.  These properties
-      could (e.g.,) be the total stellar mass summed across all galaxies.  Simply add your
-      property to the ``single_property_names`` list.
+We offer three options for how the x-data is handled. Properties are stored as
+``Model.properties["property_name"]``, e.g., ``Model.properties["SMF"]``:
 
-To handle the y-data, you need to add an extra method to this class. The name of this
-method must be ``calc_<Name of the plot_toggle you're using>()``. Inside this method, you
+    * Binned properties such as "How many galaxies with mass between 10^8.0 and 10^8.1
+      Msun". Call ``Model.init_binned_properties`` with the parameters that define your bins
+      and your new property. Bins will be stored as ``Model.bins["bin_name"]``, e.g.,
+      ``Model.bins["stellar_mass_bins"]``
+
+    * Scatter properties. These properties are useful if you want to (e.g.,) plot the star
+      formation rate versus stellar mass for 1000 randomly selected points. Call
+      ``Model.init_scatter_properties`` with your property names. The properties will be
+      initialized as empty lists.
+
+    * Single values. These properties could be (e.g.,) the total stellar mass summed across
+      all galaxies. Call ``Model.init_single_properties`` with your property names. The
+      properties will be initialized as values of 0.0.
+
+To handle the y-data, you need to create a custom module (``.py`` file) and add new functions to it.
+These functions are suggested to be named ``calc_<name of the plot_toggle you're using>()``.
+The function signature MUST be ``func(Model, gals)``. Inside this function , you
 must update the ``Model.properties[<Name of your new property>]`` attribute. Feel free to
-base your method on an existing one used to calculate a property similar to your new property!
+base your function on an existing one used to calculate a property similar to your new property!
 
 Finally, to plot your new property, refer to the documentation in the ``plots.py`` module.
 
@@ -65,8 +72,7 @@ class Model:
 
     output_path : String
         Directory path to where the some plots will be saved.  This will only be used in
-        certain circumstances. In general, plots will be saved to the ``plot_output_path``
-        path defined in the ``Results`` class.
+        certain circumstances for Model specific plots.
 
     IMF : {"Salpeter", "Chabrier"}
         Specifies which IMF to use.
@@ -230,8 +236,8 @@ class Model:
             Name of the properties that will be described using a single number.
         """
 
-        for property in property_names:
-            self.properties[property] = 0.0
+        for my_property in property_names:
+            self.properties[my_property] = 0.0
 
 
     def calc_properties_all_files(self, close_file=True, use_pbar=True, debug=False):
@@ -396,7 +402,7 @@ def calc_BMF(model, gals):
     baryon_mass = np.log10((gals["StellarMass"][:][non_zero_baryon] + gals["ColdGas"][:][non_zero_baryon]) * 1.0e10 \
                            / model.hubble_h)
 
-    (counts, binedges) = np.histogram(baryon_mass, bins=model.bins["stellar_mass_bins"])
+    (counts, _) = np.histogram(baryon_mass, bins=model.bins["stellar_mass_bins"])
     model.properties["BMF"] += counts
 
 
@@ -405,7 +411,7 @@ def calc_GMF(model, gals):
     non_zero_cold = np.where(gals["ColdGas"][:] > 0.0)[0]
     cold_mass = np.log10(gals["ColdGas"][:][non_zero_cold] * 1.0e10 / model.hubble_h)
 
-    (counts, binedges) = np.histogram(cold_mass, bins=model.bins["stellar_mass_bins"])
+    (counts, _) = np.histogram(cold_mass, bins=model.bins["stellar_mass_bins"])
     model.properties["GMF"] += counts
 
 

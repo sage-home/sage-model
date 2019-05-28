@@ -2,8 +2,29 @@
 """
 Example script for plotting the data from the Mini-Millennium simulation.
 
-To calculate and plot extra properties, see the documentation at the top of the
-``results.py`` module.
+To add your own data format, create a subclass module (e.g., ``sage_binary.py``).
+This subclass module needs methods ``set_cosmology()``, ``determine_num_gals()``
+and  ``read_gals()``.
+
+To calculate and plot extra properties, first add the name of your new plot to the
+``plot_toggles`` dictionary. Then you will need to create a new module (i.e., a new
+``.py`` file) to house all of your calculation and plotting functions. These two modules
+should be specified as the ``module_name`` values for the ``generate_function_dict``
+functions.
+
+Then, for each new property, create a new function to calculate your properties. We
+recommend naming this ``calc_<Naome of your plot toggle>``. To plot your new property,
+create a new function with the suggested name ``plot_<Name of your plot toggle>``.  WHILE
+THE PREFIX OF THESE CAN CHANGE, THEY MUST ALWAYS BE ``<prefix><Name of your plot
+toggle>``.  THESE FUNCTIONS MUST HAVE THE FUNCTION SIGNATURE ``func(Model Class, gals)``.
+Refer to the ``calc_`` and ``plot_`` functions in ``model.py`` and ``plots.py``
+respectively.
+
+For example, to generate and plot data for the ``SMF`` plot, we have methods ``calc_SMF()``
+and ``plot_SMF()``.
+
+Refer to the documentation inside the ``model.py`` and ``plot.py`` modules for more
+details.
 
 Author: Jacob Seiler.
 """
@@ -20,8 +41,6 @@ except ImportError:
     print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
           "this package.")
 
-from results import Results
-
 import numpy as np
 
 # Sometimes we divide a galaxy that has zero mass (e.g., no cold gas). Ignore these
@@ -30,7 +49,7 @@ old_error_settings = np.seterr()
 np.seterr(all="ignore")
 
 
-def generate_func_dict(plot_toggles, module_prefix, function_prefix):
+def generate_func_dict(plot_toggles, module_name, function_prefix):
     """
     Generates a dictionary where the keys are the function name and the value is the
     function itself.  Functions are only generated when the ``plot_toggles`` value is
@@ -75,18 +94,37 @@ def generate_func_dict(plot_toggles, module_prefix, function_prefix):
         function_prefix = "calc_"
     """
 
+    # Do a safer version of eval.
+
+    # If the functions are defined in this module, then `module_name` is empty. Need to
+    # treat this differently.
+    if module_name == "":
+
+        # Get the name of this module.
+        import sys
+        module = sys.modules[__name__]
+
+    else:
+
+        # Otherwise, check if the specified module is present.
+        try:
+            module = globals()[module_name]
+        except KeyError:
+            msg = "Module {0} has not been imported.".format(module_name)
+            raise KeyError(msg)
+
     # Only populate those methods that have been marked in the `plot_toggles`
     # dictionary.
     func_dict = {}
     for toggle in plot_toggles.keys():
         if plot_toggles[toggle]:
 
-            func_name = "{0}{1}{2}".format(module_prefix, function_prefix, toggle)
+            func_name = "{0}{1}".format(function_prefix, toggle)
 
             # Be careful.  Maybe the func for a specified `plot_toggle` value wasn't
             # added to the module.
             try:
-                func = eval(func_name)
+                func = getattr(module, func_name)
             except AttributeError:
                 msg = "Tried to get the func named '{0}' corresponding to " \
                       "'plot_toggle' value '{1}'.  However, no func named '{0}' " \
@@ -184,7 +222,7 @@ if __name__ == "__main__":
     # Generate a dictionary for each model containing the required information.
     # We store these in `model_dicts` which will be a list of dictionaries.
     model_dicts = []
-    for model_num in range(len(model_paths)):
+    for model_num, _ in enumerate(model_paths):
         this_model_dict = { "sage_output_format"  : sage_output_formats[model_num],
                             "model_path"          : model_paths[model_num],
                             "output_path"         : output_paths[model_num],
@@ -201,11 +239,7 @@ if __name__ == "__main__":
 
         model_dicts.append(this_model_dict)
 
-    # First initialise all the Models. This will set the cosmologies, the paths etc.
-    results = Results(model_dicts, plot_toggles, plot_output_path, plot_output_format,
-                      debug=False)
-
-    # Now go through each model and calculate all the required properties.
+    # Go through each model and calculate all the required properties.
     models = []
     for model_dict in model_dicts:
 
@@ -227,9 +261,9 @@ if __name__ == "__main__":
         # the plot_toggles defined above.
         # Our functions are inside the `model.py` module and are named "calc_<toggle>". If
         # your functions are in a different module or different function prefix, change it
-        # here (remembering the full stop after the `module_prefix`).
+        # here.
         # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals)`.
-        my_model.calculation_functions = generate_func_dict(results.plot_toggles, module_prefix="model.",
+        my_model.calculation_functions = generate_func_dict(plot_toggles, module_name="model",
                                                             function_prefix="calc_")
 
         # Finally, before we calculate the properties, we need to decide how each property
@@ -277,7 +311,7 @@ if __name__ == "__main__":
 
     # Similar to the calculation functions, all of the plotting functions are in the
     # `plots.py` module and are labelled `plot_<toggle>`.
-    plot_dict = generate_func_dict(results.plot_toggles, module_prefix="plots.",
+    plot_dict = generate_func_dict(plot_toggles, module_name="plots",
                                    function_prefix="plot_")
 
     # Now do the plotting.
