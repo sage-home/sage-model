@@ -1,8 +1,5 @@
-|TRAVIS|
-
-*************************************
-Semi-Analytic Galaxy Evolution (SAGE)
-*************************************
+Introduction
+============
 
 ``SAGE`` is a publicly available code-base for modelling galaxy formation in a
 cosmological context. A description of the model and its default calibration
