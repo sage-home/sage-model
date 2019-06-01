@@ -175,7 +175,7 @@ int myfseek(FILE * stream, const long offset, const int whence)
 {
     return fseeko(stream, offset, whence);
 }
-  
+
 ssize_t mywrite(int fd, const void *ptr, size_t nbytes)
 {
     size_t nbytes_left = nbytes;

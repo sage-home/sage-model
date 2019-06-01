@@ -74,7 +74,7 @@ cd ../../
 # This command queurues MPI_RUN_COMMAND and gets the last entry which will be the number of processors.
 NUM_SAGE_PROCS=$(echo ${MPI_RUN_COMMAND} | awk '{print $NF}')
 
-# If we're running on serial, MPI_RUN_COMMAND shouldn't be set.  Hence set the number of processors to 1. 
+# If we're running on serial, MPI_RUN_COMMAND shouldn't be set.  Hence set the number of processors to 1.
 if [[ -z "${NUM_SAGE_PROCS}" ]]; then
    NUM_SAGE_PROCS=1
 fi
@@ -107,7 +107,7 @@ if [[ $? == 0 ]]; then
         ((nfiles++))
 
         # First check if the correct and tests files are bitwise identical.
-        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} 
+        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]}
         if [[ $? == 0 ]]; then
             ((npassed++))
             ((nbitwise++))
@@ -115,7 +115,7 @@ if [[ $? == 0 ]]; then
             # If they're not identical, manually check all the fields for differences.
             # The two `1` at the end here denotes that the 'correct' SAGE files are in one file.
             python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary 1 $NUM_SAGE_PROCS
-            if [[ $? == 0 ]]; then 
+            if [[ $? == 0 ]]; then
                 ((npassed++))
             else
                 ((nfailed++))

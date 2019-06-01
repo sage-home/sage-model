@@ -11,7 +11,7 @@ extern "C" {
     extern void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies);
     extern double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, const double rcool,
                                  struct GALAXY *galaxies, const struct params *run_params);
-    
+
 #ifdef __cplusplus
 }
 #endif

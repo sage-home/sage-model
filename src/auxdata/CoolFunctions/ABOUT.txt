@@ -16,7 +16,7 @@ of metallicity are given in the files:
 	m-15.cie    : [Fe/H] = -1.5, primordial ratios
 	m-20.cie    : [Fe/H] = -2.0, primordial ratios
 	m-30.cie    : [Fe/H] = -3.0, primordial ratios
-	m+05.cie    : [Fe/H] = +0.5, solar ratios log(T) = 4.1-8.5 (due to charge 
+	m+05.cie    : [Fe/H] = +0.5, solar ratios log(T) = 4.1-8.5 (due to charge
                    exchange problems at log(T) = 4.0)
 
 2) Non-Equilibrium (NEQ) cooling functions as a function
@@ -62,10 +62,10 @@ ne	nH	nt : number densities, electrons, hydrogen and total ion in cm^-3.
 
 log(lambda net)	log(lambda norm) : log on the net cooling function
 and the normalised cooling function.  lambda norm = lambda net / (ne nt).
-lambda net in ergs cm^-3 s^-1,  lambda net in ergs cm^3 s^-1.  While the 
+lambda net in ergs cm^-3 s^-1,  lambda net in ergs cm^3 s^-1.  While the
 densities are kept less than about p/k 10^8 both isobaric and isochoric
 curves can be constructed from the normalised function using an appropriate
-density function.  The non-equilibrium net cooling function is from the 
+density function.  The non-equilibrium net cooling function is from the
 isobaric model used to calculate the curves.  In the CIE curves the net function
 is for the isochoric cie model.
 
@@ -84,7 +84,7 @@ mubar: mean molecular weight grams times 10^24
 
 *****NOTES
 
-Tests showed that density quenching begins to affect the curves in the low 
+Tests showed that density quenching begins to affect the curves in the low
 temperature parts of the cooling functions when log(p/k) = 8 or more.
 
 Above log(T) = 7.5-8.5 it should be pretty safe to use a powerlaw
@@ -92,7 +92,7 @@ fit to the free-free losses
 
 Good luck, and let me know if you have any problems.
 
-These files will be available via anonymous ftp from 
+These files will be available via anonymous ftp from
 
 merlin.anu.edu.au
 

@@ -24,7 +24,7 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
         if(Mcrit > diskmass) {
             Mcrit = diskmass;
         }
-    
+
         // use disk mass here
         const double gas_fraction   = galaxies[p].ColdGas / diskmass;
         const double unstable_gas   = gas_fraction * (diskmass - Mcrit);
@@ -35,14 +35,14 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
         if(unstable_stars > 0.0) {
             // Use disk metallicity here
             const double metallicity = get_metallicity(galaxies[p].StellarMass - galaxies[p].BulgeMass, galaxies[p].MetalsStellarMass - galaxies[p].MetalsBulgeMass);
-          
+
             galaxies[p].BulgeMass += unstable_stars;
             galaxies[p].MetalsBulgeMass += metallicity * unstable_stars;
-          
+
             // Need to fix this. Excluded for now.
             // galaxies[p].mergeType = 3;  // mark as disk instability partial mass transfer
-            // galaxies[p].mergeIntoID = NumGals + p - 1;      
-          
+            // galaxies[p].mergeIntoID = NumGals + p - 1;
+
             if((galaxies[p].BulgeMass >  1.0001 * galaxies[p].StellarMass)  || (galaxies[p].MetalsBulgeMass >  1.0001 * galaxies[p].MetalsStellarMass)) {
                 printf("\nInstability: Mbulge > Mtot (stars or metals)\n");
                 /* run_params->interrupted = 1; */
@@ -56,12 +56,12 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
                 printf("unstable_gas > galaxies[p].ColdGas\t%e\t%e\n", unstable_gas, galaxies[p].ColdGas);
                 // ABORT(EXIT_FAILURE);
             }
-          
+
             const double unstable_gas_fraction = unstable_gas / galaxies[p].ColdGas;
             if(run_params->AGNrecipeOn > 0) {
                 grow_black_hole(p, unstable_gas_fraction, galaxies, run_params);
             }
-          
+
             collisional_starburst_recipe(unstable_gas_fraction, p, centralgal, time, dt, halonr, 1, step, galaxies, run_params);
         }
     }

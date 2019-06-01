@@ -17,7 +17,7 @@ extern "C" {
 
     extern int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info,
                                          const struct params *run_params);
-    
+
 #ifdef __cplusplus
 }
 #endif

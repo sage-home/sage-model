@@ -266,8 +266,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             save_info->dataset_ids[snap_idx][field_idx] = dataset_id;
 
             // Set metadata attributes for each dataset.
-            CREATE_STRING_ATTRIBUTE(dataset_id, "Description", description); 
-            CREATE_STRING_ATTRIBUTE(dataset_id, "Units", unit); 
+            CREATE_STRING_ATTRIBUTE(dataset_id, "Description", description);
+            CREATE_STRING_ATTRIBUTE(dataset_id, "Units", unit);
 
             status = H5Pclose(prop);
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
@@ -277,11 +277,11 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
                                             "Failed to close the dataspace for output snapshot number %d.\n", snap_idx);
         }
-    }    
+    }
 
     // Now for each snapshot, we process `buffer_count` galaxies into RAM for every snapshot before
     // writing a single chunk. Unlike the binary instance where we have a single GALAXY_OUTPUT
-    // struct instance per galaxy, here HDF5_GALAXY_OUTPUT is a **struct of arrays**. 
+    // struct instance per galaxy, here HDF5_GALAXY_OUTPUT is a **struct of arrays**.
     save_info->buffer_size = NUM_GALS_PER_BUFFER;
     save_info->num_gals_in_buffer = calloc(run_params->NOUT, sizeof(*(save_info->num_gals_in_buffer))); // Calloced because initially no galaxies in buffer.
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->num_gals_in_buffer,
@@ -352,7 +352,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVmax);
     }
 
-    return EXIT_SUCCESS; 
+    return EXIT_SUCCESS;
 }
 
 #undef MALLOC_GALAXY_OUTPUT_INNER_ARRAY
@@ -418,7 +418,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
             return h5_status;
         }
 
-        // We're going to be a bit sneaky here so we don't need to pass the tree number to this function. 
+        // We're going to be a bit sneaky here so we don't need to pass the tree number to this function.
         int32_t tree = save_info->buffer_output_gals[snap_idx].SAGETreeIndex[0];
         save_info->forest_ngals[snap_idx][tree] += num_gals_to_write;
 
@@ -457,14 +457,14 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
 
         h5_status = H5Dclose(dataset_id);
         CHECK_STATUS_AND_RETURN_ON_FAIL(h5_status, (int32_t) h5_status,
-                                        "Failed to close the dataset for the number of galaxies per tree.\n" 
+                                        "Failed to close the dataset for the number of galaxies per tree.\n"
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n."
                                         "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
                                         (int32_t) dataset_id);
 
         h5_status = H5Sclose(dataspace_id);
         CHECK_STATUS_AND_RETURN_ON_FAIL(h5_status, (int32_t) h5_status,
-                                        "Failed to close the dataspace for the number of galaxies per tree.\n" 
+                                        "Failed to close the dataspace for the number of galaxies per tree.\n"
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n."
                                         "The dataset ID was %d.", (int32_t) dims[0], (int32_t) save_info->file_id,
                                         (int32_t) dataset_id);
@@ -617,7 +617,7 @@ int32_t create_hdf5_master_file(const struct params *run_params)
                                      sizeof(*(ngals_allfiles_snap)));
 
     // The master file will be accessed as (e.g.,) f["Core0"]["Snap_63"]["StellarMass"].
-    // Hence we want to store the external links to the **root** group (i.e., "/"). 
+    // Hence we want to store the external links to the **root** group (i.e., "/").
     root_group_id = H5Gopen2(master_file_id, "/", H5P_DEFAULT);
     CHECK_STATUS_AND_RETURN_ON_FAIL(root_group_id, (int32_t) root_group_id,
                                     "Failed to open the root group for the master file.\nThe file ID was %d\n",
@@ -636,7 +636,7 @@ int32_t create_hdf5_master_file(const struct params *run_params)
         // Make a symlink to the root of the target file.
         status = H5Lcreate_external(target_fname, "/", root_group_id, core_fname, H5P_DEFAULT, H5P_DEFAULT);
         CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                        "Failed to create an external link to file %s from the master file.\n" 
+                                        "Failed to create an external link to file %s from the master file.\n"
                                         "The group ID was %d and the group name was %s\n", target_fname,
                                         (int32_t) root_group_id, core_fname);
     }
@@ -662,9 +662,9 @@ int32_t create_hdf5_master_file(const struct params *run_params)
     // Finished creating links.
     status = H5Gclose(root_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
-                                    "Failed to close root group for the master file %s\n" 
+                                    "Failed to close root group for the master file %s\n"
                                     "The group ID was %d and the file ID was %d\n", master_fname,
-                                    (int32_t) root_group_id, (int32_t) master_file_id); 
+                                    (int32_t) root_group_id, (int32_t) master_file_id);
 
     // Cleanup cause we're considerate programmers.
     status = H5Fclose(master_file_id);
@@ -744,8 +744,8 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
                                           "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s"};
 
     // These are the HDF5 datatypes for each field.
-    hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT, 
-                                         H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_INT, H5T_NATIVE_INT, 
+    hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT,
+                                         H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_INT, H5T_NATIVE_INT,
                                          H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                          H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT, H5T_NATIVE_FLOAT,
                                          H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
@@ -757,7 +757,7 @@ int32_t generate_field_metadata(char **field_names, char **field_descriptions, c
 
     for(int32_t i = 0; i < NUM_OUTPUT_FIELDS; i++) {
         field_names[i] = tmp_names[i];
-        field_descriptions[i] = tmp_descriptions[i]; 
+        field_descriptions[i] = tmp_descriptions[i];
         field_units[i] = tmp_units[i];
         field_dtypes[i] = tmp_dtype[i];
     }
@@ -786,13 +786,13 @@ int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_
     save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyIndex;
     save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = g->CentralGalaxyIndex;
 
-    save_info->buffer_output_gals[output_snap_idx].SAGEHaloIndex[gals_in_buffer] = g->HaloNr; 
+    save_info->buffer_output_gals[output_snap_idx].SAGEHaloIndex[gals_in_buffer] = g->HaloNr;
     save_info->buffer_output_gals[output_snap_idx].SAGETreeIndex[gals_in_buffer] = original_treenr;
     save_info->buffer_output_gals[output_snap_idx].SimulationHaloIndex[gals_in_buffer] = llabs(halos[g->HaloNr].MostBoundID);
 
-    save_info->buffer_output_gals[output_snap_idx].mergeType[gals_in_buffer] = g->mergeType; 
-    save_info->buffer_output_gals[output_snap_idx].mergeIntoID[gals_in_buffer] = g->mergeIntoID; 
-    save_info->buffer_output_gals[output_snap_idx].mergeIntoSnapNum[gals_in_buffer] = g->mergeIntoSnapNum; 
+    save_info->buffer_output_gals[output_snap_idx].mergeType[gals_in_buffer] = g->mergeType;
+    save_info->buffer_output_gals[output_snap_idx].mergeIntoID[gals_in_buffer] = g->mergeIntoID;
+    save_info->buffer_output_gals[output_snap_idx].mergeIntoSnapNum[gals_in_buffer] = g->mergeIntoSnapNum;
     save_info->buffer_output_gals[output_snap_idx].dT[gals_in_buffer] = g->dT * run_params->UnitTime_in_s / SEC_PER_MEGAYEAR;
 
     save_info->buffer_output_gals[output_snap_idx].Posx[gals_in_buffer] = g->Pos[0];
@@ -803,8 +803,8 @@ int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_
     save_info->buffer_output_gals[output_snap_idx].Vely[gals_in_buffer] = g->Vel[1];
     save_info->buffer_output_gals[output_snap_idx].Velz[gals_in_buffer] = g->Vel[2];
 
-    save_info->buffer_output_gals[output_snap_idx].Spinx[gals_in_buffer] = halos[g->HaloNr].Spin[0]; 
-    save_info->buffer_output_gals[output_snap_idx].Spiny[gals_in_buffer] = halos[g->HaloNr].Spin[1]; 
+    save_info->buffer_output_gals[output_snap_idx].Spinx[gals_in_buffer] = halos[g->HaloNr].Spin[0];
+    save_info->buffer_output_gals[output_snap_idx].Spiny[gals_in_buffer] = halos[g->HaloNr].Spin[1];
     save_info->buffer_output_gals[output_snap_idx].Spinz[gals_in_buffer] = halos[g->HaloNr].Spin[2];
 
     save_info->buffer_output_gals[output_snap_idx].Len[gals_in_buffer] = g->Len;
@@ -813,7 +813,7 @@ int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_
     save_info->buffer_output_gals[output_snap_idx].Rvir[gals_in_buffer] = get_virial_radius(g->HaloNr, halos, run_params);  // output the actual Rvir, not the maximum Rvir
     save_info->buffer_output_gals[output_snap_idx].Vvir[gals_in_buffer] = get_virial_velocity(g->HaloNr, halos, run_params);  // output the actual Vvir, not the maximum Vvir
     save_info->buffer_output_gals[output_snap_idx].Vmax[gals_in_buffer] = g->Vmax;
-    save_info->buffer_output_gals[output_snap_idx].VelDisp[gals_in_buffer] = halos[g->HaloNr].VelDisp; 
+    save_info->buffer_output_gals[output_snap_idx].VelDisp[gals_in_buffer] = halos[g->HaloNr].VelDisp;
 
     save_info->buffer_output_gals[output_snap_idx].ColdGas[gals_in_buffer] = g->ColdGas;
     save_info->buffer_output_gals[output_snap_idx].StellarMass[gals_in_buffer] = g->StellarMass;
@@ -839,11 +839,11 @@ int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_
     for(int step = 0; step < STEPS; step++) {
         tmp_SfrDisk += g->SfrDisk[step] * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
         tmp_SfrBulge += g->SfrBulge[step] * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
-        
+
         if(g->SfrDiskColdGas[step] > 0.0) {
             tmp_SfrDiskZ += g->SfrDiskColdGasMetals[step] / g->SfrDiskColdGas[step] / STEPS;
         }
-        
+
         if(g->SfrBulgeColdGas[step] > 0.0) {
             tmp_SfrBulgeZ += g->SfrBulgeColdGasMetals[step] / g->SfrBulgeColdGas[step] / STEPS;
         }
@@ -865,7 +865,7 @@ int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_
     if (g->Heating > 0.0) {
         save_info->buffer_output_gals[output_snap_idx].Heating[gals_in_buffer] = log10(g->Heating * run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s);
     } else {
-        save_info->buffer_output_gals[output_snap_idx].Heating[gals_in_buffer] = 0.0; 
+        save_info->buffer_output_gals[output_snap_idx].Heating[gals_in_buffer] = 0.0;
     }
 
     save_info->buffer_output_gals[output_snap_idx].QuasarModeBHaccretionMass[gals_in_buffer] = g->QuasarModeBHaccretionMass;
@@ -972,7 +972,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 
     // Then this is the new length.
     hsize_t new_dims[1];
-    new_dims[0] = old_dims[0] + dims_extend[0]; 
+    new_dims[0] = old_dims[0] + dims_extend[0];
 
     // This parameter is incremented in every Macro call. It is used to ensure we are
     // accessing the correct dataset.
@@ -1016,7 +1016,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
     EXTEND_AND_WRITE_GALAXY_DATASET(ICS, H5T_NATIVE_FLOAT);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsColdGas, H5T_NATIVE_FLOAT);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsStellarMass, H5T_NATIVE_FLOAT);
-    EXTEND_AND_WRITE_GALAXY_DATASET(MetalsBulgeMass, H5T_NATIVE_FLOAT); 
+    EXTEND_AND_WRITE_GALAXY_DATASET(MetalsBulgeMass, H5T_NATIVE_FLOAT);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsHotGas, H5T_NATIVE_FLOAT);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsEjectedMass, H5T_NATIVE_FLOAT);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsICS, H5T_NATIVE_FLOAT);
@@ -1037,7 +1037,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 
     // We've performed a write, so future galaxies will overwrite the old data.
     save_info->num_gals_in_buffer[snap_idx] = 0;
-    save_info->tot_ngals[snap_idx] += num_to_write; 
+    save_info->tot_ngals[snap_idx] += num_to_write;
 
     return EXIT_SUCCESS;
 }
@@ -1141,7 +1141,7 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     // Output snapshots.
     dims[0] = run_params->NOUT;
 
-    // Same as above, garbage was being written for `run_params->ListOutputSnaps`. 
+    // Same as above, garbage was being written for `run_params->ListOutputSnaps`.
     int32_t *int_tmp;
     int_tmp = malloc(run_params->NOUT * sizeof(int32_t));
     for(int32_t i = 0; i < run_params->NOUT; ++i) {

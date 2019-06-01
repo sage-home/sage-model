@@ -95,7 +95,7 @@ long find_block(const void *p)
     if(iblock < 0 || iblock >= Nblocks) {
         return -1;
     }
-    
+
     return iblock;
 }
 
@@ -108,7 +108,7 @@ void *myrealloc(void *p, size_t n)
     if(n == 0)
         n = 8;
 
-#if 0    
+#if 0
     if(p != Table[Nblocks - 1]) {
         printf("Wrong call of myrealloc() p = %p is not the last allocated block = %p!\n", p, Table[Nblocks-1]);
         ABORT(0);
@@ -129,11 +129,11 @@ void *myrealloc(void *p, size_t n)
         ABORT(MALLOC_FAILURE);
     }
     Table[iblock] = newp;
-  
+
     TotMem -= SizeTable[iblock];
     TotMem += n;
     SizeTable[iblock] = n;
-  
+
     if(TotMem > HighMarkMem) {
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
@@ -150,7 +150,7 @@ void myfree(void *p)
 {
 	assert(Nblocks > 0);
 
-#if 0    
+#if 0
     if(p != Table[Nblocks - 1]) {
         printf("Wrong call of myfree() - not the last allocated block!\n");
         ABORT(INVALID_PTR_REALLOC_REQ);
