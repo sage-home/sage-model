@@ -70,14 +70,14 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - gcc-7
-      env: COMPILER=gcc-7 PYTHON_VERSION=3.7
+      env: COMPILER=gcc-7 PYTHON_VERSION=3.7 LSAN_OPTIONS=verbosity=1:log_threads=1
       before_install:
         - gcc-7 --version
         - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
     - name: "Linux MPI Xenial distribution"
       os: linux
-      dist: xenial 
+      dist: xenial
       sudo: required
       env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
       before_install:

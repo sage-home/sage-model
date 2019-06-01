@@ -69,23 +69,6 @@ H5_OBJS := $(addprefix $(SRC_PREFIX)/, $(H5_OBJS))
 
 ## Only set everything if the command is not "make clean" (or related to "make clean")
 ifeq ($(DO_CHECKS), 1)
-  ON_CI := false
-  ifeq ($(CI), true)
-    ON_CI := true
-  endif
-
-  ifeq ($(TRAVIS), true)
-    ON_CI := true
-  endif
-
-  ifeq ($(ON_CI), true)
-	# If running on CI, fail if any warnings are generated when Making.
-    CCFLAGS += -Werror
-
-	# Add sanitize flags to check for memory leaks and other related errors.
-    CCFLAGS +=-fsanitize=leak -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-address-use-after-scope -fsanitize-undefined-trap-on-error -fstack-protector-all
-  endif
-
   ## Check if CC is clang under the hood
   CC_VERSION := $(shell $(CC) --version 2>/dev/null)
   ifndef CC_VERSION
@@ -106,6 +89,27 @@ ifeq ($(DO_CHECKS), 1)
       ## the clang assembler
       CCFLAGS += -Wa,-q
     endif
+
+  ON_CI := false
+  ifeq ($(CI), true)
+    ON_CI := true
+  endif
+
+  ifeq ($(TRAVIS), true)
+    ON_CI := true
+  endif
+
+  ifeq ($(ON_CI), true)
+	# If running on CI, fail if any warnings are generated when Making.
+    CCFLAGS += -Werror
+
+	# Add sanitize flags to check for memory leaks and other related errors.
+	# These aren't available for Clang ompiler.
+    ifeq ($(CC_IS_CLANG), 0)
+		CCFLAGS +=-fsanitize=leak -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-address-use-after-scope -fsanitize-undefined-trap-on-error -fstack-protector-all
+    endif
+  endif
+
   endif
   ## end of checking is CC
 
