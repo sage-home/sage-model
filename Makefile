@@ -106,7 +106,7 @@ ifeq ($(DO_CHECKS), 1)
 	# Add sanitize flags to check for memory leaks and other related errors.
 	# These aren't available for Clang ompiler.
     ifeq ($(CC_IS_CLANG), 0)
-		CCFLAGS +=-fsanitize=leak -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-address-use-after-scope -fsanitize-undefined-trap-on-error -fstack-protector-all
+      CCFLAGS +=-fsanitize=leak -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-address-use-after-scope -fsanitize-undefined-trap-on-error -fstack-protector-all
     endif
   endif
 
