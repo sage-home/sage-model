@@ -78,9 +78,12 @@ ifeq ($(DO_CHECKS), 1)
     ON_CI := true
   endif
 
-  # Add the -Werror flag if running on some continuous integration provider
   ifeq ($(ON_CI), true)
+	# If running on CI, fail if any warnings are generated when Making.
     CCFLAGS += -Werror
+
+	# Add sanitize flags to check for memory leaks and other related errors.
+    CCFLAGS +=-fsanitize=leak -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-address-use-after-scope -fsanitize-undefined-trap-on-error -fstack-protector-all
   endif
 
   ## Check if CC is clang under the hood
