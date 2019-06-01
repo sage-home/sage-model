@@ -16,8 +16,8 @@ to the model described in `Croton et al., 2006`_. The updated ``SAGE`` model is 
 .. _Croton et al., 2016: https://arxiv.org/abs/1601.04709
 .. _Github: https://github.com/sage-home/sage-model
 
-* :ref: `user-docs`
-* :ref: `api-docs`
+* :ref:`user-docs`
+* :ref:`api-docs`
 
 .. _user-docs:
 
