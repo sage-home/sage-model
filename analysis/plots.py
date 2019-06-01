@@ -166,48 +166,55 @@ def plot_SMF(models, plot_output_path, plot_output_format=".png", plot_sub_popul
     plt.close()
 
 
-def plot_temporal_SMF(temporal_results):
+def plot_temporal_SMF(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the evolution of the stellar mass function for the models within the ``TemporalResults``
-    class instance.
+    Plots the evolution of the stellar mass function for the specified models. Unlike
+    ``plot_SMF()`` which only plots a SMF at a single snapshot, this function loops over
+    the value of ``model.SMF_snaps`` and plots and the SMFs at each snapshots.
 
     Parameters
-    ==========
+    ----------
 
-    temporal_results : ``TemporalResults`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``history.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``. In
+        particular, we acces the ``Model.properties["SMF_dict"][<snap>]`` values.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as
-    "<temporal_results.plot_output_path>/A.StellarMassFunction<temporal_results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/A.StellarMassFunction<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
     # Go through each of the models and plot.
-    for model in temporal_results.models:
+    for model in models:
 
         ls = model.linestyle
 
         # Set the x-axis values to be the centre of the bins.
-        bin_middles = model.mass_bins + 0.5 * model.mass_bin_width
+        bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
+        bin_middles = model.bins["stellar_mass_bins"] + bin_width
 
         # Iterate over the snapshots.
         for snap in model.SMF_snaps:
             model_label = "{0} z = {1:.3f}".format(model.model_label, model.redshifts[snap])
 
             # The SMF is normalized by the simulation volume which is in Mpc/h.
-            ax.plot(bin_middles[:-1], model.properties["SMF_dict"][snap] / model.volume*pow(model.hubble_h, 3)/model.mass_bin_width,
+            ax.plot(bin_middles[:-1], model.properties["SMF_dict"][snap] / model.volume*pow(model.hubble_h, 3)/bin_width,
                     ls=ls, label=model_label)
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
-    zeroth_IMF = (temporal_results.models)[0].IMF
+    zeroth_IMF = models[0].IMF
     ax = obs.plot_temporal_smf_data(ax, zeroth_IMF)
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
@@ -224,8 +231,8 @@ def plot_temporal_SMF(temporal_results):
 
     fig.tight_layout()
 
-    output_file = "{0}/A.StellarMassFunction{1}".format(temporal_results.plot_output_path,
-                                                        temporal_results.plot_output_format)
+    output_file = "{0}/A.StellarMassFunction{1}".format(plot_output_path,
+                                                        plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -1079,30 +1086,34 @@ def plot_spatial_3d(pos, output_file, box_size):
     plt.close()
 
 
-def plot_SFRD(temporal_results):
+def plot_SFRD(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the evolution of the star formation rate density for the models within the
-    ``TemporalResults`` class instance.
+    Plots the evolution of star formation rate density for the specified models.
 
     Parameters
-    ==========
+    ----------
 
-    temporal_results : ``TemporalResults`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``history.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``. In
+        particular, we acces the ``Model.properties["SFRD_dict"][<snap>]`` values.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as
-    "<temporal_results.plot_output_path>/B.History-SFR-Density<temporal_results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/B.SFRDensity<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in temporal_results.models:
+    for model in models:
 
         label = model.model_label
         color = model.color
@@ -1128,37 +1139,40 @@ def plot_SFRD(temporal_results):
 
     fig.tight_layout()
 
-    output_file = "{0}/B.History-SFR-Density{1}".format(temporal_results.plot_output_path,
-                                                        temporal_results.plot_output_format)
+    output_file = "{0}/B.SFRDensity{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
 
 
-def plot_SMD(temporal_results):
+def plot_SMD(models, plot_output_path, plot_output_format=".png"):
     """
-    Plots the evolution of the stellar mass density for the models within the ``TemporalResults``
-    class instance.
+    Plots the evolution of stellar mass density for the specified models.
 
     Parameters
-    ==========
+    ----------
 
-    temporal_results : ``TemporalResults`` class instance
-        Class instance that contains the calculated properties for all the models.  The
-        class is defined in the ``history.py`` with the individual ``Model`` classes
-        and properties defined and calculated in the ``model.py`` module.
+    models : List of ``Model`` class instance
+        Models that will be plotted. These instances contain the properties necessary to
+        create the plot, accessed via ``Model.properties["property_name"]``. In
+        particular, we acces the ``Model.properties["SMD_dict"][<snap>]`` values.
 
-    Returns
-    =======
+    plot_output_path : string
+        Path to where the plot will be saved.
 
-    None.  The plot will be saved as
-    "<temporal_results.plot_output_path>/C.History-stellar-mass-Density<temporal_results.plot_output_path>"
+    plot_output_format : string, default ".png"
+        Format the plot will be saved in, includes the full stop.
+
+    Generates
+    ---------
+
+    The plot will be saved as "<plot_output_path>/C.StellarMassDensity<plot_output_format>"
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in temporal_results.models:
+    for model in models:
 
         label = model.model_label
         color = model.color
@@ -1171,7 +1185,7 @@ def plot_SMD(temporal_results):
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
-    zeroth_IMF = (temporal_results.models)[0].IMF
+    zeroth_IMF = models[0].IMF
     ax = obs.plot_smd_data(ax, zeroth_IMF)
 
     ax.set_xlabel(r"$\mathrm{redshift}$")
@@ -1187,8 +1201,7 @@ def plot_SMD(temporal_results):
 
     fig.tight_layout()
 
-    output_file = "{0}/C.History-stellar-mass-Density{1}".format(temporal_results.plot_output_path,
-                                                                 temporal_results.plot_output_format)
+    output_file = "{0}/C.StellarMassDensity{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()

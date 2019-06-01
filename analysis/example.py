@@ -206,7 +206,7 @@ if __name__ == "__main__":
     output_paths = []
 
     # Determine paths for each model.
-    for dir_name, file_name  in zip(dir_names, file_names):
+    for dir_name, file_name in zip(dir_names, file_names):
 
         model_path = "{0}/{1}".format(dir_name, file_name)
         model_paths.append(model_path)
@@ -251,7 +251,7 @@ if __name__ == "__main__":
             my_model = SageHdf5Model(model_dict, plot_toggles)
         else:
             msg = "Invalid value for `sage_output_format`. Value was " \
-                  "{0}".format(model-dict["sage_output_format"])
+                  "{0}".format(model_dict["sage_output_format"])
             raise ValueError(msg)
 
         my_model.set_cosmology()
