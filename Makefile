@@ -1,6 +1,8 @@
 #USE-MPI = yes # set this if you want to run in embarrassingly parallel
 USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
+#MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
+
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 LIBS :=
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
@@ -103,12 +105,6 @@ ifeq ($(DO_CHECKS), 1)
   ifeq ($(ON_CI), true)
 	# If running on CI, fail if any warnings are generated when Making.
     CCFLAGS += -Werror
-
-	# Add sanitize flags to check for memory leaks and other related errors.
-	# These aren't available for Clang ompiler.
-    ifeq ($(CC_IS_CLANG), 0)
-        CCFLAGS +=-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-address-use-after-scope -fsanitize-undefined-trap-on-error -fstack-protector-all
-    endif
   endif
   ## end of checking is CC
 
@@ -190,10 +186,16 @@ ifeq ($(DO_CHECKS), 1)
     OPTIMIZE += -march=native
   endif
 
+  # Some flags to allow memory checking (similar to Valgrind).
+  # Only enabled when specifically asked.
+  ifdef MEM-CHECK
+    CCFLAGS +=-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
+  endif
+
   CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
   LIBS   +=   -lm
 else
-  # something like `make clean` is in effet -> need to also the HDF5 objects
+  # something like `make clean` is in effect -> need to also the HDF5 objects
   # if HDF5 is requested
   ifdef USE-HDF5
     OBJS += $(H5_OBJS)
