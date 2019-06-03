@@ -24,7 +24,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     if(numfiles <= 0) {
         return -1;
     }
-    
+
     /* wasteful to allocate for lastfile + 1 indices, rather than numfiles; but makes indexing easier */
     int32_t *totnforests_per_file = calloc(lastfile + 1, sizeof(totnforests_per_file[0]));
     if(totnforests_per_file == NULL) {
@@ -70,7 +70,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     }
 
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
-    
+
     // Now that we know the number of trees being processed by each task, let's set up and malloc the structs.
     struct lhalotree_info *lht = &(forests_info->lht);
     forests_info->nforests_this_task = nforests_this_task;
@@ -79,7 +79,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     lht->bytes_offset_for_forest = mymalloc(nforests_this_task * sizeof(lht->bytes_offset_for_forest[0]));
     lht->fd = mymalloc(nforests_this_task * sizeof(lht->fd[0]));
     lht->FileNr = mymalloc(nforests_this_task * sizeof(*(lht->FileNr)));
-    
+
     int64_t *num_forests_to_process_per_file = calloc(lastfile + 1, sizeof(num_forests_to_process_per_file[0]));/* calloc is required */
     int64_t *start_forestnum_to_process_per_file = malloc((lastfile + 1) * sizeof(start_forestnum_to_process_per_file[0]));
     if(num_forests_to_process_per_file == NULL || start_forestnum_to_process_per_file == NULL) {
@@ -92,7 +92,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     for(int i=0;i<=lastfile;i++) {
         start_forestnum_to_process_per_file[i] = -1;
     }
-    
+
     // Now for each task, we know the starting forest number it needs to start reading from.
     // So let's determine what file and forest number within the file each task needs to start/end reading from.
     int start_filenum = -1, end_filenum = -1;
@@ -105,7 +105,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
 
         /* Check if this task should be reading from this file (referred by filenr)
            If the starting forest number (start_forestnum, which is cumulative across all files)
-           is located within this file, then the task will need to read from this file. 
+           is located within this file, then the task will need to read from this file.
          */
         if(start_forestnum >= nforests_so_far && start_forestnum < end_forestnum_this_file) {
             start_filenum = filenr;
@@ -141,7 +141,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
         for(int filenr=firstfile;filenr<=lastfile;filenr++) {
             fprintf(stderr,"filenr := %d contains %d forests\n",filenr, totnforests_per_file[filenr]);
         }
-                
+
         return -1;
     }
     lht->numfiles = end_filenum - start_filenum + 1;
@@ -175,7 +175,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
             ABORT(FILE_NOT_FOUND);
         }
         lht->open_fds[file_index] = fd;/* keep the file open, will be closed at the cleanup stage */
-        
+
         const int64_t nforests = num_forests_to_process_per_file[filenr];
         const size_t nbytes = totnforests_per_file[filenr] * sizeof(int32_t);
         int32_t *nhalos_per_forest = malloc(nbytes);
@@ -195,14 +195,14 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
             byte_offset_to_halos += nhalos_per_forest[i]*sizeof(struct halo_data);
         }
         free(nhalos_per_forest);
-        
+
         nforests_so_far = forestnhalos - lht->nhalos_per_forest;
         if(filenr == start_filenum) {
             XASSERT(nforests_so_far == 0, EXIT_FAILURE,
                     "For the first iteration total forests already processed should be identically zero. Instead we got = %"PRId64"\n",
                     nforests_so_far);
         }
-                    
+
         for(int64_t i=0;i<nforests;i++) {
             lht->bytes_offset_for_forest[i + nforests_so_far] = byte_offset_to_halos;
             XASSERT(i + nforests_so_far < lht->nforests, EXIT_FAILURE,
@@ -286,7 +286,3 @@ void cleanup_forests_io_lht_binary(struct forest_info *forests_info)
     }
     myfree(lht->open_fds);
 }
-
-
-
-

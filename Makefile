@@ -4,7 +4,7 @@ USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libra
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 LIBS :=
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
-CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC 
+CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC
 SRC_PREFIX := src
 
 LIBNAME := sage
@@ -13,9 +13,9 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-		   io/save_gals_binary.c 
+	   io/save_gals_binary.c
 LIBINCL := $(LIBSRC:.c=.h)
-LIBINCL += io/parse_ctrees.h 
+LIBINCL += io/parse_ctrees.h
 
 SRC := main.c $(LIBSRC)
 SRC  := $(addprefix $(SRC_PREFIX)/, $(SRC))
@@ -58,7 +58,7 @@ endif
 # Files required for HDF5 -> needs to be defined outside of the
 # if condition (for DO_CHECKS); otherwise `make clean` will not
 # clean the H5_OBJS
-H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c
+H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_standard_hdf5.c
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
 
@@ -96,7 +96,7 @@ ifeq ($(DO_CHECKS), 1)
   else
     CC_IS_CLANG := 0
   endif
-  ifeq ($(UNAME), Darwin)    
+  ifeq ($(UNAME), Darwin)
     ifeq ($(CC_IS_CLANG), 0)
       ## gcc on OSX has trouble with
       ## AVX+ instructions. This flag uses
@@ -104,9 +104,9 @@ ifeq ($(DO_CHECKS), 1)
       CCFLAGS += -Wa,-q
     endif
   endif
-  ## end of checking is CC 
+  ## end of checking is CC
 
-  # This automatic detection of GSL needs to be before HDF5 checking.  
+  # This automatic detection of GSL needs to be before HDF5 checking.
   # This allows HDF5 to be installed in a different directory than Miniconda.
   GSL_FOUND := $(shell gsl-config --version 2>/dev/null)
   ifdef GSL_FOUND
@@ -163,7 +163,7 @@ ifeq ($(DO_CHECKS), 1)
 
     OPTS += -DHDF5
     LIBS += $(HDF5_LIB)
-    CCFLAGS += $(HDF5_INCL) 
+    CCFLAGS += $(HDF5_INCL)
   endif
 
   OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
@@ -184,7 +184,7 @@ ifeq ($(DO_CHECKS), 1)
     OPTIMIZE += -march=native
   endif
 
-  CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags 
+  CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
   LIBS   +=   -lm
 else
   # something like `make clean` is in effet -> need to also the HDF5 objects
@@ -204,7 +204,7 @@ $(EXEC): $(OBJS) $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
 
 $(SAGELIB): $(LIBOBJS)
-	ar rcs $@ $(LIBOBJS) 
+	ar rcs $@ $(LIBOBJS)
 
 .phony: clean celan celna clena tests
 celan celna clena: clean

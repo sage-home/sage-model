@@ -14,7 +14,7 @@
         exit(sigterm);                             \
     } while(0)
 
-#define MEMORY_INCREASE_FAC   1.2 
+#define MEMORY_INCREASE_FAC   1.2
 
 #define  STEPS 10         /* Number of integration intervals between two snapshots */
 #define  MAXGALFAC 1
@@ -23,6 +23,8 @@
 #define  ABSOLUTEMAXSNAPS 1000  /* The largest number of snapshots for any simulation */
 #define  MAXTAGS          300  /* Max number of parameters */
 
+#define  SQR(X)      ((X) * (X))
+#define  CUBE(X)     ((X) * (X) * (X))
 
 #define  GRAVITY     6.672e-8
 #define  SOLAR_MASS  1.989e33

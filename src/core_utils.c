@@ -175,7 +175,7 @@ int myfseek(FILE * stream, const long offset, const int whence)
 {
     return fseeko(stream, offset, whence);
 }
-  
+
 ssize_t mywrite(int fd, const void *ptr, size_t nbytes)
 {
     size_t nbytes_left = nbytes;
@@ -241,3 +241,23 @@ ssize_t mypwrite(int fd, const void *ptr, const size_t nbytes, off_t offset)
 }
 
 
+int AlmostEqualRelativeAndAbs_double(double A, double B,
+                                     const double maxDiff,
+                                     const double maxRelDiff)
+{
+    // Check if the numbers are really close -- needed
+    // when comparing numbers near zero.
+    double diff = fabs(A - B);
+    if (diff <= maxDiff)
+        return EXIT_SUCCESS;
+
+    A = fabs(A);
+    B = fabs(B);
+    double largest = (B > A) ? B : A;
+
+    if (diff <= largest * maxRelDiff)
+        return EXIT_SUCCESS;
+
+    /* fprintf(stderr,"diff = %e largest * maxRelDiff = %e\n", diff, largest * maxRelDiff); */
+    return EXIT_FAILURE;
+}

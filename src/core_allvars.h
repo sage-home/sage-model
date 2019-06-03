@@ -39,7 +39,7 @@ struct GALAXY
   /* (sub)halo properties */
   float Pos[3];
   float Vel[3];
-  int   Len;   
+  int   Len;
   float Mvir;
   float deltaMvir;
   float CentralMvir;
@@ -93,7 +93,7 @@ struct GALAXY
 
 
 /* auxiliary halo data */
-struct halo_aux_data   
+struct halo_aux_data
 {
     int DoneFlag;
     int HaloFlag;
@@ -101,25 +101,9 @@ struct halo_aux_data
     int FirstGalaxy;
 #ifdef PROCESS_LHVT_STYLE
     int orig_index;
-#endif    
+#endif
     int output_snap_n;
 };
-
-#if 0
-#ifdef HDF5
-extern char          *core_output_file;
-extern size_t         HDF5_dst_size;
-extern size_t        *HDF5_dst_offsets;
-extern size_t        *HDF5_dst_sizes;
-extern const char   **HDF5_field_names;
-extern hid_t         *HDF5_field_types;
-extern int            HDF5_n_props;
-#endif
-#endif
-
-#define DOUBLE 1
-#define STRING 2
-#define INT 3
 
 enum Valid_TreeTypes
 {
@@ -162,23 +146,23 @@ enum sage_error_types {
 
 struct lhalotree_info {
     int64_t nforests;/* number of forests to process */
-    
+
     /* lhalotree format only has int32_t for nhalos per forest */
     int32_t *nhalos_per_forest;/* number of halos to read, nforests elements */
 
     union {
         int *fd;/* the file descriptor for each forest (i.e., which file descriptor to read this forest from) nforests elements*/
-#ifdef HDF5        
+#ifdef HDF5
         hid_t *h5_fd;/* contains the HDF5 file descriptor for each forest */
-#endif        
+#endif
     };
     off_t *bytes_offset_for_forest;/* where to start reading the files, nforests elements */
 
     union {
         int *open_fds;/* contains numfiles elements of open file descriptors, numfiles elements */
-#ifdef HDF5        
+#ifdef HDF5
         hid_t *open_h5_fds;/* contains numfiles elements of open HDF5 file descriptors */
-#endif        
+#endif
     };
     int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
     int32_t unused;/* unused, but present for alignment */
@@ -188,15 +172,18 @@ struct lhalotree_info {
 struct ctrees_info {
     //different from totnforests; only stores forests to be processed by ThisTask when in MPI mode
     //in serial mode, ``forests_info->ctr.nforests == forests_info->totnforests``)
-    int64_t nforests;
+    union {
+        int64_t nforests;
+        int64_t nforests_this_task;
+    };
     int64_t ntrees;
-    
+
     void *column_info;/* stored as a void * to avoid including parse_ctrees.h here*/
-    
+
     /* forest level quantities */
     int64_t *ntrees_per_forest;/* contains nforests elements */
     int64_t *start_treenum_per_forest;/* contains nforests elements */
-    
+
     /* tree level quantities */
     int *tree_fd;/* contains ntrees elements */
     off_t *tree_offsets;/* contains ntrees elements */
@@ -214,17 +201,33 @@ struct ahf_info {
     void *some_yet_to_be_implemented_ptr;
 };
 
+#ifdef HDF5
 struct genesis_info {
-    int64_t nforests;
-    void *some_yet_to_be_implemented_ptr;
+    int32_t min_snap_num;
+    int32_t maxsnaps;
+    union{
+        int64_t nforests;/* number of forests to process on this task */
+        int64_t nforests_this_task;/* shadowed for convenience */
+    };
+    int64_t *nhalos_per_forest;/* number of halos to read, nforests_this_task elements */
+    hid_t h5_fd;/* contains the HDF5 file descriptor for the hdf5 file (same file descriptor for ALL forests) */
+    int64_t *forestid_to_forestnum;/* since not all forests exist at z=0, this array gives a way to index */
+    hsize_t **offset_for_forest_per_snap;/* where to start reading the files, nforests elements [nforests_this_task, maxsnaps]*/
+    hsize_t **nhalos_per_forest_per_snap;/* number of halos per forest, per snapshot [nforests_this_task, maxsnaps]*/
+    hid_t *open_h5_dset_snapgroups;/* contains [maxsnaps] elements of open HDF5 file descriptors corresponding to each snapshot */
+    hid_t **open_h5_dset_props;/* contains [maxsnaps, nproperties] corresponding to the dataset for each property to be read */
+    hid_t **open_h5_props_filespace; /* contains [maxsnaps, nproperties] for the filespace for each dataset of the property */
 };
+#endif
 
 struct forest_info {
     union {
         struct lhalotree_info lht;
         struct ctrees_info ctr;
         struct ahf_info ahf;
+#ifdef HDF5
         struct genesis_info gen;
+#endif
     };
     int64_t totnforests;  // Total number of forests across **all** input tree files.
     int64_t nforests_this_task; // Total number of forests processed by **this** task.
@@ -263,6 +266,11 @@ struct save_info {
 
 };
 
+
+#define DOUBLE 1
+#define STRING 2
+#define INT 3
+
 struct params
 {
     int    FirstFile;    /* first and last file for processing; only relevant for lhalotree style files (binary or hdf5) */
@@ -280,11 +288,13 @@ struct params
     double PartMass;
     double Hubble_h;
     double BoxSize;
-    int32_t NumSimulationTreeFiles;
     double EnergySNcode;
     double EnergySN;
     double EtaSNcode;
     double EtaSN;
+
+    /* moving for alignment */
+    int32_t NumSimulationTreeFiles;
 
     /* recipe flags */
     int    SFprescription;
@@ -292,7 +302,7 @@ struct params
     int    SupernovaRecipeOn;
     int    ReionizationOn;
     int    DiskInstabilityOn;
-    
+
     double RecycleFraction;
     double Yield;
     double FracZleaveDisk;
@@ -324,6 +334,7 @@ struct params
     double a0;
     double ar;
 
+    int nsnapshots;
     int LastSnapShotNr;
     int MAXSNAPS;
     int NOUT;
@@ -332,8 +343,20 @@ struct params
     enum Valid_OutputFormats OutputFormat;
 
     int ListOutputSnaps[ABSOLUTEMAXSNAPS];
-    double ZZ[ABSOLUTEMAXSNAPS];
-    double AA[ABSOLUTEMAXSNAPS];
+
+    //Essentially creating an alias so that the indecipherable 'ZZ'
+    //can be interpreted to contain 'redshift' values
+    union {
+        double ZZ[ABSOLUTEMAXSNAPS];
+        double redshift[ABSOLUTEMAXSNAPS];
+    };
+
+    //Similarly: 'AA' contains the scale_factors corresponding to
+    //each snapshot
+    union {
+        double AA[ABSOLUTEMAXSNAPS];
+        double scale_factors[ABSOLUTEMAXSNAPS];
+    };
     double *Age;
 
     int interrupted;/* to re-print the progress-bar */

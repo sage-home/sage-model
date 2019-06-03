@@ -26,7 +26,7 @@ double time_to_present(const double z, struct params *run_params);
 void init(const int ThisTask, struct params *run_params)
 {
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
-  
+
     set_units(run_params);
 
     read_snap_list(ThisTask, run_params);
@@ -35,7 +35,7 @@ void init(const int ThisTask, struct params *run_params)
     //This way, galsnapnum = -1 will not segfault.
     run_params->Age[0] = time_to_present(1000.0, run_params);//lookback time from z=1000
     run_params->Age++;
-  
+
     for(int i = 0; i < run_params->Snaplistlen; i++) {
         run_params->ZZ[i] = 1 / run_params->AA[i] - 1;
         run_params->Age[i] = time_to_present(run_params->ZZ[i], run_params);
@@ -57,19 +57,19 @@ void set_units(struct params *run_params)
 
     run_params->UnitTime_in_s = run_params->UnitLength_in_cm / run_params->UnitVelocity_in_cm_per_s;
     run_params->UnitTime_in_Megayears = run_params->UnitTime_in_s / SEC_PER_MEGAYEAR;
-    run_params->G = GRAVITY / pow(run_params->UnitLength_in_cm, 3) * run_params->UnitMass_in_g * pow(run_params->UnitTime_in_s, 2);
-    run_params->UnitDensity_in_cgs = run_params->UnitMass_in_g / pow(run_params->UnitLength_in_cm, 3);
-    run_params->UnitPressure_in_cgs = run_params->UnitMass_in_g / run_params->UnitLength_in_cm / pow(run_params->UnitTime_in_s, 2);
+    run_params->G = GRAVITY / CUBE(run_params->UnitLength_in_cm) * run_params->UnitMass_in_g * SQR(run_params->UnitTime_in_s);
+    run_params->UnitDensity_in_cgs = run_params->UnitMass_in_g / CUBE(run_params->UnitLength_in_cm);
+    run_params->UnitPressure_in_cgs = run_params->UnitMass_in_g / run_params->UnitLength_in_cm / SQR(run_params->UnitTime_in_s);
     run_params->UnitCoolingRate_in_cgs = run_params->UnitPressure_in_cgs / run_params->UnitTime_in_s;
-    run_params->UnitEnergy_in_cgs = run_params->UnitMass_in_g * pow(run_params->UnitLength_in_cm, 2) / pow(run_params->UnitTime_in_s, 2);
+    run_params->UnitEnergy_in_cgs = run_params->UnitMass_in_g * SQR(run_params->UnitLength_in_cm) / SQR(run_params->UnitTime_in_s);
 
     run_params->EnergySNcode = run_params->EnergySN / run_params->UnitEnergy_in_cgs * run_params->Hubble_h;
     run_params->EtaSNcode = run_params->EtaSN * (run_params->UnitMass_in_g / SOLAR_MASS) / run_params->Hubble_h;
 
-    // convert some physical input parameters to internal units 
+    // convert some physical input parameters to internal units
     run_params->Hubble = HUBBLE * run_params->UnitTime_in_s;
 
-    // compute a few quantitites 
+    // compute a few quantitites
     run_params->RhoCrit = 3.0 * run_params->Hubble * run_params->Hubble / (8 * M_PI * run_params->G);
 }
 
@@ -80,7 +80,7 @@ void read_snap_list(const int ThisTask, struct params *run_params)
     char fname[MAX_STRING_LEN+1];
 
     snprintf(fname, MAX_STRING_LEN, "%s", run_params->FileWithSnapList);
-    FILE *fd = fopen(fname, "r"); 
+    FILE *fd = fopen(fname, "r");
     if(fd == NULL) {
         printf("can't read output list in file '%s'\n", fname);
         ABORT(0);
@@ -123,7 +123,7 @@ double time_to_present(const double z, struct params *run_params)
 
     gsl_integration_workspace_free(workspace);
 
-#undef WORKSIZE    
+#undef WORKSIZE
 #else
     /* Do not have GSL - let's integrate numerically ourselves */
     const double step  = 1e-7;
@@ -141,7 +141,7 @@ double time_to_present(const double z, struct params *run_params)
     /* convert into Myrs/h (I think -> MS 23/6/2018) */
     const double time = 1.0 / run_params->Hubble * result;
 
-    // return time to present as a function of redshift 
+    // return time to present as a function of redshift
     return time;
 }
 
@@ -152,6 +152,3 @@ double integrand_time_to_present(const double a, void *param)
     const struct params *run_params = (struct params *) param;
     return 1.0 / sqrt(run_params->Omega / a + (1.0 - run_params->Omega - run_params->OmegaLambda) + run_params->OmegaLambda * a * a);
 }
-
-
-

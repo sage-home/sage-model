@@ -30,10 +30,8 @@ extern "C" {
     extern ssize_t mypread(int fd, void *ptr, const size_t nbytes, off_t offset);
     extern ssize_t mypwrite(int fd, const void *ptr, const size_t nbytes, off_t offset);
     extern ssize_t mywrite(int fd, const void *buf, size_t nbytes);
+    extern int AlmostEqualRelativeAndAbs_double(double A, double B, const double maxDiff, const double maxRelDiff);
+
 #ifdef __cplusplus
 }
 #endif
-
-
-
-    
