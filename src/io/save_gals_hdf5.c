@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <hdf5.h>
-#include <hdf5_hl.h>
 #include <math.h>
 
 #include "save_gals_hdf5.h"

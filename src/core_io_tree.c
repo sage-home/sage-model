@@ -69,10 +69,12 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
     switch (TreeType) {
 #ifdef HDF5
     case lhalo_hdf5:
+        cleanup_forests_io_lht_hdf5(forests_info);
         break;
 
-    /* case genesis_standard_hdf5: */
-    /*     break; */
+    case genesis_standard_hdf5:
+        cleanup_forests_io_genesis_hdf5(forests_info);
+        break;
 #endif
 
     case lhalo_binary:
