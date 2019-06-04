@@ -236,11 +236,13 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
             // Then create each field inside.
             name = field_names[field_idx];
-            snprintf(full_field_name, MAX_STRING_LEN-  1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], name);
+            snprintf(full_field_name, MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], name);
 
             description = field_descriptions[field_idx];
             unit = field_units[field_idx];
             dtype = field_dtypes[field_idx];
+
+            fprintf(stderr, "Creating field %s with description %s and unit %s\n", name, description, unit);
 
             prop = H5Pcreate(H5P_DATASET_CREATE);
             CHECK_STATUS_AND_RETURN_ON_FAIL(prop, (int32_t) prop,
@@ -276,6 +278,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             status = H5Sclose(dataspace_id);
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
                                             "Failed to close the dataspace for output snapshot number %d.\n", snap_idx);
+
+            fprintf(stderr, "Created.\n");
         }
     }
 
