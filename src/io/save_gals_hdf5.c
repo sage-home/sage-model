@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <hdf5.h>
-#include <hdf5_hl.h>
 #include <math.h>
 
 #include "save_gals_hdf5.h"
@@ -83,7 +82,7 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
                                     "Could not set the total size of a datatype when creating a String attribute.\n" \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
                                     "The group_id was #group_id.\n");                    \
-    status = H5Tset_strpad(atype, H5T_STR_NULLTERM);                  \
+    status = H5Tset_strpad(atype, H5T_STR_NULLTERM);                                     \
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,                            \
                                     "Could not set the padding when creating a String attribute.\n" \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
@@ -93,17 +92,22 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
                                     "Could not create an attribute ID.\n"                \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
                                     "The group_id was #group_id.\n");                    \
-    status = H5Awrite(macro_attribute_id, atype, attribute_value);    \
+    status = H5Awrite(macro_attribute_id, atype, attribute_value);                       \
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,                            \
                                     "Could not write an attribute.\n"                    \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
                                     "The group_id was #group_id.\n");                    \
-    status = H5Aclose(macro_attribute_id);                            \
+    status = H5Aclose(macro_attribute_id);                                               \
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,                            \
                                     "Could not close an attribute ID.\n"                 \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
                                     "The group_id was #group_id.\n");                    \
-    status = H5Sclose(macro_dataspace_id);                            \
+    status = H5Tclose(atype);                                                            \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,                            \
+                                    "Could not close atype value.\n"                     \
+                                    "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
+                                    "The group_id was #group_id.\n");                    \
+    status = H5Sclose(macro_dataspace_id);                                               \
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,                            \
                                     "Could not close an attribute dataspace.\n"          \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \

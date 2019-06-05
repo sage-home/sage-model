@@ -220,8 +220,8 @@ class Model:
         """
 
         # Initialize empty lists.
-        for property in property_names:
-            self.properties[property] = []
+        for my_property in property_names:
+            self.properties[my_property] = []
 
 
     def init_single_properties(self, property_names):
