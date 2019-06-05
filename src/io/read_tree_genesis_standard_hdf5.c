@@ -35,6 +35,7 @@ enum GalaxyProperty
 };
 
 static char galaxy_property_names[num_galaxy_props][MAX_STRING_LEN];
+static int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap);
 
 void get_forests_filename_genesis_hdf5(char *filename, const size_t len, const struct params *run_params)
 {
@@ -539,9 +540,12 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         local_halos[next_halo].NextHaloInFOFgroup = i;
     }
 
-    //Now fix flybys
-
-
+    const int32_t lastsnap = local_halos[0].SnapNum;
+    const int64_t numhalos_last_snap = forest_nhalos[lastsnap];;
+    int status = fix_flybys_genesis(local_halos, numhalos_last_snap);
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
 
     return nhalos;
 }
@@ -594,4 +598,81 @@ void cleanup_forests_io_genesis_hdf5(struct forest_info *forests_info)
     free(gen->nhalos_per_forest);
     free(gen->offset_for_forest_per_snap);
     free(gen->nhalos_per_forest_per_snap);
+}
+
+#define CHECK_IF_HALO_IS_FOF(halos, index)  (halos[index].FirstHaloInFOFgroup == index ? 1:0)
+
+int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap)
+{
+    if(nhalos_last_snap == 0) {
+        fprintf(stderr,"Warning: There are no halos at the last snapshot. Therefore nothing to fix for flybys. BUT this should not happen - check code\n");
+        return EXIT_SUCCESS;
+    }
+    if(halos == NULL || nhalos_last_snap < 0) {
+        fprintf(stderr,"Error: In function %s> The struct containing halo data (address = %p )can not be NULL *AND* the total number of halos (=%"PRId64") must be > 0\n",
+                __FUNCTION__, halos, nhalos_last_snap);
+        return EXIT_FAILURE;
+    }
+
+
+    int64_t num_fofs = 0;
+    for(int64_t i=0;i<nhalos_last_snap;i++) {
+        num_fofs += CHECK_IF_HALO_IS_FOF(halos, i);
+    }
+
+    if(num_fofs == 0) {
+        fprintf(stderr,"Error: There are no FOF halos at the last snapshot. This is highly unusual and almost certainly a bug (in reading the data)\n");
+        return EXIT_FAILURE;
+    }
+
+    /* Is there anything to do? If there is only one FOF at z=0, then simply return */
+    if(num_fofs == 1) {
+        return EXIT_SUCCESS;
+    }
+
+    int64_t max_mass_fof_loc = -1;
+    float max_mass_fof = -1.0f;
+    for(int64_t i=0;i<nhalos_last_snap;i++) {
+        if(halos[i].Mvir > max_mass_fof && CHECK_IF_HALO_IS_FOF(halos, i) == 1) {
+            max_mass_fof_loc = i;
+            max_mass_fof = halos[max_mass_fof_loc].Mvir;
+        }
+    }
+
+    XASSERT(max_mass_fof_loc < INT_MAX, EXIT_FAILURE,
+            "Most massive FOF location=%"PRId64" must be representable within INT_MAX=%d",
+            max_mass_fof_loc, INT_MAX);
+
+    int FirstHaloInFOFgroup = (int) max_mass_fof_loc;
+    int insertion_point_next_sub = FirstHaloInFOFgroup;
+    while(insertion_point_next_sub != -1) {
+        insertion_point_next_sub = halos[insertion_point_next_sub].NextHaloInFOFgroup;
+    }
+
+    for(int64_t i=0;i<nhalos_last_snap;i++) {
+        if(i == FirstHaloInFOFgroup) {
+            continue;
+        }
+
+        //Only need to switch for other FOF halos
+        if(CHECK_IF_HALO_IS_FOF(halos, i) == 1) {
+            //Show that this halo was switched from being a central
+            //just flip the sign. (MostBoundID should not have negative
+            //values -> this would signify a flyby)
+            halos[i].MostBoundID = -halos[i].MostBoundID;
+            halos[insertion_point_next_sub].NextHaloInFOFgroup = i;
+            halos[i].FirstHaloInFOFgroup = FirstHaloInFOFgroup;
+            insertion_point_next_sub = i;
+            while(halos[insertion_point_next_sub].NextHaloInFOFgroup != -1) {
+                insertion_point_next_sub = halos[insertion_point_next_sub].NextHaloInFOFgroup;
+                halos[insertion_point_next_sub].FirstHaloInFOFgroup = FirstHaloInFOFgroup;
+            }
+
+            if(insertion_point_next_sub == -1) {
+                fprintf(stderr,"bug in code logic in previous while loop at line=%d in file=%s\n", __LINE__, __FILE__);
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
 }
