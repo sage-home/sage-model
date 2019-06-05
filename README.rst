@@ -132,10 +132,12 @@ Maintainers
 - Darren Croton (@darrencroton)
 
 .. |TRAVIS| image:: https://img.shields.io/travis/com/sage-home/sage-model/master.svg?logo=travis&logoColor=white&label=Travis%20CI
+    :alt: Travis Badge
     :target: https://travis-ci.com/sage-home/sage-model
     :alt: Travis Badge
 
 .. |DOCS| image:: https://img.shields.io/readthedocs/sage-model/latest.svg?logo=read%20the%20docs&logoColor=white&label=Docs
+    :alt: RTD Badge
     :target: https://sage-model.readthedocs.io/en/latest/index.html
     :alt: RTD Badge
 
