@@ -39,7 +39,7 @@ struct GALAXY
   /* (sub)halo properties */
   float Pos[3];
   float Vel[3];
-  int   Len;   
+  int   Len;
   float Mvir;
   float deltaMvir;
   float CentralMvir;
@@ -93,7 +93,7 @@ struct GALAXY
 
 
 /* auxiliary halo data */
-struct halo_aux_data   
+struct halo_aux_data
 {
     int DoneFlag;
     int HaloFlag;
@@ -101,7 +101,7 @@ struct halo_aux_data
     int FirstGalaxy;
 #ifdef PROCESS_LHVT_STYLE
     int orig_index;
-#endif    
+#endif
     int output_snap_n;
 };
 
@@ -162,23 +162,23 @@ enum sage_error_types {
 
 struct lhalotree_info {
     int64_t nforests;/* number of forests to process */
-    
+
     /* lhalotree format only has int32_t for nhalos per forest */
     int32_t *nhalos_per_forest;/* number of halos to read, nforests elements */
 
     union {
         int *fd;/* the file descriptor for each forest (i.e., which file descriptor to read this forest from) nforests elements*/
-#ifdef HDF5        
+#ifdef HDF5
         hid_t *h5_fd;/* contains the HDF5 file descriptor for each forest */
-#endif        
+#endif
     };
     off_t *bytes_offset_for_forest;/* where to start reading the files, nforests elements */
 
     union {
         int *open_fds;/* contains numfiles elements of open file descriptors, numfiles elements */
-#ifdef HDF5        
+#ifdef HDF5
         hid_t *open_h5_fds;/* contains numfiles elements of open HDF5 file descriptors */
-#endif        
+#endif
     };
     int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
     int32_t unused;/* unused, but present for alignment */
@@ -189,13 +189,13 @@ struct ctrees_info {
     //in serial mode, ``forests_info->ctr.nforests == forests_info->totnforests``)
     int64_t nforests;
     int64_t ntrees;
-    
+
     void *column_info;/* stored as a void * to avoid including parse_ctrees.h here*/
-    
+
     /* forest level quantities */
     int64_t *ntrees_per_forest;/* contains nforests elements */
     int64_t *start_treenum_per_forest;/* contains nforests elements */
-    
+
     /* tree level quantities */
     int *tree_fd;/* contains ntrees elements */
     off_t *tree_offsets;/* contains ntrees elements */
@@ -294,7 +294,7 @@ struct params
     int    SupernovaRecipeOn;
     int    ReionizationOn;
     int    DiskInstabilityOn;
-    
+
     double RecycleFraction;
     double Yield;
     double FracZleaveDisk;

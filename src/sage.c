@@ -88,7 +88,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
                                      sizeof(*(save_info.tot_ngals)));
 
     // Allocate memory for the number of galaxies at each output snapshot for each forest.
-    save_info.forest_ngals = calloc(run_params->NOUT, sizeof(*(save_info.forest_ngals))); 
+    save_info.forest_ngals = calloc(run_params->NOUT, sizeof(*(save_info.forest_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals,
                                      "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
                                      sizeof(*(save_info.forest_ngals)));
@@ -103,7 +103,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     fprintf(stderr,"Task %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
             ThisTask, Nforests, forest_info.frac_volume_processed);
-    
+
     /* open all the output files corresponding to this tree file (specified by rank) */
     status = initialize_galaxy_files(ThisTask, &forest_info, &save_info, run_params);
     if(status != EXIT_SUCCESS) {
@@ -124,7 +124,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         if(ThisTask == 0) {
             my_progressbar(stderr, nforests_done, &(run_params->interrupted));
         }
-        
+
         /* the millennium tree is really a collection of trees, viz., a forest */
         status = sage_per_forest(forestnr, &save_info, &forest_info, run_params);
         if(status != EXIT_SUCCESS) {
@@ -151,10 +151,10 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     }
 
 
-cleanup:    
+cleanup:
     /* sage is done running -> do the cleanup */
     cleanup_forests_io(run_params->TreeType, &forest_info);
-    if(status == EXIT_SUCCESS) {               
+    if(status == EXIT_SUCCESS) {
         //free Ages. But first
         //reset Age to the actual allocated address
         run_params->Age--;
@@ -173,13 +173,13 @@ int32_t finalize_sage(struct params *run_params)
     switch(run_params->OutputFormat) {
 
     case(sage_binary):
-      status = EXIT_SUCCESS; 
+      status = EXIT_SUCCESS;
       break;
 
 #ifdef HDF5
     case(sage_hdf5):
       status = create_hdf5_master_file(run_params);
-      break; 
+      break;
 #endif
 
     default:
@@ -200,13 +200,13 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
 
     /*  galaxy data  */
     struct GALAXY  *Gal = NULL, *HaloGal = NULL;
-    
+
     /* simulation merger-tree data */
     struct halo_data *Halo = NULL;
-    
+
     /*  auxiliary halo data  */
     struct halo_aux_data  *HaloAux = NULL;
-    
+
     int nfofs_all_snaps[ABSOLUTEMAXSNAPS] = {0};
 
     /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
@@ -223,7 +223,7 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
         return status;
     }
 #endif
-    
+
     int maxgals = (int)(MAXGALFAC * nhalos);
     if(maxgals < 10000) maxgals = 10000;
 
@@ -235,27 +235,27 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
         HaloAux[i].HaloFlag = 0;
         HaloAux[i].NGalaxies = 0;
         HaloAux[i].DoneFlag = 0;
-#ifdef PROCESS_LHVT_STYLE        
+#ifdef PROCESS_LHVT_STYLE
         HaloAux[i].orig_index = file_ordering_of_halos[i];
 #endif
     }
 
-#ifdef PROCESS_LHVT_STYLE    
+#ifdef PROCESS_LHVT_STYLE
     free(file_ordering_of_halos);
     /* done with re-ordering the halos into a locally horizontal vertical tree format */
-#endif    
-    
-    
+#endif
+
+
     /* getting the number of FOF halos at each snapshot */
     get_nfofs_all_snaps(Halo, nhalos, nfofs_all_snaps, ABSOLUTEMAXSNAPS);
-    
-#if 0        
+
+#if 0
     for(int halonr = 0; halonr < nhalos; halonr++) {
         fprintf(stderr,"halonr = %d snap = %03d mvir = %14.6e firstfofhalo = %8d nexthalo = %8d\n",
                 halonr, Halo[halonr].SnapNum, Halo[halonr].Mvir, Halo[halonr].FirstHaloInFOFgroup, Halo[halonr].NextHaloInFOFgroup);
     }
 #endif
-    
+
     int numgals = 0;
     int galaxycounter = 0;
 
@@ -270,10 +270,10 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
     }
 
 #else
-    
+
     /* First run construct_galaxies outside for loop -> takes care of the main tree */
     construct_galaxies(0, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
-    
+
     /* But there are sub-trees within one forest file that are not reachable via the recursive routine -> do those as well */
     for(int halonr = 0; halonr < nhalos; halonr++) {
         if(HaloAux[halonr].DoneFlag == 0) {
@@ -281,7 +281,7 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
         }
     }
 
-#endif /* PROCESS_LHVT_STYLE */    
+#endif /* PROCESS_LHVT_STYLE */
 
     status = save_galaxies(forestnr, numgals, Halo, forest_info, HaloAux, HaloGal, save_info, run_params);
     if(status != EXIT_SUCCESS) {
@@ -295,6 +295,6 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
     myfree(Halo);
 
     return EXIT_SUCCESS;
-}    
+}
 
 

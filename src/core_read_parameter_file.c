@@ -147,19 +147,19 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     strcpy(ParamTag[NParam], "FracZleaveDisk");
     ParamAddr[NParam] = &(run_params->FracZleaveDisk);
     ParamID[NParam++] = DOUBLE;
-    
+
     strcpy(ParamTag[NParam], "SfrEfficiency");
     ParamAddr[NParam] = &(run_params->SfrEfficiency);
     ParamID[NParam++] = DOUBLE;
-    
+
     strcpy(ParamTag[NParam], "FeedbackReheatingEpsilon");
     ParamAddr[NParam] = &(run_params->FeedbackReheatingEpsilon);
     ParamID[NParam++] = DOUBLE;
-    
+
     strcpy(ParamTag[NParam], "FeedbackEjectionEfficiency");
     ParamAddr[NParam] = &(run_params->FeedbackEjectionEfficiency);
     ParamID[NParam++] = DOUBLE;
-    
+
     strcpy(ParamTag[NParam], "BlackHoleGrowthRate");
     ParamAddr[NParam] = &(run_params->BlackHoleGrowthRate);
     ParamID[NParam++] = DOUBLE;
@@ -175,7 +175,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     strcpy(ParamTag[NParam], "Reionization_z0");
     ParamAddr[NParam] = &(run_params->Reionization_z0);
     ParamID[NParam++] = DOUBLE;
-    
+
     strcpy(ParamTag[NParam], "Reionization_zr");
     ParamAddr[NParam] = &(run_params->Reionization_zr);
     ParamID[NParam++] = DOUBLE;
@@ -202,7 +202,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         printf("Parameter file %s not found.\n", fname);
         return FILE_NOT_FOUND;
     }
-  
+
     if(fd != NULL) {
         char buffer[MAX_STRING_LEN];
         while(fgets(&(buffer[0]), MAX_STRING_LEN, fd) != NULL) {
@@ -210,7 +210,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
             if(sscanf(buffer, "%s%s%*[^\n]", buf1, buf2) < 2) {
                 continue;
             }
-          
+
             if(buf1[0] == '%' || buf1[0] == '-') {
                 continue;
             }
@@ -224,12 +224,12 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                     break;
                 }
             }
-          
+
             if(j >= 0) {
                 if(ThisTask == 0) {
                     printf("%35s\t%10s\n", buf1, buf2);
                 }
-                  
+
                 switch (ParamID[j])
                     {
                     case DOUBLE:
@@ -248,37 +248,37 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
             }
         }
         fclose(fd);
-      
+
         const size_t i = strlen(run_params->OutputDir);
         if(i > 0) {
             if(run_params->OutputDir[i - 1] != '/')
                 strcat(run_params->OutputDir, "/");
         }
     }
-  
+
     for(int i = 0; i < NParam; i++) {
         if(used_tag[i]) {
             printf("Error. I miss a value for tag '%s' in parameter file '%s'.\n", ParamTag[i], fname);
             errorFlag = 1;
         }
     }
-  
+
     if(errorFlag) {
         ABORT(1);
     }
     printf("\n");
-  
+
     if( ! (run_params->LastSnapShotNr+1 > 0 && run_params->LastSnapShotNr+1 < ABSOLUTEMAXSNAPS) ) {
         fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->LastSnapShotNr, ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
     run_params->MAXSNAPS = run_params->LastSnapShotNr + 1;
-    
+
     if(!(run_params->NOUT == -1 || (run_params->NOUT > 0 && run_params->NOUT <= ABSOLUTEMAXSNAPS))) {
         fprintf(stderr,"NumOutputs must be -1 or between 1 and %i\n", ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
-  
+
     // read in the output snapshot list
     if(run_params->NOUT == -1) {
         run_params->NOUT = run_params->MAXSNAPS;
@@ -292,14 +292,14 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         if(ThisTask == 0) {
             printf("%d snapshots selected for output: ", run_params->NOUT);
         }
-        
+
         // reopen the parameter file
         fd = fopen(fname, "r");
-        
+
         int done = 0;
         while(!feof(fd) && !done) {
             char buf[MAX_STRING_LEN];
-            
+
             /* scan down to find the line with the snapshots */
             if(fscanf(fd, "%s", buf) == 0) continue;
             if(strcmp(buf, "->") == 0) {
@@ -315,7 +315,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                 break;
             }
         }
-      
+
         fclose(fd);
         if(! done ) {
             fprintf(stderr,"Error: Could not properly parse output snapshots\n");
@@ -325,11 +325,11 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     }
 
     /* because in the default case of 'lhalo-binary', nothing
-       gets written to "treeextension", we need to 
+       gets written to "treeextension", we need to
        null terminate tree-extension first  */
     run_params->TreeExtension[0] = '\0';
 
-    // Check tree type is valid. 
+    // Check tree type is valid.
     if (strncmp(my_treetype, "genesis_lhalo_hdf5", 511) == 0) {
         // strncmp returns 0 if the two strings are equal.
         // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
@@ -353,7 +353,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
             break;
         }
     }
-    
+
     if(found == 0) {
         fprintf(stderr, "TreeType %s is not supported\n", my_treetype);
         fprintf(stderr," Please choose one of the supported tree types -- \n");

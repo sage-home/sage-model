@@ -52,7 +52,7 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 #ifdef HDF5
     case(sage_hdf5):
       status = initialize_hdf5_galaxy_files(rank, save_info, run_params);
-      break; 
+      break;
 #endif
 
     default:
@@ -62,7 +62,7 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 
     }
 
-    return status; 
+    return status;
 }
 
 
@@ -157,7 +157,7 @@ int32_t save_galaxies(const int task_forestnr, const int numgals, struct halo_da
 
 // Write any remaining attributes or header information, close all the open files and free all the
 // relevant dataspaces.
-int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params) 
+int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
 {
 
     int32_t status = EXIT_FAILURE;
@@ -207,8 +207,8 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
         my_thistask_mul_fac = THISTASK_MUL_FAC;
     }
 
-    // Now generate the unique index for each galaxy. 
-    for(int32_t gal_idx = 0; gal_idx < numgals; ++gal_idx) { 
+    // Now generate the unique index for each galaxy.
+    for(int32_t gal_idx = 0; gal_idx < numgals; ++gal_idx) {
 
         struct GALAXY *this_gal = &halogal[gal_idx];
 

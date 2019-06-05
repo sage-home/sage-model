@@ -12,3 +12,7 @@ analysis/plots/
 *.txt
 *.log
 *.out
+
+# Documentation with Sphinx #
+docs/build
+docs/make.bat

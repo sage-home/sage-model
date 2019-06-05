@@ -35,7 +35,7 @@ int open_forests_file(struct params *run_params, const int filenr)
     /*     status = load_forest_table_genesis_hdf5(forests_info); */
     /*     break; */
 #endif
-        
+
     case(lhalo_binary):
         get_forests_filename_lht_binary(filename, 4*MAX_STRING_LEN, filenr, run_params);
         break;
@@ -53,7 +53,7 @@ int open_forests_file(struct params *run_params, const int filenr)
         perror(NULL);
         ABORT(FILE_NOT_FOUND);
     }
-        
+
     return fd;
 }
 
@@ -65,14 +65,14 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     const int firstfile = run_params->FirstFile;
     const int lastfile = run_params->LastFile;
     const enum Valid_TreeTypes TreeType = run_params->TreeType;
-    
+
     switch (TreeType)
         {
 #ifdef HDF5
         case genesis_lhalo_hdf5:
             status = setup_forests_io_lht_hdf5(forests_info, firstfile, lastfile, ThisTask, NTasks, run_params);
             break;
-            
+
         /* case genesis_standard_hdf5: */
         /*     (void) firstfile, (void) lastfile; */
         /*     status = load_forest_table_genesis_hdf5(forests_info); */
@@ -87,14 +87,14 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
             (void) firstfile, (void) lastfile;
             status = setup_forests_io_ctrees(forests_info, ThisTask, NTasks, run_params);
             break;
-            
+
         default:
             fprintf(stderr, "Your tree type has not been included in the switch statement for function ``%s`` in file ``%s``.\n", __FUNCTION__, __FILE__);
             fprintf(stderr, "Please add it there.\n");
             return INVALID_OPTION_IN_PARAMS;
         }
 
-    
+
     return status;
 }
 
@@ -107,15 +107,15 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
 #ifdef HDF5
     case genesis_lhalo_hdf5:
         break;
-        
+
     /* case genesis_standard_hdf5: */
     /*     break; */
 #endif
-            
+
     case lhalo_binary:
         cleanup_forests_io_lht_binary(forests_info);
         break;
-        
+
     case consistent_trees_ascii:
 
         /* because consistent trees can only be cleaned up after *ALL* forests
@@ -128,7 +128,7 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
         fprintf(stderr, "Your tree type has not been included in the switch statement for function ``%s`` in file ``%s``.\n", __FUNCTION__, __FILE__);
         fprintf(stderr, "Please add it there.\n");
         ABORT(EXIT_FAILURE);
-        
+
     }
 
     // Finally, things that are common across forest types.
@@ -143,23 +143,23 @@ int64_t load_forest(struct params *run_params, const int forestnr, struct halo_d
 
     int64_t nhalos;
     const enum Valid_TreeTypes TreeType = run_params->TreeType;
-    
+
     switch (TreeType) {
-        
+
 #ifdef HDF5
     case genesis_lhalo_hdf5:
         nhalos = load_forest_hdf5(forestnr, halos, forests_info);
         break;
-        
+
     /* case genesis_standard_hdf5: */
     /*     nhalos = load_forest_genesis_hdf5(forestnr, halos, forests_info); */
     /*     break; */
-#endif            
-        
+#endif
+
     case lhalo_binary:
         nhalos = load_forest_lht_binary(forestnr, halos, forests_info);
         break;
-        
+
     case consistent_trees_ascii:
         nhalos = load_forest_ctrees(forestnr, halos, forests_info, run_params);
         break;

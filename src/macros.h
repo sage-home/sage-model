@@ -16,7 +16,7 @@
         exit(sigterm);                             \
     } while(0)
 
-#define MEMORY_INCREASE_FAC   1.2 
+#define MEMORY_INCREASE_FAC   1.2
 
 #define  STEPS 10         /* Number of integration intervals between two snapshots */
 #define  MAXGALFAC 1

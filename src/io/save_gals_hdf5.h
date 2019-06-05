@@ -8,23 +8,23 @@ extern "C" {
 
 #include "../core_allvars.h"
 
-    struct HDF5_GALAXY_OUTPUT  
+    struct HDF5_GALAXY_OUTPUT
     {
       int   *SnapNum;
 
-#if 0    
+#if 0
       short Type;
       short isFlyby;
 #else
       int *Type;
-#endif    
+#endif
 
       long long   *GalaxyIndex;
       long long   *CentralGalaxyIndex;
       int   *SAGEHaloIndex;
       int   *SAGETreeIndex;
       long long   *SimulationHaloIndex;
-      
+
       int   *mergeType;  /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
       int   *mergeIntoID;
       int   *mergeIntoSnapNum;
@@ -40,7 +40,7 @@ extern "C" {
       float *Spinx;
       float *Spiny;
       float *Spinz;
-      int   *Len;   
+      int   *Len;
       float *Mvir;
       float *CentralMvir;
       float *Rvir;
@@ -70,7 +70,7 @@ extern "C" {
       float *SfrBulge;
       float *SfrDiskZ;
       float *SfrBulgeZ;
-      
+
       /* misc */
       float *DiskScaleRadius;
       float *Cooling;
@@ -85,7 +85,7 @@ extern "C" {
       float *infallVvir;
       float *infallVmax;
     };
-    
+
     // Proto-Types //
     extern int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_info, const struct params *run_params);
 
@@ -97,7 +97,6 @@ extern "C" {
                                               const struct params *run_params);
 
     extern int32_t create_hdf5_master_file(const struct params *run_params);
-
 #ifdef __cplusplus
 }
 #endif

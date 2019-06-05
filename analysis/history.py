@@ -22,7 +22,7 @@ details.
 Author: Jacob Seiler
 """
 
-
+import example
 import plots as plots
 
 # Import the subclasses that handle the different SAGE output formats.
@@ -49,196 +49,6 @@ old_error_settings = np.seterr()
 np.seterr(all="ignore")
 
 
-class TemporalResults:
-    """
-    Defines all the parameters used to plot the models.
-
-    Attributes
-    ----------
-
-    num_models : Integer
-        Number of models being plotted.
-
-    models : List of ``Model`` class instances with length ``num_models``
-        Models that we will be plotting.  Depending upon the format ``SAGE`` output in,
-        this will be a ``Model`` subclass with methods to parse the specific data format.
-
-    plot_toggles : Dictionary
-        Specifies which plots will be generated. An entry of `1` denotes
-        plotting, otherwise it will be skipped.
-
-    plot_output_path : String
-        Base path where the plots will be saved.
-
-    plot_output_format : String
-        Format the plots are saved as.
-    """
-
-    def __init__(self, all_models_dict, plot_toggles, plot_output_path="./plots",
-                 plot_output_format=".png", debug=False):
-        """
-        Initialises the individual ``Model`` class instances and adds them to
-        the ``Results`` class instance.
-
-        Parameters
-        ----------
-
-        all_models_dict : Dictionary
-            Dictionary containing the parameter values for each ``Model``
-            instance. Refer to the ``Model`` class for full details on this
-            dictionary. Each field of this dictionary must have length equal to
-            the number of models we're plotting.
-
-        plot_toggles : Dictionary
-            Specifies which plots will be generated. An entry of 1 denotes
-            plotting, otherwise it will be skipped.
-
-        plot_output_path : String, default "./plots"
-            The path where the plots will be saved.
-
-        plot_output_format : String, default ".png"
-            Format the plots will be saved as.
-
-        debug : {0, 1}, default 0
-            Flag whether to print out useful debugging information.
-
-        Returns
-        -------
-
-        None.
-        """
-
-        self.num_models = len(all_models_dict["model_path"])
-        self.plot_output_path = plot_output_path
-
-        if not os.path.exists(self.plot_output_path):
-            os.makedirs(self.plot_output_path)
-
-        self.plot_output_format = plot_output_format
-
-        # We will create a list that holds the Model class for each model.
-        all_models = []
-
-        # Now let's go through each model, build an individual dictionary for
-        # that model and then create a Model instance using it.
-
-        for model_num in range(self.num_models):
-
-            model_dict = {}
-            for field in all_models_dict.keys():
-                model_dict[field] = all_models_dict[field][model_num]
-
-            # Use the correct subclass depending upon the format SAGE wrote in.
-            if model_dict["sage_output_format"] == "sage_binary":
-                model = SageBinaryModel(model_dict, plot_toggles)
-            elif model_dict["sage_output_format"] == "sage_hdf5":
-                model = SageHdf5Model(model_dict, plot_toggles)
-
-            print("Processing data for model {0}".format(model.model_label))
-
-            # We may be plotting the density at all snapshots...
-            if model.density_redshifts == -1:
-                model.density_redshifts = model.redshifts
-
-            model.plot_output_format = plot_output_format
-            model.set_cosmology()
-
-            # The SMF and the Density plots may have different snapshot requirements.
-            # Find the snapshots that most closely match the requested redshifts.
-            model.SMF_snaps = [(np.abs(model.redshifts - SMF_redshift)).argmin() for
-                              SMF_redshift in model.SMF_redshifts]
-            model.properties["SMF_dict"] = {}
-
-            model.density_snaps = [(np.abs(model.redshifts - density_redshift)).argmin() for
-                                  density_redshift in model.density_redshifts]
-            model.properties["SFRD_dict"] = {}
-            model.properties["SMD_dict"] = {}
-
-            # We'll need to loop all snapshots, ignoring duplicates.
-            snaps_to_loop = np.unique(model.SMF_snaps + model.density_snaps)
-
-            # Use a tqdm progress bar if possible.
-            try:
-                snap_iter = tqdm(snaps_to_loop, unit="Snapshot")
-            except NameError:
-                snap_iter = snaps_to_loop
-
-            for snap in snap_iter:
-
-                # Reset the tracking.
-                model.properties["SMF"] = np.zeros(len(model.mass_bins)-1, dtype=np.float64)
-                model.properties["SFRD"] = 0.0
-                model.properties["SMD"] = 0.0
-
-                # Update the snapshot we're reading from. Subclass specific.
-                model.update_snapshot(snap)
-
-                # Calculate all the properties. Keep the HDF5 file open always.
-                model.calc_properties_all_files(close_file=False, use_pbar=False, debug=debug)
-
-                # We need to place the SMF inside the dictionary to carry through.
-                if snap in model.SMF_snaps:
-                    model.properties["SMF_dict"][snap] = model.properties["SMF"]
-
-                # Same with the densities.
-                if snap in model.density_snaps:
-
-                    # It's slightly wasteful here because the user may only want the SFRD
-                    # and not the SMD. However the wasted compute time is neglible
-                    # compared to the time taken to read the galaxies + compute the
-                    # properties.
-                    model.properties["SFRD_dict"][snap] = model.properties["SFRD"]
-                    model.properties["SMD_dict"][snap] = model.properties["SMD"]
-
-            all_models.append(model)
-
-            # If we used a HDF5 file, close it.
-            try:
-                self.close_file()
-            except AttributeError:
-                pass
-
-        self.models = all_models
-        self.plot_toggles = plot_toggles
-
-
-    def do_plots(self):
-        """
-        Wrapper method to perform all the plotting for the models.
-
-        Parameters
-        ----------
-
-        None.
-
-        Returns
-        -------
-
-        None. The plots are saved individually by each method.
-        """
-
-        plots.setup_matplotlib_options()
-
-        # Go through all the plot toggles and seach for a plot routine named
-        # "plot_<Toggle>".
-        for toggle in self.plot_toggles.keys():
-            if self.plot_toggles[toggle]:
-                method_name = "plot_{0}".format(toggle)
-
-                # If the method doesn't exist, we will hit an `AttributeError`.
-                try:
-                    getattr(plots, method_name)(self)
-                except AttributeError:
-                    msg = "Tried to plot '{0}'.  However, no " \
-                          "method named '{1}' exists in the 'plots.py' module.\n" \
-                          "Check either that your plot toggles are set correctly or add " \
-                          "a method called '{1}' to the 'plots.py' module.".format(toggle, \
-                          method_name)
-                    msg += "\nPLEASE SCROLL UP AND MAKE SURE YOU'RE READING ALL ERROR " \
-                           "MESSAGES! THEY'RE EASY TO MISS! :)"
-                    raise AttributeError(msg)
-
-
 if __name__ == '__main__':
 
     import os
@@ -251,12 +61,12 @@ if __name__ == '__main__':
 
     model0_SMF_z               = [0.0, 1.0, 2.0, 3.0]  # Redshifts you wish to plot the stellar mass function at.
                                  # Will search for the closest simulation redshift.
-    model0_density_z           = -1  # Redshifts you wish to plot the evolution of
-                                     # densities at. Set to -1 for all redshifts.
+    model0_density_z           = "All"  # List of redshifts you wish to plot the evolution of
+                                     # densities at. Set to "All" for all redshifts.
     model0_alist_file          = "../input/millennium/trees/millennium.a_list"
-    model0_sage_output_format  = "sage_binary"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
+    model0_sage_output_format  = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
     model0_dir_name            = "../output/millennium/"
-    model0_file_name           = "model"  # If using "sage_binary", doesn't have to end in "_zX.XXX"
+    model0_file_name           = "model.hdf5"  # If using "sage_binary", doesn't have to end in "_zX.XXX"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Mini-Millennium"
     model0_color               = "c"
@@ -294,15 +104,17 @@ if __name__ == '__main__':
                     "SFRD"            : 1,  # Star formation rate density at specified snapshots.
                     "SMD"             : 1}  # Stellar mass density at specified snapshots.
 
-    ############################
-    ## DON'T TOUCH BELOW HERE ##
-    ############################
+    debug = True
+    ############## DO NOT TOUCH BELOW #############
+    ### IF NOT ADDING EXTRA PROPERTIES OR PLOTS ###
+    ############## DO NOT TOUCH BELOW #############
 
+    # Everything has been specified, now initialize.
     model_paths = []
     output_paths = []
 
     # Determine paths for each model.
-    for dir_name, file_name  in zip(dir_names, file_names):
+    for dir_name, file_name in zip(dir_names, file_names):
 
         model_path = "{0}/{1}".format(dir_name, file_name)
         model_paths.append(model_path)
@@ -315,26 +127,153 @@ if __name__ == '__main__':
 
         output_paths.append(output_path)
 
-    model_dict = { "SMF_redshifts"       : SMF_zs,
-                   "density_redshifts"   : density_zs,
-                   "alist_file"          : alist_files,
-                   "sage_output_format"  : sage_output_formats,
-                   "model_path"          : model_paths,
-                   "output_path"         : output_paths,
-                   "IMF"                 : IMFs,
-                   "model_label"         : model_labels,
-                   "color"               : colors,
-                   "linestyle"           : linestyles,
-                   "marker"              : markers,
-                   "first_file"          : first_files,
-                   "last_file"           : last_files,
-                   "simulation"          : simulations,
-                   "num_tree_files_used" : num_tree_files_used}
+    # Generate a dictionary for each model containing the required information.
+    # We store these in `model_dicts` which will be a list of dictionaries.
+    model_dicts = []
+    for model_num, _ in enumerate(model_paths):
+        this_model_dict = { "SMF_redshifts"       : SMF_zs[model_num],
+                            "density_redshifts"   : density_zs[model_num],
+                            "alist_file"          : alist_files[model_num],
+                            "sage_output_format"  : sage_output_formats[model_num],
+                            "model_path"          : model_paths[model_num],
+                            "output_path"         : output_paths[model_num],
+                            "IMF"                 : IMFs[model_num],
+                            "model_label"         : model_labels[model_num],
+                            "color"               : colors[model_num],
+                            "linestyle"           : linestyles[model_num],
+                            "marker"              : markers[model_num],
+                            "first_file"          : first_files[model_num],
+                            "last_file"           : last_files[model_num],
+                            "simulation"          : simulations[model_num],
+                            "num_tree_files_used" : num_tree_files_used[model_num]}
 
-    # Read in the galaxies and calculate properties for each model.
-    results = TemporalResults(model_dict, plot_toggles, plot_output_path, plot_output_format,
-                              debug=False)
-    results.do_plots()
+        model_dicts.append(this_model_dict)
+
+    # Go through each model and calculate all the required properties.
+    models = []
+    for model_dict in model_dicts:
+
+        # Use the correct subclass depending upon the format SAGE wrote in.
+        if model_dict["sage_output_format"] == "sage_binary":
+            my_model = SageBinaryModel(model_dict, plot_toggles)
+        elif model_dict["sage_output_format"] == "sage_hdf5":
+            my_model = SageHdf5Model(model_dict, plot_toggles)
+        else:
+            msg = "Invalid value for `sage_output_format`. Value was " \
+                  "{0}".format(model_dict["sage_output_format"])
+            raise ValueError(msg)
+
+        my_model.plot_output_format = plot_output_format
+        my_model.set_cosmology()
+
+        # We may be plotting the density at all snapshots...
+        if my_model.density_redshifts == "All":
+            my_model.density_redshifts = my_model.redshifts
+
+        # The SMF and the Density plots may have different snapshot requirements.
+        # Find the snapshots that most closely match the requested redshifts.
+        my_model.SMF_snaps = [(np.abs(my_model.redshifts - SMF_redshift)).argmin() for
+                          SMF_redshift in my_model.SMF_redshifts]
+        my_model.properties["SMF_dict"] = {}
+
+        my_model.density_snaps = [(np.abs(my_model.redshifts - density_redshift)).argmin() for
+                              density_redshift in my_model.density_redshifts]
+        my_model.properties["SFRD_dict"] = {}
+        my_model.properties["SMD_dict"] = {}
+
+        # We'll need to loop all snapshots, ignoring duplicates.
+        snaps_to_loop = np.unique(my_model.SMF_snaps + my_model.density_snaps)
+
+        # Use a tqdm progress bar if possible.
+        try:
+            snap_iter = tqdm(snaps_to_loop, unit="Snapshot")
+        except NameError:
+            snap_iter = snaps_to_loop
+
+        # Then populate the `calculation_methods` dictionary. This dictionary will control
+        # which properties each model will calculate.  The dictionary is populated using
+        # the plot_toggles defined above.
+        # Our functions are inside the `model.py` module and are named "calc_<toggle>". If
+        # your functions are in a different module or different function prefix, change it
+        # here.
+        # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals)`.
+        my_model.calculation_functions = example.generate_func_dict(plot_toggles, module_name="model",
+                                                                    function_prefix="calc_")
+
+        # Finally, before we calculate the properties, we need to decide how each property
+        # is stored. Properties can be binned (e.g., how many galaxies with mass between 10^8.0
+        # and 10^8.1), scatter plotted (e.g., for 1000 galaxies plot the specific star
+        # formation rate versus stellar mass) or a single number (e.g., the sum
+        # of the star formation rate at a snapshot). Properties can be accessed using
+        # `Model.properties["property_name"]`; e.g., `Model.properties["SMF"]`.
+
+        # First let's do the properties binned on stellar mass. The bins themselves can be
+        # accessed using `Model.bins["bin_name"]`; e.g., `Model.bins["stellar_mass_bins"]
+        stellar_properties = ["SMF", "red_SMF", "blue_SMF"]
+        my_model.init_binned_properties(8.0, 12.0, 0.1, "stellar_mass_bins",
+                                        stellar_properties)
+
+        # Properties that are extended as lists.
+        scatter_properties = []
+        my_model.init_scatter_properties(scatter_properties)
+
+        # Properties that are stored as a single number.
+        single_properties = ["SMFD", "SFRD"]
+        my_model.init_single_properties(single_properties)
+
+        # Now we know which snapshots we are looping through, loop through them!
+        for snap in snap_iter:
+
+            # Each snapshot is unique. So reset the tracking.
+            my_model.properties["SMF"] = np.zeros(len(my_model.bins["stellar_mass_bins"])-1,
+                                                  dtype=np.float64)
+            my_model.properties["SFRD"] = 0.0
+            my_model.properties["SMD"] = 0.0
+
+            # Update the snapshot we're reading from. Subclass specific.
+            my_model.update_snapshot(snap)
+
+            # Calculate all the properties. If we're using a HDF5 file, we want to keep
+            # the file open.
+            my_model.calc_properties_all_files(close_file=False, use_pbar=False, debug=debug)
+
+            # We need to place the SMF inside the dictionary to carry through.
+            if snap in my_model.SMF_snaps:
+                my_model.properties["SMF_dict"][snap] = my_model.properties["SMF"]
+
+            # Same with the densities.
+            if snap in my_model.density_snaps:
+
+                # It's slightly wasteful here because the user may only want the SFRD
+                # and not the SMD. However the wasted compute time is neglible
+                # compared to the time taken to read the galaxies + compute the
+                # properties.
+                my_model.properties["SFRD_dict"][snap] = my_model.properties["SFRD"]
+                my_model.properties["SMD_dict"][snap] = my_model.properties["SMD"]
+
+        models.append(my_model)
+
+        # If we used a HDF5 file, close it. Binary files are closed as they're used.
+        try:
+            my_model.close_file()
+        except AttributeError:
+            pass
+
+    # Similar to the calculation functions, all of the plotting functions are in the
+    # `plots.py` module and are labelled `plot_<toggle>`.
+    plot_dict = example.generate_func_dict(plot_toggles, module_name="plots",
+                                           function_prefix="plot_")
+
+    # Call a slightly different function for plotting the SMF because we're doing it at
+    # multiple snapshots.
+    try:
+        plot_dict["plot_SMF"] = plots.plot_temporal_SMF
+    except KeyError:
+        pass
+
+    # Now do the plotting.
+    for plot_func in plot_dict.values():
+        plot_func(models, plot_output_path, plot_output_format)
 
     # Set the error settings to the previous ones so we don't annoy the user.
     np.seterr(divide=old_error_settings["divide"], over=old_error_settings["over"],

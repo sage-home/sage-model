@@ -8,8 +8,8 @@ extern "C" {
 
 #include <hdf5.h>
 
-/* for definition of struct halo_data */    
-#include "../core_allvars.h"    
+/* for definition of struct halo_data */
+#include "../core_allvars.h"
 
 /* Proto-Types */
 extern void load_forest_table_genesis_hdf5(struct forest_info *forests_info);
