@@ -110,7 +110,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
 #undef CHECK_AND_ABORT_UNITS_VS_PARAM_FILE
 
-
     /* Now we know all the datasets -> we can open the corresponding dataset groups (ie, Snap_XXX groups)*/
     gen->maxsnaps = run_params->nsnapshots;
 
@@ -139,7 +138,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     ASSIGN_GALAXY_PROPERTY_NAME("Tail", tail_enum);
     ASSIGN_GALAXY_PROPERTY_NAME("hostHaloID", hosthaloid_enum);
     ASSIGN_GALAXY_PROPERTY_NAME("Mass_200crit", m200c_enum);
-    /* ASSIGN_GALAXY_PROPERTY_NAME("Mass_200mean", m200b_enum); */
     ASSIGN_GALAXY_PROPERTY_NAME("Xc", xc_enum);
     ASSIGN_GALAXY_PROPERTY_NAME("Yc", yc_enum);
     ASSIGN_GALAXY_PROPERTY_NAME("Zc", zc_enum);
@@ -515,9 +513,14 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         if(first_prog_of_desc_halo == i) continue;
 
         //So the current halo is not the first progenitor - so we need to assign this current halo
-        int32_t next_prog = local_halos[first_prog_of_desc_halo].NextProgenitor;
-        while(next_prog != -1) {
+        int32_t next_prog = first_prog_of_desc_halo;
+        while(local_halos[next_prog].NextProgenitor != -1) {
             next_prog = local_halos[next_prog].NextProgenitor;
+        }
+        if(next_prog < 0 || next_prog >= nhalos || local_halos[next_prog].NextProgenitor != -1) {
+            fprintf(stderr,"Error: In function %s> Bug in code logic. next_prog = %d must be within [0, %)"PRId64" *AND* local_halos[next_prog].NextProgenitor should be '-1'",
+                    __FUNCTION__, next_prog, nhalos, local_halos[next_prog].NextProgenitor);
+            return -1;
         }
         local_halos[next_prog].NextProgenitor = i;
     }
@@ -533,9 +536,14 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         //if the FOFhalo is this current halo, then nothing to do here
         if(fofhalo == i) continue;
 
-        int32_t next_halo = local_halos[fofhalo].NextHaloInFOFgroup;
-        while(next_halo != -1) {
+        int32_t next_halo = fofhalo;
+        while(local_halos[next_halo].NextHaloInFOFgroup != -1) {
             next_halo = local_halos[next_halo].NextHaloInFOFgroup;
+        }
+        if(next_halo < 0 || next_halo >= nhalos || local_halos[next_halo].NextHaloInFOFgroup != -1) {
+            fprintf(stderr,"Error: In function %s> Bug in code logic. next_halo = %d must be within [0, %)"PRId64" *AND* local_halos[next_halo].NextHaloInFOFgroup should be '-1'",
+                    __FUNCTION__, next_halo, nhalos, local_halos[next_halo].NextHaloInFOFgroup);
+            return -1;
         }
         local_halos[next_halo].NextHaloInFOFgroup = i;
     }
@@ -645,8 +653,13 @@ int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap)
 
     int FirstHaloInFOFgroup = (int) max_mass_fof_loc;
     int insertion_point_next_sub = FirstHaloInFOFgroup;
-    while(insertion_point_next_sub != -1) {
+    while(halos[insertion_point_next_sub].NextHaloInFOFgroup != -1) {
         insertion_point_next_sub = halos[insertion_point_next_sub].NextHaloInFOFgroup;
+    }
+
+    if(insertion_point_next_sub < 0 || insertion_point_next_sub>= nhalos_last_snap || halos[insertion_point_next_sub].NextHaloInFOFgroup != -1) {
+        fprintf(stderr,"bug in code logic in previous while loop at line=%d in file=%s\n", __LINE__, __FILE__);
+        return -1;
     }
 
     for(int64_t i=0;i<nhalos_last_snap;i++) {
@@ -662,17 +675,21 @@ int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap)
             halos[i].MostBoundID = -halos[i].MostBoundID;
             halos[insertion_point_next_sub].NextHaloInFOFgroup = i;
             halos[i].FirstHaloInFOFgroup = FirstHaloInFOFgroup;
+
+            //Now figure out where the next FOF halo (if any) would need to be attached
             insertion_point_next_sub = i;
             while(halos[insertion_point_next_sub].NextHaloInFOFgroup != -1) {
                 insertion_point_next_sub = halos[insertion_point_next_sub].NextHaloInFOFgroup;
                 halos[insertion_point_next_sub].FirstHaloInFOFgroup = FirstHaloInFOFgroup;
             }
 
-            if(insertion_point_next_sub == -1) {
+            if(insertion_point_next_sub < 0 || insertion_point_next_sub>= nhalos_last_snap || halos[insertion_point_next_sub].NextHaloInFOFgroup != -1) {
                 fprintf(stderr,"bug in code logic in previous while loop at line=%d in file=%s\n", __LINE__, __FILE__);
+                return -1;
             }
         }
     }
 
     return EXIT_SUCCESS;
 }
+#undef CHECK_IF_HALO_IS_FOF
