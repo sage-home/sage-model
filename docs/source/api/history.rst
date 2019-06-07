@@ -1,7 +1,7 @@
 history module
 ==============
 
-.. automodule:: history
+.. automodule:: analysis.history
     :members:
     :undoc-members:
     :show-inheritance:

@@ -9,7 +9,7 @@ Author: Jacob Seiler.
 """
 
 # Import the base class.
-from model import Model
+from analysis.model import Model
 
 import numpy as np
 import h5py

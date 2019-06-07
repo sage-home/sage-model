@@ -8,7 +8,7 @@ you require ``set_cosmology()``, ``determine_num_gals()`` and ``read_gals()`` me
 Author: Jacob Seiler.
 """
 
-from model import Model
+from analysis.model import Model
 
 import numpy as np
 

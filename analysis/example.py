@@ -29,14 +29,14 @@ details.
 Author: Jacob Seiler.
 """
 
-import model
-import plots
+import analysis.model
+import analysis.plots
 
 # Import the subclasses that handle the different SAGE output formats.
-from sage_binary import SageBinaryModel
+from analysis.sage_binary import SageBinaryModel
 
 try:
-    from sage_hdf5 import SageHdf5Model
+    from analysis.sage_hdf5 import SageHdf5Model
 except ImportError:
     print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
           "this package.")
@@ -149,17 +149,17 @@ if __name__ == "__main__":
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
     model0_sage_output_format  = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
-    model0_dir_name            = "../output/millennium/"
-    model0_file_name           = "model.hdf5"
+    model0_dir_name            = "/fred/oz070/jseiler/astro3d/SAGE_output/L500_N2160/"
+    model0_file_name           = "SF0.10.hdf5"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
-    model0_model_label         = "Mini-Millennium"
+    model0_model_label         = "Genesis"
     model0_color               = "r"
     model0_linestyle           = "-"
     model0_marker              = "x"
     model0_first_file          = 0  # The files read in will be [first_file, last_file]
     model0_last_file           = 0  # This is a closed interval.
     model0_simulation          = "Mini-Millennium"  # Sets the cosmology. Required for "sage_binary".
-    model0_hdf5_snapshot       = 63  # Snapshot we're plotting the HDF5 data at.
+    model0_hdf5_snapshot       = 131 # Snapshot we're plotting the HDF5 data at.
     model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
 
     # Then extend each of these lists for all the models that you want to plot.
@@ -263,7 +263,8 @@ if __name__ == "__main__":
         # your functions are in a different module or different function prefix, change it
         # here.
         # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals)`.
-        my_model.calculation_functions = generate_func_dict(plot_toggles, module_name="model",
+        my_model.calculation_functions = generate_func_dict(plot_toggles,
+                                                            module_name="analysis.model",
                                                             function_prefix="calc_")
 
         # Finally, before we calculate the properties, we need to decide how each property
@@ -311,7 +312,7 @@ if __name__ == "__main__":
 
     # Similar to the calculation functions, all of the plotting functions are in the
     # `plots.py` module and are labelled `plot_<toggle>`.
-    plot_dict = generate_func_dict(plot_toggles, module_name="plots",
+    plot_dict = generate_func_dict(plot_toggles, module_name="analysis.plots",
                                    function_prefix="plot_")
 
     # Now do the plotting.

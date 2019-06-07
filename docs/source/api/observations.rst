@@ -1,7 +1,7 @@
 observations module
 ===================
 
-.. automodule:: observations
+.. automodule:: analysis.observations
     :members:
     :undoc-members:
     :show-inheritance:

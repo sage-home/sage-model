@@ -21,7 +21,7 @@ from matplotlib import pyplot as plt
 from cycler import cycler
 import numpy as np
 
-import observations as obs
+import analysis.observations as obs
 
 
 def setup_matplotlib_options():

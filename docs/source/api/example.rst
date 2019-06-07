@@ -1,7 +1,7 @@
 example module
 ==============
 
-.. automodule:: example
+.. automodule:: analysis.example
     :members:
     :undoc-members:
     :show-inheritance:

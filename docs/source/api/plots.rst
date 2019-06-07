@@ -1,7 +1,7 @@
 plots module
 ============
 
-.. automodule:: plots
+.. automodule:: analysis.plots
     :members:
     :undoc-members:
     :show-inheritance:

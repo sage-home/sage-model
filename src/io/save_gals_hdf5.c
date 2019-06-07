@@ -33,7 +33,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params);
 
 #define MAX_ATTRIBUTE_LEN 10000
-#define NUM_GALS_PER_BUFFER 1000
+#define NUM_GALS_PER_BUFFER 100
 
 // HDF5 is a self-describing data format.  Each dataset will contain a number of attributes to
 // describe properties such as units or number of elements. These macros create attributes for a
@@ -166,6 +166,9 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 // The handles for all of these are stored in `save_info` so we can write later.
 int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_info, const struct params *run_params)
 {
+
+    fprintf(stderr, "Task %d is in initialize_hdf5_galaxy_files\n", run_params->ThisTask);
+
     hid_t prop, dataset_id;
     hid_t file_id, group_id, dataspace_id;
     char buffer[3*MAX_STRING_LEN];
@@ -246,7 +249,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             unit = field_units[field_idx];
             dtype = field_dtypes[field_idx];
 
-            fprintf(stderr, "Creating field %s with description %s and unit %s\n", name, description, unit);
+            //fprintf(stderr, "Creating field %s with description %s and unit %s\n", name, description, unit);
 
             prop = H5Pcreate(H5P_DATASET_CREATE);
             CHECK_STATUS_AND_RETURN_ON_FAIL(prop, (int32_t) prop,
@@ -283,7 +286,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
                                             "Failed to close the dataspace for output snapshot number %d.\n", snap_idx);
 
-            fprintf(stderr, "Created.\n");
+            //fprintf(stderr, "Created.\n");
         }
     }
 
@@ -780,7 +783,9 @@ int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_
                                        const int32_t original_treenr,
                                        const struct params *run_params)
 {
+
     int64_t gals_in_buffer = save_info->num_gals_in_buffer[output_snap_idx];
+    //fprintf(stderr, "Task %d, Snap %d, has %"PRId64" gals in buffer.\n", run_params->ThisTask, output_snap_idx, gals_in_buffer);
 
     save_info->buffer_output_gals[output_snap_idx].SnapNum[gals_in_buffer] = g->SnapNum;
 
