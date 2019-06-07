@@ -12,6 +12,11 @@ sage_analysis/plots/
 *.txt
 *.log
 *.out
+*.DS_Store
+
+# sage_analysis Package Stuff #
+*.egg-info
+*__pycache__*
 
 # Documentation with Sphinx #
 docs/build

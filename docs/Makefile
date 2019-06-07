@@ -14,7 +14,7 @@ help:
 .PHONY: help Makefile
 
 .PHONY: clean celna celan clena
-celna celan clena: clean
+lcean celna celan clena: clean
 clean:
 	rm -rf $(BUILDDIR)/*
 

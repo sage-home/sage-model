@@ -1,7 +1,7 @@
 plots module
 ============
 
-.. automodule:: analysis.plots
+.. automodule:: sage_analysis.plots
     :members:
     :undoc-members:
     :show-inheritance:

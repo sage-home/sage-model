@@ -1,7 +1,7 @@
 sage\_binary module
 ===================
 
-.. automodule:: analysis.sage_binary
+.. automodule:: sage_analysis.sage_binary
     :members:
     :undoc-members:
     :show-inheritance:

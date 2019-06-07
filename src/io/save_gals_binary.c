@@ -216,7 +216,7 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
     o->VelDisp = halos[g->HaloNr].VelDisp;
 
     o->ColdGas = g->ColdGas;
-    o->StellarMass = g->StellarMass;
+    o->StellarMass = g->StellarMass+0.1;
     o->BulgeMass = g->BulgeMass;
     o->HotGas = g->HotGas;
     o->EjectedMass = g->EjectedMass;

@@ -1,7 +1,7 @@
-analysis package
+sage_analysis package
 ================
 
-.. automodule:: analysis
+.. automodule:: sage_analysis
     :members:
     :undoc-members:
     :show-inheritance:
@@ -9,50 +9,50 @@ analysis package
 Submodules
 ----------
 
-analysis.history module
+sage_analysis.history module
 -----------------------
 
-.. automodule:: analysis.history
+.. automodule:: sage_analysis.history
     :members:
     :undoc-members:
     :show-inheritance:
 
-analysis.model module
+sage_analysis.model module
 ---------------------
 
-.. automodule:: analysis.model
+.. automodule:: sage_analysis.model
     :members:
     :undoc-members:
     :show-inheritance:
 
-analysis.observations module
+sage_analysis.observations module
 ----------------------------
 
-.. automodule:: analysis.observations
+.. automodule:: sage_analysis.observations
     :members:
     :undoc-members:
     :show-inheritance:
 
-analysis.plots module
+sage_analysis.plots module
 ---------------------
 
-.. automodule:: analysis.plots
+.. automodule:: sage_analysis.plots
     :members:
     :undoc-members:
     :show-inheritance:
 
-analysis.sage\_binary module
+sage_analysis.sage\_binary module
 ----------------------------
 
-.. automodule:: analysis.sage_binary
+.. automodule:: sage_analysis.sage_binary
     :members:
     :undoc-members:
     :show-inheritance:
 
-analysis.sage\_hdf5 module
+sage_analysis.sage\_hdf5 module
 --------------------------
 
-.. automodule:: analysis.sage_hdf5
+.. automodule:: sage_analysis.sage_hdf5
     :members:
     :undoc-members:
     :show-inheritance:

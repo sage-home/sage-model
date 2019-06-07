@@ -1,7 +1,7 @@
 observations module
 ===================
 
-.. automodule:: analysis.observations
+.. automodules:: sage_analysis.observations
     :members:
     :undoc-members:
     :show-inheritance:

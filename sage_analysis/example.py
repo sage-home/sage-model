@@ -48,6 +48,9 @@ import numpy as np
 old_error_settings = np.seterr()
 np.seterr(all="ignore")
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 
 def generate_func_dict(plot_toggles, module_name, function_prefix):
     """
@@ -151,7 +154,7 @@ if __name__ == "__main__":
     model0_dir_name            = "../output/millennium/"
     model0_file_name           = "model.hdf5"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
-    model0_model_label         = "Genesis"
+    model0_model_label         = "HDF5"
     model0_color               = "r"
     model0_linestyle           = "-"
     model0_marker              = "x"

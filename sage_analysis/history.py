@@ -22,14 +22,14 @@ details.
 Author: Jacob Seiler
 """
 
-import analysis.example
-import analysis.plots
+from sage_analysis.example import generate_func_dict
+import sage_analysis.plots
 
 # Import the subclasses that handle the different SAGE output formats.
-from analysis.sage_binary import SageBinaryModel
+from sage_analysis.sage_binary import SageBinaryModel
 
 try:
-    from analysis.sage_hdf5 import SageHdf5Model
+    from sage_analysis.sage_hdf5 import SageHdf5Model
 except ImportError:
     print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
           "this package.")
@@ -197,9 +197,8 @@ if __name__ == '__main__':
         # your functions are in a different module or different function prefix, change it
         # here.
         # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals)`.
-        my_model.calculation_functions = analysis.example.generate_func_dict(plot_toggles,
-                                                                             module_name="analysis.model",
-                                                                             function_prefix="calc_")
+        my_model.calculation_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.model",
+                                                            function_prefix="calc_")
 
         # Finally, before we calculate the properties, we need to decide how each property
         # is stored. Properties can be binned (e.g., how many galaxies with mass between 10^8.0
@@ -262,13 +261,13 @@ if __name__ == '__main__':
 
     # Similar to the calculation functions, all of the plotting functions are in the
     # `plots.py` module and are labelled `plot_<toggle>`.
-    plot_dict = analysis.example.generate_func_dict(plot_toggles, module_name="analysis.plots",
-                                                    function_prefix="plot_")
+    plot_dict = generate_func_dict(plot_toggles, module_name="sage_analysis.plots",
+                                   function_prefix="plot_")
 
     # Call a slightly different function for plotting the SMF because we're doing it at
     # multiple snapshots.
     try:
-        plot_dict["plot_SMF"] = analysis.plots.plot_temporal_SMF
+        plot_dict["plot_SMF"] = sage_analysis.plots.plot_temporal_SMF
     except KeyError:
         pass
 

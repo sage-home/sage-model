@@ -1,7 +1,7 @@
 model module
 ============
 
-.. automodule:: analysis.model
+.. automodule:: sage_analysis.model
     :members:
     :undoc-members:
     :show-inheritance:
