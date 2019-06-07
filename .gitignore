@@ -8,7 +8,7 @@ output/
 libsage.a
 *.ipynb_checkpoints
 *.dSYM
-analysis/plots/
+sage_analysis/plots/
 *.txt
 *.log
 *.out
