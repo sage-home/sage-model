@@ -142,7 +142,7 @@ class Model(object):
         """
         {``"sage_binary"``, ``"sage_binary"``}: The output format *SAGE* wrote in.
         A :py:class:`~Model` subclass (e.g., :py:class:`~sage_analysis.sage_binary.SageBinaryModel`
-        and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`). Should be written and
+        and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`) must be written and
         used for each :py:attr:`~sage_output_format` option. We refer to
         :doc:`../user/subclass` for more information about adding your own subclass to ingest
         data.
