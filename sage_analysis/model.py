@@ -50,49 +50,20 @@ else:
     pass
 
 
-class Model:
+class Model(object):
     """
-    Handles all the galaxy data (including calculated properties) for a SAGE model.
+    Handles all the galaxy data (including calculated properties) for a `SAGE` model.
 
-    We have only listed the attributes set by the ``model_dict`` dictionary passed into
-    the ``__init__`` method.  There are a large number of attributes dealing with all the
-    calculated data that we have excluded for brevity.  Refer to ``__init__`` for a full
-    list of these calculated property attributes.
+    Description
+    -----------
 
-    Attributes
-    ----------
+    The `sage_analysis` package is driven through the use of this `Model` class. It is
+    used to define the paths and parameters for each model that is being plotted.  In this
+    way, we can handle multiple different simulations trivially.
 
-    sage_output_format : {"sage_binary", "sage_hdf5"}
-        The output format that ``SAGE`` wrote in.
+    The ingestion of data is handled by subclasses (e.g., :class:`sage_binary.SageBinaryModel`
+    and :class:`sage_hdf5.SageHdf5Model`.
 
-    model_path : String
-        File path to the galaxy files.
-
-        Note: Does not include the file number.
-
-    output_path : String
-        Directory path to where the some plots will be saved.  This will only be used in
-        certain circumstances for Model specific plots.
-
-    IMF : {"Salpeter", "Chabrier"}
-        Specifies which IMF to use.
-
-    model_label : String
-        Label placed on the legend.
-
-    color, linestyle : Strings
-        Line color and style to be used in the plots.
-
-    marker : String
-        The marker used for scatter plots for this model.
-
-    first_file, last_file : Integer
-        Range (inclusive) of files that are read. Only required if ``sage_output_format``
-        isn't ``sage_hdf5``.
-
-    simulation : {"Mini-Millennium", "Millennium"}
-        Flags which simulation we are using. Only required if ``sage_output_format`` isn't
-        ``sage_hdf5``.
     """
 
     def __init__(self, model_dict, plot_toggles):

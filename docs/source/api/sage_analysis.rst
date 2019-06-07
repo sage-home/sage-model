@@ -41,7 +41,7 @@ sage_analysis.plots module
     :undoc-members:
     :show-inheritance:
 
-sage_analysis.sage\_binary module
+sage_analysis.sage_binary module
 ----------------------------
 
 .. automodule:: sage_analysis.sage_binary
@@ -49,7 +49,7 @@ sage_analysis.sage\_binary module
     :undoc-members:
     :show-inheritance:
 
-sage_analysis.sage\_hdf5 module
+sage_analysis.sage_hdf5 module
 --------------------------
 
 .. automodule:: sage_analysis.sage_hdf5
