@@ -26,6 +26,7 @@ to the model described in `Croton et al., 2006`_. The updated ``SAGE`` model is 
    :caption: User Documentation
 
    introduction
+   user/subclass
 
 .. _api-docs:
 

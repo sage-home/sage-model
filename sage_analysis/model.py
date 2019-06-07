@@ -52,18 +52,19 @@ else:
 
 class Model(object):
     """
-    Handles all the galaxy data (including calculated properties) for a `SAGE` model.
+    Handles all the galaxy data (including calculated properties) for a ``SAGE`` model.
 
     Description
     -----------
 
-    The `sage_analysis` package is driven through the use of this `Model` class. It is
+    The ``sage_analysis`` package is driven through the use of this ``Model`` class. It is
     used to define the paths and parameters for each model that is being plotted.  In this
     way, we can handle multiple different simulations trivially.
 
-    The ingestion of data is handled by subclasses (e.g., :class:`sage_binary.SageBinaryModel`
-    and :class:`sage_hdf5.SageHdf5Model`.
-
+    The ingestion of data is handled by subclasses (e.g., :py:class:`~sage_analysis.sage_binary.SageBinaryModel`
+    and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`).  We refer to
+    :doc:`../user/subclass` for more information about adding your own subclass to ingest
+    data.
     """
 
     def __init__(self, model_dict, plot_toggles):
@@ -135,6 +136,207 @@ class Model(object):
 
         self.bins = {}
         self.properties = {}
+
+    @property
+    def sage_output_format(self):
+        """
+        {``"sage_binary"``, ``"sage_binary"``}: The output format *SAGE* wrote in.
+        A :py:class:`~Model` subclass (e.g., :py:class:`~sage_analysis.sage_binary.SageBinaryModel`
+        and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`). Should be written and
+        used for each :py:attr:`~sage_output_format` option. We refer to
+        :doc:`../user/subclass` for more information about adding your own subclass to ingest
+        data.
+
+        """
+
+        return(self._sage_output_format)
+
+    @sage_output_format.setter
+    def sage_output_format(self, format):
+        self._sage_output_format = format
+
+    @property
+    def model_path(self):
+        """
+        string: Path to the output data. If :py:attr:`~sage_output_format` is
+        ``sage_binary``, files read must be labelled :py:attr:`~model_path`.XXX.
+        If :py:attr:`~sage_output_format` is ``sage_hdf5``, the file read will be
+        :py:attr:`~model_path` and the groups accessed will be Core_XXX. In both cases,
+        ``XXX`` represents the numbers in the range
+        [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
+
+        """
+
+        return(self._model_path)
+
+    @model_path.setter
+    def model_path(self, path):
+        self._model_path = path
+
+    @property
+    def output_path(self):
+        """
+        string: Path to where some plots will be saved. Used for
+        :py:meth:`!sage_analysis.plots.plot_spatial_3d`.
+        """
+
+        return(self._output_path)
+
+    @output_path.setter
+    def output_path(self, path):
+        self._output_path = path
+
+    @property
+    def IMF(self):
+        """
+        {``"Chabrier"``, ``"Salpeter"``}: The initial mass function.
+        """
+
+        return(self._IMF)
+
+    @IMF.setter
+    def IMF(self, IMF):
+        # Only allow Chabrier or Salpeter IMF.
+        allowed_IMF = ["Chabrier", "Salpeter"]
+        if IMF not in allowed_IMF:
+            raise ValueErorr("Value of IMF selected ({0}) is not allowed. Only {1} are "
+                             "allowed.".format(IMF, allowed_IMF))
+        self._IMF = IMF
+
+    @property
+    def model_label(self):
+        """
+        string: Label that will go on axis legends for this :py:class:`~Model`.
+        """
+
+        return(self._model_label)
+
+    @model_label.setter
+    def model_label(self, label):
+        self._model_label = label
+
+    @property
+    def color(self):
+        """
+        string: Color of the markers and points on plots.
+        """
+
+        return(self._color)
+
+    @color.setter
+    def color(self, color):
+        self._color = color
+
+    @property
+    def linestyle(self):
+        """
+        string: Linestyle for plots.
+        """
+
+        return(self._linestyle)
+
+    @linestyle.setter
+    def linestyle(self, linestyle):
+        self._linestyle = linestyle
+
+    @property
+    def marker(self):
+        """
+        string: Marker for plots.
+        """
+
+        return(self._marker)
+
+    @marker.setter
+    def marker(self, marker):
+        self._marker = marker
+
+    @property
+    def first_file(self):
+        """
+        int: The first *SAGE* sub-file to be read. If :py:attr:`~sage_output_format` is
+        ``sage_binary``, files read must be labelled :py:attr:`~model_path`.XXX.
+        If :py:attr:`~sage_output_format` is ``sage_hdf5``, the file read will be
+        :py:attr:`~model_path` and the groups accessed will be Core_XXX. In both cases,
+        ``XXX`` represents the numbers in the range
+        [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
+
+        """
+
+        return(self._first_file)
+
+    @first_file.setter
+    def first_file(self, file_num):
+        self._first_file = file_num
+
+    @property
+    def last_file(self):
+        """
+        int: The last *SAGE* sub-file to be read. If :py:attr:`~sage_output_format` is
+        ``sage_binary``, files read must be labelled :py:attr:`~model_path`.XXX.
+        If :py:attr:`~sage_output_format` is ``sage_hdf5``, the file read will be
+        :py:attr:`~model_path` and the groups accessed will be Core_XXX. In both cases,
+        ``XXX`` represents the numbers in the range
+        [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
+
+        """
+
+        return(self._last_file)
+
+    @last_file.setter
+    def last_file(self, file_num):
+        self._last_file = file_num
+
+    @property
+    def simulation(self):
+        """
+        {``"Mini-Millennium"``, ``"Millennium"``, ``"Genesis-L500-N2160"``}: Specifies the
+        cosmoloogical values (Omega, box size, etc) for this :py:class:`~Model`.
+        Only required if :py:attr:`~sage_output_format` is ``sage_binary``.
+        Otherwise, if :py:attr:`sage_output_format` is ``sage_hdf5``, the
+        parameters are read from the ``["Header"]["Simulation"]`` attributes.
+
+        """
+
+        return(self._simulation)
+
+    @simulation.setter
+    def simulation(self, simulation):
+        self._simulation = simulation
+
+    @property
+    def hdf5_snapshot(self):
+        """
+        int: Specifies the snapshot to be read. Only required if
+        :py:attr:`~sage_output_format` is ``sage_hdf5``. Otherwise, if
+        :py:attr:`sage_output_format` is ``sage_hdf5``, the redshift will be specified in
+        the :py:attr:`model_path` attribute.
+
+        """
+
+        return(self._hdf5_snapshot)
+
+    @hdf5_snapshot.setter
+    def hdf5_snapshot(self, hdf5_snapshot):
+        self._hdf5_snapshot = hdf5_snapshot
+
+    @property
+    def num_tree_files_used(self):
+        """
+        int: The number of tree files used by *SAGE* to generate this :py:class:`~Model`
+        output. This should be the ``last_file - first_file + 1`` range specified by the
+        *SAGE* parameter file. Only required if :py:attr:`~sage_output_format` is ``sage_binary``.
+        Otherwise, if :py:attr:`sage_output_format` is ``sage_hdf5``, the
+        value is read from are read from the
+        ``["Header"]["Simulation"].attr["frac_volume_processed"]`` attribute for each HDF5 core.
+
+        """
+
+        return(self._num_tree_files_used)
+
+    @num_tree_files_used.setter
+    def num_tree_files_used(self, num_files):
+        self._num_tree_files_used = num_files
 
 
     def init_binned_properties(self, bin_low, bin_high, bin_width, bin_name,
@@ -294,9 +496,7 @@ class Model(object):
             The galaxies for this file.
 
         Returns
-            property_names = stellar_property_names + halo_property_names +
-            component_names
-            my_model.-------
+        -------
 
         None.
 

@@ -11,7 +11,6 @@ Author: Jacob Seiler.
 from sage_analysis.model import Model
 
 import numpy as np
-
 import os
 
 class SageBinaryModel(Model):
@@ -228,10 +227,12 @@ class SageBinaryModel(Model):
 
         if plot_galaxies:
 
+            from sage_analysis.plots import plot_spatial_3d
+
             # Show the distribution of galaxies in 3D.
             pos = gals["Pos"][:]
             output_file = "./galaxies_{0}{1}".format(file_num, self.output_format)
-            plots.plot_spatial_3d(pos, output_file, self.box_size)
+            sage_analysis.plots.plot_spatial_3d(pos, output_file, self.box_size)
 
         # For the HDF5 file, some data sets have dimensions Nx1 rather than Nx3
         # (e.g., Position). To ensure the galaxy data format is identical to the binary

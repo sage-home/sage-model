@@ -10,6 +10,7 @@ Author: Jacob Seiler.
 
 # Import the base class.
 from sage_analysis.model import Model
+from sage_analysis.plots import plot_spatial_3d
 
 import numpy as np
 import h5py
@@ -84,9 +85,6 @@ class SageHdf5Model(Model):
 
             processed_this_core = f[core_key]["Header"]["Runtime"].attrs["frac_volume_processed"]
             volume_processed += processed_this_core
-
-            print(f"Core {core_num} processed {processed_this_core}. Total is "
-                  f"{volume_processed}")
 
         # Scale the volume by the number of files that we will read. Used to ensure
         # properties scaled by volume (e.g., SMF) gives sensible results.
@@ -164,7 +162,7 @@ class SageHdf5Model(Model):
 
         if plot_galaxies:
             # Show the distribution of galaxies in 3D.
-            import plots
+            from sage_analysis.plots import plot_spatial_3d
 
             pos = np.empty((len(gals["Posx"]), 3), dtype=np.float32)
 
@@ -174,7 +172,7 @@ class SageHdf5Model(Model):
                 pos[:, dim_num] = gals[key][:]
 
             output_file = "./galaxies_{0}{1}".format(core_num, self.plot_output_format)
-            plots.plot_spatial_3d(pos, output_file, self.box_size)
+            sage_analysis.plots.plot_spatial_3d(pos, output_file, self.box_size)
 
         return gals
 

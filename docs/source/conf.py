@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx'
 ]
 napoleon_use_param = False
 

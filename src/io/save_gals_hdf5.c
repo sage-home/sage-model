@@ -33,7 +33,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params);
 
 #define MAX_ATTRIBUTE_LEN 10000
-#define NUM_GALS_PER_BUFFER 100
+#define NUM_GALS_PER_BUFFER 1000
 
 // HDF5 is a self-describing data format.  Each dataset will contain a number of attributes to
 // describe properties such as units or number of elements. These macros create attributes for a

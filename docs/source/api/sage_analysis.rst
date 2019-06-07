@@ -1,5 +1,5 @@
 sage_analysis package
-================
+=====================
 
 .. automodule:: sage_analysis
     :members:
@@ -10,7 +10,7 @@ Submodules
 ----------
 
 sage_analysis.history module
------------------------
+----------------------------
 
 .. automodule:: sage_analysis.history
     :members:
@@ -18,7 +18,7 @@ sage_analysis.history module
     :show-inheritance:
 
 sage_analysis.model module
----------------------
+--------------------------
 
 .. automodule:: sage_analysis.model
     :members:
@@ -26,7 +26,7 @@ sage_analysis.model module
     :show-inheritance:
 
 sage_analysis.observations module
-----------------------------
+---------------------------------
 
 .. automodule:: sage_analysis.observations
     :members:
@@ -34,7 +34,7 @@ sage_analysis.observations module
     :show-inheritance:
 
 sage_analysis.plots module
----------------------
+--------------------------
 
 .. automodule:: sage_analysis.plots
     :members:
@@ -42,7 +42,7 @@ sage_analysis.plots module
     :show-inheritance:
 
 sage_analysis.sage_binary module
-----------------------------
+--------------------------------
 
 .. automodule:: sage_analysis.sage_binary
     :members:
@@ -50,7 +50,7 @@ sage_analysis.sage_binary module
     :show-inheritance:
 
 sage_analysis.sage_hdf5 module
---------------------------
+------------------------------
 
 .. automodule:: sage_analysis.sage_hdf5
     :members:
