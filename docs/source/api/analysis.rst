@@ -9,14 +9,6 @@ analysis package
 Submodules
 ----------
 
-analysis.example module
------------------------
-
-.. automodule:: analysis.example
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 analysis.history module
 -----------------------
 

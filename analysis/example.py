@@ -57,8 +57,8 @@ def generate_func_dict(plot_toggles, module_name, function_prefix):
 
     Functions are required to be named ``<module_prefix><function_prefix><plot_toggle_key>``
     For example, the default calculation function are kept in the ``model.py`` module and
-    are named ``calc_<toggle>``.  E.g., ``model.calc_SMF()``, ``model.calc_BTF()``,
-    ``model.calc_sSFR()`` etc.
+    are named ``calc_<toggle>``.  E.g., ``analysis.model.calc_SMF()``,
+    ``analysis.model.calc_BTF()``, ``analysis.model.calc_sSFR()`` etc.
 
     Parameters
     ----------
@@ -77,13 +77,13 @@ def generate_func_dict(plot_toggles, module_name, function_prefix):
                         "sSFR" : 1}
 
     module_prefix : string
-        Name of the module where the functions are located. Must include the trailing full
-        stop.
+        Name of the module where the functions are located. If the functions are located
+        in this module, pass an empty string "".
 
         Example
         -------
 
-        module_prefix = "model."
+        module_prefix = "analysis.model"
 
     function_prefix : string
         Prefix that is added to the start of each function.
@@ -93,8 +93,6 @@ def generate_func_dict(plot_toggles, module_name, function_prefix):
 
         function_prefix = "calc_"
     """
-
-    # Do a safer version of eval.
 
     # If the functions are defined in this module, then `module_name` is empty. Need to
     # treat this differently.
@@ -110,7 +108,8 @@ def generate_func_dict(plot_toggles, module_name, function_prefix):
         try:
             module = globals()[module_name]
         except KeyError:
-            msg = "Module {0} has not been imported.".format(module_name)
+            msg = "Module {0} has not been imported.\nPerhaps you need to create an empty " \
+                  "`__init__.py` file to ensure your package can be imported.".format(module_name)
             raise KeyError(msg)
 
     # Only populate those methods that have been marked in the `plot_toggles`
@@ -149,8 +148,8 @@ if __name__ == "__main__":
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
     model0_sage_output_format  = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
-    model0_dir_name            = "/fred/oz070/jseiler/astro3d/SAGE_output/L500_N2160/"
-    model0_file_name           = "SF0.10.hdf5"
+    model0_dir_name            = "../output/millennium/"
+    model0_file_name           = "model.hdf5"
     model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
     model0_model_label         = "Genesis"
     model0_color               = "r"
@@ -159,7 +158,7 @@ if __name__ == "__main__":
     model0_first_file          = 0  # The files read in will be [first_file, last_file]
     model0_last_file           = 0  # This is a closed interval.
     model0_simulation          = "Mini-Millennium"  # Sets the cosmology. Required for "sage_binary".
-    model0_hdf5_snapshot       = 131 # Snapshot we're plotting the HDF5 data at.
+    model0_hdf5_snapshot       = 63 # Snapshot we're plotting the HDF5 data at.
     model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
 
     # Then extend each of these lists for all the models that you want to plot.
