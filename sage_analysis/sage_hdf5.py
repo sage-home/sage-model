@@ -10,7 +10,6 @@ Author: Jacob Seiler.
 
 # Import the base class.
 from sage_analysis.model import Model
-from sage_analysis.plots import plot_spatial_3d
 
 import numpy as np
 import h5py
@@ -172,7 +171,7 @@ class SageHdf5Model(Model):
                 pos[:, dim_num] = gals[key][:]
 
             output_file = "./galaxies_{0}{1}".format(core_num, self.plot_output_format)
-            sage_analysis.plots.plot_spatial_3d(pos, output_file, self.box_size)
+            plot_spatial_3d(pos, output_file, self.box_size)
 
         return gals
 

@@ -152,8 +152,8 @@ class Model(object):
         return(self._sage_output_format)
 
     @sage_output_format.setter
-    def sage_output_format(self, format):
-        self._sage_output_format = format
+    def sage_output_format(self, output_format):
+        self._sage_output_format = output_format
 
     @property
     def model_path(self):
