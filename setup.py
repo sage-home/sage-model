@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 """
-Sage-Analysis Setup
+Sage_Analysis Setup
 ==========
-Contains the setup script required for installing the *Sage-Analysis* package.
+Contains the setup script required for installing the *Sage_Analysis* package.
 This can be ran directly by using::
 
     pip install .
@@ -32,17 +32,17 @@ with open('requirements.txt', 'r') as f:
 # This is done in this way to make sure it is stored in a single place and
 # does not require the package to be installed already.
 version = None
-with open('sage-analysis/__version__.py', 'r') as f:
+with open('sage_analysis/__version__.py', 'r') as f:
     exec(f.read())
 
 # Setup function declaration
 # See https://setuptools.readthedocs.io/en/latest/setuptools.html
-setup(name='sage-analysis',      # Distribution name of package (e.g., used on PyPI)
+setup(name='sage_analysis',      # Distribution name of package (e.g., used on PyPI)
       version=version,      # Version of this package (see PEP 440)
       author="Jacob Seiler",
       author_email="jseiler@swin.edu.au",
       maintainer="jseiler",   # PyPI username of maintainer(s)
-      description=("Sage-Analysis: A Python package for reading SAGE data."),
+      description=("Sage_Analysis: A Python package for reading SAGE data."),
       long_description=long_description,        # Use the README description
       url="https://github.com/sage-home/sage-model",
       license='MIT',        # License of this package
@@ -67,7 +67,7 @@ setup(name='sage-analysis',      # Distribution name of package (e.g., used on P
       python_requires='!=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4',
       packages=find_packages(),
       # Registered namespace vs. local directory
-      package_dir={'analysis': "analysis"},
+      package_dir={'sage_analysis': "sage_analysis"},
       include_package_data=True,        # Include non-Python files
       install_requires=requirements,    # Parse in list of requirements
       zip_safe=False,                   # Do not zip the installed package
