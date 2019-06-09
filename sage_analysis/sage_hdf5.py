@@ -18,7 +18,7 @@ import h5py
 sage_data_version = "1.00"
 ## DO NOT TOUCH ##
 
-class SageHdf5Model(Model):
+class SageHdf5Data(Model):
     """
     Subclass of the ``Model`` class from the ``model.py`` module.  It contains methods
     specifically for reading in the ``sage_hdf5`` output from ``SAGE``.
@@ -31,36 +31,32 @@ class SageHdf5Model(Model):
         ``model.py`` after all galaxies have been read and their properties calculated.
     """
 
-    def __init__(self, model_dict, *args, **kwargs):
-        """
-        Initializes the super ``Model`` class and opens the HDF5 file.
-        """
+    def __init__(self, model):
 
-        Model.__init__(self, model_dict, *args, **kwargs)
-        self.hdf5_file = h5py.File(self.model_path, "r")
+        model.hdf5_file = h5py.File(model.model_path, "r")
 
         # Due to how attributes are created in C, they will need to be decoded to get cast
         # to a string.
-        self.sage_version = self.hdf5_file["Header"]["Misc"].attrs["sage_version"].decode("ascii")
-        self.sage_data_version = self.hdf5_file["Header"]["Misc"].attrs["sage_data_version"].decode("ascii")
+        model.sage_version = model.hdf5_file["Header"]["Misc"].attrs["sage_version"].decode("ascii")
+        model.sage_data_version = model.hdf5_file["Header"]["Misc"].attrs["sage_data_version"].decode("ascii")
 
         # Check that this module is current for the SAGE data version.
-        if self.sage_data_version != sage_data_version:
+        if model.sage_data_version != sage_data_version:
             msg = "The 'sage_hdf5.py' module was written to be compatible with " \
                   "sage_data_version {0}.  Your version of SAGE HDF5 has data version " \
                   "{1}. Please update your version of SAGE or submit an issue at " \
                   "https://github.com/sage-home/sage-model/issues".format(sage_data_version, \
-                  self.sage_data_version)
+                  model.sage_data_version)
             raise ValueError(msg)
 
         # For the HDF5 file, "first_file" and "last_file" correspond to the "Core_%d"
         # groups.
-        self.first_file = 0
-        self.last_file = self.hdf5_file["Header"]["Misc"].attrs["num_cores"] - 1
-        self.num_files = self.hdf5_file["Header"]["Misc"].attrs["num_cores"]
+        model.first_file = 0
+        model.last_file = model.hdf5_file["Header"]["Misc"].attrs["num_cores"] - 1
+        model.num_files = model.hdf5_file["Header"]["Misc"].attrs["num_cores"]
 
 
-    def set_cosmology(self):
+    def set_cosmology(self, model):
         """
         Sets the relevant cosmological values, size of the simulation box and
         number of galaxy files. The ``hubble_h``, ``box_size``, ``total_num_files``
@@ -69,15 +65,15 @@ class SageHdf5Model(Model):
         ..note :: ``box_size`` is in units of Mpc/h.
         """
 
-        f = self.hdf5_file
+        f = model.hdf5_file
 
-        self.hubble_h = f["Header"]["Simulation"].attrs["hubble_h"]
-        self.box_size = f["Header"]["Simulation"].attrs["box_size"]
+        model.hubble_h = f["Header"]["Simulation"].attrs["hubble_h"]
+        model.box_size = f["Header"]["Simulation"].attrs["box_size"]
 
         # Each core may have processed a different fraction of the volume. Hence find out
         # total volume processed.
         volume_processed = 0.0
-        for core_num in range(self.first_file, self.last_file + 1):
+        for core_num in range(model.first_file, model.last_file + 1):
             core_key = "Core_{0}".format(core_num)
 
             processed_this_core = f[core_key]["Header"]["Runtime"].attrs["frac_volume_processed"]
@@ -85,7 +81,7 @@ class SageHdf5Model(Model):
 
         # Scale the volume by the number of files that we will read. Used to ensure
         # properties scaled by volume (e.g., SMF) gives sensible results.
-        self.volume = pow(self.box_size, 3) * volume_processed
+        model.volume = pow(model.box_size, 3) * volume_processed
 
 
     def determine_num_gals(self):

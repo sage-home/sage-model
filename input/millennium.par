@@ -2,8 +2,8 @@
 %----- SAGE output file information -------
 %------------------------------------------
 
-FileNameGalaxies       model
-OutputDir              output/millennium/
+FileNameGalaxies  model
+OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
 
 FirstFile         0
 LastFile          7

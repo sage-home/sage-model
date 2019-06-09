@@ -33,10 +33,10 @@ import sage_analysis.model
 import sage_analysis.plots
 
 # Import the subclasses that handle the different SAGE output formats.
-from sage_analysis.sage_binary import SageBinaryModel
+from sage_analysis.sage_binary import SageBinaryData
 
 try:
-    from sage_analysis.sage_hdf5 import SageHdf5Model
+    from sage_analysis.sage_hdf5 import SageHdf5Data
 except ImportError:
     print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
           "this package.")
@@ -150,35 +150,17 @@ if __name__ == "__main__":
     # specified if using binary output. HDF5 will automatically detect these.
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
-    model0_sage_output_format  = "sage_hdf5"  # Format SAGE output in. "sage_binary" or "sage_hdf5".
-    model0_dir_name            = "../output/millennium/"
-    model0_file_name           = "model.hdf5"
-    model0_IMF                 = "Chabrier"  # Chabrier or Salpeter.
-    model0_model_label         = "HDF5"
-    model0_color               = "r"
-    model0_linestyle           = "-"
-    model0_marker              = "x"
-    model0_first_file          = 0  # The files read in will be [first_file, last_file]
-    model0_last_file           = 0  # This is a closed interval.
-    model0_simulation          = "Mini-Millennium"  # Sets the cosmology. Required for "sage_binary".
-    model0_hdf5_snapshot       = 63 # Snapshot we're plotting the HDF5 data at.
-    model0_num_tree_files_used = 8  # Number of tree files processed by SAGE to produce this output.
+    model0_snapshot = 63
+    model0_IMF = "Chabrier"  # Chabrier or Salpeter.
+    model0_model_label = "Mini-Millennium"  # Goes on the axis.
+    model0_sage_file = "../input/millennium.par"
 
     # Then extend each of these lists for all the models that you want to plot.
     # E.g., 'dir_names = [model0_dir_name, model1_dir_name, ..., modelN_dir_name]
-    sage_output_formats = [model0_sage_output_format]
-    dir_names           = [model0_dir_name]
-    file_names          = [model0_file_name]
-    IMFs                = [model0_IMF]
-    model_labels        = [model0_model_label]
-    colors              = [model0_color]
-    linestyles          = [model0_linestyle]
-    markers             = [model0_marker]
-    first_files         = [model0_first_file]
-    last_files          = [model0_last_file]
-    simulations         = [model0_simulation]
-    hdf5_snapshots      = [model0_hdf5_snapshot]
-    num_tree_files_used = [model0_num_tree_files_used]
+    IMFs = [model0_IMF]
+    labels = [model0_model_label]
+    snapshots = [model0_snapshot]
+    sage_files = [model0_sage_file]
 
     # A couple of extra variables...
     plot_output_format    = ".png"
@@ -203,24 +185,6 @@ if __name__ == "__main__":
     ### IF NOT ADDING EXTRA PROPERTIES OR PLOTS ###
     ############## DO NOT TOUCH BELOW #############
 
-    # Everything has been specified, now initialize.
-    model_paths = []
-    output_paths = []
-
-    # Determine paths for each model.
-    for dir_name, file_name in zip(dir_names, file_names):
-
-        model_path = "{0}/{1}".format(dir_name, file_name)
-        model_paths.append(model_path)
-
-        # These are model specific. Used for rare circumstances and debugging.
-        output_path = dir_name + "plots/"
-
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-
-        output_paths.append(output_path)
-
     # Generate directory for output plots.
     if not os.path.exists(plot_output_path):
         os.makedirs(plot_output_path)
@@ -228,20 +192,11 @@ if __name__ == "__main__":
     # Generate a dictionary for each model containing the required information.
     # We store these in `model_dicts` which will be a list of dictionaries.
     model_dicts = []
-    for model_num, _ in enumerate(model_paths):
-        this_model_dict = { "sage_output_format"  : sage_output_formats[model_num],
-                            "model_path"          : model_paths[model_num],
-                            "output_path"         : output_paths[model_num],
-                            "IMF"                 : IMFs[model_num],
-                            "model_label"         : model_labels[model_num],
-                            "color"               : colors[model_num],
-                            "linestyle"           : linestyles[model_num],
-                            "marker"              : markers[model_num],
-                            "first_file"          : first_files[model_num],
-                            "last_file"           : last_files[model_num],
-                            "simulation"          : simulations[model_num],
-                            "hdf5_snapshot"       : hdf5_snapshots[model_num],
-                            "num_tree_files_used" : num_tree_files_used[model_num]}
+    for IMF, model_label, snapshot, sage_file in zip(IMFs, labels, snapshots, sage_files):
+        this_model_dict = {"IMF": IMF,
+                           "model_label": model_label,
+                           "snapshot": snapshot,
+                           "sage_file": sage_file}
 
         model_dicts.append(this_model_dict)
 
@@ -249,18 +204,15 @@ if __name__ == "__main__":
     models = []
     for model_dict in model_dicts:
 
-        # Initialize a Model class and set all the paths.
-        # Note: Use the correct subclass depending upon the format SAGE wrote in.
-        if model_dict["sage_output_format"] == "sage_binary":
-            my_model = SageBinaryModel(model_dict)
-        elif model_dict["sage_output_format"] == "sage_hdf5":
-            my_model = SageHdf5Model(model_dict)
-        else:
-            msg = "Invalid value for `sage_output_format`. Value was " \
-                  "{0}".format(model_dict["sage_output_format"])
-            raise ValueError(msg)
+        my_model = sage_analysis.model.Model(model_dict)
 
-        my_model.set_cosmology()
+        if my_model.sage_output_format == "sage_binary":
+            my_model.data_subclass = SageBinaryData(my_model)
+        elif my_model.sage_output_format == "sage_hdf5":
+            my_model.data_subclass = SageHdf5Data(my_model)
+
+        my_model.data_subclass.set_cosmology(my_model)
+        exit()
 
         # Some properties require the stellar mass function to normalize their values. For
         # these, the SMF plot toggle is explicitly required.

@@ -13,7 +13,7 @@ from sage_analysis.model import Model
 import numpy as np
 import os
 
-class SageBinaryModel(Model):
+class SageBinaryData():
     """
     Subclass of the ``Model`` class from the ``model.py`` module.  It contains methods
     specifically for reading in the ``sage_binary`` output from ``SAGE``.
@@ -31,7 +31,6 @@ class SageBinaryModel(Model):
         binary file contract.
         """
 
-        Model.__init__(self, model_dict, *args, **kwargs)
         self.get_galaxy_struct()
 
 

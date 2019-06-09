@@ -75,25 +75,38 @@ class Model(object):
         Parameters
         ----------
 
-        model_dict: dictionary
-            Dictionary containing the parameter values for each ``Model``
-            instance. Refer to the class-level documentation for a full
-            description of this dictionary or to ``model_dict`` in the ``__main__`` call
-            of the ``allresults.py`` module.
+        model_dict: dict [string, variable]
+            Dictionary containing parameter values for this class instance that can't be
+            read from the **SAGE** parameter file. These are :py:attr:`~snapshot`,
+            :py:attr:`~IMF`, :py:attr:`~model_label` and :py:attr:`~sage_file`.
 
         sample_size: int, optional
             Specifies the length of the :py:attr:`~properties` attributes stored as 1-dimensional
             :obj:`~numpy.ndarray`.  These :py:attr:`~properties` are initialized using
             :py:meth:`~init_scatter_properties`.
 
-        Returns
-        -------
+        Notes
+        -----
 
-        None.
+        Either ``model_dict`` OR ``sage_file`` must be not ``None``.  If both are
+        specificed, a warning will be issued and the ``sage_file`` read and used.
         """
 
-        # Set the attributes we were passed.
+        # Need the snapshot to specify the name of the file.
+        self._snapshot = model_dict["snapshot"]
+
+        # Use the SAGE parameter file to generate a bunch of attributes.
+        sage_dict = self.read_sage_file(model_dict["sage_file"])
+        model_dict.update(sage_dict)
+
+        # Set the attributes.
         for key in model_dict:
+
+            # We've already set the snapshot.
+            if key == "snapshot":
+                continue
+
+            print(key)
             setattr(self, key, model_dict[key])
 
         self.num_files = 0
@@ -115,6 +128,14 @@ class Model(object):
 
         self._bins = {}
         self._properties = {}
+
+    @property
+    def snapshot(self):
+        """
+        int: Snapshot being read in and processed.
+        """
+
+        return(self._snapshot)
 
     @property
     def sage_output_format(self):
@@ -341,6 +362,98 @@ class Model(object):
         """
 
         return(self._sample_size)
+
+
+    def read_sage_file(self, sage_file_path):
+        """
+        Reads the **SAGE** parameter file values.
+
+        Parameters
+        ----------
+
+        sage_file_path: String
+            Path to the **SAGE** parameter file.
+
+        Returns
+        ---------
+
+        model_dict: dict [string, variable], optional
+            Dictionary containing the parameter values for this class instance. Attributes
+            of the class are set with name defined by the key with corresponding values.
+
+        Errors
+        ---------
+
+        FileNotFoundError
+            Raised if the specified **SAGE** parameter file is not found.
+        """
+
+        SAGE_fields = ["FileNameGalaxies", "OutputDir",
+                       "FirstFile", "LastFile", "OutputFormat", "NumSimulationTreeFiles",
+                       "FileWithSnapList"]
+        SAGE_dict = {}
+
+        comment_characters = [";", "%", "-"]
+
+        try:
+            with open (sage_file_path, "r") as SAGE_file:
+                data = SAGE_file.readlines()
+
+                # Each line in the parameter file is of the form...
+                # parameter_name       parameter_value.
+                for line in range(len(data)):
+
+                    # Remove surrounding whitespace from the line.
+                    stripped = data[line].strip()
+
+                    # May have been an empty line.
+                    try:
+                        first_char = stripped[0]
+                    except IndexError:
+                        continue
+
+                    # Check for comment.
+                    if first_char in comment_characters:
+                        continue
+
+                    # Split into [name, value] list.
+                    split = stripped.split()
+                    if split[0] in SAGE_fields:
+
+                        SAGE_dict[split[0]] = split[1]
+
+        except FileNotFoundError:
+            raise FileNotFoundError("Could not file SAGE ini file {0}".format(fname))
+
+        # Now we have all the fields, rebuild the dictionary to be exactly what we need for
+        # initialising the model.
+        model_dict = {}
+
+        # If the output format was 'sage_binary', need to use the redshift. If the output
+        # format was 'sage_hdf5', then we just append '.hdf5'.
+        if SAGE_dict["OutputFormat"] == "sage_binary":
+
+            alist = np.loadtxt(SAGE_dict["FileWithSnapList"])
+            redshift = 1.0/alist[self.snapshot] - 1.0
+
+            output_tag = "_z{0:.3f}".format(redshift)
+
+        elif SAGE_dict["OutputFormat"] == "sage_hdf5":
+
+            output_tag = ".hdf5"
+
+        model_path = "{0}/{1}{2}".format(SAGE_dict["OutputDir"],
+                                         SAGE_dict["FileNameGalaxies"], output_tag)
+        model_dict["model_path"] = model_path
+
+        model_dict["sage_output_format"] = SAGE_dict["OutputFormat"]
+        model_dict["output_path"] = "{0}/plots/".format(SAGE_dict["OutputDir"])
+        model_dict["first_file"] = int(SAGE_dict["FirstFile"])
+        model_dict["last_file"] = int(SAGE_dict["LastFile"])
+        model_dict["num_tree_files_used"] = int(model_dict["last_file"]) - \
+                                            int(model_dict["first_file"]) + 1
+
+        return model_dict
 
 
     def init_binned_properties(self, bin_low, bin_high, bin_width, bin_name,
