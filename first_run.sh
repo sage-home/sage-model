@@ -7,8 +7,9 @@ echo ""
 
 # We're going to execute things assuming we're in the root directory.
 # Hence let's first ensure that we're actually there.
-current_dir=${PWD##*/}  # This is the current directory without the base-name.
-if [[ $current_dir != "sage-model" ]]; then
+parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+current_dir_end=${PWD##*/}  # This is the current directory without the base-name.
+if [[ $current_dir_end != "sage-model" ]]; then
    echo "This setup script should be run from inside the 'sage-model' directory."
    echo "Please 'cd' there first and execute again."
    exit 1
@@ -53,6 +54,17 @@ if [ ! -f trees_063.7 ]; then
 else
     echo "Mini-Millennium trees already present in 'input/millennium/trees'."
 fi
+
+# Now to properly do the plotting, we require the OutputDir parameter in the SAGE parameter file to be an absolute path.
+echo "Appending the 'OutputDir' path in the SAGE parameter file with your current directory '${parent_path}'"
+echo ""
+
+# Move back to the directoy with the input file.
+cd ../..
+
+# Generate the new name and replace.
+new_OutputDir='OutputDir   '"$parent_path"'/output/millennium/'
+sed -Ei "s|^(OutputDir[[:blank:]]*).*|$new_OutputDir|g" millennium.par
 
 echo "SAGE should be compiled with the 'make' command."
 echo "Once compiled, it can be ran by executing './sage input/millennium.par'"
