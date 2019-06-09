@@ -6,7 +6,6 @@ Author: Jacob Seiler
 """
 
 import numpy as np
-import matplotlib
 
 
 def plot_smf_data(ax, hubble_h, imf):
@@ -212,7 +211,7 @@ def plot_bmf_data(ax, hubble_h, imf):
         print("plot_bmf_data() called with an IMF value of {0}.  Only Salpeter or "
               "Chabrier allowed.".format(imf))
 
-    ax.plot(np.log10(10.0**M /0.7 /1.8), yval, 'g--', lw=1.5,
+    ax.plot(mass_shift, yval, 'g--', lw=1.5,
             label='Bell et al. 2003')
 
     return ax

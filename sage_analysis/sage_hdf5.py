@@ -14,8 +14,6 @@ from sage_analysis.model import Model
 import numpy as np
 import h5py
 
-import os
-
 ## DO NOT TOUCH ##
 sage_data_version = "1.00"
 ## DO NOT TOUCH ##

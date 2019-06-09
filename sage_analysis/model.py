@@ -353,7 +353,7 @@ class Model(object):
         :py:attr:`~bins` can be accessed via ``Model.bins["bin_name"]`` and are
         initialized as :obj:`~numpy.ndarray`. :py:attr:`~properties` can be accessed via
         ``Model.properties["property_name"]`` and are initialized using
-        :obj:`~numpy.zeros`.
+        :obj:`numpy.zeros`.
 
         Parameters
         ----------
@@ -508,21 +508,18 @@ class Model(object):
             this dictionary are called on the galaxies. The function signature is required
             to be ``func(Model, gals)``
 
-        gals: exact format given by the :py:class:`~Model` subclass. If
-              :py:attr:`~sage_output_format`: is
-              :py:class:`~sage_analysis.sage_binary.SageBinaryModel`, ``gals`` is a
-              ``numpy`` structured array. If :py:attr:`~sage_output_format`: is
-              :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`, ``gals`` is an open HDF5
-              group. We refer to :doc:`../user/subclass` for more information about
-              adding your own subclass to ingest data.
+        gals: exact format given by the :py:class:`~Model` subclass.
             The galaxies for this file.
 
         Notes
         -----
 
-        The properties are calculated are dictated by the functions in the
-        ``calculation_functions`` dictionary.  This dictionary contains a function name (key)
-        and the corresponding function to be called.
+        If :py:attr:`~sage_output_format`: is
+        :py:class:`~sage_analysis.sage_binary.SageBinaryModel`, ``gals`` is a ``numpy``
+        structured array. If :py:attr:`~sage_output_format`: is
+        :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`, ``gals`` is an open HDF5
+        group. We refer to :doc:`../user/subclass` for more information about adding your
+        own subclass to ingest data.
         """
 
         # When we create some plots, we do a scatter plot. For these, we only plot a

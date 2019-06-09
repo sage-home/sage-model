@@ -921,13 +921,10 @@ def plot_reservoirs(models, plot_output_path, plot_output_format=".png"):
         model_label = model.model_label
         marker = model.marker
 
-        components = ["StellarMass", "ColdGas", "HotGas", "EjectedMass",
-                      "IntraClusterStars"]
         attribute_names = ["stars", "cold", "hot", "ejected", "ICS"]
         labels = ["Stars", "Cold Gas", "Hot Gas", "Ejected Gas", "Intracluster Stars"]
 
-        for (component, attribute_name, label) in zip(components,
-                                                             attribute_names, labels):
+        for (attribute_name, label) in zip(attribute_names, labels):
 
             dict_key = "reservoir_{0}".format(attribute_name)
             ax.scatter(model.properties["reservoir_mvir"], model.properties[dict_key], marker=marker,
@@ -990,7 +987,6 @@ def plot_spatial(models, plot_output_path, plot_output_format=".png"):
 
         model_label = model.model_label
         color = model.color
-        linestyle = model.linestyle
         marker = model.marker
 
         ax1.scatter(model.properties["x_pos"], model.properties["y_pos"],
