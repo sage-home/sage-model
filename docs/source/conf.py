@@ -40,6 +40,19 @@ extensions = [
 ]
 napoleon_use_param = False
 
+# Intersphinx configuration
+intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
+                       'numpy': ('https://docs.scipy.org/doc/numpy', None),
+                       'mpi4py': ('https://mpi4py.readthedocs.io/en/stable', None),
+                       'matplotlib': ('https://matplotlib.org', None),
+                       'h5py': ('https://h5py.readthedocs.io/en/stable', None)}
+
+# Autodoc configuration
+autodoc_default_options = {'members': None,
+                           'private-members': None}
+autodoc_member_order = 'groupwise'
+autodoc_inherit_docstrings = False
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 

@@ -67,7 +67,7 @@ class Model(object):
     data.
     """
 
-    def __init__(self, model_dict, plot_toggles):
+    def __init__(self, model_dict, sample_size=10000):
         """
         Sets the galaxy path and number of files to be read for a model. Also initialises
         the plot toggles that dictates which properties will be calculated.
@@ -75,23 +75,16 @@ class Model(object):
         Parameters
         ----------
 
-        model_dict : dictionary
+        model_dict: dictionary
             Dictionary containing the parameter values for each ``Model``
             instance. Refer to the class-level documentation for a full
             description of this dictionary or to ``model_dict`` in the ``__main__`` call
             of the ``allresults.py`` module.
 
-        plot_toggles : dictionary
-            Dictionary specifying the name of each property/plot and whether the values
-            will be generated + plotted. A value of 1 denotes plotting, whilst a value of
-            0 denotes not plotting.
-
-            Example
-            ------
-
-            plot_toggles = {"SMF" : 0,
-                            "BTF" : 1,
-                            "sSFR" : 1}
+        sample_size: int, optional
+            Specifies the length of the :py:attr:`~properties` attributes stored as 1-dimensional
+            :obj:`~numpy.ndarray`.  These :py:attr:`~properties` are initialized using
+            :py:meth:`~init_scatter_properties`.
 
         Returns
         -------
@@ -99,25 +92,11 @@ class Model(object):
         None.
         """
 
-        # Some error checks.
-        acceptable_IMF = ["Chabrier", "Salpeter"]
-        if model_dict["IMF"] not in acceptable_IMF:
-            print("Invalid IMF entered.  Only {0} are allowed.".format(acceptable_IMF))
-
-        acceptable_sage_output_formats = ["sage_binary", "sage_hdf5"]
-        if model_dict["sage_output_format"] not in acceptable_sage_output_formats:
-            print("Invalid output format entered.  Only {0} are "
-                   "allowed.".format(acceptable_sage_output_format))
-
-
         # Set the attributes we were passed.
         for key in model_dict:
             setattr(self, key, model_dict[key])
 
         self.num_files = 0
-
-        # This decides what plots we make and which properties we calculate.
-        self.plot_toggles = plot_toggles
 
         # If we're plotting temporal values (i.e., running with ``history.py``) then we
         # were passed a scale factor file.
@@ -130,12 +109,12 @@ class Model(object):
             self.redshifts = 1.0/alist - 1.0
 
         # Then set default values.
-        self.sample_size = 10000  # How many values should we plot on scatter plots?
+        self._sample_size = sample_size
         self.sSFRcut = -11.0  # The specific star formation rate above which a galaxy is
                               # 'star forming'.  Units are log10.
 
-        self.bins = {}
-        self.properties = {}
+        self._bins = {}
+        self._properties = {}
 
     @property
     def sage_output_format(self):
@@ -146,7 +125,6 @@ class Model(object):
         used for each :py:attr:`~sage_output_format` option. We refer to
         :doc:`../user/subclass` for more information about adding your own subclass to ingest
         data.
-
         """
 
         return(self._sage_output_format)
@@ -164,7 +142,6 @@ class Model(object):
         :py:attr:`~model_path` and the groups accessed will be Core_XXX. In both cases,
         ``XXX`` represents the numbers in the range
         [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
-
         """
 
         return(self._model_path)
@@ -260,7 +237,6 @@ class Model(object):
         :py:attr:`~model_path` and the groups accessed will be Core_XXX. In both cases,
         ``XXX`` represents the numbers in the range
         [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
-
         """
 
         return(self._first_file)
@@ -278,7 +254,6 @@ class Model(object):
         :py:attr:`~model_path` and the groups accessed will be Core_XXX. In both cases,
         ``XXX`` represents the numbers in the range
         [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
-
         """
 
         return(self._last_file)
@@ -295,7 +270,6 @@ class Model(object):
         Only required if :py:attr:`~sage_output_format` is ``sage_binary``.
         Otherwise, if :py:attr:`sage_output_format` is ``sage_hdf5``, the
         parameters are read from the ``["Header"]["Simulation"]`` attributes.
-
         """
 
         return(self._simulation)
@@ -311,7 +285,6 @@ class Model(object):
         :py:attr:`~sage_output_format` is ``sage_hdf5``. Otherwise, if
         :py:attr:`sage_output_format` is ``sage_hdf5``, the redshift will be specified in
         the :py:attr:`model_path` attribute.
-
         """
 
         return(self._hdf5_snapshot)
@@ -329,7 +302,6 @@ class Model(object):
         Otherwise, if :py:attr:`sage_output_format` is ``sage_hdf5``, the
         value is read from are read from the
         ``["Header"]["Simulation"].attr["frac_volume_processed"]`` attribute for each HDF5 core.
-
         """
 
         return(self._num_tree_files_used)
@@ -338,16 +310,50 @@ class Model(object):
     def num_tree_files_used(self, num_files):
         self._num_tree_files_used = num_files
 
+    @property
+    def bins(self):
+        """
+        dict [string, :obj:`~numpy.ndarray` ]: The bins used to bin some
+        :py:attr:`properties`. Bins are initialized through
+        :py:meth:`~Model.init_binned_properties`. Key is the name of the bin,
+        (``bin_name`` in :py:meth:`~Model.init_binned_properties` ).
+        """
+
+        return(self._bins)
+
+    @property
+    def properties(self):
+        """
+        dict [string, :obj:`~numpy.ndarray` ] or [string, float]: The galaxy properties
+        stored across the input files. These properties are updated within the respective
+        ``calc_<plot_toggle>`` functions. We refer to :doc:`../user/calc` for
+        information on how :py:class:`~Model` properties are handled.
+        """
+
+        return(self._properties)
+
+    @property
+    def sample_size(self):
+        """
+        int: Specifies the length of the :py:attr:`~properties` attributes stored as 1-dimensional
+        :obj:`~numpy.ndarray`.  These :py:attr:`~properties` are initialized using
+        :py:meth:`~init_scatter_properties`.
+        """
+
+        return(self._sample_size)
+
 
     def init_binned_properties(self, bin_low, bin_high, bin_width, bin_name,
                                property_names):
         """
-        Initializes the ``Model`` properties that will binned on some variable.  For
-        example, the stellar mass function (SMF) will describe the number of galaxies
-        within a stellar mass bin.
+        Initializes the :py:attr:`~properties` (and respective :py:attr:`~bins`) that will
+        binned on some variable.  For example, the stellar mass function (SMF) will
+        describe the number of galaxies within a stellar mass bin.
 
-        Also initializes the bins required for this.  These bins can be accessed by
-        ``Model.bins["bin_name"]``.
+        :py:attr:`~bins` can be accessed via ``Model.bins["bin_name"]`` and are
+        initialized as :obj:`~numpy.ndarray`. :py:attr:`~properties` can be accessed via
+        ``Model.properties["property_name"]`` and are initialized using
+        :obj:`~numpy.zeros`.
 
         Parameters
         ----------
@@ -381,26 +387,28 @@ class Model(object):
 
     def init_scatter_properties(self, property_names):
         """
-        Initializes the ``Model`` properties that will be extended as lists.  This is used
-        to plot (e.g.,) a the star formation rate versus stellar mass for a subset of 1000
-        galaxies.
+        Initializes the :py:attr:`~properties` that will be extended as
+        :obj:`~numpy.ndarray`. These are used to plot (e.g.,) a the star formation rate
+        versus stellar mass for a subset of :py:attr:`~sample_size` galaxies. Initializes
+        as empty :obj:`~numpy.ndarray`.
 
         Parameters
         ----------
 
         property_names : list of strings
-            Name of the properties that will be extended as lists.
+            Name of the properties that will be extended as :obj:`~numpy.ndarray`.
         """
 
-        # Initialize empty lists.
+        # Initialize empty arrays.
         for my_property in property_names:
-            self.properties[my_property] = []
+            self.properties[my_property] = np.array([])
 
 
     def init_single_properties(self, property_names):
         """
-        Initializes the ``Model`` properties that are described using a single number.
+        Initializes the :py:attr:`~properties` that are described using a single number.
         This is used to plot (e.g.,) a the sum of stellar mass across all galaxies.
+        Initializes as ``0.0``.
 
         Parameters
         ----------
@@ -409,31 +417,36 @@ class Model(object):
             Name of the properties that will be described using a single number.
         """
 
+        # Initialize as zeros.
         for my_property in property_names:
             self.properties[my_property] = 0.0
 
 
-    def calc_properties_all_files(self, close_file=True, use_pbar=True, debug=False):
+    def calc_properties_all_files(self, calculation_functions, close_file=True,
+                                  use_pbar=True, debug=False):
         """
-        Calculates galaxy properties for all files of a single Model.
+        Calculates galaxy properties for all files of a single :py:class:`~Model`.
 
         Parameters
         ----------
 
-        close_file : Boolean, default True
-            If the ``Model`` class contains an open file, closes it upon completion of
-            this function.
+        calculation_functions: dict [string, function]
+            Specifies the functions used to calculate the properties. All functions in
+            this dictionary are called after the galaxies for each sub-file have been
+            loaded. The function signature is required to be ``func(Model, gals)``.
 
-        use_pbar : Boolean, default True
+        close_file: boolean, default ``True``
+            Some data formats have a single file data is read from rather than opening and
+            closing the sub-files in :py:meth:`read_gals`. Hence once the properties are
+            calculated, the file must be closed. This variable flags whether the subclass
+            specific :py:meth:`~close_file` method should be called upon completion of
+            this method.
+
+        use_pbar : Boolean, default ``True``
             If set, uses the ``tqdm`` package to create a progress bar.
 
-        debug : Boolean, default False
+        debug : Boolean, default ``False``
             If set, prints out extra useful debug information.
-
-        Returns
-        -------
-
-        None.
         """
 
         start_time = time.time()
@@ -464,7 +477,7 @@ class Model(object):
             if gals is None:
                 continue
 
-            self.calc_properties(gals)
+            self.calc_properties(calculation_functions, gals)
 
         # Some data formats (e.g., HDF5) have a single file we read from.
         # For other formats, this method doesn't exist. Note: If we're calculating
@@ -483,22 +496,26 @@ class Model(object):
             print("")
 
 
-    def calc_properties(self, gals):
+    def calc_properties(self, calculation_functions, gals):
         """
         Calculates galaxy properties for a single file of galaxies.
 
         Parameters
         ----------
 
-        gals : ``numpy`` structured array with format given by
-               ``Model.get_galaxy_struct()`` if using ``SageBinary`` subclass or an open
-               HDF5 group if using ``SageHDF5`` subclass.
+        calculation_functions: dict [string, function]
+            Specifies the functions used to calculate the properties. All functions in
+            this dictionary are called on the galaxies. The function signature is required
+            to be ``func(Model, gals)``
+
+        gals: exact format given by the :py:class:`~Model` subclass. If
+              :py:attr:`~sage_output_format`: is
+              :py:class:`~sage_analysis.sage_binary.SageBinaryModel`, ``gals`` is a
+              ``numpy`` structured array. If :py:attr:`~sage_output_format`: is
+              :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`, ``gals`` is an open HDF5
+              group. We refer to :doc:`../user/subclass` for more information about
+              adding your own subclass to ingest data.
             The galaxies for this file.
-
-        Returns
-        -------
-
-        None.
 
         Notes
         -----
@@ -514,34 +531,8 @@ class Model(object):
 
         # Now check which plots the user is creating and hence decide which properties
         # they need.
-        for func in self.calculation_functions.values():
+        for func in calculation_functions.values():
             func(self, gals)
-
-
-    def add_function(self, name, func):
-        """
-        Adds function ``func`` named ``name`` to the ``calculation_functions`` dictionary.
-        Funtions in this dictionary are called inside ``calc_properties``.  The
-        arguments of the function **MUST** be ``(Model Class, gals)``.
-        """
-
-        new_function = {name: func}
-        self.calculation_functions.update(new_function)
-
-
-    def remove_function(self, name):
-        """
-        Removes function named ``name`` from the ``calculation_methods`` dictionary.
-        """
-
-        del self.calculation_methods[name]
-
-    def list_calculation_methods(self):
-        """
-        Returns the names of all methods in the ``calculation_methods`` dictionary.
-        """
-
-        return self.calculation_methods.keys()
 
 
 def calc_SMF(model, gals):
@@ -601,8 +592,8 @@ def calc_BTF(model, gals):
     baryon_mass = np.log10((gals["StellarMass"][:][spirals] + gals["ColdGas"][:][spirals]) * 1.0e10 / model.hubble_h)
     velocity = np.log10(gals["Vmax"][:][spirals])
 
-    model.properties["BTF_mass"].extend(list(baryon_mass))
-    model.properties["BTF_vel"].extend(list(velocity))
+    model.properties["BTF_mass"] = np.append(model.properties["BTF_mass"], baryon_mass)
+    model.properties["BTF_vel"] = np.append(model.properties["BTF_vel"], velocity)
 
 
 def calc_sSFR(model, gals):
@@ -620,8 +611,8 @@ def calc_sSFR(model, gals):
     else:
         random_inds = np.arange(len(non_zero_stellar))
 
-    model.properties["sSFR_mass"].extend(list(stellar_mass[random_inds]))
-    model.properties["sSFR_sSFR"].extend(list(np.log10(sSFR[random_inds])))
+    model.properties["sSFR_mass"] = np.append(model.properties["sSFR_mass"], stellar_mass[random_inds])
+    model.properties["sSFR_sSFR"] = np.append(model.properties["sSFR_sSFR"], np.log10(sSFR[random_inds]))
 
 
 def calc_gas_frac(model, gals):
@@ -638,8 +629,8 @@ def calc_gas_frac(model, gals):
     stellar_mass = np.log10(gals["StellarMass"][:][spirals] * 1.0e10 / model.hubble_h)
     gas_fraction = gals["ColdGas"][:][spirals] / (gals["StellarMass"][:][spirals] + gals["ColdGas"][:][spirals])
 
-    model.properties["gas_frac_mass"].extend(list(stellar_mass))
-    model.properties["gas_frac"].extend(list(gas_fraction))
+    model.properties["gas_frac_mass"] = np.append(model.properties["gas_frac_mass"], stellar_mass)
+    model.properties["gas_frac"] = np.append(model.properties["gas_frac"], gas_fraction)
 
 
 def calc_metallicity(model, gals):
@@ -655,8 +646,8 @@ def calc_metallicity(model, gals):
     stellar_mass = np.log10(gals["StellarMass"][:][centrals] * 1.0e10 / model.hubble_h)
     Z = np.log10((gals["MetalsColdGas"][:][centrals] / gals["ColdGas"][:][centrals]) / 0.02) + 9.0
 
-    model.properties["metallicity_mass"].extend(list(stellar_mass))
-    model.properties["metallicity"].extend(list(Z))
+    model.properties["metallicity_mass"] = np.append(model.properties["metallicity_mass"], stellar_mass)
+    model.properties["metallicity"] = np.append(model.properties["metallicity"], Z)
 
 
 def calc_bh_bulge(model, gals):
@@ -670,8 +661,8 @@ def calc_bh_bulge(model, gals):
     bh = np.log10(gals["BlackHoleMass"][:][my_gals] * 1.0e10 / model.hubble_h)
     bulge = np.log10(gals["BulgeMass"][:][my_gals] * 1.0e10 / model.hubble_h)
 
-    model.properties["bh_mass"].extend(list(bh))
-    model.properties["bulge_mass"].extend(list(bulge))
+    model.properties["bh_mass"] = np.append(model.properties["bh_mass"], bh)
+    model.properties["bulge_mass"] = np.append(model.properties["bulge_mass"], bulge)
 
 
 def calc_quiescent(model, gals):
@@ -689,15 +680,15 @@ def calc_quiescent(model, gals):
 
     # When plotting, we scale the number of quiescent galaxies by the total number of
     # galaxies in that bin.  This is the Stellar Mass Function.
-    # So check if we're calculating the SMF already, and if not, calculate it here.
-    try:
-        if model.plot_toggles["SMF"]:
-            pass
-        else:
-            model.calc_SMF(gals)
-    # Maybe the user removed "SMF" from the plot toggles...
-    except KeyError:
-        model.calc_SMF(gals)
+    # So check if the SMF has been initialized.  If not, then it should be specified.
+    if model.calc_SMF:
+        pass
+    else:
+        raise ValueError("When calculating the quiescent galaxy population, we "
+                         "scale the results by the number of galaxies in each bin. "
+                         "This requires the stellar mass function to be calculated. "
+                         "Ensure that the 'SMF' plot toggle is switched on and that "
+                         "the 'SMF' binned property is initialized.")
 
     # Mass function for number of centrals/satellites.
     centrals_counts, _ = np.histogram(mass[gal_type == 0], bins=model.bins["stellar_mass_bins"])
@@ -731,14 +722,15 @@ def calc_bulge_fraction(model, gals):
     # When plotting, we scale the fraction of each galaxy type the total number of
     # galaxies in that bin. This is the Stellar Mass Function.
     # So check if we're calculating the SMF already, and if not, calculate it here.
-    try:
-        if model.plot_toggles["SMF"]:
-            pass
-        else:
-            model.calc_SMF(gals)
-    # Maybe the user removed "SMF" from the plot toggles...
-    except KeyError:
-        model.calc_SMF(gals)
+    if model.calc_SMF:
+        pass
+    else:
+        raise ValueError("When calculating the bulge fraction, we "
+                         "scale the results by the number of galaxies in each bin. "
+                         "This requires the stellar mass function to be calculated. "
+                         "Ensure that the 'SMF' plot toggle is switched on and that "
+                         "the 'SMF' binned property is initialized.")
+
 
     # We want the mean bulge/disk fraction as a function of stellar mass. To allow
     # us to sum across each file, we will record the sum in each bin and then average later.
@@ -825,9 +817,7 @@ def calc_reservoirs(model, gals):
 
         # Extend the previous list of masses with these new values.
         dict_key = "reservoir_{0}".format(attribute_name)
-        attribute_value = model.properties[dict_key]
-        attribute_value.extend(list(mass))
-        model.properties[dict_key] = attribute_value
+        model.properties[dict_key] = np.append(model.properties[dict_key], mass)
 
 
 def calc_spatial(model, gals):
@@ -845,9 +835,7 @@ def calc_spatial(model, gals):
         # Units are Mpc/h.
         pos = gals[data_name][:][non_zero]
 
-        attribute_value = model.properties[attribute_name]
-        attribute_value.extend(list(pos))
-        model.properties[attribute_name] = attribute_value
+        model.properties[attribute_name] = np.append(model.properties[attribute_name], pos)
 
 
 def calc_SFRD(model, gals):

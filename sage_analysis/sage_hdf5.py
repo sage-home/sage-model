@@ -33,12 +33,12 @@ class SageHdf5Model(Model):
         ``model.py`` after all galaxies have been read and their properties calculated.
     """
 
-    def __init__(self, model_dict, plot_toggles):
+    def __init__(self, model_dict, *args, **kwargs):
         """
         Initializes the super ``Model`` class and opens the HDF5 file.
         """
 
-        Model.__init__(self, model_dict, plot_toggles)
+        Model.__init__(self, model_dict, *args, **kwargs)
         self.hdf5_file = h5py.File(self.model_path, "r")
 
         # Due to how attributes are created in C, they will need to be decoded to get cast

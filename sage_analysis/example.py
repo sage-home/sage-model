@@ -252,15 +252,25 @@ if __name__ == "__main__":
         # Initialize a Model class and set all the paths.
         # Note: Use the correct subclass depending upon the format SAGE wrote in.
         if model_dict["sage_output_format"] == "sage_binary":
-            my_model = SageBinaryModel(model_dict, plot_toggles)
+            my_model = SageBinaryModel(model_dict)
         elif model_dict["sage_output_format"] == "sage_hdf5":
-            my_model = SageHdf5Model(model_dict, plot_toggles)
+            my_model = SageHdf5Model(model_dict)
         else:
             msg = "Invalid value for `sage_output_format`. Value was " \
                   "{0}".format(model_dict["sage_output_format"])
             raise ValueError(msg)
 
         my_model.set_cosmology()
+
+        # Some properties require the stellar mass function to normalize their values. For
+        # these, the SMF plot toggle is explicitly required.
+        try:
+            if plot_toggles["SMF"]:
+                my_model.calc_SMF = True
+            else:
+                my_model.calc_SMF = False
+        except KeyError:
+                my_model.calc_SMF = False
 
         # Then populate the `calculation_methods` dictionary. This dictionary will control
         # which properties each model will calculate.  The dictionary is populated using
@@ -269,9 +279,8 @@ if __name__ == "__main__":
         # your functions are in a different module or different function prefix, change it
         # here.
         # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals)`.
-        my_model.calculation_functions = generate_func_dict(plot_toggles,
-                                                            module_name="sage_analysis.model",
-                                                            function_prefix="calc_")
+        calculation_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.model",
+                                                   function_prefix="calc_")
 
         # Finally, before we calculate the properties, we need to decide how each property
         # is stored. Properties can be binned (e.g., how many galaxies with mass between 10^8.0
@@ -312,17 +321,17 @@ if __name__ == "__main__":
 
         # To be more memory concious, we calculate the required properties on a
         # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
-        my_model.calc_properties_all_files(debug=False)
+        my_model.calc_properties_all_files(calculation_functions, debug=False)
 
         models.append(my_model)
 
     # Similar to the calculation functions, all of the plotting functions are in the
     # `plots.py` module and are labelled `plot_<toggle>`.
-    plot_dict = generate_func_dict(plot_toggles, module_name="sage_analysis.plots",
-                                   function_prefix="plot_")
+    plot_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.plots",
+                                        function_prefix="plot_")
 
     # Now do the plotting.
-    for plot_func in plot_dict.values():
+    for plot_func in plot_functions.values():
         plot_func(models, plot_output_path, plot_output_format)
 
     # Set the error settings to the previous ones so we don't annoy the user.

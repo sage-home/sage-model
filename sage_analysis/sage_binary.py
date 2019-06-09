@@ -25,13 +25,13 @@ class SageBinaryModel(Model):
         Struct that describes how the binary file is parsed into the galaxy data.
     """
 
-    def __init__(self, model_dict, plot_toggles):
+    def __init__(self, model_dict, *args, **kwargs):
         """
         Initializes the super ``Model`` class and generates the array that describes the
         binary file contract.
         """
 
-        Model.__init__(self, model_dict, plot_toggles)
+        Model.__init__(self, model_dict, *args, **kwargs)
         self.get_galaxy_struct()
 
 
