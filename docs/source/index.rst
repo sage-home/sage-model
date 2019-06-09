@@ -64,9 +64,8 @@ Maintainers
 
    introduction
    user/getting_started.rst
-   user/running_the_code.rst
    user/plotting.rst
-   user/subclass
+   user/subclass.rst
    user/calc.rst
 
 .. _api-docs:
