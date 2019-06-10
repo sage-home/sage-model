@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 """
-In this module, we define the ``SageHdf5Model`` class, a subclass of the ``Model`` class
-defined in the ``model.py`` module.  This subclass contains methods for setting the
-simulation cosmology and reading galaxy data. If you wish to provide your own data format,
-you require ``set_cosmology()``, ``determine_num_gals()`` and ``read_gals()`` methods.
+In this module, we define the ``SageHdf5Data`` class. This class is intended to
+interface with the Model class (from ``model.py``) to read in HDF5 data written by SAGE.
 
 Author: Jacob Seiler.
 """
 
 # Import the base class.
-from sage_analysis.model import Model
+
 
 import numpy as np
 import h5py
@@ -18,20 +16,25 @@ import h5py
 sage_data_version = "1.00"
 ## DO NOT TOUCH ##
 
-class SageHdf5Data(Model):
+class SageHdf5Data():
     """
-    Subclass of the ``Model`` class from the ``model.py`` module.  It contains methods
-    specifically for reading in the ``sage_hdf5`` output from ``SAGE``.
-
-    Extra Attributes
-    ================
-
-    hdf5_file : Open ``h5py`` file
-        The HDF5 file we are reading from.  This is closed by ``close_file()`` in
-        ``model.py`` after all galaxies have been read and their properties calculated.
+    Class intended to inteface with the :py:class:`~Model` class to ingest the data
+    written by **SAGE**. It includes methods for reading the output galaxies, setting
+    cosmology etc. It is specifically written for when
+    :py:attr:`~Model.sage_output_format` is ``sage_hdf5``.
     """
 
-    def __init__(self, model):
+    def __init__(self, model, *args, **kwargs):
+        """
+        Instantiates the Data Class for reading in **SAGE** HDF5 data. In particular,
+        opens up the file and ensures the data version matches the expected value.
+
+        Parameters
+        ----------
+
+        model: :py:class:`~Model` class
+            The corresponding :py:class:`~Model` we're reading the **SAGE** data for.
+        """
 
         model.hdf5_file = h5py.File(model.model_path, "r")
 
@@ -59,10 +62,18 @@ class SageHdf5Data(Model):
     def set_cosmology(self, model):
         """
         Sets the relevant cosmological values, size of the simulation box and
-        number of galaxy files. The ``hubble_h``, ``box_size``, ``total_num_files``
-        and ``volume`` attributes are updated directly.
+        number of galaxy files for a given :py:class:`~Model`.
 
-        ..note :: ``box_size`` is in units of Mpc/h.
+        Parameters
+        ----------
+
+        model: :py:class:`~Model` class
+            The :py:class:`~Model` we're setting the cosmology for.
+
+        Notes
+        -----
+
+        The :py:attr:`~Model.box_size` attribute is in Mpc/h.
         """
 
         f = model.hdf5_file
@@ -84,30 +95,38 @@ class SageHdf5Data(Model):
         model.volume = pow(model.box_size, 3) * volume_processed
 
 
-    def determine_num_gals(self):
+    def determine_num_gals(self, model):
         """
-        Determines the number of galaxies in all cores for this model at the snapshot
-        specified by the ``hdf5_snapshot`` attribute. The ``num_gals`` is updated
-        directly.
-        """
-
-        ngals = 0
-        snap_key = "Snap_{0}".format(self.hdf5_snapshot)
-
-        for core_idx in range(self.first_file, self.last_file + 1):
-
-            core_key = "Core_{0}".format(core_idx)
-            ngals += self.hdf5_file[core_key][snap_key].attrs["num_gals"]
-
-        self.num_gals = ngals
-
-
-    def read_gals(self, core_num, pbar=None, plot_galaxies=False, debug=False):
-        """
-        Reads the galaxies of a single core at the snapshot spoecified ``hdf5_snapshot``.
+        Determines the number of galaxies in all cores for this model at the specified
+        :py:attr:`~Model.snapshot`.
 
         Parameters
         ----------
+
+        model: :py:class:`~Model` class
+            The :py:class:`~Model` we're reading data for.
+        """
+
+        ngals = 0
+        snap_key = "Snap_{0}".format(model.snapshot)
+
+        for core_idx in range(model.first_file, model.last_file + 1):
+
+            core_key = "Core_{0}".format(core_idx)
+            ngals += model.hdf5_file[core_key][snap_key].attrs["num_gals"]
+
+        model.num_gals = ngals
+
+
+    def read_gals(self, model, core_num, pbar=None, plot_galaxies=False, debug=False):
+        """
+        Reads the galaxies of a single core at the specified :py:attr:`~Model.snapshot`.
+
+        Parameters
+        ----------
+
+        model: :py:class:`~Model` class
+            The :py:class:`~Model` we're reading data for.
 
         core_num : Integer
             The core group we're reading.
@@ -121,25 +140,29 @@ class SageHdf5Data(Model):
         debug : Boolean, default False
             If set, prints out extra useful debug information.
 
-        ..note:: ``tqdm`` does not play nicely with printing to stdout. Hence we
-        disable the ``tqdm`` progress bar if ``debug=True``.
-
         Returns
         -------
 
         gals : ``h5py`` group
             The galaxies for this file.
+
+        Notes
+        -----
+
+        ``tqdm`` does not play nicely with printing to stdout. Hence we disable
+        the ``tqdm`` progress bar if ``debug=True``.
         """
 
         core_key = "Core_{0}".format(core_num)
-        snap_key = "Snap_{0}".format(self.hdf5_snapshot)
+        snap_key = "Snap_{0}".format(model.snapshot)
 
-        num_gals_read = self.hdf5_file[core_key][snap_key].attrs["num_gals"]
+        num_gals_read = model.hdf5_file[core_key][snap_key].attrs["num_gals"]
+
+        # If there aren't any galaxies, exit here.
         if num_gals_read == 0:
             return None
 
-        gals = self.hdf5_file[core_key][snap_key]
-
+        gals = model.hdf5_file[core_key][snap_key]
 
         # If we're using the `tqdm` package, update the progress bar.
         if pbar:
@@ -148,7 +171,9 @@ class SageHdf5Data(Model):
 
         if debug:
             print("")
-            print("Core {0}, Snapshot {1} contained {2} galaxies".format(core_num, self.hdf5_snapshot, num_gals_read))
+            print("Core {0}, Snapshot {1} contained {2} galaxies".format(core_num,
+                                                                         model.snapshot,
+                                                                         num_gals_read))
 
             w = np.where(gals["StellarMass"][:] > 1.0)[0]
             print("{0} of these galaxies have mass greater than 10^10Msun/h".format(len(w)))
@@ -164,21 +189,22 @@ class SageHdf5Data(Model):
                 key = "Pos{0}".format(dim_num)
                 pos[:, dim_num] = gals[key][:]
 
-            output_file = "./galaxies_{0}{1}".format(core_num, self.plot_output_format)
-            plot_spatial_3d(pos, output_file, self.box_size)
+            output_file = "./galaxies_{0}{1}".format(core_num, model.plot_output_format)
+            plot_spatial_3d(pos, output_file, model.box_size)
 
         return gals
 
 
-    def update_snapshot(self, snapshot):
+    def update_snapshot(self, model, snapshot):
         """
-        Updates the HDF5 snapshot to ``snapshot``.
+        Updates the :py:attr:`~Model.snapshot` attribute to ``snapshot``.
         """
-        self.hdf5_snapshot = snapshot
+        model._snapshot = snapshot
 
-    def close_file(self):
+
+    def close_file(self, model):
         """
         Closes the open HDF5 file.
         """
 
-        self.hdf5_file.close()
+        model.hdf5_file.close()

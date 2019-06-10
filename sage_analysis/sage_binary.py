@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 """
-In this module, we define the ``SageBinaryModel`` class, a subclass of the ``Model`` class
-defined in the ``model.py`` module.  This subclass contains methods for setting the
-simulation cosmology and reading galaxy data. If you wish to provide your own data format,
-you require ``set_cosmology()``, ``determine_num_gals()`` and ``read_gals()`` methods.
+In this module, we define the ``SageBinaryData`` class. This class is intended to
+interface with the Model class (from ``model.py``) to read in binary data written by SAGE.
 
 Author: Jacob Seiler.
 """
@@ -15,20 +13,16 @@ import os
 
 class SageBinaryData():
     """
-    Subclass of the ``Model`` class from the ``model.py`` module.  It contains methods
-    specifically for reading in the ``sage_binary`` output from ``SAGE``.
-
-    Extra Attributes
-    ================
-
-    galaxy_struct : ``numpy`` structured array
-        Struct that describes how the binary file is parsed into the galaxy data.
+    Class intended to inteface with the :py:class:`~Model` class to ingest the data
+    written by **SAGE**. It includes methods for reading the output galaxies, setting
+    cosmology etc. It is specifically written for when
+    :py:attr:`~Model.sage_output_format` is ``sage_binary``.
     """
 
-    def __init__(self, model_dict, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
-        Initializes the super ``Model`` class and generates the array that describes the
-        binary file contract.
+        Instantiates the Data Class for reading in **SAGE** binary data. In particular,
+        generates the ``numpy`` structured array to read the output galaxies.
         """
 
         self.get_galaxy_struct()
@@ -36,8 +30,7 @@ class SageBinaryData():
 
     def get_galaxy_struct(self):
         """
-        Sets the ``numpy`` structured array for holding the galaxy data. The attribute
-        ``galaxy_struct`` and ``galaxy_multi_fields`` are updated within the function.
+        Sets the ``numpy`` structured array for holding the galaxy data.
         """
 
         galdesc_full = [
@@ -97,49 +90,61 @@ class SageBinaryData():
         self.galaxy_struct = galdesc
 
 
-    def set_cosmology(self):
+    def set_cosmology(self, model):
         """
         Sets the relevant cosmological values, size of the simulation box and
-        number of galaxy files. The ``hubble_h``, ``box_size``, ``total_num_files``
-        and ``volume`` attributes are updated directly.
+        number of galaxy files for a given :py:class:`~Model`.
 
-        ..note :: ``box_size`` is in units of Mpc/h.
+        Parameters
+        ----------
+
+        model: :py:class:`~Model` class
+            The :py:class:`~Model` we're setting the cosmology for.
+
+        Notes
+        -----
+
+        The :py:attr:`~Model.box_size` attribute is in Mpc/h.
         """
 
-        if self.simulation == "Mini-Millennium":
-            self.hubble_h = 0.73
-            self.box_size = 62.5
-            self.total_num_tree_files = 8
+        if model.simulation == "Mini-Millennium":
+            model.hubble_h = 0.73
+            model.box_size = 62.5
+            model.total_num_tree_files = 8
 
-        elif self.simulation == "Millennium":
-            self.hubble_h = 0.73
-            self.box_size = 500
-            self.total_num_tree_files = 512
+        elif model.simulation == "Millennium":
+            model.hubble_h = 0.73
+            model.box_size = 500
+            model.total_num_tree_files = 512
 
-        elif self.simulation == "Genesis-L500-N2160":
-            self.hubble_h = 0.6751
-            self.box_size = 500.00
-            self.total_num_tree_files = 64
+        elif model.simulation == "Genesis-L500-N2160":
+            model.hubble_h = 0.6751
+            model.box_size = 500.00
+            model.total_num_tree_files = 64
 
         else:
-            print("Please pick a valid simulation!")
-            raise ValueError
+            raise ValueError("Please pick a valid simulation.")
 
         # Scale the volume by the number of tree files used compared to the number that
         # were used for the entire simulation.  This ensures properties scaled by volume
         # (e.g., SMF) gives sensible results.
-        self.volume = pow(self.box_size, 3) * (self.num_tree_files_used / self.total_num_tree_files)
+        model.volume = pow(model.box_size, 3) * (model.num_tree_files_used / model.total_num_tree_files)
 
 
-    def determine_num_gals(self):
+    def determine_num_gals(self, model):
         """
-        Determines the number of galaxies in all files for this model. The ``num_gals``
-        attribute is updated directly.
+        Determines the number of galaxies in all files for this :py:class:`~Model`.
+
+        Parameters
+        ----------
+
+        model: :py:class:`~Model` class
+            The :py:class:`~Model` we're reading data for.
         """
 
-        first_file = self.first_file
-        last_file = self.last_file
-        model_path = self.model_path
+        first_file = model.first_file
+        last_file = model.last_file
+        model_path = model.model_path
 
         num_gals = 0
 
@@ -157,47 +162,53 @@ class SageBinaryData():
 
                 num_gals += num_gals_file
 
-        self.num_gals = num_gals
+        model.num_gals = num_gals
 
 
-    def read_gals(self, file_num, pbar=None, plot_galaxies=False, debug=False):
+    def read_gals(self, mdoel, file_num, pbar=None, plot_galaxies=False, debug=False):
         """
-        Reads a single galaxy file.
+        Reads the galaxies of a single core at the specified :py:attr:`~Model.snapshot`.
 
         Parameters
         ----------
 
-        file_num : Integer
-            Suffix of the file we're reading.  The file name will be
-            ``self.model_path_<file_num>``.
+        model: :py:class:`~Model` class
+            The :py:class:`~Model` we're reading data for.
 
-        pbar : ``tqdm`` class instance, default Off
+        file_num: int
+            Suffix of the file we're reading.  The file name will be
+            ``model``.:py:attr:`~Model.model_path`_<file_num>.
+
+        pbar: ``tqdm`` class instance, default Off
             Bar showing the progress of galaxy reading.
 
-        plot_galaxies : Boolean, default False
+        plot_galaxies: bool, optional
             If set, plots and saves the 3D distribution of galaxies for this file.
 
-        debug : Boolean, default False
+        debug: bool, optional
             If set, prints out extra useful debug information.
-
-        ..note:: ``tqdm`` does not play nicely with printing to stdout. Hence we
-        disable the ``tqdm`` progress bar if ``debug=True``.
 
         Returns
         -------
 
         gals : ``numpy`` structured array with format given by ``get_galaxy_struct()``
             The galaxies for this file.
+
+        Notes
+        -----
+
+        ``tqdm`` does not play nicely with printing to stdout. Hence we disable
+        the ``tqdm`` progress bar if ``debug=True``.
         """
 
-        fname = "{0}_{1}".format(self.model_path, file_num)
+        fname = "{0}_{1}".format(model.model_path, file_num)
 
         # We allow the skipping of files.  If we skip, don't increment a counter.
         if not os.path.isfile(fname):
             print("File\t{0} \tdoes not exist!".format(fname))
             return None
         else:
-            self.num_files += 1
+            model.num_files += 1
 
         with open(fname, "rb") as f:
             # First read the header information.
@@ -230,7 +241,7 @@ class SageBinaryData():
 
             # Show the distribution of galaxies in 3D.
             pos = gals["Pos"][:]
-            output_file = "./galaxies_{0}{1}".format(file_num, self.output_format)
+            output_file = "./galaxies_{0}{1}".format(file_num, model.plot_output_format)
             plot_spatial_3d(pos, output_file, self.box_size)
 
         # For the HDF5 file, some data sets have dimensions Nx1 rather than Nx3
@@ -250,43 +261,38 @@ class SageBinaryData():
         return gals
 
 
-    def update_snapshot(self, snapshot):
+    def update_snapshot(self, model, snapshot):
         """
-        Updates the ``model_path`` attribute to point to the file at the redshift given by
-        ``snapshot``.
-
-        ..note :: This method must only be called if the ``redshifts`` attribute is
-        defined.
+        Updates the :py:attr:`~Model.model_path` to point to a new redshift file. Uses the
+        redshift array :py:attr:`~Model.redshifts`.
 
         Parameters
-        ==========
+        ----------
 
-        snapshot : Integer
-            Snapshot we're updating the ``model_path`` string to point to.
-
-        Returns
-        =======
-
-        None.  ``model_path`` is updated directly.
+        snapshot: int
+            Snapshot we're updating :py:attr:`~Model.model_path` to point to.
         """
 
-        new_redshift = self.redshifts[snapshot]
+        model._snapshot = snapshot
 
-        # If this is the first time we're calling this method, then we will need to set
-        # the path fully.
+        # First get the new redshift.
+        new_redshift = model.redshifts[snapshot]
+
+        # We can't be guaranteed the `model_path` has been set just yet.
         try:
-            dummy = self.set_redshift
+            _ = self.set_redshift
         except AttributeError:
-            self.set_redshift = True
-            self.model_path = "{0}_z{1:.3f}".format(self.model_path, new_redshift)
+            model.model_path = "{0}_z{1:.3f}".format(self.model_path, new_redshift)
         else:
-
             # model_path is of the form "<Initial/Path/To/File_zXXX.XXX>"
-            # The number of characters after "z" is arbitrary, we could be at z8.539 or z127.031.
+            # The number of decimal places is always 3.
+            # The number of characters before "z" is arbitrary, we could be at z8.539 or z127.031.
             # Hence walk backwards through the model path until we reach a "z".
             letters_from_end = 0
             letter = self.model_path[-(letters_from_end+1)]
             while letter != "z":
                 letters_from_end += 1
                 letter = self.model_path[-(letters_from_end+1)]
-            self.model_path = "{0}z{1:.3f}".format(self.model_path[:-(letters_from_end+1)], new_redshift)
+
+            # Then truncate there and append the new redshift.
+            model.model_path = "{0}z{1:.3f}".format(self.model_path[:-(letters_from_end+1)], new_redshift)

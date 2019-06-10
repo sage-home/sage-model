@@ -23,6 +23,10 @@ import numpy as np
 
 import sage_analysis.observations as obs
 
+colors = ["r", "b", "g", "m"]
+linestyles = [":", "--", "-.", "-:"]
+markers = ["x", "o", "v", "*"]
+
 
 def setup_matplotlib_options():
     """
@@ -30,9 +34,6 @@ def setup_matplotlib_options():
     """
 
     matplotlib.rcdefaults()
-    plt.rc('axes',
-           prop_cycle=(cycler('color', ['k', 'b', 'r', 'g', 'm', '0.5'])),
-           labelsize='x-large')
     plt.rc('xtick', labelsize='x-large')
     plt.rc('ytick', labelsize='x-large')
     plt.rc('lines', linewidth='2.0')
@@ -110,15 +111,15 @@ def plot_SMF(models, plot_output_path, plot_output_format=".png", plot_sub_popul
     ax = fig.add_subplot(111)
 
     # Go through each of the models and plot.
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
 
         # If we only have one model, we will split it into red and blue
         # sub-populations.
         if len(models) > 1:
-            color = model.color
-            ls = model.linestyle
+            color = colors[model_num]
+            ls = linestyles[model_num]
         else:
             color = "k"
             ls = "-"
@@ -196,9 +197,9 @@ def plot_temporal_SMF(models, plot_output_path, plot_output_format=".png"):
     ax = fig.add_subplot(111)
 
     # Go through each of the models and plot.
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
-        ls = model.linestyle
+        ls = linestyles[model_num]
 
         # Set the x-axis values to be the centre of the bins.
         bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
@@ -265,11 +266,11 @@ def plot_BMF(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        ls = model.linestyle
+        color = colors[model_num]
+        ls = linestyles[model_num]
 
         # Set the x-axis values to be the centre of the bins.
         bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
@@ -331,11 +332,11 @@ def plot_GMF(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        ls = model.linestyle
+        color = colors[model_num]
+        ls = linestyles[model_num]
 
         # Set the x-axis values to be the centre of the bins.
         bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
@@ -397,11 +398,11 @@ def plot_BTF(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        marker = model.marker
+        color = colors[model_num]
+        marker = markers[model_num]
 
         ax.scatter(model.properties["BTF_vel"], model.properties["BTF_mass"], marker=marker, s=1,
                    color=color, alpha=0.5, label=model_label + " Sb/c galaxies")
@@ -454,11 +455,11 @@ def plot_sSFR(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        marker = model.marker
+        color = colors[model_num]
+        marker = markers[model_num]
 
         ax.scatter(model.properties["sSFR_mass"], model.properties["sSFR_sSFR"], marker=marker, s=1, color=color,
                    alpha=0.5, label=model_label)
@@ -514,11 +515,11 @@ def plot_gas_frac(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        marker = model.marker
+        color = colors[model_num]
+        marker = markers[model_num]
 
         ax.scatter(model.properties["gas_frac_mass"], model.properties["gas_frac"], marker=marker, s=1,
                    color=color, alpha=0.5, label=model_label + " Sb/c galaxies")
@@ -568,11 +569,11 @@ def plot_metallicity(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        marker = model.marker
+        color = colors[model_num]
+        marker = markers[model_num]
 
         ax.scatter(model.properties["metallicity_mass"], model.properties["metallicity"],
                    marker=marker, s=1, color=color, alpha=0.5, label=model_label + " galaxies")
@@ -627,11 +628,11 @@ def plot_bh_bulge(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        marker = model.marker
+        color = colors[model_num]
+        marker = markers[model_num]
 
         ax.scatter(model.properties["bulge_mass"], model.properties["bh_mass"], marker=marker, s=1, color=color,
                    alpha=0.5, label=model_label + " galaxies")
@@ -688,11 +689,11 @@ def plot_quiescent(models, plot_output_path, plot_output_format=".png",
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        linestyle = model.linestyle
+        color = colors[model_num]
+        linestyle = linestyles[model_num]
 
         # Set the x-axis values to be the centre of the bins.
         bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
@@ -759,11 +760,11 @@ def plot_bulge_fraction(models, plot_output_path, plot_output_format=".png",
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        linestyle = model.linestyle
+        color = colors[model_num]
+        linestyle = linestyles[model_num]
 
         # Set the x-axis values to be the centre of the bins.
         bin_width = model.bins["stellar_mass_bins"][1] - model.bins["stellar_mass_bins"][0]
@@ -839,11 +840,11 @@ def plot_baryon_fraction(models, plot_output_path, plot_output_format=".png",
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        linestyle = model.linestyle
+        color = colors[model_num]
+        linestyle = linestyles[model_num]
 
         # Set the x-axis values to be the centre of the bins.
         bin_width = model.bins["halo_mass_bins"][1] - model.bins["halo_mass_bins"][0]
@@ -860,9 +861,9 @@ def plot_baryon_fraction(models, plot_output_path, plot_output_format=".png",
         if len(models) == 1 or plot_sub_populations:
             attrs = ["stars", "cold", "hot", "ejected", "ICS"]
             labels = ["Stars", "Cold", "Hot", "Ejected", "ICS"]
-            colors = ["k", "b", "r", "g", "y"]
+            res_colors = ["k", "b", "r", "g", "y"]
 
-            for (attr, label, color) in zip(attrs, labels, colors):
+            for (attr, label, color) in zip(attrs, labels, res_colors):
                 dict_key = "halo_{0}_fraction_sum".format(attr)
                 mean = model.properties[dict_key] / model.properties["fof_HMF"]
 
@@ -913,13 +914,13 @@ def plot_reservoirs(models, plot_output_path, plot_output_format=".png"):
     """
 
     # This scatter plot will be messy so we're going to make one for each model.
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
         model_label = model.model_label
-        marker = model.marker
+        marker = markers[model_num]
 
         attribute_names = ["stars", "cold", "hot", "ejected", "ICS"]
         labels = ["Stars", "Cold Gas", "Hot Gas", "Ejected Gas", "Intracluster Stars"]
@@ -983,11 +984,11 @@ def plot_spatial(models, plot_output_path, plot_output_format=".png"):
     ax3 = fig.add_subplot(223)
     ax4 = fig.add_subplot(224)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         model_label = model.model_label
-        color = model.color
-        marker = model.marker
+        color = colors[model_num]
+        marker = markers[model_num]
 
         ax1.scatter(model.properties["x_pos"], model.properties["y_pos"],
                     marker=marker, s=0.3, color=color, alpha=0.5)
@@ -1109,11 +1110,11 @@ def plot_SFRD(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         label = model.model_label
-        color = model.color
-        linestyle = model.linestyle
+        color = colors[model_num]
+        linestyle = linestyles[model_num]
 
         # The SFRD is in a dictionary. Pull it out into a array for plotting.
         SFRD = np.array([model.properties["SFRD_dict"][snap] for snap in model.properties["SFRD_dict"].keys()])
@@ -1168,11 +1169,11 @@ def plot_SMD(models, plot_output_path, plot_output_format=".png"):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    for model in models:
+    for (model_num, model) in enumerate(models):
 
         label = model.model_label
-        color = model.color
-        linestyle = model.linestyle
+        color = colors[model_num]
+        linestyle = linestyles[model_num]
 
         # The SMD is in a dictionary. Pull it out into a array for plotting.
         SMD = np.array([model.properties["SMD_dict"][snap] for snap in model.properties["SMD_dict"].keys()])

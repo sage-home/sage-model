@@ -4,7 +4,7 @@ In this module, we define the ``Model`` superclass.  This class contains all the
 and methods for ingesting galaxy data and calculating properties.
 
 The methods for reading setting the simulation cosmology and reading galaxy data are kept
-in their own subclass modules (e.g., ``sage_binary.py``).  If you wish to provide your own
+in their own Data Class modules (e.g., ``sage_binary.py``).  If you wish to provide your own
 data format, copy the format inside one of those modules.
 
 To calculate extra properties, you need to specify both the x- and y-axes on which the
@@ -61,9 +61,9 @@ class Model(object):
     used to define the paths and parameters for each model that is being plotted.  In this
     way, we can handle multiple different simulations trivially.
 
-    The ingestion of data is handled by subclasses (e.g., :py:class:`~sage_analysis.sage_binary.SageBinaryModel`
-    and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`).  We refer to
-    :doc:`../user/subclass` for more information about adding your own subclass to ingest
+    The ingestion of data is handled by inidivudal Data Classes (e.g., :py:class:`~sage_analysis.sage_binary.SageBinaryData`
+    and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Data`).  We refer to
+    :doc:`../user/data_class` for more information about adding your own Data Class to ingest
     data.
     """
 
@@ -92,11 +92,16 @@ class Model(object):
         specificed, a warning will be issued and the ``sage_file`` read and used.
         """
 
-        # Need the snapshot to specify the name of the file.
-        self._snapshot = model_dict["snapshot"]
+        # Need the snapshot to specify the name of the file. However, it's acceptable to
+        # not have it named at initialization and call the Data Class specific
+        # `update_snapshot` method later.
+        try:
+            self._snapshot = model_dict["snapshot"]
+        except KeyError:
+            pass
 
         # Use the SAGE parameter file to generate a bunch of attributes.
-        sage_dict = self.read_sage_file(model_dict["sage_file"])
+        sage_dict = self.read_sage_params(model_dict["sage_file"])
         model_dict.update(sage_dict)
 
         # Set the attributes.
@@ -106,20 +111,9 @@ class Model(object):
             if key == "snapshot":
                 continue
 
-            print(key)
             setattr(self, key, model_dict[key])
 
         self.num_files = 0
-
-        # If we're plotting temporal values (i.e., running with ``history.py``) then we
-        # were passed a scale factor file.
-        try:
-            alist_fname = self.alist_file
-        except AttributeError:
-            pass
-        else:
-            alist = np.loadtxt(alist_fname)
-            self.redshifts = 1.0/alist - 1.0
 
         # Then set default values.
         self._sample_size = sample_size
@@ -138,13 +132,25 @@ class Model(object):
         return(self._snapshot)
 
     @property
+    def redshifts(self):
+        """
+        :obj:`~numpy.ndarray`: Redshifts for this simulation.
+        """
+
+        return(self._redshifts)
+
+    @redshifts.setter
+    def redshifts(self, redshifts):
+        self._redshifts = redshifts
+
+    @property
     def sage_output_format(self):
         """
         {``"sage_binary"``, ``"sage_binary"``}: The output format *SAGE* wrote in.
-        A :py:class:`~Model` subclass (e.g., :py:class:`~sage_analysis.sage_binary.SageBinaryModel`
-        and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`) must be written and
+        A specific Data Class (e.g., :py:class:`~sage_analysis.sage_binary.SageBinaryData`
+        and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Data`) must be written and
         used for each :py:attr:`~sage_output_format` option. We refer to
-        :doc:`../user/subclass` for more information about adding your own subclass to ingest
+        :doc:`../user/data_class` for more information about adding your own Data Class to ingest
         data.
         """
 
@@ -160,8 +166,8 @@ class Model(object):
         string: Path to the output data. If :py:attr:`~sage_output_format` is
         ``sage_binary``, files read must be labelled :py:attr:`~model_path`.XXX.
         If :py:attr:`~sage_output_format` is ``sage_hdf5``, the file read will be
-        :py:attr:`~model_path` and the groups accessed will be Core_XXX. In both cases,
-        ``XXX`` represents the numbers in the range
+        :py:attr:`~model_path` and the groups accessed will be Core_XXX at snapshot
+        :py:attr:`~snapshot`. In both cases, ``XXX`` represents the numbers in the range
         [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
         """
 
@@ -214,42 +220,6 @@ class Model(object):
         self._model_label = label
 
     @property
-    def color(self):
-        """
-        string: Color of the markers and points on plots.
-        """
-
-        return(self._color)
-
-    @color.setter
-    def color(self, color):
-        self._color = color
-
-    @property
-    def linestyle(self):
-        """
-        string: Linestyle for plots.
-        """
-
-        return(self._linestyle)
-
-    @linestyle.setter
-    def linestyle(self, linestyle):
-        self._linestyle = linestyle
-
-    @property
-    def marker(self):
-        """
-        string: Marker for plots.
-        """
-
-        return(self._marker)
-
-    @marker.setter
-    def marker(self, marker):
-        self._marker = marker
-
-    @property
     def first_file(self):
         """
         int: The first *SAGE* sub-file to be read. If :py:attr:`~sage_output_format` is
@@ -300,36 +270,19 @@ class Model(object):
         self._simulation = simulation
 
     @property
-    def hdf5_snapshot(self):
+    def snapshot(self):
         """
-        int: Specifies the snapshot to be read. Only required if
-        :py:attr:`~sage_output_format` is ``sage_hdf5``. Otherwise, if
-        :py:attr:`sage_output_format` is ``sage_hdf5``, the redshift will be specified in
-        the :py:attr:`model_path` attribute.
-        """
-
-        return(self._hdf5_snapshot)
-
-    @hdf5_snapshot.setter
-    def hdf5_snapshot(self, hdf5_snapshot):
-        self._hdf5_snapshot = hdf5_snapshot
-
-    @property
-    def num_tree_files_used(self):
-        """
-        int: The number of tree files used by *SAGE* to generate this :py:class:`~Model`
-        output. This should be the ``last_file - first_file + 1`` range specified by the
-        *SAGE* parameter file. Only required if :py:attr:`~sage_output_format` is ``sage_binary``.
-        Otherwise, if :py:attr:`sage_output_format` is ``sage_hdf5``, the
-        value is read from are read from the
-        ``["Header"]["Simulation"].attr["frac_volume_processed"]`` attribute for each HDF5 core.
+        int: Specifies the snapshot to be read. If :py:attr:`~sage_output_format` is
+        ``sage_hdf5``, this specifies the HDF5 group to be read. Otherwise, if
+        :py:attr:`sage_output_format` is ``sage_binary``, this attribute will be used to
+        index :py:attr:`~redshifts` and generate the suffix for :py:attr:`~model_path`.
         """
 
-        return(self._num_tree_files_used)
+        return(self._snapshot)
 
-    @num_tree_files_used.setter
-    def num_tree_files_used(self, num_files):
-        self._num_tree_files_used = num_files
+    @snapshot.setter
+    def snapshot(self, snapshot):
+        self._snapshot = snapshot
 
     @property
     def bins(self):
@@ -364,7 +317,7 @@ class Model(object):
         return(self._sample_size)
 
 
-    def read_sage_file(self, sage_file_path):
+    def read_sage_params(self, sage_file_path):
         """
         Reads the **SAGE** parameter file values.
 
@@ -429,14 +382,23 @@ class Model(object):
         # initialising the model.
         model_dict = {}
 
+        alist = np.loadtxt(SAGE_dict["FileWithSnapList"])
+        redshifts = 1.0/alist - 1.0
+        model_dict["redshifts"] = redshifts
+
         # If the output format was 'sage_binary', need to use the redshift. If the output
         # format was 'sage_hdf5', then we just append '.hdf5'.
         if SAGE_dict["OutputFormat"] == "sage_binary":
 
-            alist = np.loadtxt(SAGE_dict["FileWithSnapList"])
-            redshift = 1.0/alist[self.snapshot] - 1.0
-
-            output_tag = "_z{0:.3f}".format(redshift)
+            try:
+                snap = self.snapshot
+            except KeyError:
+                print("A Model was instantiated without specifying an initial snapshot to "
+                      "read. This is allowed, but `Data_Class.update_snapshot` must be "
+                      "called before any reading is done.")
+                output_tag = "NOT_SET"
+            else:
+                output_tag = "_z{0:.3f}".format(redshifts[snap])
 
         elif SAGE_dict["OutputFormat"] == "sage_hdf5":
 
@@ -551,8 +513,8 @@ class Model(object):
         close_file: boolean, default ``True``
             Some data formats have a single file data is read from rather than opening and
             closing the sub-files in :py:meth:`read_gals`. Hence once the properties are
-            calculated, the file must be closed. This variable flags whether the subclass
-            specific :py:meth:`~close_file` method should be called upon completion of
+            calculated, the file must be closed. This variable flags whether the data
+            class  specific :py:meth:`~close_file` method should be called upon completion of
             this method.
 
         use_pbar : Boolean, default ``True``
@@ -565,7 +527,7 @@ class Model(object):
         start_time = time.time()
 
         # First determine how many galaxies are in all files.
-        self.determine_num_gals()
+        self.data_class.determine_num_gals(self)
         if self.num_gals == 0:
             return
 
@@ -583,8 +545,8 @@ class Model(object):
         # Now read the galaxies and calculate the properties.
         for file_num in range(self.first_file, self.last_file+1):
 
-            # This is subclass specific. Refer to the relevant module for implementation.
-            gals = self.read_gals(file_num, pbar=pbar, debug=debug)
+            # This is Data Class specific. Refer to the relevant module for implementation.
+            gals = self.data_class.read_gals(self, file_num, pbar=pbar, debug=debug)
 
             # We may have skipped a file.
             if gals is None:
@@ -597,7 +559,7 @@ class Model(object):
         # temporal results (i.e., running `history.py`) then we won't close here.
         if close_file:
             try:
-                self.close_file()
+                self.data_class.close_file(self)
             except AttributeError:
                 pass
 
@@ -621,18 +583,16 @@ class Model(object):
             this dictionary are called on the galaxies. The function signature is required
             to be ``func(Model, gals)``
 
-        gals: exact format given by the :py:class:`~Model` subclass.
+        gals: exact format given by the :py:class:`~Model` Data Class.
             The galaxies for this file.
 
         Notes
         -----
 
-        If :py:attr:`~sage_output_format`: is
-        :py:class:`~sage_analysis.sage_binary.SageBinaryModel`, ``gals`` is a ``numpy``
+        If :py:attr:`~sage_output_format` is ``sage_binary``, ``gals`` is a ``numpy``
         structured array. If :py:attr:`~sage_output_format`: is
-        :py:class:`~sage_analysis.sage_hdf5.SageHdf5Model`, ``gals`` is an open HDF5
-        group. We refer to :doc:`../user/subclass` for more information about adding your
-        own subclass to ingest data.
+        ``sage_hdf5``, ``gals`` is an open HDF5 group. We refer to
+        :doc:`../user/data_class` for more information about adding your own Data Class to ingest data.
         """
 
         # When we create some plots, we do a scatter plot. For these, we only plot a

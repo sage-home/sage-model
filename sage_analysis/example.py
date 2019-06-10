@@ -2,8 +2,8 @@
 """
 Example script for plotting the data from the Mini-Millennium simulation.
 
-To add your own data format, create a subclass module (e.g., ``sage_binary.py``).
-This subclass module needs methods ``set_cosmology()``, ``determine_num_gals()``
+To add your own data format, create a Data Class module (e.g., ``sage_binary.py``).
+This Data Class module needs methods ``set_cosmology()``, ``determine_num_gals()``
 and  ``read_gals()``.
 
 To calculate and plot extra properties, first add the name of your new plot to the
@@ -32,7 +32,7 @@ Author: Jacob Seiler.
 import sage_analysis.model
 import sage_analysis.plots
 
-# Import the subclasses that handle the different SAGE output formats.
+# Import the Data Classes that handle the different SAGE output formats.
 from sage_analysis.sage_binary import SageBinaryData
 
 try:
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     model0_sage_file = "../input/millennium.par"
 
     # Then extend each of these lists for all the models that you want to plot.
-    # E.g., 'dir_names = [model0_dir_name, model1_dir_name, ..., modelN_dir_name]
+    # E.g., 'IMFs = [model0_IMF, model1_IMF, ..., modelN_IMF]
     IMFs = [model0_IMF]
     labels = [model0_model_label]
     snapshots = [model0_snapshot]
@@ -205,14 +205,15 @@ if __name__ == "__main__":
     for model_dict in model_dicts:
 
         my_model = sage_analysis.model.Model(model_dict)
+        my_model.plot_output_format = plot_output_format
 
+        # Each SAGE output has a specific class written to read in the data.
         if my_model.sage_output_format == "sage_binary":
-            my_model.data_subclass = SageBinaryData(my_model)
+            my_model.data_class = SageBinaryData(my_model)
         elif my_model.sage_output_format == "sage_hdf5":
-            my_model.data_subclass = SageHdf5Data(my_model)
+            my_model.data_class = SageHdf5Data(my_model)
 
-        my_model.data_subclass.set_cosmology(my_model)
-        exit()
+        my_model.data_class.set_cosmology(my_model)
 
         # Some properties require the stellar mass function to normalize their values. For
         # these, the SMF plot toggle is explicitly required.
