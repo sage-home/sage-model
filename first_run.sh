@@ -55,8 +55,8 @@ else
     echo "Mini-Millennium trees already present in 'input/millennium/trees'."
 fi
 
-# Now to properly do the plotting, we require the OutputDir parameter in the SAGE parameter file to be an absolute path.
-echo "Appending the 'OutputDir' path in the SAGE parameter file with your current directory '${parent_path}'"
+# Now to properly do the plotting, we require the OutputDir, SimulationDir and FileWithSnapList in the SAGE parameter file to be an absolute path.
+echo "Appending the 'OutputDir', 'SimulationDir' and 'FileWithSnapList' paths in the SAGE parameter file with your current directory '${parent_path}'"
 echo ""
 
 # Move back to the directoy with the input file.
@@ -64,7 +64,12 @@ cd ../..
 
 # Generate the new name and replace.
 new_OutputDir='OutputDir   '"$parent_path"'/output/millennium/'
+new_SimulationDir='SimulationDir   '"$parent_path"'/input/millennium/trees/'
+new_FileWithSnapList='FileWithSnapList '"$parent_path"'/input/millennium/trees/millennium.a_list'
+
 sed -Ei "s|^(OutputDir[[:blank:]]*).*|$new_OutputDir|g" millennium.par
+sed -Ei "s|^(SimulationDir[[:blank:]]*).*|$new_SimulationDir|g" millennium.par
+sed -Ei "s|^(FileWithSnapList[[:blank:]]*).*|$new_FileWithSnapList|g" millennium.par
 
 echo "SAGE should be compiled with the 'make' command."
 echo "Once compiled, it can be ran by executing './sage input/millennium.par'"
