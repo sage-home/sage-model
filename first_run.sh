@@ -67,9 +67,11 @@ new_OutputDir='OutputDir   '"$parent_path"'/output/millennium/'
 new_SimulationDir='SimulationDir   '"$parent_path"'/input/millennium/trees/'
 new_FileWithSnapList='FileWithSnapList '"$parent_path"'/input/millennium/trees/millennium.a_list'
 
-sed -Ei "s|^(OutputDir[[:blank:]]*).*|$new_OutputDir|g" millennium.par
-sed -Ei "s|^(SimulationDir[[:blank:]]*).*|$new_SimulationDir|g" millennium.par
-sed -Ei "s|^(FileWithSnapList[[:blank:]]*).*|$new_FileWithSnapList|g" millennium.par
+# The '%' after the '-Ei' flags are required for MacOS to properly perform the sed command.
+# I'm baffled why it's necessary but hey, it now works on Mac and doesn't affect linux *shrug*.
+sed -Ei"%" "s|^(OutputDir[[:blank:]]*).*|$new_OutputDir|g" millennium.par
+sed -Ei"%" "s|^(SimulationDir[[:blank:]]*).*|$new_SimulationDir|g" millennium.par
+sed -Ei"%" "s|^(FileWithSnapList[[:blank:]]*).*|$new_FileWithSnapList|g" millennium.par
 
 echo "SAGE should be compiled with the 'make' command."
 echo "Once compiled, it can be ran by executing './sage input/millennium.par'"
