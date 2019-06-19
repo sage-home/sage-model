@@ -503,10 +503,17 @@ class Model(object):
         Parameters
         ----------
 
-        calculation_functions: dict [string, function]
-            Specifies the functions used to calculate the properties. All functions in
-            this dictionary are called after the galaxies for each sub-file have been
-            loaded. The function signature is required to be ``func(Model, gals)``.
+        calculation_functions: dict [string, list(function, dict[string, variable])]
+            Specifies the functions used to calculate the properties of this
+            :py:class:`~Model`. The key of this dictionary is the name of the function.
+            The value is a list with the 0th element being the function and the 1st
+            element being a dictionary of additional keyword arguments to be passed to
+            the function. The inner dictionary is keyed by the keyword argument names
+            with the value specifying the keyword argument value.
+
+            All functions in this dictionary for called after the galaxies for each
+            sub-file have been loaded. The function signature is required to be
+            ``func(Model, gals, <Extra Keyword Arguments>)``.
 
         close_file: boolean, default ``True``
             Some data formats have a single file data is read from rather than opening and
