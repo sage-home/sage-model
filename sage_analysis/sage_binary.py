@@ -165,9 +165,10 @@ class SageBinaryData():
         model.num_gals = num_gals
 
 
-    def read_gals(self, mdoel, file_num, pbar=None, plot_galaxies=False, debug=False):
+    def read_gals(self, model, file_num, pbar=None, plot_galaxies=False, debug=False):
         """
-        Reads the galaxies of a single core at the specified :py:attr:`~Model.snapshot`.
+        Reads the galaxies of a model file at snapshot specified by
+        :py:attr:`~Model.snapshot`.
 
         Parameters
         ----------

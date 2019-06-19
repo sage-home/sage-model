@@ -410,10 +410,8 @@ class Model(object):
 
         model_dict["sage_output_format"] = SAGE_dict["OutputFormat"]
         model_dict["output_path"] = "{0}/plots/".format(SAGE_dict["OutputDir"])
-        model_dict["first_file"] = int(SAGE_dict["FirstFile"])
-        model_dict["last_file"] = int(SAGE_dict["LastFile"])
-        model_dict["num_tree_files_used"] = int(model_dict["last_file"]) - \
-                                            int(model_dict["first_file"]) + 1
+        model_dict["num_tree_files_used"] = int(SAGE_dict["LastFile"]) - \
+                                            int(SAGE_dict["FirstFile"]) + 1
 
         return model_dict
 
@@ -601,8 +599,11 @@ class Model(object):
 
         # Now check which plots the user is creating and hence decide which properties
         # they need.
-        for func in calculation_functions.values():
-            func(self, gals)
+        for func_name in calculation_functions.keys():
+            func = calculation_functions[func_name][0]
+            keyword_args = calculation_functions[func_name][1]
+
+            func(self, gals, **keyword_args)
 
 
 def calc_SMF(model, gals):

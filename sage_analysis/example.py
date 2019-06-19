@@ -52,11 +52,13 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def generate_func_dict(plot_toggles, module_name, function_prefix):
+def generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args={}):
     """
-    Generates a dictionary where the keys are the function name and the value is the
-    function itself.  Functions are only generated when the ``plot_toggles`` value is
-    specified.
+    Generates a dictionary where the keys are the function name and the value is a list
+    containing the function itself (0th element) and keyword arguments as a dictionary
+    (1st element). All functions in the returned dictionary are expected to have the same
+    call signature for non-keyword arguments. Functions are only added when the
+    ``plot_toggles`` value is non-zero.
 
     Functions are required to be named ``<module_prefix><function_prefix><plot_toggle_key>``
     For example, the default calculation function are kept in the ``model.py`` module and
@@ -66,35 +68,62 @@ def generate_func_dict(plot_toggles, module_name, function_prefix):
     Parameters
     ----------
 
-    plot_toggles : dictionary
+    plot_toggles: dict, [string, int]
         Dictionary specifying the name of each property/plot and whether the values
         will be generated + plotted. A value of 1 denotes plotting, whilst a value of
         0 denotes not plotting.  Entries with a value of 1 will be added to the function
         dictionary.
 
-        Example
-        -------
-
-        plot_toggles = {"SMF" : 0,
-                        "BTF" : 1,
-                        "sSFR" : 1}
-
-    module_prefix : string
+    module_prefix: string
         Name of the module where the functions are located. If the functions are located
         in this module, pass an empty string "".
 
-        Example
-        -------
-
-        module_prefix = "sage_analysis.model"
-
-    function_prefix : string
+    function_prefix: string
         Prefix that is added to the start of each function.
 
-        Example
-        -------
+    keyword_args: dict [string, dict[string, variable]], optional
+        Allows the adding of keyword aguments to the functions associated with the
+        specified plot toggle. The name of each keyword argument and associated value is
+        specified in the inner dictionary.
 
-        function_prefix = "calc_"
+    Returns
+    -------
+
+    func_dict: dict [string, list(function, dict[string, variable])]
+        The key of this dictionary is the name of the function.  The value is a list with
+        the 0th element being the function and the 1st element being a dictionary of
+        additional keyword arguments to be passed to the function. The inner dictionary is
+        keyed by the keyword argument names with the value specifying the keyword argument
+        value.
+
+    Examples
+    --------
+    >>> plot_toggles = {"SMF": 1}
+    >>> module_name = "sage_analysis.model"
+    >>> function_prefix = "calc_"
+    >>> generate_func_dict(plot_toggles, module_name, function_prefix) #doctest: +ELLIPSIS
+    {'calc_SMF': [<function calc_SMF at 0x...>, {}]}
+    >>> module_name = "sage_analysis.plots"
+    >>> function_prefix = "plot_"
+    >>> generate_func_dict(plot_toggles, module_name, function_prefix) #doctest: +ELLIPSIS
+    {'plot_SMF': [<function plot_SMF at 0x...>, {}]}
+
+    >>> plot_toggles = {"SMF": 1}
+    >>> module_name = "sage_analysis.plots"
+    >>> function_prefix = "plot_"
+    >>> keyword_args = {"SMF": {"plot_sub_populations": True}}
+    >>> generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args) #doctest: +ELLIPSIS
+    {'plot_SMF': [<function plot_SMF at 0x...>, {'plot_sub_populations': True}]}
+
+    >>> plot_toggles = {"SMF": 1, "quiescent": 1}
+    >>> module_name = "sage_analysis.plots"
+    >>> function_prefix = "plot_"
+    >>> keyword_args = {"SMF": {"plot_sub_populations": True},
+    ...                 "quiescent": {"plot_output_format": ".pdf", "plot_sub_populations": True}}
+    >>> generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args) #doctest: +ELLIPSIS
+    {'plot_SMF': [<function plot_SMF at 0x...>, {'plot_sub_populations': True}], \
+'plot_quiescent': [<function plot_quiescent at 0x...>, {'plot_output_format': '.pdf', \
+'plot_sub_populations': True}]}
     """
 
     # If the functions are defined in this module, then `module_name` is empty. Need to
@@ -134,7 +163,14 @@ def generate_func_dict(plot_toggles, module_name, function_prefix):
                       toggle, module_prefix)
                 raise AttributeError(msg)
 
-            func_dict[func_name] = func
+            # We may have specified some keyword arguments for this plot toggle. Check.
+            try:
+                key_args = keyword_args[toggle]
+            except KeyError:
+                # No extra arguments for this.
+                key_args = {}
+
+            func_dict[func_name] = [func, key_args]
 
     return func_dict
 
@@ -152,8 +188,11 @@ if __name__ == "__main__":
 
     model0_snapshot = 63
     model0_IMF = "Chabrier"  # Chabrier or Salpeter.
-    model0_model_label = "Mini-Millennium"  # Goes on the axis.
+    model0_model_label = "Genesis - HDF5"  # Goes on the axis.
     model0_sage_file = "../input/millennium.par"
+    model0_simulation = "Genesis-L500-N2160"
+    model0_first_file = 0
+    model0_last_file = 31
 
     # Then extend each of these lists for all the models that you want to plot.
     # E.g., 'IMFs = [model0_IMF, model1_IMF, ..., modelN_IMF]
@@ -161,10 +200,13 @@ if __name__ == "__main__":
     labels = [model0_model_label]
     snapshots = [model0_snapshot]
     sage_files = [model0_sage_file]
+    simulations = [model0_simulation]
+    first_files = [model0_first_file]
+    last_files = [model0_last_file]
 
     # A couple of extra variables...
     plot_output_format    = ".png"
-    plot_output_path = "./plots"  # Will be created if path doesn't exist.
+    plot_output_path = "./genesis_plots"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.
@@ -192,11 +234,14 @@ if __name__ == "__main__":
     # Generate a dictionary for each model containing the required information.
     # We store these in `model_dicts` which will be a list of dictionaries.
     model_dicts = []
-    for IMF, model_label, snapshot, sage_file in zip(IMFs, labels, snapshots, sage_files):
+    for IMF, model_label, snapshot, sage_file, sim, first_file, last_file in zip(IMFs, labels, snapshots, sage_files, simulations, first_files, last_files):
         this_model_dict = {"IMF": IMF,
                            "model_label": model_label,
                            "snapshot": snapshot,
-                           "sage_file": sage_file}
+                           "sage_file": sage_file,
+                           "simulation": sim,
+                           "first_file": first_file,
+                           "last_file": last_file}
 
         model_dicts.append(this_model_dict)
 
@@ -281,11 +326,17 @@ if __name__ == "__main__":
     # Similar to the calculation functions, all of the plotting functions are in the
     # `plots.py` module and are labelled `plot_<toggle>`.
     plot_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.plots",
-                                        function_prefix="plot_")
+                                        function_prefix="plot_",
+                                        keyword_args={"quiescent": {"plot_sub_populations":True}})
 
+    print(plot_functions["plot_quiescent"])
+    exit()
     # Now do the plotting.
-    for plot_func in plot_functions.values():
-        plot_func(models, plot_output_path, plot_output_format)
+    for func_name in plot_functions.keys():
+        func = plot_functions[func_name][0]
+        keyword_args = plot_functions[func_name][1]
+
+        func(models, plot_output_path, plot_output_format, **keyword_args)
 
     # Set the error settings to the previous ones so we don't annoy the user.
     np.seterr(divide=old_error_settings["divide"], over=old_error_settings["over"],
