@@ -67,7 +67,7 @@ class Model(object):
     data.
     """
 
-    def __init__(self, model_dict, sample_size=10000):
+    def __init__(self, model_dict, sample_size=1000, read_sage_file=True):
         """
         Sets the galaxy path and number of files to be read for a model. Also initialises
         the plot toggles that dictates which properties will be calculated.
@@ -78,18 +78,19 @@ class Model(object):
         model_dict: dict [string, variable]
             Dictionary containing parameter values for this class instance that can't be
             read from the **SAGE** parameter file. These are :py:attr:`~snapshot`,
-            :py:attr:`~IMF`, :py:attr:`~model_label` and :py:attr:`~sage_file`.
+            :py:attr:`~IMF`, :py:attr:`~model_label` and :py:attr:`~sage_file`. If
+            ``read_sage_file`` is set to ``False``, all model parameters must be specified
+            in this dict instead.
 
         sample_size: int, optional
             Specifies the length of the :py:attr:`~properties` attributes stored as 1-dimensional
             :obj:`~numpy.ndarray`.  These :py:attr:`~properties` are initialized using
             :py:meth:`~init_scatter_properties`.
 
-        Notes
-        -----
-
-        Either ``model_dict`` OR ``sage_file`` must be not ``None``.  If both are
-        specificed, a warning will be issued and the ``sage_file`` read and used.
+        read_sage_file: bool, optional
+            Specifies whether to read the **SAGE** file and update the ``model_dict`` dict
+            with the parameters specified inside.  If set to ``False``, all model
+            parameters must be specified in ``model_dict`` instead.
         """
 
         # Need the snapshot to specify the name of the file. However, it's acceptable to
@@ -101,8 +102,9 @@ class Model(object):
             pass
 
         # Use the SAGE parameter file to generate a bunch of attributes.
-        sage_dict = self.read_sage_params(model_dict["sage_file"])
-        model_dict.update(sage_dict)
+        if read_sage_file:
+            sage_dict = self.read_sage_params(model_dict["sage_file"])
+            model_dict.update(sage_dict)
 
         # Set the attributes.
         for key in model_dict:
