@@ -113,7 +113,7 @@ def plot_SMF(models, plot_output_path, plot_output_format=".png", plot_sub_popul
     # Go through each of the models and plot.
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
 
         # If we only have one model, we will split it into red and blue
         # sub-populations.
@@ -130,15 +130,15 @@ def plot_SMF(models, plot_output_path, plot_output_format=".png", plot_sub_popul
 
         # The SMF is normalized by the simulation volume which is in Mpc/h.
         norm_SMF = model.properties["SMF"]/model.volume*pow(model.hubble_h, 3)/bin_width
-        ax.plot(bin_middles[:-1], norm_SMF, color=color, ls=ls, label=model_label + " - All")
+        ax.plot(bin_middles[:-1], norm_SMF, color=color, ls=ls, label=label + " - All")
 
         # Be careful to not overcrowd the plot.
         if len(models) == 1 or plot_sub_populations:
             norm_red = model.properties["red_SMF"]/model.volume*pow(model.hubble_h, 3)/bin_width
             norm_blue = model.properties["blue_SMF"]/model.volume*pow(model.hubble_h, 3)/bin_width
 
-            ax.plot(bin_middles[:-1], norm_red, "r:", lw=2, label=model_label + " - Red")
-            ax.plot(bin_middles[:-1], norm_blue, "b:", lw=2, label=model_label + " - Blue")
+            ax.plot(bin_middles[:-1], norm_red, "r:", lw=2, label=label + " - Red")
+            ax.plot(bin_middles[:-1], norm_blue, "b:", lw=2, label=label + " - Blue")
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
@@ -207,11 +207,11 @@ def plot_temporal_SMF(models, plot_output_path, plot_output_format=".png"):
 
         # Iterate over the snapshots.
         for snap in model.SMF_snaps:
-            model_label = "{0} z = {1:.3f}".format(model.model_label, model.redshifts[snap])
+            label = "{0} z = {1:.3f}".format(model.label, model.redshifts[snap])
 
             # The SMF is normalized by the simulation volume which is in Mpc/h.
             ax.plot(bin_middles[:-1], model.properties["SMF_dict"][snap] / model.volume*pow(model.hubble_h, 3)/bin_width,
-                    ls=ls, label=model_label)
+                    ls=ls, label=label)
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
@@ -268,7 +268,7 @@ def plot_BMF(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         ls = linestyles[model_num]
 
@@ -278,7 +278,7 @@ def plot_BMF(models, plot_output_path, plot_output_format=".png"):
 
         # The MF is normalized by the simulation volume which is in Mpc/h.
         ax.plot(bin_middles[:-1], model.properties["BMF"]/model.volume*pow(model.hubble_h, 3)/bin_width,
-                color=color, ls=ls, label=model_label + " - All")
+                color=color, ls=ls, label=label + " - All")
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
@@ -334,7 +334,7 @@ def plot_GMF(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         ls = linestyles[model_num]
 
@@ -344,7 +344,7 @@ def plot_GMF(models, plot_output_path, plot_output_format=".png"):
 
         # The MMF is normalized by the simulation volume which is in Mpc/h.
         ax.plot(bin_middles[:-1], model.properties["GMF"]/model.volume*pow(model.hubble_h, 3)/bin_width,
-                color=color, ls=ls, label=model_label + " - Cold Gas")
+                color=color, ls=ls, label=label + " - Cold Gas")
 
     # For scaling the observational data, we use the values of the zeroth
     # model.
@@ -400,12 +400,12 @@ def plot_BTF(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         marker = markers[model_num]
 
         ax.scatter(model.properties["BTF_vel"], model.properties["BTF_mass"], marker=marker, s=1,
-                   color=color, alpha=0.5, label=model_label + " Sb/c galaxies")
+                   color=color, alpha=0.5, label=label + " Sb/c galaxies")
 
     ax.set_xlim([1.4, 2.6])
     ax.set_ylim([8.0, 12.0])
@@ -457,12 +457,12 @@ def plot_sSFR(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         marker = markers[model_num]
 
         ax.scatter(model.properties["sSFR_mass"], model.properties["sSFR_sSFR"], marker=marker, s=1, color=color,
-                   alpha=0.5, label=model_label)
+                   alpha=0.5, label=label)
 
     # Overplot a dividing line between passive and SF galaxies.
     w = np.arange(7.0, 13.0, 1.0)
@@ -517,12 +517,12 @@ def plot_gas_frac(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         marker = markers[model_num]
 
         ax.scatter(model.properties["gas_frac_mass"], model.properties["gas_frac"], marker=marker, s=1,
-                   color=color, alpha=0.5, label=model_label + " Sb/c galaxies")
+                   color=color, alpha=0.5, label=label + " Sb/c galaxies")
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Cold\ Mass\ /\ (Cold+Stellar\ Mass)}$")
@@ -571,12 +571,12 @@ def plot_metallicity(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         marker = markers[model_num]
 
         ax.scatter(model.properties["metallicity_mass"], model.properties["metallicity"],
-                   marker=marker, s=1, color=color, alpha=0.5, label=model_label + " galaxies")
+                   marker=marker, s=1, color=color, alpha=0.5, label=label + " galaxies")
 
     # Use the IMF of the zeroth model to scale the observational results.
     zeroth_IMF = models[0].IMF
@@ -630,12 +630,12 @@ def plot_bh_bulge(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         marker = markers[model_num]
 
         ax.scatter(model.properties["bulge_mass"], model.properties["bh_mass"], marker=marker, s=1, color=color,
-                   alpha=0.5, label=model_label + " galaxies")
+                   alpha=0.5, label=label + " galaxies")
 
     ax = obs.plot_bh_bulge_data(ax)
 
@@ -691,7 +691,7 @@ def plot_quiescent(models, plot_output_path, plot_output_format=".png",
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         linestyle = linestyles[model_num]
 
@@ -701,14 +701,14 @@ def plot_quiescent(models, plot_output_path, plot_output_format=".png",
 
         # We will keep the colour scheme consistent, but change the line styles.
         ax.plot(bin_middles[:-1], model.properties["quiescent_galaxy_counts"] / model.properties["SMF"],
-                label=model_label + " All", color=color, linestyle="-")
+                label=label + " All", color=color, linestyle="-")
 
         if len(models) == 1 or plot_sub_populations:
             ax.plot(bin_middles[:-1], model.properties["quiescent_centrals_counts"] / model.properties["centrals_MF"],
-                    label=model_label + " Centrals", color=color, linestyle="--")
+                    label=label + " Centrals", color=color, linestyle="--")
 
             ax.plot(bin_middles[:-1], model.properties["quiescent_satellites_counts"] / model.properties["satellites_MF"],
-                    label=model_label + " Satellites", color=color, linestyle="-.")
+                    label=label + " Satellites", color=color, linestyle="-.")
 
     ax.set_xlabel(r"$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$")
     ax.set_ylabel(r"$\mathrm{Quescient\ Fraction}$")
@@ -762,7 +762,7 @@ def plot_bulge_fraction(models, plot_output_path, plot_output_format=".png",
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         linestyle = linestyles[model_num]
 
@@ -779,9 +779,9 @@ def plot_bulge_fraction(models, plot_output_path, plot_output_format=".png",
         disk_var = model.properties["fraction_disk_var"]
 
         # We will keep the colour scheme consistent, but change the line styles.
-        ax.plot(bin_middles[:-1], bulge_mean, label=model_label + " bulge",
+        ax.plot(bin_middles[:-1], bulge_mean, label=label + " bulge",
                 color=color, linestyle="-")
-        ax.plot(bin_middles[:-1], disk_mean, label=model_label + " disk",
+        ax.plot(bin_middles[:-1], disk_mean, label=label + " disk",
                 color=color, linestyle="--")
 
         if plot_var:
@@ -842,7 +842,7 @@ def plot_baryon_fraction(models, plot_output_path, plot_output_format=".png",
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         linestyle = linestyles[model_num]
 
@@ -854,7 +854,7 @@ def plot_baryon_fraction(models, plot_output_path, plot_output_format=".png",
         baryon_mean = model.properties["halo_baryon_fraction_sum"] / model.properties["fof_HMF"]
 
         # We will keep the linestyle constant but change the color.
-        ax.plot(bin_middles[:-1], baryon_mean, label=model_label + " Total",
+        ax.plot(bin_middles[:-1], baryon_mean, label=label + " Total",
                 color=color, linestyle=linestyle)
 
         # If we have multiple models, we want to be careful of overcrowding the plot.
@@ -867,7 +867,7 @@ def plot_baryon_fraction(models, plot_output_path, plot_output_format=".png",
                 dict_key = "halo_{0}_fraction_sum".format(attr)
                 mean = model.properties[dict_key] / model.properties["fof_HMF"]
 
-                ax.plot(bin_middles[:-1], mean, label=model_label + " " + label,
+                ax.plot(bin_middles[:-1], mean, label=label + " " + label,
                         color=color, linestyle=linestyle)
 
     ax.set_xlabel(r"$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$")
@@ -909,7 +909,7 @@ def plot_reservoirs(models, plot_output_path, plot_output_format=".png"):
     ---------
 
     A plot will be saved as
-    "<plot_output_path>/12.MassReservoirs<model.model_label><plot_output_path>"
+    "<plot_output_path>/12.MassReservoirs<model.label><plot_output_path>"
     for each mode.
     """
 
@@ -919,7 +919,7 @@ def plot_reservoirs(models, plot_output_path, plot_output_format=".png"):
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        model_label = model.model_label
+        label = model.label
         marker = markers[model_num]
 
         attribute_names = ["stars", "cold", "hot", "ejected", "ICS"]
@@ -944,7 +944,7 @@ def plot_reservoirs(models, plot_output_path, plot_output_format=".png"):
 
         fig.tight_layout()
 
-        output_file = "{0}/12.MassReservoirs_{1}{2}".format(plot_output_path, model_label,
+        output_file = "{0}/12.MassReservoirs_{1}{2}".format(plot_output_path, label,
                                                             plot_output_format)
         fig.savefig(output_file)
         print("Saved file to {0}".format(output_file))
@@ -972,7 +972,7 @@ def plot_spatial(models, plot_output_path, plot_output_format=".png"):
     ---------
 
     A plot will be saved as
-    "<plot_output_path>/13.SpatialDistribution<model.model_label><plot_output_path>"
+    "<plot_output_path>/13.SpatialDistribution<model.label><plot_output_path>"
     for each model.
     """
 
@@ -986,7 +986,7 @@ def plot_spatial(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        model_label = model.model_label
+        label = model.label
         color = colors[model_num]
         marker = markers[model_num]
 
@@ -1000,7 +1000,7 @@ def plot_spatial(models, plot_output_path, plot_output_format=".png"):
         # The bottom right panel will only contain the legend.
         # For some odd reason, plotting `np.nan` causes some legend entries to not
         # appear. Plot junk and we'll adjust the axis to not show it.
-        ax4.scatter(-999, -999, marker=marker, color=color, label=model_label)
+        ax4.scatter(-999, -999, marker=marker, color=color, label=label)
         ax4.axis("off")
 
     ax1.set_xlabel(r"$\mathrm{x}\ [\mathrm{Mpc}/h]$")
@@ -1112,7 +1112,7 @@ def plot_SFRD(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        label = model.model_label
+        label = model.label
         color = colors[model_num]
         linestyle = linestyles[model_num]
 
@@ -1171,7 +1171,7 @@ def plot_SMD(models, plot_output_path, plot_output_format=".png"):
 
     for (model_num, model) in enumerate(models):
 
-        label = model.model_label
+        label = model.label
         color = colors[model_num]
         linestyle = linestyles[model_num]
 
