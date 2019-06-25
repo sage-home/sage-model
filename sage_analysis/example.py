@@ -186,23 +186,31 @@ if __name__ == "__main__":
     # specified if using binary output. HDF5 will automatically detect these.
     # `hdf5_snapshot` is only nedded if using HDF5 output.
 
-    model0_snapshot = 63
+    model0_snapshot = 131
     model0_IMF = "Chabrier"  # Chabrier or Salpeter.
-    model0_model_label = "Genesis - HDF5"  # Goes on the axis.
-    model0_sage_file = "../input/millennium.par"
+    model0_label = "Genesis - HDF5"  # Goes on the axis.
+    model0_sage_file = "../input/L500_N2160_genesis_hdf5.par"
     model0_simulation = "Genesis-L500-N2160"
     model0_first_file = 0
     model0_last_file = 31
 
+    model1_snapshot = 131
+    model1_IMF = "Chabrier"  # Chabrier or Salpeter.
+    model1_label = "Genesis - Binary"  # Goes on the axis.
+    model1_sage_file = "../input/L500_N2160_genesis_binary.par"
+    model1_simulation = "Genesis-L500-N2160"
+    model1_first_file = 0
+    model1_last_file = 31
+
     # Then extend each of these lists for all the models that you want to plot.
     # E.g., 'IMFs = [model0_IMF, model1_IMF, ..., modelN_IMF]
-    IMFs = [model0_IMF]
-    labels = [model0_model_label]
-    snapshots = [model0_snapshot]
-    sage_files = [model0_sage_file]
-    simulations = [model0_simulation]
-    first_files = [model0_first_file]
-    last_files = [model0_last_file]
+    IMFs = [model0_IMF, model1_IMF]
+    labels = [model0_label, model1_label]
+    snapshots = [model0_snapshot, model1_snapshot]
+    sage_files = [model0_sage_file, model1_sage_file]
+    simulations = [model0_simulation, model1_simulation]
+    first_files = [model0_first_file, model1_first_file]
+    last_files = [model0_last_file, model1_last_file]
 
     # A couple of extra variables...
     plot_output_format    = ".png"
@@ -234,9 +242,9 @@ if __name__ == "__main__":
     # Generate a dictionary for each model containing the required information.
     # We store these in `model_dicts` which will be a list of dictionaries.
     model_dicts = []
-    for IMF, model_label, snapshot, sage_file, sim, first_file, last_file in zip(IMFs, labels, snapshots, sage_files, simulations, first_files, last_files):
+    for IMF, label, snapshot, sage_file, sim, first_file, last_file in zip(IMFs, labels, snapshots, sage_files, simulations, first_files, last_files):
         this_model_dict = {"IMF": IMF,
-                           "model_label": model_label,
+                           "label": label,
                            "snapshot": snapshot,
                            "sage_file": sage_file,
                            "simulation": sim,
@@ -326,11 +334,8 @@ if __name__ == "__main__":
     # Similar to the calculation functions, all of the plotting functions are in the
     # `plots.py` module and are labelled `plot_<toggle>`.
     plot_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.plots",
-                                        function_prefix="plot_",
-                                        keyword_args={"quiescent": {"plot_sub_populations":True}})
+                                        function_prefix="plot_")
 
-    print(plot_functions["plot_quiescent"])
-    exit()
     # Now do the plotting.
     for func_name in plot_functions.keys():
         func = plot_functions[func_name][0]

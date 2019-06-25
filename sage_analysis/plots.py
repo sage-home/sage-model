@@ -23,9 +23,9 @@ import numpy as np
 
 import sage_analysis.observations as obs
 
-colors = ["r", "b", "g", "m"]
-linestyles = [":", "--", "-.", "-:"]
-markers = ["x", "o", "v", "*"]
+colors = ["r", "b", "g", "m", "c"]
+linestyles = ["-", ":", "--", "-.", "-:"]
+markers = ["x", "o", "v", "*", "D"]
 
 
 def setup_matplotlib_options():

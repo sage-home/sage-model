@@ -78,7 +78,7 @@ class Model(object):
         model_dict: dict [string, variable]
             Dictionary containing parameter values for this class instance that can't be
             read from the **SAGE** parameter file. These are :py:attr:`~snapshot`,
-            :py:attr:`~IMF`, :py:attr:`~model_label` and :py:attr:`~sage_file`. If
+            :py:attr:`~IMF`, :py:attr:`~label` and :py:attr:`~sage_file`. If
             ``read_sage_file`` is set to ``False``, all model parameters must be specified
             in this dict instead.
 
@@ -210,16 +210,16 @@ class Model(object):
         self._IMF = IMF
 
     @property
-    def model_label(self):
+    def label(self):
         """
         string: Label that will go on axis legends for this :py:class:`~Model`.
         """
 
-        return(self._model_label)
+        return(self._label)
 
-    @model_label.setter
-    def model_label(self, label):
-        self._model_label = label
+    @label.setter
+    def label(self, label):
+        self._label = label
 
     @property
     def first_file(self):
