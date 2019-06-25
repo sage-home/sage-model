@@ -120,7 +120,7 @@ class SageBinaryData():
         elif model.simulation == "Genesis-L500-N2160":
             model.hubble_h = 0.6751
             model.box_size = 500.00
-            model.total_num_tree_files = 64
+            model.total_num_tree_files = 125
 
         else:
             raise ValueError("Please pick a valid simulation.")
