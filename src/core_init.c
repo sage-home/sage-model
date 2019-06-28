@@ -101,8 +101,6 @@ void read_snap_list(const int ThisTask, struct params *run_params)
     }
 }
 
-
-
 double time_to_present(const double z, struct params *run_params)
 {
     const double end_limit = 1.0;
@@ -145,13 +143,8 @@ double time_to_present(const double z, struct params *run_params)
     return time;
 }
 
-
-
 double integrand_time_to_present(const double a, void *param)
 {
     const struct params *run_params = (struct params *) param;
     return 1.0 / sqrt(run_params->Omega / a + (1.0 - run_params->Omega - run_params->OmegaLambda) + run_params->OmegaLambda * a * a);
 }
-
-
-
