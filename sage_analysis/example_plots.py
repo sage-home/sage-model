@@ -160,8 +160,8 @@ def plot_SMF(models, plot_output_path, plot_output_format=".png", plot_sub_popul
 
     fig.tight_layout()
 
-    output_file = "{0}/1.StellarMassFunction{1}".format(plot_output_path,
-                                                        plot_output_format)
+    output_file = "{0}/1.StellarMassFunction.{1}".format(plot_output_path,
+                                                         plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -232,8 +232,8 @@ def plot_temporal_SMF(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/A.StellarMassFunction{1}".format(plot_output_path,
-                                                        plot_output_format)
+    output_file = "{0}/A.StellarMassFunction.{1}".format(plot_output_path,
+                                                         plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -300,7 +300,7 @@ def plot_BMF(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/2.BaryonicMassFunction{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/2.BaryonicMassFunction.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -366,7 +366,7 @@ def plot_GMF(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/3.GasMassFunction{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/3.GasMassFunction.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)  # Save the figure
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -422,7 +422,7 @@ def plot_BTF(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/4.BaryonicTullyFisher{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/4.BaryonicTullyFisher.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -482,7 +482,7 @@ def plot_sSFR(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/5.SpecificStarFormationRate{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/5.SpecificStarFormationRate.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -537,7 +537,7 @@ def plot_gas_frac(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/6.GasFraction{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/6.GasFraction.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -596,7 +596,7 @@ def plot_metallicity(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/7.Metallicity{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/7.Metallicity.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -652,7 +652,7 @@ def plot_bh_bulge(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/8.BlackHoleBulgeRelationship{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/8.BlackHoleBulgeRelationship.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -723,7 +723,7 @@ def plot_quiescent(models, plot_output_path, plot_output_format=".png",
 
     fig.tight_layout()
 
-    output_file = "{0}/9.QuiescentFraction{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/9.QuiescentFraction.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -803,7 +803,7 @@ def plot_bulge_fraction(models, plot_output_path, plot_output_format=".png",
 
     fig.tight_layout()
 
-    output_file = "{0}/10.BulgeMassFraction{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/10.BulgeMassFraction.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -881,7 +881,7 @@ def plot_baryon_fraction(models, plot_output_path, plot_output_format=".png",
 
     adjust_legend(ax, location="upper left", scatter_plot=0)
 
-    output_file = "{0}/11.BaryonFraction{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/11.BaryonFraction.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -944,8 +944,8 @@ def plot_reservoirs(models, plot_output_path, plot_output_format=".png"):
 
         fig.tight_layout()
 
-        output_file = "{0}/12.MassReservoirs_{1}{2}".format(plot_output_path, label,
-                                                            plot_output_format)
+        output_file = "{0}/12.MassReservoirs_{1}.{2}".format(plot_output_path, label,
+                                                             plot_output_format)
         fig.savefig(output_file)
         print("Saved file to {0}".format(output_file))
         plt.close()
@@ -1027,7 +1027,7 @@ def plot_spatial(models, plot_output_path, plot_output_format=".png"):
     # Make sure everything remains nicely layed out.
     fig.tight_layout()
 
-    output_file = "{0}/13.SpatialDistribution{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/13.SpatialDistribution.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -1136,7 +1136,7 @@ def plot_SFRD(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/B.SFRDensity{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/B.SFRDensity.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()
@@ -1198,7 +1198,7 @@ def plot_SMD(models, plot_output_path, plot_output_format=".png"):
 
     fig.tight_layout()
 
-    output_file = "{0}/C.StellarMassDensity{1}".format(plot_output_path, plot_output_format)
+    output_file = "{0}/C.StellarMassDensity.{1}".format(plot_output_path, plot_output_format)
     fig.savefig(output_file)
     print("Saved file to {0}".format(output_file))
     plt.close()

@@ -2,44 +2,30 @@
 """
 Example script for plotting the data from the Mini-Millennium simulation.
 
-To add your own data format, create a Data Class module (e.g., ``sage_binary.py``).
-This Data Class module needs methods ``set_cosmology()``, ``determine_num_gals()``
-and  ``read_gals()``.
+By extending the model lists (e.g., IMFs, snapshots, etc), you can plot multiple
+simulations on the same axis.
 
-To calculate and plot extra properties, first add the name of your new plot to the
-``plot_toggles`` dictionary. Then you will need to create a new module (i.e., a new
-``.py`` file) to house all of your calculation and plotting functions. These two modules
-should be specified as the ``module_name`` values for the ``generate_function_dict``
-functions.
-
-Then, for each new property, create a new function to calculate your properties. We
-recommend naming this ``calc_<Naome of your plot toggle>``. To plot your new property,
-create a new function with the suggested name ``plot_<Name of your plot toggle>``.  WHILE
-THE PREFIX OF THESE CAN CHANGE, THEY MUST ALWAYS BE ``<prefix><Name of your plot
-toggle>``.  THESE FUNCTIONS MUST HAVE THE FUNCTION SIGNATURE ``func(Model Class, gals)``.
-Refer to the ``calc_`` and ``plot_`` functions in ``model.py`` and ``plots.py``
-respectively.
-
-For example, to generate and plot data for the ``SMF`` plot, we have methods ``calc_SMF()``
-and ``plot_SMF()``.
-
-Refer to the documentation inside the ``model.py`` and ``plot.py`` modules for more
-details.
+Refer to the online documentation (sage-model.readthedocs.io) for full information on how
+to add your own data format, property calculations and plots.
 
 Author: Jacob Seiler.
 """
 
-from sage_analysis.model import Model
-from utils import generate_func_dict
-
-# These are contain example functions to calculate (and plot) properties such as the
+# These contain example functions to calculate (and plot) properties such as the
 # stellar mass function, quiescent fraction, bulge fraction etc.
 import sage_analysis.example_calcs
 import sage_analysis.example_plots
 
-# Import the Data Classes that handle the different SAGE output formats.
+# Function to determine what we will calculate/plot for each model.
+from sage_analysis.utils import generate_func_dict
+
+# Class that handles the calculation of properties.
+from sage_analysis.model import Model
+# Data Classes that handle reading the different SAGE output formats.
 from sage_analysis.sage_binary import SageBinaryData
 
+# This has h5py dependance. If the user is only using binary, then we don't mind not
+# importing.
 try:
     from sage_analysis.sage_hdf5 import SageHdf5Data
 except ImportError:
@@ -47,34 +33,26 @@ except ImportError:
           "this package.")
 
 import numpy as np
+import os
 
 # Sometimes we divide a galaxy that has zero mass (e.g., no cold gas). Ignore these
-# warnings as they spam stdout.
+# warnings as they spam stdout. Also remember the old settings.
 old_error_settings = np.seterr()
 np.seterr(all="ignore")
-
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 if __name__ == "__main__":
 
-    import os
-
     # We support the plotting of an arbitrary number of models. To do so, simply add the
     # extra variables specifying the path to the model directory and other variables.
-    # E.g., 'model1_sage_output_format = ...", "model1_dir_name = ...".
-    # `first_file`, `last_file`, `simulation` and `num_tree_files` only need to be
-    # specified if using binary output. HDF5 will automatically detect these.
-    # `hdf5_snapshot` is only nedded if using HDF5 output.
-
-    model0_snapshot = 63
+    # E.g., 'model1_snapshot = ...", "model1_IMF = ...".
+    model0_snapshot = 63  # Snapshot we're plotting properties at.
     model0_IMF = "Chabrier"  # Chabrier or Salpeter.
     model0_label = "Mini-Millennium"  # Goes on the axis.
     model0_sage_file = "../input/millennium.par"
-    model0_simulation = "Mini-Millennium"
-    model0_first_file = 0
-    model0_last_file = 0
+    model0_simulation = "Mini-Millennium"  # Used to set cosmology.
+    model0_first_file = 0  # File range we're plotting.
+    model0_last_file = 0  # Closed interval, [first_file, last_file].
 
     # Then extend each of these lists for all the models that you want to plot.
     # E.g., 'IMFs = [model0_IMF, model1_IMF, ..., modelN_IMF]
@@ -87,7 +65,7 @@ if __name__ == "__main__":
     last_files = [model0_last_file]
 
     # A couple of extra variables...
-    plot_output_format    = ".png"
+    plot_output_format    = "png"
     plot_output_path = "./plots"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
@@ -131,6 +109,7 @@ if __name__ == "__main__":
     models = []
     for model_dict in model_dicts:
 
+        # Instantiate a Model class. This will hold the paths
         my_model = Model(model_dict)
         my_model.plot_output_format = plot_output_format
 
@@ -149,16 +128,16 @@ if __name__ == "__main__":
                 my_model.calc_SMF = True
             else:
                 my_model.calc_SMF = False
-        except KeyError:
+        except KeyError:  # Maybe we've removed "SMF" from plot_toggles...
                 my_model.calc_SMF = False
 
         # Then populate the `calculation_methods` dictionary. This dictionary will control
         # which properties each model will calculate.  The dictionary is populated using
         # the plot_toggles defined above.
-        # Our functions are inside the `model.py` module and are named "calc_<toggle>". If
+        # Our functions are inside the `example_calcs.py` module and are named "calc_<toggle>". If
         # your functions are in a different module or different function prefix, change it
         # here.
-        # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals)`.
+        # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals, optional_kwargs=...)`.
         calculation_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.example_calcs",
                                                    function_prefix="calc_")
 

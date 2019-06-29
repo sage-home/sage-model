@@ -1,8 +1,32 @@
+"""
+Here we show a myriad of functions that can be used to calculate properties from the
+**SAGE** output.  By setting the correct plot toggle and calling
+:py:func:`~generate_func_dict`, a dictionary containing these functions can be generated
+and passed to a :py:class:`~Model` instance to calculate the property.
+
+The properties are stored (and updated) in the :py:attr:`~Model.properties` attribute.
+
+We refer to :doc:`../user/calc` for more information on how the calculations are handled.
+
+Author: Jacob Seiler
+"""
+
 import numpy as np
 from scipy import stats
 
+from sage_analysis.utils import select_random_values
+
 
 def calc_SMF(model, gals):
+    """
+    Calculates the stellar mass function of the given galaxies.  That is, the number of
+    galaxies at a given stellar mass.
+
+    The ``Model.properties["SMF"]`` value will be updated. We also split the galaxy
+    population into "red" and "blue" based on the value of :py:attr:`~Model.sSFRcut` and
+    update the ``Model.properties["red_SMF"]`` and ``Model.properties["blue_SMF"]``
+    values.
+    """
 
     non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
@@ -26,6 +50,12 @@ def calc_SMF(model, gals):
 
 
 def calc_BMF(model, gals):
+    """
+    Calculates the baryon mass function of the given galaxies.  That is, the number of
+    galaxies at a given baryon (stellar + cold gas) mass.
+
+    The ``Model.properties["BMF"]`` value will be updated.
+    """
 
     non_zero_baryon = np.where(gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0)[0]
     baryon_mass = np.log10((gals["StellarMass"][:][non_zero_baryon] + gals["ColdGas"][:][non_zero_baryon]) * 1.0e10 \
@@ -36,6 +66,12 @@ def calc_BMF(model, gals):
 
 
 def calc_GMF(model, gals):
+    """
+    Calculates the gas mass function of the given galaxies.  That is, the number of
+    galaxies at a given cold gas mass.
+
+    The ``Model.properties["GMF"]`` value will be updated.
+    """
 
     non_zero_cold = np.where(gals["ColdGas"][:] > 0.0)[0]
     cold_mass = np.log10(gals["ColdGas"][:][non_zero_cold] * 1.0e10 / model.hubble_h)
@@ -45,6 +81,16 @@ def calc_GMF(model, gals):
 
 
 def calc_BTF(model, gals):
+    """
+    Calculates the baryonic Tully-Fisher relation for spiral galaxies in the given set of
+    galaxies.
+
+    The number of galaxies added to ``Model.properties["BTF_mass"]`` and
+    ``Model.properties["BTF_vel"]`` arrays is given by :py:attr:`~Model.sample_size`
+    weighted by ``number_spiral_passed /`` :py:attr:`~Model.num_gals_all_files`. If
+    this value is greater than ``number_spirals_passed``, then all spiral galaxies will
+    be used.
+    """
 
     # Make sure we're getting spiral galaxies. That is, don't include galaxies
     # that are too bulgy.
@@ -53,8 +99,8 @@ def calc_BTF(model, gals):
                        (gals["BulgeMass"][:] / gals["StellarMass"][:] > 0.1) & \
                        (gals["BulgeMass"][:] / gals["StellarMass"][:] < 0.5))[0]
 
-    if len(spirals) > model.file_sample_size:
-        spirals = np.random.choice(spirals, size=model.file_sample_size)
+    # Select a random subset of galaxies (if necessary).
+    spirals = select_random_values(spirals, model.num_gals_all_files, model.sample_size)
 
     baryon_mass = np.log10((gals["StellarMass"][:][spirals] + gals["ColdGas"][:][spirals]) * 1.0e10 / model.hubble_h)
     velocity = np.log10(gals["Vmax"][:][spirals])
@@ -67,19 +113,17 @@ def calc_sSFR(model, gals):
 
     non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
-    stellar_mass = np.log10(gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
-    sSFR = (gals["SfrDisk"][:][non_zero_stellar] + gals["SfrBulge"][:][non_zero_stellar]) / \
-               (gals["StellarMass"][:][non_zero_stellar] * 1.0e10 / model.hubble_h)
+    # Select a random subset of galaxies (if necessary).
+    random_inds = select_random_values(non_zero_stellar, model.num_gals_all_files,
+                                     model.sample_size)
 
-    # `stellar_mass` and `sSFR` have length < length(gals).
-    # Hence when we take a random sample, we use length of those arrays.
-    if len(non_zero_stellar) > model.file_sample_size:
-        random_inds = np.random.choice(np.arange(len(non_zero_stellar)), size=model.file_sample_size)
-    else:
-        random_inds = np.arange(len(non_zero_stellar))
+    stellar_mass = np.log10(gals["StellarMass"][:][random_inds] * 1.0e10 / model.hubble_h)
+    sSFR = (gals["SfrDisk"][:][random_inds] + gals["SfrBulge"][:][random_inds]) / \
+               (gals["StellarMass"][:][random_inds] * 1.0e10 / model.hubble_h)
 
-    model.properties["sSFR_mass"] = np.append(model.properties["sSFR_mass"], stellar_mass[random_inds])
-    model.properties["sSFR_sSFR"] = np.append(model.properties["sSFR_sSFR"], np.log10(sSFR[random_inds]))
+
+    model.properties["sSFR_mass"] = np.append(model.properties["sSFR_mass"], stellar_mass)
+    model.properties["sSFR_sSFR"] = np.append(model.properties["sSFR_sSFR"], np.log10(sSFR))
 
 
 def calc_gas_frac(model, gals):
@@ -90,8 +134,8 @@ def calc_gas_frac(model, gals):
                        (gals["BulgeMass"][:] / gals["StellarMass"][:] > 0.1) & \
                        (gals["BulgeMass"][:] / gals["StellarMass"][:] < 0.5))[0]
 
-    if len(spirals) > model.file_sample_size:
-        spirals = np.random.choice(spirals, size=model.file_sample_size)
+    # Select a random subset of galaxies (if necessary).
+    spirals = select_random_values(spirals, model.num_gals_all_files, model.sample_size)
 
     stellar_mass = np.log10(gals["StellarMass"][:][spirals] * 1.0e10 / model.hubble_h)
     gas_fraction = gals["ColdGas"][:][spirals] / (gals["StellarMass"][:][spirals] + gals["ColdGas"][:][spirals])
@@ -107,8 +151,8 @@ def calc_metallicity(model, gals):
                         (gals["ColdGas"][:] / (gals["StellarMass"][:] + gals["ColdGas"][:]) > 0.1) & \
                         (gals["StellarMass"][:] > 0.01))[0]
 
-    if len(centrals) > model.file_sample_size:
-        centrals = np.random.choice(centrals, size=model.file_sample_size)
+    # Select a random subset of galaxies (if necessary).
+    centrals = select_random_values(centrals, model.num_gals_all_files, model.sample_size)
 
     stellar_mass = np.log10(gals["StellarMass"][:][centrals] * 1.0e10 / model.hubble_h)
     Z = np.log10((gals["MetalsColdGas"][:][centrals] / gals["ColdGas"][:][centrals]) / 0.02) + 9.0
@@ -122,8 +166,8 @@ def calc_bh_bulge(model, gals):
     # Only care about galaxies that have appreciable masses.
     my_gals = np.where((gals["BulgeMass"][:] > 0.01) & (gals["BlackHoleMass"][:] > 0.00001))[0]
 
-    if len(my_gals) > model.file_sample_size:
-        my_gals = np.random.choice(my_gals, size=model.file_sample_size)
+    # Select a random subset of galaxies (if necessary).
+    my_gals = select_random_values(my_gals, model.num_gals_all_files, model.sample_size)
 
     bh = np.log10(gals["BlackHoleMass"][:][my_gals] * 1.0e10 / model.hubble_h)
     bulge = np.log10(gals["BulgeMass"][:][my_gals] * 1.0e10 / model.hubble_h)
@@ -271,8 +315,8 @@ def calc_reservoirs(model, gals):
     centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 1.0) & \
                         (gals["StellarMass"][:] > 0.0))[0]
 
-    if len(centrals) > model.file_sample_size:
-        centrals = np.random.choice(centrals, size=model.file_sample_size)
+    # Select a random subset of galaxies (if necessary).
+    centrals = select_random_values(centrals, model.num_gals_all_files, model.sample_size)
 
     reservoirs = ["Mvir", "StellarMass", "ColdGas", "HotGas",
                   "EjectedMass", "IntraClusterStars"]
@@ -291,8 +335,8 @@ def calc_spatial(model, gals):
 
     non_zero = np.where((gals["Mvir"][:] > 0.0) & (gals["StellarMass"][:] > 0.1))[0]
 
-    if len(non_zero) > model.file_sample_size:
-        non_zero = np.random.choice(non_zero, size=model.file_sample_size)
+    # Select a random subset of galaxies (if necessary).
+    non_zero = select_random_values(non_zero, model.num_gals_all_files, model.sample_size)
 
     attribute_names = ["x_pos", "y_pos", "z_pos"]
     data_names = ["Posx", "Posy", "Posz"]
