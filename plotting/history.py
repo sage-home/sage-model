@@ -1,30 +1,28 @@
 #!/usr/bin/env python
 """
-Handles plotting properties over multiple redshifts.  Multiple models can be placed onto
-the plots by extending the variables in the ``__main__`` function call.
+Similar to ``galaxy_properties.py``, this script plots data from the Mini-Millennium
+simulation.  However, it has been altered to instead of reading and computing properties
+for a single simulation snapshot, it calculates properties over a range of snapshots.
 
-To add your own data format, create a subclass module (e.g., ``sage_binary.py``) and add an
-option to ``Results.__init__``.  This subclass module needs methods ``set_cosmology()``,
-``determine_num_gals()``, ``read_gals()`` and ``update_redshift()``.
+By extending the model lists (e.g., IMFs, snapshots, etc), you can plot multiple
+simulations on the same axis.
 
-To calculate and plot extra properties, first add the name of your new plot to the
-``plot_toggles`` dictionary.  You will need to create a method in ``model.py`` to
-calculate your properties and name it ``calc_<Name of your plot toggle>``.  To plot your
-new property, you will need to create a function in ``plots.py`` called ``plot_<Name of
-your plot toggle>``.
-
-For example, to generate and plot data for the ``SMF`` plot, we have methods ``calc_SMF()``
-and ``plot_SMF()``.
-
-Refer to the documentation inside the ``model.py`` and ``plot.py`` modules for more
-details.
+Refer to the online documentation (sage-model.readthedocs.io) for full information on how
+to add your own data format, property calculations and plots.
 
 Author: Jacob Seiler
 """
 
-from sage_analysis.example import generate_func_dict
-import sage_analysis.plots
+# These contain example functions to calculate (and plot) properties such as the
+# stellar mass function, quiescent fraction, bulge fraction etc.
+import sage_analysis.example_calcs
+import sage_analysis.example_plots
 
+# Function to determine what we will calculate/plot for each model.
+from sage_analysis.utils import generate_func_dict
+
+# Class that handles the calculation of properties.
+from sage_analysis.model import Model
 # Import the Data Classes that handle the different SAGE output formats.
 from sage_analysis.sage_binary import SageBinaryData
 
@@ -44,7 +42,7 @@ else:
 import numpy as np
 
 # Sometimes we divide a galaxy that has zero mass (e.g., no cold gas). Ignore these
-# warnings as they spam stdout.
+# warnings as they spam stdout. Also remember the old settings.
 old_error_settings = np.seterr()
 np.seterr(all="ignore")
 
@@ -58,22 +56,27 @@ if __name__ == '__main__':
     # E.g., 'model1_sage_output_format = ...", "model1_dir_name = ...".
     # `first_file`, `last_file`, `simulation` and `num_tree_files` only need to be
     # specified if using binary output. HDF5 will automatically detect these.
-
     model0_SMF_z = [0.0, 1.0, 2.0, 3.0]  # Redshifts you wish to plot the stellar mass function at.
                                          # Will search for the closest simulation redshift.
     model0_density_z = "All"  # List of redshifts you wish to plot the evolution of
                               # densities at. Set to "All" for all redshifts.
     model0_IMF = "Chabrier"  # Chabrier or Salpeter.
-    model0_model_label = "Mini-Millennium"
+    model0_label = "Mini-Millennium"
     model0_sage_file = "../input/millennium.par"
+    model0_simulation = "Mini-Millennium"  # Used to set cosmology.
+    model0_first_file = 0  # File range we're plotting.
+    model0_last_file = 0  # Closed interval, [first_file, last_file].
 
     # Then extend each of these lists for all the models that you want to plot.
     # E.g., 'dir_names = [model0_dir_name, model1_dir_name, ..., modelN_dir_name]
     SMF_zs = [model0_SMF_z]
     density_zs = [model0_density_z]
     IMFs = [model0_IMF]
-    labels = [model0_model_label]
+    labels = [model0_label]
     sage_files = [model0_sage_file]
+    simulations = [model0_simulation]
+    first_files = [model0_first_file]
+    last_files = [model0_last_file]
 
     # A couple of extra variables...
     plot_output_format    = ".png"
@@ -96,20 +99,24 @@ if __name__ == '__main__':
     # Generate a dictionary for each model containing the required information.
     # We store these in `model_dicts` which will be a list of dictionaries.
     model_dicts = []
-    for SMF_z, density_z, IMF, model_label, sage_file in \
-        zip(SMF_zs, density_zs, IMFs, labels, sage_files):
+    for SMF_z, density_z, IMF, label, sage_file, sim, first_file, last_file in \
+        zip(SMF_zs, density_zs, IMFs, labels, sage_files, simulations, first_files, last_files):
         this_model_dict = {"SMF_z": SMF_z,
                            "density_z": density_z,
                            "IMF": IMF,
-                           "model_label": model_label,
-                           "sage_file": sage_file}
-
+                           "label": label,
+                           "sage_file": sage_file,
+                           "simulation": sim,
+                           "first_file": first_file,
+                           "last_file": last_file}
         model_dicts.append(this_model_dict)
 
     # Go through each model and calculate all the required properties.
     models = []
     for model_dict in model_dicts:
 
+        # Instantiate a Model class. This holds the data paths and methods to calculate
+        # the required properties.
         my_model = sage_analysis.model.Model(model_dict)
         my_model.plot_output_format = plot_output_format
 
@@ -160,7 +167,7 @@ if __name__ == '__main__':
         # your functions are in a different module or different function prefix, change it
         # here.
         # ALL FUNCTIONS MUST HAVE A FUNCTION SIGNATURE `func(Model, gals)`.
-        calculation_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.model",
+        calculation_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.example_calcs",
                                                    function_prefix="calc_")
 
         # Finally, before we calculate the properties, we need to decide how each property
@@ -198,7 +205,8 @@ if __name__ == '__main__':
 
             # Calculate all the properties. If we're using a HDF5 file, we want to keep
             # the file open.
-            my_model.calc_properties_all_files(calculation_functions, close_file=False, use_pbar=False, debug=debug)
+            my_model.calc_properties_all_files(calculation_functions, close_file=False,
+                                               use_pbar=False, debug=debug)
 
             # We need to place the SMF inside the dictionary to carry through.
             if snap in my_model.SMF_snaps:
@@ -224,19 +232,22 @@ if __name__ == '__main__':
 
     # Similar to the calculation functions, all of the plotting functions are in the
     # `plots.py` module and are labelled `plot_<toggle>`.
-    plot_dict = generate_func_dict(plot_toggles, module_name="sage_analysis.plots",
-                                   function_prefix="plot_")
+    plot_functions = generate_func_dict(plot_toggles, module_name="sage_analysis.example_plots",
+                                        function_prefix="plot_")
 
     # Call a slightly different function for plotting the SMF because we're doing it at
     # multiple snapshots.
     try:
-        plot_dict["plot_SMF"] = sage_analysis.plots.plot_temporal_SMF
+        plot_functions["plot_SMF"][0] = sage_analysis.example_plots.plot_temporal_SMF
     except KeyError:
         pass
 
     # Now do the plotting.
-    for plot_func in plot_dict.values():
-        plot_func(models, plot_output_path, plot_output_format)
+    for func_name in plot_functions.keys():
+        func = plot_functions[func_name][0]
+        keyword_args = plot_functions[func_name][1]
+
+        func(models, plot_output_path, plot_output_format, **keyword_args)
 
     # Set the error settings to the previous ones so we don't annoy the user.
     np.seterr(divide=old_error_settings["divide"], over=old_error_settings["over"],

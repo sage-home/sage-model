@@ -109,7 +109,8 @@ if __name__ == "__main__":
     models = []
     for model_dict in model_dicts:
 
-        # Instantiate a Model class. This will hold the paths
+        # Instantiate a Model class. This holds the data paths and methods to calculate
+        # the required properties.
         my_model = Model(model_dict)
         my_model.plot_output_format = plot_output_format
 
