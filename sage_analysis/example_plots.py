@@ -1,17 +1,9 @@
 #!/usr/bin/env python
 """
-Module to handle creation of plots from the ``SAGE`` model.
+Here we show a myriad of functions that can be used to plot properties calculated from the
+**SAGE** output.
 
-If you wish to plot a new property, first refer to the documentation in the ``model.py``
-module for instruction on how to properly calculate the property and add it to the
-``Model`` class.
-
-To plot the new property, you need to create a custom module (``.py`` file) (or use the
-same one you made for calculating the property) and add new functions to it.
-These functions are suggested to be named ``plot_<name of the plot_toggle you're using>()``.
-The function signature MUST be
-``plot_func(List of Model Classes, plot_output_path, plot_output_format)``. Feel free to
-base your function on an existing one used to plot a property similar to your new property!
+We refer to :doc:`../user/plot` for more information on how plotting is handled.
 
 Author: Jacob Seiler
 """
