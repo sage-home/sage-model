@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 """
-In this module, we define the ``SageHdf5Data`` class. This class is intended to
-interface with the Model class (from ``model.py``) to read in HDF5 data written by SAGE.
+This module defines the ``SageHdf5Data`` class. This class interfaces with the
+:py:class:`~Model` class to read in binary data written by **SAGE**.  The value of
+:py:attr:`~Model.sage_output_format` is generally ``sage_hdf5`` if it is to be read
+with this class.
+
+We refer to :doc:`../user/data_class` for more information about adding your own Data
+Class to ingest data.
 
 Author: Jacob Seiler.
 """
-
-# Import the base class.
-
 
 import numpy as np
 import h5py
@@ -115,7 +117,7 @@ class SageHdf5Data():
             core_key = "Core_{0}".format(core_idx)
             ngals += model.hdf5_file[core_key][snap_key].attrs["num_gals"]
 
-        model.num_gals = ngals
+        model.num_gals_all_files = ngals
 
 
     def read_gals(self, model, core_num, pbar=None, plot_galaxies=False, debug=False):
@@ -128,16 +130,17 @@ class SageHdf5Data():
         model: :py:class:`~Model` class
             The :py:class:`~Model` we're reading data for.
 
-        core_num : Integer
+        core_num: Integer
             The core group we're reading.
 
-        pbar : ``tqdm`` class instance
-            Bar showing the progress of galaxy reading.
+        pbar: ``tqdm`` class instance, optional
+            Bar showing the progress of galaxy reading.  If ``None``, progress bar will
+            not show.
 
-        plot_galaxies : Boolean, default False
+        plot_galaxies : Boolean, optional
             If set, plots and saves the 3D distribution of galaxies for this file.
 
-        debug : Boolean, default False
+        debug : Boolean, optional
             If set, prints out extra useful debug information.
 
         Returns
@@ -189,7 +192,7 @@ class SageHdf5Data():
                 key = "Pos{0}".format(dim_num)
                 pos[:, dim_num] = gals[key][:]
 
-            output_file = "./galaxies_{0}{1}".format(core_num, model.plot_output_format)
+            output_file = "./galaxies_{0}.{1}".format(core_num, model.plot_output_format)
             plot_spatial_3d(pos, output_file, model.box_size)
 
         return gals

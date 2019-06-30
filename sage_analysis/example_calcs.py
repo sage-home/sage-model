@@ -22,10 +22,10 @@ def calc_SMF(model, gals):
     Calculates the stellar mass function of the given galaxies.  That is, the number of
     galaxies at a given stellar mass.
 
-    The ``Model.properties["SMF"]`` value will be updated. We also split the galaxy
+    The ``Model.properties["SMF"]`` array will be updated. We also split the galaxy
     population into "red" and "blue" based on the value of :py:attr:`~Model.sSFRcut` and
     update the ``Model.properties["red_SMF"]`` and ``Model.properties["blue_SMF"]``
-    values.
+    arrays.
     """
 
     non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
@@ -54,7 +54,7 @@ def calc_BMF(model, gals):
     Calculates the baryon mass function of the given galaxies.  That is, the number of
     galaxies at a given baryon (stellar + cold gas) mass.
 
-    The ``Model.properties["BMF"]`` value will be updated.
+    The ``Model.properties["BMF"]`` array will be updated.
     """
 
     non_zero_baryon = np.where(gals["StellarMass"][:] + gals["ColdGas"][:] > 0.0)[0]
@@ -70,7 +70,7 @@ def calc_GMF(model, gals):
     Calculates the gas mass function of the given galaxies.  That is, the number of
     galaxies at a given cold gas mass.
 
-    The ``Model.properties["GMF"]`` value will be updated.
+    The ``Model.properties["GMF"]`` array will be updated.
     """
 
     non_zero_cold = np.where(gals["ColdGas"][:] > 0.0)[0]
@@ -87,7 +87,7 @@ def calc_BTF(model, gals):
 
     The number of galaxies added to ``Model.properties["BTF_mass"]`` and
     ``Model.properties["BTF_vel"]`` arrays is given by :py:attr:`~Model.sample_size`
-    weighted by ``number_spiral_passed /`` :py:attr:`~Model.num_gals_all_files`. If
+    weighted by ``number_spirals_passed /`` :py:attr:`~Model.num_gals_all_files`. If
     this value is greater than ``number_spirals_passed``, then all spiral galaxies will
     be used.
     """
@@ -110,6 +110,16 @@ def calc_BTF(model, gals):
 
 
 def calc_sSFR(model, gals):
+    """
+    Calculates the specific star formation rate (star formation divided by the stellar
+    mass of the galaxy) as a function of stellar mass.
+
+    The number of galaxies added to ``Model.properties["sSFR_mass"]`` and
+    ``Model.properties["sSFR_sSFR"]`` arrays is given by :py:attr:`~Model.sample_size`
+    weighted by ``number_gals_passed /`` :py:attr:`~Model.num_gals_all_files`. If
+    this value is greater than ``number_gals_passed``, then all galaxies with non-zero
+    stellar mass will be used.
+    """
 
     non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
@@ -127,6 +137,16 @@ def calc_sSFR(model, gals):
 
 
 def calc_gas_frac(model, gals):
+    """
+    Calculates the fraction of baryons that are in the cold gas reservoir as a function of
+    stellar mass.
+
+    The number of galaxies added to ``Model.properties["gas_frac_mass"]`` and
+    ``Model.properties["gas_frac"]`` arrays is given by :py:attr:`~Model.sample_size`
+    weighted by ``number_spirals_passed /`` :py:attr:`~Model.num_gals_all_files`. If
+    this value is greater than ``number_spirals_passed``, then all spiral galaxies will
+    be used.
+    """
 
     # Make sure we're getting spiral galaxies. That is, don't include galaxies
     # that are too bulgy.
@@ -145,6 +165,15 @@ def calc_gas_frac(model, gals):
 
 
 def calc_metallicity(model, gals):
+    """
+    Calculates the metallicity as a function of stellar mass.
+
+    The number of galaxies added to ``Model.properties["metallicity_mass"]`` and
+    ``Model.properties["metallicity"]`` arrays is given by :py:attr:`~Model.sample_size`
+    weighted by ``number_centrals_passed /`` :py:attr:`~Model.num_gals_all_files`. If
+    this value is greater than ``number_centrals_passed``, then all central galaxies will
+    be used.
+    """
 
     # Only care about central galaxies (Type 0) that have appreciable mass.
     centrals = np.where((gals["Type"][:] == 0) & \
@@ -162,6 +191,21 @@ def calc_metallicity(model, gals):
 
 
 def calc_bh_bulge(model, gals):
+    """
+    Calculates the black hole mass as a function of bulge mass.
+
+    The number of galaxies added to ``Model.properties["BlackHoleMass"]`` and
+    ``Model.properties["BulgeMass"]`` arrays is given by :py:attr:`~Model.sample_size`
+    weighted by ``number_galaxies_passed /`` :py:attr:`~Model.num_gals_all_files`. If
+    this value is greater than ``number_galaxies_passed``, then all galaxies will
+    be used.
+
+    Notes
+    -----
+
+    We only consider galaxies with bulge mass greater than 10^8 Msun/h and a black
+    hole mass greater than 10^5 Msun/h.
+    """
 
     # Only care about galaxies that have appreciable masses.
     my_gals = np.where((gals["BulgeMass"][:] > 0.01) & (gals["BlackHoleMass"][:] > 0.00001))[0]
@@ -177,6 +221,29 @@ def calc_bh_bulge(model, gals):
 
 
 def calc_quiescent(model, gals):
+    """
+    Calculates the quiescent galaxy fraction as a function of stellar mass.  The galaxy
+    population is also split into central and satellites and the quiescent fraction of
+    these are calculated.
+
+    The ``Model.properties["centrals_MF"]``, ``Model.properties["satellites_MF"],
+    ``Model.properties["quiescent_galaxy_counts"]``,
+    ``Model.properties["quiescent_centrals_counts"]``, and
+    ``Model.properties["quiescent_satellites_counts"]`` arrayss will be updated.
+
+    Notes
+    -----
+
+    We only **count** the number of quiescent galaxies in each stellar mass bin.  When
+    converting this to the quiescent fraction, one must divide by the number of galaxies
+    in each stellar mass bin, the stellar mass function ``Model.properties["SMF"]``. See
+    :func:`~plot_quiescent` for an example implementation.
+
+    If the stellar mass function has not been calculated (``Model.calc_SMF`` is
+    ``False``), a ``ValueError`` is thrown.  Ensure that ``SMF`` has been switched on for
+     the ``plot_toggles`` variable when the ``Model`` is instantiated. Also ensure that
+    the ``SMF`` binned property is initialized.
+    """
 
     non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
@@ -223,6 +290,26 @@ def calc_quiescent(model, gals):
 
 
 def calc_bulge_fraction(model, gals):
+    """ Calculates the ``bulge_mass / stellar_mass`` and ``disk_mass / stellar_mass`` ratios
+    as a function of stellar mass.
+
+    The ``Model.properties["fraction_bulge_sum"]``, ``Model.properties["fraction_disk_sum"],
+    ``Model.properties["fraction_bulge_var"]``,
+    ``Model.properties["fraction_disk_var"]`` arrayss will be updated.
+
+    Notes
+    -----
+
+    We only **sum** the bulge/disk mass in each stellar mass bin.  When converting this to
+    the mass fraction, one must divide by the number of galaxies in each stellar mass bin,
+    the stellar mass function ``Model.properties["SMF"]``. See :func:`~plot_bulge_fraction`
+    for full implementation.
+
+    If the stellar mass function has not been calculated (``Model.calc_SMF`` is
+    ``False``), a ``ValueError`` is thrown.  Ensure that ``SMF`` has been switched on for
+     the ``plot_toggles`` variable when the ``Model`` is instantiated. Also ensure that
+    the ``SMF`` binned property is initialized.
+    """
 
     non_zero_stellar = np.where(gals["StellarMass"][:] > 0.0)[0]
 
@@ -269,12 +356,44 @@ def calc_bulge_fraction(model, gals):
 
 
 def calc_baryon_fraction(model, gals):
+    """
+    Calculates the ``mass_baryons / halo_virial_mass`` as a function of halo virial mass
+    for each baryon reseroivr (stellar, cold, hot, ejected, intra-cluster stars and black
+    hole). Also calculates the ratio for the total baryonic mass.
+
+    The ``Model.properties["halo_<reservoir_name>_fraction_sum"]`` arrays are updated for
+    each reservoir. In addition, ``Model.properties["halo_baryon_fraction_sum"]`` is
+    updated.
+
+    Notes
+    -----
+
+    The halo virial mass we use is the **background FoF halo**, not the immediate host
+    halo of each galaxy.
+
+    We only **sum** the baryon mass in each stellar mass bin.  When converting this to
+    the mass fraction, one must divide by the number of halos in each halo mass bin,
+    ``Model.properties["fof_HMF"]``. See :func:`~plot_baryon_fraction`
+    for full implementation.
+
+    If the ``Model.properties["fof_HMF"]`` property, with associated bins
+    ``Model.bins["halo_mass"bin"]`` have not been initialized, a ``ValueError`` is thrown.
+    """
 
     # Careful here, our "Halo Mass Function" is only counting the *BACKGROUND FOF HALOS*.
     centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 0.0))[0]
     centrals_fof_mass = np.log10(gals["Mvir"][:][centrals] * 1.0e10 / model.hubble_h)
-    halos_binned, _ = np.histogram(centrals_fof_mass, bins=model.bins["halo_mass_bins"])
-    model.properties["fof_HMF"] += halos_binned
+    try:
+        halos_binned, _ = np.histogram(centrals_fof_mass, bins=model.bins["halo_mass_bins"])
+    except KeyError:
+        print("The `halo_mass_bins` bin array was not initialised.")
+        raise ValueError
+
+    try:
+        model.properties["fof_HMF"] += halos_binned
+    except KeyError:
+        print("The `fof_HMF` property was not iniitalized.")
+        raise ValueError
 
     non_zero_mvir = np.where((gals["CentralMvir"][:] > 0.0))[0]  # Will only be dividing by this value.
 
@@ -298,8 +417,7 @@ def calc_baryon_fraction(model, gals):
                                                     bins=model.bins["halo_mass_bins"])
 
         dict_key = "halo_{0}_fraction_sum".format(attr_name)
-        new_attribute_value = fraction_sum + model.properties[dict_key]
-        model.properties[dict_key] = new_attribute_value
+        model.properties[dict_key] += fraction_sum
 
     # Finally want the sum across all components.
     baryons = np.sum(gals[component_key][:][non_zero_mvir] for component_key in components)
@@ -310,6 +428,16 @@ def calc_baryon_fraction(model, gals):
 
 
 def calc_reservoirs(model, gals):
+    """
+    Calculates the mass of each reservoir as a function of halo virial mass.
+
+    The number of galaxies added to ``Model.properties["reservoir_mvir"]`` and
+    ``Model.properties["reservoir_<reservoir_name>"]`` arrays is given by
+    :py:attr:`~Model.sample_size` weighted by
+    ``number_centrals_passed /`` :py:attr:`~Model.num_gals_all_files`. If
+    this value is greater than ``number_centrals_passed``, then all central galaxies will
+    be used.
+    """
 
     # To reduce scatter, only use galaxies in halos with mass > 1.0e10 Msun/h.
     centrals = np.where((gals["Type"][:] == 0) & (gals["Mvir"][:] > 1.0) & \
@@ -332,6 +460,14 @@ def calc_reservoirs(model, gals):
 
 
 def calc_spatial(model, gals):
+    """
+    Calculates the spatial position of the galaxies.
+
+    The number of galaxies added to ``Model.properties["<x/y/z>_pos"]`` arrays is given by
+    :py:attr:`~Model.sample_size` weighted by
+    ``number_galaxies_passed /`` :py:attr:`~Model.num_gals_all_files`. If
+    this value is greater than ``number_galaxies_passed``, then all galaxies will be used.
+    """
 
     non_zero = np.where((gals["Mvir"][:] > 0.0) & (gals["StellarMass"][:] > 0.1))[0]
 
@@ -350,6 +486,13 @@ def calc_spatial(model, gals):
 
 
 def calc_SFRD(model, gals):
+    """
+    Calculates the sum of the star formation across all galaxies. This will be normalized
+    by the simulation volume to determine the density. See :funct:`~plot_SFRD` for full
+    implementation.
+
+    The ``Model.properties["SFRD"]`` value is updated.
+    """
 
     # Check if the Snapshot is required.
     if gals["SnapNum"][0] in model.density_snaps:
@@ -359,6 +502,13 @@ def calc_SFRD(model, gals):
 
 
 def calc_SMD(model, gals):
+    """
+    Calculates the sum of the stellar mass across all galaxies. This will be normalized
+    by the simulation volume to determine the density. See :funct:`~plot_SMD` for full
+    implementation.
+
+    The ``Model.properties["SMD"]`` value is updated.
+    """
 
     # Check if the Snapshot is required.
     if gals["SnapNum"][0] in model.density_snaps:

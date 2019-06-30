@@ -1,39 +1,16 @@
 #!/usr/bin/env python
 """
-In this module, we define the ``Model`` superclass.  This class contains all the attributes
-and methods for ingesting galaxy data and calculating properties.
+This module contains the ``Model`` class.  The ``Model`` class contains all the data
+paths, cosmology etc for calculating galaxy properties.
 
-The methods for reading setting the simulation cosmology and reading galaxy data are kept
-in their own Data Class modules (e.g., ``sage_binary.py``).  If you wish to provide your own
-data format, copy the format inside one of those modules.
+To read **SAGE** data, we make use of specialized Data Classes (e.g.,
+:py:class:`~sage_analysis.sage_binary.SageBinaryData`
+and:py:class:`~sage_analysis.sage_hdf5.SageHdf5Data`). We refer to
+:doc:`../user/data_class` for more information about adding your own Data Class to ingest
+data.
 
-To calculate extra properties, you need to specify both the x- and y-axes on which the
-properties are calculated.
-
-We offer three options for how the x-data is handled. Properties are stored as
-``Model.properties["property_name"]``, e.g., ``Model.properties["SMF"]``:
-
-    * Binned properties such as "How many galaxies with mass between 10^8.0 and 10^8.1
-      Msun". Call ``Model.init_binned_properties`` with the parameters that define your bins
-      and your new property. Bins will be stored as ``Model.bins["bin_name"]``, e.g.,
-      ``Model.bins["stellar_mass_bins"]``
-
-    * Scatter properties. These properties are useful if you want to (e.g.,) plot the star
-      formation rate versus stellar mass for 1000 randomly selected points. Call
-      ``Model.init_scatter_properties`` with your property names. The properties will be
-      initialized as empty lists.
-
-    * Single values. These properties could be (e.g.,) the total stellar mass summed across
-      all galaxies. Call ``Model.init_single_properties`` with your property names. The
-      properties will be initialized as values of 0.0.
-
-To handle the y-data, you need to create a custom module (``.py`` file) and add new functions to it.
-These functions are suggested to be named ``calc_<name of the plot_toggle you're using>()``.
-The function signature MUST be ``func(Model, gals)``. Inside this function , you
-must update the ``Model.properties[<Name of your new property>]`` attribute. Feel free to
-base your function on an existing one used to calculate a property similar to your new property!
-
-Finally, to plot your new property, refer to the documentation in the ``plots.py`` module.
+To calculate (and plot) extra properties from the **SAGE** output, we refer to
+:doc:`../user/calc.rst` and :doc:`../user/plotting.rst`.
 
 Author: Jacob Seiler.
 """
@@ -77,7 +54,8 @@ class Model(object):
         model_dict: dict [string, variable]
             Dictionary containing parameter values for this class instance that can't be
             read from the **SAGE** parameter file. These are :py:attr:`~snapshot`,
-            :py:attr:`~IMF`, :py:attr:`~label` and :py:attr:`~sage_file`. If
+            :py:attr:`~IMF`, :py:attr:`~label`, :py:attr:`~sage_file`,
+            :py:attr:`~first_file`, :py:attr:`~last_file` and :py:attr:`~simulation`. If
             ``read_sage_file`` is set to ``False``, all model parameters must be specified
             in this dict instead.
 
@@ -120,9 +98,22 @@ class Model(object):
         self._sample_size = sample_size
         self.sSFRcut = -11.0  # The specific star formation rate above which a galaxy is
                               # 'star forming'.  Units are log10.
+        self._plot_output_format = "png"  # By default, save as a PNG.
 
         self._bins = {}
         self._properties = {}
+
+    @property
+    def plot_output_format(self):
+        """
+        int: Format plots for this model will be saved as.
+        """
+
+        return(self._plot_output_format)
+
+    @plot_output_format.setter
+    def plot_output_format(self, output_format):
+        self._plot_output_format = output_format
 
     @property
     def snapshot(self):
@@ -147,7 +138,7 @@ class Model(object):
     @property
     def sage_output_format(self):
         """
-        {``"sage_binary"``, ``"sage_binary"``}: The output format *SAGE* wrote in.
+        {``"sage_binary"``, ``"sage_binary"``}: The output format **SAGE** wrote in.
         A specific Data Class (e.g., :py:class:`~sage_analysis.sage_binary.SageBinaryData`
         and :py:class:`~sage_analysis.sage_hdf5.SageHdf5Data`) must be written and
         used for each :py:attr:`~sage_output_format` option. We refer to
@@ -240,7 +231,7 @@ class Model(object):
     @property
     def last_file(self):
         """
-        int: The last *SAGE* sub-file to be read. If :py:attr:`~sage_output_format` is
+        int: The last **SAGE** sub-file to be read. If :py:attr:`~sage_output_format` is
         ``sage_binary``, files read must be labelled :py:attr:`~model_path`.XXX.
         If :py:attr:`~sage_output_format` is ``sage_hdf5``, the file read will be
         :py:attr:`~model_path` and the groups accessed will be Core_XXX. In both cases,
@@ -317,6 +308,18 @@ class Model(object):
 
         return(self._sample_size)
 
+    @property
+    def num_gals_all_files(self):
+        """
+        int: Number of galaxies across all files. For HDF5 data formats, this represents
+        the number of galaxies across all `Core_XXX` sub-groups.
+        """
+        return(self._num_gals_all_files)
+
+    @num_gals_all_files.setter
+    def num_gals_all_files(self, num_gals):
+        self._num_gals_all_files = num_gals
+
 
     def read_sage_params(self, sage_file_path):
         """
@@ -329,24 +332,26 @@ class Model(object):
             Path to the **SAGE** parameter file.
 
         Returns
-        ---------
+        -------
 
         model_dict: dict [string, variable], optional
             Dictionary containing the parameter values for this class instance. Attributes
             of the class are set with name defined by the key with corresponding values.
 
         Errors
-        ---------
+        ------
 
         FileNotFoundError
             Raised if the specified **SAGE** parameter file is not found.
         """
 
+        # Fields that we will be reading from the ini file.
         SAGE_fields = ["FileNameGalaxies", "OutputDir",
                        "FirstFile", "LastFile", "OutputFormat", "NumSimulationTreeFiles",
                        "FileWithSnapList"]
         SAGE_dict = {}
 
+        # Ignore lines starting with one of these.
         comment_characters = [";", "%", "-"]
 
         try:
@@ -372,6 +377,8 @@ class Model(object):
 
                     # Split into [name, value] list.
                     split = stripped.split()
+
+                    # Then check if the field is one we care about.
                     if split[0] in SAGE_fields:
 
                         SAGE_dict[split[0]] = split[1]
@@ -516,17 +523,17 @@ class Model(object):
             sub-file have been loaded. The function signature is required to be
             ``func(Model, gals, <Extra Keyword Arguments>)``.
 
-        close_file: boolean, default ``True``
+        close_file: boolean, optional
             Some data formats have a single file data is read from rather than opening and
             closing the sub-files in :py:meth:`read_gals`. Hence once the properties are
             calculated, the file must be closed. This variable flags whether the data
-            class  specific :py:meth:`~close_file` method should be called upon completion of
+            class specific :py:meth:`~close_file` method should be called upon completion of
             this method.
 
-        use_pbar : Boolean, default ``True``
+        use_pbar: Boolean, optional
             If set, uses the ``tqdm`` package to create a progress bar.
 
-        debug : Boolean, default ``False``
+        debug: Boolean, optional
             If set, prints out extra useful debug information.
         """
 
@@ -534,7 +541,8 @@ class Model(object):
 
         # First determine how many galaxies are in all files.
         self.data_class.determine_num_gals(self)
-        if self.num_gals == 0:
+        if self.num_gals_all_files == 0:
+            print("There were no galaxies associated with this model.")
             return
 
         # The `tqdm` package provides a beautiful progress bar.
@@ -542,7 +550,7 @@ class Model(object):
             if debug or not use_pbar:
                 pbar = None
             else:
-                pbar = tqdm(total=self.num_gals, unit="Gals", unit_scale=True)
+                pbar = tqdm(total=self.num_gals_all_files, unit="Gals", unit_scale=True)
         except NameError:
             pbar = None
         else:
@@ -601,14 +609,12 @@ class Model(object):
         :doc:`../user/data_class` for more information about adding your own Data Class to ingest data.
         """
 
-        # When we create some plots, we do a scatter plot. For these, we only plot a
-        # subset of galaxies. We need to ensure we get a representative sample from each file.
-        self.file_sample_size = int(len(gals["StellarMass"][:]) / self.num_gals * self.sample_size)
-
         # Now check which plots the user is creating and hence decide which properties
         # they need.
         for func_name in calculation_functions.keys():
             func = calculation_functions[func_name][0]
             keyword_args = calculation_functions[func_name][1]
 
+            # **keyword_args unpacks the `keyword_args` dictionary, passing each keyword
+            # properly to the function.
             func(self, gals, **keyword_args)

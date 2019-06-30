@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 """
-In this module, we define the ``SageBinaryData`` class. This class is intended to
-interface with the Model class (from ``model.py``) to read in binary data written by SAGE.
+This module defines the ``SageBinaryData`` class. This class interfaces with the
+:py:class:`~Model` class to read in binary data written by **SAGE**.  The value of
+:py:attr:`~Model.sage_output_format` is generally ``sage_binary`` if it is to be read
+with this class.
+
+We refer to :doc:`../user/data_class` for more information about adding your own Data
+Class to ingest data.
 
 Author: Jacob Seiler.
 """
@@ -107,6 +112,8 @@ class SageBinaryData():
         The :py:attr:`~Model.box_size` attribute is in Mpc/h.
         """
 
+        # Here, total_num_tree_files is the total number of tree files available to the
+        # simulation. This is NOT NECESSARILY the number on which SAGE ran.
         if model.simulation == "Mini-Millennium":
             model.hubble_h = 0.73
             model.box_size = 62.5
@@ -142,15 +149,11 @@ class SageBinaryData():
             The :py:class:`~Model` we're reading data for.
         """
 
-        first_file = model.first_file
-        last_file = model.last_file
-        model_path = model.model_path
-
         num_gals = 0
 
-        for file_num in range(first_file, last_file+1):
+        for file_num in range(model.first_file, model.last_file+1):
 
-            fname = "{0}_{1}".format(model_path, file_num)
+            fname = "{0}_{1}".format(model.model_path, file_num)
 
             if not os.path.isfile(fname):
                 print("File\t{0} \tdoes not exist!".format(fname))
@@ -162,7 +165,7 @@ class SageBinaryData():
 
                 num_gals += num_gals_file
 
-        model.num_gals = num_gals
+        model.num_gals_all_files = num_gals
 
 
     def read_gals(self, model, file_num, pbar=None, plot_galaxies=False, debug=False):
@@ -180,8 +183,9 @@ class SageBinaryData():
             Suffix of the file we're reading.  The file name will be
             ``model``.:py:attr:`~Model.model_path`_<file_num>.
 
-        pbar: ``tqdm`` class instance, default Off
-            Bar showing the progress of galaxy reading.
+        pbar: ``tqdm`` class instance, optional
+            Bar showing the progress of galaxy reading.  If ``None``, progress bar will
+            not show.
 
         plot_galaxies: bool, optional
             If set, plots and saves the 3D distribution of galaxies for this file.
@@ -242,7 +246,7 @@ class SageBinaryData():
 
             # Show the distribution of galaxies in 3D.
             pos = gals["Pos"][:]
-            output_file = "./galaxies_{0}{1}".format(file_num, model.plot_output_format)
+            output_file = "./galaxies_{0}.{1}".format(file_num, model.plot_output_format)
             plot_spatial_3d(pos, output_file, self.box_size)
 
         # For the HDF5 file, some data sets have dimensions Nx1 rather than Nx3
@@ -283,6 +287,7 @@ class SageBinaryData():
         try:
             _ = self.set_redshift
         except AttributeError:
+            # model_path hasn't been set so use the full form.
             model.model_path = "{0}_z{1:.3f}".format(self.model_path, new_redshift)
         else:
             # model_path is of the form "<Initial/Path/To/File_zXXX.XXX>"
@@ -296,4 +301,5 @@ class SageBinaryData():
                 letter = self.model_path[-(letters_from_end+1)]
 
             # Then truncate there and append the new redshift.
-            model.model_path = "{0}z{1:.3f}".format(self.model_path[:-(letters_from_end+1)], new_redshift)
+            model_path_prefix = self.model_path[:-(letters_from_end+1)]
+            model.model_path = "{0}z{1:.3f}".format(model_path_prefix, new_redshift)

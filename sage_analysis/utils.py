@@ -1,3 +1,5 @@
+import numpy as np
+
 def generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args={}):
     """
     Generates a dictionary where the keys are the function name and the value is a list
@@ -69,10 +71,10 @@ def generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args=
     >>> module_name = "sage_analysis.example_plots"
     >>> function_prefix = "plot_"
     >>> keyword_args = {"SMF": {"plot_sub_populations": True},
-    ...                 "quiescent": {"plot_output_format": ".pdf", "plot_sub_populations": True}}
+    ...                 "quiescent": {"plot_output_format": "pdf", "plot_sub_populations": True}}
     >>> generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args) #doctest: +ELLIPSIS
     {'plot_SMF': [<function plot_SMF at 0x...>, {'plot_sub_populations': True}], \
-'plot_quiescent': [<function plot_quiescent at 0x...>, {'plot_output_format': '.pdf', \
+'plot_quiescent': [<function plot_quiescent at 0x...>, {'plot_output_format': 'pdf', \
 'plot_sub_populations': True}]}
     """
 
@@ -123,3 +125,64 @@ def generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args=
             func_dict[func_name] = [func, key_args]
 
     return func_dict
+
+
+def select_random_values(vals, global_num_vals, global_sample_size):
+    """
+    Flag this with Manodeep to exactly use a descriptive docstring.
+
+    Parameters
+    ----------
+
+    vals: :obj:`~numpy.ndarray` of values
+        Values that the random subset is selected from.
+
+    global_num_vals: int
+        The total number of values.
+
+    Returns
+    -------
+
+    random_vals: :obj:`~numpy.ndarray` of values
+        Values chosen.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> np.random.seed(666)
+    >>> vals = np.arange(10)
+    >>> global_num_vals = 100
+    >>> global_sample_size = 50 # Request less than the global number of values, but more
+    ...                         # than number of values.
+    >>> select_random_values(vals, global_num_vals, global_sample_size) # Returns a random subset.
+    array([2, 6, 9, 4, 3])
+
+    >>> import numpy as np
+    >>> np.random.seed(666)
+    >>> vals = np.arange(30)
+    >>> global_num_vals = 100
+    >>> global_sample_size = 10 # Request less than the global number of values and less
+    ...                         # than number of values.
+    >>> select_random_values(vals, global_num_vals, global_sample_size) # Returns a random subset.
+    array([12,  2, 13])
+
+    >>> import numpy as np
+    >>> vals = np.arange(10)
+    >>> global_num_vals = 100
+    >>> global_sample_size = 500 # Request more than the global number of values.
+    >>> select_random_values(vals, global_num_vals, global_sample_size) # All input values are returned.
+    array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    """
+
+    # First find out the fraction of value that we need to select.
+    num_vals_to_choose = int(len(vals) / global_num_vals * global_sample_size)
+
+    # Do we have more values than we need?
+    if len(vals) > num_vals_to_choose:
+        # Randomly select them.
+        random_vals = np.random.choice(vals, size=num_vals_to_choose)
+    else:
+        # Otherwise, we will just use all the indices we were passed.
+        random_vals = vals
+
+    return random_vals
