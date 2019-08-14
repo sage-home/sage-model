@@ -127,7 +127,7 @@ def generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args=
     return func_dict
 
 
-def select_random_values(vals, global_num_vals, global_sample_size):
+def select_random_indices(inds, global_num_inds, global_sample_inds):
     """
     Flag this with Manodeep to exactly use a descriptive docstring.
 

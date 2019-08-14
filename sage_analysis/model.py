@@ -104,7 +104,7 @@ class Model(object):
         self._plot_galaxies = plot_galaxies
         self._sample_size = sample_size
         self.sSFRcut = -11.0  # The specific star formation rate above which a galaxy is
-                              # 'star forming'.  Units are log10.
+        # 'star forming'.  Units are log10.
         self._plot_output_format = "png"  # By default, save as a PNG.
 
         self._bins = {}
@@ -116,7 +116,7 @@ class Model(object):
         int: Format plots for this model will be saved as.
         """
 
-        return(self._plot_output_format)
+        return self._plot_output_format
 
     @plot_output_format.setter
     def plot_output_format(self, output_format):
@@ -128,7 +128,7 @@ class Model(object):
         int: Snapshot being read in and processed.
         """
 
-        return(self._snapshot)
+        return self._snapshot
 
     @property
     def redshifts(self):
@@ -136,7 +136,7 @@ class Model(object):
         :obj:`~numpy.ndarray`: Redshifts for this simulation.
         """
 
-        return(self._redshifts)
+        return self._redshifts
 
     @redshifts.setter
     def redshifts(self, redshifts):
@@ -153,7 +153,7 @@ class Model(object):
         data.
         """
 
-        return(self._sage_output_format)
+        return self._sage_output_format
 
     @sage_output_format.setter
     def sage_output_format(self, output_format):
@@ -170,7 +170,7 @@ class Model(object):
         [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
         """
 
-        return(self._model_path)
+        return self._model_path
 
     @model_path.setter
     def model_path(self, path):
@@ -183,7 +183,7 @@ class Model(object):
         :py:meth:`!sage_analysis.plots.plot_spatial_3d`.
         """
 
-        return(self._output_path)
+        return self._output_path
 
     @output_path.setter
     def output_path(self, path):
@@ -195,15 +195,17 @@ class Model(object):
         {``"Chabrier"``, ``"Salpeter"``}: The initial mass function.
         """
 
-        return(self._IMF)
+        return self._IMF
 
     @IMF.setter
     def IMF(self, IMF):
         # Only allow Chabrier or Salpeter IMF.
         allowed_IMF = ["Chabrier", "Salpeter"]
         if IMF not in allowed_IMF:
-            raise ValueErorr("Value of IMF selected ({0}) is not allowed. Only {1} are "
-                             "allowed.".format(IMF, allowed_IMF))
+            raise ValueErorr(
+                "Value of IMF selected ({0}) is not allowed. Only {1} are "
+                "allowed.".format(IMF, allowed_IMF)
+            )
         self._IMF = IMF
 
     @property
@@ -212,7 +214,7 @@ class Model(object):
         string: Label that will go on axis legends for this :py:class:`~Model`.
         """
 
-        return(self._label)
+        return self._label
 
     @label.setter
     def label(self, label):
@@ -229,7 +231,7 @@ class Model(object):
         [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
         """
 
-        return(self._first_file)
+        return self._first_file
 
     @first_file.setter
     def first_file(self, file_num):
@@ -246,7 +248,7 @@ class Model(object):
         [:py:attr:`~first_file`, :py:attr:`~last_file`] inclusive.
         """
 
-        return(self._last_file)
+        return self._last_file
 
     @last_file.setter
     def last_file(self, file_num):
@@ -262,7 +264,7 @@ class Model(object):
         parameters are read from the ``["Header"]["Simulation"]`` attributes.
         """
 
-        return(self._simulation)
+        return self._simulation
 
     @simulation.setter
     def simulation(self, simulation):
@@ -277,7 +279,7 @@ class Model(object):
         index :py:attr:`~redshifts` and generate the suffix for :py:attr:`~model_path`.
         """
 
-        return(self._snapshot)
+        return self._snapshot
 
     @snapshot.setter
     def snapshot(self, snapshot):
@@ -292,7 +294,7 @@ class Model(object):
         (``bin_name`` in :py:meth:`~Model.init_binned_properties` ).
         """
 
-        return(self._bins)
+        return self._bins
 
     @property
     def properties(self):
@@ -303,7 +305,7 @@ class Model(object):
         information on how :py:class:`~Model` properties are handled.
         """
 
-        return(self._properties)
+        return self._properties
 
         self._plot_galaxies = plot_galaxies
 
@@ -316,7 +318,7 @@ class Model(object):
         memory consumption for very large simulations.
         """
 
-        return(self._plot_galaxies)
+        return self._plot_galaxies
 
     @property
     def sample_size(self):
@@ -326,7 +328,7 @@ class Model(object):
         :py:meth:`~init_scatter_properties`.
         """
 
-        return(self._sample_size)
+        return self._sample_size
 
     @property
     def num_gals_all_files(self):
@@ -334,12 +336,11 @@ class Model(object):
         int: Number of galaxies across all files. For HDF5 data formats, this represents
         the number of galaxies across all `Core_XXX` sub-groups.
         """
-        return(self._num_gals_all_files)
+        return self._num_gals_all_files
 
     @num_gals_all_files.setter
     def num_gals_all_files(self, num_gals):
         self._num_gals_all_files = num_gals
-
 
     def read_sage_params(self, sage_file_path):
         """
@@ -366,16 +367,22 @@ class Model(object):
         """
 
         # Fields that we will be reading from the ini file.
-        SAGE_fields = ["FileNameGalaxies", "OutputDir",
-                       "FirstFile", "LastFile", "OutputFormat", "NumSimulationTreeFiles",
-                       "FileWithSnapList"]
+        SAGE_fields = [
+            "FileNameGalaxies",
+            "OutputDir",
+            "FirstFile",
+            "LastFile",
+            "OutputFormat",
+            "NumSimulationTreeFiles",
+            "FileWithSnapList",
+        ]
         SAGE_dict = {}
 
         # Ignore lines starting with one of these.
         comment_characters = [";", "%", "-"]
 
         try:
-            with open (sage_file_path, "r") as SAGE_file:
+            with open(sage_file_path, "r") as SAGE_file:
                 data = SAGE_file.readlines()
 
                 # Each line in the parameter file is of the form...
@@ -411,7 +418,7 @@ class Model(object):
         model_dict = {}
 
         alist = np.loadtxt(SAGE_dict["FileWithSnapList"])
-        redshifts = 1.0/alist - 1.0
+        redshifts = 1.0 / alist - 1.0
         model_dict["redshifts"] = redshifts
 
         # If the output format was 'sage_binary', need to use the redshift. If the output
@@ -421,9 +428,11 @@ class Model(object):
             try:
                 snap = self.snapshot
             except KeyError:
-                print("A Model was instantiated without specifying an initial snapshot to "
-                      "read. This is allowed, but `Data_Class.update_snapshot` must be "
-                      "called before any reading is done.")
+                print(
+                    "A Model was instantiated without specifying an initial snapshot to "
+                    "read. This is allowed, but `Data_Class.update_snapshot` must be "
+                    "called before any reading is done."
+                )
                 output_tag = "NOT_SET"
             else:
                 output_tag = "_z{0:.3f}".format(redshifts[snap])
@@ -432,20 +441,22 @@ class Model(object):
 
             output_tag = ".hdf5"
 
-        model_path = "{0}/{1}{2}".format(SAGE_dict["OutputDir"],
-                                         SAGE_dict["FileNameGalaxies"], output_tag)
+        model_path = "{0}/{1}{2}".format(
+            SAGE_dict["OutputDir"], SAGE_dict["FileNameGalaxies"], output_tag
+        )
         model_dict["model_path"] = model_path
 
         model_dict["sage_output_format"] = SAGE_dict["OutputFormat"]
         model_dict["output_path"] = "{0}/plots/".format(SAGE_dict["OutputDir"])
-        model_dict["num_tree_files_used"] = int(SAGE_dict["LastFile"]) - \
-                                            int(SAGE_dict["FirstFile"]) + 1
+        model_dict["num_tree_files_used"] = (
+            int(SAGE_dict["LastFile"]) - int(SAGE_dict["FirstFile"]) + 1
+        )
 
         return model_dict
 
-
-    def init_binned_properties(self, bin_low, bin_high, bin_width, bin_name,
-                               property_names):
+    def init_binned_properties(
+        self, bin_low, bin_high, bin_width, bin_name, property_names
+    ):
         """
         Initializes the :py:attr:`~properties` (and respective :py:attr:`~bins`) that will
         binned on some variable.  For example, the stellar mass function (SMF) will
@@ -475,7 +486,7 @@ class Model(object):
         """
 
         # Parameters that define the specified binning axis.
-        bins =  np.arange(bin_low, bin_high + bin_width, bin_width)
+        bins = np.arange(bin_low, bin_high + bin_width, bin_width)
 
         # Add the bins to the dictionary.
         self.bins[bin_name] = bins
@@ -484,7 +495,6 @@ class Model(object):
         # produced histogram will be `len(bins)-1`.
         for my_property in property_names:
             self.properties[my_property] = np.zeros(len(bins) - 1, dtype=np.float64)
-
 
     def init_scatter_properties(self, property_names):
         """
@@ -504,7 +514,6 @@ class Model(object):
         for my_property in property_names:
             self.properties[my_property] = np.array([])
 
-
     def init_single_properties(self, property_names):
         """
         Initializes the :py:attr:`~properties` that are described using a single number.
@@ -522,9 +531,9 @@ class Model(object):
         for my_property in property_names:
             self.properties[my_property] = 0.0
 
-
-    def calc_properties_all_files(self, calculation_functions, close_file=True,
-                                  use_pbar=True, debug=False):
+    def calc_properties_all_files(
+        self, calculation_functions, close_file=True, use_pbar=True, debug=False
+    ):
         """
         Calculates galaxy properties for all files of a single :py:class:`~Model`.
 
@@ -579,7 +588,7 @@ class Model(object):
             pass
 
         # Now read the galaxies and calculate the properties.
-        for file_num in range(self.first_file, self.last_file+1):
+        for file_num in range(self.first_file, self.last_file + 1):
 
             # This is Data Class specific. Refer to the relevant module for implementation.
             gals = self.data_class.read_gals(self, file_num, pbar=pbar, debug=debug)
@@ -603,9 +612,10 @@ class Model(object):
         duration = end_time - start_time
 
         if debug:
-            print("Took {0:.2f} seconds ({1:.2f} minutes)".format(duration, duration/60.0))
+            print(
+                "Took {0:.2f} seconds ({1:.2f} minutes)".format(duration, duration / 60.0)
+            )
             print("")
-
 
     def calc_properties(self, calculation_functions, gals):
         """
