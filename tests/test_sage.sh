@@ -25,7 +25,37 @@ fi
 
 # If there isn't a Mini-Millennium tree, then download them.
 if [ ! -f trees_063.7 ]; then
-    wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
+
+    # To download the trees, we use either `wget` or `curl`. By default, we want to use `wget`.
+    # However, if it isn't present, we will use `curl` with a few parameter flags.
+    echo "First checking if either 'wget' or 'curl' are present in order to download trees."
+
+    clear_alias=0
+    command -v wget
+
+    if [[ $? != 0 ]]; then
+        echo "'wget' is not available. Checking if 'curl' can be used."
+        command -v curl
+
+        if [[ $? != 0 ]]; then
+            echo "Neither 'wget' nor 'curl' are available to download the Mini-Millennium trees."
+            echo "Please install one of these to download the trees."
+            exit 1
+        fi
+
+        echo "Using 'curl' to download trees."
+
+        # `curl` is available. Alias it to `wget` with some options.
+        alias wget="curl -L -O -C -"
+
+        # We will need to clear this alias up later.
+        clear_alias=1
+    else
+        echo "'wget' is present. Using it!"
+    fi
+
+    # Now that we have confirmed we have either `wget` or `curl`, proceed to downloading the trees and data.
+    wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0" -O "mini-millennium-treefiles.tar"
     if [[ $? != 0 ]]; then
         echo "Could not download tree files from the Manodeep Sinha's Dropbox...aborting tests."
         echo "Failed."
@@ -51,6 +81,11 @@ if [ ! -f trees_063.7 ]; then
         echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
         echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
+    fi
+
+    # If we used `curl`, remove the `wget` alias.
+    if [[ $clear_alias == 1 ]]; then
+        unalias wget
     fi
 
     tar -xvf mini-millennium-sage-correct-output.tar

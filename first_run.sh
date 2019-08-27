@@ -75,7 +75,7 @@ if [ ! -f trees_063.7 ]; then
         unalias wget
     fi
 
-    tar xvf mini-millennium-treefiles.tar
+    tar -xvf mini-millennium-treefiles.tar
     if [[ $? != 0 ]]; then
         echo "Could not untar the Mini-Millennium tree files."
         echo "Please open an issue on the 'sage-model' repository and we will assist ASAP :)"
@@ -84,7 +84,7 @@ if [ ! -f trees_063.7 ]; then
     echo "Done."
     echo ""
 
-    rm mini-millennium-treefiles.tar
+    rm -f mini-millennium-treefiles.tar
     echo "Mini-Millennium trees successfully gathered and placed into '${PWD}'"
 
 else
@@ -110,7 +110,7 @@ sed -Ei"%" "s|^(SimulationDir[[:blank:]]*).*|$new_SimulationDir|g" millennium.pa
 sed -Ei"%" "s|^(FileWithSnapList[[:blank:]]*).*|$new_FileWithSnapList|g" millennium.par
 
 # For some odd reason, the '%' flag at the start makes a file named 'millennium.par%'. Remove this.
-rm millennium.par%
+rm -f millennium.par%
 
 echo "SAGE should be compiled with the 'make' command."
 echo "Once compiled, it can be ran by executing './sage input/millennium.par'"
