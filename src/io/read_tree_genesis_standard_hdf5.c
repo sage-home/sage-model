@@ -157,6 +157,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         return EXIT_FAILURE;
     }
 
+#undef ASSIGN_GALAXY_PROPERTY_NAME
+
     /* Now we can open the individual snapshot datasets */
     for(int isnap=0;isnap<gen->maxsnaps;isnap++) {
         gen->open_h5_dset_snapgroups[isnap] = -1;
@@ -205,7 +207,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     /*Count the number of unique forests */
     int64_t num_unique_forests = 0;
     for(int i=gen->maxsnaps-1;i>=0;i--) {
-        //H5LTread_dataset_long();//open 'ForestID' key within each snap
         //keep a hash of all unique forestids encountered so far
 
     }
