@@ -7,7 +7,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <assert.h>
 
 #include "core_allvars.h"
 #include "core_mymalloc.h"
@@ -173,4 +172,3 @@ int64_t load_forest(struct params *run_params, const int forestnr, struct halo_d
 
     return nhalos;
 }
-

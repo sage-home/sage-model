@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "read_tree_genesis_standard_hdf5.h"
 #include "../core_mymalloc.h"

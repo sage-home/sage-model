@@ -3,7 +3,6 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <assert.h>
 #include <limits.h>
 #include <fcntl.h>
 #include <unistd.h>
