@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <math.h>
 #include <time.h>
 #include <signal.h>
@@ -22,28 +21,28 @@
 #include "model_cooling_heating.h"
 
 
-static void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
-                            struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
+static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
+                           struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
 static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, int *maxgals, struct halo_data *halos,
                                         struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
 
 
 
 /* the only externally visible function */
-void construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *maxgals, struct halo_data *halos,
-                        struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
-                        struct params *run_params)
+int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *maxgals, struct halo_data *halos,
+                       struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
+                       struct params *run_params)
 {
-  static int halosdone = 0;
   int prog, fofhalo;
 
   haloaux[halonr].DoneFlag = 1;
-  halosdone++;
 
   prog = halos[halonr].FirstProgenitor;
   while(prog >= 0) {
       if(haloaux[prog].DoneFlag == 0) {
-          construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+          int status = construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+
+          if(status != EXIT_SUCCESS) return status;
       }
       prog = halos[prog].NextProgenitor;
   }
@@ -55,7 +54,9 @@ void construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int 
           prog = halos[fofhalo].FirstProgenitor;
           while(prog >= 0) {
               if(haloaux[prog].DoneFlag == 0) {
-                  construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+                  int status = construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+
+                  if(status != EXIT_SUCCESS) return status;
               }
               prog = halos[prog].NextProgenitor;
           }
@@ -71,17 +72,22 @@ void construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int 
 
   fofhalo = halos[halonr].FirstHaloInFOFgroup;
   if(haloaux[fofhalo].HaloFlag == 1) {
-    int ngal = 0;
-    haloaux[fofhalo].HaloFlag = 2;
+      int ngal = 0;
+      haloaux[fofhalo].HaloFlag = 2;
 
-    while(fofhalo >= 0) {
-        ngal = join_galaxies_of_progenitors(fofhalo, ngal, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
-        fofhalo = halos[fofhalo].NextHaloInFOFgroup;
-    }
+      while(fofhalo >= 0) {
+          ngal = join_galaxies_of_progenitors(fofhalo, ngal, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+          if(ngal < 0) return EXIT_FAILURE;
+          fofhalo = halos[fofhalo].NextHaloInFOFgroup;
+      }
 
-    evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ngal, numgals, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+      int status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ngal, numgals, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+
+      if(status != EXIT_SUCCESS) return status;
   }
 
+
+  return EXIT_SUCCESS;
 }
 /* end of construct_galaxies*/
 
@@ -132,10 +138,13 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
                 galaxies = *ptr_to_galaxies;
                 halogal = *ptr_to_halogal;
             }
-            assert(ngal < *maxgals);
 
+            XRETURN(ngal < *maxgals, -1,
+                    "Error: ngal = %d exceeds the number of galaxies allocated = %d\n"
+                    "This would result in invalid memory access...exiting\n",
+                    ngal, *maxgals);
 
-            // This is the cruical line in which the properties of the progenitor galaxies
+            // This is the crucial line in which the properties of the progenitor galaxies
             // are copied over (as a whole) to the (temporary) galaxies galaxies[xxx] in the current snapshot
             // After updating their properties and evolving them
             // they are copied to the end of the list of permanent galaxies halogal[xxx]
@@ -254,7 +263,9 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
     int centralgal = -1;
     for(int i = ngalstart; i < ngal; i++) {
         if(galaxies[i].Type == 0 || galaxies[i].Type == 1) {
-            assert(centralgal == -1);
+            XRETURN(centralgal == -1, -1,
+                    "Error: Expected to find centralgal=-1. instead centralgal=%d\n", centralgal);
+
             centralgal = i;
         }
     }
@@ -268,15 +279,22 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
 }
 /* end of join_galaxies_of_progenitors */
 
-void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
-                     struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
-                     struct params *run_params)
+int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
+                    struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
+                    struct params *run_params)
 {
     struct GALAXY *galaxies = *ptr_to_galaxies;
     struct GALAXY *halogal = *ptr_to_halogal;
 
     const int centralgal = galaxies[0].CentralGal;
-    assert(galaxies[centralgal].Type == 0 && galaxies[centralgal].HaloNr == halonr);
+    XRETURN(galaxies[centralgal].Type == 0 && galaxies[centralgal].HaloNr == halonr,
+            EXIT_FAILURE,
+            "Error: For centralgal, halonr = %d, %d.\n"
+            "Expected to find galaxy.type = 0, and found type = %d.\n"
+            "Expected to find galaxies[halonr] = %d and found halonr = %d\n",
+            centralgal, halonr, galaxies[centralgal].Type,
+            halonr,  galaxies[centralgal].HaloNr);
+
     /*
       MS: Note save halo_snapnum and galaxy_snapnum to local variables
           and replace all instances of snapnum to those local variables
@@ -330,7 +348,10 @@ void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgal
 
             // satellite galaxy!
             if((galaxies[p].Type == 1 || galaxies[p].Type == 2) && galaxies[p].mergeType == 0) {
-                assert(galaxies[p].MergTime < 999.0);
+                XRETURN(galaxies[p].MergTime < 999.0,
+                        EXIT_FAILURE,
+                        "Error: galaxies[%d].MergTime = %lf is too large! Should have been within the age of the Universe\n",
+                        p, galaxies[p].MergTime);
 
                 const double deltaT = run_params->Age[galaxies[p].SnapNum] - halo_age;
                 galaxies[p].MergTime -= deltaT / STEPS;
@@ -349,12 +370,12 @@ void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgal
 
                     galaxies[p].mergeIntoID = *numgals + merger_centralgal;  // position in output
 
-                    // disruption has occured!
-                    if(galaxies[p].MergTime > 0.0) {
-                        disrupt_satellite_to_ICS(merger_centralgal, p, galaxies);
-                    } else {
-                        // a merger has occured!
-                        if(galaxies[p].MergTime <= 0.0)  {
+                    if(isfinite(galaxies[p].MergTime)) {
+                        // disruption has occured!
+                        if(galaxies[p].MergTime > 0.0) {
+                            disrupt_satellite_to_ICS(merger_centralgal, p, galaxies);
+                        } else {
+                            // a merger has occured!
                             double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
                             deal_with_galaxy_merger(p, merger_centralgal, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
                         }
@@ -390,7 +411,6 @@ void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgal
 
 
     // Attach final galaxy list to halo
-    int offset = 0;
     for(int p = 0, currenthalo = -1; p < ngal; p++) {
         if(galaxies[p].HaloNr != currenthalo) {
             currenthalo = galaxies[p].HaloNr;
@@ -400,7 +420,7 @@ void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgal
 
         // Merged galaxies won't be output. So go back through its history and find it
         // in the previous timestep. Then copy the current merger info there.
-        offset = 0;
+        int offset = 0;
         int i = p-1;
         while(i >= 0) {
             if(galaxies[i].mergeType > 0) {
@@ -423,7 +443,7 @@ void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgal
                 i--;
             }
 
-            assert(i >= 0);
+            XRETURN(i >= 0, EXIT_FAILURE, "Error: This should not happen - i=%d should be >=0", i);
 
             halogal[i].mergeType = galaxies[p].mergeType;
             halogal[i].mergeIntoID = galaxies[p].mergeIntoID - offset;
@@ -440,7 +460,11 @@ void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgal
                 galaxies = *ptr_to_galaxies;
                 halogal = *ptr_to_halogal;
             }
-            assert(*numgals < *maxgals);
+
+            XRETURN(*numgals < *maxgals, INVALID_MEMORY_ACCESS_REQUESTED,
+                    "Error: numgals = %d exceeds the number of galaxies allocated = %d\n"
+                    "This would result in invalid memory access...exiting\n",
+                    *numgals, *maxgals);
 
             galaxies[p].SnapNum = halos[currenthalo].SnapNum;
             halogal[*numgals] = galaxies[p];
@@ -449,4 +473,5 @@ void evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgal
         }
     }
 
+    return EXIT_SUCCESS;
 }

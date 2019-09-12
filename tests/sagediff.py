@@ -269,13 +269,15 @@ def determine_binary_redshift(fname):
 
 
 def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
-                                 atol=5e-5):
+                                 atol=5e-5, verbose=False):
 
     # We need to first determine the snapshot that corresponds to the redshift we're
     # checking.  This is because the HDF5 file will contain multiple snapshots of data
     # whereas we only passed a single redshift binary file.
     binary_redshift = determine_binary_redshift(g1.filename)
-    snap_num, snap_key = determine_snap_from_binary_z(hdf5_file, binary_redshift)
+    snap_num, snap_key = determine_snap_from_binary_z(hdf5_file,
+                                                      binary_redshift,
+                                                      verbose=verbose)
 
     # SAGE could have been run in parallel in which the HDF5 master file will have
     # multiple core datasets.
@@ -365,7 +367,7 @@ def determine_num_gals_at_snap(hdf5_file, ncores, snap_key):
     return num_gals
 
 
-def determine_snap_from_binary_z(hdf5_file, redshift):
+def determine_snap_from_binary_z(hdf5_file, redshift, verbose=False):
 
     hdf5_snap_keys = []
     hdf5_redshifts = []
@@ -375,8 +377,8 @@ def determine_snap_from_binary_z(hdf5_file, redshift):
 
     for key in hdf5_file["Core_0"].keys():
 
-        # We need to be careful here. We have a "Header" group that we don't want to count
-        # when we're trying to work out the correct snapshot.
+        # We need to be careful here. We have a "Header" group that we don't
+        # want to count when we're trying to work out the correct snapshot.
         if key == "Header":
             continue
         hdf5_snap_keys.append(key)
@@ -388,8 +390,9 @@ def determine_snap_from_binary_z(hdf5_file, redshift):
     snap_key = hdf5_snap_keys[idx]
     snap_num = snap_key_to_snap_num(snap_key)
 
-    print("Determined Snapshot {0} with Key {1} corresponds to the binary file at redshift "
-          "{1}".format(snap_num, snap_key, redshift))
+    if verbose:
+        print("Determined Snapshot {0} with Key {1} corresponds to the binary "
+              "file at redshift {2}".format(snap_num, snap_key, redshift))
 
     return snap_num, snap_key
 
@@ -583,17 +586,23 @@ if __name__ == '__main__':
                         help="Number of files the first file was split over.")
     parser.add_argument("num_files_file2", metavar="NUM_FILES_FILE2", type=int,
                         help="Number of files the second file was split over.")
+
+    parser.add_argument("verbose", metavar="verbose", type=bool, default=False,
+                        nargs='?', help="print lots of info messages.")
+
     args = parser.parse_args()
 
     if not (args.mode == "binary-binary" or args.mode == "binary-hdf5"):
-        print("We only accept comparisons between binary-binary files or binary-hdf5 "
-              "files.  Please set the 'mode' argument to one of these options.")
+        print("We only accept comparisons between 'binary-binary' files "
+              "or 'binary-hdf5' files. Please set the 'mode' argument "
+              "to one of these options.")
         raise ValueError
 
     if args.mode == "binary-hdf5" and args.num_files_file2 > 1:
-        print("You're comparing a binary with a HDF5 file but are saying the HDF5 file is "
-              "split over multiple files. This shouldn't be the case; simply specify the "
-              "master file and set 'num_files_file2' to 1.")
+        print("You're comparing a binary with a HDF5 file but are saying "
+              "the HDF5 file is split over multiple files. This shouldn't "
+              "be the case; simply specify the master file and set "
+              "'num_files_file2' to 1.")
         raise ValueError
 
     ignored_fields = []
@@ -606,10 +615,12 @@ if __name__ == '__main__':
     rtol = 1e-07
     atol = 1e-11
 
-    print("Running sagediff on files {0} and {1} in mode {2}. The first file "
-          "was split over {3} files and the second file was split over {3} "
-          "files.".format(args.file1, args.file2, args.mode, args.num_files_file1,
-          args.num_files_file2))
+    if args.verbose:
+        print("Running sagediff on files {0} and {1} in mode {2}. The first "\
+              "file was split over {3} files and the second file was split "\
+              "over {4} files.".format(args.file1, args.file2,
+                                       args.mode, args.num_files_file1,
+                                       args.num_files_file2))
 
     compare_catalogs(args.file1, args.num_files_file1, args.file2, args.num_files_file2,
                      args.mode, ignored_fields, multidim_fields, rtol, atol)

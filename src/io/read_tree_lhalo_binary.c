@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
@@ -304,7 +303,3 @@ void cleanup_forests_io_lht_binary(struct forest_info *forests_info)
     }
     myfree(lht->open_fds);
 }
-
-
-
-

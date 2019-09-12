@@ -1,5 +1,5 @@
 #!/bin/bash
-cwd=`pwd`
+cwd=$(pwd)
 datadir=test_data/
 
 # The bash way of figuring out the absolute path to this file
@@ -173,7 +173,6 @@ echo "Failed: $nfailed."
 
 if [[ $nfailed > 0 ]]; then
     echo "The binary-binary check failed."
-    echo "Uh oh...I'm outta here!"
     echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
     echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
@@ -203,7 +202,7 @@ cd "$parent_path"/$datadir
 
 # For the binary output, there are multiple redshift files.  However for HDF5, there is a single file.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
-test_file=`ls test_sage.hdf5`
+test_file=$(ls test_sage.hdf5)
 
 # Now run the comparison between each correct binary file and the single HDF5 file.
 if [[ $? == 0 ]]; then

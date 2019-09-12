@@ -129,12 +129,11 @@ char *get_time_string(struct timeval t0, struct timeval t1)
 
 int64_t getnumlines(const char *fname,const char comment)
 {
-    FILE *fp= NULL;
     const int MAXLINESIZE = 10000;
     int64_t nlines=0;
     char str_line[MAXLINESIZE];
 
-    fp = fopen(fname,"rt");
+    FILE *fp = fopen(fname,"rt");
     if(fp == NULL) {
         return -1;
     }
@@ -239,5 +238,3 @@ ssize_t mypwrite(int fd, const void *ptr, const size_t nbytes, off_t offset)
 
     return tot_nbytes_written;
 }
-
-

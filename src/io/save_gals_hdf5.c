@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <hdf5.h>
@@ -166,8 +165,6 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 // The handles for all of these are stored in `save_info` so we can write later.
 int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_info, const struct params *run_params)
 {
-
-    fprintf(stderr, "Task %d is in initialize_hdf5_galaxy_files\n", run_params->ThisTask);
 
     hid_t prop, dataset_id;
     hid_t file_id, group_id, dataspace_id;

@@ -272,12 +272,18 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
 #else
 
     /* First run construct_galaxies outside for loop -> takes care of the main tree */
-    construct_galaxies(0, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
+    status = construct_galaxies(0, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
 
     /* But there are sub-trees within one forest file that are not reachable via the recursive routine -> do those as well */
     for(int halonr = 0; halonr < nhalos; halonr++) {
         if(HaloAux[halonr].DoneFlag == 0) {
-            construct_galaxies(halonr, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
+            status = construct_galaxies(halonr, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
+            if(status != EXIT_SUCCESS) {
+                return status;
+            }
         }
     }
 
@@ -296,5 +302,3 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
 
     return EXIT_SUCCESS;
 }
-
-
