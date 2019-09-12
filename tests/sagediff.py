@@ -583,17 +583,23 @@ if __name__ == '__main__':
                         help="Number of files the first file was split over.")
     parser.add_argument("num_files_file2", metavar="NUM_FILES_FILE2", type=int,
                         help="Number of files the second file was split over.")
+
+    parser.add_argument("verbose", metavar="verbose", type=bool, default=False,
+                        nargs='?', help="print lots of info messages.")
+
     args = parser.parse_args()
 
     if not (args.mode == "binary-binary" or args.mode == "binary-hdf5"):
-        print("We only accept comparisons between binary-binary files or binary-hdf5 "
-              "files.  Please set the 'mode' argument to one of these options.")
+        print("We only accept comparisons between 'binary-binary' files "
+              "or 'binary-hdf5' files. Please set the 'mode' argument "
+              "to one of these options.")
         raise ValueError
 
     if args.mode == "binary-hdf5" and args.num_files_file2 > 1:
-        print("You're comparing a binary with a HDF5 file but are saying the HDF5 file is "
-              "split over multiple files. This shouldn't be the case; simply specify the "
-              "master file and set 'num_files_file2' to 1.")
+        print("You're comparing a binary with a HDF5 file but are saying "
+              "the HDF5 file is split over multiple files. This shouldn't "
+              "be the case; simply specify the master file and set "
+              "'num_files_file2' to 1.")
         raise ValueError
 
     ignored_fields = []
@@ -606,10 +612,12 @@ if __name__ == '__main__':
     rtol = 1e-07
     atol = 1e-11
 
-    print("Running sagediff on files {0} and {1} in mode {2}. The first file "
-          "was split over {3} files and the second file was split over {3} "
-          "files.".format(args.file1, args.file2, args.mode, args.num_files_file1,
-          args.num_files_file2))
+    if args.verbose:
+        print("Running sagediff on files {0} and {1} in mode {2}. The first "\
+              "file was split over {3} files and the second file was split "\
+              "over {3} files.".format(args.file1, args.file2,
+                                       args.mode, args.num_files_file1,
+                                       args.num_files_file2))
 
     compare_catalogs(args.file1, args.num_files_file1, args.file2, args.num_files_file2,
                      args.mode, ignored_fields, multidim_fields, rtol, atol)
