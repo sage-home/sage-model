@@ -392,7 +392,7 @@ def determine_snap_from_binary_z(hdf5_file, redshift, verbose=False):
 
     if verbose:
         print("Determined Snapshot {0} with Key {1} corresponds to the binary "
-              "file at redshift {1}".format(snap_num, snap_key, redshift))
+              "file at redshift {2}".format(snap_num, snap_key, redshift))
 
     return snap_num, snap_key
 
@@ -618,7 +618,7 @@ if __name__ == '__main__':
     if args.verbose:
         print("Running sagediff on files {0} and {1} in mode {2}. The first "\
               "file was split over {3} files and the second file was split "\
-              "over {3} files.".format(args.file1, args.file2,
+              "over {4} files.".format(args.file1, args.file2,
                                        args.mode, args.num_files_file1,
                                        args.num_files_file2))
 
