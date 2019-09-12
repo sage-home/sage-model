@@ -173,7 +173,6 @@ echo "Failed: $nfailed."
 
 if [[ $nfailed > 0 ]]; then
     echo "The binary-binary check failed."
-    echo "Uh oh...I'm outta here!"
     echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
     echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1

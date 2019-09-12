@@ -167,8 +167,6 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_info, const struct params *run_params)
 {
 
-    fprintf(stderr, "Task %d is in initialize_hdf5_galaxy_files\n", run_params->ThisTask);
-
     hid_t prop, dataset_id;
     hid_t file_id, group_id, dataspace_id;
     char buffer[3*MAX_STRING_LEN];

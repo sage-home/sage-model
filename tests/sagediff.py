@@ -269,13 +269,15 @@ def determine_binary_redshift(fname):
 
 
 def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
-                                 atol=5e-5):
+                                 atol=5e-5, verbose=False):
 
     # We need to first determine the snapshot that corresponds to the redshift we're
     # checking.  This is because the HDF5 file will contain multiple snapshots of data
     # whereas we only passed a single redshift binary file.
     binary_redshift = determine_binary_redshift(g1.filename)
-    snap_num, snap_key = determine_snap_from_binary_z(hdf5_file, binary_redshift)
+    snap_num, snap_key = determine_snap_from_binary_z(hdf5_file,
+                                                      binary_redshift,
+                                                      verbose=verbose)
 
     # SAGE could have been run in parallel in which the HDF5 master file will have
     # multiple core datasets.
@@ -365,7 +367,7 @@ def determine_num_gals_at_snap(hdf5_file, ncores, snap_key):
     return num_gals
 
 
-def determine_snap_from_binary_z(hdf5_file, redshift):
+def determine_snap_from_binary_z(hdf5_file, redshift, verbose=False):
 
     hdf5_snap_keys = []
     hdf5_redshifts = []
@@ -375,8 +377,8 @@ def determine_snap_from_binary_z(hdf5_file, redshift):
 
     for key in hdf5_file["Core_0"].keys():
 
-        # We need to be careful here. We have a "Header" group that we don't want to count
-        # when we're trying to work out the correct snapshot.
+        # We need to be careful here. We have a "Header" group that we don't
+        # want to count when we're trying to work out the correct snapshot.
         if key == "Header":
             continue
         hdf5_snap_keys.append(key)
@@ -388,8 +390,9 @@ def determine_snap_from_binary_z(hdf5_file, redshift):
     snap_key = hdf5_snap_keys[idx]
     snap_num = snap_key_to_snap_num(snap_key)
 
-    print("Determined Snapshot {0} with Key {1} corresponds to the binary file at redshift "
-          "{1}".format(snap_num, snap_key, redshift))
+    if verbose:
+        print("Determined Snapshot {0} with Key {1} corresponds to the binary "
+              "file at redshift {1}".format(snap_num, snap_key, redshift))
 
     return snap_num, snap_key
 
