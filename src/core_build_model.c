@@ -42,7 +42,9 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
       if(haloaux[prog].DoneFlag == 0) {
           int status = construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
 
-          if(status != EXIT_SUCCESS) return status;
+          if(status != EXIT_SUCCESS) {
+              return status;
+          }
       }
       prog = halos[prog].NextProgenitor;
   }
@@ -56,7 +58,9 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
               if(haloaux[prog].DoneFlag == 0) {
                   int status = construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
 
-                  if(status != EXIT_SUCCESS) return status;
+                  if(status != EXIT_SUCCESS) {
+                      return status;
+                  }
               }
               prog = halos[prog].NextProgenitor;
           }
@@ -77,13 +81,17 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
 
       while(fofhalo >= 0) {
           ngal = join_galaxies_of_progenitors(fofhalo, ngal, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
-          if(ngal < 0) return EXIT_FAILURE;
+          if(ngal < 0) {
+              return EXIT_FAILURE;
+          }
           fofhalo = halos[fofhalo].NextHaloInFOFgroup;
       }
 
       int status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ngal, numgals, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
 
-      if(status != EXIT_SUCCESS) return status;
+      if(status != EXIT_SUCCESS) {
+          return status;
+      }
   }
 
 
