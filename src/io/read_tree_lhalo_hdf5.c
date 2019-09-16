@@ -15,14 +15,15 @@
 /* Local Structs */
 struct METADATA_NAMES
 {
-  char name_NTrees[MAX_STRING_LEN];
-  char name_totNHalos[MAX_STRING_LEN];
-  char name_TreeNHalos[MAX_STRING_LEN];
+    char name_NTrees[MAX_STRING_LEN];
+    char name_totNHalos[MAX_STRING_LEN];
+    char name_TreeNHalos[MAX_STRING_LEN];
+    char name_ParticleMass[MAX_STRING_LEN];
 };
 
 /* Local Proto-Types */
 static int32_t fill_metadata_names(struct METADATA_NAMES *metadata_names, enum Valid_TreeTypes my_TreeType);
-static int32_t read_attribute_int(hid_t my_hdf5_file, const char *groupname, const char *attr_name, int *attribute);
+static int32_t read_attribute(hid_t fd, const char *group_name, const char *attr_name, const hid_t datatype, void *attribute);
 static int32_t read_dataset(hid_t fd, const char *dataset_name, const hid_t datatype, void *buffer);
 
 void get_forests_filename_lht_hdf5(char *filename, const size_t len, const int filenr,  const struct params *run_params)
@@ -41,7 +42,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
     }
 
     /* wasteful to allocate for lastfile + 1 indices, rather than numfiles; but makes indexing easier */
-    int32_t *totnforests_per_file = malloc((lastfile + 1) * sizeof(totnforests_per_file[0]));
+    int32_t *totnforests_per_file = calloc(lastfile + 1, sizeof(totnforests_per_file[0]));
     if(totnforests_per_file == NULL) {
         fprintf(stderr,"Error: Could not allocate memory to store the number of forests in each file\n");
         perror(NULL);
@@ -60,15 +61,29 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
         }
         int status = fill_metadata_names(&metadata_names, run_params->TreeType);
         if (status != EXIT_SUCCESS) {
-            ABORT(status);
+            return -1;
+        }
+
+        //Read in partmass
+        if(filenr == firstfile) {
+            double partmass;
+            const double max_diff = 1e-5;
+            status = read_attribute(fd, "/Header", metadata_names.name_ParticleMass, H5T_NATIVE_DOUBLE, &partmass);
+            if(fabs(run_params->PartMass - partmass) >= max_diff) {
+                fprintf(stderr,"Error: Parameter file mentions particle mass = %g but the hdf5 file shows particle mass = %g\n",
+                        run_params->PartMass, partmass);
+                fprintf(stderr,"Diff = %g max. tolerated diff = %g\n", fabs(run_params->PartMass - partmass), max_diff);
+                fprintf(stderr,"May be the value in the parameter file needs to be updated?\n");
+                return -1;
+            }
         }
 
         int32_t nforests;
-        status = read_attribute_int(fd, "/Header", metadata_names.name_NTrees, &nforests);
+        status = read_attribute(fd, "/Header", metadata_names.name_NTrees, H5T_NATIVE_INT, &nforests);
         if (status != EXIT_SUCCESS) {
             fprintf(stderr, "Error while processing file %s\n", filename);
             fprintf(stderr, "Error code is %d\n", status);
-            ABORT(status);
+            return -1;
         }
         totnforests_per_file[filenr] = nforests;
         totnforests += nforests;
@@ -148,7 +163,8 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
     forests_info->nforests_this_task = nforests_this_task;
     lht->nforests = nforests_this_task;
     /* lht->nhalos_per_forest = mymalloc(nforests_this_task * sizeof(lht->nhalos_per_forest[0])); */
-    lht->bytes_offset_for_forest = mymalloc(nforests_this_task * sizeof(lht->bytes_offset_for_forest[0]));
+    /* lht->bytes_offset_for_forest = mymalloc(nforests_this_task * sizeof(lht->bytes_offset_for_forest[0])); */
+    lht->bytes_offset_for_forest = NULL;
     lht->h5_fd = mymalloc(nforests_this_task * sizeof(lht->h5_fd[0]));
     lht->numfiles = end_filenum - start_filenum + 1;
     lht->open_h5_fds = mymalloc(lht->numfiles * sizeof(lht->open_h5_fds[0]));
@@ -182,23 +198,8 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
         lht->open_h5_fds[file_index] = fd;/* keep the file open, will be closed at the cleanup stage */
 
         const int64_t nforests = num_forests_to_process_per_file[filenr];
-        /* const size_t nbytes = totnforests_per_file[filenr] * sizeof(int32_t); */
-        /* int32_t *nhalos_per_forest = malloc(nbytes); */
-        /* if(nhalos_per_forest == NULL) { */
-        /*     fprintf(stderr,"Error: Could not allocate memory to read nhalos per forest. Bytes requested = %zu\n", nbytes); */
-        /*     perror(NULL); */
-        /*     ABORT(MALLOC_FAILURE); */
-        /* } */
-        /* mypread(fd, nhalos_per_forest, nbytes, 8); /\* the last argument says to start after sizeof(totntrees) + sizeof(totnhalos) *\/ */
-        /* memcpy(forestnhalos, &(nhalos_per_forest[start_forestnum_to_process_per_file[filenr]]), nforests * sizeof(forestnhalos[0])); */
-
-        /* free(nhalos_per_forest); */
-
-        /* nforests_so_far = forestnhalos - lht->nhalos_per_forest; */
         for(int64_t i=0;i<nforests;i++) {
-            /* lht->bytes_offset_for_forest[i + nforests_so_far] = byte_offset_to_halos; */
             lht->h5_fd[i + nforests_so_far] = fd;
-            /* byte_offset_to_halos += forestnhalos[i]*sizeof(struct halo_data); */
         }
         nforests_so_far += nforests;
     }
@@ -208,26 +209,11 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
     free(totnforests_per_file);
 
     return EXIT_SUCCESS;
-
-    /* status = read_attribute_int(forests_info->hdf5_fp, "/Header", metadata_names.name_totNHalos, &totNHalos); */
-    /* if (status != EXIT_SUCCESS) {  */
-    /*     fprintf(stderr, "Error while processing file %s\n", filename); */
-    /*     fprintf(stderr, "Error code is %d\n", status); */
-    /*     ABORT(0); */
-    /* } */
-
-    /* forests_info->totnhalos_per_forest = mycalloc(nforests, sizeof(int));  */
-    /* status = read_attribute_int(forests_info->hdf5_fp, "/Header", metadata_names.name_TreeNHalos, forests_info->totnhalos_per_forest); */
-    /* if (status != EXIT_SUCCESS) { */
-    /*     fprintf(stderr, "Error while processing file %s\n", filename); */
-    /*     fprintf(stderr, "Error code is %d\n", status); */
-    /*     ABORT(0); */
-    /* } */
 }
 
 #define READ_TREE_PROPERTY(fd, sage_name, hdf5_name, h5_dtype, C_dtype) \
     {                                                                   \
-        snprintf(dataset_name, MAX_STRING_LEN - 1, "tree_%03d/%s", forestnr, #hdf5_name); \
+        snprintf(dataset_name, MAX_STRING_LEN - 1, "Tree%d/%s", forestnr, #hdf5_name); \
         status = read_dataset(fd, dataset_name, h5_dtype, buffer);      \
         if (status != EXIT_SUCCESS) {                                   \
             ABORT(status);                                              \
@@ -239,7 +225,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
 
 #define READ_TREE_PROPERTY_MULTIPLEDIM(fd, sage_name, hdf5_name, h5_dtype, C_dtype) \
     {                                                                   \
-        snprintf(dataset_name, MAX_STRING_LEN - 1, "tree_%03d/%s", forestnr, #hdf5_name); \
+        snprintf(dataset_name, MAX_STRING_LEN - 1, "Tree%d/%s", forestnr, #hdf5_name); \
         status = read_dataset(fd, dataset_name, h5_dtype, buffer_multipledim); \
         if (status != EXIT_SUCCESS) {                                   \
             ABORT(status);                                              \
@@ -271,11 +257,10 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
         ABORT(INVALID_FILE_POINTER);
     }
 
-
-    /* Figure out nhalos by checking the size of the 'Descendant' dataset */
+    /* Figure out nhalos by checking the size of the 'Descendant' dataset (could be any other valid field) */
     /* https://stackoverflow.com/questions/15786626/get-the-dimensions-of-a-hdf5-dataset */
     const char field_name[] = "Descendant";
-    snprintf(dataset_name, MAX_STRING_LEN - 1, "tree_%03d/%s", forestnr, field_name);
+    snprintf(dataset_name, MAX_STRING_LEN - 1, "Tree%d/%s", forestnr, field_name);
     hid_t dataset = H5Dopen(fd, dataset_name, H5P_DEFAULT);
     hid_t dspace = H5Dget_space(dataset);
     const int ndims = H5Sget_simple_extent_ndims(dspace);
@@ -290,7 +275,6 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
     /* allocate the entire memory space required to store the halos*/
     *halos = mymalloc(sizeof(struct halo_data) * nhalos);
     struct halo_data *local_halos = *halos;
-
 
     buffer = malloc(nhalos * sizeof(buffer[0]));
     if (buffer == NULL) {
@@ -315,25 +299,28 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
     READ_TREE_PROPERTY(fd, NextHaloInFOFgroup, NextHaloInFOFgroup, H5T_NATIVE_INT, int);
 
     /* Halo Properties */
-    READ_TREE_PROPERTY(fd, Len, Len, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, M_Mean200, M_mean200, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, Mvir, Mvir, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, M_TopHat, M_TopHat, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Pos, Pos, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Vel, Vel, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, VelDisp, VelDisp, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, Vmax, Vmax, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Spin, Spin, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, MostBoundID, MostBoundID, H5T_NATIVE_LLONG, long long);
+    READ_TREE_PROPERTY(fd, Len, SubhaloLen, H5T_NATIVE_INT, int);
+    READ_TREE_PROPERTY(fd, M_Mean200, Group_M_Mean200, H5T_NATIVE_FLOAT, float);//MS: units 10^10 Msun/h for all Illustris mass fields
+    READ_TREE_PROPERTY(fd, Mvir, Group_M_Crit200, H5T_NATIVE_FLOAT, float);//MS: 16/9/2019 sage uses Mvir but assumes that contains M200c
+    READ_TREE_PROPERTY(fd, M_TopHat, Group_M_TopHat200, H5T_NATIVE_FLOAT, float);
+    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Pos, SubhaloPos, H5T_NATIVE_FLOAT, float);//needs to be converted from kpc/h -> Mpc/h
+    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Vel, SubhaloVel, H5T_NATIVE_FLOAT, float);//km/s
+    READ_TREE_PROPERTY(fd, VelDisp, SubhaloVelDisp, H5T_NATIVE_FLOAT, float);//km/s
+    READ_TREE_PROPERTY(fd, Vmax,  SubhaloVmax, H5T_NATIVE_FLOAT, float);//km/s
+    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Spin, SubhaloSpin, H5T_NATIVE_FLOAT, float);//(kpc/h)(km/s) -> convert to (Mpc)*(km/s). Does it need sqrt(3)?
+    READ_TREE_PROPERTY(fd, MostBoundID, SubhaloIDMostBound, H5T_NATIVE_ULLONG, unsigned long long);
 
     /* File Position Info */
     READ_TREE_PROPERTY(fd, SnapNum, SnapNum, H5T_NATIVE_INT, int);
     READ_TREE_PROPERTY(fd, FileNr, Filenr, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, SubhaloIndex, SubHaloIndex, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, SubHalfMass, SubHalfMass, H5T_NATIVE_INT, int);
+    //READ_TREE_PROPERTY(fd, SubhaloIndex, SubhaloGrNr, H5T_NATIVE_INT, int);//MS: Unsure if this is the right field mapping (another option is SubhaloNumber)
+    //READ_TREE_PROPERTY(fd, SubHalfMass, SubHalfMass, H5T_NATIVE_FLOAT, float);//MS: Unsure what this field captures -> thankfully unused within sage
 
     free(buffer);
     free(buffer_multipledim);
+
+    //MS: 16/9/2019 -- these are the fields present in the Illustris-lhalo-hdf5 file for TNG100-3-Dark
+    /* 'Descendant', 'FileNr', 'FirstHaloInFOFGroup', 'FirstProgenitor', 'Group_M_Crit200', 'Group_M_Mean200', 'Group_M_TopHat200', 'NextHaloInFOFGroup', 'NextProgenitor', 'SnapNum', 'SubhaloGrNr', 'SubhaloHalfmassRad', 'SubhaloHalfmassRadType', 'SubhaloIDMostBound', 'SubhaloLen', 'SubhaloLenType', 'SubhaloMassInRadType', 'SubhaloMassType', 'SubhaloNumber', 'SubhaloOffsetType', 'SubhaloPos', 'SubhaloSpin', 'SubhaloVMax', 'SubhaloVel', 'SubhaloVelDisp' */
 
 #ifdef DEBUG_HDF5_READER
     for (int32_t i = 0; i < 20; ++i) {
@@ -347,6 +334,29 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
 
 #undef READ_TREE_PROPERTY
 #undef READ_TREE_PROPERTY_MULTIPLEDIM
+
+
+int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, const double hubble)
+{
+    const float spin_conv_fac = (float) (0.001/hubble);
+    if (nhalos <= 0) {
+        fprintf(stderr,"Strange!: In function %s> Got nhalos = %"PRId64". Expected to get nhalos > 0\n", __FUNCTION__, nhalos);
+        return -1;
+    }
+
+    /* Any unit conversions or resetting thing that need to be done */
+    for(int64_t i=0;i<nhalos;i++) {
+        for(int j=0;j<3;j++) {
+            halos[i].Pos[j] *= 0.001f;//convert from kpc -> Mpc
+            halos[i].Spin[j] *= spin_conv_fac;//convert from (kpc/h)*(km/s) -> (Mpc)*(km/s)
+        }
+        halos[i].SubhaloIndex = -1;
+        halos[i].SubHalfMass = -1.0f;
+    }
+
+
+    return EXIT_SUCCESS;
+}
 
 
 void cleanup_forests_io_lht_hdf5(struct forest_info *forests_info)
@@ -368,12 +378,15 @@ void cleanup_forests_io_lht_hdf5(struct forest_info *forests_info)
 static int32_t fill_metadata_names(struct METADATA_NAMES *metadata_names, enum Valid_TreeTypes my_TreeType)
 {
     switch (my_TreeType) {
-    case genesis_lhalo_hdf5:
 
-        snprintf(metadata_names->name_NTrees, MAX_STRING_LEN - 1, "NTrees"); // Total number of forests within the file.
-        snprintf(metadata_names->name_totNHalos, MAX_STRING_LEN - 1, "totNHalos"); // Total number of halos within the file.
+    case illustris_lhalo_hdf5:
+
+        snprintf(metadata_names->name_NTrees, MAX_STRING_LEN - 1, "NtreesPerFile"); // Total number of forests within the file.
+        snprintf(metadata_names->name_totNHalos, MAX_STRING_LEN - 1, "NhalosPerFile"); // Total number of halos within the file.
         snprintf(metadata_names->name_TreeNHalos, MAX_STRING_LEN - 1, "TreeNHalos"); // Number of halos per forest within the file.
+        snprintf(metadata_names->name_ParticleMass, MAX_STRING_LEN - 1, "ParticleMass");//Particle mass for Dark matter in the sim
         return EXIT_SUCCESS;
+
 
     case lhalo_binary:
         fprintf(stderr, "If the file is binary then this function should never be called.  Something's gone wrong...");
@@ -382,14 +395,14 @@ static int32_t fill_metadata_names(struct METADATA_NAMES *metadata_names, enum V
     default:
         fprintf(stderr, "Your tree type has not been included in the switch statement for ``%s`` in file ``%s``.\n", __FUNCTION__, __FILE__);
         fprintf(stderr, "Please add it there.\n");
-        ABORT(EXIT_FAILURE);
+        return EXIT_FAILURE;
 
     }
 
     return EXIT_FAILURE;
 }
 
-static int32_t read_attribute_int(hid_t fd, const char *group_name, const char *attr_name, int *attribute)
+static int32_t read_attribute(hid_t fd, const char *group_name, const char *attr_name, const hid_t datatype, void *attribute)
 {
     hid_t attr_id = H5Aopen_by_name(fd, group_name, attr_name, H5P_DEFAULT, H5P_DEFAULT);
     if (attr_id < 0) {
@@ -397,7 +410,7 @@ static int32_t read_attribute_int(hid_t fd, const char *group_name, const char *
         return attr_id;
     }
 
-    int status = H5Aread(attr_id, H5T_NATIVE_INT, attribute);
+    int status = H5Aread(attr_id, datatype, attribute);
     if (status < 0) {
         fprintf(stderr, "Could not read the attribute %s in group %s\n", attr_name, group_name);
         return status;
