@@ -29,10 +29,6 @@ int open_forests_file(struct params *run_params, const int filenr)
     case(illustris_lhalo_hdf5):
         get_forests_filename_lht_hdf5(filename, 4*MAX_STRING_LEN, filenr, run_params);
         break;
-    /* case genesis_standard_hdf5: */
-    /*     (void) firstfile, (void) lastfile; */
-    /*     status = load_forest_table_genesis_hdf5(forests_info); */
-    /*     break; */
 #endif
 
     case(lhalo_binary):
@@ -159,6 +155,7 @@ int64_t load_forest(struct params *run_params, const int forestnr, struct halo_d
     /* case genesis_standard_hdf5: */
     /*     nhalos = load_forest_genesis_hdf5(forestnr, halos, forests_info); */
     /*     break; */
+
 #endif
 
     case lhalo_binary:

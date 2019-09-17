@@ -112,7 +112,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     run_params->interrupted = 0;
     if(ThisTask == 0) {
-        init_my_progressbar(stderr, forest_info.nforests_this_task, &(run_params->interrupted));
+        init_my_progressbar(stderr, Nforests, &(run_params->interrupted));
 #ifdef MPI
         fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
                         "It should be used as a general indicator only.\n");

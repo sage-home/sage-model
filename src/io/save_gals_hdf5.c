@@ -15,11 +15,11 @@
 
 #define NUM_OUTPUT_FIELDS 54
 #define DATA_VERSION 1.0
+#define NUM_GALS_PER_BUFFER 1000
 
 // Local Proto-Types //
-
-int32_t generate_field_metadata(char **field_names, char **field_descriptions, char **field_units,
-                                hsize_t *field_dtypes);
+int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*field_descriptions)[MAX_STRING_LEN],
+                                char (*field_units)[MAX_STRING_LEN], hsize_t *field_dtypes);
 
 int32_t prepare_galaxy_for_hdf5_output(struct GALAXY *g, struct save_info *save_info,
                                        int32_t output_snap_idx, struct halo_data *halos,
@@ -31,8 +31,7 @@ int32_t trigger_buffer_write(int32_t snap_idx, int32_t num_to_write, int64_t num
 
 int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params);
 
-#define MAX_ATTRIBUTE_LEN 10000
-#define NUM_GALS_PER_BUFFER 1000
+
 
 // HDF5 is a self-describing data format.  Each dataset will contain a number of attributes to
 // describe properties such as units or number of elements. These macros create attributes for a
@@ -68,15 +67,15 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 #define CREATE_STRING_ATTRIBUTE(group_id, attribute_name, attribute_value) { \
     hid_t macro_dataspace_id = H5Screate(H5S_SCALAR);                 \
     CHECK_STATUS_AND_RETURN_ON_FAIL(macro_dataspace_id, (int32_t) macro_dataspace_id,    \
-                                    "Could not create an attribute dataspace.\n"         \
+                                    "Could not create an attribute dataspace for a String.\n"         \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                                    "The group_id was #group_id and the HDF5 datatype was #h5_dtype.\n"); \
+                                    "The group_id was #group_id.\n"); \
     hid_t atype = H5Tcopy(H5T_C_S1);                                  \
     CHECK_STATUS_AND_RETURN_ON_FAIL(atype, (int32_t) atype,                              \
                                     "Could not copy an existing data type when creating a String attribute.\n" \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
                                     "The group_id was #group_id.\n");                    \
-    status = H5Tset_size(atype, MAX_ATTRIBUTE_LEN-1);                 \
+    status = H5Tset_size(atype, MAX_STRING_LEN-1);                 \
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,                            \
                                     "Could not set the total size of a datatype when creating a String attribute.\n" \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
@@ -108,9 +107,9 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
                                     "The group_id was #group_id.\n");                    \
     status = H5Sclose(macro_dataspace_id);                                               \
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,                            \
-                                    "Could not close an attribute dataspace.\n"          \
+                                    "Could not close an attribute dataspace when creating a String attribute.\n"          \
                                     "The attribute we wanted to create was #attribute_name with value #attribute_value.\n" \
-                                    "The group_id was #group_id #h5_dtype.\n");          \
+                                    "The group_id was #group_id.\n");          \
 }
 
 #define CREATE_AND_WRITE_DATASET(file_id, field_name, dims, data, h5_dtype) { \
@@ -180,16 +179,32 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     save_info->file_id = file_id;
 
     // Generate the names, description and HDF5 data types for each of the output fields.
-    char *field_names[NUM_OUTPUT_FIELDS];
-    char *field_descriptions[NUM_OUTPUT_FIELDS];
-    char *field_units[NUM_OUTPUT_FIELDS];
+    char field_names[NUM_OUTPUT_FIELDS][MAX_STRING_LEN];
+    char field_descriptions[NUM_OUTPUT_FIELDS][MAX_STRING_LEN];
+    char field_units[NUM_OUTPUT_FIELDS][MAX_STRING_LEN];
     hsize_t field_dtypes[NUM_OUTPUT_FIELDS];
 
     generate_field_metadata(field_names, field_descriptions, field_units, field_dtypes);
 
     save_info->num_output_fields = NUM_OUTPUT_FIELDS;
-    save_info->name_output_fields = field_names;
-    save_info->field_dtypes = field_dtypes;
+    save_info->name_output_fields = malloc(NUM_OUTPUT_FIELDS * sizeof(save_info->name_output_fields[0]));
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info->name_output_fields,
+                                     "Failed to allocate %d elements of size %zu for save_info->name_output_fields",
+                                     NUM_OUTPUT_FIELDS,
+                                     sizeof(char *));
+    for(int i=0;i<NUM_OUTPUT_FIELDS;i++) {
+        save_info->name_output_fields[i] = malloc(MAX_STRING_LEN * sizeof(char));
+        CHECK_POINTER_AND_RETURN_ON_NULL(save_info->name_output_fields[i],
+                                         "Failed to allocate %d elements of size %zu for save_info->name_output_fields[%d]",
+                                         NUM_OUTPUT_FIELDS,
+                                         sizeof(char), i);
+        memcpy(save_info->name_output_fields[i], field_names[i], MAX_STRING_LEN);
+    }
+    save_info->field_dtypes = malloc(NUM_OUTPUT_FIELDS * sizeof(save_info->field_dtypes[0]));
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info->field_dtypes,
+                                     "Failed to allocate %d elements of size %zu for save_info->name_output_fields",
+                                     NUM_OUTPUT_FIELDS,
+                                     sizeof(save_info->field_dtypes[0]));
 
     // We will have groups for each output snapshot, and then inside those groups, a dataset for
     // each field.
@@ -212,18 +227,15 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
     // A couple of variables before we enter the loop.
     // JS 17/03/19: I've attempted to put these directly into the function calls and things blew up.
-    hsize_t dims[1] = {0};
-    hsize_t maxdims[1] = {H5S_UNLIMITED};
-    hsize_t chunk_dims[1] = {NUM_GALS_PER_BUFFER};
-    herr_t status;
-
-    char full_field_name[MAX_STRING_LEN];
-    char *name;
-    char *description;
-    char *unit;
-    hsize_t dtype;
-
+    /* Note from MS: That almost certainly means that there is a bug somewhere here (16/9/2019) */
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+
+        hsize_t dims[1] = {0};
+        hsize_t maxdims[1] = {H5S_UNLIMITED};
+        hsize_t chunk_dims[1] = {NUM_GALS_PER_BUFFER};
+        herr_t status;
+        char full_field_name[MAX_STRING_LEN];
+        hsize_t dtype;
 
         // Create a snapshot group.
         snprintf(full_field_name, MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
@@ -233,20 +245,20 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
                                         (int32_t) file_id);
         save_info->group_ids[snap_idx] = group_id;
 
-        float redshift = run_params->ZZ[run_params->ListOutputSnaps[snap_idx]];
+        const float redshift = run_params->ZZ[run_params->ListOutputSnaps[snap_idx]];
         CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", &redshift, H5T_NATIVE_FLOAT);
 
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
             // Then create each field inside.
-            name = field_names[field_idx];
+            char *name = field_names[field_idx];
             snprintf(full_field_name, MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], name);
-
-            description = field_descriptions[field_idx];
-            unit = field_units[field_idx];
+            
+            char *description = field_descriptions[field_idx];
+            char *unit = field_units[field_idx];
             dtype = field_dtypes[field_idx];
 
-            //fprintf(stderr, "Creating field %s with description %s and unit %s\n", name, description, unit);
+            /* fprintf(stderr, "Creating field '%s' with description '%s' and unit '%s'\n", name, description, unit); */
 
             prop = H5Pcreate(H5P_DATASET_CREATE);
             CHECK_STATUS_AND_RETURN_ON_FAIL(prop, (int32_t) prop,
@@ -268,8 +280,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             // Now create the dataset.
             dataset_id = H5Dcreate2(file_id, full_field_name, dtype, dataspace_id, H5P_DEFAULT, prop, H5P_DEFAULT);
             CHECK_STATUS_AND_RETURN_ON_FAIL(dataset_id, (int32_t) dataset_id,
-                                            "Could not create the %s dataset.\n", full_field_name);
+                                            "Could not create the '%s' dataset.\n", full_field_name);
             save_info->dataset_ids[snap_idx][field_idx] = dataset_id;
+
 
             // Set metadata attributes for each dataset.
             CREATE_STRING_ATTRIBUTE(dataset_id, "Description", description);
@@ -428,6 +441,11 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
 
         // We're going to be a bit sneaky here so we don't need to pass the tree number to this function.
         int32_t tree = save_info->buffer_output_gals[snap_idx].SAGETreeIndex[0];
+        if(tree < 0 || tree >= save_info->buffer_size) {
+            fprintf(stderr,"Error: at snap_idx = %d -> got tree = %d. Expecting to get tree in the range [0, %d)\n",
+                    snap_idx, tree, save_info->buffer_size);
+            return EXIT_FAILURE;
+        }
         save_info->forest_ngals[snap_idx][tree] += num_gals_to_write;
 
         // Write attributes showing how many galaxies we wrote for this snapshot.
@@ -527,7 +545,13 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
     }
     free(save_info->dataset_ids);
     free(save_info->group_ids);
-
+    
+    for(int32_t i=0;i<save_info->num_output_fields;i++) {
+        free(save_info->name_output_fields[i]);
+    }
+    free(save_info->name_output_fields);
+    free(save_info->field_dtypes);
+    
     // Free all the other memory.
     free(save_info->num_gals_in_buffer);
 
@@ -691,82 +715,84 @@ int32_t create_hdf5_master_file(const struct params *run_params)
 // Give more transparent control over the names of the fields, their descriptions and what units we
 // use.  To allow easy comparison with  the binary output format (e.g., for testing purposes), we
 // use identical field names to the script that reads the binary data (e.g., 'tests/sagediff.py').
-int32_t generate_field_metadata(char **field_names, char **field_descriptions, char **field_units, hsize_t *field_dtypes) {
-
-    char *tmp_names[NUM_OUTPUT_FIELDS] = {"SnapNum", "Type", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
-                                          "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
-                                          "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
-                                          "Spinx", "Spiny", "Spinz", "Len", "Mvir", "CentralMvir", "Rvir", "Vvir",
-                                          "Vmax", "VelDisp", "ColdGas", "StellarMass", "BulgeMass", "HotGas", "EjectedMass",
-                                          "BlackHoleMass", "IntraClusterStars", "MetalsColdGas", "MetalsStellarMass", "MetalsBulgeMass",
-                                          "MetalsHotGas", "MetalsEjectedMass", "MetalsIntraClusterStars", "SfrDisk", "SfrBulge", "SfrDiskZ",
-                                          "SfrBulgeZ", "DiskRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
-                                          "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
-                                          "infallVvir", "infallVmax"};
+int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*field_descriptions)[MAX_STRING_LEN],
+                                char (*field_units)[MAX_STRING_LEN], hsize_t *field_dtypes)
+{
+    
+    char tmp_names[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"SnapNum", "Type", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
+                                                         "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
+                                                         "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
+                                                         "Spinx", "Spiny", "Spinz", "Len", "Mvir", "CentralMvir", "Rvir", "Vvir",
+                                                         "Vmax", "VelDisp", "ColdGas", "StellarMass", "BulgeMass", "HotGas", "EjectedMass",
+                                                         "BlackHoleMass", "IntraClusterStars", "MetalsColdGas", "MetalsStellarMass", "MetalsBulgeMass",
+                                                         "MetalsHotGas", "MetalsEjectedMass", "MetalsIntraClusterStars", "SfrDisk", "SfrBulge", "SfrDiskZ",
+                                                         "SfrBulgeZ", "DiskRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
+                                                         "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
+                                                         "infallVvir", "infallVmax"};
 
     // Must accurately describe what exactly each field is and any special considerations.
-    char *tmp_descriptions[NUM_OUTPUT_FIELDS] = {"Snapshot the galaxy is located at.",
-                                                 "0: Central galaxy of the main FoF halo. 1: Central of a sub-halo. 2: Orphan galaxy that will merge within the current timestep.",
-                                                 "Galaxy ID, unique across all trees and files. Calculated as local galaxy number + tree number * factor + file number * factor ",
-                                                 "GalaxyIndex of the central galaxy within this galaxy's FoF group.  Calculated the same as 'GalaxyIndex'.",
-                                                 "Halo number from the restructured trees. This is different to the tree file because we order the trees. Note: This is the host halo, not necessarily the main FoF halo.",
-                                                 "Tree number this galaxy belongs to.", "Most bound particle ID from the tree files.",
-                                                 "Denotes how this galaxy underwent a merger. 0: None. 1: Minor merger. 2: Major merger. 3: Disk instability. 4: Disrupt to intra-cluster stars.",
-                                                 "Galaxy ID this galaxy is merging into.",
-                                                 "Snapshot number of the galaxy this galaxy is merging into.",
-                                                 "Time between this snapshot and when the galaxy was last evolved.",
-                                                 "Galaxy spatial x position.", "Galaxy spatial y position.",
-                                                 "Galaxy spatial z position.", "Galaxy velocity in x direction.",
-                                                 "Galaxy velocity in y direction.", "Galaxy velocity in z direction.",
-                                                 "Halo spin in the x direction.", "Halo spin in the y direction.",
-                                                 "Halo spin in the z direction.", "Number of particles in this galaxy's halo.",
-                                                 "Virial mass of this galaxy's halo.", "Virial mass of the main FoF halo.",
-                                                 "Virial radius of this galaxy's halo.", "Virial velocity of this galaxy's halo.",
-                                                 "Maximum circular speed for this galaxy's halo.", "Velocity dispersion for this galaxy's halo.",
-                                                 "Mass of gas in the cold reseroivr.", "Mass of stars.",
-                                                 "Mass of stars in the bulge. Bulge stars are added either through disk instabilities or mergers.",
-                                                 "Mass of gas in the hot reservoir.", "Mass of gass in the ejected reseroivr.",
-                                                 "Mass of this galaxy's black hole.", "Mass of intra-cluster stars.", "Mass of metals in the cold reseroivr.",
-                                                 "Mass of metals in stars.", "Mass of metals in the bulge.",
-                                                 "Mass of metals in the hot reservoir.", "Mass of metals in the ejected reseroivr.",
-                                                 "Mass of metals in intra-cluster stars.", "Star formation rate within the disk.",
-                                                 "Star formation rate within the bulge.", "Average metallicity of star-forming disk gas.",
-                                                 "Average metallicity of star-forming bulge gas.", "Disk scale radius based on Mo, Shude & White (1998)",
-                                                 "Energy rate for gas cooling in the galaxy.", "Energy rate for gas heating in the galaxy.",
-                                                 "Mass that this galaxy's black hole accreted during the last time step.",
-                                                 "Time since this galaxy had a major merger.", "Time since this galaxy had a minor merger.",
-                                                 "Rate at which cold gas is reheated to hot gas.",
-                                                 "Virial mass of this galaxy's halo at the previous timestep.",
-                                                 "Virial velocity of this galaxy's halo at the previous timestep.",
-                                                 "Maximum circular speed of this galaxy's halo at the previous timestep."};
-
-    char *tmp_units[NUM_OUTPUT_FIELDS] = {"Unitless", "Unitless", "Unitless", "Unitless", "Unitless",
-                                          "Unitless", "Unitless", "Unitless", "Unitless",
-                                          "Unitless", "Myr", "Mpc/h", "Mpc/h", "Mpc/h", "km/s", "km/s", "km/s",
-                                          "Mpc * km/s", "Mpc * km/s", "Mpc * km/s", "Unitless", "1.0e10 Msun/h", "1.0e10 Msun/h",
-                                          "Mpc/h", "km/s",
-                                          "km/s", "km/s", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
-                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
-                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "Msun/yr", "Msun/yr", "Msun/yr",
-                                          "Msun/yr", "Mpc/h", "erg/s", "erg/s", "1.0e10 Msun/h",
-                                          "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s"};
-
+    char tmp_descriptions[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Snapshot the galaxy is located at.",
+                                                                "0: Central galaxy of the main FoF halo. 1: Central of a sub-halo. 2: Orphan galaxy that will merge within the current timestep.",
+                                                                "Galaxy ID, unique across all trees and files. Calculated as local galaxy number + tree number * factor + file number * factor ",
+                                                                "GalaxyIndex of the central galaxy within this galaxy's FoF group.  Calculated the same as 'GalaxyIndex'.",
+                                                                "Halo number from the restructured trees. This is different to the tree file because we order the trees. Note: This is the host halo, not necessarily the main FoF halo.",
+                                                                "Tree number this galaxy belongs to.", "Most bound particle ID from the tree files.",
+                                                                "Denotes how this galaxy underwent a merger. 0: None. 1: Minor merger. 2: Major merger. 3: Disk instability. 4: Disrupt to intra-cluster stars.",
+                                                                "Galaxy ID this galaxy is merging into.",
+                                                                "Snapshot number of the galaxy this galaxy is merging into.",
+                                                                "Time between this snapshot and when the galaxy was last evolved.",
+                                                                "Galaxy spatial x position.", "Galaxy spatial y position.",
+                                                                "Galaxy spatial z position.", "Galaxy velocity in x direction.",
+                                                                "Galaxy velocity in y direction.", "Galaxy velocity in z direction.",
+                                                                "Halo spin in the x direction.", "Halo spin in the y direction.",
+                                                                "Halo spin in the z direction.", "Number of particles in this galaxy's halo.",
+                                                                "Virial mass of this galaxy's halo.", "Virial mass of the main FoF halo.",
+                                                                "Virial radius of this galaxy's halo.", "Virial velocity of this galaxy's halo.",
+                                                                "Maximum circular speed for this galaxy's halo.", "Velocity dispersion for this galaxy's halo.",
+                                                                "Mass of gas in the cold reseroivr.", "Mass of stars.",
+                                                                "Mass of stars in the bulge. Bulge stars are added either through disk instabilities or mergers.",
+                                                                "Mass of gas in the hot reservoir.", "Mass of gass in the ejected reseroivr.",
+                                                                "Mass of this galaxy's black hole.", "Mass of intra-cluster stars.", "Mass of metals in the cold reseroivr.",
+                                                                "Mass of metals in stars.", "Mass of metals in the bulge.",
+                                                                "Mass of metals in the hot reservoir.", "Mass of metals in the ejected reseroivr.",
+                                                                "Mass of metals in intra-cluster stars.", "Star formation rate within the disk.",
+                                                                "Star formation rate within the bulge.", "Average metallicity of star-forming disk gas.",
+                                                                "Average metallicity of star-forming bulge gas.", "Disk scale radius based on Mo, Shude & White (1998)",
+                                                                "Energy rate for gas cooling in the galaxy.", "Energy rate for gas heating in the galaxy.",
+                                                                "Mass that this galaxy's black hole accreted during the last time step.",
+                                                                "Time since this galaxy had a major merger.", "Time since this galaxy had a minor merger.",
+                                                                "Rate at which cold gas is reheated to hot gas.",
+                                                                "Virial mass of this galaxy's halo at the previous timestep.",
+                                                                "Virial velocity of this galaxy's halo at the previous timestep.",
+                                                                "Maximum circular speed of this galaxy's halo at the previous timestep."};
+    
+    char tmp_units[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Unitless", "Unitless", "Unitless", "Unitless", "Unitless",
+                                                         "Unitless", "Unitless", "Unitless", "Unitless",
+                                                         "Unitless", "Myr", "Mpc/h", "Mpc/h", "Mpc/h", "km/s", "km/s", "km/s",
+                                                         "Mpc * km/s", "Mpc * km/s", "Mpc * km/s", "Unitless", "1.0e10 Msun/h", "1.0e10 Msun/h",
+                                                         "Mpc/h", "km/s",
+                                                         "km/s", "km/s", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
+                                                         "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
+                                                         "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "Msun/yr", "Msun/yr", "Msun/yr",
+                                                         "Msun/yr", "Mpc/h", "erg/s", "erg/s", "1.0e10 Msun/h",
+                                                         "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s"};
+    
     // These are the HDF5 datatypes for each field.
     hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT,
-                                         H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_INT, H5T_NATIVE_INT,
-                                         H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                         H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT, H5T_NATIVE_FLOAT,
-                                         H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                         H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                         H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                         H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                         H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                         H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT};
-
+                                            H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_INT, H5T_NATIVE_INT,
+                                            H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT, H5T_NATIVE_FLOAT,
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT};
+    
     for(int32_t i = 0; i < NUM_OUTPUT_FIELDS; i++) {
-        field_names[i] = tmp_names[i];
-        field_descriptions[i] = tmp_descriptions[i];
-        field_units[i] = tmp_units[i];
+        memcpy(field_names[i], tmp_names[i], MAX_STRING_LEN);
+        memcpy(field_descriptions[i], tmp_descriptions[i], MAX_STRING_LEN);
+        memcpy(field_units[i], tmp_units[i], MAX_STRING_LEN);
         field_dtypes[i] = tmp_dtype[i];
     }
 
