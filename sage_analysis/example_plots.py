@@ -10,7 +10,6 @@ Author: Jacob Seiler
 
 import matplotlib
 from matplotlib import pyplot as plt
-from cycler import cycler
 import numpy as np
 
 import sage_analysis.observations as obs
