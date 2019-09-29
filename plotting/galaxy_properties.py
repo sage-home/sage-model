@@ -54,7 +54,7 @@ if __name__ == "__main__":
                    "IMF": "Chabrier",  # Chabrier or Salpeter.
                    "label": "Mini-Millennium",  # Legend label.
                    "sage_file": "../input/millennium.par",
-                   "simulation": "Mini-Millennium",
+                   "sage_output_format": "sage_hdf5",
                    "first_file": 0,  # File range (or core range for HDF5) to plot.
                    "last_file": 0,  # Closed interval, [first_file, last_file].
                    "num_output_files": 1,
@@ -92,14 +92,20 @@ if __name__ == "__main__":
 
         # Instantiate a Model class. This holds the data paths and methods to calculate
         # the required properties.
-        my_model = Model(model_dict)
+        my_model = Model()
         my_model.plot_output_format = plot_output_format
 
         # Each SAGE output has a specific class written to read in the data.
-        if my_model.sage_output_format == "sage_binary":
-            my_model.data_class = SageBinaryData(my_model)
-        elif my_model.sage_output_format == "sage_hdf5":
-            my_model.data_class = SageHdf5Data(my_model)
+        if model_dict["sage_output_format"] == "sage_binary":
+            my_model.data_class = SageBinaryData(my_model, model_dict["num_output_files"],
+                                                 model_dict["sage_file"],
+                                                 model_dict["snapshot"])
+        elif model_dict["sage_output_format"] == "sage_hdf5":
+            my_model.data_class = SageHdf5Data(my_model, model_dict["sage_file"])
+
+        # The data class has read the SAGE ini file.  Update the model with the parameters
+        # read and those specified by the user.
+        my_model.update_attributes(model_dict)
 
         #my_model.data_class.set_cosmology(my_model)
 
