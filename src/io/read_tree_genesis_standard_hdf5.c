@@ -36,6 +36,8 @@ enum GalaxyProperty
 
 static char galaxy_property_names[num_galaxy_props][MAX_STRING_LEN];
 static int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap);
+static void get_forest_metadata_filename(const char *forestfilename, const size_t stringlen, char *metadata_filename);
+
 
 void get_forests_filename_genesis_hdf5(char *filename, const size_t len, const struct params *run_params)
 {
@@ -43,13 +45,268 @@ void get_forests_filename_genesis_hdf5(char *filename, const size_t len, const s
 }
 
 
+void get_forest_metadata_filename(const char *forestfilename, const size_t stringlen, char *metadata_filename)
+{
+    memmove(metadata_filename, forestfilename, stringlen);
+    metadata_filename[stringlen - 1] = '\0';
+
+    const char searchstring[] = {".hdf5"};
+    const size_t searchlen = strlen(searchstring);
+
+    const char replacestring[] = {".foreststats.hdf5"};
+    const size_t replacelen = strlen(replacestring);
+
+    const size_t currlen = strnlen(metadata_filename, stringlen);
+    const size_t required_len = currlen - searchlen + replacelen;
+    if(required_len >= stringlen) {
+        fprintf(stderr,"Error: Not enough memory reserved for 'metadata_filename' to correctly hold the file after "
+                                                "replacing string -- '%s' with (larger) string '%s'.\n"
+                "Please increase the size of 'metadata_filename' to be at least %zu\n",
+                searchstring, replacestring, required_len);
+        ABORT(INVALID_MEMORY_ACCESS_REQUESTED);
+    }
+
+    char *start = strstr(metadata_filename, searchstring);
+    strncpy(start, replacestring, replacelen);
+    start[replacelen] = '\0';
+
+    fprintf(stderr,"forest_filename   = '%s'\nmetadata_filename = '%s'\n",
+            forestfilename, metadata_filename);
+    return;
+}
+
+
+
 /* Externally visible Functions */
 int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int ThisTask, const int NTasks, struct params *run_params)
 {
-    herr_t status;
-    /* struct METADATA_NAMES metadata_names; */
-    char filename[4*MAX_STRING_LEN];
+    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
+        fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile should be larger than FirstFile.\n"
+                "Probably a typo in the parameter-file. Please change to appropriate values...exiting\n",
+                run_params->FirstFile, run_params->LastFile);
+        return INVALID_OPTION_IN_PARAMS;
+    }
+
+    const int firstfile = run_params->FirstFile;
+    const int lastfile = run_params->LastFile;
+    const int numfiles = lastfile - firstfile + 1;/* This is total number of files to process */
+    if(numfiles <= 0) {
+        fprintf(stderr,"Error: Need at least one file to process. Calculated numfiles = %d (firstfile = %d, lastfile = %d)\n",
+                numfiles, run_params->FirstFile, run_params->LastFile);
+        return INVALID_OPTION_IN_PARAMS;
+    }
+    struct genesis_info *gen = &(forests_info->gen);
+
+    char filename[4*MAX_STRING_LEN], metadata_fname[4*MAX_STRING_LEN];
+
     get_forests_filename_genesis_hdf5(filename, 4*MAX_STRING_LEN, run_params);
+
+    /* Now read in the meta-data info about the forests */
+    get_forest_metadata_filename(filename, sizeof(filename), metadata_fname);
+
+    gen->meta_fd = H5Fopen(metadata_fname, H5F_ACC_RDONLY, H5P_DEFAULT);
+    if (gen->meta_fd < 0) {
+        fprintf(stderr,"Error: On ThisTask = %d can't open file metadata file '%s'\n", ThisTask, metadata_fname);
+        return FILE_NOT_FOUND;
+    }
+
+#define READ_GENESIS_ATTRIBUTE(hid, dspace, attrname, dst) {            \
+        herr_t h5_status = read_attribute (hid, #dspace, #attrname, hdf5_dtype, (void *) &dst, sizeof(dst)); \
+        if(h5_status < 0) {                                             \
+            return (int) h5_status;                                     \
+        }                                                               \
+    }
+
+    int64_t totnfiles;
+    READ_GENESIS_ATTRIBUTE(gen->meta_fd, "Header", "NFiles", totnfiles);
+    XRETURN(totnfiles >= 1, INVALID_VALUE_READ_FROM_FILE,
+            "Error: Expected total number of files to be at least 1. However, reading in from "
+            "metadata file ('%s') shows totnfiles = %"PRId64"\n. Exiting...\n",
+            metadata_fname, totnfiles);
+    XRETURN(numfiles <= totnfiles, INVALID_VALUE_READ_FROM_FILE,
+            "Error: The requested number of files to process spans from [%d, %d] for a total %d numfiles\n"
+            "However, the original tree file is only split into %"PRId64" files (which is smaller than the requested files)\n"
+            "The metadata file is ('%s') \nExiting...\n",
+            firstfile, lastfile, numfiles, totnfiles, metadata_fname);
+
+
+    uint32_t nsnaps;
+    READ_GENESIS_ATTRIBUTE(gen->meta_fd, "Header", "NSnaps", nsnaps);
+    XRETURN(nsnaps >= 1, INVALID_VALUE_READ_FROM_FILE,
+            "Error: Expected total number of snapshots to be at least 1. However, reading in from "
+            "metadata file ('%s') shows nsnapshots = %"PRIu32"\n. Exiting...\n",
+            metadata_fname, nsnaps);
+    gen->maxsnaps = nsnaps;
+
+
+    int64_t totnforests = 0;
+    READ_GENESIS_ATTRIBUTE( gen->meta_fd, "ForestInfo", "NForests", totnforests);
+    XRETURN(totnforests >= 1, INVALID_VALUE_READ_FROM_FILE,
+            "Error: Expected total number of forests to be at least 1. However, reading in from "
+            "metadata file ('%s') shows totnforests = %"PRId64"\n. Exiting...\n",
+            metadata_fname, totnforests);
+    forests_info->totnforests = totnforests;
+
+
+    int64_t maxforestsize;
+    READ_GENESIS_ATTRIBUTE(gen->meta_fd, "ForestInfo", "MaxForestSize", maxforestsize);
+    XRETURN(maxforestsize >= 1, INVALID_VALUE_READ_FROM_FILE,
+            "Error: Expected max. number of halos in any forest to be at least 1. However, reading in from "
+            "metadata file ('%s') shows MaxForestSize = %"PRId64"\n. Exiting...\n",
+            metadata_fname, maxforestsize);
+    gen->maxforestsize = maxforestsize;
+
+
+    gen->halo_offset_per_snap = calloc(sizeof(gen->halo_offset_per_snap[0]), gen->maxsnaps);/* Stores the halo index offset (i.e., marks the end of
+                                                                                               the halos from the previous forest)
+                                                                                               to read from at every snapshot */
+    XRETURN(gen->halo_offset_per_snap != NULL, MALLOC_FAILURE,
+            "Error: Could not allocate memory to hold halo offsets at every snapshot (%"PRId64" items of size %zu bytes)\n",
+            gen->maxsnaps, sizeof(gen->halo_offset_per_snap[0]));
+    gen->curr_file_num = -1;/* Initialise - so that we can know for sure later that we are about to start processing first forest */
+
+    hid_t *h5_fds = calloc(sizeof(*h5_fds), totnfiles);
+    XRETURN(h5_fds != NULL, MALLOC_FAILURE,
+            "Error: Could not allocate memory to hold file descriptors for the hdf5 files (%"PRId64" items of size %zu bytes)\n",
+            totnfiles, sizeof(*h5_fds));
+
+    int64_t *totnforests_per_file = calloc(sizeof(*totnforests_per_file), totnfiles);
+    XRETURN(totnforests_per_file != NULL, MALLOC_FAILURE,
+            "Error: Could not allocate memory to hold number of forests per file (%"PRId64" items of size %zu bytes)\n",
+            totnfiles, sizeof(*totnforests_per_file));
+
+    /* Now figure out the number of forests per file */
+    for(int64_t ifile=0;ifile<totnfiles;ifile++) {
+        char fname[5*MAX_STRING_LEN];
+        snprintf(fname, sizeof(fname), "%s.%"PRId64, filename, ifile);
+        h5_fds[ifile] = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
+        if(h5_fds[ifile] < 0) {
+            fprintf(stderr,"Error: On ThisTask = %d can't open file forest file '%s'\n", ThisTask, fname);
+            return FILE_NOT_FOUND;
+        }
+
+        /* Leave the files open */
+        int64_t nforests_this_file;
+        READ_GENESIS_ATTRIBUTE( int64_t, h5_fds[ifile], "ForestInfo", "NForests", H5T_NATIVE_INT64, &nforests_this_file);
+        XRETURN(nforests_this_file >= 1, INVALID_VALUE_READ_FROM_FILE,
+                "Error: Expected the number of forests in this file to be at least 1. However, reading in from "
+                "forest file ('%s') shows nforests = %"PRId64"\n. Exiting...\n",
+                fname, nforests_this_file);
+        totnforests_per_file[ifile] = nforests_this_file;
+    }
+
+
+    int status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_thistask, &start_forestnum);
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
+
+    const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
+    gen->nforests = nforests_this_task;
+
+
+
+
+
+    /* We need to track which file each forest is in for two reasons -- i) to actually read from the file and ii) to create unique IDs */
+    gen->FileNr = calloc(nforests_this_task, sizeof(gen->FileNr[0]));
+    XRETURN(gen->FileNr != NULL, MALLOC_FAILURE,
+            "Error: Could not allocate memory to hold the file numbers for each forest (%"PRId64" items each of size %zu bytes)\n",
+            nforests_this_task, sizeof(gen->FileNr[0]));
+
+
+    /* Really only required for the first file -- since we will likely process from an arbitrary forest number
+       We do need these 'file-local' forestnumbers to create the unique IDs */
+    gen->forestnum_in_file = calloc(nforests_this_task, sizeof(gen->forestnum_in_file[0]));
+    XRETURN(gen->forestnum_in_file != NULL, MALLOC_FAILURE,
+            "Error: Could not allocate memory to hold the true forest number (file-local) within each file (%"PRId64" items each of size %zu bytes)\n",
+            nforests_this_task, sizeof(gen->forestnum_in_file[0]));
+
+    for(int64_t iforest=0;iforest<nforests_this_task;iforest++) {
+        gen->FileNr[iforest] = -1;
+        gen->forestnum_in_file[iforest] = -1;
+    }
+
+    int64_t *num_forests_to_process_per_file = calloc(lastfile + 1, sizeof(num_forests_to_process_per_file[0]));/* calloc is required */
+    int64_t *start_forestnum_to_process_per_file = malloc((lastfile + 1) * sizeof(start_forestnum_to_process_per_file[0]));
+    if(num_forests_to_process_per_file == NULL || start_forestnum_to_process_per_file == NULL) {
+        fprintf(stderr,"Error: Could not allocate memory to store the number of forests that need to be processed per file (on thistask=%d)\n", ThisTask);
+        perror(NULL);
+        return MALLOC_FAILURE;
+    }
+
+    /* show no forests need to be processed by default */
+    for(int i=0;i<=lastfile;i++) {
+        start_forestnum_to_process_per_file[i] = -1;
+    }
+
+
+    // Now for each task, we know the starting forest number it needs to start reading from.
+    // So let's determine what file and forest number within the file each task needs to start/end reading from.
+    int start_filenum = -1, end_filenum = -1;
+    int64_t nforests_so_far = 0;
+    for(int filenr=firstfile;filenr<=lastfile;filenr++) {
+        const int64_t nforests_this_file = totnforests_per_file[filenr];
+        const int64_t end_forestnum_this_file = nforests_so_far + nforests_this_file;
+        start_forestnum_to_process_per_file[filenr] = 0;
+        num_forests_to_process_per_file[filenr] = nforests_this_file;
+
+        /* Check if this task should be reading from this file (referred by filenr)
+           If the starting forest number (start_forestnum, which is cumulative across all files)
+           is located within this file, then the task will need to read from this file.
+         */
+        if(start_forestnum >= nforests_so_far && start_forestnum < end_forestnum_this_file) {
+            start_filenum = filenr;
+            start_forestnum_to_process_per_file[filenr] = start_forestnum - nforests_so_far;
+            num_forests_to_process_per_file[filenr] = nforests_this_file - (start_forestnum - nforests_so_far);
+        }
+
+        /* Similar to above, if the end forst number (end_forestnum, again cumulative across all files)
+           is located with this file, then the task will need to read from this file.
+        */
+
+        if(end_forestnum >= nforests_so_far && end_forestnum <= end_forestnum_this_file) {
+            end_filenum = filenr;
+
+            // In the scenario where this task reads ALL forests from a single file, then the number
+            // of forests read from this file will be the number of forests assigned to it.
+            if(end_filenum == start_filenum) {
+                num_forests_to_process_per_file[filenr] = nforests_this_task;
+            } else {
+                num_forests_to_process_per_file[filenr] = end_forestnum - nforests_so_far;
+            }
+            /* MS & JS: 07/03/2019 -- Probably okay to break here but might need to complete loop for validation */
+        }
+        nforests_so_far += nforests_this_file;
+    }
+
+    // Make sure we found a file to start/end reading for this task.
+    if(start_filenum == -1 || end_filenum == -1 ) {
+        fprintf(stderr,"Error: Could not locate start or end file number for the lhalotree binary files\n");
+        fprintf(stderr,"Printing debug info\n");
+        fprintf(stderr,"ThisTask = %d NTasks = %d totnforests = %"PRId64" start_forestnum = %"PRId64" nforests_this_task = %"PRId64"\n",
+                ThisTask, NTasks, totnforests, start_forestnum, nforests_this_task);
+        for(int filenr=firstfile;filenr<=lastfile;filenr++) {
+            fprintf(stderr,"filenr := %d contains %d forests\n",filenr, totnforests_per_file[filenr]);
+        }
+
+        return -1;
+    }
+
+    gen->numfiles = end_filenum - start_filenum + 1;/* Number of files to process on this task */
+    /* Now malloc the relevant arrays in forests_info->gen */
+    gen->h5_fds = calloc(gen->numfiles, sizeof(gen->h5_fds[0]));/* Stores all the 'numfiles' hdf5 file descriptors */
+    XRETURN(gen->h5_fds != NULL, MALLOC_FAILURE, "Error: Could not allocate memory to hold %d hdf5 file descriptors (each of size = %zu bytes)\n",
+            gen->numfiles, sizeof(gen->h5_fds[0]));
+
+
+
+
+
+
+
+    free(nforests_per_file);
+
     forests_info->gen.h5_fd = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
 
     if (forests_info->gen.h5_fd < 0) {
@@ -57,18 +314,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         return FILE_NOT_FOUND;
     }
 
-    struct genesis_info *gen = &(forests_info->gen);
-
-#define READ_GENESIS_ATTRIBUTE( TYPE, hid, dspace, attrname, hdf5_dtype, dst) { \
-        if(sizeof(#TYPE) != sizeof(*dst)) {                             \
-            fprintf(stderr,"Error: the type = %s with size = %zu does not " \
-                    "equal the size of the destination memory = %zu\n", #TYPE, sizeof(#TYPE), sizeof(*dst)); \
-        }                                                               \
-        status = read_attribute (hid, #dspace, #attrname, hdf5_dtype, (void *) dst); \
-        if(status < 0) {                                                \
-            return -1;                                                  \
-        }                                                               \
-    }
 
     READ_GENESIS_ATTRIBUTE( int, gen->h5_fd, "/Header", "NSnaps", H5T_NATIVE_INT, &(run_params->nsnapshots));
     READ_GENESIS_ATTRIBUTE( double, gen->h5_fd, "/Header/Particle_mass", "DarkMatter", H5T_NATIVE_DOUBLE, &(run_params->PartMass));
@@ -83,7 +328,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     READ_GENESIS_ATTRIBUTE( double, gen->h5_fd, "/Header/Units", "Length_unit_to_kpc", H5T_NATIVE_DOUBLE, &lunit);
     READ_GENESIS_ATTRIBUTE( double, gen->h5_fd, "/Header/Units", "Velocity_unit_to_kms", H5T_NATIVE_DOUBLE, &vunit);
     READ_GENESIS_ATTRIBUTE( double, gen->h5_fd, "/Header/Units", "Mass_unit_to_solarmass", H5T_NATIVE_DOUBLE, &munit);
-#undef READ_GENESIS_ATTRIBUTE
 
     /* convert the units to the appropriate cgs values */
     lunit *= CM_PER_MPC * 1e-3; /* convert from kpc to cm */
@@ -109,6 +353,25 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Mass Unit", munit, run_params->UnitMass_in_g, maxdiff, maxreldiff);
 
 #undef CHECK_AND_ABORT_UNITS_VS_PARAM_FILE
+
+
+    return EXIT_SUCCESS;
+}
+
+
+
+
+#if 0
+/* Externally visible Functions */
+int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int ThisTask, const int NTasks, struct params *run_params)
+{
+    herr_t status;
+    /* struct METADATA_NAMES metadata_names; */
+    char filename[4*MAX_STRING_LEN];
+    get_forests_filename_genesis_hdf5(filename, 4*MAX_STRING_LEN, run_params);
+
+
+
 
     /* Now we know all the datasets -> we can open the corresponding dataset groups (ie, Snap_XXX groups)*/
     gen->maxsnaps = run_params->nsnapshots;
@@ -202,16 +465,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         }
     }
 
-    /* At this point we do know the number of nsnapshots but do not know the number of unique forests */
-
-    /*Count the number of unique forests */
-    int64_t num_unique_forests = 0;
-    for(int i=gen->maxsnaps-1;i>=0;i--) {
-        //keep a hash of all unique forestids encountered so far
-
-    }
-
-    /* Now malloc */
 
 
     // And read in the gen->forestid_to_forestnum, gen->offset_for_forest_per_snap, gen->nhalos_per_forest, gen->nhalos_per_forest_per_snap
@@ -225,6 +478,9 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
     return EXIT_SUCCESS;
 }
+#endif //commented out
+
+
 
 /*
   Fields in the particle data type, stored at each snapshot
@@ -567,6 +823,8 @@ void cleanup_forests_io_genesis_hdf5(struct forest_info *forests_info)
 {
     struct genesis_info *gen = &(forests_info->gen);
 
+#if 0
+
     /* loop over all snapshots and close all datasets at each snapshots */
     for(int64_t isnap=0;isnap<gen->maxsnaps;isnap++) {
 
@@ -603,10 +861,20 @@ void cleanup_forests_io_genesis_hdf5(struct forest_info *forests_info)
         free(gen->offset_for_forest_per_snap[i]);
         free(gen->nhalos_per_forest_per_snap[i]);
     }
+#endif
+
+    for(int i=0;i<gen->numfiles;i++) {
+        H5Fclose(gen->h5_fds[i]);
+    }
+
+
 
     free(gen->nhalos_per_forest);
     free(gen->offset_for_forest_per_snap);
     free(gen->nhalos_per_forest_per_snap);
+
+
+
 }
 
 #define CHECK_IF_HALO_IS_FOF(halos, index)  (halos[index].FirstHaloInFOFgroup == index ? 1:0)
