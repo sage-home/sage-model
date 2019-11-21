@@ -203,21 +203,43 @@ struct ahf_info {
 
 #ifdef HDF5
 struct genesis_info {
-    int32_t min_snap_num;
-    int32_t maxsnaps;
     union{
         int64_t nforests;/* number of forests to process on this task */
         int64_t nforests_this_task;/* shadowed for convenience */
     };
-    int64_t *nhalos_per_forest;/* number of halos to read, nforests_this_task elements */
-    hid_t h5_fd;/* contains the HDF5 file descriptor for the hdf5 file (same file descriptor for ALL forests) */
-    int64_t *forestid_to_forestnum;/* since not all forests exist at z=0, this array gives a way to index */
-    hsize_t **offset_for_forest_per_snap;/* where to start reading the files, nforests elements [nforests_this_task, maxsnaps]*/
-    hsize_t **nhalos_per_forest_per_snap;/* number of halos per forest, per snapshot [nforests_this_task, maxsnaps]*/
-    hid_t *open_h5_dset_snapgroups;/* contains [maxsnaps] elements of open HDF5 file descriptors corresponding to each snapshot */
-    hid_t **open_h5_dset_props;/* contains [maxsnaps, nproperties] corresponding to the dataset for each property to be read */
-    hid_t **open_h5_props_filespace; /* contains [maxsnaps, nproperties] for the filespace for each dataset of the property */
-};
+
+    union {
+        int64_t *FileNr;/* Integer identifying which file out of the 'numfiles' for each forest -- shape (nforests, )
+                           The unusual capitalisation is to show that the semantics are the same as the
+                           variable with 'struct halo_data' (in core_simulation.h) - MS 19/11/2019
+                        */
+        int64_t *filenum_for_forest;/* shadowed to show what the variable contains */
+    };
+    int64_t *forestnum_in_file;/* Integer identifying the forest number within the file that is to be read -- shape (nforests, ) */
+
+    int64_t *start_forestnum_in_file;/* Integer identifying the starting forest number to process on a per file basis -- shape (numfiles, ) */
+    int64_t *num_forests_to_process_per_file; /* How many forests per file -- shape (numfiles, ) */
+
+    int64_t *halo_offset_per_snap;/* Stores the current halo offsets to read from at each snapshot -- shape (maxsnaps, ).
+                                     Initialised to all 0's for every new file and incremented as forests are read in. This details
+                                     adds a loop-dependency - where later forests can not be correctly processed before all
+                                     preceeding forests have been processed. It had to be implemented this way because otherwise
+                                     the amount of RAM required to store the matrix offsets_per_forest_per_snap (with shape
+                                     '[nforests, maxsnaps]' would have been a roadblock in the future. */
+    hid_t meta_fd;/* file descriptor for the metadata file*/
+    hid_t *h5_fds;/* contains all the file descriptors for the individual files -- shape (numfiles, ) */
+
+    int32_t min_snap_num; /* smallest snapshot to process (inclusive, >= 0)*/
+    int32_t maxsnaps;/* maxsnaps == max_snap_num + 1 */
+    int32_t numfiles;/* total number of files to process (>=1)*/
+    int32_t first_file_num;/*  */
+    int32_t curr_file_num; /* What file is currently being worked on --
+                              required to reset the halo_offset_per_snap at the beginning of every new file */
+    int32_t last_file_num;/* */
+    int64_t start_forestnum;
+
+    int64_t maxforestsize; /* max. number of halos in any one single forest */
+}
 #endif
 
 struct forest_info {
