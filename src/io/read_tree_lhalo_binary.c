@@ -10,6 +10,7 @@
 #include "../core_mymalloc.h"
 #include "../core_utils.h"
 
+#include "forest_utils.h"
 
 /* Externally visible Functions */
 void get_forests_filename_lht_binary(char *filename, const size_t len, const int filenr, const struct params *run_params)
@@ -58,7 +59,8 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     }
     forests_info->totnforests = totnforests;
 
-    int status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_thistask, &start_forestnum);
+    int64_t nforests_this_task, start_forestnum;
+    int status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     if (status != EXIT_SUCCESS) {
         return status;
     }

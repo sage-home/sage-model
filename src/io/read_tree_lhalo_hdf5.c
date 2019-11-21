@@ -64,16 +64,26 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
         }
 
         int32_t nforests;
-        status = read_attribute(fd, "/Header", metadata_names.name_NTrees, H5T_NATIVE_INT, &nforests);
-        if (status != EXIT_SUCCESS) {
-            fprintf(stderr, "Error while processing file %s\n", filename);
-            fprintf(stderr, "Error code is %d\n", status);
-            return status;
+#define READ_LHALO_ATTRIBUTE(hid, dspace, attrname, dst) {              \
+            herr_t h5_status = read_attribute (hid, #dspace, #attrname, (void *) &dst, sizeof(dst)); \
+            if(h5_status < 0) {                                         \
+                fprintf(stderr, "Error while processing file %s\n", filename); \
+                fprintf(stderr, "Error code is %d\n", status);          \
+                return (int) h5_status;                                 \
+            }                                                           \
         }
+
+        READ_LHALO_ATTRIBUTE(fd, "/Header", metadata_names.name_NTrees, nforests);
+
         totnforests_per_file[filenr] = nforests;
         totnforests += nforests;
 
-        H5Fclose(fd);
+        status = H5Fclose(fd);
+        if(status < 0) {
+            fprintf(stderr,"Error: Could not properly close the hdf5 file for filename = '%s'\n", filename);
+            H5Eprint(status, stderr);
+            return status;
+        }
     }
     forests_info->totnforests = totnforests;
 
@@ -230,10 +240,11 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
     /* } */
 }
 
-#define READ_TREE_PROPERTY(fd, sage_name, hdf5_name, h5_dtype, C_dtype) \
+#define READ_TREE_PROPERTY(fd, sage_name, hdf5_name, C_dtype)           \
     {                                                                   \
         snprintf(dataset_name, MAX_STRING_LEN - 1, "tree_%03d/%s", forestnr, #hdf5_name); \
-        status = read_dataset(fd, dataset_name, -1, h5_dtype, buffer);  \
+        const int check_size = 0; /* since a conversion will occur, we don't need to check for compatibility between hdf5 and dest sizes*/ \
+        status = read_dataset(fd, dataset_name, -1, buffer, sizeof(C_dtype), check_size); \
         if (status != EXIT_SUCCESS) {                                   \
             return status;                                              \
         }                                                               \
@@ -242,16 +253,16 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
         }                                                               \
     }
 
-#define READ_TREE_PROPERTY_MULTIPLEDIM(fd, sage_name, hdf5_name, h5_dtype, C_dtype) \
-    {                                                                   \
+#define READ_TREE_PROPERTY_MULTIPLEDIM(fd, sage_name, hdf5_name, C_dtype) { \
         snprintf(dataset_name, MAX_STRING_LEN - 1, "tree_%03d/%s", forestnr, #hdf5_name); \
-        status = read_dataset(fd, dataset_name, -1, h5_dtype, buffer_multipledim); \
+        const int check_size = 0; /* since a conversion will occur, we don't need to check for compatibility between hdf5 and dest sizes*/ \
+        status = read_dataset(fd, dataset_name, -1, buffer, sizeof(C_dtype), check_size); \
         if (status != EXIT_SUCCESS) {                                   \
             return status;                                              \
         }                                                               \
         for (int halo_idx = 0; halo_idx < nhalos; ++halo_idx) {         \
             for (int dim = 0; dim < NDIM; ++dim) {                      \
-                local_halos[halo_idx].sage_name[dim] = ((C_dtype*)buffer_multipledim)[halo_idx * NDIM + dim]; \
+                local_halos[halo_idx].sage_name[dim] = ((C_dtype*)buffer)[halo_idx * NDIM + dim]; \
             }                                                           \
         }                                                               \
     }
@@ -262,10 +273,7 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
     char dataset_name[MAX_STRING_LEN];
     int32_t status;
 
-    double *buffer; // Buffer to hold the read HDF5 data.
-    // The largest data-type will be double.
-
-    double *buffer_multipledim; // However also need a buffer three times as large to hold data such as position/velocity.
+    void *buffer; // Buffer to hold the read HDF5 data.
 
     /* const int64_t nhalos = (int64_t) forests_info->lht.nhalos_per_forest[forestnr];/\* the array itself contains int32_t, since the LHT format*\/ */
     hid_t fd = forests_info->lht.h5_fd[forestnr];
@@ -296,49 +304,44 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
     *halos = mymalloc(sizeof(struct halo_data) * nhalos);
     struct halo_data *local_halos = *halos;
 
-
-    buffer = malloc(nhalos * sizeof(buffer[0]));
+    buffer = malloc(nhalos * NDIM * sizeof(double)); // The largest data-type will be double.
     if (buffer == NULL) {
-        fprintf(stderr, "Error:Could not allocate memory for %"PRId64" halos in the HDF5 buffer.\n", nhalos);
+        fprintf(stderr, "Error: Could not allocate memory for %"PRId64" halos in the HDF5 buffer. Size requested = %"PRIu64" bytes\n",
+                nhalos, nhalos * NDIM * sizeof(double));
         return MALLOC_FAILURE;
     }
 
-    buffer_multipledim = malloc(nhalos * NDIM * sizeof(buffer_multipledim[0]));
-    if (buffer_multipledim == NULL) {
-        fprintf(stderr, "Could not allocate memory for %"PRId64" halos in the HDF5 multiple dimension buffer.\n", nhalos);
-        return MALLOC_FAILURE;
-    }
 
     // We now need to read in all the halo fields for this forest.
     // To do so, we read the field into a buffer and then properly slot the field into the Halo struct.
 
     /* Merger Tree Pointers */
-    READ_TREE_PROPERTY(fd, Descendant, Descendant, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, FirstProgenitor, FirstProgenitor, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, NextProgenitor, NextProgenitor, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, FirstHaloInFOFgroup, FirstHaloInFOFgroup, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, NextHaloInFOFgroup, NextHaloInFOFgroup, H5T_NATIVE_INT, int);
+    READ_TREE_PROPERTY(fd, Descendant, Descendant, int);
+    READ_TREE_PROPERTY(fd, FirstProgenitor, FirstProgenitor, int);
+    READ_TREE_PROPERTY(fd, NextProgenitor, NextProgenitor, int);
+    READ_TREE_PROPERTY(fd, FirstHaloInFOFgroup, FirstHaloInFOFgroup, int);
+    READ_TREE_PROPERTY(fd, NextHaloInFOFgroup, NextHaloInFOFgroup, int);
 
     /* Halo Properties */
-    READ_TREE_PROPERTY(fd, Len, Len, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, M_Mean200, M_mean200, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, Mvir, Mvir, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, M_TopHat, M_TopHat, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Pos, Pos, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Vel, Vel, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, VelDisp, VelDisp, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, Vmax, Vmax, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Spin, Spin, H5T_NATIVE_FLOAT, float);
-    READ_TREE_PROPERTY(fd, MostBoundID, MostBoundID, H5T_NATIVE_LLONG, long long);
+    READ_TREE_PROPERTY(fd, Len, Len, int);
+    READ_TREE_PROPERTY(fd, M_Mean200, M_mean200, float);
+    READ_TREE_PROPERTY(fd, Mvir, Mvir, float);
+    READ_TREE_PROPERTY(fd, M_TopHat, M_TopHat, float);
+    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Pos, Pos, float);
+    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Vel, Vel, float);
+    READ_TREE_PROPERTY(fd, VelDisp, VelDisp, float);
+    READ_TREE_PROPERTY(fd, Vmax, Vmax, float);
+    READ_TREE_PROPERTY_MULTIPLEDIM(fd, Spin, Spin, float);
+    READ_TREE_PROPERTY(fd, MostBoundID, MostBoundID, long long);
 
     /* File Position Info */
-    READ_TREE_PROPERTY(fd, SnapNum, SnapNum, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, FileNr, Filenr, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, SubhaloIndex, SubHaloIndex, H5T_NATIVE_INT, int);
-    READ_TREE_PROPERTY(fd, SubHalfMass, SubHalfMass, H5T_NATIVE_INT, int);
+    READ_TREE_PROPERTY(fd, SnapNum, SnapNum, int);
+    READ_TREE_PROPERTY(fd, FileNr, Filenr, int);
+    READ_TREE_PROPERTY(fd, SubhaloIndex, SubHaloIndex, int);
+    READ_TREE_PROPERTY(fd, SubHalfMass, SubHalfMass, int);
 
     free(buffer);
-    free(buffer_multipledim);
+
 
 #ifdef DEBUG_HDF5_READER
     for (int32_t i = 0; i < 20; ++i) {

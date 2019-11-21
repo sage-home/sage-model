@@ -239,7 +239,7 @@ struct genesis_info {
     int64_t start_forestnum;
 
     int64_t maxforestsize; /* max. number of halos in any one single forest */
-}
+};
 #endif
 
 struct forest_info {

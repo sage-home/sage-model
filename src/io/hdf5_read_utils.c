@@ -50,7 +50,7 @@ herr_t read_attribute(hid_t fd, const char *group_name, const char *attr_name, v
 }
 
 
-herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *buffer)
+herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *buffer, const size_t dst_size, const int check_size)
 {
     int already_open_dataset = dataset_id > 0 ? 1:0;
 
@@ -69,6 +69,15 @@ herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *
         H5Eprint(dataset_id, stderr);
         return -1;
     }
+
+    if(dst_size != H5Tget_size(h5_dtype) && check_size) {
+        fprintf(stderr,"Error while reading %s attribute in group %s\n", group_name, attr_name);
+        fprintf(stderr,"The HDF5 attribute has with size %zu bytes into destination with size = %zu\n",
+                H5Tget_size(h5_dtype), dst_size);
+        fprintf(stderr,"Perhaps the size of the destination datatype needs to be updated?\n");
+        return -1;
+    }
+
 
     herr_t status = H5Dread(dataset_id, h5_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
     if(status < 0) {

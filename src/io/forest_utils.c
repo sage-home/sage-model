@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "io_utils.h"
+#include "forest_utils.h"
 
 int distribute_forests_over_ntasks(const int64_t totnforests, const int NTasks, const int ThisTask, int64_t *nforests_thistask, int64_t *start_forestnum_thistask)
 {
@@ -13,7 +13,7 @@ int distribute_forests_over_ntasks(const int64_t totnforests, const int NTasks, 
     }
 
     if(totnforests < 0) {
-        fprintf(stderr,"Error: On ThisTask = %d: total number of forests = %"PRId64" must be >= 0\n", totnforests);
+        fprintf(stderr,"Error: On ThisTask = %d: total number of forests = %"PRId64" must be >= 0\n", ThisTask, totnforests);
         return EXIT_FAILURE;
     }
 
