@@ -574,8 +574,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
 int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info, struct params *run_params)
 {
-    // The max. size of the data to be read in would be "nhalos" * NDIM (== 3 for pos/vel) * sizeof(double)
-    char *buffer = NULL;
     struct genesis_info *gen = &(forests_info->gen);
     int processing_first_forest = 0;
     if(gen->curr_filenum < 0) {
@@ -673,7 +671,8 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         local_halos[i].Descendant = -1;
     }
 
-    buffer = calloc(nhalos * NDIM * sizeof(double), sizeof(*buffer));
+    // The max. size of the data to be read in would be "nhalos" * NDIM (== 3 for pos/vel) * sizeof(double)
+    char *buffer = calloc(nhalos * NDIM * sizeof(double), sizeof(*buffer));
     if (buffer == NULL) {
         fprintf(stderr, "Could not allocate memory for the HDF5 multiple dimension buffer.\n");
         ABORT(MALLOC_FAILURE);
@@ -809,7 +808,10 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, yc_enum, snap_offset, nhalos_snap, buffer + nhalos_snap[0]*sizeof(double));
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, zc_enum, snap_offset, nhalos_snap, buffer + 2*nhalos_snap[0]*sizeof(double));
         /* Assign to the Pos array within sage*/
-        ASSIGN_BUFFER_TO_NDIM_SAGE(nhalos_snap, NDIM, double, Pos, float);
+        ASSIGN_BUFFER_TO_NDIM_SAGE(nhalos_snap, NDIM, double, Pos, float);/* Be careful that the last argument is only used
+                                                                             at the assignment stage (i.e., for type conversion)
+                                                                             Otherwise, the memory areas would be accessed incorrectly
+                                                                             and we would get corrupted results -- MS 27/11/2019 */
 
         /* Read in the halo velocities */
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, vxc_enum, snap_offset, nhalos_snap, buffer);
