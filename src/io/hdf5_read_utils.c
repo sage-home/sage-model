@@ -11,16 +11,16 @@ herr_t read_attribute(hid_t fd, const char *group_name, const char *attr_name, v
         return attr_id;
     }
 
-    hid_t h5_dtype = H5Aget_type(attr_id);
-    if(h5_dtype < 0) {
+    hid_t attr_dtype = H5Aget_type(attr_id);
+    if(attr_dtype < 0) {
         fprintf(stderr, "Could not get the datatype for the attribute '%s' in group '%s'\n", attr_name, group_name);
-        return h5_dtype;
+        return attr_dtype;
     }
 
-    if(dst_size != H5Tget_size(h5_dtype)) {
+    if(dst_size != H5Tget_size(attr_dtype)) {
         fprintf(stderr,"Error while reading %s attribute in group %s\n", group_name, attr_name);
         fprintf(stderr,"The HDF5 attribute has with size %zu bytes into destination with size = %zu\n",
-                H5Tget_size(h5_dtype), dst_size);
+                H5Tget_size(attr_dtype), dst_size);
         fprintf(stderr,"Perhaps the size of the destination datatype needs to be updated?\n");
         return -1;
     }
@@ -32,7 +32,7 @@ herr_t read_attribute(hid_t fd, const char *group_name, const char *attr_name, v
         return status;
     }
 
-    status = H5Tclose(h5_dtype);
+    status = H5Tclose(attr_dtype);
     if (status < 0) {
         fprintf(stderr, "Error when closing the datatype for the attribute '%s' in group '%s'.\n", attr_name, group_name);
         H5Eprint(status, stderr);
@@ -59,7 +59,7 @@ herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *
         if (dataset_id < 0) {
             fprintf(stderr, "Error encountered when trying to open up dataset '%s'.\n", dataset_name);
             H5Eprint(dataset_id, stderr);
-            return FILE_READ_ERROR;
+            return -1;
         }
     }
 
@@ -70,11 +70,11 @@ herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *
         return -1;
     }
 
-    if(dst_size != H5Tget_size(h5_dtype) && check_size) {
-        fprintf(stderr,"Error while reading %s attribute in group %s\n", group_name, attr_name);
-        fprintf(stderr,"The HDF5 attribute has with size %zu bytes into destination with size = %zu\n",
+    if(check_size && dst_size != H5Tget_size(h5_dtype)) {
+        fprintf(stderr,"Error while reading dataset '%s' -- datasize mismatch -- will result in data corruption\n", dataset_name);
+        fprintf(stderr,"The HDF5 dataset has items of size %zu bytes while the destination has size = %zu\n",
                 H5Tget_size(h5_dtype), dst_size);
-        fprintf(stderr,"Perhaps the size of the destination datatype needs to be updated?\n");
+        fprintf(stderr,"'Perhaps the size of the destination datatype needs to be updated?\n");
         return -1;
     }
 
@@ -83,7 +83,7 @@ herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *
     if(status < 0) {
         fprintf(stderr, "Error encountered when trying to reading dataset '%s'.\n", dataset_name);
         H5Eprint(dataset_id, stderr);
-        return FILE_READ_ERROR;
+        return -1;
     }
 
     status = H5Tclose(h5_dtype);
@@ -98,7 +98,7 @@ herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *
         if(status < 0) {
             fprintf(stderr, "Error encountered when trying to close the open dataset '%s'.\n", dataset_name);
             H5Eprint(dataset_id, stderr);
-            return FILE_READ_ERROR;
+            return -1;
         }
     }
 

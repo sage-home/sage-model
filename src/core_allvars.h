@@ -208,17 +208,21 @@ struct genesis_info {
         int64_t nforests_this_task;/* shadowed for convenience */
     };
 
+    int64_t start_forestnum;/* Global forestnumber to start processing from */
+    int64_t maxforestsize; /* max. number of halos in any one single forest on any task */
+
     union {
-        int64_t *FileNr;/* Integer identifying which file out of the 'numfiles' for each forest -- shape (nforests, )
+        int32_t *FileNr;/* Integer identifying which file out of the '(lastfile + 1)' for each forest -- shape (nforests, )
                            The unusual capitalisation is to show that the semantics are the same as the
                            variable with 'struct halo_data' (in core_simulation.h) - MS 19/11/2019
                         */
-        int64_t *filenum_for_forest;/* shadowed to show what the variable contains */
+        int32_t *filenum_for_forest;/* shadowed to show what the variable contains */
     };
-    int64_t *forestnum_in_file;/* Integer identifying the forest number within the file that is to be read -- shape (nforests, ) */
-
-    int64_t *start_forestnum_in_file;/* Integer identifying the starting forest number to process on a per file basis -- shape (numfiles, ) */
-    int64_t *num_forests_to_process_per_file; /* How many forests per file -- shape (numfiles, ) */
+    int64_t *forestnum_in_file;/* Integer identifying the file-local forest numbers to be read -- shape (nforests, ) */
+    int64_t *offset_for_global_forestnum;/* What would be the offset to add to file-local 'forestnum' to get the global forest num
+                                            that is needed to access the metadata ("*foreststats*.hdf5") file  -- shape (lastfile + 1, ) */
+    int64_t *start_forestnum_per_file;/* Integer identifying the starting forest number to process on a per file basis -- shape (lastfile + 1, ) */
+    int64_t *num_forests_to_process_per_file; /* How many forests per file -- shape (lastfile + 1, ) */
 
     int64_t *halo_offset_per_snap;/* Stores the current halo offsets to read from at each snapshot -- shape (maxsnaps, ).
                                      Initialised to all 0's for every new file and incremented as forests are read in. This details
@@ -227,18 +231,16 @@ struct genesis_info {
                                      the amount of RAM required to store the matrix offsets_per_forest_per_snap (with shape
                                      '[nforests, maxsnaps]' would have been a roadblock in the future. */
     hid_t meta_fd;/* file descriptor for the metadata file*/
-    hid_t *h5_fds;/* contains all the file descriptors for the individual files -- shape (numfiles, ) */
+    hid_t *h5_fds;/* contains all the file descriptors for the individual files -- shape (lastfile + 1, ) */
 
-    int32_t min_snap_num; /* smallest snapshot to process (inclusive, >= 0)*/
+    int32_t min_snapnum; /* smallest snapshot to process (inclusive, >= 0)*/
     int32_t maxsnaps;/* maxsnaps == max_snap_num + 1 */
-    int32_t numfiles;/* total number of files to process (>=1)*/
-    int32_t first_file_num;/*  */
-    int32_t curr_file_num; /* What file is currently being worked on --
+    int32_t totnfiles;/* total number of files requested to be processed (across all tasks)*/
+    int32_t numfiles;/* total number of files to process on ThisTask (>=1)*/
+    int32_t start_filenum;/* Which is the first file that this task is going to process  */
+    int32_t curr_filenum; /* What file is currently being worked on --
                               required to reset the halo_offset_per_snap at the beginning of every new file */
-    int32_t last_file_num;/* */
-    int64_t start_forestnum;
 
-    int64_t maxforestsize; /* max. number of halos in any one single forest */
 };
 #endif
 
@@ -363,6 +365,8 @@ struct params
     int Snaplistlen;
     enum Valid_TreeTypes TreeType;
     enum Valid_OutputFormats OutputFormat;
+    int64_t FileNr_Mulfac;
+    int64_t ForestNr_Mulfac;
 
     int ListOutputSnaps[ABSOLUTEMAXSNAPS];
 
