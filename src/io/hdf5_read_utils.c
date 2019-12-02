@@ -7,7 +7,7 @@ herr_t read_attribute(hid_t fd, const char *group_name, const char *attr_name, v
 {
     hid_t attr_id = H5Aopen_by_name(fd, group_name, attr_name, H5P_DEFAULT, H5P_DEFAULT);
     if (attr_id < 0) {
-        fprintf(stderr, "Could not open the attribute %s in group %s\n", attr_name, group_name);
+        fprintf(stderr, "Error:Could not open the attribute '%s' in group '%s'\n", attr_name, group_name);
         return attr_id;
     }
 

@@ -65,6 +65,10 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
             return INVALID_OPTION_IN_PARAMS;
         }
 
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
+    
     /*MS: Check that the mechanism to generate unique GalaxyID's was
       initialised correctly in the setup */
     if(run_params->FileNr_Mulfac < 0 || run_params->ForestNr_Mulfac < 0) {

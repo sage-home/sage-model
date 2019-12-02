@@ -44,7 +44,7 @@ static void get_forest_metadata_filename(const char *forestfilename, const size_
 
 void get_forests_filename_genesis_hdf5(char *filename, const size_t len, const struct params *run_params)
 {
-    snprintf(filename, len - 1, "%s/%s.%s", run_params->SimulationDir, run_params->TreeName, run_params->TreeExtension);
+    snprintf(filename, len - 1, "%s/%s%s", run_params->SimulationDir, run_params->TreeName, run_params->TreeExtension);
 }
 
 
@@ -114,7 +114,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     }
 
 #define READ_GENESIS_ATTRIBUTE(hid, dspace, attrname, dst) {            \
-        herr_t h5_status = read_attribute (hid, #dspace, #attrname, (void *) &dst, sizeof(dst)); \
+        herr_t h5_status = read_attribute (hid, dspace, attrname, (void *) &dst, sizeof(dst)); \
         if(h5_status < 0) {                                             \
             return (int) h5_status;                                     \
         }                                                               \
@@ -139,7 +139,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         fflush(stdout);
     }
     int64_t totnfiles = lastfile + 1;/* Wastes space but makes for easier indexing */
-
+    
     uint32_t nsnaps;
     READ_GENESIS_ATTRIBUTE(gen->meta_fd, "Header", "NSnaps", nsnaps);
     XRETURN(nsnaps >= 1, INVALID_VALUE_READ_FROM_FILE,
@@ -148,9 +148,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             metadata_fname, nsnaps);
     gen->maxsnaps = nsnaps;
 
-
     int64_t totnforests = 0;
-    READ_GENESIS_ATTRIBUTE( gen->meta_fd, "ForestInfo", "NForests", totnforests);
+    READ_GENESIS_ATTRIBUTE(gen->meta_fd, "ForestInfo", "NForests", totnforests);
     XRETURN(totnforests >= 1, INVALID_VALUE_READ_FROM_FILE,
             "Error: Expected total number of forests to be at least 1. However, reading in from "
             "metadata file ('%s') shows totnforests = %"PRId64"\n. Exiting...\n",
@@ -190,7 +189,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         }
 
         int64_t nforests_this_file;
-        READ_GENESIS_ATTRIBUTE(h5_fd, "ForestInfo", "NForests", nforests_this_file);
+
+        READ_GENESIS_ATTRIBUTE(h5_fd, "ForestInfoInFile", "NForests", nforests_this_file);
         XRETURN(nforests_this_file >= 1, INVALID_VALUE_READ_FROM_FILE,
                 "Error: Expected the number of forests in this file to be at least 1. However, reading in from "
                 "forest file ('%s') shows nforests = %"PRId64"\n. Exiting...\n",
@@ -200,7 +200,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
                 "Error: On ThisTask = %d could not close file descriptor for filename = '%s'\n", ThisTask, fname);
     }
-
 
     int64_t nforests_this_task, start_forestnum;
     int status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_this_task, &start_forestnum);

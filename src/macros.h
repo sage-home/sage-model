@@ -9,9 +9,7 @@
     do {                                           \
         fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %i\n", __FILE__, __FUNCTION__, __LINE__); \
         fprintf(stderr, "exit code = %d\n", sigterm);       \
-        fprintf(stderr, "Printing the value of perror..."); \
-        perror(NULL);                              \
-        exit(sigterm);                             \
+        exit(sigterm);                                      \
     } while(0)
 
 #define MEMORY_INCREASE_FAC   1.2
