@@ -32,7 +32,7 @@ void get_forests_filename_lht_hdf5(char *filename, const size_t len, const int f
 
 
 int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstfile, const int lastfile,
-                              const int ThisTask, const int NTasks, const struct params *run_params)
+                              const int ThisTask, const int NTasks, struct params *run_params)
 {
 
     const int numfiles = lastfile - firstfile + 1;
@@ -65,7 +65,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
 
         int32_t nforests;
 #define READ_LHALO_ATTRIBUTE(hid, dspace, attrname, dst) {              \
-            herr_t h5_status = read_attribute (hid, #dspace, #attrname, (void *) &dst, sizeof(dst)); \
+            herr_t h5_status = read_attribute (hid, dspace, attrname, (void *) &dst, sizeof(dst)); \
             if(h5_status < 0) {                                         \
                 fprintf(stderr, "Error while processing file %s\n", filename); \
                 fprintf(stderr, "Error code is %d\n", status);          \
@@ -216,6 +216,12 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
     free(num_forests_to_process_per_file);
     free(start_forestnum_to_process_per_file);
     free(totnforests_per_file);
+    
+    /* Finally setup the multiplication factors necessary to generate
+       unique galaxy indices (across all files, all trees and all tasks) for this run*/
+    run_params->FileNr_Mulfac = 1000000000000000LL;
+    run_params->ForestNr_Mulfac = 1000000000LL;
+
 
     return EXIT_SUCCESS;
 
