@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <assert.h>
+#include <ctype.h> /* for isblank()*/
 
+   
 #include "core_allvars.h"
 #include "core_mymalloc.h"
 
@@ -207,14 +208,29 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         char buffer[MAX_STRING_LEN];
         while(fgets(&(buffer[0]), MAX_STRING_LEN, fd) != NULL) {
             char buf1[MAX_STRING_LEN], buf2[MAX_STRING_LEN];
-            if(sscanf(buffer, "%s%s%*[^\n]", buf1, buf2) < 2) {
+            if(sscanf(buffer, "%s %[^\n]", buf1, buf2) < 2) {
                 continue;
             }
           
-            if(buf1[0] == '%' || buf1[0] == '-') {
+            if(buf1[0] == '%' || buf1[0] == '-') { /* the second condition is checking for output snapshots -- that line starts with "->" */
                 continue;
             }
 
+            /* Allowing for spaces in the filenames (but requires comments to ALWAYS start with '%') */
+            const int buf2len = strnlen(buf2, MAX_STRING_LEN);
+            for(int i=0;i<buf2len;i++) {
+                if(buf2[i] == '%') {
+                    int null_pos = i;
+                    //Ignore all preceeding whitespace
+                    for(int j=i-1;j>=0;j--) {
+                        null_pos = isblank(buf2[j]) ? j:null_pos;
+                    }
+                    buf2[null_pos] = '\0';
+                    break;
+                }
+            }
+
+            
             int j=-1;
             for(int i = 0; i < NParam; i++) {
                 if(strcmp(buf1, ParamTag[i]) == 0) {
