@@ -19,7 +19,7 @@ void get_forests_filename_lht_binary(char *filename, const size_t len, const int
 }
 
 int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firstfile, const int lastfile,
-                                const int ThisTask, const int NTasks, const struct params *run_params)
+                                const int ThisTask, const int NTasks, struct params *run_params)
 {
     if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
         fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile should be larger than FirstFile.\n"
