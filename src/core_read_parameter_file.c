@@ -331,7 +331,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     // Check tree type is valid. 
     if (strncmp(my_treetype, "lhalo_hdf5", 511) == 0 ||
-        strncmp(my_treetype, "genesis_standard_hdf5", 511) == 0) {
+        strncmp(my_treetype, "genesis_hdf5", 511) == 0) {
         // strncmp returns 0 if the two strings are equal.
         // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
         snprintf(run_params->TreeExtension, 511, ".hdf5");
@@ -342,8 +342,8 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 #endif
     }
 
-    const char tree_names[][MAX_STRING_LEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_standard_hdf5", "consistent_trees_ascii"};
-    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_standard_hdf5, consistent_trees_ascii};
+    const char tree_names[][MAX_STRING_LEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii"};
+    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5, consistent_trees_ascii};
     const int nvalid_tree_types  = sizeof(tree_names)/(MAX_STRING_LEN*sizeof(char));
     XASSERT(nvalid_tree_types == 4, EXIT_FAILURE, "nvalid_tree_types = %d should have been 4\n", nvalid_tree_types);
     int found = 0;

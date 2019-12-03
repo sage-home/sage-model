@@ -58,7 +58,7 @@ endif
 # Files required for HDF5 -> needs to be defined outside of the
 # if condition (for DO_CHECKS); otherwise `make clean` will not
 # clean the H5_OBJS
-H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_standard_hdf5.c io/hdf5_read_utils.c
+H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c io/hdf5_read_utils.c
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
 

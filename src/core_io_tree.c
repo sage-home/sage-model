@@ -18,7 +18,7 @@
 
 #ifdef HDF5
 #include "io/read_tree_lhalo_hdf5.h"
-#include "io/read_tree_genesis_standard_hdf5.h"
+#include "io/read_tree_genesis_hdf5.h"
 #endif
 
 int setup_forests_io(struct params *run_params, struct forest_info *forests_info,
@@ -44,7 +44,7 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
             status = setup_forests_io_lht_hdf5(forests_info, firstfile, lastfile, ThisTask, NTasks, run_params);
             break;
 
-        case genesis_standard_hdf5:
+        case genesis_hdf5:
             (void) firstfile, (void) lastfile;
             status = setup_forests_io_genesis_hdf5(forests_info, ThisTask, NTasks, run_params);
             break;
@@ -100,7 +100,7 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
         cleanup_forests_io_lht_hdf5(forests_info);
         break;
 
-    case genesis_standard_hdf5:
+    case genesis_hdf5:
         cleanup_forests_io_genesis_hdf5(forests_info);
         break;
 #endif
@@ -140,7 +140,7 @@ int64_t load_forest(struct params *run_params, const int forestnr, struct halo_d
         nhalos = load_forest_hdf5(forestnr, halos, forests_info);
         break;
 
-    case genesis_standard_hdf5:
+    case genesis_hdf5:
         nhalos = load_forest_genesis_hdf5(forestnr, halos, forests_info, run_params);
         break;
 #endif

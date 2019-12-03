@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "read_tree_genesis_standard_hdf5.h"
+#include "read_tree_genesis_hdf5.h"
 #include "hdf5_read_utils.h"
 #include "forest_utils.h"
 
