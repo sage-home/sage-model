@@ -2,6 +2,11 @@
 USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+# In case any of the previous ones do not work and
+# ROOT_DIR is not set, then use "." as ROOT_DIR and
+# hopefully the cooling tables will still work
+ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
+
 LIBS :=
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
 CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC
