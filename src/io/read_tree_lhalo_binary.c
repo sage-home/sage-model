@@ -228,6 +228,11 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     free(start_forestnum_to_process_per_file);
     free(totnforests_per_file);
 
+    /* Finally setup the multiplication factors necessary to generate
+       unique galaxy indices (across all files, all trees and all tasks) for this run*/
+    run_params->FileNr_Mulfac = 1000000000000000LL;
+    run_params->ForestNr_Mulfac = 1000000000LL;
+    
     return EXIT_SUCCESS;
 }
 

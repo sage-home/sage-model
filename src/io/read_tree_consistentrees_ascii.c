@@ -263,6 +263,11 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
         ABORT(FILE_READ_ERROR);
     }
 
+    /* Finally setup the multiplication factors necessary to generate
+       unique galaxy indices (across all files, all trees and all tasks) for this run*/
+    run_params->FileNr_Mulfac = 0;
+    run_params->ForestNr_Mulfac = 1000000000LL;/*MS: The ID needs to fit in 64 bits -> ID must be <  2^64 ~ 1e19.*/
+
     return EXIT_SUCCESS;
 }
 
