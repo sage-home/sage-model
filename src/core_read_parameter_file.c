@@ -226,16 +226,14 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                         null_pos = isblank(buf2[j]) ? j:null_pos;
                     }
                     buf2[null_pos] = '\0';
-                    fprintf(stderr,"null_pos = %d\n", null_pos);
                     break;
                 }
             }
             buf2len = strnlen(buf2, MAX_STRING_LEN);
-            fprintf(stderr,"buf2len = %d buf2[buf2len] = '%c' buf2[buf2len+1] = '%c'\n", buf2len, buf2[buf2len], buf2[buf2len+1]);
             while(buf2len > 0 && isblank(buf2[buf2len-1])) {
                 buf2len--;
             }
-            buf2[buf2len-1] = '\0';
+            buf2[buf2len] = '\0';
 
 
             int j=-1;
