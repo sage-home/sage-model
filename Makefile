@@ -7,9 +7,11 @@ ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # hopefully the cooling tables will still work
 ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 
-LIBS :=
-OPTS := -DROOT_DIR='"${ROOT_DIR}"'
+
 CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC
+LIBFLAGS :=
+
+OPTS := -DROOT_DIR='"${ROOT_DIR}"'
 SRC_PREFIX := src
 
 LIBNAME := sage
@@ -124,7 +126,7 @@ ifeq ($(DO_CHECKS), 1)
     $(warning GSL not found in $$PATH environment variable. Tests will be disabled)
   endif
   CCFLAGS += $(GSL_INCL)
-  LIBS += $(GSL_LIBS)
+  LIBFLAGS += $(GSL_LIBS)
 
 
   ifdef USE-HDF5
@@ -167,16 +169,16 @@ ifeq ($(DO_CHECKS), 1)
     HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -lhdf5_hl -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
 
     OPTS += -DHDF5
-    LIBS += $(HDF5_LIB)
+    LIBFLAGS += $(HDF5_LIB)
     CCFLAGS += $(HDF5_INCL)
   endif
 
   OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
 
   ifdef USE-MPI
-    MPI_LINK_FLAGS:=$(firstword $(shell mpicc --showme:link 2>/dev/null))
+    MPI_LINK_FLAGS:=$(firstword $(shell $(CC) --showme:link 2>/dev/null))
     MPI_LIB_DIR:=$(firstword $(subst -L, , $(MPI_LINK_FLAGS)))
-    LIBS += -Xlinker -rpath -Xlinker $(MPI_LIB_DIR)
+    LIBFLAGS += -Xlinker -rpath -Xlinker $(MPI_LIB_DIR)
   endif
   # The tests should test with the same compile flags
   # that users are expected to use. Disabled the previous
@@ -189,8 +191,21 @@ ifeq ($(DO_CHECKS), 1)
     OPTIMIZE += -march=native
   endif
 
+  # Check if $(AR) and $(CC) belong to the same tool-chain
+  AR_BASE_PATH := $(shell which $(AR))
+  CC_BASE_PATH := $(shell which $(CC))
+  AR_FIRST_DIR := $(firstword $(subst /, ,$(AR_BASE_PATH)))
+  CC_FIRST_DIR := $(firstword $(subst /, ,$(CC_BASE_PATH)))
+
+  # Check that the first directory for both AR and CC are the same
+  ifneq ($(AR_FIRST_DIR), $(CC_FIRST_DIR))
+    $(warning Looks like the archiver $$AR := '$(AR)' and compiler $$CC := '$(CC)' are from different toolchains)
+    $(warning The archiver resolves to '$(AR_BASE_PATH)' while the compiler resolves to '$(CC_BASE_PATH)')
+    $(warning If there is an error during linking, then a fix might be to make sure that both the compiler and archiver are from the same distribution)
+  endif
+
   CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
-  LIBS   +=   -lm
+  LIBFLAGS   +=   -lm
 else
   # something like `make clean` is in effet -> need to also the HDF5 objects
   # if HDF5 is requested
@@ -200,16 +215,18 @@ else
 
 endif # End of DO_CHECKS if condition -> i.e., we do need to care about paths and such
 
-all:  $(EXEC) $(SAGELIB)
+all:  $(SAGELIB) $(EXEC)
 
-$(EXEC): $(OBJS) $(SAGELIB)
-	$(CC) $(CCFLAGS) $(OBJS) $(LIBS)   -o  $(EXEC)
+$(EXEC): $(OBJS)
+	$(CC) $(LIBFLAGS) $^ -o $@
+
+lib libs: $(SAGELIB)
+
+$(SAGELIB): $(LIBOBJS)
+	$(AR) rcs $@ $(LIBOBJS)
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
-
-$(SAGELIB): $(LIBOBJS)
-	ar rcs $@ $(LIBOBJS)
 
 .phony: clean celan celna clena tests
 celan celna clena: clean
