@@ -197,11 +197,17 @@ ifeq ($(DO_CHECKS), 1)
   AR_FIRST_DIR := $(firstword $(subst /, ,$(AR_BASE_PATH)))
   CC_FIRST_DIR := $(firstword $(subst /, ,$(CC_BASE_PATH)))
 
+  AR_NAME := $(lastword $(subst /, ,$(AR_BASE_PATH)))
+  CC_NAME := $(lastword $(subst /, ,$(CC_BASE_PATH)))
+  CC_IN_AR_DIR := $(subst $(AR_NAME),$(CC_NAME),$(AR_BASE_PATH))
+  AR_IN_CC_DIR := $(subst $(CC_NAME),$(AR_NAME),$(CC_BASE_PATH))
+
   # Check that the first directory for both AR and CC are the same
   ifneq ($(AR_FIRST_DIR), $(CC_FIRST_DIR))
     $(warning Looks like the archiver $$AR := '$(AR)' and compiler $$CC := '$(CC)' are from different toolchains)
     $(warning The archiver resolves to '$(AR_BASE_PATH)' while the compiler resolves to '$(CC_BASE_PATH)')
     $(warning If there is an error during linking, then a fix might be to make sure that both the compiler and archiver are from the same distribution)
+    $(warning ---- either as '$(CC_IN_AR_DIR)' or '$(AR_IN_CC_DIR)')
   endif
 
   CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
