@@ -138,7 +138,7 @@ ifeq ($(DO_CHECKS), 1)
         ## something like /path/to/bin/h5ls; the 'sed' command
         ## replaces the '/bin/h5ls' with '' (i.e., removes '/bin/h5ls')
         ## and returns '/path/to' (without the trailing '/')
-        HDF5_DIR := `which h5ls 2>/dev/null | sed 's/\/bin\/h5ls//'`
+        HDF5_DIR := $(strip $(shell which h5ls 2>/dev/null | sed 's/\/bin\/h5ls//'))
         ifndef HDF5_DIR
           $(warning $$HDF5_DIR environment variable is not defined but HDF5 is requested)
           $(warning Could not locate hdf5 tools either)

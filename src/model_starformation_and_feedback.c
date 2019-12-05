@@ -3,7 +3,6 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <assert.h>
 
 #include "core_allvars.h"
 
@@ -45,7 +44,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? run_params->FeedbackReheatingEpsilon * stars: 0.0;
 
-	assert(reheated_mass >= 0.0);
+	XASSERT(reheated_mass >= 0.0, -1,
+            "Error: Expected reheated gas-mass = %g to be >=0.0\n", reheated_mass);
 
     // cant use more cold gas than is available! so balance SF and feedback
     if((stars + reheated_mass) > galaxies[p].ColdGas && (stars + reheated_mass) > 0.0) {
@@ -88,7 +88,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     // check for disk instability
     if(run_params->DiskInstabilityOn) {
-        check_disk_instability(p, centralgal, halonr, time, dt, step, galaxies, run_params);
+        check_disk_instability(p, centralgal, halonr, time, dt, step, galaxies, (struct params *) run_params);
     }
 
     // formation of new metals - instantaneous recycling approximation - only SNII
@@ -120,8 +120,14 @@ void update_from_star_formation(const int p, const double stars, const double me
 void update_from_feedback(const int p, const int centralgal, const double reheated_mass, double ejected_mass, const double metallicity,
                           struct GALAXY *galaxies, const struct params *run_params)
 {
-	assert(!(reheated_mass > galaxies[p].ColdGas && reheated_mass > 0.0));
 
+    XASSERT(reheated_mass >= 0.0, -1,
+            "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
+            p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
+    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
+            "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
+            reheated_mass, galaxies[p].ColdGas);
+    
     if(run_params->SupernovaRecipeOn == 1) {
         galaxies[p].ColdGas -= reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
@@ -144,3 +150,4 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
 }
 
 
+    

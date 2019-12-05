@@ -30,8 +30,7 @@ int main(int argc, char **argv)
 
     /* initialize sage (read parameter file, setup units, read cooling tables etc) */
     struct params run_params;
-    int status = EXIT_FAILURE;
-    status = init_sage(ThisTask, argv[1], &run_params);
+    int status = init_sage(ThisTask, argv[1], &run_params);
     if(status != EXIT_SUCCESS) {
         goto err;
     }

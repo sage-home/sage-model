@@ -3,7 +3,6 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <assert.h>
 
 #include "core_allvars.h"
 #include "core_cool_func.h"
@@ -63,7 +62,8 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 		coolingGas = 0.0;
     }
 
-	assert(coolingGas >= 0.0);
+	XASSERT(coolingGas >= 0.0, -1,
+            "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
     return coolingGas;
 
 }
@@ -81,7 +81,8 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
 		coolingGas = 0.0;
     }
 
-	assert(coolingGas >= 0.0);
+	XASSERT(coolingGas >= 0.0, -1,
+            "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
 
 	// now calculate the new heating rate
     if(galaxies[centralgal].HotGas > 0.0) {

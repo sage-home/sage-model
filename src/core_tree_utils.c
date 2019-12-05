@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <assert.h>
 #include <limits.h>
 
 #include "core_tree_utils.h"
@@ -129,7 +128,9 @@ int reorder_lhalo_to_lhvt(const int32_t nhalos, struct halo_data *forest, int32_
                     return EXIT_FAILURE;
                 }
             } else {
-                assert(desc >= 0 && desc < nhalos);
+                XRETURN(desc >= 0 && desc < nhalos, EXIT_FAILURE,
+                        "Error: desc = %d should be in range [0, %d)",
+                        desc, nhalos);
                 if(desc_len[old_index] != forest[desc].Len) {
                     fprintf(stderr,"Error: forest[%d].Descendant (Len) = %d (desc=%d) now but old descendant contained %d particles\n",
                             i, forest[desc].Len, desc, desc_len[old_index]);
@@ -149,7 +150,9 @@ int reorder_lhalo_to_lhvt(const int32_t nhalos, struct halo_data *forest, int32_
                 if( prog < 0 || prog >= nhalos) {
                     fprintf(stderr,"WEIRD: prog = %d for i=%d is not within [0, %d)\n",prog, i, nhalos);
                 }
-                assert(prog >=0 && prog < nhalos);
+                XRETURN(prog >=0 && prog < nhalos, EXIT_FAILURE,
+                        "Error: progenitor index = %d should be in range [0, %d)\n",
+                        prog, nhalos);
                 if(prog_len[old_index] != forest[prog].Len) {
                     fprintf(stderr,"Error: forest[%d].FirstProgenitor (Len) = %d (prog=%d) now but old FirstProgenitor contained %d particles\n",
                             i, forest[prog].Len, prog, prog_len[old_index]);
@@ -264,7 +267,7 @@ int fix_mergertree_index(struct halo_data *forest, const int64_t nhalos, const i
 }
 
 
-void get_nfofs_all_snaps(const struct halo_data *forest, const int nhalos, int *nfofs_all_snaps, const int nsnaps)
+int get_nfofs_all_snaps(const struct halo_data *forest, const int nhalos, int *nfofs_all_snaps, const int nsnaps)
 {
     for(int i=0;i<nsnaps;i++) {
         nfofs_all_snaps[i] = 0;
@@ -275,11 +278,11 @@ void get_nfofs_all_snaps(const struct halo_data *forest, const int nhalos, int *
             const int snap = forest[i].SnapNum;
             if(snap < 0 || snap >= nsnaps) {
                 fprintf(stderr, "Validation error: snapshot = %d must be within [0, %d)\n", snap, nsnaps);
-                ABORT(SNAPSHOT_OUT_OF_RANGE);
+                return INVALID_MEMORY_ACCESS_REQUESTED;
             }
             nfofs_all_snaps[snap]++;
         }
     }
+
+    return EXIT_SUCCESS;
 }
-
-

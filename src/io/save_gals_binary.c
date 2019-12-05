@@ -151,10 +151,17 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
             return FILE_WRITE_ERROR;
         }
 
-        nwritten = mypwrite(save_info->save_fd[snap_idx], &save_info->tot_ngals[snap_idx], sizeof(int32_t), sizeof(int32_t));
-        if(nwritten != sizeof(int32_t)) {
+        if(save_info->tot_ngals[snap_idx] > INT_MAX) {
+            fprintf(stderr,"Error: totngals = %"PRId64" at snapshot index = %d exceeds the 32-bit integer limit\n",
+                    save_info->tot_ngals[snap_idx], snap_idx);
+            return FILE_WRITE_ERROR;
+        }
+
+        const int32_t ng = (int32_t) save_info->tot_ngals[snap_idx];
+        nwritten = mypwrite(save_info->save_fd[snap_idx], &ng, sizeof(ng), sizeof(int32_t));
+        if(nwritten != sizeof(ng)) {
             fprintf(stderr, "Error: Failed to write out 1 element for the total number of galaxies for the header of file %d.\n"
-                            "Wrote %d bytes instead of %zu.\n", snap_idx, nwritten, sizeof(*(save_info->tot_ngals)));
+                            "Wrote %d bytes instead of %zu.\n", snap_idx, nwritten, sizeof(ng));
             return FILE_WRITE_ERROR;
         }
 

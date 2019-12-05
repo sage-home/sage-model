@@ -105,7 +105,7 @@ double time_to_present(const double z, struct params *run_params)
 {
     const double end_limit = 1.0;
     const double start_limit = 1.0/(1 + z);
-    double result=0.0;
+    double result;
 #ifdef GSL_FOUND
 #define WORKSIZE 1000
     gsl_function F;

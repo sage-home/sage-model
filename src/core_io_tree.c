@@ -19,43 +19,6 @@
 #include "io/read_tree_genesis_standard_hdf5.h"
 #endif
 
-int open_forests_file(struct params *run_params, const int filenr)
-{
-    const enum Valid_TreeTypes TreeType = run_params->TreeType;
-    /* return a file descriptor */
-    char filename[4*MAX_STRING_LEN];
-    switch(TreeType) {
-#ifdef HDF5
-    case(genesis_lhalo_hdf5):
-        get_forests_filename_lht_hdf5(filename, 4*MAX_STRING_LEN, filenr, run_params);
-        break;
-    /* case genesis_standard_hdf5: */
-    /*     (void) firstfile, (void) lastfile; */
-    /*     status = load_forest_table_genesis_hdf5(forests_info); */
-    /*     break; */
-#endif
-
-    case(lhalo_binary):
-        get_forests_filename_lht_binary(filename, 4*MAX_STRING_LEN, filenr, run_params);
-        break;
-    case(consistent_trees_ascii):
-        get_forests_filename_ctr_ascii(filename, 4*MAX_STRING_LEN, run_params);
-        break;
-    default:
-        fprintf(stderr,"Error: Unknown TreeType\n");
-        ABORT(INVALID_OPTION_IN_PARAMS);
-    }
-
-    int fd = open(filename, O_RDONLY);
-    if(fd < 0) {
-        fprintf(stderr,"Error: Could not open filename `%s'\n", filename);
-        perror(NULL);
-        ABORT(FILE_NOT_FOUND);
-    }
-
-    return fd;
-}
-
 
 int setup_forests_io(struct params *run_params, struct forest_info *forests_info,
                      const int ThisTask, const int NTasks)
@@ -65,10 +28,17 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     const int lastfile = run_params->LastFile;
     const enum Valid_TreeTypes TreeType = run_params->TreeType;
 
+    /* MS: 21/9/2019 initialise the mulfac's so we can check later
+       that these vital factors (required to generate unique galaxy ID's)
+       have been setup appropriately  */
+    run_params->FileNr_Mulfac = -1;
+    run_params->ForestNr_Mulfac = -1;
+    forests_info->frac_volume_processed = -1.0;
+
     switch (TreeType)
         {
 #ifdef HDF5
-        case genesis_lhalo_hdf5:
+        case illustris_lhalo_hdf5:
             status = setup_forests_io_lht_hdf5(forests_info, firstfile, lastfile, ThisTask, NTasks, run_params);
             break;
 
@@ -93,6 +63,26 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
             return INVALID_OPTION_IN_PARAMS;
         }
 
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
+
+    /*MS: Check that the mechanism to generate unique GalaxyID's was
+      initialised correctly in the setup */
+    if(run_params->FileNr_Mulfac < 0 || run_params->ForestNr_Mulfac < 0) {
+        fprintf(stderr,"Error: Looks like the multiplicative factors to generate unique "
+                "galaxyID's were not setup correctly.\n"
+                "FileNr_Mulfac = %"PRId64" and ForestNr_Mulfac = %"PRId64" should both be >=0\n",
+                run_params->FileNr_Mulfac, run_params->ForestNr_Mulfac);
+        return EXIT_FAILURE;
+    }
+
+    if(forests_info->frac_volume_processed <= 0.0) {
+        fprintf(stderr,"Error: The fraction of the entire simulation volume processed should be > 0.0. Instead, found %g\n",
+                forests_info->frac_volume_processed);
+        return EXIT_FAILURE;
+    }
+
 
     return status;
 }
@@ -104,7 +94,8 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
     /* Don't forget to free the open file handle */
     switch (TreeType) {
 #ifdef HDF5
-    case genesis_lhalo_hdf5:
+    case illustris_lhalo_hdf5:
+        cleanup_forests_io_lht_hdf5(forests_info);
         break;
 
     /* case genesis_standard_hdf5: */
@@ -137,7 +128,7 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
     return;
 }
 
-int64_t load_forest(struct params *run_params, const int forestnr, struct halo_data **halos, struct forest_info *forests_info)
+int64_t load_forest(struct params *run_params, const int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info)
 {
 
     int64_t nhalos;
@@ -146,13 +137,14 @@ int64_t load_forest(struct params *run_params, const int forestnr, struct halo_d
     switch (TreeType) {
 
 #ifdef HDF5
-    case genesis_lhalo_hdf5:
-        nhalos = load_forest_hdf5(forestnr, halos, forests_info);
+    case illustris_lhalo_hdf5:
+        nhalos = load_forest_hdf5(forestnr, halos, forests_info, run_params->Hubble_h);
         break;
 
     /* case genesis_standard_hdf5: */
     /*     nhalos = load_forest_genesis_hdf5(forestnr, halos, forests_info); */
     /*     break; */
+
 #endif
 
     case lhalo_binary:
@@ -167,7 +159,7 @@ int64_t load_forest(struct params *run_params, const int forestnr, struct halo_d
         fprintf(stderr, "Your tree type has not been included in the switch statement for ``%s`` in ``%s``.\n",
                 __FUNCTION__, __FILE__);
         fprintf(stderr, "Please add it there.\n");
-        ABORT(EXIT_FAILURE);
+        return -EXIT_FAILURE;
     }
 
     return nhalos;

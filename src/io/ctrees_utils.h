@@ -18,6 +18,7 @@ extern "C" {
         int *fd;/* file descriptor for each file output by CTrees*/
         int32_t numfiles;/* total number of unique `tree_*_*_*.dat` files */
         uint32_t nallocated;/* number of elements allocated for the first `int *fd` field */
+        uint64_t *numtrees_per_file;/* number of trees present in each of the `tree_*_*_*.dat` files */
     };
 
     struct additional_info{
@@ -35,8 +36,8 @@ extern "C" {
     extern int assign_forest_ids(const int64_t ntrees, struct locations_with_forests *locations, int64_t *forests, int64_t *tree_roots);
     extern void sort_locations_on_fid_file_offset(const int64_t ntrees, struct locations_with_forests *locations);
     extern int fix_flybys(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, int verbose);
-    extern int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, int *interrupted, const int verbose);
-    extern void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, const int max_snapnum);
+    extern int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, const int verbose);
+    extern int assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, const int max_snapnum);
 
 #ifdef __cplusplus
 }

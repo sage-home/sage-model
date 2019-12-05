@@ -18,14 +18,11 @@
 #include "io/save_gals_hdf5.h"
 #endif
 
-#define TREE_MUL_FAC        (1000000000LL)
-#define THISTASK_MUL_FAC      (1000000000000000LL)
-
 // Local Proto-Types //
-
 int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo_aux_data *haloaux,
-                                struct GALAXY *halogal, const int32_t treenr, const int32_t filenr,
-                                const int32_t LastFile, const int32_t numgals);
+                                struct GALAXY *halogal, const int64_t numgals,
+                                const int64_t treenr, const int32_t filenr,
+                                const int64_t filenr_mulfac, const int64_t forestnr_mulfac);
 
 // Externally Visible Functions //
 
@@ -66,7 +63,7 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 
 
 // Write all the galaxy properties to file.
-int32_t save_galaxies(const int task_forestnr, const int numgals, struct halo_data *halos,
+int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct halo_data *halos,
                       struct forest_info *forest_info,
                       struct halo_aux_data *haloaux, struct GALAXY *halogal,
                       struct save_info *save_info, const struct params *run_params)
@@ -119,11 +116,12 @@ int32_t save_galaxies(const int task_forestnr, const int numgals, struct halo_da
     // processed belong to a single tree (by definition) and because trees cannot be split over
     // multiple files, we can access the tree + fiel number once and use it for all galaxies being
     // saved.
-    int32_t original_treenr = forest_info->original_treenr[task_forestnr];
+    int64_t original_treenr = forest_info->original_treenr[task_forestnr];
     int32_t original_filenr = forest_info->FileNr[task_forestnr];
 
-    status = generate_galaxy_indices(halos, haloaux, halogal, original_treenr, original_filenr,
-                                     run_params->LastFile, numgals);
+    status = generate_galaxy_indices(halos, haloaux, halogal, numgals,
+                                     original_treenr, original_filenr,
+                                     run_params->FileNr_Mulfac, run_params->ForestNr_Mulfac);
     if(status != EXIT_SUCCESS) {
         return EXIT_FAILURE;
     }
@@ -184,52 +182,67 @@ int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save
 
 // Local Functions //
 
-#define TREE_MUL_FAC        (1000000000LL)
-#define THISTASK_MUL_FAC      (1000000000000000LL)
-
-
 // Generate a unique GalaxyIndex for each galaxy based on the file number, the file-local
 // tree number and the tree-local galaxy number.  NOTE: Both the file number and the tree number are
 // based on the **original simulation files**.  These may be different from the ``forestnr``
 // parameter being used to process the forest within SAGE; that ``forestnr`` is **task local** and
 // potentially does **NOT** correspond to the tree number in the original simulation file.
 int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo_aux_data *haloaux,
-                                struct GALAXY *halogal, const int32_t treenr, const int32_t filenr,
-                                const int32_t LastFile, const int32_t numgals)
+                                struct GALAXY *halogal, const int64_t numgals,
+                                const int64_t forestnr, const int32_t filenr,
+                                const int64_t filenr_mulfac, const int64_t forestnr_mulfac)
 {
 
-    // Assume that there are so many files, that there aren't as many trees.
-    int64_t my_thistask_mul_fac;
-    if(LastFile>=10000) {
-        my_thistask_mul_fac = THISTASK_MUL_FAC/10;
-    } else {
-        my_thistask_mul_fac = THISTASK_MUL_FAC;
-    }
-
     // Now generate the unique index for each galaxy.
-    for(int32_t gal_idx = 0; gal_idx < numgals; ++gal_idx) {
-
+    for(int64_t gal_idx = 0; gal_idx < numgals; ++gal_idx) {
         struct GALAXY *this_gal = &halogal[gal_idx];
 
-        int32_t GalaxyNr = this_gal->GalaxyNr;
-        int32_t CentralGalaxyNr = halogal[haloaux[halos[this_gal->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr;
+        uint32_t GalaxyNr = this_gal->GalaxyNr;
+        uint32_t CentralGalaxyNr = halogal[haloaux[halos[this_gal->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr;
 
-        // Check that the index would actually fit in a 64 bit number.
-        if(GalaxyNr > TREE_MUL_FAC || treenr > my_thistask_mul_fac/TREE_MUL_FAC) {
-            fprintf(stderr, "When determining a unique Galaxy Number, we assume that the number of trees are less than %"PRId64
-                            "This assumption has been broken.\n Simulation trees file number %d\tOriginal tree number %d\tGalaxy Number %d\n",
-                            my_thistask_mul_fac, filenr, treenr, GalaxyNr);
+        /*MS: check that the mechanism would produce unique galaxyindex within this run (across all tasks and all forests)*/
+        if(GalaxyNr > forestnr_mulfac || (filenr_mulfac > 0 && forestnr*forestnr_mulfac > filenr_mulfac)) {
+            fprintf(stderr, "When determining a unique Galaxy Number, we assume that the number of trees are less than %"PRId64". "
+                    "This assumption has been broken.\n"
+                    "Simulation trees file number %d\tOriginal tree number %"PRId64"\tGalaxy Number %d "
+                    "forestnr_mulfac = %"PRId64" forestnr*forestnr_mulfac = %"PRId64"\n",
+                    filenr_mulfac, filenr, forestnr, GalaxyNr, forestnr_mulfac, forestnr*forestnr_mulfac);
           return EXIT_FAILURE;
         }
 
+        /*MS: 23/9/2019 Check if the multiplication will overflow 64-bit integer */
+        if((forestnr > 0 && ((uint64_t) forestnr > (0xFFFFFFFFFFFFFFFFULL/(uint64_t) forestnr_mulfac))) ||
+           (filenr > 0 && ((uint64_t) filenr > (0xFFFFFFFFFFFFFFFFULL/(uint64_t) filenr_mulfac)))) {
+            fprintf(stderr,"Error: While generating an unique Galaxy Index. The multiplication required to "
+                    "generate the ID will overflow 64-bit\n"
+                    "forestnr = %"PRId64" forestnr_mulfac = %"PRId64" filenr = %d filenr_mulfac = %"PRId64"\n",
+                    forestnr, forestnr_mulfac, filenr, filenr_mulfac);
+            
+            return EXIT_FAILURE;
+        }
+
+        const uint64_t id_from_forestnr = forestnr_mulfac * forestnr;
+        const uint64_t id_from_filenr = filenr_mulfac * filenr;
+
+        if(id_from_forestnr > (0xFFFFFFFFFFFFFFFFULL - id_from_filenr)) {
+            fprintf(stderr,"Error: While generating an unique Galaxy Index. The addition required to generate the ID will overflow 64-bits \n");
+            fprintf(stderr,"id_from_forestnr = %"PRIu64 "id_from_filenr = %"PRIu64"\n", id_from_forestnr, id_from_filenr);
+            return EXIT_FAILURE;
+        }
+        
+        const uint64_t id_from_forest_and_file = id_from_forestnr + id_from_filenr;
+        if((GalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file)) ||
+           (CentralGalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file))) {
+            fprintf(stderr,"Error: While generating an unique Galaxy Index. The addition required to generate the ID will overflow 64-bits \n");
+            fprintf(stderr,"id_from_forest_and_file = %"PRIu64" GalaxyNr = %u CentralGalaxyNr = %u\n", id_from_forest_and_file, GalaxyNr, CentralGalaxyNr);
+            return EXIT_FAILURE;
+        }
+                
         // Everything is good, generate the index.
-        this_gal->GalaxyIndex = GalaxyNr + TREE_MUL_FAC * treenr + my_thistask_mul_fac * filenr;
-        this_gal->CentralGalaxyIndex= CentralGalaxyNr + TREE_MUL_FAC * treenr + my_thistask_mul_fac * filenr;
+        this_gal->GalaxyIndex = GalaxyNr + id_from_forest_and_file;
+        this_gal->CentralGalaxyIndex= CentralGalaxyNr + id_from_forest_and_file;
     }
 
     return EXIT_SUCCESS;
-
 }
 
-#undef TREE_MUL_FAC
-#undef THISTASK_MUL_FAC

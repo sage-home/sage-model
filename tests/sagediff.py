@@ -379,8 +379,9 @@ def determine_snap_from_binary_z(hdf5_file, redshift, verbose=False):
 
         # We need to be careful here. We have a "Header" group that we don't
         # want to count when we're trying to work out the correct snapshot.
-        if key == "Header":
+        if 'Snap' not in key:
             continue
+
         hdf5_snap_keys.append(key)
         hdf5_redshifts.append(hdf5_file["Core_0"][key].attrs["redshift"])
 
