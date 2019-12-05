@@ -290,22 +290,24 @@ int64_t load_forest_hdf5(const int32_t forestnr, struct halo_data **halos, struc
         return INVALID_FILE_POINTER;
     }
 
-
     /* Figure out nhalos by checking the size of the 'Descendant' dataset */
     /* https://stackoverflow.com/questions/15786626/get-the-dimensions-of-a-hdf5-dataset */
     const char field_name[] = "Descendant";
     snprintf(dataset_name, MAX_STRING_LEN - 1, "tree_%03d/%s", forestnr, field_name);
-    hid_t dataset = H5Dopen(fd, dataset_name, H5P_DEFAULT);
-    hid_t dspace = H5Dget_space(dataset);
-    const int ndims = H5Sget_simple_extent_ndims(dspace);
-    XASSERT(ndims == 0, -1,
-            "Error: Expected field = '%s' to be 1-D array\n",
-            field_name);
-    hsize_t dims[ndims];
-    H5Sget_simple_extent_dims(dspace, dims, NULL);
-    H5Dclose(dataset);
-    const int64_t nhalos = dims[0];
+    int ndims;
+    hsize_t *dims;
 
+    status = read_dataset_shape(fd, dataset_name, &ndims, &dims);
+    if(status != EXIT_SUCCESS) {
+        const int neg_status = status < 0 ? status:-status;
+        return neg_status;
+    }
+
+    XRETURN(ndims == 0, -1, "Error: Expected field = '%s' to be 1-D array with ndims == 0. Instead found ndims = %d\n",
+            field_name, ndims);
+    const int64_t nhalos = dims[0];
+    free(dims);
+    
     /* allocate the entire memory space required to store the halos*/
     *halos = mymalloc(sizeof(struct halo_data) * nhalos);
     struct halo_data *local_halos = *halos;

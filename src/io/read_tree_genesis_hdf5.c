@@ -41,6 +41,11 @@ static char galaxy_property_names[num_galaxy_props][MAX_STRING_LEN];
 static int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap);
 static void get_forest_metadata_filename(const char *forestfilename, const size_t stringlen, char *metadata_filename);
 
+#define CONVERSION_FACTOR_FOR_GENESIS_UNIQUE_INDEX      (1000000000000)
+#define CONVERT_HALOID_TO_SNAPSHOT(haloid)    (haloid / CONVERSION_FACTOR_FOR_GENESIS_UNIQUE_INDEX )
+#define CONVERT_HALOID_TO_INDEX(haloid)       ((haloid %  CONVERSION_FACTOR_FOR_GENESIS_UNIQUE_INDEX) - 1)
+#define CONVERT_SNAPSHOT_AND_INDEX_TO_HALOID(snap, index)    (snap*CONVERSION_FACTOR_FOR_GENESIS_UNIQUE_INDEX + index + 1)
+
 
 void get_forests_filename_genesis_hdf5(char *filename, const size_t len, const struct params *run_params)
 {
@@ -187,10 +192,23 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             fprintf(stderr,"Error: On ThisTask = %d can't open file forest file '%s'\n", ThisTask, fname);
             return FILE_NOT_FOUND;
         }
+        
+        int ndims;
+        hsize_t *dims;
+        char dataset_name[] = "ForestInfoInFile/ForestSizesInFile";
+        herr_t status = read_dataset_shape(h5_fd, dataset_name, &ndims, &dims);
+        if(status != EXIT_SUCCESS) {
+            return status;
+        }
 
-        int64_t nforests_this_file;
+        XRETURN(ndims == 1, INVALID_VALUE_READ_FROM_FILE,
+                "Error: Expected field = '%s' to be 1-D array with ndims == 1. Instead found ndims = %d\n",
+                dataset_name, ndims);
+        
+        const int64_t nforests_this_file = dims[0];
+        free(dims);
+        /* READ_GENESIS_ATTRIBUTE(h5_fd, "ForestInfoInFile", "NForests", nforests_this_file); */
 
-        READ_GENESIS_ATTRIBUTE(h5_fd, "ForestInfoInFile", "NForests", nforests_this_file);
         XRETURN(nforests_this_file >= 1, INVALID_VALUE_READ_FROM_FILE,
                 "Error: Expected the number of forests in this file to be at least 1. However, reading in from "
                 "forest file ('%s') shows nforests = %"PRId64"\n. Exiting...\n",
@@ -210,6 +228,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
     gen->nforests = nforests_this_task;
     gen->start_forestnum = start_forestnum;
+    forests_info->nforests_this_task = nforests_this_task;/* Note: Number of forests to process on this task is also stored at the container struct*/
 
     gen->num_forests_to_process_per_file = calloc(totnfiles, sizeof(gen->num_forests_to_process_per_file[0]));/* calloc is required */
     gen->start_forestnum_per_file = calloc(totnfiles, sizeof(gen->start_forestnum_per_file[0]));
@@ -414,7 +433,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     for(int i=start_filenum;i<=end_filenum;i++) {
         char fname[5*MAX_STRING_LEN];
         snprintf(fname, sizeof(fname), "%s.%d", filename, i);
-        gen->h5_fds[i] = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+        gen->h5_fds[i] = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
         XRETURN(gen->h5_fds[i] >= 0, FILE_NOT_FOUND,
                 "Error: On ThisTask = %d can't open file forest file '%s'\n",
                 ThisTask, fname);
@@ -422,7 +441,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
     /* Perform some consistency checks from the first file */
     READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header", "NSnaps", (run_params->nsnapshots));
-    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Particle_mass", "DarkMatter", (run_params->PartMass));
+    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Particle_mass", "dm", (run_params->PartMass));
     READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "Omega_m", (run_params->Omega));
     READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "Omega_Lambda", (run_params->OmegaLambda));
     READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "h_val", (run_params->Hubble_h));
@@ -461,6 +480,17 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 #undef CHECK_AND_ABORT_UNITS_VS_PARAM_FILE
 
 
+    /* Check that the ID conversion factor is correct */
+    int64_t conv_factor;
+    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/TreeBuilder", "Temporal_halo_id_value", conv_factor);
+    if(conv_factor != CONVERSION_FACTOR_FOR_GENESIS_UNIQUE_INDEX) {
+        fprintf(stderr,"Error: Expected to find the conversion factor between ID and snapshot + haloindex = %ld "
+                "but instead found = %"PRId64" within the hdf5 file\n",
+                CONVERSION_FACTOR_FOR_GENESIS_UNIQUE_INDEX, conv_factor);
+        return -1;
+    }
+    
+    
     int num_props_assigned = 0;
 #define ASSIGN_GALAXY_PROPERTY_NAME(propertyname, enumval) {            \
         snprintf(galaxy_property_names[enumval], MAX_STRING_LEN-1, "%s", propertyname); \
@@ -632,7 +662,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
             ABORT(INTEGER_32BIT_TOO_SMALL);
         }
         char dset_name[MAX_STRING_LEN + 1];
-        snprintf(dset_name, MAX_STRING_LEN, "ForestInfo/Snaps/Snaps_%d", isnap);
+        snprintf(dset_name, MAX_STRING_LEN, "ForestInfo/Snaps/Snap_%03d", isnap);
         READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, dset_name, "NumHalosInForest", &h5_global_forestnum, &h5_single_item, &(nhalos_per_snap[isnap]));
 
         forest_local_offsets[isnap] = offset;
@@ -679,25 +709,25 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
 
 #define READ_PARTIAL_1D_ARRAY(snap_group, isnap, dataset_enum, offset, count, buffer) { \
         hid_t h5_dset = H5Dopen2(snap_group, galaxy_property_names[dataset_enum], H5P_DEFAULT); \
-        XRETURN(h5_dset >= 0, HDF5_ERROR,                               \
+        XRETURN(h5_dset >= 0, -HDF5_ERROR,                               \
                 "Error encountered when trying to open up dataset %s at snapshot = %d\n", \
                 galaxy_property_names[dataset_enum], isnap);            \
         hid_t h5_fspace = H5Dget_space(h5_dset);                        \
-        XRETURN(h5_fspace >= 0, HDF5_ERROR,                             \
+        XRETURN(h5_fspace >= 0, -HDF5_ERROR,                             \
                 "Error encountered when trying to reserve filespace for dataset %s at snapshot = %d\n", \
                 galaxy_property_names[dataset_enum], isnap);            \
         herr_t macro_status = H5Sselect_hyperslab(h5_fspace, H5S_SELECT_SET, offset, NULL, count, NULL); \
-        XRETURN(macro_status >= 0, HDF5_ERROR,                          \
+        XRETURN(macro_status >= 0, -HDF5_ERROR,                          \
                 "Error: Failed to select hyperslab for dataset = %s.\n" \
                 "The dimensions of the dataset was %d.\n",              \
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
         hid_t h5_memspace = H5Screate_simple(1, count, NULL);           \
-        XRETURN(h5_memspace >= 0, HDF5_ERROR,                           \
+        XRETURN(h5_memspace >= 0, -HDF5_ERROR,                           \
                 "Error: Failed to select hyperslab for dataset = %s.\n" \
                 "The dimensions of the dataset was %d\n.",              \
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
         const hid_t h5_dtype = H5Dget_type(h5_dset);                    \
-        XRETURN(h5_dtype >= 0, HDF5_ERROR,                              \
+        XRETURN(h5_dtype >= 0, -HDF5_ERROR,                              \
                 "Error: Failed to get datatype for dataset = %s.\n"     \
                 "The dimensions of the dataset was %d\n.",              \
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
@@ -706,15 +736,15 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                 "Error: Failed to read array for dataset = %s.\n"       \
                 "The dimensions of the dataset was %d\n.",              \
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
-        XRETURN(H5Dclose(h5_dset) >= 0, HDF5_ERROR,                     \
+        XRETURN(H5Dclose(h5_dset) >= 0, -HDF5_ERROR,                     \
                 "Error: Could not close dataset = '%s'.\n"              \
                 "The dimensions of the dataset was %d\n.",              \
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
-        XRETURN(H5Tclose(h5_dtype) >= 0, HDF5_ERROR,                    \
+        XRETURN(H5Tclose(h5_dtype) >= 0, -HDF5_ERROR,                    \
                 "Error: Failed to close the datatype for = %s.\n"       \
                 "The dimensions of the dataset was %d\n.",              \
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
-        XRETURN(H5Sclose(h5_memspace) >= 0, HDF5_ERROR,                 \
+        XRETURN(H5Sclose(h5_memspace) >= 0, -HDF5_ERROR,                 \
                 "Error: Failed to close the dataspace for = %s.\n"      \
                 "The dimensions of the dataset was %d\n.",              \
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
@@ -765,24 +795,26 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         snap_offset[0] = (hsize_t) forest_offsets[isnap];
         nhalos_snap[0] = nhalos_per_snap[isnap];
         if(nhalos_snap[0] == 0) continue;
-
+        
+        fprintf(stderr,"Reading nhalos = %llu at or snapshot = %d\n", nhalos_snap[0], isnap);
+        
         char snap_group_name[MAX_STRING_LEN];
         snprintf(snap_group_name, MAX_STRING_LEN-1, "Snap_%03d", isnap);
         hid_t h5_grp = H5Gopen(h5_fd, snap_group_name, H5P_DEFAULT);
-        XRETURN(h5_grp >= 0, HDF5_ERROR, "Error: Could not open group = `%s` corresponding to snapshot = %d\n",
+        XRETURN(h5_grp >= 0, -HDF5_ERROR, "Error: Could not open group = `%s` corresponding to snapshot = %d\n",
                 snap_group_name, isnap);
-
+        
         /* Merger Tree Pointers */
         //Descendant, FirstProgenitor, NextProgenitor, FirstHaloInFOFgroup, NextHaloInFOFgroup
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, head_enum, snap_offset, nhalos_snap, buffer);
-
+        
         /* Can not directly assign since 'Head' contains Descendant haloid which is too large to be contained
            within 32 bits. I will need a separate assignment to break up haloid into a local index + snapshot,
            and then use the forest-local offset for each snapshot */
-
+        
         //the last parameter is '1' for mergertree indices and 0 otherwise
         ASSIGN_BUFFER_WITH_MERGERTREE_TO_SAGE(nhalos_snap, int64_t, Descendant, isnap, 1);
-
+        
         //Same with 'Tail' -> 'FirstProgenitor'
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, tail_enum, snap_offset, nhalos_snap, buffer);
         //the last parameter is '1' for mergertree indices and 0 otherwise
@@ -792,7 +824,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, hosthaloid_enum, snap_offset, nhalos_snap, buffer);
         //the last parameter is '1' for mergertree indices and 0 otherwise
         ASSIGN_BUFFER_WITH_MERGERTREE_TO_SAGE(nhalos_snap, int64_t, FirstHaloInFOFgroup, isnap, 0);
-
+        
         /* MS 3rd June, 2019: The LHaloTree convention (which sage uses) is that Mvir contains M200c. While this is DEEPLY confusing,
            I am using C 'unions' to reduce the confusion slightly. What will happen here is that 'Mass_200crit' will get
            assigned to the 'M200c' field within the halo struct; but that 'M200c' will also be accessible via 'Mvir'.
@@ -801,7 +833,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         ASSIGN_BUFFER_TO_SAGE(nhalos_snap, double, M200c, float);//M200c is an alias for Mvir
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, vmax_enum, snap_offset, nhalos_snap, buffer);
         ASSIGN_BUFFER_TO_SAGE(nhalos_snap, double, Vmax, float);
-
+        
         /* Read in the positions for the halo centre*/
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, xc_enum, snap_offset, nhalos_snap, buffer);
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, yc_enum, snap_offset, nhalos_snap, buffer + nhalos_snap[0]*sizeof(double));
@@ -811,36 +843,36 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                                                                              at the assignment stage (i.e., for type conversion)
                                                                              Otherwise, the memory areas would be accessed incorrectly
                                                                              and we would get corrupted results -- MS 27/11/2019 */
-
+        
         /* Read in the halo velocities */
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, vxc_enum, snap_offset, nhalos_snap, buffer);
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, vyc_enum, snap_offset, nhalos_snap, buffer + nhalos_snap[0]*sizeof(double));
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, vzc_enum, snap_offset, nhalos_snap, buffer + 2*nhalos_snap[0]*sizeof(double));
         /* Assign to the appropriate vel array within sage*/
         ASSIGN_BUFFER_TO_NDIM_SAGE(nhalos_snap, NDIM, double, Vel, float);
-
+        
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, len_enum,  snap_offset, nhalos_snap, buffer);
         ASSIGN_BUFFER_TO_SAGE(nhalos_snap, int64_t, Len, int32_t);
-
+        
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, mostboundid_enum,  snap_offset, nhalos_snap, buffer);
         ASSIGN_BUFFER_TO_SAGE(nhalos_snap, int64_t, MostBoundID, long long);
-
+        
         /* Read in the angular momentum */
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, lx_enum, snap_offset, nhalos_snap, buffer);
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, ly_enum, snap_offset, nhalos_snap, buffer + nhalos_snap[0]*sizeof(double));
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, lz_enum, snap_offset, nhalos_snap, buffer + 2*nhalos_snap[0]*sizeof(double));
         /* Assign to the appropriate vel array within sage*/
         ASSIGN_BUFFER_TO_NDIM_SAGE(nhalos_snap, NDIM, double, Spin, float);
-
+        
         /* READ_PARTIAL_1D_ARRAY(h5_grp, isnap, m200b_enum, snap_offset, nhalos_snap, buffer); */
         /* ASSIGN_BUFFER_TO_SAGE(nhalos_snap, double, M_Mean200, float); */
-
+        
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, veldisp_enum, snap_offset, nhalos_snap, buffer);
         ASSIGN_BUFFER_TO_SAGE(nhalos_snap, double, VelDisp, float);
-
-        XRETURN(H5Gclose(h5_grp) >= 0, HDF5_ERROR, "Error: Could not close snapshot group = '%s'\n", snap_group_name);
+        
+        XRETURN(H5Gclose(h5_grp) >= 0, -HDF5_ERROR, "Error: Could not close snapshot group = '%s'\n", snap_group_name);
         /* Done with all the reading for this snapshot */
-
+        
         const double scale_factor = run_params->scale_factors[isnap];
         const double hubble_h = run_params->Hubble_h;
         for(hsize_t i=0;i<nhalos_snap[0];i++) {
@@ -849,7 +881,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
             local_halos[i].FileNr = 0;
             local_halos[i].SubhaloIndex = -1;
             local_halos[i].SubHalfMass = -1.0;
-
+            
             /* Change the conventions across the entire forest to match the SAGE conventions */
             /* convert the masses into 1d10 Msun/h units */
             local_halos[i].M200c *= hubble_h * 1e-10;// M200c is an alias for Mvir
@@ -874,11 +906,16 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         int32_t desc = local_halos[i].Descendant;
         if(desc == -1) continue;
 
+        XRETURN(desc >=0 && desc < nhalos, -1,
+                "Error: for halonum = %"PRId64" at snapshot = %d with ID = %lld "
+                "(forestnr = %"PRId64") the descendant = %d must be located within [0, %"PRId64")\n",
+                i, local_halos[i].SnapNum, local_halos[i].MostBoundID, forestnr, desc, nhalos);
+        
         int32_t first_prog_of_desc_halo = local_halos[desc].FirstProgenitor;
         if(first_prog_of_desc_halo == -1) {
             //THIS can not happen. FirstProg should have been assigned correctly already
             fprintf(stderr,"Error: FirstProgenitor can not be -1\n");
-            ABORT(EXIT_FAILURE);
+            return -1;
         }
 
         //if the first progenitor is this current halo, then nothing to do here
@@ -904,7 +941,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         if(fofhalo == -1) {
             //This can not happen. FirstHaloinFOF should already be set correctly
             fprintf(stderr,"Error: FOFhalo can not be -1\n");
-            ABORT(EXIT_FAILURE);
+            return -1;
         }
         //if the FOFhalo is this current halo, then nothing to do here
         if(fofhalo == i) continue;

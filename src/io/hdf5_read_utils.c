@@ -50,6 +50,61 @@ herr_t read_attribute(hid_t fd, const char *group_name, const char *attr_name, v
 }
 
 
+herr_t read_dataset_shape(hid_t fd, const char *dataset_name, int *ndims, hsize_t **dims)
+{
+    hid_t dataset_id = H5Dopen(fd, dataset_name, H5P_DEFAULT);
+    if(dataset_id < 0) {
+        fprintf(stderr, "Error encountered when trying to open up dataset '%s'.\n", dataset_name);
+        H5Eprint(dataset_id, stderr);
+        return -1;
+    }
+
+    hid_t dspace = H5Dget_space(dataset_id);
+    if(dspace < 0) {
+        fprintf(stderr, "Error encountered when trying to get dataspace for dataset '%s'.\n", dataset_name);
+        H5Eprint(dataset_id, stderr);
+        return dspace;
+    }
+
+    *ndims = H5Sget_simple_extent_ndims(dspace);
+    if(*ndims < 0) {
+        fprintf(stderr,"Error: Could not get the number of dimensions of the dataset '%s'\n", dataset_name);
+        return (herr_t) EXIT_FAILURE;
+    }
+
+    *dims = calloc(*ndims, sizeof(**dims));
+    if(dims == NULL) {
+        fprintf(stderr,"Error: Could not allocate memory for the dataset shape for the dataset '%s'. ndims = %d\n", dataset_name, *ndims);
+        return (herr_t) EXIT_FAILURE;
+    }
+
+    herr_t status = H5Sget_simple_extent_dims(dspace, *dims, NULL);
+    if(status < 0) {
+        fprintf(stderr,"Error: Could not get the shape of the dataset '%s'. ndims = %d\n", dataset_name, *ndims);
+        H5Eprint(dspace, stderr);
+        return status;
+    }
+
+    status = H5Sclose(dspace);
+    if(status < 0) {
+        fprintf(stderr,"Error encountered while trying to close dataspace associated with dataset_name = '%s'\n", dataset_name);
+        H5Eprint(dspace, stderr);
+        return status;
+    }
+
+    status = H5Dclose(dataset_id);
+    if(status < 0) {
+        fprintf(stderr,"Error encountered while trying to close dataspace associated with dataset_name = '%s'\n", dataset_name);
+        H5Eprint(dataset_id, stderr);
+        return status;
+    }
+
+
+    return (herr_t) EXIT_SUCCESS;
+}
+
+
+
 herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *buffer, const size_t dst_size, const int check_size)
 {
     int already_open_dataset = dataset_id > 0 ? 1:0;
