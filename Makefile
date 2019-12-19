@@ -1,10 +1,13 @@
 #USE-MPI = yes # set this if you want to run in embarrassingly parallel
 USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
+#MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
+				 # Note: This will not work if you're using clang as your compiler.
+
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 LIBS :=
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
-CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC 
+CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC
 SRC_PREFIX := src
 
 LIBNAME := sage
@@ -13,9 +16,9 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-		   io/save_gals_binary.c 
+		   io/save_gals_binary.c
 LIBINCL := $(LIBSRC:.c=.h)
-LIBINCL += io/parse_ctrees.h 
+LIBINCL += io/parse_ctrees.h
 
 SRC := main.c $(LIBSRC)
 SRC  := $(addprefix $(SRC_PREFIX)/, $(SRC))
@@ -69,20 +72,6 @@ H5_OBJS := $(addprefix $(SRC_PREFIX)/, $(H5_OBJS))
 
 ## Only set everything if the command is not "make clean" (or related to "make clean")
 ifeq ($(DO_CHECKS), 1)
-  ON_CI := false
-  ifeq ($(CI), true)
-    ON_CI := true
-  endif
-
-  ifeq ($(TRAVIS), true)
-    ON_CI := true
-  endif
-
-  # Add the -Werror flag if running on some continuous integration provider
-  ifeq ($(ON_CI), true)
-    CCFLAGS += -Werror
-  endif
-
   ## Check if CC is clang under the hood
   CC_VERSION := $(shell $(CC) --version 2>/dev/null)
   ifndef CC_VERSION
@@ -96,7 +85,7 @@ ifeq ($(DO_CHECKS), 1)
   else
     CC_IS_CLANG := 0
   endif
-  ifeq ($(UNAME), Darwin)    
+  ifeq ($(UNAME), Darwin)
     ifeq ($(CC_IS_CLANG), 0)
       ## gcc on OSX has trouble with
       ## AVX+ instructions. This flag uses
@@ -104,9 +93,23 @@ ifeq ($(DO_CHECKS), 1)
       CCFLAGS += -Wa,-q
     endif
   endif
-  ## end of checking is CC 
 
-  # This automatic detection of GSL needs to be before HDF5 checking.  
+  ON_CI := false
+  ifeq ($(CI), true)
+    ON_CI := true
+  endif
+
+  ifeq ($(TRAVIS), true)
+    ON_CI := true
+  endif
+
+  ifeq ($(ON_CI), true)
+	# If running on CI, fail if any warnings are generated when Making.
+    CCFLAGS += -Werror
+  endif
+  ## end of checking is CC
+
+  # This automatic detection of GSL needs to be before HDF5 checking.
   # This allows HDF5 to be installed in a different directory than Miniconda.
   GSL_FOUND := $(shell gsl-config --version 2>/dev/null)
   ifdef GSL_FOUND
@@ -135,7 +138,7 @@ ifeq ($(DO_CHECKS), 1)
         ## something like /path/to/bin/h5ls; the 'sed' command
         ## replaces the '/bin/h5ls' with '' (i.e., removes '/bin/h5ls')
         ## and returns '/path/to' (without the trailing '/')
-        HDF5_DIR := `which h5ls 2>/dev/null | sed 's/\/bin\/h5ls//'`
+        HDF5_DIR := $(strip $(shell which h5ls 2>/dev/null | sed 's/\/bin\/h5ls//'))
         ifndef HDF5_DIR
           $(warning $$HDF5_DIR environment variable is not defined but HDF5 is requested)
           $(warning Could not locate hdf5 tools either)
@@ -159,11 +162,11 @@ ifeq ($(DO_CHECKS), 1)
     INCL += $(H5_INCL)
 
     HDF5_INCL := -I$(HDF5_DIR)/include
-    HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -lhdf5_hl -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
+    HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
 
     OPTS += -DHDF5
     LIBS += $(HDF5_LIB)
-    CCFLAGS += $(HDF5_INCL) 
+    CCFLAGS += $(HDF5_INCL)
   endif
 
   OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
@@ -184,10 +187,16 @@ ifeq ($(DO_CHECKS), 1)
     OPTIMIZE += -march=native
   endif
 
-  CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags 
+  # Some flags to allow memory checking (similar to Valgrind).
+  # Only enabled when specifically asked.
+  ifdef MEM-CHECK
+    CCFLAGS +=-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
+  endif
+
+  CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
   LIBS   +=   -lm
 else
-  # something like `make clean` is in effet -> need to also the HDF5 objects
+  # something like `make clean` is in effect -> need to also the HDF5 objects
   # if HDF5 is requested
   ifdef USE-HDF5
     OBJS += $(H5_OBJS)
@@ -204,7 +213,7 @@ $(EXEC): $(OBJS) $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
 
 $(SAGELIB): $(LIBOBJS)
-	ar rcs $@ $(LIBOBJS) 
+	ar rcs $@ $(LIBOBJS)
 
 .phony: clean celan celna clena tests
 celan celna clena: clean

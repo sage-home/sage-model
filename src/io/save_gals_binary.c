@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <math.h>
@@ -25,7 +24,7 @@ int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_inf
 
     int32_t ntrees = forest_info->nforests_this_task;
 
-    // We open up files for each output. We'll store the file IDs of each of these file. 
+    // We open up files for each output. We'll store the file IDs of each of these file.
     save_info->save_fd = malloc(run_params->NOUT * sizeof(int32_t));
 
     char buffer[4*MAX_STRING_LEN + 1];
@@ -152,10 +151,17 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
             return FILE_WRITE_ERROR;
         }
 
-        nwritten = mypwrite(save_info->save_fd[snap_idx], &save_info->tot_ngals[snap_idx], sizeof(int32_t), sizeof(int32_t));
-        if(nwritten != sizeof(int32_t)) {
+        if(save_info->tot_ngals[snap_idx] > INT_MAX) {
+            fprintf(stderr,"Error: totngals = %"PRId64" at snapshot index = %d exceeds the 32-bit integer limit\n",
+                    save_info->tot_ngals[snap_idx], snap_idx);
+            return FILE_WRITE_ERROR;
+        }
+
+        const int32_t ng = (int32_t) save_info->tot_ngals[snap_idx];
+        nwritten = mypwrite(save_info->save_fd[snap_idx], &ng, sizeof(ng), sizeof(int32_t));
+        if(nwritten != sizeof(ng)) {
             fprintf(stderr, "Error: Failed to write out 1 element for the total number of galaxies for the header of file %d.\n"
-                            "Wrote %d bytes instead of %zu.\n", snap_idx, nwritten, sizeof(*(save_info->tot_ngals)));
+                            "Wrote %d bytes instead of %zu.\n", snap_idx, nwritten, sizeof(ng));
             return FILE_WRITE_ERROR;
         }
 
@@ -206,7 +212,7 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
         o->Vel[j] = g->Vel[j];
         o->Spin[j] = halos[g->HaloNr].Spin[j];
     }
-    
+
     o->Len = g->Len;
     o->Mvir = g->Mvir;
     o->CentralMvir = get_virial_mass(halos[g->HaloNr].FirstHaloInFOFgroup, halos, run_params);
@@ -229,21 +235,21 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
     o->MetalsHotGas = g->MetalsHotGas;
     o->MetalsEjectedMass = g->MetalsEjectedMass;
     o->MetalsICS = g->MetalsICS;
-  
+
     o->SfrDisk = 0.0;
     o->SfrBulge = 0.0;
     o->SfrDiskZ = 0.0;
     o->SfrBulgeZ = 0.0;
-  
+
     // NOTE: in Msun/yr
     for(int step = 0; step < STEPS; step++) {
         o->SfrDisk += g->SfrDisk[step] * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
         o->SfrBulge += g->SfrBulge[step] * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
-        
+
         if(g->SfrDiskColdGas[step] > 0.0) {
             o->SfrDiskZ += g->SfrDiskColdGasMetals[step] / g->SfrDiskColdGas[step] / STEPS;
         }
-        
+
         if(g->SfrBulgeColdGas[step] > 0.0) {
             o->SfrBulgeZ += g->SfrBulgeColdGasMetals[step] / g->SfrBulgeColdGas[step] / STEPS;
         }
@@ -267,7 +273,7 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
 
     o->TimeOfLastMajorMerger = g->TimeOfLastMajorMerger * run_params->UnitTime_in_Megayears;
     o->TimeOfLastMinorMerger = g->TimeOfLastMinorMerger * run_params->UnitTime_in_Megayears;
-	
+
     o->OutflowRate = g->OutflowRate * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS;
 
     //infall properties
@@ -286,4 +292,3 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
 
 #undef TREE_MUL_FAC
 #undef THISTASK_MUL_FAC
-

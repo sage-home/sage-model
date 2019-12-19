@@ -1,4 +1,4 @@
-|TRAVIS|
+|TRAVIS| |DOCS| |CODACY|
 
 *************************************
 Semi-Analytic Galaxy Evolution (SAGE)
@@ -12,7 +12,7 @@ results can be found in `Croton et al. (2016) <https://arxiv.org/abs/1601.04709>
 ``SAGE`` is written in C and was built to be modular and customisable.
 It will run on any N-body simulation whose trees are organised in a supported format and contain a minimum set of basic halo properties.
 For testing purposes, treefiles for the `mini-Millennium Simulation <http://arxiv.org/abs/astro-ph/0504097>`_ are available
-`here <https://data-portal.hpc.swin.edu.au/dataset/mini-millennium-simulation>`_. 
+`here <https://data-portal.hpc.swin.edu.au/dataset/mini-millennium-simulation>`_.
 
 Galaxy formation models built using ``SAGE`` on the Millennium, Bolshoi and simulations can be downloaded at the
 `Theoretical Astrophysical Observatory (TAO) <https://tao.asvo.org.au/>`_. You can also find SAGE on `ascl.net <http://ascl.net/1601.006>`_.
@@ -24,9 +24,9 @@ Pre-Requisites
 --------------
 
 ``SAGE`` should compile on most systems out of the box and the only required tool is a `C99  compiler <https://en.wikipedia.org/wiki/C99>`_.
-`GSL <http://www.gnu.org/software/gsl/>`_ is recommended but not necessary. 
+`GSL <http://www.gnu.org/software/gsl/>`_ is recommended but not necessary.
 
-Downloading 
+Downloading
 -----------
 
 ``SAGE`` can be installed by cloning the GitHub repository:
@@ -46,11 +46,11 @@ To create the ``SAGE`` executable, simply run the following command:
     $ make
 
 ``SAGE`` is MPI compatible which can be enabled setting ``USE-MPI = yes`` in
-the ``Makefile``.  To run in parallel, ensure that you have a installed an MPI distribution (OpenMPI, MPICH, Intel MPI etc). 
-When compiling with MPI support, the ``Makefile`` expects that the MPI compiler is called ``mpicc`` and is configured appropriately. 
+the ``Makefile``.  To run in parallel, ensure that you have a installed an MPI distribution (OpenMPI, MPICH, Intel MPI etc).
+When compiling with MPI support, the ``Makefile`` expects that the MPI compiler is called ``mpicc`` and is configured appropriately.
 
 Addtionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting
-``USE-HDF5 = yes`` in the ``Makefile``. If the input trees are in HDF5 format, or you wish to output the catalogs in HDF5 (rather than the default binary format), then please compile with the ``USE-HDF5 = yes`` option. 
+``USE-HDF5 = yes`` in the ``Makefile``. If the input trees are in HDF5 format, or you wish to output the catalogs in HDF5 (rather than the default binary format), then please compile with the ``USE-HDF5 = yes`` option.
 
 Running the code
 ================
@@ -79,19 +79,19 @@ Plotting the Output
 ===================
 
 In the ``analysis`` directory are a number of Python scripts to read and parse
-the ``SAGE`` output.  The most important file is ``allresults.py`` which  acts
-as the driver file.  It can be executed as:
+the ``SAGE`` output.  The most important file is ``example.py`` which creates
+plots for the default Mini-Millennium galaxies.
 
 .. code::
 
     $ cd analysis/
-    $ python allresults.py
+    $ python example.py
 
 and will create a number of useful diagnostic plots in the ``analysis/plots``
 directory.
 
 We also include the ability to compare the properties of a number of different
-models.  See the documenation in the ``__main__`` function call of ``allresults.py`` to use this functionality.
+models.  See the documenation in the ``__main__`` function call of ``example.py`` to use this functionality.
 
 Citation
 =========
@@ -101,8 +101,8 @@ If you use SAGE in a publication, please cite the following items:
 .. code::
 
     @ARTICLE{2016ApJS..222...22C,
-    	author = {{Croton}, D.~J. and {Stevens}, A.~R.~H. and {Tonini}, C. and 
-		{Garel}, T. and {Bernyk}, M. and {Bibiano}, A. and {Hodkinson}, L. and 
+    	author = {{Croton}, D.~J. and {Stevens}, A.~R.~H. and {Tonini}, C. and
+		{Garel}, T. and {Bernyk}, M. and {Bibiano}, A. and {Hodkinson}, L. and
 		{Mutch}, S.~J. and {Poole}, G.~B. and {Shattow}, G.~M.},
 	title = "{Semi-Analytic Galaxy Evolution (SAGE): Model Calibration and Basic Results}",
     	journal = {\apjs},
@@ -124,15 +124,21 @@ Author
 
 Questions and comments can be sent to Darren Croton: dcroton@astro.swin.edu.au.
 
-
-Maintainers 
+Maintainers
 ============
 
 - Jacob Seiler (@jacobseiler)
 - Manodeep Sinha (@manodeep)
 - Darren Croton (@darrencroton)
 
-
 .. |TRAVIS| image:: https://img.shields.io/travis/com/sage-home/sage-model/master.svg?logo=travis&logoColor=white&label=Travis%20CI
+    :alt: Travis Badge
     :target: https://travis-ci.com/sage-home/sage-model
 
+.. |DOCS| image:: https://img.shields.io/readthedocs/sage-model/latest.svg?logo=read%20the%20docs&logoColor=white&label=Docs
+    :alt: RTD Badge
+    :target: https://sage-model.readthedocs.io/en/latest/index.html
+
+.. |CODACY| image:: https://api.codacy.com/project/badge/Grade/0eac8d8442934445b7295624c2900cd3
+   :alt: Codacy Badge
+   :target: https://app.codacy.com/app/jacobseiler/sage-model?utm_source=github.com&utm_medium=referral&utm_content=jacobseiler/sage-model&utm_campaign=Badge_Grade_Dashboard

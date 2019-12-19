@@ -6,7 +6,6 @@ Author: Jacob Seiler
 """
 
 import numpy as np
-import matplotlib
 
 
 def plot_smf_data(ax, hubble_h, imf):
@@ -14,7 +13,7 @@ def plot_smf_data(ax, hubble_h, imf):
     Plots stellar mass function observational data. Uses data from Balry et al., 2008.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
@@ -27,7 +26,7 @@ def plot_smf_data(ax, hubble_h, imf):
         If "Chabrier", reduces the x-values of the Baldry data by 0.26 dex.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.
@@ -110,7 +109,7 @@ def plot_temporal_smf_data(ax, imf):
     from Marchesini et al., 2009.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
@@ -120,7 +119,7 @@ def plot_temporal_smf_data(ax, imf):
          If "Chabrier", scales the x-values of the Marchesini data by a factor of 1.6 / 1.8.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.
@@ -173,7 +172,7 @@ def plot_bmf_data(ax, hubble_h, imf):
     Plots baryonic mass function observational data. Uses data from Bell et al., 2003.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
@@ -187,7 +186,7 @@ def plot_bmf_data(ax, hubble_h, imf):
         If "Chabrier", scales the x-values of the Bell data by a factor of 0.7 / 1.8.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.
@@ -212,7 +211,7 @@ def plot_bmf_data(ax, hubble_h, imf):
         print("plot_bmf_data() called with an IMF value of {0}.  Only Salpeter or "
               "Chabrier allowed.".format(imf))
 
-    ax.plot(np.log10(10.0**M /0.7 /1.8), yval, 'g--', lw=1.5,
+    ax.plot(mass_shifted, yval, 'g--', lw=1.5,
             label='Bell et al. 2003')
 
     return ax
@@ -222,7 +221,7 @@ def plot_gmf_data(ax, hubble_h):
     Plots gas mass function observational data. Uses data from Baldry et al., 2008.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
@@ -232,7 +231,7 @@ def plot_gmf_data(ax, hubble_h):
         which is irrespective of h.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.
@@ -317,13 +316,13 @@ def plot_btf_data(ax):
     Swatter, 2009.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.
@@ -341,7 +340,7 @@ def plot_metallicity_data(ax, imf):
     Plots metallicity observational data. Uses data from Tremonti et al., 2003.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
@@ -351,7 +350,7 @@ def plot_metallicity_data(ax, imf):
         If "Chabrier", scales the x-values of the Tremonti data by a factor of 1.5 / 1.8.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.
@@ -383,13 +382,13 @@ def plot_bh_bulge_data(ax):
     2004.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.
@@ -408,13 +407,13 @@ def plot_sfrd_data(ax):
     Plots observational data for the evolution of the star formation rate density.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.
@@ -474,7 +473,7 @@ def plot_smd_data(ax, imf):
     al., 2004; Fontana et al., 2006; Rudnick et al., 2006; Elsner et al., 2008.
 
     Parameters
-    ==========
+    ----------
 
     ax : ``matplotlib`` axes object
         Axis to plot the data on.
@@ -484,7 +483,7 @@ def plot_smd_data(ax, imf):
         If "Chabrier", scales the x-values by a factor of 1.6 / 1.8.
 
     Returns
-    =======
+    -------
 
     ax : ``matplotlib`` axes object
         Axis with the data plotted on it.

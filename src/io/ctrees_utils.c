@@ -17,7 +17,6 @@
 #include "ctrees_utils.h"
 #include "parse_ctrees.h"
 
-int CTREES_UPID_FEATURE = 0;
 
 int64_t find_fof_halo(const int64_t totnhalos, const struct additional_info *info, const int start_loc, const int64_t upid, int verbose, int64_t calldepth);
 
@@ -27,45 +26,44 @@ int64_t read_forests(const char *filename, int64_t **f, int64_t **t)
     int64_t ntrees;
     char buffer[MAX_STRING_LEN];
     const char comment = '#';
-    
+
     /* By passing the comment character, getnumlines
        will return the actual number of lines, ignoring
-       the first header line. 
-    */
+       the first header line. */
     FILE *fp = fopen(filename, "rt");
     if(fp == NULL) {
-        printf("Error: can't open file `%s'\n", filename);
-        ABORT(FILE_NOT_FOUND);
+        fprintf(stderr,"Error: can't open file `%s'\n", filename);
+        return -FILE_NOT_FOUND;
     }
     ntrees = getnumlines(filename, comment);
 
     *f = malloc(ntrees * sizeof(int64_t));
     *t = malloc(ntrees * sizeof(int64_t));
-    
+
     int64_t *forests    = *f;
     int64_t *tree_roots = *t;
-    
+
     int64_t ntrees_found = 0;
     while(fgets(buffer, MAX_STRING_LEN, fp) != NULL) {
         if(buffer[0] == comment) {
             continue;
         } else {
             const int nitems_expected = 2;
-            XASSERT(ntrees_found < ntrees, -1,
-                    "ntrees=%"PRId64" should be less than ntrees_found=%"PRId64"\n", ntrees, ntrees_found);            
+            XRETURN(ntrees_found < ntrees, -EXIT_FAILURE,
+                    "ntrees=%"PRId64" should be less than ntrees_found=%"PRId64"\n", ntrees, ntrees_found);
             int nitems = sscanf(buffer, "%"SCNd64" %"SCNd64, tree_roots, forests);
-            XASSERT(nitems == nitems_expected, -1,
+            XRETURN(nitems == nitems_expected, -EXIT_FAILURE,
                     "Expected to parse %d long integers but found `%s' in the buffer. nitems = %d \n",
                     nitems_expected, buffer, nitems);
             ntrees_found++;tree_roots++;forests++;
         }
     }
     fclose(fp);
-    XASSERT(ntrees == ntrees_found, -1,
+    XRETURN(ntrees == ntrees_found, -EXIT_FAILURE,
             "ntrees=%"PRId64" should be equal to ntrees_found=%"PRId64"\n", ntrees, ntrees_found);
-    
+
     return ntrees;
-}    
+}
 
 
 int64_t read_locations(const char *filename, const int64_t ntrees, struct locations_with_forests *l, struct filenames_and_fd *filenames_and_fd)
@@ -86,71 +84,88 @@ int64_t read_locations(const char *filename, const int64_t ntrees, struct locati
             break;
         }
     }
-    
+
     struct filenames_and_fd *files_fd = filenames_and_fd;
     uint32_t numfiles_allocated = 2000;
     files_fd->fd = malloc(numfiles_allocated * sizeof(files_fd->fd[0]));
-    XASSERT( files_fd->fd != NULL, MALLOC_FAILURE, "Error: Could not allocate memory of %zu bytes to hold %"PRIu32" file descriptors",
+    XRETURN( files_fd->fd != NULL, -MALLOC_FAILURE, "Error: Could not allocate memory of %zu bytes to hold %"PRIu32" file descriptors",
              numfiles_allocated*sizeof(files_fd->fd[0]), numfiles_allocated);
     files_fd->nallocated = numfiles_allocated;
     files_fd->numfiles = 0;
+
+    files_fd->numtrees_per_file = calloc(numfiles_allocated, sizeof(files_fd->numtrees_per_file[0]));
+    XRETURN( files_fd->numtrees_per_file != NULL, -MALLOC_FAILURE, "Error: Could not allocate memory of %zu bytes to hold %"PRIu32" items containing 64-bit integers",
+             numfiles_allocated*sizeof(files_fd->numtrees_per_file[0]), numfiles_allocated);
     for(uint32_t i=0;i<numfiles_allocated;i++) {
         files_fd->fd[i] = -1;
     }
-    
+
     struct locations_with_forests *locations = l;
 
     int64_t ntrees_found = 0;
     FILE *fp = fopen(filename, "r");
-    XASSERT( fp != NULL, FILE_NOT_FOUND, "Error: Could not open filename `%s'\n", filename);
+    XRETURN( fp != NULL, -FILE_NOT_FOUND, "Error: Could not open filename `%s'\n", filename);
     while(fgets(buffer, MAX_STRING_LEN, fp) != NULL) {
         if(buffer[0] == comment) {
             continue;
         } else {
             const int nitems_expected = 4;
             char linebuf[MAX_STRING_LEN];
-            XASSERT(ntrees_found < ntrees, EXIT_FAILURE,
+            XRETURN(ntrees_found < ntrees, -EXIT_FAILURE,
                     "ntrees=%"PRId64" should be less than ntrees_found=%"PRId64"\n",
-                    ntrees, ntrees_found);            
-            int nitems = sscanf(buffer, "%"SCNd64" %d %"SCNd64 "%s",
+                    ntrees, ntrees_found);
+            const int nitems = sscanf(buffer, "%"SCNd64" %d %"SCNd64 "%s",
                                 &locations->treeid, &locations->fileid, &locations->offset, linebuf);
+            XRETURN(nitems == nitems_expected, -EXIT_FAILURE, "Expected to parse %d items but the scanf produced %d items instead.\n"
+                    "The bufound `%s' in the buffer\n", nitems_expected, nitems, buffer);
 
-            XASSERT(locations->offset >= 0, INVALID_VALUE_READ_FROM_FILE, 
+            XRETURN(locations->offset >= 0, -INVALID_VALUE_READ_FROM_FILE,
                     "offset=%"PRId64" for ntree =%"PRId64" must be positive.\nFile = `%s'\nbuffer = `%s'\n",
                     locations->offset, ntrees_found, filename, buffer);
-            
+
+            XRETURN(locations->fileid >= 0, -INVALID_VALUE_READ_FROM_FILE,
+                    "locations->fileid=%d for ntree =%"PRId64" must be positive.\nFile = `%s'\nbuffer = `%s'\n",
+                    locations->fileid, ntrees_found, filename, buffer);
             const size_t fileid = locations->fileid;
             if(fileid > files_fd->nallocated) {
                 numfiles_allocated *= 2;
                 int *new_fd = realloc(files_fd->fd, numfiles_allocated*sizeof(files_fd->fd[0]));
-                XASSERT(new_fd != NULL, MALLOC_FAILURE, "Error: Could not re-allocate memory of %zu bytes to hold %"PRIu32" file descriptors\n",
+                XRETURN(new_fd != NULL, -MALLOC_FAILURE, "Error: Could not re-allocate memory of %zu bytes to hold %"PRIu32" file descriptors\n",
                         numfiles_allocated*sizeof(files_fd->fd[0]), numfiles_allocated);
 
+                void *new_numtrees = realloc(files_fd->numtrees_per_file, numfiles_allocated*sizeof(files_fd->numtrees_per_file[0]));
+                XRETURN(new_numtrees != NULL, -MALLOC_FAILURE,
+                        "Error: Could not re-allocate memory of %zu bytes to hold %"PRIu32" items containing 64-bit integers\n",
+                        numfiles_allocated*sizeof(files_fd->numtrees_per_file[0]), numfiles_allocated);
+
                 files_fd->fd = new_fd;
+                files_fd->numtrees_per_file = new_numtrees;
                 for(uint32_t i=files_fd->nallocated;i<numfiles_allocated;i++) {
                     files_fd->fd[i] = -1;
+                    files_fd->numtrees_per_file[i] = 0;
                 };
                 files_fd->nallocated = numfiles_allocated;
             }
-            XASSERT(fileid < files_fd->nallocated, EXIT_FAILURE, "Error: Trying to open fileid = %zu but only %d"
+            XRETURN(fileid < files_fd->nallocated, EXIT_FAILURE, "Error: Trying to open fileid = %zu but only %u"
                     " files can be opened (need to malloc) \n",
                     fileid, files_fd->nallocated);
-            
+
             /* file has not been opened yet - let's open this file */
             if(files_fd->fd[fileid] < 0) {
                 char treefilename[MAX_STRING_LEN];
-                snprintf(treefilename, MAX_STRING_LEN-1, "%s/%s", dirname, linebuf); 
+                snprintf(treefilename, MAX_STRING_LEN-1, "%s/%s", dirname, linebuf);
                 files_fd->fd[fileid] = open(treefilename, O_RDONLY);
-                XASSERT( files_fd->fd[fileid] > 0, FILE_NOT_FOUND, "Error: Could not open file `%s'\n", treefilename);
+                XRETURN( files_fd->fd[fileid] > 0, -FILE_NOT_FOUND, "Error: Could not open file `%s'\n", treefilename);
                 files_fd->numfiles++;
             }
-            
-            XASSERT(nitems == nitems_expected, EXIT_FAILURE, "Expected to parse two long integers but found `%s' in the buffer\n", buffer);
+            files_fd->numtrees_per_file[fileid]++;
+
             ntrees_found++;
             locations++;
         }
     }
-    XASSERT(ntrees == ntrees_found, EXIT_FAILURE, "ntrees=%"PRId64" should be equal to ntrees_found=%"PRId64"\n", ntrees, ntrees_found);
+    XRETURN(ntrees == ntrees_found, -EXIT_FAILURE,
+            "ntrees=%"PRId64" should be equal to ntrees_found=%"PRId64"\n", ntrees, ntrees_found);
     fclose(fp);
 
     locations = l;
@@ -161,18 +176,18 @@ int64_t read_locations(const char *filename, const int64_t ntrees, struct locati
     }
 
     /* number of files is one greater from 0 based indexing of C files */
-    XASSERT(max_fileid + 1 == files_fd->numfiles, EXIT_FAILURE,
+    XRETURN(max_fileid + 1 == files_fd->numfiles, -EXIT_FAILURE,
             "Error: Validation error -- number of files expected from max. of fileids in 'locations.dat' = %"PRId64" but only found %d filenames\n"
             "Perhaps fileids (column 3) in 'locations.dat' are not contiguous?\n",
             max_fileid + 1, files_fd->numfiles);
     const int box_divisions = (int) round(cbrt(files_fd->numfiles));
     const int box_cube = box_divisions * box_divisions * box_divisions;
-    XASSERT( box_cube == files_fd->numfiles, EXIT_FAILURE, 
+    XRETURN( box_cube == files_fd->numfiles, -EXIT_FAILURE,
              "box_divisions^3=%d should be equal to nfiles=%"PRId32"\n",
              box_cube, files_fd->numfiles);
-    
+
     return ntrees_found;
-}    
+}
 
 
 void sort_forests_by_treeid(const int64_t ntrees, int64_t *forests, int64_t *treeids)
@@ -182,11 +197,11 @@ void sort_forests_by_treeid(const int64_t ntrees, int64_t *forests, int64_t *tre
         SGLIB_ARRAY_ELEMENTS_EXCHANGER(int64_t, treeids,i, j);      \
         SGLIB_ARRAY_ELEMENTS_EXCHANGER(int64_t, forests, i, j);     \
     }
-    
+
     SGLIB_ARRAY_QUICK_SORT(int64_t, treeids, ntrees, SGLIB_NUMERIC_COMPARATOR , MULTIPLE_ARRAY_EXCHANGER);
 #undef MULTIPLE_ARRAY_EXCHANGER
 
-}    
+}
 
 int compare_locations_treeids(const void *l1, const void *l2)
 {
@@ -214,7 +229,7 @@ int compare_locations_file_offset(const void *l1, const void *l2)
     } else {
         return file_id_cmp;
     }
-        
+
     return 0;
 }
 
@@ -235,14 +250,14 @@ int compare_locations_fid_file_offset(const void *l1, const void *l2)
             return file_id_cmp;
         }
     }
-        
+
     return 0;/* un-reachable */
 }
 
 void sort_locations_on_treeroot(const int64_t ntrees, struct locations_with_forests *locations)
 {
     qsort(locations, ntrees, sizeof(*locations), compare_locations_treeids);
-}    
+}
 
 void sort_locations_file_offset(const int64_t ntrees, struct locations_with_forests *locations)
 {
@@ -252,31 +267,31 @@ void sort_locations_file_offset(const int64_t ntrees, struct locations_with_fore
 void sort_locations_on_fid(const int64_t ntrees, struct locations_with_forests *locations)
 {
     qsort(locations, ntrees, sizeof(*locations), compare_locations_fid);
-}    
+}
 
 void sort_locations_on_fid_file_offset(const int64_t ntrees, struct locations_with_forests *locations)
 {
     qsort(locations, ntrees, sizeof(*locations), compare_locations_fid_file_offset);
-}    
+}
 
 
 int assign_forest_ids(const int64_t ntrees, struct locations_with_forests *locations, int64_t *forests, int64_t *treeids)
 {
     /* Sort forests by tree roots -> necessary for assigning forest ids */
     sort_forests_by_treeid(ntrees, forests, treeids);
-    sort_locations_on_treeroot(ntrees, locations);    
-    
+    sort_locations_on_treeroot(ntrees, locations);
+
     /* forests and treeids are sorted together, on treeids */
     /* locations is sorted on tree roots */
     for(int64_t i=0;i<ntrees;i++) {
-        XASSERT(treeids[i] == locations[i].treeid, EXIT_FAILURE, 
+        XRETURN(treeids[i] == locations[i].treeid, -EXIT_FAILURE,
                 "tree roots[%"PRId64"] = %"PRId64" does not equal tree roots in locations = %"PRId64"\n",
                 i, treeids[i], locations[i].treeid);
         locations[i].forestid = forests[i];
     }
 
     return EXIT_SUCCESS;
-}    
+}
 
 
 int fix_flybys(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, int verbose)
@@ -291,7 +306,7 @@ int fix_flybys(const int64_t totnhalos, struct halo_data *forest, struct additio
 
 #undef ID_COMPARATOR
 #undef SCALE_ID_COMPARATOR
-#undef MULTIPLE_ARRAY_EXCHANGER    
+#undef MULTIPLE_ARRAY_EXCHANGER
 
     double max_scale = info[0].scale;
     int64_t last_halo_with_max_scale = 1;
@@ -320,12 +335,12 @@ int fix_flybys(const int64_t totnhalos, struct halo_data *forest, struct additio
         }
         return -1;
     }
-    
+
     /* Is there anything to do? If there is only one FOF at z=0, then simply return */
     if(num_fofs_last_scale == 1) {
         return EXIT_SUCCESS;
     }
-    
+
     int64_t max_mass_fof_loc = -1;
     float max_mass_fof = -1.0f;
     int64_t fof_id = -1;
@@ -337,9 +352,9 @@ int fix_flybys(const int64_t totnhalos, struct halo_data *forest, struct additio
         }
     }
 
-    XASSERT(fof_id != -1, EXIT_FAILURE, 
+    XRETURN(fof_id != -1, -EXIT_FAILURE,
             "There must be at least one FOF halo.");
-    XASSERT(max_mass_fof_loc < INT_MAX, EXIT_FAILURE, 
+    XRETURN(max_mass_fof_loc < INT_MAX, -EXIT_FAILURE,
             "Most massive FOF location=%"PRId64" must be representable within INT_MAX=%d",
             max_mass_fof_loc, INT_MAX);
 
@@ -366,7 +381,7 @@ int fix_flybys(const int64_t totnhalos, struct halo_data *forest, struct additio
 }
 
 
-int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, int *interrupted, const int verbose)
+int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, const int verbose)
 {
 
     int max_snapnum = -1;
@@ -383,7 +398,7 @@ int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additiona
     /* Change upid to id, so we can sort the fof's and subs to be contiguous */
     //I am paranoid -> so I am going to set all FOF upid's first and then
     //use the upid again. Two loops are required but that relaxes any assumptions
-    //about ordering of fof/subhalos. 
+    //about ordering of fof/subhalos.
     for(int64_t i=0;i<totnhalos;i++) {
         info[i].upid = (info[i].pid == -1) ? info[i].id:info[i].upid;
         if(forest[i].SnapNum > max_snapnum) {
@@ -395,7 +410,7 @@ int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additiona
         if(info[i].pid == -1) {
             continue;
         }
-        
+
         /* Only (sub)subhalos should reach here */
         /*Check if upid points to host halo with pid == -1*/
         int64_t upid = info[i].upid;
@@ -422,7 +437,7 @@ int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additiona
                     break;
                 }
             }
-            XASSERT( found == 1, EXIT_FAILURE,
+            XRETURN( found == 1, -1,
                      "Error: Could not locate FOF halo for halo with id = %"PRId64" and upid = %"PRId64"\n",
                      info[i].id, upid);
         }
@@ -430,79 +445,73 @@ int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additiona
             fprintf(stderr,"found FOF halo for halnum = %"PRId64". loc = %"PRId64" id = %"PRId64" upid = %"PRId64"\n",
                     i, loc, info[loc].id, info[loc].upid);
         }
-        XASSERT(loc >=0 && loc < totnhalos, EXIT_FAILURE, 
+        XRETURN(loc >=0 && loc < totnhalos, -EXIT_FAILURE,
                 "could not locate fof halo for i = %"PRId64" id = %"PRId64" upid = %"PRId64" loc=%"PRId64"\n",
                 i, info[i].id, upid, loc);
         const int64_t new_upid = info[loc].id;
-        if(new_upid != upid && CTREES_UPID_FEATURE == 0) {
-            fprintf(stderr, ANSI_COLOR_RED "Fixing upid for i=%"PRId64" original upid =%"PRId64" new fof upid = %"PRId64 ANSI_COLOR_RESET"\n",
-                    i, upid, new_upid);
-            CTREES_UPID_FEATURE = 1;
-            *interrupted = 1;
-        }
         if(verbose) {
             fprintf(stderr,"setting upid/pid for halonum = %"PRId64" to %"PRId64". previously: pid = %"PRId64" upid = %"PRId64". id = %"PRId64"\n",
-                    i, new_upid, info[i].pid, info[i].upid, info[i].id); 
+                    i, new_upid, info[i].pid, info[i].upid, info[i].id);
         }
         info[i].upid = new_upid;
         info[i].pid  = new_upid;
     }
 #undef ID_COMPARATOR
 #undef SCALE_ID_COMPARATOR
-#undef MULTIPLE_ARRAY_EXCHANGER    
+#undef MULTIPLE_ARRAY_EXCHANGER
 
     return max_snapnum;
-    
+
 }
 
-void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, const int max_snapnum)
+int assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest, struct additional_info *info, const int max_snapnum)
 {
     const int nsnapshots = max_snapnum + 1;
     double *scales = malloc(nsnapshots * sizeof(*scales));
-    XASSERT(scales != NULL, MALLOC_FAILURE,
+    XRETURN(scales != NULL, MALLOC_FAILURE,
             "Error: Could not allocate memory to store the scale-factors for each snapshot (nsnapshots = %d)\n", nsnapshots);
     for(int i=0;i<nsnapshots;i++) {
         scales[i] = DBL_MAX;
     }
     int64_t *start_scale = malloc(nsnapshots * sizeof(*start_scale));
-    XASSERT(start_scale != NULL, MALLOC_FAILURE,
+    XRETURN(start_scale != NULL, MALLOC_FAILURE,
             "Error: Could not allocate memory to store the starting scale-factors for each snapshot (nsnapshots = %d)\n", nsnapshots);
     int64_t *end_scale = malloc(nsnapshots * sizeof(*end_scale));
-    XASSERT(end_scale != NULL, MALLOC_FAILURE,
+    XRETURN(end_scale != NULL, MALLOC_FAILURE,
             "Error: Could not allocate memory to store the ending scale-factors for each snapshot (nsnapshots = %d)\n", nsnapshots);
     for(int i=0;i<nsnapshots;i++) {
         start_scale[i] = -1;
     }
-    
+
     /* Sort the trees based on scale, upid, and pid */
     /* Descending sort on scale, and then ascending sort on upid.
        The pid sort is so that the FOF halo comes before the (sub-)subhalos.
        The last id sort is such that the ordering of (sub-)subhalos
-       is unique (stable sort, since id's are unique) 
+       is unique (stable sort, since id's are unique)
      */
-#define ID_COMPARATOR(x, y)         ((x.id > y.id ? 1:(x.id < y.id ? -1: 0)))    
+#define ID_COMPARATOR(x, y)         ((x.id > y.id ? 1:(x.id < y.id ? -1: 0)))
 #define PID_COMPARATOR(x, y)         ((x.pid > y.pid ? 1:(x.pid < y.pid ? -1:ID_COMPARATOR(x,y))))
 #define UPID_COMPARATOR(x, y)         ((x.upid > y.upid ? 1:(x.upid < y.upid ? -1:PID_COMPARATOR(x,y))))
-/* Note, the negated order in the scale comparison . this ensures descending sort */    
+/* Note, the negated order in the scale comparison . this ensures descending sort */
 #define SCALE_UPID_COMPARATOR(x,y)    ((x.scale > y.scale ? -1:(x.scale < y.scale ? 1:UPID_COMPARATOR(x, y))) )
 #define MULTIPLE_ARRAY_EXCHANGER(type,a,i,j) {                          \
         SGLIB_ARRAY_ELEMENTS_EXCHANGER(struct halo_data, forest,i,j); \
         SGLIB_ARRAY_ELEMENTS_EXCHANGER(struct additional_info, info, i, j) \
             }
-    
+
 
     /* I am using heap sort rather than qsort because the forest is already somewhat sorted. For sorted data,
-       qsort behaves closer to O(N^2). 
+       qsort behaves closer to O(N^2).
      */
     SGLIB_ARRAY_HEAP_SORT(struct additional_info, info, totnhalos, SCALE_UPID_COMPARATOR, MULTIPLE_ARRAY_EXCHANGER);
-    
+
     /* Fix subs of subs first */
     int64_t FirstHaloInFOFgroup=-1;
     int64_t fof_id=-1;
     for(int64_t i=0;i<totnhalos;i++) {
         /* fprintf(stderr,ANSI_COLOR_RED"FirstHaloInFOFgroup = %"PRId64 ANSI_COLOR_RESET"\n",FirstHaloInFOFgroup); */
         const int snapnum = forest[i].SnapNum;
-        XASSERT(snapnum >= 0 && snapnum < nsnapshots, EXIT_FAILURE, 
+        XRETURN(snapnum >= 0 && snapnum < nsnapshots, EXIT_FAILURE,
                 "snapnum = %d is outside range [0, %d)\n",
                 snapnum, nsnapshots);
         scales[snapnum] = info[i].scale;
@@ -510,9 +519,9 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
         if(start_scale[snapnum] == -1) {
             start_scale[snapnum] = i;
         }
-        
+
         if(info[i].pid == -1) {
-            XASSERT(i < INT_MAX, EXIT_FAILURE, 
+            XRETURN(i < INT_MAX, EXIT_FAILURE,
                     "Assigning to integer i = %"PRId64" is more than %d\n",
                     i, INT_MAX);
             forest[i].FirstHaloInFOFgroup = (int) i;
@@ -520,7 +529,7 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
             FirstHaloInFOFgroup = i;
             fof_id = info[i].id;
             continue;
-        } else { 
+        } else {
             if(FirstHaloInFOFgroup == -1) {
                 fprintf(stderr,"About to crash\n");
                 for(int64_t k=0;k<totnhalos;k++) {
@@ -529,13 +538,13 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
                 }
             }
 
-            XASSERT(FirstHaloInFOFgroup != -1, EXIT_FAILURE, 
+            XRETURN(FirstHaloInFOFgroup != -1, EXIT_FAILURE,
                     "Processing subhalos i=%"PRId64" but have not encountered FOF yet..bug\n"
                     "id = %"PRId64" pid = %"PRId64" upid = %"PRId64" snapnum = %d\n",
                     i,info[i].id, info[i].pid, info[i].upid, forest[i].SnapNum);
-            
+
             if(info[i].upid == fof_id) {
-                XASSERT(FirstHaloInFOFgroup < INT_MAX, EXIT_FAILURE, 
+                XRETURN(FirstHaloInFOFgroup < INT_MAX, EXIT_FAILURE,
                         "Assigning FirstHaloInFOFgroup = %"PRId64". Must be less than %d\n",
                         FirstHaloInFOFgroup, INT_MAX);
                 forest[i].FirstHaloInFOFgroup = FirstHaloInFOFgroup;
@@ -548,19 +557,19 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
                 }
 
                 fprintf(stderr,"i = %"PRId64" id = %"PRId64" pid = %"PRId64" fof_id = %"PRId64" upid = %"PRId64" FirstHaloInFOFgroup = %"PRId64"\n",
-                        i, info[i].id, info[i].pid, fof_id, info[i].upid, FirstHaloInFOFgroup); 
-                ABORT(EXIT_FAILURE);
+                        i, info[i].id, info[i].pid, fof_id, info[i].upid, FirstHaloInFOFgroup);
+                return EXIT_FAILURE;
             }
             int64_t insertion_point = FirstHaloInFOFgroup;
             while(forest[insertion_point].NextHaloInFOFgroup != -1) {
                 const int32_t nexthalo = forest[insertion_point].NextHaloInFOFgroup;
-                XASSERT(nexthalo >=0 && nexthalo < totnhalos, EXIT_FAILURE, 
+                XRETURN(nexthalo >=0 && nexthalo < totnhalos, EXIT_FAILURE,
                         "Inserting next halo in FOF group into invalid index. nexthalo = %d totnhalos = %"PRId64"\n",
                         nexthalo, totnhalos);
 
                 insertion_point = nexthalo;
             }
-            XASSERT(i < INT_MAX, EXIT_FAILURE, 
+            XRETURN(i < INT_MAX, EXIT_FAILURE,
                     "Assigning FirstHaloInFOFgroup = %"PRId64". Must be less than %d\n",
                     i, INT_MAX);
 
@@ -583,8 +592,8 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
               (fabs(scales[desc_snapnum] - desc_scale) > max_epsilon_scale) ) {
             desc_snapnum--;
         }
-        XASSERT(desc_snapnum >= 0 && desc_snapnum < nsnapshots && (fabs(scales[desc_snapnum] - desc_scale) <= 1e-4),
-                EXIT_FAILURE, 
+        XRETURN(desc_snapnum >= 0 && desc_snapnum < nsnapshots && (fabs(scales[desc_snapnum] - desc_scale) <= 1e-4),
+                EXIT_FAILURE,
                 "Could not locate desc_snapnum. desc_snapnum = %d nsnapshots = %d \n",
                 desc_snapnum, nsnapshots);
 
@@ -593,22 +602,23 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
         while(desc_loc >= start_scale[desc_snapnum] && desc_loc <= end_scale[desc_snapnum] && info[desc_loc].id != descid) {
             desc_loc++;
         }
-        XASSERT(desc_loc >= start_scale[desc_snapnum] && desc_loc <= end_scale[desc_snapnum],
-                EXIT_FAILURE, 
+        XRETURN(desc_loc >= start_scale[desc_snapnum] && desc_loc <= end_scale[desc_snapnum],
+                EXIT_FAILURE,
                 "Desc loc = %"PRId64" for snapnum = %d is outside range [%"PRId64", %"PRId64"]\n",
                 desc_loc, desc_snapnum, start_scale[desc_snapnum], end_scale[desc_snapnum]);
-        XASSERT(info[desc_loc].id == descid,
-                EXIT_FAILURE, 
+        XRETURN(info[desc_loc].id == descid,
+                EXIT_FAILURE,
                 "Should have found descendant id = %"PRId64" but info[%"PRId64"]=%"PRId64" instead \n",
                 descid, desc_loc, info[desc_loc].id);
 
-        XASSERT(desc_loc < INT_MAX, EXIT_FAILURE, 
+        XRETURN(desc_loc < INT_MAX,
+                EXIT_FAILURE,
                 "desc_loc = %"PRId64" must be less than INT_MAX = %d\n",
                 desc_loc, INT_MAX);
-        
+
         forest[i].Descendant = desc_loc;
-        
-        //Now assign first progenitor + next progenitor 
+
+        //Now assign first progenitor + next progenitor
         if(forest[desc_loc].FirstProgenitor == -1) {
             forest[desc_loc].FirstProgenitor = i;
             forest[i].NextProgenitor = -1;
@@ -619,11 +629,13 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
                Not necessary but ensure nextprog are ordered by mass.
             */
             const int first_prog = forest[desc_loc].FirstProgenitor;
-            XASSERT(first_prog >= 0 && first_prog < totnhalos, EXIT_FAILURE, 
+            XRETURN(first_prog >= 0 && first_prog < totnhalos,
+                    EXIT_FAILURE,
                     "first_prog=%d must lie within [0, %"PRId64"\n",
                     first_prog, totnhalos);
             if(forest[first_prog].Mvir < forest[i].Mvir) {
-                XASSERT(i < INT_MAX, EXIT_FAILURE, 
+                XRETURN(i < INT_MAX,
+                        EXIT_FAILURE,
                         "Assigning Nextprogenitor = %"PRId64" to an int will result in garbage. INT_MAX = %d\n",
                         i, INT_MAX);
                 forest[desc_loc].FirstProgenitor = i;
@@ -632,17 +644,17 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
                 int64_t insertion_point = first_prog;
                 while(forest[insertion_point].NextProgenitor != -1) {
                     const int64_t next_prog = forest[insertion_point].NextProgenitor;
-                    XASSERT(next_prog >=0 && next_prog < totnhalos, EXIT_FAILURE, 
+                    XRETURN(next_prog >=0 && next_prog < totnhalos, EXIT_FAILURE,
                             "Inserting next progenitor into invalid index. insertion_point = %"PRId64" totnhalos = %"PRId64"\n",
                             next_prog, totnhalos);
-                    
+
                     /* if(forest[next_prog].Mvir < forest[i].Mvir) { */
                     /*     forest[i].NextProgenitor = next_prog; */
                     /*     break; */
                     /* } */
                     insertion_point = next_prog;
                 }
-                XASSERT(i < INT_MAX, EXIT_FAILURE, 
+                XRETURN(i < INT_MAX, EXIT_FAILURE,
                         "Assigning Nextprogenitor = %"PRId64" to an int will result in garbage. INT_MAX = %d\n",
                         i, INT_MAX);
                 forest[insertion_point].NextProgenitor = i;
@@ -653,31 +665,31 @@ void assign_mergertree_indices(const int64_t totnhalos, struct halo_data *forest
     free(scales);
     free(start_scale);
     free(end_scale);
-    
+
 #undef MULTIPLE_ARRAY_EXCHANGER
 #undef SCALE_UPID_COMPARATOR
 #undef UPID_COMPARATOR
-#undef PID_COMPARATOR    
+#undef PID_COMPARATOR
 #undef ID_COMPARATOR
-    
-    return;
+
+    return EXIT_SUCCESS;
 }
 
 
 int64_t find_fof_halo(const int64_t totnhalos, const struct additional_info *info, const int start_loc, const int64_t upid, int verbose, int64_t calldepth)
 {
-    XASSERT(totnhalos < INT_MAX, EXIT_FAILURE, 
+    XRETURN(totnhalos < INT_MAX, -EXIT_FAILURE,
             "Totnhalos must be less than %d. Otherwise indexing with int (start_loc) will break\n", INT_MAX);
     int64_t loc = -1;
     if(info[start_loc].pid == -1) {
         return start_loc;/* should never be called to find the FOF of a FOF halo -> but whatever*/
     }
 
-    const int64_t max_recursion_depth = 30, recursion_depth_for_verbose = 3;
+    const int64_t max_recursion_depth = 30, recursion_depth_for_verbose = 5;
     if(calldepth >= recursion_depth_for_verbose) {
         verbose = 1;
     }
-    XASSERT(calldepth <= max_recursion_depth, EXIT_FAILURE,
+    XRETURN(calldepth <= max_recursion_depth, -EXIT_FAILURE,
             "%s has been recursively called %"PRId64" times already. Likely caught in infinite loop..exiting\n",
             __FUNCTION__, calldepth);
 
@@ -721,5 +733,3 @@ int64_t find_fof_halo(const int64_t totnhalos, const struct additional_info *inf
 
     return -1;
 }
-
-

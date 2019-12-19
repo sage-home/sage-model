@@ -21,46 +21,46 @@ class BinarySage(object):
         """
         # The input galaxy structure:
         Galdesc_full = [
-            ('SnapNum'                      , np.int32),                    
+            ('SnapNum'                      , np.int32),
             ('Type'                         , np.int32),
-            ('GalaxyIndex'                  , np.int64),                    
-            ('CentralGalaxyIndex'           , np.int64),                    
-            ('SAGEHaloIndex'                , np.int32),                    
-            ('SAGETreeIndex'                , np.int32),                    
-            ('SimulationHaloIndex'          , np.int64),                    
-            ('mergeType'                    , np.int32),                    
-            ('mergeIntoID'                  , np.int32),                    
-            ('mergeIntoSnapNum'             , np.int32),                    
-            ('dT'                           , np.float32),                    
-            ('Pos'                          , (np.float32, 3)),             
-            ('Vel'                          , (np.float32, 3)),             
-            ('Spin'                         , (np.float32, 3)),             
-            ('Len'                          , np.int32),                    
-            ('Mvir'                         , np.float32),                  
-            ('CentralMvir'                  , np.float32),                  
-            ('Rvir'                         , np.float32),                  
-            ('Vvir'                         , np.float32),                  
-            ('Vmax'                         , np.float32),                  
-            ('VelDisp'                      , np.float32),                  
-            ('ColdGas'                      , np.float32),                  
-            ('StellarMass'                  , np.float32),                  
-            ('BulgeMass'                    , np.float32),                  
-            ('HotGas'                       , np.float32),                  
-            ('EjectedMass'                  , np.float32),                  
-            ('BlackHoleMass'                , np.float32),                  
-            ('IntraClusterStars'            , np.float32),                  
-            ('MetalsColdGas'                , np.float32),                  
-            ('MetalsStellarMass'            , np.float32),                  
-            ('MetalsBulgeMass'              , np.float32),                  
-            ('MetalsHotGas'                 , np.float32),                  
-            ('MetalsEjectedMass'            , np.float32),                  
-            ('MetalsIntraClusterStars'      , np.float32),                  
-            ('SfrDisk'                      , np.float32),                  
-            ('SfrBulge'                     , np.float32),                  
-            ('SfrDiskZ'                     , np.float32),                  
-            ('SfrBulgeZ'                    , np.float32),                  
-            ('DiskRadius'                   , np.float32),                  
-            ('Cooling'                      , np.float32),                  
+            ('GalaxyIndex'                  , np.int64),
+            ('CentralGalaxyIndex'           , np.int64),
+            ('SAGEHaloIndex'                , np.int32),
+            ('SAGETreeIndex'                , np.int32),
+            ('SimulationHaloIndex'          , np.int64),
+            ('mergeType'                    , np.int32),
+            ('mergeIntoID'                  , np.int32),
+            ('mergeIntoSnapNum'             , np.int32),
+            ('dT'                           , np.float32),
+            ('Pos'                          , (np.float32, 3)),
+            ('Vel'                          , (np.float32, 3)),
+            ('Spin'                         , (np.float32, 3)),
+            ('Len'                          , np.int32),
+            ('Mvir'                         , np.float32),
+            ('CentralMvir'                  , np.float32),
+            ('Rvir'                         , np.float32),
+            ('Vvir'                         , np.float32),
+            ('Vmax'                         , np.float32),
+            ('VelDisp'                      , np.float32),
+            ('ColdGas'                      , np.float32),
+            ('StellarMass'                  , np.float32),
+            ('BulgeMass'                    , np.float32),
+            ('HotGas'                       , np.float32),
+            ('EjectedMass'                  , np.float32),
+            ('BlackHoleMass'                , np.float32),
+            ('IntraClusterStars'            , np.float32),
+            ('MetalsColdGas'                , np.float32),
+            ('MetalsStellarMass'            , np.float32),
+            ('MetalsBulgeMass'              , np.float32),
+            ('MetalsHotGas'                 , np.float32),
+            ('MetalsEjectedMass'            , np.float32),
+            ('MetalsIntraClusterStars'      , np.float32),
+            ('SfrDisk'                      , np.float32),
+            ('SfrBulge'                     , np.float32),
+            ('SfrDiskZ'                     , np.float32),
+            ('SfrBulgeZ'                    , np.float32),
+            ('DiskRadius'                   , np.float32),
+            ('Cooling'                      , np.float32),
             ('Heating'                      , np.float32),
             ('QuasarModeBHaccretionMass'    , np.float32),
             ('TimeOfLastMajorMerger'         , np.float32),
@@ -73,7 +73,7 @@ class BinarySage(object):
         _names = [g[0] for g in Galdesc_full]
         _formats = [g[1] for g in Galdesc_full]
         _galdesc = np.dtype({'names':_names, 'formats':_formats}, align=True)
-        
+
         self.filename = filename
         self.num_files = num_files
         self.dtype = _galdesc
@@ -86,7 +86,7 @@ class BinarySage(object):
             _mode = os.O_RDONLY | os.O_BINARY
         except AttributeError:
             _mode = os.O_RDONLY
-        
+
 
     def __enter__(self):
         return self
@@ -100,17 +100,17 @@ class BinarySage(object):
 
         # Read number of trees in file
         totntrees = np.fromfile(fp, dtype=np.int32, count=1)[0]
-        
+
         # Read number of gals in file.
         totngals = np.fromfile(fp, dtype=np.int32, count=1)[0]
-    
+
         # Read the number of gals in each tree
         ngal_per_tree = np.fromfile(fp, dtype=np.int32, count=totntrees)
-        
+
         self.totntrees = totntrees
         self.totngals = totngals
         self.ngal_per_tree = ngal_per_tree
-        
+
         # First calculate the bytes size of each tree
         bytes_offset_per_tree = ngal_per_tree * self.dtype.itemsize
 
@@ -120,14 +120,14 @@ class BinarySage(object):
         # tree as the size of the 0'th tree. What we want is the
         # offset to the 1st tree as the size of the 0'th tree
         tmp = bytes_offset_per_tree.cumsum()
-        
+
         # Now assign the cumulative sum of sizes for 0:last-1 (inclusive)
-        # as the offsets to 1:last 
+        # as the offsets to 1:last
         bytes_offset_per_tree[1:-1] = tmp[0:-2]
-        
+
         # And set the offset of the 0'th tree as 0
         bytes_offset_per_tree[0] = 0
-        
+
         # Now add the initial offset that we need to get to the
         # 0'th tree -- i.e., the size of the headers
         header_size  = 4 + 4 + totntrees*4
@@ -269,13 +269,15 @@ def determine_binary_redshift(fname):
 
 
 def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
-                                 atol=5e-5):
+                                 atol=5e-5, verbose=False):
 
     # We need to first determine the snapshot that corresponds to the redshift we're
     # checking.  This is because the HDF5 file will contain multiple snapshots of data
     # whereas we only passed a single redshift binary file.
     binary_redshift = determine_binary_redshift(g1.filename)
-    snap_num, snap_key = determine_snap_from_binary_z(hdf5_file, binary_redshift)
+    snap_num, snap_key = determine_snap_from_binary_z(hdf5_file,
+                                                      binary_redshift,
+                                                      verbose=verbose)
 
     # SAGE could have been run in parallel in which the HDF5 master file will have
     # multiple core datasets.
@@ -307,7 +309,7 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
 
         offset = 0
 
-        # Create an array to hold all the HDF5 data.  This may need to be an Nx3 array... 
+        # Create an array to hold all the HDF5 data.  This may need to be an Nx3 array...
         if key in multidim_fields:
             hdf5_data = np.zeros((ngals_hdf5, 3))
         else:
@@ -345,7 +347,7 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
 
         return_value = compare_field_equality(binary_data, hdf5_data, key, rtol, atol)
 
-        if not return_value: 
+        if not return_value:
             failed_fields.append(key)
 
     if failed_fields:
@@ -365,7 +367,7 @@ def determine_num_gals_at_snap(hdf5_file, ncores, snap_key):
     return num_gals
 
 
-def determine_snap_from_binary_z(hdf5_file, redshift):
+def determine_snap_from_binary_z(hdf5_file, redshift, verbose=False):
 
     hdf5_snap_keys = []
     hdf5_redshifts = []
@@ -375,10 +377,11 @@ def determine_snap_from_binary_z(hdf5_file, redshift):
 
     for key in hdf5_file["Core_0"].keys():
 
-        # We need to be careful here. We have a "Header" group that we don't want to count
-        # when we're trying to work out the correct snapshot.
-        if key == "Header":
+        # We need to be careful here. We have a "Header" group that we don't
+        # want to count when we're trying to work out the correct snapshot.
+        if 'Snap' not in key:
             continue
+
         hdf5_snap_keys.append(key)
         hdf5_redshifts.append(hdf5_file["Core_0"][key].attrs["redshift"])
 
@@ -388,8 +391,9 @@ def determine_snap_from_binary_z(hdf5_file, redshift):
     snap_key = hdf5_snap_keys[idx]
     snap_num = snap_key_to_snap_num(snap_key)
 
-    print("Determined Snapshot {0} with Key {1} corresponds to the binary file at redshift "
-          "{1}".format(snap_num, snap_key, redshift))
+    if verbose:
+        print("Determined Snapshot {0} with Key {1} corresponds to the binary "
+              "file at redshift {2}".format(snap_num, snap_key, redshift))
 
     return snap_num, snap_key
 
@@ -448,11 +452,11 @@ please check that this is correct.
                       "the snapshot number corresponding to this key is {1}; "
                       "please check that this is correct."
                       .format(snap_key, int(snapnum[::-1])))
-                break 
+                break
             # When a number is found, we concatenate it with the others and
             # flag that we have encountered a cluster of numbers.
             snapnum = "{0}{1}".format(snapnum, letter)
-            reached_numbers = True 
+            reached_numbers = True
 
         else:
             # When we reach something that's not a number, turn flag off.
@@ -465,7 +469,7 @@ please check that this is correct.
 
 def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
 
-    if not (isinstance(g1, BinarySage) and 
+    if not (isinstance(g1, BinarySage) and
             isinstance(g2, BinarySage)):
         msg = "Both inputs must be objects the class 'BinarySage'"\
             "type(Object1) = {0} type(Object2) = {1}\n"\
@@ -474,7 +478,7 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
 
     # If SAGE we run in parallel, the data is split over multiple files.  To ensure
     # correct comparisons, sum basic info (such as total number of trees/galaxies)
-    # across all these files. 
+    # across all these files.
     g1.update_metadata()
     g2.update_metadata()
 
@@ -483,8 +487,8 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
         msg += "catalog1 has {0} trees while catalog2 has {1} trees\n"\
             .format(g1.totntrees_all_files, g2.totntrees_all_files)
         raise ValueError(msg)
-    
-    msg = "Total number of galaxies must be identical\n"    
+
+    msg = "Total number of galaxies must be identical\n"
     if g1.totngals_all_files != g2.totngals_all_files:
         msg += "catalog1 has {0} galaxies while catalog2 has {1} "\
                "galaxies\n".format(g1.totngals_all_files, g2.totngals_all_files)
@@ -506,7 +510,7 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
 
     ignored_fields = [a for a in g1.ignored_fields if a in g2.ignored_fields]
 
-    failed_fields = [] 
+    failed_fields = []
 
     # Load all the galaxies in from all trees.
     gals1 = g1.read_gals()
@@ -521,7 +525,7 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
 
         return_value = compare_field_equality(field1, field2, field, rtol, atol)
 
-        if not return_value: 
+        if not return_value:
             failed_fields.append(field)
 
     if failed_fields:
@@ -566,7 +570,7 @@ def compare_field_equality(field1, field2, field_name, rtol, atol):
     print("#######################################\n", file=sys.stderr)
 
     return False
-                
+
 
 if __name__ == '__main__':
 
@@ -583,17 +587,23 @@ if __name__ == '__main__':
                         help="Number of files the first file was split over.")
     parser.add_argument("num_files_file2", metavar="NUM_FILES_FILE2", type=int,
                         help="Number of files the second file was split over.")
+
+    parser.add_argument("verbose", metavar="verbose", type=bool, default=False,
+                        nargs='?', help="print lots of info messages.")
+
     args = parser.parse_args()
 
     if not (args.mode == "binary-binary" or args.mode == "binary-hdf5"):
-        print("We only accept comparisons between binary-binary files or binary-hdf5 "
-              "files.  Please set the 'mode' argument to one of these options.")
+        print("We only accept comparisons between 'binary-binary' files "
+              "or 'binary-hdf5' files. Please set the 'mode' argument "
+              "to one of these options.")
         raise ValueError
 
     if args.mode == "binary-hdf5" and args.num_files_file2 > 1:
-        print("You're comparing a binary with a HDF5 file but are saying the HDF5 file is "
-              "split over multiple files. This shouldn't be the case; simply specify the "
-              "master file and set 'num_files_file2' to 1.")
+        print("You're comparing a binary with a HDF5 file but are saying "
+              "the HDF5 file is split over multiple files. This shouldn't "
+              "be the case; simply specify the master file and set "
+              "'num_files_file2' to 1.")
         raise ValueError
 
     ignored_fields = []
@@ -606,10 +616,12 @@ if __name__ == '__main__':
     rtol = 1e-07
     atol = 1e-11
 
-    print("Running sagediff on files {0} and {1} in mode {2}. The first file "
-          "was split over {3} files and the second file was split over {3} "
-          "files.".format(args.file1, args.file2, args.mode, args.num_files_file1,
-          args.num_files_file2))
+    if args.verbose:
+        print("Running sagediff on files {0} and {1} in mode {2}. The first "\
+              "file was split over {3} files and the second file was split "\
+              "over {4} files.".format(args.file1, args.file2,
+                                       args.mode, args.num_files_file1,
+                                       args.num_files_file2))
 
     compare_catalogs(args.file1, args.num_files_file1, args.file2, args.num_files_file2,
                      args.mode, ignored_fields, multidim_fields, rtol, atol)

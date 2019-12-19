@@ -5,7 +5,7 @@ extern "C" {
 #endif
 
     #include "core_allvars.h"
-    
+
     /* functions in model_starformation_and_feedback.c */
     extern void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
                                            struct GALAXY *galaxies, const struct params *run_params);

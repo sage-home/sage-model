@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <assert.h>
 #include <limits.h>
 
 #include "core_tree_utils.h"
@@ -129,7 +128,9 @@ int reorder_lhalo_to_lhvt(const int32_t nhalos, struct halo_data *forest, int32_
                     return EXIT_FAILURE;
                 }
             } else {
-                assert(desc >= 0 && desc < nhalos);
+                XRETURN(desc >= 0 && desc < nhalos, EXIT_FAILURE,
+                        "Error: desc = %d should be in range [0, %d)",
+                        desc, nhalos);
                 if(desc_len[old_index] != forest[desc].Len) {
                     fprintf(stderr,"Error: forest[%d].Descendant (Len) = %d (desc=%d) now but old descendant contained %d particles\n",
                             i, forest[desc].Len, desc, desc_len[old_index]);
@@ -149,7 +150,9 @@ int reorder_lhalo_to_lhvt(const int32_t nhalos, struct halo_data *forest, int32_
                 if( prog < 0 || prog >= nhalos) {
                     fprintf(stderr,"WEIRD: prog = %d for i=%d is not within [0, %d)\n",prog, i, nhalos);
                 }
-                assert(prog >=0 && prog < nhalos);
+                XRETURN(prog >=0 && prog < nhalos, EXIT_FAILURE,
+                        "Error: progenitor index = %d should be in range [0, %d)\n",
+                        prog, nhalos);
                 if(prog_len[old_index] != forest[prog].Len) {
                     fprintf(stderr,"Error: forest[%d].FirstProgenitor (Len) = %d (prog=%d) now but old FirstProgenitor contained %d particles\n",
                             i, forest[prog].Len, prog, prog_len[old_index]);
@@ -223,16 +226,16 @@ int fix_mergertree_index(struct halo_data *forest, const int64_t nhalos, const i
     /* The individual mergertree indices contain references to the old order -> as to where they were and need to
        be updated to where the halo is now. So, we need an array that can tells us, for any index in the old order,
        the location for that halo in the new order.
-       
+
        index[i] contains where the halo was in the old order and I need the opposite information. The following
        lines contain this inverting proces -- only applicable because *ALL* values in index[i] are unique (i.e.,
        this loop can be vectorized with a #pragma simd style). The value on the RHS, i, is the *CURRENT* index
        while the key, on the LHS, is the *OLD* index. Thus, current_index_for_old_order is an array that tells
        us where *ANY* halo index from the *OLD* order can be found in the *NEW* order.
-       
+
        Looks deceptively simple, it isn't. Took 3-days of my time + 2 hours of YQin's to nail this down and have
        validations pass. - MS 19/11/2016
-       
+
     */
     for(int32_t i=0;i<nhalos;i++) {
         current_index_for_old_order[index[i]] = i;
@@ -247,7 +250,7 @@ int fix_mergertree_index(struct halo_data *forest, const int64_t nhalos, const i
             this_halo->FIELD = dst;                                     \
         }                                                               \
     }
-    
+
     /* Now fix *all* the mergertree indices */
     for(int64_t i=0;i<nhalos;i++) {
         struct halo_data *this_halo = &(forest[i]);
@@ -258,28 +261,28 @@ int fix_mergertree_index(struct halo_data *forest, const int64_t nhalos, const i
         UPDATE_LHALOTREE_INDEX(NextHaloInFOFgroup);
     }
 #undef UPDATE_LHALOTREE_INDEX
-    
+
     free(current_index_for_old_order);
     return EXIT_SUCCESS;
 }
 
 
-void get_nfofs_all_snaps(const struct halo_data *forest, const int nhalos, int *nfofs_all_snaps, const int nsnaps)
+int get_nfofs_all_snaps(const struct halo_data *forest, const int nhalos, int *nfofs_all_snaps, const int nsnaps)
 {
     for(int i=0;i<nsnaps;i++) {
         nfofs_all_snaps[i] = 0;
     }
-    
+
     for(int i=0;i<nhalos;i++) {
         if(forest[i].FirstHaloInFOFgroup == i) {
             const int snap = forest[i].SnapNum;
             if(snap < 0 || snap >= nsnaps) {
                 fprintf(stderr, "Validation error: snapshot = %d must be within [0, %d)\n", snap, nsnaps);
-                ABORT(SNAPSHOT_OUT_OF_RANGE);
+                return INVALID_MEMORY_ACCESS_REQUESTED;
             }
             nfofs_all_snaps[snap]++;
         }
     }
+
+    return EXIT_SUCCESS;
 }
-
-

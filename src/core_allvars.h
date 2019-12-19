@@ -18,104 +18,92 @@
 /* This structure contains the properties used within the code */
 struct GALAXY
 {
-  int   SnapNum;
-  int   Type;
-
-  int   GalaxyNr;
-  int   CentralGal;
-  int   HaloNr;
-  long long MostBoundID;
-  int64_t GalaxyIndex; // This is a unique value based on the tree local galaxy number,
-                       // file local tree number and the file number itself.
+    int32_t   SnapNum;
+    int32_t  Type;
+    
+    int32_t   GalaxyNr;
+    int32_t   CentralGal;
+    int32_t   HaloNr;
+    long long MostBoundID;
+    uint64_t GalaxyIndex; // This is a unique value based on the tree local galaxy number,
+    // file local tree number and the file number itself.
                        // See ``generate_galaxy_index()`` in ``core_save.c``.
-  int64_t CentralGalaxyIndex; // Same as above, except the ``GalaxyIndex`` value for the CentralGalaxy
-                              // of this galaxy's FoF group.
+    uint64_t CentralGalaxyIndex; // Same as above, except the ``GalaxyIndex`` value for the CentralGalaxy
+    // of this galaxy's FoF group.
 
-  int   mergeType;  /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
-  int   mergeIntoID;
-  int   mergeIntoSnapNum;
-  float dT;
+    int32_t   mergeType;  /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
+    int32_t   mergeIntoID;
+    int32_t   mergeIntoSnapNum;
+    float dT;
 
-  /* (sub)halo properties */
-  float Pos[3];
-  float Vel[3];
-  int   Len;   
-  float Mvir;
-  float deltaMvir;
-  float CentralMvir;
-  float Rvir;
-  float Vvir;
-  float Vmax;
+    /* (sub)halo properties */
+    float Pos[3];
+    float Vel[3];
+    int   Len;
+    float Mvir;
+    float deltaMvir;
+    float CentralMvir;
+    float Rvir;
+    float Vvir;
+    float Vmax;
 
-  /* baryonic reservoirs */
-  float ColdGas;
-  float StellarMass;
-  float BulgeMass;
-  float HotGas;
-  float EjectedMass;
-  float BlackHoleMass;
-  float ICS;
+    /* baryonic reservoirs */
+    float ColdGas;
+    float StellarMass;
+    float BulgeMass;
+    float HotGas;
+    float EjectedMass;
+    float BlackHoleMass;
+    float ICS;
 
-  /* metals */
-  float MetalsColdGas;
-  float MetalsStellarMass;
-  float MetalsBulgeMass;
-  float MetalsHotGas;
-  float MetalsEjectedMass;
-  float MetalsICS;
+    /* metals */
+    float MetalsColdGas;
+    float MetalsStellarMass;
+    float MetalsBulgeMass;
+    float MetalsHotGas;
+    float MetalsEjectedMass;
+    float MetalsICS;
 
-  /* to calculate magnitudes */
-  float SfrDisk[STEPS];
-  float SfrBulge[STEPS];
-  float SfrDiskColdGas[STEPS];
-  float SfrDiskColdGasMetals[STEPS];
-  float SfrBulgeColdGas[STEPS];
-  float SfrBulgeColdGasMetals[STEPS];
+    /* to calculate magnitudes */
+    float SfrDisk[STEPS];
+    float SfrBulge[STEPS];
+    float SfrDiskColdGas[STEPS];
+    float SfrDiskColdGasMetals[STEPS];
+    float SfrBulgeColdGas[STEPS];
+    float SfrBulgeColdGasMetals[STEPS];
 
-  /* misc */
-  float DiskScaleRadius;
-  float MergTime;
-  double Cooling;
-  double Heating;
-  float r_heat;
-  float QuasarModeBHaccretionMass;
-  float TimeOfLastMajorMerger;
-  float TimeOfLastMinorMerger;
-  float OutflowRate;
-  float TotalSatelliteBaryons;
+    /* misc */
+    float DiskScaleRadius;
+    float MergTime;
+    double Cooling;
+    double Heating;
+    float r_heat;
+    float QuasarModeBHaccretionMass;
+    float TimeOfLastMajorMerger;
+    float TimeOfLastMinorMerger;
+    float OutflowRate;
+    float TotalSatelliteBaryons;
 
-  /* infall properties */
-  float infallMvir;
-  float infallVvir;
-  float infallVmax;
+    /* infall properties */
+    float infallMvir;
+    float infallVvir;
+    float infallVmax;
 };
 
 
 
 /* auxiliary halo data */
-struct halo_aux_data   
+struct halo_aux_data
 {
-    int DoneFlag;
-    int HaloFlag;
-    int NGalaxies;
+    int32_t DoneFlag;
+    int32_t HaloFlag;
+    int32_t NGalaxies;
     int FirstGalaxy;
 #ifdef PROCESS_LHVT_STYLE
-    int orig_index;
-#endif    
-    int output_snap_n;
+    int32_t orig_index;
+#endif
+    int32_t output_snap_n;
 };
-
-#if 0
-#ifdef HDF5
-extern char          *core_output_file;
-extern size_t         HDF5_dst_size;
-extern size_t        *HDF5_dst_offsets;
-extern size_t        *HDF5_dst_sizes;
-extern const char   **HDF5_field_names;
-extern hid_t         *HDF5_field_types;
-extern int            HDF5_n_props;
-#endif
-#endif
 
 #define DOUBLE 1
 #define STRING 2
@@ -124,10 +112,10 @@ extern int            HDF5_n_props;
 enum Valid_TreeTypes
 {
   lhalo_binary = 0,
-  genesis_lhalo_hdf5 = 1,
+  illustris_lhalo_hdf5 = 1,
   genesis_standard_hdf5 = 2,
   consistent_trees_ascii = 3,
-  ahf_trees_ascii = 4,
+  ahf_trees_ascii = 5,
   num_tree_types
 };
 
@@ -137,6 +125,7 @@ enum Valid_OutputFormats
   sage_hdf5 = 1,
   num_output_format_types
 };
+
 
 /* do not use '0' as an enum since that '0' usually
    indicates 'success' on POSIX systems */
@@ -162,23 +151,23 @@ enum sage_error_types {
 
 struct lhalotree_info {
     int64_t nforests;/* number of forests to process */
-    
+
     /* lhalotree format only has int32_t for nhalos per forest */
     int32_t *nhalos_per_forest;/* number of halos to read, nforests elements */
 
     union {
         int *fd;/* the file descriptor for each forest (i.e., which file descriptor to read this forest from) nforests elements*/
-#ifdef HDF5        
+#ifdef HDF5
         hid_t *h5_fd;/* contains the HDF5 file descriptor for each forest */
-#endif        
+#endif
     };
     off_t *bytes_offset_for_forest;/* where to start reading the files, nforests elements */
 
     union {
         int *open_fds;/* contains numfiles elements of open file descriptors, numfiles elements */
-#ifdef HDF5        
+#ifdef HDF5
         hid_t *open_h5_fds;/* contains numfiles elements of open HDF5 file descriptors */
-#endif        
+#endif
     };
     int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
     int32_t unused;/* unused, but present for alignment */
@@ -189,17 +178,16 @@ struct ctrees_info {
     //in serial mode, ``forests_info->ctr.nforests == forests_info->totnforests``)
     int64_t nforests;
     int64_t ntrees;
-    
+
     void *column_info;/* stored as a void * to avoid including parse_ctrees.h here*/
-    
+
     /* forest level quantities */
     int64_t *ntrees_per_forest;/* contains nforests elements */
     int64_t *start_treenum_per_forest;/* contains nforests elements */
-    
+
     /* tree level quantities */
     int *tree_fd;/* contains ntrees elements */
     off_t *tree_offsets;/* contains ntrees elements */
-
 
     /* file level quantities */
     int *open_fds;/* contains numfiles elements of open file descriptors */
@@ -227,14 +215,14 @@ struct forest_info {
     };
     int64_t totnforests;  // Total number of forests across **all** input tree files.
     int64_t nforests_this_task; // Total number of forests processed by **this** task.
-    float frac_volume_processed; // Fraction of the simulation volume processed by **this** task.
+    double frac_volume_processed; // Fraction of the simulation volume processed by **this** task.
     // We assume that each of the input tree files span the same volume. Hence by summing the
     // number of trees processed by each task from each file, we can determine the
     // fraction of the simulation volume that this task processes.  We weight this summation by the
     // number of trees in each file because some files may have more/less trees whilst still spanning the
     // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
     int32_t *FileNr; // The file number that each forest was read from.
-    int32_t *original_treenr; // The tree number from the original tree files.
+    int64_t *original_treenr; // The tree number from the original tree files.
                               // Necessary because Task N's "Tree 0" could start at the middle of a file.
 };
 
@@ -246,7 +234,7 @@ struct save_info {
 #endif
     };
 
-    int32_t *tot_ngals; // Number of galaxies **per snapshot**.
+    int64_t *tot_ngals; // Number of galaxies **per snapshot**.
     int32_t **forest_ngals; // Number of galaxies **per snapshot** **per tree**; fores_ngals[snap][forest].
 
 #ifdef HDF5
@@ -256,7 +244,6 @@ struct save_info {
     hid_t *group_ids;
 
     int32_t num_output_fields;
-    hid_t **dataset_ids;
 
     int32_t buffer_size;
     int32_t *num_gals_in_buffer;
@@ -267,8 +254,8 @@ struct save_info {
 
 struct params
 {
-    int    FirstFile;    /* first and last file for processing; only relevant for lhalotree style files (binary or hdf5) */
-    int    LastFile;
+    int32_t    FirstFile;    /* first and last file for processing; only relevant for lhalotree style files (binary or hdf5) */
+    int32_t    LastFile;
 
     char   OutputDir[MAX_STRING_LEN];
     char   FileNameGalaxies[MAX_STRING_LEN];
@@ -289,12 +276,12 @@ struct params
     double EtaSN;
 
     /* recipe flags */
-    int    SFprescription;
-    int    AGNrecipeOn;
-    int    SupernovaRecipeOn;
-    int    ReionizationOn;
-    int    DiskInstabilityOn;
-    
+    int32_t    SFprescription;
+    int32_t    AGNrecipeOn;
+    int32_t    SupernovaRecipeOn;
+    int32_t    ReionizationOn;
+    int32_t   DiskInstabilityOn;
+
     double RecycleFraction;
     double Yield;
     double FracZleaveDisk;
@@ -326,19 +313,21 @@ struct params
     double a0;
     double ar;
 
-    int LastSnapShotNr;
-    int MAXSNAPS;
-    int NOUT;
-    int Snaplistlen;
+    int32_t LastSnapShotNr;
+    int32_t MAXSNAPS;
+    int32_t NOUT;
+    int32_t Snaplistlen;
     enum Valid_TreeTypes TreeType;
     enum Valid_OutputFormats OutputFormat;
+    int64_t FileNr_Mulfac;
+    int64_t ForestNr_Mulfac;
 
-    int ListOutputSnaps[ABSOLUTEMAXSNAPS];
+    int32_t ListOutputSnaps[ABSOLUTEMAXSNAPS];
     double ZZ[ABSOLUTEMAXSNAPS];
     double AA[ABSOLUTEMAXSNAPS];
     double *Age;
 
-    int interrupted;/* to re-print the progress-bar */
+    int32_t interrupted;/* to re-print the progress-bar */
 
     int32_t ThisTask;
     int32_t NTasks;

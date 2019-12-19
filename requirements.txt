@@ -3,3 +3,4 @@ tqdm
 matplotlib
 scipy
 h5py
+pre-commit

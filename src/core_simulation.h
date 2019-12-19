@@ -1,14 +1,14 @@
 
 struct halo_data
 {
-  // merger tree pointers 
+  // merger tree pointers
   int Descendant;
   int FirstProgenitor;
   int NextProgenitor;
   int FirstHaloInFOFgroup;
   int NextHaloInFOFgroup;
 
-  // properties of halo 
+  // properties of halo
   int Len;
   float M_Mean200, Mvir, M_TopHat;  // for Millennium, Mvir=M_Crit200
   float Pos[3];
@@ -24,7 +24,3 @@ struct halo_data
   int SubhaloIndex;
   float SubHalfMass;
 };
-
-
-
-

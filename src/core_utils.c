@@ -89,39 +89,38 @@ char *get_time_string(struct timeval t0, struct timeval t1)
   const size_t MAXLINESIZE = 1024;
   char *time_string = malloc(MAXLINESIZE * sizeof(char));
   if(time_string == NULL)  {
-    fprintf(stderr,"Error: Could not allocate memory to hold string variable representing time in function '%s'..returning\n", __FUNCTION__);
-    return NULL;
+      fprintf(stderr,"Error: Could not allocate memory to hold string variable representing time in function '%s'..returning\n", __FUNCTION__);
+      return NULL;
   }
   double timediff = t1.tv_sec - t0.tv_sec;
   double ratios[] = {24 * 3600.0, 3600.0, 60.0, 1};
-  char units[4][10] = {"days", "hrs", "mins", "secs"};
-  int which = 0;
-
   double timeleft = timediff;
-  double time_to_print;
-
+  
   if (timediff < ratios[2]) {
-    my_snprintf(time_string, MAXLINESIZE, "%6.3lf secs",
-                1e-6 * (t1.tv_usec - t0.tv_usec) + timediff);
+      my_snprintf(time_string, MAXLINESIZE, "%6.3lf secs",
+                  1e-6 * (t1.tv_usec - t0.tv_usec) + timediff);
   } else {
-    size_t curr_index = 0;
-    while (which < 4) {
-      time_to_print = floor(timeleft / ratios[which]);
-      if (time_to_print > 1) {
-        timeleft -= (time_to_print * ratios[which]);
-        char tmp[MAXLINESIZE];
-        my_snprintf(tmp, MAXLINESIZE, "%5d %s", (int)time_to_print, units[which]);
-        const size_t len = strlen(tmp);
-        const size_t required_len = curr_index + len + 1;
-        XRETURN(MAXLINESIZE >= required_len, NULL,
-                "buffer overflow will occur: string has space for %zu bytes while concatenating "
-                "requires at least %zu bytes\n",
-                MAXLINESIZE, required_len);
-        strcpy(time_string + curr_index, tmp);
-        curr_index += len;
+      int which = 0;
+      size_t curr_index = 0;
+      while (which < 4) {
+          char units[4][10] = {"days", "hrs", "mins", "secs"};
+          
+          double time_to_print = floor(timeleft / ratios[which]);
+          if (time_to_print > 1) {
+              timeleft -= (time_to_print * ratios[which]);
+              char tmp[MAXLINESIZE];
+              my_snprintf(tmp, MAXLINESIZE, "%5d %s", (int)time_to_print, units[which]);
+              const size_t len = strlen(tmp);
+              const size_t required_len = curr_index + len + 1;
+              XRETURN(MAXLINESIZE >= required_len, NULL,
+                      "buffer overflow will occur: string has space for %zu bytes while concatenating "
+                      "requires at least %zu bytes\n",
+                      MAXLINESIZE, required_len);
+              strcpy(time_string + curr_index, tmp);
+              curr_index += len;
+          }
+          which++;
       }
-      which++;
-    }
   }
 
   return time_string;
@@ -129,12 +128,11 @@ char *get_time_string(struct timeval t0, struct timeval t1)
 
 int64_t getnumlines(const char *fname,const char comment)
 {
-    FILE *fp= NULL;
     const int MAXLINESIZE = 10000;
     int64_t nlines=0;
     char str_line[MAXLINESIZE];
 
-    fp = fopen(fname,"rt");
+    FILE *fp = fopen(fname,"rt");
     if(fp == NULL) {
         return -1;
     }
@@ -175,7 +173,7 @@ int myfseek(FILE * stream, const long offset, const int whence)
 {
     return fseeko(stream, offset, whence);
 }
-  
+
 ssize_t mywrite(int fd, const void *ptr, size_t nbytes)
 {
     size_t nbytes_left = nbytes;
@@ -239,5 +237,3 @@ ssize_t mypwrite(int fd, const void *ptr, const size_t nbytes, off_t offset)
 
     return tot_nbytes_written;
 }
-
-

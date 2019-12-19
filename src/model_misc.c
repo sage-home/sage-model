@@ -3,32 +3,33 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <assert.h>
 
 #include "core_allvars.h"
 
 #include "model_misc.h"
 
-void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_data *halos,
+void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct halo_data *halos,
                  struct GALAXY *galaxies, const struct params *run_params)
 {
-  
-	assert(halonr == halos[halonr].FirstHaloInFOFgroup);
-    
+
+	XASSERT(halonr == halos[halonr].FirstHaloInFOFgroup, -1,
+            "Error: halonr = %d should be equal to the FirsthaloInFOFgroup = %d\n",
+            halonr, halos[halonr].FirstHaloInFOFgroup);
+
     galaxies[p].Type = 0;
 
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;
-    
+
     galaxies[p].HaloNr = halonr;
     galaxies[p].MostBoundID = halos[halonr].MostBoundID;
     galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
-    
+
     galaxies[p].mergeType = 0;
     galaxies[p].mergeIntoID = -1;
     galaxies[p].mergeIntoSnapNum = -1;
     galaxies[p].dT = -1.0;
-    
+
     for(int j = 0; j < 3; j++) {
         galaxies[p].Pos[j] = halos[halonr].Pos[j];
         galaxies[p].Vel[j] = halos[halonr].Vel[j];
@@ -39,9 +40,9 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_
     galaxies[p].Vvir = get_virial_velocity(halonr, halos, run_params);
     galaxies[p].Mvir = get_virial_mass(halonr, halos, run_params);
     galaxies[p].Rvir = get_virial_radius(halonr, halos, run_params);
-    
+
     galaxies[p].deltaMvir = 0.0;
-    
+
     galaxies[p].ColdGas = 0.0;
     galaxies[p].StellarMass = 0.0;
     galaxies[p].BulgeMass = 0.0;
@@ -49,14 +50,14 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_
     galaxies[p].EjectedMass = 0.0;
     galaxies[p].BlackHoleMass = 0.0;
     galaxies[p].ICS = 0.0;
-    
+
     galaxies[p].MetalsColdGas = 0.0;
     galaxies[p].MetalsStellarMass = 0.0;
     galaxies[p].MetalsBulgeMass = 0.0;
     galaxies[p].MetalsHotGas = 0.0;
     galaxies[p].MetalsEjectedMass = 0.0;
     galaxies[p].MetalsICS = 0.0;
-    
+
     for(int step = 0; step < STEPS; step++) {
         galaxies[p].SfrDisk[step] = 0.0;
         galaxies[p].SfrBulge[step] = 0.0;
@@ -76,9 +77,9 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_
     galaxies[p].TimeOfLastMinorMerger = -1.0;
     galaxies[p].OutflowRate = 0.0;
 	galaxies[p].TotalSatelliteBaryons = 0.0;
-    
+
 	// infall properties
-    galaxies[p].infallMvir = -1.0;  
+    galaxies[p].infallMvir = -1.0;
     galaxies[p].infallVvir = -1.0;
     galaxies[p].infallVmax = -1.0;
 
@@ -86,13 +87,13 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_
 
 
 
-double get_disk_radius(const int halonr, const int p, struct halo_data *halos, struct GALAXY *galaxies)
+double get_disk_radius(const int halonr, const int p, const struct halo_data *halos, const struct GALAXY *galaxies)
 {
 	if(galaxies[p].Vvir > 0.0 && galaxies[p].Rvir > 0.0) {
 		// See Mo, Shude & White (1998) eq12, and using a Bullock style lambda.
-		double SpinMagnitude = sqrt(halos[halonr].Spin[0] * halos[halonr].Spin[0] + 
+		double SpinMagnitude = sqrt(halos[halonr].Spin[0] * halos[halonr].Spin[0] +
                                     halos[halonr].Spin[1] * halos[halonr].Spin[1] + halos[halonr].Spin[2] * halos[halonr].Spin[2]);
-        
+
 		double SpinParameter = SpinMagnitude / ( 1.414 * galaxies[p].Vvir * galaxies[p].Rvir);
 		return (SpinParameter / 1.414 ) * galaxies[p].Rvir;
         /* return SpinMagnitude * 0.5 / galaxies[p].Vvir; /\* should be equivalent to previous call *\/ */
@@ -124,22 +125,22 @@ double dmax(const double x, const double y)
 
 
 
-double get_virial_mass(const int halonr, struct halo_data *halos, const struct params *run_params)
+double get_virial_mass(const int halonr, const struct halo_data *halos, const struct params *run_params)
 {
   if(halonr == halos[halonr].FirstHaloInFOFgroup && halos[halonr].Mvir >= 0.0)
-    return halos[halonr].Mvir;   /* take spherical overdensity mass estimate */ 
+    return halos[halonr].Mvir;   /* take spherical overdensity mass estimate */
   else
     return halos[halonr].Len * run_params->PartMass;
 }
 
 
 
-double get_virial_velocity(const int halonr, struct halo_data *halos, const struct params *run_params)
+double get_virial_velocity(const int halonr, const struct halo_data *halos, const struct params *run_params)
 {
 	double Rvir;
-	
+
 	Rvir = get_virial_radius(halonr, halos, run_params);
-	
+
     if(Rvir > 0.0)
 		return sqrt(run_params->G * get_virial_mass(halonr, halos, run_params) / Rvir);
 	else
@@ -147,7 +148,7 @@ double get_virial_velocity(const int halonr, struct halo_data *halos, const stru
 }
 
 
-double get_virial_radius(const int halonr, struct halo_data *halos, const struct params *run_params)
+double get_virial_radius(const int halonr, const struct halo_data *halos, const struct params *run_params)
 {
   // return halos[halonr].Rvir;  // Used for Bolshoi
   const int snapnum = halos[halonr].SnapNum;
@@ -155,10 +156,10 @@ double get_virial_radius(const int halonr, struct halo_data *halos, const struct
   const double hubble_of_z_sq =
       run_params->Hubble * run_params->Hubble *(run_params->Omega * zplus1 * zplus1 * zplus1 + (1.0 - run_params->Omega - run_params->OmegaLambda) * zplus1 * zplus1 +
                                               run_params->OmegaLambda);
-  
+
   const double rhocrit = 3.0 * hubble_of_z_sq / (8.0 * M_PI * run_params->G);
   const double fac = 1.0 / (200.0 * 4.0 * M_PI / 3.0 * rhocrit);
-  
+
   return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
 }
 

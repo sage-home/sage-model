@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 
     if(argc != 2) {
         printf("\n  usage: sage <parameterfile>\n\n");
-#ifdef MPI        
+#ifdef MPI
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         MPI_Finalize();
 #endif
@@ -30,8 +30,7 @@ int main(int argc, char **argv)
 
     /* initialize sage (read parameter file, setup units, read cooling tables etc) */
     struct params run_params;
-    int status = EXIT_FAILURE;
-    status = init_sage(ThisTask, argv[1], &run_params);
+    int status = init_sage(ThisTask, argv[1], &run_params);
     if(status != EXIT_SUCCESS) {
         goto err;
     }
@@ -46,7 +45,7 @@ int main(int argc, char **argv)
     }
 
 #ifdef MPI
-    // Wait until all tasks are done before we do final tasks/checks. 
+    // Wait until all tasks are done before we do final tasks/checks.
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
@@ -61,8 +60,8 @@ int main(int argc, char **argv)
 #endif
     return EXIT_SUCCESS;
 
- err:    
-#ifdef MPI        
+ err:
+#ifdef MPI
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
     MPI_Finalize();
 #endif

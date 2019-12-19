@@ -26,7 +26,6 @@ struct timeval tstart;
 
 void init_my_progressbar(FILE *stream, const int64_t N, int *interrupted)
 {
-  int index = 0;
   if (N <= 0) {
       fprintf(stream, "WARNING: N=%" PRId64 " is not positive. Progress bar will not be printed\n", N);
       SMALLPRINTSTEP = 0.0;
@@ -36,7 +35,7 @@ void init_my_progressbar(FILE *stream, const int64_t N, int *interrupted)
 
     // pre-fill the progress bar string
     // first the 0%
-    index = 0;
+    int index = 0;
     my_snprintf(&(PROGRESSBARSTRING[index]), MAXLEN - index, "%s", "0%");
     index += 2;
     END_INDEX_FOR_PERCENT_DONE[0] = index;
