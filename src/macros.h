@@ -105,9 +105,6 @@
             fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %d with expression `" #EXP "'\n", \
                     __FILE__, __FUNCTION__, __LINE__);                  \
             fprintf(stderr, __VA_ARGS__);                               \
-            fprintf(stderr, ANSI_COLOR_BLUE "Hopefully, input validation. Otherwise, bug in code: " \
-                    "please email Manodeep Sinha "                      \
-                    "<manodeep@gmail.com>" ANSI_COLOR_RESET "\n");      \
         }                                                               \
     } while (0)
 #endif
@@ -123,9 +120,6 @@
       fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %d with expression `" #EXP "'\n",        \
               __FILE__, __FUNCTION__, __LINE__);                                                   \
       fprintf(stderr, __VA_ARGS__);                                                                \
-      fprintf(stderr, ANSI_COLOR_BLUE "Hopefully, input validation. Otherwise, bug in code: "      \
-                                      "please email Manodeep Sinha "                               \
-                                      "<manodeep@gmail.com>" ANSI_COLOR_RESET "\n");               \
       return VAL;                                                                                  \
     }                                                                                              \
   } while (0)
