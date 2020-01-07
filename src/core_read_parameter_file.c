@@ -216,10 +216,10 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                 continue;
             }
 
-            /* Allowing for spaces in the filenames (but requires comments to ALWAYS start with '%') */
+            /* Allowing for spaces in the filenames (but requires comments to ALWAYS start with '%' or ';') */
             int buf2len = strnlen(buf2, MAX_STRING_LEN);
             for(int i=0;i<=buf2len;i++) {
-                if(buf2[i] == '%') {
+                if(buf2[i] == '%' || buf2[i] == ';') {
                     int null_pos = i;
                     //Ignore all preceeding whitespace
                     for(int j=i-1;j>=0;j--) {
@@ -350,17 +350,18 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
        null terminate tree-extension first  */
     run_params->TreeExtension[0] = '\0';
 
+
     // Check tree type is valid.
     if (strncmp(my_treetype, "lhalo_hdf5", 511) == 0 ||
         strncmp(my_treetype, "genesis_hdf5", 511) == 0) {
-        // strncmp returns 0 if the two strings are equal.
-        // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
-        snprintf(run_params->TreeExtension, 511, ".hdf5");
 #ifndef HDF5
         fprintf(stderr, "You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled.\n");
         fprintf(stderr, "Please check your file type and compiler options.\n");
         ABORT(EXIT_FAILURE);
 #endif
+        // strncmp returns 0 if the two strings are equal.
+        // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
+        snprintf(run_params->TreeExtension, 511, ".hdf5");
     }
 
     const char tree_names[][MAX_STRING_LEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii"};
@@ -377,10 +378,10 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     }
 
     if(found == 0) {
-        fprintf(stderr, "TreeType %s is not supported\n", my_treetype);
-        fprintf(stderr," Please choose one of the supported tree types -- \n");
+        fprintf(stderr, "TreeType = '%s' is not supported.\n", my_treetype);
+        fprintf(stderr,"Please choose one of the supported tree types -- \n");
         for(int i=0;i<nvalid_tree_types;i++) {
-            fprintf(stderr,"TreeType = %s\n", tree_names[i]);
+            fprintf(stderr,"TreeType = '%s'\n", tree_names[i]);
         }
         ABORT(EXIT_FAILURE);
     }

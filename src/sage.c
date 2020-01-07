@@ -196,7 +196,11 @@ int32_t sage_per_forest(const int forestnr, struct save_info *save_info,
 
     /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
     const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
+    if (nhalos < 0) {
+        return nhalos;
+    }
 
+    
     /* /\* need to actually set the nhalos value for CTREES*\/ */
     /* forest_info->totnhalos_per_forest[forestnr] = nhalos; */
 
