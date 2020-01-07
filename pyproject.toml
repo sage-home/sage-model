@@ -1,9 +1,0 @@
-[tool.black]
-line-length = 90
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | build
-)/
-'''
