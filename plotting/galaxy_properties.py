@@ -69,7 +69,7 @@ if __name__ == "__main__":
                     "GMF"             : 1,  # Gas mass function (cold gas).
                     "BTF"             : 1,  # Baryonic Tully-Fisher.
                     "sSFR"            : 1,  # Specific star formation rate.
-                    "gas_frac"        : 1,  # Fraction of galaxy that is cold gas.
+                    "gas_fraction"    : 1,  # Fraction of galaxy that is cold gas.
                     "metallicity"     : 1,  # Metallicity scatter plot.
                     "bh_bulge"        : 1,  # Black hole-bulge relationship.
                     "quiescent"       : 1,  # Fraction of galaxies that are quiescent.
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
         # The data class has read the SAGE ini file.  Update the model with the parameters
         # read and those specified by the user.
-        my_model.update_attributes(model_dict)
+        my_model.update_attributes(model_dict, plot_toggles)
 
         #my_model.data_class.set_cosmology(my_model)
 
