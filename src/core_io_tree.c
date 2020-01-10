@@ -57,6 +57,9 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
         case consistent_trees_ascii:
             (void) firstfile, (void) lastfile;
             status = setup_forests_io_ctrees(forests_info, ThisTask, NTasks, run_params);
+
+            fprintf(stderr,"Forcing the frac volume processed \n");
+            forests_info->frac_volume_processed = 1.0/(double) run_params->NumSimulationTreeFiles;
             break;
 
         default:

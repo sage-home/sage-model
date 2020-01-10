@@ -183,7 +183,7 @@ void sort_forests_by_treeid(const int64_t ntrees, int64_t *forests, int64_t *tre
         SGLIB_ARRAY_ELEMENTS_EXCHANGER(int64_t, forests, i, j);     \
     }
     
-    SGLIB_ARRAY_QUICK_SORT(int64_t, treeids, ntrees, SGLIB_NUMERIC_COMPARATOR , MULTIPLE_ARRAY_EXCHANGER);
+    SGLIB_ARRAY_HEAP_SORT(int64_t, treeids, ntrees, SGLIB_NUMERIC_COMPARATOR , MULTIPLE_ARRAY_EXCHANGER);
 #undef MULTIPLE_ARRAY_EXCHANGER
 
 }    
