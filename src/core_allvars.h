@@ -221,8 +221,6 @@ struct genesis_info {
     int64_t *forestnum_in_file;/* Integer identifying the file-local forest numbers to be read -- shape (nforests, ) */
     int64_t *offset_for_global_forestnum;/* What would be the offset to add to file-local 'forestnum' to get the global forest num
                                             that is needed to access the metadata ("*foreststats*.hdf5") file  -- shape (lastfile + 1, ) */
-    int64_t *start_forestnum_per_file;/* Integer identifying the starting forest number to process on a per file basis -- shape (lastfile + 1, ) */
-    int64_t *num_forests_to_process_per_file; /* How many forests per file -- shape (lastfile + 1, ) */
 
     int64_t *halo_offset_per_snap;/* Stores the current halo offsets to read from at each snapshot -- shape (maxsnaps, ).
                                      Initialised to all 0's for every new file and incremented as forests are read in. This details

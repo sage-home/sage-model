@@ -56,6 +56,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     if(status != EXIT_SUCCESS) {
         ABORT(status);
     }
+
     if(forest_info.totnforests < 0 || forest_info.nforests_this_task < 0) {
         fprintf(stderr,"Error: Bug in code totnforests = %"PRId64" and nforests (on this task) = %"PRId64" should both be at least 0\n",
                 forest_info.totnforests, forest_info.nforests_this_task);
@@ -115,7 +116,6 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         if(status != EXIT_SUCCESS) {
             ABORT(status);
         }
-
         nforests_done++;
     }
 

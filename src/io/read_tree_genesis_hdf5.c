@@ -38,7 +38,7 @@ enum GalaxyProperty
 };
 
 static char galaxy_property_names[num_galaxy_props][MAX_STRING_LEN];
-static int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap);
+static int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap, const int64_t forestnr);
 static void get_forest_metadata_filename(const char *forestfilename, const size_t stringlen, char *metadata_filename);
 
 #define CONVERSION_FACTOR_FOR_GENESIS_UNIQUE_INDEX      (1000000000000)
@@ -78,8 +78,6 @@ void get_forest_metadata_filename(const char *forestfilename, const size_t strin
     strncpy(start, replacestring, replacelen);
     start[replacelen] = '\0';
 
-    fprintf(stderr,"forest_filename   = '%s'\nmetadata_filename = '%s'\n",
-            forestfilename, metadata_filename);
     return;
 }
 
@@ -230,13 +228,10 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     gen->start_forestnum = start_forestnum;
     forests_info->nforests_this_task = nforests_this_task;/* Note: Number of forests to process on this task is also stored at the container struct*/
 
-    gen->num_forests_to_process_per_file = calloc(totnfiles, sizeof(gen->num_forests_to_process_per_file[0]));/* calloc is required */
-    gen->start_forestnum_per_file = calloc(totnfiles, sizeof(gen->start_forestnum_per_file[0]));
     gen->offset_for_global_forestnum = calloc(totnfiles, sizeof(gen->offset_for_global_forestnum[0]));
-    gen->halo_offset_per_snap = calloc(gen->maxsnaps, sizeof(gen->halo_offset_per_snap[0]));
 
-    int64_t *num_forests_to_process_per_file = gen->num_forests_to_process_per_file;
-    int64_t *start_forestnum_per_file = gen->start_forestnum_per_file;
+    int64_t *num_forests_to_process_per_file = calloc(totnfiles, sizeof(num_forests_to_process_per_file[0]));
+    int64_t *start_forestnum_per_file = calloc(totnfiles, sizeof(start_forestnum_per_file[0]));
     int64_t *offset_for_global_forestnum = gen->offset_for_global_forestnum;
     int64_t *halo_offset_per_snap = gen->halo_offset_per_snap;
     if(num_forests_to_process_per_file == NULL || start_forestnum_per_file == NULL ||
@@ -300,10 +295,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         for(int filenr=firstfile;filenr<=lastfile;filenr++) {
             fprintf(stderr,"filenr := %d contains %"PRId64" forests\n",filenr, totnforests_per_file[filenr]);
         }
-
         return -1;
     }
-    free(totnforests_per_file);
 
     /* So we have the correct files */
     gen->totnfiles = totnfiles;/* the number of files to be processed across all tasks */
@@ -382,7 +375,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
                 dataset_name, (int32_t) *count, (int32_t) fd);          \
         XRETURN(H5Gclose(h5_grp) >= 0, HDF5_ERROR, "Error: Could not close group = '%s'\n", group_name); \
     }
-
+    
     {
         /* Intentionally written in new scope (separate '{')
 
@@ -400,7 +393,9 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         }
         const int64_t offset_for_forestnum = offset_for_global_forestnum[start_filenum];
         for(int isnap=0;isnap<gen->maxsnaps;isnap++) {
-            int64_t snap_offset = 0; /* declared previously */
+            int64_t snap_offset = 0;
+            /* fprintf(stderr,"ThisTask = %d isnap = %d start_filenum = %d start_forestnum_per_file[%d] = %"PRId64"\n", */
+            /*         ThisTask, isnap, start_filenum, start_filenum, start_forestnum_per_file[start_filenum]); */
             for(int64_t iforest=0;iforest<start_forestnum_per_file[start_filenum];iforest++) {
                 /* Read in the number of halos within each forest at this snapshot */
                 int64_t nhalos;
@@ -408,13 +403,13 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
                 const hsize_t h5_global_forestnum = (hsize_t) offset_for_forestnum + iforest;
                 READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, "ForestInfo", "ForestSizes", &h5_global_forestnum, &h5_single_item, &nhalos);
                 snap_offset += nhalos;
+                /* fprintf(stderr,"ThisTask = %d nhalos = %"PRId64" snap_offset = %"PRId64"\n", ThisTask, nhalos, snap_offset); */
             }
             gen->halo_offset_per_snap[isnap] = snap_offset;
         }
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
                 "Error: On ThisTask = %d could not close file descriptor for filename = '%s'\n", ThisTask, fname);
     }
-
 
     /* Now malloc the relevant arrays in forests_info->gen */
     gen->h5_fds = calloc(gen->totnfiles, sizeof(gen->h5_fds[0]));/* Allocates enough space to store all '(lastfile + 1)' hdf5 file descriptors
@@ -532,11 +527,16 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
     forests_info->frac_volume_processed = 0.0;
     for(int32_t filenr = start_filenum; filenr <= end_filenum; filenr++) {
+        if(filenr >= totnfiles || filenr < 0) {
+            fprintf(stderr,"Error: filenr = %d exceeds totnfiles = %"PRId64"\n", filenr, totnfiles);
+            return -1;
+        }
         forests_info->frac_volume_processed += (double) num_forests_to_process_per_file[filenr] / (double) totnforests_per_file[filenr];
     }
     forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
 
     free(num_forests_to_process_per_file);
+    free(start_forestnum_per_file);
     free(totnforests_per_file);
 
     /* Finally setup the multiplication factors necessary to generate
@@ -666,6 +666,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, dset_name, "NumHalosInForest", &h5_global_forestnum, &h5_single_item, &(nhalos_per_snap[isnap]));
 
         forest_local_offsets[isnap] = offset;
+        /* fprintf(stderr,"forest_local_offsets[%03d] = %d\n", isnap, forest_local_offsets[isnap]); */
         offset += nhalos_per_snap[isnap];
     }
 
@@ -692,7 +693,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     *halos = mymalloc(sizeof(struct halo_data) * nhalos);//the malloc failure check is done within mymalloc
     struct halo_data *local_halos = *halos;
     for(int64_t i=0;i<nhalos;i++) {
-        local_halos[i].FirstHaloInFOFgroup = -1;
+        local_halos[i].FirstHaloInFOFgroup = nhalos + 1;
         local_halos[i].NextHaloInFOFgroup = -1;
 
         local_halos[i].FirstProgenitor = -1;
@@ -765,27 +766,65 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         }                                                               \
     }
 
-#define ASSIGN_BUFFER_WITH_MERGERTREE_TO_SAGE(nhalos, buffer_dtype, sage_name, snapnum, is_mergertree_index) { \
-        for(hsize_t i=0;i<nhalos[0];i++) {                              \
-            const int64_t macro_haloid = ((int64_t *) buffer)[i];       \
-            const int64_t macro_snapshot = CONVERT_HALOID_TO_SNAPSHOT(macro_haloid); \
-            const int64_t macro_haloindex = CONVERT_HALOID_TO_INDEX(macro_haloid); \
-            /*if the halo is pointing to itself and the index is a mergertree index then */ \
-            /* then follow the sage convention of setting as '-1'. Note that 'FirstHaloinFOFGroup' */ \
-            /* would point to itself correctly (is_mergertree_index should be 'False' for */ \
-            /* 'FirstHaloinFOFGroup') */                                \
-            if(is_mergertree_index && macro_snapshot == snapnum && (hsize_t) macro_haloindex == i) { \
-                local_halos[i].sage_name = -1;                          \
-                continue;                                               \
+
+#define ASSIGN_BUFFER_WITH_MERGERTREE_IDX_TO_SAGE(nhalos_buffer, buffer_dtype, sage_name, snapnum, is_mergertree_index, minus_one_means_itself) { \
+            for(hsize_t i=0;i<nhalos_buffer[0];i++) {                   \
+                const int64_t macro_haloid = ((int64_t *) buffer)[i];   \
+                if(macro_haloid == -1 && minus_one_means_itself) {      \
+                    const int64_t macro_forest_local_index = forest_local_offsets[snapnum] + i; \
+                    if(macro_forest_local_index > INT_MAX) {      \
+                        fprintf(stderr,"Error: In function %s> Can not correctly represent forest local index = %"PRId64 \
+                                "as an offset in the 32-bit variable within " \
+                                "the LHaloTree struct. \n", __FUNCTION__, macro_forest_local_index); \
+                        ABORT(INTEGER_32BIT_TOO_SMALL);                 \
+                    }                                                   \
+                    if(macro_forest_local_index < 0 || macro_forest_local_index >= nhalos) { \
+                        fprintf(stderr,"Error: forest_local_index = %"PRId64" is invalid\n", macro_forest_local_index); \
+                        fprintf(stderr,"forestnr = %"PRId64" at snap = %d, setting i=%lld halo " #sage_name " to value = %"PRId64"\n", \
+                                forestnr, snapnum, i, macro_forest_local_index); \
+                        return -1;                                      \
+                    }                                                   \
+                    local_halos[i].sage_name = (int32_t) macro_forest_local_index; \
+                    continue;                                           \
+                }                                                       \
+                if(macro_haloid < 0) {                                  \
+                    fprintf(stderr,"Warning: while rocessing field " #sage_name " for halonum = %lld in forestnr = %"PRId64" at snapshot = %d\n" \
+                            "macro_haloid = %"PRId64" was negative. Skipping this halo assignment\n", \
+                            i, forestnr, snapnum, macro_haloid);        \
+                    continue;                                           \
+                }                                                       \
+                const int64_t macro_snapshot = CONVERT_HALOID_TO_SNAPSHOT(macro_haloid); \
+                if(macro_snapshot < start_snap || macro_snapshot > end_snap) { \
+                    fprintf(stderr,"Error: While processing field " #sage_name " for halonum = %lld in forestnr = %"PRId64"\n" \
+                            "macro_haloid = %"PRId64" resulted in a snapshot = %"PRId64" but expected snapshot to be in range [%d, %d] (inclusive)\n", \
+                            i, forestnr, macro_haloid, macro_snapshot, start_snap, end_snap); \
+                    return -1;                                          \
+                }                                                       \
+                const int64_t macro_haloindex = CONVERT_HALOID_TO_INDEX(macro_haloid) - forest_offsets[macro_snapshot]; \
+                if(macro_haloindex < 0 || macro_haloindex >= nhalos) {  \
+                    fprintf(stderr,"Error: While processing field " #sage_name " for halonum = %lld at snapshot = %"PRId64" in forestnr = %"PRId64"\n" \
+                            "macro_haloid = %"PRId64" resulted in a haloindex = %"PRId64" but expected snapshot to be in range [0,%"PRId64"] (inclusive)\n", \
+                            i, macro_snapshot, forestnr, macro_haloid, macro_haloindex, nhalos - 1); \
+                    return -1;                                          \
+                }                                                       \
+                const int64_t macro_forest_local_index = forest_local_offsets[macro_snapshot] + macro_haloindex; \
+                if(macro_forest_local_index > INT_MAX) {                \
+                    fprintf(stderr,"Error: In function %s> Can not correctly represent forest local index = %"PRId64" as an offset in the 32-bit variable within " \
+                            "the LHaloTree struct. \n", __FUNCTION__, macro_forest_local_index); \
+                    ABORT(INTEGER_32BIT_TOO_SMALL);                     \
+                }                                                       \
+                if(macro_forest_local_index < 0 || macro_forest_local_index >= nhalos) { \
+                    fprintf(stderr,"Error: In function %s> Expected forest local index = %"PRId64" to be in range [0, %"PRId64"] (inclusive)\n" \
+                            "While processing field " #sage_name " for halonum = %lld at snapshot = %"PRId64" in forestnr = %"PRId64"\n" \
+                            "macro_haloid = %"PRId64" resulted in a haloindex = %"PRId64"\n", \
+                            __FUNCTION__, macro_forest_local_index, nhalos - 1, i, macro_snapshot, forestnr, macro_haloid, macro_haloindex); \
+                }                                                       \
+                if(is_mergertree_index && macro_snapshot == snapnum && (hsize_t) macro_haloindex == i) { \
+                    local_halos[i].sage_name = -1;                      \
+                    continue;                                           \
+                }                                                       \
+                local_halos[i].sage_name = (int32_t) macro_forest_local_index; \
             }                                                           \
-            const int64_t macro_forest_local_index = forest_local_offsets[macro_snapshot] + macro_haloindex; \
-            if(macro_forest_local_index > INT_MAX) {                    \
-                fprintf(stderr,"Error: In function %s> Can not correctly represent %"PRId64" as an offset in the 32-bit variable within " \
-                        "the LHaloTree struct. \n", __FUNCTION__, offset); \
-                ABORT(INTEGER_32BIT_TOO_SMALL);                         \
-            }                                                           \
-            local_halos[i].sage_name = (int32_t) macro_forest_local_index; \
-        }                                                               \
     }
 
     int64_t *forest_offsets = gen->halo_offset_per_snap;
@@ -796,7 +835,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         nhalos_snap[0] = nhalos_per_snap[isnap];
         if(nhalos_snap[0] == 0) continue;
         
-        fprintf(stderr,"Reading nhalos = %llu at or snapshot = %d\n", nhalos_snap[0], isnap);
+        /* fprintf(stderr,"forestnr = %"PRId64" reading nhalos = %llu at or snapshot = %d\n", forestnr, nhalos_snap[0], isnap); */
         
         char snap_group_name[MAX_STRING_LEN];
         snprintf(snap_group_name, MAX_STRING_LEN-1, "Snap_%03d", isnap);
@@ -807,23 +846,21 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         /* Merger Tree Pointers */
         //Descendant, FirstProgenitor, NextProgenitor, FirstHaloInFOFgroup, NextHaloInFOFgroup
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, head_enum, snap_offset, nhalos_snap, buffer);
-        
         /* Can not directly assign since 'Head' contains Descendant haloid which is too large to be contained
            within 32 bits. I will need a separate assignment to break up haloid into a local index + snapshot,
            and then use the forest-local offset for each snapshot */
-        
-        //the last parameter is '1' for mergertree indices and 0 otherwise
-        ASSIGN_BUFFER_WITH_MERGERTREE_TO_SAGE(nhalos_snap, int64_t, Descendant, isnap, 1);
+
+        const int is_mergertree_idx = 1, is_hosthaloid = 1;
+        ASSIGN_BUFFER_WITH_MERGERTREE_IDX_TO_SAGE(nhalos_snap, int64_t, Descendant, isnap, is_mergertree_idx, ~is_hosthaloid);
         
         //Same with 'Tail' -> 'FirstProgenitor'
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, tail_enum, snap_offset, nhalos_snap, buffer);
-        //the last parameter is '1' for mergertree indices and 0 otherwise
-        ASSIGN_BUFFER_WITH_MERGERTREE_TO_SAGE(nhalos_snap, int64_t, FirstProgenitor, isnap, 1);
+        ASSIGN_BUFFER_WITH_MERGERTREE_IDX_TO_SAGE(nhalos_snap, int64_t, FirstProgenitor, isnap, is_mergertree_idx, ~is_hosthaloid);
 
         //And same with 'hostHaloID' -> FirstHaloinFOFGroup.
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, hosthaloid_enum, snap_offset, nhalos_snap, buffer);
-        //the last parameter is '1' for mergertree indices and 0 otherwise
-        ASSIGN_BUFFER_WITH_MERGERTREE_TO_SAGE(nhalos_snap, int64_t, FirstHaloInFOFgroup, isnap, 0);
+        ASSIGN_BUFFER_WITH_MERGERTREE_IDX_TO_SAGE(nhalos_snap, int64_t, FirstHaloInFOFgroup, isnap, ~is_mergertree_idx, is_hosthaloid);
+
         
         /* MS 3rd June, 2019: The LHaloTree convention (which sage uses) is that Mvir contains M200c. While this is DEEPLY confusing,
            I am using C 'unions' to reduce the confusion slightly. What will happen here is that 'Mass_200crit' will get
@@ -856,7 +893,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, mostboundid_enum,  snap_offset, nhalos_snap, buffer);
         ASSIGN_BUFFER_TO_SAGE(nhalos_snap, int64_t, MostBoundID, long long);
-        
+
         /* Read in the angular momentum */
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, lx_enum, snap_offset, nhalos_snap, buffer);
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, ly_enum, snap_offset, nhalos_snap, buffer + nhalos_snap[0]*sizeof(double));
@@ -869,7 +906,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         
         READ_PARTIAL_1D_ARRAY(h5_grp, isnap, veldisp_enum, snap_offset, nhalos_snap, buffer);
         ASSIGN_BUFFER_TO_SAGE(nhalos_snap, double, VelDisp, float);
-        
+
         XRETURN(H5Gclose(h5_grp) >= 0, -HDF5_ERROR, "Error: Could not close snapshot group = '%s'\n", snap_group_name);
         /* Done with all the reading for this snapshot */
         
@@ -897,7 +934,8 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     }
     //Done reading all halos belonging to this forest (across all snapshots)
     local_halos -= nhalos;//rewind the local_halos to the first halo in this forest
-
+    free(buffer);
+    
     //Populate the NextProg, NexthaloinFofgroup indices. FirstHaloinFOFGroup, Descendant, FirstProgenitor should already be set correctly
 
 
@@ -915,6 +953,9 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         if(first_prog_of_desc_halo == -1) {
             //THIS can not happen. FirstProg should have been assigned correctly already
             fprintf(stderr,"Error: FirstProgenitor can not be -1\n");
+            fprintf(stderr,"Forestnr = %"PRId64" descendant halo number = %d (at descendant snap = %d) \n", forestnr, desc, local_halos[desc].SnapNum);
+            fprintf(stderr,"ID of this (i=%"PRId64") halo = %lld, ID of descendant halo = %lld\n",
+                    i, local_halos[i].MostBoundID, local_halos[desc].MostBoundID);
             return -1;
         }
 
@@ -925,6 +966,14 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         int32_t next_prog = first_prog_of_desc_halo;
         while(local_halos[next_prog].NextProgenitor != -1) {
             next_prog = local_halos[next_prog].NextProgenitor;
+            if((next_prog != -1) && (next_prog < 0 || next_prog >= nhalos)) {
+                fprintf(stderr,"Error: In function %s> next_prog = %d should be either -1 or must be within [0, %"PRId64")\n"
+                        "forestnr = %"PRId64" halonum = %"PRId64" haloid = %lld at snap = %d "
+                        "descendant = %d at snap = %d descID = %lld first_prog_of_desc_halo = %d \n",
+                        __FUNCTION__, next_prog, nhalos, forestnr, i, local_halos[i].MostBoundID, local_halos[i].SnapNum,
+                        desc, local_halos[desc].SnapNum, local_halos[desc].MostBoundID, first_prog_of_desc_halo); 
+                return -1;
+            }
         }
         if(next_prog < 0 || next_prog >= nhalos || local_halos[next_prog].NextProgenitor != -1) {
             fprintf(stderr,"Error: In function %s> Bug in code logic. next_prog = %d must be within [0, %"PRId64") "
@@ -932,15 +981,16 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                     __FUNCTION__, next_prog, nhalos, local_halos[next_prog].NextProgenitor);
             return -1;
         }
+            
         local_halos[next_prog].NextProgenitor = i;
     }
 
     //Now populate the NextHaloinFOFGroup
     for(int64_t i=0;i<nhalos;i++) {
         int32_t fofhalo = local_halos[i].FirstHaloInFOFgroup;
-        if(fofhalo == -1) {
+        if(fofhalo == -1 || fofhalo < 0 || fofhalo >= nhalos) {
             //This can not happen. FirstHaloinFOF should already be set correctly
-            fprintf(stderr,"Error: FOFhalo can not be -1\n");
+            fprintf(stderr,"Error: FOFhalo = %d must be in the (inclusive) range -- [0, %"PRId64"]\n", fofhalo, nhalos-1);
             return -1;
         }
         //if the FOFhalo is this current halo, then nothing to do here
@@ -956,14 +1006,15 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                     __FUNCTION__, next_halo, nhalos, local_halos[next_halo].NextHaloInFOFgroup);
             return -1;
         }
+        /* fprintf(stderr,"forestnr = %"PRId64" assigned NextHaloInFOFgroup = %"PRId64" for next_halo = %d with fofhalo = %d at snap = %d\n", forestnr, i, next_halo, fofhalo, local_halos[i].SnapNum); */
         local_halos[next_halo].NextHaloInFOFgroup = i;
     }
 
     const int32_t lastsnap = local_halos[0].SnapNum;
     const int64_t numhalos_last_snap = nhalos_per_snap[lastsnap];;
-    int status = fix_flybys_genesis(local_halos, numhalos_last_snap);
+    int status = fix_flybys_genesis(local_halos, numhalos_last_snap, forestnr);
     if(status != EXIT_SUCCESS) {
-        return status;
+        return -1;
     }
 
     free(forest_local_offsets);
@@ -999,14 +1050,11 @@ void cleanup_forests_io_genesis_hdf5(struct forest_info *forests_info)
     free(gen->FileNr);
     free(gen->forestnum_in_file);
     free(gen->offset_for_global_forestnum);
-    free(gen->num_forests_to_process_per_file);
-    free(gen->start_forestnum_per_file);
-
 }
 
 #define CHECK_IF_HALO_IS_FOF(halos, index)  (halos[index].FirstHaloInFOFgroup == index ? 1:0)
 
-int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap)
+int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap, const int64_t forestnr)
 {
     if(nhalos_last_snap == 0) {
         fprintf(stderr,"Warning: There are no halos at the last snapshot. Therefore nothing to fix for flybys. BUT this should not happen - check code\n");
@@ -1025,7 +1073,7 @@ int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap)
     }
 
     if(num_fofs == 0) {
-        fprintf(stderr,"Error: There are no FOF halos at the last snapshot. This is highly unusual and almost certainly a bug (in reading the data)\n");
+        fprintf(stderr,"Error: For forestnr = %"PRId64" There are no FOF halos at the last snapshot. This is highly unusual and almost certainly a bug (in reading the data)\n", forestnr);
         return EXIT_FAILURE;
     }
 
@@ -1043,13 +1091,16 @@ int fix_flybys_genesis(struct halo_data *halos, const int64_t nhalos_last_snap)
         }
     }
 
-    XASSERT(max_mass_fof_loc < INT_MAX, EXIT_FAILURE,
-            "Most massive FOF location=%"PRId64" must be representable within INT_MAX=%d",
+    XRETURN(max_mass_fof_loc >= 0 && max_mass_fof_loc < INT_MAX, EXIT_FAILURE,
+            "Most massive FOF location=%"PRId64" must be representable within INT_MAX=%d and >= 0",
             max_mass_fof_loc, INT_MAX);
 
     int FirstHaloInFOFgroup = (int) max_mass_fof_loc;
     int insertion_point_next_sub = FirstHaloInFOFgroup;
+    /* fprintf(stderr,"nfofs = %"PRId64"\n", num_fofs); */
     while(halos[insertion_point_next_sub].NextHaloInFOFgroup != -1) {
+        /* fprintf(stderr, "FirstHaloInFOFgroup = %d insertion_point_next_sub = %d halos[insertion_point_next_sub].NextHaloInFOFgroup = %d\n", */
+        /*         FirstHaloInFOFgroup, insertion_point_next_sub, halos[insertion_point_next_sub].NextHaloInFOFgroup); */
         insertion_point_next_sub = halos[insertion_point_next_sub].NextHaloInFOFgroup;
     }
 
