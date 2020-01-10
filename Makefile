@@ -5,9 +5,16 @@ USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libra
 				 # Note: This will not work if you're using clang as your compiler.
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-LIBS :=
-OPTS := -DROOT_DIR='"${ROOT_DIR}"'
+# In case any of the previous ones do not work and
+# ROOT_DIR is not set, then use "." as ROOT_DIR and
+# hopefully the cooling tables will still work
+ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
+
+
 CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC
+LIBFLAGS :=
+
+OPTS := -DROOT_DIR='"${ROOT_DIR}"'
 SRC_PREFIX := src
 
 LIBNAME := sage
@@ -16,7 +23,8 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-		   io/save_gals_binary.c
+	   io/save_gals_binary.c io/forest_utils.c
+
 LIBINCL := $(LIBSRC:.c=.h)
 LIBINCL += io/parse_ctrees.h
 
@@ -61,7 +69,7 @@ endif
 # Files required for HDF5 -> needs to be defined outside of the
 # if condition (for DO_CHECKS); otherwise `make clean` will not
 # clean the H5_OBJS
-H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c
+H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c io/hdf5_read_utils.c
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
 
@@ -122,7 +130,7 @@ ifeq ($(DO_CHECKS), 1)
     $(warning GSL not found in $$PATH environment variable. Tests will be disabled)
   endif
   CCFLAGS += $(GSL_INCL)
-  LIBS += $(GSL_LIBS)
+  LIBFLAGS += $(GSL_LIBS)
 
 
   ifdef USE-HDF5
@@ -165,16 +173,16 @@ ifeq ($(DO_CHECKS), 1)
     HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
 
     OPTS += -DHDF5
-    LIBS += $(HDF5_LIB)
+    LIBFLAGS += $(HDF5_LIB)
     CCFLAGS += $(HDF5_INCL)
   endif
 
   OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
 
   ifdef USE-MPI
-    MPI_LINK_FLAGS:=$(firstword $(shell mpicc --showme:link 2>/dev/null))
+    MPI_LINK_FLAGS:=$(firstword $(shell $(CC) --showme:link 2>/dev/null))
     MPI_LIB_DIR:=$(firstword $(subst -L, , $(MPI_LINK_FLAGS)))
-    LIBS += -Xlinker -rpath -Xlinker $(MPI_LIB_DIR)
+    LIBFLAGS += -Xlinker -rpath -Xlinker $(MPI_LIB_DIR)
   endif
   # The tests should test with the same compile flags
   # that users are expected to use. Disabled the previous
@@ -195,6 +203,29 @@ ifeq ($(DO_CHECKS), 1)
 
   CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
   LIBS   +=   -lm
+
+  # Check if $(AR) and $(CC) belong to the same tool-chain
+  AR_BASE_PATH := $(shell which $(AR))
+  CC_BASE_PATH := $(shell which $(CC))
+  AR_FIRST_DIR := $(firstword $(subst /, ,$(AR_BASE_PATH)))
+  CC_FIRST_DIR := $(firstword $(subst /, ,$(CC_BASE_PATH)))
+
+  AR_NAME := $(lastword $(subst /, ,$(AR_BASE_PATH)))
+  CC_NAME := $(lastword $(subst /, ,$(CC_BASE_PATH)))
+  CC_IN_AR_DIR := $(subst $(AR_NAME),$(CC_NAME),$(AR_BASE_PATH))
+  AR_IN_CC_DIR := $(subst $(CC_NAME),$(AR_NAME),$(CC_BASE_PATH))
+
+  # Check that the first directory for both AR and CC are the same
+  ifneq ($(AR_FIRST_DIR), $(CC_FIRST_DIR))
+    $(warning Looks like the archiver $$AR := '$(AR)' and compiler $$CC := '$(CC)' are from different toolchains)
+    $(warning The archiver resolves to '$(AR_BASE_PATH)' while the compiler resolves to '$(CC_BASE_PATH)')
+    $(warning If there is an error during linking, then a fix might be to make sure that both the compiler and archiver are from the same distribution)
+    $(warning ---- either as '$(CC_IN_AR_DIR)' or '$(AR_IN_CC_DIR)')
+  endif
+
+  CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
+  LIBFLAGS   +=   -lm
+
 else
   # something like `make clean` is in effect -> need to also the HDF5 objects
   # if HDF5 is requested
@@ -204,16 +235,19 @@ else
 
 endif # End of DO_CHECKS if condition -> i.e., we do need to care about paths and such
 
-all:  $(EXEC) $(SAGELIB)
+all:  $(SAGELIB) $(EXEC)
 
-$(EXEC): $(OBJS) $(SAGELIB)
-	$(CC) $(CCFLAGS) $(OBJS) $(LIBS)   -o  $(EXEC)
+$(EXEC): $(OBJS)
+	$(CC) $^ $(LIBFLAGS) -o $@
+
+lib libs: $(SAGELIB)
+
+$(SAGELIB): $(LIBOBJS)
+	$(AR) rcs $@ $(LIBOBJS)
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
 
-$(SAGELIB): $(LIBOBJS)
-	ar rcs $@ $(LIBOBJS)
 
 .phony: clean celan celna clena tests
 celan celna clena: clean

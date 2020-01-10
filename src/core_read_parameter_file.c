@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h> /* for isblank()*/
 
 #include "core_allvars.h"
 #include "core_mymalloc.h"
@@ -202,55 +203,77 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         return FILE_NOT_FOUND;
     }
 
-    char buffer[MAX_STRING_LEN];
-    while(fgets(&(buffer[0]), MAX_STRING_LEN, fd) != NULL) {
-        char buf1[MAX_STRING_LEN], buf2[MAX_STRING_LEN];
-        if(sscanf(buffer, "%s%s%*[^\n]", buf1, buf2) < 2) {
-            continue;
-        }
-
-        if(buf1[0] == '%' || buf1[0] == '-') {
-            continue;
-        }
-
-        int j=-1;
-        for(int i = 0; i < NParam; i++) {
-            if(strcmp(buf1, ParamTag[i]) == 0) {
-                j = i;
-                ParamTag[i][0] = 0;
-                used_tag[i] = 0;
-                break;
-            }
-        }
-
-        if(j >= 0) {
-            if(ThisTask == 0) {
-                printf("%35s\t%10s\n", buf1, buf2);
+    if(fd != NULL) {
+        char buffer[MAX_STRING_LEN];
+        while(fgets(&(buffer[0]), MAX_STRING_LEN, fd) != NULL) {
+            char buf1[MAX_STRING_LEN], buf2[MAX_STRING_LEN];
+            if(sscanf(buffer, "%s %[^\n]", buf1, buf2) < 2) {
+                continue;
             }
 
-            switch (ParamID[j])
-                {
-                case DOUBLE:
-                    *((double *) ParamAddr[j]) = atof(buf2);
-                    break;
-                case STRING:
-                    strcpy(ParamAddr[j], buf2);
-                    break;
-                case INT:
-                    *((int *) ParamAddr[j]) = atoi(buf2);
+            if(buf1[0] == '%' || buf1[0] == '-') { /* the second condition is checking for output snapshots -- that line starts with "->" */
+                continue;
+            }
+
+            /* Allowing for spaces in the filenames (but requires comments to ALWAYS start with '%' or ';') */
+            int buf2len = strnlen(buf2, MAX_STRING_LEN);
+            for(int i=0;i<=buf2len;i++) {
+                if(buf2[i] == '%' || buf2[i] == ';') {
+                    int null_pos = i;
+                    //Ignore all preceeding whitespace
+                    for(int j=i-1;j>=0;j--) {
+                        null_pos = isblank(buf2[j]) ? j:null_pos;
+                    }
+                    buf2[null_pos] = '\0';
                     break;
                 }
-        } else {
-            printf("Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
-            errorFlag = 1;
-        }
-    }
-    fclose(fd);
+            }
+            buf2len = strnlen(buf2, MAX_STRING_LEN);
+            while(buf2len > 0 && isblank(buf2[buf2len-1])) {
+                buf2len--;
+            }
+            buf2[buf2len] = '\0';
 
-    const size_t stringlen = strlen(run_params->OutputDir);
-    if(stringlen > 0) {
-        if(run_params->OutputDir[stringlen - 1] != '/')
-            strcat(run_params->OutputDir, "/");
+
+            int j=-1;
+            for(int i = 0; i < NParam; i++) {
+                if(strcmp(buf1, ParamTag[i]) == 0) {
+                    j = i;
+                    ParamTag[i][0] = 0;
+                    used_tag[i] = 0;
+                    break;
+                }
+            }
+
+            if(j >= 0) {
+                if(ThisTask == 0) {
+                    printf("%35s\t%10s\n", buf1, buf2);
+                }
+
+                switch (ParamID[j])
+                    {
+                    case DOUBLE:
+                        *((double *) ParamAddr[j]) = atof(buf2);
+                        break;
+                    case STRING:
+                        strcpy(ParamAddr[j], buf2);
+                        break;
+                    case INT:
+                        *((int *) ParamAddr[j]) = atoi(buf2);
+                        break;
+                    }
+            } else {
+                printf("Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
+                errorFlag = 1;
+            }
+        }
+        fclose(fd);
+
+        const size_t i = strlen(run_params->OutputDir);
+        if(i > 0) {
+            if(run_params->OutputDir[i - 1] != '/')
+                strcat(run_params->OutputDir, "/");
+        }
     }
 
     for(int i = 0; i < NParam; i++) {
@@ -327,21 +350,22 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     run_params->TreeExtension[0] = '\0';
 
     // Check tree type is valid.
-    if (strncmp(my_treetype, "illustris_lhalo_hdf5", 511) == 0) {
-        // strncmp returns 0 if the two strings are equal.
-        // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
-        snprintf(run_params->TreeExtension, 511, ".hdf5");
+    if (strncmp(my_treetype, "lhalo_hdf5", 511) == 0 ||
+        strncmp(my_treetype, "genesis_hdf5", 511) == 0) {
 #ifndef HDF5
         fprintf(stderr, "You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled.\n");
         fprintf(stderr, "Please check your file type and compiler options.\n");
         ABORT(EXIT_FAILURE);
 #endif
+        // strncmp returns 0 if the two strings are equal.
+        // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
+        snprintf(run_params->TreeExtension, 511, ".hdf5");
     }
 
-    const char tree_names[][MAX_STRING_LEN] = {"illustris_lhalo_hdf5", "lhalo_binary", "consistent_trees_ascii"};
-    const enum Valid_TreeTypes tree_enums[] = {illustris_lhalo_hdf5, lhalo_binary, consistent_trees_ascii};
+    const char tree_names[][MAX_STRING_LEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii"};
+    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5, consistent_trees_ascii};
     const int nvalid_tree_types  = sizeof(tree_names)/(MAX_STRING_LEN*sizeof(char));
-    XASSERT(nvalid_tree_types == 3, EXIT_FAILURE, "nvalid_tree_types = %d should have been 3\n", nvalid_tree_types);
+    XASSERT(nvalid_tree_types == 4, EXIT_FAILURE, "nvalid_tree_types = %d should have been 4\n", nvalid_tree_types);
     int found = 0;
     for(int i=0;i<nvalid_tree_types;i++) {
         if (strcasecmp(my_treetype, tree_names[i]) == 0) {
@@ -352,10 +376,10 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     }
 
     if(found == 0) {
-        fprintf(stderr, "TreeType %s is not supported\n", my_treetype);
-        fprintf(stderr," Please choose one of the supported tree types -- \n");
+        fprintf(stderr, "TreeType = '%s' is not supported.\n", my_treetype);
+        fprintf(stderr,"Please choose one of the supported tree types -- \n");
         for(int i=0;i<nvalid_tree_types;i++) {
-            fprintf(stderr,"TreeType = %s\n", tree_names[i]);
+            fprintf(stderr,"TreeType = '%s'\n", tree_names[i]);
         }
         ABORT(EXIT_FAILURE);
     }

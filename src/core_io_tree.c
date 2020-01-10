@@ -14,11 +14,11 @@
 
 #include "io/read_tree_lhalo_binary.h"
 #include "io/read_tree_consistentrees_ascii.h"
+
 #ifdef HDF5
 #include "io/read_tree_lhalo_hdf5.h"
-#include "io/read_tree_genesis_standard_hdf5.h"
+#include "io/read_tree_genesis_hdf5.h"
 #endif
-
 
 int setup_forests_io(struct params *run_params, struct forest_info *forests_info,
                      const int ThisTask, const int NTasks)
@@ -29,8 +29,8 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     const enum Valid_TreeTypes TreeType = run_params->TreeType;
 
     /* MS: 21/9/2019 initialise the mulfac's so we can check later
-       that these vital factors (required to generate unique galaxy ID's)
-       have been setup appropriately  */
+              that these vital factors (required to generate unique galaxy ID's)
+              have been setup appropriately  */
     run_params->FileNr_Mulfac = -1;
     run_params->ForestNr_Mulfac = -1;
     forests_info->frac_volume_processed = -1.0;
@@ -38,14 +38,14 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     switch (TreeType)
         {
 #ifdef HDF5
-        case illustris_lhalo_hdf5:
+        case lhalo_hdf5:
             status = setup_forests_io_lht_hdf5(forests_info, firstfile, lastfile, ThisTask, NTasks, run_params);
             break;
 
-        /* case genesis_standard_hdf5: */
-        /*     (void) firstfile, (void) lastfile; */
-        /*     status = load_forest_table_genesis_hdf5(forests_info); */
-        /*     break; */
+        case genesis_hdf5:
+            (void) firstfile, (void) lastfile;
+            status = setup_forests_io_genesis_hdf5(forests_info, ThisTask, NTasks, run_params);
+            break;
 #endif
 
         case lhalo_binary:
@@ -55,6 +55,9 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
         case consistent_trees_ascii:
             (void) firstfile, (void) lastfile;
             status = setup_forests_io_ctrees(forests_info, ThisTask, NTasks, run_params);
+
+            fprintf(stderr,"Forcing the frac volume processed \n");
+            forests_info->frac_volume_processed = 1.0/(double) run_params->NumSimulationTreeFiles;
             break;
 
         default:
@@ -67,20 +70,21 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
         return status;
     }
 
+
     /*MS: Check that the mechanism to generate unique GalaxyID's was
       initialised correctly in the setup */
     if(run_params->FileNr_Mulfac < 0 || run_params->ForestNr_Mulfac < 0) {
         fprintf(stderr,"Error: Looks like the multiplicative factors to generate unique "
-                "galaxyID's were not setup correctly.\n"
+                                "galaxyID's were not setup correctly.\n"
                 "FileNr_Mulfac = %"PRId64" and ForestNr_Mulfac = %"PRId64" should both be >=0\n",
                 run_params->FileNr_Mulfac, run_params->ForestNr_Mulfac);
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if(forests_info->frac_volume_processed <= 0.0) {
         fprintf(stderr,"Error: The fraction of the entire simulation volume processed should be > 0.0. Instead, found %g\n",
                 forests_info->frac_volume_processed);
-        return EXIT_FAILURE;
+        return -1;
     }
 
 
@@ -94,12 +98,13 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
     /* Don't forget to free the open file handle */
     switch (TreeType) {
 #ifdef HDF5
-    case illustris_lhalo_hdf5:
+    case lhalo_hdf5:
         cleanup_forests_io_lht_hdf5(forests_info);
         break;
 
-    /* case genesis_standard_hdf5: */
-    /*     break; */
+    case genesis_hdf5:
+        cleanup_forests_io_genesis_hdf5(forests_info);
+        break;
 #endif
 
     case lhalo_binary:
@@ -137,14 +142,13 @@ int64_t load_forest(struct params *run_params, const int64_t forestnr, struct ha
     switch (TreeType) {
 
 #ifdef HDF5
-    case illustris_lhalo_hdf5:
-        nhalos = load_forest_hdf5(forestnr, halos, forests_info, run_params->Hubble_h);
+    case lhalo_hdf5:
+        nhalos = load_forest_hdf5(forestnr, halos, forests_info);
         break;
 
-    /* case genesis_standard_hdf5: */
-    /*     nhalos = load_forest_genesis_hdf5(forestnr, halos, forests_info); */
-    /*     break; */
-
+    case genesis_hdf5:
+        nhalos = load_forest_genesis_hdf5(forestnr, halos, forests_info, run_params);
+        break;
 #endif
 
     case lhalo_binary:

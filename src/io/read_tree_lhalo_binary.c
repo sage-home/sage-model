@@ -9,6 +9,7 @@
 #include "../core_mymalloc.h"
 #include "../core_utils.h"
 
+#include "forest_utils.h"
 
 /* Externally visible Functions */
 void get_forests_filename_lht_binary(char *filename, const size_t len, const int filenr, const struct params *run_params)
@@ -19,6 +20,13 @@ void get_forests_filename_lht_binary(char *filename, const size_t len, const int
 int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firstfile, const int lastfile,
                                 const int ThisTask, const int NTasks, struct params *run_params)
 {
+    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
+        fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile should be larger than FirstFile.\n"
+                "Probably a typo in the parameter-file. Please change to appropriate values...exiting\n",
+                run_params->FirstFile, run_params->LastFile);
+        return INVALID_OPTION_IN_PARAMS;
+    }
+
     const int numfiles = lastfile - firstfile + 1;
     if(numfiles <= 0) {
         return -1;
@@ -50,22 +58,10 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     }
     forests_info->totnforests = totnforests;
 
-    // Assign each task an equal number of forests. If we can't equally assign each task
-    // the EXACT same number of forests, give each task an extra forest (if required).
-    const int64_t nforests_per_cpu = (int64_t) (totnforests/NTasks);
-    const int64_t rem_nforests = totnforests % NTasks;
-    int64_t nforests_this_task = nforests_per_cpu;
-    if(ThisTask < rem_nforests) {
-        nforests_this_task++;
-    }
-
-    int64_t start_forestnum = nforests_per_cpu * ThisTask;
-
-    if(ThisTask < rem_nforests) {
-        start_forestnum += ThisTask;
-    }
-    else {
-        start_forestnum += rem_nforests;  // All tasks that weren't given an extra forest will be offset by a constant amount.
+    int64_t nforests_this_task, start_forestnum;
+    int status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_this_task, &start_forestnum);
+    if (status != EXIT_SUCCESS) {
+        return status;
     }
 
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
@@ -243,12 +239,11 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     free(start_forestnum_to_process_per_file);
     free(totnforests_per_file);
 
-
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
     run_params->FileNr_Mulfac = 1000000000000000LL;
     run_params->ForestNr_Mulfac = 1000000000LL;
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -259,7 +254,7 @@ int64_t load_forest_lht_binary(const int64_t forestnr, struct halo_data **halos,
     XRETURN(local_halos != NULL, -MALLOC_FAILURE,
             "Error: Could not allocate memory for %"PRId64" halos in forestnr = %"PRId64"\n",
             nhalos, forestnr);
-            
+
     if(forestnr >= forests_info->lht.nforests) {
         fprintf(stderr,"Error: Attempting to access forest = %"PRId64" but memory is allocated for only %"PRId64"\n"
                 "Perhaps, the starting forest offset was not accounted for?\n", forestnr, forests_info->lht.nforests);

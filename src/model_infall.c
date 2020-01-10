@@ -167,16 +167,16 @@ double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxie
 
     // calculate the characteristic mass coresponding to a halo temperature of 10^4K
     const double Vchar = sqrt(Tvir / 36.0);
-    const double omegaZ = run_params->Omega * (pow(1.0 + Zcurr, 3.0) / (run_params->Omega * pow(1.0 + Zcurr, 3.0) + run_params->OmegaLambda));
+    const double omegaZ = run_params->Omega * (CUBE(1.0 + Zcurr) / (run_params->Omega * CUBE(1.0 + Zcurr) + run_params->OmegaLambda));
     const double xZ = omegaZ - 1.0;
     const double deltacritZ = 18.0 * M_PI * M_PI + 82.0 * xZ - 39.0 * xZ * xZ;
-    const double HubbleZ = run_params->Hubble * sqrt(run_params->Omega * pow(1.0 + Zcurr, 3.0) + run_params->OmegaLambda);
+    const double HubbleZ = run_params->Hubble * sqrt(run_params->Omega * CUBE(1.0 + Zcurr) + run_params->OmegaLambda);
 
     const double Mchar = Vchar * Vchar * Vchar / (run_params->G * HubbleZ * sqrt(0.5 * deltacritZ));
 
     // we use the maximum of Mfiltering and Mchar
     const double mass_to_use = dmax(Mfiltering, Mchar);
-    const double modifier = 1.0 / pow(1.0 + 0.26 * (mass_to_use / galaxies[gal].Mvir), 3.0);
+    const double modifier = 1.0 / CUBE(1.0 + 0.26 * (mass_to_use / galaxies[gal].Mvir));
 
     return modifier;
 
@@ -215,4 +215,3 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
     if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
 
 }
-

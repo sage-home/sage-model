@@ -25,6 +25,8 @@
 #define  ABSOLUTEMAXSNAPS 1000  /* The largest number of snapshots for any simulation */
 #define  MAXTAGS          300  /* Max number of parameters */
 
+#define  SQR(X)      ((X) * (X))
+#define  CUBE(X)     ((X) * (X) * (X))
 
 #define  GRAVITY     6.672e-8
 #define  SOLAR_MASS  1.989e33

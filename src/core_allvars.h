@@ -20,7 +20,7 @@ struct GALAXY
 {
     int32_t   SnapNum;
     int32_t  Type;
-    
+
     int32_t   GalaxyNr;
     int32_t   CentralGal;
     int32_t   HaloNr;
@@ -100,20 +100,16 @@ struct halo_aux_data
     int32_t NGalaxies;
     int FirstGalaxy;
 #ifdef PROCESS_LHVT_STYLE
-    int32_t orig_index;
+    int orig_index;
 #endif
-    int32_t output_snap_n;
+    int output_snap_n;
 };
-
-#define DOUBLE 1
-#define STRING 2
-#define INT 3
 
 enum Valid_TreeTypes
 {
   lhalo_binary = 0,
-  illustris_lhalo_hdf5 = 1,
-  genesis_standard_hdf5 = 2,
+  lhalo_hdf5 = 1,
+  genesis_hdf5 = 2,
   consistent_trees_ascii = 3,
   ahf_trees_ascii = 5,
   num_tree_types
@@ -176,7 +172,10 @@ struct lhalotree_info {
 struct ctrees_info {
     //different from totnforests; only stores forests to be processed by ThisTask when in MPI mode
     //in serial mode, ``forests_info->ctr.nforests == forests_info->totnforests``)
-    int64_t nforests;
+    union {
+        int64_t nforests;
+        int64_t nforests_this_task;
+    };
     int64_t ntrees;
 
     void *column_info;/* stored as a void * to avoid including parse_ctrees.h here*/
@@ -201,17 +200,55 @@ struct ahf_info {
     void *some_yet_to_be_implemented_ptr;
 };
 
+#ifdef HDF5
 struct genesis_info {
-    int64_t nforests;
-    void *some_yet_to_be_implemented_ptr;
+    union{
+        int64_t nforests;/* number of forests to process on this task */
+        int64_t nforests_this_task;/* shadowed for convenience */
+    };
+
+    int64_t start_forestnum;/* Global forestnumber to start processing from */
+    int64_t maxforestsize; /* max. number of halos in any one single forest on any task */
+
+    union {
+        int32_t *FileNr;/* Integer identifying which file out of the '(lastfile + 1)' for each forest -- shape (nforests, )
+                           The unusual capitalisation is to show that the semantics are the same as the
+                           variable with 'struct halo_data' (in core_simulation.h) - MS 19/11/2019
+                        */
+        int32_t *filenum_for_forest;/* shadowed to show what the variable contains */
+    };
+    int64_t *forestnum_in_file;/* Integer identifying the file-local forest numbers to be read -- shape (nforests, ) */
+    int64_t *offset_for_global_forestnum;/* What would be the offset to add to file-local 'forestnum' to get the global forest num
+                                            that is needed to access the metadata ("*foreststats*.hdf5") file  -- shape (lastfile + 1, ) */
+
+    int64_t *halo_offset_per_snap;/* Stores the current halo offsets to read from at each snapshot -- shape (maxsnaps, ).
+                                     Initialised to all 0's for every new file and incremented as forests are read in. This details
+                                     adds a loop-dependency - where later forests can not be correctly processed before all
+                                     preceeding forests have been processed. It had to be implemented this way because otherwise
+                                     the amount of RAM required to store the matrix offsets_per_forest_per_snap (with shape
+                                     '[nforests, maxsnaps]' would have been a roadblock in the future. */
+    hid_t meta_fd;/* file descriptor for the metadata file*/
+    hid_t *h5_fds;/* contains all the file descriptors for the individual files -- shape (lastfile + 1, ) */
+
+    int32_t min_snapnum; /* smallest snapshot to process (inclusive, >= 0)*/
+    int32_t maxsnaps;/* maxsnaps == max_snap_num + 1 */
+    int32_t totnfiles;/* total number of files requested to be processed (across all tasks)*/
+    int32_t numfiles;/* total number of files to process on ThisTask (>=1)*/
+    int32_t start_filenum;/* Which is the first file that this task is going to process  */
+    int32_t curr_filenum; /* What file is currently being worked on --
+                              required to reset the halo_offset_per_snap at the beginning of every new file */
+
 };
+#endif
 
 struct forest_info {
     union {
         struct lhalotree_info lht;
         struct ctrees_info ctr;
         struct ahf_info ahf;
+#ifdef HDF5
         struct genesis_info gen;
+#endif
     };
     int64_t totnforests;  // Total number of forests across **all** input tree files.
     int64_t nforests_this_task; // Total number of forests processed by **this** task.
@@ -252,6 +289,11 @@ struct save_info {
 
 };
 
+
+#define DOUBLE 1
+#define STRING 2
+#define INT 3
+
 struct params
 {
     int32_t    FirstFile;    /* first and last file for processing; only relevant for lhalotree style files (binary or hdf5) */
@@ -274,6 +316,9 @@ struct params
     double EnergySN;
     double EtaSNcode;
     double EtaSN;
+
+    /* moving for alignment */
+    int32_t NumSimulationTreeFiles;
 
     /* recipe flags */
     int32_t    SFprescription;
@@ -323,8 +368,20 @@ struct params
     int64_t ForestNr_Mulfac;
 
     int32_t ListOutputSnaps[ABSOLUTEMAXSNAPS];
-    double ZZ[ABSOLUTEMAXSNAPS];
-    double AA[ABSOLUTEMAXSNAPS];
+    //Essentially creating an alias so that the indecipherable 'ZZ'
+    //can be interpreted to contain 'redshift' values
+    union {
+        double ZZ[ABSOLUTEMAXSNAPS];
+        double redshift[ABSOLUTEMAXSNAPS];
+    };
+
+    //Similarly: 'AA' contains the scale_factors corresponding to
+    //each snapshot
+    union {
+        double AA[ABSOLUTEMAXSNAPS];
+        double scale_factors[ABSOLUTEMAXSNAPS];
+    };
+
     double *Age;
 
     int32_t interrupted;/* to re-print the progress-bar */

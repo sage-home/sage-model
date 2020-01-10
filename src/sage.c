@@ -55,6 +55,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     if(status != EXIT_SUCCESS) {
         return status;
     }
+
     if(forest_info.totnforests < 0 || forest_info.nforests_this_task < 0) {
         fprintf(stderr,"Error: Bug in code totnforests = %"PRId64" and nforests (on this task) = %"PRId64" should both be at least 0\n",
                 forest_info.totnforests, forest_info.nforests_this_task);
@@ -217,11 +218,13 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         return nhalos;
     }
 
+
     /* /\* need to actually set the nhalos value for CTREES*\/ */
     /* forest_info->totnhalos_per_forest[forestnr] = nhalos; */
 
 #ifdef PROCESS_LHVT_STYLE
-#error Locally horizontal vertical tree style processing has not been implemented yet
+#error Processing in Locally-horizontal vertical tree (LHVT) style not implemented yet
+
     /* re-arrange the halos into a locally horizontal vertical forest */
     int32_t *file_ordering_of_halos=NULL;
     int status = reorder_lhalo_to_lhvt(nhalos, Halo, 0, &file_ordering_of_halos);/* the 3rd parameter is for testing the reorder code */
@@ -277,6 +280,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     }
 
 #else
+
     /*MS: This is the normal SAGE processing on a tree-by-tree (vertical) basis */
 
     /* Now start the processing */
