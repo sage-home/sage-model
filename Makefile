@@ -224,7 +224,7 @@ endif # End of DO_CHECKS if condition -> i.e., we do need to care about paths an
 all:  $(SAGELIB) $(EXEC)
 
 $(EXEC): $(OBJS)
-	$(CC) $(LIBFLAGS) $^ -o $@
+	$(CC) $^ $(LIBFLAGS) -o $@
 
 lib libs: $(SAGELIB)
 
