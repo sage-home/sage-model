@@ -4,7 +4,6 @@
 #include <math.h>
 #include <ctype.h> /* for isblank()*/
 
-
 #include "core_allvars.h"
 #include "core_mymalloc.h"
 
@@ -349,7 +348,6 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
        gets written to "treeextension", we need to
        null terminate tree-extension first  */
     run_params->TreeExtension[0] = '\0';
-
 
     // Check tree type is valid.
     if (strncmp(my_treetype, "lhalo_hdf5", 511) == 0 ||

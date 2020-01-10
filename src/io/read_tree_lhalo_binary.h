@@ -8,7 +8,6 @@ extern "C" {
 
 #include "../core_allvars.h"
 
-
     /* Proto-Types */
     extern void get_forests_filename_lht_binary(char *filename, const size_t len, const int filenr, const struct params *run_params);
     extern int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firstfile, const int lastfile,

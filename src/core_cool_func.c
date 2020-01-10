@@ -23,9 +23,9 @@ static char *name[] = {
 };
 
 
-// Metallicies with repect to solar. Will be converted to absolut metallicities by adding log10(Z_sun), Zsun=0.02 
+// Metallicies with repect to solar. Will be converted to absolut metallicities by adding log10(Z_sun), Zsun=0.02
 static double metallicities[8] = {
-	-5.0,   // actually primordial -> -infinity 
+	-5.0,   // actually primordial -> -infinity
 	-3.0,
 	-2.0,
 	-1.5,
@@ -44,15 +44,15 @@ static double CoolRate[NUM_METALS_TABLE][TABSIZE];
 void read_cooling_functions(void)
 {
     char buf[MAX_STRING_LEN];
-  
+
     const double log10_zerop02 = log10(0.02);
     for(size_t i = 0; i < NUM_METALS_TABLE; i++) {
-        metallicities[i] += log10_zerop02;     // add solar metallicity 
+        metallicities[i] += log10_zerop02;     // add solar metallicity
     }
 
     for(size_t i = 0; i < NUM_METALS_TABLE; i++) {
-        /* Concatenates the actual path to the root directory 
-           The variable ROOT_DIR is defined in the Makefile. C token pasting 
+        /* Concatenates the actual path to the root directory
+           The variable ROOT_DIR is defined in the Makefile. C token pasting
            automatically concats the ROOT_DIR string and the "extra/..." string
         */
         snprintf(buf, MAX_STRING_LEN - 1, ROOT_DIR "/src/auxdata/CoolFunctions/%s", name[i]);
@@ -71,7 +71,7 @@ void read_cooling_functions(void)
             }
             CoolRate[i][n] = sd_logLnorm;
         }
-        
+
         fclose(fd);
     }
 
@@ -103,7 +103,7 @@ double get_rate(int tab, double logTemp)
     return rate;
 }
 
-double get_metaldependent_cooling_rate(const double logTemp, double logZ)  // pass: log10(temperatue/Kelvin), log10(metallicity) 
+double get_metaldependent_cooling_rate(const double logTemp, double logZ)  // pass: log10(temperatue/Kelvin), log10(metallicity)
 {
     if(logZ < metallicities[0])
         logZ = metallicities[0];
@@ -116,7 +116,7 @@ double get_metaldependent_cooling_rate(const double logTemp, double logZ)  // pa
         i++;
     }
 
-    // look up at i and i+1 
+    // look up at i and i+1
     const double rate1 = get_rate(i, logTemp);
     const double rate2 = get_rate(i + 1, logTemp);
     const double rate = rate1 + (rate2 - rate1) / (metallicities[i + 1] - metallicities[i]) * (logZ - metallicities[i]);

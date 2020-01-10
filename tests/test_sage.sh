@@ -1,5 +1,5 @@
 #!/bin/bash
-cwd=`pwd`
+cwd=$(pwd)
 datadir=test_data/
 
 # The bash way of figuring out the absolute path to this file
@@ -10,7 +10,9 @@ parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 mkdir -p "$parent_path"/$datadir
 if [[ $? != 0 ]]; then
     echo "Could not create directory $parent_path/$datadir"
-    echo "Failed"
+    echo "Failed."
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 fi
 
@@ -23,32 +25,75 @@ fi
 
 # If there isn't a Mini-Millennium tree, then download them.
 if [ ! -f trees_063.7 ]; then
-    wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0"  -O "mini-millennium-treefiles.tar"
+
+    # To download the trees, we use either `wget` or `curl`. By default, we want to use `wget`.
+    # However, if it isn't present, we will use `curl` with a few parameter flags.
+    echo "First checking if either 'wget' or 'curl' are present in order to download trees."
+
+    clear_alias=0
+    command -v wget
+
     if [[ $? != 0 ]]; then
-        echo "Could not download tree files from the Manodeep Sinha's Dropbox...aborting tests"
-        echo "Failed"
+        echo "'wget' is not available. Checking if 'curl' can be used."
+        command -v curl
+
+        if [[ $? != 0 ]]; then
+            echo "Neither 'wget' nor 'curl' are available to download the Mini-Millennium trees."
+            echo "Please install one of these to download the trees."
+            exit 1
+        fi
+
+        echo "Using 'curl' to download trees."
+
+        # `curl` is available. Alias it to `wget` with some options.
+        alias wget="curl -L -O -C -"
+
+        # We will need to clear this alias up later.
+        clear_alias=1
+    else
+        echo "'wget' is present. Using it!"
+    fi
+
+    # Now that we have confirmed we have either `wget` or `curl`, proceed to downloading the trees and data.
+    wget "https://www.dropbox.com/s/l5ukpo7ar3rgxo4/mini-millennium-treefiles.tar?dl=0" -O "mini-millennium-treefiles.tar"
+    if [[ $? != 0 ]]; then
+        echo "Could not download tree files from the Manodeep Sinha's Dropbox...aborting tests."
+        echo "Failed."
+        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+        echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
     fi
 
     tar xvf mini-millennium-treefiles.tar
     if [[ $? != 0 ]]; then
-        echo "Could not untar the mini-millennium tree files...aborting tests"
-        echo "Failed"
+        echo "Could not untar the mini-millennium tree files...aborting tests."
+        echo "Failed."
+        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+        echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
     fi
 
     # If there aren't trees, there's no way there is the 'correct' data files.
-    wget "https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
+    wget "https://www.dropbox.com/s/n7wkkydqlyrhy59/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
     if [[ $? != 0 ]]; then
-        echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests"
-        echo "Failed"
+        echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests."
+        echo "Failed."
+        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+        echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
+    fi
+
+    # If we used `curl`, remove the `wget` alias.
+    if [[ $clear_alias == 1 ]]; then
+        unalias wget
     fi
 
     tar -xvf mini-millennium-sage-correct-output.tar
     if [[ $? != 0 ]]; then
-        echo "Could not untar the correct model output...aborting tests"
-        echo "Failed"
+        echo "Could not untar the correct model output...aborting tests."
+        echo "Failed."
+        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+        echo "https://github.com/sage-home/sage-model/issues/new"
         exit 1
     fi
 
@@ -64,7 +109,7 @@ cd ../../
 # This command queurues MPI_RUN_COMMAND and gets the last entry which will be the number of processors.
 NUM_SAGE_PROCS=$(echo ${MPI_RUN_COMMAND} | awk '{print $NF}')
 
-# If we're running on serial, MPI_RUN_COMMAND shouldn't be set.  Hence set the number of processors to 1. 
+# If we're running on serial, MPI_RUN_COMMAND shouldn't be set.  Hence set the number of processors to 1.
 if [[ -z "${NUM_SAGE_PROCS}" ]]; then
    NUM_SAGE_PROCS=1
 fi
@@ -72,8 +117,10 @@ fi
 # Execute SAGE (potentially in parallel).
 ${MPI_RUN_COMMAND} ./sage "$parent_path"/$datadir/mini-millennium.par
 if [[ $? != 0 ]]; then
-    echo "sage exited abnormally...aborting tests"
-    echo "Failed"
+    echo "sage exited abnormally...aborting tests."
+    echo "Failed."
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 fi
 
@@ -95,14 +142,15 @@ if [[ $? == 0 ]]; then
         ((nfiles++))
 
         # First check if the correct and tests files are bitwise identical.
-        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} 
+        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]}
         if [[ $? == 0 ]]; then
             ((npassed++))
             ((nbitwise++))
         else
             # If they're not identical, manually check all the fields for differences.
-            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary $NUM_SAGE_PROCS
-            if [[ $? == 0 ]]; then 
+            # The two `1` at the end here denotes that the 'correct' SAGE files are in one file.
+            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary 1 $NUM_SAGE_PROCS
+            if [[ $? == 0 ]]; then
                 ((npassed++))
             else
                 ((nfailed++))
@@ -125,7 +173,8 @@ echo "Failed: $nfailed."
 
 if [[ $nfailed > 0 ]]; then
     echo "The binary-binary check failed."
-    echo "Uh oh...I'm outta here!"
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 fi
 
@@ -138,9 +187,11 @@ sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datad
 # Run SAGE on this new parameter file.
 $MPI_RUN_COMMAND ./sage ${tmpfile}
 if [[ $? != 0 ]]; then
-    echo "sage exited abnormally...aborting tests"
-    echo "Failed"
-    cat ${tmpfile}
+    echo "sage exited abnormally when running on the HDF5 output format."
+    echo "Here is the input file for this run."
+    cat $tmpfile
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 fi
 
@@ -151,7 +202,7 @@ cd "$parent_path"/$datadir
 
 # For the binary output, there are multiple redshift files.  However for HDF5, there is a single file.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
-test_file=`ls test_sage.hdf5`
+test_file=$(ls test_sage.hdf5)
 
 # Now run the comparison between each correct binary file and the single HDF5 file.
 if [[ $? == 0 ]]; then
@@ -160,8 +211,9 @@ if [[ $? == 0 ]]; then
     nfailed=0
     for f in ${correct_files[@]}; do
         ((nfiles++))
-        # The `1` at the end here denotes that SAGE was output to a single file.
-        python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5 1
+        # The two `1` at the end here denotes that the 'correct' SAGE files are in one file and
+        # the SAGE output we're testing was written to a single file.
+        python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5 1 1
         if [[ $? == 0 ]]; then
             ((npassed++))
         else

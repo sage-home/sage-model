@@ -1,7 +1,23 @@
 sage
 tests/test_data/
+input/millennium/
+output/
+
 *.o
 *.*~
 libsage.a
 *.ipynb_checkpoints
 *.dSYM
+sage_analysis/plots/
+*.txt
+*.log
+*.out
+*.DS_Store
+
+# sage_analysis Package Stuff #
+*.egg-info
+*__pycache__*
+
+# Documentation with Sphinx #
+docs/build
+docs/make.bat

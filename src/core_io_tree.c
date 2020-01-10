@@ -7,7 +7,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <assert.h>
 
 #include "core_allvars.h"
 #include "core_mymalloc.h"
@@ -28,7 +27,6 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     const int firstfile = run_params->FirstFile;
     const int lastfile = run_params->LastFile;
     const enum Valid_TreeTypes TreeType = run_params->TreeType;
-
 
     /* MS: 21/9/2019 initialise the mulfac's so we can check later
               that these vital factors (required to generate unique galaxy ID's)
@@ -71,7 +69,8 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     if(status != EXIT_SUCCESS) {
         return status;
     }
-    
+
+
     /*MS: Check that the mechanism to generate unique GalaxyID's was
       initialised correctly in the setup */
     if(run_params->FileNr_Mulfac < 0 || run_params->ForestNr_Mulfac < 0) {
@@ -127,10 +126,14 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
 
     }
 
+    // Finally, things that are common across forest types.
+    free(forests_info->FileNr);
+    free(forests_info->original_treenr);
+
     return;
 }
 
-int64_t load_forest(struct params *run_params, const int forestnr, struct halo_data **halos, struct forest_info *forests_info)
+int64_t load_forest(struct params *run_params, const int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info)
 {
 
     int64_t nhalos;
@@ -160,7 +163,7 @@ int64_t load_forest(struct params *run_params, const int forestnr, struct halo_d
         fprintf(stderr, "Your tree type has not been included in the switch statement for ``%s`` in ``%s``.\n",
                 __FUNCTION__, __FILE__);
         fprintf(stderr, "Please add it there.\n");
-        ABORT(EXIT_FAILURE);
+        return -EXIT_FAILURE;
     }
 
     return nhalos;

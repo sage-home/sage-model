@@ -1,6 +1,9 @@
 #USE-MPI = yes # set this if you want to run in embarrassingly parallel
 USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
+#MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
+				 # Note: This will not work if you're using clang as your compiler.
+
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # In case any of the previous ones do not work and
 # ROOT_DIR is not set, then use "." as ROOT_DIR and
@@ -21,6 +24,7 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
 	   io/save_gals_binary.c io/forest_utils.c
+
 LIBINCL := $(LIBSRC:.c=.h)
 LIBINCL += io/parse_ctrees.h
 
@@ -76,20 +80,6 @@ H5_OBJS := $(addprefix $(SRC_PREFIX)/, $(H5_OBJS))
 
 ## Only set everything if the command is not "make clean" (or related to "make clean")
 ifeq ($(DO_CHECKS), 1)
-  ON_CI := false
-  ifeq ($(CI), true)
-    ON_CI := true
-  endif
-
-  ifeq ($(TRAVIS), true)
-    ON_CI := true
-  endif
-
-  # Add the -Werror flag if running on some continuous integration provider
-  ifeq ($(ON_CI), true)
-    CCFLAGS += -Werror
-  endif
-
   ## Check if CC is clang under the hood
   CC_VERSION := $(shell $(CC) --version 2>/dev/null)
   ifndef CC_VERSION
@@ -110,6 +100,20 @@ ifeq ($(DO_CHECKS), 1)
       ## the clang assembler
       CCFLAGS += -Wa,-q
     endif
+  endif
+
+  ON_CI := false
+  ifeq ($(CI), true)
+    ON_CI := true
+  endif
+
+  ifeq ($(TRAVIS), true)
+    ON_CI := true
+  endif
+
+  ifeq ($(ON_CI), true)
+	# If running on CI, fail if any warnings are generated when Making.
+    CCFLAGS += -Werror
   endif
   ## end of checking is CC
 
@@ -142,7 +146,7 @@ ifeq ($(DO_CHECKS), 1)
         ## something like /path/to/bin/h5ls; the 'sed' command
         ## replaces the '/bin/h5ls' with '' (i.e., removes '/bin/h5ls')
         ## and returns '/path/to' (without the trailing '/')
-        HDF5_DIR := `which h5ls 2>/dev/null | sed 's/\/bin\/h5ls//'`
+        HDF5_DIR := $(strip $(shell which h5ls 2>/dev/null | sed 's/\/bin\/h5ls//'))
         ifndef HDF5_DIR
           $(warning $$HDF5_DIR environment variable is not defined but HDF5 is requested)
           $(warning Could not locate hdf5 tools either)
@@ -166,7 +170,7 @@ ifeq ($(DO_CHECKS), 1)
     INCL += $(H5_INCL)
 
     HDF5_INCL := -I$(HDF5_DIR)/include
-    HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -lhdf5_hl -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
+    HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
 
     OPTS += -DHDF5
     LIBFLAGS += $(HDF5_LIB)
@@ -191,6 +195,15 @@ ifeq ($(DO_CHECKS), 1)
     OPTIMIZE += -march=native
   endif
 
+  # Some flags to allow memory checking (similar to Valgrind).
+  # Only enabled when specifically asked.
+  ifdef MEM-CHECK
+    CCFLAGS +=-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
+  endif
+
+  CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
+  LIBS   +=   -lm
+
   # Check if $(AR) and $(CC) belong to the same tool-chain
   AR_BASE_PATH := $(shell which $(AR))
   CC_BASE_PATH := $(shell which $(CC))
@@ -212,8 +225,9 @@ ifeq ($(DO_CHECKS), 1)
 
   CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
   LIBFLAGS   +=   -lm
+
 else
-  # something like `make clean` is in effet -> need to also the HDF5 objects
+  # something like `make clean` is in effect -> need to also the HDF5 objects
   # if HDF5 is requested
   ifdef USE-HDF5
     OBJS += $(H5_OBJS)
@@ -233,6 +247,7 @@ $(SAGELIB): $(LIBOBJS)
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
+
 
 .phony: clean celan celna clena tests
 celan celna clena: clean

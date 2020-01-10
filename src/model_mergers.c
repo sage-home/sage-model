@@ -3,7 +3,6 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <assert.h>
 
 #include "core_allvars.h"
 
@@ -23,7 +22,8 @@ double estimate_merging_time(const int sat_halo, const int mother_halo, const in
         return -1.0;
     }
 
-    const double coulomb = log(1.0 + halos[mother_halo].Len / ((double) halos[sat_halo].Len) );
+
+    const double coulomb = log1p(halos[mother_halo].Len / ((double) halos[sat_halo].Len) );//MS: 12/9/2019. As pointed out by codacy -> log1p(x) is better than log(1 + x)
 
     const double SatelliteMass = get_virial_mass(sat_halo, halos, run_params) + galaxies[ngal].StellarMass + galaxies[ngal].ColdGas;
     const double SatelliteRadius = get_virial_radius(mother_halo, halos, run_params);
@@ -222,7 +222,9 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         reheated_mass = 0.0;
     }
 
-	assert(reheated_mass >= 0.0);
+	XASSERT(reheated_mass >= 0.0, -1,
+            "Error: Reheated mass = %g should be >= 0.0",
+            reheated_mass);
 
     // can't use more cold gas than is available! so balance SF and feedback
     if((stars + reheated_mass) > galaxies[merger_centralgal].ColdGas) {
@@ -268,7 +270,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // check for disk instability
     if(run_params->DiskInstabilityOn && mode == 0) {
         if(mass_ratio < run_params->ThreshMajorMerger) {
-            check_disk_instability(merger_centralgal, centralgal, halonr, time, dt, step, galaxies, run_params);
+            check_disk_instability(merger_centralgal, centralgal, halonr, time, dt, step, galaxies, (struct params *) run_params);
         }
     }
 

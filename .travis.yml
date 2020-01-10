@@ -77,7 +77,7 @@ matrix:
 
     - name: "Linux MPI Xenial distribution"
       os: linux
-      dist: xenial 
+      dist: xenial
       sudo: required
       env: COMPILER=mpicc PYTHON_VERSION=3.7 MPI_RUN_COMMAND='mpirun -np 5'
       before_install:
@@ -93,7 +93,7 @@ install:
   - source activate test
   - conda install -q --yes -c anaconda gsl
   - conda install -q --yes -c conda-forge hdf5
-  - pip install -r requirements.txt 
+  - pip install -r requirements.txt
 
 script:
   - make -r CC=$COMPILER tests

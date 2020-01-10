@@ -101,13 +101,11 @@ void read_snap_list(const int ThisTask, struct params *run_params)
     }
 }
 
-
-
 double time_to_present(const double z, struct params *run_params)
 {
     const double end_limit = 1.0;
     const double start_limit = 1.0/(1 + z);
-    double result=0.0;
+    double result;
 #ifdef GSL_FOUND
 #define WORKSIZE 1000
     gsl_function F;
@@ -144,8 +142,6 @@ double time_to_present(const double z, struct params *run_params)
     // return time to present as a function of redshift
     return time;
 }
-
-
 
 double integrand_time_to_present(const double a, void *param)
 {
