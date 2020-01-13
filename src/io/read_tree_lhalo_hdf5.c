@@ -282,7 +282,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
         if (macro_status != EXIT_SUCCESS) {                                   \
             return -1;                                                  \
         }                                                               \
-        C_dtype *macro_x = (C_dtype *) buffer;
+        C_dtype *macro_x = (C_dtype *) buffer;                          \
         for (int halo_idx = 0; halo_idx < nhalos; ++halo_idx) {         \
             local_halos[halo_idx].sage_name = *macro_x;                 \
             macro_x++;                                                  \
