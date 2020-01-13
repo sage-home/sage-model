@@ -72,7 +72,7 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 
 double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, struct GALAXY *galaxies, const struct params *run_params)
 {
-    double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity, r_heat_new;
+    double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity;
 
 	// first update the cooling rate based on the past AGN heating
 	if(galaxies[centralgal].r_heat < rcool) {
@@ -145,7 +145,7 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
 
         // update the heating radius as needed
         if(galaxies[centralgal].r_heat < rcool && coolingGas > 0.0) {
-            r_heat_new = (AGNheating / coolingGas) * rcool;
+            double r_heat_new = (AGNheating / coolingGas) * rcool;
             if(r_heat_new > galaxies[centralgal].r_heat) {
                 galaxies[centralgal].r_heat = r_heat_new;
             }

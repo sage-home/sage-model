@@ -13,13 +13,11 @@
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
 {
     double tot_stellarMass, tot_BHMass, tot_coldMass, tot_hotMass, tot_ejected, tot_ICS;
-    double tot_hotMetals, tot_ejectedMetals, tot_ICSMetals;
-    double tot_satBaryons;
-    /* double newSatBaryons; */
+    double tot_ejectedMetals, tot_ICSMetals;
     double infallingMass, reionization_modifier;
 
     // need to add up all the baryonic mass asociated with the full halo
-    tot_stellarMass = tot_coldMass = tot_hotMass = tot_hotMetals = tot_ejected = tot_BHMass = tot_ejectedMetals = tot_ICS = tot_ICSMetals = tot_satBaryons = 0.0;
+    tot_stellarMass = tot_coldMass = tot_hotMass = tot_ejected = tot_BHMass = tot_ejectedMetals = tot_ICS = tot_ICSMetals = 0.0;
 
 	// loop over all galaxies in the FoF-halo
     for(int i = 0; i < ngal; i++) {
@@ -27,7 +25,6 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         tot_BHMass += galaxies[i].BlackHoleMass;
         tot_coldMass += galaxies[i].ColdGas;
         tot_hotMass += galaxies[i].HotGas;
-        tot_hotMetals += galaxies[i].MetalsHotGas;
         tot_ejected += galaxies[i].EjectedMass;
         tot_ejectedMetals += galaxies[i].MetalsEjectedMass;
         tot_ICS += galaxies[i].ICS;
@@ -35,9 +32,6 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
 
 
         if(i != centralgal) {
-            // record the current baryons in satellites only
-            tot_satBaryons += galaxies[i].StellarMass + galaxies[i].BlackHoleMass + galaxies[i].ColdGas + galaxies[i].HotGas;
-
             // satellite ejected gas goes to central ejected reservior
             galaxies[i].EjectedMass = galaxies[i].MetalsEjectedMass = 0.0;
 
@@ -45,9 +39,6 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
             galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
         }
     }
-
-    /*  the existing baryons that have fallen in with substructure since the last timestep */
-    /* newSatBaryons = tot_satBaryons - galaxies[centralgal].TotalSatelliteBaryons; */
 
     // include reionization if necessary
     if(run_params->ReionizationOn) {

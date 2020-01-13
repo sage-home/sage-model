@@ -152,9 +152,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firs
     lht->numfiles = end_filenum - start_filenum + 1;
     lht->open_fds = mymalloc(lht->numfiles * sizeof(lht->open_fds[0]));
 
-    nforests_so_far = 0;
     int32_t *forestnhalos = lht->nhalos_per_forest;
-
     for(int filenr=start_filenum;filenr<=end_filenum;filenr++) {
         XRETURN(start_forestnum_to_process_per_file[filenr] >= 0 && start_forestnum_to_process_per_file[filenr] < totnforests_per_file[filenr],
                 EXIT_FAILURE,

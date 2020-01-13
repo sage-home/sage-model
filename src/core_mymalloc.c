@@ -37,7 +37,7 @@ void *mymalloc(size_t n)
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
 #ifdef VERBOSE
             printf("\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
-#endif            
+#endif
             OldPrintedHighMark = HighMarkMem;
         }
     }
@@ -57,7 +57,7 @@ void *mycalloc(const size_t count, const size_t size)
 {
 
     if(Nblocks >= MAXBLOCKS) {
-        printf("Nblocks = %lu No blocks left in mymalloc().\n", Nblocks);
+        printf("Nblocks = %ld No blocks left in mymalloc().\n", Nblocks);
         ABORT(OUT_OF_MEMBLOCKS);
     }
 
@@ -66,9 +66,9 @@ void *mycalloc(const size_t count, const size_t size)
     if(TotMem > HighMarkMem) {
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-#ifdef VERBOSE            
+#ifdef VERBOSE
             printf("\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
-#endif            
+#endif
             OldPrintedHighMark = HighMarkMem;
         }
     }
@@ -140,7 +140,7 @@ void *myrealloc(void *p, size_t n)
     if(TotMem > HighMarkMem) {
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-#ifdef VERBOSE            
+#ifdef VERBOSE
             printf("\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
 #endif
             OldPrintedHighMark = HighMarkMem;
@@ -193,4 +193,3 @@ void print_allocated(void)
     fflush(stdout);
 }
 #endif
- 

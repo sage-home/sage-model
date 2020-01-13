@@ -134,9 +134,7 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
 int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
 {
 
-    int32_t nwritten;
     int32_t ntrees = forest_info->nforests_this_task;
-
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
         // File must already be open.
         CHECK_STATUS_AND_RETURN_ON_FAIL(save_info->save_fd[snap_idx], EXIT_FAILURE,
@@ -144,7 +142,7 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
                                         snap_idx, save_info->save_fd[snap_idx]);
 
         // Write the header data.
-        nwritten = mypwrite(save_info->save_fd[snap_idx], &ntrees, sizeof(ntrees), 0);
+        int32_t nwritten = mypwrite(save_info->save_fd[snap_idx], &ntrees, sizeof(ntrees), 0);
         if(nwritten != sizeof(int32_t)) {
             fprintf(stderr, "Error: Failed to write out 1 element for the number of trees for the header of file %d.\n"
                             "Wrote %d bytes instead of %zu.\n", snap_idx, nwritten, sizeof(ntrees));
