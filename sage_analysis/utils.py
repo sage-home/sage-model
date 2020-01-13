@@ -1,11 +1,13 @@
 import numpy as np
 
-def generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args={}):
+def generate_func_dict(plot_toggles, module_name, function_prefix,
+                       keyword_args=None):
     """
-    Generates a dictionary where the keys are the function name and the value is a list
-    containing the function itself (0th element) and keyword arguments as a dictionary
-    (1st element). All functions in the returned dictionary are expected to have the same
-    call signature for non-keyword arguments. Functions are only added when the
+    Generates a dictionary where the keys are the function name and the value
+    is a list containing the function itself (0th element) and keyword
+    arguments as a dictionary (1st element). All functions in the
+    returned dictionary are expected to have the same call signature for
+    non-keyword arguments. Functions are only added when the
     ``plot_toggles`` value is non-zero.
 
     Functions are required to be named ``<module_prefix><function_prefix><plot_toggle_key>``
@@ -17,32 +19,32 @@ def generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args=
     ----------
 
     plot_toggles: dict, [string, int]
-        Dictionary specifying the name of each property/plot and whether the values
-        will be generated + plotted. A value of 1 denotes plotting, whilst a value of
-        0 denotes not plotting.  Entries with a value of 1 will be added to the function
-        dictionary.
+        Dictionary specifying the name of each property/plot and whether the
+        values will be generated + plotted. A value of 1 denotes plotting,
+        whilst a value of 0 denotes not plotting.  Entries with a value of 1
+        will be added to the function dictionary.
 
     module_prefix: string
-        Name of the module where the functions are located. If the functions are located
-        in this module, pass an empty string "".
+        Name of the module where the functions are located. If the functions
+        are located in this module, pass an empty string "".
 
     function_prefix: string
         Prefix that is added to the start of each function.
 
     keyword_args: dict [string, dict[string, variable]], optional
-        Allows the adding of keyword aguments to the functions associated with the
-        specified plot toggle. The name of each keyword argument and associated value is
-        specified in the inner dictionary.
+        Allows the adding of keyword aguments to the functions associated with
+        the specified plot toggle. The name of each keyword argument and
+        associated value is specified in the inner dictionary.
 
     Returns
     -------
 
     func_dict: dict [string, list(function, dict[string, variable])]
-        The key of this dictionary is the name of the function.  The value is a list with
-        the 0th element being the function and the 1st element being a dictionary of
-        additional keyword arguments to be passed to the function. The inner dictionary is
-        keyed by the keyword argument names with the value specifying the keyword argument
-        value.
+        The key of this dictionary is the name of the function.  The value is
+        a list with the 0th element being the function and the 1st element
+        being a dictionary of additional keyword arguments to be passed to
+        the function. The inner dictionary is keyed by the keyword argument
+        names with the value specifying the keyword argument value.
 
     Examples
     --------
@@ -78,9 +80,12 @@ def generate_func_dict(plot_toggles, module_name, function_prefix, keyword_args=
 'plot_sub_populations': True}]}
     """
 
-    # If the functions are defined in this module, then `module_name` is empty. Need to
-    # treat this differently.
     import sys
+    if not keyword_args:
+        keyword_args = dict()
+
+    # If the functions are defined in this module, then `module_name` is empty.
+    # Need to treat this differently.
     if module_name == "":
 
         # Get the name of this module.

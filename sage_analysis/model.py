@@ -202,7 +202,7 @@ class Model(object):
         # Only allow Chabrier or Salpeter IMF.
         allowed_IMF = ["Chabrier", "Salpeter"]
         if IMF not in allowed_IMF:
-            raise ValueErorr(
+            raise ValueError(
                 "Value of IMF selected ({0}) is not allowed. Only {1} are "
                 "allowed.".format(IMF, allowed_IMF)
             )
@@ -410,8 +410,8 @@ class Model(object):
 
                         SAGE_dict[split[0]] = split[1]
 
-        except FileNotFoundError:
-            raise FileNotFoundError("Could not file SAGE ini file {0}".format(fname))
+        except FileNotFoundError as e:
+            raise e("Could not file SAGE ini file {0}".format(fname))
 
         # Now we have all the fields, rebuild the dictionary to be exactly what we need for
         # initialising the model.
