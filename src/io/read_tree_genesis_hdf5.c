@@ -619,7 +619,9 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
        The offsets for the first forest have been populated at the forest_setup stage  */
     if(processing_first_forest == 0 && gen->curr_filenum != filenum_for_forest) {
         /* This forest is in a new file (but this forest isn't the first forest being processed by this task)*/
-        memset(gen->halo_offset_per_snap, 0, sizeof(gen->halo_offset_per_snap[0]) * gen->maxsnaps);
+        for(int isnap=0;isnap<gen->maxsnaps;isnap++) {
+            gen->halo_offset_per_snap[isnap] = 0;
+        }
         gen->curr_filenum = filenum_for_forest;
     }
     const int filenum = gen->curr_filenum;
@@ -640,12 +642,12 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     /* Read the number of halos in this forest -> starting at offset 'forestnum_across_all_files'  */
     READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, "ForestInfo", "ForestSizes", &h5_global_forestnum, &h5_single_item, &nhalos);
 
-    int64_t *nhalos_per_snap = calloc(gen->maxsnaps, sizeof(*nhalos_per_snap));
+    int64_t *nhalos_per_snap = malloc(gen->maxsnaps * sizeof(*nhalos_per_snap));
     XRETURN(nhalos_per_snap != NULL, MALLOC_FAILURE,
             "Error: Could not allocate memory to store the number of halos per snapshot (forestnr = %"PRId64")\n",
             forestnr);
 
-    int32_t *forest_local_offsets = calloc(gen->maxsnaps, sizeof(*forest_local_offsets));
+    int32_t *forest_local_offsets = malloc(gen->maxsnaps * sizeof(*forest_local_offsets));
     XRETURN(forest_local_offsets != NULL, MALLOC_FAILURE,
             "Error: Could not allocate memory for the storing the forest local offsets that separate each snapshot (forestnr = %"PRId64")\n",
             forestnr);
@@ -699,7 +701,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     }
 
     // The max. size of the data to be read in would be "nhalos" * NDIM (== 3 for pos/vel) * sizeof(double)
-    void *buffer = calloc(nhalos * NDIM * sizeof(double), sizeof(*buffer));
+    char *buffer = malloc(nhalos * NDIM * sizeof(double));
     if (buffer == NULL) {
         fprintf(stderr, "Could not allocate memory for the HDF5 multiple dimension buffer.\n");
         ABORT(MALLOC_FAILURE);
