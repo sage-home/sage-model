@@ -143,7 +143,7 @@ int64_t load_forest(struct params *run_params, const int64_t forestnr, struct ha
 
 #ifdef HDF5
     case lhalo_hdf5:
-        nhalos = load_forest_hdf5(forestnr, halos, forests_info);
+        nhalos = load_forest_lht_hdf5(forestnr, halos, forests_info, run_params->Hubble_h);
         break;
 
     case genesis_hdf5:

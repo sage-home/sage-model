@@ -272,7 +272,7 @@ struct save_info {
     };
 
     int64_t *tot_ngals; // Number of galaxies **per snapshot**.
-    int32_t **forest_ngals; // Number of galaxies **per snapshot** **per tree**; fores_ngals[snap][forest].
+    int32_t **forest_ngals; // Number of galaxies **per snapshot** **per tree**; forest_ngals[snap][forest].
 
 #ifdef HDF5
     char **name_output_fields;
@@ -311,7 +311,6 @@ struct params
     double PartMass;
     double Hubble_h;
     double BoxSize;
-    int32_t NumSimulationTreeFiles; // This will be (e.g.,) 8 for Mini-Millennium and 512 for Millnnium.
     double EnergySNcode;
     double EnergySN;
     double EtaSNcode;
@@ -358,6 +357,7 @@ struct params
     double a0;
     double ar;
 
+    int32_t nsnapshots;
     int32_t LastSnapShotNr;
     int32_t MAXSNAPS;
     int32_t NOUT;
