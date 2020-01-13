@@ -988,7 +988,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     //Now populate the NextHaloinFOFGroup
     for(int64_t i=0;i<nhalos;i++) {
         int32_t fofhalo = local_halos[i].FirstHaloInFOFgroup;
-        if(fofhalo == -1 || fofhalo < 0 || fofhalo >= nhalos) {
+        if(fofhalo < 0 || fofhalo >= nhalos) {
             //This can not happen. FirstHaloinFOF should already be set correctly
             fprintf(stderr,"Error: FOFhalo = %d must be in the (inclusive) range -- [0, %"PRId64"]\n", fofhalo, nhalos-1);
             return -1;

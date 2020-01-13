@@ -269,25 +269,23 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
     run_params->FileNr_Mulfac = 1000000000000000LL;
     run_params->ForestNr_Mulfac = 1000000000LL;
 
-    /* Finally setup the multiplication factors necessary to generate
-       unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac = 1000000000000000LL;
-    run_params->ForestNr_Mulfac = 1000000000LL;
-
     return EXIT_SUCCESS;
 }
+
 
 /* MS: 17/9/2019 Assumes a properly allocated variable, with size at least 'nhalos*8' called 'buffer'
    Also assumes a properly allocated variable, 'local_halos' of size 'nhalos' */
 #define READ_TREE_PROPERTY(fd, treenr, sage_name, hdf5_name, C_dtype) { \
         snprintf(dataset_name, MAX_STRING_LEN - 1, "Tree%"PRId64"/%s", treenr, #hdf5_name); \
-        const int check_size = 0;                                       \
+        const int check_size = 1;                                       \
         int macro_status = read_dataset(fd, dataset_name, -1, buffer, sizeof(C_dtype), check_size); \
         if (macro_status != EXIT_SUCCESS) {                                   \
             return -1;                                                  \
         }                                                               \
+        C_dtype *macro_x = (C_dtype *) buffer;
         for (int halo_idx = 0; halo_idx < nhalos; ++halo_idx) {         \
-            local_halos[halo_idx].sage_name = ((C_dtype*)buffer)[halo_idx]; \
+            local_halos[halo_idx].sage_name = *macro_x;                 \
+            macro_x++;                                                  \
         }                                                               \
     }
 
@@ -295,14 +293,16 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstf
    Also assumes a properly allocated variable, 'local_halos' of size 'nhalos' */
 #define READ_TREE_PROPERTY_MULTIPLEDIM(fd, treenr, sage_name, hdf5_name, C_dtype) { \
         snprintf(dataset_name, MAX_STRING_LEN - 1, "Tree%"PRId64"/%s", treenr, #hdf5_name); \
-        const int check_size = 0;                                       \
+        const int check_size = 1;                                       \
         const int macro_status = read_dataset(fd, dataset_name, -1, buffer, sizeof(C_dtype), check_size); \
         if (macro_status != EXIT_SUCCESS) {                             \
             return -1;                                                  \
         }                                                               \
+        C_dtype *macro_x = (C_dtype *) buffer;                          \
         for (int halo_idx = 0; halo_idx < nhalos; ++halo_idx) {         \
             for (int dim = 0; dim < NDIM; ++dim) {                      \
-                local_halos[halo_idx].sage_name[dim] = ((C_dtype*) buffer)[halo_idx * NDIM + dim]; \
+                local_halos[halo_idx].sage_name[dim] = *macro_x;        \
+                macro_x++;                                              \
             }                                                           \
         }                                                               \
     }

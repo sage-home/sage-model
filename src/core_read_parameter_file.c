@@ -199,82 +199,82 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     FILE *fd = fopen(fname, "r");
     if (fd == NULL) {
-        printf("Parameter file %s not found.\n", fname);
+        printf("Parameter file '%s' not found.\n", fname);
+        fflush(stdout);
         return FILE_NOT_FOUND;
     }
 
-    if(fd != NULL) {
-        char buffer[MAX_STRING_LEN];
-        while(fgets(&(buffer[0]), MAX_STRING_LEN, fd) != NULL) {
-            char buf1[MAX_STRING_LEN], buf2[MAX_STRING_LEN];
-            if(sscanf(buffer, "%s %[^\n]", buf1, buf2) < 2) {
-                continue;
-            }
+    char buffer[MAX_STRING_LEN+1];
+    while(fgets(&(buffer[0]), MAX_STRING_LEN, fd) != NULL) {
+        char buf1[MAX_STRING_LEN+1], buf2[MAX_STRING_LEN+1];
+        if(sscanf(buffer, "%" STR(MAX_STRING_LEN) "s %" STR(MAX_STRING_LEN) "[^\n]", buf1, buf2) < 2) {
+            continue;
+        }
 
-            if(buf1[0] == '%' || buf1[0] == '-') { /* the second condition is checking for output snapshots -- that line starts with "->" */
-                continue;
-            }
+        if(buf1[0] == '%' || buf1[0] == '-') { /* the second condition is checking for output snapshots -- that line starts with "->" */
+            continue;
+        }
 
-            /* Allowing for spaces in the filenames (but requires comments to ALWAYS start with '%' or ';') */
-            int buf2len = strnlen(buf2, MAX_STRING_LEN);
-            for(int i=0;i<=buf2len;i++) {
-                if(buf2[i] == '%' || buf2[i] == ';') {
-                    int null_pos = i;
-                    //Ignore all preceeding whitespace
-                    for(int j=i-1;j>=0;j--) {
-                        null_pos = isblank(buf2[j]) ? j:null_pos;
-                    }
-                    buf2[null_pos] = '\0';
-                    break;
+        /* Allowing for spaces in the filenames (but requires comments to ALWAYS start with '%' or ';') */
+        int buf2len = strnlen(buf2, MAX_STRING_LEN);
+        for(int i=0;i<=buf2len;i++) {
+            if(buf2[i] == '%' || buf2[i] == ';') {
+                int null_pos = i;
+                //Ignore all preceeding whitespace
+                for(int j=i-1;j>=0;j--) {
+                    null_pos = isblank(buf2[j]) ? j:null_pos;
                 }
-            }
-            buf2len = strnlen(buf2, MAX_STRING_LEN);
-            while(buf2len > 0 && isblank(buf2[buf2len-1])) {
-                buf2len--;
-            }
-            buf2[buf2len] = '\0';
-
-
-            int j=-1;
-            for(int i = 0; i < NParam; i++) {
-                if(strcmp(buf1, ParamTag[i]) == 0) {
-                    j = i;
-                    ParamTag[i][0] = 0;
-                    used_tag[i] = 0;
-                    break;
-                }
-            }
-
-            if(j >= 0) {
-                if(ThisTask == 0) {
-                    printf("%35s\t%10s\n", buf1, buf2);
-                }
-
-                switch (ParamID[j])
-                    {
-                    case DOUBLE:
-                        *((double *) ParamAddr[j]) = atof(buf2);
-                        break;
-                    case STRING:
-                        strcpy(ParamAddr[j], buf2);
-                        break;
-                    case INT:
-                        *((int *) ParamAddr[j]) = atoi(buf2);
-                        break;
-                    }
-            } else {
-                printf("Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
-                errorFlag = 1;
+                buf2[null_pos] = '\0';
+                break;
             }
         }
-        fclose(fd);
+        buf2len = strnlen(buf2, MAX_STRING_LEN);
+        while(buf2len > 0 && isblank(buf2[buf2len-1])) {
+            buf2len--;
+        }
+        buf2[buf2len] = '\0';
 
-        const size_t i = strlen(run_params->OutputDir);
-        if(i > 0) {
-            if(run_params->OutputDir[i - 1] != '/')
-                strcat(run_params->OutputDir, "/");
+
+        int j=-1;
+        for(int i = 0; i < NParam; i++) {
+            if(strcmp(buf1, ParamTag[i]) == 0) {
+                j = i;
+                ParamTag[i][0] = 0;
+                used_tag[i] = 0;
+                break;
+            }
+        }
+
+        if(j >= 0) {
+            if(ThisTask == 0) {
+                printf("%35s\t%10s\n", buf1, buf2);
+            }
+
+            switch (ParamID[j])
+                {
+                case DOUBLE:
+                    *((double *) ParamAddr[j]) = atof(buf2);
+                    break;
+                case STRING:
+                    strcpy(ParamAddr[j], buf2);
+                    break;
+                case INT:
+                    *((int *) ParamAddr[j]) = atoi(buf2);
+                    break;
+                }
+        } else {
+            printf("Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
+            errorFlag = 1;
         }
     }
+    fclose(fd);
+
+    const size_t outlen = strlen(run_params->OutputDir);
+    if(outlen > 0) {
+        if(run_params->OutputDir[outlen - 1] != '/')
+            strcat(run_params->OutputDir, "/");
+    }
+
 
     for(int i = 0; i < NParam; i++) {
         if(used_tag[i]) {

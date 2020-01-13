@@ -72,8 +72,8 @@ herr_t read_dataset_shape(hid_t fd, const char *dataset_name, int *ndims, hsize_
         return (herr_t) EXIT_FAILURE;
     }
 
-    *dims = calloc(*ndims, sizeof(**dims));
-    if(dims == NULL) {
+    *dims = calloc(*ndims, sizeof(hsize_t));
+    if(*dims == NULL) {
         fprintf(stderr,"Error: Could not allocate memory for the dataset shape for the dataset '%s'. ndims = %d\n", dataset_name, *ndims);
         return (herr_t) EXIT_FAILURE;
     }
