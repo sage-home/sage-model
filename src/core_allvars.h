@@ -209,15 +209,6 @@ struct genesis_info {
 
     int64_t start_forestnum;/* Global forestnumber to start processing from */
     int64_t maxforestsize; /* max. number of halos in any one single forest on any task */
-
-    union {
-        int32_t *FileNr;/* Integer identifying which file out of the '(lastfile + 1)' for each forest -- shape (nforests, )
-                           The unusual capitalisation is to show that the semantics are the same as the
-                           variable with 'struct halo_data' (in core_simulation.h) - MS 19/11/2019
-                        */
-        int32_t *filenum_for_forest;/* shadowed to show what the variable contains */
-    };
-    int64_t *forestnum_in_file;/* Integer identifying the file-local forest numbers to be read -- shape (nforests, ) */
     int64_t *offset_for_global_forestnum;/* What would be the offset to add to file-local 'forestnum' to get the global forest num
                                             that is needed to access the metadata ("*foreststats*.hdf5") file  -- shape (lastfile + 1, ) */
 

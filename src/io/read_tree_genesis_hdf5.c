@@ -306,24 +306,22 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
                             'gen->halo_offset_per_snap' values are not reset for the first forest. */
 
     /* We need to track which file each forest is in for two reasons -- i) to actually read from the correct file and ii) to create unique IDs */
-    gen->FileNr = calloc(nforests_this_task, sizeof(gen->FileNr[0]));
-    XRETURN(gen->FileNr != NULL, MALLOC_FAILURE,
+    forests_info->FileNr = calloc(nforests_this_task, sizeof(forests_info->FileNr[0]));
+    XRETURN(forests_info->FileNr != NULL, MALLOC_FAILURE,
             "Error: Could not allocate memory to hold the file numbers for each forest (%"PRId64" items each of size %zu bytes)\n",
-            nforests_this_task, sizeof(gen->FileNr[0]));
+            nforests_this_task, sizeof(forests_info->FileNr[0]));
+    forests_info->original_treenr = calloc(nforests_this_task, sizeof(forests_info->original_treenr[0]));
+    CHECK_POINTER_AND_RETURN_ON_NULL(forests_info->original_treenr,
+                                     "Failed to allocate %"PRId64" elements of size %zu for forests_info->original_treenr", nforests_this_task,
+                                     sizeof(*(forests_info->original_treenr)));
 
-    /* Really only required for the first file -- since we will likely process from an arbitrary forest number
-       We do need these 'file-local' forestnumbers to create the unique IDs */
-    gen->forestnum_in_file = calloc(nforests_this_task, sizeof(gen->forestnum_in_file[0]));
-    XRETURN(gen->forestnum_in_file != NULL, MALLOC_FAILURE,
-            "Error: Could not allocate memory to hold the true forest number (file-local) within each file (%"PRId64" items each of size %zu bytes)\n",
-            nforests_this_task, sizeof(gen->forestnum_in_file[0]));
 
     for(int64_t iforest=0;iforest<nforests_this_task;iforest++) {
-        gen->FileNr[iforest] = -1;
-        gen->forestnum_in_file[iforest] = -1;
+        forests_info->FileNr[iforest] = -1;
+        forests_info->original_treenr[iforest] = -1;
     }
 
-    /* Now fill up the arrays that are of shape (nforests, ) -- FileNr, forestnum_in_file */
+    /* Now fill up the arrays that are of shape (nforests, ) -- FileNr, original_treenr */
     int32_t curr_filenum = start_filenum;
     int64_t endforestnum_in_currfile = totnforests_per_file[curr_filenum];
     int64_t offset = 0;
@@ -333,8 +331,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             curr_filenum++;
             endforestnum_in_currfile += totnforests_per_file[curr_filenum];
         }
-        gen->FileNr[iforest] = curr_filenum;
-        gen->forestnum_in_file[iforest] = iforest - offset;
+        forests_info->FileNr[iforest] = curr_filenum;
+        forests_info->original_treenr[iforest] = iforest - offset;
     }
 
     /* Now fill out the halo offsets per snapshot for the first forest */
@@ -615,7 +613,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         }
     }
 
-    const int filenum_for_forest = gen->FileNr[forestnr];
+    const int filenum_for_forest = forests_info->FileNr[forestnr];
 
     /* Do the forest offsets have to be reset? Only reset if this is not the first forest
        The offsets for the first forest have been populated at the forest_setup stage  */
@@ -674,7 +672,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     if(offset != nhalos) {
         fprintf(stderr,"Error: On ThisTask = %d while processing task-local-forestnr = %"PRId64" "
                 " file-local-forestnr = %"PRId64"and global forestnum = %"PRId64" located in the file = %d\n",
-                run_params->ThisTask, forestnr, gen->forestnum_in_file[forestnr], forestnum_across_all_files, filenum);
+                run_params->ThisTask, forestnr, forests_info->original_treenr[forestnr], forestnum_across_all_files, filenum);
         fprintf(stderr,"Expected the 'nhalos_per_snap' array to sum up to 'nhalos' but that is not the case\n");
         fprintf(stderr,"Sum(nhalos_per_snap) = %"PRId64" nhalos = %"PRId64"\n", offset, nhalos);
         fprintf(stderr,"Now printing out individual values of the nhalos_per_snap\n");
@@ -689,7 +687,6 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         ABORT(INVALID_VALUE_READ_FROM_FILE);
     }
 
-
     *halos = mymalloc(sizeof(struct halo_data) * nhalos);//the malloc failure check is done within mymalloc
     struct halo_data *local_halos = *halos;
     for(int64_t i=0;i<nhalos;i++) {
@@ -702,7 +699,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     }
 
     // The max. size of the data to be read in would be "nhalos" * NDIM (== 3 for pos/vel) * sizeof(double)
-    char *buffer = calloc(nhalos * NDIM * sizeof(double), sizeof(*buffer));
+    void *buffer = calloc(nhalos * NDIM * sizeof(double), sizeof(*buffer));
     if (buffer == NULL) {
         fprintf(stderr, "Could not allocate memory for the HDF5 multiple dimension buffer.\n");
         ABORT(MALLOC_FAILURE);
@@ -915,7 +912,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         for(hsize_t i=0;i<nhalos_snap[0];i++) {
             /* Fill up the remaining properties that are not within the GENESIS dataset */
             local_halos[i].SnapNum = isnap;
-            local_halos[i].FileNr = 0;
+            local_halos[i].FileNr = filenum_for_forest;
             local_halos[i].SubhaloIndex = -1;
             local_halos[i].SubHalfMass = -1.0;
 
@@ -1047,8 +1044,6 @@ void cleanup_forests_io_genesis_hdf5(struct forest_info *forests_info)
 
     free(gen->halo_offset_per_snap);
     free(gen->h5_fds);
-    free(gen->FileNr);
-    free(gen->forestnum_in_file);
     free(gen->offset_for_global_forestnum);
 }
 

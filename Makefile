@@ -1,7 +1,7 @@
 #USE-MPI = yes # set this if you want to run in embarrassingly parallel
 USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
-#MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
+MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
 				 # Note: This will not work if you're using clang as your compiler.
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
@@ -199,10 +199,8 @@ ifeq ($(DO_CHECKS), 1)
   # Only enabled when specifically asked.
   ifdef MEM-CHECK
     CCFLAGS +=-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
+    LIBFLAGS += -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
   endif
-
-  CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
-  LIBS   +=   -lm
 
   # Check if $(AR) and $(CC) belong to the same tool-chain
   AR_BASE_PATH := $(shell which $(AR))
