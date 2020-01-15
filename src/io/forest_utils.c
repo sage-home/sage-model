@@ -180,7 +180,7 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
             /* fprintf(stderr,"ThisTask = %d ..breaking. curr_cost_target = %g cost_so_far = %g cost_this_forest =%g\n", */
             /*         ThisTask, curr_cost_target, cost_so_far, cost_this_forest); */
             fprintf(stderr,"[LOG]: Assigning forest-range = [%"PRId64", %"PRId64"] (containing %"PRId64" halos) to ThisTask = %d\n",
-                    start_forestnum, i, nhalos_curr_task);
+                    start_forestnum, i, nhalos_curr_task, ThisTask);
             nforests_this_task = i - start_forestnum + 1;
             break;
         }
@@ -200,7 +200,7 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
             fprintf(stderr,"[LOG]: Assigning all remaining forests to last task. Remaining cost = %g (ideal target cost = %g)\n",
                     total_cost_across_all_forests - cost_so_far, target_cost_per_task);
             fprintf(stderr,"[LOG]: Assigning forest-range = [%"PRId64", %"PRId64"] (containing %"PRId64" halos) to ThisTask = %d\n",
-                    start_forestnum, totnforests - 1, nhalos_curr_task);
+                    start_forestnum, totnforests - 1, nhalos_curr_task, ThisTask);
             nforests_this_task = totnforests - start_forestnum; 
             break;
         }
