@@ -115,7 +115,10 @@ if [[ -z "${NUM_SAGE_PROCS}" ]]; then
 fi
 
 # Execute SAGE (potentially in parallel).
-${MPI_RUN_COMMAND} ./sage "$parent_path"/$datadir/mini-millennium.par
+tmpfile="$(mktemp)"
+sed '/^OutputFormat /s/.*$/OutputFormat        sage_binary/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
+
+${MPI_RUN_COMMAND} ./sage "${tmpfile}"
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests."
     echo "Failed."
@@ -132,7 +135,6 @@ pushd "$parent_path"/$datadir
 # with file extension '_0'.  This is what the `sort` command does.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
 test_files=($(ls -d test_sage_z* | sort -k 1.18))
-
 if [[ $? == 0 ]]; then
     npassed=0
     nbitwise=0
@@ -185,7 +187,7 @@ tmpfile="$(mktemp)"
 sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
 
 # Run SAGE on this new parameter file.
-$MPI_RUN_COMMAND ./sage ${tmpfile}
+${MPI_RUN_COMMAND} ./sage "${tmpfile}"
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally when running on the HDF5 output format."
     echo "Here is the input file for this run."
