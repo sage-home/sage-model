@@ -106,7 +106,7 @@ cd ../../
 
 # The 'MPI_RUN_COMMAND' environment variable allows us to run in mpi.
 # When running 'sagediff.py', we need knowledge of the number of processors SAGE ran on.
-# This command queurues MPI_RUN_COMMAND and gets the last entry which will be the number of processors.
+# This command queries 'MPI_RUN_COMMAND' and gets the last column (== the number of processors).
 NUM_SAGE_PROCS=$(echo ${MPI_RUN_COMMAND} | awk '{print $NF}')
 
 # If we're running on serial, MPI_RUN_COMMAND shouldn't be set.  Hence set the number of processors to 1.
