@@ -88,13 +88,13 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     // Allocate memory for the total number of galaxies for each output snapshot (across all forests).
     // Calloc because we start with no galaxies.
-    save_info.tot_ngals = calloc(run_params->NOUT, sizeof(*(save_info.tot_ngals)));
+    save_info.tot_ngals = mycalloc(run_params->NOUT, sizeof(*(save_info.tot_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.tot_ngals,
                                      "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
                                      sizeof(*(save_info.tot_ngals)));
 
     // Allocate memory for the number of galaxies at each output snapshot for each forest.
-    save_info.forest_ngals = calloc(run_params->NOUT, sizeof(*(save_info.forest_ngals)));
+    save_info.forest_ngals = mycalloc(run_params->NOUT, sizeof(*(save_info.forest_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals,
                                      "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
                                      sizeof(*(save_info.forest_ngals)));
@@ -151,9 +151,8 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     for(int snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
         myfree(save_info.forest_ngals[snap_idx]);
     }
-    free(save_info.forest_ngals);
-
-    free(save_info.tot_ngals);
+    myfree(save_info.forest_ngals);
+    myfree(save_info.tot_ngals);
 
     if(ThisTask == 0) {
         finish_myprogressbar(stderr, &(run_params->interrupted));

@@ -20,6 +20,8 @@
   snprintf.
   Ver 1.2: Manodeep Sinha, Jan 8, 2012 - replaced
   print_time with timeval and gettimeofday
+  Ver 2?: Manodeep Sinha, Jan 15, 2020 - the history has been
+  lost to time. 
 */
 
 #include <inttypes.h>    //defines PRId64 for printing int64_t + includes stdint.h
@@ -36,10 +38,6 @@
 
 #include "core_allvars.h"
 #include "core_utils.h"
-
-#ifdef __MACH__             // OS X does not have clock_gettime, use clock_get_time
-#include <mach/mach_time.h> /* mach_absolute_time -> really fast */
-#endif
 
 
 // A real wrapper to snprintf that will exit() if the allocated buffer length
