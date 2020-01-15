@@ -233,13 +233,13 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     int status;
 
 #ifdef USE_WEIGHTED_LOAD_BALANCING    
-#warning "Distributing the forests in a weighted fashion across Ntasks"
+/* #warning "Distributing the forests in a weighted fashion across Ntasks" */
     const enum forest_weight_type forest_weighting = generic_power_in_nhalos;
     status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest, forest_weighting, 0.5,
                                                      NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     myfree(nhalos_per_forest);
 #else
-#warning "Distributing the forests uniformly across Ntasks"
+/* #warning "Distributing the forests uniformly across Ntasks" */
     status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_this_task, &start_forestnum);
 #endif
     if(status != EXIT_SUCCESS) {
