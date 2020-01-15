@@ -14,7 +14,7 @@ ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC
 LIBFLAGS :=
 
-OPTS := -DROOT_DIR='"${ROOT_DIR}"'
+OPTS := -DROOT_DIR='"${ROOT_DIR}"' -DUSE_WEIGHTED_LOAD_BALANCING #-DVERBOSE
 SRC_PREFIX := src
 
 LIBNAME := sage
@@ -200,6 +200,8 @@ ifeq ($(DO_CHECKS), 1)
   ifdef MEM-CHECK
     CCFLAGS +=-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
     LIBFLAGS += -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
+    # clang will need this flag
+    # LIBFLAGS += -shared-libasan
   endif
 
   # Check if $(AR) and $(CC) belong to the same tool-chain

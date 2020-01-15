@@ -180,6 +180,11 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             "Error: Could not allocate memory to hold number of forests per file (%"PRId64" items of size %zu bytes)\n",
             totnfiles, sizeof(*totnforests_per_file));
 
+#ifdef USE_WEIGHTED_LOAD_BALANCING
+    int64_t *nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
+    int64_t nforests_load_balancing = 0;
+#endif
+    
     /* Now figure out the number of forests per requested file (there might be more
        forest files but we will ignore forests in those files for this particular run)  */
     for(int64_t ifile=firstfile;ifile<totnfiles;ifile++) {
@@ -190,7 +195,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             fprintf(stderr,"Error: On ThisTask = %d can't open file forest file '%s'\n", ThisTask, fname);
             return FILE_NOT_FOUND;
         }
-
+        
         int ndims;
         hsize_t *dims;
         char dataset_name[] = "ForestInfoInFile/ForestSizesInFile";
@@ -205,25 +210,45 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
         const int64_t nforests_this_file = dims[0];
         free(dims);
-        /* READ_GENESIS_ATTRIBUTE(h5_fd, "ForestInfoInFile", "NForests", nforests_this_file); */
-
         XRETURN(nforests_this_file >= 1, INVALID_VALUE_READ_FROM_FILE,
                 "Error: Expected the number of forests in this file to be at least 1. However, reading in from "
                 "forest file ('%s') shows nforests = %"PRId64"\n. Exiting...\n",
                 fname, nforests_this_file);
         totnforests_per_file[ifile] = nforests_this_file;
 
+#ifdef USE_WEIGHTED_LOAD_BALANCING
+        status = read_dataset(h5_fd, dataset_name, -1, &(nhalos_per_forest[nforests_load_balancing]), sizeof(nhalos_per_forest[0]), 1);
+        if(status < 0) {
+            return status;
+        }
+
+        nforests_load_balancing += nforests_this_file;
+#endif
+
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
                 "Error: On ThisTask = %d could not close file descriptor for filename = '%s'\n", ThisTask, fname);
     }
 
     int64_t nforests_this_task, start_forestnum;
-    int status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_this_task, &start_forestnum);
+    int status;
+
+#ifdef USE_WEIGHTED_LOAD_BALANCING    
+#warning "Distributing the forests in a weighted fashion across Ntasks"
+    const enum forest_weight_type forest_weighting = generic_power_in_nhalos;
+    status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest, forest_weighting, 0.5,
+                                                     NTasks, ThisTask, &nforests_this_task, &start_forestnum);
+    myfree(nhalos_per_forest);
+#else
+#warning "Distributing the forests uniformly across Ntasks"
+    status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_this_task, &start_forestnum);
+#endif
     if(status != EXIT_SUCCESS) {
         return status;
     }
 
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
+    fprintf(stderr,"Thistask = %d start_forestnum = %"PRId64" end_forestnum = %"PRId64"\n", ThisTask, start_forestnum, end_forestnum);
+    
     gen->nforests = nforests_this_task;
     gen->start_forestnum = start_forestnum;
     forests_info->nforests_this_task = nforests_this_task;/* Note: Number of forests to process on this task is also stored at the container struct*/
@@ -264,6 +289,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         if(start_forestnum >= nforests_so_far && start_forestnum < end_forestnum_this_file) {
             start_filenum = filenr;
             start_forestnum_per_file[filenr] = start_forestnum - nforests_so_far;
+            offset_for_global_forestnum[filenr] += start_forestnum - nforests_so_far;
             num_forests_to_process_per_file[filenr] = nforests_this_file - (start_forestnum - nforests_so_far);
         }
 
@@ -606,9 +632,11 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     if(gen->curr_filenum < 0) {
         processing_first_forest = 1;
         gen->curr_filenum = gen->start_filenum;
-        if(forestnr != gen->start_forestnum) {
-            fprintf(stderr,"Error: On ThisTask = %d looks like we are processing the first forest but forestnr = %"PRId64" "
-                    "is not equal to start_forestnum = %"PRId64"\n", run_params->ThisTask, forestnr, gen->start_forestnum);
+        const int64_t forestnum_across_all_files = forestnr + gen->offset_for_global_forestnum[gen->start_filenum];
+        if(forestnum_across_all_files != gen->start_forestnum) {
+            fprintf(stderr,"Error: On ThisTask = %d looks like we are processing the first forest, with forestnr = %"PRId64" "
+                    "But forestnum_across_all_files = %"PRId64" is not equal to start_forestnum = %"PRId64"\n",
+                    run_params->ThisTask, forestnr, forestnum_across_all_files, gen->start_forestnum);
             return -1;
         }
     }

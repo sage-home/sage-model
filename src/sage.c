@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #ifdef MPI
 #include <mpi.h>
@@ -16,6 +17,7 @@
 #include "core_mymalloc.h"
 #include "core_build_model.h"
 #include "core_save.h"
+#include "core_utils.h"
 #include "progressbar.h"
 #include "core_tree_utils.h"
 
@@ -40,6 +42,10 @@ int init_sage(const int ThisTask, const char *param_file, struct params *run_par
 
 int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 {
+
+    struct timeval tstart;
+    gettimeofday(&tstart, NULL);
+
     struct forest_info forest_info;
     memset(&forest_info, 0, sizeof(struct forest_info));
     forest_info.totnforests = 0;
@@ -125,7 +131,6 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
         if(ThisTask == 0) {
             my_progressbar(stderr, nforests_done, &(run_params->interrupted));
-            fflush(stdout);
         }
 
         /* the millennium tree is really a collection of trees, viz., a forest */
@@ -153,7 +158,9 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     if(ThisTask == 0) {
         finish_myprogressbar(stderr, &(run_params->interrupted));
     }
-
+    struct timeval tend;
+    gettimeofday(&tend, NULL);
+    fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, get_time_string(tstart, tend));
 
 cleanup:
     /* sage is done running -> do the cleanup */
@@ -218,10 +225,6 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         return nhalos;
     }
 
-
-    /* /\* need to actually set the nhalos value for CTREES*\/ */
-    /* forest_info->totnhalos_per_forest[forestnr] = nhalos; */
-
 #ifdef PROCESS_LHVT_STYLE
 #error Processing in Locally-horizontal vertical tree (LHVT) style not implemented yet
 
@@ -279,7 +282,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         }
     }
 
-#else
+#else /* PROCESS_LHVT_STYLE */
 
     /*MS: This is the normal SAGE processing on a tree-by-tree (vertical) basis */
 
