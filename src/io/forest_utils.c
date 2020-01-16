@@ -124,11 +124,11 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
         return EXIT_SUCCESS;
     }
 
-    if(nhalos_per_forest == NULL && forest_weighting != uniform_in_forests) {
-        fprintf(stderr,"Error: Distributing the forests (in a weighted fashion) over %d Tasks requires a valid array containing "
-                "number of halos per forest (but got NULL instead)\n", ThisTask);
-        return EXIT_FAILURE;
+    if(forest_weighting == uniform_in_forests || nhalos_per_forest == NULL) {
+        fprintf(stderr,"Warning: Based on the inputs, switching to the assigning forests without weights (might indicate bug in code but will not affect results)\n");
+        return distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, nforests_thistask, start_forestnum_thistask);
     }
+
 
     if((forest_weighting == exponent_in_nhalos || forest_weighting == generic_power_in_nhalos) && power_law_index < 0) {
         fprintf(stderr,"Error: You have requested a power-law exponent but the exponent = %e must be greater than 0\n", power_law_index);

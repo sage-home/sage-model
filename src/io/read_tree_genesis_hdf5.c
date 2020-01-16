@@ -235,7 +235,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 #ifdef USE_WEIGHTED_LOAD_BALANCING    
 /* #warning "Distributing the forests in a weighted fashion across Ntasks" */
     const enum forest_weight_type forest_weighting = generic_power_in_nhalos;
-    status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest, forest_weighting, 0.5,
+    const double weight_exponent = 0.7;/* 0.7 seems to produce good work-load balance across MPI on the 512 Genesis test dataset - MS 16/01/2020 */
+    status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest, forest_weighting, weight_exponent,
                                                      NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     myfree(nhalos_per_forest);
 #else
