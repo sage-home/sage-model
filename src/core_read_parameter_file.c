@@ -27,6 +27,11 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     int  ParamID[MAXTAGS];
     void *ParamAddr[MAXTAGS];
 
+    /* Ensure that all strings will be NULL terminated */
+    for(int i=0;i<MAXTAGS;i++) {
+        ParamTag[i][MAXTAGLEN] = '\0';
+    }
+    
     NParam = 0;
 
     if(ThisTask == 0) {
