@@ -180,10 +180,14 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             "Error: Could not allocate memory to hold number of forests per file (%"PRId64" items of size %zu bytes)\n",
             totnfiles, sizeof(*totnforests_per_file));
 
-#ifdef USE_WEIGHTED_LOAD_BALANCING
-    int64_t *nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
-    int64_t nforests_load_balancing = 0;
-#endif
+    const int need_nforests_per_snap = run_params->ForestDistributionScheme == uniform_in_forests ? 0:1;
+    int64_t *nhalos_per_forest = NULL;
+    int64_t nforests_load_balancing;
+
+    if(need_nforests_per_snap) {
+        nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
+        nforests_load_balancing = 0;
+    }
     
     /* Now figure out the number of forests per requested file (there might be more
        forest files but we will ignore forests in those files for this particular run)  */
@@ -216,33 +220,22 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
                 fname, nforests_this_file);
         totnforests_per_file[ifile] = nforests_this_file;
 
-#ifdef USE_WEIGHTED_LOAD_BALANCING
-        status = read_dataset(h5_fd, dataset_name, -1, &(nhalos_per_forest[nforests_load_balancing]), sizeof(nhalos_per_forest[0]), 1);
-        if(status < 0) {
-            return status;
+        if(need_nforests_per_snap) {
+            status = read_dataset(h5_fd, dataset_name, -1, &(nhalos_per_forest[nforests_load_balancing]), sizeof(nhalos_per_forest[0]), 1);
+            if(status < 0) {
+                return status;
+            }
+            nforests_load_balancing += nforests_this_file;
         }
-
-        nforests_load_balancing += nforests_this_file;
-#endif
 
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
                 "Error: On ThisTask = %d could not close file descriptor for filename = '%s'\n", ThisTask, fname);
     }
 
     int64_t nforests_this_task, start_forestnum;
-    int status;
-
-#ifdef USE_WEIGHTED_LOAD_BALANCING    
-/* #warning "Distributing the forests in a weighted fashion across Ntasks" */
-    const enum forest_weight_type forest_weighting = generic_power_in_nhalos;
-    const double weight_exponent = 0.7;/* 0.7 seems to produce good work-load balance across MPI on the 512 Genesis test dataset - MS 16/01/2020 */
-    status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest, forest_weighting, weight_exponent,
-                                                     NTasks, ThisTask, &nforests_this_task, &start_forestnum);
-    myfree(nhalos_per_forest);
-#else
-/* #warning "Distributing the forests uniformly across Ntasks" */
-    status = distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, &nforests_this_task, &start_forestnum);
-#endif
+    int status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest,
+                                                         run_params->ForestDistributionScheme, run_params->Exponent_Forest_Dist_Scheme,
+                                                         NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     if(status != EXIT_SUCCESS) {
         return status;
     }

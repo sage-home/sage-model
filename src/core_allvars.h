@@ -15,6 +15,65 @@
 #include "macros.h"
 #include "core_simulation.h"
 
+
+enum Valid_TreeTypes
+{
+    /* The number of input tree types supported
+       This consists of two parts, the first part
+       dictates the tree kind (i.e., what the bytes mean), while
+       the second part dictates the actual format on disk (i.e.,
+       how to read/cast the bytes from disk) */
+    lhalo_binary = 0,
+    lhalo_hdf5 = 1,
+    genesis_hdf5 = 2,
+    consistent_trees_ascii = 3,
+    num_tree_types
+};
+
+enum Valid_OutputFormats
+{
+    /* The number of output formats supported by sage */
+    sage_binary = 0, /* will be deprecated after version 1 release*/
+    sage_hdf5 = 1,
+    num_output_format_types
+};
+
+enum Valid_Forest_Distribution_Schemes
+{
+    /* Determines the compute cost for each forest as a function
+     of the number of halos in the forest*/
+    uniform_in_forests = 0, /* returns 1 (i.e., all forests have the same cost regardless of forest size)*/
+    linear_in_nhalos = 1, /* returns nhalos (i.e., bigger forests have a bigger compute cost) */
+    quadratic_in_nhalos = 2, /* return nhalos^2 as the compute cost*/
+    exponent_in_nhalos = 3,/* returns nhalos^exponent */
+    generic_power_in_nhalos = 4, /* returns pow(nhalos, exponent) */
+    num_forest_weight_types
+};
+
+
+/* do not use '0' as an enum since that '0' usually
+   indicates 'success' on POSIX systems */
+enum sage_error_types {
+    /* start off with a large number */
+    FILE_NOT_FOUND=1 << 12,
+    SNAPSHOT_OUT_OF_RANGE,
+    INVALID_OPTION_IN_PARAMS,
+    OUT_OF_MEMBLOCKS,
+    MALLOC_FAILURE,
+    INVALID_PTR_REALLOC_REQ,
+    INTEGER_32BIT_TOO_SMALL,
+    NULL_POINTER_FOUND,
+    FILE_READ_ERROR,
+    FILE_WRITE_ERROR,
+    INVALID_FILE_POINTER,
+    INVALID_FILE_DESCRIPTOR,
+    INVALID_VALUE_READ_FROM_FILE,
+    PARSE_ERROR,
+    INVALID_MEMORY_ACCESS_REQUESTED,
+    HDF5_ERROR,
+};
+
+    
 /* This structure contains the properties used within the code */
 struct GALAXY
 {
@@ -105,45 +164,6 @@ struct halo_aux_data
     int output_snap_n;
 };
 
-enum Valid_TreeTypes
-{
-  lhalo_binary = 0,
-  lhalo_hdf5 = 1,
-  genesis_hdf5 = 2,
-  consistent_trees_ascii = 3,
-  ahf_trees_ascii = 5,
-  num_tree_types
-};
-
-enum Valid_OutputFormats
-{
-  sage_binary = 0,
-  sage_hdf5 = 1,
-  num_output_format_types
-};
-
-
-/* do not use '0' as an enum since that '0' usually
-   indicates 'success' on POSIX systems */
-enum sage_error_types {
-    /* start off with a large number */
-    FILE_NOT_FOUND=1 << 12,
-    SNAPSHOT_OUT_OF_RANGE,
-    INVALID_OPTION_IN_PARAMS,
-    OUT_OF_MEMBLOCKS,
-    MALLOC_FAILURE,
-    INVALID_PTR_REALLOC_REQ,
-    INTEGER_32BIT_TOO_SMALL,
-    NULL_POINTER_FOUND,
-    FILE_READ_ERROR,
-    FILE_WRITE_ERROR,
-    INVALID_FILE_POINTER,
-    INVALID_FILE_DESCRIPTOR,
-    INVALID_VALUE_READ_FROM_FILE,
-    PARSE_ERROR,
-    INVALID_MEMORY_ACCESS_REQUESTED,
-    HDF5_ERROR,
-};
 
 struct lhalotree_info {
     int64_t nforests;/* number of forests to process */
@@ -281,10 +301,6 @@ struct save_info {
 };
 
 
-#define DOUBLE 1
-#define STRING 2
-#define INT 3
-
 struct params
 {
     int32_t    FirstFile;    /* first and last file for processing; only relevant for lhalotree style files (binary or hdf5) */
@@ -355,6 +371,13 @@ struct params
     int32_t Snaplistlen;
     enum Valid_TreeTypes TreeType;
     enum Valid_OutputFormats OutputFormat;
+
+    /* The combination of  ForestDistributionScheme = generic_power_in_nhalos and
+       exponent_for_forest_dist_scheme = 0.7 seems to produce good work-load
+       balance across MPI on the 512 Genesis test dataset - MS 16/01/2020 */
+    enum Valid_Forest_Distribution_Schemes ForestDistributionScheme;
+    double Exponent_Forest_Dist_Scheme;
+
     int64_t FileNr_Mulfac;
     int64_t ForestNr_Mulfac;
 

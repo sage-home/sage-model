@@ -7,14 +7,23 @@
 #include "core_allvars.h"
 #include "core_mymalloc.h"
 
+enum datatypes {
+    DOUBLE = 1,
+    STRING = 2,
+    INT = 3
+};
+
+#define MAXTAGS          300  /* Max number of parameters */
+#define MAXTAGLEN         50  /* Max number of characters in the string param tags */
+
 int read_parameter_file(const int ThisTask, const char *fname, struct params *run_params)
 {
     int errorFlag = 0;
     int *used_tag = 0;
-    char my_treetype[MAX_STRING_LEN], my_outputformat[MAX_STRING_LEN];
+    char my_treetype[MAX_STRING_LEN], my_outputformat[MAX_STRING_LEN], my_forest_dist_scheme[MAX_STRING_LEN];
     /*  recipe parameters  */
     int NParam = 0;
-    char ParamTag[MAXTAGS][50];
+    char ParamTag[MAXTAGS][MAXTAGLEN + 1];
     int  ParamID[MAXTAGS];
     void *ParamAddr[MAXTAGS];
 
@@ -24,173 +33,181 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         printf("\nreading parameter file:\n\n");
     }
 
-    strcpy(ParamTag[NParam], "FileNameGalaxies");
+    strncpy(ParamTag[NParam], "FileNameGalaxies", MAXTAGLEN);
     ParamAddr[NParam] = run_params->FileNameGalaxies;
     ParamID[NParam++] = STRING;
 
-    strcpy(ParamTag[NParam], "OutputDir");
+    strncpy(ParamTag[NParam], "OutputDir", MAXTAGLEN);
     ParamAddr[NParam] = run_params->OutputDir;
     ParamID[NParam++] = STRING;
 
-    strcpy(ParamTag[NParam], "TreeType");
+    strncpy(ParamTag[NParam], "TreeType", MAXTAGLEN);
     ParamAddr[NParam] = my_treetype;
     ParamID[NParam++] = STRING;
 
-    strcpy(ParamTag[NParam], "TreeName");
+    strncpy(ParamTag[NParam], "TreeName", MAXTAGLEN);
     ParamAddr[NParam] = run_params->TreeName;
     ParamID[NParam++] = STRING;
 
-    strcpy(ParamTag[NParam], "SimulationDir");
+    strncpy(ParamTag[NParam], "SimulationDir", MAXTAGLEN);
     ParamAddr[NParam] = run_params->SimulationDir;
     ParamID[NParam++] = STRING;
 
-    strcpy(ParamTag[NParam], "FileWithSnapList");
+    strncpy(ParamTag[NParam], "FileWithSnapList", MAXTAGLEN);
     ParamAddr[NParam] = run_params->FileWithSnapList;
     ParamID[NParam++] = STRING;
 
-    strcpy(ParamTag[NParam], "LastSnapShotNr");
+    strncpy(ParamTag[NParam], "LastSnapShotNr", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->LastSnapShotNr);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "FirstFile");
+    strncpy(ParamTag[NParam], "FirstFile", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->FirstFile);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "LastFile");
+    strncpy(ParamTag[NParam], "LastFile", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->LastFile);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "NumSimulationTreeFiles");
+    strncpy(ParamTag[NParam], "NumSimulationTreeFiles", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->NumSimulationTreeFiles);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "ThreshMajorMerger");
+    strncpy(ParamTag[NParam], "ThreshMajorMerger", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->ThreshMajorMerger);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "RecycleFraction");
+    strncpy(ParamTag[NParam], "RecycleFraction", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->RecycleFraction);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "ReIncorporationFactor");
+    strncpy(ParamTag[NParam], "ReIncorporationFactor", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->ReIncorporationFactor);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "UnitVelocity_in_cm_per_s");
+    strncpy(ParamTag[NParam], "UnitVelocity_in_cm_per_s", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->UnitVelocity_in_cm_per_s);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "UnitLength_in_cm");
+    strncpy(ParamTag[NParam], "UnitLength_in_cm", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->UnitLength_in_cm);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "UnitMass_in_g");
+    strncpy(ParamTag[NParam], "UnitMass_in_g", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->UnitMass_in_g);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "Hubble_h");
+    strncpy(ParamTag[NParam], "Hubble_h", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->Hubble_h);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "ReionizationOn");
+    strncpy(ParamTag[NParam], "ReionizationOn", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->ReionizationOn);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "SupernovaRecipeOn");
+    strncpy(ParamTag[NParam], "SupernovaRecipeOn", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->SupernovaRecipeOn);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "DiskInstabilityOn");
+    strncpy(ParamTag[NParam], "DiskInstabilityOn", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->DiskInstabilityOn);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "SFprescription");
+    strncpy(ParamTag[NParam], "SFprescription", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->SFprescription);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "AGNrecipeOn");
+    strncpy(ParamTag[NParam], "AGNrecipeOn", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->AGNrecipeOn);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "BaryonFrac");
+    strncpy(ParamTag[NParam], "BaryonFrac", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->BaryonFrac);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "Omega");
+    strncpy(ParamTag[NParam], "Omega", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->Omega);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "OmegaLambda");
+    strncpy(ParamTag[NParam], "OmegaLambda", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->OmegaLambda);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "PartMass");
+    strncpy(ParamTag[NParam], "PartMass", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->PartMass);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "BoxSize");
+    strncpy(ParamTag[NParam], "BoxSize", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->BoxSize);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "EnergySN");
+    strncpy(ParamTag[NParam], "EnergySN", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->EnergySN);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "EtaSN");
+    strncpy(ParamTag[NParam], "EtaSN", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->EtaSN);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "Yield");
+    strncpy(ParamTag[NParam], "Yield", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->Yield);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "FracZleaveDisk");
+    strncpy(ParamTag[NParam], "FracZleaveDisk", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->FracZleaveDisk);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "SfrEfficiency");
+    strncpy(ParamTag[NParam], "SfrEfficiency", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->SfrEfficiency);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "FeedbackReheatingEpsilon");
+    strncpy(ParamTag[NParam], "FeedbackReheatingEpsilon", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->FeedbackReheatingEpsilon);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "FeedbackEjectionEfficiency");
+    strncpy(ParamTag[NParam], "FeedbackEjectionEfficiency", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->FeedbackEjectionEfficiency);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "BlackHoleGrowthRate");
+    strncpy(ParamTag[NParam], "BlackHoleGrowthRate", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->BlackHoleGrowthRate);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "RadioModeEfficiency");
+    strncpy(ParamTag[NParam], "RadioModeEfficiency", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->RadioModeEfficiency);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "QuasarModeEfficiency");
+    strncpy(ParamTag[NParam], "QuasarModeEfficiency", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->QuasarModeEfficiency);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "Reionization_z0");
+    strncpy(ParamTag[NParam], "Reionization_z0", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->Reionization_z0);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "Reionization_zr");
+    strncpy(ParamTag[NParam], "Reionization_zr", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->Reionization_zr);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "ThresholdSatDisruption");
+    strncpy(ParamTag[NParam], "ThresholdSatDisruption", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->ThresholdSatDisruption);
     ParamID[NParam++] = DOUBLE;
 
-    strcpy(ParamTag[NParam], "NumOutputs");
+    strncpy(ParamTag[NParam], "NumOutputs", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->NOUT);
     ParamID[NParam++] = INT;
 
-    strcpy(ParamTag[NParam], "OutputFormat");
+    strncpy(ParamTag[NParam], "OutputFormat", MAXTAGLEN);
     ParamAddr[NParam] = my_outputformat;
     ParamID[NParam++] = STRING;
+
+    strncpy(ParamTag[NParam], "ForestDistributionScheme", MAXTAGLEN);
+    ParamAddr[NParam] = my_forest_dist_scheme;
+    ParamID[NParam++] = STRING;
+
+    strncpy(ParamTag[NParam], "ExponentForestDistributionScheme", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
+    ParamID[NParam++] = DOUBLE;
 
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
@@ -218,7 +235,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         /* Allowing for spaces in the filenames (but requires comments to ALWAYS start with '%' or ';') */
         int buf2len = strnlen(buf2, MAX_STRING_LEN);
         for(int i=0;i<=buf2len;i++) {
-            if(buf2[i] == '%' || buf2[i] == ';') {
+            if(buf2[i] == '%' || buf2[i] == ';' || buf2[i] == '#') {
                 int null_pos = i;
                 //Ignore all preceeding whitespace
                 for(int j=i-1;j>=0;j--) {
@@ -233,7 +250,6 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
             buf2len--;
         }
         buf2[buf2len] = '\0';
-
 
         int j=-1;
         for(int i = 0; i < NParam; i++) {
@@ -256,7 +272,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                     *((double *) ParamAddr[j]) = atof(buf2);
                     break;
                 case STRING:
-                    strcpy(ParamAddr[j], buf2);
+                    strncpy(ParamAddr[j], buf2, MAX_STRING_LEN - 1);
                     break;
                 case INT:
                     *((int *) ParamAddr[j]) = atoi(buf2);
@@ -362,29 +378,32 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         snprintf(run_params->TreeExtension, 511, ".hdf5");
     }
 
-    const char tree_names[][MAX_STRING_LEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii"};
+#define CHECK_VALID_ENUM_IN_PARAM_FILE(paramname, num_enum_types, enum_names, enum_values, string_value) { \
+        int found = 0;                                                  \
+        for(int i=0;i<num_enum_types;i++) {                             \
+            if (strcasecmp(string_value, enum_names[i]) == 0) {         \
+                run_params->paramname = enum_values[i];                 \
+                found = 1;                                              \
+                break;                                                  \
+            }                                                           \
+        }                                                               \
+        if(found == 0) {                                                \
+            fprintf(stderr, #paramname " field contains unsupported value of '%s' is not supported\n", string_value); \
+            fprintf(stderr," Please choose one of the values -- \n");   \
+            for(int i=0;i<num_enum_types;i++) {                         \
+                fprintf(stderr, #paramname " = '%s'\n", enum_names[i]); \
+            }                                                           \
+            ABORT(EXIT_FAILURE);                                        \
+        }                                                               \
+ }
+
+    const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii"};
     const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5, consistent_trees_ascii};
-    const int nvalid_tree_types  = sizeof(tree_names)/(MAX_STRING_LEN*sizeof(char));
-    XASSERT(nvalid_tree_types == 4, EXIT_FAILURE, "nvalid_tree_types = %d should have been 4\n", nvalid_tree_types);
-    int found = 0;
-    for(int i=0;i<nvalid_tree_types;i++) {
-        if (strcasecmp(my_treetype, tree_names[i]) == 0) {
-            run_params->TreeType = tree_enums[i];
-            found = 1;
-            break;
-        }
-    }
+    const int nvalid_tree_types  = sizeof(tree_names)/(MAXTAGLEN*sizeof(char));
+    XRETURN(nvalid_tree_types == 4, EXIT_FAILURE, "nvalid_tree_types = %d should have been 4\n", nvalid_tree_types);
+    CHECK_VALID_ENUM_IN_PARAM_FILE(TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
 
-    if(found == 0) {
-        fprintf(stderr, "TreeType = '%s' is not supported.\n", my_treetype);
-        fprintf(stderr,"Please choose one of the supported tree types -- \n");
-        for(int i=0;i<nvalid_tree_types;i++) {
-            fprintf(stderr,"TreeType = '%s'\n", tree_names[i]);
-        }
-        ABORT(EXIT_FAILURE);
-    }
-
-    // Check output data type is valid.
+    /* Check output data type is valid. */
 #ifndef HDF5
     if(strncmp(my_outputformat, "sage_hdf5", MAX_STRING_LEN-1) == 0) {
         fprintf(stderr, "You have specified to use HDF5 output format but have not compiled with the HDF5 option enabled.\n");
@@ -393,28 +412,37 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     }
 #endif
 
-    const char format_names[][MAX_STRING_LEN] = {"sage_binary", "sage_hdf5"};
+    const char format_names[][MAXTAGLEN] = {"sage_binary", "sage_hdf5"};
     const enum Valid_OutputFormats format_enums[] = {sage_binary, sage_hdf5};
-    const int nvalid_format_types  = sizeof(format_names)/(MAX_STRING_LEN*sizeof(char));
-    XASSERT(nvalid_format_types == 2, EXIT_FAILURE, "nvalid_format_types = %d should have been 2\n", nvalid_format_types);
-    found = 0;
-    for(int i=0;i<nvalid_format_types;i++) {
-        if (strcasecmp(my_outputformat, format_names[i]) == 0) {
-            run_params->OutputFormat = format_enums[i];
-            found = 1;
-            break;
-        }
-    }
+    const int nvalid_format_types  = sizeof(format_names)/(MAXTAGLEN*sizeof(char));
+    XRETURN(nvalid_format_types == 2, EXIT_FAILURE, "nvalid_format_types = %d should have been 2\n", nvalid_format_types);
+    CHECK_VALID_ENUM_IN_PARAM_FILE(OutputFormat, nvalid_format_types, format_names, format_enums, my_outputformat);
+    
+    /* Check that the way forests are distributed over (MPI) tasks is valid */
+    const char scheme_names[][MAXTAGLEN] = {"uniform_in_forests", "linear_in_nhalos", "quadratic_in_nhalos", "exponent_in_nhalos", "generic_power_in_nhalos"};
+    const enum Valid_Forest_Distribution_Schemes scheme_enums[] = {uniform_in_forests, linear_in_nhalos,
+                                                                   quadratic_in_nhalos, exponent_in_nhalos, generic_power_in_nhalos};
+    const int nvalid_scheme_types  = sizeof(scheme_names)/(MAXTAGLEN*sizeof(char));
+    XRETURN(nvalid_scheme_types == num_forest_weight_types, EXIT_FAILURE, "nvalid_format_types = %d should have been %d\n",
+            nvalid_format_types, num_forest_weight_types);
 
-    if(found == 0) {
-        fprintf(stderr, "OutputFormat %s is not supported\n", my_outputformat);
-        fprintf(stderr," Please choose one of the supported output formats -- \n");
-        for(int i=0;i<nvalid_format_types;i++) {
-            fprintf(stderr,"OutputFormat = %s\n", format_names[i]);
-        }
+    CHECK_VALID_ENUM_IN_PARAM_FILE(ForestDistributionScheme, nvalid_scheme_types, scheme_names, scheme_enums, my_forest_dist_scheme);
+#undef CHECK_VALID_ENUM_IN_PARAM_FILE
+    
+
+    /* Check that exponent supplied is non-negative (for cases where the exponent will be used) */
+    if((run_params->ForestDistributionScheme == exponent_in_nhalos || run_params->ForestDistributionScheme == generic_power_in_nhalos)
+       && run_params->Exponent_Forest_Dist_Scheme < 0) {
+        fprintf(stderr,"Error: You have requested a power-law exponent but the exponent = %e must be greater than 0\n",
+                run_params->Exponent_Forest_Dist_Scheme);
+        fprintf(stderr,"Please change the value for the parameter 'ExponentForestDistributionScheme' in the parameter file (%s)\n", fname);
         ABORT(EXIT_FAILURE);
     }
-    myfree(used_tag);
 
+    myfree(used_tag);
     return EXIT_SUCCESS;
 }
+
+
+#undef MAXTAGS
+#undef MAXTAGLEN

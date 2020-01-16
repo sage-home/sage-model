@@ -5,7 +5,7 @@
 
 #include "forest_utils.h"
 
-static inline double compute_forest_cost_from_nhalos(const enum forest_weight_type forest_weighting, const int64_t nhalos, const double exponent);
+static inline double compute_forest_cost_from_nhalos(const enum Valid_Forest_Distribution_Schemes forest_weighting, const int64_t nhalos, const double exponent);
 
 int distribute_forests_over_ntasks(const int64_t totnforests, const int NTasks, const int ThisTask, int64_t *nforests_thistask, int64_t *start_forestnum_thistask)
 {
@@ -53,7 +53,7 @@ int distribute_forests_over_ntasks(const int64_t totnforests, const int NTasks, 
 
 
 
-static inline double compute_forest_cost_from_nhalos(const enum forest_weight_type forest_weighting, const int64_t nhalos, const double exponent)
+static inline double compute_forest_cost_from_nhalos(const enum Valid_Forest_Distribution_Schemes forest_weighting, const int64_t nhalos, const double exponent)
 {
     /* Strategy for load-balancing across MPI tasks*/
     double cost;
@@ -104,7 +104,7 @@ static inline double compute_forest_cost_from_nhalos(const enum forest_weight_ty
 
 
 int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int64_t *nhalos_per_forest,
-                                            const enum forest_weight_type forest_weighting, const double power_law_index,
+                                            const enum Valid_Forest_Distribution_Schemes forest_weighting, const double power_law_index,
                                             const int NTasks, const int ThisTask, int64_t *nforests_thistask, int64_t *start_forestnum_thistask)
 {
     if(ThisTask > NTasks || ThisTask < 0 || NTasks < 1) {
@@ -144,20 +144,12 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
     }
     
     double target_cost_per_task = total_cost_across_all_forests/NTasks;
-/* #ifdef VERBOSE */
-    /* if(ThisTask == 0) { */
-    /*     fprintf(stderr,"totnforests = %"PRId64" total_cost_across_all_forests = %e target_cost_per_task = %e\n", */
-    /*            totnforests, total_cost_across_all_forests, target_cost_per_task); */
-    /* } */
-/* #endif */
     
     int64_t start_forestnum = 0, nforests_this_task = -1, nhalos_so_far = 0, nhalos_curr_task = 0;
     double curr_cost_target = target_cost_per_task, cost_so_far = 0.0;
     int currtask = 0;
     for(int64_t i=0;i<totnforests;i++) {
         const double cost_this_forest = compute_forest_cost_from_nhalos(forest_weighting, nhalos_per_forest[i], power_law_index);
-        /* fprintf(stderr,"On ThisTask = %d nhalos_per_forest[%"PRId64"] = %"PRId64" cost = %g\n", */
-        /*         ThisTask, i, nhalos_per_forest[i], cost_this_forest); */
         cost_so_far += cost_this_forest;
         nhalos_so_far += nhalos_per_forest[i];
         nhalos_curr_task += nhalos_per_forest[i];
@@ -177,8 +169,6 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
              The +1 is because the ThisTask needs to process this i'th
              forest (i.e., inclusive range of [start_forestnum, i])
             */
-            /* fprintf(stderr,"ThisTask = %d ..breaking. curr_cost_target = %g cost_so_far = %g cost_this_forest =%g\n", */
-            /*         ThisTask, curr_cost_target, cost_so_far, cost_this_forest); */
             fprintf(stderr,"[LOG]: Assigning forest-range = [%"PRId64", %"PRId64"] (containing %"PRId64" halos) to ThisTask = %d\n",
                     start_forestnum, i, nhalos_curr_task, ThisTask);
             nforests_this_task = i - start_forestnum + 1;
