@@ -847,6 +847,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                             "While processing field " #sage_name " for halonum = %lld at snapshot = %"PRId64" in forestnr = %"PRId64"\n" \
                             "macro_haloid = %"PRId64" resulted in a haloindex = %"PRId64"\n", \
                             __FUNCTION__, macro_forest_local_index, nhalos - 1, i, macro_snapshot, forestnr, macro_haloid, macro_haloindex); \
+                    return -1;                                          \
                 }                                                       \
                 if(is_mergertree_index && macro_snapshot == snapnum && (hsize_t) macro_haloindex == i) { \
                     local_halos[i].sage_name = -1;                      \
