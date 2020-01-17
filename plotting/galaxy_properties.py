@@ -60,7 +60,6 @@ if __name__ == "__main__":
                    "num_output_files": 1,
                  }
 
-
     genesis = { "snapshot": 189,   # Snapshot we're plotting properties at.
                 "IMF": "Chabrier",  # Chabrier or Salpeter.
                 "label": "Genesis",  # Legend label.
@@ -73,7 +72,8 @@ if __name__ == "__main__":
 
     
     # Extend this list for every model you want to plot.
-    models_to_plot = [genesis]
+    #models_to_plot = [genesis]
+    models_to_plot = [millennium]
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.
