@@ -22,6 +22,7 @@ double estimate_merging_time(const int sat_halo, const int mother_halo, const in
         return -1.0;
     }
 
+
     const double coulomb = log1p(halos[mother_halo].Len / ((double) halos[sat_halo].Len) );//MS: 12/9/2019. As pointed out by codacy -> log1p(x) is better than log(1 + x)
 
     const double SatelliteMass = get_virial_mass(sat_halo, halos, run_params) + galaxies[ngal].StellarMass + galaxies[ngal].ColdGas;
@@ -94,7 +95,7 @@ void grow_black_hole(const int merger_centralgal, const double mass_ratio, struc
 
     if(galaxies[merger_centralgal].ColdGas > 0.0) {
         BHaccrete = run_params->BlackHoleGrowthRate * mass_ratio /
-            (1.0 + pow(280.0 / galaxies[merger_centralgal].Vvir, 2.0)) * galaxies[merger_centralgal].ColdGas;
+            (1.0 + SQR(280.0 / galaxies[merger_centralgal].Vvir)) * galaxies[merger_centralgal].ColdGas;
 
         // cannot accrete more gas than is available!
         if(BHaccrete > galaxies[merger_centralgal].ColdGas) {

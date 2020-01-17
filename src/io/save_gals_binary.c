@@ -25,7 +25,7 @@ int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_inf
     int32_t ntrees = forest_info->nforests_this_task;
 
     // We open up files for each output. We'll store the file IDs of each of these file.
-    save_info->save_fd = malloc(run_params->NOUT * sizeof(int32_t));
+    save_info->save_fd = mymalloc(run_params->NOUT * sizeof(int32_t));
 
     char buffer[4*MAX_STRING_LEN + 1];
 
@@ -60,13 +60,13 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
 
     // Determine the offset to the block of galaxies for each snapshot.
     int32_t num_output_gals = 0;
-    int32_t *num_gals_processed = calloc(run_params->MAXSNAPS, sizeof(*(num_gals_processed)));
+    int32_t *num_gals_processed = mycalloc(run_params->MAXSNAPS, sizeof(*(num_gals_processed)));
     if(num_gals_processed == NULL) {
         fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `num_gals_proccessed`\n", run_params->MAXSNAPS);
         return MALLOC_FAILURE;
     }
 
-    int32_t *cumul_output_ngal = calloc(run_params->NOUT, sizeof(*(cumul_output_ngal)));
+    int32_t *cumul_output_ngal = mymalloc(run_params->NOUT * sizeof(*(cumul_output_ngal)));
     if(cumul_output_ngal == NULL) {
         fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `cumul_output_ngal`\n", run_params->NOUT);
         return MALLOC_FAILURE;
@@ -80,7 +80,7 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
     // We store all the galaxies to be written for this tree in a single memory block.  Later we
     // will then perform a single write for each snapshot, pointing to the correct position in
     // the block.
-    struct GALAXY_OUTPUT *all_outputgals  = calloc(num_output_gals, sizeof(struct GALAXY_OUTPUT));
+    struct GALAXY_OUTPUT *all_outputgals  = mymalloc(num_output_gals * sizeof(all_outputgals[0]));
     if(all_outputgals == NULL) {
         fprintf(stderr,"Error: Could not allocate enough memory to hold all %d output galaxies\n",num_output_gals);
         return MALLOC_FAILURE;
@@ -124,9 +124,9 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
             return FILE_WRITE_ERROR;
         }
     }
-    free(all_outputgals);
-    free(cumul_output_ngal);
-    free(num_gals_processed);
+    myfree(all_outputgals);
+    myfree(cumul_output_ngal);
+    myfree(num_gals_processed);
 
     return EXIT_SUCCESS;
 }
@@ -134,9 +134,7 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
 int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
 {
 
-    int32_t nwritten;
     int32_t ntrees = forest_info->nforests_this_task;
-
     for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
         // File must already be open.
         CHECK_STATUS_AND_RETURN_ON_FAIL(save_info->save_fd[snap_idx], EXIT_FAILURE,
@@ -144,7 +142,7 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
                                         snap_idx, save_info->save_fd[snap_idx]);
 
         // Write the header data.
-        nwritten = mypwrite(save_info->save_fd[snap_idx], &ntrees, sizeof(ntrees), 0);
+        int32_t nwritten = mypwrite(save_info->save_fd[snap_idx], &ntrees, sizeof(ntrees), 0);
         if(nwritten != sizeof(int32_t)) {
             fprintf(stderr, "Error: Failed to write out 1 element for the number of trees for the header of file %d.\n"
                             "Wrote %d bytes instead of %zu.\n", snap_idx, nwritten, sizeof(ntrees));
@@ -177,7 +175,7 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
         save_info->save_fd[snap_idx] = -1;
     }
 
-    free(save_info->save_fd);
+    myfree(save_info->save_fd);
 
     return EXIT_SUCCESS;
 }
@@ -187,6 +185,11 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
 int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
                                   const int32_t original_treenr, const struct params *run_params)
 {
+    if(g == NULL || o == NULL) {
+        fprintf(stderr,"Error: Either the input galaxy (address = %p) or the output galaxy (address = %p) is NULL\n", g, o);
+        return -1;
+    }
+    
     o->SnapNum = g->SnapNum;
     if(g->Type < SHRT_MIN || g->Type > SHRT_MAX) {
         fprintf(stderr,"Error: Galaxy type = %d can not be represented in 2 bytes\n", g->Type);
@@ -290,5 +293,3 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
     return EXIT_SUCCESS;
 }
 
-#undef TREE_MUL_FAC
-#undef THISTASK_MUL_FAC

@@ -74,7 +74,7 @@ if [ ! -f trees_063.7 ]; then
     fi
 
     # If there aren't trees, there's no way there is the 'correct' data files.
-    wget "https://www.dropbox.com/s/n7wkkydqlyrhy59/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar"
+    wget https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0 -O "mini-millennium-sage-correct-output.tar"
     if [[ $? != 0 ]]; then
         echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests."
         echo "Failed."
@@ -106,7 +106,7 @@ cd ../../
 
 # The 'MPI_RUN_COMMAND' environment variable allows us to run in mpi.
 # When running 'sagediff.py', we need knowledge of the number of processors SAGE ran on.
-# This command queurues MPI_RUN_COMMAND and gets the last entry which will be the number of processors.
+# This command queries 'MPI_RUN_COMMAND' and gets the last column (== the number of processors).
 NUM_SAGE_PROCS=$(echo ${MPI_RUN_COMMAND} | awk '{print $NF}')
 
 # If we're running on serial, MPI_RUN_COMMAND shouldn't be set.  Hence set the number of processors to 1.
@@ -115,7 +115,10 @@ if [[ -z "${NUM_SAGE_PROCS}" ]]; then
 fi
 
 # Execute SAGE (potentially in parallel).
-${MPI_RUN_COMMAND} ./sage "$parent_path"/$datadir/mini-millennium.par
+tmpfile="$(mktemp)"
+sed '/^OutputFormat /s/.*$/OutputFormat        sage_binary/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
+
+${MPI_RUN_COMMAND} ./sage "${tmpfile}"
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests."
     echo "Failed."
@@ -132,7 +135,6 @@ pushd "$parent_path"/$datadir
 # with file extension '_0'.  This is what the `sort` command does.
 correct_files=($(ls -d correct-mini-millennium-output_z*))
 test_files=($(ls -d test_sage_z* | sort -k 1.18))
-
 if [[ $? == 0 ]]; then
     npassed=0
     nbitwise=0
@@ -185,7 +187,7 @@ tmpfile="$(mktemp)"
 sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
 
 # Run SAGE on this new parameter file.
-$MPI_RUN_COMMAND ./sage ${tmpfile}
+${MPI_RUN_COMMAND} ./sage "${tmpfile}"
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally when running on the HDF5 output format."
     echo "Here is the input file for this run."

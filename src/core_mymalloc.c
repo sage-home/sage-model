@@ -37,7 +37,7 @@ void *mymalloc(size_t n)
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
 #ifdef VERBOSE
             printf("\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
-#endif            
+#endif
             OldPrintedHighMark = HighMarkMem;
         }
     }
@@ -56,32 +56,9 @@ void *mymalloc(size_t n)
 void *mycalloc(const size_t count, const size_t size)
 {
 
-    if(Nblocks >= MAXBLOCKS) {
-        printf("Nblocks = %lu No blocks left in mymalloc().\n", Nblocks);
-        ABORT(OUT_OF_MEMBLOCKS);
-    }
-
-    SizeTable[Nblocks] = count*size;
-    TotMem += count*size;
-    if(TotMem > HighMarkMem) {
-        HighMarkMem = TotMem;
-        if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-#ifdef VERBOSE            
-            printf("\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
-#endif            
-            OldPrintedHighMark = HighMarkMem;
-        }
-    }
-
-    Table[Nblocks] = calloc(count, size);
-    if(Table[Nblocks] == NULL) {
-        printf("Failed to allocate memory for %g MB\n",  count*size / (1024.0 * 1024.0) );
-        ABORT(MALLOC_FAILURE);
-    }
-
-    Nblocks += 1;
-
-    return Table[Nblocks - 1];
+    void *p = mymalloc(count * size);
+    memset(p, 0, count*size);
+    return p;
 }
 
 long find_block(const void *p)
@@ -140,7 +117,7 @@ void *myrealloc(void *p, size_t n)
     if(TotMem > HighMarkMem) {
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-#ifdef VERBOSE            
+#ifdef VERBOSE
             printf("\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
 #endif
             OldPrintedHighMark = HighMarkMem;
@@ -193,4 +170,3 @@ void print_allocated(void)
     fflush(stdout);
 }
 #endif
- 

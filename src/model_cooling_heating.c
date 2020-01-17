@@ -72,7 +72,7 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 
 double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, struct GALAXY *galaxies, const struct params *run_params)
 {
-    double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity, r_heat_new;
+    double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity;
 
 	// first update the cooling rate based on the past AGN heating
 	if(galaxies[centralgal].r_heat < rcool) {
@@ -91,7 +91,7 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
             AGNrate = (2.5 * M_PI * run_params->G) * (0.375 * 0.6 * x) * galaxies[centralgal].BlackHoleMass * run_params->RadioModeEfficiency;
         } else if(run_params->AGNrecipeOn == 3) {
             // Cold cloud accretion: trigger: rBH > 1.0e-4 Rsonic, and accretion rate = 0.01% cooling rate
-            if(galaxies[centralgal].BlackHoleMass > 0.0001 * galaxies[centralgal].Mvir * pow(rcool/galaxies[centralgal].Rvir, 3.0)) {
+            if(galaxies[centralgal].BlackHoleMass > 0.0001 * galaxies[centralgal].Mvir * CUBE(rcool/galaxies[centralgal].Rvir)) {
                 AGNrate = 0.0001 * coolingGas / dt;
             } else {
                 AGNrate = 0.0;
@@ -100,11 +100,11 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
             // empirical (standard) accretion recipe
             if(galaxies[centralgal].Mvir > 0.0) {
                 AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
-                    * (galaxies[centralgal].BlackHoleMass / 0.01) * pow(galaxies[centralgal].Vvir / 200.0, 3.0)
+                    * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0)
                     * ((galaxies[centralgal].HotGas / galaxies[centralgal].Mvir) / 0.1);
             } else {
                 AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
-                    * (galaxies[centralgal].BlackHoleMass / 0.01) * pow(galaxies[centralgal].Vvir / 200.0, 3.0);
+                    * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0);
             }
         }
 
@@ -145,7 +145,7 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
 
         // update the heating radius as needed
         if(galaxies[centralgal].r_heat < rcool && coolingGas > 0.0) {
-            r_heat_new = (AGNheating / coolingGas) * rcool;
+            double r_heat_new = (AGNheating / coolingGas) * rcool;
             if(r_heat_new > galaxies[centralgal].r_heat) {
                 galaxies[centralgal].r_heat = r_heat_new;
             }
@@ -179,5 +179,3 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
         }
     }
 }
-
-

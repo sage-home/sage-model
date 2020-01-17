@@ -11,6 +11,7 @@
 #include "core_save.h"
 #include "core_utils.h"
 #include "model_misc.h"
+#include "core_mymalloc.h"
 
 #include "io/save_gals_binary.h"
 
@@ -77,7 +78,7 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     }
 
     // Track the order in which galaxies are written.
-    int32_t *OutputGalOrder = calloc(numgals, sizeof(*(OutputGalOrder)));
+    int32_t *OutputGalOrder = mymalloc(numgals * sizeof(*(OutputGalOrder)));
     if(OutputGalOrder == NULL) {
         fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `OutputGalOrder`\n", numgals);
         return MALLOC_FAILURE;
@@ -100,7 +101,16 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     }
 
     for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
-        if(halogal[gal_idx].mergeIntoID > -1) {
+        const int mergeID = halogal[gal_idx].mergeIntoID;
+        if(mergeID > -1) {
+            if( ! (mergeID >= 0 && mergeID < numgals) ) {
+                fprintf(stderr,"Error: For galaxy number %d, expected mergeintoID to be within [0, %d) "
+                        "but found mergeintoID = %d instead\n", gal_idx, numgals, mergeID);
+                fprintf(stderr,"Additional debugging info\n");
+                fprintf(stderr,"task_forestnr = %"PRId64" snapshot = %d halonr = %d MostBoundID = %lld\n",
+                        task_forestnr, halogal[gal_idx].SnapNum, halogal[gal_idx].HaloNr, halos[halogal[gal_idx].HaloNr].MostBoundID);
+                return -1;
+            }
             halogal[gal_idx].mergeIntoID = OutputGalOrder[halogal[gal_idx].mergeIntoID];
         }
     }
@@ -146,7 +156,7 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 
     }
 
-    free(OutputGalOrder);
+    myfree(OutputGalOrder);
 
     return status;
 }

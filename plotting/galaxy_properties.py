@@ -60,7 +60,19 @@ if __name__ == "__main__":
                    "num_output_files": 1,
                  }
 
+    genesis = { "snapshot": 189,   # Snapshot we're plotting properties at.
+                "IMF": "Chabrier",  # Chabrier or Salpeter.
+                "label": "Genesis",  # Legend label.
+                "sage_file": "/home/msinha/scratch/simulations/genesis/L75_N324-L500_N2160_calibration/genesis_L75_calibration.par",
+                "sage_output_format": "sage_hdf5",
+                "first_file": 0,  # File range (or core range for HDF5) to plot.
+                "last_file": 2,  # Closed interval, [first_file, last_file].
+                "num_output_files": 3,
+    }
+
+    
     # Extend this list for every model you want to plot.
+    #models_to_plot = [genesis]
     models_to_plot = [millennium]
 
     # These toggles specify which plots you want to be made.
@@ -168,7 +180,7 @@ if __name__ == "__main__":
 
         # To be more memory concious, we calculate the required properties on a
         # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
-        my_model.calc_properties_all_files(calculation_functions, debug=False)
+        my_model.calc_properties_all_files(calculation_functions, debug=True)
 
         models.append(my_model)
 

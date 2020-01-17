@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #ifdef MPI
 #include <mpi.h>
@@ -16,6 +17,7 @@
 #include "core_mymalloc.h"
 #include "core_build_model.h"
 #include "core_save.h"
+#include "core_utils.h"
 #include "progressbar.h"
 #include "core_tree_utils.h"
 
@@ -40,6 +42,10 @@ int init_sage(const int ThisTask, const char *param_file, struct params *run_par
 
 int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 {
+
+    struct timeval tstart;
+    gettimeofday(&tstart, NULL);
+
     struct forest_info forest_info;
     memset(&forest_info, 0, sizeof(struct forest_info));
     forest_info.totnforests = 0;
@@ -55,6 +61,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     if(status != EXIT_SUCCESS) {
         return status;
     }
+
     if(forest_info.totnforests < 0 || forest_info.nforests_this_task < 0) {
         fprintf(stderr,"Error: Bug in code totnforests = %"PRId64" and nforests (on this task) = %"PRId64" should both be at least 0\n",
                 forest_info.totnforests, forest_info.nforests_this_task);
@@ -81,13 +88,13 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     // Allocate memory for the total number of galaxies for each output snapshot (across all forests).
     // Calloc because we start with no galaxies.
-    save_info.tot_ngals = calloc(run_params->NOUT, sizeof(*(save_info.tot_ngals)));
+    save_info.tot_ngals = mycalloc(run_params->NOUT, sizeof(*(save_info.tot_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.tot_ngals,
                                      "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
                                      sizeof(*(save_info.tot_ngals)));
 
     // Allocate memory for the number of galaxies at each output snapshot for each forest.
-    save_info.forest_ngals = calloc(run_params->NOUT, sizeof(*(save_info.forest_ngals)));
+    save_info.forest_ngals = mycalloc(run_params->NOUT, sizeof(*(save_info.forest_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals,
                                      "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
                                      sizeof(*(save_info.forest_ngals)));
@@ -124,7 +131,6 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
         if(ThisTask == 0) {
             my_progressbar(stderr, nforests_done, &(run_params->interrupted));
-            fflush(stdout);
         }
 
         /* the millennium tree is really a collection of trees, viz., a forest */
@@ -145,14 +151,15 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     for(int snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
         myfree(save_info.forest_ngals[snap_idx]);
     }
-    free(save_info.forest_ngals);
-
-    free(save_info.tot_ngals);
+    myfree(save_info.forest_ngals);
+    myfree(save_info.tot_ngals);
 
     if(ThisTask == 0) {
         finish_myprogressbar(stderr, &(run_params->interrupted));
     }
-
+    struct timeval tend;
+    gettimeofday(&tend, NULL);
+    fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, get_time_string(tstart, tend));
 
 cleanup:
     /* sage is done running -> do the cleanup */
@@ -217,11 +224,9 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         return nhalos;
     }
 
-    /* /\* need to actually set the nhalos value for CTREES*\/ */
-    /* forest_info->totnhalos_per_forest[forestnr] = nhalos; */
-
 #ifdef PROCESS_LHVT_STYLE
-#error Locally horizontal vertical tree style processing has not been implemented yet
+#error Processing in Locally-horizontal vertical tree (LHVT) style not implemented yet
+
     /* re-arrange the halos into a locally horizontal vertical forest */
     int32_t *file_ordering_of_halos=NULL;
     int status = reorder_lhalo_to_lhvt(nhalos, Halo, 0, &file_ordering_of_halos);/* the 3rd parameter is for testing the reorder code */
@@ -276,7 +281,8 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         }
     }
 
-#else
+#else /* PROCESS_LHVT_STYLE */
+
     /*MS: This is the normal SAGE processing on a tree-by-tree (vertical) basis */
 
     /* Now start the processing */

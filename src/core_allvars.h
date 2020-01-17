@@ -15,12 +15,71 @@
 #include "macros.h"
 #include "core_simulation.h"
 
+
+enum Valid_TreeTypes
+{
+    /* The number of input tree types supported
+       This consists of two parts, the first part
+       dictates the tree kind (i.e., what the bytes mean), while
+       the second part dictates the actual format on disk (i.e.,
+       how to read/cast the bytes from disk) */
+    lhalo_binary = 0,
+    lhalo_hdf5 = 1,
+    genesis_hdf5 = 2,
+    consistent_trees_ascii = 3,
+    num_tree_types
+};
+
+enum Valid_OutputFormats
+{
+    /* The number of output formats supported by sage */
+    sage_binary = 0, /* will be deprecated after version 1 release*/
+    sage_hdf5 = 1,
+    num_output_format_types
+};
+
+enum Valid_Forest_Distribution_Schemes
+{
+    /* Determines the compute cost for each forest as a function
+     of the number of halos in the forest*/
+    uniform_in_forests = 0, /* returns 1 (i.e., all forests have the same cost regardless of forest size)*/
+    linear_in_nhalos = 1, /* returns nhalos (i.e., bigger forests have a bigger compute cost) */
+    quadratic_in_nhalos = 2, /* return nhalos^2 as the compute cost*/
+    exponent_in_nhalos = 3,/* returns nhalos^exponent */
+    generic_power_in_nhalos = 4, /* returns pow(nhalos, exponent) */
+    num_forest_weight_types
+};
+
+
+/* do not use '0' as an enum since that '0' usually
+   indicates 'success' on POSIX systems */
+enum sage_error_types {
+    /* start off with a large number */
+    FILE_NOT_FOUND=1 << 12,
+    SNAPSHOT_OUT_OF_RANGE,
+    INVALID_OPTION_IN_PARAMS,
+    OUT_OF_MEMBLOCKS,
+    MALLOC_FAILURE,
+    INVALID_PTR_REALLOC_REQ,
+    INTEGER_32BIT_TOO_SMALL,
+    NULL_POINTER_FOUND,
+    FILE_READ_ERROR,
+    FILE_WRITE_ERROR,
+    INVALID_FILE_POINTER,
+    INVALID_FILE_DESCRIPTOR,
+    INVALID_VALUE_READ_FROM_FILE,
+    PARSE_ERROR,
+    INVALID_MEMORY_ACCESS_REQUESTED,
+    HDF5_ERROR,
+};
+
+    
 /* This structure contains the properties used within the code */
 struct GALAXY
 {
     int32_t   SnapNum;
     int32_t  Type;
-    
+
     int32_t   GalaxyNr;
     int32_t   CentralGal;
     int32_t   HaloNr;
@@ -100,54 +159,11 @@ struct halo_aux_data
     int32_t NGalaxies;
     int FirstGalaxy;
 #ifdef PROCESS_LHVT_STYLE
-    int32_t orig_index;
+    int orig_index;
 #endif
-    int32_t output_snap_n;
+    int output_snap_n;
 };
 
-#define DOUBLE 1
-#define STRING 2
-#define INT 3
-
-enum Valid_TreeTypes
-{
-  lhalo_binary = 0,
-  illustris_lhalo_hdf5 = 1,
-  genesis_standard_hdf5 = 2,
-  consistent_trees_ascii = 3,
-  ahf_trees_ascii = 5,
-  num_tree_types
-};
-
-enum Valid_OutputFormats
-{
-  sage_binary = 0,
-  sage_hdf5 = 1,
-  num_output_format_types
-};
-
-
-/* do not use '0' as an enum since that '0' usually
-   indicates 'success' on POSIX systems */
-enum sage_error_types {
-    /* start off with a large number */
-    FILE_NOT_FOUND=1 << 12,
-    SNAPSHOT_OUT_OF_RANGE,
-    INVALID_OPTION_IN_PARAMS,
-    OUT_OF_MEMBLOCKS,
-    MALLOC_FAILURE,
-    INVALID_PTR_REALLOC_REQ,
-    INTEGER_32BIT_TOO_SMALL,
-    NULL_POINTER_FOUND,
-    FILE_READ_ERROR,
-    FILE_WRITE_ERROR,
-    INVALID_FILE_POINTER,
-    INVALID_FILE_DESCRIPTOR,
-    INVALID_VALUE_READ_FROM_FILE,
-    PARSE_ERROR,
-    INVALID_MEMORY_ACCESS_REQUESTED,
-    HDF5_ERROR,
-};
 
 struct lhalotree_info {
     int64_t nforests;/* number of forests to process */
@@ -176,7 +192,10 @@ struct lhalotree_info {
 struct ctrees_info {
     //different from totnforests; only stores forests to be processed by ThisTask when in MPI mode
     //in serial mode, ``forests_info->ctr.nforests == forests_info->totnforests``)
-    int64_t nforests;
+    union {
+        int64_t nforests;
+        int64_t nforests_this_task;
+    };
     int64_t ntrees;
 
     void *column_info;/* stored as a void * to avoid including parse_ctrees.h here*/
@@ -201,17 +220,46 @@ struct ahf_info {
     void *some_yet_to_be_implemented_ptr;
 };
 
+#ifdef HDF5
 struct genesis_info {
-    int64_t nforests;
-    void *some_yet_to_be_implemented_ptr;
+    union{
+        int64_t nforests;/* number of forests to process on this task */
+        int64_t nforests_this_task;/* shadowed for convenience */
+    };
+
+    int64_t start_forestnum;/* Global forestnumber to start processing from */
+    int64_t maxforestsize; /* max. number of halos in any one single forest on any task */
+    int64_t *offset_for_global_forestnum;/* What would be the offset to add to file-local 'forestnum' to get the global forest num
+                                            that is needed to access the metadata ("*foreststats*.hdf5") file  -- shape (lastfile + 1, ) */
+
+    int64_t *halo_offset_per_snap;/* Stores the current halo offsets to read from at each snapshot -- shape (maxsnaps, ).
+                                     Initialised to all 0's for every new file and incremented as forests are read in. This details
+                                     adds a loop-dependency - where later forests can not be correctly processed before all
+                                     preceeding forests have been processed. It had to be implemented this way because otherwise
+                                     the amount of RAM required to store the matrix offsets_per_forest_per_snap (with shape
+                                     '[nforests, maxsnaps]' would have been a roadblock in the future. */
+    hid_t meta_fd;/* file descriptor for the metadata file*/
+    hid_t *h5_fds;/* contains all the file descriptors for the individual files -- shape (lastfile + 1, ) */
+
+    int32_t min_snapnum; /* smallest snapshot to process (inclusive, >= 0)*/
+    int32_t maxsnaps;/* maxsnaps == max_snap_num + 1 */
+    int32_t totnfiles;/* total number of files requested to be processed (across all tasks)*/
+    int32_t numfiles;/* total number of files to process on ThisTask (>=1)*/
+    int32_t start_filenum;/* Which is the first file that this task is going to process  */
+    int32_t curr_filenum; /* What file is currently being worked on --
+                              required to reset the halo_offset_per_snap at the beginning of every new file */
+
 };
+#endif
 
 struct forest_info {
     union {
         struct lhalotree_info lht;
         struct ctrees_info ctr;
         struct ahf_info ahf;
+#ifdef HDF5
         struct genesis_info gen;
+#endif
     };
     int64_t totnforests;  // Total number of forests across **all** input tree files.
     int64_t nforests_this_task; // Total number of forests processed by **this** task.
@@ -235,7 +283,7 @@ struct save_info {
     };
 
     int64_t *tot_ngals; // Number of galaxies **per snapshot**.
-    int32_t **forest_ngals; // Number of galaxies **per snapshot** **per tree**; fores_ngals[snap][forest].
+    int32_t **forest_ngals; // Number of galaxies **per snapshot** **per tree**; forest_ngals[snap][forest].
 
 #ifdef HDF5
     char **name_output_fields;
@@ -251,6 +299,7 @@ struct save_info {
 #endif
 
 };
+
 
 struct params
 {
@@ -269,11 +318,13 @@ struct params
     double PartMass;
     double Hubble_h;
     double BoxSize;
-    int32_t NumSimulationTreeFiles; // This will be (e.g.,) 8 for Mini-Millennium and 512 for Millnnium.
     double EnergySNcode;
     double EnergySN;
     double EtaSNcode;
     double EtaSN;
+
+    /* moving for alignment */
+    int32_t NumSimulationTreeFiles;
 
     /* recipe flags */
     int32_t    SFprescription;
@@ -313,18 +364,38 @@ struct params
     double a0;
     double ar;
 
+    int32_t nsnapshots;
     int32_t LastSnapShotNr;
     int32_t MAXSNAPS;
     int32_t NOUT;
     int32_t Snaplistlen;
     enum Valid_TreeTypes TreeType;
     enum Valid_OutputFormats OutputFormat;
+
+    /* The combination of  ForestDistributionScheme = generic_power_in_nhalos and
+       exponent_for_forest_dist_scheme = 0.7 seems to produce good work-load
+       balance across MPI on the 512 Genesis test dataset - MS 16/01/2020 */
+    enum Valid_Forest_Distribution_Schemes ForestDistributionScheme;
+    double Exponent_Forest_Dist_Scheme;
+
     int64_t FileNr_Mulfac;
     int64_t ForestNr_Mulfac;
 
     int32_t ListOutputSnaps[ABSOLUTEMAXSNAPS];
-    double ZZ[ABSOLUTEMAXSNAPS];
-    double AA[ABSOLUTEMAXSNAPS];
+    //Essentially creating an alias so that the indecipherable 'ZZ'
+    //can be interpreted to contain 'redshift' values
+    union {
+        double ZZ[ABSOLUTEMAXSNAPS];
+        double redshift[ABSOLUTEMAXSNAPS];
+    };
+
+    //Similarly: 'AA' contains the scale_factors corresponding to
+    //each snapshot
+    union {
+        double AA[ABSOLUTEMAXSNAPS];
+        double scale_factors[ABSOLUTEMAXSNAPS];
+    };
+
     double *Age;
 
     int32_t interrupted;/* to re-print the progress-bar */

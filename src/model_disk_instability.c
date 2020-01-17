@@ -46,7 +46,7 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
 #ifdef VERBOSE            
             if((galaxies[p].BulgeMass >  1.0001 * galaxies[p].StellarMass)  || (galaxies[p].MetalsBulgeMass >  1.0001 * galaxies[p].MetalsStellarMass)) {
                 fprintf(stderr, "\nInstability: Mbulge > Mtot (stars or metals)\n");
-                *interrupted = 1;
+                run_params->interrupted = 1;
                 //ABORT(EXIT_FAILURE);
             }
 #endif
@@ -58,7 +58,7 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
 #ifdef VERBOSE            
             if(unstable_gas > 1.0001 * galaxies[p].ColdGas ) {
                 printf("unstable_gas > galaxies[p].ColdGas\t%e\t%e\n", unstable_gas, galaxies[p].ColdGas);
-                *interrupted = 1;
+                run_params->interrupted = 1;
                 // ABORT(EXIT_FAILURE);
             }
 #endif            
