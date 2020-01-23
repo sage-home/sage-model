@@ -199,7 +199,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             fprintf(stderr,"Error: On ThisTask = %d can't open file forest file '%s'\n", ThisTask, fname);
             return FILE_NOT_FOUND;
         }
-        
+
         int ndims;
         hsize_t *dims;
         char dataset_name[] = "ForestInfoInFile/ForestSizesInFile";
@@ -681,6 +681,9 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     int64_t offset=0;
     const int start_snap = gen->min_snapnum;
     const int end_snap = gen->min_snapnum + gen->maxsnaps - 1;//maxsnaps already includes a +1,
+
+    int32_t forest_start_snap = end_snap;
+    int32_t forest_end_snap = start_snap;
     for(int isnap=end_snap;isnap>=start_snap;isnap--) {
         if(offset > INT_MAX) {
             fprintf(stderr,"Error: In function %s> Can not correctly represent %"PRId64" as an offset in the 32-bit variable within "
@@ -694,6 +697,15 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         forest_local_offsets[isnap] = offset;
         /* fprintf(stderr,"forest_local_offsets[%03d] = %d\n", isnap, forest_local_offsets[isnap]); */
         offset += nhalos_per_snap[isnap];
+        if(nhalos_per_snap[isnap] > 0) {
+            /* The following conditions could be simplified based on the direction of the looping ->
+               however, that could potentially introduce if the looping direction was altered in the future
+               -- MS 22/01/2020
+             */
+            
+            forest_start_snap = (isnap < forest_start_snap) ? isnap:forest_start_snap;
+            forest_end_snap = (isnap > forest_end_snap) ? isnap:forest_end_snap;
+        } 
     }
 
     /* Check that the number of halos to read in agrees with that derived with the per snapshot one */
@@ -780,18 +792,22 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
     }
     
-#define ASSIGN_BUFFER_TO_SAGE(nhalos, buffer_dtype, sage_name, sage_dtype) { \
-        for(hsize_t i=0;i<nhalos[0];i++) {                                 \
-            local_halos[i].sage_name = (sage_dtype) ((buffer_dtype *)buffer)[i]; \
+#define ASSIGN_BUFFER_TO_SAGE(numhalos, buffer_dtype, sage_name, sage_dtype) { \
+        buffer_dtype *buf = (buffer_dtype *) buffer;                    \
+        for(hsize_t i=0;i<numhalos[0];i++) {                            \
+            local_halos[i].sage_name = (sage_dtype) buf[i];             \
         }                                                               \
     }
 
-#define ASSIGN_BUFFER_TO_NDIM_SAGE(nhalos, ndim, buffer_dtype, sage_name, sage_dtype) { \
-        for(hsize_t i=0;i<nhalos[0];i++) {                              \
-            for(int idim=0;idim<ndim;idim++) {                          \
-                buffer_dtype *new_buf = ((buffer_dtype*)buffer) + idim*nhalos[0]; \
-                local_halos[i].sage_name[idim] = (sage_dtype) new_buf[i]; \
-            }                                                           \
+#define ASSIGN_BUFFER_TO_NDIM_SAGE(numhalos, ndim, buffer_dtype, sage_name, sage_dtype) { \
+        XRETURN(ndim == 3, -1, "Error: The code is written assuming number of dimensions is 3. Found ndim = %d\n", (int) ndim); \
+        buffer_dtype *buf0 = ((buffer_dtype *) buffer) + 0*numhalos[0]; \
+        buffer_dtype *buf1 = ((buffer_dtype *) buffer) + 1*numhalos[0]; \
+        buffer_dtype *buf2 = ((buffer_dtype *) buffer) + 2*numhalos[0]; \
+        for(hsize_t i=0;i<numhalos[0];i++) {                            \
+            local_halos[i].sage_name[0] = (sage_dtype) buf0[i];         \
+            local_halos[i].sage_name[1] = (sage_dtype) buf1[i];         \
+            local_halos[i].sage_name[2] = (sage_dtype) buf2[i];         \
         }                                                               \
     }
 
@@ -831,9 +847,9 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                 }                                                       \
                 const int64_t macro_haloindex = CONVERT_HALOID_TO_INDEX(macro_haloid) - forest_offsets[macro_snapshot]; \
                 if(macro_haloindex < 0 || macro_haloindex >= nhalos) {  \
-                    fprintf(stderr,"Error: While processing field " #sage_name " for halonum = %lld at snapshot = %"PRId64" in forestnr = %"PRId64"\n" \
+                    fprintf(stderr,"Error: While processing field " #sage_name " for halonum = %lld at snapshot = %d in forestnr = %"PRId64"\n" \
                             "macro_haloid = %"PRId64" resulted in a haloindex = %"PRId64" but expected snapshot to be in range [0,%"PRId64"] (inclusive)\n", \
-                            i, macro_snapshot, forestnr, macro_haloid, macro_haloindex, nhalos - 1); \
+                            i, snapnum, forestnr, macro_haloid, macro_haloindex, nhalos - 1); \
                     return -1;                                          \
                 }                                                       \
                 const int64_t macro_forest_local_index = forest_local_offsets[macro_snapshot] + macro_haloindex; \
@@ -844,9 +860,9 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                 }                                                       \
                 if(macro_forest_local_index < 0 || macro_forest_local_index >= nhalos) { \
                     fprintf(stderr,"Error: In function %s> Expected forest local index = %"PRId64" to be in range [0, %"PRId64"] (inclusive)\n" \
-                            "While processing field " #sage_name " for halonum = %lld at snapshot = %"PRId64" in forestnr = %"PRId64"\n" \
+                            "While processing field " #sage_name " for halonum = %lld at snapshot = %d in forestnr = %"PRId64"\n" \
                             "macro_haloid = %"PRId64" resulted in a haloindex = %"PRId64"\n", \
-                            __FUNCTION__, macro_forest_local_index, nhalos - 1, i, macro_snapshot, forestnr, macro_haloid, macro_haloindex); \
+                            __FUNCTION__, macro_forest_local_index, nhalos - 1, i, snapnum, forestnr, macro_haloid, macro_haloindex); \
                     return -1;                                          \
                 }                                                       \
                 if(is_mergertree_index && macro_snapshot == snapnum && (hsize_t) macro_haloindex == i) { \
@@ -859,7 +875,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
 
     int64_t *forest_offsets = gen->halo_offset_per_snap;
     hid_t h5_fd = gen->h5_fds[filenum];
-    for(int isnap=end_snap;isnap>=start_snap;isnap--) {
+    for(int isnap=forest_end_snap;isnap>=forest_start_snap;isnap--) {
         hsize_t snap_offset[1], nhalos_snap[1];
         snap_offset[0] = (hsize_t) forest_offsets[isnap];
         nhalos_snap[0] = nhalos_per_snap[isnap];
@@ -951,7 +967,15 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
 
             /* Change the conventions across the entire forest to match the SAGE conventions */
             /* convert the masses into 1d10 Msun/h units */
-            local_halos[i].M200c *= hubble_h * 1e-10;// M200c is an alias for Mvir
+            /* if(local_halos[i].M200c < 0) { */
+            /*     fprintf(stderr,"Error: halo # %llu (snapshot local index) at snapshot %d within forestnr = %"PRId64" has negative mass = %e\n", */
+            /*             i, isnap, forestnum_across_all_files, local_halos[i].M200c); */
+            /*     fprintf(stderr,"halo contains %d particles\n", local_halos[i].Len); */
+            /* } */
+
+            if(local_halos[i].M200c > 0) {
+                local_halos[i].M200c *= hubble_h;// M200c is an alias for Mvir
+            }
             for(int j=0;j<NDIM;j++) {
                 local_halos[i].Pos[j] *= hubble_h / scale_factor;
                 local_halos[i].Vel[j] /= scale_factor;

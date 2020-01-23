@@ -118,7 +118,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     run_params->interrupted = 0;
     if(ThisTask == 0) {
-        init_my_progressbar(stderr, forest_info.totnforests, &(run_params->interrupted));
+        init_my_progressbar(stderr, Nforests, &(run_params->interrupted));
 #ifdef MPI
         if(NTasks > 1) {
             fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
@@ -127,10 +127,9 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 #endif
     }
 
-    int64_t nforests_done = 0;
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
         if(ThisTask == 0) {
-            my_progressbar(stderr, nforests_done, &(run_params->interrupted));
+            my_progressbar(stderr, forestnr, &(run_params->interrupted));
         }
 
         /* the millennium tree is really a collection of trees, viz., a forest */
@@ -138,9 +137,6 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         if(status != EXIT_SUCCESS) {
             return status;
         }
-
-        nforests_done += NTasks; /*MS: 20/9/2019 -- Attempting to adjust for MPI (assuming that every forest completed
-                                   on task 0 has equivalent forests completed on other tasks)*/
     }
 
     status = finalize_galaxy_files(&forest_info, &save_info, run_params);
