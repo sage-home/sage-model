@@ -179,19 +179,35 @@ int32_t finalize_sage(struct params *run_params)
     switch(run_params->OutputFormat) {
 
     case(sage_binary):
-      status = EXIT_SUCCESS;
-      break;
+        {
+            status = EXIT_SUCCESS;
+            break;
+        }
 
 #ifdef HDF5
     case(sage_hdf5):
-      status = create_hdf5_master_file(run_params);
-      break;
+        {
+            status = create_hdf5_master_file(run_params);
+            /* Check if anything was not cleaned up */
+            const ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
+            if(nleaks > 0) {
+                fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
+                fprintf(stderr,"Number of open files = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_FILE));
+                fprintf(stderr,"Number of open datasets = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATASET));
+                fprintf(stderr,"Number of open groups = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_GROUP));
+                fprintf(stderr,"Number of open datatype = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATATYPE));
+                fprintf(stderr,"Number of open attributes = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ATTR));
+            }
+            
+            break;
+        }
 #endif
 
     default:
-      status = EXIT_SUCCESS;
-      break;
-
+        {
+            status = EXIT_SUCCESS;
+            break;
+        }
     }
 
     return status;

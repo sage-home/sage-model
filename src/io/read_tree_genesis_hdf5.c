@@ -1098,7 +1098,8 @@ void cleanup_forests_io_genesis_hdf5(struct forest_info *forests_info)
     for(int i=0;i<gen->numfiles;i++) {
         H5Fclose(gen->h5_fds[i]);
     }
-
+    H5Fclose(gen->meta_fd);
+    
     myfree(gen->halo_offset_per_snap);
     myfree(gen->h5_fds);
     myfree(gen->offset_for_global_forestnum);
