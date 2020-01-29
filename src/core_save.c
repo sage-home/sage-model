@@ -124,7 +124,7 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     // When we allocated the trees to each task, we stored the correct tree and file numbers in
     // arrays indexed by the ``forestnr`` parameter.  Furthermore, since all galaxies being
     // processed belong to a single tree (by definition) and because trees cannot be split over
-    // multiple files, we can access the tree + fiel number once and use it for all galaxies being
+    // multiple files, we can access the tree + file number once and use it for all galaxies being
     // saved.
     int64_t original_treenr = forest_info->original_treenr[task_forestnr];
     int32_t original_filenr = forest_info->FileNr[task_forestnr];
@@ -212,10 +212,12 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
 
         /*MS: check that the mechanism would produce unique galaxyindex within this run (across all tasks and all forests)*/
         if(GalaxyNr > forestnr_mulfac || (filenr_mulfac > 0 && forestnr*forestnr_mulfac > filenr_mulfac)) {
-            fprintf(stderr, "When determining a unique Galaxy Number, we assume that the number of trees are less than %"PRId64". "
-                    "This assumption has been broken.\n"
+            fprintf(stderr, "When determining a unique Galaxy Number, we assume two things\n"
+                    "1. Number of galaxies is less than multiplication factor for trees (=%"PRId64")\n"
+                    "2. That (the total number of trees * tree multiplication factor) is less than the file multiplication factor = %"PRId64" (only relevant if non-zero).\n"
+                    "At least one of these two assumptions have been broken.\n"
                     "Simulation trees file number %d\tOriginal tree number %"PRId64"\tGalaxy Number %d "
-                    "forestnr_mulfac = %"PRId64" forestnr*forestnr_mulfac = %"PRId64"\n",
+                    "forestnr_mulfac = %"PRId64" forestnr*forestnr_mulfac = %"PRId64"\n",forestnr_mulfac, 
                     filenr_mulfac, filenr, forestnr, GalaxyNr, forestnr_mulfac, forestnr*forestnr_mulfac);
           return EXIT_FAILURE;
         }

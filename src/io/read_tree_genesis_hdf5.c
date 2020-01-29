@@ -414,6 +414,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             return FILE_NOT_FOUND;
         }
 
+#if 1        
         for(int isnap=0;isnap<gen->maxsnaps;isnap++) {
             const hsize_t offset_for_forestnum = offset_for_global_forestnum[start_filenum];
             int64_t snap_offset = 0;
@@ -429,6 +430,11 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             /*         ThisTask, fname, isnap, start_forestnum_per_file[start_filenum]); */
             run_params->interrupted=1;
         }
+#else
+#error This would have to be coded up using 'ForestInfoInFile/ForestOffsetsAllSnaps'
+        
+#endif
+        
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
                 "Error: On ThisTask = %d could not close file descriptor for filename = '%s'\n", ThisTask, fname);
     }
@@ -684,6 +690,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
 
     int32_t forest_start_snap = end_snap;
     int32_t forest_end_snap = start_snap;
+#if 1  
     for(int isnap=end_snap;isnap>=start_snap;isnap--) {
         if(offset > INT_MAX) {
             fprintf(stderr,"Error: In function %s> Can not correctly represent %"PRId64" as an offset in the 32-bit variable within "
@@ -707,7 +714,26 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
             forest_end_snap = (isnap > forest_end_snap) ? isnap:forest_end_snap;
         } 
     }
+#else
+#error This needs to be coded up using the 'ForestInfoInFile/ForestSizesAllSnaps'
+    READ_GENESIS_PARTIAL_FORESTINFO();
+    
 
+    char snap_group_name[MAX_STRING_LEN];
+    snprintf(snap_group_name, MAX_STRING_LEN-1, "Snap_%03d", isnap);
+    hid_t h5_grp = H5Gopen(h5_fd, snap_group_name, H5P_DEFAULT);
+    XRETURN(h5_grp >= 0, -HDF5_ERROR, "Error: Could not open group = `%s` corresponding to snapshot = %d\n",
+            snap_group_name, isnap);
+
+    READ_PARTIAL_1D_ARRAY(h5_grp, isnap, head_enum, snap_offset, nhalos_snap, buffer);
+
+
+    
+    
+#endif
+
+
+    
     /* Check that the number of halos to read in agrees with that derived with the per snapshot one */
     if(offset != nhalos) {
         fprintf(stderr,"Error: On ThisTask = %d while processing task-local-forestnr = %"PRId64" "
