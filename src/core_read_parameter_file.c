@@ -258,7 +258,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
         int j=-1;
         for(int i = 0; i < NParam; i++) {
-            if(strcmp(buf1, ParamTag[i]) == 0) {
+            if(strncasecmp(buf1, ParamTag[i], MAX_STRING_LEN) == 0) {
                 j = i;
                 ParamTag[i][0] = 0;
                 used_tag[i] = 0;
