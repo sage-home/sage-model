@@ -33,9 +33,9 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 {
     int32_t status;
 
-    if(run_params->NOUT > ABSOLUTEMAXSNAPS) {
+    if(run_params->NumSnapOutputs > ABSOLUTEMAXSNAPS) {
         fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
-                run_params->NOUT, ABSOLUTEMAXSNAPS);
+                run_params->NumSnapOutputs, ABSOLUTEMAXSNAPS);
         fprintf(stderr,"To fix this error, simply increase the value of `ABSOLUTEMAXSNAPS` and recompile\n");
         return INVALID_OPTION_IN_PARAMS;
     }
@@ -72,8 +72,8 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     int32_t status = EXIT_FAILURE;
 
     // Reset the output galaxy count.
-    int32_t OutputGalCount[run_params->MAXSNAPS];
-    for(int32_t snap_idx = 0; snap_idx < run_params->MAXSNAPS; snap_idx++) {
+    int32_t OutputGalCount[run_params->SimMaxSnaps];
+    for(int32_t snap_idx = 0; snap_idx < run_params->SimMaxSnaps; snap_idx++) {
         OutputGalCount[snap_idx] = 0;
     }
 
@@ -90,7 +90,7 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     }
 
     // First update mergeIntoID to point to the correct galaxy in the output.
-    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
         for(int32_t gal_idx  = 0; gal_idx < numgals; gal_idx++) {
             if(halogal[gal_idx].SnapNum == run_params->ListOutputSnaps[snap_idx]) {
                 OutputGalOrder[gal_idx] = OutputGalCount[snap_idx];

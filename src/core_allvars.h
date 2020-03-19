@@ -365,8 +365,8 @@ struct params
 
     int32_t nsnapshots;
     int32_t LastSnapshotNr;
-    int32_t MAXSNAPS;
-    int32_t NOUT;
+    int32_t SimMaxSnaps;
+    int32_t NumSnapOutputs;
     int32_t Snaplistlen;
     enum Valid_TreeTypes TreeType;
     enum Valid_OutputFormats OutputFormat;

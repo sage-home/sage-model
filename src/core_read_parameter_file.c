@@ -199,7 +199,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "NumOutputs", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->NOUT);
+    ParamAddr[NParam] = &(run_params->NumSnapOutputs);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "OutputFormat", MAXTAGLEN);
@@ -313,25 +313,25 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->LastSnapshotNr, ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
-    run_params->MAXSNAPS = run_params->LastSnapshotNr + 1;
+    run_params->SimMaxSnaps = run_params->LastSnapshotNr + 1;
 
-    if(!(run_params->NOUT == -1 || (run_params->NOUT > 0 && run_params->NOUT <= ABSOLUTEMAXSNAPS))) {
+    if(!(run_params->NumSnapOutputs == -1 || (run_params->NumSnapOutputs > 0 && run_params->NumSnapOutputs <= ABSOLUTEMAXSNAPS))) {
         fprintf(stderr,"NumOutputs must be -1 or between 1 and %i\n", ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
 
     // read in the output snapshot list
-    if(run_params->NOUT == -1) {
-        run_params->NOUT = run_params->MAXSNAPS;
-        for (int i=run_params->NOUT-1; i>=0; i--) {
+    if(run_params->NumSnapOutputs == -1) {
+        run_params->NumSnapOutputs = run_params->SimMaxSnaps;
+        for (int i=run_params->NumSnapOutputs-1; i>=0; i--) {
             run_params->ListOutputSnaps[i] = i;
         }
         if(ThisTask == 0) {
-            printf("all %d snapshots selected for output\n", run_params->NOUT);
+            printf("all %d snapshots selected for output\n", run_params->NumSnapOutputs);
         }
     } else {
         if(ThisTask == 0) {
-            printf("%d snapshots selected for output: ", run_params->NOUT);
+            printf("%d snapshots selected for output: ", run_params->NumSnapOutputs);
         }
 
         // reopen the parameter file
@@ -345,7 +345,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
             if(fscanf(fd, "%s", buf) == 0) continue;
             if(strcmp(buf, "->") == 0) {
                 // read the snapshots into ListOutputSnaps
-                for(int i=0; i<run_params->NOUT; i++) {
+                for(int i=0; i<run_params->NumSnapOutputs; i++) {
                     if(fscanf(fd, "%d", &(run_params->ListOutputSnaps[i])) == 1) {
                         if(ThisTask == 0) {
                             printf("%d ", run_params->ListOutputSnaps[i]);

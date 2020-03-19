@@ -93,7 +93,7 @@ void read_snap_list(const int ThisTask, struct params *run_params)
         } else {
             break;
         }
-    } while(run_params->Snaplistlen < run_params->MAXSNAPS);
+    } while(run_params->Snaplistlen < run_params->SimMaxSnaps);
     fclose(fd);
 
     if(ThisTask == 0) {
