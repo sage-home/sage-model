@@ -14,7 +14,7 @@
 #include "../sage.h"
 
 #define NUM_OUTPUT_FIELDS 54
-#define NUM_GALS_PER_BUFFER 1000
+#define NUM_GALS_PER_BUFFER 8192
 
 // Local Proto-Types //
 static int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*field_descriptions)[MAX_STRING_LEN],
@@ -216,7 +216,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
         hsize_t dims[1] = {0};
         hsize_t maxdims[1] = {H5S_UNLIMITED};
-        hsize_t chunk_dims[1] = {100*NUM_GALS_PER_BUFFER};
+        hsize_t chunk_dims[1] = {NUM_GALS_PER_BUFFER};
         char full_field_name[MAX_STRING_LEN];
 
         // Create a snapshot group.
@@ -249,7 +249,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
                                             "The requested initial size was %d with an unlimited maximum upper bound.",
                                             snap_idx, (int32_t) dims[0]);
 
-            // To increase reading/writing speed, we chunk the HDF5 file.
+            // To increase reading/writing speed, we chunk the HDF5 file. --JS
+            // MS: That is incorrect. We need a resizeable dataset, and that
+            //requires chunking
             herr_t status = H5Pset_chunk(prop, 1, chunk_dims);
             CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
                                             "Could not set the HDF5 chunking for output snapshot number %d.  Chunk size was %d.\n",
@@ -1147,7 +1149,7 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     // Simulation information.
     CREATE_STRING_ATTRIBUTE(sim_group_id, "SimulationDir", &run_params->SimulationDir, strlen(run_params->SimulationDir));
     CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->FileWithSnapList, strlen(run_params->FileWithSnapList));
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapShotNr", run_params->LastSnapShotNr, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapshotNr", run_params->LastSnapshotNr, H5T_NATIVE_INT);
 
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_matter", run_params->Omega, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_lambda", run_params->OmegaLambda, H5T_NATIVE_DOUBLE);

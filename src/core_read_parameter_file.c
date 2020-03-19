@@ -62,8 +62,8 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     ParamAddr[NParam] = run_params->FileWithSnapList;
     ParamID[NParam++] = STRING;
 
-    strncpy(ParamTag[NParam], "LastSnapShotNr", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->LastSnapShotNr);
+    strncpy(ParamTag[NParam], "LastSnapshotNr", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->LastSnapshotNr);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "FirstFile", MAXTAGLEN);
@@ -309,11 +309,11 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     }
     printf("\n");
 
-    if( ! (run_params->LastSnapShotNr+1 > 0 && run_params->LastSnapShotNr+1 < ABSOLUTEMAXSNAPS) ) {
-        fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->LastSnapShotNr, ABSOLUTEMAXSNAPS);
+    if( ! (run_params->LastSnapshotNr+1 > 0 && run_params->LastSnapshotNr+1 < ABSOLUTEMAXSNAPS) ) {
+        fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->LastSnapshotNr, ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
-    run_params->MAXSNAPS = run_params->LastSnapShotNr + 1;
+    run_params->MAXSNAPS = run_params->LastSnapshotNr + 1;
 
     if(!(run_params->NOUT == -1 || (run_params->NOUT > 0 && run_params->NOUT <= ABSOLUTEMAXSNAPS))) {
         fprintf(stderr,"NumOutputs must be -1 or between 1 and %i\n", ABSOLUTEMAXSNAPS);

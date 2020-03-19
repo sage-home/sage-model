@@ -352,11 +352,15 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             endforestnum_in_currfile += totnforests_per_file[curr_filenum];
         }
         forests_info->FileNr[iforest] = curr_filenum;
-        forests_info->original_treenr[iforest] = iforest - offset;
+        if(curr_filenum == start_filenum) {
+            forests_info->original_treenr[iforest] = iforest + start_forestnum_per_file[curr_filenum];
+        } else {
+            forests_info->original_treenr[iforest] = iforest - offset;
+        }
     }
 
     /* Now fill out the halo offsets per snapshot for the first forest */
-#define READ_GENESIS_PARTIAL_FORESTINFO(fd, group_name, dataset_name, offset, count, buffer) { \
+#define READ_GENESIS_PARTIAL_FORESTINFO(fd, group_name, dataset_name, ndim, offset, count, buffer) { \
         hid_t h5_grp = H5Gopen(fd, group_name, H5P_DEFAULT);            \
         XRETURN(h5_grp >= 0, HDF5_ERROR, "Error: Could not open group = '%s'\n", group_name); \
         hid_t h5_dset = H5Dopen2(h5_grp, dataset_name, H5P_DEFAULT);    \
@@ -364,40 +368,38 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         hid_t h5_space = H5Dget_space(h5_dset);                         \
         XRETURN(h5_space >= 0, HDF5_ERROR, "Error: Could not reserve filespace for open dataset = '%s' (within group = '%s')\n", dataset_name, group_name); \
         herr_t macro_status = H5Sselect_hyperslab(h5_space, H5S_SELECT_SET, offset, NULL, count, NULL); \
-        if(macro_status < 0) {                                          \
-            fprintf(stderr,"Error: Failed to select hyperslab for dataset = '%s'.\n" \
-                    "The dimensions of the dataset was %d\nThe file ID was %d\n.", \
-                    dataset_name, (int32_t) *count, (int32_t) fd);      \
-            return HDF5_ERROR;                                          \
-        }                                                               \
-        hid_t h5_memspace = H5Screate_simple(1, count, NULL);        \
-        XRETURN(h5_memspace >= 0, HDF5_ERROR,                        \
+        XRETURN(macro_status >= 0, HDF5_ERROR,                          \
+                "Error: Failed to select hyperslab for dataset = '%s'.\n" \
+                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
+                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
+        hid_t h5_memspace = H5Screate_simple(ndim, count, NULL);        \
+        XRETURN(h5_memspace >= 0, HDF5_ERROR,                           \
                 "Error: Failed to select hyperslab for dataset = %s.\n" \
-                "The dimensions of the dataset was %d\nThe file ID was %d\n.", \
-                dataset_name, (int32_t) *count, (int32_t) fd);          \
+                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
+                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
         const hid_t h5_dtype = H5Dget_type(h5_dset);                    \
         macro_status = H5Dread(h5_dset, h5_dtype, h5_memspace, h5_space, H5P_DEFAULT, buffer); \
         XRETURN(macro_status >= 0, HDF5_ERROR, "Error: Failed to read array for dataset = '%s'.\n" \
-                "The dimensions of the dataset was %d\nThe file ID was %d\n.", \
-                dataset_name, (int32_t) *count, (int32_t) fd);          \
+                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
+                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
         XRETURN(H5Dclose(h5_dset) >= 0, HDF5_ERROR,                     \
                 "Error: Could not close dataset = '%s' (within group = '%s')\n", \
                 dataset_name, group_name);                              \
         XRETURN(H5Tclose(h5_dtype) >= 0, HDF5_ERROR,                    \
                 "Error: Failed to close the datatype for = %s.\n"       \
-                "The dimensions of the dataset was %d\nThe file ID was %d\n.", \
-                dataset_name, (int32_t) *count, (int32_t) fd);          \
+                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
+                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
         XRETURN(H5Sclose(h5_memspace) >= 0, HDF5_ERROR,                 \
                 "Error: Failed to close the dataspace for = %s.\n"      \
-                "The dimensions of the dataset was %d\nThe file ID was %d\n.", \
-                dataset_name, (int32_t) *count, (int32_t) fd);          \
-        XRETURN(H5Sclose(h5_space) >= 0, HDF5_ERROR,                 \
+                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
+                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
+        XRETURN(H5Sclose(h5_space) >= 0, HDF5_ERROR,                    \
                 "Error: Failed to close the filespace for = %s.\n"      \
-                "The dimensions of the dataset was %d\nThe file ID was %d\n.", \
-                dataset_name, (int32_t) *count, (int32_t) fd);          \
+                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
+                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
         XRETURN(H5Gclose(h5_grp) >= 0, HDF5_ERROR, "Error: Could not close group = '%s'\n", group_name); \
     }
-
+    
     {
         /* Intentionally written in new scope (separate '{')
 
@@ -414,7 +416,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             return FILE_NOT_FOUND;
         }
 
-#if 1        
+#if 0
+#warning This is the slow method (but should work)
         for(int isnap=0;isnap<gen->maxsnaps;isnap++) {
             const hsize_t offset_for_forestnum = offset_for_global_forestnum[start_filenum];
             int64_t snap_offset = 0;
@@ -424,15 +427,25 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             char dset_name[MAX_STRING_LEN + 1];
             snprintf(dset_name, MAX_STRING_LEN, "Snap_%03d", isnap);
             const hsize_t h5_single_item = 1;
-            READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, dset_name, "ForestOffsetPerSnap", &offset_for_forestnum, &h5_single_item, &snap_offset);
+            const hsize_t ndim = 1;
+            READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, dset_name, "ForestOffsetPerSnap", ndim, &offset_for_forestnum, &h5_single_item, &snap_offset);
             gen->halo_offset_per_snap[isnap] = snap_offset;
             /* fprintf(stderr,"On ThisTask = %d done with calculating halo offsets for first file = '%s' at snap = %d start_forestnum_per_file = %"PRId64"\n", */
             /*         ThisTask, fname, isnap, start_forestnum_per_file[start_filenum]); */
             run_params->interrupted=1;
         }
 #else
-#error This would have to be coded up using 'ForestInfoInFile/ForestOffsetsAllSnaps'
-        
+#warning Using 'ForestInfoInFile/ForestOffsetsAllSnaps'
+        const hsize_t start_forestnum_in_file = forests_info->original_treenr[0];
+        const hsize_t read_ndim = 2;
+        const hsize_t read_offset[2] = {start_forestnum_in_file, 0};
+        const hsize_t read_count[2] = {1, gen->maxsnaps};
+        READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, "ForestInfoInFile", "ForestOffsetsAllSnaps", read_ndim, read_offset, read_count, gen->halo_offset_per_snap);
+        /* fprintf(stderr,"start_forestnum_in_file=%llu max-snaps = %d printing offsets ...\n", start_forestnum_in_file, gen->maxsnaps); */
+        /* for(int ii=0;ii<gen->maxsnaps;ii++) { */
+        /*     fprintf(stderr,"snapshot = %03d offset = %010"PRId64"\n", ii, gen->halo_offset_per_snap[ii]); */
+        /* } */
+        /* fprintf(stderr,"start_forestnum_in_file=%llu printing offsets ......done\n", start_forestnum_in_file); */
 #endif
         
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
@@ -464,14 +477,19 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
     /* Perform some consistency checks from the first file */
     READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header", "NSnaps", (run_params->nsnapshots));
-    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Particle_mass", "dm", (run_params->PartMass));
-    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "Omega_m", (run_params->Omega));
-    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "Omega_Lambda", (run_params->OmegaLambda));
-    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "h_val", (run_params->Hubble_h));
-    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "Period", (run_params->BoxSize));
+    double partmass;
+    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Particle_mass", "dm", partmass);
+
+
+    double om, ol, little_h;
+    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "Omega_m", om);
+    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "Omega_Lambda", ol);
+    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "h_val", little_h);
+
+    double file_boxsize;
+    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Simulation", "Period", file_boxsize);
 
     double lunit, munit, vunit;
-
     /* Read in units from the Genesis forests file */
     READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Units", "Length_unit_to_kpc", lunit);
     READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Units", "Velocity_unit_to_kms", vunit);
@@ -499,7 +517,17 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Length Unit", lunit, run_params->UnitLength_in_cm, maxdiff, maxreldiff);
     CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Velocity Unit", vunit, run_params->UnitVelocity_in_cm_per_s, maxdiff, maxreldiff);
     CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Mass Unit", munit, run_params->UnitMass_in_g, maxdiff, maxreldiff);
-
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("BoxSize", file_boxsize, run_params->BoxSize, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Particle Mass", partmass, run_params->PartMass, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_M", om, run_params->Omega, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_Lambda", ol, run_params->OmegaLambda, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Little h (hubble parameter)", little_h, run_params->Hubble_h, maxdiff, maxreldiff);
+    
+    if(run_params->LastSnapshotNr != (run_params->nsnapshots - 1)) {
+        fprintf(stderr,"Error: Expected LastSnapshotNr = %d from parameter-file to equal one less than the total number of snapshots = %d\n",
+                run_params->LastSnapshotNr, run_params->nsnapshots);
+        return -1;
+    }
 #undef CHECK_AND_ABORT_UNITS_VS_PARAM_FILE
 
 
@@ -672,7 +700,8 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     const hsize_t h5_single_item = 1;
     const hsize_t h5_global_forestnum = (hsize_t) forestnum_across_all_files;
     /* Read the number of halos in this forest -> starting at offset 'forestnum_across_all_files'  */
-    READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, "ForestInfo", "ForestSizes", &h5_global_forestnum, &h5_single_item, &nhalos);
+    const hsize_t ndim = 1;
+    READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, "ForestInfo", "ForestSizes", ndim, &h5_global_forestnum, &h5_single_item, &nhalos);
 
     int64_t *nhalos_per_snap = mymalloc(gen->maxsnaps * sizeof(*nhalos_per_snap));
     XRETURN(nhalos_per_snap != NULL, MALLOC_FAILURE,
@@ -684,26 +713,43 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
             "Error: Could not allocate memory for the storing the forest local offsets that separate each snapshot (forestnr = %"PRId64")\n",
             forestnr);
 
-    int64_t offset=0;
     const int start_snap = gen->min_snapnum;
     const int end_snap = gen->min_snapnum + gen->maxsnaps - 1;//maxsnaps already includes a +1,
 
     int32_t forest_start_snap = end_snap;
     int32_t forest_end_snap = start_snap;
-#if 1  
+    hid_t h5_fd = gen->h5_fds[filenum];
+#if 0
+    for(int isnap=end_snap;isnap>=start_snap;isnap--) {
+        char dset_name[MAX_STRING_LEN + 1];
+        snprintf(dset_name, MAX_STRING_LEN, "ForestInfo/Snaps/Snap_%03d", isnap);
+        READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, dset_name, "NumHalosInForest", ndim, &h5_global_forestnum, &h5_single_item, &(nhalos_per_snap[isnap]));
+    }
+#else
+#warning Reading forest sizes per snapshot from ForestInfoInFile/ForestSizesAllSnaps. Needs to be checked
+    const hsize_t forestnum_in_file = forests_info->original_treenr[forestnr];
+    const hsize_t read_ndims = 2;
+    const hsize_t read_offset[2] = {forestnum_in_file, 0};
+    const hsize_t read_count[2] = {1, gen->maxsnaps};
+    READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, "ForestInfoInFile", "ForestSizesAllSnaps", read_ndims, read_offset, read_count, nhalos_per_snap);
+    /* fprintf(stderr,"forestnum_in_file=%llu printing forestsize per snapshot ...\n", forestnum_in_file); */
+    /* for(int ii=0;ii<gen->maxsnaps;ii++) { */
+    /*     fprintf(stderr,"snapshot = %03d nhalos = %010"PRId64"\n", ii, nhalos_per_snap[ii]); */
+    /* } */
+    /* fprintf(stderr,"forestnum_in_file=%llu printing forestsize per snapshot ......done\n", forestnum_in_file); */
+#endif
+
+#undef READ_GENESIS_PARTIAL_FORESTINFO
+    
+    /* Now that we have the data */
+    int64_t offset=0;
     for(int isnap=end_snap;isnap>=start_snap;isnap--) {
         if(offset > INT_MAX) {
             fprintf(stderr,"Error: In function %s> Can not correctly represent %"PRId64" as an offset in the 32-bit variable within "
                     "the LHaloTree struct. \n", __FUNCTION__, offset);
             ABORT(INTEGER_32BIT_TOO_SMALL);
         }
-        char dset_name[MAX_STRING_LEN + 1];
-        snprintf(dset_name, MAX_STRING_LEN, "ForestInfo/Snaps/Snap_%03d", isnap);
-        READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, dset_name, "NumHalosInForest", &h5_global_forestnum, &h5_single_item, &(nhalos_per_snap[isnap]));
 
-        forest_local_offsets[isnap] = offset;
-        /* fprintf(stderr,"forest_local_offsets[%03d] = %d\n", isnap, forest_local_offsets[isnap]); */
-        offset += nhalos_per_snap[isnap];
         if(nhalos_per_snap[isnap] > 0) {
             /* The following conditions could be simplified based on the direction of the looping ->
                however, that could potentially introduce if the looping direction was altered in the future
@@ -712,32 +758,17 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
             
             forest_start_snap = (isnap < forest_start_snap) ? isnap:forest_start_snap;
             forest_end_snap = (isnap > forest_end_snap) ? isnap:forest_end_snap;
-        } 
+        }
+        forest_local_offsets[isnap] = offset;
+        /* fprintf(stderr,"forest_local_offsets[%03d] = %d\n", isnap, forest_local_offsets[isnap]); */
+        offset += nhalos_per_snap[isnap];
     }
-#else
-#error This needs to be coded up using the 'ForestInfoInFile/ForestSizesAllSnaps'
-    READ_GENESIS_PARTIAL_FORESTINFO();
     
-
-    char snap_group_name[MAX_STRING_LEN];
-    snprintf(snap_group_name, MAX_STRING_LEN-1, "Snap_%03d", isnap);
-    hid_t h5_grp = H5Gopen(h5_fd, snap_group_name, H5P_DEFAULT);
-    XRETURN(h5_grp >= 0, -HDF5_ERROR, "Error: Could not open group = `%s` corresponding to snapshot = %d\n",
-            snap_group_name, isnap);
-
-    READ_PARTIAL_1D_ARRAY(h5_grp, isnap, head_enum, snap_offset, nhalos_snap, buffer);
-
-
-    
-    
-#endif
-
-
     
     /* Check that the number of halos to read in agrees with that derived with the per snapshot one */
     if(offset != nhalos) {
         fprintf(stderr,"Error: On ThisTask = %d while processing task-local-forestnr = %"PRId64" "
-                " file-local-forestnr = %"PRId64"and global forestnum = %"PRId64" located in the file = %d\n",
+                " file-local-forestnr = %"PRId64" and global forestnum = %"PRId64" located in the file = %d\n",
                 run_params->ThisTask, forestnr, forests_info->original_treenr[forestnr], forestnum_across_all_files, filenum);
         fprintf(stderr,"Expected the 'nhalos_per_snap' array to sum up to 'nhalos' but that is not the case\n");
         fprintf(stderr,"Sum(nhalos_per_snap) = %"PRId64" nhalos = %"PRId64"\n", offset, nhalos);
@@ -900,7 +931,6 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     }
 
     int64_t *forest_offsets = gen->halo_offset_per_snap;
-    hid_t h5_fd = gen->h5_fds[filenum];
     for(int isnap=forest_end_snap;isnap>=forest_start_snap;isnap--) {
         hsize_t snap_offset[1], nhalos_snap[1];
         snap_offset[0] = (hsize_t) forest_offsets[isnap];

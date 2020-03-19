@@ -269,7 +269,7 @@ struct forest_info {
     // number of trees in each file because some files may have more/less trees whilst still spanning the
     // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
     int32_t *FileNr; // The file number that each forest was read from.
-    int64_t *original_treenr; // The tree number from the original tree files.
+    int64_t *original_treenr; // The (file-local) tree number from the original tree files.
                               // Necessary because Task N's "Tree 0" could start at the middle of a file.
 };
 
@@ -364,7 +364,7 @@ struct params
     double ar;
 
     int32_t nsnapshots;
-    int32_t LastSnapShotNr;
+    int32_t LastSnapshotNr;
     int32_t MAXSNAPS;
     int32_t NOUT;
     int32_t Snaplistlen;
