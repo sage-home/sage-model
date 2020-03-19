@@ -416,37 +416,11 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             return FILE_NOT_FOUND;
         }
 
-#if 0
-#warning This is the slow method (but should work)
-        for(int isnap=0;isnap<gen->maxsnaps;isnap++) {
-            const hsize_t offset_for_forestnum = offset_for_global_forestnum[start_filenum];
-            int64_t snap_offset = 0;
-            /* fprintf(stderr,"ThisTask = %d isnap = %d start_filenum = %d start_forestnum_per_file[%d] = %"PRId64"\n", */
-            /*         ThisTask, isnap, start_filenum, start_filenum, start_forestnum_per_file[start_filenum]); */
-            
-            char dset_name[MAX_STRING_LEN + 1];
-            snprintf(dset_name, MAX_STRING_LEN, "Snap_%03d", isnap);
-            const hsize_t h5_single_item = 1;
-            const hsize_t ndim = 1;
-            READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, dset_name, "ForestOffsetPerSnap", ndim, &offset_for_forestnum, &h5_single_item, &snap_offset);
-            gen->halo_offset_per_snap[isnap] = snap_offset;
-            /* fprintf(stderr,"On ThisTask = %d done with calculating halo offsets for first file = '%s' at snap = %d start_forestnum_per_file = %"PRId64"\n", */
-            /*         ThisTask, fname, isnap, start_forestnum_per_file[start_filenum]); */
-            run_params->interrupted=1;
-        }
-#else
-#warning Using 'ForestInfoInFile/ForestOffsetsAllSnaps'
         const hsize_t start_forestnum_in_file = forests_info->original_treenr[0];
         const hsize_t read_ndim = 2;
         const hsize_t read_offset[2] = {start_forestnum_in_file, 0};
         const hsize_t read_count[2] = {1, gen->maxsnaps};
         READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, "ForestInfoInFile", "ForestOffsetsAllSnaps", read_ndim, read_offset, read_count, gen->halo_offset_per_snap);
-        /* fprintf(stderr,"start_forestnum_in_file=%llu max-snaps = %d printing offsets ...\n", start_forestnum_in_file, gen->maxsnaps); */
-        /* for(int ii=0;ii<gen->maxsnaps;ii++) { */
-        /*     fprintf(stderr,"snapshot = %03d offset = %010"PRId64"\n", ii, gen->halo_offset_per_snap[ii]); */
-        /* } */
-        /* fprintf(stderr,"start_forestnum_in_file=%llu printing offsets ......done\n", start_forestnum_in_file); */
-#endif
         
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
                 "Error: On ThisTask = %d could not close file descriptor for filename = '%s'\n", ThisTask, fname);
@@ -719,26 +693,11 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     int32_t forest_start_snap = end_snap;
     int32_t forest_end_snap = start_snap;
     hid_t h5_fd = gen->h5_fds[filenum];
-#if 0
-    for(int isnap=end_snap;isnap>=start_snap;isnap--) {
-        char dset_name[MAX_STRING_LEN + 1];
-        snprintf(dset_name, MAX_STRING_LEN, "ForestInfo/Snaps/Snap_%03d", isnap);
-        READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, dset_name, "NumHalosInForest", ndim, &h5_global_forestnum, &h5_single_item, &(nhalos_per_snap[isnap]));
-    }
-#else
-#warning Reading forest sizes per snapshot from ForestInfoInFile/ForestSizesAllSnaps. Needs to be checked
     const hsize_t forestnum_in_file = forests_info->original_treenr[forestnr];
     const hsize_t read_ndims = 2;
     const hsize_t read_offset[2] = {forestnum_in_file, 0};
     const hsize_t read_count[2] = {1, gen->maxsnaps};
     READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, "ForestInfoInFile", "ForestSizesAllSnaps", read_ndims, read_offset, read_count, nhalos_per_snap);
-    /* fprintf(stderr,"forestnum_in_file=%llu printing forestsize per snapshot ...\n", forestnum_in_file); */
-    /* for(int ii=0;ii<gen->maxsnaps;ii++) { */
-    /*     fprintf(stderr,"snapshot = %03d nhalos = %010"PRId64"\n", ii, nhalos_per_snap[ii]); */
-    /* } */
-    /* fprintf(stderr,"forestnum_in_file=%llu printing forestsize per snapshot ......done\n", forestnum_in_file); */
-#endif
-
 #undef READ_GENESIS_PARTIAL_FORESTINFO
     
     /* Now that we have the data */
