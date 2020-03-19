@@ -1150,7 +1150,8 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     CREATE_STRING_ATTRIBUTE(sim_group_id, "SimulationDir", &run_params->SimulationDir, strlen(run_params->SimulationDir));
     CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->FileWithSnapList, strlen(run_params->FileWithSnapList));
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapshotNr", run_params->LastSnapshotNr, H5T_NATIVE_INT);
-
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "SimMaxSnaps", run_params->SimMaxSnaps, H5T_NATIVE_INT);
+    
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_matter", run_params->Omega, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_lambda", run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "particle_mass", run_params->PartMass, H5T_NATIVE_DOUBLE);
@@ -1222,8 +1223,8 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     dims[0] = run_params->NumSnapOutputs;
 
     CREATE_AND_WRITE_1D_ARRAY(file_id, "Header/output_snapshots", dims, run_params->ListOutputSnaps, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", run_params->NumSnapOutputs, H5T_NATIVE_INT);
 
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", run_params->SimMaxSnaps, H5T_NATIVE_INT);
 
     herr_t status = H5Gclose(sim_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
