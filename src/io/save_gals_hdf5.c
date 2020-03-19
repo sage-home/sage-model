@@ -104,10 +104,10 @@ static int32_t write_header(hid_t file_id, const struct forest_info *forest_info
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
     }
 
-#define CREATE_AND_WRITE_DATASET(file_id, field_name, dims, data, h5_dtype, C_size) { \
-        if(C_size != H5Tget_size(h5_dtype)) {                           \
+#define CREATE_AND_WRITE_1D_ARRAY(file_id, field_name, dims, buffer, h5_dtype) { \
+        if(sizeof(buffer[0]) != H5Tget_size(h5_dtype)) {                \
             fprintf(stderr,"Error: For field " #field_name", the C size = %zu does not match the hdf5 datatype size=%zu\n", \
-                    C_size,  H5Tget_size(h5_dtype));                    \
+                    sizeof(buffer[0]),  H5Tget_size(h5_dtype));         \
             return -1;                                                  \
         }                                                               \
         hid_t macro_dataspace_id = H5Screate_simple(1, dims, NULL);     \
@@ -119,7 +119,7 @@ static int32_t write_header(hid_t file_id, const struct forest_info *forest_info
                                         "Could not create a dataset for field " #field_name".\n" \
                                         "The dimensions of the dataset was %d\nThe file id was %d\n.", \
                                         (int32_t) dims[0], (int32_t) file_id); \
-        herr_t dset_status = H5Dwrite(macro_dataset_id, h5_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, data); \
+        herr_t dset_status = H5Dwrite(macro_dataset_id, h5_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer); \
         CHECK_STATUS_AND_RETURN_ON_FAIL(dset_status, (int32_t) dset_status, \
                                         "Failed to write a dataset for field " #field_name".\n" \
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n." \
@@ -1216,12 +1216,12 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     hsize_t dims[1];
     dims[0] = run_params->Snaplistlen;
 
-    CREATE_AND_WRITE_DATASET(file_id, "Header/snapshot_redshifts", dims, run_params->ZZ, H5T_NATIVE_DOUBLE, sizeof(run_params->ZZ[0]));
+    CREATE_AND_WRITE_1D_ARRAY(file_id, "Header/snapshot_redshifts", dims, run_params->ZZ, H5T_NATIVE_DOUBLE);
 
     // Output snapshots.
     dims[0] = run_params->NumSnapOutputs;
 
-    CREATE_AND_WRITE_DATASET(file_id, "Header/output_snapshots", dims, run_params->ListOutputSnaps, H5T_NATIVE_INT, sizeof(run_params->ListOutputSnaps[0]));
+    CREATE_AND_WRITE_1D_ARRAY(file_id, "Header/output_snapshots", dims, run_params->ListOutputSnaps, H5T_NATIVE_INT);
 
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", run_params->SimMaxSnaps, H5T_NATIVE_INT);
 
@@ -1243,6 +1243,6 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     return EXIT_SUCCESS;
 }
 
-#undef CREATE_AND_WRITE_DATASET
+#undef CREATE_AND_WRITE_1D_ARRAY
 #undef CREATE_SINGLE_ATTRIBUTE
 #undef CREATE_STRING_ATTRIBUTE
