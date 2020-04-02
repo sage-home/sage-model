@@ -571,7 +571,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac = 1000000000000000LL;
+    run_params->FileNr_Mulfac = 10000000000000000LL;
     run_params->ForestNr_Mulfac =     1000000000LL;
 
     return EXIT_SUCCESS;

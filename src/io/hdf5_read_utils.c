@@ -18,8 +18,8 @@ herr_t read_attribute(hid_t fd, const char *group_name, const char *attr_name, v
     }
 
     if(dst_size != H5Tget_size(attr_dtype)) {
-        fprintf(stderr,"Error while reading %s attribute in group %s\n", group_name, attr_name);
-        fprintf(stderr,"The HDF5 attribute has with size %zu bytes into destination with size = %zu\n",
+        fprintf(stderr,"Error while reading attribute '%s' within group '%s'\n", attr_name, group_name);
+        fprintf(stderr,"The HDF5 attribute has size %zu bytes but the destination has size = %zu bytes\n",
                 H5Tget_size(attr_dtype), dst_size);
         fprintf(stderr,"Perhaps the size of the destination datatype needs to be updated?\n");
         return -1;
