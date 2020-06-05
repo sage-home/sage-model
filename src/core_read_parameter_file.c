@@ -16,7 +16,7 @@ enum datatypes {
 #define MAXTAGS          300  /* Max number of parameters */
 #define MAXTAGLEN         50  /* Max number of characters in the string param tags */
 
-int read_parameter_file(const int ThisTask, const char *fname, struct params *run_params)
+int read_parameter_file(const char *fname, struct params *run_params)
 {
     int errorFlag = 0;
     int *used_tag = 0;
@@ -27,11 +27,13 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     int  ParamID[MAXTAGS];
     void *ParamAddr[MAXTAGS];
 
+    const int ThisTask = run_params->ThisTask;
+
     /* Ensure that all strings will be NULL terminated */
     for(int i=0;i<MAXTAGS;i++) {
         ParamTag[i][MAXTAGLEN] = '\0';
     }
-    
+
     NParam = 0;
 
     if(ThisTask == 0) {
@@ -422,7 +424,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     const int nvalid_format_types  = sizeof(format_names)/(MAXTAGLEN*sizeof(char));
     XRETURN(nvalid_format_types == 2, EXIT_FAILURE, "nvalid_format_types = %d should have been 2\n", nvalid_format_types);
     CHECK_VALID_ENUM_IN_PARAM_FILE(OutputFormat, nvalid_format_types, format_names, format_enums, my_outputformat);
-    
+
     /* Check that the way forests are distributed over (MPI) tasks is valid */
     const char scheme_names[][MAXTAGLEN] = {"uniform_in_forests", "linear_in_nhalos", "quadratic_in_nhalos", "exponent_in_nhalos", "generic_power_in_nhalos"};
     const enum Valid_Forest_Distribution_Schemes scheme_enums[] = {uniform_in_forests, linear_in_nhalos,
@@ -433,7 +435,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     CHECK_VALID_ENUM_IN_PARAM_FILE(ForestDistributionScheme, nvalid_scheme_types, scheme_names, scheme_enums, my_forest_dist_scheme);
 #undef CHECK_VALID_ENUM_IN_PARAM_FILE
-    
+
 
     /* Check that exponent supplied is non-negative (for cases where the exponent will be used) */
     if((run_params->ForestDistributionScheme == exponent_in_nhalos || run_params->ForestDistributionScheme == generic_power_in_nhalos)

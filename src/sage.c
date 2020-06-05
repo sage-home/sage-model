@@ -29,22 +29,39 @@
 int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                         struct forest_info *forest_info, struct params *run_params);
 
-int init_sage(const int ThisTask, const char *param_file, struct params *run_params)
+int init_sage(const int ThisTask, const int NTasks, const char *param_file, void **params)
 {
-    int32_t status = read_parameter_file(ThisTask, param_file, run_params);
+    struct params *run_params = malloc(sizeof(*run_params));
+    if(run_params == NULL) {
+        fprintf(stderr,"Error: On ThisTask = %d (out of NTasks = %d), failed to allocate memory "\
+                "for the C-struct to to hold the run params. Requested size = %zu bytes...returning\n",
+                ThisTask, NTasks, sizeof(*run_params));
+        return MALLOC_FAILURE;
+    }
+    run_params->ThisTask = ThisTask;
+    run_params->NTasks = NTasks;
+
+    int32_t status = read_parameter_file(param_file, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }
     init(ThisTask, run_params);
 
+
+    *params = run_params;
+
     return EXIT_SUCCESS;
 }
 
-int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
+int run_sage(void *params)
 {
 
     struct timeval tstart;
     gettimeofday(&tstart, NULL);
+
+    struct params *run_params = (struct params *) params;
+    const int ThisTask = run_params->ThisTask;
+    const int NTasks = run_params->NTasks;
 
     struct forest_info forest_info;
     memset(&forest_info, 0, sizeof(struct forest_info));
@@ -171,44 +188,48 @@ cleanup:
 }
 
 
-int32_t finalize_sage(struct params *run_params)
+int32_t finalize_sage(void *params)
 {
 
     int32_t status;
 
-    switch(run_params->OutputFormat) {
+    struct params *run_params = (struct params *) params;
 
-    case(sage_binary):
+    switch(run_params->OutputFormat)
         {
-            status = EXIT_SUCCESS;
-            break;
-        }
+        case(sage_binary):
+            {
+                status = EXIT_SUCCESS;
+                break;
+            }
 
 #ifdef HDF5
-    case(sage_hdf5):
-        {
-            status = create_hdf5_master_file(run_params);
-            /* Check if anything was not cleaned up */
-            const ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
-            if(nleaks > 0) {
-                fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
-                fprintf(stderr,"Number of open files = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_FILE));
-                fprintf(stderr,"Number of open datasets = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATASET));
-                fprintf(stderr,"Number of open groups = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_GROUP));
-                fprintf(stderr,"Number of open datatype = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATATYPE));
-                fprintf(stderr,"Number of open attributes = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ATTR));
+        case(sage_hdf5):
+            {
+                status = create_hdf5_master_file(run_params);
+                /* Check if anything was not cleaned up */
+                const ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
+                if(nleaks > 0) {
+                    fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
+                    fprintf(stderr,"Number of open files = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_FILE));
+                    fprintf(stderr,"Number of open datasets = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATASET));
+                    fprintf(stderr,"Number of open groups = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_GROUP));
+                    fprintf(stderr,"Number of open datatype = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATATYPE));
+                    fprintf(stderr,"Number of open attributes = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ATTR));
+                }
+
+                break;
             }
-            
-            break;
-        }
 #endif
 
-    default:
-        {
-            status = EXIT_SUCCESS;
-            break;
+        default:
+            {
+                status = EXIT_SUCCESS;
+                break;
+            }
         }
-    }
+
+    free(run_params);
 
     return status;
 }
