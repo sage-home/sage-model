@@ -29,7 +29,7 @@
 int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                         struct forest_info *forest_info, struct params *run_params);
 
-int init_sage(const int ThisTask, const int NTasks, const char *param_file, void **params)
+int run_sage(const int ThisTask, const int NTasks, const char *param_file, void **params)
 {
     struct params *run_params = malloc(sizeof(*run_params));
     if(run_params == NULL) {
@@ -40,6 +40,7 @@ int init_sage(const int ThisTask, const int NTasks, const char *param_file, void
     }
     run_params->ThisTask = ThisTask;
     run_params->NTasks = NTasks;
+    *params = run_params;
 
     int32_t status = read_parameter_file(param_file, run_params);
     if(status != EXIT_SUCCESS) {
@@ -47,21 +48,9 @@ int init_sage(const int ThisTask, const int NTasks, const char *param_file, void
     }
     init(ThisTask, run_params);
 
-
-    *params = run_params;
-
-    return EXIT_SUCCESS;
-}
-
-int run_sage(void *params)
-{
-
+    /* Now start the model */
     struct timeval tstart;
     gettimeofday(&tstart, NULL);
-
-    struct params *run_params = (struct params *) params;
-    const int ThisTask = run_params->ThisTask;
-    const int NTasks = run_params->NTasks;
 
     struct forest_info forest_info;
     memset(&forest_info, 0, sizeof(struct forest_info));
@@ -74,7 +63,7 @@ int run_sage(void *params)
     snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies, run_params->ZZ[run_params->ListOutputSnaps[0]], ThisTask);
 
     /* setup the forests reading, and then distribute the forests over the Ntasks */
-    int status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);
+    status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);
     if(status != EXIT_SUCCESS) {
         return status;
     }

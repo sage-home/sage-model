@@ -30,16 +30,11 @@ int main(int argc, char **argv)
 
     /* initialize sage (read parameter file, setup units, read cooling tables etc) */
     void *run_params;
-    int status = init_sage(ThisTask, NTasks, argv[1], &run_params);
+    int status = run_sage(ThisTask, NTasks, argv[1], &run_params);
     if(status != EXIT_SUCCESS) {
         goto err;
     }
 
-    /* run sage over all files */
-    status = run_sage(run_params);
-    if(status != EXIT_SUCCESS) {
-        goto err;
-    }
 
 #ifdef MPI
     // Wait until all tasks are done before we do final tasks/checks.

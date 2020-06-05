@@ -13,8 +13,7 @@ extern "C" {
 #endif
 
     /* API for sage */
-    extern int init_sage(const int ThisTask, const int NTasks, const char *param_file, void **run_params);
-    extern int run_sage(void *run_params);
+    extern int run_sage(const int ThisTask, const int NTasks, const char *param_file, void **params);
     extern int finalize_sage(void *run_params);
 
 #ifdef __cplusplus
