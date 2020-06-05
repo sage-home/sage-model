@@ -4,6 +4,9 @@ USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libra
 #MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
 				 # Note: This will not work if you're using clang as your compiler.
 
+MAKE-SHARED-LIB = yes # Set if you want to create a shared library
+
+
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # In case any of the previous ones do not work and
 # ROOT_DIR is not set, then use "." as ROOT_DIR and
@@ -37,7 +40,12 @@ INCL := $(addprefix $(SRC_PREFIX)/, $(INCL))
 LIBSRC  := $(addprefix $(SRC_PREFIX)/, $(LIBSRC))
 LIBINCL := $(addprefix $(SRC_PREFIX)/, $(LIBINCL))
 LIBOBJS := $(LIBSRC:.c=.o)
-SAGELIB := lib$(LIBNAME).a
+
+ifdef MAKE-SHARED-LIB
+  SAGELIB := lib$(LIBNAME).so
+else
+  SAGELIB := lib$(LIBNAME).a
+endif
 
 EXEC := $(LIBNAME)
 
@@ -242,8 +250,13 @@ $(EXEC): $(OBJS)
 
 lib libs: $(SAGELIB)
 
-$(SAGELIB): $(LIBOBJS)
+lib$(LIBNAME).a: $(LIBOBJS)
+	@echo "Creating static lib"
 	$(AR) rcs $@ $(LIBOBJS)
+
+lib$(LIBNAME).so: $(LIBOBJS)
+	@echo "Creating shared lib"
+	$(CC) -shared $(LIBFLAGS) $(LIBOBJS) -o $@
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
