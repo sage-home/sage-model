@@ -2,18 +2,20 @@
 
 
 def build_sage():
+    import os
     from cffi import FFI
-    ffibuilder = FFI()
 
+    # Find the absolute path to the directory name
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+
+    ffibuilder = FFI()
     # cdef() expects a single string declaring the C types, functions and
     # globals needed to use the shared object. It must be in valid C syntax.
     ffibuilder.cdef("""
 
     /* API for sage */
-    int init_sage(const int ThisTask, const int NTasks,
+    int run_sage(const int ThisTask, const int NTasks,
     const char *param_file, void **run_params);
-
-    int run_sage(void *run_params);
     int finalize_sage(void *run_params);
 
     """)
@@ -27,7 +29,9 @@ def build_sage():
                           #include "src/sage.h"   // the C header of the library
                           """,
                           libraries=['sage'],   # library name, for the linker
-                          library_dirs = ['./'],
+                          library_dirs = [dir_path],
+                          extra_link_args=["-Xlinker -rpath "\
+                                           "-Xlinker " + dir_path],
     )
 
     ffibuilder.compile(verbose=True)
@@ -49,16 +53,27 @@ def run_sage(paramfile):
         rank = comm.Get_rank()
         ntasks = comm.Get_size()
     except ImportError:
+        print("Did not detect MPI")
         pass
 
+    print(f"[Rank={rank}]: Running on {ntasks} tasks")
     p = ffi.new("void **")
     fname = ffi.new("char []", paramfile.encode())
 
-    lib.init_sage(rank, ntasks, fname, p)
-    lib.run_sage(p[0])
+    lib.run_sage(rank, ntasks, fname, p)
     lib.finalize_sage(p[0])
 
-    return
+    return True
+
 
 if __name__ == "__main__":
-    run_sage("tests/test_data/mini-millennium.par")
+    import os
+    parfile = "tests/test_data/mini-millennium.par"
+    if not os.path.isfile(parfile):
+        msg = "Error: Could not locate parameter file = {}. "\
+              "You should be able to solve that by running "\
+              "`/bin/bash first_run.sh` followed by `make tests`"\
+              .format(parfile)
+        raise AssertionError(msg)
+
+    run_sage(parfile)
