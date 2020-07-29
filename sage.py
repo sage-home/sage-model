@@ -26,12 +26,14 @@ def build_sage():
     # so it is often just the "#include".
     ffibuilder.set_source("_sage_cffi",
                           """
-                          #include "src/sage.h"   // the C header of the library
+                          #include "src/sage.h"   // the C header for the API
                           """,
                           libraries=['sage'],   # library name, for the linker
-                          library_dirs = [dir_path],
-                          extra_link_args=["-Xlinker -rpath "\
-                                           "-Xlinker " + dir_path],
+                          library_dirs=[dir_path],
+                          extra_link_args=["-Xlinker",
+                                           "-rpath",
+                                           "-Xlinker",
+                                           dir_path],
     )
 
     ffibuilder.compile(verbose=True)
