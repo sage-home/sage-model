@@ -8,11 +8,16 @@ simulations on the same axis.
 Refer to the online documentation (sage-model.readthedocs.io) for full information on how
 to add your own data format, property calculations and plots.
 
-Author: Jacob Seiler.
+Authors: (Jacob Seiler, Manodeep Sinha)
 """
+
+import numpy as np
+import os
+import sys
 
 # These contain example functions to calculate (and plot) properties such as the
 # stellar mass function, quiescent fraction, bulge fraction etc.
+import sage_analysis
 import sage_analysis.example_calcs
 import sage_analysis.example_plots
 
@@ -24,16 +29,13 @@ from sage_analysis.model import Model
 # Data Classes that handle reading the different SAGE output formats.
 from sage_analysis.sage_binary import SageBinaryData
 
-# This has h5py dependance. If the user is only using binary, then we don't mind not
-# importing.
+# If the user is only using binary, then we do not need to fail
+# However, then the user can not read in hdf5 output
 try:
     from sage_analysis.sage_hdf5 import SageHdf5Data
 except ImportError:
-    print("h5py not found.  If you're reading in HDF5 output from SAGE, please install "
-          "this package.")
-
-import numpy as np
-import os
+    SageHdf5Data = None
+    
 
 # Sometimes we divide a galaxy that has zero mass (e.g., no cold gas). Ignore these
 # warnings as they spam stdout. Also remember the old settings.
@@ -109,11 +111,19 @@ if __name__ == "__main__":
 
         # Each SAGE output has a specific class written to read in the data.
         if model_dict["sage_output_format"] == "sage_binary":
-            my_model.data_class = SageBinaryData(my_model, model_dict["num_output_files"],
+            my_model.data_class = SageBinaryData(my_model,
+                                                 model_dict["num_output_files"],
                                                  model_dict["sage_file"],
                                                  model_dict["snapshot"])
         elif model_dict["sage_output_format"] == "sage_hdf5":
+            if not SageHdf5Data:
+                msg = "Please install 'h5py' if you would like to read HDF5 "\
+                      "output from SAGE and re-install this package"
+                raise ImportError(msg)
+
             my_model.data_class = SageHdf5Data(my_model, model_dict["sage_file"])
+        else:
+            raise ValueError("Unknown sage output format = '{}'".format(model_dict["sage_output_format"]))
 
         # The data class has read the SAGE ini file.  Update the model with the parameters
         # read and those specified by the user.
