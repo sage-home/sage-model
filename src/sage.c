@@ -113,8 +113,9 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
                                          sizeof(*(save_info.forest_ngals[snap_idx])), snap_idx);
     }
 
-    fprintf(stderr,"Task %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
+    fprintf(stdout,"Task %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
             ThisTask, Nforests, forest_info.frac_volume_processed);
+    fflush(stdout);
 
     /* open all the output files corresponding to this tree file (specified by rank) */
     status = initialize_galaxy_files(ThisTask, &forest_info, &save_info, run_params);
@@ -124,7 +125,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
 
     run_params->interrupted = 0;
     if(ThisTask == 0) {
-        init_my_progressbar(stderr, Nforests, &(run_params->interrupted));
+        init_my_progressbar(stdout, Nforests, &(run_params->interrupted));
 #ifdef MPI
         if(NTasks > 1) {
             fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
@@ -135,7 +136,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
 
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
         if(ThisTask == 0) {
-            my_progressbar(stderr, forestnr, &(run_params->interrupted));
+            my_progressbar(stdout, forestnr, &(run_params->interrupted));
         }
 
         /* the millennium tree is really a collection of trees, viz., a forest */
@@ -157,12 +158,14 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     myfree(save_info.tot_ngals);
 
     if(ThisTask == 0) {
-        finish_myprogressbar(stderr, &(run_params->interrupted));
+        finish_myprogressbar(stdout, &(run_params->interrupted));
     }
     struct timeval tend;
     gettimeofday(&tend, NULL);
-    fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, get_time_string(tstart, tend));
+    fprintf(stdout,"ThisTask = %d done processing all forests assigned. Time taken = %s\n",
+                    ThisTask, get_time_string(tstart, tend));
 
+    fflush(stdout);
 cleanup:
     /* sage is done running -> do the cleanup */
     cleanup_forests_io(run_params->TreeType, &forest_info);
