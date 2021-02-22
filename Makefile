@@ -1,10 +1,8 @@
-#USE-MPI = yes # set this if you want to run in embarrassingly parallel
-USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
+#USE-MPI := yes # set this if you want to run in embarrassingly parallel (automatically set if the compiler (i.e., the CC variable) is set to `mpicc`)
+USE-HDF5 := yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
 #MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
-				 # Note: This will not work if you're using clang as your compiler.
-
-MAKE-SHARED-LIB = yes # Set if you want to create a shared library
+				 # Note: This only works with gcc
 
 MAKE-SHARED-LIB := yes # Define this to any value if you want to create a shared library (otherwise a static library is created)
 #MAKE-VERBOSE := yes # define this for info messages, otherwise all info messages are disabled (*error* messages are *always* printed)
