@@ -27,8 +27,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     int  ParamID[MAXTAGS];
     void *ParamAddr[MAXTAGS];
 
-    const int ThisTask = run_params->ThisTask;
-
     /* Ensure that all strings will be NULL terminated */
     for(int i=0;i<MAXTAGS;i++) {
         ParamTag[i][MAXTAGLEN] = '\0';
@@ -37,6 +35,8 @@ int read_parameter_file(const char *fname, struct params *run_params)
     NParam = 0;
 
 #ifdef VERBOSE
+    const int ThisTask = run_params->ThisTask;
+
     if(ThisTask == 0) {
         fprintf(stdout, "\nreading parameter file:\n\n");
     }

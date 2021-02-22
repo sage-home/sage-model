@@ -25,6 +25,10 @@ double time_to_present(const double z, struct params *run_params);
 
 void init(const int ThisTask, struct params *run_params)
 {
+#ifndef VERBOSE
+    (void) ThisTask;
+#endif
+
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
 
     set_units(run_params);
@@ -79,6 +83,10 @@ void set_units(struct params *run_params)
 
 void read_snap_list(const int ThisTask, struct params *run_params)
 {
+#ifndef VERBOSE
+    (void) ThisTask;
+#endif
+
     char fname[MAX_STRING_LEN+1];
 
     snprintf(fname, MAX_STRING_LEN, "%s", run_params->FileWithSnapList);
