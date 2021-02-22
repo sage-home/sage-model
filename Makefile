@@ -6,6 +6,8 @@ USE-HDF5 = yes # set this if you want to read in hdf5 trees (requires hdf5 libra
 
 MAKE-SHARED-LIB = yes # Set if you want to create a shared library
 
+MAKE-SHARED-LIB := yes # Define this to any value if you want to create a shared library (otherwise a static library is created)
+#MAKE-VERBOSE := yes # define this for info messages, otherwise all info messages are disabled (*error* messages are *always* printed)
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # In case any of the previous ones do not work and
@@ -17,7 +19,7 @@ ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC
 LIBFLAGS :=
 
-OPTS := -DROOT_DIR='"${ROOT_DIR}"' #-DVERBOSE
+OPTS := -DROOT_DIR='"${ROOT_DIR}"'
 SRC_PREFIX := src
 
 LIBNAME := sage
@@ -47,7 +49,11 @@ else
   SAGELIB := lib$(LIBNAME).a
 endif
 
+ifdef MAKE-VERBOSE
+  OPTS += -DVERBOSE
+endif
 EXEC := $(LIBNAME)
+
 
 UNAME := $(shell uname)
 ifeq ($(CC), mpicc)
@@ -185,7 +191,12 @@ ifeq ($(DO_CHECKS), 1)
     CCFLAGS += $(HDF5_INCL)
   endif
 
-  OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
+  GIT_FOUND := $(shell git --version 2>/dev/null)
+  ifdef GIT_FOUND
+    OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
+  else
+    OPTS += -DGITREF_STR='""'
+  endif
 
   ifdef USE-MPI
     MPI_LINK_FLAGS:=$(firstword $(shell $(CC) --showme:link 2>/dev/null))

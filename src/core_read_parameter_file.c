@@ -36,9 +36,11 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     NParam = 0;
 
+#ifdef VERBOSE
     if(ThisTask == 0) {
-        printf("\nreading parameter file:\n\n");
+        fprintf(stdout, "\nreading parameter file:\n\n");
     }
+#endif
 
     strncpy(ParamTag[NParam], "FileNameGalaxies", MAXTAGLEN);
     ParamAddr[NParam] = run_params->FileNameGalaxies;
@@ -223,8 +225,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     FILE *fd = fopen(fname, "r");
     if (fd == NULL) {
-        printf("Parameter file '%s' not found.\n", fname);
-        fflush(stdout);
+        fprintf(stderr,"Parameter file '%s' not found.\n", fname);
         return FILE_NOT_FOUND;
     }
 
@@ -269,9 +270,11 @@ int read_parameter_file(const char *fname, struct params *run_params)
         }
 
         if(j >= 0) {
+#ifdef VERBOSE
             if(ThisTask == 0) {
-                printf("%35s\t%10s\n", buf1, buf2);
+                fprintf(stdout, "%35s\t%10s\n", buf1, buf2);
             }
+#endif
 
             switch (ParamID[j])
                 {
@@ -286,7 +289,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
                     break;
                 }
         } else {
-            printf("Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
+            fprintf(stderr, "Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
             errorFlag = 1;
         }
     }
@@ -301,7 +304,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     for(int i = 0; i < NParam; i++) {
         if(used_tag[i]) {
-            printf("Error. I miss a value for tag '%s' in parameter file '%s'.\n", ParamTag[i], fname);
+            fprintf(stderr, "Error. I miss a value for tag '%s' in parameter file '%s'.\n", ParamTag[i], fname);
             errorFlag = 1;
         }
     }
@@ -309,7 +312,9 @@ int read_parameter_file(const char *fname, struct params *run_params)
     if(errorFlag) {
         ABORT(1);
     }
-    printf("\n");
+#ifdef VERBOSE
+    fprintf(stdout, "\n");
+#endif
 
     if( ! (run_params->LastSnapshotNr+1 > 0 && run_params->LastSnapshotNr+1 < ABSOLUTEMAXSNAPS) ) {
         fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->LastSnapshotNr, ABSOLUTEMAXSNAPS);
@@ -328,13 +333,17 @@ int read_parameter_file(const char *fname, struct params *run_params)
         for (int i=run_params->NumSnapOutputs-1; i>=0; i--) {
             run_params->ListOutputSnaps[i] = i;
         }
+#ifdef VERBOSE
         if(ThisTask == 0) {
-            printf("all %d snapshots selected for output\n", run_params->NumSnapOutputs);
+            fprintf(stdout, "all %d snapshots selected for output\n", run_params->NumSnapOutputs);
         }
+#endif
     } else {
+#ifdef VERBOSE
         if(ThisTask == 0) {
-            printf("%d snapshots selected for output: ", run_params->NumSnapOutputs);
+            fprintf(stdout, "%d snapshots selected for output: ", run_params->NumSnapOutputs);
         }
+#endif
 
         // reopen the parameter file
         fd = fopen(fname, "r");
@@ -349,9 +358,11 @@ int read_parameter_file(const char *fname, struct params *run_params)
                 // read the snapshots into ListOutputSnaps
                 for(int i=0; i<run_params->NumSnapOutputs; i++) {
                     if(fscanf(fd, "%d", &(run_params->ListOutputSnaps[i])) == 1) {
+#ifdef VERBOSE
                         if(ThisTask == 0) {
-                            printf("%d ", run_params->ListOutputSnaps[i]);
+                            fprintf(stdout, "%d ", run_params->ListOutputSnaps[i]);
                         }
+#endif
                     }
                 }
                 done = 1;
@@ -364,7 +375,9 @@ int read_parameter_file(const char *fname, struct params *run_params)
             fprintf(stderr,"Error: Could not properly parse output snapshots\n");
             ABORT(2);
         }
-        printf("\n");
+#ifdef VERBOSE
+        fprintf(stdout, "\n");
+#endif
     }
 
     /* because in the default case of 'lhalo-binary', nothing

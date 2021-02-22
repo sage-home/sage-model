@@ -32,7 +32,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             strdot = 0.0;
         }
     } else {
-        printf("No star formation prescription selected!\n");
+        fprintf(stderr, "No star formation prescription selected!\n");
         ABORT(0);
     }
 

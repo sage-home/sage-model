@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 #endif
 
     if(argc != 2) {
-        printf("\n  usage: sage <parameterfile>\n\n");
+        fprintf(stderr, "\n  usage: sage <parameterfile>\n\n");
 #ifdef MPI
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         MPI_Finalize();
