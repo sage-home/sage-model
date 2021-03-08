@@ -25,12 +25,12 @@ int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_inf
     int32_t ntrees = forest_info->nforests_this_task;
 
     // We open up files for each output. We'll store the file IDs of each of these file.
-    save_info->save_fd = mymalloc(run_params->NOUT * sizeof(int32_t));
+    save_info->save_fd = mymalloc(run_params->NumSnapOutputs * sizeof(int32_t));
 
     char buffer[4*MAX_STRING_LEN + 1];
 
     /* Open all the output files */
-    for(int n = 0; n < run_params->NOUT; n++) {
+    for(int n = 0; n < run_params->NumSnapOutputs; n++) {
         snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies,
                  run_params->ZZ[run_params->ListOutputSnaps[n]], filenr);
 
@@ -60,19 +60,19 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
 
     // Determine the offset to the block of galaxies for each snapshot.
     int32_t num_output_gals = 0;
-    int32_t *num_gals_processed = mycalloc(run_params->MAXSNAPS, sizeof(*(num_gals_processed)));
+    int32_t *num_gals_processed = mycalloc(run_params->SimMaxSnaps, sizeof(*(num_gals_processed)));
     if(num_gals_processed == NULL) {
-        fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `num_gals_proccessed`\n", run_params->MAXSNAPS);
+        fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `num_gals_proccessed`\n", run_params->SimMaxSnaps);
         return MALLOC_FAILURE;
     }
 
-    int32_t *cumul_output_ngal = mymalloc(run_params->NOUT * sizeof(*(cumul_output_ngal)));
+    int32_t *cumul_output_ngal = mymalloc(run_params->NumSnapOutputs * sizeof(*(cumul_output_ngal)));
     if(cumul_output_ngal == NULL) {
-        fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `cumul_output_ngal`\n", run_params->NOUT);
+        fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `cumul_output_ngal`\n", run_params->NumSnapOutputs);
         return MALLOC_FAILURE;
     }
 
-    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
         cumul_output_ngal[snap_idx] = num_output_gals;
         num_output_gals += OutputGalCount[snap_idx];
     }
@@ -108,7 +108,7 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
     }
 
     // Now perform one write action for each redshift output.
-    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
 
         // Shift the offset pointer depending upon how many galaxies have been written out.
         struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx];
@@ -135,7 +135,7 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
 {
 
     int32_t ntrees = forest_info->nforests_this_task;
-    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
         // File must already be open.
         CHECK_STATUS_AND_RETURN_ON_FAIL(save_info->save_fd[snap_idx], EXIT_FAILURE,
                                         "Error trying to write to output number %d.\nThe save pointer is %d.\n",

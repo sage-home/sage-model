@@ -231,7 +231,6 @@ struct genesis_info {
     int64_t maxforestsize; /* max. number of halos in any one single forest on any task */
     int64_t *offset_for_global_forestnum;/* What would be the offset to add to file-local 'forestnum' to get the global forest num
                                             that is needed to access the metadata ("*foreststats*.hdf5") file  -- shape (lastfile + 1, ) */
-
     int64_t *halo_offset_per_snap;/* Stores the current halo offsets to read from at each snapshot -- shape (maxsnaps, ).
                                      Initialised to all 0's for every new file and incremented as forests are read in. This details
                                      adds a loop-dependency - where later forests can not be correctly processed before all
@@ -241,8 +240,8 @@ struct genesis_info {
     hid_t meta_fd;/* file descriptor for the metadata file*/
     hid_t *h5_fds;/* contains all the file descriptors for the individual files -- shape (lastfile + 1, ) */
 
-    int32_t min_snapnum; /* smallest snapshot to process (inclusive, >= 0)*/
-    int32_t maxsnaps;/* maxsnaps == max_snap_num + 1 */
+    int32_t min_snapnum; /* smallest snapshot to process (inclusive, >= 0), across all forests*/
+    int32_t maxsnaps;/* maxsnaps == max_snap_num + 1, largest snapshot to process across all forests */
     int32_t totnfiles;/* total number of files requested to be processed (across all tasks)*/
     int32_t numfiles;/* total number of files to process on ThisTask (>=1)*/
     int32_t start_filenum;/* Which is the first file that this task is going to process  */
@@ -270,7 +269,7 @@ struct forest_info {
     // number of trees in each file because some files may have more/less trees whilst still spanning the
     // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
     int32_t *FileNr; // The file number that each forest was read from.
-    int64_t *original_treenr; // The tree number from the original tree files.
+    int64_t *original_treenr; // The (file-local) tree number from the original tree files.
                               // Necessary because Task N's "Tree 0" could start at the middle of a file.
 };
 
@@ -365,9 +364,9 @@ struct params
     double ar;
 
     int32_t nsnapshots;
-    int32_t LastSnapShotNr;
-    int32_t MAXSNAPS;
-    int32_t NOUT;
+    int32_t LastSnapshotNr;
+    int32_t SimMaxSnaps;
+    int32_t NumSnapOutputs;
     int32_t Snaplistlen;
     enum Valid_TreeTypes TreeType;
     enum Valid_OutputFormats OutputFormat;

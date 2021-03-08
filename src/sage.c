@@ -88,18 +88,18 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     // Allocate memory for the total number of galaxies for each output snapshot (across all forests).
     // Calloc because we start with no galaxies.
-    save_info.tot_ngals = mycalloc(run_params->NOUT, sizeof(*(save_info.tot_ngals)));
+    save_info.tot_ngals = mycalloc(run_params->NumSnapOutputs, sizeof(*(save_info.tot_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.tot_ngals,
-                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
+                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NumSnapOutputs,
                                      sizeof(*(save_info.tot_ngals)));
 
     // Allocate memory for the number of galaxies at each output snapshot for each forest.
-    save_info.forest_ngals = mycalloc(run_params->NOUT, sizeof(*(save_info.forest_ngals)));
+    save_info.forest_ngals = mycalloc(run_params->NumSnapOutputs, sizeof(*(save_info.forest_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals,
-                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NOUT,
+                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NumSnapOutputs,
                                      sizeof(*(save_info.forest_ngals)));
 
-    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
         // Using calloc removes the need to zero out the memory explicitly.
         save_info.forest_ngals[snap_idx] = mycalloc(Nforests, sizeof(*(save_info.forest_ngals[snap_idx])));
         CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals[snap_idx],
@@ -118,7 +118,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 
     run_params->interrupted = 0;
     if(ThisTask == 0) {
-        init_my_progressbar(stderr, forest_info.totnforests, &(run_params->interrupted));
+        init_my_progressbar(stderr, Nforests, &(run_params->interrupted));
 #ifdef MPI
         if(NTasks > 1) {
             fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
@@ -127,10 +127,9 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
 #endif
     }
 
-    int64_t nforests_done = 0;
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
         if(ThisTask == 0) {
-            my_progressbar(stderr, nforests_done, &(run_params->interrupted));
+            my_progressbar(stderr, forestnr, &(run_params->interrupted));
         }
 
         /* the millennium tree is really a collection of trees, viz., a forest */
@@ -138,9 +137,6 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         if(status != EXIT_SUCCESS) {
             return status;
         }
-
-        nforests_done += NTasks; /*MS: 20/9/2019 -- Attempting to adjust for MPI (assuming that every forest completed
-                                   on task 0 has equivalent forests completed on other tasks)*/
     }
 
     status = finalize_galaxy_files(&forest_info, &save_info, run_params);
@@ -148,7 +144,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         return status;
     }
 
-    for(int snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+    for(int snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
         myfree(save_info.forest_ngals[snap_idx]);
     }
     myfree(save_info.forest_ngals);
@@ -183,19 +179,35 @@ int32_t finalize_sage(struct params *run_params)
     switch(run_params->OutputFormat) {
 
     case(sage_binary):
-      status = EXIT_SUCCESS;
-      break;
+        {
+            status = EXIT_SUCCESS;
+            break;
+        }
 
 #ifdef HDF5
     case(sage_hdf5):
-      status = create_hdf5_master_file(run_params);
-      break;
+        {
+            status = create_hdf5_master_file(run_params);
+            /* Check if anything was not cleaned up */
+            const ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
+            if(nleaks > 0) {
+                fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
+                fprintf(stderr,"Number of open files = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_FILE));
+                fprintf(stderr,"Number of open datasets = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATASET));
+                fprintf(stderr,"Number of open groups = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_GROUP));
+                fprintf(stderr,"Number of open datatype = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATATYPE));
+                fprintf(stderr,"Number of open attributes = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ATTR));
+            }
+            
+            break;
+        }
 #endif
 
     default:
-      status = EXIT_SUCCESS;
-      break;
-
+        {
+            status = EXIT_SUCCESS;
+            break;
+        }
     }
 
     return status;

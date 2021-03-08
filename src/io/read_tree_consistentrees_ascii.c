@@ -159,7 +159,6 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
     int first_tree = 0;
     const int64_t end_treenum = start_treenum + ntrees_this_task;
 
-
     // We assume that each of the input tree files span the same volume. Hence by summing the
     // number of trees processed by each task from each file, we can determine the
     // fraction of the simulation volume that this task processes.  We weight this summation by the
@@ -185,7 +184,10 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
              The choice we make here is to pick the filenr corresponding to the
              first tree in the forest */
             forests_info->FileNr[iforest] = locations[i].fileid;
-            forests_info->original_treenr[iforest] = locations[i].forestid;/* MS: Stores the forestID as assigned by CTrees */
+            /* forests_info->original_treenr[iforest] = locations[i].forestid;/\* MS: Stores the forestID as assigned by CTrees *\/ */
+            forests_info->original_treenr[iforest] = start_forestnum + iforest;/* The forestID is too big and can not be used to
+                                                                                  generate the unique GalaxyIndices directly. Hence resorting
+                                                                                  to a forest index across all files */
         } else {
             /* still the same forest -> increment the number
                of trees this forest has */
