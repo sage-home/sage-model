@@ -12,8 +12,8 @@ jobs:
       matrix:
         os: ["ubuntu-16.04", "ubuntu-18.04", "ubuntu-20.04", "macos-latest"]
         compiler: [gcc-7, gcc-8, gcc-9, clang]
-        python-version: ["3.6", "3.7", "3.8"]
-        numpy-version: ["1.14", "1.16", "1.18"]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
+        numpy-version: ["1.14", "1.16", "1.18", "1.20"]
         exclude:
 
           # Only run with 'clang' on OSX
@@ -52,12 +52,31 @@ jobs:
           - os: "macos-latest"
             python-version: "3.8"
 
+          # python3.9 only on 20.04
+          - os: "ubuntu-16.04"
+            python-version: "3.9"
+          - os: "ubuntu-18.04"
+            python-version: "3.9"
+          - os: "macos-latest"
+            python-version: "3.9"
+
           # numpy1.18 only on python3.8 
           # (which, in turn, is only on '20.04')
           - python-version: "3.6"
             numpy-version: "1.18"
           - python-version: "3.7"
             numpy-version: "1.18"
+          - python-version: "3.9"
+            numpy-version: "1.18"
+            
+          # numpy1.20 only on python3.9 
+          # (which, in turn, is only on '20.04')
+          - python-version: "3.6"
+            numpy-version: "1.20"
+          - python-version: "3.7"
+            numpy-version: "1.20"
+          - python-version: "3.8"
+            numpy-version: "1.20"
 
     env:
       CC: ${{ matrix.compiler }}
