@@ -117,5 +117,6 @@ jobs:
 
       - name: tests
         shell: bash -l {0}
-        run: make tests CC=${{ matrix.compiler }}
-
+        run: |
+          make clean
+          make tests CC=${{ matrix.compiler }}
