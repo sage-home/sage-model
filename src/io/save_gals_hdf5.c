@@ -565,12 +565,6 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
     free(save_info->name_output_fields);
     free(save_info->field_dtypes);
 
-    for(int32_t i=0;i<save_info->num_output_fields;i++) {
-        free(save_info->name_output_fields[i]);
-    }
-    free(save_info->name_output_fields);
-    free(save_info->field_dtypes);
-
     // Free all the other memory.
     myfree(save_info->num_gals_in_buffer);
 
