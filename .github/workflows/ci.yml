@@ -80,7 +80,7 @@ jobs:
         run: |
           conda create -q --yes -n test python=${{ matrix.python-version }} numpy=${{ matrix.numpy-version }}
           conda activate test
-          pip install -r requirements.txt
+          python -m pip install -r requirements.txt
       - name: Display PATH, compiler, python
         shell: bash -l {0}
         run: |
