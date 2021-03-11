@@ -94,7 +94,7 @@ void grow_black_hole(const int merger_centralgal, const double mass_ratio, struc
 
     if(galaxies[merger_centralgal].ColdGas > 0.0) {
         BHaccrete = run_params->BlackHoleGrowthRate * mass_ratio /
-            (1.0 + pow(280.0 / galaxies[merger_centralgal].Vvir, 2.0)) * galaxies[merger_centralgal].ColdGas;
+            (1.0 + SQR(280.0 / galaxies[merger_centralgal].Vvir)) * galaxies[merger_centralgal].ColdGas;
 
         // cannot accrete more gas than is available!
         if(BHaccrete > galaxies[merger_centralgal].ColdGas) {

@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-import h5py
-import numpy as np
 import os
 import sys
-from os.path import getsize as getFileSize
+import numpy as np
+
 try:
     xrange
 except NameError:
@@ -15,7 +14,7 @@ except NameError:
 class BinarySage(object):
 
 
-    def __init__(self, filename, ignored_fields=[], num_files=1):
+    def __init__(self, filename, ignored_fields=None, num_files=1):
         """
         Set up instance variables
         """
@@ -81,11 +80,9 @@ class BinarySage(object):
         self.totngals = None
         self.ngal_per_tree = None
         self.bytes_offset_per_tree = None
+        if not ignored_fields:
+            ignored_fields = []
         self.ignored_fields = ignored_fields
-        try:
-            _mode = os.O_RDONLY | os.O_BINARY
-        except AttributeError:
-            _mode = os.O_RDONLY
 
 
     def __enter__(self):
@@ -143,8 +140,6 @@ class BinarySage(object):
 
         If ``trenum`` is ``None``, all trees are read.
         """
-
-        import os
 
         close_file = False
         if fp is None:
@@ -237,6 +232,7 @@ def compare_catalogs(fname1, num_files_file1, fname2, num_files_file2, mode, ign
     """
     Compares two SAGE catalogs exactly
     """
+    import h5py
 
     # For both modes, the first file will be binary.  So lets initialize it.
     g1 = BinarySage(fname1, ignored_fields, num_files_file1)
@@ -275,9 +271,9 @@ def compare_binary_hdf5_catalogs(g1, hdf5_file, multidim_fields, rtol=1e-9,
     # checking.  This is because the HDF5 file will contain multiple snapshots of data
     # whereas we only passed a single redshift binary file.
     binary_redshift = determine_binary_redshift(g1.filename)
-    snap_num, snap_key = determine_snap_from_binary_z(hdf5_file,
-                                                      binary_redshift,
-                                                      verbose=verbose)
+    _, snap_key = determine_snap_from_binary_z(hdf5_file,
+                                               binary_redshift,
+                                               verbose=verbose)
 
     # SAGE could have been run in parallel in which the HDF5 master file will have
     # multiple core datasets.
@@ -445,7 +441,7 @@ please check that this is correct.
 
     for letter in reversed(snap_key):  # Go backwards through the key.
         if letter.isdigit():
-            if reached_numbers == False and len(snapnum):
+            if reached_numbers is False and len(snapnum):
                 print("--WARNING--")
                 print("For Snapshot key '{0}' there were numbers that were not"
                       " clustered together at the end of the key.\nWe assume "
@@ -503,13 +499,7 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
                    "galaxies\n".format(n1, n2)
             raise ValueError(msg)
 
-    try:
-        from tqdm import trange
-    except ImportError:
-        trange = xrange
-
     ignored_fields = [a for a in g1.ignored_fields if a in g2.ignored_fields]
-
     failed_fields = []
 
     # Load all the galaxies in from all trees.
@@ -535,8 +525,6 @@ def compare_binary_catalogs(g1, g2, rtol=1e-9, atol=5e-5):
 
 def compare_field_equality(field1, field2, field_name, rtol, atol):
 
-    msg = "Field = `{0}` not the same between the two catalogs\n"\
-        .format(field_name)
     if np.array_equal(field1, field2):
         return True
 
@@ -551,11 +539,10 @@ def compare_field_equality(field1, field2, field_name, rtol, atol):
     print("#######################################", file=sys.stderr)
     print("# index          {0}1          {0}2       Diff".format(field_name),
           file=sys.stderr)
-    numbad = 0
 
     # `isclose` is True for all elements of `field1` that are close to the corresponding
     # element in `field2`.
-    bool_mask = np.isclose(field1, field2, rtol=rtol, atol=atol)
+    bool_mask = np.bool(np.isclose(field1, field2, rtol=rtol, atol=atol))
 
     bad_field1 = field1[bool_mask == False]
     bad_field2 = field2[bool_mask == False]

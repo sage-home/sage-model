@@ -3,28 +3,10 @@
 #pragma once
 #include <stdio.h>
 
-#define NDIM 3
-
-#define ABORT(sigterm)                             \
-    do {                                           \
-        fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %i\n", __FILE__, __FUNCTION__, __LINE__); \
-        fprintf(stderr, "exit code = %d\n", sigterm);       \
-        fprintf(stderr, "Printing the value of perror..."); \
-        fprintf(stderr, "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page.\n" \
-                        "https://github.com/sage-home/sage-model/issues/new\n"); \
-        perror(NULL);                              \
-        exit(sigterm);                             \
-    } while(0)
-
-#define MEMORY_INCREASE_FAC   1.2
-
-#define  STEPS 10         /* Number of integration intervals between two snapshots */
-#define  MAXGALFAC 1
-#define  ALLOCPARAMETER 10.0
-#define  MAX_NODE_NAME_LEN 50
+#define  NDIM             3
+#define  STEPS            10         /* Number of integration intervals between two snapshots */
+#define  MAXGALFAC        1
 #define  ABSOLUTEMAXSNAPS 1000  /* The largest number of snapshots for any simulation */
-#define  MAXTAGS          300  /* Max number of parameters */
-
 
 #define  GRAVITY     6.672e-8
 #define  SOLAR_MASS  1.989e33
@@ -43,13 +25,19 @@
 #define  SEC_PER_YEAR       3.155e7
 
 #define  MAX_STRING_LEN     1024 /* Max length of a string containing a name */
+/* End of Macro Constants */
+
+
+/* Function-like macros */
+#define  SQR(X)      ((X) * (X))
+#define  CUBE(X)     ((X) * (X) * (X))
+
+#define STRINGIFY(x) #x
+#define STR(x) STRINGIFY(x)
 
 #define ADD_DIFF_TIME(t0, t1) ((t1.tv_sec - t0.tv_sec) + 1e-6 * (t1.tv_usec - t0.tv_usec))
 #define REALTIME_ELAPSED_NS(t0, t1)                                                                \
   ((t1.tv_sec - t0.tv_sec) * 1000000000.0 + (t1.tv_nsec - t0.tv_nsec))
-
-#define STRINGIFY(x) #x
-#define STR(x) STRINGIFY(x)
 
 /* Taken from
    http://stackoverflow.com/questions/19403233/compile-time-struct-size-check-error-out-if-odd which
@@ -65,17 +53,19 @@
 #define ENSURE_STRUCT_SIZE(e, size)                                                                \
   BUILD_BUG_OR_ZERO(sizeof(e) == size, sizeof_struct_config_options)
 
-/* Macro Constants */
-// Just to output some colors
-#define ANSI_COLOR_RED "\x1b[31m"
-#define ANSI_COLOR_GREEN "\x1b[32m"
-#define ANSI_COLOR_YELLOW "\x1b[33m"
-#define ANSI_COLOR_CYAN "\x1b[36m"
-#define ANSI_COLOR_BLUE "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_RESET "\x1b[0m"
 
-/* Function-like macros */
+#define ABORT(sigterm)                             \
+    do {                                                                \
+        fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %i\n", __FILE__, __FUNCTION__, __LINE__); \
+        fprintf(stderr, "exit code = %d\n", sigterm);                   \
+        fprintf(stderr, "Printing the value of perror...");             \
+        fprintf(stderr, "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page.\n" \
+                "https://github.com/sage-home/sage-model/issues/new\n"); \
+        perror(NULL);                                                   \
+        exit(sigterm);                                                  \
+    } while(0)
+
+
 #ifdef NDEBUG
 #define XASSERT(EXP, EXIT_STATUS, ...)                                  \
     do {                                                                \
@@ -105,9 +95,6 @@
             fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %d with expression `" #EXP "'\n", \
                     __FILE__, __FUNCTION__, __LINE__);                  \
             fprintf(stderr, __VA_ARGS__);                               \
-            fprintf(stderr, ANSI_COLOR_BLUE "Hopefully, input validation. Otherwise, bug in code: " \
-                    "please email Manodeep Sinha "                      \
-                    "<manodeep@gmail.com>" ANSI_COLOR_RESET "\n");      \
         }                                                               \
     } while (0)
 #endif
@@ -123,9 +110,6 @@
       fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %d with expression `" #EXP "'\n",        \
               __FILE__, __FUNCTION__, __LINE__);                                                   \
       fprintf(stderr, __VA_ARGS__);                                                                \
-      fprintf(stderr, ANSI_COLOR_BLUE "Hopefully, input validation. Otherwise, bug in code: "      \
-                                      "please email Manodeep Sinha "                               \
-                                      "<manodeep@gmail.com>" ANSI_COLOR_RESET "\n");               \
       return VAL;                                                                                  \
     }                                                                                              \
   } while (0)

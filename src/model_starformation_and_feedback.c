@@ -13,8 +13,7 @@
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
                                 struct GALAXY *galaxies, const struct params *run_params)
 {
-    double reff, tdyn, strdot, stars, ejected_mass, fac, metallicity;
-    double cold_crit;
+    double reff, tdyn, strdot, stars, ejected_mass, metallicity;
 
     // Initialise variables
     strdot = 0.0;
@@ -26,7 +25,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         tdyn = reff / galaxies[p].Vvir;
 
         // from Kauffmann (1996) eq7 x piR^2, (Vvir in km/s, reff in Mpc/h) in units of 10^10Msun/h
-        cold_crit = 0.19 * galaxies[p].Vvir * reff;
+        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
             strdot = run_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
         } else {
@@ -49,7 +48,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     // cant use more cold gas than is available! so balance SF and feedback
     if((stars + reheated_mass) > galaxies[p].ColdGas && (stars + reheated_mass) > 0.0) {
-        fac = galaxies[p].ColdGas / (stars + reheated_mass);
+        const double fac = galaxies[p].ColdGas / (stars + reheated_mass);
         stars *= fac;
         reheated_mass *= fac;
     }
@@ -127,7 +126,14 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
     XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
             "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
             reheated_mass, galaxies[p].ColdGas);
-    
+
+    XASSERT(reheated_mass >= 0.0, -1,
+            "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
+            p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
+    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
+            "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
+            reheated_mass, galaxies[p].ColdGas);
+
     if(run_params->SupernovaRecipeOn == 1) {
         galaxies[p].ColdGas -= reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
@@ -148,6 +154,3 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[p].OutflowRate += reheated_mass;
     }
 }
-
-
-    

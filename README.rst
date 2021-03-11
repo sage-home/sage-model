@@ -78,20 +78,39 @@ or in parallel as:
 Plotting the Output
 ===================
 
-In the ``analysis`` directory are a number of Python scripts to read and parse
-the ``SAGE`` output.  The most important file is ``example.py`` which creates
-plots for the default Mini-Millennium galaxies.
+Requirements
+------------
+
+**Analysis can only be performed in Python version >3.6**
+
+We recommend first setting a Python virtual environment to perform analysis in. We refer to the official `documentation
+<https://docs.python.org/3/library/venv.html>`_ but a virtual environment can be quickly created and activated through:
 
 .. code::
 
-    $ cd analysis/
+    $ python3 -m venv .sage_venv
+    $ source .sage_venv/bin/activate
+
+The packages in ``requirements.txt`` can then be safely installed.
+
+.. code::
+
+    $ pip install -r requirements.txt
+
+Plotting
+--------
+
+The ``plotting`` directory contains an ``example.py`` script that can be run to plot the basic output from **SAGE**.
+
+.. code::
+
+    $ cd plotting/
     $ python example.py
 
-and will create a number of useful diagnostic plots in the ``analysis/plots``
-directory.
+This will create a number of plots in the ``plotting/plots/`` directory. Please refer to the `sage_analysis
+documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sage.html>`_ for a thorough guide on how
+to adjust the plotting script to suit your needs.
 
-We also include the ability to compare the properties of a number of different
-models.  See the documenation in the ``__main__`` function call of ``example.py`` to use this functionality.
 
 Citation
 =========

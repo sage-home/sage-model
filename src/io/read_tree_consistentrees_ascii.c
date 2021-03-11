@@ -127,8 +127,6 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
             "Error: start_treenum = %"PRId64" must be in range [0, %"PRId64"]\n",
             start_treenum, totntrees);
 
-
-
     ctr->nforests = nforests_this_task;
     ctr->ntrees_per_forest = mymalloc(nforests_this_task * sizeof(ctr->ntrees_per_forest[0]));
 
@@ -161,7 +159,6 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
     int first_tree = 0;
     const int64_t end_treenum = start_treenum + ntrees_this_task;
 
-
     // We assume that each of the input tree files span the same volume. Hence by summing the
     // number of trees processed by each task from each file, we can determine the
     // fraction of the simulation volume that this task processes.  We weight this summation by the
@@ -187,7 +184,10 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
              The choice we make here is to pick the filenr corresponding to the
              first tree in the forest */
             forests_info->FileNr[iforest] = locations[i].fileid;
-            forests_info->original_treenr[iforest] = locations[i].forestid;/* MS: Stores the forestID as assigned by CTrees */
+            /* forests_info->original_treenr[iforest] = locations[i].forestid;/\* MS: Stores the forestID as assigned by CTrees *\/ */
+            forests_info->original_treenr[iforest] = start_forestnum + iforest;/* The forestID is too big and can not be used to
+                                                                                  generate the unique GalaxyIndices directly. Hence resorting
+                                                                                  to a forest index across all files */
         } else {
             /* still the same forest -> increment the number
                of trees this forest has */
@@ -370,10 +370,21 @@ int64_t load_forest_ctrees(const int32_t forestnr, struct halo_data **halos, str
     const int64_t totnhalos = base_info.N;
     const int64_t nallocated = base_info.nallocated;
     /* fprintf(stderr,"Reading in forestnr = %d ...done. totnhalos = %"PRId64"\n", forestnr, totnhalos); */
-    /* forests_info->totnhalos_per_forest[forestnr] = totnhalos; */
+    /* forests_info->totnhalos_per_forest[forestnr] = (int32_t) totnhalos; */
 
-    XRETURN(totnhalos  <= nallocated, -MALLOC_FAILURE,"Error: Total number of halos loaded = %"PRId64" must not exceed the number of halos "
+    XRETURN(totnhalos  <= nallocated, -1,"Error: Total number of halos loaded = %"PRId64" must be less than the number of halos "
             "allocated = %"PRId64"\n", base_info.N, nallocated);
+
+    /* release any additional memory that may have been allocated */
+    *halos = myrealloc(*halos, totnhalos * sizeof(struct halo_data));
+    XRETURN( *halos != NULL, -1, "Bug: This should not have happened -- a 'realloc' call to reduce the amount of memory failed\n"
+             "Trying to reduce from %"PRIu64" bytes to %"PRIu64" bytes\n",
+             nhalos_allocated*sizeof(struct halo_data), totnhalos * sizeof(struct halo_data));
+
+    info = myrealloc(info, totnhalos * sizeof(struct additional_info));
+    XRETURN( info != NULL, -1, "Bug: This should not have happened -- a 'realloc' call (for 'struct additional_info')"
+             "to reduce the amount of memory failed\nTrying to reduce from %"PRIu64" bytes to %"PRIu64" bytes\n",
+             nhalos_allocated * sizeof(struct additional_info), totnhalos * sizeof(struct additional_info));
 
     /* all halos belonging to this forest have now been loaded up */
     int verbose = 0;

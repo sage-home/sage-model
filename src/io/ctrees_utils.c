@@ -198,7 +198,7 @@ void sort_forests_by_treeid(const int64_t ntrees, int64_t *forests, int64_t *tre
         SGLIB_ARRAY_ELEMENTS_EXCHANGER(int64_t, forests, i, j);     \
     }
 
-    SGLIB_ARRAY_QUICK_SORT(int64_t, treeids, ntrees, SGLIB_NUMERIC_COMPARATOR , MULTIPLE_ARRAY_EXCHANGER);
+    SGLIB_ARRAY_HEAP_SORT(int64_t, treeids, ntrees, SGLIB_NUMERIC_COMPARATOR , MULTIPLE_ARRAY_EXCHANGER);
 #undef MULTIPLE_ARRAY_EXCHANGER
 
 }
@@ -438,8 +438,8 @@ int fix_upid(const int64_t totnhalos, struct halo_data *forest, struct additiona
                 }
             }
             XRETURN( found == 1, -1,
-                     "Error: Could not locate FOF halo for halo with id = %"PRId64" and upid = %"PRId64"\n",
-                     info[i].id, upid);
+                     "Error: Could not locate FOF halo for halo with id = %"PRId64" and upid = %"PRId64"\n"
+                     "scale = %e\n", info[i].id, upid, info[i].scale);
         }
         if(verbose) {
             fprintf(stderr,"found FOF halo for halnum = %"PRId64". loc = %"PRId64" id = %"PRId64" upid = %"PRId64"\n",

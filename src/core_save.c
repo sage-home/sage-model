@@ -11,6 +11,7 @@
 #include "core_save.h"
 #include "core_utils.h"
 #include "model_misc.h"
+#include "core_mymalloc.h"
 
 #include "io/save_gals_binary.h"
 
@@ -32,9 +33,9 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 {
     int32_t status;
 
-    if(run_params->NOUT > ABSOLUTEMAXSNAPS) {
+    if(run_params->NumSnapOutputs > ABSOLUTEMAXSNAPS) {
         fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
-                run_params->NOUT, ABSOLUTEMAXSNAPS);
+                run_params->NumSnapOutputs, ABSOLUTEMAXSNAPS);
         fprintf(stderr,"To fix this error, simply increase the value of `ABSOLUTEMAXSNAPS` and recompile\n");
         return INVALID_OPTION_IN_PARAMS;
     }
@@ -71,13 +72,13 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     int32_t status = EXIT_FAILURE;
 
     // Reset the output galaxy count.
-    int32_t OutputGalCount[run_params->MAXSNAPS];
-    for(int32_t snap_idx = 0; snap_idx < run_params->MAXSNAPS; snap_idx++) {
+    int32_t OutputGalCount[run_params->SimMaxSnaps];
+    for(int32_t snap_idx = 0; snap_idx < run_params->SimMaxSnaps; snap_idx++) {
         OutputGalCount[snap_idx] = 0;
     }
 
     // Track the order in which galaxies are written.
-    int32_t *OutputGalOrder = calloc(numgals, sizeof(*(OutputGalOrder)));
+    int32_t *OutputGalOrder = mymalloc(numgals * sizeof(*(OutputGalOrder)));
     if(OutputGalOrder == NULL) {
         fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `OutputGalOrder`\n", numgals);
         return MALLOC_FAILURE;
@@ -89,7 +90,7 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     }
 
     // First update mergeIntoID to point to the correct galaxy in the output.
-    for(int32_t snap_idx = 0; snap_idx < run_params->NOUT; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
         for(int32_t gal_idx  = 0; gal_idx < numgals; gal_idx++) {
             if(halogal[gal_idx].SnapNum == run_params->ListOutputSnaps[snap_idx]) {
                 OutputGalOrder[gal_idx] = OutputGalCount[snap_idx];
@@ -100,7 +101,16 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     }
 
     for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
-        if(halogal[gal_idx].mergeIntoID > -1) {
+        const int mergeID = halogal[gal_idx].mergeIntoID;
+        if(mergeID > -1) {
+            if( ! (mergeID >= 0 && mergeID < numgals) ) {
+                fprintf(stderr,"Error: For galaxy number %d, expected mergeintoID to be within [0, %d) "
+                        "but found mergeintoID = %d instead\n", gal_idx, numgals, mergeID);
+                fprintf(stderr,"Additional debugging info\n");
+                fprintf(stderr,"task_forestnr = %"PRId64" snapshot = %d halonr = %d MostBoundID = %lld\n",
+                        task_forestnr, halogal[gal_idx].SnapNum, halogal[gal_idx].HaloNr, halos[halogal[gal_idx].HaloNr].MostBoundID);
+                return -1;
+            }
             halogal[gal_idx].mergeIntoID = OutputGalOrder[halogal[gal_idx].mergeIntoID];
         }
     }
@@ -114,7 +124,7 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     // When we allocated the trees to each task, we stored the correct tree and file numbers in
     // arrays indexed by the ``forestnr`` parameter.  Furthermore, since all galaxies being
     // processed belong to a single tree (by definition) and because trees cannot be split over
-    // multiple files, we can access the tree + fiel number once and use it for all galaxies being
+    // multiple files, we can access the tree + file number once and use it for all galaxies being
     // saved.
     int64_t original_treenr = forest_info->original_treenr[task_forestnr];
     int32_t original_filenr = forest_info->FileNr[task_forestnr];
@@ -146,7 +156,7 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 
     }
 
-    free(OutputGalOrder);
+    myfree(OutputGalOrder);
 
     return status;
 }
@@ -202,11 +212,15 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
 
         /*MS: check that the mechanism would produce unique galaxyindex within this run (across all tasks and all forests)*/
         if(GalaxyNr > forestnr_mulfac || (filenr_mulfac > 0 && forestnr*forestnr_mulfac > filenr_mulfac)) {
-            fprintf(stderr, "When determining a unique Galaxy Number, we assume that the number of trees are less than %"PRId64". "
-                    "This assumption has been broken.\n"
+            fprintf(stderr, "When determining a unique Galaxy Number, we assume two things\n"
+                    "1. Current galaxy numnber = %u is less than multiplication factor for trees (=%"PRId64")\n"
+                    "2. That (the total number of trees * tree multiplication factor = %"PRId64") is less than the file "\
+                    "multiplication factor = %"PRId64" (only relevant if file multiplication factor is non-zero).\n"
+                    "At least one of these two assumptions have been broken.\n"
                     "Simulation trees file number %d\tOriginal tree number %"PRId64"\tGalaxy Number %d "
-                    "forestnr_mulfac = %"PRId64" forestnr*forestnr_mulfac = %"PRId64"\n",
-                    filenr_mulfac, filenr, forestnr, GalaxyNr, forestnr_mulfac, forestnr*forestnr_mulfac);
+                    "forestnr_mulfac = %"PRId64" forestnr*forestnr_mulfac = %"PRId64"\n", GalaxyNr, forestnr_mulfac,
+                    forestnr*forestnr_mulfac, filenr_mulfac,
+                    filenr, forestnr, GalaxyNr, forestnr_mulfac, forestnr*forestnr_mulfac);
           return EXIT_FAILURE;
         }
 
@@ -217,7 +231,7 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
                     "generate the ID will overflow 64-bit\n"
                     "forestnr = %"PRId64" forestnr_mulfac = %"PRId64" filenr = %d filenr_mulfac = %"PRId64"\n",
                     forestnr, forestnr_mulfac, filenr, filenr_mulfac);
-            
+
             return EXIT_FAILURE;
         }
 
@@ -229,7 +243,7 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
             fprintf(stderr,"id_from_forestnr = %"PRIu64 "id_from_filenr = %"PRIu64"\n", id_from_forestnr, id_from_filenr);
             return EXIT_FAILURE;
         }
-        
+
         const uint64_t id_from_forest_and_file = id_from_forestnr + id_from_filenr;
         if((GalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file)) ||
            (CentralGalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file))) {
@@ -237,7 +251,7 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
             fprintf(stderr,"id_from_forest_and_file = %"PRIu64" GalaxyNr = %u CentralGalaxyNr = %u\n", id_from_forest_and_file, GalaxyNr, CentralGalaxyNr);
             return EXIT_FAILURE;
         }
-                
+
         // Everything is good, generate the index.
         this_gal->GalaxyIndex = GalaxyNr + id_from_forest_and_file;
         this_gal->CentralGalaxyIndex= CentralGalaxyNr + id_from_forest_and_file;
@@ -245,4 +259,3 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
 
     return EXIT_SUCCESS;
 }
-
