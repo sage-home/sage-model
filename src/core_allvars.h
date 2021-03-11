@@ -370,8 +370,6 @@ struct params
     int32_t Snaplistlen;
     enum Valid_TreeTypes TreeType;
     enum Valid_OutputFormats OutputFormat;
-    int64_t FileNr_Mulfac;
-    int64_t ForestNr_Mulfac;
 
     /* The combination of  ForestDistributionScheme = generic_power_in_nhalos and
        exponent_for_forest_dist_scheme = 0.7 seems to produce good work-load
