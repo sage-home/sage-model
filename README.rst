@@ -1,4 +1,4 @@
-|TRAVIS| |DOCS| |CODACY|
+|GitHub CI| |TRAVIS| |DOCS| |CODACY|
 
 *************************************
 Semi-Analytic Galaxy Evolution (SAGE)
@@ -150,6 +150,10 @@ Maintainers
 - Manodeep Sinha (@manodeep)
 - Darren Croton (@darrencroton)
 
+.. |GitHub CI| image:: https://github.com/sage-home/sage-model/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/sage-home/sage-model/actions
+   :alt: GitHub Actions Status
+   
 .. |TRAVIS| image:: https://img.shields.io/travis/com/sage-home/sage-model/master.svg?logo=travis&logoColor=white&label=Travis%20CI
     :alt: Travis Badge
     :target: https://travis-ci.com/sage-home/sage-model
