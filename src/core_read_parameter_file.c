@@ -226,10 +226,12 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         return FILE_NOT_FOUND;
     }
 
-    char buffer[MAX_STRING_LEN+1];
+    char buffer[MAX_STRING_LEN];
     while(fgets(&(buffer[0]), MAX_STRING_LEN, fd) != NULL) {
-        char buf1[MAX_STRING_LEN+1], buf2[MAX_STRING_LEN+1];
-        if(sscanf(buffer, "%" STR(MAX_STRING_LEN) "s %" STR(MAX_STRING_LEN) "[^\n]", buf1, buf2) < 2) {
+        char buf1[MAX_STRING_LEN], buf2[MAX_STRING_LEN];
+        char fmt[MAX_STRING_LEN];
+        snprintf(fmt, MAX_STRING_LEN, "%%%ds %%%ds[^\n]", MAX_STRING_LEN-1, MAX_STRING_LEN-1);
+        if(sscanf(buffer, fmt, buf1, buf2) < 2) {
             continue;
         }
 
@@ -238,7 +240,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         }
 
         /* Allowing for spaces in the filenames (but requires comments to ALWAYS start with '%' or ';') */
-        int buf2len = strnlen(buf2, MAX_STRING_LEN);
+        int buf2len = strnlen(buf2, MAX_STRING_LEN-1);
         for(int i=0;i<=buf2len;i++) {
             if(buf2[i] == '%' || buf2[i] == ';' || buf2[i] == '#') {
                 int null_pos = i;
@@ -250,7 +252,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                 break;
             }
         }
-        buf2len = strnlen(buf2, MAX_STRING_LEN);
+        buf2len = strnlen(buf2, MAX_STRING_LEN-1);
         while(buf2len > 0 && isblank(buf2[buf2len-1])) {
             buf2len--;
         }
@@ -258,7 +260,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
         int j=-1;
         for(int i = 0; i < NParam; i++) {
-            if(strncasecmp(buf1, ParamTag[i], MAX_STRING_LEN) == 0) {
+            if(strncasecmp(buf1, ParamTag[i], MAX_STRING_LEN-1) == 0) {
                 j = i;
                 ParamTag[i][0] = 0;
                 used_tag[i] = 0;
@@ -277,7 +279,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                     *((double *) ParamAddr[j]) = atof(buf2);
                     break;
                 case STRING:
-                    strncpy(ParamAddr[j], buf2, MAX_STRING_LEN - 1);
+                    snprintf(ParamAddr[j], MAX_STRING_LEN, "%s", buf2);
                     break;
                 case INT:
                     *((int *) ParamAddr[j]) = atoi(buf2);
