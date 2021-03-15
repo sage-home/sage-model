@@ -95,7 +95,7 @@ The packages in ``requirements.txt`` can then be safely installed.
 
 .. code::
 
-    $ pip install -r requirements.txt
+    $ python3 -m pip install -r requirements.txt
 
 Plotting
 --------
@@ -105,7 +105,7 @@ The ``plotting`` directory contains an ``example.py`` script that can be run to 
 .. code::
 
     $ cd plotting/
-    $ python example.py
+    $ python3 example.py
 
 This will create a number of plots in the ``plotting/plots/`` directory. Please refer to the `sage_analysis
 documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sage.html>`_ for a thorough guide on how
