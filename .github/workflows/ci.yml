@@ -78,6 +78,12 @@ jobs:
           - python-version: "3.8"
             numpy-version: "1.20"
 
+          # numpy1.14 only on <= python3.7 
+          - python-version: "3.8"
+            numpy-version: "1.14"
+          - python-version: "3.9"
+            numpy-version: "1.14"
+            
     env:
       CC: ${{ matrix.compiler }}
       CI: true
@@ -97,9 +103,9 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda create -q --yes -n test python=${{ matrix.python-version }} numpy=${{ matrix.numpy-version }}
+          conda create -q --yes -n test python=${{ matrix.python-version }} 
           conda activate test
-          conda install -c conda-forge hdf5 gsl
+          conda install -c conda-forge numpy=${{ matrix.numpy-version }} hdf5 gsl
           python -m pip install -r requirements.txt
       - name: Display PATH, compiler, python
         shell: bash -l {0}
