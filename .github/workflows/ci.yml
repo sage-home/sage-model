@@ -11,12 +11,14 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-16.04", "ubuntu-18.04", "ubuntu-20.04", "macos-latest"]
-        compiler: [gcc-7, gcc-8, gcc-9, clang]
+        compiler: [gcc-5, gcc-7, gcc-8, gcc-9, clang]
         python-version: ["3.6", "3.7", "3.8", "3.9"]
         numpy-version: ["1.14", "1.16", "1.18", "1.20"]
         exclude:
 
           # Only run with 'clang' on OSX
+          - os: "macos-latest"
+            compiler: gcc-5
           - os: "macos-latest"
             compiler: gcc-7
           - os: "macos-latest"
@@ -34,11 +36,19 @@ jobs:
 
           # only gcc-9 on 20.04
           - os: "ubuntu-20.04"
+            compiler: gcc-5
+          - os: "ubuntu-20.04"
             compiler: gcc-7
           - os: "ubuntu-20.04"
             compiler: gcc-8
 
-          # only gcc-7 on 16.04
+          # no gcc-8 on 18.04
+          - os: "ubuntu-18.04"
+            compiler: gcc-8
+
+          # only gcc-5 on 16.04
+          - os: "ubuntu-16.04"
+            compiler: gcc-7         
           - os: "ubuntu-16.04"
             compiler: gcc-8
           - os: "ubuntu-16.04"
@@ -112,7 +122,8 @@ jobs:
         run: |
           conda activate test
           echo "PATH = " $PATH
-          echo "COMPILER = " `which ${{ matrix.compiler }}`
+          echo "COMPILER = " ${{ matrix.compiler }}
+          echo "COMPILER location = " `which ${{ matrix.compiler }}`
           echo "COMPILER VERSION = " `${{ matrix.compiler }} --version`
           echo "PYTHON = " `which python`
           echo "(PYTHON, NUMPY) version = " `python -c "import sys; import numpy as np; print(sys.version); print(np.__version__);"`
