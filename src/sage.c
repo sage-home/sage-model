@@ -29,20 +29,26 @@
 int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                         struct forest_info *forest_info, struct params *run_params);
 
-int init_sage(const int ThisTask, const char *param_file, struct params *run_params)
+int run_sage(const int ThisTask, const int NTasks, const char *param_file, void **params)
 {
-    int32_t status = read_parameter_file(ThisTask, param_file, run_params);
+    struct params *run_params = malloc(sizeof(*run_params));
+    if(run_params == NULL) {
+        fprintf(stderr,"Error: On ThisTask = %d (out of NTasks = %d), failed to allocate memory "\
+                "for the C-struct to to hold the run params. Requested size = %zu bytes...returning\n",
+                ThisTask, NTasks, sizeof(*run_params));
+        return MALLOC_FAILURE;
+    }
+    run_params->ThisTask = ThisTask;
+    run_params->NTasks = NTasks;
+    *params = run_params;
+
+    int32_t status = read_parameter_file(param_file, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }
     init(ThisTask, run_params);
 
-    return EXIT_SUCCESS;
-}
-
-int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
-{
-
+    /* Now start the model */
     struct timeval tstart;
     gettimeofday(&tstart, NULL);
 
@@ -57,7 +63,7 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies, run_params->ZZ[run_params->ListOutputSnaps[0]], ThisTask);
 
     /* setup the forests reading, and then distribute the forests over the Ntasks */
-    int status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);
+    status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);
     if(status != EXIT_SUCCESS) {
         return status;
     }
@@ -107,8 +113,11 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
                                          sizeof(*(save_info.forest_ngals[snap_idx])), snap_idx);
     }
 
-    fprintf(stderr,"Task %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
+#ifdef VERBOSE
+    fprintf(stdout,"Task %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
             ThisTask, Nforests, forest_info.frac_volume_processed);
+    fflush(stdout);
+#endif
 
     /* open all the output files corresponding to this tree file (specified by rank) */
     status = initialize_galaxy_files(ThisTask, &forest_info, &save_info, run_params);
@@ -117,8 +126,9 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     }
 
     run_params->interrupted = 0;
+#ifdef VERBOSE
     if(ThisTask == 0) {
-        init_my_progressbar(stderr, Nforests, &(run_params->interrupted));
+        init_my_progressbar(stdout, Nforests, &(run_params->interrupted));
 #ifdef MPI
         if(NTasks > 1) {
             fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
@@ -126,11 +136,14 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
         }
 #endif
     }
+#endif
 
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
+#ifdef VERBOSE
         if(ThisTask == 0) {
-            my_progressbar(stderr, forestnr, &(run_params->interrupted));
+            my_progressbar(stdout, forestnr, &(run_params->interrupted));
         }
+#endif
 
         /* the millennium tree is really a collection of trees, viz., a forest */
         status = sage_per_forest(forestnr, &save_info, &forest_info, run_params);
@@ -150,12 +163,18 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     myfree(save_info.forest_ngals);
     myfree(save_info.tot_ngals);
 
+#ifdef VERBOSE
     if(ThisTask == 0) {
-        finish_myprogressbar(stderr, &(run_params->interrupted));
+        finish_myprogressbar(stdout, &(run_params->interrupted));
     }
+
     struct timeval tend;
     gettimeofday(&tend, NULL);
-    fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, get_time_string(tstart, tend));
+    fprintf(stdout,"ThisTask = %d done processing all forests assigned. Time taken = %s\n",
+                    ThisTask, get_time_string(tstart, tend));
+
+    fflush(stdout);
+#endif
 
 cleanup:
     /* sage is done running -> do the cleanup */
@@ -171,44 +190,48 @@ cleanup:
 }
 
 
-int32_t finalize_sage(struct params *run_params)
+int32_t finalize_sage(void *params)
 {
 
     int32_t status;
 
-    switch(run_params->OutputFormat) {
+    struct params *run_params = (struct params *) params;
 
-    case(sage_binary):
+    switch(run_params->OutputFormat)
         {
-            status = EXIT_SUCCESS;
-            break;
-        }
-
-#ifdef HDF5
-    case(sage_hdf5):
-        {
-            status = create_hdf5_master_file(run_params);
-            /* Check if anything was not cleaned up */
-            const ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
-            if(nleaks > 0) {
-                fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
-                fprintf(stderr,"Number of open files = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_FILE));
-                fprintf(stderr,"Number of open datasets = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATASET));
-                fprintf(stderr,"Number of open groups = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_GROUP));
-                fprintf(stderr,"Number of open datatype = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATATYPE));
-                fprintf(stderr,"Number of open attributes = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ATTR));
+        case(sage_binary):
+            {
+                status = EXIT_SUCCESS;
+                break;
             }
 
-            break;
-        }
+#ifdef HDF5
+        case(sage_hdf5):
+            {
+                status = create_hdf5_master_file(run_params);
+                /* Check if anything was not cleaned up */
+                const ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
+                if(nleaks > 0) {
+                    fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
+                    fprintf(stderr,"Number of open files = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_FILE));
+                    fprintf(stderr,"Number of open datasets = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATASET));
+                    fprintf(stderr,"Number of open groups = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_GROUP));
+                    fprintf(stderr,"Number of open datatype = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATATYPE));
+                    fprintf(stderr,"Number of open attributes = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ATTR));
+                }
+
+                break;
+            }
 #endif
 
-    default:
-        {
-            status = EXIT_SUCCESS;
-            break;
+        default:
+            {
+                status = EXIT_SUCCESS;
+                break;
+            }
         }
-    }
+
+    free(run_params);
 
     return status;
 }

@@ -58,7 +58,7 @@ void read_cooling_functions(void)
         snprintf(buf, MAX_STRING_LEN - 1, ROOT_DIR "/src/auxdata/CoolFunctions/%s", name[i]);
         FILE *fd = fopen(buf, "r");
         if(fd == NULL) {
-            printf("file `%s' not found\n", buf);
+            fprintf(stderr, "file `%s' not found\n", buf);
             ABORT(0);
         }
         for(int n = 0; n < TABSIZE; n++) {

@@ -17,7 +17,7 @@ double estimate_merging_time(const int sat_halo, const int mother_halo, const in
     const int MinNumPartSatHalo = 10;
 
     if(sat_halo == mother_halo) {
-        printf("\t\tSnapNum, Type, IDs, sat radius:\t%i\t%i\t%i\t%i\t--- sat/cent have the same ID\n",
+        fprintf(stderr, "Error: \t\tSnapNum, Type, IDs, sat radius:\t%i\t%i\t%i\t%i\t--- sat/cent have the same ID\n",
                galaxies[ngal].SnapNum, galaxies[ngal].Type, sat_halo, mother_halo);
         return -1.0;
     }
