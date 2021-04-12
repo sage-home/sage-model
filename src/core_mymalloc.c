@@ -55,7 +55,6 @@ void *mymalloc(size_t n)
 
 void *mycalloc(const size_t count, const size_t size)
 {
-
     void *p = mymalloc(count * size);
     memset(p, 0, count*size);
     return p;

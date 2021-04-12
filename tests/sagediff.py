@@ -542,7 +542,7 @@ def compare_field_equality(field1, field2, field_name, rtol, atol):
 
     # `isclose` is True for all elements of `field1` that are close to the corresponding
     # element in `field2`.
-    bool_mask = np.bool(np.isclose(field1, field2, rtol=rtol, atol=atol))
+    bool_mask = np.isclose(field1, field2, rtol=rtol, atol=atol)
 
     bad_field1 = field1[bool_mask == False]
     bad_field2 = field2[bool_mask == False]

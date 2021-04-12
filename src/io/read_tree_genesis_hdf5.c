@@ -68,15 +68,17 @@ void get_forest_metadata_filename(const char *forestfilename, const size_t strin
     const size_t required_len = currlen - searchlen + replacelen;
     if(required_len >= stringlen) {
         fprintf(stderr,"Error: Not enough memory reserved for 'metadata_filename' to correctly hold the file after "
-                                                "replacing string -- '%s' with (larger) string '%s'.\n"
-                "Please increase the size of 'metadata_filename' to be at least %zu\n",
-                searchstring, replacestring, required_len);
+                       "replacing string -- '%s' with (larger) string '%s'.\n"
+                       "Please increase the size of 'metadata_filename' to be at least %zu\n",
+                       searchstring, replacestring, required_len);
         ABORT(INVALID_MEMORY_ACCESS_REQUESTED);
     }
 
     char *start = strstr(metadata_filename, searchstring);
-    strncpy(start, replacestring, replacelen);
-    start[replacelen] = '\0';
+    /* strncpy(start, replacestring, replacelen); */
+    /* start[replacelen] = '\0'; */
+
+    snprintf(start, replacelen-1, "%s", replacestring);
 
     return;
 }
@@ -188,7 +190,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
         nforests_load_balancing = 0;
     }
-    
+
     /* Now figure out the number of forests per requested file (there might be more
        forest files but we will ignore forests in those files for this particular run)  */
     for(int64_t ifile=firstfile;ifile<totnfiles;ifile++) {
@@ -242,7 +244,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
     fprintf(stderr,"Thistask = %d start_forestnum = %"PRId64" end_forestnum = %"PRId64"\n", ThisTask, start_forestnum, end_forestnum);
-    
+
     gen->nforests = nforests_this_task;
     gen->start_forestnum = start_forestnum;
     forests_info->nforests_this_task = nforests_this_task;/* Note: Number of forests to process on this task is also stored at the container struct*/
@@ -399,7 +401,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
                 dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
         XRETURN(H5Gclose(h5_grp) >= 0, HDF5_ERROR, "Error: Could not close group = '%s'\n", group_name); \
     }
-    
+
     {
         /* Intentionally written in new scope (separate '{')
 
@@ -421,7 +423,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         const hsize_t read_offset[2] = {start_forestnum_in_file, 0};
         const hsize_t read_count[2] = {1, gen->maxsnaps};
         READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, "ForestInfoInFile", "ForestOffsetsAllSnaps", read_ndim, read_offset, read_count, gen->halo_offset_per_snap);
-        
+
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
                 "Error: On ThisTask = %d could not close file descriptor for filename = '%s'\n", ThisTask, fname);
     }
@@ -496,7 +498,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_M", om, run_params->Omega, maxdiff, maxreldiff);
     CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_Lambda", ol, run_params->OmegaLambda, maxdiff, maxreldiff);
     CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Little h (hubble parameter)", little_h, run_params->Hubble_h, maxdiff, maxreldiff);
-    
+
     if(run_params->LastSnapshotNr != (run_params->nsnapshots - 1)) {
         fprintf(stderr,"Error: Expected LastSnapshotNr = %d from parameter-file to equal one less than the total number of snapshots = %d\n",
                 run_params->LastSnapshotNr, run_params->nsnapshots);
@@ -699,7 +701,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     const hsize_t read_count[2] = {1, gen->maxsnaps};
     READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, "ForestInfoInFile", "ForestSizesAllSnaps", read_ndims, read_offset, read_count, nhalos_per_snap);
 #undef READ_GENESIS_PARTIAL_FORESTINFO
-    
+
     /* Now that we have the data */
     int64_t offset=0;
     for(int isnap=end_snap;isnap>=start_snap;isnap--) {
@@ -714,7 +716,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                however, that could potentially introduce if the looping direction was altered in the future
                -- MS 22/01/2020
              */
-            
+
             forest_start_snap = (isnap < forest_start_snap) ? isnap:forest_start_snap;
             forest_end_snap = (isnap > forest_end_snap) ? isnap:forest_end_snap;
         }
@@ -722,8 +724,8 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         /* fprintf(stderr,"forest_local_offsets[%03d] = %d\n", isnap, forest_local_offsets[isnap]); */
         offset += nhalos_per_snap[isnap];
     }
-    
-    
+
+
     /* Check that the number of halos to read in agrees with that derived with the per snapshot one */
     if(offset != nhalos) {
         fprintf(stderr,"Error: On ThisTask = %d while processing task-local-forestnr = %"PRId64" "
@@ -807,7 +809,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
                 "The dimensions of the dataset was %d\n.",              \
                 galaxy_property_names[dataset_enum], (int32_t) *count); \
     }
-    
+
 #define ASSIGN_BUFFER_TO_SAGE(numhalos, buffer_dtype, sage_name, sage_dtype) { \
         buffer_dtype *buf = (buffer_dtype *) buffer;                    \
         for(hsize_t i=0;i<numhalos[0];i++) {                            \
@@ -1114,7 +1116,7 @@ void cleanup_forests_io_genesis_hdf5(struct forest_info *forests_info)
         H5Fclose(gen->h5_fds[i]);
     }
     H5Fclose(gen->meta_fd);
-    
+
     myfree(gen->halo_offset_per_snap);
     myfree(gen->h5_fds);
     myfree(gen->offset_for_global_forestnum);

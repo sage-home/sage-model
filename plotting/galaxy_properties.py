@@ -43,37 +43,30 @@ np.seterr(all="ignore")
 
 if __name__ == "__main__":
 
-    # Base specifications.
-    plot_output_format    = "png"
-    plot_output_path = "./plots"  # Will be created if path doesn't exist.
-
     # We support the plotting of an arbitrary number of models. To do so, simply add the
     # extra variables specifying the path to the model directory and other variables.
     # E.g., 'model1_snapshot = ...", "model1_IMF = ...".
-    millennium = { "snapshot": 63,   # Snapshot we're plotting properties at.
-                   "IMF": "Chabrier",  # Chabrier or Salpeter.
-                   "label": "Mini-Millennium",  # Legend label.
-                   "sage_file": "../input/millennium.par",
-                   "sage_output_format": "sage_hdf5",
-                   "first_file": 0,  # File range (or core range for HDF5) to plot.
-                   "last_file": 0,  # Closed interval, [first_file, last_file].
-                   "num_output_files": 1,
-                 }
+    model0_snapshot = 63  # Snapshot we're plotting properties at.
+    model0_IMF = "Chabrier"  # Chabrier or Salpeter.
+    model0_label = "Mini-Millennium"  # Goes on the axis.
+    model0_sage_file = "../input/millennium.par"
+    model0_simulation = "Mini-Millennium"  # Used to set cosmology.
+    model0_first_file = 0  # File range we're plotting.
+    model0_last_file = 0  # Closed interval, [first_file, last_file].
 
-    genesis = { "snapshot": 189,   # Snapshot we're plotting properties at.
-                "IMF": "Chabrier",  # Chabrier or Salpeter.
-                "label": "Genesis",  # Legend label.
-                "sage_file": "/home/msinha/scratch/simulations/genesis/L75_N324-L500_N2160_calibration/genesis_L75_calibration.par",
-                "sage_output_format": "sage_hdf5",
-                "first_file": 0,  # File range (or core range for HDF5) to plot.
-                "last_file": 2,  # Closed interval, [first_file, last_file].
-                "num_output_files": 3,
-    }
+    # Then extend each of these lists for all the models that you want to plot.
+    # E.g., 'IMFs = [model0_IMF, model1_IMF, ..., modelN_IMF]
+    IMFs = [model0_IMF]
+    labels = [model0_label]
+    snapshots = [model0_snapshot]
+    sage_files = [model0_sage_file]
+    simulations = [model0_simulation]
+    first_files = [model0_first_file]
+    last_files = [model0_last_file]
 
-    
-    # Extend this list for every model you want to plot.
-    #models_to_plot = [genesis]
-    models_to_plot = [millennium]
+    # A couple of extra variables...
+    plot_output_format    = "png"
+    plot_output_path = "./plots"  # Will be created if path doesn't exist.
 
     # These toggles specify which plots you want to be made.
     plot_toggles = {"SMF"             : 1,  # Stellar mass function.
@@ -81,7 +74,7 @@ if __name__ == "__main__":
                     "GMF"             : 1,  # Gas mass function (cold gas).
                     "BTF"             : 1,  # Baryonic Tully-Fisher.
                     "sSFR"            : 1,  # Specific star formation rate.
-                    "gas_fraction"    : 1,  # Fraction of galaxy that is cold gas.
+                    "gas_frac"        : 1,  # Fraction of galaxy that is cold gas.
                     "metallicity"     : 1,  # Metallicity scatter plot.
                     "bh_bulge"        : 1,  # Black hole-bulge relationship.
                     "quiescent"       : 1,  # Fraction of galaxies that are quiescent.
@@ -98,28 +91,36 @@ if __name__ == "__main__":
     if not os.path.exists(plot_output_path):
         os.makedirs(plot_output_path)
 
+    # Generate a dictionary for each model containing the required information.
+    # We store these in `model_dicts` which will be a list of dictionaries.
+    model_dicts = []
+    for IMF, label, snapshot, sage_file, sim, first_file, last_file in zip(IMFs, labels, snapshots, sage_files, simulations, first_files, last_files):
+        this_model_dict = {"IMF": IMF,
+                           "label": label,
+                           "snapshot": snapshot,
+                           "sage_file": sage_file,
+                           "simulation": sim,
+                           "first_file": first_file,
+                           "last_file": last_file}
+
+        model_dicts.append(this_model_dict)
+
     # Go through each model and calculate all the required properties.
     models = []
-    for model_dict in models_to_plot:
+    for model_dict in model_dicts:
 
         # Instantiate a Model class. This holds the data paths and methods to calculate
         # the required properties.
-        my_model = Model()
+        my_model = Model(model_dict)
         my_model.plot_output_format = plot_output_format
 
         # Each SAGE output has a specific class written to read in the data.
-        if model_dict["sage_output_format"] == "sage_binary":
-            my_model.data_class = SageBinaryData(my_model, model_dict["num_output_files"],
-                                                 model_dict["sage_file"],
-                                                 model_dict["snapshot"])
-        elif model_dict["sage_output_format"] == "sage_hdf5":
-            my_model.data_class = SageHdf5Data(my_model, model_dict["sage_file"])
+        if my_model.sage_output_format == "sage_binary":
+            my_model.data_class = SageBinaryData(my_model)
+        elif my_model.sage_output_format == "sage_hdf5":
+            my_model.data_class = SageHdf5Data(my_model)
 
-        # The data class has read the SAGE ini file.  Update the model with the parameters
-        # read and those specified by the user.
-        my_model.update_attributes(model_dict, plot_toggles)
-
-        #my_model.data_class.set_cosmology(my_model)
+        my_model.data_class.set_cosmology(my_model)
 
         # Some properties require the stellar mass function to normalize their values. For
         # these, the SMF plot toggle is explicitly required.
@@ -180,7 +181,7 @@ if __name__ == "__main__":
 
         # To be more memory concious, we calculate the required properties on a
         # file-by-file basis. This ensures we do not keep ALL the galaxy data in memory.
-        my_model.calc_properties_all_files(calculation_functions, debug=True)
+        my_model.calc_properties_all_files(calculation_functions, debug=False)
 
         models.append(my_model)
 

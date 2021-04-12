@@ -189,7 +189,7 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
         fprintf(stderr,"Error: Either the input galaxy (address = %p) or the output galaxy (address = %p) is NULL\n", g, o);
         return -1;
     }
-    
+
     o->SnapNum = g->SnapNum;
     if(g->Type < SHRT_MIN || g->Type > SHRT_MAX) {
         fprintf(stderr,"Error: Galaxy type = %d can not be represented in 2 bytes\n", g->Type);
@@ -292,4 +292,3 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
 
     return EXIT_SUCCESS;
 }
-

@@ -152,8 +152,8 @@ int64_t read_locations(const char *filename, const int64_t ntrees, struct locati
 
             /* file has not been opened yet - let's open this file */
             if(files_fd->fd[fileid] < 0) {
-                char treefilename[MAX_STRING_LEN];
-                snprintf(treefilename, MAX_STRING_LEN-1, "%s/%s", dirname, linebuf);
+                char treefilename[2*MAX_STRING_LEN];
+                snprintf(treefilename, 2*MAX_STRING_LEN, "%s/%s", dirname, linebuf);
                 files_fd->fd[fileid] = open(treefilename, O_RDONLY);
                 XRETURN( files_fd->fd[fileid] > 0, -FILE_NOT_FOUND, "Error: Could not open file `%s'\n", treefilename);
                 files_fd->numfiles++;

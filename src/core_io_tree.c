@@ -75,9 +75,9 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
       initialised correctly in the setup */
     if(run_params->FileNr_Mulfac < 0 || run_params->ForestNr_Mulfac < 0) {
         fprintf(stderr,"Error: Looks like the multiplicative factors to generate unique "
-                                "galaxyID's were not setup correctly.\n"
-                "FileNr_Mulfac = %"PRId64" and ForestNr_Mulfac = %"PRId64" should both be >=0\n",
-                run_params->FileNr_Mulfac, run_params->ForestNr_Mulfac);
+                       "galaxyID's were not setup correctly.\n"
+                       "FileNr_Mulfac = %"PRId64" and ForestNr_Mulfac = %"PRId64" should both be >=0\n",
+                       run_params->FileNr_Mulfac, run_params->ForestNr_Mulfac);
         return -1;
     }
 

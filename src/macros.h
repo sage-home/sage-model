@@ -119,7 +119,7 @@
     do {                                                           \
         if(status < 0) {                                           \
             fprintf(stderr, __VA_ARGS__);                          \
-            return status;                                         \
+            return return_value;                                   \
         }                                                          \
   } while (0)
 

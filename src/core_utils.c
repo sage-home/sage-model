@@ -21,7 +21,7 @@
   Ver 1.2: Manodeep Sinha, Jan 8, 2012 - replaced
   print_time with timeval and gettimeofday
   Ver 2?: Manodeep Sinha, Jan 15, 2020 - the history has been
-  lost to time. 
+  lost to time.
 */
 
 #include <inttypes.h>    //defines PRId64 for printing int64_t + includes stdint.h
@@ -235,7 +235,6 @@ ssize_t mypwrite(int fd, const void *ptr, const size_t nbytes, off_t offset)
 
     return tot_nbytes_written;
 }
-
 
 int AlmostEqualRelativeAndAbs_double(double A, double B,
                                      const double maxDiff,

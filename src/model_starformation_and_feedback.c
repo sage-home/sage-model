@@ -127,6 +127,13 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
             reheated_mass, galaxies[p].ColdGas);
 
+    XASSERT(reheated_mass >= 0.0, -1,
+            "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
+            p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
+    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
+            "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
+            reheated_mass, galaxies[p].ColdGas);
+
     if(run_params->SupernovaRecipeOn == 1) {
         galaxies[p].ColdGas -= reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;

@@ -73,7 +73,7 @@ enum sage_error_types {
     HDF5_ERROR,
 };
 
-    
+
 /* This structure contains the properties used within the code */
 struct GALAXY
 {

@@ -218,8 +218,8 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
                     "multiplication factor = %"PRId64" (only relevant if file multiplication factor is non-zero).\n"
                     "At least one of these two assumptions have been broken.\n"
                     "Simulation trees file number %d\tOriginal tree number %"PRId64"\tGalaxy Number %d "
-                    "forestnr_mulfac = %"PRId64" forestnr*forestnr_mulfac = %"PRId64"\n", GalaxyNr, forestnr_mulfac, 
-                    forestnr*forestnr_mulfac, filenr_mulfac, 
+                    "forestnr_mulfac = %"PRId64" forestnr*forestnr_mulfac = %"PRId64"\n", GalaxyNr, forestnr_mulfac,
+                    forestnr*forestnr_mulfac, filenr_mulfac,
                     filenr, forestnr, GalaxyNr, forestnr_mulfac, forestnr*forestnr_mulfac);
           return EXIT_FAILURE;
         }
@@ -231,7 +231,7 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
                     "generate the ID will overflow 64-bit\n"
                     "forestnr = %"PRId64" forestnr_mulfac = %"PRId64" filenr = %d filenr_mulfac = %"PRId64"\n",
                     forestnr, forestnr_mulfac, filenr, filenr_mulfac);
-            
+
             return EXIT_FAILURE;
         }
 
@@ -243,7 +243,7 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
             fprintf(stderr,"id_from_forestnr = %"PRIu64 "id_from_filenr = %"PRIu64"\n", id_from_forestnr, id_from_filenr);
             return EXIT_FAILURE;
         }
-        
+
         const uint64_t id_from_forest_and_file = id_from_forestnr + id_from_filenr;
         if((GalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file)) ||
            (CentralGalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file))) {
@@ -251,7 +251,7 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
             fprintf(stderr,"id_from_forest_and_file = %"PRIu64" GalaxyNr = %u CentralGalaxyNr = %u\n", id_from_forest_and_file, GalaxyNr, CentralGalaxyNr);
             return EXIT_FAILURE;
         }
-                
+
         // Everything is good, generate the index.
         this_gal->GalaxyIndex = GalaxyNr + id_from_forest_and_file;
         this_gal->CentralGalaxyIndex= CentralGalaxyNr + id_from_forest_and_file;
@@ -259,4 +259,3 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
 
     return EXIT_SUCCESS;
 }
-

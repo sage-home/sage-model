@@ -22,7 +22,6 @@ double estimate_merging_time(const int sat_halo, const int mother_halo, const in
         return -1.0;
     }
 
-
     const double coulomb = log1p(halos[mother_halo].Len / ((double) halos[sat_halo].Len) );//MS: 12/9/2019. As pointed out by codacy -> log1p(x) is better than log(1 + x)
 
     const double SatelliteMass = get_virial_mass(sat_halo, halos, run_params) + galaxies[ngal].StellarMass + galaxies[ngal].ColdGas;

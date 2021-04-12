@@ -1,4 +1,4 @@
-|TRAVIS| |DOCS| |CODACY|
+|GitHub CI| |TRAVIS| |DOCS| |CODACY|
 
 *************************************
 Semi-Analytic Galaxy Evolution (SAGE)
@@ -78,20 +78,39 @@ or in parallel as:
 Plotting the Output
 ===================
 
-In the ``analysis`` directory are a number of Python scripts to read and parse
-the ``SAGE`` output.  The most important file is ``example.py`` which creates
-plots for the default Mini-Millennium galaxies.
+Requirements
+------------
+
+**Analysis can only be performed in Python version >3.6**
+
+We recommend first setting a Python virtual environment to perform analysis in. We refer to the official `documentation
+<https://docs.python.org/3/library/venv.html>`_ but a virtual environment can be quickly created and activated through:
 
 .. code::
 
-    $ cd analysis/
-    $ python example.py
+    $ python3 -m venv .sage_venv
+    $ source .sage_venv/bin/activate
 
-and will create a number of useful diagnostic plots in the ``analysis/plots``
-directory.
+The packages in ``requirements.txt`` can then be safely installed.
 
-We also include the ability to compare the properties of a number of different
-models.  See the documenation in the ``__main__`` function call of ``example.py`` to use this functionality.
+.. code::
+
+    $ python3 -m pip install -r requirements.txt
+
+Plotting
+--------
+
+The ``plotting`` directory contains an ``example.py`` script that can be run to plot the basic output from **SAGE**.
+
+.. code::
+
+    $ cd plotting/
+    $ python3 example.py
+
+This will create a number of plots in the ``plotting/plots/`` directory. Please refer to the `sage_analysis
+documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sage.html>`_ for a thorough guide on how
+to adjust the plotting script to suit your needs.
+
 
 Citation
 =========
@@ -131,6 +150,10 @@ Maintainers
 - Manodeep Sinha (@manodeep)
 - Darren Croton (@darrencroton)
 
+.. |GitHub CI| image:: https://github.com/sage-home/sage-model/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/sage-home/sage-model/actions
+   :alt: GitHub Actions Status
+   
 .. |TRAVIS| image:: https://img.shields.io/travis/com/sage-home/sage-model/master.svg?logo=travis&logoColor=white&label=Travis%20CI
     :alt: Travis Badge
     :target: https://travis-ci.com/sage-home/sage-model

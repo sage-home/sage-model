@@ -48,7 +48,7 @@ static int32_t write_header(hid_t file_id, const struct forest_info *forest_info
             return -1;                                                  \
         }                                                               \
         hid_t macro_attribute_id = H5Acreate(group_id, attribute_name, h5_dtype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(macro_attribute_id, (int32_t) macro_attribute_Id, \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(macro_attribute_id, (int32_t) macro_attribute_id, \
                                         "Could not create an attribute ID.\n" \
                                         "The attribute we wanted to create was '" #attribute_name"' and the HDF5 datatype was '" #h5_dtype".\n"); \
         herr_t status = H5Awrite(macro_attribute_id, h5_dtype, &(attribute_value)); \
@@ -111,11 +111,11 @@ static int32_t write_header(hid_t file_id, const struct forest_info *forest_info
             return -1;                                                  \
         }                                                               \
         hid_t macro_dataspace_id = H5Screate_simple(1, dims, NULL);     \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(macro_dataspace_id, (int32_t) dataspace_id, \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(macro_dataspace_id, (int32_t) macro_dataspace_id, \
                                         "Could not create a dataspace for field " #field_name".\n" \
                                         "The dimensions of the dataspace was %d\n", (int32_t) dims[0]); \
         hid_t macro_dataset_id = H5Dcreate2(file_id, field_name, h5_dtype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT); \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(macro_dataset_id, (int32_t) dataset_id, \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(macro_dataset_id, (int32_t) macro_dataset_id, \
                                         "Could not create a dataset for field " #field_name".\n" \
                                         "The dimensions of the dataset was %d\nThe file id was %d\n.", \
                                         (int32_t) dims[0], (int32_t) file_id); \
@@ -1132,17 +1132,17 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 
     // Inside the "Header" group, we split the attributes up inside different groups for usability.
     hid_t sim_group_id = H5Gcreate2(file_id, "Header/Simulation", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    CHECK_STATUS_AND_RETURN_ON_FAIL(sim_group_id, (int32_t) group_id,
+    CHECK_STATUS_AND_RETURN_ON_FAIL(sim_group_id, (int32_t) sim_group_id,
                                     "Failed to create the Header/Simulation group.\nThe file ID was %d\n",
                                     (int32_t) file_id);
 
     hid_t runtime_group_id = H5Gcreate2(file_id, "Header/Runtime", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    CHECK_STATUS_AND_RETURN_ON_FAIL(runtime_group_id, (int32_t) group_id,
+    CHECK_STATUS_AND_RETURN_ON_FAIL(runtime_group_id, (int32_t) runtime_group_id,
                                     "Failed to create the Header/Runtime group.\nThe file ID was %d\n",
                                     (int32_t) file_id);
 
     hid_t misc_group_id = H5Gcreate2(file_id, "Header/Misc", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    CHECK_STATUS_AND_RETURN_ON_FAIL(runtime_group_id, (int32_t) group_id,
+    CHECK_STATUS_AND_RETURN_ON_FAIL(misc_group_id, (int32_t) misc_group_id,
                                     "Failed to create the Header/Miscgroup.\nThe file ID was %d\n",
                                     (int32_t) file_id);
 
@@ -1151,7 +1151,7 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->FileWithSnapList, strlen(run_params->FileWithSnapList));
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapshotNr", run_params->LastSnapshotNr, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "SimMaxSnaps", run_params->SimMaxSnaps, H5T_NATIVE_INT);
-    
+
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_matter", run_params->Omega, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_lambda", run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "particle_mass", run_params->PartMass, H5T_NATIVE_DOUBLE);
@@ -1224,7 +1224,6 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
 
     CREATE_AND_WRITE_1D_ARRAY(file_id, "Header/output_snapshots", dims, run_params->ListOutputSnaps, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", run_params->NumSnapOutputs, H5T_NATIVE_INT);
-
 
     herr_t status = H5Gclose(sim_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
