@@ -1,21 +1,12 @@
-name: check python extension
 on:
   push:
     branches:
       - cffi
 
-name: On ${{ matrix.os }} with (${{ matrix.compiler }}, python-${{ matrix.python-version }}, numpy-${{ matrix.numpy-version }})
-runs-on: ${{ matrix.os }}
-strategy:
-  fail-fast: false
-  matrix:
-    os: ["ubuntu-16.04", "ubuntu-18.04", "ubuntu-20.04", "macos-latest"]
-    compiler: [gcc-5, gcc-7, gcc-9, clang]
-    python-version: ["3.6", "3.7", "3.8", "3.9"]
 
 jobs:
   build:
-    name: On ${{ matrix.os }} with (${{ matrix.compiler }}, python-${{ matrix.python-version }}, numpy-${{ matrix.numpy-version }})
+    name: Building python extension on ${{ matrix.os }} with (${{ matrix.compiler }}, python-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -69,5 +60,5 @@ jobs:
         run: make libs -r CC=${{ matrix.compiler }}
       - name: build and import python extension
         shell: bash -l {0}
-        run: `python -c "from sage import build_sage; build_sage(); from _sage_cffi import ffi, lib"`
+        run: python -c "from sage import build_sage; build_sage(); from _sage_cffi import ffi, lib"
       
