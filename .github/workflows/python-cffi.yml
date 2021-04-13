@@ -24,6 +24,7 @@ jobs:
             compiler: clang
     env:
       CC: ${{ matrix.compiler }}
+      LD: ${{ matrix.compiler }}
       CI: true
 
     steps:
@@ -41,7 +42,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda create -q --yes -n test python=${{ matrix.python-version }} 
+          conda create -q --yes -n test python=${{ matrix.python-version }}
           conda activate test
           conda install -c conda-forge hdf5 gsl
           python -m pip install -r requirements.txt
@@ -61,4 +62,3 @@ jobs:
       - name: build and import python extension
         shell: bash -l {0}
         run: python -c "from sage import build_sage; build_sage(); from _sage_cffi import ffi, lib"
-      
