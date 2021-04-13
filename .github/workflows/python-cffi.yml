@@ -10,7 +10,7 @@ jobs:
     name: Building python extension on ${{ matrix.os }} with (${{ matrix.compiler }}, python-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
         compiler: [gcc-9, clang]
