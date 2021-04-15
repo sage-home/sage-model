@@ -59,10 +59,14 @@ jobs:
           echo "(PYTHON) version = " `python -c "import sys; print(sys.version); "`
       - name: build libs
         shell: bash -l {0}
-        run: make libs -r CC=${{ matrix.compiler }}
+        run: |
+          make libs -r CC=${{ matrix.compiler }}
+          ldd libsage.so
       - name: build python extension
         shell: bash -l {0}
-        run: python -c "from sage import build_sage; build_sage();"
+        run: |
+          python -c "from sage import build_sage; build_sage();"
+          ldd "_sage_cffi*.so"
       - name: import python extension
         shell: bash -l {0}
         run: python -c "from _sage_cffi import ffi, lib;"
