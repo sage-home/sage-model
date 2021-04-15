@@ -60,6 +60,9 @@ jobs:
       - name: build libs
         shell: bash -l {0}
         run: make libs -r CC=${{ matrix.compiler }}
-      - name: build and import python extension
+      - name: build python extension
         shell: bash -l {0}
-        run: python -c "from sage import build_sage; build_sage(); from _sage_cffi import ffi, lib"
+        run: python -c "from sage import build_sage; build_sage();"
+      - name: import python extension
+        shell: bash -l {0}
+        run: python -c "from _sage_cffi import ffi, lib;"
