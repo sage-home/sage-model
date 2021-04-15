@@ -265,7 +265,7 @@ lib$(LIBNAME).a: $(LIBOBJS)
 
 lib$(LIBNAME).so: $(LIBOBJS)
 	@echo "Creating shared lib"
-	$(CC) -shared $(LIBFLAGS) $(LIBOBJS) -o $@
+	$(CC) -shared $(LIBOBJS) -o $@ $(LIBFLAGS)
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
