@@ -69,14 +69,12 @@ jobs:
         if: matrix.os == 'macOS-latest'      
         shell: bash -l {0}
         run: |
-          otool -L libsage.so
-          otool -L `ls _sage_cffi*.so`
+          otool -L libsage.so `ls _sage_cffi*.so`
       - name: check libs on linux
         if: matrix.os == 'ubuntu-latest'      
         shell: bash -l {0}
         run: |
-          ldd libsage.so
-          ldd `ls _sage_cffi*.so`
+          ldd libsage.so `ls _sage_cffi*.so`
       - name: import python extension
         shell: bash -l {0}
         run: python -c "from _sage_cffi import ffi, lib;"
