@@ -75,10 +75,10 @@ void get_forest_metadata_filename(const char *forestfilename, const size_t strin
     }
 
     char *start = strstr(metadata_filename, searchstring);
-    /* strncpy(start, replacestring, replacelen); */
-    /* start[replacelen] = '\0'; */
+    strncpy(start, replacestring, replacelen);
+    start[replacelen] = '\0';
 
-    snprintf(start, replacelen-1, "%s", replacestring);
+    /* snprintf(start, replacelen-1, "%s", replacestring); */
 
     return;
 }
@@ -548,8 +548,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     }
 
 #undef ASSIGN_GALAXY_PROPERTY_NAME
-
-
 
 
     // We assume that each of the input tree files span the same volume. Hence by summing the
