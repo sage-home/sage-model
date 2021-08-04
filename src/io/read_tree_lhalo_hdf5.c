@@ -340,8 +340,7 @@ int64_t load_forest_lht_hdf5(const int64_t forestnr, struct halo_data **halos, s
         return neg_status;
     }
 
-    XRETURN(ndims == 0, -1, "Error: Expected field = '%s' to be 1-D array with ndims == 0. Instead found ndims = %d\n",
-            field_name, ndims);
+    XRETURN(ndims == 1, -1, "Error: For tree-number = %"PRId64", expected field = '%s' to be 1-D array with ndims == 1. Instead found ndims = %d\n", treenum_in_file, field_name, ndims);
     const int64_t nhalos = dims[0];
     free(dims);
 
