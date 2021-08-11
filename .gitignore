@@ -17,6 +17,8 @@ sage_analysis/plots/
 *.log
 *.out
 *.DS_Store
+xx*
+yy*
 
 # sage_analysis Package Stuff #
 *.egg-info
