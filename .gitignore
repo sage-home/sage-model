@@ -6,6 +6,10 @@ output/
 *.o
 *.*~
 libsage.a
+libsage.so
+_sage_cffi.*
+codecov
+*.tar*
 *.ipynb_checkpoints
 *.dSYM
 sage_analysis/plots/
