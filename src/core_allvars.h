@@ -250,6 +250,23 @@ struct genesis_info {
                               required to reset the halo_offset_per_snap at the beginning of every new file */
 
 };
+
+struct ctrees_h5_info {
+    //different from totnforests; only stores forests to be processed by ThisTask when in MPI mode
+    //in serial mode, ``forests_info->ctr.nforests == forests_info->totnforests``)
+    union {
+        int64_t nforests;
+        int64_t nforests_this_task;
+    };
+
+    /* file level quantities */
+    hid_t meta_fd; /* file descriptor for the metadata file */
+    hid_t *h5_file_groups; /* contains all the file descriptors for the individual files -- shape (lastfile + 1, ) */
+    int32_t totnfiles;/* total number of files that the simulation is spread across*/
+    int32_t firstfile;/* the first file processed on this task*/
+    int32_t lastfile; /* the last file processed on this task (inclusive) */
+};
+
 #endif
 
 struct forest_info {
