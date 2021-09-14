@@ -27,6 +27,7 @@ enum Valid_TreeTypes
     lhalo_hdf5 = 1,
     genesis_hdf5 = 2,
     consistent_trees_ascii = 3,
+    consistent_trees_hdf5 = 4,
     num_tree_types
 };
 
@@ -258,6 +259,7 @@ struct forest_info {
         struct ahf_info ahf;
 #ifdef HDF5
         struct genesis_info gen;
+        struct ctrees_h5_info ctr_h5;
 #endif
     };
     int64_t totnforests;  // Total number of forests across **all** input tree files.
@@ -268,7 +270,7 @@ struct forest_info {
     // fraction of the simulation volume that this task processes.  We weight this summation by the
     // number of trees in each file because some files may have more/less trees whilst still spanning the
     // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
-    int32_t *FileNr; // The file number that each forest was read from.
+    int32_t *FileNr; // The file number that each forest needs to be read from.
     int64_t *original_treenr; // The (file-local) tree number from the original tree files.
                               // Necessary because Task N's "Tree 0" could start at the middle of a file.
 };

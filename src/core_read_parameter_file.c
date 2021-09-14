@@ -404,10 +404,12 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         }                                                               \
  }
 
-    const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii"};
-    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5, consistent_trees_ascii};
+    const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5",
+                                          "consistent_trees_ascii", "consistent_trees_hdf5"};
+    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5,
+                                               consistent_trees_ascii, consistent_trees_hdf5};
     const int nvalid_tree_types  = sizeof(tree_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_tree_types == 4, EXIT_FAILURE, "nvalid_tree_types = %d should have been 4\n", nvalid_tree_types);
+    BUILD_BUG_OR_ZERO((nvalid_tree_types == (int) num_tree_types), number_of_tree_types_is_incorrect);
     CHECK_VALID_ENUM_IN_PARAM_FILE(TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
 
     /* Check output data type is valid. */

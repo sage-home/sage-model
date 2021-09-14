@@ -23,7 +23,7 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-	   io/save_gals_binary.c io/forest_utils.c
+      	   io/save_gals_binary.c io/forest_utils.c
 
 LIBINCL := $(LIBSRC:.c=.h)
 LIBINCL += io/parse_ctrees.h
@@ -69,7 +69,9 @@ endif
 # Files required for HDF5 -> needs to be defined outside of the
 # if condition (for DO_CHECKS); otherwise `make clean` will not
 # clean the H5_OBJS
-H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c io/hdf5_read_utils.c
+H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c io/hdf5_read_utils.c \
+          io/read_tree_consistentrees_hdf5.c
+
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
 
@@ -223,11 +225,11 @@ ifeq ($(DO_CHECKS), 1)
     $(warning ---- either as '$(CC_IN_AR_DIR)' or '$(AR_IN_CC_DIR)')
   endif
 
-  CCFLAGS += -g -Wextra -Wshadow -Wall  #-Wpadded # and more warning flags
+  CCFLAGS += -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs # and more warning flags
   LIBFLAGS   +=   -lm
 
 else
-  # something like `make clean` is in effect -> need to also the HDF5 objects
+  # something like `make clean` is in effect -> need to also remove the HDF5 objects
   # if HDF5 is requested
   ifdef USE-HDF5
     OBJS += $(H5_OBJS)
