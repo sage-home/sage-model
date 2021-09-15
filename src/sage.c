@@ -155,7 +155,9 @@ int run_sage(const int ThisTask, const int NTasks, struct params *run_params)
     }
     struct timeval tend;
     gettimeofday(&tend, NULL);
-    fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, get_time_string(tstart, tend));
+    char *time_string = get_time_string(tstart, tend);
+    fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, time_string);
+    free(time_string);
 
 cleanup:
     /* sage is done running -> do the cleanup */

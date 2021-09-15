@@ -262,6 +262,7 @@ struct ctrees_h5_info {
     /* file level quantities */
     hid_t meta_fd; /* file descriptor for the metadata file */
     hid_t *h5_file_groups; /* contains all the file descriptors for the individual files -- shape (lastfile + 1, ) */
+    hid_t *h5_forests_group; /* contains the file descriptors for the 'Forests' group in the SOA case */
     int32_t totnfiles;/* total number of files that the simulation is spread across*/
     int32_t firstfile;/* the first file processed on this task*/
     int32_t lastfile; /* the last file processed on this task (inclusive) */
