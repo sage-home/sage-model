@@ -74,7 +74,7 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
         }
 
     int64_t check_totnfiles;
-    READ_CTREES_ATTRIBUTE(ctr_h5->meta_fd, "/", "NFiles", check_totnfiles);
+    READ_CTREES_ATTRIBUTE(ctr_h5->meta_fd, "/", "Nfiles", check_totnfiles);
     XRETURN(check_totnfiles >= 1, INVALID_VALUE_READ_FROM_FILE,
             "Error: Expected total number of files to be at least 1. However, reading in from "
             "metadata file ('%s') shows check_totnfiles = %"PRId64"\n. Exiting...\n",
@@ -97,6 +97,11 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
             "Error: Could not allocate memory to hold the hdf5 file handles for all files being processed on this task each forest (%"PRId64" items each of size %zu bytes)\n",
             totnfiles, sizeof(ctr_h5->h5_file_groups[0]));
 
+    ctr_h5->h5_forests_group = mycalloc(totnfiles, sizeof(ctr_h5->h5_forests_group[0]));
+    XRETURN(ctr_h5->h5_forests_group != NULL, MALLOC_FAILURE,
+            "Error: Could not allocate memory to hold the hdf5 file handles for the forest groups within files being processed on this task (%"PRId64" items each of size %zu bytes)\n",
+            totnfiles, sizeof(ctr_h5->h5_forests_group[0]));
+
     for(int32_t ifile=firstfile;ifile<=lastfile;ifile++) {
         char file_group_name[MAX_STRING_LEN];
         snprintf(file_group_name, MAX_STRING_LEN-1, "File%d", ifile);
@@ -105,6 +110,10 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
                 "Error: Could not open the file group = `%s` during the initial setup of the forests\n",
                 file_group_name);
         ctr_h5->h5_file_groups[ifile] = h5_file_group;
+
+        hid_t h5_forest_group = H5Gopen(h5_file_group, "Forests", H5P_DEFAULT);
+        ctr_h5->h5_forests_group[ifile] = h5_forest_group;
+        // fprintf(stderr,"In %s> ifile = %d h5_forest_group = %lu\n", __FUNCTION__, ifile, h5_forest_group);
     }
 
     int64_t totnforests = 0;
@@ -406,8 +415,6 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
 
     const int32_t filenum_for_tree = forests_info->FileNr[forestnr];
     const int64_t treenum_in_file = forests_info->original_treenr[forestnr];
-    fprintf(stderr,"forestnr = %"PRId64" meta_fd = %d treenum = %"PRId64" filenr = %d\n",
-           forestnr, (int) meta_fd, treenum_in_file, filenum_for_tree);
 
     char file_group_name[MAX_STRING_LEN];
     snprintf(file_group_name, MAX_STRING_LEN-1, "File%d", filenum_for_tree);
@@ -436,6 +443,8 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
     const int64_t halosoffset = ctrees_finfo.foresthalosoffset;
     const int64_t nhalos = ctrees_finfo.forestnhalos;
 
+    // fprintf(stderr,"forestnr = %"PRId64" meta_fd = %lu treenum = %"PRId64" halosoffset = %"PRId64" nhalos = %"PRId64 " filenr = %d\n", forestnr, meta_fd, treenum_in_file, halosoffset, nhalos, filenum_for_tree);
+
     /* okay now we have the offset and the total number of halos in this forest
         Now allocate the memory for the forest_halos and offload to a dedicated (private) loading
         function. This function also needs to account for "SOA" vs "AOS" types
@@ -443,12 +452,13 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
     */
     *halos = mymalloc(sizeof(struct halo_data) * nhalos);//the malloc failure check is done within mymalloc
     if(contig_halo_props) {
-        int status = read_contiguous_forest_ctrees_h5(h5_file_group,
+        hid_t h5_forests_group = ctr_h5->h5_forests_group[filenum_for_tree];
+        int status = read_contiguous_forest_ctrees_h5(h5_forests_group,
                                                       nhalos, halosoffset,
                                                       *halos);
         if(status < 0) {
-            fprintf(stderr,"Error: Could not correctly read the forest data [forestid=%"PRId64", (file-local) forestnr = %"PRId64", global forestnr = %"PRId64"] from the file = %s. Possible data format issue?\n",
-            ctrees_finfo.forestid, treenum_in_file, forestnr, file_group_name);
+            fprintf(stderr,"Error: Could not correctly read the forest data [forestid='%"PRId64"', (file-local) forestnr = %"PRId64", global forestnr = %"PRId64", nhalos = %"PRId64" offset = %"PRId64"] from the file = '%s'. Possible data format issue?\n",
+            ctrees_finfo.forestid, treenum_in_file, forestnr, nhalos, halosoffset, file_group_name);
             return status;
         }
     } else {
@@ -464,74 +474,77 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
 }
 
 
-#define ASSIGN_TREE_PROPERTY_SINGLEDIM(buffer, buffer_dtype, sage_name) {    \
+#define ASSIGN_TREE_PROPERTY_SINGLEDIM(buffer, buffer_dtype, dest, sage_name) {    \
         buffer_dtype *macro_x = (buffer_dtype *) buffer;                     \
         for (hsize_t i=0; i<nhalos; i++) {                                   \
-            halos[i].sage_name = *macro_x;                            \
+            dest[i].sage_name = *macro_x;                            \
             macro_x++;                                                       \
         }                                                                    \
     }
 
-#define ASSIGN_TREE_PROPERTY_MULTIDIM(buffer, buffer_dtype, sage_name, dim) { \
+#define ASSIGN_TREE_PROPERTY_MULTIDIM(buffer, buffer_dtype, dest, sage_name, dim) { \
         buffer_dtype *macro_x = (buffer_dtype *) buffer;                 \
         for (hsize_t i=0; i<nhalos; i++) {                               \
-            halos[i].sage_name[dim] = *macro_x;                   \
+            dest[i].sage_name[dim] = *macro_x;                   \
             macro_x++;                                                   \
         }                                                                \
     }
 
-#define READ_ASSIGN_TREE_PROP_SINGLE(file_group, field_name, offset, count, buffer, buffer_dtype, sage_name) {  \
-        READ_PARTIAL_FOREST_ARRAY(file_group, #field_name, offset, count, buffer);                               \
-        ASSIGN_TREE_PROPERTY_SINGLEDIM(buffer, buffer_dtype, sage_name);                                        \
+#define READ_ASSIGN_TREE_PROP_SINGLE(file_group, field_name, offset, count, buffer, buffer_dtype, dest, sage_name) {  \
+        READ_PARTIAL_FOREST_ARRAY(file_group, field_name, offset, count, buffer);                               \
+        ASSIGN_TREE_PROPERTY_SINGLEDIM(buffer, buffer_dtype, dest, sage_name);                                        \
 }
 
-#define READ_ASSIGN_TREE_PROP_MULTI(file_group, field_name, offset, count, buffer, buffer_dtype, sage_name, dim) {  \
-        READ_PARTIAL_FOREST_ARRAY(file_group, #field_name, offset, count, buffer);                                     \
-        ASSIGN_TREE_PROPERTY_MULTIDIM(buffer, buffer_dtype, sage_name, dim);                                               \
+#define READ_ASSIGN_TREE_PROP_MULTI(file_group, field_name, offset, count, buffer, buffer_dtype, dest, sage_name, dim) {  \
+        READ_PARTIAL_FOREST_ARRAY(file_group, field_name, offset, count, buffer);                                     \
+        ASSIGN_TREE_PROPERTY_MULTIDIM(buffer, buffer_dtype, dest, sage_name, dim);                                               \
 }
 
-int read_contiguous_forest_ctrees_h5(hid_t h5_file_group, const hsize_t nhalos, const hsize_t halosoffset,
+int read_contiguous_forest_ctrees_h5(hid_t h5_forests_group, const hsize_t nhalos, const hsize_t halosoffset,
                                      struct halo_data *halos)
 {
     void *buffer = malloc(nhalos * sizeof(double)); // The largest data-type will be double.
     XRETURN(buffer != NULL, -MALLOC_FAILURE,
-            "Error: Could not allocate memory for %"PRId64" halos in the HDF5 buffer. Size requested = %"PRIu64" bytes\n",
+            "Error: Could not allocate memory for %llu halos in the HDF5 buffer. Size requested = %llu bytes\n",
             nhalos, nhalos * sizeof(double));
+
+
+    // fprintf(stderr,"IN %s> h5_forests_group = %lu halosoffset = %llu nhalos = %llu\n", __FUNCTION__,  h5_forests_group, halosoffset, nhalos);
 
     // We now need to read in all the halo fields for this forest.
     // To do so, we read the field into a buffer and then properly slot the field into the Halo struct.
 
     /* Merger Tree Pointers */
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "Descendant", &halosoffset, &nhalos, buffer, int64_t, Descendant);
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "FirstProgenitor", &halosoffset, &nhalos, buffer, int64_t, FirstProgenitor);
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "NextProgenitor", &halosoffset, &nhalos, buffer, int64_t, NextProgenitor);
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "FirstHaloInFOFgroup", &halosoffset, &nhalos, buffer, int64_t, FirstHaloInFOFgroup);
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group,  "NextHaloInFOFgroup", &halosoffset, &nhalos, buffer, int64_t, NextHaloInFOFgroup);
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "Descendant", &halosoffset, &nhalos, buffer, int64_t, halos, Descendant);
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "FirstProgenitor", &halosoffset, &nhalos, buffer, int64_t, halos, FirstProgenitor);
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "NextProgenitor", &halosoffset, &nhalos, buffer, int64_t, halos, NextProgenitor);
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "FirstHaloInFOFgroup", &halosoffset, &nhalos, buffer, int64_t, halos, FirstHaloInFOFgroup);
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group,  "NextHaloInFOFgroup", &halosoffset, &nhalos, buffer, int64_t, halos, NextHaloInFOFgroup);
 
     /* Halo Properties */
-    //READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "SubhaloLen", &halosoffset, &nhalos, buffer, int64_t, "Len");
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "m200b", &halosoffset, &nhalos, buffer, double, M_Mean200);
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "mvir", &halosoffset, &nhalos, buffer, double, Mvir);
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "m200c", &halosoffset, &nhalos, buffer, double, M_TopHat);
+    //READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "SubhaloLen", &halosoffset, &nhalos, buffer, int64_t, halos, Len);
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "M200b", &halosoffset, &nhalos, buffer, double, halos, M_Mean200);
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "Mvir", &halosoffset, &nhalos, buffer, double, halos, Mvir);
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "M200c", &halosoffset, &nhalos, buffer, double, halos, M_TopHat);
 
     /* Now read the multi-dimensional properties - position, velocity and spin */
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "x", &halosoffset, &nhalos, buffer, double, Pos, 0);//needs to be converted from kpc/h -> Mpc/h
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "y", &halosoffset, &nhalos, buffer, double, Pos, 1);//needs to be converted from kpc/h -> Mpc/h
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "z", &halosoffset, &nhalos, buffer, double, Pos, 2);//needs to be converted from kpc/h -> Mpc/h
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "x", &halosoffset, &nhalos, buffer, double, halos, Pos, 0);//needs to be converted from kpc/h -> Mpc/h
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "y", &halosoffset, &nhalos, buffer, double, halos, Pos, 1);//needs to be converted from kpc/h -> Mpc/h
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "z", &halosoffset, &nhalos, buffer, double, halos, Pos, 2);//needs to be converted from kpc/h -> Mpc/h
 
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "vrms", &halosoffset, &nhalos, buffer, double, VelDisp);//km/s
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "vmax", &halosoffset, &nhalos, buffer, double, Vmax);//km/s
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "id", &halosoffset, &nhalos, buffer, int64_t, MostBoundID);//The Ctrees generated haloid is carried through
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "Snap_num", &halosoffset, &nhalos, buffer, int64_t, SnapNum);
-    //READ_ASSIGN_TREE_PROP_SINGLE(h5_file_group, "snap_idx", &halosoffset, &nhalos, buffer, int64_t, "SnapNum");//Newer versions of CTrees has 'snap_idx'
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "vrms", &halosoffset, &nhalos, buffer, double, halos, VelDisp);//km/s
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "vmax", &halosoffset, &nhalos, buffer, double, halos, Vmax);//km/s
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "id", &halosoffset, &nhalos, buffer, int64_t, halos, MostBoundID);//The Ctrees generated haloid is carried through
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "Snap_num", &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);
+    //READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "snap_idx", &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);//Newer versions of CTrees has 'snap_idx'
 
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "vx", &halosoffset, &nhalos, buffer, double, Vel, 0);//km/s
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "vy", &halosoffset, &nhalos, buffer, double, Vel, 1);//km/s
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "vz", &halosoffset, &nhalos, buffer, double, Vel, 2);//km/s
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "vx", &halosoffset, &nhalos, buffer, double, halos, Vel, 0);//km/s
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "vy", &halosoffset, &nhalos, buffer, double, halos, Vel, 1);//km/s
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "vz", &halosoffset, &nhalos, buffer, double, halos, Vel, 2);//km/s
 
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "Jx", &halosoffset, &nhalos, buffer, double, Spin, 0);//(kpc/h)(km/s) -> convert to (Mpc)*(km/s). Does it need sqrt(3)?
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "Jy", &halosoffset, &nhalos, buffer, double, Spin, 1);//(kpc/h)(km/s) -> convert to (Mpc)*(km/s). Does it need sqrt(3)?
-    READ_ASSIGN_TREE_PROP_MULTI(h5_file_group, "Jz", &halosoffset, &nhalos, buffer, double, Spin, 2);//(kpc/h)(km/s) -> convert to (Mpc)*(km/s). Does it need sqrt(3)?
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "Jx", &halosoffset, &nhalos, buffer, double, halos, Spin, 0);//(kpc/h)(km/s) -> convert to (Mpc)*(km/s). Does it need sqrt(3)?
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "Jy", &halosoffset, &nhalos, buffer, double, halos, Spin, 1);//(kpc/h)(km/s) -> convert to (Mpc)*(km/s). Does it need sqrt(3)?
+    READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "Jz", &halosoffset, &nhalos, buffer, double, halos, Spin, 2);//(kpc/h)(km/s) -> convert to (Mpc)*(km/s). Does it need sqrt(3)?
 
     free(buffer);
 
@@ -574,11 +587,11 @@ void cleanup_forests_io_ctrees_hdf5(struct forest_info *forests_info)
     const int32_t firstfile = ctr_h5->firstfile;
     const int32_t lastfile = ctr_h5->lastfile;
     for(int32_t ifile=firstfile;ifile<=lastfile;ifile++) {
-        hid_t h5_file_group = ctr_h5->h5_file_groups[ifile];
-        char file_group_name[MAX_STRING_LEN];
-        snprintf(file_group_name, MAX_STRING_LEN-1, "File%d", ifile);
-        H5Gclose(h5_file_group);
+        H5Gclose(ctr_h5->h5_file_groups[ifile]);
+        H5Gclose(ctr_h5->h5_forests_group[ifile]);
     }
+    free(ctr_h5->h5_file_groups);
+    free(ctr_h5->h5_forests_group);
     H5Fclose(ctr_h5->meta_fd);
 }
 
