@@ -26,7 +26,7 @@ void *mymalloc(size_t n)
     }
 
     if(Nblocks >= MAXBLOCKS) {
-        printf("Nblocks = %ld No blocks left in mymalloc().\n", Nblocks);
+        fprintf(stderr, "Nblocks = %ld No blocks left in mymalloc().\n", Nblocks);
         ABORT(OUT_OF_MEMBLOCKS);
     }
 
@@ -36,7 +36,7 @@ void *mymalloc(size_t n)
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
 #ifdef VERBOSE
-            printf("\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
+            fprintf(stdout, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
 #endif
             OldPrintedHighMark = HighMarkMem;
         }
@@ -44,7 +44,7 @@ void *mymalloc(size_t n)
 
     Table[Nblocks] = malloc(n);
     if(Table[Nblocks] == NULL) {
-        printf("Failed to allocate memory for %g MB\n",  n / (1024.0 * 1024.0) );
+        fprintf(stderr, "Failed to allocate memory for %g MB\n",  n / (1024.0 * 1024.0) );
         ABORT(MALLOC_FAILURE);
     }
 
@@ -89,7 +89,7 @@ void *myrealloc(void *p, size_t n)
 
 #if 0
     if(p != Table[Nblocks - 1]) {
-        printf("Wrong call of myrealloc() p = %p is not the last allocated block = %p!\n", p, Table[Nblocks-1]);
+        fprintf(stderr, "Wrong call of myrealloc() p = %p is not the last allocated block = %p!\n", p, Table[Nblocks-1]);
         ABORT(0);
     }
 #endif
@@ -104,7 +104,7 @@ void *myrealloc(void *p, size_t n)
     }
     void *newp = realloc(Table[iblock], n);
     if(newp == NULL) {
-        printf("Failed to re-allocate memory for %g MB (old size = %g MB)\n",  n / (1024.0 * 1024.0), SizeTable[Nblocks-1]/ (1024.0 * 1024.0) );
+        fprintf(stderr, "Error: Failed to re-allocate memory for %g MB (old size = %g MB)\n",  n / (1024.0 * 1024.0), SizeTable[Nblocks-1]/ (1024.0 * 1024.0) );
         ABORT(MALLOC_FAILURE);
     }
     Table[iblock] = newp;
@@ -117,7 +117,7 @@ void *myrealloc(void *p, size_t n)
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
 #ifdef VERBOSE
-            printf("\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
+            fprintf(stdout, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
 #endif
             OldPrintedHighMark = HighMarkMem;
         }
@@ -165,7 +165,7 @@ void myfree(void *p)
 #ifdef VERBOSE
 void print_allocated(void)
 {
-    printf("\nallocated = %g MB\n", TotMem / (1024.0 * 1024.0));
+    fprintf(stdout, "\nallocated = %g MB\n", TotMem / (1024.0 * 1024.0));
     fflush(stdout);
 }
 #endif
