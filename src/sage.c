@@ -175,7 +175,6 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     free(time_string);
     fflush(stdout);
 #endif
-x
 
 cleanup:
     /* sage is done running -> do the cleanup */
