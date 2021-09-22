@@ -63,11 +63,11 @@ static inline double compute_forest_cost_from_nhalos(const enum Valid_Forest_Dis
          of compute cost */
         cost = 1.0;
         break;
-        
+
     case linear_in_nhalos:
         cost = nhalos;
         break;
-        
+
     case quadratic_in_nhalos:
         cost = nhalos*nhalos;
         break;
@@ -92,13 +92,13 @@ static inline double compute_forest_cost_from_nhalos(const enum Valid_Forest_Dis
         }
         cost = pow((double) nhalos, exponent);
         break;
-        
+
     default:
         cost = 1.0;
         break;
     }
-    
-    
+
+
     return cost;
 }
 
@@ -125,7 +125,7 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
     }
 
     if(forest_weighting == uniform_in_forests || nhalos_per_forest == NULL) {
-        fprintf(stderr,"Warning: Based on the inputs, switching to the assigning forests without weights (might indicate bug in code but will not affect results)\n");
+        // fprintf(stderr,"Warning: Based on the inputs, switching to the assigning forests without weights (might indicate bug in code but will not affect results)\n");
         return distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, nforests_thistask, start_forestnum_thistask);
     }
 
@@ -142,9 +142,9 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
         total_cost_across_all_forests += cost_this_forest;
         totnhalos += nhalos_per_forest[i];
     }
-    
+
     double target_cost_per_task = total_cost_across_all_forests/NTasks;
-    
+
     int64_t start_forestnum = 0, nforests_this_task = -1, nhalos_so_far = 0, nhalos_curr_task = 0;
     double curr_cost_target = target_cost_per_task, cost_so_far = 0.0;
     int currtask = 0;
@@ -191,7 +191,7 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
                     total_cost_across_all_forests - cost_so_far, target_cost_per_task);
             fprintf(stderr,"[LOG]: Assigning forest-range = [%"PRId64", %"PRId64"] (containing %"PRId64" halos) to ThisTask = %d\n",
                     start_forestnum, totnforests - 1, nhalos_curr_task, ThisTask);
-            nforests_this_task = totnforests - start_forestnum; 
+            nforests_this_task = totnforests - start_forestnum;
             break;
         }
 
