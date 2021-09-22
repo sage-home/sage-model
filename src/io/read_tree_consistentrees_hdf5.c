@@ -535,8 +535,20 @@ int read_contiguous_forest_ctrees_h5(hid_t h5_forests_group, const hsize_t nhalo
     READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "vrms", &halosoffset, &nhalos, buffer, double, halos, VelDisp);//km/s
     READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "vmax", &halosoffset, &nhalos, buffer, double, halos, Vmax);//km/s
     READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "id", &halosoffset, &nhalos, buffer, int64_t, halos, MostBoundID);//The Ctrees generated haloid is carried through
-    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "Snap_num", &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);
-    //READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "snap_idx", &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);//Newer versions of CTrees has 'snap_idx'
+
+    /* Check if field 'Snap_num' exists */
+    char snap_fld_name[MAX_STRING_LEN] = "Snap_num";
+    if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) > 0) {
+        READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, snap_fld_name, &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);//
+    } else {
+        snprintf(snap_fld_name, MAX_STRING_LEN, "Snap_idx");
+        if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) <= 0) {
+            fprintf(stderr, "Error: Could not locate the snapshot number field - neither as 'Snap_num' nor as '%s'\n",
+            snap_fld_name);
+            return -EXIT_FAILURE;
+        }
+        READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "Snap_idx", &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);//Newer versions of CTrees has 'Snap_idx'
+    }
 
     READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "vx", &halosoffset, &nhalos, buffer, double, halos, Vel, 0);//km/s
     READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "vy", &halosoffset, &nhalos, buffer, double, halos, Vel, 1);//km/s
