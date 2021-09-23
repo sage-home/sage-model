@@ -327,17 +327,18 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
 
     /* Figure out the appropriate for the 'Snapshot number' field -> 'Snap_num' in older CTrees and 'Snap_idx' in newerr versions */
     hid_t h5_forests_group = ctr_h5->h5_forests_group[firstfile];
-    char snap_fld_name[MAX_STRING_LEN] = "Snap_num";
+    const size_t snap_fieldname_sizeof = sizeof(ctr_h5->snap_field_name);
+    char snap_fld_name[snap_fieldname_sizeof] = "Snap_num";
     if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) <= 0) {
         //Snap_num does not exist - lets try the other field name
-        snprintf(snap_fld_name, MAX_STRING_LEN, "Snap_idx");
+        snprintf(snap_fld_name, snap_fieldname_sizeof, "Snap_idx");
         if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) <= 0) {
             fprintf(stderr, "Error: Could not locate the snapshot number field - neither as 'Snap_num' nor as '%s'\n",
             snap_fld_name);
             return -EXIT_FAILURE;
         }
     }
-    snprintf(ctr_h5->snap_field_name, sizeof(ctr_h5->snap_field_name), "%s", snap_fld_name);
+    snprintf(ctr_h5->snap_field_name, snap_fieldname_sizeof, "%s", snap_fld_name);
 
     // We assume that each of the input tree files span the same volume. Hence by summing the
     // number of trees processed by each task from each file, we can determine the
