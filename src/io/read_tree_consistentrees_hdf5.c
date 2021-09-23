@@ -328,7 +328,8 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
     /* Figure out the appropriate for the 'Snapshot number' field -> 'Snap_num' in older CTrees and 'Snap_idx' in newerr versions */
     hid_t h5_forests_group = ctr_h5->h5_forests_group[firstfile];
     const size_t snap_fieldname_sizeof = sizeof(ctr_h5->snap_field_name);
-    char snap_fld_name[snap_fieldname_sizeof] = "Snap_num";
+    char snap_fld_name[snap_fieldname_sizeof];
+    snprintf(snap_fld_name, snap_fieldname_sizeof, "Snap_num");
     if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) <= 0) {
         //Snap_num does not exist - lets try the other field name
         snprintf(snap_fld_name, snap_fieldname_sizeof, "Snap_idx");
