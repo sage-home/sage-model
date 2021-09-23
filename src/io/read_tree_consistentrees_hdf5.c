@@ -24,7 +24,7 @@ struct ctrees_forestinfo {
 // static char galaxy_property_names[num_galaxy_props][MAX_STRING_LEN];
 static void get_forest_metadata_filename(char *metadata_filename, const size_t len, struct params *run_params);
 static int read_contiguous_forest_ctrees_h5(hid_t h5_file_group, const hsize_t nhalos, const hsize_t halosoffset,
-                                           struct halo_data *halos);
+                                            const char *snap_fld_name, struct halo_data *halos);
 static void convert_ctrees_conventions_to_lht(struct halo_data *halos, const int64_t nhalos,
                                               const int32_t snap_offset, const double part_mass);
 
@@ -324,6 +324,21 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
 
     #undef CHECK_AND_ABORT_UNITS_VS_PARAM_FILE
     }
+
+    /* Figure out the appropriate for the 'Snapshot number' field -> 'Snap_num' in older CTrees and 'Snap_idx' in newerr versions */
+    hid_t h5_forests_group = ctr_h5->h5_forests_group[firstfile];
+    char snap_fld_name[MAX_STRING_LEN] = "Snap_num";
+    if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) <= 0) {
+        //Snap_num does not exist - lets try the other field name
+        snprintf(snap_fld_name, MAX_STRING_LEN, "Snap_idx");
+        if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) <= 0) {
+            fprintf(stderr, "Error: Could not locate the snapshot number field - neither as 'Snap_num' nor as '%s'\n",
+            snap_fld_name);
+            return -EXIT_FAILURE;
+        }
+    }
+    snprintf(ctr_h5->snap_field_name, sizeof(ctr_h5->snap_field_name), "%s", snap_fld_name);
+
     // We assume that each of the input tree files span the same volume. Hence by summing the
     // number of trees processed by each task from each file, we can determine the
     // fraction of the simulation volume that this task processes.  We weight this summation by the
@@ -453,9 +468,10 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
     *halos = mymalloc(sizeof(struct halo_data) * nhalos);//the malloc failure check is done within mymalloc
     if(contig_halo_props) {
         hid_t h5_forests_group = ctr_h5->h5_forests_group[filenum_for_tree];
+        const char *snap_fld_name = ctr_h5->snap_field_name;
         int status = read_contiguous_forest_ctrees_h5(h5_forests_group,
                                                       nhalos, halosoffset,
-                                                      *halos);
+                                                      snap_fld_name, *halos);
         if(status < 0) {
             fprintf(stderr,"Error: Could not correctly read the forest data [forestid='%"PRId64"', (file-local) forestnr = %"PRId64", global forestnr = %"PRId64", nhalos = %"PRId64" offset = %"PRId64"] from the file = '%s'. Possible data format issue?\n",
             ctrees_finfo.forestid, treenum_in_file, forestnr, nhalos, halosoffset, file_group_name);
@@ -501,7 +517,7 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
 }
 
 int read_contiguous_forest_ctrees_h5(hid_t h5_forests_group, const hsize_t nhalos, const hsize_t halosoffset,
-                                     struct halo_data *halos)
+                                     const char *snap_fld_name, struct halo_data *halos)
 {
     void *buffer = malloc(nhalos * sizeof(double)); // The largest data-type will be double.
     XRETURN(buffer != NULL, -MALLOC_FAILURE,
@@ -536,19 +552,7 @@ int read_contiguous_forest_ctrees_h5(hid_t h5_forests_group, const hsize_t nhalo
     READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "vmax", &halosoffset, &nhalos, buffer, double, halos, Vmax);//km/s
     READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "id", &halosoffset, &nhalos, buffer, int64_t, halos, MostBoundID);//The Ctrees generated haloid is carried through
 
-    /* Check if field 'Snap_num' exists */
-    char snap_fld_name[MAX_STRING_LEN] = "Snap_num";
-    if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) > 0) {
-        READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, snap_fld_name, &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);//
-    } else {
-        snprintf(snap_fld_name, MAX_STRING_LEN, "Snap_idx");
-        if(H5Lexists(h5_forests_group, snap_fld_name, H5P_DEFAULT) <= 0) {
-            fprintf(stderr, "Error: Could not locate the snapshot number field - neither as 'Snap_num' nor as '%s'\n",
-            snap_fld_name);
-            return -EXIT_FAILURE;
-        }
-        READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, "Snap_idx", &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);//Newer versions of CTrees has 'Snap_idx'
-    }
+    READ_ASSIGN_TREE_PROP_SINGLE(h5_forests_group, snap_fld_name, &halosoffset, &nhalos, buffer, int64_t, halos, SnapNum);
 
     READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "vx", &halosoffset, &nhalos, buffer, double, halos, Vel, 0);//km/s
     READ_ASSIGN_TREE_PROP_MULTI(h5_forests_group, "vy", &halosoffset, &nhalos, buffer, double, halos, Vel, 1);//km/s
