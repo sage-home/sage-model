@@ -153,17 +153,37 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
     if(need_nhalos_per_forest) {
         nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
         for(int32_t ifile=firstfile;ifile<=lastfile;ifile++) {
-            char dataset_name[MAX_STRING_LEN + 1];
             const int64_t nforests_this_file = totnforests_per_file[ifile];
-
-            snprintf(dataset_name, MAX_STRING_LEN, "File%d/ForestInfo/ForestNhalos", ifile);
-            const int check_dtype_sizes = 1;
-            int status = read_dataset(ctr_h5->meta_fd, dataset_name, -1,
-                                      nhalos_per_forest, sizeof(*nhalos_per_forest),
-                                      check_dtype_sizes);
+            hid_t h5_file_grp = ctr_h5->h5_file_groups[ifile];
+            
+            char dataset_name[MAX_STRING_LEN];
+            snprintf(dataset_name, MAX_STRING_LEN, "ForestInfo");
+            hid_t finfo_dset = H5Dopen2(h5_file_grp, dataset_name, H5P_DEFAULT);
+            XRETURN(finfo_dset >= 0, -HDF5_ERROR,
+                    "Error encountered when trying to open up dataset '%s' in file %d\n",
+                    dataset_name, ifile);
+            hid_t nhalos_dtype = H5Tcreate(H5T_COMPOUND, sizeof(int64_t));
+            XRETURN(nhalos_dtype >= 0, -HDF5_ERROR,
+                    "Error when creating the compound datatype to read in nhalos per forest (file = %d)\n",
+                    ifile);
+            herr_t status = H5Tinsert(nhalos_dtype, "ForestNhalos", 0, H5T_NATIVE_INT64);
+            XRETURN(status >=0, -HDF5_ERROR,
+                    "Error when inserting the 'ForestNhalos' field into the compound datatype (file = %d)\n",
+                    ifile);
+                    
+            status = H5Dread(finfo_dset, nhalos_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, nhalos_per_forest);
             if(status < 0) {
+                fprintf(stderr,"Error when reading the 'ForestNhalos' field out of the %s in file %d\n",
+                        dataset_name, ifile);
                 return status;
             }
+            XRETURN(H5Tclose(nhalos_dtype) >= 0, -HDF5_ERROR,
+                    "Error when closing the compound datatype for reading in 'ForestNhalos' field within the '%s' dataset (file = %d)\n",
+                    dataset_name, ifile);
+            XRETURN(H5Dclose(finfo_dset) >= 0, -HDF5_ERROR,
+                    "Error encountered when closing the dataset '%s' in file %d\n",
+                    dataset_name, ifile);
+            
             nhalos_per_forest += nforests_this_file;
         }
         //Move back the pointer to the allocated address
@@ -177,7 +197,9 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
     if(status != EXIT_SUCCESS) {
         return status;
     }
-
+    if(need_nhalos_per_forest) {
+        free(nhalos_per_forest);
+    }
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
     fprintf(stderr,"Thistask = %d start_forestnum = %"PRId64" end_forestnum = %"PRId64"\n", ThisTask, start_forestnum, end_forestnum);
 
@@ -249,7 +271,8 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
         }
         return -1;
     }
-
+    fprintf(stderr,"Thistask = %d start_filenum = %d end_filenum = %d\n", ThisTask, start_filenum, end_filenum);
+    
     /* So we have the correct files */
     ctr_h5->totnfiles = totnfiles;/* the number of files to be processed across all tasks. MS: Still wastes space - set to lastfile + 1 rather than the correct "(lastfile - firstfile + 1)" */
     ctr_h5->firstfile = firstfile;
@@ -277,10 +300,11 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
 
     /* Now fill up the arrays that are of shape (nforests, ) -- FileNr, original_treenr */
     int32_t curr_filenum = start_filenum;
-    int64_t endforestnum_in_currfile = totnforests_per_file[start_filenum];
+    int64_t endforestnum_in_currfile = totnforests_per_file[start_filenum] - start_forestnum_per_file[start_filenum];
     int64_t offset = 0;
     for(int64_t iforest=0;iforest<nforests_this_task;iforest++) {
         if(iforest >= endforestnum_in_currfile) {
+            fprintf(stderr,"LOG: ThisTask = %d iforest = %"PRId64" start_filenum = %d, curr_filenum = %d endforestnum_in_currfile = %"PRId64" offset = %"PRId64"\n", run_params->ThisTask, iforest, start_filenum, curr_filenum, endforestnum_in_currfile, offset); 
             offset = endforestnum_in_currfile;
             curr_filenum++;
             endforestnum_in_currfile += totnforests_per_file[curr_filenum];
@@ -368,11 +392,11 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
     return EXIT_SUCCESS;
 }
 
-#define READ_PARTIAL_FOREST_ARRAY(file_group, field_name, offset, count, buffer) { \
+#define READ_PARTIAL_FOREST_ARRAY(file_group, field_name, offset, count, buffer, error_message) { \
         hid_t h5_dset = H5Dopen2(file_group, field_name, H5P_DEFAULT);  \
         XRETURN(h5_dset >= 0, -HDF5_ERROR,                              \
-                "Error encountered when trying to open up dataset %s\n",\
-                field_name);                                            \
+                "Error encountered when trying to open up dataset %s\n%s\n",\
+                field_name, error_message);                                           \
         hid_t h5_fspace = H5Dget_space(h5_dset);                        \
         XRETURN(h5_fspace >= 0, -HDF5_ERROR,                            \
                 "Error encountered when trying to reserve filespace for dataset %s\n", \
@@ -380,39 +404,39 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
         herr_t macro_status = H5Sselect_hyperslab(h5_fspace, H5S_SELECT_SET, offset, NULL, count, NULL); \
         XRETURN(macro_status >= 0, -HDF5_ERROR,                         \
                 "Error: Failed to select hyperslab for dataset = %s.\n" \
-                "The dimensions of the dataset was %d.\n",              \
-                field_name, (int32_t) *count); \
+                "The dimensions of the dataset was %llu offset = %llu.\n%s\n",              \
+                field_name, *count, *offset, error_message);                          \
         hid_t h5_memspace = H5Screate_simple(1, count, NULL);           \
         XRETURN(h5_memspace >= 0, -HDF5_ERROR,                          \
                 "Error: Failed to select hyperslab for dataset = %s.\n" \
-                "The dimensions of the dataset was %d\n.",              \
-                field_name, (int32_t) *count); \
+                "The dimensions of the dataset was %llu\n.",              \
+                field_name, *count); \
         const hid_t h5_dtype = H5Dget_type(h5_dset);                    \
         XRETURN(h5_dtype >= 0, -HDF5_ERROR,                             \
                 "Error: Failed to get datatype for dataset = %s.\n"     \
-                "The dimensions of the dataset was %d\n.",              \
-                field_name, (int32_t) *count);                          \
+                "The dimensions of the dataset was %llu\n.",              \
+                field_name, *count);                          \
         macro_status = H5Dread(h5_dset, h5_dtype, h5_memspace, h5_fspace, H5P_DEFAULT, buffer); \
         XRETURN(macro_status >= 0, FILE_READ_ERROR,                     \
                 "Error: Failed to read array for dataset = %s.\n"       \
-                "The dimensions of the dataset was %d\n.",              \
-                field_name, (int32_t) *count); \
+                "The dimensions of the dataset was %llu, offset = %llu\n%s\n",              \
+                field_name, *count, *offset, error_message);                          \
         XRETURN(H5Dclose(h5_dset) >= 0, -HDF5_ERROR,                    \
                 "Error: Could not close dataset = '%s'.\n"              \
-                "The dimensions of the dataset was %d\n.",              \
-               field_name, (int32_t) *count); \
+                "The dimensions of the dataset was %llu\n.",              \
+               field_name, *count); \
         XRETURN(H5Tclose(h5_dtype) >= 0, -HDF5_ERROR,                   \
                 "Error: Failed to close the datatype for = %s.\n"       \
-                "The dimensions of the dataset was %d\n.",              \
-               field_name, (int32_t) *count); \
+                "The dimensions of the dataset was %llu\n.",              \
+               field_name, *count); \
         XRETURN(H5Sclose(h5_fspace) >= 0, -HDF5_ERROR,                  \
                 "Error: Failed to close the filespace for = %s.\n"      \
-                "The dimensions of the dataset was %d\n.",              \
-               field_name, (int32_t) *count); \
+                "The dimensions of the dataset was %llu\n.",              \
+               field_name, *count); \
         XRETURN(H5Sclose(h5_memspace) >= 0, -HDF5_ERROR,                \
                 "Error: Failed to close the dataspace for = %s.\n"      \
-                "The dimensions of the dataset was %d\n.",              \
-               field_name, (int32_t) *count); \
+                "The dimensions of the dataset was %llu\n.",              \
+               field_name, *count); \
     }
 
 
@@ -442,7 +466,6 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
         return -INVALID_FILE_POINTER;
     }
 
-
     char contig_attr_name[] = "contiguous-halo-props";
     int8_t contig_halo_props;
     herr_t h5_status = read_attribute(meta_fd, file_group_name, contig_attr_name,
@@ -455,7 +478,10 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
     struct ctrees_forestinfo ctrees_finfo;
     const char field_name[] = "ForestInfo";
     const hsize_t count = 1, treenr = treenum_in_file; /* to satisfy the hsize_t vs int64_t compiler warnings + the pointer indirection necessary. MS 14/09/2021 */
-    READ_PARTIAL_FOREST_ARRAY(h5_file_group, field_name, &treenr, &count, &ctrees_finfo);
+    char error_msg[MAX_STRING_LEN];
+    snprintf(error_msg, MAX_STRING_LEN, "ERROR MESSAGE: ThisTask = %d filenum_for_tree = %d treenum_in_file = %"PRId64"\n",
+             run_params->ThisTask, filenum_for_tree, treenum_in_file);
+    READ_PARTIAL_FOREST_ARRAY(h5_file_group, field_name, &treenr, &count, &ctrees_finfo, error_msg);
 
     const int64_t halosoffset = ctrees_finfo.foresthalosoffset;
     const int64_t nhalos = ctrees_finfo.forestnhalos;
@@ -509,12 +535,12 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
     }
 
 #define READ_ASSIGN_TREE_PROP_SINGLE(file_group, field_name, offset, count, buffer, buffer_dtype, dest, sage_name) {  \
-        READ_PARTIAL_FOREST_ARRAY(file_group, field_name, offset, count, buffer);                               \
+        READ_PARTIAL_FOREST_ARRAY(file_group, field_name, offset, count, buffer, "NULL"); \
         ASSIGN_TREE_PROPERTY_SINGLEDIM(buffer, buffer_dtype, dest, sage_name);                                        \
 }
 
 #define READ_ASSIGN_TREE_PROP_MULTI(file_group, field_name, offset, count, buffer, buffer_dtype, dest, sage_name, dim) {  \
-        READ_PARTIAL_FOREST_ARRAY(file_group, field_name, offset, count, buffer);                                     \
+        READ_PARTIAL_FOREST_ARRAY(file_group, field_name, offset, count, buffer, "NULL"); \
         ASSIGN_TREE_PROPERTY_MULTIDIM(buffer, buffer_dtype, dest, sage_name, dim);                                               \
 }
 

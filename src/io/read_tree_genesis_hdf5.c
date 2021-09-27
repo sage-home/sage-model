@@ -345,7 +345,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
     /* Now fill up the arrays that are of shape (nforests, ) -- FileNr, original_treenr */
     int32_t curr_filenum = start_filenum;
-    int64_t endforestnum_in_currfile = totnforests_per_file[curr_filenum];
+    int64_t endforestnum_in_currfile = totnforests_per_file[start_filenum] - start_forestnum_per_file[start_filenum];    
     int64_t offset = 0;
     for(int64_t iforest=0;iforest<nforests_this_task;iforest++) {
         if(iforest >= endforestnum_in_currfile) {
