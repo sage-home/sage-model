@@ -142,6 +142,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
 #ifdef VERBOSE
         if(ThisTask == 0) {
             my_progressbar(stdout, forestnr, &(run_params->interrupted));
+            fflush(stdout);
         }
 #endif
 
