@@ -37,8 +37,8 @@ jobs:
             compiler: gcc-7
 
           # # no gcc-5 on 18.04
-          # - os: "ubuntu-18.04"
-          #   compiler: gcc-5
+          - os: "ubuntu-18.04"
+            compiler: gcc-5
 
 
           # python3.8 only on 20.04

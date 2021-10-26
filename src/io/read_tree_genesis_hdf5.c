@@ -59,10 +59,10 @@ void get_forest_metadata_filename(const char *forestfilename, const size_t strin
     metadata_filename[stringlen - 1] = '\0';
 
     const char searchstring[] = {".hdf5"};
-    const size_t searchlen = strlen(searchstring);
+    const size_t searchlen = sizeof(searchstring)/sizeof(char);
 
     const char replacestring[] = {".foreststats.hdf5"};
-    const size_t replacelen = strlen(replacestring);
+    const size_t replacelen = sizeof(replacestring)/sizeof(char);
 
     const size_t currlen = strnlen(metadata_filename, stringlen);
     const size_t required_len = currlen - searchlen + replacelen;
