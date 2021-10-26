@@ -75,7 +75,7 @@ void get_forest_metadata_filename(const char *forestfilename, const size_t strin
     }
 
     char *start = strstr(metadata_filename, searchstring);
-    strncpy(start, replacestring, replacelen);
+    strcpy(start, replacestring);
 
     return;
 }
