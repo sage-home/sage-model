@@ -10,7 +10,7 @@ extern "C" {
 
     /* Proto-Types */
     extern void get_forests_filename_lht_binary(char *filename, const size_t len, const int filenr, const struct params *run_params);
-    extern int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firstfile, const int lastfile,
+    extern int setup_forests_io_lht_binary(struct forest_info *forests_info,
                                            const int ThisTask, const int NTasks, struct params *run_params);
     extern int64_t load_forest_lht_binary(const int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info);
     extern void cleanup_forests_io_lht_binary(struct forest_info *forests_info);

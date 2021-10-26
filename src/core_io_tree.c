@@ -25,8 +25,8 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
                      const int ThisTask, const int NTasks)
 {
     int status = EXIT_FAILURE;/* initialize to FAIL  */
-    const int firstfile = run_params->FirstFile;
-    const int lastfile = run_params->LastFile;
+    forests_info->firstfile = run_params->FirstFile;
+    forests_info->lastfile = run_params->LastFile;
     const enum Valid_TreeTypes TreeType = run_params->TreeType;
 
     /* MS: 21/9/2019 initialise the mulfac's so we can check later
@@ -42,30 +42,24 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
         case lhalo_hdf5:
             //MS: 22/07/2021 - Why is firstfile, lastfile still passed even though those could be constructef
             //from run_params (like done within this __FUNCTION__)
-            status = setup_forests_io_lht_hdf5(forests_info, firstfile, lastfile, ThisTask, NTasks, run_params);
+            status = setup_forests_io_lht_hdf5(forests_info, ThisTask, NTasks, run_params);
             break;
 
         case genesis_hdf5:
-            (void) firstfile, (void) lastfile;
             status = setup_forests_io_genesis_hdf5(forests_info, ThisTask, NTasks, run_params);
             break;
 
         case consistent_trees_hdf5:
-            (void) firstfile, (void) lastfile;
             status = setup_forests_io_ctrees_hdf5(forests_info, ThisTask, NTasks, run_params);
             break;
 #endif
 
         case lhalo_binary:
-            status = setup_forests_io_lht_binary(forests_info, firstfile, lastfile, ThisTask, NTasks, run_params);
+            status = setup_forests_io_lht_binary(forests_info, ThisTask, NTasks, run_params);
             break;
 
         case consistent_trees_ascii:
-            (void) firstfile, (void) lastfile;
             status = setup_forests_io_ctrees(forests_info, ThisTask, NTasks, run_params);
-
-            fprintf(stderr,"Forcing the frac volume processed \n");
-            forests_info->frac_volume_processed = 1.0/(double) run_params->NumSimulationTreeFiles;
             break;
 
         default:
@@ -89,8 +83,8 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
         return -1;
     }
 
-    if(forests_info->frac_volume_processed <= 0.0) {
-        fprintf(stderr,"Error: The fraction of the entire simulation volume processed should be > 0.0. Instead, found %g\n",
+    if(forests_info->frac_volume_processed <= 0.0 || forests_info->frac_volume_processed > 1.0) {
+        fprintf(stderr,"Error: The fraction of the entire simulation volume processed should be in [0.0, 1.0]. Instead, found %g\n",
                 forests_info->frac_volume_processed);
         return -1;
     }

@@ -17,15 +17,11 @@ void get_forests_filename_lht_binary(char *filename, const size_t len, const int
     snprintf(filename, len - 1, "%s/%s.%d%s", run_params->SimulationDir, run_params->TreeName, filenr, run_params->TreeExtension);
 }
 
-int setup_forests_io_lht_binary(struct forest_info *forests_info, const int firstfile, const int lastfile,
+int setup_forests_io_lht_binary(struct forest_info *forests_info,
                                 const int ThisTask, const int NTasks, struct params *run_params)
 {
-    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
-        fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile should be larger than FirstFile.\n"
-                "Probably a typo in the parameter-file. Please change to appropriate values...exiting\n",
-                run_params->FirstFile, run_params->LastFile);
-        return INVALID_OPTION_IN_PARAMS;
-    }
+    const int firstfile = run_params->FirstFile;
+    const int lastfile = run_params->LastFile;
 
     const int numfiles = lastfile - firstfile + 1;
     if(numfiles <= 0) {

@@ -263,10 +263,15 @@ struct ctrees_h5_info {
     hid_t meta_fd; /* file descriptor for the metadata file */
     hid_t *h5_file_groups; /* contains all the file descriptors for the individual files -- shape (lastfile + 1, ) */
     hid_t *h5_forests_group; /* contains the file descriptors for the 'Forests' group in the SOA case */
-    char snap_field_name[16];
+    char snap_field_name[16]; /*  some of the Uchuu files have 'Snap_num', others have 'Snap_idx' as the snapshot field name
+                               This variable contains the correct field name, as determined from the input file during forests
+                              reading init */
+    int8_t snap_field_is_double;/* some of the Uchuu files accidentally wrote out the snapshot field as double instead of int64_t ->
+                                this flag is set during the forests reading init to correctly read the snapshot field */
+    int8_t *contig_halo_props;/* Contains whether or not the halos are in contiguous order -- shape (lastfile + 1) */
     int32_t totnfiles;/* total number of files that the simulation is spread across*/
-    int32_t firstfile;/* the first file processed on this task*/
-    int32_t lastfile; /* the last file processed on this task (inclusive) */
+    int32_t start_filenum;/* the first file processed on this task*/
+    int32_t end_filenum; /* the last file processed on this task (inclusive) */
 };
 
 #endif
@@ -289,6 +294,8 @@ struct forest_info {
     // fraction of the simulation volume that this task processes.  We weight this summation by the
     // number of trees in each file because some files may have more/less trees whilst still spanning the
     // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
+    int32_t firstfile;//The first file processed in this run
+    int32_t lastfile;//The last file processed in this run
     int32_t *FileNr; // The file number that each forest needs to be read from.
     int64_t *original_treenr; // The (file-local) tree number from the original tree files.
                               // Necessary because Task N's "Tree 0" could start at the middle of a file.

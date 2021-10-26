@@ -85,13 +85,6 @@ void get_forest_metadata_filename(const char *forestfilename, const size_t strin
 /* Externally visible Functions */
 int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int ThisTask, const int NTasks, struct params *run_params)
 {
-    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
-        fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile should be larger than FirstFile.\n"
-                "Probably a typo in the parameter-file. Please change to appropriate values...exiting\n",
-                run_params->FirstFile, run_params->LastFile);
-        return INVALID_OPTION_IN_PARAMS;
-    }
-
     const int firstfile = run_params->FirstFile;
     const int lastfile = run_params->LastFile;
     const int numfiles = lastfile - firstfile + 1;/* This is total number of files to process across all tasks */

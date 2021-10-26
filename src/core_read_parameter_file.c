@@ -382,6 +382,16 @@ int read_parameter_file(const char *fname, struct params *run_params)
 #endif
     }
 
+
+    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
+        fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile "
+                        "should be larger than   FirstFile.\nProbably a typo in the parameter-file. "
+                        "Please change to appropriate values...exiting\n",
+                        run_params->FirstFile, run_params->LastFile);
+        ABORT(EXIT_FAILURE);
+    }
+
+
     /* because in the default case of 'lhalo-binary', nothing
        gets written to "treeextension", we need to
        null terminate tree-extension first  */
