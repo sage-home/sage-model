@@ -540,8 +540,6 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 #undef ASSIGN_GALAXY_PROPERTY_NAME
 
 
-
-
     // We assume that each of the input tree files span the same volume. Hence by summing the
     // number of trees processed by each task from each file, we can determine the
     // fraction of the simulation volume that this task processes.  We weight this summation by the
