@@ -16,7 +16,7 @@ enum datatypes {
 #define MAXTAGS          300  /* Max number of parameters */
 #define MAXTAGLEN         50  /* Max number of characters in the string param tags */
 
-int read_parameter_file(const int ThisTask, const char *fname, struct params *run_params)
+int read_parameter_file(const char *fname, struct params *run_params)
 {
     int errorFlag = 0;
     int *used_tag = 0;
@@ -34,9 +34,13 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     NParam = 0;
 
+#ifdef VERBOSE
+    const int ThisTask = run_params->ThisTask;
+
     if(ThisTask == 0) {
-        printf("\nreading parameter file:\n\n");
+        fprintf(stdout, "\nreading parameter file:\n\n");
     }
+#endif
 
     strncpy(ParamTag[NParam], "FileNameGalaxies", MAXTAGLEN);
     ParamAddr[NParam] = run_params->FileNameGalaxies;
@@ -221,8 +225,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     FILE *fd = fopen(fname, "r");
     if (fd == NULL) {
-        printf("Parameter file '%s' not found.\n", fname);
-        fflush(stdout);
+        fprintf(stderr,"Parameter file '%s' not found.\n", fname);
         return FILE_NOT_FOUND;
     }
 
@@ -269,9 +272,11 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         }
 
         if(j >= 0) {
+#ifdef VERBOSE
             if(ThisTask == 0) {
-                printf("%35s\t%10s\n", buf1, buf2);
+                fprintf(stdout, "%35s\t%10s\n", buf1, buf2);
             }
+#endif
 
             switch (ParamID[j])
                 {
@@ -286,7 +291,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                     break;
                 }
         } else {
-            printf("Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
+            fprintf(stderr, "Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
             errorFlag = 1;
         }
     }
@@ -301,7 +306,7 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
 
     for(int i = 0; i < NParam; i++) {
         if(used_tag[i]) {
-            printf("Error. I miss a value for tag '%s' in parameter file '%s'.\n", ParamTag[i], fname);
+            fprintf(stderr, "Error. I miss a value for tag '%s' in parameter file '%s'.\n", ParamTag[i], fname);
             errorFlag = 1;
         }
     }
@@ -309,7 +314,9 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
     if(errorFlag) {
         ABORT(1);
     }
-    printf("\n");
+#ifdef VERBOSE
+    fprintf(stdout, "\n");
+#endif
 
     if( ! (run_params->LastSnapshotNr+1 > 0 && run_params->LastSnapshotNr+1 < ABSOLUTEMAXSNAPS) ) {
         fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->LastSnapshotNr, ABSOLUTEMAXSNAPS);
@@ -328,13 +335,17 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         for (int i=run_params->NumSnapOutputs-1; i>=0; i--) {
             run_params->ListOutputSnaps[i] = i;
         }
+#ifdef VERBOSE
         if(ThisTask == 0) {
-            printf("all %d snapshots selected for output\n", run_params->NumSnapOutputs);
+            fprintf(stdout, "all %d snapshots selected for output\n", run_params->NumSnapOutputs);
         }
+#endif
     } else {
+#ifdef VERBOSE
         if(ThisTask == 0) {
-            printf("%d snapshots selected for output: ", run_params->NumSnapOutputs);
+            fprintf(stdout, "%d snapshots selected for output: ", run_params->NumSnapOutputs);
         }
+#endif
 
         // reopen the parameter file
         fd = fopen(fname, "r");
@@ -349,9 +360,11 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
                 // read the snapshots into ListOutputSnaps
                 for(int i=0; i<run_params->NumSnapOutputs; i++) {
                     if(fscanf(fd, "%d", &(run_params->ListOutputSnaps[i])) == 1) {
+#ifdef VERBOSE
                         if(ThisTask == 0) {
-                            printf("%d ", run_params->ListOutputSnaps[i]);
+                            fprintf(stdout, "%d ", run_params->ListOutputSnaps[i]);
                         }
+#endif
                     }
                 }
                 done = 1;
@@ -364,8 +377,20 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
             fprintf(stderr,"Error: Could not properly parse output snapshots\n");
             ABORT(2);
         }
-        printf("\n");
+#ifdef VERBOSE
+        fprintf(stdout, "\n");
+#endif
     }
+
+
+    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
+        fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile "
+                        "should be larger than   FirstFile.\nProbably a typo in the parameter-file. "
+                        "Please change to appropriate values...exiting\n",
+                        run_params->FirstFile, run_params->LastFile);
+        ABORT(EXIT_FAILURE);
+    }
+
 
     /* because in the default case of 'lhalo-binary', nothing
        gets written to "treeextension", we need to
@@ -404,10 +429,12 @@ int read_parameter_file(const int ThisTask, const char *fname, struct params *ru
         }                                                               \
  }
 
-    const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii"};
-    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5, consistent_trees_ascii};
+    const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5",
+                                          "consistent_trees_ascii", "consistent_trees_hdf5"};
+    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5,
+                                               consistent_trees_ascii, consistent_trees_hdf5};
     const int nvalid_tree_types  = sizeof(tree_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_tree_types == 4, EXIT_FAILURE, "nvalid_tree_types = %d should have been 4\n", nvalid_tree_types);
+    BUILD_BUG_OR_ZERO((nvalid_tree_types == (int) num_tree_types), number_of_tree_types_is_incorrect);
     CHECK_VALID_ENUM_IN_PARAM_FILE(TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
 
     /* Check output data type is valid. */

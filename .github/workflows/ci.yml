@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-16.04", "ubuntu-18.04", "ubuntu-20.04", "macos-latest"]
+        os: ["ubuntu-18.04", "ubuntu-20.04", "macos-latest"]
         compiler: [gcc-5, gcc-7, gcc-9, clang]
         python-version: ["3.6", "3.7", "3.8", "3.9"]
         numpy-version: ["1.14", "1.16", "1.18", "1.20"]
@@ -29,8 +29,6 @@ jobs:
             compiler: clang
           - os: "ubuntu-20.04"
             compiler: clang
-          - os: "ubuntu-16.04"
-            compiler: clang
 
           # no gcc-5, gcc-7 on 20.04
           - os: "ubuntu-20.04"
@@ -38,33 +36,24 @@ jobs:
           - os: "ubuntu-20.04"
             compiler: gcc-7
 
-          # no gcc-5 on 18.04
+          # # no gcc-5 on 18.04
           - os: "ubuntu-18.04"
             compiler: gcc-5
 
-          # only gcc-5 on 16.04
-          - os: "ubuntu-16.04"
-            compiler: gcc-7         
-          - os: "ubuntu-16.04"
-            compiler: gcc-9
 
           # python3.8 only on 20.04
-          - os: "ubuntu-16.04"
-            python-version: "3.8"
           - os: "ubuntu-18.04"
             python-version: "3.8"
           - os: "macos-latest"
             python-version: "3.8"
 
           # python3.9 only on 20.04
-          - os: "ubuntu-16.04"
-            python-version: "3.9"
           - os: "ubuntu-18.04"
             python-version: "3.9"
           - os: "macos-latest"
             python-version: "3.9"
 
-          # numpy1.18 only on python3.8 
+          # numpy1.18 only on python3.8
           # (which, in turn, is only on '20.04')
           - python-version: "3.6"
             numpy-version: "1.18"
@@ -72,8 +61,8 @@ jobs:
             numpy-version: "1.18"
           - python-version: "3.9"
             numpy-version: "1.18"
-            
-          # numpy1.20 only on python3.9 
+
+          # numpy1.20 only on python3.9
           # (which, in turn, is only on '20.04')
           - python-version: "3.6"
             numpy-version: "1.20"
@@ -82,12 +71,12 @@ jobs:
           - python-version: "3.8"
             numpy-version: "1.20"
 
-          # numpy1.14 only on <= python3.7 
+          # numpy1.14 only on <= python3.7
           - python-version: "3.8"
             numpy-version: "1.14"
           - python-version: "3.9"
             numpy-version: "1.14"
-            
+
     env:
       CC: ${{ matrix.compiler }}
       CI: true
@@ -107,7 +96,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda create -q --yes -n test python=${{ matrix.python-version }} 
+          conda create -q --yes -n test python=${{ matrix.python-version }}
           conda activate test
           conda install -c conda-forge numpy=${{ matrix.numpy-version }} hdf5 gsl
           python -m pip install -r requirements.txt

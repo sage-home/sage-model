@@ -35,10 +35,11 @@ void get_forests_filename_lht_hdf5(char *filename, const size_t len, const int f
 }
 
 
-int setup_forests_io_lht_hdf5(struct forest_info *forests_info, const int firstfile, const int lastfile,
-                              const int ThisTask, const int NTasks, struct params *run_params)
+int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
+                             const int ThisTask, const int NTasks, struct params *run_params)
 {
-
+    const int firstfile = run_params->FirstFile;
+    const int lastfile = run_params->LastFile;
     const int numfiles = lastfile - firstfile + 1;
     if(numfiles <= 0) {
         return -1;

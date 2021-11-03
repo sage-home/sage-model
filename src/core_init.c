@@ -20,16 +20,20 @@
 /* These functions do not need to be exposed externally */
 double integrand_time_to_present(const double a, void *param);
 void set_units(struct params *run_params);
-void read_snap_list(const int ThisTask, struct params *run_params);
+void read_snap_list(struct params *run_params);
 double time_to_present(const double z, struct params *run_params);
 
-void init(const int ThisTask, struct params *run_params)
+void init(struct params *run_params)
 {
+#ifdef VERBOSE
+    const int ThisTask = run_params->ThisTask;
+#endif
+
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
 
     set_units(run_params);
 
-    read_snap_list(ThisTask, run_params);
+    read_snap_list(run_params);
 
     //Hack to fix deltaT for snapshot 0
     //This way, galsnapnum = -1 will not segfault.
@@ -45,9 +49,11 @@ void init(const int ThisTask, struct params *run_params)
     run_params->ar = 1.0 / (1.0 + run_params->Reionization_zr);
 
     read_cooling_functions();
+#ifdef VERBOSE
     if(ThisTask == 0) {
-        printf("cooling functions read\n\n");
+        fprintf(stdout, "cooling functions read\n\n");
     }
+#endif
 }
 
 
@@ -75,14 +81,18 @@ void set_units(struct params *run_params)
 
 
 
-void read_snap_list(const int ThisTask, struct params *run_params)
+void read_snap_list(struct params *run_params)
 {
+#ifdef VERBOSE
+    const int ThisTask = run_params->ThisTask;
+#endif
+
     char fname[MAX_STRING_LEN+1];
 
     snprintf(fname, MAX_STRING_LEN, "%s", run_params->FileWithSnapList);
     FILE *fd = fopen(fname, "r");
     if(fd == NULL) {
-        printf("can't read output list in file '%s'\n", fname);
+        fprintf(stderr, "can't read output list in file '%s'\n", fname);
         ABORT(0);
     }
 
@@ -96,9 +106,11 @@ void read_snap_list(const int ThisTask, struct params *run_params)
     } while(run_params->Snaplistlen < run_params->SimMaxSnaps);
     fclose(fd);
 
+#ifdef VERBOSE
     if(ThisTask == 0) {
-        printf("found %d defined times in snaplist\n", run_params->Snaplistlen);
+        fprintf(stdout, "found %d defined times in snaplist\n", run_params->Snaplistlen);
     }
+#endif
 }
 
 double time_to_present(const double z, struct params *run_params)
