@@ -198,7 +198,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     }
     save_info->field_dtypes = malloc(NUM_OUTPUT_FIELDS * sizeof(save_info->field_dtypes[0]));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->field_dtypes,
-                                     "Failed to allocate %d elements of size %zu for save_info->name_output_fields",
+                                     "Failed to allocate %d elements of size %zu for save_info->field_dtypes",
                                      NUM_OUTPUT_FIELDS,
                                      sizeof(save_info->field_dtypes[0]));
 

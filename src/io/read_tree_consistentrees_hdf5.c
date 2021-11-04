@@ -359,10 +359,19 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
 
 #undef CHECK_AND_ABORT_UNITS_VS_PARAM_FILE
     }
-
+     /* Figure out the appropriate field name for the 'Snapshot number' field -> 'Snap_num' in older CTrees and 'Snap_idx' in newer versions */
+    /* MS 29/09/2021: Older versions of CTrees has Snap_num -> which is parsed correctly and  int64_t type
+        The Uchuu trees were created for later CTrees version and have the column Snap_idx
+        but the uchuutools converter did not correctly interpret the field as an integer and
+        the field was written out as a double. However, future versions of the uchuutools converter
+        will fix this issue. Therefore, we need to allow for these possibilities:
+        # fldname   hdf5_type       c_type
+        'Snap_num,  H5_NATIVE_INT64,  int64_t'
+        'Snap_idx,  H5_NATIVE_INT64,  int64_t'
+        'Snap_idx', H5_NATIVE_DOUBLE, double'
+    */
 
     if(ctr_h5->contig_halo_props[start_filenum]) {
-        /* Figure out the appropriate for the 'Snapshot number' field -> 'Snap_num' in older CTrees and 'Snap_idx' in newerr versions */
         hid_t h5_forests_group = ctr_h5->h5_forests_group[start_filenum];
         const size_t snap_fieldname_sizeof = sizeof(ctr_h5->snap_field_name);
         char snap_field_name[snap_fieldname_sizeof];
