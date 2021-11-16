@@ -29,9 +29,9 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
 			  strdot = run_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
 
-			  // const double cold_crit = 0.371 * galaxies[p].Vvir * reff;
-			  // if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
-			  //    strdot = run_params->SfrEfficiency * galaxies[p].ColdGas / tdyn;
+			  /* // const double cold_crit = 0.371 * galaxies[p].Vvir * reff; */
+			  /* // if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) { */
+			  /* //    strdot = run_params->SfrEfficiency * galaxies[p].ColdGas / tdyn; */
 
         } else {
             strdot = 0.0;
