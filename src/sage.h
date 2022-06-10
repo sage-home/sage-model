@@ -14,7 +14,10 @@ extern "C" {
 
     /* API for sage */
     extern int run_sage(const int ThisTask, const int NTasks, const char *param_file, void **params);
-    extern int finalize_sage(void *run_params);
+    extern int finalize_sage(void *params);
+
+    /* API for converting supported mergertre formats to the Millennium (LHaloTree) binary format */
+    extern int convert_trees_to_lhalo(const int ThisTask, const int NTasks, const char *param_file, void **params);
 
 #ifdef __cplusplus
 }
