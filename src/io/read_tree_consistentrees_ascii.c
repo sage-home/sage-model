@@ -217,6 +217,10 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
     /*MS: 23/9/2019 Fix up the normalisation to make the volume in [0.0, 1.0] (the previous step adds 1.0 per file
       -> the sum should be NumSimulationTreeFiles) */
     forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
+    if(forests_info->frac_volume_processed > 1.0) {
+        fprintf(stderr,"Warning: Fraction of simulation volume  was > 1.0, *clamping* that to 1.0. (fraction - 1.0) = %g\n", forests_info->frac_volume_processed - 1.0);
+        forests_info->frac_volume_processed = 1.0;
+    }
 
     ctr->numfiles = files_fd.numfiles;
     ctr->open_fds = mymalloc(ctr->numfiles * sizeof(ctr->open_fds[0]));
