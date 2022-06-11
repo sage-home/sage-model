@@ -462,7 +462,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, const char *par
             EXIT_FAILURE,
             "Error: Could not seek to %llu bytes to write the "
             "start of the halo data from the first forest",
-            halo_data_start_offset);
+            (unsigned long long) halo_data_start_offset);
 
     run_params->interrupted = 0;
 #ifdef VERBOSE
