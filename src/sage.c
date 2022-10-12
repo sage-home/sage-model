@@ -31,6 +31,9 @@
 /* main sage -> not exposed externally */
 int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                         struct forest_info *forest_info, struct params *run_params);
+/* additional functionality to convert *any* support mergertree format into the lhalo-binary format */
+int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *run_params, struct forest_info *forest_info);
+
 
 int run_sage(const int ThisTask, const int NTasks, const char *param_file, void **params)
 {
@@ -49,7 +52,6 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     if(status != EXIT_SUCCESS) {
         return status;
     }
-    init(run_params);
 
     /* Now start the model */
     struct timeval tstart;
@@ -72,6 +74,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
         return EXIT_FAILURE;
     }
 
+
     // If we're creating a binary output, we need to be careful.
     // The binary output contains an 32 bit header that contains the number of trees processed.
     // Hence let's make sure that the number of trees assigned to this task doesn't exceed an 32 bit number.
@@ -83,6 +86,19 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
         return EXIT_FAILURE;
     }
 
+    /* If we are converting the input mergertree into the lhalo-binary format,
+       then we just run the relevant converter: MS 12/10/2022 */
+    if(run_params->OutputFormat == lhalo_binary_output) {
+        return convert_trees_to_lhalo(ThisTask, NTasks, run_params, &forest_info);
+    }
+
+    /* If we are here, then we need to run the SAM */
+    init(run_params);
+
+    /* init needs to run before (potentially) jumping to 'cleanup' ->
+       otherwise unallocated run_params->Age will get freed and result
+       in an error. MS 12/10/2022
+    */
     if(forest_info.nforests_this_task == 0) {
         fprintf(stderr,"ThisTask=%d no forests to process...skipping\n",ThisTask);
         goto cleanup;
@@ -223,6 +239,13 @@ int32_t finalize_sage(void *params)
                 break;
             }
 #endif
+            /* For converting input mergertrees into the lhalo-binary format,
+               there is no final cleanup required */
+        case(lhalo_binary_output):
+            {
+                status = EXIT_SUCCESS;
+                break;
+            }
 
         default:
             {
@@ -355,55 +378,38 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     return EXIT_SUCCESS;
 }
 
-int convert_trees_to_lhalo(const int ThisTask, const int NTasks, const char *param_file, void **params)
+
+int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *run_params, struct forest_info *forest_info)
 {
-    struct params *run_params = malloc(sizeof(*run_params));
-    if(run_params == NULL) {
-        fprintf(stderr,"Error: On ThisTask = %d (out of NTasks = %d), failed to allocate memory "\
-                "for the C-struct to to hold the run params. Requested size = %zu bytes...returning\n",
-                ThisTask, NTasks, sizeof(*run_params));
-        return MALLOC_FAILURE;
-    }
-    run_params->ThisTask = ThisTask;
-    run_params->NTasks = NTasks;
-    *params = run_params;
-
-    int32_t status = read_parameter_file(param_file, run_params);
-    if(status != EXIT_SUCCESS) {
-        return status;
+    if(forest_info->nforests_this_task > INT_MAX) {
+        fprintf(stderr,"Error: Can not correctly cast nforests (on this task) = %"PRId64" to fit within a 4-byte integer (as required by the LHaloTree binary format specification). Converting fewer input files or adding more parallel cores (currently using %d cores) will help alleviate the issue\n",
+                forest_info->nforests_this_task, NTasks);
+        return EXIT_FAILURE;
     }
 
-    /* Now start the model */
+    if(forest_info->nforests_this_task == 0) {
+        fprintf(stderr,"ThisTask=%d no forests to process...skipping\n",ThisTask);
+        return EXIT_SUCCESS;
+    }
+
+    /* Now start the conversion */
     struct timeval tstart;
     gettimeofday(&tstart, NULL);
 
-    struct forest_info forest_info;
-    memset(&forest_info, 0, sizeof(struct forest_info));
-    forest_info.totnforests = 0;
-    forest_info.nforests_this_task = 0;
-
-    // char buffer[4*MAX_STRING_LEN + 1];
-    // snprintf(buffer, 4*MAX_STRING_LEN, "%s/%s_z%1.3f_%d", run_params->OutputDir, run_params->FileNameGalaxies, run_params->ZZ[run_params->ListOutputSnaps[0]], ThisTask);
-
-    /* setup the forests reading, and then distribute the forests over the Ntasks */
-    status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);
-    if(status != EXIT_SUCCESS) {
-        return status;
+    run_params->interrupted = 0;
+#ifdef VERBOSE
+    if(ThisTask == 0) {
+        init_my_progressbar(stdout, forest_info->nforests_this_task, &(run_params->interrupted));
+#ifdef MPI
+        if(NTasks > 1) {
+            fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
+                    "It should be used as a general indicator only.\n");
+        }
+#endif
     }
+#endif
 
-    if(forest_info.totnforests < 0 || forest_info.nforests_this_task < 0) {
-        fprintf(stderr,"Error: Bug in code totnforests = %"PRId64" and nforests (on this task) = %"PRId64" should both be at least 0\n",
-                forest_info.totnforests, forest_info.nforests_this_task);
-        return EXIT_FAILURE;
-    }
-
-    if(forest_info.nforests_this_task > INT_MAX) {
-        fprintf(stderr,"Error: Can not correctly cast nforests (on this task) = %"PRId64" to fit within a 4-byte integer (as required by the LHaloTree binary format specification). Converting fewer input files or adding more parallel cores (currently using %d cores) will help alleviate the issue\n",
-                forest_info.nforests_this_task, NTasks);
-        return EXIT_FAILURE;
-    }
-
-    const int64_t nforests_this_task = forest_info.nforests_this_task;
+    const int64_t nforests_this_task = forest_info->nforests_this_task;
     int64_t totnhalos = 0;
 
 #define WRITE_AND_CHECK(fd, var, nbytes_to_write)                                   \
@@ -464,18 +470,6 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, const char *par
             "start of the halo data from the first forest",
             (unsigned long long) halo_data_start_offset);
 
-    run_params->interrupted = 0;
-#ifdef VERBOSE
-    if(ThisTask == 0) {
-        init_my_progressbar(stdout, nforests_this_task, &(run_params->interrupted));
-#ifdef MPI
-        if(NTasks > 1) {
-            fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
-                    "It should be used as a general indicator only.\n");
-        }
-#endif
-    }
-#endif
 
     /* simulation merger-tree data */
     struct halo_data *Halo = NULL;
@@ -488,7 +482,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, const char *par
 #endif
 
         /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
-        const int64_t nhalos = load_forest(run_params, forestnr, &Halo, &forest_info);
+        const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
         if(nhalos < 0) {
             fprintf(stderr,"Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
             return nhalos;
@@ -508,7 +502,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, const char *par
     XRETURN(close(fd) == 0, EXIT_FAILURE, "Error while closing the output binary file");
 
     /* sage is done running -> do the cleanup */
-    cleanup_forests_io(run_params->TreeType, &forest_info);
+    cleanup_forests_io(run_params->TreeType, forest_info);
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
@@ -522,7 +516,6 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, const char *par
     free(time_string);
     fflush(stdout);
 #endif
-    free(run_params);
 
     return EXIT_SUCCESS;
 }
