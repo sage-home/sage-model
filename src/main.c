@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 #endif
 
     if(argc != 2) {
-        fprintf(stderr, "\n  usage: sage <parameterfile>\n\n");
+        fprintf(stderr, "\n  usage: %s <parameterfile>\n\n", argv[0]);
 #ifdef MPI
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         MPI_Finalize();
@@ -34,7 +34,6 @@ int main(int argc, char **argv)
     if(status != EXIT_SUCCESS) {
         goto err;
     }
-
 
 #ifdef MPI
     // Wait until all tasks are done before we do final tasks/checks.
@@ -52,7 +51,7 @@ int main(int argc, char **argv)
 #endif
     return EXIT_SUCCESS;
 
- err:
+err:
 #ifdef MPI
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
     MPI_Finalize();
