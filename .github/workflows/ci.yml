@@ -23,9 +23,14 @@ jobs:
         include:
           - compiler: clang
             os: "macos-latest"
-            python-version: "3.11"
-            numpy-version: "1.22"
-          
+            python-version: "3.8"
+            numpy-version: "1.18"
+
+          - compiler: clang
+            os: "macos-latest"
+            python-version: "3.9"
+            numpy-version: "1.20"
+
         exclude:
           # gcc-7 only on ubuntu-20.04
           - os: "ubuntu-latest"
