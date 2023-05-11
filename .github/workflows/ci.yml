@@ -31,6 +31,10 @@ jobs:
           - os: "ubuntu-latest"
             compiler: gcc-7
 
+          # gcc-12 only on ubuntu-latest
+          - os: "ubuntu-20.04"
+            compiler: gcc-12
+
           # python3.9 only on ubuntu-latest
           - os: "ubuntu-latest"
             python-version: "3.8"
