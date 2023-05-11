@@ -415,11 +415,18 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
 #define WRITE_AND_CHECK(fd, var, nbytes_to_write)                                   \
     do {                                                                            \
         ssize_t bytes_written = write(fd, &var, nbytes_to_write);                   \
+        if(bytes_written < 0) {                                                     \
+            fprintf(stderr,"Error occurrred while writing %llu bytes "              \
+                            "(line=%d, function = %s, file = %s)\n",                \
+                            (unsigned long long) nbytes_to_write,                   \
+                            __LINE__, __FUNCTION__, __FILE__);                      \
+            perror(NULL);                                                           \
+            return EXIT_FAILURE;                                                    \
+        }                                                                           \
         if(bytes_written != (ssize_t) nbytes_to_write) {                            \
             fprintf(stderr,"Error: Wrote %zd bytes instead of "                     \
                             "the required %llu bytes\n",                            \
                             bytes_written, (unsigned long long) nbytes_to_write);   \
-            perror(NULL);                                                           \
             return EXIT_FAILURE;                                                    \
         }                                                                           \
     } while (0)
