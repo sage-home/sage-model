@@ -15,72 +15,39 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-18.04", "ubuntu-20.04", "macos-latest"]
-        compiler: [gcc-5, gcc-7, gcc-9, clang]
-        python-version: ["3.6", "3.7", "3.8", "3.9"]
-        numpy-version: ["1.14", "1.16", "1.18", "1.20"]
+        os: ["ubuntu-latest", "ubuntu-20.04"]
+        compiler: [gcc-8, gcc-9, gcc-12]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        numpy-version: ["1.18", "1.20", "1.23"]
+        
+        include:
+          - compiler: clang
+            os: "macos-latest"
+            python-version: "3.11"
+            numpy-version: "1.22"
+          
         exclude:
-
-          # Only run with 'clang' on OSX
-          - os: "macos-latest"
-            compiler: gcc-5
-          - os: "macos-latest"
-            compiler: gcc-7
-          - os: "macos-latest"
-            compiler: gcc-9
-
-          # Don't use 'clang' on linux
-          - os: "ubuntu-18.04"
-            compiler: clang
-          - os: "ubuntu-20.04"
-            compiler: clang
-
-          # no gcc-5, gcc-7 on 20.04
-          - os: "ubuntu-20.04"
-            compiler: gcc-5
-          - os: "ubuntu-20.04"
-            compiler: gcc-7
-
-          # # no gcc-5 on 18.04
-          - os: "ubuntu-18.04"
-            compiler: gcc-5
-
-
-          # python3.8 only on 20.04
-          - os: "ubuntu-18.04"
+          # python3.9 only on ubuntu-latest
+          - os: "ubuntu-latest"
             python-version: "3.8"
-          - os: "macos-latest"
-            python-version: "3.8"
-
-          # python3.9 only on 20.04
-          - os: "ubuntu-18.04"
-            python-version: "3.9"
-          - os: "macos-latest"
-            python-version: "3.9"
 
           # numpy1.18 only on python3.8
           # (which, in turn, is only on '20.04')
-          - python-version: "3.6"
+          - python-version: "3.11"
             numpy-version: "1.18"
-          - python-version: "3.7"
+          - python-version: "3.10"
             numpy-version: "1.18"
           - python-version: "3.9"
             numpy-version: "1.18"
 
           # numpy1.20 only on python3.9
           # (which, in turn, is only on '20.04')
-          - python-version: "3.6"
+          - python-version: "3.11"
             numpy-version: "1.20"
-          - python-version: "3.7"
+          - python-version: "3.10"
             numpy-version: "1.20"
-          - python-version: "3.8"
-            numpy-version: "1.20"
-
-          # numpy1.14 only on <= python3.7
-          - python-version: "3.8"
-            numpy-version: "1.14"
           - python-version: "3.9"
-            numpy-version: "1.14"
+            numpy-version: "1.20"
 
     env:
       CC: ${{ matrix.compiler }}
@@ -88,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v2
