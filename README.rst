@@ -77,14 +77,16 @@ or in parallel as:
 
 Plotting the Output
 ===================
+We have a separate `sage-analysis <https://github.com/sage-home/sage-analysis/>`_ python package to assist with plotting `sage` output. Please refer to the `sage_analysis
+documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sage.html>`_ for more details. 
+
 
 Requirements
 ------------
-
 **Analysis can only be performed in Python version >3.6**
 
-We recommend first setting a Python virtual environment to perform analysis in. We refer to the official `documentation
-<https://docs.python.org/3/library/venv.html>`_ but a virtual environment can be quickly created and activated through:
+We recommend first setting up a Python virtual environment to perform analysis in. We refer to the official `virtualenv documentation
+<https://docs.python.org/3/library/venv.html>`_, but a virtual environment can be quickly created and activated through:
 
 .. code::
 
