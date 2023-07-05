@@ -414,21 +414,21 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
 
 #define WRITE_AND_CHECK(fd, var, nbytes_to_write)                                   \
     do {                                                                            \
-        ssize_t bytes_written = write(fd, &var, nbytes_to_write);                   \
-        if(bytes_written < 0) {                                                     \
-            fprintf(stderr,"Error occurrred while writing %llu bytes "              \
-                            "(line=%d, function = %s, file = %s)\n",                \
-                            (unsigned long long) nbytes_to_write,                   \
-                            __LINE__, __FUNCTION__, __FILE__);                      \
-            perror(NULL);                                                           \
-            return EXIT_FAILURE;                                                    \
+        size_t nbytes_left = nbytes_to_write;                                       \
+        char *src = (char *) var;                                                   \
+        while(nbytes_left > 0) {                                                    \
+            const ssize_t bytes_written = write(fd, src, nbytes_left);              \
+            XRETURN(bytes_written >0, EXIT_FAILURE,                                 \
+                    "Error occurrred while writing %zu bytes\n",                    \
+                    nbytes_left);                                                   \
+                                                                                    \
+            src += bytes_written;                                                   \
+            nbytes_left -= bytes_written;                                           \
         }                                                                           \
-        if(bytes_written != (ssize_t) nbytes_to_write) {                            \
-            fprintf(stderr,"Error: Wrote %zd bytes instead of "                     \
-                            "the required %llu bytes\n",                            \
-                            bytes_written, (unsigned long long) nbytes_to_write);   \
-            return EXIT_FAILURE;                                                    \
-        }                                                                           \
+        XRETURN( nbytes_left == 0, EXIT_FAILURE,                                    \
+                "Error: %zd bytes remained instead of 0. "                          \
+                "while writing the required %llu bytes\n",                          \
+                nbytes_left, (unsigned long long) nbytes_to_write);                 \
     } while (0)
 
 #define PWRITE_64BIT_TO_32BIT(fd, var, offset, kind_of_var)             \
@@ -490,14 +490,14 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
 
         /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
         const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
-        if(nhalos < 0) {
-            fprintf(stderr,"Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
-            return nhalos;
-        }
+        XRETURN(nhalos > 0, nhalos, "Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
+        XRETURN(nhalos <= INT_MAX, EXIT_FAILURE, 
+                "Error: Number of halos = %"PRId64" must be > 0 *and* also fit inside 32 bits\n", 
+                nhalos);
         WRITE_AND_CHECK(fd, *Halo, sizeof(struct halo_data)*nhalos);//write updates the file offset
 
         const off_t nh_per_tree_offset = sizeof(int32_t) + sizeof(int32_t) + forestnr * sizeof(int32_t);
-        PWRITE_64BIT_TO_32BIT(fd, nhalos, nh_per_tree_offset, "nhalos per tree");//pwrite does not update file offset
+        PWRITE_64BIT_TO_32BIT(fd, nhalos, nh_per_tree_offset, "nhalos per tree");//pwrite does not update file offset                
 
         myfree(Halo);
         totnhalos += nhalos;
@@ -515,13 +515,12 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
     if(ThisTask == 0) {
         finish_myprogressbar(stdout, &(run_params->interrupted));
     }
-
+    fflush(stdout);
     struct timeval tend;
     gettimeofday(&tend, NULL);
     char *time_string = get_time_string(tstart, tend);
     fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, time_string);
     free(time_string);
-    fflush(stdout);
 #endif
 
     return EXIT_SUCCESS;
