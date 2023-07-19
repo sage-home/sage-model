@@ -14,16 +14,6 @@
 #include "forest_utils.h"
 
 
-// /* Local Structs */
-// struct METADATA_NAMES
-// {
-//     char name_NTrees[MAX_STRING_LEN];
-//     char name_totNHalos[MAX_STRING_LEN];
-//     char name_TreeNHalos[MAX_STRING_LEN];
-//     char name_ParticleMass[MAX_STRING_LEN];
-//     char name_NumSimulationTreeFiles[MAX_STRING_LEN];
-// };
-
 /* Local Proto-Types */
 static int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, const double hubble);
 static void get_forests_filename_gadget4_hdf5(char *filename, const size_t len, const int filenr, const struct params *run_params);
@@ -192,14 +182,11 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
     }
     forests_info->nhalos_this_task = nhalos_this_task;
 
-    int64_t end_halonum_for_end_forestnum = 0, start_halonum_for_start_forestnum = 0;
+    int64_t end_halonum_for_end_forestnum = 0;
     for(int64_t i=0;i<=end_forestnum;i++) {
         end_halonum_for_end_forestnum += nhalos_per_forest[i];
-        if(i < start_forestnum) start_halonum_for_start_forestnum += nhalos_per_forest[i];
     }
-    end_halonum_for_end_forestnum--;/* inclusive - that's why we need the -1. However, we do not need the -1 
-                                       start_halonum_for_start_forestnum, because that starts *exactly* 1 halo 
-                                       after the end of the previous tree. */   
+    end_halonum_for_end_forestnum--;/* inclusive - that's why we need the -1. */
 
 
     int64_t *num_forests_to_process_per_file = calloc((lastfile + 1), sizeof(num_forests_to_process_per_file[0]));/* calloc is required */
