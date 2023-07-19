@@ -159,3 +159,37 @@ herr_t read_dataset(hid_t fd, const char *dataset_name, hid_t dataset_id, void *
 
     return (herr_t) EXIT_SUCCESS;
 }
+
+
+int32_t fill_hdf5_metadata_names(struct HDF5_METADATA_NAMES *metadata_names, enum Valid_TreeTypes my_TreeType)
+{
+    switch (my_TreeType) {
+    case lhalo_hdf5:
+        snprintf(metadata_names->name_NTrees, MAX_STRING_LEN - 1, "NtreesPerFile"); // Total number of forests within the file.
+        snprintf(metadata_names->name_totNHalos, MAX_STRING_LEN - 1, "NhalosPerFile"); // Total number of halos within the file.
+        snprintf(metadata_names->name_TreeNHalos, MAX_STRING_LEN - 1, "TreeNHalos"); // Number of halos per forest within the file.
+        snprintf(metadata_names->name_ParticleMass, MAX_STRING_LEN - 1, "ParticleMass");//Particle mass for Dark matter in the sim
+        snprintf(metadata_names->name_NumSimulationTreeFiles, MAX_STRING_LEN - 1, "NumberOfOutputFiles");//Particle mass for Dark matter in the sim
+        return EXIT_SUCCESS;
+
+    case gadget4_hdf5:
+        snprintf(metadata_names->name_NTrees, MAX_STRING_LEN - 1, "Ntrees_ThisFile"); // Total number of forests within the file.
+        snprintf(metadata_names->name_totNHalos, MAX_STRING_LEN - 1, "Nhalos_ThisFile"); // Total number of halos within the file.
+        // snprintf(metadata_names->name_TreeNHalos, MAX_STRING_LEN - 1, "TreeNHalos"); // Number of halos per forest within the file.
+        snprintf(metadata_names->name_ParticleMass, MAX_STRING_LEN - 1, "DOES-NOT-EXIST");//Particle mass for Dark matter in the sim
+        snprintf(metadata_names->name_NumSimulationTreeFiles, MAX_STRING_LEN - 1, "NumFiles");//Number of output mergertree files 
+        return EXIT_SUCCESS;
+
+    case lhalo_binary:
+        fprintf(stderr, "If the file is binary then this function should never be called.  Something's gone wrong...");
+        return EXIT_FAILURE;
+
+    default:
+        fprintf(stderr, "Your tree type has not been included in the switch statement for ``%s`` in file ``%s``.\n", __FUNCTION__, __FILE__);
+        fprintf(stderr, "Please add it there.\n");
+        return EXIT_FAILURE;
+
+    }
+
+    return EXIT_FAILURE;
+}

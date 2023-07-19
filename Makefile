@@ -82,7 +82,7 @@ endif
 # if condition (for DO_CHECKS); otherwise `make clean` will not
 # clean the H5_OBJS
 H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c io/hdf5_read_utils.c \
-          io/read_tree_consistentrees_hdf5.c
+          io/read_tree_consistentrees_hdf5.c io/read_tree_gadget4_hdf5.c
 
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
@@ -243,7 +243,7 @@ ifeq ($(DO_CHECKS), 1)
   endif
 
   CCFLAGS += -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs # and more warning flags
-  LIBFLAGS   +=   -lm
+  LIBFLAGS +=   -lm
 
 else
   # something like `make clean` is in effect -> need to also remove the HDF5 objects

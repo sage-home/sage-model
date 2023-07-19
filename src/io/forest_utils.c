@@ -125,7 +125,7 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
     }
 
     if(forest_weighting == uniform_in_forests || nhalos_per_forest == NULL) {
-        // fprintf(stderr,"Warning: Based on the inputs, switching to the assigning forests without weights (might indicate bug in code but will not affect results)\n");
+        // fprintf(stderr,"Warning: Based on the inputs, switching to the assigning forests *without* weights (might indicate bug in code, only affects load-balancing and the actual results)\n");
         return distribute_forests_over_ntasks(totnforests, NTasks, ThisTask, nforests_thistask, start_forestnum_thistask);
     }
 
@@ -205,6 +205,78 @@ int distribute_weighted_forests_over_ntasks(const int64_t totnforests, const int
     /* Now fill up the destination */
     *nforests_thistask = nforests_this_task;
     *start_forestnum_thistask = start_forestnum;
+
+    return EXIT_SUCCESS;
+}
+
+
+
+int find_start_and_end_filenum(const int64_t start_forestnum, const int64_t end_forestnum,
+                               const int64_t *totnforests_per_file, const int64_t totnforests,
+                               const int firstfile, const int lastfile,
+                               const int ThisTask, const int NTasks,
+                               int64_t *num_forests_to_process_per_file, int64_t *start_forestnum_to_process_per_file,
+                               int *start_file, int *end_file)
+{
+
+    if (start_forestnum >= end_forestnum) {
+        fprintf(stderr,"Error (line %d in function '%s'): Expected that the starting forest number = %"PRId64 " "
+                       "should be less end forest number = %"PRId64"... returning \n",
+                       __LINE__, __FUNCTION__, start_forestnum, end_forestnum);
+        return -1;
+    }
+
+    const int64_t nforests_this_task = end_forestnum - start_forestnum;
+    int start_filenum = -1, end_filenum = -1;
+    int64_t nforests_so_far = 0;
+    for(int filenr=firstfile;filenr<=lastfile;filenr++) {
+        const int64_t nforests_this_file = totnforests_per_file[filenr];
+        if(nforests_this_file < 0 ){
+            fprintf(stderr,"Error: Number of forests = %"PRId64" in file = %d *must* be >= 0\n", nforests_this_file, filenr);
+            return -1;
+        }
+        if(nforests_this_file == 0) continue;
+
+        const int64_t end_forestnum_this_file = nforests_so_far + nforests_this_file;
+        // fprintf(stderr,"filenr = %d end_forestnum_this_file = %"PRId64"\n", filenr, end_forestnum_this_file);
+        start_forestnum_to_process_per_file[filenr] = 0;
+        num_forests_to_process_per_file[filenr] = nforests_this_file;
+
+        if(start_forestnum >= nforests_so_far && start_forestnum < end_forestnum_this_file) {
+            start_filenum = filenr;
+            start_forestnum_to_process_per_file[filenr] = start_forestnum - nforests_so_far;
+            num_forests_to_process_per_file[filenr] = nforests_this_file - (start_forestnum - nforests_so_far);
+        }
+
+
+        if(end_forestnum >= nforests_so_far && end_forestnum <= end_forestnum_this_file) {
+            num_forests_to_process_per_file[filenr] = end_forestnum - (start_forestnum_to_process_per_file[filenr] + nforests_so_far);
+            end_filenum = filenr;
+
+            XRETURN(num_forests_to_process_per_file[filenr] <= nforests_this_task, -1,
+                    "Error: num_forests_to_process_per_file[%d] = %"PRId64" start_filenum = %d end_filenum = %d "
+                    "start_forestnum = %"PRId64" end_forestnum = %"PRId64" nforests_this_task = %"PRId64" nforests_so_far = %"PRId64"\n",
+                    filenr, num_forests_to_process_per_file[filenr], start_filenum, end_filenum, start_forestnum, end_forestnum, nforests_this_task, nforests_so_far);
+            break;
+        }
+        nforests_so_far += nforests_this_file;
+    }
+
+    if(start_filenum == -1 || end_filenum == -1 ) {
+        fprintf(stderr,"Error: Could not locate start (=%d) or end file number (=%d) for processing forests\n", start_filenum, end_filenum);
+        fprintf(stderr,"Printing debug info\n");
+        fprintf(stderr,"ThisTask = %d NTasks = %d totnforests = %"PRId64" start_forestnum = %"PRId64" end_forestnum = %"PRId64"\n",
+                ThisTask, NTasks, totnforests, start_forestnum, end_forestnum);
+        for(int filenr=firstfile;filenr<=lastfile;filenr++) {
+            fprintf(stderr,"filenr := %d contains %"PRId64" forests ",filenr, totnforests_per_file[filenr]);
+            fprintf(stderr,"\n");
+        }
+
+        return -1;
+    }
+
+    *start_file = start_filenum;
+    *end_file = end_filenum;
 
     return EXIT_SUCCESS;
 }

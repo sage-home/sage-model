@@ -19,6 +19,7 @@
 #include "io/read_tree_lhalo_hdf5.h"
 #include "io/read_tree_genesis_hdf5.h"
 #include "io/read_tree_consistentrees_hdf5.h"
+#include "io/read_tree_gadget4_hdf5.h"
 #endif
 
 int setup_forests_io(struct params *run_params, struct forest_info *forests_info,
@@ -43,6 +44,10 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
             //MS: 22/07/2021 - Why is firstfile, lastfile still passed even though those could be constructef
             //from run_params (like done within this __FUNCTION__)
             status = setup_forests_io_lht_hdf5(forests_info, ThisTask, NTasks, run_params);
+            break;
+
+        case gadget4_hdf5:
+            status = setup_forests_io_gadget4_hdf5(forests_info, ThisTask, NTasks, run_params);
             break;
 
         case genesis_hdf5:
@@ -103,6 +108,10 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
         cleanup_forests_io_lht_hdf5(forests_info);
         break;
 
+    case gadget4_hdf5:
+        cleanup_forests_io_gadget4_hdf5(forests_info);
+        break;
+
     case genesis_hdf5:
         cleanup_forests_io_genesis_hdf5(forests_info);
         break;
@@ -150,6 +159,10 @@ int64_t load_forest(struct params *run_params, const int64_t forestnr, struct ha
 #ifdef HDF5
     case lhalo_hdf5:
         nhalos = load_forest_lht_hdf5(forestnr, halos, forests_info, run_params->Hubble_h);
+        break;
+
+    case gadget4_hdf5:
+        nhalos = load_forest_gadget4_hdf5(forestnr, halos, forests_info, run_params->Hubble_h);
         break;
 
     case genesis_hdf5:

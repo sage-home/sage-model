@@ -60,7 +60,9 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     struct forest_info forest_info;
     memset(&forest_info, 0, sizeof(struct forest_info));
     forest_info.totnforests = 0;
+    forest_info.totnhalos = 0;
     forest_info.nforests_this_task = 0;
+    forest_info.nhalos_this_task = 0;
 
     /* setup the forests reading, and then distribute the forests over the Ntasks */
     status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);
@@ -381,9 +383,12 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
 
 int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *run_params, struct forest_info *forest_info)
 {
-    if(forest_info->nforests_this_task > INT_MAX) {
-        fprintf(stderr,"Error: Can not correctly cast nforests (on this task) = %"PRId64" to fit within a 4-byte integer (as required by the LHaloTree binary format specification). Converting fewer input files or adding more parallel cores (currently using %d cores) will help alleviate the issue\n",
-                forest_info->nforests_this_task, NTasks);
+    if(forest_info->nforests_this_task > INT_MAX ||  forest_info->nhalos_this_task > INT_MAX) {      
+        fprintf(stderr,"Error: Can not correctly cast totnforests (on this task) = %"PRId64" or totnhalos = %"PRId64" "
+                       "to fit within a 4-byte integer (as required by the LHaloTree binary format specification). "
+                       "Converting fewer input files or adding more parallel cores (currently using %d cores) will "
+                       "help alleviate the issue\n",
+                        forest_info->nforests_this_task, forest_info->nhalos_this_task, NTasks);
         return EXIT_FAILURE;
     }
 
@@ -494,10 +499,10 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
         XRETURN(nhalos <= INT_MAX, EXIT_FAILURE, 
                 "Error: Number of halos = %"PRId64" must be > 0 *and* also fit inside 32 bits\n", 
                 nhalos);
-        WRITE_AND_CHECK(fd, *Halo, sizeof(struct halo_data)*nhalos);//write updates the file offset
+        WRITE_AND_CHECK(fd, Halo, sizeof(struct halo_data)*nhalos);//write updates the file offset
 
         const off_t nh_per_tree_offset = sizeof(int32_t) + sizeof(int32_t) + forestnr * sizeof(int32_t);
-        PWRITE_64BIT_TO_32BIT(fd, nhalos, nh_per_tree_offset, "nhalos per tree");//pwrite does not update file offset                
+        PWRITE_64BIT_TO_32BIT(fd, nhalos, nh_per_tree_offset, "nhalos per tree");//pwrite does not update file offset                        
 
         myfree(Halo);
         totnhalos += nhalos;
@@ -505,6 +510,13 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
 
     /* Check that totnhalos fits within a 4 byte integer and write to the file */
     PWRITE_64BIT_TO_32BIT(fd, totnhalos, 4, "total number of halos in file");
+
+    if(forest_info->nhalos_this_task > 0) {
+        XRETURN(totnhalos == forest_info->nhalos_this_task, -1, 
+                "Error: Expected totnhalos written out = %"PRId64" to "
+                "be *exactly* equal to forests_info->nhalos_this_task = %"PRId64"\n",
+                totnhalos, forest_info->nhalos_this_task);
+    }
 
     XRETURN(close(fd) == 0, EXIT_FAILURE, "Error while closing the output binary file");
 

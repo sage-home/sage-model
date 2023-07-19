@@ -252,64 +252,29 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         return MALLOC_FAILURE;
     }
 
-    /* show no forests need to be processed by default. THe other variables are initialised to '0' */
-    for(int i=0;i<totnfiles;i++) {
-        start_forestnum_per_file[i] = -1;
-    }
 
     // Now for each task, we know the starting forest number it needs to start reading from.
     // So let's determine what file and forest number within the file each task needs to start/end reading from.
     int start_filenum = -1, end_filenum = -1;
+    int64_t xx, yy;//dummy variables to throw away but needed to pass to find_start_and_end_filenum
+    status = find_start_and_end_filenum(start_forestnum, end_forestnum, 
+                                        totnforests_per_file, totnforests, 
+                                        firstfile, lastfile,
+                                        ThisTask, NTasks, 
+                                        &xx, &yy,
+                                        &start_filenum, &end_filenum);
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
     int64_t nforests_so_far = 0;
+    /* This bit is different for Genesis trees and needs to separately accounted for. MS: 13th June 2023*/
     for(int filenr=firstfile;filenr<=lastfile;filenr++) {
-        const int64_t nforests_this_file = totnforests_per_file[filenr];
-        const int64_t end_forestnum_this_file = nforests_so_far + nforests_this_file;
-        start_forestnum_per_file[filenr] = 0;
-        num_forests_to_process_per_file[filenr] = nforests_this_file;
         offset_for_global_forestnum[filenr] = nforests_so_far;
-
-        /* Check if this task should be reading from this file (referred by filenr)
-           If the starting forest number (start_forestnum, which is cumulative across all files)
-           is located within this file, then the task will need to read from this file.
-         */
-        if(start_forestnum >= nforests_so_far && start_forestnum < end_forestnum_this_file) {
-            start_filenum = filenr;
-            start_forestnum_per_file[filenr] = start_forestnum - nforests_so_far;
+        if(filenr == start_filenum) {
             offset_for_global_forestnum[filenr] += start_forestnum - nforests_so_far;
-            num_forests_to_process_per_file[filenr] = nforests_this_file - (start_forestnum - nforests_so_far);
         }
-
-        /* Similar to above, if the end forst number (end_forestnum, again cumulative across all files)
-           is located with this file, then the task will need to read from this file.
-        */
-
-        if(end_forestnum >= nforests_so_far && end_forestnum <= end_forestnum_this_file) {
-            end_filenum = filenr;
-
-            // In the scenario where this task reads ALL forests from a single file, then the number
-            // of forests read from this file will be the number of forests assigned to it.
-            if(end_filenum == start_filenum) {
-                num_forests_to_process_per_file[filenr] = nforests_this_task;
-            } else {
-                num_forests_to_process_per_file[filenr] = end_forestnum - nforests_so_far;
-            }
-            /* MS & JS: 07/03/2019 -- Probably okay to break here but might need to complete loop for validation */
-        }
-        nforests_so_far += nforests_this_file;
+        nforests_so_far += totnforests_per_file[filenr];
     }
-
-    // Make sure we found a file to start/end reading for this task.
-    if(start_filenum == -1 || end_filenum == -1 ) {
-        fprintf(stderr,"Error: Could not locate start or end file number for the lhalotree binary files\n");
-        fprintf(stderr,"Printing debug info\n");
-        fprintf(stderr,"ThisTask = %d NTasks = %d totnforests = %"PRId64" start_forestnum = %"PRId64" nforests_this_task = %"PRId64"\n",
-                ThisTask, NTasks, totnforests, start_forestnum, nforests_this_task);
-        for(int filenr=firstfile;filenr<=lastfile;filenr++) {
-            fprintf(stderr,"filenr := %d contains %"PRId64" forests\n",filenr, totnforests_per_file[filenr]);
-        }
-        return -1;
-    }
-
     /* So we have the correct files */
     gen->totnfiles = totnfiles;/* the number of files to be processed across all tasks */
     gen->numfiles = end_filenum - start_filenum + 1;/* Number of files to process on this task */
@@ -352,45 +317,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     }
 
     /* Now fill out the halo offsets per snapshot for the first forest */
-#define READ_GENESIS_PARTIAL_FORESTINFO(fd, group_name, dataset_name, ndim, offset, count, buffer) { \
-        hid_t h5_grp = H5Gopen(fd, group_name, H5P_DEFAULT);            \
-        XRETURN(h5_grp >= 0, HDF5_ERROR, "Error: Could not open group = '%s'\n", group_name); \
-        hid_t h5_dset = H5Dopen2(h5_grp, dataset_name, H5P_DEFAULT);    \
-        XRETURN(h5_dset >= 0, HDF5_ERROR, "Error: Could not open dataset = '%s' (within group = '%s')\n", dataset_name, group_name); \
-        hid_t h5_space = H5Dget_space(h5_dset);                         \
-        XRETURN(h5_space >= 0, HDF5_ERROR, "Error: Could not reserve filespace for open dataset = '%s' (within group = '%s')\n", dataset_name, group_name); \
-        herr_t macro_status = H5Sselect_hyperslab(h5_space, H5S_SELECT_SET, offset, NULL, count, NULL); \
-        XRETURN(macro_status >= 0, HDF5_ERROR,                          \
-                "Error: Failed to select hyperslab for dataset = '%s'.\n" \
-                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
-                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
-        hid_t h5_memspace = H5Screate_simple(ndim, count, NULL);        \
-        XRETURN(h5_memspace >= 0, HDF5_ERROR,                           \
-                "Error: Failed to select hyperslab for dataset = %s.\n" \
-                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
-                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
-        const hid_t h5_dtype = H5Dget_type(h5_dset);                    \
-        macro_status = H5Dread(h5_dset, h5_dtype, h5_memspace, h5_space, H5P_DEFAULT, buffer); \
-        XRETURN(macro_status >= 0, HDF5_ERROR, "Error: Failed to read array for dataset = '%s'.\n" \
-                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
-                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
-        XRETURN(H5Dclose(h5_dset) >= 0, HDF5_ERROR,                     \
-                "Error: Could not close dataset = '%s' (within group = '%s')\n", \
-                dataset_name, group_name);                              \
-        XRETURN(H5Tclose(h5_dtype) >= 0, HDF5_ERROR,                    \
-                "Error: Failed to close the datatype for = %s.\n"       \
-                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
-                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
-        XRETURN(H5Sclose(h5_memspace) >= 0, HDF5_ERROR,                 \
-                "Error: Failed to close the dataspace for = %s.\n"      \
-                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
-                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
-        XRETURN(H5Sclose(h5_space) >= 0, HDF5_ERROR,                    \
-                "Error: Failed to close the filespace for = %s.\n"      \
-                "The dimensions of the dataset was %"PRIu64", count[0] = %"PRIu64"\nThe file ID was %d\n.", \
-                dataset_name, (uint64_t) ndim, (uint64_t) *count, (int32_t) fd); \
-        XRETURN(H5Gclose(h5_grp) >= 0, HDF5_ERROR, "Error: Could not close group = '%s'\n", group_name); \
-    }
+    // MS: 24th May 2023 -> copied over to hdf5_read_utils.h as `READ_PARTIAL_DATASET` macro
+
 
     {
         /* Intentionally written in new scope (separate '{')
@@ -412,7 +340,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         const hsize_t read_ndim = 2;
         const hsize_t read_offset[2] = {start_forestnum_in_file, 0};
         const hsize_t read_count[2] = {1, gen->maxsnaps};
-        READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, "ForestInfoInFile", "ForestOffsetsAllSnaps", read_ndim, read_offset, read_count, gen->halo_offset_per_snap);
+        READ_PARTIAL_DATASET(h5_fd, "ForestInfoInFile", "ForestOffsetsAllSnaps", read_ndim, read_offset, read_count, gen->halo_offset_per_snap);
 
         XRETURN(H5Fclose(h5_fd) >= 0, HDF5_ERROR,
                 "Error: On ThisTask = %d could not close file descriptor for filename = '%s'\n", ThisTask, fname);
@@ -665,7 +593,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     const hsize_t h5_global_forestnum = (hsize_t) forestnum_across_all_files;
     /* Read the number of halos in this forest -> starting at offset 'forestnum_across_all_files'  */
     const hsize_t ndim = 1;
-    READ_GENESIS_PARTIAL_FORESTINFO(gen->meta_fd, "ForestInfo", "ForestSizes", ndim, &h5_global_forestnum, &h5_single_item, &nhalos);
+    READ_PARTIAL_DATASET(gen->meta_fd, "ForestInfo", "ForestSizes", ndim, &h5_global_forestnum, &h5_single_item, &nhalos);
 
     int64_t *nhalos_per_snap = mymalloc(gen->maxsnaps * sizeof(*nhalos_per_snap));
     XRETURN(nhalos_per_snap != NULL, MALLOC_FAILURE,
@@ -687,8 +615,8 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     const hsize_t read_ndims = 2;
     const hsize_t read_offset[2] = {forestnum_in_file, 0};
     const hsize_t read_count[2] = {1, gen->maxsnaps};
-    READ_GENESIS_PARTIAL_FORESTINFO(h5_fd, "ForestInfoInFile", "ForestSizesAllSnaps", read_ndims, read_offset, read_count, nhalos_per_snap);
-#undef READ_GENESIS_PARTIAL_FORESTINFO
+    READ_PARTIAL_DATASET(h5_fd, "ForestInfoInFile", "ForestSizesAllSnaps", read_ndims, read_offset, read_count, nhalos_per_snap);
+//#undef READ_GENESIS_PARTIAL_FORESTINFO
 
     /* Now that we have the data */
     int64_t offset=0;

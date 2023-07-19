@@ -206,73 +206,25 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
     forests_info->nforests_this_task = nforests_this_task;/* Note: Number of forests to process on this task is also stored at the container struct*/
 
     int64_t *num_forests_to_process_per_file = mycalloc(totnfiles, sizeof(num_forests_to_process_per_file[0]));
-    int64_t *start_forestnum_per_file = mymalloc(totnfiles * sizeof(start_forestnum_per_file[0]));
-    if(num_forests_to_process_per_file == NULL || start_forestnum_per_file == NULL) {
+    int64_t *start_forestnum_to_process_per_file = mymalloc(totnfiles * sizeof(start_forestnum_to_process_per_file[0]));
+    if(num_forests_to_process_per_file == NULL || start_forestnum_to_process_per_file == NULL) {
         fprintf(stderr,"Error: Could not allocate memory to store the number of forests that need to be processed per file (on thistask=%d)\n", ThisTask);
         perror(NULL);
         return MALLOC_FAILURE;
     }
 
-    /* show no forests need to be processed by default. THe other variable are initialised to '0' */
-    for(int i=0;i<totnfiles;i++) {
-        start_forestnum_per_file[i] = -1;
-    }
-
     // Now for each task, we know the starting forest number it needs to start reading from.
     // So let's determine what file and forest number within the file each task needs to start/end reading from.
     int start_filenum = -1, end_filenum = -1;
-    int64_t nforests_so_far = 0;
-    for(int filenr=firstfile;filenr<=lastfile;filenr++) {
-        start_forestnum_per_file[filenr] = 0;
-
-        const int64_t nforests_this_file = totnforests_per_file[filenr];
-        num_forests_to_process_per_file[filenr] = nforests_this_file;
-        const int64_t end_forestnum_this_file = nforests_so_far + nforests_this_file;
-
-        /* Check if this task should be reading from this file (referred by filenr)
-           If the starting forest number (start_forestnum, which is cumulative across all files)
-           is located within this file, then the task will need to read from this file.
-         */
-        if(start_forestnum >= nforests_so_far && start_forestnum < end_forestnum_this_file) {
-            start_filenum = filenr;
-            start_forestnum_per_file[filenr] = start_forestnum - nforests_so_far;
-            num_forests_to_process_per_file[filenr] = nforests_this_file - (start_forestnum - nforests_so_far);
-        }
-
-        /* Similar to above, if the end forst number (end_forestnum, again cumulative across all files)
-           is located with this file, then the task will need to read from this file.
-        */
-
-        if(end_forestnum >= nforests_so_far && end_forestnum <= end_forestnum_this_file) {
-            end_filenum = filenr;
-
-            // In the scenario where this task reads ALL forests from a single file, then the number
-            // of forests read from this file will be the number of forests assigned to it.
-            if(end_filenum == start_filenum) {
-                num_forests_to_process_per_file[filenr] = nforests_this_task;
-            } else {
-                num_forests_to_process_per_file[filenr] = end_forestnum - nforests_so_far;
-            }
-            /* MS & JS: 07/03/2019 -- Probably okay to break here but might need to complete loop for validation */
-            /* MS: 9/10/2021 - breaking out of the loop. No point unnecessarily creating heat from cpu usage*/
-            break;
-        }
-        nforests_so_far += nforests_this_file;
+    status = find_start_and_end_filenum(start_forestnum, end_forestnum,
+                                        totnforests_per_file, totnforests,
+                                        firstfile, lastfile,
+                                        ThisTask, NTasks,
+                                        num_forests_to_process_per_file, start_forestnum_to_process_per_file,
+                                        &start_filenum, &end_filenum);
+    if(status != EXIT_SUCCESS) {
+        return status;
     }
-
-    // Make sure we found a file to start/end reading for this task.
-    if(start_filenum == -1 || start_filenum < firstfile || start_filenum > lastfile ||
-        end_filenum == -1 || end_filenum < firstfile || end_filenum > lastfile) {
-        fprintf(stderr,"Error: Could not locate start or end file number for the consistent-trees hdf5 files\n");
-        fprintf(stderr,"Printing debug info\n");
-        fprintf(stderr,"ThisTask = %d NTasks = %d totnforests = %"PRId64" start_forestnum = %"PRId64" nforests_this_task = %"PRId64"\n",
-                ThisTask, NTasks, totnforests, start_forestnum, nforests_this_task);
-        for(int filenr=firstfile;filenr<=lastfile;filenr++) {
-            fprintf(stderr,"filenr := %d contains %"PRId64" forests\n",filenr, totnforests_per_file[filenr]);
-        }
-        return -1;
-    }
-    fprintf(stderr,"Thistask = %d start_filenum = %d end_filenum = %d\n", ThisTask, start_filenum, end_filenum);
 
     /* So we have the correct files */
     ctr_h5->totnfiles = totnfiles;/* the number of files to be processed across all tasks. MS: Still wastes space - set to lastfile + 1 rather than the correct "(lastfile - firstfile + 1)" */
@@ -298,7 +250,7 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
 
     /* Now fill up the arrays that are of shape (nforests, ) -- FileNr, original_treenr */
     int32_t curr_filenum = start_filenum;
-    int64_t endforestnum_in_currfile = totnforests_per_file[start_filenum] - start_forestnum_per_file[start_filenum];
+    int64_t endforestnum_in_currfile = totnforests_per_file[start_filenum] - start_forestnum_to_process_per_file[start_filenum];
     int64_t offset = 0;
     for(int64_t iforest=0;iforest<nforests_this_task;iforest++) {
         if(iforest >= endforestnum_in_currfile) {
@@ -309,7 +261,7 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
         }
         forests_info->FileNr[iforest] = curr_filenum;
         if(curr_filenum == start_filenum) {
-            forests_info->original_treenr[iforest] = iforest + start_forestnum_per_file[curr_filenum];
+            forests_info->original_treenr[iforest] = iforest + start_forestnum_to_process_per_file[curr_filenum];
         } else {
             forests_info->original_treenr[iforest] = iforest - offset;
         }
@@ -429,7 +381,7 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
     forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
 
     myfree(num_forests_to_process_per_file);
-    myfree(start_forestnum_per_file);
+    myfree(start_forestnum_to_process_per_file);
     myfree(totnforests_per_file);
 
     /* Finally setup the multiplication factors necessary to generate
