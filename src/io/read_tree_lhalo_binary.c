@@ -42,7 +42,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
     }
 
     // First go through each file and determine the total number of forests across all files.
-    int64_t totnforests = 0;
+    int64_t totnforests = 0, totnhalos = 0;
     for(int filenr=firstfile;filenr<=lastfile;filenr++) {
         char filename[4*MAX_STRING_LEN];
         get_forests_filename_lht_binary(filename, 4*MAX_STRING_LEN, filenr, run_params);
@@ -53,14 +53,16 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
             return FILE_NOT_FOUND;
         }
         int tmp;
-        mypread(fd, &tmp, sizeof(int), 0);
+        mypread(fd, &tmp, sizeof(tmp), 0);
         totnforests_per_file[filenr] = tmp;
         totnforests += totnforests_per_file[filenr];
 
+        mypread(fd, &tmp, sizeof(tmp), 4);
+        totnhalos += tmp;
         close(fd);
     }
     forests_info->totnforests = totnforests;
-
+    forests_info->totnhalos = totnhalos;
 
     const int need_nhalos_per_forest = run_params->ForestDistributionScheme == uniform_in_forests ? 0:1;
     int64_t *nhalos_per_forest = NULL;
@@ -119,7 +121,6 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
                                         totnforests_per_file, totnforests, 
                                         firstfile, lastfile,
                                         ThisTask, NTasks, 
-                                        // NULL, 
                                         num_forests_to_process_per_file, start_forestnum_to_process_per_file,
                                         &start_filenum, &end_filenum);
     if(status != EXIT_SUCCESS) {
@@ -157,19 +158,22 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
 
         const int64_t nforests_to_process_this_file = num_forests_to_process_per_file[filenr];
         const size_t nbytes = totnforests_per_file[filenr] * sizeof(int32_t);
-        nhalos_per_forest = malloc(nbytes);
-        XRETURN(nhalos_per_forest != NULL, MALLOC_FAILURE,
+        int32_t *buffer = malloc(nbytes);
+        XRETURN(buffer != NULL, MALLOC_FAILURE,
                 "Error: Could not allocate memory to read nhalos per forest. Bytes requested = %zu\n", nbytes);
         
-        mypread(fd, nhalos_per_forest, nbytes, 8); /* the last argument says to start after sizeof(totntrees) + sizeof(totnhalos) */
-        memcpy(forestnhalos, &(nhalos_per_forest[start_forestnum_to_process_per_file[filenr]]), nforests_to_process_this_file * sizeof(forestnhalos[0]));
+        mypread(fd, buffer, nbytes, 8); /* the last argument says to start after sizeof(totntrees) + sizeof(totnhalos) */
+        for(int k=0;k<nforests_to_process_this_file;k++) {
+            forestnhalos[k] = buffer[k + start_forestnum_to_process_per_file[filenr]];
+        }
+        // memcpy(forestnhalos, &(nhalos_per_forest[start_forestnum_to_process_per_file[filenr]]), nforests_to_process_this_file * sizeof(forestnhalos[0]));
 
         /* first compute the byte offset to the halos in start_forestnum */
         size_t byte_offset_to_halos = sizeof(int32_t) + sizeof(int32_t) + nbytes;/* start at the beginning of halo #0 in tree #0 */
         for(int64_t i=0;i<start_forestnum_to_process_per_file[filenr];i++) {
-            byte_offset_to_halos += nhalos_per_forest[i]*sizeof(struct halo_data);
+            byte_offset_to_halos += buffer[i]*sizeof(struct halo_data);
         }
-        free(nhalos_per_forest);
+        free(buffer);
 
         nforests_so_far = forestnhalos - lht->nhalos_per_forest;
         if(filenr == start_filenum) {
