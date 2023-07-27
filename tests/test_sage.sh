@@ -144,7 +144,7 @@ if [[ $? == 0 ]]; then
         ((nfiles++))
 
         # First check if the correct and tests files are bitwise identical.
-        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]}
+        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} 2>&1 1>/dev/null
         if [[ $? == 0 ]]; then
             ((npassed++))
             ((nbitwise++))
