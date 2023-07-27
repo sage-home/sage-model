@@ -158,11 +158,11 @@ int64_t load_forest(struct params *run_params, const int64_t forestnr, struct ha
 
 #ifdef HDF5
     case lhalo_hdf5:
-        nhalos = load_forest_lht_hdf5(forestnr, halos, forests_info, run_params->Hubble_h);
+        nhalos = load_forest_lht_hdf5(forestnr, halos, forests_info);
         break;
 
     case gadget4_hdf5:
-        nhalos = load_forest_gadget4_hdf5(forestnr, halos, forests_info, run_params->Hubble_h);
+        nhalos = load_forest_gadget4_hdf5(forestnr, halos, forests_info);
         break;
 
     case genesis_hdf5:

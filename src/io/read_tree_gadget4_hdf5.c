@@ -15,7 +15,7 @@
 
 
 /* Local Proto-Types */
-static int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, const double hubble);
+static int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos);
 static void get_forests_filename_gadget4_hdf5(char *filename, const size_t len, const int filenr, const struct params *run_params);
 
 int load_tree_table_gadget4_hdf5(const int firstfile, const int lastfile, const int64_t *totnforests_per_file, 
@@ -572,7 +572,7 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
 
 
 
-int64_t load_forest_gadget4_hdf5(const int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info, const double hubble)
+int64_t load_forest_gadget4_hdf5(const int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info)
 {
 
     /* Since the Gadget4 mergertree allows trees to be split across multiple files, we need to loop over the files */
@@ -657,7 +657,7 @@ int64_t load_forest_gadget4_hdf5(const int64_t forestnr, struct halo_data **halo
     local_halos -= nhalos;
 
     free(buffer);
-    int status = convert_units_for_forest(*halos, nhalos, hubble);
+    int status = convert_units_for_forest(*halos, nhalos);
     if(status != EXIT_SUCCESS) {
         return -1;
     }
@@ -692,9 +692,8 @@ int64_t load_forest_gadget4_hdf5(const int64_t forestnr, struct halo_data **halo
 #undef READ_TREE_PROPERTY_MULTIPLEDIM
 
 
-int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, const double hubble)
+int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos)
 {
-    (void ) hubble;
     if (nhalos <= 0) {
         fprintf(stderr,"Strange!: In function %s> Got nhalos = %"PRId64". Expected to get nhalos > 0\n", __FUNCTION__, nhalos);
         return -1;
