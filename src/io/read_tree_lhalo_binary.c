@@ -163,10 +163,11 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
                 "Error: Could not allocate memory to read nhalos per forest. Bytes requested = %zu\n", nbytes);
         
         mypread(fd, buffer, nbytes, 8); /* the last argument says to start after sizeof(totntrees) + sizeof(totnhalos) */
+        buffer += start_forestnum_to_process_per_file[filenr];
         for(int k=0;k<nforests_to_process_this_file;k++) {
-            forestnhalos[k] = buffer[k + start_forestnum_to_process_per_file[filenr]];
+            forestnhalos[k] = buffer[k];
         }
-        // memcpy(forestnhalos, &(nhalos_per_forest[start_forestnum_to_process_per_file[filenr]]), nforests_to_process_this_file * sizeof(forestnhalos[0]));
+        buffer -= start_forestnum_to_process_per_file[filenr];
 
         /* first compute the byte offset to the halos in start_forestnum */
         size_t byte_offset_to_halos = sizeof(int32_t) + sizeof(int32_t) + nbytes;/* start at the beginning of halo #0 in tree #0 */
