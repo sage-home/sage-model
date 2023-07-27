@@ -380,6 +380,14 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     return EXIT_SUCCESS;
 }
 
+/*
+For creating the lhalo tree binary output i.e., converting from the input 
+mergertree format into the lhalotree binary format.
+*/
+
+#ifdef USE_BUFFERED_WRITE
+#include "io/buffered_io.h"
+#endif
 
 int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *run_params, struct forest_info *forest_info)
 {
@@ -416,25 +424,6 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
 
     const int64_t nforests_this_task = forest_info->nforests_this_task;
     int64_t totnhalos = 0;
-
-#define WRITE_AND_CHECK(fd, var, nbytes_to_write)                                   \
-    do {                                                                            \
-        size_t nbytes_left = nbytes_to_write;                                       \
-        char *src = (char *) var;                                                   \
-        while(nbytes_left > 0) {                                                    \
-            const ssize_t bytes_written = write(fd, src, nbytes_left);              \
-            XRETURN(bytes_written >0, EXIT_FAILURE,                                 \
-                    "Error occurrred while writing %zu bytes\n",                    \
-                    nbytes_left);                                                   \
-                                                                                    \
-            src += bytes_written;                                                   \
-            nbytes_left -= bytes_written;                                           \
-        }                                                                           \
-        XRETURN( nbytes_left == 0, EXIT_FAILURE,                                    \
-                "Error: %zd bytes remained instead of 0. "                          \
-                "while writing the required %llu bytes\n",                          \
-                nbytes_left, (unsigned long long) nbytes_to_write);                 \
-    } while (0)
 
 #define PWRITE_64BIT_TO_32BIT(fd, var, offset, kind_of_var)             \
     do {                                                                \
@@ -482,6 +471,17 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
             "start of the halo data from the first forest",
             (unsigned long long) halo_data_start_offset);
 
+#ifdef USE_BUFFERED_WRITE
+    const size_t buffer_size = 4 * 1024 * 1024; //4 MB
+    struct buffered_io buf_io;
+    // int setup_buffered_io(buffered_io *buf_io, const size_t buffer_size, int output_fd, const off_t start_offset) 
+    int status = setup_buffered_io(&buf_io, buffer_size, fd, halo_data_start_offset);
+    if(status != EXIT_SUCCESS) 
+    {
+        fprintf(stderr,"Error: Could not setup buffered io\n");
+        return -1;
+    }
+#endif
 
     /* simulation merger-tree data */
     struct halo_data *Halo = NULL;
@@ -499,14 +499,29 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
         XRETURN(nhalos <= INT_MAX, EXIT_FAILURE, 
                 "Error: Number of halos = %"PRId64" must be > 0 *and* also fit inside 32 bits\n", 
                 nhalos);
-        WRITE_AND_CHECK(fd, Halo, sizeof(struct halo_data)*nhalos);//write updates the file offset
-
+        const size_t numbytes = sizeof(struct halo_data)*nhalos;
+#ifdef USE_BUFFERED_WRITE
+        status = write_bufferd_io( &buf_io, Halo, numbytes);
+        if(status < 0) {
+            fprintf(stderr,"Error: Could not write (buffered). forestnr = %"PRId64" number of bytes = %zu\n", forestnr, numbytes);
+            return status;
+        }
+#else
+        mywrite(fd, Halo, numbytes);//write updates the file offset
+#endif
         const off_t nh_per_tree_offset = sizeof(int32_t) + sizeof(int32_t) + forestnr * sizeof(int32_t);
         PWRITE_64BIT_TO_32BIT(fd, nhalos, nh_per_tree_offset, "nhalos per tree");//pwrite does not update file offset                        
 
         myfree(Halo);
         totnhalos += nhalos;
     }
+#ifdef USE_BUFFERED_WRITE
+    status = cleanup(&buf_io);
+    if(status != EXIT_SUCCESS) {
+        fprintf(stderr,"Error: Could not finalise the output file\n");
+        return status;
+    }
+#endif
 
     /* Check that totnhalos fits within a 4 byte integer and write to the file */
     PWRITE_64BIT_TO_32BIT(fd, totnhalos, 4, "total number of halos in file");
