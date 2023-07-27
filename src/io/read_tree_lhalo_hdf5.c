@@ -14,7 +14,7 @@
 #include "forest_utils.h"
 
 /* Local Proto-Types */
-static int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, const double hubble);
+static int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos);
 static void get_forests_filename_lht_hdf5(char *filename, const size_t len, const int filenr, const struct params *run_params);
 
 
@@ -384,7 +384,7 @@ int64_t load_forest_lht_hdf5(const int64_t forestnr, struct halo_data **halos, s
     ABORT(0);
 #endif
 
-    status = convert_units_for_forest(*halos, nhalos, hubble);
+    status = convert_units_for_forest(*halos, nhalos);
     if(status != EXIT_SUCCESS) {
         return -1;
     }
@@ -395,20 +395,20 @@ int64_t load_forest_lht_hdf5(const int64_t forestnr, struct halo_data **halos, s
 #undef READ_TREE_PROPERTY
 #undef READ_TREE_PROPERTY_MULTIPLEDIM
 
-
-int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, const double hubble)
+int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos)
 {
-    const float spin_conv_fac = (float) (0.001/hubble);
     if (nhalos <= 0) {
         fprintf(stderr,"Strange!: In function %s> Got nhalos = %"PRId64". Expected to get nhalos > 0\n", __FUNCTION__, nhalos);
         return -1;
     }
 
+    // const float spin_conv_fac = (float) (0.001/hubble);
+    const float spin_conv_fac = 0.001f; //As pointed out in https://github.com/sage-home/sage-model/issues/46, scaling with h is not required
     /* Any unit conversions or resetting thing that need to be done */
     for(int64_t i=0;i<nhalos;i++) {
         for(int j=0;j<3;j++) {
-            halos[i].Pos[j] *= 0.001f;//convert from kpc -> Mpc
-            halos[i].Spin[j] *= spin_conv_fac;//convert from (kpc/h)*(km/s) -> (Mpc)*(km/s)
+            halos[i].Pos[j] *= 0.001f;//convert from kpc/h -> Mpc/h
+            halos[i].Spin[j] *= spin_conv_fac;//convert from (kpc/h)*(km/s) -> (Mpc/h)*(km/s)
         }
         halos[i].SubhaloIndex = -1;
         halos[i].SubHalfMass = -1.0f;
@@ -416,7 +416,6 @@ int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, cons
 
     return EXIT_SUCCESS;
 }
-
 
 void cleanup_forests_io_lht_hdf5(struct forest_info *forests_info)
 {
