@@ -15,7 +15,6 @@
 
 
 /* Local Proto-Types */
-static int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos);
 static void get_forests_filename_gadget4_hdf5(char *filename, const size_t len, const int filenr, const struct params *run_params);
 
 int load_tree_table_gadget4_hdf5(const int firstfile, const int lastfile, const int64_t *totnforests_per_file, 
@@ -657,10 +656,6 @@ int64_t load_forest_gadget4_hdf5(const int64_t forestnr, struct halo_data **halo
     local_halos -= nhalos;
 
     free(buffer);
-    int status = convert_units_for_forest(*halos, nhalos);
-    if(status != EXIT_SUCCESS) {
-        return -1;
-    }
 
     /* Since the Gadget4 mergertree is by far the most complicated among all the supported formats,
         we have this extra validation step within the load routine. MS 29/07/2023 */
@@ -694,32 +689,9 @@ int64_t load_forest_gadget4_hdf5(const int64_t forestnr, struct halo_data **halo
 #undef READ_TREE_PROPERTY_MULTIPLEDIM
 
 
-int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos)
-{
-    if (nhalos <= 0) {
-        fprintf(stderr,"Strange!: In function %s> Got nhalos = %"PRId64". Expected to get nhalos > 0\n", __FUNCTION__, nhalos);
-        return -1;
-    }
-
-    // const float spin_conv_fac = (float) (0.001/hubble);
-
-    /* Any unit conversions or resetting thing that need to be done */
-    for(int64_t i=0;i<nhalos;i++) {
-        halos[i].SubHalfMass = -1.0f;
-        halos[i].FileNr = -1;//FileNr is stored at the forest level and *NOT* the halo level
-    }
-
-    return EXIT_SUCCESS;
-}
-
-
 void cleanup_forests_io_gadget4_hdf5(struct forest_info *forests_info)
 {
     struct gadget4_info *g4 = &(forests_info->gadget4);
-    // myfree(g4->h5_fd);
-    // const ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
-    // fprintf(stderr,"Should be numfiles = %d for hdf5 nleaks = %zd\n", g4->numfiles, nleaks);
-
     for(int32_t i=0;i<g4->numfiles;i++) {
         /* could use 'H5close' instead to make sure any open datasets are also
            closed; but that would hide potential bugs in code.
