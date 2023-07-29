@@ -662,6 +662,8 @@ int64_t load_forest_gadget4_hdf5(const int64_t forestnr, struct halo_data **halo
         return -1;
     }
 
+    /* Since the Gadget4 mergertree is by far the most complicated among all the supported formats,
+        we have this extra validation step within the load routine. MS 29/07/2023 */
     for(int64_t i=0;i<nhalos;i++) {
         XRETURN(local_halos[i].FirstProgenitor == -1 || (local_halos[i].FirstProgenitor >= 0 && local_halos[i].FirstProgenitor < nhalos), -1, 
         "Error: forestnr = %"PRId64" (with nhalos = %"PRId64") for i=%"PRId64" firstprog = %d\n", forestnr, nhalos, i, local_halos[i].FirstProgenitor);

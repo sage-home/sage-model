@@ -474,7 +474,6 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
 #ifdef USE_BUFFERED_WRITE
     const size_t buffer_size = 4 * 1024 * 1024; //4 MB
     struct buffered_io buf_io;
-    // int setup_buffered_io(buffered_io *buf_io, const size_t buffer_size, int output_fd, const off_t start_offset) 
     int status = setup_buffered_io(&buf_io, buffer_size, fd, halo_data_start_offset);
     if(status != EXIT_SUCCESS) 
     {
