@@ -515,7 +515,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
         totnhalos += nhalos;
     }
 #ifdef USE_BUFFERED_WRITE
-    status = cleanup(&buf_io);
+    status = cleanup_buffered_io(&buf_io);
     if(status != EXIT_SUCCESS) {
         fprintf(stderr,"Error: Could not finalise the output file\n");
         return status;

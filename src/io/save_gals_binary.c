@@ -172,7 +172,7 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
                                         "Error trying to write to output number %d.\nThe file handle is %d.\n",
                                         snap_idx, save_info->save_fd[snap_idx]);
 #ifdef USE_BUFFERED_WRITE
-        int status = cleanup(&all_buffers[snap_idx]);
+        int status = cleanup_buffered_io(&all_buffers[snap_idx]);
         if(status != EXIT_SUCCESS) {
             fprintf(stderr,"Error: Could not finalise the output file for snapshot = %d\n", snap_idx);
             return status;

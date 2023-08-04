@@ -140,7 +140,7 @@ int write_bufferd_io(struct buffered_io *buf_io, const void *src, size_t num_byt
     return EXIT_SUCCESS;
 }
 
-int cleanup(struct buffered_io *buf_io) 
+int cleanup_buffered_io(struct buffered_io *buf_io) 
 {
     if(buf_io == NULL) {
         fprintf(stderr,"Error: In %s> Could not validate input parameters. buffer pointer address = %p", __FUNCTION__, buf_io);
