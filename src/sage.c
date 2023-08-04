@@ -500,7 +500,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
                 nhalos);
         const size_t numbytes = sizeof(struct halo_data)*nhalos;
 #ifdef USE_BUFFERED_WRITE
-        status = write_bufferd_io( &buf_io, Halo, numbytes);
+        status = write_buffered_io( &buf_io, Halo, numbytes);
         if(status < 0) {
             fprintf(stderr,"Error: Could not write (buffered). forestnr = %"PRId64" number of bytes = %zu\n", forestnr, numbytes);
             return status;

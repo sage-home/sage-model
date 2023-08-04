@@ -138,7 +138,7 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
         const size_t numbytes = sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx];
 
 #ifdef USE_BUFFERED_WRITE
-        status = write_bufferd_io(&all_buffers[snap_idx], galaxy_output, numbytes);
+        status = write_buffered_io(&all_buffers[snap_idx], galaxy_output, numbytes);
         if(status < 0) {
             fprintf(stderr,"Error: Could not write (buffered). snapshot number = %d number of bytes = %zu\n", snap_idx, numbytes);
             return status;

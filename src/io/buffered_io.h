@@ -13,7 +13,7 @@ struct buffered_io{
 };
 
     extern int setup_buffered_io(struct buffered_io *buf_io, const size_t buffer_size, int output_fd, const off_t start_offset);
-    extern int write_bufferd_io(struct buffered_io *buf_io, const void *src, size_t num_bytes_to_write);
+    extern int write_buffered_io(struct buffered_io *buf_io, const void *src, size_t num_bytes_to_write);
     extern int cleanup_buffered_io(struct buffered_io *buf_io);
 
 #ifdef __cplusplus

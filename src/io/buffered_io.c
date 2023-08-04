@@ -81,7 +81,7 @@ int setup_buffered_io(struct buffered_io *buf_io, const size_t buffer_size, int 
     return EXIT_SUCCESS;
 }
 
-int write_bufferd_io(struct buffered_io *buf_io, const void *src, size_t num_bytes_to_write)
+int write_buffered_io(struct buffered_io *buf_io, const void *src, size_t num_bytes_to_write)
 {
     if(buf_io == NULL || src == NULL)  {
         fprintf(stderr,"Error: In %s> Could not validate input parameters.  buffer pointer address = %p, "
