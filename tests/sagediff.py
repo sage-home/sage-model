@@ -528,17 +528,13 @@ def compare_field_equality(field1, field2, field_name, rtol, atol):
     if np.array_equal(field1, field2):
         return True
 
-    print("A `numpy.array_equal` failed. Attempting a `np.allclose` with rtol={0} "
-          "and atol={1}\n".format(rtol, atol), file=sys.stderr)
     if np.allclose(field1, field2, rtol=rtol,  atol=atol):
+        print("`numpy.array_equal` failed for field = '{2}' "\
+              "but `np.allclose` with rtol={0} and atol={1} passed"\
+              .format(rtol, atol, field_name), file=sys.stderr)
+
         return True
 
-    # If control reaches here, then the arrays are not equal
-    print("Printing values that were different side-by side\n",
-          file=sys.stderr)
-    print("#######################################", file=sys.stderr)
-    print("# index          {0}1          {0}2       Diff".format(field_name),
-          file=sys.stderr)
 
     # `isclose` is True for all elements of `field1` that are close to the corresponding
     # element in `field2`.
@@ -547,6 +543,17 @@ def compare_field_equality(field1, field2, field_name, rtol, atol):
     bad_field1 = field1[bool_mask == False]
     bad_field2 = field2[bool_mask == False]
 
+    # If control reaches here, then the arrays are not equal
+    print("`np.allclose` failed for field = '{0}' - "\
+          "(max, min) diff = ({1}, {2}).\nNow printing values that "\
+          "were different side-by side\n".format(field_name,
+                                                 max(bad_field1 - bad_field2),
+                                                 min(bad_field1 - bad_field2),
+                                                 file=sys.stderr))
+    print("#######################################", file=sys.stderr)
+    print("# index          {0}1          {0}2       Diff".format(field_name),
+          file=sys.stderr)
+    
     for idx, (field1_val, field2_val) in enumerate(zip(bad_field1, bad_field2)):
         print("{0} {1} {2} {3}".format(idx, field1_val, field2_val,
               field1_val-field2_val), file=sys.stderr)
