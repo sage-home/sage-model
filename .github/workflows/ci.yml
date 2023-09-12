@@ -91,7 +91,7 @@ jobs:
         run: |
           conda create -q --yes -n test python=${{ matrix.python-version }}
           conda activate test
-          conda install -c conda-forge numpy=${{ matrix.numpy-version }} hdf5 gsl
+          conda install -q -c conda-forge numpy=${{ matrix.numpy-version }} hdf5 gsl
           python -m pip install -r requirements.txt
       - name: Display PATH, compiler, python
         shell: bash -l {0}
