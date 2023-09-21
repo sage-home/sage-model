@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
+#include <hdf5.h>
 
 #include "read_tree_gadget4_hdf5.h"
 #include "hdf5_read_utils.h"

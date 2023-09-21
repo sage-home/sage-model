@@ -4,8 +4,6 @@
 extern "C" {
 #endif /* working with c++ compiler */
 
-#include <hdf5.h>
-
 /* for definition of struct halo_data and struct forest_info */
 #include "../core_allvars.h"
 
