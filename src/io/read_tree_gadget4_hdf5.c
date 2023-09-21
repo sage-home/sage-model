@@ -629,7 +629,7 @@ int64_t load_forest_gadget4_hdf5(const int64_t forestnr, struct halo_data **halo
         READ_TREE_PROPERTY(fd, nhalo_offset, Len, "SubhaloLen", numhalos_this_file, int);
         // READ_TREE_PROPERTY(fd, nhalo_offset, M_Mean200, Group_M_Mean200, numhalos_this_file, float);//MS: units 10^10 Msun/h for all Illustris mass fields
         // READ_TREE_PROPERTY(fd, nhalo_offset, M_Mean200, "SubhaloMass", numhalos_this_file, float);//MS: units 10^10 Msun/h for all Illustris mass fields
-        READ_TREE_PROPERTY(fd, nhalo_offset, Mvir, "SubhaloMass", numhalos_this_file, float);//MS: 16/9/2019 sage uses Mvir but assumes that contains M200c
+        READ_TREE_PROPERTY(fd, nhalo_offset, Mvir, "Group_M_Crit200", numhalos_this_file, float);//MS: 16/9/2019 sage uses Mvir but assumes that contains M200c
         // READ_TREE_PROPERTY(fd, nhalo_offset, M_TopHat, Group_M_TopHat200, numhalos_this_file, float);
         READ_TREE_PROPERTY_MULTIPLEDIM(fd, multi_dim_offset, Pos, "SubhaloPos", 3, multi_dim_count, float);//needs to be converted from kpc/h -> Mpc/h
         READ_TREE_PROPERTY_MULTIPLEDIM(fd, multi_dim_offset, Vel, "SubhaloVel", 3, multi_dim_count, float);//km/s
