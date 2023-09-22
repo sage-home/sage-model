@@ -11,21 +11,10 @@
 #include "read_tree_lhalo_hdf5.h"
 #include "hdf5_read_utils.h"
 #include "../core_mymalloc.h"
-
-
-/* Local Structs */
-struct METADATA_NAMES
-{
-    char name_NTrees[MAX_STRING_LEN];
-    char name_totNHalos[MAX_STRING_LEN];
-    char name_TreeNHalos[MAX_STRING_LEN];
-    char name_ParticleMass[MAX_STRING_LEN];
-    char name_NumSimulationTreeFiles[MAX_STRING_LEN];
-};
+#include "forest_utils.h"
 
 /* Local Proto-Types */
-static int32_t fill_metadata_names(struct METADATA_NAMES *metadata_names, enum Valid_TreeTypes my_TreeType);
-static int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, const double hubble);
+static int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos);
 static void get_forests_filename_lht_hdf5(char *filename, const size_t len, const int filenr, const struct params *run_params);
 
 
@@ -46,13 +35,13 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
     }
 
     /* wasteful to allocate for lastfile + 1 indices, rather than numfiles; but makes indexing easier */
-    int32_t *totnforests_per_file = calloc(lastfile + 1, sizeof(totnforests_per_file[0]));
+    int64_t *totnforests_per_file = calloc(lastfile + 1, sizeof(*totnforests_per_file));
     if(totnforests_per_file == NULL) {
         fprintf(stderr,"Error: Could not allocate memory to store the number of forests in each file\n");
         perror(NULL);
         return MALLOC_FAILURE;
     }
-    struct METADATA_NAMES metadata_names;
+    struct HDF5_METADATA_NAMES metadata_names;
     int64_t totnforests = 0;
     for(int filenr=firstfile;filenr<=lastfile;filenr++) {
         char filename[4*MAX_STRING_LEN];
@@ -61,7 +50,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
         XRETURN (fd > 0, FILE_NOT_FOUND,
                  "Error: can't open file `%s'\n", filename);
 
-        int status = fill_metadata_names(&metadata_names, run_params->TreeType);
+        int status = fill_hdf5_metadata_names(&metadata_names, run_params->TreeType);
         if (status != EXIT_SUCCESS) {
             return -1;
         }
@@ -115,24 +104,50 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
     }
     forests_info->totnforests = totnforests;
 
-    const int64_t nforests_per_cpu = (int64_t) (totnforests/NTasks);
-    const int64_t rem_nforests = totnforests % NTasks;
-    int64_t nforests_this_task = nforests_per_cpu;
-    if(ThisTask < rem_nforests) {
-        nforests_this_task++;
+
+    /* Read in nhalos_per_forest for *ALL* files */
+    const int need_nhalos_per_forest = run_params->ForestDistributionScheme == uniform_in_forests ? 0:1;
+    int64_t *nhalos_per_forest = NULL;
+    if(need_nhalos_per_forest) {
+        nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
+        for(int32_t ifile=firstfile;ifile<=lastfile;ifile++) {
+            const int64_t nforests_this_file = totnforests_per_file[ifile];
+            char filename[4*MAX_STRING_LEN];
+            get_forests_filename_lht_hdf5(filename, 4*MAX_STRING_LEN, ifile, run_params);
+            hid_t fd = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+            XRETURN (fd > 0, FILE_NOT_FOUND,
+                     "Error: can't open file `%s'\n", filename);
+
+            const int check_size = 1;
+            int32_t *buffer = NULL;
+            int status = read_dataset(fd, metadata_names.name_TreeNHalos, -1, (void *) buffer, sizeof(*buffer), check_size);
+            if(status < 0) {
+                return status;
+            }
+            for(int64_t i=0;i<nforests_this_file;i++) {
+                nhalos_per_forest[i] = buffer[i];
+            }
+            XRETURN( H5Fclose(fd) > 0, -1, "Error: Could not properly close the hdf5 file for filename = '%s'\n", filename);
+
+            nhalos_per_forest += nforests_this_file;
+        }
+        //Move back the pointer to the allocated address
+        nhalos_per_forest -= totnforests;
     }
 
-    int64_t start_forestnum = nforests_per_cpu * ThisTask;
-    /* Add in the remainder forests that also need to be processed
-       equivalent to the loop
-
-       for(int task=0;task<ThisTask;task++) {
-           if(task < rem_nforests) start_forestnum++;
-       }
-
-     */
-    start_forestnum += ThisTask <= rem_nforests ? ThisTask:rem_nforests; /* assumes that "0<= ThisTask < NTasks" */
+    int64_t nforests_this_task, start_forestnum;
+    int status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest,
+                                                         run_params->ForestDistributionScheme, run_params->Exponent_Forest_Dist_Scheme,
+                                                         NTasks, ThisTask, &nforests_this_task, &start_forestnum);
+    if(status != EXIT_SUCCESS) {
+        return status;
+    }
+    if(need_nhalos_per_forest) {
+        free(nhalos_per_forest);
+    }
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
+    /* fprintf(stderr,"Thistask = %d start_forestnum = %"PRId64" end_forestnum = %"PRId64"\n", ThisTask, start_forestnum, end_forestnum); */
+
 
     int64_t *num_forests_to_process_per_file = calloc((lastfile + 1), sizeof(num_forests_to_process_per_file[0]));/* calloc is required */
     int64_t *start_forestnum_to_process_per_file = malloc((lastfile + 1) * sizeof(start_forestnum_to_process_per_file[0]));
@@ -142,44 +157,19 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
         return MALLOC_FAILURE;
     }
 
-    /* show no forests need to be processed by default */
-    for(int i=0;i<=lastfile;i++) {
-        start_forestnum_to_process_per_file[i] = -1;
-        num_forests_to_process_per_file[i] = 0;
-    }
 
+    // Now for each task, we know the starting forest number it needs to start reading from.
+    // So let's determine what file and forest number within the file each task needs to start/end reading from.
     int start_filenum = -1, end_filenum = -1;
-    int64_t nforests_so_far = 0;
-    for(int filenr=firstfile;filenr<=lastfile;filenr++) {
-        const int32_t nforests_this_file = totnforests_per_file[filenr];
-        const int64_t end_forestnum_this_file = nforests_so_far + nforests_this_file;
-        start_forestnum_to_process_per_file[filenr] = 0;
-        num_forests_to_process_per_file[filenr] = nforests_this_file;
-
-        if(start_forestnum >= nforests_so_far && start_forestnum < end_forestnum_this_file) {
-            start_filenum = filenr;
-            start_forestnum_to_process_per_file[filenr] = start_forestnum - nforests_so_far;
-            num_forests_to_process_per_file[filenr] = nforests_this_file - (start_forestnum - nforests_so_far);
-        }
-
-
-        if(end_forestnum >= nforests_so_far && end_forestnum <= end_forestnum_this_file) {
-            end_filenum = filenr;
-            num_forests_to_process_per_file[filenr] = end_forestnum - nforests_so_far;/* does this need a + 1? */
-        }
-        nforests_so_far += nforests_this_file;
-    }
-
-    if(start_filenum == -1 || end_filenum == -1 ) {
-        fprintf(stderr,"Error: Could not locate start or end file number for the lhalotree binary files\n");
-        fprintf(stderr,"Printing debug info\n");
-        fprintf(stderr,"ThisTask = %d NTasks = %d totnforests = %"PRId64" start_forestnum = %"PRId64" nforests_this_task = %"PRId64"\n",
-                ThisTask, NTasks, totnforests, start_forestnum, nforests_this_task);
-        for(int filenr=firstfile;filenr<=lastfile;filenr++) {
-            fprintf(stderr,"filenr := %d contains %d forests\n",filenr, totnforests_per_file[filenr]);
-        }
-
-        return -1;
+    status = find_start_and_end_filenum(start_forestnum, end_forestnum, 
+                                        totnforests_per_file, totnforests, 
+                                        firstfile, lastfile,
+                                        ThisTask, NTasks, 
+                                        // NULL,
+                                        num_forests_to_process_per_file, start_forestnum_to_process_per_file,
+                                        &start_filenum, &end_filenum);
+    if(status != EXIT_SUCCESS) {
+        return status;
     }
 
     struct lhalotree_info *lht = &(forests_info->lht);
@@ -204,19 +194,19 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
     lht->numfiles = end_filenum - start_filenum + 1;
     lht->open_h5_fds = mymalloc(lht->numfiles * sizeof(lht->open_h5_fds[0]));
 
-    nforests_so_far = 0;
+    int64_t nforests_so_far = 0;
     /* int *forestnhalos = lht->nhalos_per_forest; */
     for(int filenr=start_filenum;filenr<=end_filenum;filenr++) {
         XRETURN(start_forestnum_to_process_per_file[filenr] >= 0 && start_forestnum_to_process_per_file[filenr] < totnforests_per_file[filenr],
                 EXIT_FAILURE,
-                "Error: Num forests to process = %"PRId64" for filenr = %d should be in range [0, %d)\n",
+                "Error: Num forests to process = %"PRId64" for filenr = %d should be in range [0, %"PRId64")\n",
                 start_forestnum_to_process_per_file[filenr],
                 filenr,
                 totnforests_per_file[filenr]);
 
         XRETURN(num_forests_to_process_per_file[filenr] >= 0 && num_forests_to_process_per_file[filenr] <= totnforests_per_file[filenr],
                 EXIT_FAILURE,
-                "Error: Num forests to process = %"PRId64" for filenr = %d should be in range [0, %d)\n",
+                "Error: Num forests to process = %"PRId64" for filenr = %d should be in range [0, %"PRId64")\n",
                 num_forests_to_process_per_file[filenr],
                 filenr,
                 totnforests_per_file[filenr]);
@@ -309,7 +299,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
     }
 
 
-int64_t load_forest_lht_hdf5(const int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info, const double hubble)
+int64_t load_forest_lht_hdf5(const int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info)
 {
     char dataset_name[MAX_STRING_LEN];
     void *buffer; // Buffer to hold the read HDF5 data.
@@ -394,7 +384,7 @@ int64_t load_forest_lht_hdf5(const int64_t forestnr, struct halo_data **halos, s
     ABORT(0);
 #endif
 
-    status = convert_units_for_forest(*halos, nhalos, hubble);
+    status = convert_units_for_forest(*halos, nhalos);
     if(status != EXIT_SUCCESS) {
         return -1;
     }
@@ -405,20 +395,20 @@ int64_t load_forest_lht_hdf5(const int64_t forestnr, struct halo_data **halos, s
 #undef READ_TREE_PROPERTY
 #undef READ_TREE_PROPERTY_MULTIPLEDIM
 
-
-int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, const double hubble)
+int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos)
 {
-    const float spin_conv_fac = (float) (0.001/hubble);
     if (nhalos <= 0) {
         fprintf(stderr,"Strange!: In function %s> Got nhalos = %"PRId64". Expected to get nhalos > 0\n", __FUNCTION__, nhalos);
         return -1;
     }
 
+    // const float spin_conv_fac = (float) (0.001/hubble);
+    const float spin_conv_fac = 0.001f; //As pointed out in https://github.com/sage-home/sage-model/issues/46, scaling with h is not required
     /* Any unit conversions or resetting thing that need to be done */
     for(int64_t i=0;i<nhalos;i++) {
         for(int j=0;j<3;j++) {
-            halos[i].Pos[j] *= 0.001f;//convert from kpc -> Mpc
-            halos[i].Spin[j] *= spin_conv_fac;//convert from (kpc/h)*(km/s) -> (Mpc)*(km/s)
+            halos[i].Pos[j] *= 0.001f;//convert from kpc/h -> Mpc/h
+            halos[i].Spin[j] *= spin_conv_fac;//convert from (kpc/h)*(km/s) -> (Mpc/h)*(km/s)
         }
         halos[i].SubhaloIndex = -1;
         halos[i].SubHalfMass = -1.0f;
@@ -426,7 +416,6 @@ int convert_units_for_forest(struct halo_data *halos, const int64_t nhalos, cons
 
     return EXIT_SUCCESS;
 }
-
 
 void cleanup_forests_io_lht_hdf5(struct forest_info *forests_info)
 {
@@ -439,31 +428,4 @@ void cleanup_forests_io_lht_hdf5(struct forest_info *forests_info)
         H5Fclose(lht->open_h5_fds[i]);
     }
     myfree(lht->open_h5_fds);
-}
-
-
-/* Local Functions */
-static int32_t fill_metadata_names(struct METADATA_NAMES *metadata_names, enum Valid_TreeTypes my_TreeType)
-{
-    switch (my_TreeType) {
-    case lhalo_hdf5:
-        snprintf(metadata_names->name_NTrees, MAX_STRING_LEN - 1, "NtreesPerFile"); // Total number of forests within the file.
-        snprintf(metadata_names->name_totNHalos, MAX_STRING_LEN - 1, "NhalosPerFile"); // Total number of halos within the file.
-        snprintf(metadata_names->name_TreeNHalos, MAX_STRING_LEN - 1, "TreeNHalos"); // Number of halos per forest within the file.
-        snprintf(metadata_names->name_ParticleMass, MAX_STRING_LEN - 1, "ParticleMass");//Particle mass for Dark matter in the sim
-        snprintf(metadata_names->name_NumSimulationTreeFiles, MAX_STRING_LEN - 1, "NumberOfOutputFiles");//Particle mass for Dark matter in the sim
-        return EXIT_SUCCESS;
-
-    case lhalo_binary:
-        fprintf(stderr, "If the file is binary then this function should never be called.  Something's gone wrong...");
-        return EXIT_FAILURE;
-
-    default:
-        fprintf(stderr, "Your tree type has not been included in the switch statement for ``%s`` in file ``%s``.\n", __FUNCTION__, __FILE__);
-        fprintf(stderr, "Please add it there.\n");
-        return EXIT_FAILURE;
-
-    }
-
-    return EXIT_FAILURE;
 }

@@ -4,6 +4,8 @@ USE-HDF5 := yes # set this if you want to read in hdf5 trees (requires hdf5 libr
 #MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
 				 # Note: This only works with gcc
 
+USE-BUFFERED-WRITE := yes # Set this to create binary output in chunks (typically has better performance)
+
 MAKE-SHARED-LIB := yes # Define this to any value if you want to create a shared library (otherwise a static library is created)
 MAKE-VERBOSE := yes # define this for info messages, otherwise all info messages are disabled (*error* messages are *always* printed)
 
@@ -26,7 +28,7 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-      	   io/save_gals_binary.c io/forest_utils.c
+	       io/save_gals_binary.c io/forest_utils.c io/buffered_io.c
 
 LIBINCL := $(LIBSRC:.c=.h)
 LIBINCL += io/parse_ctrees.h
@@ -82,7 +84,7 @@ endif
 # if condition (for DO_CHECKS); otherwise `make clean` will not
 # clean the H5_OBJS
 H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c io/hdf5_read_utils.c \
-          io/read_tree_consistentrees_hdf5.c
+          io/read_tree_consistentrees_hdf5.c io/read_tree_gadget4_hdf5.c
 
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
@@ -126,7 +128,7 @@ ifeq ($(DO_CHECKS), 1)
   endif
 
   ifeq ($(ON_CI), true)
-	# If running on CI, fail if any warnings are generated when Making.
+  ## If running on CI, fail if any warnings are generated when Making.
     CCFLAGS += -Werror
   endif
   ## end of checking is CC
@@ -146,6 +148,9 @@ ifeq ($(DO_CHECKS), 1)
   CCFLAGS += $(GSL_INCL)
   LIBFLAGS += $(GSL_LIBS)
 
+  ifdef USE-BUFFERED-WRITE
+    CCFLAGS += -DUSE_BUFFERED_WRITE
+  endif
 
   ifdef USE-HDF5
     ifndef HDF5_DIR
@@ -243,7 +248,7 @@ ifeq ($(DO_CHECKS), 1)
   endif
 
   CCFLAGS += -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs # and more warning flags
-  LIBFLAGS   +=   -lm
+  LIBFLAGS +=   -lm
 
 else
   # something like `make clean` is in effect -> need to also remove the HDF5 objects

@@ -398,8 +398,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     run_params->TreeExtension[0] = '\0';
 
     // Check tree type is valid.
-    if (strncmp(my_treetype, "lhalo_hdf5", 511) == 0 ||
-        strncmp(my_treetype, "genesis_hdf5", 511) == 0) {
+    if (strncmp(my_treetype, "lhalo_hdf5", 511)   == 0 ||
+        strncmp(my_treetype, "genesis_hdf5", 511) == 0 ||
+        strncmp(my_treetype, "gadget4_hdf5", 511) == 0
+        ) {
 #ifndef HDF5
         fprintf(stderr, "You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled.\n");
         fprintf(stderr, "Please check your file type and compiler options.\n");
@@ -430,9 +432,11 @@ int read_parameter_file(const char *fname, struct params *run_params)
  }
 
     const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5",
-                                          "consistent_trees_ascii", "consistent_trees_hdf5"};
+                                          "consistent_trees_ascii", "consistent_trees_hdf5",
+                                          "gadget4_hdf5"};
     const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5,
-                                               consistent_trees_ascii, consistent_trees_hdf5};
+                                               consistent_trees_ascii, consistent_trees_hdf5,
+                                               gadget4_hdf5};
     const int nvalid_tree_types  = sizeof(tree_names)/(MAXTAGLEN*sizeof(char));
     BUILD_BUG_OR_ZERO((nvalid_tree_types == (int) num_tree_types), number_of_tree_types_is_incorrect);
     CHECK_VALID_ENUM_IN_PARAM_FILE(TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
