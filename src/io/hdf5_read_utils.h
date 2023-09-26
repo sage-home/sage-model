@@ -22,7 +22,7 @@ extern "C" {
         hid_t h5_space = H5Dget_space(h5_dset);                         \
         XRETURN(h5_space >= 0, -HDF5_ERROR, "Error: Could not reserve filespace for open dataset = '%s' (within group = '%s')\n", dataset_name, group_name); \
         hsize_t rank = H5Sget_simple_extent_ndims(h5_space);                                            \
-        XRETURN(rank == (int) ndim, -HDF5_ERROR, "Error: rank = %lld should be equal to ndim = %lld\n", rank, ndim);\
+        XRETURN((unsigned long) rank == (unsigned long) ndim, -HDF5_ERROR, "Error: rank = %lu should be equal to ndim = %lu\n", (unsigned long) rank, (unsigned long)ndim);\
         herr_t macro_status = H5Sselect_hyperslab(h5_space, H5S_SELECT_SET, offset, NULL, count, NULL); \
         XRETURN(macro_status >= 0, -HDF5_ERROR,                          \
                 "Error: Failed to select hyperslab for dataset = '%s'.\n" \
