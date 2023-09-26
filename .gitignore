@@ -6,6 +6,11 @@ output/
 *.o
 *.*~
 libsage.a
+libsage.so
+_sage_cffi.*
+codecov
+*.tar*
+*.png
 *.ipynb_checkpoints
 *.dSYM
 sage_analysis/plots/
@@ -13,6 +18,8 @@ sage_analysis/plots/
 *.log
 *.out
 *.DS_Store
+xx*
+yy*
 
 # sage_analysis Package Stuff #
 *.egg-info

@@ -382,14 +382,26 @@ int read_parameter_file(const char *fname, struct params *run_params)
 #endif
     }
 
+
+    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
+        fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile "
+                        "should be larger than   FirstFile.\nProbably a typo in the parameter-file. "
+                        "Please change to appropriate values...exiting\n",
+                        run_params->FirstFile, run_params->LastFile);
+        ABORT(EXIT_FAILURE);
+    }
+
+
     /* because in the default case of 'lhalo-binary', nothing
        gets written to "treeextension", we need to
        null terminate tree-extension first  */
     run_params->TreeExtension[0] = '\0';
 
     // Check tree type is valid.
-    if (strncmp(my_treetype, "lhalo_hdf5", 511) == 0 ||
-        strncmp(my_treetype, "genesis_hdf5", 511) == 0) {
+    if (strncmp(my_treetype, "lhalo_hdf5", 511)   == 0 ||
+        strncmp(my_treetype, "genesis_hdf5", 511) == 0 ||
+        strncmp(my_treetype, "gadget4_hdf5", 511) == 0
+        ) {
 #ifndef HDF5
         fprintf(stderr, "You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled.\n");
         fprintf(stderr, "Please check your file type and compiler options.\n");
@@ -419,10 +431,14 @@ int read_parameter_file(const char *fname, struct params *run_params)
         }                                                               \
  }
 
-    const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii"};
-    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5, consistent_trees_ascii};
+    const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5",
+                                          "consistent_trees_ascii", "consistent_trees_hdf5",
+                                          "gadget4_hdf5"};
+    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5,
+                                               consistent_trees_ascii, consistent_trees_hdf5,
+                                               gadget4_hdf5};
     const int nvalid_tree_types  = sizeof(tree_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_tree_types == 4, EXIT_FAILURE, "nvalid_tree_types = %d should have been 4\n", nvalid_tree_types);
+    BUILD_BUG_OR_ZERO((nvalid_tree_types == (int) num_tree_types), number_of_tree_types_is_incorrect);
     CHECK_VALID_ENUM_IN_PARAM_FILE(TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
 
     /* Check output data type is valid. */
@@ -434,10 +450,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     }
 #endif
 
-    const char format_names[][MAXTAGLEN] = {"sage_binary", "sage_hdf5"};
-    const enum Valid_OutputFormats format_enums[] = {sage_binary, sage_hdf5};
+    const char format_names[][MAXTAGLEN] = {"sage_binary", "sage_hdf5", "lhalo_binary_output"};
+    const enum Valid_OutputFormats format_enums[] = {sage_binary, sage_hdf5, lhalo_binary_output};
     const int nvalid_format_types  = sizeof(format_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_format_types == 2, EXIT_FAILURE, "nvalid_format_types = %d should have been 2\n", nvalid_format_types);
+    XRETURN(nvalid_format_types == 3, EXIT_FAILURE, "nvalid_format_types = %d should have been 3\n", nvalid_format_types);
     CHECK_VALID_ENUM_IN_PARAM_FILE(OutputFormat, nvalid_format_types, format_names, format_enums, my_outputformat);
 
     /* Check that the way forests are distributed over (MPI) tasks is valid */

@@ -11,10 +11,16 @@
 #include "../core_utils.h"
 #include "../model_misc.h"
 
+#ifdef USE_BUFFERED_WRITE
+#include "buffered_io.h"
+static struct buffered_io *all_buffers = NULL;
+#endif
+
+
 // Local Proto-Types //
 
-int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
-                                  const int32_t original_treenr, const struct params *run_params);
+static int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, struct halo_data *halos,
+                                         const int32_t original_treenr, const struct params *run_params);
 
 // Externally Visible Functions //
 
@@ -22,7 +28,8 @@ int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_inf
                                        const struct params *run_params)
 {
 
-    int32_t ntrees = forest_info->nforests_this_task;
+    const int32_t ntrees = forest_info->nforests_this_task;
+    const off_t halo_data_start_offset = (ntrees + 2) * sizeof(int32_t);
 
     // We open up files for each output. We'll store the file IDs of each of these file.
     save_info->save_fd = mymalloc(run_params->NumSnapOutputs * sizeof(int32_t));
@@ -40,12 +47,26 @@ int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_inf
                                         "Can't open file %s for initialization.\n", buffer);
 
         // write out placeholders for the header data.
-        const off_t off = (ntrees + 2) * sizeof(int32_t);
-        const off_t status = lseek(save_info->save_fd[n], off, SEEK_SET);
+        const off_t status = lseek(save_info->save_fd[n], halo_data_start_offset, SEEK_SET);
         CHECK_STATUS_AND_RETURN_ON_FAIL(status, FILE_WRITE_ERROR,
                                         "Error: Failed to write out %d elements for header information for file %d.\n"
-                                        "Attempted to write %"PRId64" bytes\n", ntrees + 2, n, off);
+                                        "Attempted to write %"PRId64" bytes\n", ntrees + 2, n, halo_data_start_offset);
     }
+
+#ifdef USE_BUFFERED_WRITE
+    const size_t buffer_size = 8 * 1024 * 1024; //8 MB
+    all_buffers = malloc(sizeof(*all_buffers)*run_params->NumSnapOutputs);
+    XRETURN(all_buffers != NULL, -1, "Error: Could not allocate %d elements of size %zu bytes for buffered io\n", 
+                                                      run_params->NumSnapOutputs, sizeof(*all_buffers));
+    for(int n = 0; n < run_params->NumSnapOutputs; n++) {
+        int fd = save_info->save_fd[n];
+        int status = setup_buffered_io(&all_buffers[n], buffer_size, fd, halo_data_start_offset);
+        if(status != EXIT_SUCCESS) {
+            fprintf(stderr,"Error: Could not setup buffered io\n");
+            return -1;
+        }   
+    }
+#endif
 
     return EXIT_SUCCESS;
 }
@@ -114,15 +135,25 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals, 
         struct GALAXY_OUTPUT *galaxy_output = all_outputgals + cumul_output_ngal[snap_idx];
 
         // Then write out the chunk of galaxies for this redshift output.
-        ssize_t nwritten = mywrite(save_info->save_fd[snap_idx], galaxy_output, sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx]);
-        if (nwritten != (ssize_t) (sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx])) {
+        const size_t numbytes = sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx];
+
+#ifdef USE_BUFFERED_WRITE
+        status = write_buffered_io(&all_buffers[snap_idx], galaxy_output, numbytes);
+        if(status < 0) {
+            fprintf(stderr,"Error: Could not write (buffered). snapshot number = %d number of bytes = %zu\n", snap_idx, numbytes);
+            return status;
+        }
+#else
+        ssize_t nwritten = mywrite(save_info->save_fd[snap_idx], galaxy_output, numbytes);
+        if (nwritten != (ssize_t) numbytes) {
             fprintf(stderr, "Error: Failed to write out the galaxy struct for galaxies within file %d. "
                             "Meant to write out %d elements with a total of %zu bytes (%zu bytes for each element). "
                             "However, I wrote out a total of %zd bytes.\n",
-                            snap_idx, OutputGalCount[snap_idx], sizeof(struct GALAXY_OUTPUT)*OutputGalCount[snap_idx], sizeof(struct GALAXY_OUTPUT),
+                            snap_idx, OutputGalCount[snap_idx], numbytes, sizeof(struct GALAXY_OUTPUT),
                             nwritten);
             return FILE_WRITE_ERROR;
         }
+#endif
     }
     myfree(all_outputgals);
     myfree(cumul_output_ngal);
@@ -138,8 +169,15 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
     for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
         // File must already be open.
         CHECK_STATUS_AND_RETURN_ON_FAIL(save_info->save_fd[snap_idx], EXIT_FAILURE,
-                                        "Error trying to write to output number %d.\nThe save pointer is %d.\n",
+                                        "Error trying to write to output number %d.\nThe file handle is %d.\n",
                                         snap_idx, save_info->save_fd[snap_idx]);
+#ifdef USE_BUFFERED_WRITE
+        int status = cleanup_buffered_io(&all_buffers[snap_idx]);
+        if(status != EXIT_SUCCESS) {
+            fprintf(stderr,"Error: Could not finalise the output file for snapshot = %d\n", snap_idx);
+            return status;
+        }
+#endif
 
         // Write the header data.
         int32_t nwritten = mypwrite(save_info->save_fd[snap_idx], &ntrees, sizeof(ntrees), 0);
@@ -176,6 +214,10 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info, stru
     }
 
     myfree(save_info->save_fd);
+
+#ifdef USE_BUFFERED_WRITE
+    free(all_buffers);
+#endif
 
     return EXIT_SUCCESS;
 }

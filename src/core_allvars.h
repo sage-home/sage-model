@@ -27,14 +27,28 @@ enum Valid_TreeTypes
     lhalo_hdf5 = 1,
     genesis_hdf5 = 2,
     consistent_trees_ascii = 3,
+    consistent_trees_hdf5 = 4,
+    gadget4_hdf5 = 5,
     num_tree_types
 };
+
+/* Struct for making hdf5 file reading a bit easier */
+struct HDF5_METADATA_NAMES
+{
+    char name_NTrees[MAX_STRING_LEN];
+    char name_totNHalos[MAX_STRING_LEN];
+    char name_TreeNHalos[MAX_STRING_LEN];
+    char name_ParticleMass[MAX_STRING_LEN];
+    char name_NumSimulationTreeFiles[MAX_STRING_LEN];
+};
+
 
 enum Valid_OutputFormats
 {
     /* The number of output formats supported by sage */
     sage_binary = 0, /* will be deprecated after version 1 release*/
     sage_hdf5 = 1,
+    lhalo_binary_output = 2, /* special functionality to convert *any* supported input mergertree into a lhalo-binary format */
     num_output_format_types
 };
 
@@ -169,7 +183,7 @@ struct lhalotree_info {
     int64_t nforests;/* number of forests to process */
 
     /* lhalotree format only has int32_t for nhalos per forest */
-    int32_t *nhalos_per_forest;/* number of halos to read, nforests elements */
+    int64_t *nhalos_per_forest;/* number of halos to read, nforests elements */
 
     union {
         int *fd;/* the file descriptor for each forest (i.e., which file descriptor to read this forest from) nforests elements*/
@@ -249,6 +263,73 @@ struct genesis_info {
                               required to reset the halo_offset_per_snap at the beginning of every new file */
 
 };
+
+struct ctrees_h5_info {
+    //different from totnforests; only stores forests to be processed by ThisTask when in MPI mode
+    //in serial mode, ``forests_info->ctr.nforests == forests_info->totnforests``)
+    union {
+        int64_t nforests;
+        int64_t nforests_this_task;
+    };
+
+    /* file level quantities */
+    hid_t meta_fd; /* file descriptor for the metadata file */
+    hid_t *h5_file_groups; /* contains all the file descriptors for the individual files -- shape (lastfile + 1, ) */
+    hid_t *h5_forests_group; /* contains the file descriptors for the 'Forests' group in the SOA case */
+    char snap_field_name[16]; /*  some of the Uchuu files have 'Snap_num', others have 'Snap_idx' as the snapshot field name
+                               This variable contains the correct field name, as determined from the input file during forests
+                              reading init */
+    int8_t snap_field_is_double;/* some of the Uchuu files accidentally wrote out the snapshot field as double instead of int64_t ->
+                                this flag is set during the forests reading init to correctly read the snapshot field */
+    int8_t *contig_halo_props;/* Contains whether or not the halos are in contiguous order -- shape (lastfile + 1) */
+    int32_t totnfiles;/* total number of files that the simulation is spread across*/
+    int32_t start_filenum;/* the first file processed on this task*/
+    int32_t end_filenum; /* the last file processed on this task (inclusive) */
+};
+
+struct gadget4_info {
+    int64_t nforests;/* number of forests to process on this task, scalar */
+
+    // int64_t start_forestnum_first_file;/* the forest number (file-local) that is the first forest assigned to this task, scalar*/
+    int64_t *nhalos_per_forest; /* number of halos per forest, nforests elements*/
+
+    int32_t numfiles;/* number of unique files being processed by this task,  must be >=1 and <= lastfile - firstfile + 1 */
+    hid_t *open_h5_fds;/* contains open HDF5 file descriptors,  contains numfiles elements */
+
+    // Unlike all the other mergertree formats, in the Gadget4 mergertree format, a single forest
+    // can be spread over multiple files (potentially >> 1). Therefore, we need to know the range of files
+    // that the forest is spread across. The loop over files should go from
+    // ``[ start_fd_index_for_forest[iforest], end_fd_index_for_forests[iforest] ]`` (inclusive).
+    // Within the loop, the reading for the first file needs to start at ``offset_in_first_file_for_forests[iforest]``
+    // The number of halos that should be read in a file is ``min(halos_left_in_file, num_halos_left_to_read_in_forest )``
+    //      ii) end file for forest -> read min()
+
+    int32_t *start_h5_fd_index; /* contains the  index into open_h5_fds (starting) HDF5 file descriptor for each forest
+                                    filenr-based indexing into open_h5_fds -> i.e., assumes that open_h5_fds can
+                                    be indexed by (at least) [start_filenum, end_filenum] , nforests elements */
+
+    int16_t *num_files_per_forest; /* contains the number of files that the forest is split across (used to index the HDF5 file descriptor for each forest), nforests elements */
+    int32_t **nhalos_per_file_per_forest; /* irregular 2-D matrix, containing the number of halos within *each* file that this forest is spread over,
+                                            dimension is at least [1, nforests], and set to [num_files_for_forests[iforest], nforests]
+                                            loading code for `iforest` would look like:
+
+                                                const int32_t numfiles = num_files_for_forests[iforest];
+                                                int32_t h5_fd_index = start_h5_fd_index[iforest];
+                                                int64_t start_offset = offset_in_first_file_for_forests[iforest];
+                                                for(int32_t i=0;i<numfiles;i++) {
+                                                    const int64_t numhalos_thisfile = nhalos_per_file_per_forest[i][iforest];
+                                                    assert(numhalos_thisfile > 0);
+                                                    hid_t hfd = open_h5_fds[h5_fd_index];
+                                                    assert(hfd > 0);
+                                                    READ_PARTIAL_HALOS_HDF5(hfd, start_offset, numhalos_thisfile);
+                                                    h5_fd_index++;
+                                                    start_offset = 0;
+                                                }
+                                            */
+    int64_t *offset_in_nhalos_first_file_for_forests; /* offset counted in nhalos contained in all preceeding forests,
+                                                        where to start reading the forest in the first files, nforests elements */
+    // int64_t *offset_in_forests_first_file_for_forests; /* offset counted as the number of preceeding forests in that first file, nforests elements */
+};
 #endif
 
 struct forest_info {
@@ -258,17 +339,31 @@ struct forest_info {
         struct ahf_info ahf;
 #ifdef HDF5
         struct genesis_info gen;
+        struct ctrees_h5_info ctr_h5;
+        struct gadget4_info gadget4;
 #endif
     };
+
+    /* Run-level quantities */
     int64_t totnforests;  // Total number of forests across **all** input tree files.
-    int64_t nforests_this_task; // Total number of forests processed by **this** task.
+    int64_t totnhalos; //Total number of halos across **all** input tree files (if it can be calculated ahead of time, otherwise set to 0 e.g., in case of Consistent-Trees ascii)
     double frac_volume_processed; // Fraction of the simulation volume processed by **this** task.
     // We assume that each of the input tree files span the same volume. Hence by summing the
     // number of trees processed by each task from each file, we can determine the
     // fraction of the simulation volume that this task processes.  We weight this summation by the
     // number of trees in each file because some files may have more/less trees whilst still spanning the
     // same volume (e.g., a void would contain few trees whilst a dense knot would contain many).
-    int32_t *FileNr; // The file number that each forest was read from.
+    int32_t firstfile;//The first file processed in this run (i.e., over all tasks)
+    int32_t lastfile;//The last file processed in this run (i.e., over all tasks)
+
+    /* Task level quantities -> unique for each task */
+    int64_t nforests_this_task; // Total number of forests processed by **this** task.
+    int64_t nhalos_this_task;// Total number of halos to be processed by **this** task (if it can be calculated ahead of time, otherwise set to 0 e.g., in case of Consistent-Trees ascii)
+
+    /* Forest-level quantities (per task) */
+    int32_t *FileNr; // The file number that each forest needs to be read from. For formats where an individual tree may be
+                     // split across multiple files (e.g., Gadget4), this field contains the starting file number (i.e., where the
+                    // first halos within the tree are to be found)
     int64_t *original_treenr; // The (file-local) tree number from the original tree files.
                               // Necessary because Task N's "Tree 0" could start at the middle of a file.
 };

@@ -1,7 +1,1 @@
-h5py>=2.9.0
-matplotlib>=3.0.2
-numpy>=1.15.4
-scipy>=1.2.1
-tqdm>=4.31.1
-sage-analysis>=0.2.1
-cffi
+sage-analysis>=0.2.4

@@ -198,7 +198,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     }
     save_info->field_dtypes = malloc(NUM_OUTPUT_FIELDS * sizeof(save_info->field_dtypes[0]));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->field_dtypes,
-                                     "Failed to allocate %d elements of size %zu for save_info->name_output_fields",
+                                     "Failed to allocate %d elements of size %zu for save_info->field_dtypes",
                                      NUM_OUTPUT_FIELDS,
                                      sizeof(save_info->field_dtypes[0]));
 
@@ -217,10 +217,10 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         hsize_t dims[1] = {0};
         hsize_t maxdims[1] = {H5S_UNLIMITED};
         hsize_t chunk_dims[1] = {NUM_GALS_PER_BUFFER};
-        char full_field_name[MAX_STRING_LEN];
+        char full_field_name[2*MAX_STRING_LEN];
 
         // Create a snapshot group.
-        snprintf(full_field_name, MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
+        snprintf(full_field_name, 2*MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
         hid_t group_id = H5Gcreate2(file_id, full_field_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         CHECK_STATUS_AND_RETURN_ON_FAIL(group_id, (int32_t) group_id,
                                         "Failed to create the %s group.\nThe file ID was %d\n", full_field_name,
@@ -233,7 +233,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
             // Then create each field inside.
-            snprintf(full_field_name, MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], field_names[field_idx]);
+            snprintf(full_field_name, 2*MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], field_names[field_idx]);
 
             /* fprintf(stderr, "Creating field '%s' with description '%s' and unit '%s'\n",
                field_names[field_idx], field_descriptions[field_idx], field_units[field_idx]); */
@@ -956,8 +956,8 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
 
 /* Assumes 'snap_idx', 'field_idx' are set appropriately before invoking the macro */
 #define EXTEND_AND_WRITE_GALAXY_DATASET(field_name) {                   \
-    char full_field_name[MAX_STRING_LEN];                           \
-    snprintf(full_field_name, MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], save_info->name_output_fields[field_idx]); \
+    char full_field_name[2*MAX_STRING_LEN];                           \
+    snprintf(full_field_name, 2*MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], save_info->name_output_fields[field_idx]); \
     hid_t dataset_id = H5Dopen2(save_info->file_id, full_field_name, H5P_DEFAULT); \
     if(dataset_id < 0) {                                                \
         fprintf(stderr, "Could not access the " #field_name" dataset for output snapshot %d.\n", snap_idx); \

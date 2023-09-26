@@ -66,12 +66,12 @@ jobs:
         run: |
           python -c "from sage import build_sage; build_sage();"
       - name: check libs on osx
-        if: matrix.os == 'macOS-latest'      
+        if: matrix.os == 'macOS-latest'
         shell: bash -l {0}
         run: |
           otool -L libsage.so `ls _sage_cffi*.so`
       - name: check libs on linux
-        if: matrix.os == 'ubuntu-latest'      
+        if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           ldd libsage.so `ls _sage_cffi*.so`

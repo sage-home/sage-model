@@ -20,20 +20,20 @@
 /* These functions do not need to be exposed externally */
 double integrand_time_to_present(const double a, void *param);
 void set_units(struct params *run_params);
-void read_snap_list(const int ThisTask, struct params *run_params);
+void read_snap_list(struct params *run_params);
 double time_to_present(const double z, struct params *run_params);
 
-void init(const int ThisTask, struct params *run_params)
+void init(struct params *run_params)
 {
-#ifndef VERBOSE
-    (void) ThisTask;
+#ifdef VERBOSE
+    const int ThisTask = run_params->ThisTask;
 #endif
 
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
 
     set_units(run_params);
 
-    read_snap_list(ThisTask, run_params);
+    read_snap_list(run_params);
 
     //Hack to fix deltaT for snapshot 0
     //This way, galsnapnum = -1 will not segfault.
@@ -81,10 +81,10 @@ void set_units(struct params *run_params)
 
 
 
-void read_snap_list(const int ThisTask, struct params *run_params)
+void read_snap_list(struct params *run_params)
 {
-#ifndef VERBOSE
-    (void) ThisTask;
+#ifdef VERBOSE
+    const int ThisTask = run_params->ThisTask;
 #endif
 
     char fname[MAX_STRING_LEN+1];
