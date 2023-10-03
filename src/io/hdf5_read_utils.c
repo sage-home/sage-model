@@ -167,7 +167,7 @@ int32_t fill_hdf5_metadata_names(struct HDF5_METADATA_NAMES *metadata_names, enu
     case lhalo_hdf5:
         snprintf(metadata_names->name_NTrees, MAX_STRING_LEN - 1, "NtreesPerFile"); // Total number of forests within the file.
         snprintf(metadata_names->name_totNHalos, MAX_STRING_LEN - 1, "NhalosPerFile"); // Total number of halos within the file.
-        snprintf(metadata_names->name_TreeNHalos, MAX_STRING_LEN - 1, "TreeNHalos"); // Number of halos per forest within the file.
+        snprintf(metadata_names->name_TreeNHalos, MAX_STRING_LEN - 1, "/Header/TreeNHalos"); // Number of halos per forest within the file.
         snprintf(metadata_names->name_ParticleMass, MAX_STRING_LEN - 1, "ParticleMass");//Particle mass for Dark matter in the sim
         snprintf(metadata_names->name_NumSimulationTreeFiles, MAX_STRING_LEN - 1, "NumberOfOutputFiles");//Particle mass for Dark matter in the sim
         return EXIT_SUCCESS;

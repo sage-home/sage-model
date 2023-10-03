@@ -119,7 +119,10 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
                      "Error: can't open file `%s'\n", filename);
 
             const int check_size = 1;
-            int32_t *buffer = NULL;
+            int32_t *buffer = malloc(sizeof(*buffer)*nforests_this_file);
+            XRETURN(buffer != NULL, MALLOC_FAILURE, "Error: Could not allocate memory for storing nhalos "\
+                                                    "per forest (%"PRId64" forests, with each element of size = %zu bytes)\n",
+                                                    nforests_this_file, sizeof(*buffer));
             int status = read_dataset(fd, metadata_names.name_TreeNHalos, -1, (void *) buffer, sizeof(*buffer), check_size);
             if(status < 0) {
                 return status;
@@ -127,7 +130,8 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
             for(int64_t i=0;i<nforests_this_file;i++) {
                 nhalos_per_forest[i] = buffer[i];
             }
-            XRETURN( H5Fclose(fd) > 0, -1, "Error: Could not properly close the hdf5 file for filename = '%s'\n", filename);
+            free(buffer);
+            XRETURN( H5Fclose(fd) >= 0, -1, "Error: Could not properly close the hdf5 file for filename = '%s'\n", filename);
 
             nhalos_per_forest += nforests_this_file;
         }
