@@ -1,9 +1,10 @@
 name: python extensions
-on:
+on: 
   push:
+  pull_request:
     branches:
-      - cffi
-
+    - master
+  workflow_dispatch:
 
 jobs:
   build:
