@@ -146,15 +146,17 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
 #ifdef VERBOSE
     if(ThisTask == 0) {
         init_my_progressbar(stdout, Nforests, &(run_params->interrupted));
-#ifdef MPI
-        if(NTasks > 1) {
-            fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
-                    "It should be used as a general indicator only.\n");
-        }
-#endif
     }
 #endif
 
+#if defined(MPI) && defined(VERBOSE)
+    if(NTasks > 1) {
+        fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
+                "It should be used as a general indicator only.\n");
+    }
+#endif
+    
+    
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
 #ifdef VERBOSE
         if(ThisTask == 0) {
@@ -185,6 +187,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     if(ThisTask == 0) {
         finish_myprogressbar(stdout, &(run_params->interrupted));
     }
+
 
     struct timeval tend;
     gettimeofday(&tend, NULL);

@@ -57,7 +57,7 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
         if(unstable_gas > 0.0) {
 #ifdef VERBOSE
             if(unstable_gas > 1.0001 * galaxies[p].ColdGas ) {
-                printf("unstable_gas > galaxies[p].ColdGas\t%e\t%e\n", unstable_gas, galaxies[p].ColdGas);
+                fprintf(stdout, "unstable_gas > galaxies[p].ColdGas\t%e\t%e\n", unstable_gas, galaxies[p].ColdGas);
                 run_params->interrupted = 1;
                 // ABORT(EXIT_FAILURE);
             }

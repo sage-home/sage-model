@@ -35,9 +35,9 @@ void *mymalloc(size_t n)
     if(TotMem > HighMarkMem) {
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-/* #ifdef VERBOSE */
-/*             fprintf(stdout, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0)); */
-/* #endif */
+// #ifdef VERBOSE
+//             fprintf(stderr, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
+// #endif
             OldPrintedHighMark = HighMarkMem;
         }
     }
@@ -87,13 +87,6 @@ void *myrealloc(void *p, size_t n)
     if(n == 0)
         n = 8;
 
-#if 0
-    if(p != Table[Nblocks - 1]) {
-        fprintf(stderr, "Wrong call of myrealloc() p = %p is not the last allocated block = %p!\n", p, Table[Nblocks-1]);
-        ABORT(0);
-    }
-#endif
-
     long iblock = find_block(p);
     if(iblock < 0) {
         fprintf(stderr,"Error: Could not locate ptr address = %p within the allocated blocks\n", p);
@@ -116,9 +109,9 @@ void *myrealloc(void *p, size_t n)
     if(TotMem > HighMarkMem) {
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-/* #ifdef VERBOSE */
-/*             fprintf(stdout, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0)); */
-/* #endif */
+// #ifdef VERBOSE
+//             fprintf(stderr, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
+// #endif
             OldPrintedHighMark = HighMarkMem;
         }
     }
