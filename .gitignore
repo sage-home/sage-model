@@ -20,6 +20,7 @@ sage_analysis/plots/
 *.DS_Store
 xx*
 yy*
+*.hdf5
 
 # sage_analysis Package Stuff #
 *.egg-info

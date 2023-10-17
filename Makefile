@@ -7,7 +7,7 @@ USE-HDF5 := yes # set this if you want to read in hdf5 trees (requires hdf5 libr
 USE-BUFFERED-WRITE := yes # Set this to create binary output in chunks (typically has better performance)
 
 MAKE-SHARED-LIB := yes # Define this to any value if you want to create a shared library (otherwise a static library is created)
-MAKE-VERBOSE := yes # define this for info messages, otherwise all info messages are disabled (*error* messages are *always* printed)
+#MAKE-VERBOSE := yes # define this for info messages, otherwise all info messages are disabled (*error* messages are *always* printed)
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # In case any of the previous ones do not work and
@@ -16,7 +16,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 
 
-CCFLAGS := -DGNU_SOURCE -std=gnu99 -fPIC
+CCFLAGS ?= -DGNU_SOURCE -std=gnu99 -fPIC
 LIBFLAGS :=
 
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
@@ -274,6 +274,10 @@ lib$(LIBNAME).so: $(LIBOBJS)
 	@echo "Creating shared lib"
 	$(CC) -shared $(LIBOBJS) -o $@ $(LIBFLAGS)
 
+pyext: lib$(LIBNAME).so
+	@echo "Creating python extension in Makefile"
+	python -c "from sage import build_sage_extension; build_sage_extension();"
+
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
 
@@ -281,7 +285,7 @@ lib$(LIBNAME).so: $(LIBOBJS)
 .phony: clean celan celna clena tests
 celan celna clena: clean
 clean:
-	rm -f $(OBJS) $(EXEC) $(SAGELIB)
+	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]
 
 tests: $(EXEC)
 ifdef GSL_FOUND
