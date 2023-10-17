@@ -68,7 +68,7 @@ jobs:
       - name: build python extension
         shell: bash -l {0}
         run: |
-          python -c "from sage import build_sage; build_sage();"
+          make pyext
       - name: check libs on osx
         if: matrix.os == 'macOS-latest'
         shell: bash -l {0}

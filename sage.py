@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 
-def build_sage_extension(use_from_mcmc=False):
+def build_sage_pyext(use_from_mcmc=False):
     import os
     import subprocess
     from cffi import FFI
@@ -63,7 +63,7 @@ def run_sage(paramfile, use_from_mcmc=False):
     try:
         from _sage_cffi import ffi, lib
     except ImportError:
-        build_sage_extension(use_from_mcmc=use_from_mcmc)
+        build_sage_pyext(use_from_mcmc=use_from_mcmc)
         from _sage_cffi import ffi, lib
 
     rank = 0
@@ -106,4 +106,4 @@ if __name__ == "__main__":
               .format(parfile)
         raise AssertionError(msg)
 
-    run_sage(parfile, use_from_mcmc=True)
+    run_sage(parfile, use_from_mcmc=False)

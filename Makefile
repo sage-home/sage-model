@@ -276,7 +276,7 @@ lib$(LIBNAME).so: $(LIBOBJS)
 
 pyext: lib$(LIBNAME).so
 	@echo "Creating python extension in Makefile"
-	python -c "from sage import build_sage_extension; build_sage_extension();"
+	python -c "from sage import build_sage_pyext; build_sage_pyext();"
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
