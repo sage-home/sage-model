@@ -7,6 +7,13 @@ output/
 *.*~
 libsage.a
 libsage.so
+*.so
+*.patch
+perf.data*
+*.py
+tmp*
+*.par
+*vscode*
 _sage_cffi.*
 codecov
 *.tar*

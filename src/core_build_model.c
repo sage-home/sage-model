@@ -76,6 +76,14 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
 
   fofhalo = halos[halonr].FirstHaloInFOFgroup;
 #ifdef USE_SAGE_IN_MCMC_MODE
+  /* The extra condition stops sage from evolving any galaxies beyond the final output snapshot.
+     This optimised processing reduces the values GalaxyIndex and CentralGalaxyIndex (since fewer galaxies are
+     now processed). The values of mergetype, mergeintosnapnum and mergeintoid are all different that what
+     would be the case if *all* snapshots were processed. This will lead to different SEDs compared to the
+     fiducial runs -> however, for MCMC cases, presumably we are not interested in SED. This extra flag
+     improves runtime *significantly* if only processing up to high-z (say for targeting JWST-like observations).
+     - MS, DC: 25th Oct, 2023
+  */
   if(haloaux[fofhalo].HaloFlag == 1 && halos[fofhalo].SnapNum <= run_params->ListOutputSnaps[0]) {
 #else
   if(haloaux[fofhalo].HaloFlag == 1 ) {
