@@ -58,10 +58,9 @@
     do {                                                                \
         fprintf(stderr, "Error in file: %s\tfunc: %s\tline: %i\n", __FILE__, __FUNCTION__, __LINE__); \
         fprintf(stderr, "exit code = %d\n", sigterm);                   \
-        fprintf(stderr, "Printing the value of perror...");             \
         fprintf(stderr, "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page.\n" \
                 "https://github.com/sage-home/sage-model/issues/new\n"); \
-        perror(NULL);                                                   \
+        perror("Printing the output of perror (which may be useful if this was a system error) -- ");                                                   \
         exit(sigterm);                                                  \
     } while(0)
 
