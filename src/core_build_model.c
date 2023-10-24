@@ -75,7 +75,11 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
   // evolve them in time.
 
   fofhalo = halos[halonr].FirstHaloInFOFgroup;
-  if(haloaux[fofhalo].HaloFlag == 1) {
+#ifdef USE_SAGE_IN_MCMC_MODE
+  if(haloaux[fofhalo].HaloFlag == 1 && halos[fofhalo].SnapNum <= run_params->ListOutputSnaps[0]) {
+#else
+  if(haloaux[fofhalo].HaloFlag == 1 ) {
+#endif
       int ngal = 0;
       haloaux[fofhalo].HaloFlag = 2;
 

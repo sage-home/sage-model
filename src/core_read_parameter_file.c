@@ -16,6 +16,21 @@ enum datatypes {
 #define MAXTAGS          300  /* Max number of parameters */
 #define MAXTAGLEN         50  /* Max number of characters in the string param tags */
 
+int compare_ints_descending (const void* p1, const void* p2);
+
+int compare_ints_descending (const void* p1, const void* p2)
+{
+    int i1 = *(int*) p1;
+    int i2 = *(int*) p2;
+    if (i1 < i2) {
+        return 1;
+    } else if (i1 == i2) {
+        return 0;
+    } else {
+        return -1;
+    }
+ }
+
 int read_parameter_file(const char *fname, struct params *run_params)
 {
     int errorFlag = 0;
@@ -391,6 +406,24 @@ int read_parameter_file(const char *fname, struct params *run_params)
         ABORT(EXIT_FAILURE);
     }
 
+    /* sort the output snapshot numbers in descending order (in case the user didn't do that already) MS: 24th Oct, 2023 */
+    qsort(run_params->ListOutputSnaps, run_params->NumSnapOutputs, sizeof(run_params->ListOutputSnaps[0]), compare_ints_descending);
+
+    /* Check for duplicate snapshot outputs */
+    int num_dup_snaps = 0;
+    for(int ii=1;ii<run_params->NumSnapOutputs;ii++) {
+        const int dsnap = run_params->ListOutputSnaps[ii-1] - run_params->ListOutputSnaps[ii];
+        if(dsnap == 0) {
+            fprintf(stderr,"Error: Found duplicate snapshots in the list of desired output snapshots\n");
+            fprintf(stderr,"Duplicate value = %d in position = %d (out of %d total output snapshots requested)\n",
+                            run_params->ListOutputSnaps[ii], ii, run_params->NumSnapOutputs);
+            num_dup_snaps++;
+        }
+    }
+    if(num_dup_snaps != 0) {
+        fprintf(stderr,"Error: Found %d duplicate snapshots - please remove them from the parameter file and then re-run sage\n\n", num_dup_snaps);
+        ABORT(EXIT_FAILURE);
+    }
 
     /* because in the default case of 'lhalo-binary', nothing
        gets written to "treeextension", we need to
