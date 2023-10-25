@@ -12,6 +12,7 @@ def build_sage_pyext(use_from_mcmc=False):
         # Normally this would be `CFLAGS` but I have used
         ## `CCFLAGS` within the SAGE Makefile - MS: 17th Oct, 2023
         os.environ["CCFLAGS"] = "-DUSE_SAGE_IN_MCMC_MODE"
+        os.environ["OPTS"] = "-NDVERBOSE"
 
 
     # You can add/remove the capture_output=True argument to suppress/display
@@ -79,13 +80,13 @@ def run_sage(paramfile, use_from_mcmc=False):
 
     print(f"[Rank={rank}]: Running on {ntasks} tasks")
     # this will contain the (malloc'ed) pointer to 'struct params' in C
-    # The reason for this seemingly weird convention (i.e., 
-    # why not just keep the params entirely within C) is keep 
+    # The reason for this seemingly weird convention (i.e.,
+    # why not just keep the params entirely within C) is keep
     # persistent state between run_sage and finalize_sage.
     # finalize_sage needs to know the output file format, which is
-    # stored within params. finalize_sage is a separate function 
-    # so that there is no required MPI call within the SAGE API. 
-    # This way the necessary MPI_Barrier call is placed within 
+    # stored within params. finalize_sage is a separate function
+    # so that there is no required MPI call within the SAGE API.
+    # This way the necessary MPI_Barrier call is placed within
     # main.c before calling finalize_sage (but after run_sage) - MS: 17th Oct, 2023
     params_struct = ffi.new("void **")
     fname = ffi.new("char []", paramfile.encode())
