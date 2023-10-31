@@ -155,8 +155,8 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
                 "It should be used as a general indicator only.\n");
     }
 #endif
-    
-    
+
+
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
 #ifdef VERBOSE
         if(ThisTask == 0) {
@@ -230,17 +230,25 @@ int32_t finalize_sage(void *params)
         case(sage_hdf5):
             {
                 status = create_hdf5_master_file(run_params);
+#ifdef VERBOSE
                 /* Check if anything was not cleaned up */
-                const ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
+                ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
                 if(nleaks > 0) {
                     fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
-                    fprintf(stderr,"Number of open files = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_FILE));
-                    fprintf(stderr,"Number of open datasets = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATASET));
-                    fprintf(stderr,"Number of open groups = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_GROUP));
-                    fprintf(stderr,"Number of open datatype = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_DATATYPE));
-                    fprintf(stderr,"Number of open attributes = %zd\n",  H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ATTR));
+#define CHECK_SPECIFIC_HDF5_LEAK(objtype, h5_obj_type) {    \
+            nleaks = H5Fget_obj_count(H5F_OBJ_ALL, h5_obj_type);\
+            if(nleaks > 0) {\
+                fprintf(stderr, "Number of open %s = %zd\n", #objtype, nleaks);\
+            }\
+        }
+                    CHECK_SPECIFIC_HDF5_LEAK("files", H5F_OBJ_FILE);
+                    CHECK_SPECIFIC_HDF5_LEAK("datasets", H5F_OBJ_DATASET);
+                    CHECK_SPECIFIC_HDF5_LEAK("groups", H5F_OBJ_GROUP);
+                    CHECK_SPECIFIC_HDF5_LEAK("datatypes", H5F_OBJ_DATATYPE);
+                    CHECK_SPECIFIC_HDF5_LEAK("attributes", H5F_OBJ_ATTR);
+#undef CHECK_SPECIFIC_HDF5_LEAK
                 }
-
+#endif
                 break;
             }
 #endif
@@ -384,7 +392,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
 }
 
 /*
-For creating the lhalo tree binary output i.e., converting from the input 
+For creating the lhalo tree binary output i.e., converting from the input
 mergertree format into the lhalotree binary format.
 */
 
@@ -394,7 +402,7 @@ mergertree format into the lhalotree binary format.
 
 int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *run_params, struct forest_info *forest_info)
 {
-    if(forest_info->nforests_this_task > INT_MAX ||  forest_info->nhalos_this_task > INT_MAX) {      
+    if(forest_info->nforests_this_task > INT_MAX ||  forest_info->nhalos_this_task > INT_MAX) {
         fprintf(stderr,"Error: Can not correctly cast totnforests (on this task) = %"PRId64" or totnhalos = %"PRId64" "
                        "to fit within a 4-byte integer (as required by the LHaloTree binary format specification). "
                        "Converting fewer input files or adding more parallel cores (currently using %d cores) will "
@@ -478,7 +486,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
     const size_t buffer_size = 4 * 1024 * 1024; //4 MB
     struct buffered_io buf_io;
     int status = setup_buffered_io(&buf_io, buffer_size, fd, halo_data_start_offset);
-    if(status != EXIT_SUCCESS) 
+    if(status != EXIT_SUCCESS)
     {
         fprintf(stderr,"Error: Could not setup buffered io\n");
         return -1;
@@ -498,8 +506,8 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
         /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
         const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
         XRETURN(nhalos > 0, nhalos, "Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
-        XRETURN(nhalos <= INT_MAX, EXIT_FAILURE, 
-                "Error: Number of halos = %"PRId64" must be > 0 *and* also fit inside 32 bits\n", 
+        XRETURN(nhalos <= INT_MAX, EXIT_FAILURE,
+                "Error: Number of halos = %"PRId64" must be > 0 *and* also fit inside 32 bits\n",
                 nhalos);
         const size_t numbytes = sizeof(struct halo_data)*nhalos;
 #ifdef USE_BUFFERED_WRITE
@@ -512,7 +520,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
         mywrite(fd, Halo, numbytes);//write updates the file offset
 #endif
         const off_t nh_per_tree_offset = sizeof(int32_t) + sizeof(int32_t) + forestnr * sizeof(int32_t);
-        PWRITE_64BIT_TO_32BIT(fd, nhalos, nh_per_tree_offset, "nhalos per tree");//pwrite does not update file offset                        
+        PWRITE_64BIT_TO_32BIT(fd, nhalos, nh_per_tree_offset, "nhalos per tree");//pwrite does not update file offset
 
         myfree(Halo);
         totnhalos += nhalos;
@@ -529,7 +537,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
     PWRITE_64BIT_TO_32BIT(fd, totnhalos, 4, "total number of halos in file");
 
     if(forest_info->nhalos_this_task > 0) {
-        XRETURN(totnhalos == forest_info->nhalos_this_task, -1, 
+        XRETURN(totnhalos == forest_info->nhalos_this_task, -1,
                 "Error: Expected totnhalos written out = %"PRId64" to "
                 "be *exactly* equal to forests_info->nhalos_this_task = %"PRId64"\n",
                 totnhalos, forest_info->nhalos_this_task);

@@ -138,6 +138,7 @@ void myfree(void *p)
     }
 
     free(p);
+    Table[iblock] = NULL;
     TotMem -= SizeTable[iblock];
 
     /*

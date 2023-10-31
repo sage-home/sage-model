@@ -12,8 +12,8 @@
 
 
 static void get_forests_filename_lht_binary(char *filename, const size_t len, const int filenr, const struct params *run_params);
-static int load_tree_table_lht_binary(const int firstfile, const int lastfile, const int64_t *totnforests_per_file, 
-                                      const struct params *run_params, const int ThisTask, 
+static int load_tree_table_lht_binary(const int firstfile, const int lastfile, const int64_t *totnforests_per_file,
+                                      const struct params *run_params, const int ThisTask,
                                       int64_t *nhalos_per_forest);
 
 void get_forests_filename_lht_binary(char *filename, const size_t len, const int filenr, const struct params *run_params)
@@ -82,7 +82,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
         return status;
     }
     if(need_nhalos_per_forest) {
-        free(nhalos_per_forest);
+        myfree(nhalos_per_forest);
     }
 
     const int64_t end_forestnum = start_forestnum + nforests_this_task; /* not inclusive, i.e., do not process forestnr == end_forestnum */
@@ -117,10 +117,10 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
     // Now for each task, we know the starting forest number it needs to start reading from.
     // So let's determine what file and forest number within the file each task needs to start/end reading from.
     int start_filenum = -1, end_filenum = -1;
-    status = find_start_and_end_filenum(start_forestnum, end_forestnum, 
-                                        totnforests_per_file, totnforests, 
+    status = find_start_and_end_filenum(start_forestnum, end_forestnum,
+                                        totnforests_per_file, totnforests,
                                         firstfile, lastfile,
-                                        ThisTask, NTasks, 
+                                        ThisTask, NTasks,
                                         num_forests_to_process_per_file, start_forestnum_to_process_per_file,
                                         &start_filenum, &end_filenum);
     if(status != EXIT_SUCCESS) {
@@ -161,7 +161,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
         int32_t *buffer = malloc(nbytes);
         XRETURN(buffer != NULL, MALLOC_FAILURE,
                 "Error: Could not allocate memory to read nhalos per forest. Bytes requested = %zu\n", nbytes);
-        
+
         mypread(fd, buffer, nbytes, 8); /* the last argument says to start after sizeof(totntrees) + sizeof(totnhalos) */
         buffer += start_forestnum_to_process_per_file[filenr];
         for(int k=0;k<nforests_to_process_this_file;k++) {
@@ -279,13 +279,13 @@ void cleanup_forests_io_lht_binary(struct forest_info *forests_info)
     myfree(lht->open_fds);
 }
 
-int load_tree_table_lht_binary(const int firstfile, const int lastfile, const int64_t *totnforests_per_file, 
-                                 const struct params *run_params, const int ThisTask, 
+int load_tree_table_lht_binary(const int firstfile, const int lastfile, const int64_t *totnforests_per_file,
+                                 const struct params *run_params, const int ThisTask,
                                  int64_t *nhalos_per_forest)
 {
-    /* The nhalos_per_forest array is written as 32-bit integers; 
+    /* The nhalos_per_forest array is written as 32-bit integers;
         however, we really use 64-bit integers. So, we have to split up the work and read
-        in the 32-bit integers into a temporary buffer and then assign 
+        in the 32-bit integers into a temporary buffer and then assign
         to the parameter *nhalos_per_forest.  */
     int64_t max_nforests_per_file = 0;
     int32_t *buffer = NULL;
@@ -295,7 +295,7 @@ int load_tree_table_lht_binary(const int firstfile, const int lastfile, const in
     }
     buffer = malloc(max_nforests_per_file * sizeof(*buffer));
     CHECK_POINTER_AND_RETURN_ON_NULL(buffer,
-                                    "Failed to allocate %"PRId64" buffer to hold (32-bit integers, size = %zu) nhalos_per_forest\n", 
+                                    "Failed to allocate %"PRId64" buffer to hold (32-bit integers, size = %zu) nhalos_per_forest\n",
                                     max_nforests_per_file,
                                     sizeof(*buffer));
 
@@ -320,7 +320,7 @@ int load_tree_table_lht_binary(const int firstfile, const int lastfile, const in
         XRETURN( fd > 0, FILE_NOT_FOUND,"Error: can't open file `%s'\n", filename);
 
         //the last argument is the offset for nhalos_per_forest -> the first 4 bytes
-        //are for totnforests, and the next 4 bytes are for totnhalos, after that 
+        //are for totnforests, and the next 4 bytes are for totnhalos, after that
         //the nhalos_per_forest[totnforests] starts.
         mypread(fd, buffer, sizeof(*buffer)*nforests_this_file, 8);
         for(int64_t i=0;i<nforests_this_file;i++) {
