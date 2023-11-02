@@ -50,13 +50,14 @@ def build_sage_pyext(use_from_mcmc=False):
                           """,
                           libraries=['sage'],   # library name, for the linker
                           library_dirs=[dir_path],
+                          include_dirs=[dir_path],
                           extra_link_args=["-Xlinker",
                                            "-rpath",
                                            "-Xlinker",
                                            dir_path],
     )
 
-    ffibuilder.compile(verbose=True)
+    ffibuilder.compile(verbose=False)
     return
 
 
@@ -94,7 +95,7 @@ def run_sage(paramfile, use_from_mcmc=False):
     lib.run_sage(rank, ntasks, fname, params_struct)
     lib.finalize_sage(params_struct[0])
 
-    return True
+    return
 
 
 if __name__ == "__main__":
