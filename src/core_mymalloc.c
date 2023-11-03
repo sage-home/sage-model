@@ -15,15 +15,12 @@ static size_t TotMem = 0, HighMarkMem = 0, OldPrintedHighMark = 0;
 
 /* file-local function */
 long find_block(const void *p);
+size_t get_aligned_memsize(size_t n);
+void set_and_print_highwater_mark(void);
 
 void *mymalloc(size_t n)
 {
-    if((n % 8) > 0)
-        n = (n / 8 + 1) * 8;
-
-    if(n == 0) {
-        n = 8;
-    }
+    n = get_aligned_memsize(n);
 
     if(Nblocks >= MAXBLOCKS) {
         fprintf(stderr, "Nblocks = %ld No blocks left in mymalloc().\n", Nblocks);
@@ -32,15 +29,8 @@ void *mymalloc(size_t n)
 
     SizeTable[Nblocks] = n;
     TotMem += n;
-    if(TotMem > HighMarkMem) {
-        HighMarkMem = TotMem;
-        if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-// #ifdef VERBOSE
-//             fprintf(stderr, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
-// #endif
-            OldPrintedHighMark = HighMarkMem;
-        }
-    }
+
+    set_and_print_highwater_mark();
 
     Table[Nblocks] = malloc(n);
     if(Table[Nblocks] == NULL) {
@@ -81,11 +71,7 @@ long find_block(const void *p)
 
 void *myrealloc(void *p, size_t n)
 {
-    if((n % 8) > 0)
-        n = (n / 8 + 1) * 8;
-
-    if(n == 0)
-        n = 8;
+    n = get_aligned_memsize(n);
 
     long iblock = find_block(p);
     if(iblock < 0) {
@@ -106,16 +92,7 @@ void *myrealloc(void *p, size_t n)
     TotMem += n;
     SizeTable[iblock] = n;
 
-    if(TotMem > HighMarkMem) {
-        HighMarkMem = TotMem;
-        if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-// #ifdef VERBOSE
-//             fprintf(stderr, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
-// #endif
-            OldPrintedHighMark = HighMarkMem;
-        }
-    }
-
+    set_and_print_highwater_mark();
     return Table[iblock];
 }
 
@@ -140,6 +117,7 @@ void myfree(void *p)
     free(p);
     Table[iblock] = NULL;
     TotMem -= SizeTable[iblock];
+    SizeTable[iblock] = 0;
 
     /*
       If not removing the last allocated pointer,
@@ -155,11 +133,37 @@ void myfree(void *p)
     Nblocks--;
 }
 
+size_t get_aligned_memsize(size_t n)
+{
+    if((n % 8) > 0)
+        n = (n / 8 + 1) * 8;
 
-#ifdef VERBOSE
+    if(n == 0)
+        n = 8;
+
+    return n;
+}
+
+
 void print_allocated(void)
 {
+#ifdef VERBOSE
     fprintf(stdout, "\nallocated = %g MB\n", TotMem / (1024.0 * 1024.0));
     fflush(stdout);
-}
 #endif
+    return;
+}
+
+void set_and_print_highwater_mark(void)
+{
+    if(TotMem > HighMarkMem) {
+        HighMarkMem = TotMem;
+        if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
+#ifdef VERBOSE
+            fprintf(stderr, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
+#endif
+            OldPrintedHighMark = HighMarkMem;
+        }
+    }
+    return;
+}

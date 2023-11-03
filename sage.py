@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 
-def build_sage_pyext(use_from_mcmc=False):
+def build_sage_pyext(use_from_mcmc=False, verbose=False):
     import os
     import subprocess
     from cffi import FFI
@@ -11,6 +11,8 @@ def build_sage_pyext(use_from_mcmc=False):
     if use_from_mcmc:
         # Normally this would be `CFLAGS` but I have used
         ## `CCFLAGS` within the SAGE Makefile - MS: 17th Oct, 2023
+        os.environ["CC"] = "mpicc"
+        os.environ["CCFLAGS"] = "-DMPI"
         os.environ["CCFLAGS"] = "-DUSE_SAGE_IN_MCMC_MODE"
         os.environ["OPTS"] = "-NDVERBOSE"
 
@@ -57,7 +59,7 @@ def build_sage_pyext(use_from_mcmc=False):
                                            dir_path],
     )
 
-    ffibuilder.compile(verbose=False)
+    ffibuilder.compile(verbose=verbose)
     return
 
 

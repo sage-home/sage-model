@@ -16,7 +16,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 
 
-CCFLAGS ?= -DGNU_SOURCE -std=gnu99 -fPIC
+CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC
 LIBFLAGS :=
 
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
@@ -259,6 +259,8 @@ else
 
 endif # End of DO_CHECKS if condition -> i.e., we do need to care about paths and such
 
+.PHONY: clean celan celna clena tests all
+
 all:  $(SAGELIB) $(EXEC)
 
 $(EXEC): $(OBJS)
@@ -282,7 +284,6 @@ pyext: lib$(LIBNAME).so
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
 
 
-.phony: clean celan celna clena tests
 celan celna clena: clean
 clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]
