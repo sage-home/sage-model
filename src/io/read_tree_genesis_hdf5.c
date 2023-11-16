@@ -257,10 +257,10 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     // So let's determine what file and forest number within the file each task needs to start/end reading from.
     int start_filenum = -1, end_filenum = -1;
     int64_t xx, yy;//dummy variables to throw away but needed to pass to find_start_and_end_filenum
-    status = find_start_and_end_filenum(start_forestnum, end_forestnum, 
-                                        totnforests_per_file, totnforests, 
+    status = find_start_and_end_filenum(start_forestnum, end_forestnum,
+                                        totnforests_per_file, totnforests,
                                         firstfile, lastfile,
-                                        ThisTask, NTasks, 
+                                        ThisTask, NTasks,
                                         &xx, &yy,
                                         &start_filenum, &end_filenum);
     if(status != EXIT_SUCCESS) {
@@ -760,7 +760,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
             if(macro_forest_local_index < 0 || macro_forest_local_index >= nhalos) { \
                 fprintf(stderr,"Error: forest_local_index = %"PRId64" is invalid\n", macro_forest_local_index); \
                 fprintf(stderr,"forestnr = %"PRId64" at snap = %d, setting i=%lld halo " #sage_name " to value = %"PRId64"\n", \
-                        forestnr, snapnum, i, macro_forest_local_index); \
+                        forestnr, snapnum, (long long) i, macro_forest_local_index); \
                 return -1;                                      \
             }                                                   \
             local_halos[i].sage_name = (int32_t) macro_forest_local_index; \
@@ -769,21 +769,21 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         if(macro_haloid < 0) {                                  \
             fprintf(stderr,"Warning: while rocessing field " #sage_name " for halonum = %lld in forestnr = %"PRId64" at snapshot = %d\n" \
                     "macro_haloid = %"PRId64" was negative. Skipping this halo assignment\n", \
-                    i, forestnr, snapnum, macro_haloid);        \
+                    (long long) i, forestnr, snapnum, macro_haloid);        \
             continue;                                           \
         }                                                       \
         const int64_t macro_snapshot = CONVERT_HALOID_TO_SNAPSHOT(macro_haloid); \
         if(macro_snapshot < start_snap || macro_snapshot > end_snap) { \
             fprintf(stderr,"Error: While processing field " #sage_name " for halonum = %lld in forestnr = %"PRId64"\n" \
                     "macro_haloid = %"PRId64" resulted in a snapshot = %"PRId64" but expected snapshot to be in range [%d, %d] (inclusive)\n", \
-                    i, forestnr, macro_haloid, macro_snapshot, start_snap, end_snap); \
+                    (long long) i, forestnr, macro_haloid, macro_snapshot, start_snap, end_snap); \
             return -1;                                          \
         }                                                       \
         const int64_t macro_haloindex = CONVERT_HALOID_TO_INDEX(macro_haloid) - forest_offsets[macro_snapshot]; \
         if(macro_haloindex < 0 || macro_haloindex >= nhalos) {  \
             fprintf(stderr,"Error: While processing field " #sage_name " for halonum = %lld at snapshot = %d in forestnr = %"PRId64"\n" \
                     "macro_haloid = %"PRId64" resulted in a haloindex = %"PRId64" but expected snapshot to be in range [0,%"PRId64"] (inclusive)\n", \
-                    i, snapnum, forestnr, macro_haloid, macro_haloindex, nhalos - 1); \
+                    (long long) i, snapnum, forestnr, macro_haloid, macro_haloindex, nhalos - 1); \
             return -1;                                          \
         }                                                       \
         const int64_t macro_forest_local_index = forest_local_offsets[macro_snapshot] + macro_haloindex; \
@@ -796,7 +796,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
             fprintf(stderr,"Error: In function %s> Expected forest local index = %"PRId64" to be in range [0, %"PRId64"] (inclusive)\n" \
                     "While processing field " #sage_name " for halonum = %lld at snapshot = %d in forestnr = %"PRId64"\n" \
                     "macro_haloid = %"PRId64" resulted in a haloindex = %"PRId64"\n", \
-                    __FUNCTION__, macro_forest_local_index, nhalos - 1, i, snapnum, forestnr, macro_haloid, macro_haloindex); \
+                    __FUNCTION__, macro_forest_local_index, nhalos - 1, (long long) i, snapnum, forestnr, macro_haloid, macro_haloindex); \
             return -1;                                          \
         }                                                       \
         if(is_mergertree_index && macro_snapshot == snapnum && (hsize_t) macro_haloindex == i) { \

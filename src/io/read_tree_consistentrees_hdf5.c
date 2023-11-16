@@ -405,17 +405,17 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
         XRETURN(macro_status >= 0, -HDF5_ERROR,                         \
                 "Error: Failed to select hyperslab for dataset = %s.\n" \
                 "The dimensions of the dataset was %llu offset = %llu.\n%s\n", \
-                field_name, *count, *offset, error_message);            \
+                field_name, (unsigned long long) *count, (unsigned long long) *offset, error_message);            \
         hid_t h5_memspace = H5Screate_simple(1, count, NULL);           \
         XRETURN(h5_memspace >= 0, -HDF5_ERROR,                          \
                 "Error: Failed to select hyperslab for dataset = %s.\n" \
                 "The dimensions of the dataset was %llu.\n%s\n",        \
-                field_name, *count, error_message);                     \
+                field_name, (unsigned long long) *count, error_message);                     \
         const hid_t h5_dtype = H5Dget_type(h5_dset);                    \
         XRETURN(h5_dtype >= 0, -HDF5_ERROR,                             \
                 "Error: Failed to get datatype for dataset = %s.\n"     \
                 "The dimensions of the dataset was %llu\n.",            \
-                field_name, *count);                                    \
+                field_name, (unsigned long long) *count);                                    \
         XRETURN(sizeof(dst_type) == H5Tget_size(h5_dtype), -HDF5_ERROR, \
                 "Error while reading dataset '%s'\n"                    \
                 "The HDF5 attribute has size %zu bytes but the "        \
@@ -426,23 +426,23 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
         XRETURN(macro_status >= 0, FILE_READ_ERROR,                     \
                 "Error: Failed to read array for dataset = %s.\n"       \
                 "The dimensions of the dataset was %llu, offset = %llu\n%s\n", \
-                field_name, *count, *offset, error_message);            \
+                field_name, (unsigned long long) *count, (unsigned long long) *offset, error_message);            \
         XRETURN(H5Dclose(h5_dset) >= 0, -HDF5_ERROR,                    \
                 "Error: Could not close dataset = '%s'.\n"              \
                 "The dimensions of the dataset was %llu\n.",            \
-                field_name, *count);                                    \
+                field_name, (unsigned long long) *count);                                    \
         XRETURN(H5Tclose(h5_dtype) >= 0, -HDF5_ERROR,                   \
                 "Error: Failed to close the datatype for = %s.\n"       \
                 "The dimensions of the dataset was %llu\n.",            \
-                field_name, *count);                                    \
+                field_name, (unsigned long long) *count);                                    \
         XRETURN(H5Sclose(h5_fspace) >= 0, -HDF5_ERROR,                  \
                 "Error: Failed to close the filespace for = %s.\n"      \
                 "The dimensions of the dataset was %llu\n.",            \
-                field_name, *count);                                    \
+                field_name, (unsigned long long) *count);                                    \
         XRETURN(H5Sclose(h5_memspace) >= 0, -HDF5_ERROR,                \
                 "Error: Failed to close the dataspace for = %s.\n"      \
                 "The dimensions of the dataset was %llu\n.",            \
-                field_name, *count);                                    \
+                field_name, (unsigned long long) *count);                                    \
     }
 
 
@@ -560,7 +560,7 @@ int read_contiguous_forest_ctrees_h5(hid_t h5_forests_group, const hsize_t nhalo
     void *buffer = malloc(nhalos * sizeof(double)); // The largest data-type will be double.
     XRETURN(buffer != NULL, -MALLOC_FAILURE,
             "Error: Could not allocate memory for %llu halos in the HDF5 buffer. Size requested = %llu bytes\n",
-            nhalos, nhalos * sizeof(double));
+            (unsigned long long) nhalos, (unsigned long long) nhalos * sizeof(double));
 
 
     // fprintf(stderr,"IN %s> h5_forests_group = %lu halosoffset = %llu nhalos = %llu\n", __FUNCTION__,  h5_forests_group, halosoffset, nhalos);
@@ -653,4 +653,3 @@ void cleanup_forests_io_ctrees_hdf5(struct forest_info *forests_info)
     free(ctr_h5->contig_halo_props);
     H5Fclose(ctr_h5->meta_fd);
 }
-
