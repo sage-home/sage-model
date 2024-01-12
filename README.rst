@@ -83,20 +83,23 @@ documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sag
 Installing ``sage-analysis`` (requires python version >= 3.6)
 --------------------------------------------------------------
 
-You may need to first create a Python virtual environment in your sage-model directory.
+.. code::
+
+    $ cd ../  						# Change to the location where you want to clone the sage-analysis repo
+    $ git clone https://github.com/sage-home/sage-analysis.git	# clone the sage-analysis repo
+    $ cd sage-analysis  
+
+You may need to first create a Python virtual environment in your sage-analysis directory and source it:
 
 .. code::
 
     $ python3 -m venv .sage_venv
     $ source .sage_venv/bin/activate
 
-Then install sage-analysis.
+Then finish installing sage-analysis:
 
 .. code::
 
-    $ cd ../  						# Change to the location where you want to clone the sage-analysis repo
-    $ git clone https://github.com/sage-home/sage-analysis.git	# clone the sage-analysis repo
-    $ cd sage-analysis  
     $ python3 -m pip install -e .       		# Install the sage-analysis python package
     $ cd ../sage-model 
 
