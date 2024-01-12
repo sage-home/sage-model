@@ -100,7 +100,7 @@ Then finish installing sage-analysis:
 
 .. code::
 
-    $ python3 -m pip install -e .       		# Install the sage-analysis python package
+    $ python3 -m pip install -e .    # Install the sage-analysis python package
     $ cd ../sage-model 
 
 Assuming that the `sage-analysis` repo was installed successfully, you are now ready to plot the output from ``SAGE``.
