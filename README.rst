@@ -86,7 +86,7 @@ Installing ``sage-analysis`` (requires python version >= 3.6)
 .. code::
 
     $ cd ../  						# Change to the location where you want to clone the sage-analysis repo
-    $ git clone git@github.com:sage-home/sage-analysis 	# clone the sage-analysis repo
+    $ git clone https://github.com/sage-home/sage-analysis.git	# clone the sage-analysis repo
     $ cd sage-analysis  
     $ python3 -m pip install -e .       		# Install the sage-analysis python package
     $ cd ../sage-model 
