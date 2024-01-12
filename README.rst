@@ -85,8 +85,8 @@ Installing ``sage-analysis`` (requires python version >= 3.6)
 
 .. code::
 
-    $ cd ../  						# Change to the location where you want to clone the sage-analysis repo
-    $ git clone https://github.com/sage-home/sage-analysis.git	# clone the sage-analysis repo
+    $ cd ../    # <- Change to the location where you want to clone the sage-analysis repo
+    $ git clone https://github.com/sage-home/sage-analysis.git
     $ cd sage-analysis  
 
 You may need to first create a Python virtual environment in your sage-analysis directory and source it:
