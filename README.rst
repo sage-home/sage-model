@@ -16,10 +16,10 @@ For testing purposes, treefiles for the `mini-Millennium Simulation <http://arxi
 Galaxy formation models built using ``SAGE`` on the Millennium, Bolshoi and simulations can be downloaded at the
 `Theoretical Astrophysical Observatory (TAO) <https://tao.asvo.org.au/>`_. You can also find SAGE on `ascl.net <http://ascl.net/1601.006>`_.
 
-Getting Started
+Getting started
 ===============
 
-Pre-Requisites
+Pre-requisites
 --------------
 
 ``SAGE`` should compile on most systems out of the box and the only required tool is a `C99  compiler <https://en.wikipedia.org/wiki/C99>`_.
@@ -74,8 +74,26 @@ or in parallel as:
 
     $ mpirun -np <NUMBER_PROCESSORS> ./sage input/millennium.par
 
-Plotting the Output
-===================
+Plotting the output (basic method)
+==================================
+
+If you already have Python 3 installed, you can switch to the plotting directory, where you will find two scripts, 
+``allresults-local.py`` (for z=0 results) and ``allresults-history.py`` (for higher redshift results). 
+If you're following the above, these scripts can run as-is to produce a series of figures you can use to check the model output.
+
+.. code::
+
+    $ cd plotting/
+    $ python3 allresults-local.py
+    $ python3 allresults-history.py
+
+Starting line 13 in both, there is a section where you can modify the simulation and plotting options for your own needs. 
+These scripts can be used as a template to read the hdf5 model output and to make your own custom figures.
+
+
+Plotting the output (sage-analysis package)
+===========================================
+
 We have a separate `sage-analysis <https://github.com/sage-home/sage-analysis/>`_ python package for plotting ``SAGE`` output. Please refer to the `sage_analysis
 documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sage.html>`_ for more details. 
 
