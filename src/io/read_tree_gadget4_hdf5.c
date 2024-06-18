@@ -533,7 +533,16 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
 
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac = 1000000000000000LL;
+    if (numfiles>1)
+    {
+        run_params->FileNr_Mulfac = 1000000000000000LL;
+    } else
+    {
+        run_params->FileNr_Mulfac = 0LL;
+    }
+    
+    
+    
     run_params->ForestNr_Mulfac = 1000000000LL;
 
     fprintf(stderr,"[On ThisTask = %d] start_forestnum = %"PRId64" end_forestnum = %"PRId64" start_filenum = %d end_filenum = %d "
