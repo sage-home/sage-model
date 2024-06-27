@@ -34,7 +34,7 @@ double estimate_merging_time(const int sat_halo, const int mother_halo, const in
         mergtime = -1.0;
     }
 
-    if (mergtime > 999.0)
+    if (mergtime >= 999.0)
     {
         mergtime = 998.0;
         // implementing time ceiling since some objects have merge times longer than universe age when using
