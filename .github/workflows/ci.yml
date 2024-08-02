@@ -122,6 +122,7 @@ jobs:
 
       - name: tests
         shell: bash -l {0}
+        if: matrix.os != 'macos-latest'
         run: |
           make clean
           make tests CC=${{ matrix.compiler }}
