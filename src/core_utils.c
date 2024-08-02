@@ -176,8 +176,8 @@ ssize_t mywrite(int fd, const void *ptr, size_t nbytes)
 {
     size_t nbytes_left = nbytes;
     ssize_t tot_nbytes_written = 0;
+    char *buf = (char *) ptr;
     while(nbytes_left > 0) {
-        char *buf = (char *) ptr;
         ssize_t bytes_written = write(fd, buf, nbytes_left);
         if(bytes_written > 0 ) {
             nbytes_left -= bytes_written;
@@ -199,8 +199,8 @@ ssize_t mypread(int fd, void *ptr, const size_t nbytes, off_t offset)
 {
     size_t nbytes_left = nbytes;
     ssize_t tot_nbytes_read = 0;
+    char *buf = (char *) ptr;
     while(nbytes_left > 0) {
-        char *buf = (char *) ptr;
         ssize_t bytes_read = pread(fd, buf, nbytes_left, offset);
         if(bytes_read > 0 ) {
             nbytes_left -= bytes_read;
@@ -220,8 +220,8 @@ ssize_t mypwrite(int fd, const void *ptr, const size_t nbytes, off_t offset)
 {
     size_t nbytes_left = nbytes;
     ssize_t tot_nbytes_written = 0;
+    char *buf = (char *) ptr;
     while(nbytes_left > 0) {
-        char *buf = (char *) ptr;
         ssize_t bytes_written = pwrite(fd, buf, nbytes_left, offset);
         if(bytes_written > 0 ) {
             nbytes_left -= bytes_written;
