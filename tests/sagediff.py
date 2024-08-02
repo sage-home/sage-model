@@ -607,8 +607,8 @@ if __name__ == '__main__':
     multidim_fields = ["Pos", "Vel", "Spin"]
 
     # Tolerance levels for the comparisons.
-    rtol = 1e-05
-    atol = 1e-08
+    rtol = 1e-07
+    atol = 1e-11
 
     if args.verbose:
         print("Running sagediff on files {0} and {1} in mode {2}. The first "\
