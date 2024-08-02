@@ -17,19 +17,24 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "ubuntu-20.04"]
         compiler: [gcc-7, gcc-9, gcc-12]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
-        numpy-version: ["1.18", "1.20", "1.23"]
+        python-version: ["3.9", "3.11", "3.12"]
+        numpy-version: ["1.20", "1.23", "2.0.1"]
         
         include:
           - compiler: clang
             os: "macos-latest"
-            python-version: "3.8"
-            numpy-version: "1.18"
+            python-version: "3.11"
+            numpy-version: "1.23"
 
           - compiler: clang
             os: "macos-latest"
             python-version: "3.9"
             numpy-version: "1.20"
+
+          - compiler: clang
+            os: "macos-latest"
+            python-version: "3.12"
+            numpy-version: "2.0.1"
 
         exclude:
           # gcc-7 only on ubuntu-20.04
@@ -42,25 +47,25 @@ jobs:
 
           # python3.9 only on ubuntu-latest
           - os: "ubuntu-latest"
-            python-version: "3.8"
+            python-version: "3.9"
 
           # numpy1.18 only on python3.8
           # (which, in turn, is only on '20.04')
           - python-version: "3.11"
-            numpy-version: "1.18"
+            numpy-version: "2.0.1"
           - python-version: "3.10"
-            numpy-version: "1.18"
+            numpy-version: "2.0.1"
           - python-version: "3.9"
-            numpy-version: "1.18"
+            numpy-version: "2.0.1"
 
           # numpy1.20 only on python3.9
           # (which, in turn, is only on '20.04')
           - python-version: "3.11"
             numpy-version: "1.20"
           - python-version: "3.10"
-            numpy-version: "1.20"
+            numpy-version: "1.23"
           - python-version: "3.9"
-            numpy-version: "1.20"
+            numpy-version: "1.23"
 
     env:
       CC: ${{ matrix.compiler }}
