@@ -178,7 +178,7 @@ ssize_t mywrite(int fd, const void *ptr, size_t nbytes)
     ssize_t tot_nbytes_written = 0;
     while(nbytes_left > 0) {
         char *buf = (char *) ptr;
-        ssize_t bytes_written = write(fd, buf, nbytes);
+        ssize_t bytes_written = write(fd, buf, nbytes_left);
         if(bytes_written > 0 ) {
             nbytes_left -= bytes_written;
             buf += bytes_written;
