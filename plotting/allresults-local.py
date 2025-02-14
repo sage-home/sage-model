@@ -488,7 +488,7 @@ if __name__ == '__main__':
     plt.figure()  # New figure
     ax = plt.subplot(111)  # 1 plot on the figure
 
-    w = np.where((Type == 0) & (ColdGas / (StellarMass + ColdGas) > 0.1) & (StellarMass > 0.01))[0]
+    w = np.where((Type == 0) & (ColdGas / (StellarMass + ColdGas) > 0.1) & (StellarMass > 1.0e8))[0]
     if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
     
     mass = np.log10(StellarMass[w])
@@ -532,7 +532,7 @@ if __name__ == '__main__':
     plt.figure()  # New figure
     ax = plt.subplot(111)  # 1 plot on the figure
 
-    w = np.where((BulgeMass > 0.01) & (BlackHoleMass > 0.00001))[0]
+    w = np.where((BulgeMass > 1.0e8) & (BlackHoleMass > 01.0e6))[0]
     if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
 
     bh = np.log10(BlackHoleMass[w])
@@ -830,7 +830,7 @@ if __name__ == '__main__':
     plt.figure()  # New figure
     ax = plt.subplot(111)  # 1 plot on the figure
 
-    w = np.where((Type == 0) & (Mvir > 1.0) & (StellarMass > 0.0))[0]
+    w = np.where((Type == 0) & (Mvir > 1.0e10) & (StellarMass > 0.0))[0]
     if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
 
     HaloMass = np.log10(Mvir[w])
@@ -861,7 +861,7 @@ if __name__ == '__main__':
 
     plt.figure()  # New figure
 
-    w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
+    w = np.where((Mvir > 0.0) & (StellarMass > 1.0e9))[0]
     if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
 
     xx = Posx[w]
