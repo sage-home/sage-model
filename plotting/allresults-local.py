@@ -862,7 +862,7 @@ if __name__ == '__main__':
     plt.figure()  # New figure
 
     w = np.where((Mvir > 0.0) & (StellarMass > 1.0e9))[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
     yy = Posy[w]
