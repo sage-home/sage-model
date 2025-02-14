@@ -418,9 +418,9 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w = np.where(StellarMass > 0.01)[0]
-    if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
-    mass = np.log10(StellarMass[w2])
-    sSFR = np.log10( (SfrDisk[w2] + SfrBulge[w2]) / StellarMass[w2] )
+    if(len(w) > dilute): w = sample(list(w), dilute)
+    mass = np.log10(StellarMass[w])
+    sSFR = np.log10( (SfrDisk[w] + SfrBulge[w]) / StellarMass[w] )
     plt.scatter(mass, sSFR, marker='o', s=1, c='k', alpha=0.5, label='Model galaxies')
 
     # overplot dividing line between SF and passive
@@ -455,7 +455,7 @@ if __name__ == '__main__':
 
     w = np.where((Type == 0) & (StellarMass + ColdGas > 0.0) & 
       (BulgeMass / StellarMass > 0.1) & (BulgeMass / StellarMass < 0.5))[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
     
     mass = np.log10(StellarMass[w])
     fraction = ColdGas[w] / (StellarMass[w] + ColdGas[w])
@@ -489,7 +489,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w = np.where((Type == 0) & (ColdGas / (StellarMass + ColdGas) > 0.1) & (StellarMass > 1.0e8))[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
     
     mass = np.log10(StellarMass[w])
     Z = np.log10((MetalsColdGas[w] / ColdGas[w]) / 0.02) + 9.0
@@ -533,7 +533,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w = np.where((BulgeMass > 1.0e8) & (BlackHoleMass > 01.0e6))[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     bh = np.log10(BlackHoleMass[w])
     bulge = np.log10(BulgeMass[w])
@@ -722,11 +722,11 @@ if __name__ == '__main__':
 
 # -------------------------------------------------------
 
-    print('Plotting the average baryon fraction vs halo mass (can take time)')
+    print('Plotting the average baryon fraction vs halo mass')
 
-    plt.figure()  # New figure
-    ax = plt.subplot(111)  # 1 plot on the figure
-    
+    plt.figure()
+    ax = plt.subplot(111)
+
     HaloMass = np.log10(Mvir)
     Baryons = StellarMass + ColdGas + HotGas + EjectedMass + IntraClusterStars + BlackHoleMass
 
@@ -735,7 +735,7 @@ if __name__ == '__main__':
     Interval = 0.1
     Nbins = int((MaxHalo-MinHalo)/Interval)
     HaloRange = np.arange(MinHalo, MaxHalo, Interval)
-    
+
     MeanCentralHaloMass = []
     MeanBaryonFraction = []
     MeanBaryonFractionU = []
@@ -747,79 +747,111 @@ if __name__ == '__main__':
     MeanICS = []
     MeanBH = []
 
+    # Pre-compute central indices for faster lookup
+    unique_centrals = np.unique(CentralGalaxyIndex)
+
     for i in range(Nbins-1):
-        
         w1 = np.where((Type == 0) & (HaloMass >= HaloRange[i]) & (HaloMass < HaloRange[i+1]))[0]
         HalosFound = len(w1)
         
-        if HalosFound > 2:  
+        if HalosFound > 2:
+            # Get unique central galaxies in this mass bin
+            centrals_in_bin = CentralGalaxyIndex[w1]
             
-            BaryonFraction = []
-            CentralHaloMass = []
+            # Create masks for all galaxies belonging to these centrals
+            central_groups = np.isin(CentralGalaxyIndex, centrals_in_bin)
             
-            Stars = []
-            Cold = []
-            Hot = []
-            Ejected = []
-            ICS = []
-            BH = []
+            # Calculate statistics for all groups at once
+            group_baryons = Baryons[central_groups]
+            group_stars = StellarMass[central_groups]
+            group_cold = ColdGas[central_groups]
+            group_hot = HotGas[central_groups]
+            group_ejected = EjectedMass[central_groups]
+            group_ics = IntraClusterStars[central_groups]
+            group_bh = BlackHoleMass[central_groups]
             
-            for j in range(HalosFound):
-                
-                w2 = np.where(CentralGalaxyIndex == CentralGalaxyIndex[w1[j]])[0]
-                CentralAndSatellitesFound = len(w2)
-                
-                if CentralAndSatellitesFound > 0:
-                    BaryonFraction.append(sum(Baryons[w2]) / Mvir[w1[j]])
-                    CentralHaloMass.append(np.log10(Mvir[w1[j]]))
-                    Stars.append(sum(StellarMass[w2]) / Mvir[w1[j]])
-                    Cold.append(sum(ColdGas[w2]) / Mvir[w1[j]])
-                    Hot.append(sum(HotGas[w2]) / Mvir[w1[j]])
-                    Ejected.append(sum(EjectedMass[w2]) / Mvir[w1[j]])
-                    ICS.append(sum(IntraClusterStars[w2]) / Mvir[w1[j]])
-                    BH.append(sum(BlackHoleMass[w2]) / Mvir[w1[j]])                        
+            # Sum quantities per central galaxy
+            unique_centrals_in_bin = np.unique(CentralGalaxyIndex[central_groups])
+            baryon_sums = np.zeros(len(unique_centrals_in_bin))
+            star_sums = np.zeros(len(unique_centrals_in_bin))
+            cold_sums = np.zeros(len(unique_centrals_in_bin))
+            hot_sums = np.zeros(len(unique_centrals_in_bin))
+            ejected_sums = np.zeros(len(unique_centrals_in_bin))
+            ics_sums = np.zeros(len(unique_centrals_in_bin))
+            bh_sums = np.zeros(len(unique_centrals_in_bin))
+            
+            for idx, central in enumerate(unique_centrals_in_bin):
+                group_mask = CentralGalaxyIndex[central_groups] == central
+                baryon_sums[idx] = np.sum(group_baryons[group_mask])
+                star_sums[idx] = np.sum(group_stars[group_mask])
+                cold_sums[idx] = np.sum(group_cold[group_mask])
+                hot_sums[idx] = np.sum(group_hot[group_mask])
+                ejected_sums[idx] = np.sum(group_ejected[group_mask])
+                ics_sums[idx] = np.sum(group_ics[group_mask])
+                bh_sums[idx] = np.sum(group_bh[group_mask])
+            
+            # Get corresponding halo masses
+            central_halos = Mvir[w1]
+            
+            # Calculate fractions
+            baryon_fractions = baryon_sums / central_halos
+            star_fractions = star_sums / central_halos
+            cold_fractions = cold_sums / central_halos
+            hot_fractions = hot_sums / central_halos
+            ejected_fractions = ejected_sums / central_halos
+            ics_fractions = ics_sums / central_halos
+            bh_fractions = bh_sums / central_halos
+            
+            # Store means and variances
+            MeanCentralHaloMass.append(np.mean(np.log10(central_halos)))
+            MeanBaryonFraction.append(np.mean(baryon_fractions))
+            MeanBaryonFractionU.append(np.mean(baryon_fractions) + np.var(baryon_fractions))
+            MeanBaryonFractionL.append(np.mean(baryon_fractions) - np.var(baryon_fractions))
+            
+            MeanStars.append(np.mean(star_fractions))
+            MeanCold.append(np.mean(cold_fractions))
+            MeanHot.append(np.mean(hot_fractions))
+            MeanEjected.append(np.mean(ejected_fractions))
+            MeanICS.append(np.mean(ics_fractions))
+            MeanBH.append(np.mean(bh_fractions))
 
-            MeanCentralHaloMass.append(np.mean(CentralHaloMass))
-            MeanBaryonFraction.append(np.mean(BaryonFraction))
-            MeanBaryonFractionU.append(np.mean(BaryonFraction) + np.var(BaryonFraction))
-            MeanBaryonFractionL.append(np.mean(BaryonFraction) - np.var(BaryonFraction))
-            
-            MeanStars.append(np.mean(Stars))
-            MeanCold.append(np.mean(Cold))
-            MeanHot.append(np.mean(Hot))
-            MeanEjected.append(np.mean(Ejected))
-            MeanICS.append(np.mean(ICS))
-            MeanBH.append(np.mean(BH))
-            
-            # print('  ', i, HaloRange[i], HalosFound, np.mean(BaryonFraction))
-    
-    plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='TOTAL')#, color='purple', alpha=0.3)
-    plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL, 
+    # Convert lists to arrays for plotting
+    MeanCentralHaloMass = np.array(MeanCentralHaloMass)
+    MeanBaryonFraction = np.array(MeanBaryonFraction)
+    MeanBaryonFractionU = np.array(MeanBaryonFractionU)
+    MeanBaryonFractionL = np.array(MeanBaryonFractionL)
+    MeanStars = np.array(MeanStars)
+    MeanCold = np.array(MeanCold)
+    MeanHot = np.array(MeanHot)
+    MeanEjected = np.array(MeanEjected)
+    MeanICS = np.array(MeanICS)
+
+    # Now do all the plotting
+    plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='TOTAL')
+    plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL,
         facecolor='purple', alpha=0.25, label='TOTAL')
-    
+
     plt.plot(MeanCentralHaloMass, MeanStars, 'k--', label='Stars')
     plt.plot(MeanCentralHaloMass, MeanCold, label='Cold', color='blue')
     plt.plot(MeanCentralHaloMass, MeanHot, label='Hot', color='red')
     plt.plot(MeanCentralHaloMass, MeanEjected, label='Ejected', color='green')
     plt.plot(MeanCentralHaloMass, MeanICS, label='ICS', color='yellow')
-    # plt.plot(MeanCentralHaloMass, MeanBH, 'k:', label='BH')
-    
-    plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')  # Set the x-axis label
-    plt.ylabel(r'$\mathrm{Baryon\ Fraction}$')  # Set the y-axis label
-        
-    # Set the x and y axis minor ticks
+
+    plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+    plt.ylabel(r'$\mathrm{Baryon\ Fraction}$')
+
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
-        
+
     plt.axis([10.8, 15.0, 0.0, 0.2])
-        
+
     leg = plt.legend(bbox_to_anchor=[0.99, 0.6])
-    leg.draw_frame(False)  # Don't want a box frame
-    for t in leg.get_texts():  # Reduce the size of the text
+    leg.draw_frame(False)
+    for t in leg.get_texts():
         t.set_fontsize('medium')
-        
+
     outputFile = OutputDir + '11.BaryonFraction' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
+    plt.savefig(outputFile)
     print('Saved file to', outputFile, '\n')
     plt.close()
 
@@ -831,7 +863,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w = np.where((Type == 0) & (Mvir > 1.0e10) & (StellarMass > 0.0))[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     HaloMass = np.log10(Mvir[w])
     plt.scatter(HaloMass, np.log10(StellarMass[w]), marker='o', s=0.3, c='k', alpha=0.5, label='Stars')
