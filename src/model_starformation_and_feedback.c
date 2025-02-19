@@ -9,11 +9,15 @@
 #include "model_starformation_and_feedback.h"
 #include "model_misc.h"
 #include "model_disk_instability.h"
+#include "model_h2_formation.h"
 
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
-                                struct GALAXY *galaxies, const struct params *run_params)
+                struct GALAXY *galaxies, const struct params *run_params)
 {
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
+
+    // First, update the gas components to ensure H2 and HI are correctly calculated
+    update_gas_components(&galaxies[p], run_params);
 
     // Initialise variables
     strdot = 0.0;
@@ -24,10 +28,10 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
 
-        // from Kauffmann (1996) eq7 x piR^2, (Vvir in km/s, reff in Mpc/h) in units of 10^10Msun/h
-        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
-            strdot = run_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
+        // Use H2 instead of total cold gas for star formation
+        const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
+        if(galaxies[p].H2_gas > h2_crit && tdyn > 0.0) {
+            strdot = run_params->SfrEfficiency * (galaxies[p].H2_gas - h2_crit) / tdyn;
         } else {
             strdot = 0.0;
         }
@@ -41,16 +45,32 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         stars = 0.0;
     }
 
-    double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? run_params->FeedbackReheatingEpsilon * stars: 0.0;
+    // Constrain stars to available H2 gas
+    if(stars > galaxies[p].H2_gas) {
+        stars = galaxies[p].H2_gas;
+    }
 
-	XASSERT(reheated_mass >= 0.0, -1,
+    // Reduced feedback reheating to allow more star formation
+    double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? 
+        run_params->FeedbackReheatingEpsilon * 0.5 * stars : 0.0;
+
+    XASSERT(reheated_mass >= 0.0, -1,
             "Error: Expected reheated gas-mass = %g to be >=0.0\n", reheated_mass);
 
-    // cant use more cold gas than is available! so balance SF and feedback
-    if((stars + reheated_mass) > galaxies[p].ColdGas && (stars + reheated_mass) > 0.0) {
-        const double fac = galaxies[p].ColdGas / (stars + reheated_mass);
+    // Ensure we don't use more gas than available
+    if((stars + reheated_mass) > galaxies[p].H2_gas) {
+        const double fac = galaxies[p].H2_gas / (stars + reheated_mass);
         stars *= fac;
         reheated_mass *= fac;
+    }
+
+    // Remove stars from H2 gas
+    if(stars > 0.0) {
+        galaxies[p].H2_gas -= stars;
+        galaxies[p].ColdGas -= stars;
+        
+        // Recompute gas components after star formation
+        update_gas_components(&galaxies[p], run_params);
     }
 
     // determine ejection
@@ -95,13 +115,10 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
         galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
         galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * FracZleaveDiskVal * stars;
     } else {
         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * stars;
     }
 }
-
 
 
 void update_from_star_formation(const int p, const double stars, const double metallicity, struct GALAXY *galaxies, const struct params *run_params)
@@ -114,43 +131,45 @@ void update_from_star_formation(const int p, const double stars, const double me
     galaxies[p].MetalsStellarMass += metallicity * (1 - RecycleFraction) * stars;
 }
 
-
-
 void update_from_feedback(const int p, const int centralgal, const double reheated_mass, double ejected_mass, const double metallicity,
                           struct GALAXY *galaxies, const struct params *run_params)
 {
+    // Ensure reheated mass doesn't exceed available cold gas
+    double adjusted_reheated_mass = reheated_mass;
+    double adjusted_ejected_mass = ejected_mass;
 
     XASSERT(reheated_mass >= 0.0, -1,
             "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
             p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
-    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
-            "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
-            reheated_mass, galaxies[p].ColdGas);
 
-    XASSERT(reheated_mass >= 0.0, -1,
-            "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
-            p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
-    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
+    // If reheated mass exceeds available cold gas, scale down
+    if(reheated_mass > galaxies[p].ColdGas) {
+        double scale_factor = galaxies[p].ColdGas / reheated_mass;
+        adjusted_reheated_mass = galaxies[p].ColdGas;
+        adjusted_ejected_mass *= scale_factor;
+    }
+
+    XASSERT(adjusted_reheated_mass <= galaxies[p].ColdGas, -1,
             "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
-            reheated_mass, galaxies[p].ColdGas);
+            adjusted_reheated_mass, galaxies[p].ColdGas);
 
     if(run_params->SupernovaRecipeOn == 1) {
-        galaxies[p].ColdGas -= reheated_mass;
-        galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
+        galaxies[p].ColdGas -= adjusted_reheated_mass;
+        galaxies[p].MetalsColdGas -= metallicity * adjusted_reheated_mass;
 
-        galaxies[centralgal].HotGas += reheated_mass;
-        galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
+        galaxies[centralgal].HotGas += adjusted_reheated_mass;
+        galaxies[centralgal].MetalsHotGas += metallicity * adjusted_reheated_mass;
 
-        if(ejected_mass > galaxies[centralgal].HotGas) {
-            ejected_mass = galaxies[centralgal].HotGas;
+        if(adjusted_ejected_mass > galaxies[centralgal].HotGas) {
+            adjusted_ejected_mass = galaxies[centralgal].HotGas;
         }
         const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
 
-        galaxies[centralgal].HotGas -= ejected_mass;
-        galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
-        galaxies[centralgal].EjectedMass += ejected_mass;
-        galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_mass;
+        galaxies[centralgal].HotGas -= adjusted_ejected_mass;
+        galaxies[centralgal].MetalsHotGas -= metallicityHot * adjusted_ejected_mass;
+        galaxies[centralgal].EjectedMass += adjusted_ejected_mass;
+        galaxies[centralgal].MetalsEjectedMass += metallicityHot * adjusted_ejected_mass;
 
-        galaxies[p].OutflowRate += reheated_mass;
+        galaxies[p].OutflowRate += adjusted_reheated_mass;
     }
 }

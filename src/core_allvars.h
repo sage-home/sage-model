@@ -122,6 +122,8 @@ struct GALAXY
 
     /* baryonic reservoirs */
     float ColdGas;
+    float H2_gas;  // NEW: Molecular hydrogen mass
+    float HI_gas;  // NEW: Atomic hydrogen mass
     float StellarMass;
     float BulgeMass;
     float HotGas;
@@ -442,6 +444,8 @@ struct params
     double Reionization_z0;
     double Reionization_zr;
     double ThresholdSatDisruption;
+    double H2FractionFactor;     // Controls normalization of H2/HI calculation
+    double H2FractionExponent;   // Controls H2/HI ratio calculation
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

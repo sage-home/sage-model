@@ -53,6 +53,8 @@ struct HDF5_GALAXY_OUTPUT
     
     /* baryonic reservoirs */
     float *ColdGas;
+    float *H2_gas;  // NEW: Molecular hydrogen mass array
+    float *HI_gas;  // NEW: Atomic hydrogen mass array
     float *StellarMass;
     float *BulgeMass;
     float *HotGas;

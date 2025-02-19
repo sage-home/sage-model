@@ -10,6 +10,7 @@
 #include "model_misc.h"
 #include "model_starformation_and_feedback.h"
 #include "model_disk_instability.h"
+#include "model_h2_formation.h"
 
 double estimate_merging_time(const int sat_halo, const int mother_halo, const int ngal, struct halo_data *halos, struct GALAXY *galaxies, const struct params *run_params)
 {
@@ -205,6 +206,9 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
                                   struct GALAXY *galaxies, const struct params *run_params)
 {
     double stars, reheated_mass, ejected_mass, fac, metallicity, eburst;
+    
+    // First, update the H2 and HI gas components
+    update_gas_components(&galaxies[merger_centralgal], run_params);
 
     // This is the major and minor merger starburst recipe of Somerville et al. 2001.
     // The coefficients in eburst are taken from TJ Cox's PhD thesis and should be more accurate then previous.
@@ -216,7 +220,8 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         eburst = 0.56 * pow(mass_ratio, 0.7);
     }
 
-    stars = eburst * galaxies[merger_centralgal].ColdGas;
+    // Use H2 gas for star formation instead of total cold gas
+    stars = eburst * galaxies[merger_centralgal].H2_gas;
     if(stars < 0.0) {
         stars = 0.0;
     }
@@ -228,13 +233,13 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         reheated_mass = 0.0;
     }
 
-	XASSERT(reheated_mass >= 0.0, -1,
+    XASSERT(reheated_mass >= 0.0, -1,
             "Error: Reheated mass = %g should be >= 0.0",
             reheated_mass);
 
-    // can't use more cold gas than is available! so balance SF and feedback
-    if((stars + reheated_mass) > galaxies[merger_centralgal].ColdGas) {
-        fac = galaxies[merger_centralgal].ColdGas / (stars + reheated_mass);
+    // can't use more H2 gas than is available! so balance SF and feedback
+    if((stars + reheated_mass) > galaxies[merger_centralgal].H2_gas) {
+        fac = galaxies[merger_centralgal].H2_gas / (stars + reheated_mass);
         stars *= fac;
         reheated_mass *= fac;
     }
@@ -262,10 +267,19 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     galaxies[merger_centralgal].SfrBulgeColdGasMetals[step] += galaxies[merger_centralgal].MetalsColdGas;
 
     metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
-    update_from_star_formation(merger_centralgal, stars, metallicity, galaxies, run_params);
-
+    
+    // Remove stars from both H2 and total cold gas
+    galaxies[merger_centralgal].H2_gas -= stars;
+    galaxies[merger_centralgal].ColdGas -= (1 - run_params->RecycleFraction) * stars;
+    galaxies[merger_centralgal].MetalsColdGas -= metallicity * (1 - run_params->RecycleFraction) * stars;
+    
+    // Recompute gas components to maintain consistency
+    update_gas_components(&galaxies[merger_centralgal], run_params);
+    
     galaxies[merger_centralgal].BulgeMass += (1 - run_params->RecycleFraction) * stars;
     galaxies[merger_centralgal].MetalsBulgeMass += metallicity * (1 - run_params->RecycleFraction) * stars;
+    galaxies[merger_centralgal].StellarMass += (1 - run_params->RecycleFraction) * stars;
+    galaxies[merger_centralgal].MetalsStellarMass += metallicity * (1 - run_params->RecycleFraction) * stars;
 
     // recompute the metallicity of the cold phase
     metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
