@@ -10,7 +10,7 @@ libsage.so
 *.so
 *.patch
 perf.data*
-
+*.py
 tmp*
 *.par
 *vscode*
