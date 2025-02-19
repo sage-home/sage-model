@@ -7,6 +7,7 @@
 #include "core_allvars.h"
 
 #include "model_misc.h"
+#include "model_h2_formation.h"    // Add this line
 
 void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct halo_data *halos,
                  struct GALAXY *galaxies, const struct params *run_params)
@@ -44,12 +45,17 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].deltaMvir = 0.0;
 
     galaxies[p].ColdGas = 0.0;
+    galaxies[p].H2_gas = 0.0;  // Initialize H2 gas
+    galaxies[p].HI_gas = 0.0;  // Initialize HI gas
     galaxies[p].StellarMass = 0.0;
     galaxies[p].BulgeMass = 0.0;
     galaxies[p].HotGas = 0.0;
     galaxies[p].EjectedMass = 0.0;
     galaxies[p].BlackHoleMass = 0.0;
     galaxies[p].ICS = 0.0;
+
+    // Initialize H2 fractions
+    init_gas_components(&galaxies[p]);
 
     galaxies[p].MetalsColdGas = 0.0;
     galaxies[p].MetalsStellarMass = 0.0;

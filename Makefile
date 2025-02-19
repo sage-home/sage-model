@@ -1,4 +1,4 @@
-#USE-MPI := yes # set this if you want to run in embarrassingly parallel (automatically set if the compiler (i.e., the CC variable) is set to `mpicc`)
+USE-MPI := yes # set this if you want to run in embarrassingly parallel (automatically set if the compiler (i.e., the CC variable) is set to `mpicc`)
 USE-HDF5 := yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
 #MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
@@ -28,7 +28,7 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-	       io/save_gals_binary.c io/forest_utils.c io/buffered_io.c
+	       io/save_gals_binary.c io/forest_utils.c io/buffered_io.c ./model_h2_formation.c \
 
 LIBINCL := $(LIBSRC:.c=.h)
 LIBINCL += io/parse_ctrees.h
