@@ -207,8 +207,10 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
 {
     double stars, reheated_mass, ejected_mass, fac, metallicity, eburst;
     
-    // First, update the H2 and HI gas components
-    update_gas_components(&galaxies[merger_centralgal], run_params);
+    // For H2-based SF prescription, update the gas components first
+    if (run_params->SFprescription == 1) {
+        update_gas_components(&galaxies[merger_centralgal], run_params);
+    }
 
     // This is the major and minor merger starburst recipe of Somerville et al. 2001.
     // The coefficients in eburst are taken from TJ Cox's PhD thesis and should be more accurate then previous.
@@ -220,8 +222,15 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         eburst = 0.56 * pow(mass_ratio, 0.7);
     }
 
-    // Use H2 gas for star formation instead of total cold gas
-    stars = eburst * galaxies[merger_centralgal].H2_gas;
+    // Determine which gas component to use for star formation
+    if (run_params->SFprescription == 1) {
+        // Use H2 gas for star formation
+        stars = eburst * galaxies[merger_centralgal].H2_gas;
+    } else {
+        // Use total cold gas (original recipe)
+        stars = eburst * galaxies[merger_centralgal].ColdGas;
+    }
+    
     if(stars < 0.0) {
         stars = 0.0;
     }
@@ -237,12 +246,52 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
             "Error: Reheated mass = %g should be >= 0.0",
             reheated_mass);
 
-    // can't use more H2 gas than is available! so balance SF and feedback
-    if((stars + reheated_mass) > galaxies[merger_centralgal].H2_gas) {
-        fac = galaxies[merger_centralgal].H2_gas / (stars + reheated_mass);
-        stars *= fac;
-        reheated_mass *= fac;
+    // can't use more gas than is available! so balance SF and feedback
+    if (run_params->SFprescription == 1) {
+        // For H2-based model - check against H2 gas
+        if((stars + reheated_mass) > galaxies[merger_centralgal].H2_gas) {
+            fac = galaxies[merger_centralgal].H2_gas / (stars + reheated_mass);
+            stars *= fac;
+            reheated_mass *= fac;
+        }
+    } else {
+        // For original model - check against total cold gas
+        if((stars + reheated_mass) > galaxies[merger_centralgal].ColdGas) {
+            fac = galaxies[merger_centralgal].ColdGas / (stars + reheated_mass);
+            stars *= fac;
+            reheated_mass *= fac;
+        }
     }
+
+    // starbursts add to the bulge
+    galaxies[merger_centralgal].SfrBulge[step] += stars / dt;
+    galaxies[merger_centralgal].SfrBulgeColdGas[step] += galaxies[merger_centralgal].ColdGas;
+    galaxies[merger_centralgal].SfrBulgeColdGasMetals[step] += galaxies[merger_centralgal].MetalsColdGas;
+
+    metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
+    
+    // Remove stars from appropriate gas components
+    if (run_params->SFprescription == 1) {
+        // Remove stars from both H2 and total cold gas
+        galaxies[merger_centralgal].H2_gas -= stars;
+        galaxies[merger_centralgal].ColdGas -= (1 - run_params->RecycleFraction) * stars;
+        galaxies[merger_centralgal].MetalsColdGas -= metallicity * (1 - run_params->RecycleFraction) * stars;
+        
+        // Recompute gas components to maintain consistency
+        update_gas_components(&galaxies[merger_centralgal], run_params);
+    } else {
+        // Original model - remove stars only from cold gas
+        galaxies[merger_centralgal].ColdGas -= (1 - run_params->RecycleFraction) * stars;
+        galaxies[merger_centralgal].MetalsColdGas -= metallicity * (1 - run_params->RecycleFraction) * stars;
+    }
+    
+    galaxies[merger_centralgal].BulgeMass += (1 - run_params->RecycleFraction) * stars;
+    galaxies[merger_centralgal].MetalsBulgeMass += metallicity * (1 - run_params->RecycleFraction) * stars;
+    galaxies[merger_centralgal].StellarMass += (1 - run_params->RecycleFraction) * stars;
+    galaxies[merger_centralgal].MetalsStellarMass += metallicity * (1 - run_params->RecycleFraction) * stars;
+
+    // recompute the metallicity of the cold phase
+    metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
 
     // determine ejection
     if(run_params->SupernovaRecipeOn == 1) {
@@ -260,29 +309,6 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     } else {
         ejected_mass = 0.0;
     }
-
-    // starbursts add to the bulge
-    galaxies[merger_centralgal].SfrBulge[step] += stars / dt;
-    galaxies[merger_centralgal].SfrBulgeColdGas[step] += galaxies[merger_centralgal].ColdGas;
-    galaxies[merger_centralgal].SfrBulgeColdGasMetals[step] += galaxies[merger_centralgal].MetalsColdGas;
-
-    metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
-    
-    // Remove stars from both H2 and total cold gas
-    galaxies[merger_centralgal].H2_gas -= stars;
-    galaxies[merger_centralgal].ColdGas -= (1 - run_params->RecycleFraction) * stars;
-    galaxies[merger_centralgal].MetalsColdGas -= metallicity * (1 - run_params->RecycleFraction) * stars;
-    
-    // Recompute gas components to maintain consistency
-    update_gas_components(&galaxies[merger_centralgal], run_params);
-    
-    galaxies[merger_centralgal].BulgeMass += (1 - run_params->RecycleFraction) * stars;
-    galaxies[merger_centralgal].MetalsBulgeMass += metallicity * (1 - run_params->RecycleFraction) * stars;
-    galaxies[merger_centralgal].StellarMass += (1 - run_params->RecycleFraction) * stars;
-    galaxies[merger_centralgal].MetalsStellarMass += metallicity * (1 - run_params->RecycleFraction) * stars;
-
-    // recompute the metallicity of the cold phase
-    metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
 
     // update from feedback
     update_from_feedback(merger_centralgal, centralgal, reheated_mass, ejected_mass, metallicity, galaxies, run_params);

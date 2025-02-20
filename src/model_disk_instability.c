@@ -17,8 +17,10 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
     // Here we calculate the stability of the stellar and gaseous disk as discussed in Mo, Mao & White (1998).
     // For unstable stars and gas, we transfer the required amount to the bulge to make the disk stable again
 
-    // Update H2 and HI gas components before calculations
-    update_gas_components(&galaxies[p], run_params);
+    // Update H2 and HI gas components before calculations if using H2-based recipe
+    if (run_params->SFprescription == 1) {
+        update_gas_components(&galaxies[p], run_params);
+    }
 
     // Disk mass has to be > 0.0
     const double diskmass = galaxies[p].ColdGas + (galaxies[p].StellarMass - galaxies[p].BulgeMass);
@@ -29,10 +31,18 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
             Mcrit = diskmass;
         }
 
-        // Calculate unstable gas based on H2 fraction rather than total cold gas
-        // H2 is the star-forming component and more directly involved in instabilities
-        const double gas_fraction = galaxies[p].H2_gas / diskmass;
-        const double unstable_gas = gas_fraction * (diskmass - Mcrit);
+        // Calculate unstable gas fraction and mass
+        double gas_fraction, unstable_gas;
+        if (run_params->SFprescription == 1) {
+            // Calculate based on H2 fraction rather than total cold gas
+            gas_fraction = galaxies[p].H2_gas / diskmass;
+            unstable_gas = gas_fraction * (diskmass - Mcrit);
+        } else {
+            // Original calculation based on total cold gas
+            gas_fraction = galaxies[p].ColdGas / diskmass;
+            unstable_gas = gas_fraction * (diskmass - Mcrit);
+        }
+        
         const double star_fraction = 1.0 - gas_fraction;
         const double unstable_stars = star_fraction * (diskmass - Mcrit);
 
@@ -60,15 +70,31 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
         // burst excess gas and feed black hole
         if(unstable_gas > 0.0) {
 #ifdef VERBOSE
-            if(unstable_gas > 1.0001 * galaxies[p].H2_gas) {
-                fprintf(stdout, "unstable_gas > galaxies[p].H2_gas\t%e\t%e\n", unstable_gas, galaxies[p].H2_gas);
-                run_params->interrupted = 1;
-                // ABORT(EXIT_FAILURE);
+            if (run_params->SFprescription == 1) {
+                if(unstable_gas > 1.0001 * galaxies[p].H2_gas) {
+                    fprintf(stdout, "unstable_gas > galaxies[p].H2_gas\t%e\t%e\n", unstable_gas, galaxies[p].H2_gas);
+                    run_params->interrupted = 1;
+                    // ABORT(EXIT_FAILURE);
+                }
+            } else {
+                if(unstable_gas > 1.0001 * galaxies[p].ColdGas) {
+                    fprintf(stdout, "unstable_gas > galaxies[p].ColdGas\t%e\t%e\n", unstable_gas, galaxies[p].ColdGas);
+                    run_params->interrupted = 1;
+                    // ABORT(EXIT_FAILURE);
+                }
             }
 #endif
 
-            // Calculate fraction based on H2 gas
-            const double unstable_gas_fraction = unstable_gas / galaxies[p].H2_gas;
+            // Calculate fraction of gas to use in BH growth and starburst
+            double unstable_gas_fraction;
+            if (run_params->SFprescription == 1) {
+                // Calculate fraction based on H2 gas
+                unstable_gas_fraction = unstable_gas / galaxies[p].H2_gas;
+            } else {
+                // Calculate fraction based on total cold gas
+                unstable_gas_fraction = unstable_gas / galaxies[p].ColdGas;
+            }
+            
             if(run_params->AGNrecipeOn > 0) {
                 grow_black_hole(p, unstable_gas_fraction, galaxies, run_params);
             }
