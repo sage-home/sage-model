@@ -31,12 +31,14 @@ void init(struct params *run_params)
 
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
     
-    // Initialize H2 fraction parameters with default values if not set
-    if(run_params->H2FractionFactor <= 0.0) {
-        run_params->H2FractionFactor = 1.0;  // Default value from DarkSAGE
-    }
-    if(run_params->H2FractionExponent <= 0.0) {
-        run_params->H2FractionExponent = 0.92;  // Default value from DarkSAGE
+    // Initialize H2 fraction parameters with default values if not set and H2-based SF is enabled
+    if(run_params->SFprescription == 1) {
+        if(run_params->H2FractionFactor <= 0.0) {
+            run_params->H2FractionFactor = 1.0;  // Default normalization factor for H2/HI ratio
+        }
+        if(run_params->H2FractionExponent <= 0.0) {
+            run_params->H2FractionExponent = 0.92;  // Default power-law exponent for pressure relation
+        }
     }
 
     set_units(run_params);

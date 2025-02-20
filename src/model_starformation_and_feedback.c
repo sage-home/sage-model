@@ -17,18 +17,34 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
 
     // First, update the gas components to ensure H2 and HI are correctly calculated
-    update_gas_components(&galaxies[p], run_params);
+    if (run_params->SFprescription == 1) {
+        update_gas_components(&galaxies[p], run_params);
+    }
 
     // Initialise variables
     strdot = 0.0;
 
     // star formation recipes
     if(run_params->SFprescription == 0) {
+        // Original SAGE recipe (Kauffmann 1996)
         // we take the typical star forming region as 3.0*r_s using the Milky Way as a guide
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
 
-        // Use H2 instead of total cold gas for star formation
+        // from Kauffmann (1996) eq7 x piR^2, (Vvir in km/s, reff in Mpc/h) in units of 10^10Msun/h
+        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
+        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
+            strdot = run_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
+        } else {
+            strdot = 0.0;
+        }
+    } else if(run_params->SFprescription == 1) {
+        // H2-based star formation recipe
+        // we take the typical star forming region as 3.0*r_s using the Milky Way as a guide
+        reff = 3.0 * galaxies[p].DiskScaleRadius;
+        tdyn = reff / galaxies[p].Vvir;
+
+        // Use H2 gas for star formation with a critical threshold
         const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].H2_gas > h2_crit && tdyn > 0.0) {
             strdot = run_params->SfrEfficiency * (galaxies[p].H2_gas - h2_crit) / tdyn;
@@ -45,32 +61,44 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         stars = 0.0;
     }
 
-    // Constrain stars to available H2 gas
-    if(stars > galaxies[p].H2_gas) {
-        stars = galaxies[p].H2_gas;
+    // Determine feedback reheating - reduced for H2-based model if needed
+    double reheated_mass = 0.0;
+    if (run_params->SupernovaRecipeOn == 1) {
+        if (run_params->SFprescription == 0) {
+            reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
+        } else {
+            // For H2-based model, can optionally reduce feedback 
+            reheated_mass = run_params->FeedbackReheatingEpsilon * 0.5 * stars;
+        }
     }
-
-    // Reduced feedback reheating to allow more star formation
-    double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? 
-        run_params->FeedbackReheatingEpsilon * 0.5 * stars : 0.0;
 
     XASSERT(reheated_mass >= 0.0, -1,
             "Error: Expected reheated gas-mass = %g to be >=0.0\n", reheated_mass);
 
-    // Ensure we don't use more gas than available
-    if((stars + reheated_mass) > galaxies[p].H2_gas) {
-        const double fac = galaxies[p].H2_gas / (stars + reheated_mass);
-        stars *= fac;
-        reheated_mass *= fac;
-    }
-
-    // Remove stars from H2 gas
-    if(stars > 0.0) {
-        galaxies[p].H2_gas -= stars;
-        galaxies[p].ColdGas -= stars;
+    // Constrain star formation and feedback based on available gas
+    if (run_params->SFprescription == 0) {
+        // Original recipe - balance feedback and SF based on total cold gas
+        if((stars + reheated_mass) > galaxies[p].ColdGas && (stars + reheated_mass) > 0.0) {
+            const double fac = galaxies[p].ColdGas / (stars + reheated_mass);
+            stars *= fac;
+            reheated_mass *= fac;
+        }
+    } else {
+        // H2-based recipe - ensure we don't use more H2 than available
+        if((stars + reheated_mass) > galaxies[p].H2_gas) {
+            const double fac = galaxies[p].H2_gas / (stars + reheated_mass);
+            stars *= fac;
+            reheated_mass *= fac;
+        }
         
-        // Recompute gas components after star formation
-        update_gas_components(&galaxies[p], run_params);
+        // Remove stars from H2 gas
+        if(stars > 0.0) {
+            galaxies[p].H2_gas -= stars;
+            galaxies[p].ColdGas -= stars;
+            
+            // Recompute gas components after star formation
+            update_gas_components(&galaxies[p], run_params);
+        }
     }
 
     // determine ejection
@@ -115,8 +143,10 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
         galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
         galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * FracZleaveDiskVal * stars;
     } else {
         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * stars;
     }
 }
 
@@ -130,6 +160,7 @@ void update_from_star_formation(const int p, const double stars, const double me
     galaxies[p].StellarMass += (1 - RecycleFraction) * stars;
     galaxies[p].MetalsStellarMass += metallicity * (1 - RecycleFraction) * stars;
 }
+
 
 void update_from_feedback(const int p, const int centralgal, const double reheated_mass, double ejected_mass, const double metallicity,
                           struct GALAXY *galaxies, const struct params *run_params)

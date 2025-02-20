@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /home/jseiler/sage-home/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/PhD/sage-model/output/millennium/
 
 FirstFile         0
 LastFile          7
@@ -29,9 +29,9 @@ TreeType              lhalo_binary % either 'genesis_lhalo_hdf5' or 'lhalo_binar
 NumSimulationTreeFiles 8 % Number of files the trees are split over. This can be different to `FirstFile` -> `LastFile` range.
 
 %SimulationDir   /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/
-SimulationDir   /home/jseiler/sage-home/sage-model/input/millennium/trees/
+SimulationDir   /Users/mbradley/Documents/PhD/sage-model/input/millennium/trees/
 %FileWithSnapList /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/millennium.a_list
-FileWithSnapList /home/jseiler/sage-home/sage-model/input/millennium/trees/millennium.a_list
+FileWithSnapList /Users/mbradley/Documents/PhD/sage-model/input/millennium/trees/millennium.a_list
 LastSnapShotNr        63
 
 Omega           0.25
@@ -45,7 +45,7 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        0   %0: original Croton et al. 2006
+SFprescription        1   %0: original Croton et al. 2006; 1:H2 Formation attempt 1
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
@@ -78,6 +78,13 @@ Reionization_zr         7.0   %using the analytic fit of Kravtsov et al. 2004 (R
 
 EnergySN                1.0e51  %energy per supernova
 EtaSN                   5.0e-3  %supernova efficiency
+
+%------------------------------------------
+%----- H2 formation parameters ------------
+%------------------------------------------
+
+H2FractionFactor            1.0    ;Controls the normalisation of the H2/HI calculation
+H2FractionExponent          0.92    ;Controls the H2/HI ratio calculation
 
 %------------------------------------------
 %----- Other code-related information -----
