@@ -139,6 +139,11 @@ struct GALAXY
     float MetalsEjectedMass;
     float MetalsICS;
 
+    /* velocity dispersion tracking */
+    float *VelDispStars;     // Array for velocity dispersion of stars in different radial bins
+    float VelDispStellar;    // Global stellar velocity dispersion
+    float VelDispGas;        // Gas velocity dispersion
+
     /* to calculate magnitudes */
     float SfrDisk[STEPS];
     float SfrBulge[STEPS];
@@ -446,6 +451,9 @@ struct params
     double ThresholdSatDisruption;
     double H2FractionFactor;     // Controls normalization of H2/HI calculation
     double H2FractionExponent;   // Controls H2/HI ratio calculation
+    // New parameters for Krumholz & Dekel (2012) model
+    double ClumpFactor;          // Gas clumping factor, default ~5
+    double ClumpExponent;        // Power-law exponent for metallicity dependence, default ~0.5
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

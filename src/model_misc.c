@@ -56,8 +56,8 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
 
     // Initialize H2 fractions if using that model
     if (run_params->SFprescription == 1) {
-      init_gas_components(&galaxies[p]);
-  }
+        init_gas_components(&galaxies[p]);
+    }
 
 
     galaxies[p].MetalsColdGas = 0.0;

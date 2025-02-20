@@ -45,7 +45,7 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        1   %0: original Croton et al. 2006; 1:H2 Formation attempt 1
+SFprescription        1   %0: original Croton et al. 2006; 1: H2 Formation attempt 1; 2: Krumholz & Dekel H2
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
@@ -83,8 +83,10 @@ EtaSN                   5.0e-3  %supernova efficiency
 %----- H2 formation parameters ------------
 %------------------------------------------
 
-H2FractionFactor            1.0    ;Controls the normalisation of the H2/HI calculation
-H2FractionExponent          0.92    ;Controls the H2/HI ratio calculation
+H2FractionFactor            1.0    %Controls the normalisation of the H2/HI calculation
+H2FractionExponent          0.92   %Controls the H2/HI ratio calculation
+ClumpFactor                 5.0    %Clumping factor for Krumholz & Dekel H2
+ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz & Dekel H2
 
 %------------------------------------------
 %----- Other code-related information -----

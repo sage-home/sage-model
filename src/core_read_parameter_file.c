@@ -225,6 +225,15 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->H2FractionExponent);
     ParamID[NParam++] = DOUBLE;
 
+    // New parameters for Krumholz & Dekel model
+    strncpy(ParamTag[NParam], "ClumpFactor", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ClumpFactor);
+    ParamID[NParam++] = DOUBLE;
+    
+    strncpy(ParamTag[NParam], "ClumpExponent", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ClumpExponent);
+    ParamID[NParam++] = DOUBLE;
+
     strncpy(ParamTag[NParam], "NumOutputs", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->NumSnapOutputs);
     ParamID[NParam++] = INT;

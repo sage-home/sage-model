@@ -35,10 +35,10 @@ float calculate_H2_fraction(const float surface_density, const float metallicity
         return 0.0;
     }
 
-    // Adjusted molecular fraction formula (reducing HI → H₂ conversion in high-pressure regions)
+    // Adjusted molecular fraction formula
     float f_H2 = 1.0 / (1.0 + pow(P_norm, -0.92 * run_params->H2FractionExponent));
 
-    // Surface density scaling (unchanged)
+    // Surface density scaling
     if (surface_density < MIN_SURFACE_DENSITY) {
         f_H2 *= surface_density / MIN_SURFACE_DENSITY;
     }
@@ -68,6 +68,43 @@ float calculate_H2_fraction(const float surface_density, const float metallicity
     return f_H2;
 }
 
+// Calculate molecular fraction using Krumholz & Dekel (2012) model
+float calculate_H2_fraction_KD12(const float surface_density, const float metallicity, const float clumping_factor) 
+{
+    if (surface_density <= 0.0) {
+        return 0.0;
+    }
+    
+    // Metallicity normalized to solar (assuming solar metallicity = 0.02)
+    float Zp = metallicity / 0.02;
+    if (Zp < 0.01) Zp = 0.01;  // Set floor to prevent numerical issues
+    
+    // Apply clumping factor to get the compressed surface density
+    float Sigma_comp = clumping_factor * surface_density;
+    
+    // Calculate dust optical depth parameter
+    float tau_c = 0.066 * Sigma_comp * Zp;
+    
+    // Self-shielding parameter chi (from Krumholz & Dekel 2012, Eq. 2)
+    float chi = 0.77 * (1.0 + 3.1 * pow(Zp, 0.365));
+    
+    // Compute s parameter (from Krumholz, McKee & Tumlinson 2009, Eq. 91)
+    float s = log(1.0 + 0.6 * chi + 0.01 * chi * chi) / (0.6 * tau_c);
+    
+    // Molecular fraction (Krumholz, McKee & Tumlinson 2009, Eq. 93)
+    float f_H2;
+    if (s < 2.0) {
+        f_H2 = 1.0 - 0.75 * s / (1.0 + 0.25 * s);
+    } else {
+        f_H2 = 0.0;
+    }
+    
+    // Ensure fraction stays within bounds
+    if (f_H2 < 0.0) f_H2 = 0.0;
+    if (f_H2 > 1.0) f_H2 = 1.0;
+    
+    return f_H2;
+}
 
 void update_gas_components(struct GALAXY *g, const struct params *run_params)
 {
@@ -109,9 +146,27 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         metallicity = g->MetalsColdGas / g->ColdGas / 0.02;  // Normalized to solar metallicity
     }
     
-    // Calculate H2 fraction with all environmental effects
-    const float f_H2 = calculate_H2_fraction(surface_density, metallicity, 
-                                           g->DiskScaleRadius, run_params);
+    float f_H2;
+    if (run_params->SFprescription == 2) {
+        // Use Krumholz & Dekel (2012) model
+        float clumping_factor = 1.0;
+        
+        // Adjust clumping factor based on metallicity (following Fu et al. 2013)
+        if (metallicity * 0.02 < 0.01) {
+            clumping_factor = run_params->ClumpFactor * pow(0.01, -run_params->ClumpExponent);
+        } else if (metallicity * 0.02 < 1.0) {
+            clumping_factor = run_params->ClumpFactor * 
+                              pow(metallicity * 0.02, -run_params->ClumpExponent);
+        } else {
+            clumping_factor = run_params->ClumpFactor;
+        }
+        
+        f_H2 = calculate_H2_fraction_KD12(surface_density, g->MetalsColdGas/g->ColdGas, clumping_factor);
+    } else {
+        // Use original pressure-based model
+        f_H2 = calculate_H2_fraction(surface_density, metallicity, 
+                                     g->DiskScaleRadius, run_params);
+    }
     
     // Update gas components
     g->H2_gas = f_H2 * g->ColdGas;

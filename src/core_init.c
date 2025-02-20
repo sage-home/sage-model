@@ -41,6 +41,16 @@ void init(struct params *run_params)
         }
     }
 
+    // Initialize Krumholz & Dekel (2012) model parameters with default values if not set
+    if(run_params->SFprescription == 2) {
+        if(run_params->ClumpFactor <= 0.0) {
+            run_params->ClumpFactor = 5.0;  // Default clumping factor
+        }
+        if(run_params->ClumpExponent <= 0.0) {
+            run_params->ClumpExponent = 0.5;  // Default metallicity dependence exponent
+        }
+    }
+
     set_units(run_params);
 
     read_snap_list(run_params);

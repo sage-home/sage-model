@@ -15,9 +15,14 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
                 struct GALAXY *galaxies, const struct params *run_params)
 {
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
+    double reheated_mass = 0.0; // initialise
+
+    // Star formation rate tracking
+    galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
+    galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
 
     // First, update the gas components to ensure H2 and HI are correctly calculated
-    if (run_params->SFprescription == 1) {
+    if (run_params->SFprescription == 1 || run_params->SFprescription == 2) {
         update_gas_components(&galaxies[p], run_params);
     }
 
@@ -51,6 +56,43 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         } else {
             strdot = 0.0;
         }
+    } else if(run_params->SFprescription == 2) {
+        // Krumholz & Dekel (2012) model
+        if(galaxies[p].H2_gas > 0.0 && galaxies[p].Vvir > 0.0) {
+            // For K&D model, star formation efficiency depends directly on H2 mass
+            // rather than a critical threshold
+            
+            // Calculate dynamical time
+            reff = 3.0 * galaxies[p].DiskScaleRadius;
+            tdyn = reff / galaxies[p].Vvir;
+            
+            if(tdyn > 0.0) {
+                // Base star formation on H2 density following Bigiel et al. (2008)
+                // SFR = 0.04 * Σ_H2/(10 M⊙pc⁻²) * Σ_H2
+                double disk_area = M_PI * galaxies[p].DiskScaleRadius * galaxies[p].DiskScaleRadius;
+                double h2_surface_density = 0.0;
+                
+                if(disk_area > 0.0) {
+                    h2_surface_density = galaxies[p].H2_gas / disk_area;
+                }
+                
+                // Scale efficiency with surface density (effectively implementing Bigiel's law)
+                double local_efficiency = run_params->SfrEfficiency;
+                if(h2_surface_density > 0.0) {
+                    // Use lower efficiency at low surface densities
+                    if(h2_surface_density < 10.0) {
+                        local_efficiency *= 0.5 * h2_surface_density / 10.0;
+                    }
+                    // And higher efficiency at high surface densities (starburst regime)
+                    else if(h2_surface_density > 100.0) {
+                        local_efficiency *= 1.0 + 0.5 * log10(h2_surface_density/100.0);
+                    }
+                }
+                
+                // Star formation rate based on molecular gas and efficiency
+                strdot = local_efficiency * galaxies[p].H2_gas / tdyn;
+            }
+        }
     } else {
         fprintf(stderr, "No star formation prescription selected!\n");
         ABORT(0);
@@ -61,15 +103,9 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         stars = 0.0;
     }
 
-    // Determine feedback reheating - reduced for H2-based model if needed
-    double reheated_mass = 0.0;
+    // Determine feedback reheating
     if (run_params->SupernovaRecipeOn == 1) {
-        if (run_params->SFprescription == 0) {
-            reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
-        } else {
-            // For H2-based model, can optionally reduce feedback 
-            reheated_mass = run_params->FeedbackReheatingEpsilon * 0.5 * stars;
-        }
+        reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
     }
 
     XASSERT(reheated_mass >= 0.0, -1,
@@ -84,9 +120,13 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             reheated_mass *= fac;
         }
     } else {
-        // H2-based recipe - ensure we don't use more H2 than available
-        if((stars + reheated_mass) > galaxies[p].H2_gas) {
-            const double fac = galaxies[p].H2_gas / (stars + reheated_mass);
+        // H2-based recipes - ensure we don't use more gas than available
+        if(stars > galaxies[p].H2_gas) {
+            stars = galaxies[p].H2_gas;
+        }
+        
+        if((stars + reheated_mass) > galaxies[p].ColdGas) {
+            const double fac = galaxies[p].ColdGas / (stars + reheated_mass);
             stars *= fac;
             reheated_mass *= fac;
         }
@@ -94,7 +134,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         // Remove stars from H2 gas
         if(stars > 0.0) {
             galaxies[p].H2_gas -= stars;
-            galaxies[p].ColdGas -= stars;
             
             // Recompute gas components after star formation
             update_gas_components(&galaxies[p], run_params);
@@ -105,7 +144,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             ejected_mass =
-                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
                  run_params->FeedbackReheatingEpsilon) * stars;
         } else {
             ejected_mass = 0.0;
@@ -120,8 +160,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     // update the star formation rate
     galaxies[p].SfrDisk[step] += stars / dt;
-    galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
-    galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
 
     // update for star formation
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
@@ -140,13 +178,12 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     // formation of new metals - instantaneous recycling approximation - only SNII
     if(galaxies[p].ColdGas > 1.0e-8) {
-        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+        const double FracZleaveDiskVal = run_params->FracZleaveDisk * 
+                                     exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
         galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
         galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * FracZleaveDiskVal * stars;
     } else {
         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * stars;
     }
 }
 
