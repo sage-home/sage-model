@@ -43,6 +43,8 @@ ssfrupp = 4
 dssfr = 0.2
 ssfrbins = np.arange(ssfrlow,ssfrupp,dssfr)
 
+sSFRcut = -11.0
+
 Nmin = 2 # minimum number of galaxies expected in a mass bin for the simulation volume, based on observations, to warrant fitting to that bin for mass functions
 
 # These are two easily create variables of these different shapes without
@@ -53,6 +55,8 @@ zeros3 = lambda: np.zeros(shape=(1, len(mbins)))
 zeros4 = lambda: np.empty(shape=(1), dtype=np.bool_)
 zeros5 = lambda: np.zeros(shape=(1, len(ssfrbins)))
 zeros6 = lambda: np.zeros(shape=(1, len(mbins2)))
+zeros7 = lambda: np.zeros(shape=(1, 3, len(xmf)))
+zeros8 = lambda: np.zeros(shape=(1, 3, len(xmf)))
 
 class Constraint(object):
     """Base classes for constraint objects"""
@@ -104,10 +108,12 @@ class Constraint(object):
 
             # Histograms we are interested in
             hist_smf = zeros3()
+            hist_smf_red = zeros7()
+            hist_smf_blue = zeros8()
             hist_bhmf = zeros6()
 
             seed(2222)
-            fields = ['StellarMass', 'BlackHoleMass', 'Len', 'SfrBulge', 'BulgeMass', 'Mvir']
+            fields = ['StellarMass', 'BlackHoleMass', 'Len', 'SfrBulge', 'BulgeMass', 'Mvir', 'SfrDisk']
             Nage = 14
             snap_num = f'Snap_{snap}'
 
@@ -142,11 +148,27 @@ class Constraint(object):
         HaloMass[~np.isfinite(HaloMass)] = -20
         StellarMass = np.log10(G['StellarMass'] * 1e10 / self.h0)
         StellarMass[~np.isfinite(StellarMass)] = -20
+        SfrDisk = G['SfrDisk']
+        SfrBulge = G['SfrBulge']
 
         logSM = np.log10(G['StellarMass'] * 1e10 / self.h0)
         logSM[~np.isfinite(logSM)] = -20
         hist_smf, _ = np.histogram(logSM, bins=mbins)
         hist_smf = hist_smf / dm / self.vol
+
+        w = np.where(G['StellarMass'] > 0.0)[0]
+        sSFR = np.log10( (G['SfrDisk'][w] + G['SfrBulge'][w]) / G['StellarMass'][w] )
+        # additionally calculate red
+        w = np.where(sSFR < sSFRcut)[0]
+        massRED = logSM[w]
+        hist_smf_red, _ = np.histogram(massRED, bins=mbins)
+        hist_smf_red = hist_smf_red / dm / self.vol
+
+        # additionally calculate blue
+        w = np.where(sSFR > sSFRcut)[0]
+        massBLU = logSM[w]
+        hist_smf_blue, _ = np.histogram(massBLU, bins=mbins)
+        hist_smf_blue = hist_smf_blue / dm / self.vol
 
         logBHM = np.log10(G['BlackHoleMass'] * 1e10 / self.h0)
         logBHM[~np.isfinite(logBHM)] = -20
@@ -179,6 +201,15 @@ class Constraint(object):
         ind = (hist_smf > 0.)
         hist_smf[ind] = np.log10(hist_smf[ind])
         hist_smf[~ind] = -20
+
+        ind = (hist_smf_red > 0.)
+        hist_smf_red[ind] = np.log10(hist_smf_red[ind])
+        hist_smf_red[~ind] = -20
+
+        ind = (hist_smf_blue > 0.)
+        hist_smf_blue[ind] = np.log10(hist_smf_blue[ind])
+        hist_smf_blue[~ind] = -20
+
         ind = (hist_bhmf > 0.)
         hist_bhmf[ind] = np.log10(hist_bhmf[ind])
         hist_bhmf[~ind] = -20
@@ -188,8 +219,10 @@ class Constraint(object):
         # have moved where this was in the code. Don't understand its purpose
         hist_bhmf = hist_bhmf[np.newaxis]
         hist_smf = hist_smf[np.newaxis]
+        hist_smf_red = hist_smf_red[np.newaxis]
+        hist_smf_blue = hist_smf_blue[np.newaxis]
 
-        return self.h0, self.Omega0, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass
+        return self.h0, self.Omega0, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue
 
 
     def load_observation(self, *args, **kwargs):
@@ -197,7 +230,7 @@ class Constraint(object):
 #        obsdir = os.path.normpath(os.path.abspath(__file__))
         return common.load_observation(obsdir, *args, **kwargs)
     
-    def plot_smf(self, x_obs, y_obs, y_mod, x_sage, y_sage, output_dir):
+    def plot_smf(self, x_obs, y_obs, y_mod, x_sage, y_sage, output_dir, hist_smf_red, hist_smf_blue):
         """Plot Stellar Mass Function comparison"""
         plt.figure()  # New figure
         ax = plt.subplot(111)  # 1 plot on the figure
@@ -212,6 +245,10 @@ class Constraint(object):
             # Add SHARK for z=0
             mass, phi = self.load_observation('SHARK_SMF.csv', cols=[0,1])
             ax.plot(mass, 10**phi, c='g', label='SHARK')
+            hist_smf_red = np.array(hist_smf_red[0])[::-1]
+            ax.plot(x_obs, 10**hist_smf_red, 'r:')
+            hist_smf_blue = np.array(hist_smf_blue[0])[::-1]
+            ax.plot(x_obs, 10**hist_smf_blue, 'b:')
 
         elif class_name == 'SMF_z05':
             # Add SHARK for z=0
@@ -377,18 +414,18 @@ class Constraint(object):
         """Gets the model and observational data for further analysis.
         The model data is interpolated to match the observation's X values."""
 
-        self.h0, self.Omega0, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass = self._load_model_data(modeldir, subvols)
+        self.h0, self.Omega0, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue = self._load_model_data(modeldir, subvols)
         x_obs, y_obs, y_dn, y_up = self.get_obs_x_y_err()
         x_sage, y_sage = self.get_sage_x_y()
-        x_mod, y_mod = self.get_model_x_y(hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass)
+        x_mod, y_mod = self.get_model_x_y(hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue)
         return x_obs, y_obs, y_dn, y_up, x_sage, y_sage, x_mod, y_mod
 
     def get_data(self, modeldir, subvols):
 
-        self.h0, self.Omega0, hist_smf, hist_HImf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass = self._load_model_data(modeldir, subvols)
+        self.h0, self.Omega0, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue = self._load_model_data(modeldir, subvols)
         x_obs, y_obs, y_dn, y_up = self.get_obs_x_y_err()
         x_sage, y_sage = self.get_sage_x_y()
-        x_mod, y_mod = self.get_model_x_y(hist_smf, hist_HImf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass)
+        x_mod, y_mod = self.get_model_x_y(hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue)
 
         # Linearly interpolate model Y values respect to the observations'
         # X values, and only take those within the domain.
@@ -419,13 +456,17 @@ class Constraint(object):
         # Get constraint name for appropriate plotting function
         constraint_name = self.__class__.__name__
         if 'SMF' in constraint_name:
-            self.plot_smf(x_obs, y_obs, y_mod, x_sage, y_sage, self.output_dir)
+            self.plot_smf(x_obs, y_obs, y_mod, x_sage, y_sage, self.output_dir, hist_smf_red, hist_smf_blue)
         if 'BHMF' in constraint_name:
             self.plot_bhmf(x_obs, y_obs, y_mod, x_sage, y_sage, self.output_dir)
         if 'BHBM' in constraint_name:
             self.plot_bhbm(x_obs, y_obs, y_mod, x_sage, y_sage, BlackHoleMass, BulgeMass, self.output_dir)
         if 'HSMR' in constraint_name:
             self.plot_hsmr(x_obs, y_obs, y_mod, x_sage, y_sage, HaloMass, StellarMass, self.output_dir)
+        if 'SMF_blue' in constraint_name:
+            self.plot_smf(x_obs, y_obs, y_mod, x_sage, y_sage, self.output_dir, hist_smf_red, hist_smf_blue)
+        if 'SMF_red' in constraint_name:
+            self.plot_smf(x_obs, y_obs, y_mod, x_sage, y_sage, self.output_dir, hist_smf_red, hist_smf_blue)
 
 
         return y_obs[ind], y_mod[ind], err
@@ -441,7 +482,7 @@ class BHMF(Constraint):
 
     domain = (6, 10)
 
-    def get_model_x_y(self, _, hist_bhmf, _2, _3, _4, _5, _6, _7):
+    def get_model_x_y(self, _, hist_bhmf, _2, _3, _4, _5, _6, _7, _8, _9):
         y = hist_bhmf[0]
         ind = np.where(y < 0.)
 
@@ -716,13 +757,87 @@ class BHMF_z100(BHMF):
         y_sage = logphi[valid_mask]
 
         return x_sage, y_sage
+    
+class SMF_blue(Constraint):
+    """Common logic for SMF blue constraints"""
+
+    domain = (8, 12)
+
+    def get_model_x_y(self, _, _2, _3, _4, _5, _6, _7, _8, _9, hist_smf_blue):
+        y = hist_smf_blue[0,:]
+        ind = np.where(y < 0.)
+        return xmf[ind], y[ind]
+
+class SMF_blue_z0(SMF_blue):
+    """The SMF constraint at z=0"""
+
+    z = [0]
+
+    def get_obs_x_y_err(self):
+        # Load data from Shuntov et al. (2024)
+        logm, logphi = self.load_observation('Weaver_SMF_blue_red.csv', cols=[0,1])
+        # Remove NaN values
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        x_obs = logm[valid_mask]
+        y_obs = logphi[valid_mask]
+        err = np.zeros(len(y_obs))
+
+        return x_obs, y_obs, err, err
+    
+    def get_sage_x_y(self):
+        # Load data from SAGE
+        logm, phi = self.load_observation('sage_smf_all_redshifts.csv', cols=[0,1])
+        # Remove NaN values
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        x_sage = logm[valid_mask]
+        y_sage = logphi[valid_mask]
+
+        return x_sage, y_sage
+    
+class SMF_red(Constraint):
+    """Common logic for SMF red constraints"""
+
+    domain = (8, 12)
+
+    def get_model_x_y(self, _, _2, _3, _4, _5, _6, _7, _8, hist_smf_red, _9):
+        y = hist_smf_red[0,:]
+        ind = np.where(y < 0.)
+        return xmf[ind], y[ind]
+
+class SMF_red_z0(SMF_red):
+    """The SMF constraint at z=0"""
+
+    z = [0]
+
+    def get_obs_x_y_err(self):
+        # Load data from Shuntov et al. (2024)
+        logm, logphi = self.load_observation('Weaver_SMF_blue_red.csv', cols=[2,3])
+        # Remove NaN values
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        x_obs = logm[valid_mask]
+        y_obs = logphi[valid_mask]
+        err = np.zeros(len(y_obs))
+
+        return x_obs, y_obs, err, err
+    
+    def get_sage_x_y(self):
+        # Load data from SAGE
+        logm, phi = self.load_observation('sage_smf_all_redshifts.csv', cols=[0,1])
+        # Remove NaN values
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        x_sage = logm[valid_mask]
+        y_sage = logphi[valid_mask]
+
+        return x_sage, y_sage
 
 class SMF(Constraint):
     """Common logic for SMF constraints"""
 
     domain = (8, 12)
 
-    def get_model_x_y(self, hist_smf, _, _2, _3, _4, _5, _6, _7):
+    def get_model_x_y(self, hist_smf, _, _2, _3, _4, _5, _6, _7, _8, _9):
         y = hist_smf[0,:]
         ind = np.where(y < 0.)
         return xmf[ind], y[ind]
@@ -1227,7 +1342,7 @@ class BHBM(Constraint):
 
     domain = (8, 12)
 
-    def get_model_x_y(self, _, _2, _3, _4, BlackHoleMass, BulgeMass, _5, _6):
+    def get_model_x_y(self, _, _2, _3, _4, BlackHoleMass, BulgeMass, _5, _6, _7, _8):
         y = BlackHoleMass
         x = BulgeMass
 
@@ -1473,12 +1588,14 @@ def parse(spec, snapshot=None, sim=None, boxsize=None, vol_frac=None, age_alist_
         'SMF_z104': SMF_z104,
         'BHBM_z0': BHBM_z0,
         'BHBM_z20': BHBM_z20,
-        'HSMR_z0' : HSMR_z0,
-        'HSMR_z05' : HSMR_z05,
-        'HSMR_z10' : HSMR_z10,
-        'HSMR_z20' : HSMR_z20,
-        'HSMR_z30' : HSMR_z30,
-        'HSMR_z40' : HSMR_z40
+        'HSMR_z0': HSMR_z0,
+        'HSMR_z05': HSMR_z05,
+        'HSMR_z10': HSMR_z10,
+        'HSMR_z20': HSMR_z20,
+        'HSMR_z30': HSMR_z30,
+        'HSMR_z40': HSMR_z40,
+        'SMF_blue_z0': SMF_blue_z0,
+        'SMF_red_z0': SMF_red_z0
     }
 
     def _parse(s,output_dir):

@@ -45,7 +45,7 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        1   %0: original Croton et al. 2006; 1: H2 Formation attempt 1; 2: Krumholz & Dekel H2
+SFprescription        0   %0: original Croton et al. 2006; 1: H2 Formation attempt 1; 2: Krumholz & Dekel H2
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
@@ -55,16 +55,16 @@ DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabi
 %----- SAGE model parameters --------------
 %------------------------------------------
 
-SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
+SfrEfficiency           0.063  %efficiency of SF (SFprescription=0)
 
-FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
-FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
+FeedbackReheatingEpsilon    2.7   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
+FeedbackEjectionEfficiency  0.83   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
-ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
+ReIncorporationFactor   0.137    %fraction of ejected mass reincorporated per dynamical time to hot
 
-RadioModeEfficiency     0.08  %AGN radio mode efficiency (AGNrecipeOn=2)
-QuasarModeEfficiency    0.005 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
-BlackHoleGrowthRate     0.015 %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
+RadioModeEfficiency     0.095  %AGN radio mode efficiency (AGNrecipeOn=2)
+QuasarModeEfficiency    0.0034 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
+BlackHoleGrowthRate     0.02 %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
 
 ThreshMajorMerger       0.3   %major merger when mass ratio greater than this
 ThresholdSatDisruption  1.0   %Mvir-to-baryonic mass ratio threshold for satellite merger or disruption

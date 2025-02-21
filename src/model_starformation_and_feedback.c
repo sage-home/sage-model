@@ -44,6 +44,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             strdot = 0.0;
         }
     } else if(run_params->SFprescription == 1) {
+        // Blitz & Rosolowsky (2006)
         // H2-based star formation recipe
         // we take the typical star forming region as 3.0*r_s using the Milky Way as a guide
         reff = 3.0 * galaxies[p].DiskScaleRadius;
