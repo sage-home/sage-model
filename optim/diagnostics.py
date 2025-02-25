@@ -398,7 +398,8 @@ def plot_parameter_evolution(particle_data, best_params, best_scores, param_name
         'Reincorporation efficiency': 'ReIncorporationFactor',
         'Radio Mode': 'RadioModeEfficiency',
         'Quasar Mode': 'QuasarModeEfficiency',
-        'Black Hole growth': 'BlackHoleGrowthRate'
+        'Black Hole growth': 'BlackHoleGrowthRate',
+        'Baryon Fraction': 'BaryonFrac'
     }
     
     # Get parameters actually defined in space file
@@ -3087,7 +3088,8 @@ def processing(tracks_dir, space_file, output_dir, config_opts, space=None):
                 results, scores = analyze_and_plot(
                     tracks_dir=tracks_dir,
                     space_file=space_file,
-                    output_dir=output_dir
+                    output_dir=output_dir,
+                    csv_output_path=output_dir
                     )
                 
             except Exception as e:
@@ -3397,7 +3399,7 @@ def processing(tracks_dir, space_file, output_dir, config_opts, space=None):
     # Load parameter values
     logger.info("Processing parameter evolution...")
     param_names = ['SFR efficiency', 'Reheating epsilon', 'Ejection efficiency', 'Reincorporation efficiency',
-                   'Radio Mode', 'Quasar Mode', 'Black Hole growth']
+                   'Radio Mode', 'Quasar Mode', 'Black Hole growth', 'Baryon Fraction']
     
     # Map the file numbers to actual redshifts
     redshift_map = {
