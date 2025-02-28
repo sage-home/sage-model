@@ -99,9 +99,10 @@ def load_final_pso_values(csv_path, param_names):
         print(f"Error reading CSV file {csv_path}: {str(e)}")
         return None
 
-def analyze_pso_uncertainties(positions, scores, param_names):
+def analyze_pso_uncertainties(positions, scores, param_names, final_values=None):
     """
     Analyze PSO results to determine parameter uncertainties.
+    Always use final values as reference points when available.
     
     Parameters:
     -----------
@@ -111,43 +112,58 @@ def analyze_pso_uncertainties(positions, scores, param_names):
         Particle scores
     param_names : array
         Parameter names
+    final_values : dict, optional
+        Final best parameter values from PSO to use as reference points
         
     Returns:
     --------
     dict : Contains parameter statistics including:
-        - best_value : Best found value for each parameter
+        - best_value : Final or distribution best value for each parameter
         - std : Standard deviation (symmetric error)
         - percentile_errors : Asymmetric errors based on 16th/84th percentiles
         - relative_uncertainty : Relative error (std/abs(best_value))
     """
     results = {}
     
-    # Find best particle
+    # Find distribution best particle (only as fallback if final values aren't available)
     best_idx = np.argmin(scores)
     
     # Calculate statistics for each parameter
     for i, param in enumerate(param_names):
         param_values = positions[:, i]
-        best_value = param_values[best_idx]
+        
+        # Always use final PSO value when available
+        if final_values and param in final_values:
+            ref_value = final_values[param]
+            ref_source = 'final'
+        else:
+            # Fallback to distribution best only if final values aren't available
+            ref_value = param_values[best_idx]
+            ref_source = 'distribution'
         
         # Calculate standard deviation
         std = np.std(param_values)
         
-        # Calculate asymmetric errors using percentiles
-        p16, p84 = np.percentile(param_values, [16, 84])
-        lower_error = best_value - p16
-        upper_error = p84 - best_value
+        # Calculate percentiles
+        p16, p50, p84 = np.percentile(param_values, [16, 50, 84])
+        
+        # Calculate asymmetric errors relative to reference value
+        lower_error = ref_value - p16
+        upper_error = p84 - ref_value
         
         # Calculate relative uncertainty
-        relative_uncertainty = std / abs(best_value) if best_value != 0 else np.inf
+        relative_uncertainty = std / abs(ref_value) if ref_value != 0 else np.inf
         
         # Store results
         results[param] = {
-            'best_value': best_value,
-            'std': std,
-            'percentile_errors': (lower_error, upper_error),
+            'ref_value': ref_value,  # The reference value used for stats
+            'ref_source': ref_source,  # Where the reference came from (final or distribution)
+            'median': p50,           # Median value
+            'std': std,              # Standard deviation
+            'percentile_errors': (lower_error, upper_error),  # Asymmetric errors
+            'percentiles': (p16, p50, p84),  # Raw percentiles
             'relative_uncertainty': relative_uncertainty,
-            'values': param_values  # Store for plotting
+            'values': param_values   # Store for plotting
         }
     
     return results, scores
@@ -213,7 +229,7 @@ def plot_corner_with_uncertainties(results, scores, output_dir=None, final_value
                 ax = g.axes[i, j]
                 try:
                     sns.kdeplot(data=df, x=df.columns[j], y=df.columns[i], 
-                              ax=ax, levels=5, color='r', alpha=1.0, linestyles='-')
+                              ax=ax, levels=[0.683, 0.955, 0.997], color='r', alpha=1.0, linestyles='-')
                 except (ValueError, np.linalg.LinAlgError):
                     pass
     
@@ -247,12 +263,13 @@ def create_uncertainty_report(results, final_values=None):
     for param, stats in results.items():
         lines.append(f"\n{param}:")
         
-        if final_values and param in final_values:
-            lines.append(f"  Distribution best value: {stats['best_value']:.6f}")
-            lines.append(f"  Final PSO best value: {final_values[param]:.6f}")
-        else:
-            lines.append(f"  Best value: {stats['best_value']:.6f}")
+        # Report best value
+        lines.append(f"  Best value: {stats['ref_value']:.6f}")
             
+        # Report distribution statistics
+        lines.append(f"  Distribution median: {stats['median']:.6f}")
+            
+        # Report error statistics
         lines.append(f"  Symmetric error (±1σ): {stats['std']:.6f}")
         lines.append(f"  Asymmetric errors: +{stats['percentile_errors'][1]:.6f}/-{stats['percentile_errors'][0]:.6f}")
         lines.append(f"  Relative uncertainty: {stats['relative_uncertainty']:.2%}")
@@ -271,7 +288,6 @@ def create_uncertainty_report(results, final_values=None):
 def plot_parameter_distributions(results, scores, output_dir=None, final_values=None):
     """
     Create visualization of parameter distributions from ALL PSO iterations.
-    Only show final PSO values, not distribution-based best values.
     
     Parameters:
     -----------
@@ -289,54 +305,52 @@ def plot_parameter_distributions(results, scores, output_dir=None, final_values=
     if n_params == 1:
         axes = [axes]
     
-    # Find best score and corresponding parameter values
-    best_idx = np.argmin(scores)
-    
     for ax, (param, stats) in zip(axes, results.items()):
         # Create histogram with KDE overlay
         sns.histplot(stats['values'], ax=ax, stat='density', alpha=0.6, 
                    kde=True, color='skyblue', edgecolor='none')
         
-        # Add percentile lines (keep these for statistical context)
-        best_value = stats['best_value']
-        ax.axvline(best_value - stats['percentile_errors'][0], color='k', 
-                  linestyle='--', label='16th/84th percentiles')
-        ax.axvline(best_value + stats['percentile_errors'][1], color='k', 
-                  linestyle='--')
+        # Add vertical lines for percentiles
+        p16, p50, p84 = stats['percentiles']
+        ax.axvline(p16, color='k', linestyle='--', alpha=0.7, 
+                   label='16th/84th percentiles')
+        ax.axvline(p84, color='k', linestyle='--', alpha=0.7)
+        ax.axvline(p50, color='k', linestyle='-', alpha=0.7, label='Median')
         
-        # Add final best value if available
-        if final_values and param in final_values:
-            final_value = final_values[param]
-            ax.axvline(final_value, color='red', linestyle='-', linewidth=2,
-                      label='Final PSO best value')
+        # Add vertical line for reference value (PSO final value)
+        ax.axvline(stats['ref_value'], color='red', linestyle='-', linewidth=2,
+                  label='PSO value (reference)')
+        
+        # Add text with statistics
+        text_lines = []
+        
+        # Reference value information
+        text_lines.append(f'Reference: PSO value ({stats["ref_value"]:.6f})')
             
-            # Add text with statistics
-            text_lines = []
-            text_lines.append(f'Final PSO best: {final_values[param]:.6f}')
-            text_lines.append(f'Std dev: {stats["std"]:.6f}')
-            text_lines.append(f'Asymmetric errors: +{stats["percentile_errors"][1]:.6f}/-{stats["percentile_errors"][0]:.6f}')
-            text_lines.append(f'Relative uncertainty: {stats["relative_uncertainty"]:.2%}')
+        # Distribution statistics
+        text_lines.append(f'Distribution median: {stats["median"]:.6f}')
             
-            # Add constraint quality
-            if stats['relative_uncertainty'] < 0.2:
-                quality = "Well constrained"
-            elif stats['relative_uncertainty'] < 0.5:
-                quality = "Moderately constrained"
-            else:
-                quality = "Poorly constrained"
-            text_lines.append(f'Constraint quality: {quality}')
-            
-            text = '\n'.join(text_lines)
-            ax.text(0.98, 0.95, text, transform=ax.transAxes, 
-                    horizontalalignment='right', verticalalignment='top',
-                    bbox=dict(facecolor='white', alpha=0.8))
+        # Error statistics
+        text_lines.append(f'Std dev: {stats["std"]:.6f}')
+        text_lines.append(f'Asymmetric errors: +{stats["percentile_errors"][1]:.6f}/-{stats["percentile_errors"][0]:.6f}')
+        text_lines.append(f'Relative uncertainty: {stats["relative_uncertainty"]:.2%}')
+        
+        # Add constraint quality
+        if stats['relative_uncertainty'] < 0.2:
+            quality = "Well constrained"
+        elif stats['relative_uncertainty'] < 0.5:
+            quality = "Moderately constrained"
+        else:
+            quality = "Poorly constrained"
+        text_lines.append(f'Constraint quality: {quality}')
+        
+        text = '\n'.join(text_lines)
+        ax.text(0.98, 0.95, text, transform=ax.transAxes, 
+                horizontalalignment='right', verticalalignment='top',
+                bbox=dict(facecolor='white', alpha=0.8))
         
         ax.set_title(f'{param} Distribution')
-        
-        # Only add legend if we have final values
-        if final_values and param in final_values:
-            ax.legend(loc='upper left')
-            
+        ax.legend(loc='upper left')
         ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
@@ -366,15 +380,15 @@ def analyze_and_plot(tracks_dir, space_file, output_dir=None, csv_output_path=No
     space = load_space(space_file)
     positions, scores = load_pso_data(tracks_dir)
     
-    # Load final PSO values if available
+    # Load final PSO values - critical for using as reference
     final_values = None
     if csv_output_path:
         final_values = load_final_pso_values(csv_output_path, space['name'])
         if final_values:
             print(f"Loaded final PSO values: {final_values}")
     
-    # Analyze uncertainties
-    results, scores = analyze_pso_uncertainties(positions, scores, space['name'])
+    # Analyze uncertainties - passing final_values to use as reference
+    results, scores = analyze_pso_uncertainties(positions, scores, space['name'], final_values)
     
     # Create visualizations
     plot_corner_with_uncertainties(results, scores, output_dir, final_values)
