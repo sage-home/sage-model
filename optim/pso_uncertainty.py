@@ -30,6 +30,10 @@ def load_pso_data(tracks_dir):
         Particle positions across all iterations
     scores : array
         Particle scores across all iterations
+    best_pos : array
+        Position of the particle with the best overall score
+    best_score : float
+        Best score across all iterations
     """
     # Get list of track files
     pos_files = sorted(glob.glob(os.path.join(tracks_dir, "track_*_pos.npy")))
@@ -53,56 +57,35 @@ def load_pso_data(tracks_dir):
             print(f"Error loading {pos_file} or {fx_file}: {str(e)}")
     
     # Concatenate across all iterations
-    return np.vstack(positions_list), np.concatenate(scores_list)
+    all_positions = np.vstack(positions_list)
+    all_scores = np.concatenate(scores_list)
+    
+    # Create a mask for valid (non-NaN) scores
+    valid_mask = ~np.isnan(all_scores)
+    if not np.any(valid_mask):
+        raise ValueError("All scores are NaN! Cannot find best solution.")
+    
+    # Filter positions and scores to only include valid entries
+    valid_positions = all_positions[valid_mask]
+    valid_scores = all_scores[valid_mask]
+    
+    # Find the best position across all valid iterations
+    best_idx = np.argmin(valid_scores)
+    best_pos = valid_positions[best_idx]
+    best_score = valid_scores[best_idx]
+    
+    # Print info about the best solution found from tracks
+    print(f"Found best solution in tracks:")
+    print(f"Best score: {best_score}")
+    print(f"Best position: {best_pos}")
+    print(f"Total particles: {len(all_scores)}, Valid particles: {np.sum(valid_mask)}")
+    
+    return valid_positions, valid_scores, best_pos, best_score
 
-def load_final_pso_values(csv_path, param_names):
-    """
-    Load the final best PSO values from the output CSV file
-    
-    Parameters:
-    -----------
-    csv_path : str
-        Path to the CSV file containing PSO results
-    param_names : list
-        List of parameter names to extract
-        
-    Returns:
-    --------
-    dict : Parameter names mapped to their final best values
-    """
-    if not csv_path or not os.path.exists(csv_path):
-        print(f"CSV file not found: {csv_path}")
-        return None
-    
-    try:
-        # Read the CSV file - PSO results are stored with parameters in the second-to-last row
-        # and the final score in the last row
-        with open(csv_path, 'r') as f:
-            lines = f.readlines()
-            
-        if len(lines) < 2:
-            print(f"CSV file format unexpected: {csv_path}")
-            return None
-            
-        # Parse the second-to-last line which contains the best parameter values
-        final_values_line = lines[-2].strip().split('\t')
-        
-        # Map parameters to values
-        final_values = {}
-        for i, param in enumerate(param_names):
-            if i < len(final_values_line):
-                final_values[param] = float(final_values_line[i])
-        
-        return final_values
-    
-    except Exception as e:
-        print(f"Error reading CSV file {csv_path}: {str(e)}")
-        return None
-
-def analyze_pso_uncertainties(positions, scores, param_names, final_values=None):
+def analyze_pso_uncertainties(positions, scores, param_names, best_position):
     """
     Analyze PSO results to determine parameter uncertainties.
-    Always use final values as reference points when available.
+    All statistics are calculated relative to the final best position.
     
     Parameters:
     -----------
@@ -112,40 +95,37 @@ def analyze_pso_uncertainties(positions, scores, param_names, final_values=None)
         Particle scores
     param_names : array
         Parameter names
-    final_values : dict, optional
-        Final best parameter values from PSO to use as reference points
+    best_position : array
+        The best position found (from final iteration or tracks)
         
     Returns:
     --------
     dict : Contains parameter statistics including:
-        - best_value : Final or distribution best value for each parameter
+        - best_value : Best value for each parameter
         - std : Standard deviation (symmetric error)
         - percentile_errors : Asymmetric errors based on 16th/84th percentiles
         - relative_uncertainty : Relative error (std/abs(best_value))
     """
     results = {}
     
-    # Find distribution best particle (only as fallback if final values aren't available)
-    best_idx = np.argmin(scores)
-    
     # Calculate statistics for each parameter
     for i, param in enumerate(param_names):
         param_values = positions[:, i]
         
-        # Always use final PSO value when available
-        if final_values and param in final_values:
-            ref_value = final_values[param]
-            ref_source = 'final'
-        else:
-            # Fallback to distribution best only if final values aren't available
-            ref_value = param_values[best_idx]
-            ref_source = 'distribution'
+        # Make sure we don't have any NaN values
+        valid_values = param_values[~np.isnan(param_values)]
+        if len(valid_values) == 0:
+            print(f"Warning: Parameter {param} has no valid values!")
+            continue
+            
+        # Use the best position as reference
+        ref_value = best_position[i]
         
         # Calculate standard deviation
-        std = np.std(param_values)
+        std = np.std(valid_values)
         
         # Calculate percentiles
-        p16, p50, p84 = np.percentile(param_values, [16, 50, 84])
+        p16, p50, p84 = np.percentile(valid_values, [16, 50, 84])
         
         # Calculate asymmetric errors relative to reference value
         lower_error = ref_value - p16
@@ -156,19 +136,18 @@ def analyze_pso_uncertainties(positions, scores, param_names, final_values=None)
         
         # Store results
         results[param] = {
-            'ref_value': ref_value,  # The reference value used for stats
-            'ref_source': ref_source,  # Where the reference came from (final or distribution)
-            'median': p50,           # Median value
-            'std': std,              # Standard deviation
+            'ref_value': ref_value,      # The best final value
+            'median': p50,               # Median value
+            'std': std,                  # Standard deviation
             'percentile_errors': (lower_error, upper_error),  # Asymmetric errors
             'percentiles': (p16, p50, p84),  # Raw percentiles
             'relative_uncertainty': relative_uncertainty,
-            'values': param_values   # Store for plotting
+            'values': valid_values       # Store for plotting (only valid values)
         }
     
-    return results, scores
+    return results
 
-def plot_corner_with_uncertainties(results, scores, output_dir=None, final_values=None, cmap='viridis'):
+def plot_corner_with_uncertainties(results, scores, output_dir=None, best_position=None, cmap='viridis'):
     """
     Create corner plot showing parameter correlations with uncertainties.
     Points are colored by their raw fitness scores across all iterations.
@@ -181,8 +160,8 @@ def plot_corner_with_uncertainties(results, scores, output_dir=None, final_value
         All particle scores
     output_dir : str, optional
         Directory to save output plot
-    final_values : dict, optional
-        Final best parameter values from PSO
+    best_position : array, optional
+        Best parameter position to mark on plot
     cmap : str
         Colormap for points
     """
@@ -198,25 +177,10 @@ def plot_corner_with_uncertainties(results, scores, output_dir=None, final_value
     # Custom scatter plot function with colormapping
     def colored_scatter(x, y, **kwargs):
         plt.scatter(x, y, c=scores, cmap=cmap, norm=norm, alpha=0.3, s=30)
-        
-        # Add final best value if available
-        if final_values:
-            param_x = g.x_vars[plt.gca().get_subplotspec().colspan.start]
-            param_y = g.y_vars[plt.gca().get_subplotspec().rowspan.start]
-            if param_x in final_values and param_y in final_values:
-                plt.scatter(final_values[param_x], final_values[param_y], 
-                           color='red', marker='X', s=100, 
-                           label='Final Best', edgecolor='black', zorder=10)
     
     # Custom histogram function
     def hist_func(x, **kwargs):
         plt.hist(x, bins=10, alpha=0.8)
-        
-        # Add final value marker if available
-        param = g.x_vars[plt.gca().get_subplotspec().colspan.start]
-        if final_values and param in final_values:
-            plt.axvline(final_values[param], color='red', linewidth=2, 
-                       linestyle='--', zorder=10, label='Final Best')
     
     # Map the plotting functions
     g.map_diag(hist_func)
@@ -234,10 +198,9 @@ def plot_corner_with_uncertainties(results, scores, output_dir=None, final_value
                     pass
     
     # Add legend to the first plot
-    if final_values:
-        handles, labels = plt.gca().get_legend_handles_labels()
-        if handles:
-            g.fig.legend(handles, labels, loc='upper right')
+    handles, labels = plt.gca().get_legend_handles_labels()
+    if handles:
+        g.fig.legend(handles, labels, loc='upper right')
     
     plt.tight_layout()
     
@@ -247,7 +210,7 @@ def plot_corner_with_uncertainties(results, scores, output_dir=None, final_value
     
     return g
 
-def create_uncertainty_report(results, final_values=None):
+def create_uncertainty_report(results):
     """
     Generate a text report of parameter uncertainties
     
@@ -255,18 +218,16 @@ def create_uncertainty_report(results, final_values=None):
     -----------
     results : dict
         Parameter analysis results from analyze_pso_uncertainties
-    final_values : dict, optional
-        Final best parameter values from PSO
     """
     lines = ["Parameter Uncertainty Analysis", "="*30, ""]
     
     for param, stats in results.items():
         lines.append(f"\n{param}:")
-        
-        # Report best value
-        lines.append(f"  Best value: {stats['ref_value']:.6f}")
             
-        # Report distribution statistics
+        # Report best value (from final position)
+        lines.append(f"  Best value: {stats['ref_value']:.6f}")
+        
+        # Report distribution statistics (for reference only)
         lines.append(f"  Distribution median: {stats['median']:.6f}")
             
         # Report error statistics
@@ -285,9 +246,10 @@ def create_uncertainty_report(results, final_values=None):
     
     return "\n".join(lines)
 
-def plot_parameter_distributions(results, scores, output_dir=None, final_values=None):
+def plot_parameter_distributions(results, scores, output_dir=None, best_position=None):
     """
     Create visualization of parameter distributions from ALL PSO iterations.
+    Only marks the best final position, not distribution best.
     
     Parameters:
     -----------
@@ -297,15 +259,15 @@ def plot_parameter_distributions(results, scores, output_dir=None, final_values=
         Particle fitness scores
     output_dir : str, optional
         Directory to save plots
-    final_values : dict, optional
-        Final best parameter values from PSO
+    best_position : array, optional
+        Best position found by PSO
     """
     n_params = len(results)
     fig, axes = plt.subplots(n_params, 1, figsize=(10, 4*n_params))
     if n_params == 1:
         axes = [axes]
     
-    for ax, (param, stats) in zip(axes, results.items()):
+    for i, (ax, (param, stats)) in enumerate(zip(axes, results.items())):
         # Create histogram with KDE overlay
         sns.histplot(stats['values'], ax=ax, stat='density', alpha=0.6, 
                    kde=True, color='skyblue', edgecolor='none')
@@ -317,20 +279,14 @@ def plot_parameter_distributions(results, scores, output_dir=None, final_values=
         ax.axvline(p84, color='k', linestyle='--', alpha=0.7)
         ax.axvline(p50, color='k', linestyle='-', alpha=0.7, label='Median')
         
-        # Add vertical line for reference value (PSO final value)
+        # Add vertical line for final best value
         ax.axvline(stats['ref_value'], color='red', linestyle='-', linewidth=2,
-                  label='PSO value (reference)')
+                  label='Final best value')
         
         # Add text with statistics
         text_lines = []
-        
-        # Reference value information
-        text_lines.append(f'Reference: PSO value ({stats["ref_value"]:.6f})')
-            
-        # Distribution statistics
-        text_lines.append(f'Distribution median: {stats["median"]:.6f}')
-            
-        # Error statistics
+        text_lines.append(f'Best value: {stats["ref_value"]:.6f}')
+        text_lines.append(f'Median: {stats["median"]:.6f}')
         text_lines.append(f'Std dev: {stats["std"]:.6f}')
         text_lines.append(f'Asymmetric errors: +{stats["percentile_errors"][1]:.6f}/-{stats["percentile_errors"][0]:.6f}')
         text_lines.append(f'Relative uncertainty: {stats["relative_uncertainty"]:.2%}')
@@ -364,6 +320,7 @@ def plot_parameter_distributions(results, scores, output_dir=None, final_values=
 def analyze_and_plot(tracks_dir, space_file, output_dir=None, csv_output_path=None):
     """
     Full analysis pipeline - load data, analyze uncertainties, and create plots.
+    Uses the best position from tracks rather than distribution statistics.
     
     Parameters:
     -----------
@@ -373,37 +330,72 @@ def analyze_and_plot(tracks_dir, space_file, output_dir=None, csv_output_path=No
         Path to space.txt file defining parameter bounds
     output_dir : str, optional
         Directory to save plots and reports
-    csv_output_path : str, optional
+    csv_output_path : str, optional (not used anymore)
         Path to CSV file with final PSO results
     """
-    # Load data
-    space = load_space(space_file)
-    positions, scores = load_pso_data(tracks_dir)
-    
-    # Load final PSO values - critical for using as reference
-    final_values = None
-    if csv_output_path:
-        final_values = load_final_pso_values(csv_output_path, space['name'])
-        if final_values:
-            print(f"Loaded final PSO values: {final_values}")
-    
-    # Analyze uncertainties - passing final_values to use as reference
-    results, scores = analyze_pso_uncertainties(positions, scores, space['name'], final_values)
-    
-    # Create visualizations
-    plot_corner_with_uncertainties(results, scores, output_dir, final_values)
-    plot_parameter_distributions(results, scores, output_dir, final_values)
-    
-    # Generate report
-    report = create_uncertainty_report(results, final_values)
-    print(report)
-    
-    if output_dir:
-        report_path = os.path.join(output_dir, 'uncertainty_report.txt')
-        with open(report_path, 'w') as f:
-            f.write(report)
-    
-    return results, scores
+    try:
+        # Load data - now uses updated function that returns best position
+        space = load_space(space_file)
+        positions, scores, best_position, best_score = load_pso_data(tracks_dir)
+        
+        # Print the parameter names and best values
+        param_names = space['name']
+        print("\nBest parameter values:")
+        for i, param in enumerate(param_names):
+            print(f"  {param}: {best_position[i]}")
+        
+        # Analyze uncertainties using the best position from tracks
+        results = analyze_pso_uncertainties(positions, scores, param_names, best_position)
+        
+        # Create visualizations - passing best_position from tracks
+        plot_corner_with_uncertainties(results, scores, output_dir, best_position)
+        plot_parameter_distributions(results, scores, output_dir, best_position)
+        
+        # Generate report
+        report = create_uncertainty_report(results)
+        print(report)
+        
+        if output_dir:
+            report_path = os.path.join(output_dir, 'uncertainty_report.txt')
+            with open(report_path, 'w') as f:
+                f.write(report)
+        
+        return results, scores
+        
+    except Exception as e:
+        print(f"Error during analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Try to load the CSV file as a fallback
+        if csv_output_path and os.path.exists(csv_output_path):
+            print(f"\nTrying to use CSV file as fallback: {csv_output_path}")
+            try:
+                # Read the CSV file - PSO results should be in second-to-last row
+                with open(csv_output_path, 'r') as f:
+                    lines = f.readlines()
+                
+                if len(lines) >= 2:
+                    best_values = [float(x) for x in lines[-2].strip().split('\t')]
+                    best_score = float(lines[-1].strip())
+                    
+                    print(f"Successfully loaded from CSV:")
+                    print(f"Best score: {best_score}")
+                    
+                    # Print parameter values
+                    param_names = space['name']
+                    best_position = np.array(best_values[:len(param_names)])
+                    
+                    print("\nBest parameter values (from CSV):")
+                    for i, param in enumerate(param_names):
+                        if i < len(best_position):
+                            print(f"  {param}: {best_position[i]}")
+                    
+                    return None, None
+            except Exception as csv_error:
+                print(f"Error reading CSV file: {str(csv_error)}")
+        
+        return None, None
 
 
 if __name__ == "__main__":
@@ -417,7 +409,7 @@ if __name__ == "__main__":
         parser.add_argument('tracks_dir', help='Directory containing PSO track files')
         parser.add_argument('space_file', help='Path to space.txt file defining parameter bounds')
         parser.add_argument('output_dir', help='Directory to save plots and reports')
-        parser.add_argument('csv_output_path', nargs='?', help='Path to CSV file with final PSO results')
+        parser.add_argument('csv_output_path', nargs='?', help='Path to CSV file with final PSO results (not used)')
         
         # Parse arguments
         args = parser.parse_args()
@@ -442,15 +434,12 @@ if __name__ == "__main__":
         print(f"Analyzing PSO data from: {args.tracks_dir}")
         print(f"Using space file: {args.space_file}")
         print(f"Saving output to: {args.output_dir}")
-        if args.csv_output_path:
-            print(f"Using CSV results: {args.csv_output_path}")
             
         try:
             results, scores = analyze_and_plot(
                 args.tracks_dir, 
                 args.space_file, 
-                args.output_dir, 
-                args.csv_output_path
+                args.output_dir
             )
             print("Analysis complete!")
         except Exception as e:
@@ -462,12 +451,10 @@ if __name__ == "__main__":
         tracks_dir = "path/to/tracks"
         space_file = "path/to/space.txt"
         output_dir = "path/to/output"
-        csv_output_path = "path/to/params_results.csv"
         
         print("No command line arguments provided. Using default paths:")
         print(f"  tracks_dir: {tracks_dir}")
         print(f"  space_file: {space_file}")
         print(f"  output_dir: {output_dir}")
-        print(f"  csv_output_path: {csv_output_path}")
         print("To run with your own paths, use:")
-        print("  python pso_uncertainty.py tracks_dir space_file output_dir [csv_output_path]")
+        print("  python pso_uncertainty.py tracks_dir space_file output_dir")

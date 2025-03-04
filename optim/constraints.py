@@ -203,8 +203,8 @@ class Constraint(object):
         ax = plt.subplot(111)  # 1 plot on the figure
 
         plt.plot(x_obs, 10**y_mod, c='b', label='Model - SAGE')
-        plt.plot(x_sage, 10**y_sage, c='k', label='SAGE')
-        plt.plot(x_obs, 10**y_obs, c='r', label='Observation')
+        plt.plot(x_sage, 10**y_sage, c='r', label='SAGE')
+        plt.scatter(x_obs, 10**y_obs, marker='d', s=50, c='k', label='Observation')
 
         class_name = self.__class__.__name__
     
@@ -720,7 +720,7 @@ class BHMF_z100(BHMF):
 class SMF(Constraint):
     """Common logic for SMF constraints"""
 
-    domain = (8, 12)
+    domain = (8.0, 11.5)
 
     def get_model_x_y(self, hist_smf, _, _2, _3, _4, _5, _6, _7):
         y = hist_smf[0,:]
@@ -841,7 +841,7 @@ class SMF_z10(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('Ilbert_2010_z1.csv', cols=[0,1])
+        logm, logphi = self.load_observation('Wright_2018_z1_z2.csv', cols=[0,1])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -922,7 +922,7 @@ class SMF_z20(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('shuntov_2024_all.csv', cols=[10,11])
+        logm, logphi = self.load_observation('Wright_2018_z1_z2.csv', cols=[2,3])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1225,7 +1225,7 @@ class CSFRDH(Constraint):
 class BHBM(Constraint):
     """The Black hole-Bulge mass relation constraint"""
 
-    domain = (8, 12)
+    domain = (9.5, 11)
 
     def get_model_x_y(self, _, _2, _3, _4, BlackHoleMass, BulgeMass, _5, _6):
         y = BlackHoleMass
