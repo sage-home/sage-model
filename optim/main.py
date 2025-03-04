@@ -73,9 +73,7 @@ def get_required_snapshots(constraints_str):
         'BHMF_z20': [23],
         'BHBM_z0': [49],
         'BHBM_z20': [23],
-        'HSMR_z0': [49],
-        'SMF_blue_z0': [63],
-        'SMF_red_z0': [63]
+        'HSMR_z0': [49]
     }
     
     snapshots = set()
