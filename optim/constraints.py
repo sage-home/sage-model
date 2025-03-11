@@ -18,6 +18,7 @@ import h5py as h5 # type: ignore
 import pandas as pd # type: ignore
 from scipy.stats import binned_statistic # type: ignore
 import logging
+import scipy.stats as stats
 
 warnings.filterwarnings("ignore")
 logging.getLogger('constraints').setLevel(logging.INFO)
@@ -287,6 +288,7 @@ class Constraint(object):
         plt.plot(x_obs, y_mod, c='b', label='Model - SAGE')
         plt.plot(x_sage, y_sage, c='k', label='SAGE')
         plt.plot(x_obs, y_obs, c='r', label="Observation")
+        #print(y_mod, y_obs, y_sage)
 
         w = np.where(BlackHoleMass > 0.0)[0]
         if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
@@ -1225,29 +1227,26 @@ class CSFRDH(Constraint):
 class BHBM(Constraint):
     """The Black hole-Bulge mass relation constraint"""
 
-    domain = (9.5, 11)
+    domain = (8.0, 12.0)
 
     def get_model_x_y(self, _, _2, _3, _4, BlackHoleMass, BulgeMass, _5, _6):
-        y = BlackHoleMass
-        x = BulgeMass
-
-        # Define the bin edges
-        bin_edges = np.arange(min(x), max(x) + 0.1, 0.1)
-
-        # Assign each x-value to a bin
-        bins = np.digitize(x, bin_edges)
-
-        # Create a DataFrame to group and calculate medians
-        data = pd.DataFrame({'x': x, 'y': y, 'bin': bins})
-
-        # Calculate the median y-value for each bin
-        medians = data.groupby('bin')['y'].median()
-
-        # Map bins back to their corresponding bin centers
-        bin_centers = {i: (bin_edges[i - 1] + bin_edges[i]) / 2 for i in range(1, len(bin_edges))}
-        medians.index = medians.index.map(bin_centers)
         
-        return medians.index, medians
+        mask = (BlackHoleMass > 0) & (BulgeMass > 0) & np.isfinite(BlackHoleMass) & np.isfinite(BulgeMass)
+        y = BlackHoleMass[mask]
+        x = BulgeMass[mask]
+        
+        if len(x) < 10:  # Not enough points for reliable fit
+            # Return dummy arrays that will result in poor fit
+            return np.array([8.0, 12.0]), np.array([6.0, 8.0])
+            
+        # Fit line to model data
+        slope, intercept, r_value, _, _ = stats.linregress(x, y)
+        
+        # Generate points along the best-fit line
+        x_points = np.linspace(8.0, 12.0, 20)  # Create 20 evenly spaced points
+        y_points = slope * x_points + intercept
+        
+        return x_points, y_points
     
 class BHBM_z0(BHBM):
     """The BHBM constraint at z=0"""
@@ -1256,10 +1255,20 @@ class BHBM_z0(BHBM):
 
     def get_obs_x_y_err(self):
         
+        # Load observational data
         blackholemass, bulgemass = self.load_observation('Haring_Rix_2004_line.csv', cols=[2,3])
-        err = np.zeros(len(bulgemass))
-
-        return bulgemass, blackholemass, err, err
+        
+        # Fit line to observational data
+        slope, intercept, _, _, _ = stats.linregress(bulgemass, blackholemass)
+        
+        # Generate points along the best-fit line (same x-coordinates as model)
+        x_points = np.linspace(8.0, 12.0, 20)
+        y_points = slope * x_points + intercept
+        
+        # Small constant error for each point
+        err = np.ones_like(y_points) * 0.1
+        
+        return x_points, y_points, err, err
     
     def get_sage_x_y(self):
         # Load data from SAGE

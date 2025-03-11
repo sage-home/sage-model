@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = '../output/millennium/'
+DirName = './output/millennium/'
 #DirName = '../output/Millennium_Full_500_PSO_Weeklybest1/'
 FileName = 'model_0.hdf5'
 
