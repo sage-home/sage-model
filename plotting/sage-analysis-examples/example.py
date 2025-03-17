@@ -4,11 +4,11 @@ from sage_analysis.galaxy_analysis import GalaxyAnalysis
 from sage_analysis.default_analysis_arguments import default_plot_toggles
 
 from sage_analysis.plot_helper import PlotHelper
-plot_helper = PlotHelper(output_path="../output/millennium/plots/")
+plot_helper = PlotHelper(output_path="../../output/millennium/plots/")
 
 if __name__ == "__main__":
 
-    millennium_par_fname = Path(__file__).parent.joinpath("../input/millennium.par")
+    millennium_par_fname = Path(__file__).parent.joinpath("../../input/millennium.par")
     print(millennium_par_fname)
     par_fnames = [millennium_par_fname]
 

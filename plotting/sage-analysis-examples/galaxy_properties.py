@@ -49,7 +49,7 @@ if __name__ == "__main__":
     model0_snapshot = 63  # Snapshot we're plotting properties at.
     model0_IMF = "Chabrier"  # Chabrier or Salpeter.
     model0_label = "Mini-Millennium"  # Goes on the axis.
-    model0_sage_file = "../input/millennium.par"
+    model0_sage_file = "../../input/millennium.par"
     model0_simulation = "Mini-Millennium"  # Used to set cosmology.
     model0_first_file = 0  # File range we're plotting.
     model0_last_file = 0  # Closed interval, [first_file, last_file].

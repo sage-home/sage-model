@@ -2,6 +2,7 @@ sage
 tests/test_data/
 input/millennium/
 output/
+ignore/
 
 *.o
 *.*~
@@ -10,9 +11,7 @@ libsage.so
 *.so
 *.patch
 perf.data*
-*.py
 tmp*
-*.par
 *vscode*
 _sage_cffi.*
 codecov

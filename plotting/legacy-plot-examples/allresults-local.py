@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = '../output/millennium/'
+DirName = '/Volumes/Internal/results/sage-model/millennium/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
