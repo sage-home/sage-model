@@ -32,7 +32,7 @@ import glob
 import importlib
 import os
 import random
-import re  # Required for regular expressions in file pattern matching and validation
+import re
 import sys
 import time
 import traceback  # For detailed error tracing
@@ -43,7 +43,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-random.seed(42)  # For reproducibility with sample data
+random.seed(42)
 
 # Import figure modules
 from figures import *
@@ -305,11 +305,9 @@ def read_galaxies(model_path, first_file, last_file, params=None):
         print(f"  BoxSize = {params['BoxSize']} (type: {type(params['BoxSize'])})")
         sys.exit(1)
     
-    # In the newer SAGE format, there is only one output file with suffix "_0"
-    # regardless of FirstFile and LastFile values
+    # SAGE output uses a single file with suffix "_0" for each redshift
     if args.verbose:
         print(f"Processing galaxies from virtual files {first_file} to {last_file}")
-        print(f"Note: In this SAGE version, all results are in a single file with suffix '_0'")
     
     # Check if the model_path is correct
     if os.path.isfile(model_path):
@@ -331,7 +329,7 @@ def read_galaxies(model_path, first_file, last_file, params=None):
             print(f"Found file: {fname}")
     else:
         print(f"Error: File not found: {fname}")
-        print(f"In this version of SAGE, output files always have suffix '_0'")
+        print(f"Expected file with suffix '_0'")
         sys.exit(1)
 
     # Get the galaxy data dtype
@@ -423,7 +421,7 @@ def read_galaxies(model_path, first_file, last_file, params=None):
             
             if args.verbose:
                 print(f"Reading {ntotgals} galaxies from file: {fname}")
-                print(f"  File position: {fin.tell()}, header size: {header_size}")
+                print(f"  Header size: {header_size} bytes")
             
             # Read galaxy data
             gg = np.fromfile(fin, galdesc, ntotgals)
@@ -459,9 +457,7 @@ def read_galaxies(model_path, first_file, last_file, params=None):
     # Calculate the volume based on the box size cubed
     volume = box_size**3.0
 
-    # Volume fraction calculation - updated for new SAGE output format
-    # In this version of SAGE, all galaxies from FirstFile to LastFile are combined into a single output file
-    # So we need to calculate the volume fraction based on parameter values, not actual files read
+    # Calculate volume fraction based on virtual file range
     if "NumSimulationTreeFiles" in params:
         num_files_processed = last_file - first_file + 1
         total_files = int(params["NumSimulationTreeFiles"])
