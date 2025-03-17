@@ -25,6 +25,7 @@ setup(
         "numpy",
         "matplotlib",
         "tqdm",
+        "h5py",
     ],
     python_requires=">=3.6",
 )

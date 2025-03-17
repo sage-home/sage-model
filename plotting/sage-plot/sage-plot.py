@@ -42,6 +42,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import h5py  # For HDF5 file reading
 
 random.seed(42)
 
@@ -137,6 +138,9 @@ class SAGEParameters:
         """Parse the SAGE parameter file."""
         if not os.path.exists(self.param_file):
             raise FileNotFoundError(f"Parameter file not found: {self.param_file}")
+            
+        # Set default OutputFormat to sage_hdf5
+        self.params["OutputFormat"] = "sage_hdf5"
 
         # Check for snapshot output list line
         output_snapshots = []
@@ -205,6 +209,14 @@ class SAGEParameters:
 
                 self.params[key] = value
 
+        # Validate OutputFormat if present
+        if "OutputFormat" in self.params:
+            output_format = self.params["OutputFormat"]
+            if output_format not in ["sage_binary", "sage_hdf5"]:
+                print(f"Warning: Invalid OutputFormat '{output_format}', must be 'sage_binary' or 'sage_hdf5'")
+                print("Defaulting to 'sage_hdf5'")
+                self.params["OutputFormat"] = "sage_hdf5"
+
     def _is_float(self, value):
         """Check if a string can be converted to float."""
         try:
@@ -252,7 +264,73 @@ def setup_matplotlib(use_tex=False):
     plt.rcParams["mathtext.default"] = "regular"
 
 
-def read_galaxies(model_path, first_file, last_file, params=None):
+def read_galaxies(model_path, first_file, last_file, params=None, snapshot_number=None, verbose=False):
+    """
+    Read galaxy data from SAGE output files, either binary or HDF5 format.
+    
+    This is a router function that calls the appropriate reader based on the OutputFormat parameter.
+    
+    Args:
+        model_path: Path to model files (base path, without file number)
+                   Example: "/path/to/model_z0.000" for binary or "/path/to/model" for HDF5
+        first_file: First file number to read (inclusive)
+        last_file: Last file number to read (inclusive)
+        params: Dictionary with SAGE parameters
+                Must contain at least Hubble_h and BoxSize
+        snapshot_number: Optional snapshot number (needed for HDF5 evolution plots)
+        verbose: Whether to print verbose output
+
+    Returns:
+        Tuple containing:
+            - Numpy recarray of galaxy data
+            - Volume of the simulation in (Mpc/h)^3
+            - Dictionary of metadata with keys:
+              - hubble_h: Hubble constant
+              - box_size: Simulation box size
+              - volume: Effective volume analyzed
+              - ntrees: Total number of trees read (binary only)
+              - ngals: Total number of galaxies read
+              - good_files: Number of files successfully read (binary only)
+              - snapshot: Snapshot number (if provided)
+    """
+    # This is important information, so show regardless of verbose flag
+    print(f"Reading galaxy data from {model_path}")
+
+    # Get required parameters from the parameter file
+    if not params:
+        print("Error: Parameter dictionary is required.")
+        sys.exit(1)
+        
+    # Ensure required parameters exist
+    required_params = ["Hubble_h", "BoxSize"]
+    missing_params = [p for p in required_params if p not in params]
+    if missing_params:
+        print(f"Error: Required parameters missing from parameter file: {', '.join(missing_params)}")
+        sys.exit(1)
+    
+    # Get the OutputFormat parameter (default to sage_hdf5 if not specified)
+    output_format = params.get("OutputFormat", "sage_hdf5")
+    
+    # Get verbose setting from global args if available
+    if 'args' in globals() and hasattr(args, 'verbose'):
+        verbose = args.verbose
+    
+    # Use the appropriate reader based on the OutputFormat
+    if output_format == "sage_binary":
+        if verbose:
+            print("Using binary file reader for SAGE data")
+        return read_galaxies_binary(model_path, first_file, last_file, params, verbose)
+    elif output_format == "sage_hdf5":
+        if verbose:
+            print("Using HDF5 file reader for SAGE data")
+        return read_galaxies_hdf5(model_path, first_file, last_file, params, snapshot_number, verbose)
+    else:
+        print(f"Error: Invalid OutputFormat '{output_format}', must be 'sage_binary' or 'sage_hdf5'")
+        print("Defaulting to 'sage_hdf5'")
+        return read_galaxies_hdf5(model_path, first_file, last_file, params, snapshot_number, verbose)
+
+
+def read_galaxies_binary(model_path, first_file, last_file, params=None, verbose=False):
     """
     Read galaxy data from SAGE binary output files.
     
@@ -466,14 +544,14 @@ def read_galaxies(model_path, first_file, last_file, params=None):
             volume_fraction = num_files_processed / total_files
             volume = volume * volume_fraction
             
-            print(f"Adjusted volume for file range {first_file}-{last_file} out of {total_files} total files")
-            if args.verbose:
+            if verbose:
+                print(f"Adjusted volume for file range {first_file}-{last_file} out of {total_files} total files")
                 print(f"  Volume fraction: {num_files_processed}/{total_files} = {volume_fraction:.4f}")
                 print(f"  Adjusted volume: {volume:.2f} (Mpc/h)³")
     else:
         # Missing parameters - show a warning
-        print("Warning: Unable to adjust volume - missing NumSimulationTreeFiles parameter")
-        if args.verbose:
+        if verbose:
+            print("Warning: Unable to adjust volume - missing NumSimulationTreeFiles parameter")
             print("  Using unadjusted volume - results may be incorrect")
 
     # Create metadata dictionary
@@ -762,13 +840,14 @@ def main():
 
         # Get the redshift for this snapshot using the mapper
         mapper = SnapshotRedshiftMapper(args.param_file, params.params, model_path)
+        output_format = params.params.get("OutputFormat", "sage_hdf5")
         redshift_str = mapper.get_redshift_str(snapshot)
         
         if args.verbose:
             print(f"  Redshift string for snapshot {snapshot}: {redshift_str}")
         
-        # Construct the base model file path directly
-        base_model_file = os.path.join(model_path, f"{file_name_galaxies}{redshift_str}")
+        # Construct the base model file path (the actual path is determined in read_galaxies_hdf5 for HDF5 format)
+        base_model_file = mapper.get_model_file_path(snapshot, 0, output_format)
         
         if args.verbose:
             print(f"  Using model file base: {base_model_file}")
@@ -811,6 +890,7 @@ def main():
                 first_file=first_file,
                 last_file=last_file,
                 params=params.params,
+                snapshot_number=snapshot
             )
             if args.verbose:
                 if metadata.get("sample_data", False):
@@ -825,6 +905,8 @@ def main():
                 )
         except Exception as e:
             print(f"Error reading galaxy data: {e}")
+            if args.verbose:
+                print(f"Exception details: {traceback.format_exc()}")
             sys.exit(1)
 
         # Get available snapshot plot modules
@@ -885,6 +967,8 @@ def main():
 
         # Create the mapper from parameter file
         mapper = SnapshotRedshiftMapper(args.param_file, params.params, params["OutputDir"])
+        # Get the output format
+        output_format = params.params.get("OutputFormat", "sage_hdf5")
         
         # Determine which snapshots to process
         if args.all_snapshots:
@@ -947,9 +1031,7 @@ def main():
             # Regular case - read actual snapshot data
             # Get redshift and model file path from mapper
             redshift = mapper.get_redshift(snap)
-            model_file_base = mapper.get_model_file_path(snap, 0).rsplit("_", 1)[
-                0
-            ]  # Remove file number
+            model_file_base = mapper.get_model_file_path(snap, 0, output_format)
 
             if args.verbose:
                 print(f"Processing snapshot {snap} (z={redshift:.3f})")
@@ -987,11 +1069,13 @@ def main():
                 sys.exit(1)
 
             try:
+                # For HDF5 files, pass the snapshot number to read_galaxies
                 galaxies, volume, metadata = read_galaxies(
                     model_path=model_file_base,
                     first_file=first_file,
                     last_file=last_file,
                     params=params.params,
+                    snapshot_number=snap
                 )
                 # Add redshift to metadata
                 metadata["redshift"] = redshift
@@ -1000,6 +1084,8 @@ def main():
                     print(f"  Read {len(galaxies)} galaxies at z={redshift:.2f}")
             except Exception as e:
                 print(f"Error reading snapshot {snap}: {e}")
+                if args.verbose:
+                    print(f"Exception details: {traceback.format_exc()}")
 
         # Generate each evolution plot
         generated_plots = []
@@ -1021,6 +1107,196 @@ def main():
 
         if args.verbose:
             print(f"Generated {len(generated_plots)} evolution plots.")
+
+
+def read_galaxies_hdf5(model_path, first_file, last_file, params=None, snapshot_number=None, verbose=False):
+    """
+    Read galaxy data from SAGE HDF5 output files.
+    
+    This function reads galaxy data from HDF5 files which have a different structure
+    than the binary files. It handles both master files and core files.
+    
+    Args:
+        model_path: Path to model files (base path, without file number)
+                   Example: "/path/to/model"
+        first_file: First file number to read (inclusive)
+        last_file: Last file number to read (inclusive)
+        params: Dictionary with SAGE parameters
+                Must contain at least Hubble_h and BoxSize
+        snapshot_number: Snapshot number to read from the HDF5 file.
+                        If None, will try to determine from parameter file.
+        verbose: Whether to print verbose output
+
+    Returns:
+        Tuple containing:
+            - Numpy recarray of galaxy data
+            - Volume of the simulation in (Mpc/h)^3
+            - Dictionary of metadata with keys:
+              - hubble_h: Hubble constant
+              - box_size: Simulation box size
+              - volume: Effective volume analyzed
+              - ngals: Total number of galaxies read
+              - snapshot: Snapshot number
+    """
+    # Ensure parameters are numeric types
+    try:
+        hubble_h = float(params["Hubble_h"])
+        box_size = float(params["BoxSize"])
+    except (ValueError, TypeError) as e:
+        print(f"Error: Parameter conversion failed: {e}")
+        print(f"  Hubble_h = {params['Hubble_h']} (type: {type(params['Hubble_h'])})")
+        print(f"  BoxSize = {params['BoxSize']} (type: {type(params['BoxSize'])})")
+        sys.exit(1)
+    
+    # Determine which snapshot to use
+    # Priority: 1. Provided snapshot_number, 2. LastSnapShotNr from params
+    if snapshot_number is not None:
+        snapshot = snapshot_number
+    elif "LastSnapShotNr" in params:
+        snapshot = params["LastSnapShotNr"]
+    else:
+        print("Warning: No snapshot number provided or found in parameters. Using default snapshot 63.")
+        snapshot = 63  # Default to snapshot 63 (typically z=0)
+    
+    if verbose:
+        print(f"Using snapshot number: {snapshot}")
+    
+    # Construct the HDF5 file path - similar to binary but with .hdf5 extension
+    # HDF5 files use the pattern: model_0.hdf5
+    fname = f"{model_path}_{first_file}.hdf5"
+    
+    # Check if the file exists
+    if os.path.isfile(fname):
+        if verbose:
+            print(f"Found HDF5 file: {fname}")
+    else:
+        print(f"Error: HDF5 file not found: {fname}")
+        print(f"Expected file with pattern: {model_path}_{first_file}.hdf5")
+        sys.exit(1)
+    
+    # Get the galaxy data dtype
+    galdesc = get_galaxy_dtype()
+    
+    # Read the HDF5 file
+    try:
+        with h5py.File(fname, "r") as f:
+            # Access the snapshot data
+            snap_key = f"Snap_{snapshot}"
+            
+            # Check if the snapshot exists
+            if snap_key in f:
+                snap_group = f[snap_key]
+            else:
+                print(f"Error: Snapshot {snapshot} not found in the HDF5 file")
+                print(f"Available groups: {list(f.keys())}")
+                sys.exit(1)
+            
+            # Get the list of galaxy properties available in this snapshot
+            properties = list(snap_group.keys())
+            
+            # Get the number of galaxies in this snapshot
+            for key in properties:
+                if isinstance(snap_group[key], h5py.Dataset):
+                    num_gals = snap_group[key].shape[0]
+                    break
+            else:
+                print(f"Error: Could not determine number of galaxies in snapshot {snapshot}")
+                sys.exit(1)
+            
+            print(f"Found {num_gals} galaxies in snapshot {snapshot}")
+            
+            # Initialize the storage array
+            try:
+                galaxies = np.empty(num_gals, dtype=galdesc)
+            except MemoryError:
+                print(f"Error: Not enough memory to allocate array for {num_gals} galaxies")
+                print(f"Each galaxy requires {galdesc.itemsize} bytes, total memory needed: {num_gals * galdesc.itemsize / (1024**2):.1f} MB")
+                sys.exit(1)
+            
+            # Read all regular properties
+            for field_name in galdesc.names:
+                # Skip vector properties which are stored as separate components
+                if field_name in ["Pos", "Vel", "Spin"]:
+                    continue
+                
+                if field_name in properties:
+                    # Direct read if property exists
+                    galaxies[field_name] = snap_group[field_name][:]
+                elif field_name + "x" in properties and field_name + "y" in properties and field_name + "z" in properties:
+                    # Skip - these will be handled in vector processing
+                    pass
+                else:
+                    # Initialize with zeros if property doesn't exist
+                    galaxies[field_name].fill(0)
+                    if verbose:
+                        print(f"Property {field_name} not found in HDF5 file, initializing with zeros")
+            
+            # Handle vector properties which are stored as components
+            # Position
+            if "Posx" in properties and "Posy" in properties and "Posz" in properties:
+                posx = snap_group["Posx"][:]
+                posy = snap_group["Posy"][:]
+                posz = snap_group["Posz"][:]
+                for i in range(num_gals):
+                    galaxies["Pos"][i] = (posx[i], posy[i], posz[i])
+            
+            # Velocity
+            if "Velx" in properties and "Vely" in properties and "Velz" in properties:
+                velx = snap_group["Velx"][:]
+                vely = snap_group["Vely"][:]
+                velz = snap_group["Velz"][:]
+                for i in range(num_gals):
+                    galaxies["Vel"][i] = (velx[i], vely[i], velz[i])
+            
+            # Spin
+            if "Spinx" in properties and "Spiny" in properties and "Spinz" in properties:
+                spinx = snap_group["Spinx"][:]
+                spiny = snap_group["Spiny"][:]
+                spinz = snap_group["Spinz"][:]
+                for i in range(num_gals):
+                    galaxies["Spin"][i] = (spinx[i], spiny[i], spinz[i])
+    
+    except Exception as e:
+        print(f"Error reading HDF5 file {fname}: {e}")
+        if verbose:
+            print(f"Exception details: {traceback.format_exc()}")
+        sys.exit(1)
+    
+    # Convert to recarray for attribute access
+    galaxies = galaxies.view(np.recarray)
+    
+    # Calculate the volume based on the box size cubed
+    volume = box_size**3.0
+
+    # Calculate volume fraction based on virtual file range
+    if "NumSimulationTreeFiles" in params:
+        num_files_processed = last_file - first_file + 1
+        total_files = int(params["NumSimulationTreeFiles"])
+        
+        if total_files > 0 and num_files_processed > 0:
+            volume_fraction = num_files_processed / total_files
+            volume = volume * volume_fraction
+            
+            if verbose:
+                print(f"Adjusted volume for file range {first_file}-{last_file} out of {total_files} total files")
+                print(f"  Volume fraction: {num_files_processed}/{total_files} = {volume_fraction:.4f}")
+                print(f"  Adjusted volume: {volume:.2f} (Mpc/h)³")
+    else:
+        # Missing parameters - show a warning
+        if verbose:
+            print("Warning: Unable to adjust volume - missing NumSimulationTreeFiles parameter")
+            print("  Using unadjusted volume - results may be incorrect")
+    
+    # Create metadata dictionary
+    metadata = {
+        "hubble_h": hubble_h,
+        "box_size": box_size,
+        "volume": volume,
+        "ngals": num_gals,
+        "snapshot": snapshot,
+    }
+    
+    return galaxies, volume, metadata
 
 
 if __name__ == "__main__":

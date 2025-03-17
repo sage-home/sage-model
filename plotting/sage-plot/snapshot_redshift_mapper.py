@@ -242,26 +242,39 @@ class SnapshotRedshiftMapper:
             print(f"Available snapshots: {self.snapshots}")
             sys.exit(1)
 
-    def get_model_file_path(self, snapshot, file_num):
+    def get_model_file_path(self, snapshot, file_num, output_format="sage_binary"):
         """
         Get the full path to a model file for a given snapshot and file number.
 
         Args:
             snapshot: Snapshot index
             file_num: File number
+            output_format: Format of the output file (sage_binary or sage_hdf5)
 
         Returns:
             Full path to the model file
         """
-        redshift_str = self.get_redshift_str(snapshot)
-
-        # Check if we have an output directory
-        if self.output_dir:
-            return os.path.join(
-                self.output_dir, f"{self.file_name_galaxies}{redshift_str}_{file_num}"
-            )
+        # For HDF5 files, return base name without redshift suffix
+        if output_format == "sage_hdf5":
+            # Check if we have an output directory
+            if self.output_dir:
+                file_path = os.path.join(self.output_dir, f"{self.file_name_galaxies}")
+            else:
+                file_path = f"{self.file_name_galaxies}"
+                
+            # Return simple string path
+            return file_path
         else:
-            return f"{self.file_name_galaxies}{redshift_str}_{file_num}"
+            # For binary files, use the original implementation with redshift string
+            redshift_str = self.get_redshift_str(snapshot)
+            
+            # Check if we have an output directory
+            if self.output_dir:
+                return os.path.join(
+                    self.output_dir, f"{self.file_name_galaxies}{redshift_str}_{file_num}"
+                )
+            else:
+                return f"{self.file_name_galaxies}{redshift_str}_{file_num}"
 
     def select_snapshots_for_evolution(self, num_snapshots=8, redshift_max=8.0):
         """
