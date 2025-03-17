@@ -3,8 +3,12 @@
 """
 SAGE Plotting Tool - Master plotting script for SAGE galaxy formation model output
 
+This script provides a centralized plotting facility for SAGE galaxy formation model
+output data. It supports reading binary output files and generating various plots 
+of galaxy properties and evolution.
+
 Usage:
-  python sage-plot-fixed.py --param-file=<param_file> [options]
+  python sage-plot.py --param-file=<param_file> [options]
 
 Options:
   --param-file=<file>    SAGE parameter file (required)
@@ -28,9 +32,10 @@ import glob
 import importlib
 import os
 import random
-import re  # Required for regular expressions in file pattern matching
+import re  # Required for regular expressions in file pattern matching and validation
 import sys
 import time
+import traceback  # For detailed error tracing
 from collections import OrderedDict
 
 import matplotlib
@@ -49,59 +54,73 @@ from snapshot_redshift_mapper import SnapshotRedshiftMapper
 
 # Galaxy data structure definition
 def get_galaxy_dtype():
-    """Return the NumPy dtype for SAGE galaxy data."""
+    """
+    Return the NumPy dtype for SAGE galaxy data.
+    
+    This function defines the exact structure of galaxy records in SAGE binary files.
+    The structure must match the C structure used to write the files.
+    Fields must be in the correct order and with the correct data types.
+    
+    Returns:
+        numpy.dtype: The dtype specification for reading galaxy data
+    """
+    # Define the galaxy structure according to SAGE binary format specification
     galdesc_full = [
-        ("SnapNum", np.int32),
-        ("Type", np.int32),
-        ("GalaxyIndex", np.int64),
-        ("CentralGalaxyIndex", np.int64),
-        ("SAGEHaloIndex", np.int32),
-        ("SAGETreeIndex", np.int32),
-        ("SimulationHaloIndex", np.int64),
-        ("mergeType", np.int32),
-        ("mergeIntoID", np.int32),
-        ("mergeIntoSnapNum", np.int32),
-        ("dT", np.float32),
-        ("Pos", (np.float32, 3)),
-        ("Vel", (np.float32, 3)),
-        ("Spin", (np.float32, 3)),
-        ("Len", np.int32),
-        ("Mvir", np.float32),
-        ("CentralMvir", np.float32),
-        ("Rvir", np.float32),
-        ("Vvir", np.float32),
-        ("Vmax", np.float32),
-        ("VelDisp", np.float32),
-        ("ColdGas", np.float32),
-        ("StellarMass", np.float32),
-        ("BulgeMass", np.float32),
-        ("HotGas", np.float32),
-        ("EjectedMass", np.float32),
-        ("BlackHoleMass", np.float32),
-        ("IntraClusterStars", np.float32),
-        ("MetalsColdGas", np.float32),
-        ("MetalsStellarMass", np.float32),
-        ("MetalsBulgeMass", np.float32),
-        ("MetalsHotGas", np.float32),
-        ("MetalsEjectedMass", np.float32),
-        ("MetalsIntraClusterStars", np.float32),
-        ("SfrDisk", np.float32),
-        ("SfrBulge", np.float32),
-        ("SfrDiskZ", np.float32),
-        ("SfrBulgeZ", np.float32),
-        ("DiskRadius", np.float32),
-        ("Cooling", np.float32),
-        ("Heating", np.float32),
-        ("QuasarModeBHaccretionMass", np.float32),
-        ("TimeOfLastMajorMerger", np.float32),
-        ("TimeOfLastMinorMerger", np.float32),
-        ("OutflowRate", np.float32),
-        ("infallMvir", np.float32),
-        ("infallVvir", np.float32),
-        ("infallVmax", np.float32),
+        ("SnapNum", np.int32),           # Snapshot number
+        ("Type", np.int32),              # Galaxy type (0: central, 1: satellite)
+        ("GalaxyIndex", np.int64),       # Unique identifier for this galaxy
+        ("CentralGalaxyIndex", np.int64),# Index of the central galaxy in the same halo
+        ("SAGEHaloIndex", np.int32),     # Halo index in SAGE
+        ("SAGETreeIndex", np.int32),     # Merger tree index in SAGE
+        ("SimulationHaloIndex", np.int64),# Halo index in the original simulation
+        ("mergeType", np.int32),         # Type of merger (if any)
+        ("mergeIntoID", np.int32),       # ID of galaxy this one merged into
+        ("mergeIntoSnapNum", np.int32),  # Snapshot when the merger occurred
+        ("dT", np.float32),              # Time step
+        ("Pos", (np.float32, 3)),        # 3D position coordinates (x,y,z) in cMpc/h
+        ("Vel", (np.float32, 3)),        # 3D velocity components in km/s
+        ("Spin", (np.float32, 3)),       # 3D angular momentum vector
+        ("Len", np.int32),               # Number of particles in the halo
+        ("Mvir", np.float32),            # Virial mass (10^10 Msun/h)
+        ("CentralMvir", np.float32),     # Virial mass of the central galaxy (10^10 Msun/h)
+        ("Rvir", np.float32),            # Virial radius (cMpc/h)
+        ("Vvir", np.float32),            # Virial velocity (km/s)
+        ("Vmax", np.float32),            # Maximum circular velocity (km/s)
+        ("VelDisp", np.float32),         # Velocity dispersion (km/s)
+        ("ColdGas", np.float32),         # Cold gas mass (10^10 Msun/h)
+        ("StellarMass", np.float32),     # Stellar mass (10^10 Msun/h)
+        ("BulgeMass", np.float32),       # Bulge mass (10^10 Msun/h)
+        ("HotGas", np.float32),          # Hot gas mass (10^10 Msun/h)
+        ("EjectedMass", np.float32),     # Mass of ejected gas (10^10 Msun/h)
+        ("BlackHoleMass", np.float32),   # Black hole mass (10^10 Msun/h)
+        ("IntraClusterStars", np.float32),# Intracluster stellar mass (10^10 Msun/h)
+        ("MetalsColdGas", np.float32),    # Metals in cold gas (10^10 Msun/h)
+        ("MetalsStellarMass", np.float32),# Metals in stars (10^10 Msun/h)
+        ("MetalsBulgeMass", np.float32),  # Metals in bulge (10^10 Msun/h)
+        ("MetalsHotGas", np.float32),     # Metals in hot gas (10^10 Msun/h)
+        ("MetalsEjectedMass", np.float32),# Metals in ejected gas (10^10 Msun/h)
+        ("MetalsIntraClusterStars", np.float32),# Metals in intracluster stars (10^10 Msun/h)
+        ("SfrDisk", np.float32),          # Star formation rate in disk (Msun/yr)
+        ("SfrBulge", np.float32),         # Star formation rate in bulge (Msun/yr)
+        ("SfrDiskZ", np.float32),         # Star formation rate metallicity in disk (Msun/yr)
+        ("SfrBulgeZ", np.float32),        # Star formation rate metallicity in bulge (Msun/yr)
+        ("DiskRadius", np.float32),       # Disk radius (cMpc/h)
+        ("Cooling", np.float32),          # Cooling rate (erg/s)
+        ("Heating", np.float32),          # Heating rate (erg/s)
+        ("QuasarModeBHaccretionMass", np.float32),# Black hole accretion mass in quasar mode (10^10 Msun/h)
+        ("TimeOfLastMajorMerger", np.float32),    # Time of last major merger (Gyr)
+        ("TimeOfLastMinorMerger", np.float32),    # Time of last minor merger (Gyr)
+        ("OutflowRate", np.float32),              # Rate of outflow (Msun/yr)
+        ("infallMvir", np.float32),               # Virial mass at infall (10^10 Msun/h)
+        ("infallVvir", np.float32),               # Virial velocity at infall (km/s)
+        ("infallVmax", np.float32),               # Maximum circular velocity at infall (km/s)
     ]
+    
+    # Create lists of names and formats
     names = [galdesc_full[i][0] for i in range(len(galdesc_full))]
     formats = [galdesc_full[i][1] for i in range(len(galdesc_full))]
+    
+    # Create the dtype with alignment
     return np.dtype({"names": names, "formats": formats}, align=True)
 
 
@@ -160,6 +179,8 @@ class SAGEParameters:
                     value = value_part.split(";")[0].strip()
                 elif "#" in value_part:
                     value = value_part.split("#")[0].strip()
+                elif "%" in value_part:
+                    value = value_part.split("%")[0].strip()
                 else:
                     value = value_part
 
@@ -233,37 +254,35 @@ def setup_matplotlib(use_tex=False):
 
 def read_galaxies(model_path, first_file, last_file, params=None):
     """
-    Read galaxy data from SAGE output files.
-
+    Read galaxy data from SAGE binary output files.
+    
+    This function defines the exact structure of galaxy records in SAGE binary files.
+    The structure must match the C structure used to write the files.
+    Fields must be in the correct order and with the correct data types.
+    
     Args:
-        model_path: Path to model files
-        first_file: First file number to read
-        last_file: Last file number to read
+        model_path: Path to model files (base path, without file number)
+                   Example: "/path/to/model_z0.000"
+        first_file: First file number to read (inclusive)
+        last_file: Last file number to read (inclusive)
         params: Dictionary with SAGE parameters
+                Must contain at least Hubble_h and BoxSize
 
     Returns:
         Tuple containing:
             - Numpy recarray of galaxy data
-            - Volume of the simulation
-            - Dictionary of metadata
+            - Volume of the simulation in (Mpc/h)^3
+            - Dictionary of metadata with keys:
+              - hubble_h: Hubble constant
+              - box_size: Simulation box size
+              - volume: Effective volume analyzed
+              - ntrees: Total number of trees read
+              - ngals: Total number of galaxies read
+              - good_files: Number of files successfully read
     """
     # This is important information, so show regardless of verbose flag
     print(f"Reading galaxy data from {model_path}")
-    """
-    Read galaxy data from SAGE output files.
-    
-    Args:
-        model_path: Path to model files
-        first_file: First file number to read
-        last_file: Last file number to read
-        params: Dictionary with SAGE parameters
-    
-    Returns:
-        Tuple containing:
-            - Numpy recarray of galaxy data
-            - Volume of the simulation
-            - Dictionary of metadata
-    """
+
     # Get required parameters from the parameter file
     if not params:
         print("Error: Parameter dictionary is required.")
@@ -276,50 +295,44 @@ def read_galaxies(model_path, first_file, last_file, params=None):
         print(f"Error: Required parameters missing from parameter file: {', '.join(missing_params)}")
         sys.exit(1)
         
-    hubble_h = params["Hubble_h"]
-    box_size = params["BoxSize"]
+    # Ensure parameters are numeric types
+    try:
+        hubble_h = float(params["Hubble_h"])
+        box_size = float(params["BoxSize"])
+    except (ValueError, TypeError) as e:
+        print(f"Error: Parameter conversion failed: {e}")
+        print(f"  Hubble_h = {params['Hubble_h']} (type: {type(params['Hubble_h'])})")
+        print(f"  BoxSize = {params['BoxSize']} (type: {type(params['BoxSize'])})")
+        sys.exit(1)
     
-    # For volume calculation, we'll use the number of good files read
-    # No need for MaxTreeFiles parameter - we'll calculate based on actual files read
-
-    # Print the model path for debugging
+    # In the newer SAGE format, there is only one output file with suffix "_0"
+    # regardless of FirstFile and LastFile values
     if args.verbose:
-        print(f"Looking for galaxy files with base: {model_path}")
-
-    # Look for files matching the pattern in the same directory
-    dir_path = os.path.dirname(model_path)
-    base_name = os.path.basename(model_path)
-
-    # First try exact file number pattern (model_z0.000_0, model_z0.000_1, etc.)
-    pattern1 = f"{model_path}_{first_file}"
-
-    # Then try generic pattern (model_z0.000_*)
-    pattern2 = os.path.join(dir_path, f"{base_name}_*")
-
-    # Log the patterns we're trying
-    if args.verbose:
-        print(f"  Trying exact pattern: {pattern1}")
-        print(f"  Trying generic pattern: {pattern2}")
-
-    # Try the exact pattern first
-    exact_files = glob.glob(pattern1)
-    if exact_files:
-        existing_files = exact_files
+        print(f"Processing galaxies from virtual files {first_file} to {last_file}")
+        print(f"Note: In this SAGE version, all results are in a single file with suffix '_0'")
+    
+    # Check if the model_path is correct
+    if os.path.isfile(model_path):
+        print(f"Error: model_path should be a base path without file number, not a file: {model_path}")
+        print("Correct format should be like: /path/to/model_z0.000")
+        sys.exit(1)
+    
+    # Ensure model_path doesn't already end with a file number
+    if re.search(r'_\d+$', model_path):
+        print(f"Warning: model_path appears to end with a file number: {model_path}")
+        print("This may cause issues with file identification.")
+    
+    # Always look for the file with suffix "_0"
+    fname = f"{model_path}_0"
+    
+    # Check if the file exists
+    if os.path.isfile(fname):
         if args.verbose:
-            print(f"  Found file with exact pattern")
+            print(f"Found file: {fname}")
     else:
-        # Fall back to the generic pattern
-        existing_files = glob.glob(pattern2)
-
-    if existing_files:
-        if args.verbose:
-            print(f"Found {len(existing_files)} files matching the pattern.")
-            for f in existing_files[:5]:  # Show first 5 files
-                print(f"  {f}")
-            if len(existing_files) > 5:
-                print(f"  ... and {len(existing_files) - 5} more")
-    else:
-        print(f"No files found matching the pattern {base_name}_*")
+        print(f"Error: File not found: {fname}")
+        print(f"In this version of SAGE, output files always have suffix '_0'")
+        sys.exit(1)
 
     # Get the galaxy data dtype
     galdesc = get_galaxy_dtype()
@@ -328,103 +341,144 @@ def read_galaxies(model_path, first_file, last_file, params=None):
     tot_ntrees = 0
     tot_ngals = 0
     good_files = 0
-
+    
+    # First pass: Count galaxies
     if args.verbose:
-        print(
-            f"Determining storage requirements for files {first_file} to {last_file}..."
-        )
-
-    # First pass: Determine total number of galaxies
-    # Only show progress bar when verbose is enabled
-    file_iterator = (
-        tqdm(range(first_file, last_file + 1), desc="Counting galaxies")
-        if args.verbose
-        else range(first_file, last_file + 1)
-    )
-    for fnr in file_iterator:
-        fname = f"{model_path}_{fnr}"
-
-        if not os.path.isfile(fname):
-            continue
-
-        if os.path.getsize(fname) == 0:
-            print(f"File {fname} is empty! Skipping...")
-            continue
-
-        try:
-            with open(fname, "rb") as fin:
-                ntrees = np.fromfile(fin, np.dtype(np.int32), 1)[
-                    0
-                ]  # Extract scalar value
-                ntotgals = np.fromfile(fin, np.dtype(np.int32), 1)[0]
-                tot_ntrees += ntrees
-                tot_ngals += ntotgals
-                good_files += 1
-        except Exception as e:
-            print(f"Error reading file {fname}: {e}")
-            continue
+        print("Counting galaxies in file...")
+    
+    try:
+        with open(fname, "rb") as fin:
+            # Read header information
+            ntrees_data = np.fromfile(fin, np.dtype(np.int32), 1)
+            if len(ntrees_data) == 0:
+                print(f"Error: Could not read number of trees from file {fname}")
+                sys.exit(1)
+            ntrees = ntrees_data[0]
+            
+            ngals_data = np.fromfile(fin, np.dtype(np.int32), 1)
+            if len(ngals_data) == 0:
+                print(f"Error: Could not read number of galaxies from file {fname}")
+                sys.exit(1)
+            ntotgals = ngals_data[0]
+            
+            # Read the tree array
+            tree_array = np.fromfile(fin, np.dtype(np.int32), ntrees)
+            if len(tree_array) != ntrees:
+                print(f"Error: Expected {ntrees} trees, but read {len(tree_array)} from file {fname}")
+                sys.exit(1)
+            
+            # Validate tree array sum
+            tree_sum = np.sum(tree_array)
+            if tree_sum != ntotgals:
+                print(f"Warning: Sum of tree array ({tree_sum}) doesn't match num_gals ({ntotgals}) in file {fname}")
+            
+            # Update totals
+            tot_ntrees += ntrees
+            tot_ngals += ntotgals
+            good_files += 1
+            
+            if args.verbose:
+                header_size = 4 + 4 + (ntrees * 4)
+                print(f"  {fname}: {ntrees} trees, {ntotgals} galaxies, header_size={header_size} bytes")
+    except Exception as e:
+        print(f"Error reading header from file {fname}: {e}")
+        if args.verbose:
+            print(f"Exception details: {traceback.format_exc()}")
+        sys.exit(1)
 
     print(f"Input files contain: {tot_ntrees} trees, {tot_ngals} galaxies.")
 
     # Check if we found any galaxies
     if tot_ngals == 0:
-        print("Error: No galaxies found in the model files.")
-        print(f"Please check that the model files exist and are not empty.")
+        print("Error: No galaxies found in the model file.")
+        print(f"Please check that the file exists and is not empty.")
         sys.exit(1)
 
     # Initialize the storage array
-    galaxies = np.empty(tot_ngals, dtype=galdesc)
+    if args.verbose:
+        print(f"Allocating memory for {tot_ngals} galaxies...")
+    try:
+        galaxies = np.empty(tot_ngals, dtype=galdesc)
+    except MemoryError:
+        print(f"Error: Not enough memory to allocate array for {tot_ngals} galaxies.")
+        print(f"Each galaxy requires {galdesc.itemsize} bytes, total memory needed: {tot_ngals * galdesc.itemsize / (1024**2):.1f} MB")
+        print("Try reducing the number of files read or processing in batches.")
+        sys.exit(1)
 
     # Second pass: Read the galaxy data
     offset = 0
-    # Only show progress bar when verbose is enabled
-    file_iterator = (
-        tqdm(range(first_file, last_file + 1), desc="Reading galaxies")
-        if args.verbose
-        else range(first_file, last_file + 1)
-    )
-    for fnr in file_iterator:
-        fname = f"{model_path}_{fnr}"
-
-        if not os.path.isfile(fname) or os.path.getsize(fname) == 0:
-            continue
-
-        try:
-            with open(fname, "rb") as fin:
-                ntrees = np.fromfile(fin, np.dtype(np.int32), 1)[
-                    0
-                ]  # Extract scalar value
-                ntotgals = np.fromfile(fin, np.dtype(np.int32), 1)[0]
-                gals_per_tree = np.fromfile(fin, np.dtype((np.int32, ntrees)), 1)
-
+    
+    try:
+        with open(fname, "rb") as fin:
+            # Read header again
+            ntrees = np.fromfile(fin, np.dtype(np.int32), 1)[0]
+            ntotgals = np.fromfile(fin, np.dtype(np.int32), 1)[0]
+            tree_array = np.fromfile(fin, np.dtype(np.int32), ntrees)
+            
+            # Calculate header size
+            header_size = 4 + 4 + (ntrees * 4)
+            
+            # Position file pointer at the start of galaxy data
+            fin.seek(header_size)
+            
+            if args.verbose:
                 print(f"Reading {ntotgals} galaxies from file: {fname}")
-
-                gg = np.fromfile(fin, galdesc, ntotgals)
-
-                # Slice the file array into the global array with a copy
-                galaxies[offset : offset + ntotgals] = gg[0:ntotgals].copy()
-
-                offset += ntotgals
-        except Exception as e:
-            print(f"Error reading file {fname}: {e}")
-            continue
+                print(f"  File position: {fin.tell()}, header size: {header_size}")
+            
+            # Read galaxy data
+            gg = np.fromfile(fin, galdesc, ntotgals)
+            
+            # Check if we read the expected number
+            num_galaxies_read = len(gg)
+            if num_galaxies_read != ntotgals:
+                print(f"Warning: Expected to read {ntotgals} galaxies but got {num_galaxies_read}")
+                ntotgals = num_galaxies_read
+            
+            # Copy data to main array
+            if ntotgals > 0:
+                if offset + ntotgals <= len(galaxies):
+                    galaxies[offset:offset + ntotgals] = gg[0:ntotgals]
+                    offset += ntotgals
+                    if args.verbose:
+                        print(f"  Successfully copied {ntotgals} galaxies to main array")
+                else:
+                    print(f"Error: Too many galaxies to fit in allocated array ({offset}+{ntotgals} > {len(galaxies)})")
+                    remaining = len(galaxies) - offset
+                    if remaining > 0:
+                        print(f"  Copying only {remaining} galaxies instead")
+                        galaxies[offset:] = gg[0:remaining]
+    except Exception as e:
+        print(f"Error reading galaxy data from file {fname}: {e}")
+        if args.verbose:
+            print(f"Exception details: {traceback.format_exc()}")
+        sys.exit(1)
 
     # Convert to recarray for attribute access
     galaxies = galaxies.view(np.recarray)
 
-    # Calculate the volume based on the box size and the number of good files read
-    # Volume is the box size cubed, scaled by the fraction of files actually read
-    # This assumes files are distributed uniformly across the simulation volume
+    # Calculate the volume based on the box size cubed
     volume = box_size**3.0
-    
-    # If we have information about first/last file and good files, adjust volume
-    if "FirstFile" in params and "LastFile" in params:
-        total_files = params["NumSimulationTreeFiles"]
-        if total_files > 0 and good_files > 0:
-            volume = volume * good_files / total_files
+
+    # Volume fraction calculation - updated for new SAGE output format
+    # In this version of SAGE, all galaxies from FirstFile to LastFile are combined into a single output file
+    # So we need to calculate the volume fraction based on parameter values, not actual files read
+    if "NumSimulationTreeFiles" in params:
+        num_files_processed = last_file - first_file + 1
+        total_files = int(params["NumSimulationTreeFiles"])
+        
+        if total_files > 0 and num_files_processed > 0:
+            volume_fraction = num_files_processed / total_files
+            volume = volume * volume_fraction
+            
+            print(f"Adjusted volume for file range {first_file}-{last_file} out of {total_files} total files")
             if args.verbose:
-                print(f"  Volume fraction: {good_files}/{total_files} = {good_files/total_files:.4f}")
+                print(f"  Volume fraction: {num_files_processed}/{total_files} = {volume_fraction:.4f}")
                 print(f"  Adjusted volume: {volume:.2f} (Mpc/h)³")
+    else:
+        # Missing parameters - show a warning
+        print("Warning: Unable to adjust volume - missing NumSimulationTreeFiles parameter")
+        if args.verbose:
+            print("  Using unadjusted volume - results may be incorrect")
 
     # Create metadata dictionary
     metadata = {
