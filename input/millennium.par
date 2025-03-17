@@ -19,7 +19,7 @@ NumOutputs              -1            % sets the desired number of galaxy output
 % List your output snapshots after the arrow, highest to lowest (ignored when NumOutputs=-1).
 -> 63 37 32 27 23 20 18 16
 
-OutputFormat            sage_hdf5     % sets the desired output format. Either sage_binary or sage_hdf5.
+OutputFormat            sage_binary     % sets the desired output format. Either sage_binary or sage_hdf5.
 
 
 %------------------------------------------
@@ -28,11 +28,11 @@ OutputFormat            sage_hdf5     % sets the desired output format. Either s
 
 TreeName                trees_063     % assumes the trees are named TreeName.n where n is the file number
 TreeType                lhalo_binary  % either genesis_lhalo_hdf5 or lhalo_binary
-NumSimulationTreeFiles  8             % Number of files the trees are split over
 
 SimulationDir           /Volumes/Internal/data/millennium/
 FileWithSnapList        /Volumes/Internal/data/millennium/millennium.a_list
 LastSnapShotNr          63
+NumSimulationTreeFiles  8             % Number of files the trees are split over
 BoxSize                 62.5          % in Mpc/h - not used but needed for plotting
 
 Omega           0.25
@@ -40,7 +40,6 @@ OmegaLambda     0.75
 BaryonFrac      0.17
 Hubble_h        0.73
 PartMass        0.0860657
-BoxSize         62.5 % Size of the simulation box in Mpc/h.
 
 
 %------------------------------------------
