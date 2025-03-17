@@ -398,7 +398,7 @@ def read_galaxies_binary(model_path, first_file, last_file, params=None, verbose
         print(f"Warning: model_path appears to end with a file number: {model_path}")
         print("This may cause issues with file identification.")
     
-    # Always look for the file with suffix "_0"
+    # Add the file number suffix - always use file 0 for binary format
     fname = f"{model_path}_0"
     
     # Check if the file exists

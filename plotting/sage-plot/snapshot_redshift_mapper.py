@@ -271,11 +271,12 @@ class SnapshotRedshiftMapper:
             
             # Check if we have an output directory
             if self.output_dir:
+                # Return just the base path without file number
                 return os.path.join(
-                    self.output_dir, f"{self.file_name_galaxies}{redshift_str}_{file_num}"
+                    self.output_dir, f"{self.file_name_galaxies}{redshift_str}"
                 )
             else:
-                return f"{self.file_name_galaxies}{redshift_str}_{file_num}"
+                return f"{self.file_name_galaxies}{redshift_str}"
 
     def select_snapshots_for_evolution(self, num_snapshots=8, redshift_max=8.0):
         """
