@@ -8,6 +8,9 @@ OutputDir               /Volumes/Internal/results/sage-model/millennium/
 FirstFile         0
 LastFile          7
 
+TotalFiles        8     ; not used but needed for plotting
+BoxSize           62.5  ; in Mpc/h - not used but needed for plotting
+
 %------------------------------------------
 %----- Snapshot output list ---------------
 %------------------------------------------

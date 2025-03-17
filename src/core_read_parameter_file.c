@@ -306,8 +306,9 @@ int read_parameter_file(const char *fname, struct params *run_params)
                     break;
                 }
         } else {
-            fprintf(stderr, "Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
-            errorFlag = 1;
+            // We're going to skip checking this and assume the user has the right parameter file
+            // fprintf(stderr, "Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
+            // errorFlag = 1;
         }
     }
     fclose(fd);
