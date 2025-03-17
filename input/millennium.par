@@ -19,7 +19,7 @@ NumOutputs              -1            % sets the desired number of galaxy output
 % List your output snapshots after the arrow, highest to lowest (ignored when NumOutputs=-1).
 -> 63 37 32 27 23 20 18 16
 
-OutputFormat            sage_binary     % sets the desired output format. Either sage_binary or sage_hdf5.
+OutputFormat            sage_hdf5     % sets the desired output format. Either sage_binary or sage_hdf5.
 
 
 %------------------------------------------
