@@ -255,6 +255,7 @@ class SnapshotRedshiftMapper:
             Full path to the model file
         """
         # For HDF5 files, return base name without redshift suffix
+        # Note: For HDF5, file_num is ignored as all galaxies are in model_0.hdf5
         if output_format == "sage_hdf5":
             # Check if we have an output directory
             if self.output_dir:
@@ -262,7 +263,7 @@ class SnapshotRedshiftMapper:
             else:
                 file_path = f"{self.file_name_galaxies}"
                 
-            # Return simple string path
+            # Return simple string path (without file number - that's added in read_galaxies_hdf5)
             return file_path
         else:
             # For binary files, use the original implementation with redshift string

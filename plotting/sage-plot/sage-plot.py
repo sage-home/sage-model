@@ -1161,9 +1161,10 @@ def read_galaxies_hdf5(model_path, first_file, last_file, params=None, snapshot_
     if verbose:
         print(f"Using snapshot number: {snapshot}")
     
-    # Construct the HDF5 file path - similar to binary but with .hdf5 extension
-    # HDF5 files use the pattern: model_0.hdf5
-    fname = f"{model_path}_{first_file}.hdf5"
+    # Construct the HDF5 file path
+    # HDF5 files always use the pattern: model_0.hdf5 (always file 0)
+    # All galaxies from FirstFile to LastFile are stored in this single file
+    fname = f"{model_path}_0.hdf5"
     
     # Check if the file exists
     if os.path.isfile(fname):
@@ -1171,7 +1172,8 @@ def read_galaxies_hdf5(model_path, first_file, last_file, params=None, snapshot_
             print(f"Found HDF5 file: {fname}")
     else:
         print(f"Error: HDF5 file not found: {fname}")
-        print(f"Expected file with pattern: {model_path}_{first_file}.hdf5")
+        print(f"SAGE HDF5 output is always written to a single file with suffix '_0.hdf5'")
+        print(f"This single file contains data for the range specified by FirstFile and LastFile")
         sys.exit(1)
     
     # Get the galaxy data dtype
