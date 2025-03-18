@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-    #include "core_allvars.h"
+    #include "../core/core_allvars.h"
 
     /* functions in model_cooling_heating.c */
     extern double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params);

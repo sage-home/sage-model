@@ -6,7 +6,7 @@
 extern "C" {
 #endif /* working with c++ compiler */
 
-#include "../core_allvars.h"
+#include "../core/core_allvars.h"
 
     struct GALAXY_OUTPUT
     {

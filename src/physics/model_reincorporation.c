@@ -4,10 +4,10 @@
 #include <math.h>
 #include <time.h>
 
-#include "core_allvars.h"
+#include "../core/core_allvars.h"
 
-#include "model_reincorporation.h"
-#include "model_misc.h"
+#include "../physics/model_reincorporation.h"
+#include "../physics/model_misc.h"
 
 void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {

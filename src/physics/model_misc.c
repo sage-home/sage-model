@@ -4,9 +4,9 @@
 #include <math.h>
 #include <time.h>
 
-#include "core_allvars.h"
+#include "../core/core_allvars.h"
 
-#include "model_misc.h"
+#include "../physics/model_misc.h"
 
 void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct halo_data *halos,
                  struct GALAXY *galaxies, const struct params *run_params)

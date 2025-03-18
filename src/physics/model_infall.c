@@ -4,10 +4,10 @@
 #include <math.h>
 #include <time.h>
 
-#include "core_allvars.h"
+#include "../core/core_allvars.h"
 
-#include "model_infall.h"
-#include "model_misc.h"
+#include "../physics/model_infall.h"
+#include "../physics/model_misc.h"
 
 
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)

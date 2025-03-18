@@ -6,7 +6,7 @@
 extern "C" {
 #endif /* working with c++ compiler */
 
-#include "../core_allvars.h"
+#include "../core/core_allvars.h"
 
     /* Proto-Types */
     extern int setup_forests_io_lht_binary(struct forest_info *forests_info,

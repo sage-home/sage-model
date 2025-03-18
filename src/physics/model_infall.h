@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-    #include "core_allvars.h"
+    #include "../core/core_allvars.h"
 
     /* functions in model_infall.c */
     extern double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);

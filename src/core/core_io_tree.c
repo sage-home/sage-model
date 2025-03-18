@@ -12,14 +12,14 @@
 #include "core_mymalloc.h"
 #include "core_io_tree.h"
 
-#include "io/read_tree_lhalo_binary.h"
-#include "io/read_tree_consistentrees_ascii.h"
+#include "../io/read_tree_lhalo_binary.h"
+#include "../io/read_tree_consistentrees_ascii.h"
 
 #ifdef HDF5
-#include "io/read_tree_lhalo_hdf5.h"
-#include "io/read_tree_genesis_hdf5.h"
-#include "io/read_tree_consistentrees_hdf5.h"
-#include "io/read_tree_gadget4_hdf5.h"
+#include "../io/read_tree_lhalo_hdf5.h"
+#include "../io/read_tree_genesis_hdf5.h"
+#include "../io/read_tree_consistentrees_hdf5.h"
+#include "../io/read_tree_gadget4_hdf5.h"
 #endif
 
 int setup_forests_io(struct params *run_params, struct forest_info *forests_info,

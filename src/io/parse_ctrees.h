@@ -17,8 +17,8 @@
 #include <unistd.h>
 #include <stddef.h> /* for offsetof macro*/
 
-#include "../sglib.h"
-#include "../core_mymalloc.h"
+#include "../core/sglib.h"
+#include "../core/core_mymalloc.h"
 
 /* this is the maximum number of CTREES columns that can be requested
    (note: it is okay for the ctrees `tree_?_?_?.dat` files themselves to contain more columns) */

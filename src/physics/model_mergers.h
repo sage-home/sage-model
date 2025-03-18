@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-    #include "core_allvars.h"
+    #include "../core/core_allvars.h"
 
     /* functions in model_mergers.c*/
     extern void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies);

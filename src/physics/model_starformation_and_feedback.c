@@ -4,11 +4,11 @@
 #include <math.h>
 #include <time.h>
 
-#include "core_allvars.h"
+#include "../core/core_allvars.h"
 
-#include "model_starformation_and_feedback.h"
-#include "model_misc.h"
-#include "model_disk_instability.h"
+#include "../physics/model_starformation_and_feedback.h"
+#include "../physics/model_misc.h"
+#include "../physics/model_disk_instability.h"
 
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
                                 struct GALAXY *galaxies, const struct params *run_params)

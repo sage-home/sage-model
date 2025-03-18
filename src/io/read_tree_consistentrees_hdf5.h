@@ -7,7 +7,7 @@ extern "C" {
 #endif /* working with c++ compiler */
 
 /* for definition of struct halo_data */
-#include "../core_allvars.h"
+#include "../core/core_allvars.h"
 
 /* Proto-Types */
     extern int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int ThisTask, const int NTasks, struct params *run_params);

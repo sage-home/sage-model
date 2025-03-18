@@ -23,20 +23,20 @@ OPTS := -DROOT_DIR='"${ROOT_DIR}"'
 SRC_PREFIX := src
 
 LIBNAME := sage
-LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
-           core_cool_func.c core_build_model.c core_save.c core_mymalloc.c core_utils.c progressbar.c \
-           core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
-           model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
+LIBSRC :=  core/sage.c core/core_read_parameter_file.c core/core_init.c core/core_io_tree.c \
+           core/core_cool_func.c core/core_build_model.c core/core_save.c core/core_mymalloc.c core/core_utils.c core/progressbar.c \
+           core/core_tree_utils.c physics/model_infall.c physics/model_cooling_heating.c physics/model_starformation_and_feedback.c \
+           physics/model_disk_instability.c physics/model_reincorporation.c physics/model_mergers.c physics/model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-	       io/save_gals_binary.c io/forest_utils.c io/buffered_io.c
+               io/save_gals_binary.c io/forest_utils.c io/buffered_io.c
 
 LIBINCL := $(LIBSRC:.c=.h)
 LIBINCL += io/parse_ctrees.h
 
-SRC := main.c $(LIBSRC)
+SRC := core/main.c $(LIBSRC)
 SRC  := $(addprefix $(SRC_PREFIX)/, $(SRC))
 OBJS := $(SRC:.c=.o)
-INCL := core_allvars.h macros.h core_simulation.h $(LIBINCL)
+INCL := core/core_allvars.h core/macros.h core/core_simulation.h $(LIBINCL)
 INCL := $(addprefix $(SRC_PREFIX)/, $(INCL))
 
 LIBSRC  := $(addprefix $(SRC_PREFIX)/, $(LIBSRC))

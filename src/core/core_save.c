@@ -10,13 +10,13 @@
 #include "core_allvars.h"
 #include "core_save.h"
 #include "core_utils.h"
-#include "model_misc.h"
+#include "../physics/model_misc.h"
 #include "core_mymalloc.h"
 
-#include "io/save_gals_binary.h"
+#include "../io/save_gals_binary.h"
 
 #ifdef HDF5
-#include "io/save_gals_hdf5.h"
+#include "../io/save_gals_hdf5.h"
 #endif
 
 // Local Proto-Types //

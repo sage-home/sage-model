@@ -7,10 +7,10 @@
 #include <unistd.h>
 
 #include "read_tree_consistentrees_ascii.h"
-#include "../core_allvars.h"
-#include "../core_mymalloc.h"
-#include "../core_utils.h"
-#include "../sglib.h"
+#include "../core/core_allvars.h"
+#include "../core/core_mymalloc.h"
+#include "../core/core_utils.h"
+#include "../core/sglib.h"
 
 #include "ctrees_utils.h"
 #include "parse_ctrees.h"

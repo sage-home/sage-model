@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-    #include "core_allvars.h"
+    #include "../core/core_allvars.h"
 
     /* functions in model_misc.c */
     extern void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct halo_data *halos, struct GALAXY *galaxies, const struct params *run_params);

@@ -13,12 +13,12 @@
 #include "core_save.h"
 #include "core_utils.h"
 
-#include "model_misc.h"
-#include "model_mergers.h"
-#include "model_infall.h"
-#include "model_reincorporation.h"
-#include "model_starformation_and_feedback.h"
-#include "model_cooling_heating.h"
+#include "../physics/model_misc.h"
+#include "../physics/model_mergers.h"
+#include "../physics/model_infall.h"
+#include "../physics/model_reincorporation.h"
+#include "../physics/model_starformation_and_feedback.h"
+#include "../physics/model_cooling_heating.h"
 
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
@@ -299,6 +299,14 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
 }
 /* end of join_galaxies_of_progenitors */
 
+/*
+ * This function evolves galaxies and applies all physics modules.
+ * 
+ * REFACTORING NOTE: This function will be transformed into the physics module pipeline
+ * controller in Phase 2 of the refactoring. The fixed sequence of physics processes
+ * will be replaced with a configurable pipeline where modules can be dynamically loaded,
+ * replaced, or reordered at runtime.
+ */
 int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
                     struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
                     struct params *run_params)
@@ -323,6 +331,9 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
     const int halo_snapnum = halos[halonr].SnapNum;
     const double Zcurr = run_params->ZZ[halo_snapnum];
     const double halo_age = run_params->Age[halo_snapnum];
+    
+    // PHYSICS MODULE: Infall - calculates gas falling into the halo
+    // REFACTORING NOTE: Will become a pluggable module in Phase 2
     const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
     // We integrate things forward by using a number of intervals equal to STEPS
@@ -342,30 +353,37 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 galaxies[p].dT = deltaT;
             }
 
-            // For the central galaxy only
+            // PHYSICS MODULE: Infall - adds gas to the central galaxy
+            // REFACTORING NOTE: Will become part of the infall module in Phase 2
             if(p == centralgal) {
                 add_infall_to_hot(centralgal, infallingGas / STEPS, galaxies);
 
+                // PHYSICS MODULE: Reincorporation - adds ejected gas back to the hot component
+                // REFACTORING NOTE: Will become a pluggable module in Phase 2
                 if(run_params->ReIncorporationFactor > 0.0) {
                     reincorporate_gas(centralgal, deltaT / STEPS, galaxies, run_params);
                 }
             } else {
+                // PHYSICS MODULE: Stripping - removes gas from satellite galaxies
+                // REFACTORING NOTE: Will become part of the environmental effects module in Phase 2
                 if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
                     strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
                 }
             }
 
-            // Determine the cooling gas given the halo properties
+            // PHYSICS MODULE: Cooling - converts hot gas to cold gas
+            // REFACTORING NOTE: Will become a pluggable module in Phase 2
             double coolingGas = cooling_recipe(p, deltaT / STEPS, galaxies, run_params);
             cool_gas_onto_galaxy(p, coolingGas, galaxies);
 
-            // stars form and then explode!
+            // PHYSICS MODULE: Star Formation and Feedback - forms stars and heats/ejects gas
+            // REFACTORING NOTE: Will become a pluggable module in Phase 2
             starformation_and_feedback(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
         }
 
-        // check for satellite disruption and merger events
+        // PHYSICS MODULE: Mergers and Disruption - handles satellite galaxy fate
+        // REFACTORING NOTE: Will become a pluggable module in Phase 2
         for(int p = 0; p < ngal; p++) {
-
             // satellite galaxy!
             if((galaxies[p].Type == 1 || galaxies[p].Type == 2) && galaxies[p].mergeType == 0) {
                 XRETURN(galaxies[p].MergTime < 999.0,
@@ -391,11 +409,13 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     galaxies[p].mergeIntoID = *numgals + merger_centralgal;  // position in output
 
                     if(isfinite(galaxies[p].MergTime)) {
-                        // disruption has occured!
+                        // PHYSICS MODULE: Disruption - satellite is disrupted and stars added to ICS
+                        // REFACTORING NOTE: Will become part of the merger module in Phase 2
                         if(galaxies[p].MergTime > 0.0) {
                             disrupt_satellite_to_ICS(merger_centralgal, p, galaxies);
                         } else {
-                            // a merger has occured!
+                            // PHYSICS MODULE: Mergers - satellite merges with central galaxy
+                            // REFACTORING NOTE: Will become part of the merger module in Phase 2
                             double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
                             deal_with_galaxy_merger(p, merger_centralgal, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
                         }

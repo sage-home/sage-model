@@ -7,7 +7,7 @@ extern "C" {
 #include <hdf5.h>
 
 /* for definition of struct halo_data and struct forest_info */
-#include "../core_allvars.h"
+#include "../core/core_allvars.h"
 
     /* Proto-Types */
     extern int setup_forests_io_lht_hdf5(struct forest_info *forests_info,

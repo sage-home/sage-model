@@ -6,8 +6,8 @@
 #include "hdf5_read_utils.h"
 #include "forest_utils.h"
 
-#include "../core_mymalloc.h"
-#include "../core_utils.h"
+#include "../core/core_mymalloc.h"
+#include "../core/core_utils.h"
 
 
 #include <hdf5.h>
