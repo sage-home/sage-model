@@ -4,11 +4,34 @@
 extern "C" {
 #endif
 
-    /* functions in core_init.c */
+    #include "core_allvars.h"
+
+    /* Main initialization and cleanup functions */
     extern void init(struct params *run_params);
+    extern void cleanup(struct params *run_params);
+
+    /* Units and constants initialization */
+    extern void initialize_units(struct params *run_params);
+    extern void cleanup_units(struct params *run_params);
+    
+    /* Simulation times initialization */
+    extern void initialize_simulation_times(struct params *run_params);
+    extern void cleanup_simulation_times(struct params *run_params);
+    
+    /* Cooling system initialization */
+    extern void initialize_cooling(void);
+    extern void cleanup_cooling(void);
+    
+    /* Evolution context initialization */
+    extern void initialize_evolution_context(struct evolution_context *ctx, 
+                                           const int halonr,
+                                           struct GALAXY *galaxies, 
+                                           const int ngal,
+                                           struct halo_data *halos,
+                                           struct params *run_params);
+    extern void cleanup_evolution_context(struct evolution_context *ctx);
 
 #ifdef __cplusplus
 }
 #endif
-
 

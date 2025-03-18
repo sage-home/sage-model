@@ -9,6 +9,7 @@
 
 #include "core_allvars.h"
 #include "core_build_model.h"
+#include "core_init.h"
 #include "core_mymalloc.h"
 #include "core_save.h"
 #include "core_utils.h"
@@ -316,11 +317,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
 
     // Initialize galaxy evolution context
     struct evolution_context ctx;
-    ctx.halo_nr = halonr;
-    ctx.galaxies = galaxies;
-    ctx.ngal = ngal;
-    ctx.centralgal = galaxies[0].CentralGal;
-    ctx.params = run_params;
+    initialize_evolution_context(&ctx, halonr, galaxies, ngal, halos, run_params);
 
     // Validate central galaxy
     XRETURN(galaxies[ctx.centralgal].Type == 0 && galaxies[ctx.centralgal].HaloNr == halonr,
@@ -330,11 +327,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             "Expected to find galaxies[halonr] = %d and found halonr = %d\n",
             ctx.centralgal, halonr, galaxies[ctx.centralgal].Type,
             halonr, galaxies[ctx.centralgal].HaloNr);
-
-    // Set halo properties in context
-    ctx.halo_snapnum = halos[halonr].SnapNum;
-    ctx.redshift = run_params->ZZ[ctx.halo_snapnum];
-    ctx.halo_age = run_params->Age[ctx.halo_snapnum];
     
     // PHYSICS MODULE: Infall - calculates gas falling into the halo
     // REFACTORING NOTE: Will become a pluggable module in Phase 2
