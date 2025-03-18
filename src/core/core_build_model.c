@@ -112,8 +112,8 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
 /* end of construct_galaxies*/
 
 
-int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, int *maxgals, struct halo_data *halos,
-                                 struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params)
+static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, int *maxgals, struct halo_data *halos,
+                                       struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params)
 {
     int ngal, prog,  first_occupied, lenmax, lenoccmax;
     struct GALAXY *galaxies = *ptr_to_galaxies;
@@ -307,153 +307,157 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
  * will be replaced with a configurable pipeline where modules can be dynamically loaded,
  * replaced, or reordered at runtime.
  */
-int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
-                    struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
-                    struct params *run_params)
+static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
+                          struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
+                          struct params *run_params)
 {
     struct GALAXY *galaxies = *ptr_to_galaxies;
     struct GALAXY *halogal = *ptr_to_halogal;
 
-    const int centralgal = galaxies[0].CentralGal;
-    XRETURN(galaxies[centralgal].Type == 0 && galaxies[centralgal].HaloNr == halonr,
+    // Initialize galaxy evolution context
+    struct evolution_context ctx;
+    ctx.halo_nr = halonr;
+    ctx.galaxies = galaxies;
+    ctx.ngal = ngal;
+    ctx.centralgal = galaxies[0].CentralGal;
+    ctx.params = run_params;
+
+    // Validate central galaxy
+    XRETURN(galaxies[ctx.centralgal].Type == 0 && galaxies[ctx.centralgal].HaloNr == halonr,
             EXIT_FAILURE,
             "Error: For centralgal, halonr = %d, %d.\n"
             "Expected to find galaxy.type = 0, and found type = %d.\n"
             "Expected to find galaxies[halonr] = %d and found halonr = %d\n",
-            centralgal, halonr, galaxies[centralgal].Type,
-            halonr,  galaxies[centralgal].HaloNr);
+            ctx.centralgal, halonr, galaxies[ctx.centralgal].Type,
+            halonr, galaxies[ctx.centralgal].HaloNr);
 
-    /*
-      MS: Note save halo_snapnum and galaxy_snapnum to local variables
-          and replace all instances of snapnum to those local variables
-     */
-
-    const int halo_snapnum = halos[halonr].SnapNum;
-    const double Zcurr = run_params->ZZ[halo_snapnum];
-    const double halo_age = run_params->Age[halo_snapnum];
+    // Set halo properties in context
+    ctx.halo_snapnum = halos[halonr].SnapNum;
+    ctx.redshift = run_params->ZZ[ctx.halo_snapnum];
+    ctx.halo_age = run_params->Age[ctx.halo_snapnum];
     
     // PHYSICS MODULE: Infall - calculates gas falling into the halo
     // REFACTORING NOTE: Will become a pluggable module in Phase 2
-    const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
+    const double infallingGas = infall_recipe(ctx.centralgal, ctx.ngal, ctx.redshift, ctx.galaxies, run_params);
 
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
 
         // Loop over all galaxies in the halo
-        for(int p = 0; p < ngal; p++) {
+        for(int p = 0; p < ctx.ngal; p++) {
             // Don't treat galaxies that have already merged
-            if(galaxies[p].mergeType > 0) {
+            if(ctx.galaxies[p].mergeType > 0) {
                 continue;
             }
 
-            const double deltaT = run_params->Age[galaxies[p].SnapNum] - halo_age;
-            const double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
+            // Calculate time step and current time
+            const double deltaT = run_params->Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
+            const double time = run_params->Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
+            ctx.deltaT = deltaT;  // Store in context for potential future module use
 
-            if(galaxies[p].dT < 0.0) {
-                galaxies[p].dT = deltaT;
+            if(ctx.galaxies[p].dT < 0.0) {
+                ctx.galaxies[p].dT = deltaT;
             }
 
             // PHYSICS MODULE: Infall - adds gas to the central galaxy
             // REFACTORING NOTE: Will become part of the infall module in Phase 2
-            if(p == centralgal) {
-                add_infall_to_hot(centralgal, infallingGas / STEPS, galaxies);
+            if(p == ctx.centralgal) {
+                add_infall_to_hot(ctx.centralgal, infallingGas / STEPS, ctx.galaxies);
 
                 // PHYSICS MODULE: Reincorporation - adds ejected gas back to the hot component
                 // REFACTORING NOTE: Will become a pluggable module in Phase 2
                 if(run_params->ReIncorporationFactor > 0.0) {
-                    reincorporate_gas(centralgal, deltaT / STEPS, galaxies, run_params);
+                    reincorporate_gas(ctx.centralgal, deltaT / STEPS, ctx.galaxies, run_params);
                 }
             } else {
                 // PHYSICS MODULE: Stripping - removes gas from satellite galaxies
                 // REFACTORING NOTE: Will become part of the environmental effects module in Phase 2
-                if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
-                    strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
+                if(ctx.galaxies[p].Type == 1 && ctx.galaxies[p].HotGas > 0.0) {
+                    strip_from_satellite(ctx.centralgal, p, ctx.redshift, ctx.galaxies, run_params);
                 }
             }
 
             // PHYSICS MODULE: Cooling - converts hot gas to cold gas
             // REFACTORING NOTE: Will become a pluggable module in Phase 2
-            double coolingGas = cooling_recipe(p, deltaT / STEPS, galaxies, run_params);
-            cool_gas_onto_galaxy(p, coolingGas, galaxies);
+            double coolingGas = cooling_recipe(p, deltaT / STEPS, ctx.galaxies, run_params);
+            cool_gas_onto_galaxy(p, coolingGas, ctx.galaxies);
 
             // PHYSICS MODULE: Star Formation and Feedback - forms stars and heats/ejects gas
             // REFACTORING NOTE: Will become a pluggable module in Phase 2
-            starformation_and_feedback(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
+            starformation_and_feedback(p, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, ctx.galaxies, run_params);
         }
 
         // PHYSICS MODULE: Mergers and Disruption - handles satellite galaxy fate
         // REFACTORING NOTE: Will become a pluggable module in Phase 2
-        for(int p = 0; p < ngal; p++) {
+        for(int p = 0; p < ctx.ngal; p++) {
             // satellite galaxy!
-            if((galaxies[p].Type == 1 || galaxies[p].Type == 2) && galaxies[p].mergeType == 0) {
-                XRETURN(galaxies[p].MergTime < 999.0,
+            if((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && ctx.galaxies[p].mergeType == 0) {
+                XRETURN(ctx.galaxies[p].MergTime < 999.0,
                         EXIT_FAILURE,
                         "Error: galaxies[%d].MergTime = %lf is too large! Should have been within the age of the Universe\n",
-                        p, galaxies[p].MergTime);
+                        p, ctx.galaxies[p].MergTime);
 
-                const double deltaT = run_params->Age[galaxies[p].SnapNum] - halo_age;
-                galaxies[p].MergTime -= deltaT / STEPS;
+                const double deltaT = run_params->Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
+                ctx.galaxies[p].MergTime -= deltaT / STEPS;
 
                 // only consider mergers or disruption for halo-to-baryonic mass ratios below the threshold
                 // or for satellites with no baryonic mass (they don't grow and will otherwise hang around forever)
-                double currentMvir = galaxies[p].Mvir - galaxies[p].deltaMvir * (1.0 - ((double)step + 1.0) / (double)STEPS);
-                double galaxyBaryons = galaxies[p].StellarMass + galaxies[p].ColdGas;
+                double currentMvir = ctx.galaxies[p].Mvir - ctx.galaxies[p].deltaMvir * (1.0 - ((double)step + 1.0) / (double)STEPS);
+                double galaxyBaryons = ctx.galaxies[p].StellarMass + ctx.galaxies[p].ColdGas;
                 if((galaxyBaryons == 0.0) || (galaxyBaryons > 0.0 && (currentMvir / galaxyBaryons <= run_params->ThresholdSatDisruption))) {
 
-                    int merger_centralgal = galaxies[p].Type==1 ? centralgal:galaxies[p].CentralGal;
+                    int merger_centralgal = ctx.galaxies[p].Type==1 ? ctx.centralgal : ctx.galaxies[p].CentralGal;
 
-                    if(galaxies[merger_centralgal].mergeType > 0) {
-                        merger_centralgal = galaxies[merger_centralgal].CentralGal;
+                    if(ctx.galaxies[merger_centralgal].mergeType > 0) {
+                        merger_centralgal = ctx.galaxies[merger_centralgal].CentralGal;
                     }
 
-                    galaxies[p].mergeIntoID = *numgals + merger_centralgal;  // position in output
+                    ctx.galaxies[p].mergeIntoID = *numgals + merger_centralgal;  // position in output
 
-                    if(isfinite(galaxies[p].MergTime)) {
+                    if(isfinite(ctx.galaxies[p].MergTime)) {
                         // PHYSICS MODULE: Disruption - satellite is disrupted and stars added to ICS
                         // REFACTORING NOTE: Will become part of the merger module in Phase 2
-                        if(galaxies[p].MergTime > 0.0) {
-                            disrupt_satellite_to_ICS(merger_centralgal, p, galaxies);
+                        if(ctx.galaxies[p].MergTime > 0.0) {
+                            disrupt_satellite_to_ICS(merger_centralgal, p, ctx.galaxies);
                         } else {
                             // PHYSICS MODULE: Mergers - satellite merges with central galaxy
                             // REFACTORING NOTE: Will become part of the merger module in Phase 2
-                            double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
-                            deal_with_galaxy_merger(p, merger_centralgal, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
+                            double time = run_params->Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
+                            deal_with_galaxy_merger(p, merger_centralgal, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, ctx.galaxies, run_params);
                         }
                     }
                 }
-
             }
         }
     } // Go on to the next STEPS substep
 
 
     // Extra miscellaneous stuff before finishing this halo
-    galaxies[centralgal].TotalSatelliteBaryons = 0.0;
-    const double deltaT = run_params->Age[galaxies[0].SnapNum] - halo_age;
+    ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons = 0.0;
+    const double deltaT = run_params->Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
     const double inv_deltaT = 1.0/deltaT;
 
-    for(int p = 0; p < ngal; p++) {
-
+    for(int p = 0; p < ctx.ngal; p++) {
         // Don't bother with galaxies that have already merged
-        if(galaxies[p].mergeType > 0) {
+        if(ctx.galaxies[p].mergeType > 0) {
             continue;
         }
 
-        galaxies[p].Cooling *= inv_deltaT;
-        galaxies[p].Heating *= inv_deltaT;
-        galaxies[p].OutflowRate *= inv_deltaT;
+        ctx.galaxies[p].Cooling *= inv_deltaT;
+        ctx.galaxies[p].Heating *= inv_deltaT;
+        ctx.galaxies[p].OutflowRate *= inv_deltaT;
 
-        if(p != centralgal) {
-            galaxies[centralgal].TotalSatelliteBaryons +=
-                (galaxies[p].StellarMass + galaxies[p].BlackHoleMass + galaxies[p].ColdGas + galaxies[p].HotGas);
+        if(p != ctx.centralgal) {
+            ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons +=
+                (ctx.galaxies[p].StellarMass + ctx.galaxies[p].BlackHoleMass + 
+                 ctx.galaxies[p].ColdGas + ctx.galaxies[p].HotGas);
         }
     }
 
-
     // Attach final galaxy list to halo
-    for(int p = 0, currenthalo = -1; p < ngal; p++) {
-        if(galaxies[p].HaloNr != currenthalo) {
-            currenthalo = galaxies[p].HaloNr;
+    for(int p = 0, currenthalo = -1; p < ctx.ngal; p++) {
+        if(ctx.galaxies[p].HaloNr != currenthalo) {
+            currenthalo = ctx.galaxies[p].HaloNr;
             haloaux[currenthalo].FirstGalaxy = *numgals;
             haloaux[currenthalo].NGalaxies = 0;
         }
@@ -463,41 +467,39 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         int offset = 0;
         int i = p-1;
         while(i >= 0) {
-            if(galaxies[i].mergeType > 0) {
-                if(galaxies[p].mergeIntoID > galaxies[i].mergeIntoID) {
+            if(ctx.galaxies[i].mergeType > 0) {
+                if(ctx.galaxies[p].mergeIntoID > ctx.galaxies[i].mergeIntoID) {
                     offset++;  // these galaxies won't be kept so offset mergeIntoID below
                 }
             }
-
             i--;
         }
 
         i = -1;
-        if(galaxies[p].mergeType > 0) {
+        if(ctx.galaxies[p].mergeType > 0) {
             i = haloaux[currenthalo].FirstGalaxy - 1;
             while(i >= 0) {
-                if(halogal[i].GalaxyNr == galaxies[p].GalaxyNr) {
+                if(halogal[i].GalaxyNr == ctx.galaxies[p].GalaxyNr) {
                     break;
                 }
-
                 i--;
             }
 
             XRETURN(i >= 0, EXIT_FAILURE, "Error: This should not happen - i=%d should be >=0", i);
 
-            halogal[i].mergeType = galaxies[p].mergeType;
-            halogal[i].mergeIntoID = galaxies[p].mergeIntoID - offset;
+            halogal[i].mergeType = ctx.galaxies[p].mergeType;
+            halogal[i].mergeIntoID = ctx.galaxies[p].mergeIntoID - offset;
             halogal[i].mergeIntoSnapNum = halos[currenthalo].SnapNum;
         }
 
-        if(galaxies[p].mergeType == 0) {
+        if(ctx.galaxies[p].mergeType == 0) {
             /* realloc if needed */
             if(*numgals == (*maxgals - 1)) {
                 *maxgals += 10000;
 
                 *ptr_to_galaxies = myrealloc(*ptr_to_galaxies, *maxgals * sizeof(struct GALAXY));
                 *ptr_to_halogal  = myrealloc(*ptr_to_halogal, *maxgals * sizeof(struct GALAXY));
-                galaxies = *ptr_to_galaxies;
+                ctx.galaxies = *ptr_to_galaxies; // Update context pointer after realloc
                 halogal = *ptr_to_halogal;
             }
 
@@ -506,8 +508,8 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     "This would result in invalid memory access...exiting\n",
                     *numgals, *maxgals);
 
-            galaxies[p].SnapNum = halos[currenthalo].SnapNum;
-            halogal[*numgals] = galaxies[p];
+            ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
+            halogal[*numgals] = ctx.galaxies[p];
             (*numgals)++;
             haloaux[currenthalo].NGalaxies++;
         }

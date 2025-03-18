@@ -87,6 +87,30 @@ enum sage_error_types {
     HDF5_ERROR,
 };
 
+/* 
+ * This structure contains context data for galaxy evolution
+ * It encapsulates the state needed during the evolution of galaxies
+ * to reduce global state and prepare for modularity.
+ */
+struct evolution_context {
+    /* Halo properties */
+    int halo_nr;                /* Current halo number */
+    int halo_snapnum;           /* Snapshot number of the halo */
+    double redshift;            /* Current redshift (Z) */
+    double halo_age;            /* Age of the halo */
+    
+    /* Galaxy references */
+    struct GALAXY *galaxies;    /* Pointer to galaxies array */
+    int ngal;                   /* Number of galaxies in the halo */
+    int centralgal;             /* Index of central galaxy */
+    
+    /* Time integration */
+    double deltaT;              /* Time step for evolution */
+    
+    /* Parameters */
+    const struct params *params; /* Reference to runtime parameters */
+};
+
 
 /* This structure contains the properties used within the code */
 struct GALAXY
