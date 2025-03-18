@@ -20,7 +20,7 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
     const double diskmass = galaxies[p].ColdGas + (galaxies[p].StellarMass - galaxies[p].BulgeMass);
     if(diskmass > 0.0) {
         // calculate critical disk mass
-        double Mcrit = galaxies[p].Vmax * galaxies[p].Vmax * (3.0 * galaxies[p].DiskScaleRadius) / run_params->G;
+        double Mcrit = galaxies[p].Vmax * galaxies[p].Vmax * (3.0 * galaxies[p].DiskScaleRadius) / run_params->cosmology.G;
         if(Mcrit > diskmass) {
             Mcrit = diskmass;
         }
@@ -58,13 +58,13 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
 #ifdef VERBOSE
             if(unstable_gas > 1.0001 * galaxies[p].ColdGas ) {
                 fprintf(stdout, "unstable_gas > galaxies[p].ColdGas\t%e\t%e\n", unstable_gas, galaxies[p].ColdGas);
-                run_params->interrupted = 1;
+                run_params->runtime.interrupted = 1;
                 // ABORT(EXIT_FAILURE);
             }
 #endif
 
             const double unstable_gas_fraction = unstable_gas / galaxies[p].ColdGas;
-            if(run_params->AGNrecipeOn > 0) {
+            if(run_params->physics.AGNrecipeOn > 0) {
                 grow_black_hole(p, unstable_gas_fraction, galaxies, run_params);
             }
 

@@ -26,15 +26,15 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
                      const int ThisTask, const int NTasks)
 {
     int status = EXIT_FAILURE;/* initialize to FAIL  */
-    forests_info->firstfile = run_params->FirstFile;
-    forests_info->lastfile = run_params->LastFile;
-    const enum Valid_TreeTypes TreeType = run_params->TreeType;
+    forests_info->firstfile = run_params->io.FirstFile;
+    forests_info->lastfile = run_params->io.LastFile;
+    const enum Valid_TreeTypes TreeType = run_params->io.TreeType;
 
     /* MS: 21/9/2019 initialise the mulfac's so we can check later
               that these vital factors (required to generate unique galaxy ID's)
               have been setup appropriately  */
-    run_params->FileNr_Mulfac = -1;
-    run_params->ForestNr_Mulfac = -1;
+    run_params->runtime.FileNr_Mulfac = -1;
+    run_params->runtime.ForestNr_Mulfac = -1;
     forests_info->frac_volume_processed = -1.0;
 
     switch (TreeType)
@@ -79,11 +79,11 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
 
     /*MS: Check that the mechanism to generate unique GalaxyID's was
       initialised correctly in the setup */
-    if(run_params->FileNr_Mulfac < 0 || run_params->ForestNr_Mulfac < 0) {
+    if(run_params->runtime.FileNr_Mulfac < 0 || run_params->runtime.ForestNr_Mulfac < 0) {
         fprintf(stderr,"Error: Looks like the multiplicative factors to generate unique "
                        "galaxyID's were not setup correctly.\n"
                        "FileNr_Mulfac = %"PRId64" and ForestNr_Mulfac = %"PRId64" should both be >=0\n",
-                       run_params->FileNr_Mulfac, run_params->ForestNr_Mulfac);
+                       run_params->runtime.FileNr_Mulfac, run_params->runtime.ForestNr_Mulfac);
         return -1;
     }
 
@@ -152,7 +152,7 @@ int64_t load_forest(struct params *run_params, const int64_t forestnr, struct ha
 {
 
     int64_t nhalos;
-    const enum Valid_TreeTypes TreeType = run_params->TreeType;
+    const enum Valid_TreeTypes TreeType = run_params->io.TreeType;
 
     switch (TreeType) {
 

@@ -5,13 +5,22 @@
 #include <time.h>
 
 #include "../core/core_allvars.h"
+#include "../core/core_parameter_views.h"
 
 #include "../physics/model_starformation_and_feedback.h"
 #include "../physics/model_misc.h"
 #include "../physics/model_disk_instability.h"
 
-void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
-                                struct GALAXY *galaxies, const struct params *run_params)
+/*
+ * Main star formation and feedback function
+ * 
+ * Implements star formation processes and supernova feedback.
+ * Uses parameter views for improved modularity.
+ */
+void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, 
+                               const int halonr, const int step, struct GALAXY *galaxies,
+                               const struct star_formation_params_view *sf_params,
+                               const struct feedback_params_view *fb_params)
 {
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
 
@@ -19,7 +28,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     strdot = 0.0;
 
     // star formation recipes
-    if(run_params->SFprescription == 0) {
+    if(sf_params->SFprescription == 0) {
         // we take the typical star forming region as 3.0*r_s using the Milky Way as a guide
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
@@ -27,7 +36,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         // from Kauffmann (1996) eq7 x piR^2, (Vvir in km/s, reff in Mpc/h) in units of 10^10Msun/h
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
-            strdot = run_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
+            strdot = sf_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
         } else {
             strdot = 0.0;
         }
@@ -41,7 +50,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         stars = 0.0;
     }
 
-    double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? run_params->FeedbackReheatingEpsilon * stars: 0.0;
+    double reheated_mass = (fb_params->SupernovaRecipeOn == 1) ? 
+                         fb_params->FeedbackReheatingEpsilon * stars : 0.0;
 
 	XASSERT(reheated_mass >= 0.0, -1,
             "Error: Expected reheated gas-mass = %g to be >=0.0\n", reheated_mass);
@@ -54,11 +64,13 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     }
 
     // determine ejection
-    if(run_params->SupernovaRecipeOn == 1) {
+    if(fb_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             ejected_mass =
-                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                 run_params->FeedbackReheatingEpsilon) * stars;
+                (fb_params->FeedbackEjectionEfficiency * 
+                (fb_params->EtaSNcode * fb_params->EnergySNcode) / 
+                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                fb_params->FeedbackReheatingEpsilon) * stars;
         } else {
             ejected_mass = 0.0;
         }
@@ -77,36 +89,65 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     // update for star formation
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
-    update_from_star_formation(p, stars, metallicity, galaxies, run_params);
+    update_from_star_formation(p, stars, metallicity, galaxies, sf_params);
 
     // recompute the metallicity of the cold phase
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
 
     // update from SN feedback
-    update_from_feedback(p, centralgal, reheated_mass, ejected_mass, metallicity, galaxies, run_params);
+    update_from_feedback(p, centralgal, reheated_mass, ejected_mass, metallicity, galaxies, fb_params);
 
     // check for disk instability
-    if(run_params->DiskInstabilityOn) {
-        check_disk_instability(p, centralgal, halonr, time, dt, step, galaxies, (struct params *) run_params);
+    const struct params *params = sf_params->full_params; // Get full params for disk instability check
+    if(params->physics.DiskInstabilityOn) {
+        check_disk_instability(p, centralgal, halonr, time, dt, step, galaxies, (struct params *)params);
     }
 
     // formation of new metals - instantaneous recycling approximation - only SNII
     if(galaxies[p].ColdGas > 1.0e-8) {
-        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
-        galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * FracZleaveDiskVal * stars;
+        const double FracZleaveDiskVal = sf_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+        galaxies[p].MetalsColdGas += sf_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+        galaxies[centralgal].MetalsHotGas += sf_params->Yield * FracZleaveDiskVal * stars;
+        // galaxies[centralgal].MetalsEjectedMass += sf_params->Yield * FracZleaveDiskVal * stars;
     } else {
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * stars;
+        galaxies[centralgal].MetalsHotGas += sf_params->Yield * stars;
+        // galaxies[centralgal].MetalsEjectedMass += sf_params->Yield * stars;
     }
+}
+
+/*
+ * Compatibility wrapper for starformation_and_feedback
+ * 
+ * Provides backwards compatibility with the old interface while
+ * using the new parameter view-based implementation internally.
+ */
+void starformation_and_feedback_compat(const int p, const int centralgal, const double time, 
+                                      const double dt, const int halonr, const int step,
+                                      struct GALAXY *galaxies, const struct params *run_params)
+{
+    struct star_formation_params_view sf_params;
+    struct feedback_params_view fb_params;
+    
+    initialize_star_formation_params_view(&sf_params, run_params);
+    initialize_feedback_params_view(&fb_params, run_params);
+    
+    starformation_and_feedback(p, centralgal, time, dt, halonr, step, 
+                              galaxies, &sf_params, &fb_params);
 }
 
 
 
-void update_from_star_formation(const int p, const double stars, const double metallicity, struct GALAXY *galaxies, const struct params *run_params)
+/*
+ * Update galaxy properties from star formation
+ * 
+ * Updates cold gas, stellar mass, and their metal contents
+ * after star formation events.
+ */
+void update_from_star_formation(const int p, const double stars, const double metallicity, 
+                               struct GALAXY *galaxies, 
+                               const struct star_formation_params_view *sf_params)
 {
-    const double RecycleFraction = run_params->RecycleFraction;
+    const double RecycleFraction = sf_params->RecycleFraction;
     // update gas and metals from star formation
     galaxies[p].ColdGas -= (1 - RecycleFraction) * stars;
     galaxies[p].MetalsColdGas -= metallicity * (1 - RecycleFraction) * stars;
@@ -114,12 +155,32 @@ void update_from_star_formation(const int p, const double stars, const double me
     galaxies[p].MetalsStellarMass += metallicity * (1 - RecycleFraction) * stars;
 }
 
-
-
-void update_from_feedback(const int p, const int centralgal, const double reheated_mass, double ejected_mass, const double metallicity,
-                          struct GALAXY *galaxies, const struct params *run_params)
+/*
+ * Compatibility wrapper for update_from_star_formation
+ * 
+ * Provides backwards compatibility with the old interface while
+ * using the new parameter view-based implementation internally.
+ */
+void update_from_star_formation_compat(const int p, const double stars, const double metallicity, 
+                                      struct GALAXY *galaxies, const struct params *run_params)
 {
+    struct star_formation_params_view sf_params;
+    initialize_star_formation_params_view(&sf_params, run_params);
+    update_from_star_formation(p, stars, metallicity, galaxies, &sf_params);
+}
 
+
+
+/*
+ * Update galaxy properties from supernova feedback
+ * 
+ * Updates cold gas, hot gas, ejected gas and their metal contents
+ * based on supernova feedback processes.
+ */
+void update_from_feedback(const int p, const int centralgal, const double reheated_mass, 
+                         double ejected_mass, const double metallicity,
+                         struct GALAXY *galaxies, const struct feedback_params_view *fb_params)
+{
     XASSERT(reheated_mass >= 0.0, -1,
             "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
             p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
@@ -127,14 +188,7 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
             reheated_mass, galaxies[p].ColdGas);
 
-    XASSERT(reheated_mass >= 0.0, -1,
-            "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
-            p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
-    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
-            "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
-            reheated_mass, galaxies[p].ColdGas);
-
-    if(run_params->SupernovaRecipeOn == 1) {
+    if(fb_params->SupernovaRecipeOn == 1) {
         galaxies[p].ColdGas -= reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
 
@@ -153,4 +207,20 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
 
         galaxies[p].OutflowRate += reheated_mass;
     }
+}
+
+/*
+ * Compatibility wrapper for update_from_feedback
+ * 
+ * Provides backwards compatibility with the old interface while
+ * using the new parameter view-based implementation internally.
+ */
+void update_from_feedback_compat(const int p, const int centralgal, const double reheated_mass, 
+                               double ejected_mass, const double metallicity,
+                               struct GALAXY *galaxies, const struct params *run_params)
+{
+    struct feedback_params_view fb_params;
+    initialize_feedback_params_view(&fb_params, run_params);
+    update_from_feedback(p, centralgal, reheated_mass, ejected_mass, metallicity, 
+                       galaxies, &fb_params);
 }

@@ -419,107 +419,195 @@ struct save_info {
 };
 
 
+/*
+ * Cosmology parameters
+ * 
+ * Contains fundamental physical constants and cosmological parameters
+ * used throughout the simulation.
+ */
+struct cosmology_params
+{
+    /* Base cosmological parameters */
+    double Omega;            /* Matter density parameter */
+    double OmegaLambda;      /* Dark energy density parameter */
+    double Hubble_h;         /* Hubble parameter (H0/100) */
+    double PartMass;         /* Particle mass [10^10 Msun/h] */
+    double BoxSize;          /* Simulation box size [Mpc/h] */
+    
+    /* Derived parameters */
+    double G;                /* Gravitational constant in code units */
+    double Hubble;           /* Hubble parameter in internal units */
+    double RhoCrit;          /* Critical density */
+};
+
+/*
+ * Physics parameters
+ * 
+ * Contains parameters controlling the various physical processes
+ * modeled in the simulation.
+ */
+struct physics_params
+{
+    /* Control flags */
+    int32_t SFprescription;     /* Star formation prescription to use */
+    int32_t AGNrecipeOn;        /* Active Galactic Nuclei feedback flag */
+    int32_t SupernovaRecipeOn;  /* Supernova feedback flag */
+    int32_t ReionizationOn;     /* Reionization flag */
+    int32_t DiskInstabilityOn;  /* Disk instability flag */
+    
+    /* General physics parameters */
+    double BaryonFrac;          /* Cosmic baryon fraction */
+    double RecycleFraction;     /* Fraction of stellar mass recycled */
+    double Yield;               /* Chemical yield from stars */
+    double FracZleaveDisk;      /* Fraction of metals ejected from disk */
+    
+    /* Mergers */
+    double ThreshMajorMerger;   /* Mass ratio threshold for major mergers */
+    double ThresholdSatDisruption; /* Threshold for satellite disruption */
+    
+    /* Gas physics */
+    double ReIncorporationFactor; /* Gas reincorporation efficiency */
+    
+    /* Star formation parameters */
+    double SfrEfficiency;       /* Star formation efficiency */
+    
+    /* Feedback parameters */
+    double FeedbackReheatingEpsilon;    /* Efficiency of SN reheating */
+    double FeedbackEjectionEfficiency;  /* Efficiency of gas ejection */
+    
+    /* Black hole parameters */
+    double BlackHoleGrowthRate;     /* BH growth rate parameter */
+    double RadioModeEfficiency;     /* Radio mode feedback efficiency */
+    double QuasarModeEfficiency;    /* Quasar mode feedback efficiency */
+    
+    /* Reionization parameters */
+    double Reionization_z0;     /* Reionization redshift parameter */
+    double Reionization_zr;     /* Reionization redshift parameter */
+    double a0;                  /* Scale factor for reionization (derived) */
+    double ar;                  /* Scale factor for reionization (derived) */
+    
+    /* Supernova parameters */
+    double EnergySN;            /* Energy per supernova [ergs] */
+    double EtaSN;               /* Supernova rate */
+    double EnergySNcode;        /* Energy per supernova in code units */
+    double EtaSNcode;           /* Supernova rate in code units */
+};
+
+/*
+ * I/O parameters
+ * 
+ * Contains parameters related to input/output operations.
+ */
+struct io_params
+{
+    /* File paths */
+    char OutputDir[MAX_STRING_LEN];          /* Output directory path */
+    char FileNameGalaxies[MAX_STRING_LEN];   /* Output filename base */
+    char TreeName[MAX_STRING_LEN];           /* Merger tree filename base */
+    char TreeExtension[MAX_STRING_LEN];      /* Merger tree file extension */
+    char SimulationDir[MAX_STRING_LEN];      /* Simulation directory */
+    char FileWithSnapList[MAX_STRING_LEN];   /* File containing snapshot list */
+    
+    /* Tree file parameters */
+    int32_t FirstFile;                       /* First tree file to process */
+    int32_t LastFile;                        /* Last tree file to process */
+    int32_t NumSimulationTreeFiles;          /* Number of tree files */
+    
+    /* File formats */
+    enum Valid_TreeTypes TreeType;           /* Type of input merger trees */
+    enum Valid_OutputFormats OutputFormat;   /* Format for galaxy output */
+};
+
+/*
+ * Units parameters
+ * 
+ * Contains the basic units of the simulation and derived unit conversions.
+ */
+struct units_params
+{
+    /* Base units */
+    double UnitLength_in_cm;            /* Unit length in cm */
+    double UnitMass_in_g;               /* Unit mass in g */
+    double UnitVelocity_in_cm_per_s;    /* Unit velocity in cm/s */
+    
+    /* Derived units */
+    double UnitTime_in_s;               /* Unit time in seconds */
+    double UnitTime_in_Megayears;       /* Unit time in Myr */
+    double UnitPressure_in_cgs;         /* Unit pressure in cgs */
+    double UnitDensity_in_cgs;          /* Unit density in cgs */
+    double UnitCoolingRate_in_cgs;      /* Unit cooling rate in cgs */
+    double UnitEnergy_in_cgs;           /* Unit energy in cgs */
+};
+
+/*
+ * Simulation parameters
+ * 
+ * Contains parameters controlling the simulation time steps and snapshots.
+ */
+struct simulation_params
+{
+    /* Snapshot parameters */
+    int32_t nsnapshots;         /* Number of snapshots */
+    int32_t LastSnapshotNr;     /* Number of the last snapshot */
+    int32_t SimMaxSnaps;        /* Maximum number of snapshots */
+    int32_t NumSnapOutputs;     /* Number of output snapshots */
+    int32_t Snaplistlen;        /* Length of snapshot list */
+    
+    /* Snapshot arrays */
+    int32_t ListOutputSnaps[ABSOLUTEMAXSNAPS]; /* List of output snapshots */
+    
+    /* Redshift values */
+    union {
+        double ZZ[ABSOLUTEMAXSNAPS];         /* Redshift at each snapshot */
+        double redshift[ABSOLUTEMAXSNAPS];   /* Alias for better readability */
+    };
+    
+    /* Scale factors */
+    union {
+        double AA[ABSOLUTEMAXSNAPS];         /* Scale factor at each snapshot */
+        double scale_factors[ABSOLUTEMAXSNAPS]; /* Alias for better readability */
+    };
+    
+    /* Ages of the Universe */
+    double *Age;                /* Age of the universe at each snapshot */
+};
+
+/*
+ * Runtime parameters
+ * 
+ * Contains parameters related to program execution and MPI.
+ */
+struct runtime_params
+{
+    /* MPI parameters */
+    int32_t ThisTask;           /* Current MPI task ID */
+    int32_t NTasks;             /* Total number of MPI tasks */
+    
+    /* Execution control */
+    int32_t interrupted;        /* Flag for interrupted execution */
+    
+    /* Load balancing */
+    enum Valid_Forest_Distribution_Schemes ForestDistributionScheme; /* Forest distribution method */
+    double Exponent_Forest_Dist_Scheme;   /* Exponent for forest distribution */
+    
+    /* Tree indexing */
+    int64_t FileNr_Mulfac;      /* Multiplier for file number in forest indexing */
+    int64_t ForestNr_Mulfac;    /* Multiplier for forest number in indexing */
+};
+
+/*
+ * Main parameters structure
+ * 
+ * This structured groups all parameters into logical categories.
+ */
 struct params
 {
-    int32_t    FirstFile;    /* first and last file for processing; only relevant for lhalotree style files (binary or hdf5) */
-    int32_t    LastFile;
-
-    char   OutputDir[MAX_STRING_LEN];
-    char   FileNameGalaxies[MAX_STRING_LEN];
-    char   TreeName[MAX_STRING_LEN];
-    char   TreeExtension[MAX_STRING_LEN]; // If the trees are in HDF5, they will have a .hdf5 extension. Otherwise they have no extension.
-    char   SimulationDir[MAX_STRING_LEN];
-    char   FileWithSnapList[MAX_STRING_LEN];
-
-    double Omega;
-    double OmegaLambda;
-    double PartMass;
-    double Hubble_h;
-    double BoxSize;
-    double EnergySNcode;
-    double EnergySN;
-    double EtaSNcode;
-    double EtaSN;
-
-    /* moving for alignment */
-    int32_t NumSimulationTreeFiles;
-
-    /* recipe flags */
-    int32_t    SFprescription;
-    int32_t    AGNrecipeOn;
-    int32_t    SupernovaRecipeOn;
-    int32_t    ReionizationOn;
-    int32_t   DiskInstabilityOn;
-
-    double RecycleFraction;
-    double Yield;
-    double FracZleaveDisk;
-    double ReIncorporationFactor;
-    double ThreshMajorMerger;
-    double BaryonFrac;
-    double SfrEfficiency;
-    double FeedbackReheatingEpsilon;
-    double FeedbackEjectionEfficiency;
-    double RadioModeEfficiency;
-    double QuasarModeEfficiency;
-    double BlackHoleGrowthRate;
-    double Reionization_z0;
-    double Reionization_zr;
-    double ThresholdSatDisruption;
-
-    double UnitLength_in_cm;
-    double UnitVelocity_in_cm_per_s;
-    double UnitMass_in_g;
-    double UnitTime_in_s;
-    double RhoCrit;
-    double UnitPressure_in_cgs;
-    double UnitDensity_in_cgs;
-    double UnitCoolingRate_in_cgs;
-    double UnitEnergy_in_cgs;
-    double UnitTime_in_Megayears;
-    double G;
-    double Hubble;
-    double a0;
-    double ar;
-
-    int32_t nsnapshots;
-    int32_t LastSnapshotNr;
-    int32_t SimMaxSnaps;
-    int32_t NumSnapOutputs;
-    int32_t Snaplistlen;
-    enum Valid_TreeTypes TreeType;
-    enum Valid_OutputFormats OutputFormat;
-
-    /* The combination of  ForestDistributionScheme = generic_power_in_nhalos and
-       exponent_for_forest_dist_scheme = 0.7 seems to produce good work-load
-       balance across MPI on the 512 Genesis test dataset - MS 16/01/2020 */
-    enum Valid_Forest_Distribution_Schemes ForestDistributionScheme;
-    double Exponent_Forest_Dist_Scheme;
-
-    int64_t FileNr_Mulfac;
-    int64_t ForestNr_Mulfac;
-
-    int32_t ListOutputSnaps[ABSOLUTEMAXSNAPS];
-    //Essentially creating an alias so that the indecipherable 'ZZ'
-    //can be interpreted to contain 'redshift' values
-    union {
-        double ZZ[ABSOLUTEMAXSNAPS];
-        double redshift[ABSOLUTEMAXSNAPS];
-    };
-
-    //Similarly: 'AA' contains the scale_factors corresponding to
-    //each snapshot
-    union {
-        double AA[ABSOLUTEMAXSNAPS];
-        double scale_factors[ABSOLUTEMAXSNAPS];
-    };
-
-    double *Age;
-
-    int32_t interrupted;/* to re-print the progress-bar */
-
-    int32_t ThisTask;
-    int32_t NTasks;
+    struct cosmology_params cosmology;    /* Cosmological parameters */
+    struct physics_params physics;        /* Physics model parameters */
+    struct io_params io;                  /* I/O parameters */
+    struct units_params units;            /* Unit conversion parameters */
+    struct simulation_params simulation;  /* Simulation control parameters */
+    struct runtime_params runtime;        /* Program execution parameters */
 };
 
 

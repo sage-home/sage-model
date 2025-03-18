@@ -18,15 +18,15 @@ static int load_tree_table_lht_binary(const int firstfile, const int lastfile, c
 
 void get_forests_filename_lht_binary(char *filename, const size_t len, const int filenr, const struct params *run_params)
 {
-    snprintf(filename, len - 1, "%s/%s.%d%s", run_params->SimulationDir, run_params->TreeName, filenr, run_params->TreeExtension);
+    snprintf(filename, len - 1, "%s/%s.%d%s", run_params->io.SimulationDir, run_params->io.TreeName, filenr, run_params->io.TreeExtension);
 }
 
 /* Externally visible Functions */
 int setup_forests_io_lht_binary(struct forest_info *forests_info,
                                 const int ThisTask, const int NTasks, struct params *run_params)
 {
-    const int firstfile = run_params->FirstFile;
-    const int lastfile = run_params->LastFile;
+    const int firstfile = run_params->io.FirstFile;
+    const int lastfile = run_params->io.LastFile;
 
     const int numfiles = lastfile - firstfile + 1;
     if(numfiles <= 0) {
@@ -64,7 +64,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
     forests_info->totnforests = totnforests;
     forests_info->totnhalos = totnhalos;
 
-    const int need_nhalos_per_forest = run_params->ForestDistributionScheme == uniform_in_forests ? 0:1;
+    const int need_nhalos_per_forest = run_params->runtime.ForestDistributionScheme == uniform_in_forests ? 0:1;
     int64_t *nhalos_per_forest = NULL;
     if(need_nhalos_per_forest) {
         nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
@@ -76,7 +76,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
 
     int64_t nforests_this_task, start_forestnum;
     int status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest,
-                                                         run_params->ForestDistributionScheme, run_params->Exponent_Forest_Dist_Scheme,
+                                                         run_params->runtime.ForestDistributionScheme, run_params->runtime.Exponent_Forest_Dist_Scheme,
                                                          NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     if(status != EXIT_SUCCESS) {
         return status;
@@ -215,7 +215,7 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
     for(int32_t filenr = start_filenum; filenr <= end_filenum; filenr++) {
         forests_info->frac_volume_processed += (double) num_forests_to_process_per_file[filenr] / (double) totnforests_per_file[filenr];
     }
-    forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
+    forests_info->frac_volume_processed /= (double) run_params->io.NumSimulationTreeFiles;
 
     free(num_forests_to_process_per_file);
     free(start_forestnum_to_process_per_file);
@@ -223,8 +223,8 @@ int setup_forests_io_lht_binary(struct forest_info *forests_info,
 
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac = 1000000000000000LL;
-    run_params->ForestNr_Mulfac = 1000000000LL;
+    run_params->runtime.FileNr_Mulfac = 1000000000000000LL;
+    run_params->runtime.ForestNr_Mulfac = 1000000000LL;
 
     return EXIT_SUCCESS;
 }

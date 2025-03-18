@@ -173,7 +173,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
     // Create the file.
     // Use 3*MAX_STRING_LEN because OutputDir and FileNameGalaxies can be MAX_STRING_LEN.  Add a bit more buffer for the filenr and '.hdf5'.
-    snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->OutputDir, run_params->FileNameGalaxies, filenr);
+    snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->io.OutputDir, run_params->io.FileNameGalaxies, filenr);
 
     hid_t file_id = H5Fcreate(buffer, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     CHECK_STATUS_AND_RETURN_ON_FAIL(file_id, FILE_NOT_FOUND,
@@ -211,15 +211,15 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
     // We will have groups for each output snapshot, and then inside those groups, a dataset for
     // each field.
-    save_info->group_ids = mymalloc(run_params->NumSnapOutputs * sizeof(save_info->group_ids[0]));
+    save_info->group_ids = mymalloc(run_params->simulation.NumSnapOutputs * sizeof(save_info->group_ids[0]));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->group_ids,
-                                     "Failed to allocate %d elements of size %zu for save_info->group_ids", run_params->NumSnapOutputs,
+                                     "Failed to allocate %d elements of size %zu for save_info->group_ids", run_params->simulation.NumSnapOutputs,
                                      sizeof(*(save_info->group_ids)));
 
     // A couple of variables before we enter the loop.
     // JS 17/03/19: I've attempted to put these directly into the function calls and things blew up.
     /* Note from MS: That almost certainly means that there is a bug somewhere here (16/9/2019) */
-    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
 
         hsize_t dims[1] = {0};
         hsize_t maxdims[1] = {H5S_UNLIMITED};
@@ -227,20 +227,20 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         char full_field_name[2*MAX_STRING_LEN];
 
         // Create a snapshot group.
-        snprintf(full_field_name, 2*MAX_STRING_LEN - 1, "Snap_%d", run_params->ListOutputSnaps[snap_idx]);
+        snprintf(full_field_name, 2*MAX_STRING_LEN - 1, "Snap_%d", run_params->simulation.ListOutputSnaps[snap_idx]);
         hid_t group_id = H5Gcreate2(file_id, full_field_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         CHECK_STATUS_AND_RETURN_ON_FAIL(group_id, (int32_t) group_id,
                                         "Failed to create the %s group.\nThe file ID was %d\n", full_field_name,
                                         (int32_t) file_id);
         save_info->group_ids[snap_idx] = group_id;
 
-        const float redshift = run_params->ZZ[run_params->ListOutputSnaps[snap_idx]];
+        const float redshift = run_params->simulation.ZZ[run_params->simulation.ListOutputSnaps[snap_idx]];
         CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", redshift, H5T_NATIVE_FLOAT);
 
         for(int32_t field_idx = 0; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
 
             // Then create each field inside.
-            snprintf(full_field_name, 2*MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], field_names[field_idx]);
+            snprintf(full_field_name, 2*MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->simulation.ListOutputSnaps[snap_idx], field_names[field_idx]);
 
             /* fprintf(stderr, "Creating field '%s' with description '%s' and unit '%s'\n",
                field_names[field_idx], field_descriptions[field_idx], field_units[field_idx]); */
@@ -294,20 +294,20 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     // writing a single chunk. Unlike the binary instance where we have a single GALAXY_OUTPUT
     // struct instance per galaxy, here HDF5_GALAXY_OUTPUT is a **struct of arrays**.
     save_info->buffer_size = NUM_GALS_PER_BUFFER;
-    save_info->num_gals_in_buffer = mycalloc(run_params->NumSnapOutputs, sizeof(save_info->num_gals_in_buffer[0])); // Calloced because initially no galaxies in buffer.
+    save_info->num_gals_in_buffer = mycalloc(run_params->simulation.NumSnapOutputs, sizeof(save_info->num_gals_in_buffer[0])); // Calloced because initially no galaxies in buffer.
 
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->num_gals_in_buffer,
-                                     "Failed to allocate %d elements of size %zu for save_info->num_gals_in_buffer", run_params->NumSnapOutputs,
+                                     "Failed to allocate %d elements of size %zu for save_info->num_gals_in_buffer", run_params->simulation.NumSnapOutputs,
                                      sizeof(save_info->num_gals_in_buffer[0]));
 
-    save_info->buffer_output_gals = mymalloc(run_params->NumSnapOutputs * sizeof(save_info->buffer_output_gals[0]));
+    save_info->buffer_output_gals = mymalloc(run_params->simulation.NumSnapOutputs * sizeof(save_info->buffer_output_gals[0]));
 
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->buffer_output_gals,
-                                     "Failed to allocate %d elements of size %zu for save_info->buffer_output_gals", run_params->NumSnapOutputs,
+                                     "Failed to allocate %d elements of size %zu for save_info->buffer_output_gals", run_params->simulation.NumSnapOutputs,
                                      sizeof(save_info->buffer_output_gals[0]));
 
     // Now we need to malloc all the arrays **inside** the GALAXY_OUTPUT struct.
-    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
 
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
@@ -428,7 +428,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
                                     "Failed to close the /TreeInfo group."
                                     "The group ID was %d.\n", (int32_t) group_id);
 
-    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
 
         // Attributes can only be 64kb in size (strict rule enforced by the HDF5 group).
         // For larger simulations, we will have so many trees, that the number of galaxies per tree
@@ -438,7 +438,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         char description[MAX_STRING_LEN];
         char unit[MAX_STRING_LEN];
 
-        snprintf(field_name, MAX_STRING_LEN - 1, "/TreeInfo/Snap_%d", run_params->ListOutputSnaps[snap_idx]);
+        snprintf(field_name, MAX_STRING_LEN - 1, "/TreeInfo/Snap_%d", run_params->simulation.ListOutputSnaps[snap_idx]);
         group_id = H5Gcreate2(save_info->file_id, field_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         CHECK_STATUS_AND_RETURN_ON_FAIL(group_id, (int32_t) group_id,
                                         "Failed to create the '%s' group.\n"
@@ -478,7 +478,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         CREATE_SINGLE_ATTRIBUTE(save_info->group_ids[snap_idx], "num_gals", save_info->tot_ngals[snap_idx], H5T_NATIVE_LLONG);
 
 
-        snprintf(field_name, MAX_STRING_LEN -  1, "TreeInfo/Snap_%d/NumGalsPerTreePerSnap", run_params->ListOutputSnaps[snap_idx]);
+        snprintf(field_name, MAX_STRING_LEN -  1, "TreeInfo/Snap_%d/NumGalsPerTreePerSnap", run_params->simulation.ListOutputSnaps[snap_idx]);
         snprintf(description, MAX_STRING_LEN -  1, "The number of galaxies per tree at this snapshot.");
         snprintf(unit, MAX_STRING_LEN-  1, "Unitless");
 
@@ -522,8 +522,8 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
     group_id = H5Gopen2(save_info->file_id, "/TreeInfo", H5P_DEFAULT);
 
     /*MS: Now add in the two attributes about the ID generation scheme */
-    CREATE_SINGLE_ATTRIBUTE(group_id, "FileNr_Mulfac", run_params->FileNr_Mulfac, H5T_NATIVE_LLONG);
-    CREATE_SINGLE_ATTRIBUTE(group_id, "ForestNr_Mulfac", run_params->ForestNr_Mulfac, H5T_NATIVE_LLONG);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "FileNr_Mulfac", run_params->runtime.FileNr_Mulfac, H5T_NATIVE_LLONG);
+    CREATE_SINGLE_ATTRIBUTE(group_id, "ForestNr_Mulfac", run_params->runtime.ForestNr_Mulfac, H5T_NATIVE_LLONG);
 
     h5_status = H5Gclose(group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(h5_status, (int32_t) h5_status,
@@ -550,7 +550,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
 
 
     // Now we need to ensure we free all of the HDF5 IDs.  The hierachy is File->Groups->Datasets.
-    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
         // Then close the group.
         status = H5Gclose(save_info->group_ids[snap_idx]);
         CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
@@ -575,7 +575,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
     // Free all the other memory.
     myfree(save_info->num_gals_in_buffer);
 
-    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
+for(int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
 
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
@@ -645,7 +645,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
 int32_t create_hdf5_master_file(const struct params *run_params)
 {
     // Only Task 0 needs to do stuff from here.
-    if(run_params->ThisTask > 0) {
+    if(run_params->runtime.ThisTask > 0) {
         return EXIT_SUCCESS;
     }
 
@@ -654,7 +654,7 @@ int32_t create_hdf5_master_file(const struct params *run_params)
     herr_t status;
 
     // Create the file.
-    snprintf(master_fname, 2*MAX_STRING_LEN + 5, "%s/%s.hdf5", run_params->OutputDir, run_params->FileNameGalaxies);
+    snprintf(master_fname, 2*MAX_STRING_LEN + 5, "%s/%s.hdf5", run_params->io.OutputDir, run_params->io.FileNameGalaxies);
 
     master_file_id = H5Fcreate(master_fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     CHECK_STATUS_AND_RETURN_ON_FAIL(master_file_id, FILE_NOT_FOUND,
@@ -663,9 +663,9 @@ int32_t create_hdf5_master_file(const struct params *run_params)
     // We will keep track of how many galaxies were saved across all files per snapshot.
     // We do this for each snapshot in the simulation, not only those that are output, to allow easy
     // checking of which snapshots were output.
-    int64_t *ngals_allfiles_snap = mycalloc(run_params->SimMaxSnaps, sizeof(*(ngals_allfiles_snap))); // Calloced because initially no galaxies.
+    int64_t *ngals_allfiles_snap = mycalloc(run_params->simulation.SimMaxSnaps, sizeof(*(ngals_allfiles_snap))); // Calloced because initially no galaxies.
     CHECK_POINTER_AND_RETURN_ON_NULL(ngals_allfiles_snap,
-                                     "Failed to allocate %d elements of size %zu for ngals_allfiles_snaps.", run_params->SimMaxSnaps,
+                                     "Failed to allocate %d elements of size %zu for ngals_allfiles_snaps.", run_params->simulation.SimMaxSnaps,
                                      sizeof(*(ngals_allfiles_snap)));
 
     // The master file will be accessed as (e.g.,) f["Core0"]["Snap_63"]["StellarMass"].
@@ -680,10 +680,10 @@ int32_t create_hdf5_master_file(const struct params *run_params)
     char target_fname[3*MAX_STRING_LEN];
     char core_fname[MAX_STRING_LEN];
 
-    for(int32_t task_idx = 0; task_idx < run_params->NTasks; ++task_idx) {
+    for(int32_t task_idx = 0; task_idx < run_params->runtime.NTasks; ++task_idx) {
 
         snprintf(core_fname, MAX_STRING_LEN - 1, "Core_%d", task_idx);
-        snprintf(target_fname, 3*MAX_STRING_LEN - 1, "./%s_%d.hdf5", run_params->FileNameGalaxies, task_idx);
+        snprintf(target_fname, 3*MAX_STRING_LEN - 1, "./%s_%d.hdf5", run_params->io.FileNameGalaxies, task_idx);
 
         // Make a symlink to the root of the target file.
         status = H5Lcreate_external(target_fname, "/", root_group_id, core_fname, H5P_DEFAULT, H5P_DEFAULT);
@@ -835,7 +835,7 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
 {
 
     int64_t gals_in_buffer = save_info->num_gals_in_buffer[output_snap_idx];
-    //fprintf(stderr, "Task %d, Snap %d, has %"PRId64" gals in buffer.\n", run_params->ThisTask, output_snap_idx, gals_in_buffer);
+    //fprintf(stderr, "Task %d, Snap %d, has %"PRId64" gals in buffer.\n", run_params->runtime.ThisTask, output_snap_idx, gals_in_buffer);
 
     save_info->buffer_output_gals[output_snap_idx].SnapNum[gals_in_buffer] = g->SnapNum;
 
@@ -857,7 +857,7 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
     save_info->buffer_output_gals[output_snap_idx].mergeType[gals_in_buffer] = g->mergeType;
     save_info->buffer_output_gals[output_snap_idx].mergeIntoID[gals_in_buffer] = g->mergeIntoID;
     save_info->buffer_output_gals[output_snap_idx].mergeIntoSnapNum[gals_in_buffer] = g->mergeIntoSnapNum;
-    save_info->buffer_output_gals[output_snap_idx].dT[gals_in_buffer] = g->dT * run_params->UnitTime_in_s / SEC_PER_MEGAYEAR;
+    save_info->buffer_output_gals[output_snap_idx].dT[gals_in_buffer] = g->dT * run_params->units.UnitTime_in_s / SEC_PER_MEGAYEAR;
 
     save_info->buffer_output_gals[output_snap_idx].Posx[gals_in_buffer] = g->Pos[0];
     save_info->buffer_output_gals[output_snap_idx].Posy[gals_in_buffer] = g->Pos[1];
@@ -901,8 +901,8 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
 
     // NOTE: in Msun/yr
     for(int step = 0; step < STEPS; step++) {
-        tmp_SfrDisk += g->SfrDisk[step] * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
-        tmp_SfrBulge += g->SfrBulge[step] * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
+        tmp_SfrDisk += g->SfrDisk[step] * run_params->units.UnitMass_in_g / run_params->units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
+        tmp_SfrBulge += g->SfrBulge[step] * run_params->units.UnitMass_in_g / run_params->units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
 
         if(g->SfrDiskColdGas[step] > 0.0) {
             tmp_SfrDiskZ += g->SfrDiskColdGasMetals[step] / g->SfrDiskColdGas[step] / STEPS;
@@ -921,23 +921,23 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
     save_info->buffer_output_gals[output_snap_idx].DiskScaleRadius[gals_in_buffer] = g->DiskScaleRadius;
 
     if (g->Cooling > 0.0) {
-        save_info->buffer_output_gals[output_snap_idx].Cooling[gals_in_buffer] = log10(g->Cooling * run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s);
+        save_info->buffer_output_gals[output_snap_idx].Cooling[gals_in_buffer] = log10(g->Cooling * run_params->units.UnitEnergy_in_cgs / run_params->units.UnitTime_in_s);
     } else {
         save_info->buffer_output_gals[output_snap_idx].Cooling[gals_in_buffer] = 0.0;
     }
 
     if (g->Heating > 0.0) {
-        save_info->buffer_output_gals[output_snap_idx].Heating[gals_in_buffer] = log10(g->Heating * run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s);
+        save_info->buffer_output_gals[output_snap_idx].Heating[gals_in_buffer] = log10(g->Heating * run_params->units.UnitEnergy_in_cgs / run_params->units.UnitTime_in_s);
     } else {
         save_info->buffer_output_gals[output_snap_idx].Heating[gals_in_buffer] = 0.0;
     }
 
     save_info->buffer_output_gals[output_snap_idx].QuasarModeBHaccretionMass[gals_in_buffer] = g->QuasarModeBHaccretionMass;
 
-    save_info->buffer_output_gals[output_snap_idx].TimeOfLastMajorMerger[gals_in_buffer] = g->TimeOfLastMajorMerger * run_params->UnitTime_in_Megayears;
-    save_info->buffer_output_gals[output_snap_idx].TimeOfLastMinorMerger[gals_in_buffer] = g->TimeOfLastMinorMerger * run_params->UnitTime_in_Megayears;
+    save_info->buffer_output_gals[output_snap_idx].TimeOfLastMajorMerger[gals_in_buffer] = g->TimeOfLastMajorMerger * run_params->units.UnitTime_in_Megayears;
+    save_info->buffer_output_gals[output_snap_idx].TimeOfLastMinorMerger[gals_in_buffer] = g->TimeOfLastMinorMerger * run_params->units.UnitTime_in_Megayears;
 
-    save_info->buffer_output_gals[output_snap_idx].OutflowRate[gals_in_buffer] = g->OutflowRate * run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS;
+    save_info->buffer_output_gals[output_snap_idx].OutflowRate[gals_in_buffer] = g->OutflowRate * run_params->units.UnitMass_in_g / run_params->units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS;
 
     //infall properties
     if(g->Type != 0) {
@@ -970,7 +970,7 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
 /* Assumes 'snap_idx', 'field_idx' are set appropriately before invoking the macro */
 #define EXTEND_AND_WRITE_GALAXY_DATASET(field_name) {                   \
     char full_field_name[2*MAX_STRING_LEN];                           \
-    snprintf(full_field_name, 2*MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->ListOutputSnaps[snap_idx], save_info->name_output_fields[field_idx]); \
+    snprintf(full_field_name, 2*MAX_STRING_LEN - 1,"Snap_%d/%s", run_params->simulation.ListOutputSnaps[snap_idx], save_info->name_output_fields[field_idx]); \
     hid_t dataset_id = H5Dopen2(save_info->file_id, full_field_name, H5P_DEFAULT); \
     if(dataset_id < 0) {                                                \
         fprintf(stderr, "Could not access the " #field_name" dataset for output snapshot %d.\n", snap_idx); \
@@ -1165,17 +1165,17 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
                                     (int32_t) file_id);
 
     // Simulation information.
-    CREATE_STRING_ATTRIBUTE(sim_group_id, "SimulationDir", &run_params->SimulationDir, strlen(run_params->SimulationDir));
-    CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->FileWithSnapList, strlen(run_params->FileWithSnapList));
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapshotNr", run_params->LastSnapshotNr, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "SimMaxSnaps", run_params->SimMaxSnaps, H5T_NATIVE_INT);
+    CREATE_STRING_ATTRIBUTE(sim_group_id, "SimulationDir", &run_params->io.SimulationDir, strlen(run_params->io.SimulationDir));
+    CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->io.FileWithSnapList, strlen(run_params->io.FileWithSnapList));
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapshotNr", run_params->simulation.LastSnapshotNr, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "SimMaxSnaps", run_params->simulation.SimMaxSnaps, H5T_NATIVE_INT);
 
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_matter", run_params->Omega, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_lambda", run_params->OmegaLambda, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "particle_mass", run_params->PartMass, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "hubble_h", run_params->Hubble_h, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "num_simulation_tree_files", run_params->NumSimulationTreeFiles, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "box_size", run_params->BoxSize, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_matter", run_params->cosmology.Omega, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_lambda", run_params->cosmology.OmegaLambda, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "particle_mass", run_params->cosmology.PartMass, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "hubble_h", run_params->cosmology.Hubble_h, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "num_simulation_tree_files", run_params->io.NumSimulationTreeFiles, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "box_size", run_params->cosmology.BoxSize, H5T_NATIVE_DOUBLE);
 
     // If we're writing the header attributes for the master file, we don't have knowledge of trees.
     if(forest_info != NULL) {
@@ -1185,63 +1185,63 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
         const long long nforests_on_master_file = 0;
         CREATE_SINGLE_ATTRIBUTE(sim_group_id, "num_trees_this_file", nforests_on_master_file, H5T_NATIVE_LLONG);
 
-        const double frac_volume_on_master = (run_params->LastFile - run_params->FirstFile + 1)/(double) run_params->NumSimulationTreeFiles;
+        const double frac_volume_on_master = (run_params->io.LastFile - run_params->io.FirstFile + 1)/(double) run_params->io.NumSimulationTreeFiles;
         CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "frac_volume_processed", frac_volume_on_master, H5T_NATIVE_DOUBLE);
     }
 
     // Data and version information.
-    CREATE_SINGLE_ATTRIBUTE(misc_group_id, "num_cores", run_params->NTasks, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(misc_group_id, "num_cores", run_params->runtime.NTasks, H5T_NATIVE_INT);
     CREATE_STRING_ATTRIBUTE(misc_group_id, "sage_data_version", &SAGE_DATA_VERSION, strlen(SAGE_DATA_VERSION));
     CREATE_STRING_ATTRIBUTE(misc_group_id, "sage_version", &SAGE_VERSION, strlen(SAGE_VERSION));
     CREATE_STRING_ATTRIBUTE(misc_group_id, "git_SHA_reference", &GITREF_STR, strlen(GITREF_STR));
 
     // Output file info.
-    CREATE_STRING_ATTRIBUTE(runtime_group_id, "FileNameGalaxies", &run_params->FileNameGalaxies, strlen(run_params->FileNameGalaxies));
-    CREATE_STRING_ATTRIBUTE(runtime_group_id, "OutputDir", &run_params->OutputDir, strlen(run_params->OutputDir));
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FirstFile", run_params->FirstFile, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "LastFile", run_params->LastFile, H5T_NATIVE_INT);
+    CREATE_STRING_ATTRIBUTE(runtime_group_id, "FileNameGalaxies", &run_params->io.FileNameGalaxies, strlen(run_params->io.FileNameGalaxies));
+    CREATE_STRING_ATTRIBUTE(runtime_group_id, "OutputDir", &run_params->io.OutputDir, strlen(run_params->io.OutputDir));
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FirstFile", run_params->io.FirstFile, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "LastFile", run_params->io.LastFile, H5T_NATIVE_INT);
 
     // Recipe flags.
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SFprescription", run_params->SFprescription, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "AGNrecipeOn", run_params->AGNrecipeOn, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SupernovaRecipeOn", run_params->SupernovaRecipeOn, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReionizationOn", run_params->ReionizationOn, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "DiskInstabilityOn", run_params->DiskInstabilityOn, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SFprescription", run_params->physics.SFprescription, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "AGNrecipeOn", run_params->physics.AGNrecipeOn, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SupernovaRecipeOn", run_params->physics.SupernovaRecipeOn, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReionizationOn", run_params->physics.ReionizationOn, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "DiskInstabilityOn", run_params->physics.DiskInstabilityOn, H5T_NATIVE_INT);
 
     // Model parameters.
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", run_params->SfrEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackReheatingEpsilon", run_params->FeedbackReheatingEpsilon, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackEjectionEfficiency", run_params->FeedbackEjectionEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReIncorporationFactor", run_params->ReIncorporationFactor, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RadioModeEfficiency", run_params->RadioModeEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "QuasarModeEfficiency", run_params->QuasarModeEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "BlackHoleGrowthRate", run_params->BlackHoleGrowthRate, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ThreshMajorMerger", run_params->ThreshMajorMerger, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ThresholdSatDisruption", run_params->ThresholdSatDisruption, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Yield", run_params->Yield, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RecycleFraction", run_params->RecycleFraction, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FracZleaveDisk", run_params->FracZleaveDisk, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Reionization_z0", run_params->Reionization_z0, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Reionization_zr", run_params->Reionization_zr, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EnergySN", run_params->EnergySN, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EtaSN", run_params->EtaSN, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", run_params->physics.SfrEfficiency, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackReheatingEpsilon", run_params->physics.FeedbackReheatingEpsilon, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackEjectionEfficiency", run_params->physics.FeedbackEjectionEfficiency, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReIncorporationFactor", run_params->physics.ReIncorporationFactor, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RadioModeEfficiency", run_params->physics.RadioModeEfficiency, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "QuasarModeEfficiency", run_params->physics.QuasarModeEfficiency, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "BlackHoleGrowthRate", run_params->physics.BlackHoleGrowthRate, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ThreshMajorMerger", run_params->physics.ThreshMajorMerger, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ThresholdSatDisruption", run_params->physics.ThresholdSatDisruption, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Yield", run_params->physics.Yield, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RecycleFraction", run_params->physics.RecycleFraction, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FracZleaveDisk", run_params->physics.FracZleaveDisk, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Reionization_z0", run_params->physics.Reionization_z0, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Reionization_zr", run_params->physics.Reionization_zr, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EnergySN", run_params->physics.EnergySN, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EtaSN", run_params->physics.EtaSN, H5T_NATIVE_DOUBLE);
 
     // Misc runtime Parameters.
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitLength_in_cm", run_params->UnitLength_in_cm, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitMass_in_g", run_params->UnitMass_in_g, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitVelocity_in_cm_per_s", run_params->UnitVelocity_in_cm_per_s, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitLength_in_cm", run_params->units.UnitLength_in_cm, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitMass_in_g", run_params->units.UnitMass_in_g, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitVelocity_in_cm_per_s", run_params->units.UnitVelocity_in_cm_per_s, H5T_NATIVE_DOUBLE);
 
     // Redshift at each snapshot.
     hsize_t dims[1];
-    dims[0] = run_params->Snaplistlen;
+    dims[0] = run_params->simulation.Snaplistlen;
 
-    CREATE_AND_WRITE_1D_ARRAY(file_id, "Header/snapshot_redshifts", dims, run_params->ZZ, H5T_NATIVE_DOUBLE);
+    CREATE_AND_WRITE_1D_ARRAY(file_id, "Header/snapshot_redshifts", dims, run_params->simulation.ZZ, H5T_NATIVE_DOUBLE);
 
     // Output snapshots.
-    dims[0] = run_params->NumSnapOutputs;
+    dims[0] = run_params->simulation.NumSnapOutputs;
 
-    CREATE_AND_WRITE_1D_ARRAY(file_id, "Header/output_snapshots", dims, run_params->ListOutputSnaps, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", run_params->NumSnapOutputs, H5T_NATIVE_INT);
+    CREATE_AND_WRITE_1D_ARRAY(file_id, "Header/output_snapshots", dims, run_params->simulation.ListOutputSnaps, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "NumOutputs", run_params->simulation.NumSnapOutputs, H5T_NATIVE_INT);
 
     herr_t status = H5Gclose(sim_group_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,

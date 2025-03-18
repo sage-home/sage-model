@@ -23,15 +23,15 @@ int load_tree_table_gadget4_hdf5(const int firstfile, const int lastfile, const 
 
 void get_forests_filename_gadget4_hdf5(char *filename, const size_t len, const int filenr,  const struct params *run_params)
 {
-    snprintf(filename, len - 1, "%s/%s.%d%s", run_params->SimulationDir, run_params->TreeName, filenr, run_params->TreeExtension);
+    snprintf(filename, len - 1, "%s/%s.%d%s", run_params->io.SimulationDir, run_params->io.TreeName, filenr, run_params->io.TreeExtension);
 }
 
 
 int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
                                   const int ThisTask, const int NTasks, struct params *run_params)
 {
-    const int firstfile = run_params->FirstFile;
-    const int lastfile = run_params->LastFile;
+    const int firstfile = run_params->io.FirstFile;
+    const int lastfile = run_params->io.LastFile;
     const int numfiles = lastfile - firstfile + 1;
     if(numfiles <= 0) {
         return -1;
@@ -56,7 +56,7 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
     struct gadget4_info *g4 = &(forests_info->gadget4);
 
     struct HDF5_METADATA_NAMES metadata_names;
-    int status = fill_hdf5_metadata_names(&metadata_names, run_params->TreeType);
+    int status = fill_hdf5_metadata_names(&metadata_names, run_params->io.TreeType);
     if (status != EXIT_SUCCESS) {
         return -1;
     }
@@ -91,10 +91,10 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
             int32_t numsimulationfiles;
             READ_G4_ATTRIBUTE(fd, "/Header", metadata_names.name_NumSimulationTreeFiles, numsimulationfiles);
 
-            if(numsimulationfiles != run_params->NumSimulationTreeFiles) {
+            if(numsimulationfiles != run_params->io.NumSimulationTreeFiles) {
                 fprintf(stderr,"Error: Parameter file mentions total number of simulation output files = %d but the "
                         "hdf5 field `%s' says %d tree files\n",
-                        run_params->NumSimulationTreeFiles, metadata_names.name_NumSimulationTreeFiles, numsimulationfiles);
+                        run_params->io.NumSimulationTreeFiles, metadata_names.name_NumSimulationTreeFiles, numsimulationfiles);
                 fprintf(stderr,"May be the value in the parameter file needs to be updated?\n");
                 return -1;
             }
@@ -121,10 +121,10 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
             }
             double tmp;
             const double tolerance = 1e-6;
-            SANITY_CHECK_FLOAT64_ATTRIBUTE(fd, "/Parameters", "BoxSize", tmp, run_params->BoxSize, tolerance);
-            SANITY_CHECK_FLOAT64_ATTRIBUTE(fd, "/Parameters", "Omega0", tmp, run_params->Omega, tolerance);
-            SANITY_CHECK_FLOAT64_ATTRIBUTE(fd, "/Parameters", "OmegaLambda", tmp, run_params->OmegaLambda, tolerance);
-            SANITY_CHECK_FLOAT64_ATTRIBUTE(fd, "/Parameters", "HubbleParam", tmp, run_params->Hubble_h, tolerance);
+            SANITY_CHECK_FLOAT64_ATTRIBUTE(fd, "/Parameters", "BoxSize", tmp, run_params->cosmology.BoxSize, tolerance);
+            SANITY_CHECK_FLOAT64_ATTRIBUTE(fd, "/Parameters", "Omega0", tmp, run_params->cosmology.Omega, tolerance);
+            SANITY_CHECK_FLOAT64_ATTRIBUTE(fd, "/Parameters", "OmegaLambda", tmp, run_params->cosmology.OmegaLambda, tolerance);
+            SANITY_CHECK_FLOAT64_ATTRIBUTE(fd, "/Parameters", "HubbleParam", tmp, run_params->cosmology.Hubble_h, tolerance);
             #undef SANITY_CHECK_FLOAT64_ATTRIBUTE
 
         }
@@ -143,7 +143,7 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
 
         XRETURN( H5Fclose(fd) >= 0, -1, "Error: Could not close hdf5 file `%s`\n", filename);
     }
-    if(run_params->NumSimulationTreeFiles == (lastfile - firstfile + 1)) {
+    if(run_params->io.NumSimulationTreeFiles == (lastfile - firstfile + 1)) {
         XRETURN( sanity_check_totnforests == totnforests, -1, "Error: Total number of trees = %" PRId64" "
                 "read in from firstfile = %d should match the number of forests summed across all files = %"PRId64"\n",
                 sanity_check_totnforests, firstfile, totnforests);
@@ -163,7 +163,7 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
 
     int64_t nforests_this_task, start_forestnum;
     status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest,
-                                                    run_params->ForestDistributionScheme, run_params->Exponent_Forest_Dist_Scheme,
+                                                    run_params->runtime.ForestDistributionScheme, run_params->runtime.Exponent_Forest_Dist_Scheme,
                                                     NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     if(status != EXIT_SUCCESS) {
         return status;
@@ -525,7 +525,7 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
             forests_info->frac_volume_processed += (double) num_forests_to_process_per_file[ifile] / (double) totnforests_per_file[ifile];
         }
     }
-    forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
+    forests_info->frac_volume_processed /= (double) run_params->io.NumSimulationTreeFiles;
 
     free(num_forests_to_process_per_file);
     free(start_forestnum_to_process_per_file);
@@ -533,8 +533,8 @@ int setup_forests_io_gadget4_hdf5(struct forest_info *forests_info,
 
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac = 1000000000000000LL;
-    run_params->ForestNr_Mulfac = 1000000000LL;
+    run_params->runtime.FileNr_Mulfac = 1000000000000000LL;
+    run_params->runtime.ForestNr_Mulfac = 1000000000LL;
 
     fprintf(stderr,"[On ThisTask = %d] start_forestnum = %"PRId64" end_forestnum = %"PRId64" start_filenum = %d end_filenum = %d "
                     "file_nhalo_offset_for_start_forestnum = %"PRId64" end_halonum = %"PRId64"\n", 

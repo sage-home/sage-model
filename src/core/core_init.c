@@ -32,7 +32,7 @@ double time_to_present(const double z, struct params *run_params);
 void init(struct params *run_params)
 {
 #ifdef VERBOSE
-    const int ThisTask = run_params->ThisTask;
+    const int ThisTask = run_params->runtime.ThisTask;
 #endif
 
     /* Initialize components */
@@ -61,27 +61,38 @@ void init(struct params *run_params)
 void initialize_units(struct params *run_params)
 {
     /* Derive time units from length and velocity */
-    run_params->UnitTime_in_s = run_params->UnitLength_in_cm / run_params->UnitVelocity_in_cm_per_s;
-    run_params->UnitTime_in_Megayears = run_params->UnitTime_in_s / SEC_PER_MEGAYEAR;
+    run_params->units.UnitTime_in_s = run_params->units.UnitLength_in_cm / run_params->units.UnitVelocity_in_cm_per_s;
+    run_params->units.UnitTime_in_Megayears = run_params->units.UnitTime_in_s / SEC_PER_MEGAYEAR;
     
     /* Set gravitational constant in code units */
-    run_params->G = GRAVITY / CUBE(run_params->UnitLength_in_cm) * run_params->UnitMass_in_g * SQR(run_params->UnitTime_in_s);
+    run_params->cosmology.G = GRAVITY / CUBE(run_params->units.UnitLength_in_cm) * 
+                             run_params->units.UnitMass_in_g * 
+                             SQR(run_params->units.UnitTime_in_s);
     
     /* Derive density, pressure, cooling rate and energy units */
-    run_params->UnitDensity_in_cgs = run_params->UnitMass_in_g / CUBE(run_params->UnitLength_in_cm);
-    run_params->UnitPressure_in_cgs = run_params->UnitMass_in_g / run_params->UnitLength_in_cm / SQR(run_params->UnitTime_in_s);
-    run_params->UnitCoolingRate_in_cgs = run_params->UnitPressure_in_cgs / run_params->UnitTime_in_s;
-    run_params->UnitEnergy_in_cgs = run_params->UnitMass_in_g * SQR(run_params->UnitLength_in_cm) / SQR(run_params->UnitTime_in_s);
+    run_params->units.UnitDensity_in_cgs = run_params->units.UnitMass_in_g / CUBE(run_params->units.UnitLength_in_cm);
+    run_params->units.UnitPressure_in_cgs = run_params->units.UnitMass_in_g / 
+                                           run_params->units.UnitLength_in_cm / 
+                                           SQR(run_params->units.UnitTime_in_s);
+    run_params->units.UnitCoolingRate_in_cgs = run_params->units.UnitPressure_in_cgs / run_params->units.UnitTime_in_s;
+    run_params->units.UnitEnergy_in_cgs = run_params->units.UnitMass_in_g * 
+                                         SQR(run_params->units.UnitLength_in_cm) / 
+                                         SQR(run_params->units.UnitTime_in_s);
 
     /* Convert supernova parameters to code units */
-    run_params->EnergySNcode = run_params->EnergySN / run_params->UnitEnergy_in_cgs * run_params->Hubble_h;
-    run_params->EtaSNcode = run_params->EtaSN * (run_params->UnitMass_in_g / SOLAR_MASS) / run_params->Hubble_h;
+    run_params->physics.EnergySNcode = run_params->physics.EnergySN / 
+                                      run_params->units.UnitEnergy_in_cgs * 
+                                      run_params->cosmology.Hubble_h;
+    run_params->physics.EtaSNcode = run_params->physics.EtaSN * 
+                                   (run_params->units.UnitMass_in_g / SOLAR_MASS) / 
+                                   run_params->cosmology.Hubble_h;
 
     /* Set Hubble parameter in internal units */
-    run_params->Hubble = HUBBLE * run_params->UnitTime_in_s;
+    run_params->cosmology.Hubble = HUBBLE * run_params->units.UnitTime_in_s;
 
     /* Compute critical density */
-    run_params->RhoCrit = 3.0 * run_params->Hubble * run_params->Hubble / (8 * M_PI * run_params->G);
+    run_params->cosmology.RhoCrit = 3.0 * run_params->cosmology.Hubble * run_params->cosmology.Hubble / 
+                                   (8 * M_PI * run_params->cosmology.G);
 }
 
 /*
@@ -107,24 +118,24 @@ void cleanup_units(struct params *run_params)
 void initialize_simulation_times(struct params *run_params)
 {
     /* Allocate memory for age array */
-    run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
+    run_params->simulation.Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->simulation.Age[0]));
     
     /* Read list of snapshots from file */
     read_snap_list(run_params);
 
     /* Initialize ages array with hack to fix deltaT for snapshot 0 */
-    run_params->Age[0] = time_to_present(1000.0, run_params); /* lookback time from z=1000 */
-    run_params->Age++;
+    run_params->simulation.Age[0] = time_to_present(1000.0, run_params); /* lookback time from z=1000 */
+    run_params->simulation.Age++;
 
     /* Calculate redshift and age for each snapshot */
-    for(int i = 0; i < run_params->Snaplistlen; i++) {
-        run_params->ZZ[i] = 1 / run_params->AA[i] - 1;
-        run_params->Age[i] = time_to_present(run_params->ZZ[i], run_params);
+    for(int i = 0; i < run_params->simulation.Snaplistlen; i++) {
+        run_params->simulation.ZZ[i] = 1 / run_params->simulation.AA[i] - 1;
+        run_params->simulation.Age[i] = time_to_present(run_params->simulation.ZZ[i], run_params);
     }
 
     /* Set reionization parameters */
-    run_params->a0 = 1.0 / (1.0 + run_params->Reionization_z0);
-    run_params->ar = 1.0 / (1.0 + run_params->Reionization_zr);
+    run_params->physics.a0 = 1.0 / (1.0 + run_params->physics.Reionization_z0);
+    run_params->physics.ar = 1.0 / (1.0 + run_params->physics.Reionization_zr);
 }
 
 /*
@@ -135,10 +146,10 @@ void initialize_simulation_times(struct params *run_params)
 void cleanup_simulation_times(struct params *run_params)
 {
     /* Reset Age pointer to its original allocation address */
-    run_params->Age--;
+    run_params->simulation.Age--;
     
     /* Free Age array */
-    myfree(run_params->Age);
+    myfree(run_params->simulation.Age);
 }
 
 /*
@@ -204,8 +215,8 @@ void initialize_evolution_context(struct evolution_context *ctx,
     /* Initialize halo properties */
     ctx->halo_nr = halonr;
     ctx->halo_snapnum = halos[halonr].SnapNum;
-    ctx->redshift = run_params->ZZ[ctx->halo_snapnum];
-    ctx->halo_age = run_params->Age[ctx->halo_snapnum];
+    ctx->redshift = run_params->simulation.ZZ[ctx->halo_snapnum];
+    ctx->halo_age = run_params->simulation.Age[ctx->halo_snapnum];
     
     /* Initialize time integration */
     ctx->deltaT = 0.0;  /* Will be set during evolution */
@@ -244,31 +255,31 @@ void cleanup_evolution_context(struct evolution_context *ctx)
 void read_snap_list(struct params *run_params)
 {
 #ifdef VERBOSE
-    const int ThisTask = run_params->ThisTask;
+    const int ThisTask = run_params->runtime.ThisTask;
 #endif
 
     char fname[MAX_STRING_LEN+1];
 
-    snprintf(fname, MAX_STRING_LEN, "%s", run_params->FileWithSnapList);
+    snprintf(fname, MAX_STRING_LEN, "%s", run_params->io.FileWithSnapList);
     FILE *fd = fopen(fname, "r");
     if(fd == NULL) {
         fprintf(stderr, "can't read output list in file '%s'\n", fname);
         ABORT(0);
     }
 
-    run_params->Snaplistlen = 0;
+    run_params->simulation.Snaplistlen = 0;
     do {
-        if(fscanf(fd, " %lg ", &(run_params->AA[run_params->Snaplistlen])) == 1) {
-            run_params->Snaplistlen++;
+        if(fscanf(fd, " %lg ", &(run_params->simulation.AA[run_params->simulation.Snaplistlen])) == 1) {
+            run_params->simulation.Snaplistlen++;
         } else {
             break;
         }
-    } while(run_params->Snaplistlen < run_params->SimMaxSnaps);
+    } while(run_params->simulation.Snaplistlen < run_params->simulation.SimMaxSnaps);
     fclose(fd);
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
-        fprintf(stdout, "found %d defined times in snaplist\n", run_params->Snaplistlen);
+        fprintf(stdout, "found %d defined times in snaplist\n", run_params->simulation.Snaplistlen);
     }
 #endif
 }
@@ -291,7 +302,7 @@ double time_to_present(const double z, struct params *run_params)
     F.function = &integrand_time_to_present;
     F.params = run_params;
 
-    gsl_integration_qag(&F, start_limit, end_limit, 1.0 / run_params->Hubble,
+    gsl_integration_qag(&F, start_limit, end_limit, 1.0 / run_params->cosmology.Hubble,
                         1.0e-9, WORKSIZE, GSL_INTEG_GAUSS21, workspace, &result, &abserr);
 
     gsl_integration_workspace_free(workspace);
@@ -312,7 +323,7 @@ double time_to_present(const double z, struct params *run_params)
 #endif
 
     /* convert into Myrs/h (I think -> MS 23/6/2018) */
-    const double time = 1.0 / run_params->Hubble * result;
+    const double time = 1.0 / run_params->cosmology.Hubble * result;
 
     // return time to present as a function of redshift
     return time;
@@ -324,5 +335,7 @@ double time_to_present(const double z, struct params *run_params)
 double integrand_time_to_present(const double a, void *param)
 {
     const struct params *run_params = (struct params *) param;
-    return 1.0 / sqrt(run_params->Omega / a + (1.0 - run_params->Omega - run_params->OmegaLambda) + run_params->OmegaLambda * a * a);
+    return 1.0 / sqrt(run_params->cosmology.Omega / a + 
+                     (1.0 - run_params->cosmology.Omega - run_params->cosmology.OmegaLambda) + 
+                     run_params->cosmology.OmegaLambda * a * a);
 }

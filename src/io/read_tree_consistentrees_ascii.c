@@ -21,7 +21,7 @@ void convert_ctrees_conventions_to_lht(struct halo_data *halos, struct additiona
 void get_forests_filename_ctr_ascii(char *filename, const size_t len, const struct params *run_params)
 {
     /* this prints the first filename (tree_0_0_0.dat) */
-    snprintf(filename, len-1, "%s/%s", run_params->SimulationDir, run_params->TreeName);
+    snprintf(filename, len-1, "%s/%s", run_params->io.SimulationDir, run_params->io.TreeName);
 }
 
 /* Externally visible Functions */
@@ -33,8 +33,8 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
     setrlimit(RLIMIT_NOFILE, &rlp);
 
     char locations_file[2*MAX_STRING_LEN], forests_file[2*MAX_STRING_LEN];
-    snprintf(locations_file, 2*MAX_STRING_LEN-1, "%s/locations.dat", run_params->SimulationDir);
-    snprintf(forests_file, 2*MAX_STRING_LEN-1, "%s/forests.list", run_params->SimulationDir);
+    snprintf(locations_file, 2*MAX_STRING_LEN-1, "%s/locations.dat", run_params->io.SimulationDir);
+    snprintf(forests_file, 2*MAX_STRING_LEN-1, "%s/forests.list", run_params->io.SimulationDir);
 
     int64_t *treeids, *forestids;
     const int64_t totntrees = read_forests(forests_file, &forestids, &treeids);
@@ -216,7 +216,7 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
 
     /*MS: 23/9/2019 Fix up the normalisation to make the volume in [0.0, 1.0] (the previous step adds 1.0 per file
       -> the sum should be NumSimulationTreeFiles) */
-    forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
+    forests_info->frac_volume_processed /= (double) run_params->io.NumSimulationTreeFiles;
     if(forests_info->frac_volume_processed > 1.0) {
         fprintf(stderr,"Warning: Fraction of simulation volume  was > 1.0, *clamping* that to 1.0. (fraction - 1.0) = %g\n", forests_info->frac_volume_processed - 1.0);
         forests_info->frac_volume_processed = 1.0;
@@ -316,8 +316,8 @@ int setup_forests_io_ctrees(struct forest_info *forests_info, const int ThisTask
 
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac = 0;
-    run_params->ForestNr_Mulfac = 1000000000LL;/*MS: The ID needs to fit in 64 bits -> ID must be <  2^64 ~ 1e19.*/
+    run_params->runtime.FileNr_Mulfac = 0;
+    run_params->runtime.ForestNr_Mulfac = 1000000000LL;/*MS: The ID needs to fit in 64 bits -> ID must be <  2^64 ~ 1e19.*/
 
     return EXIT_SUCCESS;
 }
@@ -369,7 +369,7 @@ int64_t load_forest_ctrees(const int32_t forestnr, struct halo_data **halos, str
         struct halo_data *local_halos = *halos;
         const int64_t nhalos = base_info.N - prev_N;
         const int32_t snap_offset = 0;/* need to figure out how to set this correctly (do not think there is an automatic way to do so): MS 03/08/2018 */
-        convert_ctrees_conventions_to_lht(&(local_halos[prev_N]), info, nhalos, snap_offset, run_params->PartMass, prev_N);
+        convert_ctrees_conventions_to_lht(&(local_halos[prev_N]), info, nhalos, snap_offset, run_params->cosmology.PartMass, prev_N);
     }
     const int64_t totnhalos = base_info.N;
     const int64_t nallocated = base_info.nallocated;

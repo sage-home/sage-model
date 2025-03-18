@@ -20,6 +20,7 @@
 #include "../physics/model_reincorporation.h"
 #include "../physics/model_starformation_and_feedback.h"
 #include "../physics/model_cooling_heating.h"
+#include "../core/core_parameter_views.h"
 
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
@@ -343,8 +344,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             }
 
             // Calculate time step and current time
-            const double deltaT = run_params->Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
-            const double time = run_params->Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
+            const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
+            const double time = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
             ctx.deltaT = deltaT;  // Store in context for potential future module use
 
             if(ctx.galaxies[p].dT < 0.0) {
@@ -358,8 +359,10 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
 
                 // PHYSICS MODULE: Reincorporation - adds ejected gas back to the hot component
                 // REFACTORING NOTE: Will become a pluggable module in Phase 2
-                if(run_params->ReIncorporationFactor > 0.0) {
-                    reincorporate_gas(ctx.centralgal, deltaT / STEPS, ctx.galaxies, run_params);
+                if(run_params->physics.ReIncorporationFactor > 0.0) {
+                    struct reincorporation_params_view reincorp_params;
+                    initialize_reincorporation_params_view(&reincorp_params, run_params);
+                    reincorporate_gas(ctx.centralgal, deltaT / STEPS, ctx.galaxies, &reincorp_params);
                 }
             } else {
                 // PHYSICS MODULE: Stripping - removes gas from satellite galaxies
@@ -371,12 +374,19 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
 
             // PHYSICS MODULE: Cooling - converts hot gas to cold gas
             // REFACTORING NOTE: Will become a pluggable module in Phase 2
-            double coolingGas = cooling_recipe(p, deltaT / STEPS, ctx.galaxies, run_params);
+            struct cooling_params_view cooling_params;
+            initialize_cooling_params_view(&cooling_params, run_params);
+            double coolingGas = cooling_recipe(p, deltaT / STEPS, ctx.galaxies, &cooling_params);
             cool_gas_onto_galaxy(p, coolingGas, ctx.galaxies);
 
             // PHYSICS MODULE: Star Formation and Feedback - forms stars and heats/ejects gas
             // REFACTORING NOTE: Will become a pluggable module in Phase 2
-            starformation_and_feedback(p, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, ctx.galaxies, run_params);
+            struct star_formation_params_view sf_params;
+            struct feedback_params_view fb_params;
+            initialize_star_formation_params_view(&sf_params, run_params);
+            initialize_feedback_params_view(&fb_params, run_params);
+            starformation_and_feedback(p, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, 
+                                     ctx.galaxies, &sf_params, &fb_params);
         }
 
         // PHYSICS MODULE: Mergers and Disruption - handles satellite galaxy fate
@@ -389,14 +399,14 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                         "Error: galaxies[%d].MergTime = %lf is too large! Should have been within the age of the Universe\n",
                         p, ctx.galaxies[p].MergTime);
 
-                const double deltaT = run_params->Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
+                const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
                 ctx.galaxies[p].MergTime -= deltaT / STEPS;
 
                 // only consider mergers or disruption for halo-to-baryonic mass ratios below the threshold
                 // or for satellites with no baryonic mass (they don't grow and will otherwise hang around forever)
                 double currentMvir = ctx.galaxies[p].Mvir - ctx.galaxies[p].deltaMvir * (1.0 - ((double)step + 1.0) / (double)STEPS);
                 double galaxyBaryons = ctx.galaxies[p].StellarMass + ctx.galaxies[p].ColdGas;
-                if((galaxyBaryons == 0.0) || (galaxyBaryons > 0.0 && (currentMvir / galaxyBaryons <= run_params->ThresholdSatDisruption))) {
+                if((galaxyBaryons == 0.0) || (galaxyBaryons > 0.0 && (currentMvir / galaxyBaryons <= run_params->physics.ThresholdSatDisruption))) {
 
                     int merger_centralgal = ctx.galaxies[p].Type==1 ? ctx.centralgal : ctx.galaxies[p].CentralGal;
 
@@ -414,7 +424,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                         } else {
                             // PHYSICS MODULE: Mergers - satellite merges with central galaxy
                             // REFACTORING NOTE: Will become part of the merger module in Phase 2
-                            double time = run_params->Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
+                            double time = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
                             deal_with_galaxy_merger(p, merger_centralgal, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, ctx.galaxies, run_params);
                         }
                     }
@@ -426,7 +436,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
 
     // Extra miscellaneous stuff before finishing this halo
     ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons = 0.0;
-    const double deltaT = run_params->Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
+    const double deltaT = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
     const double inv_deltaT = 1.0/deltaT;
 
     for(int p = 0; p < ctx.ngal; p++) {

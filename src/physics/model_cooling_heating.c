@@ -6,12 +6,19 @@
 
 #include "../core/core_allvars.h"
 #include "../core/core_cool_func.h"
+#include "../core/core_parameter_views.h"
 
 #include "../physics/model_cooling_heating.h"
 #include "../physics/model_misc.h"
 
 
-double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+/*
+ * Main cooling calculation function
+ * 
+ * Calculates the amount of gas that cools from the hot halo onto the galaxy disk.
+ * Uses parameter views for improved modularity.
+ */
+double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct cooling_params_view *cooling_params)
 {
     double coolingGas;
 
@@ -26,7 +33,7 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 
         double lambda = get_metaldependent_cooling_rate(log10(temp), logZ);
         double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
-        x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
+        x /= (cooling_params->UnitDensity_in_cgs * cooling_params->UnitTime_in_s);  // now in internal units
         const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
 
         // an isothermal density profile for the hot gas is assumed here
@@ -50,9 +57,12 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 
 		// at this point we have calculated the maximal cooling rate
 		// if AGNrecipeOn we now reduce it in line with past heating before proceeding
-
-		if(run_params->AGNrecipeOn > 0 && coolingGas > 0.0) {
-			coolingGas = do_AGN_heating(coolingGas, gal, dt, x, rcool, galaxies, run_params);
+        if(cooling_params->AGNrecipeOn > 0 && coolingGas > 0.0) {
+            // Create AGN params view for do_AGN_heating
+            struct agn_params_view agn_params;
+            initialize_agn_params_view(&agn_params, cooling_params->full_params);
+            
+            coolingGas = do_AGN_heating(coolingGas, gal, dt, x, rcool, galaxies, &agn_params);
         }
 
 		if (coolingGas > 0.0) {
@@ -65,12 +75,31 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 	XASSERT(coolingGas >= 0.0, -1,
             "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
     return coolingGas;
+}
 
+/*
+ * Compatibility wrapper for cooling_recipe
+ * 
+ * Provides backwards compatibility with the old interface while
+ * using the new parameter view-based implementation internally.
+ */
+double cooling_recipe_compat(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+{
+    struct cooling_params_view cooling_params;
+    initialize_cooling_params_view(&cooling_params, run_params);
+    return cooling_recipe(gal, dt, galaxies, &cooling_params);
 }
 
 
 
-double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, struct GALAXY *galaxies, const struct params *run_params)
+/*
+ * AGN heating calculation
+ * 
+ * Models the impact of AGN feedback on gas cooling.
+ * Uses parameter views for improved modularity.
+ */
+double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, 
+                     const double rcool, struct GALAXY *galaxies, const struct agn_params_view *agn_params)
 {
     double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity;
 
@@ -86,10 +115,13 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
 
 	// now calculate the new heating rate
     if(galaxies[centralgal].HotGas > 0.0) {
-        if(run_params->AGNrecipeOn == 2) {
+        const struct params *run_params = agn_params->full_params; // For G access
+        
+        if(agn_params->AGNrecipeOn == 2) {
             // Bondi-Hoyle accretion recipe
-            AGNrate = (2.5 * M_PI * run_params->G) * (0.375 * 0.6 * x) * galaxies[centralgal].BlackHoleMass * run_params->RadioModeEfficiency;
-        } else if(run_params->AGNrecipeOn == 3) {
+            AGNrate = (2.5 * M_PI * run_params->cosmology.G) * (0.375 * 0.6 * x) * 
+                    galaxies[centralgal].BlackHoleMass * agn_params->RadioModeEfficiency;
+        } else if(agn_params->AGNrecipeOn == 3) {
             // Cold cloud accretion: trigger: rBH > 1.0e-4 Rsonic, and accretion rate = 0.01% cooling rate
             if(galaxies[centralgal].BlackHoleMass > 0.0001 * galaxies[centralgal].Mvir * CUBE(rcool/galaxies[centralgal].Rvir)) {
                 AGNrate = 0.0001 * coolingGas / dt;
@@ -99,17 +131,22 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
         } else {
             // empirical (standard) accretion recipe
             if(galaxies[centralgal].Mvir > 0.0) {
-                AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
-                    * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0)
-                    * ((galaxies[centralgal].HotGas / galaxies[centralgal].Mvir) / 0.1);
+                AGNrate = agn_params->RadioModeEfficiency / 
+                        (agn_params->UnitMass_in_g / agn_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS) * 
+                        (galaxies[centralgal].BlackHoleMass / 0.01) * 
+                        CUBE(galaxies[centralgal].Vvir / 200.0) * 
+                        ((galaxies[centralgal].HotGas / galaxies[centralgal].Mvir) / 0.1);
             } else {
-                AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
-                    * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0);
+                AGNrate = agn_params->RadioModeEfficiency / 
+                        (agn_params->UnitMass_in_g / agn_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS) * 
+                        (galaxies[centralgal].BlackHoleMass / 0.01) * 
+                        CUBE(galaxies[centralgal].Vvir / 200.0);
             }
         }
 
         // Eddington rate
-        EDDrate = (1.3e38 * galaxies[centralgal].BlackHoleMass * 1e10 / run_params->Hubble_h) / (run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s) / (0.1 * 9e10);
+        EDDrate = (1.3e38 * galaxies[centralgal].BlackHoleMass * 1e10 / run_params->cosmology.Hubble_h) / 
+                 (agn_params->UnitEnergy_in_cgs / agn_params->UnitTime_in_s) / (0.1 * 9e10);
 
         // accretion onto BH is always limited by the Eddington rate
         if(AGNrate > EDDrate) {
@@ -157,6 +194,21 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
     }
 
     return coolingGas;
+}
+
+/*
+ * Compatibility wrapper for do_AGN_heating
+ * 
+ * Provides backwards compatibility with the old interface while
+ * using the new parameter view-based implementation internally.
+ */
+double do_AGN_heating_compat(double coolingGas, const int centralgal, const double dt, 
+                           const double x, const double rcool, struct GALAXY *galaxies, 
+                           const struct params *run_params)
+{
+    struct agn_params_view agn_params;
+    initialize_agn_params_view(&agn_params, run_params);
+    return do_AGN_heating(coolingGas, centralgal, dt, x, rcool, galaxies, &agn_params);
 }
 
 

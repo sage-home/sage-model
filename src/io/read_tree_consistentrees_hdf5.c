@@ -32,7 +32,7 @@ static void convert_ctrees_conventions_to_lht(struct halo_data *halos, const int
 
 void get_forest_metadata_filename(char *metadata_filename, const size_t len, struct params *run_params)
 {
-    snprintf(metadata_filename, len, "%s/%s%s", run_params->SimulationDir, run_params->TreeName, run_params->TreeExtension);
+    snprintf(metadata_filename, len, "%s/%s%s", run_params->io.SimulationDir, run_params->io.TreeName, run_params->io.TreeExtension);
     return;
 }
 
@@ -40,12 +40,12 @@ void get_forest_metadata_filename(char *metadata_filename, const size_t len, str
 /* Externally visible Functions */
 int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int ThisTask, const int NTasks, struct params *run_params)
 {
-    const int firstfile = run_params->FirstFile;
-    const int lastfile = run_params->LastFile;
+    const int firstfile = run_params->io.FirstFile;
+    const int lastfile = run_params->io.LastFile;
     const int numfiles = lastfile - firstfile + 1;/* This is total number of files to process across all tasks */
     if(numfiles <= 0) {
         fprintf(stderr,"Error: Need at least one file to process. Calculated numfiles = %d (firstfile = %d, lastfile = %d)\n",
-                numfiles, run_params->FirstFile, run_params->LastFile);
+                numfiles, run_params->io.FirstFile, run_params->io.LastFile);
         return INVALID_OPTION_IN_PARAMS;
     }
     struct ctrees_h5_info *ctr_h5 = &(forests_info->ctr_h5);
@@ -146,7 +146,7 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
     // Note this might be smaller than the actual number of forests in the simulation
     forests_info->totnforests = totnforests;
 
-    const int need_nhalos_per_forest = run_params->ForestDistributionScheme == uniform_in_forests ? 0:1;
+    const int need_nhalos_per_forest = run_params->runtime.ForestDistributionScheme == uniform_in_forests ? 0:1;
     int64_t *nhalos_per_forest = NULL;
     if(need_nhalos_per_forest) {
         nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
@@ -190,7 +190,7 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
 
     int64_t nforests_this_task, start_forestnum;
     int status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest,
-                                                         run_params->ForestDistributionScheme, run_params->Exponent_Forest_Dist_Scheme,
+                                                         run_params->runtime.ForestDistributionScheme, run_params->runtime.Exponent_Forest_Dist_Scheme,
                                                          NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     if(status != EXIT_SUCCESS) {
         return status;
@@ -254,7 +254,7 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
     int64_t offset = 0;
     for(int64_t iforest=0;iforest<nforests_this_task;iforest++) {
         if(iforest >= endforestnum_in_currfile) {
-            fprintf(stderr,"LOG: ThisTask = %d iforest = %"PRId64" start_filenum = %d, curr_filenum = %d endforestnum_in_currfile = %"PRId64" offset = %"PRId64"\n", run_params->ThisTask, iforest, start_filenum, curr_filenum, endforestnum_in_currfile, offset);
+            fprintf(stderr,"LOG: ThisTask = %d iforest = %"PRId64" start_filenum = %d, curr_filenum = %d endforestnum_in_currfile = %"PRId64" offset = %"PRId64"\n", run_params->runtime.ThisTask, iforest, start_filenum, curr_filenum, endforestnum_in_currfile, offset);
             offset = endforestnum_in_currfile;
             curr_filenum++;
             endforestnum_in_currfile += totnforests_per_file[curr_filenum];
@@ -304,10 +304,10 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
             }                                                               \
         }
 
-        CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("BoxSize", file_boxsize, run_params->BoxSize, maxdiff, maxreldiff);
-        CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_M", om, run_params->Omega, maxdiff, maxreldiff);
-        CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_Lambda", ol, run_params->OmegaLambda, maxdiff, maxreldiff);
-        CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Little h (hubble parameter)", little_h, run_params->Hubble_h, maxdiff, maxreldiff);
+        CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("BoxSize", file_boxsize, run_params->cosmology.BoxSize, maxdiff, maxreldiff);
+        CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_M", om, run_params->cosmology.Omega, maxdiff, maxreldiff);
+        CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_Lambda", ol, run_params->cosmology.OmegaLambda, maxdiff, maxreldiff);
+        CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Little h (hubble parameter)", little_h, run_params->cosmology.Hubble_h, maxdiff, maxreldiff);
 
 #undef CHECK_AND_ABORT_UNITS_VS_PARAM_FILE
     }
@@ -378,7 +378,7 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
         }
         forests_info->frac_volume_processed += (double) num_forests_to_process_per_file[filenr] / (double) totnforests_per_file[filenr];
     }
-    forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
+    forests_info->frac_volume_processed /= (double) run_params->io.NumSimulationTreeFiles;
 
     myfree(num_forests_to_process_per_file);
     myfree(start_forestnum_to_process_per_file);
@@ -386,8 +386,8 @@ int setup_forests_io_ctrees_hdf5(struct forest_info *forests_info, const int Thi
 
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac   =  LLONG_MAX/2000;
-    run_params->ForestNr_Mulfac =        run_params->FileNr_Mulfac/3000000000LL;
+    run_params->runtime.FileNr_Mulfac   =  LLONG_MAX/2000;
+    run_params->runtime.ForestNr_Mulfac =        run_params->runtime.FileNr_Mulfac/3000000000LL;
 
     return EXIT_SUCCESS;
 }
@@ -462,7 +462,7 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
 
     if(forestnr < 0 || forestnr > ctr_h5->nforests) {
         fprintf(stderr,"Error on ThisTask=%d: forestnr = %"PRId64" should be between [0, %"PRId64")\n",
-                run_params->ThisTask, forestnr, ctr_h5->nforests);
+                run_params->runtime.ThisTask, forestnr, ctr_h5->nforests);
         return -INVALID_MEMORY_ACCESS_REQUESTED;
     }
 
@@ -470,7 +470,7 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
     const int64_t treenum_in_file = forests_info->original_treenr[forestnr];
     if(filenum_for_tree < ctr_h5->start_filenum || filenum_for_tree > ctr_h5->end_filenum) {
         fprintf(stderr,"Error on ThisTask=%d: For forestnr = %"PRId64" (original treenr = %"PRId64"), the file number = %d "\
-                "should be within [%d, %d]\n", run_params->ThisTask, forestnr, treenum_in_file, filenum_for_tree,
+                "should be within [%d, %d]\n", run_params->runtime.ThisTask, forestnr, treenum_in_file, filenum_for_tree,
                 ctr_h5->start_filenum, ctr_h5->end_filenum);
         return -INVALID_MEMORY_ACCESS_REQUESTED;
     }
@@ -489,7 +489,7 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
     const hsize_t count = 1, treenr = treenum_in_file; /* to satisfy the hsize_t vs int64_t compiler warnings + the pointer indirection necessary. MS 14/09/2021 */
     char error_msg[MAX_STRING_LEN];
     snprintf(error_msg, MAX_STRING_LEN, "ERROR MESSAGE: ThisTask = %d filenum_for_tree = %d treenum_in_file = %"PRId64"\n",
-             run_params->ThisTask, filenum_for_tree, treenum_in_file);
+             run_params->runtime.ThisTask, filenum_for_tree, treenum_in_file);
     READ_PARTIAL_FOREST_ARRAY(h5_file_group, field_name, &treenr, &count, &ctrees_finfo, struct ctrees_forestinfo, error_msg);
 
     const int64_t halosoffset = ctrees_finfo.foresthalosoffset;
@@ -521,7 +521,7 @@ int64_t load_forest_ctrees_hdf5(int64_t forestnr, struct halo_data **halos,
     /* Done with all the reading for this snapshot */
 
     const int32_t snap_offset = 0;/* need to figure out how to set this correctly (do not think there is an automatic way to do so): MS 03/08/2018 */
-    convert_ctrees_conventions_to_lht(*halos, nhalos, snap_offset, run_params->PartMass);
+    convert_ctrees_conventions_to_lht(*halos, nhalos, snap_offset, run_params->cosmology.PartMass);
 
     return nhalos;
 }

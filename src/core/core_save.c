@@ -33,14 +33,14 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 {
     int32_t status;
 
-    if(run_params->NumSnapOutputs > ABSOLUTEMAXSNAPS) {
+    if(run_params->simulation.NumSnapOutputs > ABSOLUTEMAXSNAPS) {
         fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
-                run_params->NumSnapOutputs, ABSOLUTEMAXSNAPS);
+                run_params->simulation.NumSnapOutputs, ABSOLUTEMAXSNAPS);
         fprintf(stderr,"To fix this error, simply increase the value of `ABSOLUTEMAXSNAPS` and recompile\n");
         return INVALID_OPTION_IN_PARAMS;
     }
 
-    switch(run_params->OutputFormat) {
+    switch(run_params->io.OutputFormat) {
 
     case(sage_binary):
       status = initialize_binary_galaxy_files(rank, forest_info, save_info, run_params);
@@ -72,8 +72,8 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     int32_t status = EXIT_FAILURE;
 
     // Reset the output galaxy count.
-    int32_t OutputGalCount[run_params->SimMaxSnaps];
-    for(int32_t snap_idx = 0; snap_idx < run_params->SimMaxSnaps; snap_idx++) {
+    int32_t OutputGalCount[run_params->simulation.SimMaxSnaps];
+    for(int32_t snap_idx = 0; snap_idx < run_params->simulation.SimMaxSnaps; snap_idx++) {
         OutputGalCount[snap_idx] = 0;
     }
 
@@ -90,9 +90,9 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     }
 
     // First update mergeIntoID to point to the correct galaxy in the output.
-    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
         for(int32_t gal_idx  = 0; gal_idx < numgals; gal_idx++) {
-            if(halogal[gal_idx].SnapNum == run_params->ListOutputSnaps[snap_idx]) {
+            if(halogal[gal_idx].SnapNum == run_params->simulation.ListOutputSnaps[snap_idx]) {
                 OutputGalOrder[gal_idx] = OutputGalCount[snap_idx];
                 OutputGalCount[snap_idx]++;
                 haloaux[gal_idx].output_snap_n = snap_idx;
@@ -131,14 +131,14 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 
     status = generate_galaxy_indices(halos, haloaux, halogal, numgals,
                                      original_treenr, original_filenr,
-                                     run_params->FileNr_Mulfac, run_params->ForestNr_Mulfac,
+                                     run_params->runtime.FileNr_Mulfac, run_params->runtime.ForestNr_Mulfac,
                                      run_params);
     if(status != EXIT_SUCCESS) {
         return EXIT_FAILURE;
     }
 
     // All of the tracking arrays set up, time to perform the actual writing.
-    switch(run_params->OutputFormat) {
+    switch(run_params->io.OutputFormat) {
 
     case(sage_binary):
         status = save_binary_galaxies(task_forestnr, numgals, OutputGalCount, forest_info,
@@ -170,7 +170,7 @@ int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save
 
     int32_t status = EXIT_FAILURE;
 
-    switch(run_params->OutputFormat) {
+    switch(run_params->io.OutputFormat) {
 
     case(sage_binary):
         status = finalize_binary_galaxy_files(forest_info, save_info, run_params);
@@ -206,7 +206,7 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
 {
 
     // Now generate the unique index for each galaxy.
-    const enum Valid_TreeTypes TreeType = run_params->TreeType;
+    const enum Valid_TreeTypes TreeType = run_params->io.TreeType;
     for(int64_t gal_idx = 0; gal_idx < numgals; ++gal_idx) {
         struct GALAXY *this_gal = &halogal[gal_idx];
 
@@ -231,45 +231,45 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
             //MS: 22/07/2021 - Why is firstfile, lastfile still passed even though those could be constructef
             //from run_params (like done within this __FUNCTION__)
             fprintf(stderr,"It is likely that your tree file contains too many trees or a tree contains too many galaxies, you can increase the maximum number "\
-                    "of trees per file with the parameter run_params->FileNr_Mulfac at l. 264 in src/io/read_tree_lhalo_hdf5.c. "\
-                    "If a tree contains too many galaxies, you can increase run_params->ForestNr_Mulfac in the same location. "\
+                    "of trees per file with the parameter run_params->runtime.FileNr_Mulfac at l. 264 in src/io/read_tree_lhalo_hdf5.c. "\
+                    "If a tree contains too many galaxies, you can increase run_params->runtime.ForestNr_Mulfac in the same location. "\
                     "If all trees are stored in a single file, FileNr_Mulfac can in principle be set to zero to remove the limit\n.");
             break;
 
         case gadget4_hdf5:
             fprintf(stderr,"It is likely that your tree file contains too many trees or a tree contains too many galaxies, you can increase the maximum number "\
-                    "of trees per file with the parameter run_params->FileNr_Mulfac at l. 536 in src/io/read_tree_gadget4_hdf5.c. "\
-                    "If a tree contains too many galaxies, you can increase run_params->ForestNr_Mulfac in the same location. "\
+                    "of trees per file with the parameter run_params->runtime.FileNr_Mulfac at l. 536 in src/io/read_tree_gadget4_hdf5.c. "\
+                    "If a tree contains too many galaxies, you can increase run_params->runtime.ForestNr_Mulfac in the same location. "\
                     "If all trees are stored in a single file, FileNr_Mulfac can in principle be set to zero to remove the limit.\n");
             break;
 
         case genesis_hdf5:
             fprintf(stderr,"It is likely that your tree file contains too many trees or a tree contains too many galaxies, you can increase the maximum number "\
-                    "of trees per file with the parameter run_params->FileNr_Mulfac at l. 492 in src/io/read_tree_genesis_hdf5.c. "\
-                    "If a tree contains too many galaxies, you can increase run_params->ForestNr_Mulfac in the same location. "\
+                    "of trees per file with the parameter run_params->runtime.FileNr_Mulfac at l. 492 in src/io/read_tree_genesis_hdf5.c. "\
+                    "If a tree contains too many galaxies, you can increase run_params->runtime.ForestNr_Mulfac in the same location. "\
                     "If all trees are stored in a single file, FileNr_Mulfac can in principle be set to zero to remove the limit.\n");
             break;
 
         case consistent_trees_hdf5:
             fprintf(stderr,"It is likely that your tree file contains too many trees or a tree contains too many galaxies, you can increase the maximum number "\
-                    "of trees per file with the parameter run_params->FileNr_Mulfac at l. 389 in src/io/read_tree_consistentrees_hdf5.c. "\
-                    "If a tree contains too many galaxies, you can increase run_params->ForestNr_Mulfac in the same location. "\
+                    "of trees per file with the parameter run_params->runtime.FileNr_Mulfac at l. 389 in src/io/read_tree_consistentrees_hdf5.c. "\
+                    "If a tree contains too many galaxies, you can increase run_params->runtime.ForestNr_Mulfac in the same location. "\
                     "If all trees are stored in a single file, FileNr_Mulfac can in principle be set to zero to remove the limit.\n");
             break;
 #endif
 
         case lhalo_binary:
             fprintf(stderr,"It is likely that your tree file contains too many trees or a tree contains too many galaxies, you can increase the maximum number "\
-                    "of trees per file with the parameter run_params->FileNr_Mulfac at l. 226 in src/io/read_tree_lhalo_binary.c. "\
-                    "If a tree contains too many galaxies, you can increase run_params->ForestNr_Mulfac in the same location. "\
+                    "of trees per file with the parameter run_params->runtime.FileNr_Mulfac at l. 226 in src/io/read_tree_lhalo_binary.c. "\
+                    "If a tree contains too many galaxies, you can increase run_params->runtime.ForestNr_Mulfac in the same location. "\
                     "If all trees are stored in a single file, FileNr_Mulfac can in principle be set to zero to remove the limit.\n");
 
             break;
 
         case consistent_trees_ascii:
             fprintf(stderr,"It is likely that you have a tree with too many galaxies. For consistent trees the number of galaxies per trees "\
-                    "is limited for the ID to to fit in 64 bits, see run_params->ForestNr_Mulfac at l. 319 in src/io/read_tree_consistentrees_ascii.c. "\
-                    "If you have not set a finite run_params->FileNr_Mulfac, this format may not be ideal for your purpose.\n");
+                    "is limited for the ID to to fit in 64 bits, see run_params->runtime.ForestNr_Mulfac at l. 319 in src/io/read_tree_consistentrees_ascii.c. "\
+                    "If you have not set a finite run_params->runtime.FileNr_Mulfac, this format may not be ideal for your purpose.\n");
             break;
 
         default:

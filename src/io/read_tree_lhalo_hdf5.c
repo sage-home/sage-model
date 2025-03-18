@@ -20,15 +20,15 @@ static void get_forests_filename_lht_hdf5(char *filename, const size_t len, cons
 
 void get_forests_filename_lht_hdf5(char *filename, const size_t len, const int filenr,  const struct params *run_params)
 {
-    snprintf(filename, len - 1, "%s/%s.%d%s", run_params->SimulationDir, run_params->TreeName, filenr, run_params->TreeExtension);
+    snprintf(filename, len - 1, "%s/%s.%d%s", run_params->io.SimulationDir, run_params->io.TreeName, filenr, run_params->io.TreeExtension);
 }
 
 
 int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
                              const int ThisTask, const int NTasks, struct params *run_params)
 {
-    const int firstfile = run_params->FirstFile;
-    const int lastfile = run_params->LastFile;
+    const int firstfile = run_params->io.FirstFile;
+    const int lastfile = run_params->io.LastFile;
     const int numfiles = lastfile - firstfile + 1;
     if(numfiles <= 0) {
         return -1;
@@ -50,7 +50,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
         XRETURN (fd > 0, FILE_NOT_FOUND,
                  "Error: can't open file `%s'\n", filename);
 
-        int status = fill_hdf5_metadata_names(&metadata_names, run_params->TreeType);
+        int status = fill_hdf5_metadata_names(&metadata_names, run_params->io.TreeType);
         if (status != EXIT_SUCCESS) {
             return -1;
         }
@@ -68,10 +68,10 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
             READ_LHALO_ATTRIBUTE(fd, "/Header", metadata_names.name_ParticleMass, partmass);
 
             const double max_diff = 1e-5;
-            if(fabs(run_params->PartMass - partmass) >= max_diff) {
+            if(fabs(run_params->cosmology.PartMass - partmass) >= max_diff) {
                 fprintf(stderr,"Error: Parameter file mentions particle mass = %g but the hdf5 file shows particle mass = %g\n",
-                        run_params->PartMass, partmass);
-                fprintf(stderr,"Diff = %g max. tolerated diff = %g\n", fabs(run_params->PartMass - partmass), max_diff);
+                        run_params->cosmology.PartMass, partmass);
+                fprintf(stderr,"Diff = %g max. tolerated diff = %g\n", fabs(run_params->cosmology.PartMass - partmass), max_diff);
                 fprintf(stderr,"May be the value in the parameter file needs to be updated?\n");
                 return -1;
             }
@@ -80,10 +80,10 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
             int32_t numsimulationfiles;
             READ_LHALO_ATTRIBUTE(fd, "/Header", metadata_names.name_NumSimulationTreeFiles, numsimulationfiles);
 
-            if(numsimulationfiles != run_params->NumSimulationTreeFiles) {
+            if(numsimulationfiles != run_params->io.NumSimulationTreeFiles) {
                 fprintf(stderr,"Error: Parameter file mentions total number of simulation output files = %d but the "
                         "hdf5 field `%s' says %d tree files\n",
-                        run_params->NumSimulationTreeFiles, metadata_names.name_NumSimulationTreeFiles, numsimulationfiles);
+                        run_params->io.NumSimulationTreeFiles, metadata_names.name_NumSimulationTreeFiles, numsimulationfiles);
                 fprintf(stderr,"May be the value in the parameter file needs to be updated?\n");
                 return -1;
             }
@@ -106,7 +106,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
 
 
     /* Read in nhalos_per_forest for *ALL* files */
-    const int need_nhalos_per_forest = run_params->ForestDistributionScheme == uniform_in_forests ? 0:1;
+    const int need_nhalos_per_forest = run_params->runtime.ForestDistributionScheme == uniform_in_forests ? 0:1;
     int64_t *nhalos_per_forest = NULL;
     if(need_nhalos_per_forest) {
         nhalos_per_forest = mycalloc(totnforests, sizeof(*nhalos_per_forest));
@@ -141,7 +141,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
 
     int64_t nforests_this_task, start_forestnum;
     int status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest,
-                                                         run_params->ForestDistributionScheme, run_params->Exponent_Forest_Dist_Scheme,
+                                                         run_params->runtime.ForestDistributionScheme, run_params->runtime.Exponent_Forest_Dist_Scheme,
                                                          NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     if(status != EXIT_SUCCESS) {
         return status;
@@ -253,7 +253,7 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
     for(int32_t filenr = start_filenum; filenr <= end_filenum; filenr++) {
         forests_info->frac_volume_processed += (double) num_forests_to_process_per_file[filenr] / (double) totnforests_per_file[filenr];
     }
-    forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
+    forests_info->frac_volume_processed /= (double) run_params->io.NumSimulationTreeFiles;
 
     free(num_forests_to_process_per_file);
     free(start_forestnum_to_process_per_file);
@@ -261,8 +261,8 @@ int setup_forests_io_lht_hdf5(struct forest_info *forests_info,
 
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac = 1000000000000000LL;
-    run_params->ForestNr_Mulfac = 1000000000LL;
+    run_params->runtime.FileNr_Mulfac = 1000000000000000LL;
+    run_params->runtime.ForestNr_Mulfac = 1000000000LL;
 
     return EXIT_SUCCESS;
 }

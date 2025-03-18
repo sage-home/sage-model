@@ -50,19 +50,20 @@ int read_parameter_file(const char *fname, struct params *run_params)
     NParam = 0;
 
 #ifdef VERBOSE
-    const int ThisTask = run_params->ThisTask;
+    const int ThisTask = run_params->runtime.ThisTask;
 
     if(ThisTask == 0) {
         fprintf(stdout, "\nreading parameter file:\n\n");
     }
 #endif
 
+    /* I/O parameters */
     strncpy(ParamTag[NParam], "FileNameGalaxies", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->FileNameGalaxies;
+    ParamAddr[NParam] = run_params->io.FileNameGalaxies;
     ParamID[NParam++] = STRING;
 
     strncpy(ParamTag[NParam], "OutputDir", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->OutputDir;
+    ParamAddr[NParam] = run_params->io.OutputDir;
     ParamID[NParam++] = STRING;
 
     strncpy(ParamTag[NParam], "TreeType", MAXTAGLEN);
@@ -70,167 +71,176 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamID[NParam++] = STRING;
 
     strncpy(ParamTag[NParam], "TreeName", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->TreeName;
+    ParamAddr[NParam] = run_params->io.TreeName;
     ParamID[NParam++] = STRING;
 
     strncpy(ParamTag[NParam], "SimulationDir", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->SimulationDir;
+    ParamAddr[NParam] = run_params->io.SimulationDir;
     ParamID[NParam++] = STRING;
 
     strncpy(ParamTag[NParam], "FileWithSnapList", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->FileWithSnapList;
+    ParamAddr[NParam] = run_params->io.FileWithSnapList;
     ParamID[NParam++] = STRING;
 
     strncpy(ParamTag[NParam], "LastSnapshotNr", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->LastSnapshotNr);
+    ParamAddr[NParam] = &(run_params->simulation.LastSnapshotNr);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "FirstFile", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FirstFile);
+    ParamAddr[NParam] = &(run_params->io.FirstFile);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "LastFile", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->LastFile);
+    ParamAddr[NParam] = &(run_params->io.LastFile);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "NumSimulationTreeFiles", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->NumSimulationTreeFiles);
+    ParamAddr[NParam] = &(run_params->io.NumSimulationTreeFiles);
     ParamID[NParam++] = INT;
 
+    /* Physics parameters */
     strncpy(ParamTag[NParam], "ThreshMajorMerger", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ThreshMajorMerger);
+    ParamAddr[NParam] = &(run_params->physics.ThreshMajorMerger);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "RecycleFraction", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->RecycleFraction);
+    ParamAddr[NParam] = &(run_params->physics.RecycleFraction);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "ReIncorporationFactor", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ReIncorporationFactor);
+    ParamAddr[NParam] = &(run_params->physics.ReIncorporationFactor);
     ParamID[NParam++] = DOUBLE;
 
+    /* Units parameters */
     strncpy(ParamTag[NParam], "UnitVelocity_in_cm_per_s", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->UnitVelocity_in_cm_per_s);
+    ParamAddr[NParam] = &(run_params->units.UnitVelocity_in_cm_per_s);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "UnitLength_in_cm", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->UnitLength_in_cm);
+    ParamAddr[NParam] = &(run_params->units.UnitLength_in_cm);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "UnitMass_in_g", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->UnitMass_in_g);
+    ParamAddr[NParam] = &(run_params->units.UnitMass_in_g);
     ParamID[NParam++] = DOUBLE;
 
+    /* Cosmology parameters */
     strncpy(ParamTag[NParam], "Hubble_h", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->Hubble_h);
+    ParamAddr[NParam] = &(run_params->cosmology.Hubble_h);
     ParamID[NParam++] = DOUBLE;
 
+    /* Physics flags */
     strncpy(ParamTag[NParam], "ReionizationOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ReionizationOn);
+    ParamAddr[NParam] = &(run_params->physics.ReionizationOn);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "SupernovaRecipeOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SupernovaRecipeOn);
+    ParamAddr[NParam] = &(run_params->physics.SupernovaRecipeOn);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "DiskInstabilityOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->DiskInstabilityOn);
+    ParamAddr[NParam] = &(run_params->physics.DiskInstabilityOn);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "SFprescription", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SFprescription);
+    ParamAddr[NParam] = &(run_params->physics.SFprescription);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "AGNrecipeOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->AGNrecipeOn);
+    ParamAddr[NParam] = &(run_params->physics.AGNrecipeOn);
     ParamID[NParam++] = INT;
 
     strncpy(ParamTag[NParam], "BaryonFrac", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->BaryonFrac);
+    ParamAddr[NParam] = &(run_params->physics.BaryonFrac);
     ParamID[NParam++] = DOUBLE;
 
+    /* Cosmology parameters */
     strncpy(ParamTag[NParam], "Omega", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->Omega);
+    ParamAddr[NParam] = &(run_params->cosmology.Omega);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "OmegaLambda", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->OmegaLambda);
+    ParamAddr[NParam] = &(run_params->cosmology.OmegaLambda);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "PartMass", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->PartMass);
+    ParamAddr[NParam] = &(run_params->cosmology.PartMass);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "BoxSize", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->BoxSize);
+    ParamAddr[NParam] = &(run_params->cosmology.BoxSize);
     ParamID[NParam++] = DOUBLE;
 
+    /* Physics parameters */
     strncpy(ParamTag[NParam], "EnergySN", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->EnergySN);
+    ParamAddr[NParam] = &(run_params->physics.EnergySN);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "EtaSN", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->EtaSN);
+    ParamAddr[NParam] = &(run_params->physics.EtaSN);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "Yield", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->Yield);
+    ParamAddr[NParam] = &(run_params->physics.Yield);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "FracZleaveDisk", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FracZleaveDisk);
+    ParamAddr[NParam] = &(run_params->physics.FracZleaveDisk);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "SfrEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SfrEfficiency);
+    ParamAddr[NParam] = &(run_params->physics.SfrEfficiency);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "FeedbackReheatingEpsilon", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FeedbackReheatingEpsilon);
+    ParamAddr[NParam] = &(run_params->physics.FeedbackReheatingEpsilon);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "FeedbackEjectionEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FeedbackEjectionEfficiency);
+    ParamAddr[NParam] = &(run_params->physics.FeedbackEjectionEfficiency);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "BlackHoleGrowthRate", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->BlackHoleGrowthRate);
+    ParamAddr[NParam] = &(run_params->physics.BlackHoleGrowthRate);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "RadioModeEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->RadioModeEfficiency);
+    ParamAddr[NParam] = &(run_params->physics.RadioModeEfficiency);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "QuasarModeEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->QuasarModeEfficiency);
+    ParamAddr[NParam] = &(run_params->physics.QuasarModeEfficiency);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "Reionization_z0", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->Reionization_z0);
+    ParamAddr[NParam] = &(run_params->physics.Reionization_z0);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "Reionization_zr", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->Reionization_zr);
+    ParamAddr[NParam] = &(run_params->physics.Reionization_zr);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "ThresholdSatDisruption", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ThresholdSatDisruption);
+    ParamAddr[NParam] = &(run_params->physics.ThresholdSatDisruption);
     ParamID[NParam++] = DOUBLE;
 
+    /* Simulation parameters */
     strncpy(ParamTag[NParam], "NumOutputs", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->NumSnapOutputs);
+    ParamAddr[NParam] = &(run_params->simulation.NumSnapOutputs);
     ParamID[NParam++] = INT;
 
+    /* I/O parameters */
     strncpy(ParamTag[NParam], "OutputFormat", MAXTAGLEN);
     ParamAddr[NParam] = my_outputformat;
     ParamID[NParam++] = STRING;
 
+    /* Runtime parameters */
     strncpy(ParamTag[NParam], "ForestDistributionScheme", MAXTAGLEN);
     ParamAddr[NParam] = my_forest_dist_scheme;
     ParamID[NParam++] = STRING;
 
     strncpy(ParamTag[NParam], "ExponentForestDistributionScheme", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
+    ParamAddr[NParam] = &(run_params->runtime.Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
 
     used_tag = mymalloc(sizeof(int) * NParam);
@@ -313,10 +323,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     }
     fclose(fd);
 
-    const size_t outlen = strlen(run_params->OutputDir);
+    const size_t outlen = strlen(run_params->io.OutputDir);
     if(outlen > 0) {
-        if(run_params->OutputDir[outlen - 1] != '/')
-            strcat(run_params->OutputDir, "/");
+        if(run_params->io.OutputDir[outlen - 1] != '/')
+            strcat(run_params->io.OutputDir, "/");
     }
 
 
@@ -334,32 +344,32 @@ int read_parameter_file(const char *fname, struct params *run_params)
     fprintf(stdout, "\n");
 #endif
 
-    if( ! (run_params->LastSnapshotNr+1 > 0 && run_params->LastSnapshotNr+1 < ABSOLUTEMAXSNAPS) ) {
-        fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->LastSnapshotNr, ABSOLUTEMAXSNAPS);
+    if( ! (run_params->simulation.LastSnapshotNr+1 > 0 && run_params->simulation.LastSnapshotNr+1 < ABSOLUTEMAXSNAPS) ) {
+        fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->simulation.LastSnapshotNr, ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
-    run_params->SimMaxSnaps = run_params->LastSnapshotNr + 1;
+    run_params->simulation.SimMaxSnaps = run_params->simulation.LastSnapshotNr + 1;
 
-    if(!(run_params->NumSnapOutputs == -1 || (run_params->NumSnapOutputs > 0 && run_params->NumSnapOutputs <= ABSOLUTEMAXSNAPS))) {
+    if(!(run_params->simulation.NumSnapOutputs == -1 || (run_params->simulation.NumSnapOutputs > 0 && run_params->simulation.NumSnapOutputs <= ABSOLUTEMAXSNAPS))) {
         fprintf(stderr,"NumOutputs must be -1 or between 1 and %i\n", ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
 
     // read in the output snapshot list
-    if(run_params->NumSnapOutputs == -1) {
-        run_params->NumSnapOutputs = run_params->SimMaxSnaps;
-        for (int i=run_params->NumSnapOutputs-1; i>=0; i--) {
-            run_params->ListOutputSnaps[i] = i;
+    if(run_params->simulation.NumSnapOutputs == -1) {
+        run_params->simulation.NumSnapOutputs = run_params->simulation.SimMaxSnaps;
+        for (int i=run_params->simulation.NumSnapOutputs-1; i>=0; i--) {
+            run_params->simulation.ListOutputSnaps[i] = i;
         }
 #ifdef VERBOSE
         if(ThisTask == 0) {
-            fprintf(stdout, "all %d snapshots selected for output\n", run_params->NumSnapOutputs);
+            fprintf(stdout, "all %d snapshots selected for output\n", run_params->simulation.NumSnapOutputs);
         }
 #endif
     } else {
 #ifdef VERBOSE
         if(ThisTask == 0) {
-            fprintf(stdout, "%d snapshots selected for output: ", run_params->NumSnapOutputs);
+            fprintf(stdout, "%d snapshots selected for output: ", run_params->simulation.NumSnapOutputs);
         }
 #endif
 
@@ -374,11 +384,11 @@ int read_parameter_file(const char *fname, struct params *run_params)
             if(fscanf(fd, "%s", buf) == 0) continue;
             if(strcmp(buf, "->") == 0) {
                 // read the snapshots into ListOutputSnaps
-                for(int i=0; i<run_params->NumSnapOutputs; i++) {
-                    if(fscanf(fd, "%d", &(run_params->ListOutputSnaps[i])) == 1) {
+                for(int i=0; i<run_params->simulation.NumSnapOutputs; i++) {
+                    if(fscanf(fd, "%d", &(run_params->simulation.ListOutputSnaps[i])) == 1) {
 #ifdef VERBOSE
                         if(ThisTask == 0) {
-                            fprintf(stdout, "%d ", run_params->ListOutputSnaps[i]);
+                            fprintf(stdout, "%d ", run_params->simulation.ListOutputSnaps[i]);
                         }
 #endif
                     }
@@ -399,25 +409,26 @@ int read_parameter_file(const char *fname, struct params *run_params)
     }
 
 
-    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
+    if(run_params->io.FirstFile < 0 || run_params->io.LastFile < 0 || run_params->io.LastFile < run_params->io.FirstFile) {
         fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile "
                         "should be larger than   FirstFile.\nProbably a typo in the parameter-file. "
                         "Please change to appropriate values...exiting\n",
-                        run_params->FirstFile, run_params->LastFile);
+                        run_params->io.FirstFile, run_params->io.LastFile);
         ABORT(EXIT_FAILURE);
     }
 
     /* sort the output snapshot numbers in descending order (in case the user didn't do that already) MS: 24th Oct, 2023 */
-    qsort(run_params->ListOutputSnaps, run_params->NumSnapOutputs, sizeof(run_params->ListOutputSnaps[0]), compare_ints_descending);
+    qsort(run_params->simulation.ListOutputSnaps, run_params->simulation.NumSnapOutputs, 
+          sizeof(run_params->simulation.ListOutputSnaps[0]), compare_ints_descending);
 
     /* Check for duplicate snapshot outputs */
     int num_dup_snaps = 0;
-    for(int ii=1;ii<run_params->NumSnapOutputs;ii++) {
-        const int dsnap = run_params->ListOutputSnaps[ii-1] - run_params->ListOutputSnaps[ii];
+    for(int ii=1;ii<run_params->simulation.NumSnapOutputs;ii++) {
+        const int dsnap = run_params->simulation.ListOutputSnaps[ii-1] - run_params->simulation.ListOutputSnaps[ii];
         if(dsnap == 0) {
             fprintf(stderr,"Error: Found duplicate snapshots in the list of desired output snapshots\n");
             fprintf(stderr,"Duplicate value = %d in position = %d (out of %d total output snapshots requested)\n",
-                            run_params->ListOutputSnaps[ii], ii, run_params->NumSnapOutputs);
+                            run_params->simulation.ListOutputSnaps[ii], ii, run_params->simulation.NumSnapOutputs);
             num_dup_snaps++;
         }
     }
@@ -429,7 +440,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
     /* because in the default case of 'lhalo-binary', nothing
        gets written to "treeextension", we need to
        null terminate tree-extension first  */
-    run_params->TreeExtension[0] = '\0';
+    run_params->io.TreeExtension[0] = '\0';
 
     // Check tree type is valid.
     if (strncmp(my_treetype, "lhalo_hdf5", 511)   == 0 ||
@@ -443,7 +454,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 #endif
         // strncmp returns 0 if the two strings are equal.
         // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
-        snprintf(run_params->TreeExtension, 511, ".hdf5");
+        snprintf(run_params->io.TreeExtension, 511, ".hdf5");
     }
 
 #define CHECK_VALID_ENUM_IN_PARAM_FILE(paramname, num_enum_types, enum_names, enum_values, string_value) { \
@@ -473,7 +484,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
                                                gadget4_hdf5};
     const int nvalid_tree_types  = sizeof(tree_names)/(MAXTAGLEN*sizeof(char));
     BUILD_BUG_OR_ZERO((nvalid_tree_types == (int) num_tree_types), number_of_tree_types_is_incorrect);
-    CHECK_VALID_ENUM_IN_PARAM_FILE(TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
+    CHECK_VALID_ENUM_IN_PARAM_FILE(io.TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
 
     /* Check output data type is valid. */
 #ifndef HDF5
@@ -488,7 +499,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
     const enum Valid_OutputFormats format_enums[] = {sage_binary, sage_hdf5, lhalo_binary_output};
     const int nvalid_format_types  = sizeof(format_names)/(MAXTAGLEN*sizeof(char));
     XRETURN(nvalid_format_types == 3, EXIT_FAILURE, "nvalid_format_types = %d should have been 3\n", nvalid_format_types);
-    CHECK_VALID_ENUM_IN_PARAM_FILE(OutputFormat, nvalid_format_types, format_names, format_enums, my_outputformat);
+    CHECK_VALID_ENUM_IN_PARAM_FILE(io.OutputFormat, nvalid_format_types, format_names, format_enums, my_outputformat);
 
     /* Check that the way forests are distributed over (MPI) tasks is valid */
     const char scheme_names[][MAXTAGLEN] = {"uniform_in_forests", "linear_in_nhalos", "quadratic_in_nhalos", "exponent_in_nhalos", "generic_power_in_nhalos"};
@@ -498,15 +509,16 @@ int read_parameter_file(const char *fname, struct params *run_params)
     XRETURN(nvalid_scheme_types == num_forest_weight_types, EXIT_FAILURE, "nvalid_format_types = %d should have been %d\n",
             nvalid_format_types, num_forest_weight_types);
 
-    CHECK_VALID_ENUM_IN_PARAM_FILE(ForestDistributionScheme, nvalid_scheme_types, scheme_names, scheme_enums, my_forest_dist_scheme);
+    CHECK_VALID_ENUM_IN_PARAM_FILE(runtime.ForestDistributionScheme, nvalid_scheme_types, scheme_names, scheme_enums, my_forest_dist_scheme);
 #undef CHECK_VALID_ENUM_IN_PARAM_FILE
 
 
     /* Check that exponent supplied is non-negative (for cases where the exponent will be used) */
-    if((run_params->ForestDistributionScheme == exponent_in_nhalos || run_params->ForestDistributionScheme == generic_power_in_nhalos)
-       && run_params->Exponent_Forest_Dist_Scheme < 0) {
+    if((run_params->runtime.ForestDistributionScheme == exponent_in_nhalos || 
+        run_params->runtime.ForestDistributionScheme == generic_power_in_nhalos)
+       && run_params->runtime.Exponent_Forest_Dist_Scheme < 0) {
         fprintf(stderr,"Error: You have requested a power-law exponent but the exponent = %e must be greater than 0\n",
-                run_params->Exponent_Forest_Dist_Scheme);
+                run_params->runtime.Exponent_Forest_Dist_Scheme);
         fprintf(stderr,"Please change the value for the parameter 'ExponentForestDistributionScheme' in the parameter file (%s)\n", fname);
         ABORT(EXIT_FAILURE);
     }

@@ -49,7 +49,7 @@ static void get_forest_metadata_filename(const char *forestfilename, const size_
 
 void get_forests_filename_genesis_hdf5(char *filename, const size_t len, const struct params *run_params)
 {
-    snprintf(filename, len - 1, "%s/%s%s", run_params->SimulationDir, run_params->TreeName, run_params->TreeExtension);
+    snprintf(filename, len - 1, "%s/%s%s", run_params->io.SimulationDir, run_params->io.TreeName, run_params->io.TreeExtension);
 }
 
 
@@ -85,12 +85,12 @@ void get_forest_metadata_filename(const char *forestfilename, const size_t strin
 /* Externally visible Functions */
 int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int ThisTask, const int NTasks, struct params *run_params)
 {
-    const int firstfile = run_params->FirstFile;
-    const int lastfile = run_params->LastFile;
+    const int firstfile = run_params->io.FirstFile;
+    const int lastfile = run_params->io.LastFile;
     const int numfiles = lastfile - firstfile + 1;/* This is total number of files to process across all tasks */
     if(numfiles <= 0) {
         fprintf(stderr,"Error: Need at least one file to process. Calculated numfiles = %d (firstfile = %d, lastfile = %d)\n",
-                numfiles, run_params->FirstFile, run_params->LastFile);
+                numfiles, run_params->io.FirstFile, run_params->io.LastFile);
         return INVALID_OPTION_IN_PARAMS;
     }
     struct genesis_info *gen = &(forests_info->gen);
@@ -172,7 +172,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
             "Error: Could not allocate memory to hold number of forests per file (%"PRId64" items of size %zu bytes)\n",
             totnfiles, sizeof(*totnforests_per_file));
 
-    const int need_nhalos_per_forest = run_params->ForestDistributionScheme == uniform_in_forests ? 0:1;
+    const int need_nhalos_per_forest = run_params->runtime.ForestDistributionScheme == uniform_in_forests ? 0:1;
     int64_t *nhalos_per_forest = NULL;
     int64_t nforests_load_balancing;
 
@@ -226,7 +226,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
     int64_t nforests_this_task, start_forestnum;
     int status = distribute_weighted_forests_over_ntasks(totnforests, nhalos_per_forest,
-                                                         run_params->ForestDistributionScheme, run_params->Exponent_Forest_Dist_Scheme,
+                                                         run_params->runtime.ForestDistributionScheme, run_params->runtime.Exponent_Forest_Dist_Scheme,
                                                          NTasks, ThisTask, &nforests_this_task, &start_forestnum);
     if(status != EXIT_SUCCESS) {
         return status;
@@ -332,7 +332,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         snprintf(fname, sizeof(fname), "%s.%d", filename, start_filenum);
         hid_t h5_fd = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
         if(h5_fd < 0) {
-            fprintf(stderr,"Error: On ThisTask = %d can't open the first file to process. filename is '%s'\n", run_params->ThisTask, fname);
+            fprintf(stderr,"Error: On ThisTask = %d can't open the first file to process. filename is '%s'\n", run_params->runtime.ThisTask, fname);
             return FILE_NOT_FOUND;
         }
 
@@ -370,7 +370,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
     }
 
     /* Perform some consistency checks from the first file */
-    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header", "NSnaps", (run_params->nsnapshots));
+    READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header", "NSnaps", (run_params->simulation.nsnapshots));
     double partmass;
     READ_GENESIS_ATTRIBUTE(gen->h5_fds[start_filenum], "/Header/Particle_mass", "dm", partmass);
 
@@ -408,18 +408,18 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         }                                                               \
     }
 
-    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Length Unit", lunit, run_params->UnitLength_in_cm, maxdiff, maxreldiff);
-    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Velocity Unit", vunit, run_params->UnitVelocity_in_cm_per_s, maxdiff, maxreldiff);
-    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Mass Unit", munit, run_params->UnitMass_in_g, maxdiff, maxreldiff);
-    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("BoxSize", file_boxsize, run_params->BoxSize, maxdiff, maxreldiff);
-    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Particle Mass", partmass, run_params->PartMass, maxdiff, maxreldiff);
-    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_M", om, run_params->Omega, maxdiff, maxreldiff);
-    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_Lambda", ol, run_params->OmegaLambda, maxdiff, maxreldiff);
-    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Little h (hubble parameter)", little_h, run_params->Hubble_h, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Length Unit", lunit, run_params->units.UnitLength_in_cm, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Velocity Unit", vunit, run_params->units.UnitVelocity_in_cm_per_s, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Mass Unit", munit, run_params->units.UnitMass_in_g, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("BoxSize", file_boxsize, run_params->cosmology.BoxSize, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Particle Mass", partmass, run_params->cosmology.PartMass, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_M", om, run_params->cosmology.Omega, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Omega_Lambda", ol, run_params->cosmology.OmegaLambda, maxdiff, maxreldiff);
+    CHECK_AND_ABORT_UNITS_VS_PARAM_FILE("Little h (hubble parameter)", little_h, run_params->cosmology.Hubble_h, maxdiff, maxreldiff);
 
-    if(run_params->LastSnapshotNr != (run_params->nsnapshots - 1)) {
+    if(run_params->simulation.LastSnapshotNr != (run_params->simulation.nsnapshots - 1)) {
         fprintf(stderr,"Error: Expected LastSnapshotNr = %d from parameter-file to equal one less than the total number of snapshots = %d\n",
-                run_params->LastSnapshotNr, run_params->nsnapshots);
+                run_params->simulation.LastSnapshotNr, run_params->simulation.nsnapshots);
         return -1;
     }
 #undef CHECK_AND_ABORT_UNITS_VS_PARAM_FILE
@@ -481,7 +481,7 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
         }
         forests_info->frac_volume_processed += (double) num_forests_to_process_per_file[filenr] / (double) totnforests_per_file[filenr];
     }
-    forests_info->frac_volume_processed /= (double) run_params->NumSimulationTreeFiles;
+    forests_info->frac_volume_processed /= (double) run_params->io.NumSimulationTreeFiles;
 
     myfree(num_forests_to_process_per_file);
     myfree(start_forestnum_per_file);
@@ -489,8 +489,8 @@ int setup_forests_io_genesis_hdf5(struct forest_info *forests_info, const int Th
 
     /* Finally setup the multiplication factors necessary to generate
        unique galaxy indices (across all files, all trees and all tasks) for this run*/
-    run_params->FileNr_Mulfac = 10000000000000000LL;
-    run_params->ForestNr_Mulfac =     1000000000LL;
+    run_params->runtime.FileNr_Mulfac = 10000000000000000LL;
+    run_params->runtime.ForestNr_Mulfac =     1000000000LL;
 
     return EXIT_SUCCESS;
 }
@@ -560,7 +560,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         if(forestnum_across_all_files != gen->start_forestnum) {
             fprintf(stderr,"Error: On ThisTask = %d looks like we are processing the first forest, with forestnr = %"PRId64" "
                     "But forestnum_across_all_files = %"PRId64" is not equal to start_forestnum = %"PRId64"\n",
-                    run_params->ThisTask, forestnr, forestnum_across_all_files, gen->start_forestnum);
+                    run_params->runtime.ThisTask, forestnr, forestnum_across_all_files, gen->start_forestnum);
             return -1;
         }
     }
@@ -646,7 +646,7 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
     if(offset != nhalos) {
         fprintf(stderr,"Error: On ThisTask = %d while processing task-local-forestnr = %"PRId64" "
                 " file-local-forestnr = %"PRId64" and global forestnum = %"PRId64" located in the file = %d\n",
-                run_params->ThisTask, forestnr, forests_info->original_treenr[forestnr], forestnum_across_all_files, filenum);
+                run_params->runtime.ThisTask, forestnr, forests_info->original_treenr[forestnr], forestnum_across_all_files, filenum);
         fprintf(stderr,"Expected the 'nhalos_per_snap' array to sum up to 'nhalos' but that is not the case\n");
         fprintf(stderr,"Sum(nhalos_per_snap) = %"PRId64" nhalos = %"PRId64"\n", offset, nhalos);
         fprintf(stderr,"Now printing out individual values of the nhalos_per_snap\n");
@@ -889,8 +889,8 @@ int64_t load_forest_genesis_hdf5(int64_t forestnr, struct halo_data **halos, str
         XRETURN(H5Gclose(h5_grp) >= 0, -HDF5_ERROR, "Error: Could not close snapshot group = '%s'\n", snap_group_name);
         /* Done with all the reading for this snapshot */
 
-        const double scale_factor = run_params->scale_factors[isnap];
-        const double hubble_h = run_params->Hubble_h;
+        const double scale_factor = run_params->simulation.scale_factors[isnap];
+        const double hubble_h = run_params->cosmology.Hubble_h;
         for(hsize_t i=0;i<nhalos_snap[0];i++) {
             /* Fill up the remaining properties that are not within the GENESIS dataset */
             local_halos[i].SnapNum = isnap;

@@ -130,7 +130,7 @@ double get_virial_mass(const int halonr, const struct halo_data *halos, const st
   if(halonr == halos[halonr].FirstHaloInFOFgroup && halos[halonr].Mvir >= 0.0)
     return halos[halonr].Mvir;   /* take spherical overdensity mass estimate */
   else
-    return halos[halonr].Len * run_params->PartMass;
+    return halos[halonr].Len * run_params->cosmology.PartMass;
 }
 
 
@@ -142,7 +142,7 @@ double get_virial_velocity(const int halonr, const struct halo_data *halos, cons
 	Rvir = get_virial_radius(halonr, halos, run_params);
 
     if(Rvir > 0.0)
-		return sqrt(run_params->G * get_virial_mass(halonr, halos, run_params) / Rvir);
+  return sqrt(run_params->cosmology.G * get_virial_mass(halonr, halos, run_params) / Rvir);
 	else
 		return 0.0;
 }
@@ -152,12 +152,14 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
 {
   // return halos[halonr].Rvir;  // Used for Bolshoi
   const int snapnum = halos[halonr].SnapNum;
-  const double zplus1 = 1.0 + run_params->ZZ[snapnum];
+  const double zplus1 = 1.0 + run_params->simulation.ZZ[snapnum];
   const double hubble_of_z_sq =
-      run_params->Hubble * run_params->Hubble *(run_params->Omega * zplus1 * zplus1 * zplus1 + (1.0 - run_params->Omega - run_params->OmegaLambda) * zplus1 * zplus1 +
-                                              run_params->OmegaLambda);
+      run_params->cosmology.Hubble * run_params->cosmology.Hubble * 
+      (run_params->cosmology.Omega * zplus1 * zplus1 * zplus1 + 
+       (1.0 - run_params->cosmology.Omega - run_params->cosmology.OmegaLambda) * zplus1 * zplus1 +
+       run_params->cosmology.OmegaLambda);
 
-  const double rhocrit = 3.0 * hubble_of_z_sq / (8.0 * M_PI * run_params->G);
+  const double rhocrit = 3.0 * hubble_of_z_sq / (8.0 * M_PI * run_params->cosmology.G);
   const double fac = 1.0 / (200.0 * 4.0 * M_PI / 3.0 * rhocrit);
 
   return cbrt(get_virial_mass(halonr, halos, run_params) * fac);

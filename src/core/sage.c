@@ -44,8 +44,8 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
                 ThisTask, NTasks, sizeof(*run_params));
         return MALLOC_FAILURE;
     }
-    run_params->ThisTask = ThisTask;
-    run_params->NTasks = NTasks;
+    run_params->runtime.ThisTask = ThisTask;
+    run_params->runtime.NTasks = NTasks;
     *params = run_params;
 
     int32_t status = read_parameter_file(param_file, run_params);
@@ -80,7 +80,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     // If we're creating a binary output, we need to be careful.
     // The binary output contains an 32 bit header that contains the number of trees processed.
     // Hence let's make sure that the number of trees assigned to this task doesn't exceed an 32 bit number.
-    if((run_params->OutputFormat == sage_binary) && (forest_info.nforests_this_task > INT_MAX)) {
+    if((run_params->io.OutputFormat == sage_binary) && (forest_info.nforests_this_task > INT_MAX)) {
         fprintf(stderr, "When creating the binary output, we must write a 32 bit header describing the number of trees processed.\n"
                         "However, task %d is processing %"PRId64" forests which is above the 32 bit limit.\n"
                         "Either change the output format to HDF5 or increase the number of cores processing your trees.\n",
@@ -90,7 +90,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
 
     /* If we are converting the input mergertree into the lhalo-binary format,
        then we just run the relevant converter: MS 12/10/2022 */
-    if(run_params->OutputFormat == lhalo_binary_output) {
+    if(run_params->io.OutputFormat == lhalo_binary_output) {
         return convert_trees_to_lhalo(ThisTask, NTasks, run_params, &forest_info);
     }
 
@@ -111,18 +111,18 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     struct save_info save_info;
     // Allocate memory for the total number of galaxies for each output snapshot (across all forests).
     // Calloc because we start with no galaxies.
-    save_info.tot_ngals = mycalloc(run_params->NumSnapOutputs, sizeof(*(save_info.tot_ngals)));
+    save_info.tot_ngals = mycalloc(run_params->simulation.NumSnapOutputs, sizeof(*(save_info.tot_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.tot_ngals,
-                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NumSnapOutputs,
+                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->simulation.NumSnapOutputs,
                                      sizeof(*(save_info.tot_ngals)));
 
     // Allocate memory for the number of galaxies at each output snapshot for each forest.
-    save_info.forest_ngals = mycalloc(run_params->NumSnapOutputs, sizeof(*(save_info.forest_ngals)));
+    save_info.forest_ngals = mycalloc(run_params->simulation.NumSnapOutputs, sizeof(*(save_info.forest_ngals)));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals,
-                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->NumSnapOutputs,
+                                     "Failed to allocate %d elements of size %zu for save_info.tot_ngals", run_params->simulation.NumSnapOutputs,
                                      sizeof(*(save_info.forest_ngals)));
 
-    for(int32_t snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
+    for(int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
         // Using calloc removes the need to zero out the memory explicitly.
         save_info.forest_ngals[snap_idx] = mycalloc(Nforests, sizeof(*(save_info.forest_ngals[snap_idx])));
         CHECK_POINTER_AND_RETURN_ON_NULL(save_info.forest_ngals[snap_idx],
@@ -142,10 +142,10 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
         return status;
     }
 
-    run_params->interrupted = 0;
+    run_params->runtime.interrupted = 0;
 #ifdef VERBOSE
     if(ThisTask == 0) {
-        init_my_progressbar(stdout, Nforests, &(run_params->interrupted));
+        init_my_progressbar(stdout, Nforests, &(run_params->runtime.interrupted));
     }
 #endif
 
@@ -160,7 +160,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
 #ifdef VERBOSE
         if(ThisTask == 0) {
-            my_progressbar(stdout, forestnr, &(run_params->interrupted));
+            my_progressbar(stdout, forestnr, &(run_params->runtime.interrupted));
             fflush(stdout);
         }
 #endif
@@ -177,7 +177,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
         return status;
     }
 
-    for(int snap_idx = 0; snap_idx < run_params->NumSnapOutputs; snap_idx++) {
+    for(int snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
         myfree(save_info.forest_ngals[snap_idx]);
     }
     myfree(save_info.forest_ngals);
@@ -185,7 +185,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
-        finish_myprogressbar(stdout, &(run_params->interrupted));
+        finish_myprogressbar(stdout, &(run_params->runtime.interrupted));
     }
 
 
@@ -199,7 +199,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
 
 cleanup:
     /* sage is done running -> do the cleanup */
-    cleanup_forests_io(run_params->TreeType, &forest_info);
+    cleanup_forests_io(run_params->io.TreeType, &forest_info);
     
     /* Call comprehensive cleanup function */
     cleanup(run_params);
@@ -215,7 +215,7 @@ int32_t finalize_sage(void *params)
 
     struct params *run_params = (struct params *) params;
 
-    switch(run_params->OutputFormat)
+    switch(run_params->io.OutputFormat)
         {
         case(sage_binary):
             {
@@ -417,10 +417,10 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
     struct timeval tstart;
     gettimeofday(&tstart, NULL);
 
-    run_params->interrupted = 0;
+    run_params->runtime.interrupted = 0;
 #ifdef VERBOSE
     if(ThisTask == 0) {
-        init_my_progressbar(stdout, forest_info->nforests_this_task, &(run_params->interrupted));
+        init_my_progressbar(stdout, forest_info->nforests_this_task, &(run_params->runtime.interrupted));
 #ifdef MPI
         if(NTasks > 1) {
             fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
@@ -459,8 +459,8 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
     } while (0)
 
     char buffer[3*MAX_STRING_LEN + 1];
-    snprintf(buffer, 3*MAX_STRING_LEN, "%s%s.%d", run_params->OutputDir,
-             run_params->FileNameGalaxies, ThisTask);
+    snprintf(buffer, 3*MAX_STRING_LEN, "%s%s.%d", run_params->io.OutputDir,
+             run_params->io.FileNameGalaxies, ThisTask);
     int fd = open(buffer, O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
     XRETURN(fd > 0, EXIT_FAILURE, "Error: Could not open filename = %s\n", buffer);
 
@@ -495,7 +495,7 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
     for(int64_t forestnr=0; forestnr < nforests_this_task; forestnr++) {
 #ifdef VERBOSE
         if(ThisTask == 0) {
-            my_progressbar(stdout, forestnr, &(run_params->interrupted));
+            my_progressbar(stdout, forestnr, &(run_params->runtime.interrupted));
             fflush(stdout);
         }
 #endif
@@ -543,11 +543,11 @@ int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *
     XRETURN(close(fd) == 0, EXIT_FAILURE, "Error while closing the output binary file");
 
     /* sage is done running -> do the cleanup */
-    cleanup_forests_io(run_params->TreeType, forest_info);
+    cleanup_forests_io(run_params->io.TreeType, forest_info);
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
-        finish_myprogressbar(stdout, &(run_params->interrupted));
+        finish_myprogressbar(stdout, &(run_params->runtime.interrupted));
     }
     fflush(stdout);
     struct timeval tend;
