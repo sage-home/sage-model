@@ -7,9 +7,6 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-#ifdef GSL_FOUND
-#include <gsl/gsl_integration.h>
-#endif
 
 #include "core_allvars.h"
 #include "core_init.h"
@@ -292,24 +289,8 @@ double time_to_present(const double z, struct params *run_params)
     const double end_limit = 1.0;
     const double start_limit = 1.0/(1 + z);
     double result;
-#ifdef GSL_FOUND
-#define WORKSIZE 1000
-    gsl_function F;
-    gsl_integration_workspace *workspace;
-    double abserr;
-
-    workspace = gsl_integration_workspace_alloc(WORKSIZE);
-    F.function = &integrand_time_to_present;
-    F.params = run_params;
-
-    gsl_integration_qag(&F, start_limit, end_limit, 1.0 / run_params->cosmology.Hubble,
-                        1.0e-9, WORKSIZE, GSL_INTEG_GAUSS21, workspace, &result, &abserr);
-
-    gsl_integration_workspace_free(workspace);
-
-#undef WORKSIZE
-#else
-    /* Do not have GSL - let's integrate numerically ourselves */
+    
+    /* Integrate numerically using the trapezoidal rule */
     const double step  = 1e-7;
     const int64_t nsteps = (end_limit - start_limit)/step;
     result = 0.0;
@@ -320,7 +301,6 @@ double time_to_present(const double z, struct params *run_params)
     }
 
     result = (step*0.5)*(y0 + yn + 2.0*result);
-#endif
 
     /* convert into Myrs/h (I think -> MS 23/6/2018) */
     const double time = 1.0 / run_params->cosmology.Hubble * result;

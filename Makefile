@@ -133,20 +133,7 @@ ifeq ($(DO_CHECKS), 1)
   endif
   ## end of checking is CC
 
-  # This automatic detection of GSL needs to be before HDF5 checking.
-  # This allows HDF5 to be installed in a different directory than Miniconda.
-  GSL_FOUND := $(shell gsl-config --version 2>/dev/null)
-  ifdef GSL_FOUND
-    OPTS += -DGSL_FOUND
-    # GSL is probably configured correctly, pick up the locations automatically
-    GSL_INCL := $(shell gsl-config --cflags)
-    GSL_LIBDIR := $(shell gsl-config --prefix)/lib
-    GSL_LIBS   := $(shell gsl-config --libs) -Xlinker -rpath -Xlinker $(GSL_LIBDIR)
-  else
-    $(warning GSL not found in $$PATH environment variable. Tests will be disabled)
-  endif
-  CCFLAGS += $(GSL_INCL)
-  LIBFLAGS += $(GSL_LIBS)
+  # GSL dependency has been removed
 
   ifdef USE-BUFFERED-WRITE
     CCFLAGS += -DUSE_BUFFERED_WRITE
@@ -289,8 +276,4 @@ clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]
 
 tests: $(EXEC)
-ifdef GSL_FOUND
 	./tests/test_sage.sh
-else
-	$(error GSL is required to run the tests)
-endif
