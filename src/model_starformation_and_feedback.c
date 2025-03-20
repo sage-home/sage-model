@@ -93,33 +93,31 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             }
         }
     } else if(run_params->SFprescription == 3) {
-        // NEW: Gnedin & Draine model implementation
         if(galaxies[p].H2_gas > 0.0 && galaxies[p].Vvir > 0.0) {
             // Calculate dynamical time
             reff = 3.0 * galaxies[p].DiskScaleRadius;
             tdyn = reff / galaxies[p].Vvir;
             
             if(tdyn > 0.0) {
-                // GD14 model typically has a linear relationship between SFR and H2 mass
-                // SFR = efficiency * M_H2 / tdyn
+                // Mass-dependent efficiency scaling
+                // Higher efficiency for more massive galaxies
+                double mass_scaling = 1.0;
                 
-                // Calculate surface density for reference
-                double disk_area = M_PI * galaxies[p].DiskScaleRadius * galaxies[p].DiskScaleRadius;
-                double h2_surface_density = 0.0;
-                
-                if(disk_area > 0.0) {
-                    h2_surface_density = galaxies[p].H2_gas / disk_area;
+                if(galaxies[p].Mvir > 0.0) {
+                    double log_mvir = log10(galaxies[p].Mvir * 1.0e10 / run_params->Hubble_h);
+                    
+                    // Increase efficiency above 10^10.5 Msun
+                    if(log_mvir > 10.5) {
+                        // Progressive increase in efficiency
+                        mass_scaling = 1.0 + (log_mvir - 10.5) * 0.5;
+                        
+                        // Cap the scaling to prevent unrealistic values
+                        if(mass_scaling > 3.0) mass_scaling = 3.0;
+                    }
                 }
                 
-                // Allow efficiency variations with surface density
-                double efficiency_factor = 1.0;
-                
-                // Higher efficiency in dense environments
-                if(h2_surface_density > 50.0) {
-                    efficiency_factor = 1.5;  // Starburst-like efficiency
-                }
-                
-                strdot = run_params->SfrEfficiency * efficiency_factor * galaxies[p].H2_gas / tdyn;
+                // Apply mass-dependent efficiency
+                strdot = run_params->SfrEfficiency * mass_scaling * galaxies[p].H2_gas / tdyn;
             }
         }
     } else {
