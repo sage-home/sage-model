@@ -234,6 +234,18 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->ClumpExponent);
     ParamID[NParam++] = DOUBLE;
 
+    strncpy(ParamTag[NParam], "RadiationFieldNorm", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->RadiationFieldNorm);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "MetallicityExponent", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->MetallicityExponent);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "IntegrationBins", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->IntegrationBins);
+    ParamID[NParam++] = DOUBLE;
+
     strncpy(ParamTag[NParam], "NumOutputs", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->NumSnapOutputs);
     ParamID[NParam++] = INT;

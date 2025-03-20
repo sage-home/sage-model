@@ -22,7 +22,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
 
     // First, update the gas components to ensure H2 and HI are correctly calculated
-    if (run_params->SFprescription == 1 || run_params->SFprescription == 2) {
+    if (run_params->SFprescription == 1 || run_params->SFprescription == 2 || run_params->SFprescription == 3) {
         update_gas_components(&galaxies[p], run_params);
     }
 
@@ -61,8 +61,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         // Krumholz & Dekel (2012) model
         if(galaxies[p].H2_gas > 0.0 && galaxies[p].Vvir > 0.0) {
             // For K&D model, star formation efficiency depends directly on H2 mass
-            // rather than a critical threshold
-            
             // Calculate dynamical time
             reff = 3.0 * galaxies[p].DiskScaleRadius;
             tdyn = reff / galaxies[p].Vvir;
@@ -92,6 +90,36 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
                 
                 // Star formation rate based on molecular gas and efficiency
                 strdot = local_efficiency * galaxies[p].H2_gas / tdyn;
+            }
+        }
+    } else if(run_params->SFprescription == 3) {
+        // NEW: Gnedin & Draine model implementation
+        if(galaxies[p].H2_gas > 0.0 && galaxies[p].Vvir > 0.0) {
+            // Calculate dynamical time
+            reff = 3.0 * galaxies[p].DiskScaleRadius;
+            tdyn = reff / galaxies[p].Vvir;
+            
+            if(tdyn > 0.0) {
+                // GD14 model typically has a linear relationship between SFR and H2 mass
+                // SFR = efficiency * M_H2 / tdyn
+                
+                // Calculate surface density for reference
+                double disk_area = M_PI * galaxies[p].DiskScaleRadius * galaxies[p].DiskScaleRadius;
+                double h2_surface_density = 0.0;
+                
+                if(disk_area > 0.0) {
+                    h2_surface_density = galaxies[p].H2_gas / disk_area;
+                }
+                
+                // Allow efficiency variations with surface density
+                double efficiency_factor = 1.0;
+                
+                // Higher efficiency in dense environments
+                if(h2_surface_density > 50.0) {
+                    efficiency_factor = 1.5;  // Starburst-like efficiency
+                }
+                
+                strdot = run_params->SfrEfficiency * efficiency_factor * galaxies[p].H2_gas / tdyn;
             }
         }
     } else {

@@ -454,7 +454,10 @@ struct params
     // New parameters for Krumholz & Dekel (2012) model
     double ClumpFactor;          // Gas clumping factor, default ~5
     double ClumpExponent;        // Power-law exponent for metallicity dependence, default ~0.5
-
+    // New parameters for Gnedin & Draine model
+    double RadiationFieldNorm;   // Normalized radiation field strength
+    double MetallicityExponent;  // Exponent for metallicity dependence
+    double IntegrationBins;
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;
     double UnitMass_in_g;
