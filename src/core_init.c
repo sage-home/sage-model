@@ -54,7 +54,7 @@ void init(struct params *run_params)
     // Gnedin & Draine (2014) model parameters 
     if(run_params->SFprescription == 3) {
         if(run_params->RadiationFieldNorm <= 0.0) {
-            run_params->RadiationFieldNorm = 1.0;  // Default radiation field (relative to MW)
+            run_params->RadiationFieldNorm = 0.5;  // Lower now, was 1.0
         }
         if(run_params->MetallicityExponent <= 0.0) {
             run_params->MetallicityExponent = 0.7;  // Default metallicity scaling exponent

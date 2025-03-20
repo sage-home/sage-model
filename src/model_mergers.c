@@ -146,6 +146,33 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
         galaxies[gal].HotGas = 0.0;
         galaxies[gal].MetalsHotGas = 0.0;
     }
+
+    // Add direct AGN effect on molecular gas
+    // AGN feedback can directly heat/destroy molecular gas in massive galaxies
+    if(galaxies[gal].BlackHoleMass > 0.0 && galaxies[gal].H2_gas > 0.0) {
+        // Calculate fraction of H2 affected by AGN
+        double h2_heating_fraction = 0.0;
+        
+        // Scale with black hole mass and accretion rate
+        double bh_mass_msun = galaxies[gal].BlackHoleMass * 1.0e10 / run_params->Hubble_h;
+        if(bh_mass_msun > 1.0e7) {
+            // Only significant effect for massive black holes
+            // Scales with accretion rate (BHaccrete) and black hole mass
+            h2_heating_fraction = 0.2 * (BHaccrete / galaxies[gal].H2_gas) * 
+                                  pow(bh_mass_msun / 1.0e8, 0.5);
+            
+            // Limit maximum effect
+            if(h2_heating_fraction > 0.5) h2_heating_fraction = 0.5;
+            
+            // Apply the effect - convert H2 to HI (partial) and hot gas (partial)
+            double h2_affected = galaxies[gal].H2_gas * h2_heating_fraction;
+            
+            // 30% completely ejected to hot gas, 70% reverts to HI
+            galaxies[gal].H2_gas -= h2_affected;
+            galaxies[gal].HI_gas += h2_affected * 0.7;
+            galaxies[gal].HotGas += h2_affected * 0.3;
+        }
+    }
 }
 
 

@@ -90,7 +90,7 @@ ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz
 
 RadiationFieldNorm          1.0    %Radiation field normalization relative to Milky Way (1.0 = MW)
 MetallicityExponent         0.7    %Exponent for metallicity dependence in GD14 model
-IntegrationBins             30     %Number of radial bins to use for integration (higher = more accurate but slower)
+IntegrationBins             100     %Number of radial bins to use for integration (higher = more accurate but slower)
 
 %------------------------------------------
 %----- Other code-related information -----

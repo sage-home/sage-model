@@ -156,6 +156,36 @@ float calculate_midplane_pressure(float gas_density, float stellar_density,
 }
 
 /**
+ * get_mass_dependent_radiation_field - Calculates radiation field strength based on galaxy mass
+ */
+float get_mass_dependent_radiation_field(struct GALAXY *g, const struct params *run_params)
+{
+    // Base radiation field from parameters
+    float radiation_field = run_params->RadiationFieldNorm;
+    
+    // Calculate mass-dependent scaling
+    // Massive galaxies should have relatively lower radiation field per unit gas
+    // to account for self-shielding effects not captured in the simple model
+    if (g->Mvir > 0.0) {
+        // Scale down radiation field for massive galaxies (> 10^11 Msun)
+        float mass_scale = 1.0;
+        float log_mvir = log10(g->Mvir * 1.0e10 / run_params->Hubble_h);  // Convert to Msun
+        
+        if (log_mvir > 11.0) {
+            // Gradual reduction above 10^11 Msun
+            mass_scale = pow(10.0, -(log_mvir - 11.0) * 0.3);
+            
+            // Limit minimum scaling to 0.3 (prevents excessive reduction)
+            if (mass_scale < 0.3) mass_scale = 0.3;
+        }
+        
+        radiation_field *= mass_scale;
+    }
+    
+    return radiation_field;
+}
+
+/**
  * calculate_molecular_fraction_GD14 - Calculate molecular fraction using Gnedin & Draine (2014) model
  * 
  * @gas_density: Gas surface density (M_sun/pc^2)
@@ -164,54 +194,31 @@ float calculate_midplane_pressure(float gas_density, float stellar_density,
  * 
  * Returns: Molecular gas fraction (0-1)
  */
-float calculate_molecular_fraction_GD14(float gas_density, float metallicity, float radiation_field)
+float calculate_molecular_fraction_GD14(float gas_density, float metallicity, float radiation_field, const struct params *run_params)
 {
-    // Default values for other parameters
-    float stellar_density = 0.0;  // Assume no stellar contribution to pressure
-    float radius = 1.0;           // Default radius 1 kpc if not specified
+    // A much simpler approach that produces higher molecular fractions
+    // Critical surface density (above which gas becomes mostly molecular)
+    const float SIGMA_CRIT = 10.0; // M⊙/pc²
     
-    // Calculate midplane pressure
-    float pressure = calculate_midplane_pressure(gas_density, stellar_density, radius, 0.0);
+    // Metallicity factor (using configurable exponent from run_params)
+    float metallicity_exponent = run_params->MetallicityExponent;
+    float z_factor = pow(metallicity, metallicity_exponent); 
     
-    // Ensure minimum metallicity to avoid numerical issues
-    if (metallicity < 0.01) metallicity = 0.01;
-    
-    // Gas surface density relative to Milky Way typical value (~10 M_sun/pc^2)
-    float u_mw = gas_density / 10.0;
-    
-    // Metallicity squared factor
-    float d_mw2 = metallicity * metallicity;
-    
-    // Calculate alpha parameter per GD14 model
-    float alpha = 0.5 + 1.0 / (1.0 + sqrt(u_mw * d_mw2 / 600.0));
-    
-    // Calculate normalization factor that depends on metallicity and radiation field
-    float sigma_norm = 20.0 * pow(metallicity, -0.7) * radiation_field;
-    
-    // Calculate r_mol directly from pressure - alternative approach
-    float pressure_term = 0.0;
-    if (pressure > 0.0) {
-        // P_0 from BR06 in appropriate units
-        const float P_0 = 4.3e4;  // in K cm^-3
-        pressure_term = pow(pressure / P_0, 0.92);
+    // Simple model: molecular fraction increases rapidly above the critical density
+    float f_mol = 0.0;
+    if (gas_density > 0.0) {
+        f_mol = 1.0 / (1.0 + pow(SIGMA_CRIT / (gas_density * z_factor), 2.0));
     }
     
-    // Choose maximum of pressure-based and GD14 model predictions
-    float r_mol_pressure = pressure_term;
+    // Apply radiation field (higher radiation = less molecular)
+    f_mol /= (1.0 + 0.5 * radiation_field);
     
-    // GD14 model prediction
-    float r_mol_gd14 = 0.0;
-    if (sigma_norm > 0.0) {
-        r_mol_gd14 = pow(gas_density / sigma_norm, alpha);
+    // Boost molecular fraction at high densities
+    if (gas_density > 50.0) {
+        f_mol = 0.8 + 0.2 * f_mol; // Minimum 80% molecular at high density
     }
     
-    // Use the higher prediction - physical justification: pressure becomes dominant in high-density regions
-    float r_mol = (r_mol_pressure > r_mol_gd14) ? r_mol_pressure : r_mol_gd14;
-    
-    // Convert ratio to fraction: f_H2 = r_mol / (1 + r_mol)
-    float f_mol = r_mol / (1.0 + r_mol);
-    
-    // Sanity checks
+    // Ensure bounds
     if (f_mol < 0.0) f_mol = 0.0;
     if (f_mol > 1.0) f_mol = 1.0;
     
@@ -233,12 +240,18 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
         return 0.0;
     }
     
+    // IMPORTANT: Convert Mpc/h to pc for surface density calculations
+    // Typical values: h ≈ 0.7, so 1 Mpc/h ≈ 1.43 Mpc ≈ 1.43 × 10^6 pc
+    const float h = run_params->Hubble_h;
+    const float disk_radius_pc = g->DiskScaleRadius * 1.0e6 / h;  // Convert Mpc/h to pc
+    
     // Number of radial bins for integration
     const int N_RADIAL_BINS = run_params->IntegrationBins > 0 ? run_params->IntegrationBins : 30;
     
     // Integrate from 0 to 5 scale radii (covers >99% of exponential disk)
     const float MAX_RADIUS_FACTOR = 5.0;
     const float dr = MAX_RADIUS_FACTOR * g->DiskScaleRadius / N_RADIAL_BINS;
+    const float dr_pc = dr * 1.0e6 / h;  // Convert to pc
     
     // Get metallicity
     float metallicity = 0.0;
@@ -252,16 +265,20 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
         // Only consider disk stars, not bulge stars
         float disk_stellar_mass = g->StellarMass - g->BulgeMass;
         if (g->DiskScaleRadius > 0.0) {
-            stellar_surface_density_center = disk_stellar_mass / 
-                                         (2.0 * M_PI * g->DiskScaleRadius * g->DiskScaleRadius);
+            // Mass in 10^10 M_sun/h, area in (Mpc/h)^2
+            // Convert to M_sun/pc^2
+            float disk_area_pc2 = M_PI * disk_radius_pc * disk_radius_pc;
+            stellar_surface_density_center = (disk_stellar_mass * 1.0e10 / h) / disk_area_pc2;
         }
     }
     
     // Calculate gas surface density at center (exponential disk)
     float gas_surface_density_center = 0.0;
     if (g->DiskScaleRadius > 0.0) {
-        gas_surface_density_center = g->ColdGas / 
-                                 (2.0 * M_PI * g->DiskScaleRadius * g->DiskScaleRadius);
+        // Mass in 10^10 M_sun/h, area in (Mpc/h)^2
+        // Convert to M_sun/pc^2
+        float disk_area_pc2 = M_PI * disk_radius_pc * disk_radius_pc;
+        gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2;
     }
     
     // Setup for integration
@@ -270,33 +287,36 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
     
     // Perform integration over radius
     for (int i = 0; i < N_RADIAL_BINS; i++) {
-        // Radius at the middle of this bin
+        // Radius at the middle of this bin in Mpc/h (original units)
         float radius = (i + 0.5) * dr;
+        float radius_pc = radius * 1.0e6 / h;  // Convert to pc
         
         // Calculate local surface densities (exponential profile)
         float exp_factor = exp(-radius / g->DiskScaleRadius);
-        float local_gas_density = gas_surface_density_center * exp_factor;
-        float local_stellar_density = stellar_surface_density_center * exp_factor;
+        float local_gas_density = gas_surface_density_center * exp_factor;  // M_sun/pc^2
+        float local_stellar_density = stellar_surface_density_center * exp_factor;  // M_sun/pc^2
         
-        // Calculate area of this annular ring
-        float ring_area = 2.0 * M_PI * radius * dr;
+        // Calculate area of this annular ring in pc^2
+        float ring_area_pc2 = 2.0 * M_PI * radius_pc * dr_pc;
         
-        // Gas mass in this ring
-        float ring_gas_mass = local_gas_density * ring_area;
+        // Gas mass in this ring in 10^10 M_sun/h (SAGE internal units)
+        float ring_gas_mass = (local_gas_density * ring_area_pc2) / (1.0e10 / h);
         total_cold_gas += ring_gas_mass;
         
-        // Calculate molecular fraction
-        float radiation_field = run_params->RadiationFieldNorm;
+        // Use mass-dependent radiation field
+        float base_radiation_field = get_mass_dependent_radiation_field(g, run_params);
         
-        // Scale radiation field with stellar density
+        // Scale radiation field with local stellar density
+        float radiation_field = base_radiation_field;
         if (local_stellar_density > 0.0) {
             radiation_field *= pow(local_stellar_density / stellar_surface_density_center, 0.3);
         }
         
+        // Now the surface density is correctly in M_sun/pc^2 for molecular fraction calculation
         float molecular_fraction = calculate_molecular_fraction_GD14(
-            local_gas_density, metallicity, radiation_field);
+            local_gas_density, metallicity, radiation_field, run_params);
         
-        // Molecular gas in this ring
+        // Molecular gas in this ring in 10^10 M_sun/h
         float ring_mol_gas = molecular_fraction * ring_gas_mass;
         total_molecular_gas += ring_mol_gas;
     }
@@ -334,10 +354,15 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
     // Get bulge radius - if not available, estimate from disk radius
     float bulge_radius = g->DiskScaleRadius * 0.2;  // typical bulge is ~1/5 of disk
     
+    // IMPORTANT: Convert units for surface density calculation
+    const float h = run_params->Hubble_h;
+    const float bulge_radius_pc = bulge_radius * 1.0e6 / h;  // Convert Mpc/h to pc
+    
     // Calculate bulge gas surface density (assuming spherical distribution)
     float bulge_gas_surface_density = 0.0;
     if (bulge_radius > 0.0) {
-        bulge_gas_surface_density = bulge_gas / (M_PI * bulge_radius * bulge_radius);
+        float bulge_area_pc2 = M_PI * bulge_radius_pc * bulge_radius_pc;
+        bulge_gas_surface_density = (bulge_gas * 1.0e10 / h) / bulge_area_pc2;  // M_sun/pc^2
     }
     
     // Get metallicity
@@ -347,14 +372,11 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
         metallicity = g->MetalsColdGas / g->ColdGas / 0.02;
     }
     
-    // Bulges have high surface densities, high metallicities, and high pressure
-    // This generally leads to high molecular fractions
-    
     // GD14 model - but with enhanced radiation field due to dense stellar population
     float radiation_field = run_params->RadiationFieldNorm * 2.0;  // Enhanced in bulge
     
     float molecular_fraction = calculate_molecular_fraction_GD14(
-        bulge_gas_surface_density, metallicity, radiation_field);
+        bulge_gas_surface_density, metallicity, radiation_field, run_params);
     
     // Bulges typically have high molecular fractions due to high density
     // Set minimum molecular fraction for bulges to 0.5
