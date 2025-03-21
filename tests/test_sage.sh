@@ -228,23 +228,6 @@ if [ ! -f trees_063.7 ]; then
     
     # Clean up the tar file
     rm -f mini-millennium-treefiles.tar
-    
-    # Note: The following commented section was in the original script
-    # for downloading reference output data, but appears to be unused.
-    # Left here for reference but commented out as it was in the original.
-    
-    # # Download correct model output
-    # if [ "$DOWNLOADER" = "wget" ]; then
-    #     wget "https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0" -O "mini-millennium-sage-correct-output.tar" || \
-    #         error_exit "Could not download correct model output."
-    # else
-    #     curl -L "https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0" -o "mini-millennium-sage-correct-output.tar" || \
-    #         error_exit "Could not download correct model output."
-    # fi
-    # 
-    # # Extract the correct model output
-    # tar -xf mini-millennium-sage-correct-output.tar || error_exit "Could not extract correct model output."
-    # rm -f mini-millennium-sage-correct-output.tar
 fi
 
 # Create test results directory if it doesn't exist
@@ -311,7 +294,7 @@ compare_binary_outputs() {
     
     # Get lists of correct and test files for comparison
     # Sort by redshift to ensure correct matching
-    correct_files=($(ls -d "${TEST_DATA_PATH}"/correct-sage-output_z*))
+    correct_files=($(ls -d "${TEST_DATA_PATH}"/reference-sage-output_z*))
     # Use sort -k 1.18 to sort by the redshift value that starts at position 18
     test_files=($(ls -d "${TEST_RESULTS_PATH}"/test-sage-output_z* | sort -k 1.18))
     
@@ -357,7 +340,7 @@ compare_binary_outputs() {
 # Function to compare HDF5 output with reference binary files
 compare_hdf5_output() {
     # Get list of correct binary files to compare against
-    correct_files=($(ls -d "${TEST_DATA_PATH}"/correct-sage-output_z*))
+    correct_files=($(ls -d "${TEST_DATA_PATH}"/reference-sage-output_z*))
     # There's only one HDF5 output file
     test_file=$(ls "${TEST_RESULTS_PATH}"/test-sage-output.hdf5)
     
@@ -420,6 +403,7 @@ echo "==== ALL CHECKS COMPLETED SUCCESSFULLY ===="
 
 # Deactivate Python environment if it was activated
 if [[ -n "$VIRTUAL_ENV" ]]; then
+echo
     echo "Deactivating Python environment"
     deactivate
 fi
