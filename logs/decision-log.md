@@ -1,7 +1,6 @@
 <!-- Purpose: Record technical choices -->
 <!-- Update Rules:
-- Last 5 decisions only 
-- Include: 
+- Last 5 decisions only!
   • Decision date 
   • Alternatives considered 
   • Rationale
@@ -32,3 +31,8 @@
 - Alternatives: Unit testing only, Integration testing, Manual verification
 - Rationale: End-to-end tests comparing against reference outputs ensure scientific validity is preserved during refactoring, which is the primary concern.
 - Impact: Greater confidence in refactoring changes, ability to detect regressions quickly, and documentation of expected behavior. Provides a safety net for more aggressive architectural changes.
+
+2025-03-21: Prioritize Enhanced Error Logging Over Unit Testing
+- Alternatives: Comprehensive unit testing framework, Hybrid approach with minimal unit tests
+- Rationale: For scientific code, end-to-end validation against known benchmarks is more critical than unit testing. Enhanced error logging and runtime assertions provide most of the benefits of unit tests with less overhead, while maintaining focus on scientific correctness.
+- Impact: Simplifies development process while still ensuring code quality. Allows faster progress on core refactoring goals. Defers formal unit testing until Phase 2 when module interfaces become more critical. Will require implementation of robust logging and assertion mechanisms.

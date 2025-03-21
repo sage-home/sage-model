@@ -27,3 +27,10 @@
 - Ensured identical results with non-GSL approach
 - Modified tests to run without GSL dependency
 - See commits #7c8d34f, #e921a76
+
+[Phase 1.3] Testing Strategy Decision (2025-03-21)
+- Evaluated testing needs for scientific code refactoring
+- Decided to prioritize enhanced error logging over unit testing framework
+- Focused on improving end-to-end test diagnostics
+- Planned implementation of runtime assertions for key components
+- Adjusted project plan to reflect updated testing strategy
