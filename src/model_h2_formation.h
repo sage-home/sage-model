@@ -21,6 +21,9 @@ extern float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params
 extern void update_gas_components(struct GALAXY *g, const struct params *run_params);
 extern void init_gas_components(struct GALAXY *g);
 
+/* New environmental effects functions */
+extern void apply_environmental_effects(struct GALAXY *g, const struct params *run_params);
+
 #ifdef __cplusplus
 }
 #endif

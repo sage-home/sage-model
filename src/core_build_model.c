@@ -357,7 +357,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // Determine the cooling gas given the halo properties
             double coolingGas = cooling_recipe(p, deltaT / STEPS, galaxies, run_params);
-            cool_gas_onto_galaxy(p, coolingGas, galaxies);
+            cool_gas_onto_galaxy(p, coolingGas, galaxies, run_params);
 
             // stars form and then explode!
             starformation_and_feedback(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);

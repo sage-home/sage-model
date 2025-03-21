@@ -387,6 +387,63 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
     return bulge_gas * molecular_fraction;
 }
 
+/**
+ * apply_environmental_effects - Apply environmental effects to H2 gas
+ * 
+ * This function reduces H2 gas in environments that would destroy molecular gas,
+ * particularly in satellite galaxies in high-mass halos.
+ */
+void apply_environmental_effects(struct GALAXY *g, const struct params *run_params) 
+{
+    // Skip if environmental effects are disabled
+    if (run_params->EnvironmentalEffectsOn == 0) return;
+    
+    // Environmental effects mainly apply to satellite galaxies
+    if (g->Type == 0) return;  // Skip central galaxies
+    
+    // Skip if no H2 gas
+    if (g->H2_gas <= 0.0) return;
+    
+    // Get central galaxy info
+    struct GALAXY *central = &g[g->CentralGal - g->GalaxyNr];
+    
+    // Calculate environmental strength based on central halo mass
+    float env_strength = 0.0;
+    
+    if (central->Mvir > 0.0) {
+        // Convert to solar masses
+        float central_mass = central->Mvir * 1.0e10 / run_params->Hubble_h;
+        float log_mass = log10(central_mass);
+        
+        // Effect starts at halo mass ~10^13 Msun, becomes stronger for larger halos
+        if (log_mass > 13.0) {
+            env_strength = (log_mass - 13.0) * 0.2;  // 20% effect per dex
+            
+            // Cap maximum effect
+            if (env_strength > 0.8) env_strength = 0.8;
+        }
+    }
+    
+    // Scale with user parameter
+    env_strength *= run_params->EnvEffectStrength;
+    
+    // Apply the effect - remove H2 gas
+    if (env_strength > 0.0) {
+        float h2_affected = g->H2_gas * env_strength;
+        
+        // 30% is completely removed, 70% converted to HI
+        float h2_removed = h2_affected * 0.3;
+        float h2_to_hi = h2_affected * 0.7;
+        
+        // Update gas components
+        g->H2_gas -= h2_affected;
+        g->HI_gas += h2_to_hi;
+        
+        // Ensure non-negative values
+        if (g->H2_gas < 0.0) g->H2_gas = 0.0;
+    }
+}
+
 void update_gas_components(struct GALAXY *g, const struct params *run_params)
 {
     // Don't update if no cold gas
@@ -469,6 +526,11 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         g->HI_gas = 0.0;
     } else {
         g->HI_gas = g->ColdGas - g->H2_gas;
+    }
+
+    // After regular H2 calculation, apply environmental effects
+    if (run_params->EnvironmentalEffectsOn != 0) {
+        apply_environmental_effects(g, run_params);
     }
 
     // Final sanity checks

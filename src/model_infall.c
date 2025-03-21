@@ -8,6 +8,7 @@
 
 #include "model_infall.h"
 #include "model_misc.h"
+#include "model_h2_formation.h"
 
 
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
@@ -115,6 +116,16 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
 
         galaxies[centralgal].HotGas += strippedGas;
         galaxies[centralgal].MetalsHotGas += strippedGas * metallicity;
+    }
+
+    // After stripping, update the H₂/HI components
+    if (run_params->SFprescription >= 1) {
+        if (galaxies[gal].ColdGas > 0) {
+            update_gas_components(&galaxies[gal], run_params);
+        }
+        if (galaxies[centralgal].ColdGas > 0) {
+            update_gas_components(&galaxies[centralgal], run_params);
+        }
     }
 
 }

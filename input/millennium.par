@@ -90,7 +90,13 @@ ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz
 
 RadiationFieldNorm          1.0    %Radiation field normalization relative to Milky Way (1.0 = MW)
 MetallicityExponent         0.7    %Exponent for metallicity dependence in GD14 model
-IntegrationBins             100     %Number of radial bins to use for integration (higher = more accurate but slower)
+IntegrationBins             50     %Number of radial bins to use for integration (higher = more accurate but slower)
+
+%------------------------------------------
+%----- MOLECULAR GAS MODEL PARAMETERS -----
+%------------------------------------------
+EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
+EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- Other code-related information -----

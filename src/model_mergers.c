@@ -70,7 +70,7 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
         mass_ratio = 1.0;
     }
 
-    add_galaxies_together(merger_centralgal, p, galaxies);
+    add_galaxies_together(merger_centralgal, p, galaxies, run_params);
 
     // grow black hole through accretion from cold disk during mergers, a la Kauffmann & Haehnelt (2000)
     if(run_params->AGNrecipeOn) {
@@ -146,38 +146,11 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
         galaxies[gal].HotGas = 0.0;
         galaxies[gal].MetalsHotGas = 0.0;
     }
-
-    // Add direct AGN effect on molecular gas
-    // AGN feedback can directly heat/destroy molecular gas in massive galaxies
-    if(galaxies[gal].BlackHoleMass > 0.0 && galaxies[gal].H2_gas > 0.0) {
-        // Calculate fraction of H2 affected by AGN
-        double h2_heating_fraction = 0.0;
-        
-        // Scale with black hole mass and accretion rate
-        double bh_mass_msun = galaxies[gal].BlackHoleMass * 1.0e10 / run_params->Hubble_h;
-        if(bh_mass_msun > 1.0e7) {
-            // Only significant effect for massive black holes
-            // Scales with accretion rate (BHaccrete) and black hole mass
-            h2_heating_fraction = 0.2 * (BHaccrete / galaxies[gal].H2_gas) * 
-                                  pow(bh_mass_msun / 1.0e8, 0.5);
-            
-            // Limit maximum effect
-            if(h2_heating_fraction > 0.5) h2_heating_fraction = 0.5;
-            
-            // Apply the effect - convert H2 to HI (partial) and hot gas (partial)
-            double h2_affected = galaxies[gal].H2_gas * h2_heating_fraction;
-            
-            // 30% completely ejected to hot gas, 70% reverts to HI
-            galaxies[gal].H2_gas -= h2_affected;
-            galaxies[gal].HI_gas += h2_affected * 0.7;
-            galaxies[gal].HotGas += h2_affected * 0.3;
-        }
-    }
 }
 
 
 
-void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies)
+void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, const struct params *run_params)
 {
     galaxies[t].ColdGas += galaxies[p].ColdGas;
     galaxies[t].MetalsColdGas += galaxies[p].MetalsColdGas;
@@ -204,6 +177,11 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies)
         galaxies[t].SfrBulge[step] += galaxies[p].SfrDisk[step] + galaxies[p].SfrBulge[step];
         galaxies[t].SfrBulgeColdGas[step] += galaxies[p].SfrDiskColdGas[step] + galaxies[p].SfrBulgeColdGas[step];
         galaxies[t].SfrBulgeColdGasMetals[step] += galaxies[p].SfrDiskColdGasMetals[step] + galaxies[p].SfrBulgeColdGasMetals[step];
+    }
+
+    // Update gas components to ensure H₂/HI ratio is correct after merger
+    if (run_params->SFprescription >= 1) {
+        update_gas_components(&galaxies[t], run_params);
     }
 }
 
@@ -235,7 +213,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     double stars, reheated_mass, ejected_mass, fac, metallicity, eburst;
     
     // For H2-based SF prescription, update the gas components first
-    if (run_params->SFprescription == 1) {
+    if (run_params->SFprescription >= 1) {
         update_gas_components(&galaxies[merger_centralgal], run_params);
     }
 

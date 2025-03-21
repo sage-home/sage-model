@@ -63,6 +63,15 @@ void init(struct params *run_params)
             run_params->IntegrationBins = 30;  // Default number of radial bins
         }
     }
+    
+    // Initialize environmental effects parameters
+    if (run_params->EnvironmentalEffectsOn != 0 && run_params->EnvironmentalEffectsOn != 1) {
+        run_params->EnvironmentalEffectsOn = 1;  // Enable by default
+    }
+    
+    if (run_params->EnvEffectStrength <= 0.0) {
+        run_params->EnvEffectStrength = 1.0;  // Default strength
+    }
 
     set_units(run_params);
 

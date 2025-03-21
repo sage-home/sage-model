@@ -262,6 +262,15 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
 
+    // Add these in the appropriate section with other similar parameters
+    strncpy(ParamTag[NParam], "EnvironmentalEffectsOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->EnvironmentalEffectsOn);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "EnvEffectStrength", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->EnvEffectStrength);
+    ParamID[NParam++] = DOUBLE;
+
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;

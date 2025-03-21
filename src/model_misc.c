@@ -55,7 +55,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].ICS = 0.0;
 
     // Initialize H2 fractions if using that model
-    if (run_params->SFprescription == 1) {
+    if (run_params->SFprescription >= 1) {
         init_gas_components(&galaxies[p]);
     }
 

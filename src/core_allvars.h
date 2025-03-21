@@ -433,6 +433,8 @@ struct params
     int32_t    SupernovaRecipeOn;
     int32_t    ReionizationOn;
     int32_t   DiskInstabilityOn;
+    // Environmental effects parameters
+    int32_t EnvironmentalEffectsOn;  // 0 = off, 1 = on
 
     double RecycleFraction;
     double Yield;
@@ -457,6 +459,7 @@ struct params
     // New parameters for Gnedin & Draine model
     double RadiationFieldNorm;   // Normalized radiation field strength
     double MetallicityExponent;  // Exponent for metallicity dependence
+    double EnvEffectStrength;    // Strength multiplier (0.0-2.0)
     double IntegrationBins;
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

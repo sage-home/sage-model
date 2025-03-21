@@ -255,6 +255,10 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[centralgal].HotGas += adjusted_reheated_mass;
         galaxies[centralgal].MetalsHotGas += metallicity * adjusted_reheated_mass;
 
+        if (run_params->SFprescription >= 1) {
+            update_gas_components(&galaxies[p], run_params);
+        }
+
         if(adjusted_ejected_mass > galaxies[centralgal].HotGas) {
             adjusted_ejected_mass = galaxies[centralgal].HotGas;
         }
