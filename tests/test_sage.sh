@@ -5,10 +5,17 @@
 # This script:
 # 1. Sets up test data directory and downloads Mini-Millennium merger trees if needed
 # 2. Sets up a Python environment with the required dependencies (numpy, h5py)
-# 3. Runs SAGE with binary output format and compares to reference outputs
-# 4. Runs SAGE with HDF5 output format and compares to reference outputs
+# 3. Optionally compiles SAGE before testing (with --compile flag)
+# 4. Runs SAGE with binary output format and compares to reference outputs
+# 5. Runs SAGE with HDF5 output format and compares to reference outputs
 # 
-# It requires a compiled SAGE executable in the parent directory
+# Usage: 
+#   ./test_sage.sh             # Run tests with default settings
+#   ./test_sage.sh --verbose   # Run tests with verbose output
+#   ./test_sage.sh --compile   # Compile SAGE before running tests
+#   ./test_sage.sh --compile --verbose  # Compile and run tests with verbose output
+# 
+# It requires a compiled SAGE executable in the parent directory (unless --compile is used)
 # When comparing outputs, we use sagediff.py to ensure all galaxy properties match
 
 # Save current working directory to return at the end
@@ -17,12 +24,56 @@ TEST_DATA_DIR="test_data/"
 TEST_RESULTS_DIR="test_results/"
 ENV_DIR="test_env"
 
+# Function to show help message
+show_help() {
+    echo "Usage: $0 [OPTIONS]"
+    echo
+    echo "Options:"
+    echo "  --help      Show this help message"
+    echo "  --verbose   Run tests with verbose output"
+    echo "  --compile   Compile SAGE before running tests"
+    echo
+    echo "Examples:"
+    echo "  $0                      # Run tests with default settings"
+    echo "  $0 --verbose            # Run tests with verbose output"
+    echo "  $0 --compile            # Compile SAGE before running tests"
+    echo "  $0 --compile --verbose  # Compile and run tests with verbose output"
+    echo
+}
+
+# Process command line arguments
+VERBOSE_MODE=0
+COMPILE_MODE=0
+for arg in "$@"; do
+    case $arg in
+        --help)
+            show_help
+            exit 0
+            ;;
+        --verbose)
+            VERBOSE_MODE=1
+            shift
+            ;;
+        --compile)
+            COMPILE_MODE=1
+            shift
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: $0 [--help] [--verbose] [--compile]"
+            echo "Try '$0 --help' for more information"
+            exit 1
+            ;;
+    esac
+done
+
 # Determine the absolute path to the test directory
 # (irrespective of current working directory)
 TESTS_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 TEST_DATA_PATH="${TESTS_DIR}/${TEST_DATA_DIR}"
 TEST_RESULTS_PATH="${TESTS_DIR}/${TEST_RESULTS_DIR}"
 ENV_PATH="${TESTS_DIR}/${ENV_DIR}"
+SAGE_ROOT_DIR="${TESTS_DIR}/../"
 
 # Function to display error and exit
 error_exit() {
@@ -31,6 +82,27 @@ error_exit() {
     echo "If the fix to this isn't obvious, please open an issue at:"
     echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
+}
+
+# Function to compile SAGE
+compile_sage() {
+    echo "---- COMPILING SAGE ----"
+    cd "${SAGE_ROOT_DIR}" || error_exit "Could not change to SAGE root directory: ${SAGE_ROOT_DIR}"
+    
+    if [ $VERBOSE_MODE -eq 1 ]; then
+        echo "Compiling SAGE in verbose mode (MAKE-VERBOSE set)"
+        make clean && make MAKE-VERBOSE=yes
+    else
+        echo "Compiling SAGE"
+        make clean && make
+    fi
+    
+    if [ $? -ne 0 ]; then
+        error_exit "Failed to compile SAGE"
+    fi
+    
+    echo "SAGE compilation successful"
+    echo
 }
 
 # Function to set up Python environment with required dependencies
@@ -112,6 +184,11 @@ mkdir -p "$TEST_DATA_PATH" || error_exit "Could not create directory $TEST_DATA_
 
 # Set up the Python environment
 setup_python_environment
+
+# Compile SAGE if requested
+if [ $COMPILE_MODE -eq 1 ]; then
+    compile_sage
+fi
 
 # Change to the test data directory
 cd "$TEST_DATA_PATH" || error_exit "Could not change to directory $TEST_DATA_PATH"
@@ -254,7 +331,11 @@ compare_binary_outputs() {
         test_basename=$(basename "${test_files[${nfiles}-1]}")
         echo "Comparing ${correct_basename} with ${test_basename}..."
         # Use the Python from our environment
-        "${ENV_PATH}/bin/python" "${TESTS_DIR}/sagediff.py" "${correct_files[${nfiles}-1]}" "${test_files[${nfiles}-1]}" binary-binary 1 ${num_procs}
+        if [ $VERBOSE_MODE -eq 1 ]; then
+            "${ENV_PATH}/bin/python" "${TESTS_DIR}/sagediff.py" -v "${correct_files[${nfiles}-1]}" "${test_files[${nfiles}-1]}" binary-binary 1 ${num_procs}
+        else
+            "${ENV_PATH}/bin/python" "${TESTS_DIR}/sagediff.py" "${correct_files[${nfiles}-1]}" "${test_files[${nfiles}-1]}" binary-binary 1 ${num_procs}
+        fi
         if [[ $? == 0 ]]; then
             ((npassed++))
         else
@@ -306,7 +387,11 @@ compare_hdf5_output() {
         test_basename=$(basename "${test_file}")
         echo "Comparing ${correct_basename} with ${test_basename}..."
         # Use the Python from our environment
-        "${ENV_PATH}/bin/python" "${TESTS_DIR}/sagediff.py" "${correct_files[${nfiles}-1]}" "${test_file}" binary-hdf5 1 1
+        if [ $VERBOSE_MODE -eq 1 ]; then
+            "${ENV_PATH}/bin/python" "${TESTS_DIR}/sagediff.py" -v "${correct_files[${nfiles}-1]}" "${test_file}" binary-hdf5 1 1
+        else
+            "${ENV_PATH}/bin/python" "${TESTS_DIR}/sagediff.py" "${correct_files[${nfiles}-1]}" "${test_file}" binary-hdf5 1 1
+        fi
         if [[ $? == 0 ]]; then
             ((npassed++))
         else
