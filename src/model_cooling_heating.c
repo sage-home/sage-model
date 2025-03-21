@@ -157,10 +157,37 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
         }
     }
 
-    if (run_params->SFprescription >= 1 && galaxies[centralgal].ColdGas > 0) {
-        update_gas_components(&galaxies[centralgal], run_params);
-    }
+    // ADDED: Direct impact on H₂ from AGN
+    if (run_params->AGNrecipeOn > 0 && galaxies[centralgal].BlackHoleMass > 0.0 && 
+        galaxies[centralgal].H2_gas > 0.0) {
+        
+        // Scale effect with black hole mass (log scale)
+        float log_bh_mass = log10(galaxies[centralgal].BlackHoleMass + 1e-10);
+        float bh_scale = log_bh_mass - 6.0; // Threshold at 10^6 Msun
+        
+        if (bh_scale > 0.0) {
+            // Calculate amount of H₂ directly affected by AGN
+            float h2_destroyed = galaxies[centralgal].H2_gas * 0.2 * bh_scale * dt;
+            
+            // Limit maximum destruction per time step
+            if (h2_destroyed > galaxies[centralgal].H2_gas * 0.9) {
+                h2_destroyed = galaxies[centralgal].H2_gas * 0.9;
+            }
+            
+            // Apply the effect - reduce H₂, convert some to HI, remove some completely
+            galaxies[centralgal].H2_gas -= h2_destroyed;
+            galaxies[centralgal].HI_gas += h2_destroyed * 0.7;  // 70% converts to HI
+            galaxies[centralgal].ColdGas -= h2_destroyed * 0.3; // 30% removed completely
+            
+            // Track heating from this process
+            galaxies[centralgal].Heating += 0.2 * h2_destroyed * 
+                                           galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
 
+            // Recalculate gas components
+            update_gas_components(&galaxies[centralgal], run_params);
+        }
+    }
+    
     return coolingGas;
 }
 

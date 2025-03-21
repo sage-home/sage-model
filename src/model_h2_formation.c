@@ -164,22 +164,24 @@ float get_mass_dependent_radiation_field(struct GALAXY *g, const struct params *
     float radiation_field = run_params->RadiationFieldNorm;
     
     // Calculate mass-dependent scaling
-    // Massive galaxies should have relatively lower radiation field per unit gas
-    // to account for self-shielding effects not captured in the simple model
     if (g->Mvir > 0.0) {
-        // Scale down radiation field for massive galaxies (> 10^11 Msun)
-        float mass_scale = 1.0;
-        float log_mvir = log10(g->Mvir * 1.0e10 / run_params->Hubble_h);  // Convert to Msun
+        // Convert to solar masses
+        float log_mvir = log10(g->Mvir * 1.0e10 / run_params->Hubble_h);
         
+        // CHANGED: Increase radiation field for massive galaxies
         if (log_mvir > 11.0) {
-            // Gradual reduction above 10^11 Msun
-            mass_scale = pow(10.0, -(log_mvir - 11.0) * 0.3);
-            
-            // Limit minimum scaling to 0.3 (prevents excessive reduction)
-            if (mass_scale < 0.3) mass_scale = 0.3;
+            // Scale up radiation field for massive galaxies
+            float mass_scale = 1.0 + 0.5 * (log_mvir - 11.0);
+            if (mass_scale > 3.0) mass_scale = 3.0;
+            radiation_field *= mass_scale;
+        } else if (log_mvir > 9.0) {
+            // Keep moderate scaling for intermediate masses
+            radiation_field *= 1.0;
+        } else {
+            // Reduce field for very low-mass galaxies
+            float mass_scale = 0.5 + 0.5 * (log_mvir / 9.0);
+            radiation_field *= mass_scale;
         }
-        
-        radiation_field *= mass_scale;
     }
     
     return radiation_field;
@@ -221,6 +223,19 @@ float calculate_molecular_fraction_GD14(float gas_density, float metallicity, fl
     // Ensure bounds
     if (f_mol < 0.0) f_mol = 0.0;
     if (f_mol > 1.0) f_mol = 1.0;
+
+#ifdef VERBOSE
+static int counter_gd = 0;
+if (counter_gd % 50000000 == 0) {
+    printf("GD14 H2 Calculation:\n");
+    printf("  Gas density: %g M☉/pc², Metallicity: %g Z☉\n", 
+            gas_density, metallicity);
+    printf("  Z factor: %g, SIGMA_CRIT: %g\n", z_factor, SIGMA_CRIT);
+    printf("  Radiation field: %g, Final f_mol: %g\n", 
+            radiation_field, f_mol);
+}
+counter_gd++;
+#endif
     
     return f_mol;
 }
@@ -477,6 +492,44 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         
         // Total molecular gas
         total_molecular_gas = disk_molecular_gas + bulge_molecular_gas;
+
+        // ADDED: Couple H₂ depletion to star formation rate for massive galaxies
+        if (g->StellarMass > 1e10 && g->H2_gas > 0.0) {
+            // Calculate specific SFR
+            float recent_sfr = 0.0;
+            for (int step = 0; step < STEPS; step++) {
+                recent_sfr += g->SfrDisk[step] + g->SfrBulge[step];
+            }
+            recent_sfr /= STEPS;
+            
+            float specific_sfr = 0.0;
+            if (g->StellarMass > 0.0) {
+                specific_sfr = recent_sfr / g->StellarMass;
+            }
+            
+            // Apply stronger H₂ depletion if specific SFR is low (quenched galaxy)
+            // Typical threshold for quenched galaxies: 10^-11 yr^-1
+            if (specific_sfr < 1e-11) {
+                // Depletion factor scales with how far below the threshold
+                float depletion_factor = 0.5 * (1.0 - specific_sfr/1e-11);
+                if (depletion_factor < 0.0) depletion_factor = 0.0;
+                if (depletion_factor > 0.9) depletion_factor = 0.9;
+                
+                // Apply depletion
+                float h2_depleted = g->H2_gas * depletion_factor;
+                g->H2_gas -= h2_depleted;
+                
+                // Convert 70% of depleted H₂ to HI, completely remove the rest
+                g->HI_gas += h2_depleted * 0.7;
+                g->ColdGas -= h2_depleted * 0.3;
+            }
+        }
+        
+        // Apply environmental effects after this
+        if (run_params->EnvironmentalEffectsOn != 0) {
+            apply_environmental_effects(g, run_params);
+        }
+
     }
     else if (run_params->SFprescription == 2) {
         // Existing KD12 model - kept unchanged
@@ -539,11 +592,6 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         g->HI_gas = g->ColdGas - g->H2_gas;
     }
 
-    // After regular H2 calculation, apply environmental effects
-    if (run_params->EnvironmentalEffectsOn != 0) {
-        apply_environmental_effects(g, run_params);
-    }
-
     // Final sanity checks
     if(g->H2_gas < 0.0) g->H2_gas = 0.0;
     if(g->HI_gas < 0.0) g->HI_gas = 0.0;
@@ -555,6 +603,19 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         g->H2_gas *= scale;
         g->HI_gas *= scale;
     }
+
+    // Add at the end of update_gas_components
+    if (g->StellarMass > 5e10 && g->H2_gas/g->ColdGas > 0.2) {
+        printf("HIGH H2 FRACTION WARNING - Galaxy %d\n", g->GalaxyNr);
+        printf("  StellarMass: %g, BulgeMass: %g, ColdGas: %g\n", 
+            g->StellarMass, g->BulgeMass, g->ColdGas);
+        printf("  H2_gas: %g, HI_gas: %g, H2 fraction: %g\n",
+            g->H2_gas, g->HI_gas, g->H2_gas/g->ColdGas);
+        printf("  Type: %d, Vvir: %g, Mvir: %g\n",
+            g->Type, g->Vvir, g->Mvir);
+        printf("  BH: %g, SFR: %g\n", 
+            g->BlackHoleMass, (g->SfrDisk[0] + g->SfrBulge[0]));
+}
 }
 
 void init_gas_components(struct GALAXY *g)
