@@ -228,7 +228,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     }
 
     // Determine which gas component to use for star formation
-    if (run_params->SFprescription == 1) {
+    if (run_params->SFprescription >= 1) {
         // Use H2 gas for star formation
         stars = eburst * galaxies[merger_centralgal].H2_gas;
     } else {
@@ -252,7 +252,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
             reheated_mass);
 
     // can't use more gas than is available! so balance SF and feedback
-    if (run_params->SFprescription == 1) {
+    if (run_params->SFprescription >= 1) {
         // For H2-based model - check against H2 gas
         if((stars + reheated_mass) > galaxies[merger_centralgal].H2_gas) {
             fac = galaxies[merger_centralgal].H2_gas / (stars + reheated_mass);
@@ -276,7 +276,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
     
     // Remove stars from appropriate gas components
-    if (run_params->SFprescription == 1) {
+    if (run_params->SFprescription >= 1) {
         // Remove stars from both H2 and total cold gas
         galaxies[merger_centralgal].H2_gas -= stars;
         galaxies[merger_centralgal].ColdGas -= (1 - run_params->RecycleFraction) * stars;
@@ -313,6 +313,11 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         }
     } else {
         ejected_mass = 0.0;
+    }
+
+    if (galaxies[merger_centralgal].StellarMass > 1e10) {
+        // Enhanced H₂ consumption efficiency for massive galaxies
+        stars *= 1.2;  // 20% more stars formed from the same gas
     }
 
     // update from feedback

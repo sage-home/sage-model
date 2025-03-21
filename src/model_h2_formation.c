@@ -383,6 +383,11 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
     if (molecular_fraction < 0.5) {
         molecular_fraction = 0.5;
     }
+
+    if (g->StellarMass > 1e10) {
+        // Reduce molecular fraction in massive galaxy bulges
+        molecular_fraction *= 0.7;  // 30% reduction
+    }
     
     return bulge_gas * molecular_fraction;
 }
@@ -417,7 +422,13 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
         
         // Effect starts at halo mass ~10^13 Msun, becomes stronger for larger halos
         if (log_mass > 13.0) {
-            env_strength = (log_mass - 13.0) * 0.2;  // 20% effect per dex
+            env_strength = (log_mass - 13.0) * 0.4;  // 20% effect per dex
+
+            // And possibly add a direct mass-dependent suppression
+            if (central_mass > 1e11) {
+                // Additional suppression for galaxies in groups/clusters
+                env_strength += 0.2;  // Base additional suppression
+            }
             
             // Cap maximum effect
             if (env_strength > 0.8) env_strength = 0.8;

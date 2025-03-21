@@ -17,6 +17,7 @@ extern "C" {
     extern void grow_black_hole(const int merger_centralgal, const double mass_ratio, struct GALAXY *galaxies, const struct params *run_params);
     extern void collisional_starburst_recipe(const double mass_ratio, const int merger_centralgal, const int centralgal, const double time,
                                              const double dt, const int halonr, const int mode, const int step, struct GALAXY *galaxies, const struct params *run_params);
+    extern void update_gas_components(struct GALAXY *g, const struct params *run_params);
 #ifdef __cplusplus
 }
 #endif
