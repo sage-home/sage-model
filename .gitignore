@@ -1,9 +1,11 @@
 sage
-tests/test_data/
+tests/test_results/
+tests/test_env/
 input/millennium/
 output/
 ignore/
 
+trees_*
 *.o
 *.*~
 libsage.a
