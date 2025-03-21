@@ -603,19 +603,16 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         g->H2_gas *= scale;
         g->HI_gas *= scale;
     }
-
-    // Add at the end of update_gas_components
-    if (g->StellarMass > 5e10 && g->H2_gas/g->ColdGas > 0.2) {
-        printf("HIGH H2 FRACTION WARNING - Galaxy %d\n", g->GalaxyNr);
-        printf("  StellarMass: %g, BulgeMass: %g, ColdGas: %g\n", 
-            g->StellarMass, g->BulgeMass, g->ColdGas);
-        printf("  H2_gas: %g, HI_gas: %g, H2 fraction: %g\n",
-            g->H2_gas, g->HI_gas, g->H2_gas/g->ColdGas);
-        printf("  Type: %d, Vvir: %g, Mvir: %g\n",
-            g->Type, g->Vvir, g->Mvir);
-        printf("  BH: %g, SFR: %g\n", 
-            g->BlackHoleMass, (g->SfrDisk[0] + g->SfrBulge[0]));
+#ifdef VERBOSE
+// More inclusive debugging - no H₂ fraction condition
+if (g->StellarMass > 5e10) {
+    float h2_fraction = (g->ColdGas > 0) ? (g->H2_gas/g->ColdGas) : 0.0;
+    printf("MASSIVE GALAXY - ID: %d, Type: %d\n", g->GalaxyNr, g->Type);
+    printf("  StellarMass: %g, ColdGas: %g\n", g->StellarMass, g->ColdGas);
+    printf("  H2_gas: %g, HI_gas: %g, H2 fraction: %g\n",
+            g->H2_gas, g->HI_gas, h2_fraction);
 }
+#endif
 }
 
 void init_gas_components(struct GALAXY *g)
