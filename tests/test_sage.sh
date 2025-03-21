@@ -73,36 +73,42 @@ if [ ! -f trees_063.7 ]; then
         exit 1
     fi
 
-    # If there aren't trees, there's no way there is the 'correct' data files.
-    wget https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0 -O "mini-millennium-sage-correct-output.tar"
-    if [[ $? != 0 ]]; then
-        echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests."
-        echo "Failed."
-        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
-        echo "https://github.com/sage-home/sage-model/issues/new"
-        exit 1
-    fi
+    rm -f mini-millennium-treefiles.tar
 
-    # If we used `curl`, remove the `wget` alias.
-    if [[ $clear_alias == 1 ]]; then
-        unalias wget
-    fi
+    # # If there aren't trees, there's no way there is the 'correct' data files.
+    # wget https://www.dropbox.com/s/mxvivrg19eu4v1f/mini-millennium-sage-correct-output.tar?dl=0 -O "mini-millennium-sage-correct-output.tar"
+    # if [[ $? != 0 ]]; then
+    #     echo "Could not download correct model output from the Manodeep Sinha's Dropbox...aborting tests."
+    #     echo "Failed."
+    #     echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    #     echo "https://github.com/sage-home/sage-model/issues/new"
+    #     exit 1
+    # fi
 
-    tar -xvf mini-millennium-sage-correct-output.tar
-    if [[ $? != 0 ]]; then
-        echo "Could not untar the correct model output...aborting tests."
-        echo "Failed."
-        echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
-        echo "https://github.com/sage-home/sage-model/issues/new"
-        exit 1
-    fi
+    # # If we used `curl`, remove the `wget` alias.
+    # if [[ $clear_alias == 1 ]]; then
+    #     unalias wget
+    # fi
+
+    # tar -xvf mini-millennium-sage-correct-output.tar
+    # if [[ $? != 0 ]]; then
+    #     echo "Could not untar the correct model output...aborting tests."
+    #     echo "Failed."
+    #     echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    #     echo "https://github.com/sage-home/sage-model/issues/new"
+    #     exit 1
+    # fi
 
 fi
 
-rm -f test_sage_z*
+rm -f test-sage-output_z*
 
 # cd back into the sage root directory and then run sage
 cd ../../
+
+echo "==== CHECKING SAGE BINARY OUTPUT ===="
+echo
+echo "---- RUNNING SAGE IN BINARY MODE ----"
 
 # The 'MPI_RUN_COMMAND' environment variable allows us to run in mpi.
 # When running 'sagediff.py', we need knowledge of the number of processors SAGE ran on.
@@ -116,7 +122,7 @@ fi
 
 # Execute SAGE (potentially in parallel).
 tmpfile="$(mktemp)"
-sed '/^OutputFormat /s/.*$/OutputFormat        sage_binary/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
+sed '/^OutputFormat /s/.*$/OutputFormat        sage_binary/' "$parent_path"/$datadir/test-mini-millennium.par > ${tmpfile}
 
 ${MPI_RUN_COMMAND} ./sage "${tmpfile}"
 if [[ $? != 0 ]]; then
@@ -127,51 +133,40 @@ if [[ $? != 0 ]]; then
     exit 1
 fi
 
+echo
+echo "---- NOW COMPARING AGAINST OUR BENCHMARK OUTPUT FILES ----"
+echo
+
 # Now cd into the output directory for this run.
-pushd "$parent_path"/$datadir
+pushd "$parent_path"/$datadir  > /dev/null
 
 # These commands create arrays containing the file names. Used because we're going to iterate over both files simultaneously.
 # We will iterate over 'correct_files' and hence we want the first entries 8 entries of 'test_files' to be all the different redshifts
 # with file extension '_0'.  This is what the `sort` command does.
-correct_files=($(ls -d correct-mini-millennium-output_z*))
-test_files=($(ls -d test_sage_z* | sort -k 1.18))
+correct_files=($(ls -d correct-sage-output_z*))
+test_files=($(ls -d test-sage-output_z* | sort -k 1.18))
 if [[ $? == 0 ]]; then
     npassed=0
-    nbitwise=0
     nfiles=0
     nfailed=0
     for f in ${correct_files[@]}; do
         ((nfiles++))
-
-        # First check if the correct and tests files are bitwise identical.
-        diff -q ${test_files[${nfiles}-1]} ${correct_files[${nfiles}-1]} 2>&1 1>/dev/null
+        python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary 1 $NUM_SAGE_PROCS
         if [[ $? == 0 ]]; then
             ((npassed++))
-            ((nbitwise++))
         else
-            # If they're not identical, manually check all the fields for differences.
-            # The two `1` at the end here denotes that the 'correct' SAGE files are in one file.
-            python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_files[${nfiles}-1]} binary-binary 1 $NUM_SAGE_PROCS
-            if [[ $? == 0 ]]; then
-                ((npassed++))
-            else
-                ((nfailed++))
-            fi
+            ((nfailed++))
         fi
     done
 else
-    # even the simple ls model_z* failed
-    # which means the code didnt produce the output files
-    # everything failed
+    # Even the simple ls failed which means the code didnt produce the output file
     npassed=0
-    # use the knowledge that there should have been 64
-    # files for mini-millennium test case
-    # This will need to be changed once the files get combined -- MS: 10/08/2018
-    nfiles=8
-    nfailed=$nfiles
+    nfailed=8
 fi
-echo "Passed: $npassed. Bitwise identical: $nbitwise"
-echo "Failed: $nfailed."
+echo
+echo "Binary checks passed: $npassed"
+echo "Binary checks failed: $nfailed"
+echo
 
 if [[ $nfailed > 0 ]]; then
     echo "The binary-binary check failed."
@@ -182,9 +177,14 @@ fi
 
 # Now that we've checked the binary output, also check the HDF5 output format.
 # First replace the "OutputFormat" argument with HDF5 in the parameter file.
-popd
+
+echo "==== CHECKING SAGE HDF5 OUTPUT ===="
+echo
+echo "---- RUNNING SAGE IN HDF5 MODE ----"
+
+popd  > /dev/null
 tmpfile="$(mktemp)"
-sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
+sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datadir/test-mini-millennium.par > ${tmpfile}
 
 # Run SAGE on this new parameter file.
 ${MPI_RUN_COMMAND} ./sage "${tmpfile}"
@@ -199,12 +199,16 @@ fi
 
 rm -f ${tmpfile}
 
+echo
+echo "---- NOW COMPARING AGAINST OUR BENCHMARK OUTPUT FILES ----"
+echo
+
 # now cd into the output directory for this sage-run
 cd "$parent_path"/$datadir
 
 # For the binary output, there are multiple redshift files.  However for HDF5, there is a single file.
-correct_files=($(ls -d correct-mini-millennium-output_z*))
-test_file=$(ls test_sage.hdf5)
+correct_files=($(ls -d correct-sage-output_z*))
+test_file=$(ls test-sage-output.hdf5)
 
 # Now run the comparison between each correct binary file and the single HDF5 file.
 if [[ $? == 0 ]]; then
@@ -213,8 +217,6 @@ if [[ $? == 0 ]]; then
     nfailed=0
     for f in ${correct_files[@]}; do
         ((nfiles++))
-        # The two `1` at the end here denotes that the 'correct' SAGE files are in one file and
-        # the SAGE output we're testing was written to a single file.
         python "$parent_path"/sagediff.py ${correct_files[${nfiles}-1]} ${test_file} binary-hdf5 1 1
         if [[ $? == 0 ]]; then
             ((npassed++))
@@ -225,12 +227,21 @@ if [[ $? == 0 ]]; then
 else
     # Even the simple ls failed which means the code didnt produce the output file
     npassed=0
-    # Use the knowledge that there is 8 SAGE output files we were trying to check against.
-    nfiles=8
-    nfailed=$nfiles
+    nfailed=8
 fi
-echo "Passed: $npassed."
-echo "Failed: $nfailed."
+echo
+echo "hdf5 checks passed: $npassed"
+echo "hdf5 checks failed: $nfailed"
+
+if [[ $nfailed > 0 ]]; then
+    echo "The hdf5-binary check failed."
+    echo "If the fix to this isn't obvious, please feel free to open an issue on our GitHub page."
+    echo "https://github.com/sage-home/sage-model/issues/new"
+    exit 1
+fi
+
+echo
+echo "==== ALL CHECKS COMPLETED ===="
 
 # restore the original working dir
 cd "$cwd"

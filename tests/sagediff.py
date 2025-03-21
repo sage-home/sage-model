@@ -620,7 +620,4 @@ if __name__ == '__main__':
     compare_catalogs(args.file1, args.num_files_file1, args.file2, args.num_files_file2,
                      args.mode, ignored_fields, multidim_fields, rtol, atol)
 
-    print("========================")
     print("All tests passed for files {0} and {1}. Yay!".format(args.file1, args.file2))
-    print("========================")
-    print("")
