@@ -1,12 +1,12 @@
 <!-- Purpose: Current project phase context -->
 <!-- Update Rules:
-- Update on phase transitions 
-- Keep previous phase archived as phase-[X].md
+- 500-word limit! 
 - Include: 
-  • Phase objectives 
+  • Phase objectives
+  • Current progress and next actions
   • Completion criteria 
   • Inter-phase dependencies
-  • Task checklist and next actions
+- At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
 # Current Phase: 1.3-1.4/7 (Enhanced Testing & Documentation)
@@ -60,7 +60,7 @@
 - Complete architectural and data flow documentation
 - Updated inline documentation across all core components
 
-## Dependencies
+## Inter-Phase Dependencies
 - Phase 1.1 (Code Organization): ✅ COMPLETED
 - Phase 1.2 (Global State Reduction): ✅ COMPLETED
 - GSL Dependency Removal: ✅ COMPLETED

@@ -1,7 +1,7 @@
 <!-- Purpose: Snapshot of current codebase architecture -->
 <!-- Update Rules: 
-- 500-word limit 
-- Overwrite previous and outdated content 
+- 500-word limit! 
+- Overwrite outdated content 
 - Focus on active components 
 - Use UML-like text diagrams
 -->
