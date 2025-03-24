@@ -12,6 +12,7 @@
 #include "core_utils.h"
 #include "../physics/model_misc.h"
 #include "core_mymalloc.h"
+#include "core_galaxy_extensions.h"
 
 #include "../io/save_gals_binary.h"
 

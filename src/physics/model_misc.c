@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "../core/core_allvars.h"
+#include "../core/core_galaxy_extensions.h"
 
 #include "../physics/model_misc.h"
 
@@ -82,7 +83,16 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].infallMvir = -1.0;
     galaxies[p].infallVvir = -1.0;
     galaxies[p].infallVmax = -1.0;
-
+    
+    // Initialize extension fields to safe defaults
+    galaxies[p].extension_data = NULL;
+    galaxies[p].num_extensions = 0;
+    galaxies[p].extension_flags = 0;
+    
+    // Then initialize extension data if the system is available
+    if (global_extension_registry != NULL) {
+        galaxy_extension_initialize(&galaxies[p]);
+    }
 }
 
 

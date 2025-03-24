@@ -15,6 +15,7 @@
 #include "core_tree_utils.h"
 #include "core_logging.h"
 #include "core_module_system.h"
+#include "core_galaxy_extensions.h"
 
 /* Include physics module interfaces */
 #include "../physics/module_cooling.h"
@@ -50,6 +51,10 @@ void init(struct params *run_params)
     /* Initialize module system */
     initialize_module_system(run_params);
     LOG_DEBUG("Module system initialized");
+    
+    /* Initialize galaxy extension system */
+    initialize_galaxy_extension_system();
+    LOG_DEBUG("Galaxy extension system initialized");
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
@@ -243,6 +248,7 @@ void cleanup(struct params *run_params)
     
     /* Clean up module system */
     cleanup_module_system();
+    cleanup_galaxy_extension_system();
     
     cleanup_cooling();
     cleanup_simulation_times(run_params);
@@ -263,6 +269,36 @@ void cleanup_module_system(void)
         LOG_ERROR("Failed to clean up module system, status = %d", status);
     } else {
         LOG_DEBUG("Module system cleaned up");
+    }
+}
+
+/*
+ * Initialize the galaxy extension system
+ * 
+ * Sets up the extension system for adding custom properties to galaxies.
+ */
+void initialize_galaxy_extension_system(void)
+{
+    int status = galaxy_extension_system_initialize();
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to initialize galaxy extension system, status = %d", status);
+    } else {
+        LOG_INFO("Galaxy extension system initialized");
+    }
+}
+
+/*
+ * Clean up the galaxy extension system
+ * 
+ * Shuts down the extension system and releases resources.
+ */
+void cleanup_galaxy_extension_system(void)
+{
+    int status = galaxy_extension_system_cleanup();
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to clean up galaxy extension system, status = %d", status);
+    } else {
+        LOG_DEBUG("Galaxy extension system cleaned up");
     }
 }
 
@@ -378,6 +414,14 @@ void initialize_evolution_context(struct evolution_context *ctx,
     /* Validate the newly initialized context */
     if (!validate_evolution_context(ctx)) {
         LOG_WARNING("Evolution context validation failed after initialization");
+    }
+    
+    /* Ensure all galaxies have their extension fields properly initialized */
+    for (int i = 0; i < ctx->ngal; i++) {
+        if (ctx->galaxies[i].extension_data == NULL) {
+            ctx->galaxies[i].num_extensions = 0;
+            ctx->galaxies[i].extension_flags = 0;
+        }
     }
 }
 

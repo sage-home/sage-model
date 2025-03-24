@@ -25,10 +25,10 @@ SRC_PREFIX := src
 LIBNAME := sage
 LIBSRC :=  core/sage.c core/core_read_parameter_file.c core/core_init.c core/core_io_tree.c \
            core/core_cool_func.c core/core_build_model.c core/core_save.c core/core_mymalloc.c core/core_utils.c core/progressbar.c \
-           core/core_tree_utils.c core/core_parameter_views.c core/core_logging.c core/core_module_system.c \
+           core/core_tree_utils.c core/core_parameter_views.c core/core_logging.c core/core_module_system.c core/core_galaxy_extensions.c \
            physics/model_infall.c physics/model_cooling_heating.c physics/model_starformation_and_feedback.c \
            physics/model_disk_instability.c physics/model_reincorporation.c physics/model_mergers.c physics/model_misc.c \
-           physics/module_cooling.c \
+           physics/module_cooling.c physics/example_galaxy_extension.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
                io/save_gals_binary.c io/forest_utils.c io/buffered_io.c
 
@@ -248,9 +248,12 @@ else
 
 endif # End of DO_CHECKS if condition -> i.e., we do need to care about paths and such
 
-.PHONY: clean celan celna clena tests all
+.PHONY: clean celan celna clena tests all test_extensions
 
 all:  $(SAGELIB) $(EXEC)
+
+test_extensions: tests/test_galaxy_extensions.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_extensions tests/test_galaxy_extensions.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 $(EXEC): $(OBJS)
 	$(CC) $^ $(LIBFLAGS) -o $@

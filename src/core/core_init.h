@@ -26,6 +26,10 @@ extern "C" {
     extern void initialize_module_system(struct params *run_params);
     extern void cleanup_module_system(void);
     
+    /* Galaxy extension system initialization */
+    extern void initialize_galaxy_extension_system(void);
+    extern void cleanup_galaxy_extension_system(void);
+    
     /* Evolution context initialization and validation */
     extern void initialize_evolution_context(struct evolution_context *ctx, 
                                            const int halonr,

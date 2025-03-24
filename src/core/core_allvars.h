@@ -185,6 +185,11 @@ struct GALAXY
     float infallMvir;
     float infallVvir;
     float infallVmax;
+    
+    /* Extension mechanism - placed at the end for binary compatibility */
+    void **extension_data;        /* Array of pointers to module-specific data */
+    int num_extensions;           /* Number of registered extensions */
+    uint64_t extension_flags;     /* Bitmap to track which extensions are in use */
 };
 
 
@@ -201,6 +206,9 @@ struct halo_aux_data
 #endif
     int output_snap_n;
 };
+
+/* Forward declaration of galaxy extension registry */
+struct galaxy_extension_registry;
 
 
 struct lhalotree_info {

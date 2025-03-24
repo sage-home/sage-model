@@ -14,6 +14,7 @@
 #include "core_save.h"
 #include "core_utils.h"
 #include "core_logging.h"
+#include "core_galaxy_extensions.h"
 
 #include "../physics/model_misc.h"
 #include "../physics/model_mergers.h"
@@ -177,10 +178,16 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
             // After updating their properties and evolving them
             // they are copied to the end of the list of permanent galaxies halogal[xxx]
 
+            // First initialize the extension data (to maintain binary compatibility)
+            galaxy_extension_initialize(&galaxies[ngal]);
+            
+            // Then copy the basic GALAXY structure
             galaxies[ngal] = halogal[haloaux[prog].FirstGalaxy + i];
             galaxies[ngal].HaloNr = halonr;
-
             galaxies[ngal].dT = -1.0;
+            
+            // Copy extension data (this will just copy flags since the data is accessed on demand)
+            galaxy_extension_copy(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i]);
 
             // this deals with the central galaxies of (sub)halos
             if(galaxies[ngal].Type == 0 || galaxies[ngal].Type == 1) {
@@ -535,7 +542,16 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             }
 
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
+            
+            // Initialize extension data in the destination
+            galaxy_extension_initialize(&halogal[*numgals]);
+            
+            // Copy galaxy including extensions to the permanent list
             halogal[*numgals] = ctx.galaxies[p];
+            
+            // Copy extension flags (data will be allocated on demand)
+            galaxy_extension_copy(&halogal[*numgals], &ctx.galaxies[p]);
+            
             (*numgals)++;
             haloaux[currenthalo].NGalaxies++;
         }
