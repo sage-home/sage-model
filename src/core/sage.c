@@ -138,11 +138,9 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
                                          sizeof(*(save_info.forest_ngals[snap_idx])), snap_idx);
     }
 
-#ifdef VERBOSE
-    fprintf(stdout,"Task %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
+    fprintf(stdout,"\nTask %d working on %"PRId64" forests covering %.3f fraction of the volume\n",
             ThisTask, Nforests, forest_info.frac_volume_processed);
     fflush(stdout);
-#endif
 
     /* open all the output files corresponding to this tree file (specified by rank) */
     status = initialize_galaxy_files(ThisTask, &forest_info, &save_info, run_params);
@@ -151,13 +149,11 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     }
 
     run_params->runtime.interrupted = 0;
-#ifdef VERBOSE
     if(ThisTask == 0) {
         init_my_progressbar(stdout, Nforests, &(run_params->runtime.interrupted));
     }
-#endif
 
-#if defined(MPI) && defined(VERBOSE)
+#if defined(MPI)
     if(NTasks > 1) {
         fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
                 "It should be used as a general indicator only.\n");
@@ -166,12 +162,10 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
 
 
     for(int64_t forestnr = 0; forestnr < Nforests; forestnr++) {
-#ifdef VERBOSE
         if(ThisTask == 0) {
             my_progressbar(stdout, forestnr, &(run_params->runtime.interrupted));
             fflush(stdout);
         }
-#endif
 
         /* the millennium tree is really a collection of trees, viz., a forest */
         status = sage_per_forest(forestnr, &save_info, &forest_info, run_params);
@@ -191,17 +185,19 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     myfree(save_info.forest_ngals);
     myfree(save_info.tot_ngals);
 
-#ifdef VERBOSE
     if(ThisTask == 0) {
         finish_myprogressbar(stdout, &(run_params->runtime.interrupted));
     }
 
-
+#ifdef VERBOSE
     struct timeval tend;
     gettimeofday(&tend, NULL);
     char *time_string = get_time_string(tstart, tend);
     fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, time_string);
     free(time_string);
+    fflush(stdout);
+#else
+    fprintf(stdout,"\nFinished\n");
     fflush(stdout);
 #endif
 

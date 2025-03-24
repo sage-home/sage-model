@@ -153,6 +153,14 @@ static void write_log(log_level_t level, const char *file, int line,
         return;
     }
     
+    /* Always show ERROR and FATAL logs regardless of verbosity */
+    if (level >= LOG_LEVEL_ERROR) {
+        write_log_to_destination(stderr, config, level, file, line, func, message, ctx);
+        return;
+    }
+    
+#ifdef VERBOSE
+    /* In verbose mode, show all logs */
     /* Write to stdout if configured */
     if (config->destinations & LOG_DEST_STDOUT) {
         write_log_to_destination(stdout, config, level, file, line, func, message, ctx);
@@ -167,6 +175,14 @@ static void write_log(log_level_t level, const char *file, int line,
     if ((config->destinations & LOG_DEST_FILE) && global_logging_state.log_file != NULL) {
         write_log_to_destination(global_logging_state.log_file, config, level, file, line, func, message, ctx);
     }
+#else
+    /* In non-verbose mode, show only WARNING and above */
+    if (level >= LOG_LEVEL_WARNING) {
+        if (config->destinations & LOG_DEST_STDERR) {
+            write_log_to_destination(stderr, config, level, file, line, func, message, ctx);
+        }
+    }
+#endif
 }
 
 /**

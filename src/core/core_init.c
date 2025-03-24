@@ -45,7 +45,7 @@ void init(struct params *run_params)
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
-        fprintf(stdout, "Initialization complete\n\n");
+        fprintf(stdout, "Initialization complete\n");
     }
 #endif
 }

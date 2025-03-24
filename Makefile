@@ -7,7 +7,7 @@ USE-HDF5 := yes # set this if you want to read in hdf5 trees (requires hdf5 libr
 USE-BUFFERED-WRITE := yes # Set this to create binary output in chunks (typically has better performance)
 
 MAKE-SHARED-LIB := yes # Define this to any value if you want to create a shared library (otherwise a static library is created)
-MAKE-VERBOSE := yes # define this for info messages, otherwise all info messages are disabled (*error* messages are *always* printed)
+#MAKE-VERBOSE := yes # define this for info messages, otherwise all info messages are disabled (*error* messages are *always* printed)
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # In case any of the previous ones do not work and

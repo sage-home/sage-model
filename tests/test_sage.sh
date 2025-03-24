@@ -10,12 +10,12 @@
 # 5. Runs SAGE with HDF5 output format and compares to reference outputs
 # 
 # Usage: 
-#   ./test_sage.sh             # Run tests with default settings
-#   ./test_sage.sh --verbose   # Run tests with verbose output
-#   ./test_sage.sh --compile   # Compile SAGE before running tests
-#   ./test_sage.sh --compile --verbose  # Compile and run tests with verbose output
+#   ./test_sage.sh               # Run tests with default settings (verbose and complie on)
+#   ./test_sage.sh --noverbose   # Run tests without verbose output
+#   ./test_sage.sh --nocompile   # Don't compile SAGE before running tests
+#   ./test_sage.sh --nocompile --noverbose  # Don't compile or use verbose
 # 
-# It requires a compiled SAGE executable in the parent directory (unless --compile is used)
+# --nocompile requires a compiled SAGE executable in the parent directory
 # When comparing outputs, we use sagediff.py to ensure all galaxy properties match
 
 # Save current working directory to return at the end
@@ -29,38 +29,38 @@ show_help() {
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "Options:"
-    echo "  --help      Show this help message"
-    echo "  --verbose   Run tests with verbose output"
-    echo "  --compile   Compile SAGE before running tests"
+    echo "  --help        Show this help message"
+    echo "  --noverbose   Run tests without verbose output"
+    echo "  --nocompile   Don't compile SAGE before running tests"
     echo
     echo "Examples:"
-    echo "  $0                      # Run tests with default settings"
-    echo "  $0 --verbose            # Run tests with verbose output"
-    echo "  $0 --compile            # Compile SAGE before running tests"
-    echo "  $0 --compile --verbose  # Compile and run tests with verbose output"
+    echo "  $0                        # Run tests with default settings (verbose and complie on)"
+    echo "  $0 --noverbose            # Run tests without verbose output"
+    echo "  $0 --nocompile            # Don't compile SAGE before running tests"
+    echo "  $0 --nocompile --noverbose  # Don't compile or use verbose"
     echo
 }
 
 # Process command line arguments
-VERBOSE_MODE=0
-COMPILE_MODE=0
+VERBOSE_MODE=1
+COMPILE_MODE=1
 for arg in "$@"; do
     case $arg in
         --help)
             show_help
             exit 0
             ;;
-        --verbose)
-            VERBOSE_MODE=1
+        --noverbose)
+            VERBOSE_MODE=0
             shift
             ;;
-        --compile)
-            COMPILE_MODE=1
+        --nocompile)
+            COMPILE_MODE=0
             shift
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: $0 [--help] [--verbose] [--compile]"
+            echo "Usage: $0 [--help] [--noverbose] [--nocompile]"
             echo "Try '$0 --help' for more information"
             exit 1
             ;;

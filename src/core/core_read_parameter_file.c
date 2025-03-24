@@ -49,13 +49,11 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     NParam = 0;
 
-#ifdef VERBOSE
     const int ThisTask = run_params->runtime.ThisTask;
 
     if(ThisTask == 0) {
-        fprintf(stdout, "\nreading parameter file:\n\n");
+        fprintf(stdout, "\nreading parameter file:\n");
     }
-#endif
 
     /* I/O parameters */
     strncpy(ParamTag[NParam], "FileNameGalaxies", MAXTAGLEN);
@@ -297,11 +295,9 @@ int read_parameter_file(const char *fname, struct params *run_params)
         }
 
         if(j >= 0) {
-#ifdef VERBOSE
             if(ThisTask == 0) {
                 fprintf(stdout, "%35s\t%10s\n", buf1, buf2);
             }
-#endif
 
             switch (ParamID[j])
                 {
@@ -369,7 +365,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
     } else {
 #ifdef VERBOSE
         if(ThisTask == 0) {
-            fprintf(stdout, "%d snapshots selected for output: ", run_params->simulation.NumSnapOutputs);
+            fprintf(stdout, "%d snapshots selected for output:", run_params->simulation.NumSnapOutputs);
         }
 #endif
 
@@ -388,7 +384,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
                     if(fscanf(fd, "%d", &(run_params->simulation.ListOutputSnaps[i])) == 1) {
 #ifdef VERBOSE
                         if(ThisTask == 0) {
-                            fprintf(stdout, "%d ", run_params->simulation.ListOutputSnaps[i]);
+                            fprintf(stdout, " %d", run_params->simulation.ListOutputSnaps[i]);
                         }
 #endif
                     }

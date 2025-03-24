@@ -181,12 +181,17 @@ void initialize_logging_params_view(struct logging_params_view *view, const stru
     }
     
     /* Set default logging parameters */
+    /* Always use LOG_LEVEL_INFO to ensure critical informational messages get through */
+    view->min_level = LOG_LEVEL_INFO;
+    
 #ifdef VERBOSE
-    view->min_level = LOG_LEVEL_INFO;      /* Show INFO and above when VERBOSE is on */
     view->prefix_style = LOG_PREFIX_DETAILED;  /* Detailed prefix with context information */
+    /* Set output destinations - in verbose mode, show everything */
+    view->destinations = LOG_DEST_STDERR;
 #else
-    view->min_level = LOG_LEVEL_WARNING;   /* Show only WARNING and above by default */
-    view->prefix_style = LOG_PREFIX_SIMPLE;  /* Simple prefix */
+    view->prefix_style = LOG_PREFIX_SIMPLE;    /* Simple prefix */
+    /* In non-verbose mode, only show errors and warnings on stderr */
+    view->destinations = LOG_DEST_STDERR;
 #endif
     
     /* Set output destinations - always use stderr for errors */
