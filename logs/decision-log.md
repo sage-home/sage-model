@@ -39,3 +39,11 @@
 2025-03-25: [Phase 1.3] Focus on Numerical Validation for Parameters
 - Rationale: Scientific freedom requires allowing extreme parameter values that might be invalid in normal scenarios. Our approach validates numerical properties (no NaN/Infinity) and internal consistency without limiting scientific exploration.
 - Impact: Maintains flexibility for researchers while catching actual bugs and implementation errors. Prevents crashes from invalid numerical states while preserving the ability to run experimental simulations.
+
+2025-03-26: [Phase 1.3] Defer Performance Benchmarking to Phase 6
+- Rationale: With significant code changes still ahead in the refactoring process, implementing benchmarks now would provide limited value as they would quickly become outdated. More meaningful performance analysis can be conducted when the codebase structure is stabilized.
+- Impact: Allows focus on completing the core architecture work without diverting resources to premature optimization. Will use a code profiler on the finalized structure rather than embedding benchmarking points in evolving code for more accurate performance insights.
+
+2025-03-26: [Phase 1.3] Skip Enhanced End-to-End Test Diagnostics
+- Rationale: The current combination of enhanced error logging, binary comparison through sagediff.py, knowledge of recent changes made, and starting from a known-good state provides sufficient debugging capabilities for current needs.
+- Impact: Resources can be focused on completing core documentation tasks rather than expanding test infrastructure. The existing approach of using enhanced logging within SAGE in conjunction with the test_sage.sh verification is adequate for identifying and resolving issues during refactoring.

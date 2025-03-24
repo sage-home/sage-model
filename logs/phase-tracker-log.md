@@ -35,8 +35,8 @@
 - [x] Improved verbosity control and output formatting
 - [x] Runtime assertions for parameter views
 - [x] Self-validation for evolution context
-- [ ] Improved diagnostics for end-to-end tests
-- [ ] Performance benchmarking points
+- [~] Improved diagnostics for end-to-end tests (SKIPPED - existing approach sufficient)
+- [~] Performance benchmarking points (DEFERRED to Phase 6)
 
 ### Phase 1.4: Documentation Enhancement
 - [x] Basic inline documentation
@@ -47,15 +47,11 @@
 - [ ] Developer guide
 
 ## Next Actions
-1. Improve end-to-end test diagnostics: Enhance the test_sage.sh script to provide more granular reporting of discrepancies between expected and actual outputs. This will include detailed logging of where deviations occur, visualization of differences for numerical outputs, and contextual information to help pinpoint the source of discrepancies. These improvements will ensure that scientific accuracy is maintained throughout the refactoring process by quickly identifying any changes that affect simulation results.
+1. Create architecture documentation with component diagrams: Develop comprehensive documentation of the system architecture including UML-style component diagrams showing relationships between core modules. The documentation will cover both the current state and the planned plugin architecture to guide ongoing development.
 
-2. Add performance benchmarking points: Implement timing measurements at key points in the pipeline to provide baseline performance metrics. These benchmarks will help identify hotspots and evaluate the impact of future optimizations. The benchmarks should cover both overall execution time and time spent in specific physics modules to help prioritize optimization efforts.
+2. Document data flow between components: Map the flow of data through the simulation pipeline, identifying key transformation points and dependencies. This documentation will highlight how galaxy properties are modified throughout the evolution process and where component interfaces will need to be formalized for the plugin system.
 
-3. Create architecture documentation with component diagrams: Develop comprehensive documentation of the system architecture including UML-style component diagrams showing relationships between core modules. The documentation will cover both the current state and the planned plugin architecture to guide ongoing development.
-
-4. Document data flow between components: Map the flow of data through the simulation pipeline, identifying key transformation points and dependencies. This documentation will highlight how galaxy properties are modified throughout the evolution process and where component interfaces will need to be formalized for the plugin system.
-
-5. Develop developer guide: Create a comprehensive guide for future developers that explains how to work with the codebase, add new physics modules, and use the testing framework. This will facilitate onboarding of new developers and ensure consistent development practices.
+3. Develop developer guide: Create a comprehensive guide for future developers that explains how to work with the codebase, add new physics modules, and use the testing framework. This will facilitate onboarding of new developers and ensure consistent development practices.
 
 ## Completion Criteria
 - End-to-end tests passing with improved diagnostics

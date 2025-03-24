@@ -512,6 +512,27 @@ void optimize_galaxy_layout(struct GALAXY *galaxies, int ngal, galaxy_hotpath_da
 | Serialization challenges with extensions | Medium | Medium | Thorough testing with real datasets; fallback mechanisms; format versioning |
 | Module incompatibility | Medium | High | Strict versioning; dependency validation; compatibility tests |
 
+## Deferred Work
+
+This section documents work items that have been intentionally deferred to later stages of the project or deemed unnecessary in their originally planned form. These decisions help maintain focus on the critical path and ensure efficient use of resources.
+
+### Performance Benchmarking
+- **Original Phase**: 1.3 (Testing Enhancement)
+- **New Target Phase**: 6 (Advanced Performance Optimization)
+- **Rationale**: Implementing benchmark points now would be premature with significant code changes still ahead. Benchmarks would quickly become outdated as the codebase evolves. More value will be gained by applying benchmarking to the refactored codebase.
+- **Implementation Plan**: Use a code profiler on the finalized structure rather than embedding benchmarking points in evolving code. This will provide more accurate performance insights once the core architecture is stabilized.
+- **Components**: 
+  - Development of timing measurement points
+  - Baseline metrics for overall execution
+  - Module-specific performance tracking
+  - Hotspot identification framework
+
+### Enhanced End-to-End Test Diagnostics
+- **Original Phase**: 1.3 (Testing Enhancement)
+- **Decision**: Skipped - existing approach deemed sufficient
+- **Rationale**: The current combination of enhanced error logging, binary comparison through sagediff.py, knowledge of recent changes, and starting from a known-good state provides adequate debugging capabilities without needing to invest additional time in expanding test_sage.sh.
+- **Alternative Approach**: Continue to leverage the existing test framework in conjunction with enhanced in-code logging for identifying discrepancies. Focus on using these tools effectively rather than expanding the test infrastructure.
+
 ## Conclusion
 
 This refactoring plan provides a detailed, practical approach to modernizing the SAGE codebase. The enhanced plugin architecture will enable researchers to easily swap physics implementations and reorder processes without recompilation, significantly enhancing flexibility for experimentation. The property extension mechanism will allow for novel physics to be implemented without modifying core structures, and the event system will enable more flexible module interactions.
