@@ -22,7 +22,7 @@ extern "C" {
     extern void initialize_cooling(void);
     extern void cleanup_cooling(void);
     
-    /* Evolution context initialization */
+    /* Evolution context initialization and validation */
     extern void initialize_evolution_context(struct evolution_context *ctx, 
                                            const int halonr,
                                            struct GALAXY *galaxies, 
@@ -30,6 +30,7 @@ extern "C" {
                                            struct halo_data *halos,
                                            struct params *run_params);
     extern void cleanup_evolution_context(struct evolution_context *ctx);
+    extern bool validate_evolution_context(const struct evolution_context *ctx);
 
 #ifdef __cplusplus
 }

@@ -330,6 +330,12 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     struct evolution_context ctx;
     initialize_evolution_context(&ctx, halonr, galaxies, ngal, halos, run_params);
     
+    // Perform comprehensive validation of the evolution context
+    if (!validate_evolution_context(&ctx)) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Evolution context validation failed for halo %d", halonr);
+        return EXIT_FAILURE;
+    }
+    
     CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Starting evolution for halo %d with %d galaxies", halonr, ngal);
 
     // Validate central galaxy

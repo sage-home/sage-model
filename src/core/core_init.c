@@ -202,6 +202,79 @@ void cleanup(struct params *run_params)
  * necessary pointers and initial values. This encapsulates the state
  * that was previously scattered throughout the evolve_galaxies function.
  */
+/*
+ * Validate evolution context for internal consistency
+ * 
+ * Checks that the evolution context is in a valid state with consistent values
+ * across all fields. This catches potential numerical issues and inconsistencies
+ * that could lead to crashes or incorrect physical results.
+ * 
+ * @param ctx The evolution context to validate
+ * @return true if context is valid, false otherwise
+ */
+bool validate_evolution_context(const struct evolution_context *ctx)
+{
+    if (ctx == NULL) {
+        LOG_ERROR("Null context passed to validate_evolution_context");
+        return false;
+    }
+    
+    /* Validate galaxy references */
+    if (ctx->galaxies == NULL) {
+        LOG_ERROR("Galaxy array is NULL in evolution context");
+        return false;
+    }
+    
+    if (ctx->ngal <= 0) {
+        LOG_ERROR("Invalid number of galaxies in evolution context: ngal=%d", ctx->ngal);
+        return false;
+    }
+    
+    /* Validate central galaxy index is within bounds */
+    if (ctx->centralgal < 0 || ctx->centralgal >= ctx->ngal) {
+        LOG_ERROR("Invalid central galaxy index: centralgal=%d, ngal=%d", ctx->centralgal, ctx->ngal);
+        return false;
+    }
+    
+    /* Validate the central galaxy type */
+    if (ctx->galaxies[ctx->centralgal].Type != 0) {
+        LOG_WARNING("Central galaxy has unexpected type: %d (should be 0)", ctx->galaxies[ctx->centralgal].Type);
+        /* Not a critical error, just a warning */
+    }
+    
+    /* Validate time values */
+    if (!isfinite(ctx->redshift) || ctx->redshift < 0.0) {
+        LOG_ERROR("Invalid redshift in evolution context: redshift=%g", ctx->redshift);
+        return false;
+    }
+    
+    if (!isfinite(ctx->halo_age)) {
+        LOG_ERROR("Invalid halo age in evolution context: halo_age=%g", ctx->halo_age);
+        return false;
+    }
+    
+    /* Validate that deltaT is finite when non-zero (might be 0.0 initially) */
+    if (ctx->deltaT != 0.0 && !isfinite(ctx->deltaT)) {
+        LOG_ERROR("Invalid time step in evolution context: deltaT=%g", ctx->deltaT);
+        return false;
+    }
+    
+    /* Validate that parameters reference is valid */
+    if (ctx->params == NULL) {
+        LOG_ERROR("Parameters reference is NULL in evolution context");
+        return false;
+    }
+    
+    /* Validate snapshot number is within bounds */
+    if (ctx->halo_snapnum < 0 || ctx->halo_snapnum >= ctx->params->simulation.Snaplistlen) {
+        LOG_ERROR("Invalid snapshot number in evolution context: snapnum=%d, max=%d", 
+                 ctx->halo_snapnum, ctx->params->simulation.Snaplistlen);
+        return false;
+    }
+    
+    return true;
+}
+
 void initialize_evolution_context(struct evolution_context *ctx, 
                                  const int halonr,
                                  struct GALAXY *galaxies, 
@@ -230,6 +303,11 @@ void initialize_evolution_context(struct evolution_context *ctx,
     
     /* Initialize parameters reference */
     ctx->params = run_params;
+    
+    /* Validate the newly initialized context */
+    if (!validate_evolution_context(ctx)) {
+        LOG_WARNING("Evolution context validation failed after initialization");
+    }
 }
 
 /*
