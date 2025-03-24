@@ -39,3 +39,10 @@
 - Added color-coded terminal output and configurable formatting
 - Integrated with the Makefile VERBOSE flag for level control
 - Modified src/core/sage.c, core_build_model.c, core_logging.c, core_parameter_views.c, and core_init.c
+
+2025-03-24: [Phase 1.3] Improved SAGE Verbosity Control
+- Enhanced user experience by properly handling verbose vs. non-verbose output modes
+- Modified logging system to always show parameter file info and progress bar
+- Added clean separation between output sections with newlines
+- Added "Finished" message upon completion in non-verbose mode
+- Modified Makefile, core_logging.c, core_parameter_views.c, core_read_parameter_file.c, sage.c

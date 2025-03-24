@@ -31,7 +31,7 @@ The core infrastructure has been refactored to separate concerns and reduce glob
 - `core_allvars.h`: Primary data structures organized into logical groups
 - `core_parameter_views`: Module-specific parameter views for cleaner interfaces
 - `core_init`: Initialization and cleanup routines with GSL dependency removed
-- `core_logging`: Enhanced error logging system with severity levels (DEBUG to FATAL), context-aware messaging, and configurable output formatting
+- `core_logging`: Enhanced error logging system with severity levels (DEBUG to FATAL), context-aware messaging, configurable output formatting, and standardized verbosity control
 - `evolution_context`: Context structure for galaxy evolution to reduce global state
 
 ```
