@@ -14,6 +14,10 @@
 #include "core_cool_func.h"
 #include "core_tree_utils.h"
 #include "core_logging.h"
+#include "core_module_system.h"
+
+/* Include physics module interfaces */
+#include "../physics/module_cooling.h"
 
 /* These functions do not need to be exposed externally */
 double integrand_time_to_present(const double a, void *param);
@@ -42,12 +46,61 @@ void init(struct params *run_params)
     
     initialize_cooling();
     LOG_DEBUG("Cooling tables initialized");
+    
+    /* Initialize module system */
+    initialize_module_system(run_params);
+    LOG_DEBUG("Module system initialized");
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
         fprintf(stdout, "Initialization complete\n");
     }
 #endif
+}
+
+/*
+ * Initialize the module system
+ * 
+ * Sets up the module system and registers the default modules
+ */
+void initialize_module_system(struct params *run_params)
+{
+    /* Initialize the module system */
+    int status = module_system_initialize();
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to initialize module system, status = %d", status);
+        return;
+    }
+    
+    /* Create and register the default cooling module */
+    struct cooling_module *cooling_module = create_default_cooling_module();
+    if (cooling_module == NULL) {
+        LOG_ERROR("Failed to create default cooling module");
+        return;
+    }
+    
+    /* Register the module with the system */
+    status = cooling_module_register(cooling_module);
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to register cooling module, status = %d", status);
+        return;
+    }
+    
+    /* Initialize the cooling module */
+    status = cooling_module_initialize(cooling_module, run_params);
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to initialize cooling module, status = %d", status);
+        return;
+    }
+    
+    /* Set the module as active */
+    status = module_set_active(cooling_module->base.module_id);
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to set cooling module as active, status = %d", status);
+        return;
+    }
+    
+    LOG_INFO("Default cooling module registered and activated");
 }
 
 /*
@@ -188,11 +241,29 @@ void cleanup(struct params *run_params)
     /* Clean up components in reverse order of initialization */
     LOG_DEBUG("Starting component cleanup");
     
+    /* Clean up module system */
+    cleanup_module_system();
+    
     cleanup_cooling();
     cleanup_simulation_times(run_params);
     cleanup_units(run_params);
     
     LOG_DEBUG("Component cleanup completed");
+}
+
+/*
+ * Clean up the module system
+ * 
+ * Shuts down the module system and cleans up resources
+ */
+void cleanup_module_system(void)
+{
+    int status = module_system_cleanup();
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to clean up module system, status = %d", status);
+    } else {
+        LOG_DEBUG("Module system cleaned up");
+    }
 }
 
 /*

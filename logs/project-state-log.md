@@ -136,9 +136,41 @@ A robust testing framework is in place:
 
 All changes are validated through this end-to-end testing framework using reference outputs from the Mini-Millennium simulation, ensuring scientific accuracy throughout the refactoring process.
 
-## Preparation for Phase 2
-The codebase is now ready for the implementation of the plugin architecture, with:
-- Parameter views as precursors to module interfaces
-- Evolution context to enable clean module interaction
-- Enhanced error logging for better diagnostics during module development
-- Comprehensive validation systems to ensure stability during architectural changes
+## Module System Architecture
+The codebase now includes a plugin architecture for physics modules:
+- `core_module_system`: Foundation for the plugin system, defines base module interface and registry
+- `module_cooling`: First physics module interface implementing the plugin architecture
+- Dynamic module lifecycle management (initialization, cleanup)
+- Module type identification, validation, and error handling
+
+```
+Module System
+    ┌───────────────────┐
+    │ base_module       │
+    │  - metadata       │
+    │  - lifecycle      │
+    │  - error handling │
+    └─────────┬─────────┘
+              │
+              │
+    ┌─────────▼─────────┐
+    │ module_registry   │
+    │  - registration   │
+    │  - activation     │
+    │  - lookup         │
+    └─────────┬─────────┘
+              │
+              │
+┌─────────────▼────────────┐
+│                          │
+│    Physics Modules       │
+│                          │
+└──────────────────────────┘
+```
+
+The module system provides:
+- Runtime module registry for physics components
+- Independent lifecycle management for each module
+- Error handling and validation
+- Support for multiple implementations of the same physics
+- Backward compatibility with existing physics functions
