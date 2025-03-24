@@ -131,6 +131,16 @@ extern int cleanup_logging(void);
 extern void initialize_logging_params_view(struct logging_params_view *view, const struct params *params);
 
 /**
+ * @brief Validate logging parameters view
+ * 
+ * Checks for internal consistency and validates logging configuration.
+ * 
+ * @param view The logging parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+extern bool validate_logging_params_view(const struct logging_params_view *view);
+
+/**
  * @brief Log a message with a specific severity level
  * 
  * Core logging function that formats and outputs a message to the configured destinations.

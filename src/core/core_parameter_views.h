@@ -142,6 +142,15 @@ extern "C" {
     extern void initialize_merger_params_view(struct merger_params_view *view, const struct params *params);
     extern void initialize_reincorporation_params_view(struct reincorporation_params_view *view, const struct params *params);
     extern void initialize_disk_instability_params_view(struct disk_instability_params_view *view, const struct params *params);
+    
+    /* Validation functions for parameter views */
+    extern bool validate_cooling_params_view(const struct cooling_params_view *view);
+    extern bool validate_star_formation_params_view(const struct star_formation_params_view *view);
+    extern bool validate_feedback_params_view(const struct feedback_params_view *view);
+    extern bool validate_agn_params_view(const struct agn_params_view *view);
+    extern bool validate_merger_params_view(const struct merger_params_view *view);
+    extern bool validate_reincorporation_params_view(const struct reincorporation_params_view *view);
+    extern bool validate_disk_instability_params_view(const struct disk_instability_params_view *view);
 
 #ifdef __cplusplus
 }

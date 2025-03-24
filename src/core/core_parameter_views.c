@@ -1,10 +1,326 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "core_allvars.h"
 #include "core_parameter_views.h"
 #include "core_logging.h"
+
+/*
+ * Validate cooling parameters view
+ * 
+ * Checks for internal consistency and numerical validity in cooling parameters.
+ * Ensures critical parameters that will be used in calculations are not NaN or Infinity.
+ * 
+ * @param view The cooling parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+bool validate_cooling_params_view(const struct cooling_params_view *view)
+{
+    if (view == NULL) {
+        LOG_ERROR("Null pointer passed to validate_cooling_params_view");
+        return false;
+    }
+    
+    /* Check cosmology parameters */
+    if (!isfinite(view->Omega)) {
+        LOG_ERROR("Invalid Omega value in cooling params: %g", view->Omega);
+        return false;
+    }
+    
+    if (!isfinite(view->OmegaLambda)) {
+        LOG_ERROR("Invalid OmegaLambda value in cooling params: %g", view->OmegaLambda);
+        return false;
+    }
+    
+    if (!isfinite(view->Hubble_h) || view->Hubble_h <= 0.0) {
+        LOG_ERROR("Invalid Hubble_h value in cooling params: %g", view->Hubble_h);
+        return false;
+    }
+    
+    /* Check units - these must be positive numbers */
+    if (!isfinite(view->UnitDensity_in_cgs) || view->UnitDensity_in_cgs <= 0.0) {
+        LOG_ERROR("Invalid UnitDensity_in_cgs value in cooling params: %g", view->UnitDensity_in_cgs);
+        return false;
+    }
+    
+    if (!isfinite(view->UnitTime_in_s) || view->UnitTime_in_s <= 0.0) {
+        LOG_ERROR("Invalid UnitTime_in_s value in cooling params: %g", view->UnitTime_in_s);
+        return false;
+    }
+    
+    if (!isfinite(view->UnitEnergy_in_cgs) || view->UnitEnergy_in_cgs <= 0.0) {
+        LOG_ERROR("Invalid UnitEnergy_in_cgs value in cooling params: %g", view->UnitEnergy_in_cgs);
+        return false;
+    }
+    
+    if (!isfinite(view->UnitMass_in_g) || view->UnitMass_in_g <= 0.0) {
+        LOG_ERROR("Invalid UnitMass_in_g value in cooling params: %g", view->UnitMass_in_g);
+        return false;
+    }
+    
+    /* Validate AGN parameters if AGN recipe is enabled */
+    if (view->AGNrecipeOn != 0 && !isfinite(view->RadioModeEfficiency)) {
+        LOG_ERROR("AGN recipe is enabled but RadioModeEfficiency is not finite: %g", view->RadioModeEfficiency);
+        return false;
+    }
+    
+    /* Check for null reference to full parameters */
+    if (view->full_params == NULL) {
+        LOG_ERROR("Null full_params reference in cooling params view");
+        return false;
+    }
+    
+    return true;
+}
+
+/*
+ * Validate star formation parameters view
+ * 
+ * Checks for internal consistency and numerical validity in star formation parameters.
+ * 
+ * @param view The star formation parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+bool validate_star_formation_params_view(const struct star_formation_params_view *view)
+{
+    if (view == NULL) {
+        LOG_ERROR("Null pointer passed to validate_star_formation_params_view");
+        return false;
+    }
+    
+    /* Check SF prescription is a valid value */
+    if (view->SFprescription < 0) {
+        LOG_ERROR("Invalid SFprescription value in star formation params: %d", view->SFprescription);
+        return false;
+    }
+    
+    /* Check efficiency parameters are finite - no negative check as 0 could be intentional */
+    if (!isfinite(view->SfrEfficiency)) {
+        LOG_ERROR("Invalid SfrEfficiency value in star formation params: %g", view->SfrEfficiency);
+        return false;
+    }
+    
+    if (!isfinite(view->RecycleFraction)) {
+        LOG_ERROR("Invalid RecycleFraction value in star formation params: %g", view->RecycleFraction);
+        return false;
+    }
+    
+    if (!isfinite(view->Yield)) {
+        LOG_ERROR("Invalid Yield value in star formation params: %g", view->Yield);
+        return false;
+    }
+    
+    if (!isfinite(view->FracZleaveDisk)) {
+        LOG_ERROR("Invalid FracZleaveDisk value in star formation params: %g", view->FracZleaveDisk);
+        return false;
+    }
+    
+    /* Check for null reference to full parameters */
+    if (view->full_params == NULL) {
+        LOG_ERROR("Null full_params reference in star formation params view");
+        return false;
+    }
+    
+    return true;
+}
+
+/*
+ * Validate feedback parameters view
+ * 
+ * Checks for internal consistency and numerical validity in feedback parameters.
+ * 
+ * @param view The feedback parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+bool validate_feedback_params_view(const struct feedback_params_view *view)
+{
+    if (view == NULL) {
+        LOG_ERROR("Null pointer passed to validate_feedback_params_view");
+        return false;
+    }
+    
+    /* If supernova recipe is enabled, validate required parameters */
+    if (view->SupernovaRecipeOn != 0) {
+        if (!isfinite(view->FeedbackReheatingEpsilon)) {
+            LOG_ERROR("Invalid FeedbackReheatingEpsilon value in feedback params: %g", view->FeedbackReheatingEpsilon);
+            return false;
+        }
+        
+        if (!isfinite(view->FeedbackEjectionEfficiency)) {
+            LOG_ERROR("Invalid FeedbackEjectionEfficiency value in feedback params: %g", view->FeedbackEjectionEfficiency);
+            return false;
+        }
+        
+        if (!isfinite(view->EnergySNcode) || view->EnergySNcode <= 0.0) {
+            LOG_ERROR("Invalid EnergySNcode value in feedback params: %g", view->EnergySNcode);
+            return false;
+        }
+        
+        if (!isfinite(view->EtaSNcode) || view->EtaSNcode <= 0.0) {
+            LOG_ERROR("Invalid EtaSNcode value in feedback params: %g", view->EtaSNcode);
+            return false;
+        }
+    }
+    
+    /* Check for null reference to full parameters */
+    if (view->full_params == NULL) {
+        LOG_ERROR("Null full_params reference in feedback params view");
+        return false;
+    }
+    
+    return true;
+}
+
+/*
+ * Validate AGN parameters view
+ * 
+ * Checks for internal consistency and numerical validity in AGN parameters.
+ * 
+ * @param view The AGN parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+bool validate_agn_params_view(const struct agn_params_view *view)
+{
+    if (view == NULL) {
+        LOG_ERROR("Null pointer passed to validate_agn_params_view");
+        return false;
+    }
+    
+    /* If AGN recipe is enabled, validate required parameters */
+    if (view->AGNrecipeOn != 0) {
+        if (!isfinite(view->RadioModeEfficiency)) {
+            LOG_ERROR("Invalid RadioModeEfficiency value in AGN params: %g", view->RadioModeEfficiency);
+            return false;
+        }
+        
+        if (!isfinite(view->QuasarModeEfficiency)) {
+            LOG_ERROR("Invalid QuasarModeEfficiency value in AGN params: %g", view->QuasarModeEfficiency);
+            return false;
+        }
+        
+        if (!isfinite(view->BlackHoleGrowthRate)) {
+            LOG_ERROR("Invalid BlackHoleGrowthRate value in AGN params: %g", view->BlackHoleGrowthRate);
+            return false;
+        }
+    }
+    
+    /* Check units - these must be positive numbers */
+    if (!isfinite(view->UnitMass_in_g) || view->UnitMass_in_g <= 0.0) {
+        LOG_ERROR("Invalid UnitMass_in_g value in AGN params: %g", view->UnitMass_in_g);
+        return false;
+    }
+    
+    if (!isfinite(view->UnitTime_in_s) || view->UnitTime_in_s <= 0.0) {
+        LOG_ERROR("Invalid UnitTime_in_s value in AGN params: %g", view->UnitTime_in_s);
+        return false;
+    }
+    
+    if (!isfinite(view->UnitEnergy_in_cgs) || view->UnitEnergy_in_cgs <= 0.0) {
+        LOG_ERROR("Invalid UnitEnergy_in_cgs value in AGN params: %g", view->UnitEnergy_in_cgs);
+        return false;
+    }
+    
+    /* Check for null reference to full parameters */
+    if (view->full_params == NULL) {
+        LOG_ERROR("Null full_params reference in AGN params view");
+        return false;
+    }
+    
+    return true;
+}
+
+/*
+ * Validate merger parameters view
+ * 
+ * Checks for internal consistency and numerical validity in merger parameters.
+ * 
+ * @param view The merger parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+bool validate_merger_params_view(const struct merger_params_view *view)
+{
+    if (view == NULL) {
+        LOG_ERROR("Null pointer passed to validate_merger_params_view");
+        return false;
+    }
+    
+    /* Check merger parameters are finite */
+    if (!isfinite(view->ThreshMajorMerger)) {
+        LOG_ERROR("Invalid ThreshMajorMerger value in merger params: %g", view->ThreshMajorMerger);
+        return false;
+    }
+    
+    if (!isfinite(view->ThresholdSatDisruption)) {
+        LOG_ERROR("Invalid ThresholdSatDisruption value in merger params: %g", view->ThresholdSatDisruption);
+        return false;
+    }
+    
+    /* Check for null reference to full parameters */
+    if (view->full_params == NULL) {
+        LOG_ERROR("Null full_params reference in merger params view");
+        return false;
+    }
+    
+    return true;
+}
+
+/*
+ * Validate reincorporation parameters view
+ * 
+ * Checks for internal consistency and numerical validity in reincorporation parameters.
+ * 
+ * @param view The reincorporation parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+bool validate_reincorporation_params_view(const struct reincorporation_params_view *view)
+{
+    if (view == NULL) {
+        LOG_ERROR("Null pointer passed to validate_reincorporation_params_view");
+        return false;
+    }
+    
+    /* Check reincorporation factor is finite */
+    if (!isfinite(view->ReIncorporationFactor)) {
+        LOG_ERROR("Invalid ReIncorporationFactor value in reincorporation params: %g", view->ReIncorporationFactor);
+        return false;
+    }
+    
+    /* Check for null reference to full parameters */
+    if (view->full_params == NULL) {
+        LOG_ERROR("Null full_params reference in reincorporation params view");
+        return false;
+    }
+    
+    return true;
+}
+
+/*
+ * Validate disk instability parameters view
+ * 
+ * Checks for internal consistency and numerical validity in disk instability parameters.
+ * 
+ * @param view The disk instability parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+bool validate_disk_instability_params_view(const struct disk_instability_params_view *view)
+{
+    if (view == NULL) {
+        LOG_ERROR("Null pointer passed to validate_disk_instability_params_view");
+        return false;
+    }
+    
+    /* No numerical checks needed for disk instability flag */
+    
+    /* Check for null reference to full parameters */
+    if (view->full_params == NULL) {
+        LOG_ERROR("Null full_params reference in disk instability params view");
+        return false;
+    }
+    
+    return true;
+}
 
 /*
  * Initialize cooling parameters view
@@ -14,7 +330,7 @@
 void initialize_cooling_params_view(struct cooling_params_view *view, const struct params *params)
 {
     if (view == NULL || params == NULL) {
-        fprintf(stderr, "Error: Null pointer passed to initialize_cooling_params_view\n");
+        LOG_ERROR("Null pointer passed to initialize_cooling_params_view");
         return;
     }
     
@@ -35,6 +351,11 @@ void initialize_cooling_params_view(struct cooling_params_view *view, const stru
     
     /* Store reference to full params */
     view->full_params = params;
+    
+    /* Validate parameter view */
+    if (!validate_cooling_params_view(view)) {
+        LOG_WARNING("Cooling parameters validation failed");
+    }
 }
 
 /*
@@ -45,7 +366,7 @@ void initialize_cooling_params_view(struct cooling_params_view *view, const stru
 void initialize_star_formation_params_view(struct star_formation_params_view *view, const struct params *params)
 {
     if (view == NULL || params == NULL) {
-        fprintf(stderr, "Error: Null pointer passed to initialize_star_formation_params_view\n");
+        LOG_ERROR("Null pointer passed to initialize_star_formation_params_view");
         return;
     }
     
@@ -58,6 +379,11 @@ void initialize_star_formation_params_view(struct star_formation_params_view *vi
     
     /* Store reference to full params */
     view->full_params = params;
+    
+    /* Validate parameter view */
+    if (!validate_star_formation_params_view(view)) {
+        LOG_WARNING("Star formation parameters validation failed");
+    }
 }
 
 /*
@@ -68,7 +394,7 @@ void initialize_star_formation_params_view(struct star_formation_params_view *vi
 void initialize_feedback_params_view(struct feedback_params_view *view, const struct params *params)
 {
     if (view == NULL || params == NULL) {
-        fprintf(stderr, "Error: Null pointer passed to initialize_feedback_params_view\n");
+        LOG_ERROR("Null pointer passed to initialize_feedback_params_view");
         return;
     }
     
@@ -81,6 +407,11 @@ void initialize_feedback_params_view(struct feedback_params_view *view, const st
     
     /* Store reference to full params */
     view->full_params = params;
+    
+    /* Validate parameter view */
+    if (!validate_feedback_params_view(view)) {
+        LOG_WARNING("Feedback parameters validation failed");
+    }
 }
 
 /*
@@ -91,7 +422,7 @@ void initialize_feedback_params_view(struct feedback_params_view *view, const st
 void initialize_agn_params_view(struct agn_params_view *view, const struct params *params)
 {
     if (view == NULL || params == NULL) {
-        fprintf(stderr, "Error: Null pointer passed to initialize_agn_params_view\n");
+        LOG_ERROR("Null pointer passed to initialize_agn_params_view");
         return;
     }
     
@@ -108,6 +439,11 @@ void initialize_agn_params_view(struct agn_params_view *view, const struct param
     
     /* Store reference to full params */
     view->full_params = params;
+    
+    /* Validate parameter view */
+    if (!validate_agn_params_view(view)) {
+        LOG_WARNING("AGN parameters validation failed");
+    }
 }
 
 /*
@@ -118,7 +454,7 @@ void initialize_agn_params_view(struct agn_params_view *view, const struct param
 void initialize_merger_params_view(struct merger_params_view *view, const struct params *params)
 {
     if (view == NULL || params == NULL) {
-        fprintf(stderr, "Error: Null pointer passed to initialize_merger_params_view\n");
+        LOG_ERROR("Null pointer passed to initialize_merger_params_view");
         return;
     }
     
@@ -128,6 +464,11 @@ void initialize_merger_params_view(struct merger_params_view *view, const struct
     
     /* Store reference to full params */
     view->full_params = params;
+    
+    /* Validate parameter view */
+    if (!validate_merger_params_view(view)) {
+        LOG_WARNING("Merger parameters validation failed");
+    }
 }
 
 /*
@@ -138,7 +479,7 @@ void initialize_merger_params_view(struct merger_params_view *view, const struct
 void initialize_reincorporation_params_view(struct reincorporation_params_view *view, const struct params *params)
 {
     if (view == NULL || params == NULL) {
-        fprintf(stderr, "Error: Null pointer passed to initialize_reincorporation_params_view\n");
+        LOG_ERROR("Null pointer passed to initialize_reincorporation_params_view");
         return;
     }
     
@@ -147,6 +488,11 @@ void initialize_reincorporation_params_view(struct reincorporation_params_view *
     
     /* Store reference to full params */
     view->full_params = params;
+    
+    /* Validate parameter view */
+    if (!validate_reincorporation_params_view(view)) {
+        LOG_WARNING("Reincorporation parameters validation failed");
+    }
 }
 
 /*
@@ -157,7 +503,7 @@ void initialize_reincorporation_params_view(struct reincorporation_params_view *
 void initialize_disk_instability_params_view(struct disk_instability_params_view *view, const struct params *params)
 {
     if (view == NULL || params == NULL) {
-        fprintf(stderr, "Error: Null pointer passed to initialize_disk_instability_params_view\n");
+        LOG_ERROR("Null pointer passed to initialize_disk_instability_params_view");
         return;
     }
     
@@ -166,6 +512,60 @@ void initialize_disk_instability_params_view(struct disk_instability_params_view
     
     /* Store reference to full params */
     view->full_params = params;
+    
+    /* Validate parameter view */
+    if (!validate_disk_instability_params_view(view)) {
+        LOG_WARNING("Disk instability parameters validation failed");
+    }
+}
+
+/*
+ * Validate logging parameters view
+ * 
+ * Checks for internal consistency and validates logging configuration.
+ * 
+ * @param view The logging parameter view to validate
+ * @return true if validation passed, false if any issues found
+ */
+bool validate_logging_params_view(const struct logging_params_view *view)
+{
+    if (view == NULL) {
+        /* Can't log with logging system yet */
+        fprintf(stderr, "Error: Null pointer passed to validate_logging_params_view\n");
+        return false;
+    }
+    
+    /* Check that log level is in valid range */
+    if (view->min_level < LOG_LEVEL_DEBUG || view->min_level > LOG_LEVEL_FATAL) {
+        fprintf(stderr, "Error: Invalid minimum log level: %d\n", view->min_level);
+        return false;
+    }
+    
+    /* Check that prefix style is in valid range */
+    if (view->prefix_style < LOG_PREFIX_NONE || view->prefix_style > LOG_PREFIX_DETAILED) {
+        fprintf(stderr, "Error: Invalid log prefix style: %d\n", view->prefix_style);
+        return false;
+    }
+    
+    /* Check that at least one destination is set */
+    if ((view->destinations & (LOG_DEST_STDOUT | LOG_DEST_STDERR | LOG_DEST_FILE)) == 0) {
+        fprintf(stderr, "Error: No log destinations specified\n");
+        return false;
+    }
+    
+    /* If file destination is set, check that path is non-empty */
+    if ((view->destinations & LOG_DEST_FILE) && view->log_file_path[0] == '\0') {
+        fprintf(stderr, "Error: Log file destination set but no file path provided\n");
+        return false;
+    }
+    
+    /* Check for null reference to full parameters */
+    if (view->full_params == NULL) {
+        fprintf(stderr, "Error: Null full_params reference in logging params view\n");
+        return false;
+    }
+    
+    return true;
 }
 
 /*
@@ -219,4 +619,9 @@ void initialize_logging_params_view(struct logging_params_view *view, const stru
     
     /* Store reference to full params */
     view->full_params = params;
+    
+    /* Validate parameter view (using fprintf instead of LOG functions since logging might not be initialized yet) */
+    if (!validate_logging_params_view(view)) {
+        fprintf(stderr, "Warning: Logging parameters validation failed\n");
+    }
 }
