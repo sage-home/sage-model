@@ -9,6 +9,11 @@
   • Alternatives considered 
 -->
 
+2025-03-25: [Phase 1.3] Focus on Numerical Validation for Parameters
+- Rationale: Scientific freedom requires allowing extreme parameter values that might be invalid in normal scenarios. Our approach validates numerical properties (no NaN/Infinity) and internal consistency without limiting scientific exploration.
+- Impact: Maintains flexibility for researchers while catching actual bugs and implementation errors. Prevents crashes from invalid numerical states while preserving the ability to run experimental simulations.
+- Alternatives considered: Range validation with hard bounds, strict parameter interdependency enforcement, disabling validation entirely
+
 2025-03-17: Implement Evolution Context Structure
 - Rationale: The context structure encapsulates all state needed during galaxy evolution in a single object, reducing global state while maintaining performance.
 - Impact: Cleaner function signatures, improved testability, and preparation for the plugin system. Makes the code easier to reason about by explicitly showing data dependencies.
