@@ -31,18 +31,20 @@ The core infrastructure has been refactored to separate concerns and reduce glob
 - `core_allvars.h`: Primary data structures organized into logical groups
 - `core_parameter_views`: Module-specific parameter views for cleaner interfaces
 - `core_init`: Initialization and cleanup routines with GSL dependency removed
-- `core_logging`: Comprehensive error logging system with severity levels and context
+- `core_logging`: Enhanced error logging system with severity levels (DEBUG to FATAL), context-aware messaging, and configurable output formatting
 - `evolution_context`: Context structure for galaxy evolution to reduce global state
 
 ```
-evolution_context                logging_system
-    ┌────────────────┐            ┌────────────────┐
-    │ galaxies[]     │            │ logging_state  │
-    │ ngal           │            │ - min_level    │
-    │ centralgal     │<─────────▶│ - prefix_style │
-    │ halo properties│            │ - destinations │
-    │ params         │            │ - initialized  │
-    └────────────────┘            └────────────────┘
+evolution_context                enhanced_logging_system
+    ┌────────────────┐            ┌────────────────────┐
+    │ galaxies[]     │            │ logging_state      │
+    │ ngal           │            │ - min_level        │
+    │ centralgal     │<─────────▶│ - prefix_style     │
+    │ halo properties│            │ - destinations     │
+    │ params         │            │ - color_enabled    │
+    └────────────────┘            │ - format_options   │
+                                 │ - context_support  │
+                                 └────────────────────┘
 ```
 
 ### Physics Modules

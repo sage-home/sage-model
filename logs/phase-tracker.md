@@ -46,11 +46,15 @@
 - [ ] Developer guide
 
 ## Next Actions
-1. Add runtime assertions to parameter views
-2. Add self-validation to evolution context
-3. Improve end-to-end test diagnostics
-4. Create architecture documentation with component diagrams
-5. Document data flow between components
+1. Add runtime assertions to parameter views: Implement boundary checks and type validation for all parameters accessed through parameter views. This will catch invalid parameter values early in the execution pipeline and provide clear error messages about the specific validation failures. This will not only prevent runtime errors but also ensure scientific calculations are based on valid parameter ranges, maintaining the accuracy of the simulation.
+
+2. Add self-validation to evolution context: Create validation routines that check for consistency between related properties in the evolution context. These routines will run at critical points during the simulation to ensure the context remains in a valid state and will provide detailed diagnostics when inconsistencies are detected.
+
+3. Improve end-to-end test diagnostics: Enhance the test_sage.sh script to provide more granular reporting of discrepancies between expected and actual outputs. This will include detailed logging of where deviations occur, visualization of differences for numerical outputs, and contextual information to help pinpoint the source of discrepancies. These improvements will ensure that scientific accuracy is maintained throughout the refactoring process by quickly identifying any changes that affect simulation results.
+
+4. Create architecture documentation with component diagrams: Develop comprehensive documentation of the system architecture including UML-style component diagrams showing relationships between core modules. The documentation will cover both the current state and the planned plugin architecture to guide ongoing development.
+
+5. Document data flow between components: Map the flow of data through the simulation pipeline, identifying key transformation points and dependencies. This documentation will highlight how galaxy properties are modified throughout the evolution process and where component interfaces will need to be formalized for the plugin system.
 
 ## Completion Criteria
 - End-to-end tests passing with improved diagnostics
