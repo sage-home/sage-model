@@ -4,6 +4,7 @@
 
 #include "core_allvars.h"
 #include "core_parameter_views.h"
+#include "core_logging.h"
 
 /*
  * Initialize cooling parameters view
@@ -162,6 +163,54 @@ void initialize_disk_instability_params_view(struct disk_instability_params_view
     
     /* Copy relevant physics parameters */
     view->DiskInstabilityOn = params->physics.DiskInstabilityOn;
+    
+    /* Store reference to full params */
+    view->full_params = params;
+}
+
+/*
+ * Initialize logging parameters view
+ * 
+ * Extracts parameters needed for logging configuration from the main params structure.
+ */
+void initialize_logging_params_view(struct logging_params_view *view, const struct params *params)
+{
+    if (view == NULL || params == NULL) {
+        fprintf(stderr, "Error: Null pointer passed to initialize_logging_params_view\n");
+        return;
+    }
+    
+    /* Set default logging parameters */
+#ifdef VERBOSE
+    view->min_level = LOG_LEVEL_INFO;      /* Show INFO and above when VERBOSE is on */
+    view->prefix_style = LOG_PREFIX_DETAILED;  /* Detailed prefix with context information */
+#else
+    view->min_level = LOG_LEVEL_WARNING;   /* Show only WARNING and above by default */
+    view->prefix_style = LOG_PREFIX_SIMPLE;  /* Simple prefix */
+#endif
+    
+    /* Set output destinations - always use stderr for errors */
+    view->destinations = LOG_DEST_STDERR;
+    
+    /* No log file by default */
+    view->log_file_path[0] = '\0';
+    
+    /* Include MPI rank in messages when running with MPI */
+#ifdef MPI
+    view->include_mpi_rank = true;
+#else
+    view->include_mpi_rank = false;
+#endif
+    
+    /* Enable context information in logs */
+    view->include_extra_context = true;
+    
+    /* Enable assertions in debug builds, disable in release */
+#ifdef NDEBUG
+    view->disable_assertions = true;
+#else
+    view->disable_assertions = false;
+#endif
     
     /* Store reference to full params */
     view->full_params = params;

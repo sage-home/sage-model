@@ -13,6 +13,7 @@
 #include "core_mymalloc.h"
 #include "core_cool_func.h"
 #include "core_tree_utils.h"
+#include "core_logging.h"
 
 /* These functions do not need to be exposed externally */
 double integrand_time_to_present(const double a, void *param);
@@ -34,8 +35,13 @@ void init(struct params *run_params)
 
     /* Initialize components */
     initialize_units(run_params);
+    LOG_DEBUG("Units initialized");
+    
     initialize_simulation_times(run_params);
+    LOG_DEBUG("Simulation times initialized");
+    
     initialize_cooling();
+    LOG_DEBUG("Cooling tables initialized");
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
@@ -180,9 +186,13 @@ void cleanup_cooling(void)
 void cleanup(struct params *run_params)
 {
     /* Clean up components in reverse order of initialization */
+    LOG_DEBUG("Starting component cleanup");
+    
     cleanup_cooling();
     cleanup_simulation_times(run_params);
     cleanup_units(run_params);
+    
+    LOG_DEBUG("Component cleanup completed");
 }
 
 /*
@@ -200,7 +210,7 @@ void initialize_evolution_context(struct evolution_context *ctx,
                                  struct params *run_params)
 {
     if (ctx == NULL) {
-        fprintf(stderr, "Error: Null pointer passed to initialize_evolution_context\n");
+        LOG_ERROR("Null pointer passed to initialize_evolution_context");
         return;
     }
     

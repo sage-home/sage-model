@@ -23,6 +23,7 @@
 #include "core_utils.h"
 #include "progressbar.h"
 #include "core_tree_utils.h"
+#include "core_logging.h"
 
 #ifdef HDF5
 #include "../io/save_gals_hdf5.h"
@@ -51,6 +52,13 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     int32_t status = read_parameter_file(param_file, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
+    }
+    
+    /* Initialize the logging system */
+    status = initialize_logging(run_params);
+    if(status != EXIT_SUCCESS) {
+        fprintf(stderr, "Warning: Failed to initialize logging system\n");
+        /* Continue execution even if logging initialization fails */
     }
 
     /* Now start the model */
@@ -203,6 +211,9 @@ cleanup:
     
     /* Call comprehensive cleanup function */
     cleanup(run_params);
+    
+    /* Cleanup the logging system */
+    cleanup_logging();
 
     return status;
 }
@@ -210,10 +221,12 @@ cleanup:
 
 int32_t finalize_sage(void *params)
 {
-
     int32_t status;
 
     struct params *run_params = (struct params *) params;
+    
+    /* Log the finalization */
+    LOG_INFO("Finalizing SAGE execution");
 
     switch(run_params->io.OutputFormat)
         {
@@ -264,6 +277,9 @@ int32_t finalize_sage(void *params)
             }
         }
 
+    /* Ensure logging is cleaned up before params are freed */
+    cleanup_logging();
+    
     free(run_params);
 
     return status;

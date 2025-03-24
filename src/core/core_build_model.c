@@ -13,6 +13,7 @@
 #include "core_mymalloc.h"
 #include "core_save.h"
 #include "core_utils.h"
+#include "core_logging.h"
 
 #include "../physics/model_misc.h"
 #include "../physics/model_mergers.h"
@@ -45,6 +46,7 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
           int status = construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
 
           if(status != EXIT_SUCCESS) {
+              LOG_ERROR("Failed to construct galaxies for progenitor %d", prog);
               return status;
           }
       }
@@ -61,6 +63,7 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
                   int status = construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
 
                   if(status != EXIT_SUCCESS) {
+                      LOG_ERROR("Failed to construct galaxies for FOF group progenitor %d", prog);
                       return status;
                   }
               }
@@ -96,14 +99,17 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
       while(fofhalo >= 0) {
           ngal = join_galaxies_of_progenitors(fofhalo, ngal, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
           if(ngal < 0) {
+              LOG_ERROR("Failed to join galaxies of progenitors for FOF halo %d", fofhalo);
               return EXIT_FAILURE;
           }
           fofhalo = halos[fofhalo].NextHaloInFOFgroup;
       }
 
+      LOG_DEBUG("Evolving %d galaxies in halo %d", ngal, halonr);
       int status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ngal, numgals, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
 
       if(status != EXIT_SUCCESS) {
+          LOG_ERROR("Failed to evolve galaxies in FOF group %d", halos[halonr].FirstHaloInFOFgroup);
           return status;
       }
   }
@@ -285,8 +291,10 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
     int centralgal = -1;
     for(int i = ngalstart; i < ngal; i++) {
         if(galaxies[i].Type == 0 || galaxies[i].Type == 1) {
-            XRETURN(centralgal == -1, -1,
-                    "Error: Expected to find centralgal=-1. instead centralgal=%d\n", centralgal);
+            if(centralgal != -1) {
+                LOG_ERROR("Expected to find centralgal=-1, instead centralgal=%d", centralgal);
+                return -1;
+            }
 
             centralgal = i;
         }
@@ -295,6 +303,8 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
     for(int i = ngalstart; i < ngal; i++) {
         galaxies[i].CentralGal = centralgal;
     }
+    
+    LOG_DEBUG("Joined progenitor galaxies for halo %d: ngal=%d", halonr, ngal);
 
     return ngal;
 
@@ -319,15 +329,16 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Initialize galaxy evolution context
     struct evolution_context ctx;
     initialize_evolution_context(&ctx, halonr, galaxies, ngal, halos, run_params);
+    
+    CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Starting evolution for halo %d with %d galaxies", halonr, ngal);
 
     // Validate central galaxy
-    XRETURN(galaxies[ctx.centralgal].Type == 0 && galaxies[ctx.centralgal].HaloNr == halonr,
-            EXIT_FAILURE,
-            "Error: For centralgal, halonr = %d, %d.\n"
-            "Expected to find galaxy.type = 0, and found type = %d.\n"
-            "Expected to find galaxies[halonr] = %d and found halonr = %d\n",
-            ctx.centralgal, halonr, galaxies[ctx.centralgal].Type,
-            halonr, galaxies[ctx.centralgal].HaloNr);
+    if(galaxies[ctx.centralgal].Type != 0 || galaxies[ctx.centralgal].HaloNr != halonr) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
+                    "Invalid central galaxy: expected type=0, halonr=%d but found type=%d, halonr=%d",
+                    halonr, galaxies[ctx.centralgal].Type, galaxies[ctx.centralgal].HaloNr);
+        return EXIT_FAILURE;
+    }
     
     // PHYSICS MODULE: Infall - calculates gas falling into the halo
     // REFACTORING NOTE: Will become a pluggable module in Phase 2
@@ -394,10 +405,12 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         for(int p = 0; p < ctx.ngal; p++) {
             // satellite galaxy!
             if((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && ctx.galaxies[p].mergeType == 0) {
-                XRETURN(ctx.galaxies[p].MergTime < 999.0,
-                        EXIT_FAILURE,
-                        "Error: galaxies[%d].MergTime = %lf is too large! Should have been within the age of the Universe\n",
-                        p, ctx.galaxies[p].MergTime);
+                if(ctx.galaxies[p].MergTime >= 999.0) {
+                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
+                                "Galaxy %d has MergTime = %lf, which is too large! Should have been within the age of the Universe",
+                                p, ctx.galaxies[p].MergTime);
+                    return EXIT_FAILURE;
+                }
 
                 const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
                 ctx.galaxies[p].MergTime -= deltaT / STEPS;
@@ -487,7 +500,10 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 i--;
             }
 
-            XRETURN(i >= 0, EXIT_FAILURE, "Error: This should not happen - i=%d should be >=0", i);
+            if(i < 0) {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to find galaxy in halogal array: i=%d should be >=0", i);
+                return EXIT_FAILURE;
+            }
 
             halogal[i].mergeType = ctx.galaxies[p].mergeType;
             halogal[i].mergeIntoID = ctx.galaxies[p].mergeIntoID - offset;
@@ -505,10 +521,12 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 halogal = *ptr_to_halogal;
             }
 
-            XRETURN(*numgals < *maxgals, INVALID_MEMORY_ACCESS_REQUESTED,
-                    "Error: numgals = %d exceeds the number of galaxies allocated = %d\n"
-                    "This would result in invalid memory access...exiting\n",
-                    *numgals, *maxgals);
+            if(*numgals >= *maxgals) {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
+                            "Memory error: numgals = %d exceeds the number of galaxies allocated = %d",
+                            *numgals, *maxgals);
+                return INVALID_MEMORY_ACCESS_REQUESTED;
+            }
 
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
             halogal[*numgals] = ctx.galaxies[p];

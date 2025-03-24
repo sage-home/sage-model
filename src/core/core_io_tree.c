@@ -68,8 +68,8 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
             break;
 
         default:
-            fprintf(stderr, "Your tree type has not been included in the switch statement for function ``%s`` in file ``%s``.\n", __FUNCTION__, __FILE__);
-            fprintf(stderr, "Please add it there.\n");
+            fprintf(stderr, "Tree type %d not included in the switch statement for function %s in file %s\n", 
+                    TreeType, __FUNCTION__, __FILE__);
             return INVALID_OPTION_IN_PARAMS;
         }
 
@@ -80,19 +80,21 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     /*MS: Check that the mechanism to generate unique GalaxyID's was
       initialised correctly in the setup */
     if(run_params->runtime.FileNr_Mulfac < 0 || run_params->runtime.ForestNr_Mulfac < 0) {
-        fprintf(stderr,"Error: Looks like the multiplicative factors to generate unique "
-                       "galaxyID's were not setup correctly.\n"
-                       "FileNr_Mulfac = %"PRId64" and ForestNr_Mulfac = %"PRId64" should both be >=0\n",
-                       run_params->runtime.FileNr_Mulfac, run_params->runtime.ForestNr_Mulfac);
+        fprintf(stderr, "Error: Multiplicative factors for generating unique galaxyID's were not setup correctly. "
+                "FileNr_Mulfac = %"PRId64" and ForestNr_Mulfac = %"PRId64" should both be >=0\n",
+                run_params->runtime.FileNr_Mulfac, run_params->runtime.ForestNr_Mulfac);
         return -1;
     }
 
     if(forests_info->frac_volume_processed <= 0.0 || forests_info->frac_volume_processed > 1.0) {
-        fprintf(stderr,"Error: The fraction of the entire simulation volume processed should be in [0.0, 1.0]. Instead, found %g\n",
+        fprintf(stderr, "Error: The fraction of the entire simulation volume processed should be in (0.0, 1.0]. Instead, found %g\n",
                 forests_info->frac_volume_processed);
         return -1;
     }
 
+#ifdef VERBOSE
+    fprintf(stdout, "Forest I/O setup completed successfully. Processing %"PRId64" forests.\n", forests_info->nforests_this_task);
+#endif
 
     return status;
 }
@@ -135,8 +137,8 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
         break;
 
     default:
-        fprintf(stderr, "Your tree type has not been included in the switch statement for function ``%s`` in file ``%s``.\n", __FUNCTION__, __FILE__);
-        fprintf(stderr, "Please add it there.\n");
+        fprintf(stderr, "Tree type %d not included in the switch statement for function %s in file %s\n", 
+                TreeType, __FUNCTION__, __FILE__);
         ABORT(EXIT_FAILURE);
 
     }
@@ -184,9 +186,8 @@ int64_t load_forest(struct params *run_params, const int64_t forestnr, struct ha
         break;
 
     default:
-        fprintf(stderr, "Your tree type has not been included in the switch statement for ``%s`` in ``%s``.\n",
-                __FUNCTION__, __FILE__);
-        fprintf(stderr, "Please add it there.\n");
+        fprintf(stderr, "Tree type %d not included in the switch statement for function %s in file %s\n", 
+                TreeType, __FUNCTION__, __FILE__);
         return -EXIT_FAILURE;
     }
 

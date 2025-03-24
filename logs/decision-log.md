@@ -1,16 +1,13 @@
-<!-- Purpose: Record technical choices -->
+<!-- Purpose: Record last 7 technical decisions -->
 <!-- Update Rules:
-- Last 5 decisions only!
-  • Decision date 
+- FIFO queue
+- 100-word limit per entry! 
+- Include:
+  • Decision date and phase identifier
   • Rationale
   • Impact assessment
   • Alternatives considered 
 -->
-
-2025-03-16: Adopt Parameter Views Pattern
-- Rationale: Parameter views provide a clean interface for modules while maintaining a single source of truth. They allow each module to access only the parameters it needs without exposing the entire parameter structure.
-- Impact: Reduced coupling between physics modules, improved code clarity, and easier parameter management. Facilitates future plugin architecture by standardizing parameter access.
-- Alternatives: Factory pattern, Strategy pattern, Global parameter registry
 
 2025-03-17: Implement Evolution Context Structure
 - Rationale: The context structure encapsulates all state needed during galaxy evolution in a single object, reducing global state while maintaining performance.
@@ -36,3 +33,8 @@
 - Rationale: For scientific code, end-to-end validation against known benchmarks is more critical than unit testing. Enhanced error logging and runtime assertions provide most of the benefits of unit tests with less overhead, while maintaining focus on scientific correctness.
 - Impact: Simplifies development process while still ensuring code quality. Allows faster progress on core refactoring goals. Defers formal unit testing until Phase 2 when module interfaces become more critical. Will require implementation of robust logging and assertion mechanisms.
 - Alternatives considered: Comprehensive unit testing framework, Hybrid approach with minimal unit tests
+
+2025-03-24: [Phase 1.3] Implement Makefile-Integrated Logging System
+- Rationale: Using the existing VERBOSE flag from the Makefile provides a clean integration point for logging without requiring parameter file modifications, simplifying adoption and reducing potential issues.
+- Impact: Enhanced error diagnostics while maintaining compatibility with existing build process. Enables context-specific logging with minimal code changes. Provides mechanism for more detailed reporting during debugging.
+- Alternatives considered: Parameter file configuration, Command-line arguments, Separate configuration file

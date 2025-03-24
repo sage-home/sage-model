@@ -6,6 +6,7 @@
 #endif
 
 #include "sage.h"
+#include "core_logging.h"
 
 
 int main(int argc, char **argv)
@@ -32,6 +33,8 @@ int main(int argc, char **argv)
     void *run_params;
     int status = run_sage(ThisTask, NTasks, argv[1], &run_params);
     if(status != EXIT_SUCCESS) {
+        /* Use fprintf directly here since we might be in an error state before logging is fully initialized */
+        fprintf(stderr, "SAGE execution failed with status code %d\n", status);
         goto err;
     }
 
@@ -43,6 +46,7 @@ int main(int argc, char **argv)
     // Perform some final checks.
     status = finalize_sage(run_params);
     if(status != EXIT_SUCCESS) {
+        fprintf(stderr, "SAGE finalization failed with status code %d\n", status);
         goto err;
     }
 

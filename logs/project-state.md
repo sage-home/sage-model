@@ -1,6 +1,6 @@
 <!-- Purpose: Snapshot of current codebase architecture -->
 <!-- Update Rules: 
-- 500-word limit! 
+- 750-word limit! 
 - Overwrite outdated content 
 - Focus on active components 
 - Use UML-like text diagrams
@@ -31,17 +31,18 @@ The core infrastructure has been refactored to separate concerns and reduce glob
 - `core_allvars.h`: Primary data structures organized into logical groups
 - `core_parameter_views`: Module-specific parameter views for cleaner interfaces
 - `core_init`: Initialization and cleanup routines with GSL dependency removed
+- `core_logging`: Comprehensive error logging system with severity levels and context
 - `evolution_context`: Context structure for galaxy evolution to reduce global state
 
 ```
-evolution_context
-    ┌────────────────┐
-    │ galaxies[]     │
-    │ ngal           │
-    │ centralgal     │
-    │ halo properties│
-    │ params         │
-    └────────────────┘
+evolution_context                logging_system
+    ┌────────────────┐            ┌────────────────┐
+    │ galaxies[]     │            │ logging_state  │
+    │ ngal           │            │ - min_level    │
+    │ centralgal     │<─────────▶│ - prefix_style │
+    │ halo properties│            │ - destinations │
+    │ params         │            │ - initialized  │
+    └────────────────┘            └────────────────┘
 ```
 
 ### Physics Modules
