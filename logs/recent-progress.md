@@ -1,24 +1,12 @@
-<!-- Purpose: Record last 7 completed milestones -->
+<!-- Purpose: Record completed milestones -->
 <!-- Update Rules: 
-- FIFO queue
+- Add new milestones at the bottom
 - 100-word limit per entry! 
-- Start with phase identifier
-- Include list of new, modified and deleted files
+- Include:
+  • Decision date and phase identifier
+  • Milestone summary
+  • List of new, modified and deleted files
 -->
-
-2025-03-25: [Phase 1.3] Parameter Views Validation
-- Implemented comprehensive validation for all parameter view types
-- Added checks for numerical validity (NaN/Infinity detection)
-- Added validation calls at parameter view initialization
-- Improved error reporting with detailed diagnostics
-- Modified src/core/core_parameter_views.c, core_parameter_views.h, and core_logging.h
-
-2025-03-25: [Phase 1.3] Evolution Context Validation
-- Implemented comprehensive validation for evolution_context structure
-- Added checks for null pointers, array bounds, and numerical consistency
-- Integrated validation in initialization and evolution pipeline
-- Ensures context remains in a valid state throughout simulation
-- Modified src/core/core_init.c, core_init.h, and core_build_model.c
 
 2025-03-19: [Phase 1.2] Evolution Context Implementation
 - Implemented evolution_context structure to encapsulate galaxy evolution state
@@ -60,3 +48,17 @@
 - Added clean separation between output sections with newlines
 - Added "Finished" message upon completion in non-verbose mode
 - Modified Makefile, core_logging.c, core_parameter_views.c, core_read_parameter_file.c, sage.c
+
+2025-03-25: [Phase 1.3] Evolution Context Validation
+- Implemented comprehensive validation for evolution_context structure
+- Added checks for null pointers, array bounds, and numerical consistency
+- Integrated validation in initialization and evolution pipeline
+- Ensures context remains in a valid state throughout simulation
+- Modified src/core/core_init.c, core_init.h, and core_build_model.c
+
+2025-03-25: [Phase 1.3] Parameter Views Validation
+- Implemented comprehensive validation for all parameter view types
+- Added checks for numerical validity (NaN/Infinity detection)
+- Added validation calls at parameter view initialization
+- Improved error reporting with detailed diagnostics
+- Modified src/core/core_parameter_views.c, core_parameter_views.h, and core_logging.h
