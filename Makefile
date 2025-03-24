@@ -1,50 +1,71 @@
-#USE-MPI := yes # set this if you want to run in embarrassingly parallel (automatically set if the compiler (i.e., the CC variable) is set to `mpicc`)
-USE-HDF5 := yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
+# ==============================================================================
+# SAGE Semi-Analytic Galaxy Evolution model - Makefile
+# ==============================================================================
 
-#MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
-				 # Note: This only works with gcc
+# -------------- Build Configuration Options -----------------
+# Uncomment or set via command line to enable features
 
-USE-BUFFERED-WRITE := yes # Set this to create binary output in chunks (typically has better performance)
+# USE-MPI := yes      # Enable MPI parallel processing (auto-set if CC=mpicc)
+USE-HDF5 := yes       # Enable HDF5 tree reading support
+# MEM-CHECK := yes    # Enable memory/pointer sanitization (~2x slower, gcc only)
+USE-BUFFERED-WRITE := yes  # Enable chunked binary output for better performance
+MAKE-SHARED-LIB := yes     # Build shared library instead of static
+# MAKE-VERBOSE := yes      # Enable verbose information messages
 
-MAKE-SHARED-LIB := yes # Define this to any value if you want to create a shared library (otherwise a static library is created)
-#MAKE-VERBOSE := yes # define this for info messages, otherwise all info messages are disabled (*error* messages are *always* printed)
-
-ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-# In case any of the previous ones do not work and
-# ROOT_DIR is not set, then use "." as ROOT_DIR and
-# hopefully the cooling tables will still work
+# -------------- Directory Setup ----------------------------
+ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+# Fallback to current dir if detection fails
 ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 
-
+# -------------- Compiler Options --------------------------
 CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC
 LIBFLAGS :=
-
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
 SRC_PREFIX := src
 
+# -------------- Library Configuration ---------------------
 LIBNAME := sage
-LIBSRC :=  core/sage.c core/core_read_parameter_file.c core/core_init.c core/core_io_tree.c \
-           core/core_cool_func.c core/core_build_model.c core/core_save.c core/core_mymalloc.c core/core_utils.c core/progressbar.c \
-           core/core_tree_utils.c core/core_parameter_views.c core/core_logging.c core/core_module_system.c core/core_galaxy_extensions.c \
-           physics/model_infall.c physics/model_cooling_heating.c physics/model_starformation_and_feedback.c \
-           physics/model_disk_instability.c physics/model_reincorporation.c physics/model_mergers.c physics/model_misc.c \
-           physics/module_cooling.c physics/example_galaxy_extension.c \
-           io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-               io/save_gals_binary.c io/forest_utils.c io/buffered_io.c
 
-LIBINCL := $(LIBSRC:.c=.h)
-LIBINCL += io/parse_ctrees.h
+# Core source files
+CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
+        core/core_io_tree.c core/core_cool_func.c core/core_build_model.c \
+        core/core_save.c core/core_mymalloc.c core/core_utils.c \
+        core/progressbar.c core/core_tree_utils.c core/core_parameter_views.c \
+        core/core_logging.c core/core_module_system.c \
+        core/core_galaxy_extensions.c core/core_event_system.c
 
+# Physics model source files
+PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \
+        physics/model_starformation_and_feedback.c \
+        physics/model_disk_instability.c physics/model_reincorporation.c \
+        physics/model_mergers.c physics/model_misc.c \
+        physics/module_cooling.c physics/example_galaxy_extension.c \
+        physics/example_event_handler.c
+
+# I/O source files
+IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
+        io/ctrees_utils.c io/save_gals_binary.c io/forest_utils.c \
+        io/buffered_io.c
+
+# Combine all library sources
+LIBSRC := $(CORE_SRC) $(PHYSICS_SRC) $(IO_SRC)
+LIBINCL := $(LIBSRC:.c=.h) io/parse_ctrees.h
+
+# Main executable source
 SRC := core/main.c $(LIBSRC)
-SRC  := $(addprefix $(SRC_PREFIX)/, $(SRC))
+SRC := $(addprefix $(SRC_PREFIX)/, $(SRC))
 OBJS := $(SRC:.c=.o)
-INCL := core/core_allvars.h core/macros.h core/core_simulation.h $(LIBINCL)
+
+# Include files
+INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL)
 INCL := $(addprefix $(SRC_PREFIX)/, $(INCL))
 
-LIBSRC  := $(addprefix $(SRC_PREFIX)/, $(LIBSRC))
+# Library objects and includes
+LIBSRC := $(addprefix $(SRC_PREFIX)/, $(LIBSRC))
 LIBINCL := $(addprefix $(SRC_PREFIX)/, $(LIBINCL))
 LIBOBJS := $(LIBSRC:.c=.o)
 
+# -------------- Target Configuration ----------------------
 ifdef MAKE-SHARED-LIB
   SAGELIB := lib$(LIBNAME).so
 else
@@ -54,19 +75,20 @@ endif
 ifdef MAKE-VERBOSE
   OPTS += -DVERBOSE
 endif
+
 EXEC := $(LIBNAME)
 
-
+# -------------- Platform and Compiler Setup ---------------
 UNAME := $(shell uname)
 ifeq ($(CC), mpicc)
 	USE-MPI = yes
 endif
 
 ifdef USE-MPI
-    OPTS += -DMPI  #  This creates an MPI version that can be used to process files in parallel
-    CC := mpicc  # sets the C-compiler
+    OPTS += -DMPI  # Enable MPI parallel processing
+    CC := mpicc
 else
-    # use clang by default on OSX and gcc on linux
+    # Default compiler selection based on platform
     ifeq ($(UNAME), Darwin)
       CC := clang
     else
@@ -74,19 +96,19 @@ else
     endif
 endif
 
-# No need to do the path + library checks if
-# only attempting to clean the build
+# -------------- Build Process Control ---------------------
+# Skip checks if only cleaning
 DO_CHECKS := 1
 CLEAN_CMDS := celan celna clean clena
 ifneq ($(filter $(CLEAN_CMDS),$(MAKECMDGOALS)),)
   DO_CHECKS := 0
 endif
 
-# Files required for HDF5 -> needs to be defined outside of the
-# if condition (for DO_CHECKS); otherwise `make clean` will not
-# clean the H5_OBJS
-H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c io/hdf5_read_utils.c \
-          io/read_tree_consistentrees_hdf5.c io/read_tree_gadget4_hdf5.c
+# -------------- HDF5 Configuration -----------------------
+# HDF5 source files (defined outside to support 'make clean')
+H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c \
+          io/hdf5_read_utils.c io/read_tree_consistentrees_hdf5.c \
+          io/read_tree_gadget4_hdf5.c
 
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
@@ -95,88 +117,77 @@ H5_SRC := $(addprefix $(SRC_PREFIX)/, $(H5_SRC))
 H5_INCL := $(addprefix $(SRC_PREFIX)/, $(H5_INCL))
 H5_OBJS := $(addprefix $(SRC_PREFIX)/, $(H5_OBJS))
 
-
-## Only set everything if the command is not "make clean" (or related to "make clean")
+# -------------- Dependency Checking ----------------------
 ifeq ($(DO_CHECKS), 1)
-  ## Check if CC is clang under the hood
+  # Verify compiler exists
   CC_VERSION := $(shell $(CC) --version 2>/dev/null)
   ifndef CC_VERSION
-    $(info Error: Could find compiler = ${CC})
+    $(info Error: Could not find compiler = ${CC})
     $(info Please either set "CC" in "Makefile" or via the command-line "make CC=yourcompiler")
     $(info And please check that the specified compiler is in your "$$PATH" variables)
     $(error )
   endif
+
+  # Check if using Clang
   ifeq (clang,$(findstring clang,$(CC_VERSION)))
     CC_IS_CLANG := 1
   else
     CC_IS_CLANG := 0
   endif
+
+  # Special handling for GCC on macOS (use Clang assembler)
   ifeq ($(UNAME), Darwin)
     ifeq ($(CC_IS_CLANG), 0)
-      ## gcc on OSX has trouble with
-      ## AVX+ instructions. This flag uses
-      ## the clang assembler
       CCFLAGS += -Wa,-q
     endif
   endif
 
+  # CI environment detection
   ON_CI := false
   ifeq ($(CI), true)
     ON_CI := true
   endif
-
   ifeq ($(TRAVIS), true)
     ON_CI := true
   endif
-
   ifeq ($(ON_CI), true)
-  ## If running on CI, fail if any warnings are generated when Making.
-    CCFLAGS += -Werror
+    CCFLAGS += -Werror  # Treat warnings as errors on CI
   endif
-  ## end of checking is CC
 
-  # GSL dependency has been removed
-
+  # Buffered write support
   ifdef USE-BUFFERED-WRITE
     CCFLAGS += -DUSE_BUFFERED_WRITE
   endif
 
+  # HDF5 support configuration
   ifdef USE-HDF5
     ifndef HDF5_DIR
       ifeq ($(ON_CI), true)
-        $(info Looks like we are building on a continuous integration service)
-        $(info Assuming that the `hdf5` package and `gsl-config` are both installed by `conda` into the same directory)
+        # Use conda environment on CI
         CONDA_BASE := $(shell gsl-config --prefix 2>/dev/null)
         HDF5_DIR := $(CONDA_BASE)
       else
-        ## Check if h5tools are installed and use the base directory
-        ## Assumes that the return value from 'which' will be
-        ## something like /path/to/bin/h5ls; the 'sed' command
-        ## replaces the '/bin/h5ls' with '' (i.e., removes '/bin/h5ls')
-        ## and returns '/path/to' (without the trailing '/')
+        # Try to detect HDF5 installation
         HDF5_DIR := $(strip $(shell which h5ls 2>/dev/null | sed 's/\/bin\/h5ls//'))
         ifndef HDF5_DIR
           $(warning $$HDF5_DIR environment variable is not defined but HDF5 is requested)
           $(warning Could not locate hdf5 tools either)
-          $(warning Please install HDF5 (or perhaps load the HDF5 module 'module load hdf5-serial') or disable the 'USE-HDF5' option in the 'Makefile')
-          ## Define your HDF5 install directory here
-          ## or outside before the USE-HDF5 if condition
-          ## to avoid the warning message in the following line
+          $(warning Please install HDF5 or disable the 'USE-HDF5' option)
           HDF5_DIR:= ${HOME}/anaconda3
-          $(warning Proceeding with a default directory of `[${HDF5_DIR}]` - compilation might fail)
+          $(warning Proceeding with default directory '[${HDF5_DIR}]' - compilation might fail)
         endif
       endif
     endif
 
+    # Add HDF5 sources, objects and includes
     LIBSRC += $(H5_SRC)
     SRC += $(H5_SRC)
-
     LIBOBJS += $(H5_OBJS)
     OBJS += $(H5_OBJS)
-
     LIBINCL += $(H5_INCL)
     INCL += $(H5_INCL)
 
+    # HDF5 compilation flags
     HDF5_INCL := -I$(HDF5_DIR)/include
     HDF5_LIB := -L$(HDF5_DIR)/lib -lhdf5 -Xlinker -rpath -Xlinker $(HDF5_DIR)/lib
 
@@ -185,6 +196,7 @@ ifeq ($(DO_CHECKS), 1)
     CCFLAGS += $(HDF5_INCL)
   endif
 
+  # Add git commit reference if available
   GIT_FOUND := $(shell git --version 2>/dev/null)
   ifdef GIT_FOUND
     OPTS += -DGITREF_STR='"$(shell git show-ref --head | head -n 1 | cut -d " " -f 1)"'
@@ -192,32 +204,27 @@ ifeq ($(DO_CHECKS), 1)
     OPTS += -DGITREF_STR='""'
   endif
 
+  # MPI library path for runtime loading
   ifdef USE-MPI
-    MPI_LINK_FLAGS:=$(firstword $(shell $(CC) --showme:link 2>/dev/null))
-    MPI_LIB_DIR:=$(firstword $(subst -L, , $(MPI_LINK_FLAGS)))
+    MPI_LINK_FLAGS := $(firstword $(shell $(CC) --showme:link 2>/dev/null))
+    MPI_LIB_DIR := $(firstword $(subst -L, , $(MPI_LINK_FLAGS)))
     LIBFLAGS += -Xlinker -rpath -Xlinker $(MPI_LIB_DIR)
   endif
-  # The tests should test with the same compile flags
-  # that users are expected to use. Disabled the previous
-  # different optimization flags for travis vs regular users
-  # This decision was driven by the fact the adding the `-march=native` flag
-  # produces test failures on ozstar (https://supercomputing.swin.edu.au/ozstar/)
-  # Good news is that even at -O3 the tests pass
+
+  # Optimization settings
   OPTIMIZE := -O2
   ifeq ($(filter tests,$(MAKECMDGOALS)),)
     OPTIMIZE += -march=native
   endif
 
-  # Some flags to allow memory checking (similar to Valgrind).
-  # Only enabled when specifically asked.
+  # Memory checking options
   ifdef MEM-CHECK
-    CCFLAGS +=-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
-    LIBFLAGS += -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
-    # clang will need this flag
-    # LIBFLAGS += -shared-libasan
+    SANITIZE_FLAGS := -fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all
+    CCFLAGS += $(SANITIZE_FLAGS)
+    LIBFLAGS += $(SANITIZE_FLAGS)
   endif
 
-  # Check if $(AR) and $(CC) belong to the same tool-chain
+  # Check if compiler and archiver match
   AR_BASE_PATH := $(shell which $(AR))
   CC_BASE_PATH := $(shell which $(CC))
   AR_FIRST_DIR := $(firstword $(subst /, ,$(AR_BASE_PATH)))
@@ -228,29 +235,27 @@ ifeq ($(DO_CHECKS), 1)
   CC_IN_AR_DIR := $(subst $(AR_NAME),$(CC_NAME),$(AR_BASE_PATH))
   AR_IN_CC_DIR := $(subst $(CC_NAME),$(AR_NAME),$(CC_BASE_PATH))
 
-  # Check that the first directory for both AR and CC are the same
   ifneq ($(AR_FIRST_DIR), $(CC_FIRST_DIR))
-    $(warning Looks like the archiver $$AR := '$(AR)' and compiler $$CC := '$(CC)' are from different toolchains)
-    $(warning The archiver resolves to '$(AR_BASE_PATH)' while the compiler resolves to '$(CC_BASE_PATH)')
-    $(warning If there is an error during linking, then a fix might be to make sure that both the compiler and archiver are from the same distribution)
-    $(warning ---- either as '$(CC_IN_AR_DIR)' or '$(AR_IN_CC_DIR)')
+    $(warning Archiver ($(AR)) and compiler ($(CC)) appear to be from different toolchains)
+    $(warning Archiver: '$(AR_BASE_PATH)', Compiler: '$(CC_BASE_PATH)')
+    $(warning If linking fails, try using matching tools: '$(CC_IN_AR_DIR)' or '$(AR_IN_CC_DIR)')
   endif
 
-  CCFLAGS += -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs # and more warning flags
-  LIBFLAGS +=   -lm
+  # Common compiler flags
+  CCFLAGS += -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs
+  LIBFLAGS += -lm
 
 else
-  # something like `make clean` is in effect -> need to also remove the HDF5 objects
-  # if HDF5 is requested
+  # For clean targets with HDF5 enabled
   ifdef USE-HDF5
     OBJS += $(H5_OBJS)
   endif
+endif
 
-endif # End of DO_CHECKS if condition -> i.e., we do need to care about paths and such
-
+# -------------- Build Targets ----------------------------
 .PHONY: clean celan celna clena tests all test_extensions
 
-all:  $(SAGELIB) $(EXEC)
+all: $(SAGELIB) $(EXEC)
 
 test_extensions: tests/test_galaxy_extensions.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_extensions tests/test_galaxy_extensions.c -L. -l$(LIBNAME) $(LIBFLAGS)
@@ -261,21 +266,21 @@ $(EXEC): $(OBJS)
 lib libs: $(SAGELIB)
 
 lib$(LIBNAME).a: $(LIBOBJS)
-	@echo "Creating static lib"
+	@echo "Creating static library"
 	$(AR) rcs $@ $(LIBOBJS)
 
 lib$(LIBNAME).so: $(LIBOBJS)
-	@echo "Creating shared lib"
+	@echo "Creating shared library"
 	$(CC) -shared $(LIBOBJS) -o $@ $(LIBFLAGS)
 
 pyext: lib$(LIBNAME).so
-	@echo "Creating python extension in Makefile"
+	@echo "Creating Python extension"
 	python -c "from sage import build_sage_pyext; build_sage_pyext();"
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
 
-
+# Clean targets with common typo aliases
 celan celna clena: clean
 clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]

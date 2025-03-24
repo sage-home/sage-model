@@ -16,9 +16,11 @@
 #include "core_logging.h"
 #include "core_module_system.h"
 #include "core_galaxy_extensions.h"
+#include "core_event_system.h"
 
 /* Include physics module interfaces */
 #include "../physics/module_cooling.h"
+#include "../physics/example_event_handler.h"
 
 /* These functions do not need to be exposed externally */
 double integrand_time_to_present(const double a, void *param);
@@ -55,6 +57,10 @@ void init(struct params *run_params)
     /* Initialize galaxy extension system */
     initialize_galaxy_extension_system();
     LOG_DEBUG("Galaxy extension system initialized");
+    
+    /* Initialize event system */
+    initialize_event_system();
+    LOG_DEBUG("Event system initialized");
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
@@ -246,9 +252,10 @@ void cleanup(struct params *run_params)
     /* Clean up components in reverse order of initialization */
     LOG_DEBUG("Starting component cleanup");
     
-    /* Clean up module system */
-    cleanup_module_system();
+    /* Clean up systems in reverse order of initialization */
+    cleanup_event_system();
     cleanup_galaxy_extension_system();
+    cleanup_module_system();
     
     cleanup_cooling();
     cleanup_simulation_times(run_params);
@@ -287,6 +294,30 @@ void initialize_galaxy_extension_system(void)
     }
 }
 
+/**
+ * Initialize the event system
+ * 
+ * Sets up the event system and registers example event handlers.
+ */
+void initialize_event_system(void)
+{
+    /* Initialize the event system */
+    event_status_t status = event_system_initialize();
+    if (status != EVENT_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to initialize event system, status = %d", status);
+        return;
+    }
+    
+    /* Register example event handlers for demonstration */
+    int handler_status = register_example_event_handlers();
+    if (handler_status != 0) {
+        LOG_ERROR("Failed to register example event handlers, status = %d", handler_status);
+        return;
+    }
+    
+    LOG_INFO("Event system initialized with example handlers");
+}
+
 /*
  * Clean up the galaxy extension system
  * 
@@ -299,6 +330,30 @@ void cleanup_galaxy_extension_system(void)
         LOG_ERROR("Failed to clean up galaxy extension system, status = %d", status);
     } else {
         LOG_DEBUG("Galaxy extension system cleaned up");
+    }
+}
+
+/**
+ * Clean up the event system
+ * 
+ * Unregisters event handlers and cleans up resources.
+ */
+void cleanup_event_system(void)
+{
+    /* Unregister example event handlers */
+    int handler_status = unregister_example_event_handlers();
+    if (handler_status != 0) {
+        LOG_ERROR("Failed to unregister example event handlers, status = %d", handler_status);
+    } else {
+        LOG_DEBUG("Example event handlers unregistered");
+    }
+    
+    /* Clean up the event system */
+    event_status_t status = event_system_cleanup();
+    if (status != EVENT_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to clean up event system, status = %d", status);
+    } else {
+        LOG_DEBUG("Event system cleaned up");
     }
 }
 

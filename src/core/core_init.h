@@ -30,6 +30,10 @@ extern "C" {
     extern void initialize_galaxy_extension_system(void);
     extern void cleanup_galaxy_extension_system(void);
     
+    /* Event system initialization */
+    extern void initialize_event_system(void);
+    extern void cleanup_event_system(void);
+    
     /* Evolution context initialization and validation */
     extern void initialize_evolution_context(struct evolution_context *ctx, 
                                            const int halonr,

@@ -8,6 +8,7 @@
 #include "../core/core_mymalloc.h"
 #include "../core/core_module_system.h"
 #include "../core/core_parameter_views.h"
+#include "../core/core_event_system.h"
 
 #include "module_cooling.h"
 #include "model_cooling_heating.h"
@@ -299,6 +300,24 @@ double apply_cooling(const int gal, const double dt, struct GALAXY *galaxies) {
     if (cooling_gas > 0.0) {
         int centralgal = galaxies[gal].CentralGal;
         cooling_module->cool_gas_onto_galaxy(centralgal, cooling_gas, galaxies, module_data);
+        
+        /* Emit cooling completed event */
+        event_cooling_completed_data_t event_data = {
+            .cooling_rate = cooling_gas / dt,
+            .cooling_radius = cooling_module->get_cooling_radius != NULL ?
+                             cooling_module->get_cooling_radius(gal, galaxies, module_data) : 0.0,
+            .hot_gas_cooled = cooling_gas
+        };
+        
+        event_emit(
+            EVENT_COOLING_COMPLETED,               /* Event type */
+            cooling_module->base.module_id,        /* Source module ID */
+            gal,                                  /* Galaxy index */
+            -1,                                   /* No specific step */
+            &event_data,                          /* Event data */
+            sizeof(event_data),                   /* Data size */
+            EVENT_FLAG_PROPAGATE                  /* Allow all handlers to process */
+        );
     }
     
     return cooling_gas;

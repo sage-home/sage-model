@@ -24,6 +24,8 @@
 #include "progressbar.h"
 #include "core_tree_utils.h"
 #include "core_logging.h"
+#include "core_event_system.h"
+#include "../physics/example_event_handler.h"
 
 #ifdef HDF5
 #include "../io/save_gals_hdf5.h"
