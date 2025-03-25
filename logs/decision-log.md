@@ -27,3 +27,11 @@
 2025-03-24: [Phase 2.2] Implement Extension Data Deep Copy
 - Rationale: When copying a galaxy, all extension data must be deep copied rather than just copying pointers. This ensures that each galaxy has its own independent set of extension data, preventing memory corruption and unexpected behavior when one galaxy's properties are modified.
 - Impact: Slightly increased overhead during galaxy copying operations, but guarantees proper encapsulation and avoids shared references to extension data. This approach maintains consistency with the rest of the SAGE model, where galaxies are independent entities.
+
+2025-03-25: [Phase 2.4] Use Semantic Versioning for Module Compatibility
+- Rationale: Implementing semantic versioning (major.minor.patch) allows precise control over module compatibility requirements. This standardized versioning approach enables modules to specify exact version constraints for dependencies, supporting both strict compatibility (exact version match) and flexible constraints (version ranges).
+- Impact: Gives module developers fine-grained control over compatibility requirements while providing a clear upgrade path for users. Module consumers can understand which updates are safe to apply (patch), which add functionality (minor), and which may break compatibility (major). This reduces integration issues when combining independently developed modules.
+
+2025-03-25: [Phase 2.4] Implement Default Fallbacks for Module Configuration
+- Rationale: Creating a system that gracefully handles missing configuration by applying sensible defaults improves robustness. Instead of failing when parameters are missing, the system continues with pre-defined defaults, making the module system more user-friendly and reducing configuration complexity for simple cases.
+- Impact: Simplifies module usage by reducing the amount of required configuration, especially for standard scenarios. Modules remain functional even with minimal configuration, while still allowing detailed customization when needed. This approach balances flexibility with ease of use.

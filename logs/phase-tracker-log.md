@@ -10,59 +10,57 @@
 - At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
-# Current Phase: 2.3-2.4/7 (Event System & Module Registry)
+# Current Phase: 2.5-2.6/7 (Pipeline System & Configuration System)
 
 ## Phase Objectives
-- Complete Phase 2.3: Event-Based Communication System
-  - Define event types and data structures
-  - Implement event registration and dispatch mechanisms
-  - Create event handlers for module communication
-  - Build event logging and debugging support
-  - Design event filtering capabilities
+- Complete Phase 2.5: Module Pipeline System
+  - Implement a configurable pipeline for module execution
+  - Create pipeline step ordering and validation
+  - Build pipeline configuration parsing
+  - Design runtime pipeline modification capability
+  - Develop pipeline event hooks for extensibility
   
-- Complete Phase 2.4: Module Registry System
-  - Implement module discovery and registration
-  - Create dependency resolution
-  - Design module configuration system
-  - Build activation/deactivation mechanisms
-  - Implement module versioning and compatibility checking
+- Complete Phase 2.6: Configuration System
+  - Design comprehensive configuration file format
+  - Implement configuration parsing and validation
+  - Create parameter binding to module settings
+  - Build configuration override capabilities
+  - Implement runtime configuration updates
 
 ## Current Progress
 
-### Phase 2.3: Event-Based Communication System ✅ COMPLETED
-- [x] Define event types and structure enums/structs
-- [x] Create event system initialization and cleanup
-- [x] Implement event registration mechanism
-- [x] Design event dispatch system
-- [x] Build event handler callback infrastructure
-- [x] Add event logging and debugging capabilities
-- [x] Create example event types (cooling, star formation, etc.)
-- [x] Develop testing framework for events
-- [x] Integrate with existing modules (cooling module)
+### Phase 2.5: Module Pipeline System
+- [ ] Define pipeline interfaces and structures
+- [ ] Implement pipeline execution mechanism
+- [ ] Create pipeline configuration parsing
+- [ ] Build pipeline validation and error checking
+- [ ] Implement pipeline modification capabilities
+- [ ] Design pipeline event hooks
+- [ ] Integrate with the module registry system
 
-### Phase 2.4: Module Registry System
-- [ ] Enhance existing module registry with discovery capabilities
-- [ ] Implement dynamic module lookup
-- [ ] Create module versioning and compatibility checking
-- [ ] Design module configuration parsing
-- [ ] Implement dependency resolution algorithm
-- [ ] Build activation/deactivation mechanisms
-- [ ] Add module error handling and reporting
+### Phase 2.6: Configuration System
+- [ ] Design configuration file format (JSON/YAML)
+- [ ] Implement configuration file parsing
+- [ ] Create parameter validation system
+- [ ] Build hierarchical configuration capabilities
+- [ ] Implement override mechanisms
+- [ ] Create runtime configuration updating
+- [ ] Add configuration documentation generation
 
 ## Next Actions
-1. Build module registry enhancements: Extend the existing module registry to include more sophisticated capabilities such as module discovery, dependency resolution, and configuration. This will enable dynamic loading and configuration of modules at runtime, allowing researchers to easily swap physics implementations without recompilation.
+1. Design pipeline system architecture: Create a flexible pipeline system that defines the sequence of physics operations during galaxy evolution. This will allow different physics modules to be inserted, replaced, reordered, or removed at runtime according to research needs.
 
-2. Implement module versioning and compatibility: Create a system for checking module compatibility between different versions, ensuring that modules can work together harmoniously even when developed independently. This should include a validation mechanism for checking requirements and capabilities.
+2. Implement configuration file parsing: Develop a parser for configuration files that specify module chains, module parameters, and execution order. This will support both command-line and file-based configuration with proper validation.
 
-3. Design module configuration system: Develop a flexible configuration system that allows researchers to specify which modules to load and how they should be configured. This should support both command-line and file-based configuration options with proper validation.
+3. Integrate pipeline with event system: Connect the pipeline execution with the event system to enable modules to interact during pipeline execution, ensuring proper sequencing and data exchange between physics processes.
 
 ## Completion Criteria
-- Event system infrastructure completed and tested
-- Event types defined for key physics interactions
-- Module registry enhancements implemented
-- Module discovery and dependency resolution working
-- Configuration system able to control module loading
-- Example implementations demonstrating both systems
+- Pipeline system can execute configurable sequences of physics modules
+- Module ordering is flexible and can be modified at runtime
+- Configuration system supports comprehensive module settings
+- Parameter validation prevents invalid configurations
+- Runtime changes to pipeline and configuration are supported
+- Example implementations demonstrate pipeline flexibility
 - All tests passing with the new functionality
 - Backward compatibility maintained with existing code
 
@@ -71,10 +69,11 @@
 - Phase 2.1 (Base Module Interfaces): ✅ COMPLETED
 - Phase 2.2 (Galaxy Property Extension): ✅ COMPLETED
 - Phase 2.3 (Event System): ✅ COMPLETED
-- Phase 2.4 (Module Registry): 🔄 IN PROGRESS
-- Phase 2.5-2.6 (Pipeline/Config): BLOCKED by 2.3-2.4
+- Phase 2.4 (Module Registry): ✅ COMPLETED
+- Phase 2.5-2.6 (Pipeline/Config): 🔄 IN PROGRESS
+- Phase 3 (I/O Abstraction): BLOCKED by 2.5-2.6
 
 ## Reference Material
-- Event System: See refactoring plan section 2.3
-- Module Registry: See refactoring plan section 2.4
+- Pipeline System: See refactoring plan section 2.5
+- Configuration System: See refactoring plan section 2.6
 - Implementation examples: See refactoring plan "Practical Examples" section
