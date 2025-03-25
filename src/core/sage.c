@@ -49,6 +49,12 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     }
     run_params->runtime.ThisTask = ThisTask;
     run_params->runtime.NTasks = NTasks;
+    
+    /* Initialize module system parameters with default values */
+    run_params->runtime.ModuleDir[0] = '\0';  /* Empty string indicates default path */
+    run_params->runtime.NumModulePaths = 0;   /* No additional paths by default */
+    run_params->runtime.EnableModuleDiscovery = 0;  /* Module discovery disabled by default */
+    
     *params = run_params;
 
     int32_t status = read_parameter_file(param_file, run_params);

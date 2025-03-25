@@ -18,7 +18,10 @@ extern "C" {
  */
 
 /* Forward declaration to avoid circular dependencies */
-#define MAX_MODULES 32
+/* Use the same MAX_MODULES value as in core_module_system.h */
+#ifndef MAX_MODULES
+#define MAX_MODULES 64
+#endif
 
 /* Maximum number of extension properties that can be registered */
 #define MAX_GALAXY_EXTENSIONS 64
