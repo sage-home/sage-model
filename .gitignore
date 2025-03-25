@@ -2,7 +2,7 @@ sage
 tests/test_data/
 input/millennium/
 output/
-
+*.py
 *.o
 *.*~
 libsage.a
@@ -37,3 +37,6 @@ yy*
 # Documentation with Sphinx #
 docs/build
 docs/make.bat
+optim/run_pso.sh
+plotting/allresults-history.py
+plotting/allresults-local.py
