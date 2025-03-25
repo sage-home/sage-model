@@ -36,4 +36,6 @@ python3 ./main.py \
   --vol-frac "$VOL_FRAC" \
   --Omega0 "$OMEGA0" \
   --h0 "$H0" \
-  -S "$SPACEFILE"
+  -S "$SPACEFILE" \
+  -H \
+  -C 4
