@@ -240,11 +240,28 @@ int read_parameter_file(const char *fname, struct params *run_params)
     strncpy(ParamTag[NParam], "ExponentForestDistributionScheme", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->runtime.Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
-
+    
+    /* Allocate used_tag array */
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;
     }
+    
+    /* Initialize module system parameters with default values */
+    run_params->runtime.ModuleDir[0] = '\0';  /* Empty string - will use default directory */
+    run_params->runtime.EnableModuleDiscovery = 0;  /* Disabled by default */
+    run_params->runtime.NumModulePaths = 0;
+    
+    /* Module system parameters - optional, if not specified use defaults */
+    strncpy(ParamTag[NParam], "ModuleDir", MAXTAGLEN);
+    ParamAddr[NParam] = run_params->runtime.ModuleDir;
+    ParamID[NParam++] = STRING;
+    used_tag[NParam-1] = 0;  /* Mark as optional */
+    
+    strncpy(ParamTag[NParam], "EnableModuleDiscovery", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->runtime.EnableModuleDiscovery);
+    ParamID[NParam++] = INT;
+    used_tag[NParam-1] = 0;  /* Mark as optional */
 
     FILE *fd = fopen(fname, "r");
     if (fd == NULL) {

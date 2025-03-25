@@ -83,10 +83,19 @@ void initialize_module_system(struct params *run_params)
         return;
     }
     
+    /* Configure the module system with parameters if provided */
+    status = module_system_configure(run_params);
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_WARNING("Failed to configure module system, status = %d", status);
+        LOG_WARNING("Using default module system configuration");
+        /* Continue anyway - configure handles NULL params with defaults */
+    }
+    
     /* Create and register the default cooling module */
     struct cooling_module *cooling_module = create_default_cooling_module();
     if (cooling_module == NULL) {
         LOG_ERROR("Failed to create default cooling module");
+        module_system_cleanup();  /* Clean up to avoid memory leaks */
         return;
     }
     
@@ -94,6 +103,7 @@ void initialize_module_system(struct params *run_params)
     status = cooling_module_register(cooling_module);
     if (status != MODULE_STATUS_SUCCESS) {
         LOG_ERROR("Failed to register cooling module, status = %d", status);
+        module_system_cleanup();  /* Clean up to avoid memory leaks */
         return;
     }
     
@@ -101,6 +111,7 @@ void initialize_module_system(struct params *run_params)
     status = cooling_module_initialize(cooling_module, run_params);
     if (status != MODULE_STATUS_SUCCESS) {
         LOG_ERROR("Failed to initialize cooling module, status = %d", status);
+        module_system_cleanup();  /* Clean up to avoid memory leaks */
         return;
     }
     
@@ -108,10 +119,29 @@ void initialize_module_system(struct params *run_params)
     status = module_set_active(cooling_module->base.module_id);
     if (status != MODULE_STATUS_SUCCESS) {
         LOG_ERROR("Failed to set cooling module as active, status = %d", status);
+        module_system_cleanup();  /* Clean up to avoid memory leaks */
         return;
     }
     
     LOG_INFO("Default cooling module registered and activated");
+    
+    /* Discover additional modules if enabled and registry is initialized */
+    if (global_module_registry != NULL && global_module_registry->discovery_enabled) {
+        LOG_INFO("Starting module discovery");
+        
+        int modules_found = module_discover(run_params);
+        
+        if (modules_found > 0) {
+            LOG_INFO("Discovered %d additional modules", modules_found);
+        } else if (modules_found < 0) {
+            LOG_ERROR("Module discovery failed, status = %d", modules_found);
+            /* Continue anyway - failing to discover additional modules is not fatal */
+        } else {
+            LOG_DEBUG("No additional modules found");
+        }
+    } else {
+        LOG_DEBUG("Module discovery not enabled or registry not initialized");
+    }
 }
 
 /*
