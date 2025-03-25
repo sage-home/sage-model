@@ -198,6 +198,24 @@ float get_mass_dependent_radiation_field(struct GALAXY *g, const struct params *
  */
 float calculate_molecular_fraction_GD14(float gas_density, float metallicity, float radiation_field, const struct params *run_params)
 {
+    // Early termination for zero or negative values
+    if (gas_density <= 0.0) {
+        return 0.0;
+    }
+    
+    // Early termination for extremely low metallicity environments
+    // (H2 formation requires dust, which requires metals)
+    if (metallicity < 1.0e-4) {
+        // Very low molecular fraction in extremely metal-poor gas
+        return 0.01 * gas_density / 100.0;  // Scale with density but keep very low
+    }
+    
+    // Early termination for very strong radiation fields 
+    // (which dissociate H2 efficiently)
+    if (radiation_field > 1000.0) {
+        return 0.0;  // No H2 survives extremely strong radiation
+    }
+
     // A much simpler approach that produces higher molecular fractions
     // Critical surface density (above which gas becomes mostly molecular)
     const float SIGMA_CRIT = 10.0; // M⊙/pc²
@@ -250,6 +268,27 @@ counter_gd++;
  */
 float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_params)
 {
+    // Don't calculate if there's no cold gas
+    if (g->ColdGas <= 0.0) {
+        return 0.0;
+    }
+    
+    // Skip calculation for unrealistic disk radius values
+    if (g->DiskScaleRadius <= 0.0) {
+        return 0.0;
+    }
+    
+    // For very small galaxies, use a simplified approximation
+    if (g->ColdGas < 1.0e-5 && g->StellarMass < 1.0e-5) {
+        return 0.3 * g->ColdGas;  // Simple fixed fraction
+    }
+    
+    // Early termination for very large stellar mass to gas ratios
+    // (these will have extremely low molecular fractions)
+    if (g->StellarMass > 0.0 && g->ColdGas/g->StellarMass < 1.0e-4) {
+        return 0.05 * g->ColdGas;  // Very low H2 fraction
+    }
+
     // Don't calculate if there's no cold gas
     if (g->ColdGas <= 0.0 || g->DiskScaleRadius <= 0.0) {
         return 0.0;
@@ -354,13 +393,23 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
  */
 float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_params)
 {
-    // Check if we have any bulge
+    // Skip calculation entirely if no bulge
     if (g->BulgeMass <= 0.0) {
         return 0.0;
     }
     
-    // Estimate bulge gas as fraction of cold gas based on B/T ratio
+    // Skip if no cold gas
+    if (g->ColdGas <= 0.0) {
+        return 0.0;
+    }
+    
+    // Calculate bulge to total ratio
     float bulge_to_total = g->BulgeMass / (g->StellarMass > 0.0 ? g->StellarMass : 1.0);
+    
+    // Skip for extremely small bulge to total ratio
+    if (bulge_to_total < 0.01) {
+        return 0.0;  // Negligible bulge contribution
+    }
     
     // Estimate bulge gas fraction - bulges typically have less gas than disks
     float bulge_gas_fraction = bulge_to_total * 0.5;  // typically less gas-rich
@@ -418,39 +467,49 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
     // Skip if environmental effects are disabled
     if (run_params->EnvironmentalEffectsOn == 0) return;
     
-    // Environmental effects mainly apply to satellite galaxies
-    if (g->Type == 0) return;  // Skip central galaxies
-    
     // Skip if no H2 gas
     if (g->H2_gas <= 0.0) return;
     
-    // Safer approach to access central galaxy properties
-    // Skip environmental effects if we can't safely determine the central galaxy properties
+    // Environmental effects mainly apply to satellite galaxies
+    if (g->Type == 0) return;  // Skip central galaxies
+    
+    // Skip low mass satellites (effect is negligible)
+    if (g->StellarMass < 1.0e-7) return;
+    
+    // Skip if we can't access the central galaxy info
     if (g->CentralGal < 0) return;
     
-    // Let's use Mvir directly from the galaxy itself since it has the CentralMvir property
-    float central_mvir = g->CentralMvir;
-    if (central_mvir <= 0.0) return;
+    // Get central galaxy info
+    struct GALAXY *central = &g[g->CentralGal - g->GalaxyNr];
+
+    // Skip in low mass host halos (where effect is minimal)
+    if (central == NULL || central->Mvir < 1.0e-6) return;
+
+    // Add protection against null pointers or uninitialized values
+    if (central == NULL || g == NULL) return;
+    if (central->Mvir <= 0.0) return;
     
     // Calculate environmental strength based on central halo mass
     float env_strength = 0.0;
     
-    // Convert to solar masses
-    float central_mass = central_mvir * 1.0e10 / run_params->Hubble_h;
-    float log_mass = log10(central_mass > 0.0 ? central_mass : 1.0);
-        
-    // Effect starts at halo mass ~10^13 Msun, becomes stronger for larger halos
-    if (log_mass > 13.0) {
-        env_strength = (log_mass - 13.0) * 0.4;  // 20% effect per dex
+    if (central->Mvir > 0.0) {
+        // Convert to solar masses
+        float central_mass = central->Mvir * 1.0e10 / run_params->Hubble_h;
+        float log_mass = log10(central_mass);
+            
+        // Effect starts at halo mass ~10^13 Msun, becomes stronger for larger halos
+        if (log_mass > 13.0) {
+            env_strength = (log_mass - 13.0) * 0.4;  // 20% effect per dex
 
-        // And possibly add a direct mass-dependent suppression
-        if (central_mass > 1e11) {
-            // Additional suppression for galaxies in groups/clusters
-            env_strength += 0.2;  // Base additional suppression
+            // And possibly add a direct mass-dependent suppression
+            if (central_mass > 1e11) {
+                // Additional suppression for galaxies in groups/clusters
+                env_strength += 0.2;  // Base additional suppression
+            }
+            
+            // Cap maximum effect
+            if (env_strength > 0.8) env_strength = 0.8;
         }
-        
-        // Cap maximum effect
-        if (env_strength > 0.8) env_strength = 0.8;
     }
     
     // Scale with user parameter
@@ -467,12 +526,9 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
         // Update gas components
         g->H2_gas -= h2_affected;
         g->HI_gas += h2_to_hi;
-        g->ColdGas -= h2_removed;  // Also update total cold gas
         
         // Ensure non-negative values
         if (g->H2_gas < 0.0) g->H2_gas = 0.0;
-        if (g->HI_gas < 0.0) g->HI_gas = 0.0;
-        if (g->ColdGas < 0.0) g->ColdGas = 0.0;
     }
 }
 
