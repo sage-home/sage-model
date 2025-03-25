@@ -424,34 +424,33 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
     // Skip if no H2 gas
     if (g->H2_gas <= 0.0) return;
     
-    // Get central galaxy info
-    struct GALAXY *central = &g[g->CentralGal - g->GalaxyNr];
-
-    // Add protection against null pointers or uninitialized values
-    if (central == NULL || g == NULL) return;
-    if (central->Mvir <= 0.0) return;
+    // Safer approach to access central galaxy properties
+    // Skip environmental effects if we can't safely determine the central galaxy properties
+    if (g->CentralGal < 0) return;
+    
+    // Let's use Mvir directly from the galaxy itself since it has the CentralMvir property
+    float central_mvir = g->CentralMvir;
+    if (central_mvir <= 0.0) return;
     
     // Calculate environmental strength based on central halo mass
     float env_strength = 0.0;
     
-    if (central->Mvir > 0.0) {
-        // Convert to solar masses
-        float central_mass = central->Mvir * 1.0e10 / run_params->Hubble_h;
-        float log_mass = log10(central_mass);
-            
-        // Effect starts at halo mass ~10^13 Msun, becomes stronger for larger halos
-        if (log_mass > 13.0) {
-            env_strength = (log_mass - 13.0) * 0.4;  // 20% effect per dex
+    // Convert to solar masses
+    float central_mass = central_mvir * 1.0e10 / run_params->Hubble_h;
+    float log_mass = log10(central_mass > 0.0 ? central_mass : 1.0);
+        
+    // Effect starts at halo mass ~10^13 Msun, becomes stronger for larger halos
+    if (log_mass > 13.0) {
+        env_strength = (log_mass - 13.0) * 0.4;  // 20% effect per dex
 
-            // And possibly add a direct mass-dependent suppression
-            if (central_mass > 1e11) {
-                // Additional suppression for galaxies in groups/clusters
-                env_strength += 0.2;  // Base additional suppression
-            }
-            
-            // Cap maximum effect
-            if (env_strength > 0.8) env_strength = 0.8;
+        // And possibly add a direct mass-dependent suppression
+        if (central_mass > 1e11) {
+            // Additional suppression for galaxies in groups/clusters
+            env_strength += 0.2;  // Base additional suppression
         }
+        
+        // Cap maximum effect
+        if (env_strength > 0.8) env_strength = 0.8;
     }
     
     // Scale with user parameter
@@ -468,9 +467,12 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
         // Update gas components
         g->H2_gas -= h2_affected;
         g->HI_gas += h2_to_hi;
+        g->ColdGas -= h2_removed;  // Also update total cold gas
         
         // Ensure non-negative values
         if (g->H2_gas < 0.0) g->H2_gas = 0.0;
+        if (g->HI_gas < 0.0) g->HI_gas = 0.0;
+        if (g->ColdGas < 0.0) g->ColdGas = 0.0;
     }
 }
 
