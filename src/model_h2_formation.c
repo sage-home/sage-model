@@ -426,6 +426,10 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
     
     // Get central galaxy info
     struct GALAXY *central = &g[g->CentralGal - g->GalaxyNr];
+
+    // Add protection against null pointers or uninitialized values
+    if (central == NULL || g == NULL) return;
+    if (central->Mvir <= 0.0) return;
     
     // Calculate environmental strength based on central halo mass
     float env_strength = 0.0;

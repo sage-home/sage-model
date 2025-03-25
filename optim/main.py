@@ -332,7 +332,7 @@ def main():
     logger.info('Starting PSO now')
     tStart = time.time()
     if opts.hpc_mode:
-        os.chdir(os.path.join(opts.outdir, '../../autocalibration/'))
+        os.chdir(os.path.join(opts.outdir, '../../optim/'))
     xopt, fopt = pso.pso(f, space['lb'], space['ub'], args=args, swarmsize=ss,
                          maxiter=opts.max_iterations, processes=procs,
                          dumpfile_prefix=os.path.join(tracksdir, 'track_%03d'),csv_output_path=opts.csv_output)

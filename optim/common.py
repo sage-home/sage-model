@@ -34,7 +34,7 @@ if PY2:
     b2s = lambda b: b
 else:
     import configparser
-    b2s = lambda b: b.decode('ascii')
+    b2s = lambda b: b.decode('utf-8')
     raw_input = input
 
 
