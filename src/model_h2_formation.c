@@ -438,7 +438,7 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
         // Convert to solar masses
         float central_mass = central->Mvir * 1.0e10 / run_params->Hubble_h;
         float log_mass = log10(central_mass);
-        
+            
         // Effect starts at halo mass ~10^13 Msun, becomes stronger for larger halos
         if (log_mass > 13.0) {
             env_strength = (log_mass - 13.0) * 0.4;  // 20% effect per dex
