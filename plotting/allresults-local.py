@@ -19,8 +19,8 @@ Snapshot = 'Snap_63'
 
 # Simulation details
 Hubble_h = 0.73        # Hubble parameter
-BoxSize = 62.5         # h-1 Mpc
-VolumeFraction = 1.0  # Fraction of the full volume output by the model
+BoxSize = 500         # h-1 Mpc
+VolumeFraction = 0.0019  # Fraction of the full volume output by the model
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
@@ -998,7 +998,7 @@ if __name__ == '__main__':
     zz = Posz[w]
     #print(zz)
 
-    sub_box_size = 16.0  # Size of each sub-box in Mpc
+    sub_box_size = 50.0  # Size of each sub-box in Mpc
     num_sub_boxes = int(BoxSize / sub_box_size)
 
     for i in range(num_sub_boxes):

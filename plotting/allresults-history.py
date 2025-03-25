@@ -20,8 +20,8 @@ FileName = 'model_0.hdf5'
 
 # Simulation details
 Hubble_h = 0.73        # Hubble parameter
-BoxSize = 62.5         # h-1 Mpc
-VolumeFraction = 1.0   # Fraction of the full volume output by the model
+BoxSize = 500         # h-1 Mpc
+VolumeFraction = 0.0019   # Fraction of the full volume output by the model
 
 # Simulation details
 #Hubble_h = 0.677400        # Hubble parameter
@@ -43,7 +43,7 @@ redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
-dilute = 7500       # Number of galaxies to plot in scatter plots
+dilute = 10000       # Number of galaxies to plot in scatter plots
 sSFRcut = -11.0     # Divide quiescent from star forming galaxies
 SMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 BHMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF

@@ -478,6 +478,28 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
 
 void update_gas_components(struct GALAXY *g, const struct params *run_params)
 {
+    // Early termination - if no cold gas or extremely small amount
+    if(g->ColdGas <= 0.0) {
+        g->H2_gas = 0.0;
+        g->HI_gas = 0.0;
+        return;
+    }
+    
+    // Early termination - if disk radius is effectively zero
+    if(g->DiskScaleRadius <= 1.0e-6) {
+        g->H2_gas = 0.0;
+        g->HI_gas = g->ColdGas;
+        return;
+    }
+    
+    // Early termination - if extremely metal-poor and low mass
+    // (H2 formation is inefficient in these conditions)
+    if(g->MetalsColdGas < 1.0e-8 && g->ColdGas < 1.0e-6) {
+        g->H2_gas = 0.1 * g->ColdGas;  // Assign small fixed fraction
+        g->HI_gas = g->ColdGas - g->H2_gas;
+        return;
+    }
+
     // Don't update if no cold gas
     if(g->ColdGas <= 0.0) {
         g->H2_gas = 0.0;

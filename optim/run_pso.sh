@@ -1,23 +1,23 @@
 #!/bin/bash
 
 # Define arguments for main.py
-CONFIG_PATH="/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/input/millennium.par"
-BASE_PATH="/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/sage"
-OUTPUT_PATH="/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/output/millennium_pso"
+CONFIG_PATH="/fred/oz004/mbradley/SAGE-GAS-GIT/sage-model/input/millennium.par"
+BASE_PATH="/fred/oz004/mbradley/SAGE-GAS-GIT/sage-model/sage"
+OUTPUT_PATH="/fred/oz004/mbradley/SAGE-GAS-GIT/sage-model/output/millennium_pso"
 PARTICLES=16
 ITERATIONS=50
 TEST="student-t"
 CONSTRAINTS="SMF_z0"
 AGE_ALIST_FILE_MINI_UCHUU='/fred/oz004/msinha/simulations/uchuu_suite/miniuchuu/mergertrees/u400_planck2016_50.a_list'
-AGE_ALIST_FILE_MINI_MILLENNIUM="/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/input/millennium/trees/millennium.a_list"
-BOXSIZE=62.5
+AGE_ALIST_FILE_MINI_MILLENNIUM="/fred/oz004/simulations/Millennium/millennium.alist"
+BOXSIZE=500
 SIM_MINI_UCHUU=0
 SIM_MINI_MILLENNIUM=1
-VOL_FRAC=1.0
+VOL_FRAC=0.0019
 OMEGA0=0.25 
 H0=0.73
-CSVOUTPUT="/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/output/millennium_pso/params_z0.csv"
-SPACEFILE="/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/optim/space.txt"
+CSVOUTPUT="/fred/oz004/mbradley/SAGE-GAS-GIT/sage-model/output/millennium_pso/params_z0.csv"
+SPACEFILE="/fred/oz004/mbradley/SAGE-GAS-GIT/sage-model/optim/space.txt"
 ACCOUNT="oz004"
 
 ml purge
@@ -38,6 +38,4 @@ python3 ./main.py \
   --vol-frac "$VOL_FRAC" \
   --Omega0 "$OMEGA0" \
   --h0 "$H0" \
-  -S "$SPACEFILE" \
-  -H \
-  -C 4
+  -S "$SPACEFILE" 
