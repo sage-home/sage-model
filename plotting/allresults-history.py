@@ -20,8 +20,8 @@ FileName = 'model_0.hdf5'
 
 # Simulation details
 Hubble_h = 0.73        # Hubble parameter
-BoxSize = 500         # h-1 Mpc
-VolumeFraction = 0.0019   # Fraction of the full volume output by the model
+BoxSize = 62.5         # h-1 Mpc
+VolumeFraction = 1.0   # Fraction of the full volume output by the model
 
 # Simulation details
 #Hubble_h = 0.677400        # Hubble parameter

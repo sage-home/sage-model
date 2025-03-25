@@ -19,8 +19,8 @@ Snapshot = 'Snap_63'
 
 # Simulation details
 Hubble_h = 0.73        # Hubble parameter
-BoxSize = 500         # h-1 Mpc
-VolumeFraction = 0.0019  # Fraction of the full volume output by the model
+BoxSize = 62.5         # h-1 Mpc
+VolumeFraction = 1.0  # Fraction of the full volume output by the model
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
@@ -475,7 +475,7 @@ if __name__ == '__main__':
     plt.figure()  # New figure
     ax = plt.subplot(111)  # 1 plot on the figure
 
-    w = np.where(StellarMass > 0.01)[0]
+    w2 = np.where(StellarMass > 0.01)[0]
     if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
     mass = np.log10(StellarMass[w2])
     sSFR = np.log10( (SfrDisk[w2] + SfrBulge[w2]) / StellarMass[w2] )
