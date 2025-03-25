@@ -4,10 +4,10 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/output/millennium/
+OutputDir   /fred/oz004/mbradley/SAGE-GAS-GIT/sage-model/output/millennium/
 
 FirstFile         0
-LastFile          7
+LastFile          0
 
 %------------------------------------------
 %----- Snapshot output list ---------------
@@ -26,12 +26,18 @@ OutputFormat      sage_hdf5 % sets the desired output format. Either 'sage_binar
 
 TreeName              trees_063   % assumes the trees are named TreeName.n where n is the file number
 TreeType              lhalo_binary % either 'genesis_lhalo_hdf5' or 'lhalo_binary'
-NumSimulationTreeFiles 8 % Number of files the trees are split over. This can be different to `FirstFile` -> `LastFile` range.
+NumSimulationTreeFiles 512 % Number of files the trees are split over. This can be different to `FirstFile` -> `LastFile` range.
 
 %SimulationDir   /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/
-SimulationDir   /Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/input/millennium/trees/
+%SimulationDir   /fred/oz004/mbradley/sage-model/input/millennium/trees/
+
+SimulationDir   /fred/oz004/simulations/Millennium
+
 %FileWithSnapList /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/millennium.a_list
-FileWithSnapList /Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/input/millennium/trees/millennium.a_list
+%FileWithSnapList /fred/oz004/mbradley/sage-model/input/millennium/trees/millennium.a_list
+
+FileWithSnapList /fred/oz004/simulations/Millennium/millennium.alist
+
 LastSnapShotNr        63
 
 Omega           0.25
@@ -39,8 +45,7 @@ OmegaLambda     0.75
 BaryonFrac      0.17
 Hubble_h        0.73
 PartMass        0.0860657
-BoxSize         62.5 % Size of the simulation box in Mpc/h.
-
+BoxSize         500 % Size of the simulation box in Mpc/h.
 %------------------------------------------
 %----- SAGE recipe options ----------------
 %------------------------------------------

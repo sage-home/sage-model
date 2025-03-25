@@ -20,6 +20,8 @@ CSVOUTPUT="/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/output/millennium_p
 SPACEFILE="/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/optim/space.txt"
 ACCOUNT="oz004"
 
+ml purge
+ml restore basic
 
 python3 ./main.py \
   -c "$CONFIG_PATH" \
