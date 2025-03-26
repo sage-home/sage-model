@@ -106,7 +106,7 @@ static char *json_parse_string(const char **json) {
     
     /* Expect opening quote */
     if (*p != '"') {
-        LOG_ERROR("Expected '\"' at position %ld", p - *json);
+        LOG_ERROR("Expected '\"' at position %zu", (size_t)(p - *json));
         return NULL;
     }
     
@@ -131,7 +131,7 @@ static char *json_parse_string(const char **json) {
     }
     
     if (*p != '"') {
-        LOG_ERROR("Unterminated string at position %ld", start - *json);
+        LOG_ERROR("Unterminated string at position %zu", (size_t)(start - *json));
         return NULL;
     }
     
@@ -184,7 +184,7 @@ static struct config_object *json_parse_object(const char **json) {
     
     /* Expect opening brace */
     if (*p != '{') {
-        LOG_ERROR("Expected '{' at position %ld", p - *json);
+        LOG_ERROR("Expected '{' at position %zu", (size_t)(p - *json));
         return NULL;
     }
     
@@ -232,7 +232,7 @@ static struct config_object *json_parse_object(const char **json) {
         
         /* Expect colon */
         if (*p != ':') {
-            LOG_ERROR("Expected ':' after key at position %ld", p - *json);
+            LOG_ERROR("Expected ':' after key at position %zu", (size_t)(p - *json));
             free(key);
             config_object_free(obj);
             return NULL;
@@ -277,7 +277,7 @@ static struct config_object *json_parse_object(const char **json) {
             p++; /* Skip closing brace */
             break;
         } else {
-            LOG_ERROR("Expected ',' or '}' at position %ld", p - *json);
+            LOG_ERROR("Expected ',' or '}' at position %zu", (size_t)(p - *json));
             config_object_free(obj);
             return NULL;
         }
@@ -295,7 +295,7 @@ static struct config_value json_parse_array(const char **json) {
     
     /* Expect opening bracket */
     if (*p != '[') {
-        LOG_ERROR("Expected '[' at position %ld", p - *json);
+        LOG_ERROR("Expected '[' at position %zu", (size_t)(p - *json));
         return (struct config_value){.type = CONFIG_VALUE_NULL};
     }
     
@@ -375,7 +375,7 @@ static struct config_value json_parse_array(const char **json) {
             p++; /* Skip closing bracket */
             break;
         } else {
-            LOG_ERROR("Expected ',' or ']' at position %ld", p - *json);
+            LOG_ERROR("Expected ',' or ']' at position %zu", (size_t)(p - *json));
             config_value_free(&array);
             return (struct config_value){.type = CONFIG_VALUE_NULL};
         }
@@ -404,7 +404,7 @@ static struct config_value json_parse_number(const char **json) {
     
     /* Parse digits */
     if (!isdigit(*p)) {
-        LOG_ERROR("Expected digit at position %ld", p - *json);
+        LOG_ERROR("Expected digit at position %zu", (size_t)(p - *json));
         return (struct config_value){.type = CONFIG_VALUE_NULL};
     }
     
@@ -457,7 +457,7 @@ static struct config_value json_parse_number(const char **json) {
         /* Parse exponent */
         int exponent = 0;
         if (!isdigit(*p)) {
-            LOG_ERROR("Expected digit in exponent at position %ld", p - *json);
+            LOG_ERROR("Expected digit in exponent at position %zu", (size_t)(p - *json));
             return (struct config_value){.type = CONFIG_VALUE_NULL};
         }
         
@@ -560,7 +560,7 @@ static struct config_value json_parse_value(const char **json) {
         return json_parse_number(&p);
     }
     
-    LOG_ERROR("Invalid JSON value at position %ld", p - *json);
+    LOG_ERROR("Invalid JSON value at position %zu", (size_t)(p - *json));
     return (struct config_value){.type = CONFIG_VALUE_NULL};
 }
 
@@ -635,7 +635,7 @@ int config_load_file(const char *filename) {
     fseek(f, 0, SEEK_SET);
     
     if (size <= 0 || size > MAX_CONFIG_FILE_SIZE) {
-        LOG_ERROR("Invalid configuration file size: %ld bytes", size);
+        LOG_ERROR("Invalid configuration file size: %lld bytes", size);
         fclose(f);
         return -1;
     }
