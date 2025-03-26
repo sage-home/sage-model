@@ -107,7 +107,7 @@ if (snap_list_file != NULL) {
 After completing the integration, verify functionality with:
 
 ```bash
-cd /Users/dcroton/Documents/Science/projects/sage-repos/sage-model
+cd ${ROOT_DIR}
 make tests
 ```
 

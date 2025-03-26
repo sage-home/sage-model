@@ -3,7 +3,7 @@
         "discovery_enabled": true,
         "search_paths": [
             "modules",
-            "/Users/dcroton/Documents/Science/projects/sage-repos/sage-model/modules"
+            "${ROOT_DIR}/modules"
         ],
         "instances": [
             {
