@@ -4,12 +4,18 @@ This directory contains the testing framework for the SAGE (Semi-Analytic Galaxy
 
 ## Overview
 
-The testing framework:
+The testing framework consists of two main components:
 
-1. Downloads a small set of merger trees (Mini-Millennium) if not present
-2. Sets up a Python environment with required dependencies
-3. Runs SAGE with different output formats (binary and HDF5)
-4. Compares outputs with reference results to ensure consistency
+1. **Main Test Suite**: End-to-end scientific validation
+   - Downloads a small set of merger trees (Mini-Millennium) if not present
+   - Sets up a Python environment with required dependencies
+   - Runs SAGE with different output formats (binary and HDF5)
+   - Compares outputs with reference results to ensure consistency
+
+2. **Pipeline System Test**: Module infrastructure validation (test_pipeline.c)
+   - Validates the Module Pipeline System (Phase 2.5)
+   - Tests pipeline initialization, step execution, and event handling
+   - Run with: `make -f Makefile.test && ./test_pipeline`
 
 ## Quick Start
 
