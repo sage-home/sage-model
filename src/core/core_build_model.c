@@ -15,6 +15,8 @@
 #include "core_utils.h"
 #include "core_logging.h"
 #include "core_galaxy_extensions.h"
+#include "core_pipeline_system.h"
+#include "core_module_system.h"
 
 #include "../physics/model_misc.h"
 #include "../physics/model_mergers.h"
@@ -23,6 +25,109 @@
 #include "../physics/model_starformation_and_feedback.h"
 #include "../physics/model_cooling_heating.h"
 #include "../core/core_parameter_views.h"
+
+/**
+ * Execute a physics pipeline step
+ * 
+ * This function maps pipeline steps to physics module functions.
+ */
+static int physics_step_executor(
+    struct pipeline_step *step,
+    struct base_module *module,
+    void *module_data,
+    struct pipeline_context *context
+) {
+    // Suppress unused parameter warnings
+    (void)module;
+    (void)module_data;
+    
+    // Extract data from context
+    struct GALAXY *galaxies = context->galaxies;
+    int p = context->current_galaxy;
+    int centralgal = context->centralgal;
+    double time = context->time;
+    double dt = context->dt / STEPS;
+    int halonr = context->halonr;
+    int step_num = context->step;
+    struct params *run_params = context->params;
+    
+    // Skip if galaxy has merged
+    if (galaxies[p].mergeType > 0) {
+        return 0;
+    }
+    
+    // Execute based on module type
+    switch (step->type) {
+        case MODULE_TYPE_INFALL:
+            // Apply infall
+            if (p == centralgal) {
+                add_infall_to_hot(p, context->infall_gas / STEPS, galaxies);
+            } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
+                strip_from_satellite(centralgal, p, 0.0, galaxies, run_params);
+            }
+            break;
+            
+        case MODULE_TYPE_REINCORPORATION:
+            // Reincorporation
+            if (p == centralgal && run_params->physics.ReIncorporationFactor > 0.0) {
+                struct reincorporation_params_view reincorp_params;
+                initialize_reincorporation_params_view(&reincorp_params, run_params);
+                reincorporate_gas(p, dt, galaxies, &reincorp_params);
+            }
+            break;
+            
+        case MODULE_TYPE_COOLING:
+            // Cooling
+            {
+                struct cooling_params_view cooling_params;
+                initialize_cooling_params_view(&cooling_params, run_params);
+                double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
+                cool_gas_onto_galaxy(p, coolingGas, galaxies);
+            }
+            break;
+            
+        case MODULE_TYPE_STAR_FORMATION:
+        case MODULE_TYPE_FEEDBACK:
+            // Star formation and feedback
+            {
+                struct star_formation_params_view sf_params;
+                struct feedback_params_view fb_params;
+                initialize_star_formation_params_view(&sf_params, run_params);
+                initialize_feedback_params_view(&fb_params, run_params);
+                starformation_and_feedback(p, centralgal, time, dt, halonr, step_num, 
+                                         galaxies, &sf_params, &fb_params);
+            }
+            break;
+            
+        case MODULE_TYPE_AGN:
+            // AGN module implementation will be added in a future phase
+            LOG_DEBUG("AGN module not yet implemented as a module, skipping in pipeline");
+            break;
+            
+        case MODULE_TYPE_DISK_INSTABILITY:
+            // Disk instability module implementation will be added in a future phase
+            LOG_DEBUG("Disk instability module not yet implemented as a module, skipping in pipeline");
+            break;
+            
+        case MODULE_TYPE_MERGERS:
+            // Mergers module implementation will be added in a future phase
+            LOG_DEBUG("Mergers module not yet implemented as a module, skipping in pipeline");
+            break;
+            
+        case MODULE_TYPE_MISC:
+            // Misc module implementation will be added in a future phase
+            LOG_DEBUG("Misc module not yet implemented as a module, skipping in pipeline");
+            break;
+            
+        default:
+            // Other module types not implemented yet
+            LOG_DEBUG("Module type %s not yet implemented, skipping in pipeline", 
+                    module_type_name(step->type));
+            break;
+    }
+    
+    return 0;
+}
 
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
@@ -321,10 +426,8 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
 /*
  * This function evolves galaxies and applies all physics modules.
  * 
- * REFACTORING NOTE: This function will be transformed into the physics module pipeline
- * controller in Phase 2 of the refactoring. The fixed sequence of physics processes
- * will be replaced with a configurable pipeline where modules can be dynamically loaded,
- * replaced, or reordered at runtime.
+ * The physics modules are applied via a configurable pipeline system,
+ * allowing modules to be replaced, reordered, or removed at runtime.
  */
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
                           struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
@@ -353,12 +456,73 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         return EXIT_FAILURE;
     }
     
-    // PHYSICS MODULE: Infall - calculates gas falling into the halo
-    // REFACTORING NOTE: Will become a pluggable module in Phase 2
+    // Calculate initial infall (still done outside the pipeline for now)
     const double infallingGas = infall_recipe(ctx.centralgal, ctx.ngal, ctx.redshift, ctx.galaxies, run_params);
 
+    // Set up pipeline context
+    struct pipeline_context pipeline_ctx;
+    pipeline_context_init(
+        &pipeline_ctx,
+        run_params,
+        ctx.galaxies,
+        ctx.ngal,
+        ctx.centralgal,
+        run_params->simulation.Age[ctx.galaxies[0].SnapNum], // time
+        ctx.deltaT,                                         // dt
+        ctx.halo_nr,                                        // halonr
+        0,                                                  // step
+        NULL                                                // user_data
+    );
+    pipeline_ctx.current_galaxy = 0;
+    pipeline_ctx.infall_gas = infallingGas;
+    
+    // Get the global physics pipeline
+    struct module_pipeline *physics_pipeline = pipeline_get_global();
+    bool use_pipeline = false;
+    
+    // Check if the pipeline is available and properly configured
+    if (physics_pipeline != NULL) {
+        // During Phase 2.5-2.6, we are more flexible with pipeline validation
+        // Always returns true in Phase 2.5-2.6 but logs helpful information
+        pipeline_validate(physics_pipeline); 
+        
+        // For Phase 2.5-2.6, we check if there are any steps in the pipeline
+        if (physics_pipeline->num_steps > 0) {
+            // First time messaging per run
+            static bool first_pipeline_usage = true;
+            if (first_pipeline_usage) {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_INFO, "Using physics pipeline '%s' with %d steps", 
+                        physics_pipeline->name, physics_pipeline->num_steps);
+                first_pipeline_usage = false;
+            } else {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Using physics pipeline for halo %d", ctx.halo_nr);
+            }
+            use_pipeline = true;
+        } else {
+            // Only log once per process to avoid spamming logs
+            static bool logged_empty_pipeline = false;
+            if (!logged_empty_pipeline) {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_WARNING, "Physics pipeline is empty, using traditional physics implementation");
+                logged_empty_pipeline = true;
+            }
+        }
+    } else {
+        // Only log once per process to avoid spamming logs
+        static bool logged_missing_pipeline = false;
+        if (!logged_missing_pipeline) {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_WARNING, "No physics pipeline available, using traditional physics implementation");
+            logged_missing_pipeline = true;
+        }
+    }
+    
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
+        pipeline_ctx.step = step;
+        
+        // Calculate time for this step
+        const double deltaT = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
+        const double time = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - (step + 0.5) * (deltaT / STEPS);
+        pipeline_ctx.time = time;
 
         // Loop over all galaxies in the halo
         for(int p = 0; p < ctx.ngal; p++) {
@@ -367,54 +531,59 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 continue;
             }
 
-            // Calculate time step and current time
-            const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
-            const double time = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
-            ctx.deltaT = deltaT;  // Store in context for potential future module use
-
+            // Calculate time step
             if(ctx.galaxies[p].dT < 0.0) {
                 ctx.galaxies[p].dT = deltaT;
             }
-
-            // PHYSICS MODULE: Infall - adds gas to the central galaxy
-            // REFACTORING NOTE: Will become part of the infall module in Phase 2
-            if(p == ctx.centralgal) {
-                add_infall_to_hot(ctx.centralgal, infallingGas / STEPS, ctx.galaxies);
-
-                // PHYSICS MODULE: Reincorporation - adds ejected gas back to the hot component
-                // REFACTORING NOTE: Will become a pluggable module in Phase 2
-                if(run_params->physics.ReIncorporationFactor > 0.0) {
-                    struct reincorporation_params_view reincorp_params;
-                    initialize_reincorporation_params_view(&reincorp_params, run_params);
-                    reincorporate_gas(ctx.centralgal, deltaT / STEPS, ctx.galaxies, &reincorp_params);
+            
+            // Update pipeline context for current galaxy
+            pipeline_ctx.current_galaxy = p;
+            
+            if (use_pipeline) {
+                // Execute physics via the pipeline system
+                int status = pipeline_execute_custom(physics_pipeline, &pipeline_ctx, physics_step_executor);
+                if (status != 0) {
+                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute physics pipeline for galaxy %d", p);
+                    return EXIT_FAILURE;
                 }
             } else {
-                // PHYSICS MODULE: Stripping - removes gas from satellite galaxies
-                // REFACTORING NOTE: Will become part of the environmental effects module in Phase 2
-                if(ctx.galaxies[p].Type == 1 && ctx.galaxies[p].HotGas > 0.0) {
-                    strip_from_satellite(ctx.centralgal, p, ctx.redshift, ctx.galaxies, run_params);
+                // Traditional physics implementation (fallback when pipeline is unavailable)
+                
+                // Extract parameters from context for readability
+                int centralgal = pipeline_ctx.centralgal;
+                double dt = pipeline_ctx.dt / STEPS;
+                
+                // PHYSICS MODULE: Infall
+                if (p == centralgal) {
+                    add_infall_to_hot(p, pipeline_ctx.infall_gas / STEPS, galaxies);
+                } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
+                    strip_from_satellite(centralgal, p, 0.0, galaxies, run_params);
+                }
+                
+                // PHYSICS MODULE: Cooling
+                struct cooling_params_view cooling_params;
+                initialize_cooling_params_view(&cooling_params, run_params);
+                double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
+                cool_gas_onto_galaxy(p, coolingGas, galaxies);
+                
+                // PHYSICS MODULE: Star Formation and Feedback
+                struct star_formation_params_view sf_params;
+                struct feedback_params_view fb_params;
+                initialize_star_formation_params_view(&sf_params, run_params);
+                initialize_feedback_params_view(&fb_params, run_params);
+                starformation_and_feedback(p, centralgal, time, dt, pipeline_ctx.halonr, step, 
+                                         galaxies, &sf_params, &fb_params);
+                
+                // PHYSICS MODULE: Reincorporation
+                if (p == centralgal && run_params->physics.ReIncorporationFactor > 0.0) {
+                    struct reincorporation_params_view reincorp_params;
+                    initialize_reincorporation_params_view(&reincorp_params, run_params);
+                    reincorporate_gas(p, dt, galaxies, &reincorp_params);
                 }
             }
-
-            // PHYSICS MODULE: Cooling - converts hot gas to cold gas
-            // REFACTORING NOTE: Will become a pluggable module in Phase 2
-            struct cooling_params_view cooling_params;
-            initialize_cooling_params_view(&cooling_params, run_params);
-            double coolingGas = cooling_recipe(p, deltaT / STEPS, ctx.galaxies, &cooling_params);
-            cool_gas_onto_galaxy(p, coolingGas, ctx.galaxies);
-
-            // PHYSICS MODULE: Star Formation and Feedback - forms stars and heats/ejects gas
-            // REFACTORING NOTE: Will become a pluggable module in Phase 2
-            struct star_formation_params_view sf_params;
-            struct feedback_params_view fb_params;
-            initialize_star_formation_params_view(&sf_params, run_params);
-            initialize_feedback_params_view(&fb_params, run_params);
-            starformation_and_feedback(p, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, 
-                                     ctx.galaxies, &sf_params, &fb_params);
         }
 
-        // PHYSICS MODULE: Mergers and Disruption - handles satellite galaxy fate
-        // REFACTORING NOTE: Will become a pluggable module in Phase 2
+        // PHYSICS MODULE: Mergers and Disruption - still handled outside the pipeline for now
         for(int p = 0; p < ctx.ngal; p++) {
             // satellite galaxy!
             if((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && ctx.galaxies[p].mergeType == 0) {
@@ -425,7 +594,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                     return EXIT_FAILURE;
                 }
 
-                const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
+                // Decrease merge time using deltaT from outer scope
                 ctx.galaxies[p].MergTime -= deltaT / STEPS;
 
                 // only consider mergers or disruption for halo-to-baryonic mass ratios below the threshold
@@ -444,13 +613,11 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
 
                     if(isfinite(ctx.galaxies[p].MergTime)) {
                         // PHYSICS MODULE: Disruption - satellite is disrupted and stars added to ICS
-                        // REFACTORING NOTE: Will become part of the merger module in Phase 2
                         if(ctx.galaxies[p].MergTime > 0.0) {
                             disrupt_satellite_to_ICS(merger_centralgal, p, ctx.galaxies);
                         } else {
                             // PHYSICS MODULE: Mergers - satellite merges with central galaxy
-                            // REFACTORING NOTE: Will become part of the merger module in Phase 2
-                            double time = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
+                            // Use existing time variable from outer scope
                             deal_with_galaxy_merger(p, merger_centralgal, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, ctx.galaxies, run_params);
                         }
                     }

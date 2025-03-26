@@ -1659,26 +1659,29 @@ int config_configure_params(struct params *params) {
         return -1;
     }
     
-    /* Configure simulation parameters */
-    /* Configure I/O parameters */
+    /* Configure IO parameters */
     params->io.FirstFile = config_get_integer("simulation.first_file", params->io.FirstFile);
     params->io.LastFile = config_get_integer("simulation.last_file", params->io.LastFile);
     params->io.NumSimulationTreeFiles = config_get_integer("simulation.num_tree_files", params->io.NumSimulationTreeFiles);
-    const char *snap_list_file = config_get_string("simulation.snap_list_file", params->io.FileWithSnapList);
-    if (snap_list_file) {
+    
+    const char *snap_list_file = config_get_string("simulation.snap_list_file", NULL);
+    if (snap_list_file != NULL) {
         strncpy(params->io.FileWithSnapList, snap_list_file, MAX_STRING_LEN - 1);
         params->io.FileWithSnapList[MAX_STRING_LEN - 1] = '\0';
     }
-    const char *sim_dir = config_get_string("simulation.directory", params->io.SimulationDir);
-    if (sim_dir) {
+    
+    const char *sim_dir = config_get_string("simulation.directory", NULL);
+    if (sim_dir != NULL) {
         strncpy(params->io.SimulationDir, sim_dir, MAX_STRING_LEN - 1);
         params->io.SimulationDir[MAX_STRING_LEN - 1] = '\0';
     }
-    const char *tree_name = config_get_string("simulation.tree_name", params->io.TreeName);
-    if (tree_name) {
+    
+    const char *tree_name = config_get_string("simulation.tree_name", NULL);
+    if (tree_name != NULL) {
         strncpy(params->io.TreeName, tree_name, MAX_STRING_LEN - 1);
         params->io.TreeName[MAX_STRING_LEN - 1] = '\0';
     }
+    
     params->io.TreeType = config_get_integer("simulation.tree_type", params->io.TreeType);
     
     /* Configure cosmology parameters */
@@ -1688,16 +1691,18 @@ int config_configure_params(struct params *params) {
     params->cosmology.Hubble_h = config_get_double("cosmology.hubble_h", params->cosmology.Hubble_h);
     
     /* Configure output parameters */
-    const char *output_dir = config_get_string("output.directory", params->io.OutputDir);
-    if (output_dir) {
+    const char *output_dir = config_get_string("output.directory", NULL);
+    if (output_dir != NULL) {
         strncpy(params->io.OutputDir, output_dir, MAX_STRING_LEN - 1);
         params->io.OutputDir[MAX_STRING_LEN - 1] = '\0';
     }
-    const char *galaxy_name = config_get_string("output.prefix", params->io.FileNameGalaxies);
-    if (galaxy_name) {
+    
+    const char *galaxy_name = config_get_string("output.prefix", NULL);
+    if (galaxy_name != NULL) {
         strncpy(params->io.FileNameGalaxies, galaxy_name, MAX_STRING_LEN - 1);
         params->io.FileNameGalaxies[MAX_STRING_LEN - 1] = '\0';
     }
+    
     params->io.NumSimulationTreeFiles = config_get_integer("output.num_files", params->io.NumSimulationTreeFiles);
     params->io.OutputFormat = config_get_integer("output.format", params->io.OutputFormat);
     
@@ -1708,6 +1713,7 @@ int config_configure_params(struct params *params) {
     params->physics.FeedbackEjectionEfficiency = config_get_double("physics.feedback_ejection_efficiency", params->physics.FeedbackEjectionEfficiency);
     params->physics.RadioModeEfficiency = config_get_double("physics.eject_cutoff_velocity", params->physics.RadioModeEfficiency);
     params->physics.SfrEfficiency = config_get_double("physics.sfr_efficiency", params->physics.SfrEfficiency);
+    
     /* Configure more physics parameters */
     params->physics.AGNrecipeOn = config_get_integer("physics.agn_feedback_enabled", params->physics.AGNrecipeOn);
     params->physics.BlackHoleGrowthRate = config_get_double("physics.black_hole_growth_rate", params->physics.BlackHoleGrowthRate);

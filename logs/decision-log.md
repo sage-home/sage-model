@@ -39,3 +39,11 @@
 2025-03-26: [Phase 2.6] Use Hierarchical Parameter Organization
 - Rationale: Organizing configuration parameters into logical groups (cosmology, physics, io, etc.) improves maintainability and makes the relationship between parameters clearer. This structure matches the codebase organization and makes it easier to identify and modify related parameters.
 - Impact: Cleaner parameter organization, better type safety through struct usage, and more intuitive parameter access. The hierarchical structure also helps prevent naming collisions and makes parameter documentation more organized.
+
+2025-03-26: [Phase 2.5-2.6] Mark All Pipeline Steps as Optional During Early Development
+- Rationale: During Phase 2.5-2.6, only a small subset of the planned modules have been implemented. Marking all pipeline steps as optional allows for graceful handling of missing modules while preserving the pipeline architecture. This approach enables us to test the pipeline system even before all modules are available.
+- Impact: Enables testing and validation of the pipeline structure without requiring all modules to be implemented first. Systems can use the pipeline when modules are available but fall back to traditional implementations when they are not. This facilitates incremental development and refactoring while maintaining a working codebase.
+
+2025-03-26: [Phase 2.5-2.6] Implement Progressive Warning Reduction for Missing Modules
+- Rationale: When running SAGE with many missing modules, log files can become flooded with redundant warnings. By showing only the first few warnings and then reducing log level to debug for subsequent messages, we maintain awareness of missing components without overwhelming the logs.
+- Impact: Significantly cleaner log output that provides useful information without repetition. Developers still receive important warnings but can focus on unique issues. This approach balances informing users about missing modules while keeping logs manageable during development phases.

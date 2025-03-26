@@ -22,49 +22,49 @@
                 "type": "infall",
                 "name": "infall",
                 "enabled": true,
-                "optional": false
+                "optional": true
             },
             {
                 "type": "cooling",
                 "name": "cooling",
                 "enabled": true,
-                "optional": false
+                "optional": true
             },
             {
                 "type": "star_formation",
                 "name": "star_formation",
                 "enabled": true,
-                "optional": false
+                "optional": true
             },
             {
                 "type": "feedback",
                 "name": "feedback",
                 "enabled": true,
-                "optional": false
+                "optional": true
             },
             {
                 "type": "agn",
                 "name": "agn",
                 "enabled": true,
-                "optional": false
+                "optional": true
             },
             {
                 "type": "disk_instability",
                 "name": "disk_instability",
                 "enabled": true,
-                "optional": false
+                "optional": true
             },
             {
                 "type": "mergers",
                 "name": "mergers",
                 "enabled": true,
-                "optional": false
+                "optional": true
             },
             {
                 "type": "reincorporation",
                 "name": "reincorporation",
                 "enabled": true,
-                "optional": false
+                "optional": true
             },
             {
                 "type": "misc",

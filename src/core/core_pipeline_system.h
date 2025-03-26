@@ -53,6 +53,8 @@ struct pipeline_context {
     int halonr;                          /* Current halo number */
     int step;                            /* Current step number */
     void *user_data;                     /* Optional user data */
+    int current_galaxy;                  /* Index of current galaxy being processed */
+    double infall_gas;                   /* Result of infall calculation */
 };
 
 /**

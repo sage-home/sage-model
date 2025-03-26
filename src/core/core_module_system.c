@@ -1392,7 +1392,14 @@ int module_get_active_by_type(enum module_type type, struct base_module **module
         }
     }
     
-    LOG_ERROR("No active module found for type %d", type);
+    /* During Phase 2.5-2.6 development, we're less verbose */
+    static bool already_logged_type_errors[MODULE_TYPE_MAX] = {false};
+    
+    if (!already_logged_type_errors[type]) {
+        LOG_DEBUG("No active module found for type %d (%s)", type, module_type_name(type));
+        already_logged_type_errors[type] = true;
+    }
+    
     return MODULE_STATUS_ERROR;
 }
 

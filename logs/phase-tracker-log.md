@@ -10,79 +10,70 @@
 - At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
-# Current Phase: 2.5-2.6/7 (Pipeline System & Configuration System)
+# Current Phase: 3/7 (I/O Abstraction and Optimization)
 
 ## Phase Objectives
-- Complete Phase 2.5: Module Pipeline System
-  - Implement a configurable pipeline for module execution
-  - Create pipeline step ordering and validation
-  - Build pipeline configuration parsing
-  - Design runtime pipeline modification capability
-  - Develop pipeline event hooks for extensibility
-  
-- Complete Phase 2.6: Configuration System
-  - Design comprehensive configuration file format
-  - Implement configuration parsing and validation
-  - Create parameter binding to module settings
-  - Build configuration override capabilities
-  - Implement runtime configuration updates
+- Implement a unified I/O interface that preserves existing functionality
+- Create format-specific handlers for different input/output formats
+- Add efficient caching strategies for frequently accessed merger tree nodes
+- Optimize memory usage for large datasets
+- Develop intelligent prefetching for depth-first tree traversal
+- Implement memory pooling for galaxy allocations
 
 ## Current Progress
 
-### Phase 2.5: Module Pipeline System
-- [x] Define pipeline interfaces and structures
-- [x] Implement pipeline execution mechanism
-- [x] Create pipeline configuration parsing
-- [x] Build pipeline validation and error checking
-- [x] Implement pipeline modification capabilities
-- [x] Design pipeline event hooks
-- [x] Integrate with the module registry system
+### Phase 3.1: I/O Interface Abstraction
+- [ ] Design unified I/O interface structure
+- [ ] Implement common I/O operations (initialize, read_forest, write_galaxies, cleanup)
+- [ ] Create registry for format-specific handlers
+- [ ] Implement format detection and automatic handler selection
+- [ ] Add error handling and validation for I/O operations
 
-### Phase 2.6: Configuration System
-- [x] Design configuration file format (JSON)
-- [x] Implement configuration file parsing
-- [x] Create parameter validation system
-- [x] Build hierarchical configuration capabilities
-- [x] Implement override mechanisms
-- [x] Create runtime configuration updating
-- [x] Add configuration documentation generation
+### Phase 3.2: Format-Specific Implementations
+- [ ] Refactor binary format handlers to use the common interface
+- [ ] Refactor HDF5 format handlers to use the common interface
+- [ ] Implement serialization support for extended properties
+- [ ] Add validation for data consistency across formats
+- [ ] Create format conversion utilities
 
-### Integration Progress
-- [x] Fixed parameter mapping issues in configuration system
-- [x] Corrected format string warnings in logging statements
-- [x] Improved code portability by replacing hardcoded paths
-- [x] Reviewed documentation and implementation guides
-- [x] Validated fixes with test suite
+### Phase 3.3: Memory Optimization
+- [ ] Implement buffered reading/writing
+- [ ] Create memory mapping options for large files
+- [ ] Design efficient caching for frequently accessed halos
+- [ ] Add prefetching for depth-first traversal
+- [ ] Implement memory pooling for galaxy allocations
 
 ## Next Actions
 
-### Phase 2.5-2.6 Integration (Remaining Tasks)
-1. Integration Tasks:
-   - Modify `evolve_galaxies` in core_build_model.c to use the pipeline system
-   - Complete example configurations showcasing different physics pipelines
-   - Finalize documentation for pipeline system API and module development
-   - Test integration with existing physics modules
+### Phase 3.1 Interface Design
+1. I/O Interface Definition:
+   - Design a unified I/O interface with common operations (initialize, read_forest, write_galaxies, cleanup)
+   - Create a registry for format-specific handlers that can be selected at runtime
+   - Develop error handling and validation to ensure data integrity
 
-2. Validation Tasks:
-   - Benchmark performance against baseline implementation
-   - Complete specific verification of backward compatibility
-   - Conduct targeted testing of physics module integration
+2. Binary Format Implementation:
+   - Refactor the existing binary I/O code into a format-specific implementation of the interface
+   - Ensure backward compatibility with existing binary files
+   - Implement proper error handling and validation
 
-### Phase 3 Preparation
-Once integration is complete, we'll begin Phase 3 (I/O Abstraction) focusing on:
-1. Creating unified I/O interface preserving existing functionality
-2. Implementing format-specific handlers while maintaining compatibility
-3. Developing memory optimizations for merger tree processing
+3. HDF5 Format Implementation:
+   - Refactor the existing HDF5 I/O code into a format-specific implementation of the interface
+   - Add support for galaxy extensions and custom properties
+   - Implement metadata storage for extended properties
+
+4. Memory Optimization Strategy:
+   - Design a plan for implementing memory optimization features (buffering, mapping, caching)
+   - Identify critical paths for optimization based on profiling data
+   - Develop benchmarks to measure the impact of optimizations
 
 ## Completion Criteria
-- Pipeline system can execute configurable sequences of physics modules
-- Module ordering is flexible and can be modified at runtime
-- Configuration system supports comprehensive module settings
-- Parameter validation prevents invalid configurations
-- Runtime changes to pipeline and configuration are supported
-- Example implementations demonstrate pipeline flexibility
-- All tests passing with the new functionality
-- Backward compatibility maintained with existing code
+- All I/O operations function through the unified interface
+- Format-specific handlers implement all required functionality
+- Extended properties are properly serialized across formats
+- Memory usage is optimized for large merger trees
+- Backward compatibility is maintained with existing data files
+- Performance improvements are measurable and significant
+- All tests passing with the new I/O system
 
 ## Inter-Phase Dependencies
 - Phase 1 (Preparatory Refactoring): ✅ COMPLETED
@@ -90,10 +81,11 @@ Once integration is complete, we'll begin Phase 3 (I/O Abstraction) focusing on:
 - Phase 2.2 (Galaxy Property Extension): ✅ COMPLETED
 - Phase 2.3 (Event System): ✅ COMPLETED
 - Phase 2.4 (Module Registry): ✅ COMPLETED
-- Phase 2.5-2.6 (Pipeline/Config): 🔄 IN PROGRESS (Code implementation complete, integration in progress)
-- Phase 3 (I/O Abstraction): BLOCKED by 2.5-2.6
+- Phase 2.5-2.6 (Pipeline/Config): ✅ COMPLETED
+- Phase 3 (I/O Abstraction): 🔄 IN PROGRESS
+- Phase 4 (Plugin Infrastructure): BLOCKED by Phase 3
 
 ## Reference Material
-- Pipeline System: See refactoring plan section 2.5
-- Configuration System: See refactoring plan section 2.6
-- Implementation examples: See refactoring plan "Practical Examples" section
+- I/O Interface: See refactoring plan section 3.1
+- Memory Optimization: See refactoring plan section 3.3
+- Implementation examples: See refactoring plan "Practical Examples" section 3

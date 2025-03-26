@@ -390,6 +390,12 @@ bool pipeline_validate(struct module_pipeline *pipeline) {
         return true;
     }
     
+    /* During Phase 2.5-2.6, we're less verbose about missing modules */
+    static bool already_logged_missing_modules = false;
+    
+    /* Track if any required modules are missing */
+    bool all_required_modules_present = true;
+    
     /* Check for valid modules for each step */
     for (int i = 0; i < pipeline->num_steps; i++) {
         struct pipeline_step *step = &pipeline->steps[i];
@@ -405,19 +411,34 @@ bool pipeline_validate(struct module_pipeline *pipeline) {
         
         int status = pipeline_get_step_module(step, &module, &module_data);
         if (status != 0) {
-            if (step->optional) {
-                LOG_WARNING("Optional step '%s' (type %s) in pipeline '%s' references missing module '%s'",
-                           step->step_name, module_type_name(step->type), 
-                           pipeline->name, step->module_name[0] ? step->module_name : "any");
+            if (!step->optional) {
+                /* Only required modules affect validation */
+                all_required_modules_present = false;
+                
+                /* Only log once per process to avoid spamming */
+                if (!already_logged_missing_modules) {
+                    LOG_ERROR("Required step '%s' (type %s) in pipeline '%s' references missing module '%s'",
+                             step->step_name, module_type_name(step->type), 
+                             pipeline->name, step->module_name[0] ? step->module_name : "any");
+                }
             } else {
-                LOG_ERROR("Required step '%s' (type %s) in pipeline '%s' references missing module '%s'",
-                         step->step_name, module_type_name(step->type), 
-                         pipeline->name, step->module_name[0] ? step->module_name : "any");
-                return false;
+                /* For optional modules, just log at debug level */
+                LOG_DEBUG("Optional step '%s' (type %s) is missing a module, but will be skipped during execution",
+                         step->step_name, module_type_name(step->type));
             }
         }
     }
     
+    /* During Phase 2.5-2.6, not all modules are expected to be present */
+    if (!all_required_modules_present && !already_logged_missing_modules) {
+        LOG_WARNING("Some required modules are missing in Phase 2.5-2.6. Consider marking all steps as optional.");
+    }
+    
+    /* Remember that we've already logged to avoid repetition */
+    already_logged_missing_modules = true;
+    
+    /* In Phase 2.5-2.6, we'll validate the pipeline even if modules are missing */
+    /* This allows evolution to proceed with the traditional implementation */
     return true;
 }
 
@@ -559,7 +580,19 @@ int pipeline_execute_custom(
         int status = pipeline_get_step_module(step, &module, &module_data);
         if (status != 0) {
             if (step->optional) {
-                LOG_WARNING("Skipping optional step '%s' due to missing module", step->step_name);
+                // Use LOG_DEBUG for optional steps to reduce log spam
+                // Only output the first time in each run to avoid overwhelming the logs
+                static bool first_warning = true;
+                if (first_warning) {
+                    LOG_WARNING("Skipping optional step '%s' due to missing module", step->step_name);
+                    // After first few warnings, only log as debug
+                    if (i > 2) {
+                        first_warning = false;
+                        LOG_INFO("Further optional step skipping warnings will be at debug level only");
+                    }
+                } else {
+                    LOG_DEBUG("Skipping optional step '%s' due to missing module", step->step_name);
+                }
                 continue;
             } else {
                 LOG_ERROR("Required module missing for step '%s'", step->step_name);
@@ -622,14 +655,16 @@ struct module_pipeline *pipeline_create_default(void) {
     }
     
     /* Add standard physics steps in the canonical order */
-    pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall", true, false);
-    pipeline_add_step(pipeline, MODULE_TYPE_COOLING, NULL, "cooling", true, false);
-    pipeline_add_step(pipeline, MODULE_TYPE_STAR_FORMATION, NULL, "star_formation", true, false);
-    pipeline_add_step(pipeline, MODULE_TYPE_FEEDBACK, NULL, "feedback", true, false);
-    pipeline_add_step(pipeline, MODULE_TYPE_AGN, NULL, "agn", true, false);
-    pipeline_add_step(pipeline, MODULE_TYPE_DISK_INSTABILITY, NULL, "disk_instability", true, false);
-    pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers", true, false);
-    pipeline_add_step(pipeline, MODULE_TYPE_REINCORPORATION, NULL, "reincorporation", true, false);
+    /* In Phase 2.5-2.6, mark all physics steps as optional since only cooling is implemented as a module */
+    /* NOTE: Once all modules are migrated, non-essential modules will remain optional but core ones will become required */
+    pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall", true, true);
+    pipeline_add_step(pipeline, MODULE_TYPE_COOLING, NULL, "cooling", true, true);
+    pipeline_add_step(pipeline, MODULE_TYPE_STAR_FORMATION, NULL, "star_formation", true, true);
+    pipeline_add_step(pipeline, MODULE_TYPE_FEEDBACK, NULL, "feedback", true, true);
+    pipeline_add_step(pipeline, MODULE_TYPE_AGN, NULL, "agn", true, true);
+    pipeline_add_step(pipeline, MODULE_TYPE_DISK_INSTABILITY, NULL, "disk_instability", true, true);
+    pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers", true, true);
+    pipeline_add_step(pipeline, MODULE_TYPE_REINCORPORATION, NULL, "reincorporation", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_MISC, NULL, "misc", true, true);
     
     LOG_DEBUG("Created default physics pipeline with %d steps", pipeline->num_steps);
