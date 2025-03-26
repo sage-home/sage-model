@@ -393,23 +393,13 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
  */
 float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_params)
 {
-    // Skip calculation entirely if no bulge
+    // Check if we have any bulge
     if (g->BulgeMass <= 0.0) {
         return 0.0;
     }
     
-    // Skip if no cold gas
-    if (g->ColdGas <= 0.0) {
-        return 0.0;
-    }
-    
-    // Calculate bulge to total ratio
+    // Estimate bulge gas as fraction of cold gas based on B/T ratio
     float bulge_to_total = g->BulgeMass / (g->StellarMass > 0.0 ? g->StellarMass : 1.0);
-    
-    // Skip for extremely small bulge to total ratio
-    if (bulge_to_total < 0.01) {
-        return 0.0;  // Negligible bulge contribution
-    }
     
     // Estimate bulge gas fraction - bulges typically have less gas than disks
     float bulge_gas_fraction = bulge_to_total * 0.5;  // typically less gas-rich
@@ -429,10 +419,13 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
         bulge_gas_surface_density = (bulge_gas * 1.0e10 / h) / bulge_area_pc2;  // M_sun/pc^2
     }
     
-    // Get metallicity
+    // Get metallicity - now using bulge metallicity from MetalsBulgeMass
     float metallicity = 0.0;
-    if (g->ColdGas > 0.0) {
-        // Assume same metallicity for disk and bulge gas
+    if (g->BulgeMass > 0.0) {
+        // Use actual bulge metallicity instead of cold gas metallicity
+        metallicity = g->MetalsBulgeMass / g->BulgeMass / 0.02;  // Normalized to solar
+    } else if (g->ColdGas > 0.0) {
+        // Fallback to cold gas metallicity if no bulge stars (unlikely given earlier check)
         metallicity = g->MetalsColdGas / g->ColdGas / 0.02;
     }
     
