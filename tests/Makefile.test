@@ -1,0 +1,19 @@
+# Test makefile for pipeline system
+CC := clang
+CFLAGS := -g -Wall -I../src -I../src/core
+
+# Sources from the core
+CORE_SRC := ../src/core/core_logging.c \
+            ../src/core/core_event_system.c \
+            ../src/core/core_pipeline_system.c
+
+# Test programs
+TEST_PIPELINE := test_pipeline
+
+all: $(TEST_PIPELINE)
+
+$(TEST_PIPELINE): test_pipeline.c $(CORE_SRC)
+	$(CC) $(CFLAGS) -o $@ $^ -lm
+
+clean:
+	rm -f $(TEST_PIPELINE)

@@ -35,3 +35,7 @@
 2025-03-25: [Phase 2.4] Implement Default Fallbacks for Module Configuration
 - Rationale: Creating a system that gracefully handles missing configuration by applying sensible defaults improves robustness. Instead of failing when parameters are missing, the system continues with pre-defined defaults, making the module system more user-friendly and reducing configuration complexity for simple cases.
 - Impact: Simplifies module usage by reducing the amount of required configuration, especially for standard scenarios. Modules remain functional even with minimal configuration, while still allowing detailed customization when needed. This approach balances flexibility with ease of use.
+
+2025-03-26: [Phase 2.6] Use Hierarchical Parameter Organization
+- Rationale: Organizing configuration parameters into logical groups (cosmology, physics, io, etc.) improves maintainability and makes the relationship between parameters clearer. This structure matches the codebase organization and makes it easier to identify and modify related parameters.
+- Impact: Cleaner parameter organization, better type safety through struct usage, and more intuitive parameter access. The hierarchical structure also helps prevent naming collisions and makes parameter documentation more organized.

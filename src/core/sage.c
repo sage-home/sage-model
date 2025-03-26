@@ -25,6 +25,8 @@
 #include "core_tree_utils.h"
 #include "core_logging.h"
 #include "core_event_system.h"
+#include "core_pipeline_system.h"
+#include "core_config_system.h"
 #include "../physics/example_event_handler.h"
 
 #ifdef HDF5

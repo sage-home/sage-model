@@ -206,6 +206,24 @@ event_status_t event_system_initialize(void);
 event_status_t event_system_cleanup(void);
 
 /**
+ * Check if the event system is initialized
+ * 
+ * @return true if the event system is initialized, false otherwise
+ */
+bool event_system_is_initialized(void);
+
+/**
+ * Register a custom event type
+ * 
+ * Creates a new event type for custom events.
+ * 
+ * @param name Name of the event type
+ * @param data_size Size of the event data structure
+ * @return ID of the registered event type, or negative error code on failure
+ */
+int event_register_type(const char *name, size_t data_size);
+
+/**
  * Register an event handler
  * 
  * Adds a handler function that will be called when events of the specified

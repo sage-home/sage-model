@@ -1,0 +1,124 @@
+{
+    "modules": {
+        "discovery_enabled": true,
+        "search_paths": [
+            "modules",
+            "/Users/dcroton/Documents/Science/projects/sage-repos/sage-model/modules"
+        ],
+        "instances": [
+            {
+                "name": "default_cooling",
+                "active": true,
+                "cooling_table_path": "tables/cooling_rates.dat",
+                "cooling_rate_multiplier": 1.0
+            }
+        ]
+    },
+    "pipeline": {
+        "name": "standard_physics",
+        "use_as_global": true,
+        "steps": [
+            {
+                "type": "infall",
+                "name": "infall",
+                "enabled": true,
+                "optional": false
+            },
+            {
+                "type": "cooling",
+                "name": "cooling",
+                "enabled": true,
+                "optional": false
+            },
+            {
+                "type": "star_formation",
+                "name": "star_formation",
+                "enabled": true,
+                "optional": false
+            },
+            {
+                "type": "feedback",
+                "name": "feedback",
+                "enabled": true,
+                "optional": false
+            },
+            {
+                "type": "agn",
+                "name": "agn",
+                "enabled": true,
+                "optional": false
+            },
+            {
+                "type": "disk_instability",
+                "name": "disk_instability",
+                "enabled": true,
+                "optional": false
+            },
+            {
+                "type": "mergers",
+                "name": "mergers",
+                "enabled": true,
+                "optional": false
+            },
+            {
+                "type": "reincorporation",
+                "name": "reincorporation",
+                "enabled": true,
+                "optional": false
+            },
+            {
+                "type": "misc",
+                "name": "misc",
+                "enabled": true,
+                "optional": true
+            }
+        ]
+    },
+    "simulation": {
+        "first_file": 0,
+        "last_file": 511,
+        "num_tree_files": 512,
+        "snap_list_file": "input/millennium.par",
+        "directory": ".",
+        "tree_name": "millennium_mini",
+        "tree_type": 0
+    },
+    "cosmology": {
+        "omega_matter": 0.25,
+        "omega_lambda": 0.75,
+        "baryon_fraction": 0.17,
+        "hubble_h": 0.73
+    },
+    "output": {
+        "directory": "output",
+        "prefix": "model",
+        "num_files": 1,
+        "format": 0
+    },
+    "physics": {
+        "recycle_fraction": 0.43,
+        "reincorporation_factor": 0.1,
+        "feedback_reheating_epsilon": 2.0,
+        "feedback_ejection_efficiency": 0.3,
+        "eject_cutoff_velocity": 400.0,
+        "sfr_efficiency": 0.03,
+        "sfr_critical_density": 0.24,
+        "sfr_burst_efficiency": 0.5,
+        "sfr_burst_slope": 1.0,
+        "agn_efficiency": 0.03,
+        "black_hole_growth_rate": 0.03,
+        "black_hole_seed_mass": 1000.0,
+        "black_hole_cutoff_velocity": 280.0,
+        "thresh_major_merger": 0.3,
+        "threshold_satellite_disruption": 1.0,
+        "merger_time_multiplier": 1.0,
+        "ram_pressure_strip_disk": true,
+        "ram_pressure_reduction_factor": 0.3,
+        "disk_instability_enabled": true,
+        "disk_instability_threshold": 0.8
+    },
+    "debug": {
+        "enabled": false,
+        "output_list_on": false
+    }
+}

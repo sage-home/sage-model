@@ -10,6 +10,13 @@
 /* Global event system */
 event_system_t *global_event_system = NULL;
 
+/* Forward declarations for internal functions */
+static int find_event_type_index(event_type_t event_type);
+static int ensure_event_type(event_type_t event_type);
+static int compare_handlers_by_priority(const void *a, const void *b);
+static void sort_handlers_by_priority(int event_type_index);
+static void log_event(const event_t *event);
+
 /* Static event type names for debugging and logging */
 static const char *event_type_names[] = {
     "UNKNOWN",
@@ -159,6 +166,77 @@ event_status_t event_system_cleanup(void) {
     
     LOG_INFO("Event system cleaned up");
     return EVENT_STATUS_SUCCESS;
+}
+
+/**
+ * Check if the event system is initialized
+ * 
+ * @return true if the event system is initialized, false otherwise
+ */
+bool event_system_is_initialized(void) {
+    return global_event_system != NULL && global_event_system->initialized;
+}
+
+/**
+ * Register a custom event type
+ * 
+ * Creates a new event type for custom events.
+ * 
+ * @param name Name of the event type
+ * @param data_size Size of the event data structure (currently unused)
+ * @return ID of the registered event type, or negative error code on failure
+ */
+int event_register_type(const char *name, size_t data_size) {
+    (void)data_size; /* Suppress unused parameter warning */
+    
+    if (!event_system_is_initialized()) {
+        /* Auto-initialize if not done already */
+        event_status_t status = event_system_initialize();
+        if (status != EVENT_STATUS_SUCCESS) {
+            return -1;
+        }
+    }
+    
+    /* Validate arguments */
+    if (name == NULL) {
+        LOG_ERROR("Invalid event type name");
+        return -1;
+    }
+    
+    /* Find an available event ID in the custom range */
+    event_type_t event_id = EVENT_CUSTOM_BEGIN;
+    while (event_id <= EVENT_CUSTOM_END) {
+        /* Check if this ID is already in use */
+        bool found = false;
+        for (int i = 0; i < global_event_system->num_event_types; i++) {
+            if (global_event_system->event_handlers[i].type == event_id) {
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            /* This ID is available, use it */
+            break;
+        }
+        
+        event_id = (event_type_t)(event_id + 1);
+    }
+    
+    if (event_id > EVENT_CUSTOM_END) {
+        LOG_ERROR("No more custom event types available");
+        return -1;
+    }
+    
+    /* Ensure the event type exists in our registry */
+    int event_index = ensure_event_type(event_id);
+    if (event_index < 0) {
+        LOG_ERROR("Failed to register event type '%s'", name);
+        return -1;
+    }
+    
+    LOG_INFO("Registered custom event type '%s' with ID %d", name, event_id);
+    return (int)event_id;
 }
 
 /**

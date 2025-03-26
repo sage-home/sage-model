@@ -34,6 +34,14 @@ extern "C" {
     extern void initialize_event_system(void);
     extern void cleanup_event_system(void);
     
+    /* Pipeline system initialization */
+    extern void initialize_pipeline_system(void);
+    extern void cleanup_pipeline_system(void);
+    
+    /* Configuration system initialization */
+    extern void initialize_config_system(const char *config_file);
+    extern void cleanup_config_system(void);
+    
     /* Evolution context initialization and validation */
     extern void initialize_evolution_context(struct evolution_context *ctx, 
                                            const int halonr,

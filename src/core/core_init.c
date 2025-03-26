@@ -17,6 +17,8 @@
 #include "core_module_system.h"
 #include "core_galaxy_extensions.h"
 #include "core_event_system.h"
+#include "core_pipeline_system.h"
+#include "core_config_system.h"
 
 /* Include physics module interfaces */
 #include "../physics/module_cooling.h"
@@ -61,6 +63,14 @@ void init(struct params *run_params)
     /* Initialize event system */
     initialize_event_system();
     LOG_DEBUG("Event system initialized");
+    
+    /* Initialize pipeline system */
+    initialize_pipeline_system();
+    LOG_DEBUG("Pipeline system initialized");
+    
+    /* Initialize configuration system */
+    initialize_config_system(NULL); /* Use default configuration */
+    LOG_DEBUG("Configuration system initialized");
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
@@ -283,6 +293,8 @@ void cleanup(struct params *run_params)
     LOG_DEBUG("Starting component cleanup");
     
     /* Clean up systems in reverse order of initialization */
+    cleanup_config_system();
+    cleanup_pipeline_system();
     cleanup_event_system();
     cleanup_galaxy_extension_system();
     cleanup_module_system();
@@ -384,6 +396,130 @@ void cleanup_event_system(void)
         LOG_ERROR("Failed to clean up event system, status = %d", status);
     } else {
         LOG_DEBUG("Event system cleaned up");
+    }
+}
+
+/**
+ * Initialize the pipeline system
+ * 
+ * Sets up the pipeline system and creates the default pipeline.
+ */
+void initialize_pipeline_system(void)
+{
+    /* Initialize the pipeline system */
+    int status = pipeline_system_initialize();
+    if (status != 0) {
+        LOG_ERROR("Failed to initialize pipeline system, status = %d", status);
+        return;
+    }
+    
+    /* Register pipeline events if event system is available */
+    if (event_system_is_initialized()) {
+        status = pipeline_register_events();
+        if (status != 0) {
+            LOG_WARNING("Failed to register pipeline events, status = %d", status);
+            /* Continue anyway - failing to register events is not fatal */
+        }
+    }
+    
+    /* Create the default pipeline */
+    struct module_pipeline *default_pipeline = pipeline_create_default();
+    if (default_pipeline == NULL) {
+        LOG_ERROR("Failed to create default pipeline");
+        return;
+    }
+    
+    /* Validate the pipeline */
+    if (!pipeline_validate(default_pipeline)) {
+        LOG_WARNING("Default pipeline validation failed");
+        /* Continue anyway - validation failures are warnings */
+    }
+    
+    /* Set as global pipeline */
+    if (pipeline_set_global(default_pipeline) != 0) {
+        LOG_ERROR("Failed to set global pipeline");
+        pipeline_destroy(default_pipeline);
+        return;
+    }
+    
+    LOG_INFO("Pipeline system initialized with default pipeline");
+}
+
+/**
+ * Clean up the pipeline system
+ * 
+ * Releases resources used by the pipeline system.
+ */
+void cleanup_pipeline_system(void)
+{
+    int status = pipeline_system_cleanup();
+    if (status != 0) {
+        LOG_ERROR("Failed to clean up pipeline system, status = %d", status);
+    } else {
+        LOG_DEBUG("Pipeline system cleaned up");
+    }
+}
+
+/**
+ * Initialize the configuration system
+ * 
+ * Sets up the configuration system and loads the specified config file.
+ * 
+ * @param config_file Path to the config file, or NULL to use defaults
+ */
+void initialize_config_system(const char *config_file)
+{
+    /* Initialize the configuration system */
+    int status = config_system_initialize();
+    if (status != 0) {
+        LOG_ERROR("Failed to initialize configuration system, status = %d", status);
+        return;
+    }
+    
+    /* Load configuration file if specified */
+    if (config_file != NULL) {
+        status = config_load_file(config_file);
+        if (status != 0) {
+            LOG_WARNING("Failed to load configuration file '%s', status = %d", config_file, status);
+            LOG_WARNING("Using default configuration instead");
+        } else {
+            LOG_INFO("Loaded configuration from '%s'", config_file);
+            
+            /* Apply configuration to module system if available */
+            if (global_module_registry != NULL) {
+                status = config_configure_modules(NULL);
+                if (status != 0) {
+                    LOG_WARNING("Failed to configure modules from configuration, status = %d", status);
+                } else {
+                    LOG_INFO("Modules configured from configuration file");
+                }
+            }
+            
+            /* Configure pipeline from configuration */
+            status = config_configure_pipeline();
+            if (status != 0) {
+                LOG_WARNING("Failed to configure pipeline from configuration, status = %d", status);
+            } else {
+                LOG_INFO("Pipeline configured from configuration file");
+            }
+        }
+    } else {
+        LOG_INFO("Using default configuration (no file specified)");
+    }
+}
+
+/**
+ * Clean up the configuration system
+ * 
+ * Releases resources used by the configuration system.
+ */
+void cleanup_config_system(void)
+{
+    int status = config_system_cleanup();
+    if (status != 0) {
+        LOG_ERROR("Failed to clean up configuration system, status = %d", status);
+    } else {
+        LOG_DEBUG("Configuration system cleaned up");
     }
 }
 

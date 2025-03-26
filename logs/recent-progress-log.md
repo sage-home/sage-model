@@ -52,3 +52,33 @@
 - Created memory safety improvements with proper initialization and cleanup
 - Fixed parameter handling for optional module configuration
 - Modified files: core_module_system.h, core_module_system.c, core_init.c, core_read_parameter_file.c
+
+2025-03-26: [Phase 2.5] Module Pipeline System Implementation
+- Designed and implemented core pipeline infrastructure with step configuration and execution
+- Created pipeline modification capabilities for dynamic step insertion, removal, and reordering
+- Added event hooks for pipeline lifecycle events (start, step, completion)
+- Implemented pipeline validation and error handling
+- Created example implementation to demonstrate pipeline usage
+- New files: core_pipeline_system.h, core_pipeline_system.c, tests/test_pipeline.c, examples/pipeline_example.c
+
+2025-03-26: [Phase 2.6] Configuration System Implementation
+- Implemented lightweight JSON parser and configuration system
+- Created hierarchical configuration capabilities with dotted path syntax
+- Added parameter type checking and validation
+- Implemented override mechanisms for command-line options
+- Created example configuration file with pipeline and module settings
+- Added parameter binding for modules and pipeline configuration
+- New files: core_config_system.h, core_config_system.c, input/config.json
+
+2025-03-26: [Phase 2.6] Integration and Bug Fixes
+- Fixed parameter access in configuration system to match struct hierarchy
+- Updated parameter references to use proper substructure (cosmology, physics, io)
+- Fixed const correctness issues in string handling
+- Corrected format specifiers for 64-bit integers
+- Improved robustness of parameter setting code
+- Modified files: core_config_system.c, core_config_system.h
+
+2025-03-26: [Phase 2.6] Code Review Notes
+- Integration guides (implementation-guide-pipeline-integration.md, integration-guide-phase2.5-2.6.md, integration-plan-phase3.md) need review and finalization before commit
+- Double-check Makefile for any accidental local path changes before commit
+- Plan to review these items in next code review session
