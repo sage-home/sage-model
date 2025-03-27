@@ -37,3 +37,4 @@ yy*
 # Documentation with Sphinx #
 docs/build
 docs/make.bat
+.aider*
