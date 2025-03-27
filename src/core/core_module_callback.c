@@ -645,3 +645,180 @@ int module_call_validate(int caller_id, int callee_id) {
     
     return MODULE_STATUS_DEPENDENCY_NOT_FOUND;
 }
+
+/**
+ * Invoke a function in another module
+ * 
+ * Calls a registered function in a module.
+ * 
+ * @param caller_id ID of the calling module
+ * @param module_type Type of module to invoke (can be MODULE_TYPE_UNKNOWN if module_name is provided)
+ * @param module_name Optional specific module name (can be NULL to use active module of type)
+ * @param function_name Name of function to call
+ * @param context Context to pass to function
+ * @param args Arguments to pass to the function
+ * @param result Optional pointer to store result (type depends on function)
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_invoke(
+    int caller_id,
+    int module_type,
+    const char *module_name,
+    const char *function_name,
+    void *context,
+    void *args,
+    void *result
+) {
+    /* Check arguments */
+    if (function_name == NULL) {
+        LOG_ERROR("Invalid arguments to module_invoke (function_name is NULL)");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    /* We need either a module type or a module name */
+    if (module_type == MODULE_TYPE_UNKNOWN && (module_name == NULL || module_name[0] == '\0')) {
+        LOG_ERROR("Invalid arguments to module_invoke (both module_type and module_name are invalid)");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    /* Get the caller module for validation */
+    struct base_module *caller = NULL;
+    void *caller_data = NULL;
+    int status = module_get(caller_id, &caller, &caller_data);
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to get caller module %d: %d", caller_id, status);
+        return status;
+    }
+    
+    /* Find target module */
+    int target_id = -1;
+    struct base_module *target = NULL;
+    void *target_data = NULL;
+    
+    if (module_name != NULL && module_name[0] != '\0') {
+        /* Look for module by name */
+        target_id = module_find_by_name(module_name);
+        if (target_id < 0) {
+            LOG_ERROR("Module '%s' not found", module_name);
+            return MODULE_STATUS_MODULE_NOT_FOUND;
+        }
+        
+        /* Get the module */
+        status = module_get(target_id, &target, &target_data);
+        if (status != MODULE_STATUS_SUCCESS) {
+            LOG_ERROR("Failed to get target module '%s': %d", module_name, status);
+            return status;
+        }
+        
+        /* Check that module is of expected type if one was specified */
+        if (module_type != MODULE_TYPE_UNKNOWN && target->type != module_type) {
+            LOG_ERROR("Module '%s' is of type %s, expected %s",
+                     module_name, module_type_name(target->type), module_type_name(module_type));
+            return MODULE_STATUS_ERROR;
+        }
+    } else {
+        /* Look for active module of the specified type */
+        status = module_get_active_by_type(module_type, &target, &target_data);
+        if (status != MODULE_STATUS_SUCCESS) {
+            LOG_ERROR("No active module of type %s found", module_type_name(module_type));
+            return MODULE_STATUS_MODULE_NOT_FOUND;
+        }
+        
+        /* Get the module ID */
+        target_id = target->module_id;
+    }
+    
+    /* Validate the call */
+    status = module_call_validate(caller_id, target_id);
+    if (status != MODULE_STATUS_SUCCESS) {
+        /* module_call_validate already logs detailed error messages */
+        return status;
+    }
+    
+    /* Find the function in the target module */
+    if (target->function_registry == NULL) {
+        LOG_ERROR("Target module '%s' has no function registry", target->name);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    /* Search for the function by name */
+    module_function_t *func = NULL;
+    for (int i = 0; i < target->function_registry->num_functions; i++) {
+        if (strcmp(target->function_registry->functions[i].name, function_name) == 0) {
+            func = &target->function_registry->functions[i];
+            break;
+        }
+    }
+    
+    if (func == NULL) {
+        LOG_ERROR("Function '%s' not found in module '%s'", function_name, target->name);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    /* Push to call stack */
+    status = module_call_stack_push(caller_id, target_id, function_name, context);
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to push call stack frame: %d", status);
+        return status;
+    }
+    
+    /* Execute the function based on its return type */
+    switch (func->return_type) {
+        case FUNCTION_TYPE_VOID: {
+            /* Call void function */
+            void (*func_ptr)(void *, void *) = (void (*)(void *, void *))func->function_ptr;
+            func_ptr(args, context);
+            break;
+        }
+        
+        case FUNCTION_TYPE_INT: {
+            /* Call int function */
+            int (*func_ptr)(void *, void *) = (int (*)(void *, void *))func->function_ptr;
+            int ret = func_ptr(args, context);
+            
+            /* Store result if requested */
+            if (result != NULL) {
+                *((int *)result) = ret;
+            }
+            break;
+        }
+        
+        case FUNCTION_TYPE_DOUBLE: {
+            /* Call double function */
+            double (*func_ptr)(void *, void *) = (double (*)(void *, void *))func->function_ptr;
+            double ret = func_ptr(args, context);
+            
+            /* Store result if requested */
+            if (result != NULL) {
+                *((double *)result) = ret;
+            }
+            break;
+        }
+        
+        case FUNCTION_TYPE_POINTER: {
+            /* Call pointer function */
+            void *(*func_ptr)(void *, void *) = (void *(*)(void *, void *))func->function_ptr;
+            void *ret = func_ptr(args, context);
+            
+            /* Store result if requested */
+            if (result != NULL) {
+                *((void **)result) = ret;
+            }
+            break;
+        }
+        
+        default:
+            LOG_ERROR("Unknown function return type: %d", func->return_type);
+            module_call_stack_pop();
+            return MODULE_STATUS_ERROR;
+    }
+    
+    /* Pop from call stack */
+    status = module_call_stack_pop();
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to pop call stack frame: %d", status);
+        return status;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}

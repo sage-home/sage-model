@@ -290,6 +290,30 @@ int module_declare_simple_dependency(
  */
 int module_call_validate(int caller_id, int callee_id);
 
+/**
+ * Invoke a function in another module
+ * 
+ * Calls a registered function in a module.
+ * 
+ * @param caller_id ID of the calling module
+ * @param module_type Type of module to invoke (can be MODULE_TYPE_UNKNOWN if module_name is provided)
+ * @param module_name Optional specific module name (can be NULL to use active module of type)
+ * @param function_name Name of function to call
+ * @param context Context to pass to function
+ * @param args Arguments to pass to the function
+ * @param result Optional pointer to store result (type depends on function)
+ * @return 0 on success, error code on failure
+ */
+int module_invoke(
+    int caller_id,
+    int module_type,
+    const char *module_name,
+    const char *function_name,
+    void *context,
+    void *args,
+    void *result
+);
+
 #ifdef __cplusplus
 }
 #endif
