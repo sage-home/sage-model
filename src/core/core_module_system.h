@@ -7,6 +7,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "core_allvars.h"
+#include "core_module_callback.h"
 
 /**
  * @file core_module_system.h
@@ -85,19 +86,6 @@ struct module_version {
     int patch;       /* Patch version (backwards-compatible bug fixes) */
 };
 
-/**
- * Module dependency structure
- * 
- * Defines a dependency on another module with version constraints
- */
-struct module_dependency {
-    char name[MAX_DEPENDENCY_NAME];    /* Name of the required module */
-    enum module_type type;             /* Type of the required module */
-    struct module_version min_version; /* Minimum version required */
-    struct module_version max_version; /* Maximum version allowed (if any) */
-    bool exact_match;                  /* Require exact version match */
-    bool optional;                     /* Whether this dependency is optional */
-};
 
 /**
  * Module manifest structure
@@ -153,6 +141,13 @@ struct base_module {
     
     /* Module manifest */
     struct module_manifest *manifest;     /* Pointer to module manifest (if available) */
+    
+    /* Function registry (for callback system) */
+    module_function_registry_t *function_registry; /* Functions available for calling by other modules */
+    
+    /* Runtime dependencies */
+    module_dependency_t *dependencies;    /* Array of module dependencies */
+    int num_dependencies;                 /* Number of dependencies */
 };
 
 /**
@@ -291,6 +286,16 @@ int module_get_active_by_type(enum module_type type, struct base_module **module
  * @return true if the module is valid, false otherwise
  */
 bool module_validate(const struct base_module *module);
+
+/**
+ * Validate module runtime dependencies
+ * 
+ * Checks that all dependencies of a module are satisfied at runtime.
+ * 
+ * @param module_id ID of the module to validate
+ * @return MODULE_STATUS_SUCCESS if all dependencies are met, error code otherwise
+ */
+int module_validate_runtime_dependencies(int module_id);
 
 /**
  * Set a module as active

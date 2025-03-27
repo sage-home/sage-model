@@ -11,6 +11,7 @@
 #include "core_module_system.h"
 #include "core_logging.h"
 #include "core_mymalloc.h"
+#include "core_module_callback.h"
 
 /* Global module registry */
 struct module_registry *global_module_registry = NULL;
@@ -391,14 +392,14 @@ int module_load_manifest(const char *filename, struct module_manifest *manifest)
                 dep->type = module_type_from_string(name);
             }
             
-            /* Parse min version */
+            /* Store version strings */
             if (dep_parts[1]) {
-                module_parse_version(dep_parts[1], &dep->min_version);
+                strncpy(dep->min_version_str, dep_parts[1], sizeof(dep->min_version_str) - 1);
             }
             
             /* Parse max version if provided */
             if (dep_parts[2]) {
-                module_parse_version(dep_parts[2], &dep->max_version);
+                strncpy(dep->max_version_str, dep_parts[2], sizeof(dep->max_version_str) - 1);
             }
             
             free(dep_str);
@@ -493,6 +494,15 @@ int module_system_initialize(void) {
     
     /* Default configuration */
     global_module_registry->discovery_enabled = false;
+    
+    /* Initialize the module callback system */
+    int status = module_callback_system_initialize();
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to initialize module callback system");
+        myfree(global_module_registry);
+        global_module_registry = NULL;
+        return status;
+    }
     
     LOG_INFO("Module system initialized");
     return MODULE_STATUS_SUCCESS;
@@ -684,21 +694,45 @@ int module_check_dependencies(const struct module_manifest *manifest) {
             return MODULE_STATUS_DEPENDENCY_CONFLICT;
         }
         
-        /* Check version compatibility */
-        struct module_version version;
-        if (module_parse_version(module->version, &version) != MODULE_STATUS_SUCCESS) {
-            LOG_ERROR("Failed to parse version for dependency: %s", dep->name);
-            return MODULE_STATUS_ERROR;
+        /* Check version compatibility using string-based approach */
+        if (dep->min_version_str[0] != '\0') {
+            struct module_version dep_min_version;
+            struct module_version module_version;
+            
+            /* Parse both versions */
+            if (module_parse_version(dep->min_version_str, &dep_min_version) == MODULE_STATUS_SUCCESS &&
+                module_parse_version(module->version, &module_version) == MODULE_STATUS_SUCCESS) {
+                
+                /* Check minimum version requirement */
+                if (module_compare_versions(&module_version, &dep_min_version) < 0) {
+                    LOG_ERROR("Dependency %s version conflict: %s has version %s, but minimum %s is required",
+                             dep->name, module->name, module->version, dep->min_version_str);
+                    return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                }
+                
+                /* Check maximum version constraint if specified */
+                if (dep->max_version_str[0] != '\0') {
+                    struct module_version dep_max_version;
+                    if (module_parse_version(dep->max_version_str, &dep_max_version) == MODULE_STATUS_SUCCESS) {
+                        if (module_compare_versions(&module_version, &dep_max_version) > 0) {
+                            LOG_ERROR("Dependency %s version conflict: %s has version %s, but maximum %s is allowed",
+                                     dep->name, module->name, module->version, dep->max_version_str);
+                            return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                        }
+                    }
+                }
+                
+                /* Check for exact match if required */
+                if (dep->exact_match && strcmp(module->version, dep->min_version_str) != 0) {
+                    LOG_ERROR("Dependency %s version conflict: %s has version %s, but exact version %s is required",
+                             dep->name, module->name, module->version, dep->min_version_str);
+                    return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                }
+            }
         }
         
-        if (!module_check_version_compatibility(
-                &version, &dep->min_version, 
-                dep->max_version.major > 0 ? &dep->max_version : NULL, 
-                dep->exact_match)) {
-            LOG_ERROR("Dependency %s version conflict: module is %s, required %s",
-                     dep->name, module->version, dep->min_version.major > 0 ? "compatible version" : "any version");
-            return MODULE_STATUS_DEPENDENCY_CONFLICT;
-        }
+        LOG_DEBUG("Dependency %s satisfied by module %s version %s",
+                 dep->name, module->name, module->version);
     }
     
     return MODULE_STATUS_SUCCESS;
@@ -723,6 +757,21 @@ int module_system_cleanup(void) {
             module_cleanup(i);
         }
         
+        /* Free function registry if allocated */
+        struct base_module *module = global_module_registry->modules[i].module;
+        if (module != NULL) {
+            if (module->function_registry != NULL) {
+                myfree(module->function_registry);
+                module->function_registry = NULL;
+            }
+            
+            if (module->dependencies != NULL) {
+                myfree(module->dependencies);
+                module->dependencies = NULL;
+                module->num_dependencies = 0;
+            }
+        }
+        
         /* If this is a dynamically loaded module, unload it */
         if (global_module_registry->modules[i].dynamic && 
             global_module_registry->modules[i].handle != NULL) {
@@ -730,6 +779,9 @@ int module_system_cleanup(void) {
             global_module_registry->modules[i].handle = NULL;
         }
     }
+    
+    /* Clean up the module callback system */
+    module_callback_system_cleanup();
     
     /* Free the registry */
     myfree(global_module_registry);
@@ -1091,19 +1143,19 @@ int module_register(struct base_module *module) {
             return status;
         }
     }
-    
+
     /* Validate module */
     if (!module_validate(module)) {
         LOG_ERROR("Invalid module interface provided");
         return MODULE_STATUS_INVALID_ARGS;
     }
-    
+
     /* Check for space in registry */
     if (global_module_registry->num_modules >= MAX_MODULES) {
         LOG_ERROR("Module registry is full (max %d modules)", MAX_MODULES);
         return MODULE_STATUS_ERROR;
     }
-    
+
     /* Check if module with the same name already exists */
     for (int i = 0; i < global_module_registry->num_modules; i++) {
         if (global_module_registry->modules[i].module != NULL &&
@@ -1112,10 +1164,15 @@ int module_register(struct base_module *module) {
             return MODULE_STATUS_ERROR;
         }
     }
-    
+
     /* Find an available slot */
     int module_id = global_module_registry->num_modules;
-    
+
+    /* Initialize module callback fields */
+    module->function_registry = NULL;
+    module->dependencies = NULL;
+    module->num_dependencies = 0;
+
     /* Copy the module interface */
     global_module_registry->modules[module_id].module = module;
     global_module_registry->modules[module_id].module_data = NULL;
@@ -1124,7 +1181,7 @@ int module_register(struct base_module *module) {
     global_module_registry->modules[module_id].dynamic = false;
     global_module_registry->modules[module_id].handle = NULL;
     global_module_registry->modules[module_id].path[0] = '\0';
-    
+
     /* Assign ID to module */
     module->module_id = module_id;
     
@@ -1416,32 +1473,201 @@ bool module_validate(const struct base_module *module) {
         LOG_ERROR("NULL module pointer");
         return false;
     }
-    
+
     /* Check required fields */
     if (module->name[0] == '\0') {
         LOG_ERROR("Module name cannot be empty");
         return false;
     }
-    
+
     if (module->version[0] == '\0') {
         LOG_ERROR("Module version cannot be empty");
         return false;
     }
-    
+
     if (module->type <= MODULE_TYPE_UNKNOWN || module->type >= MODULE_TYPE_MAX) {
         LOG_ERROR("Invalid module type: %d", module->type);
         return false;
     }
-    
+
     /* Check required functions */
     if (module->initialize == NULL) {
         LOG_ERROR("Module '%s' missing initialize function", module->name);
         return false;
     }
-    
+
     /* cleanup can be NULL if the module doesn't need cleanup */
-    
+
+    /* Validate dependency array if present */
+    if (module->dependencies != NULL && module->num_dependencies <= 0) {
+        LOG_WARNING("Module '%s' has dependencies array but num_dependencies is %d",
+                  module->name, module->num_dependencies);
+    }
+
+    /* Validate function registry if present */
+    if (module->function_registry != NULL && 
+        (module->function_registry->num_functions < 0 || 
+         module->function_registry->num_functions > MAX_MODULE_FUNCTIONS)) {
+        LOG_ERROR("Module '%s' has invalid function registry (num_functions: %d)",
+                module->name, module->function_registry->num_functions);
+        return false;
+    }
+
     return true;
+}
+
+/**
+ * Validate module runtime dependencies
+ * 
+ * Checks that all dependencies of a module are satisfied at runtime.
+ * 
+ * @param module_id ID of the module to validate
+ * @return MODULE_STATUS_SUCCESS if all dependencies are met, error code otherwise
+ */
+int module_validate_runtime_dependencies(int module_id) {
+    if (global_module_registry == NULL) {
+        LOG_ERROR("Module system not initialized");
+        return MODULE_STATUS_NOT_INITIALIZED;
+    }
+    
+    if (module_id < 0 || module_id >= global_module_registry->num_modules) {
+        LOG_ERROR("Invalid module ID: %d", module_id);
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    struct base_module *module = global_module_registry->modules[module_id].module;
+    if (module == NULL) {
+        LOG_ERROR("NULL module pointer for ID %d", module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    /* Skip if no dependencies */
+    if (module->dependencies == NULL || module->num_dependencies == 0) {
+        return MODULE_STATUS_SUCCESS;
+    }
+    
+    /* Check each dependency */
+    for (int i = 0; i < module->num_dependencies; i++) {
+        const module_dependency_t *dep = &module->dependencies[i];
+        
+        /* If this is a type-based dependency, check for active module of this type */
+        if (dep->type != MODULE_TYPE_UNKNOWN && dep->name[0] == '\0') {
+            /* Find active module of the specified type */
+            int active_index = -1;
+            for (int j = 0; j < global_module_registry->num_active_types; j++) {
+                if (global_module_registry->active_modules[j].type == dep->type) {
+                    active_index = global_module_registry->active_modules[j].module_index;
+                    break;
+                }
+            }
+            
+            if (active_index < 0) {
+                if (dep->optional) {
+                    LOG_INFO("Optional dependency on type %s not satisfied - no active module",
+                             module_type_name(dep->type));
+                    continue;
+                } else {
+                    LOG_ERROR("Required dependency on type %s not satisfied - no active module",
+                             module_type_name(dep->type));
+                    return MODULE_STATUS_DEPENDENCY_NOT_FOUND;
+                }
+            }
+            
+            /* Get the active module */
+            struct base_module *active_module = global_module_registry->modules[active_index].module;
+            if (active_module == NULL) {
+                LOG_ERROR("NULL module pointer for active module of type %s",
+                         module_type_name(dep->type));
+                return MODULE_STATUS_ERROR;
+            }
+            
+            /* Check version compatibility using string-based approach */
+            if (dep->min_version_str[0] != '\0') {
+                struct module_version dep_min_version;
+                struct module_version active_version;
+                
+                /* Parse both versions */
+                if (module_parse_version(dep->min_version_str, &dep_min_version) == MODULE_STATUS_SUCCESS &&
+                    module_parse_version(active_module->version, &active_version) == MODULE_STATUS_SUCCESS) {
+                    
+                    /* Check minimum version requirement */
+                    if (module_compare_versions(&active_version, &dep_min_version) < 0) {
+                        LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but minimum %s is required",
+                                 module_type_name(dep->type), active_module->name, 
+                                 active_module->version, dep->min_version_str);
+                        return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                    }
+                    
+                    /* Check maximum version constraint if specified */
+                    if (dep->max_version_str[0] != '\0') {
+                        struct module_version dep_max_version;
+                        if (module_parse_version(dep->max_version_str, &dep_max_version) == MODULE_STATUS_SUCCESS) {
+                            if (module_compare_versions(&active_version, &dep_max_version) > 0) {
+                                LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but maximum %s is allowed",
+                                         module_type_name(dep->type), active_module->name, 
+                                         active_module->version, dep->max_version_str);
+                                return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                            }
+                        }
+                    }
+                    
+                    /* Check for exact match if required */
+                    if (dep->exact_match && strcmp(active_module->version, dep->min_version_str) != 0) {
+                        LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but exact version %s is required",
+                                 module_type_name(dep->type), active_module->name, 
+                                 active_module->version, dep->min_version_str);
+                        return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                    }
+                }
+            }
+            
+            LOG_DEBUG("Dependency on type %s satisfied by active module %s version %s",
+                     module_type_name(dep->type), active_module->name, active_module->version);
+        }
+        /* If this is a name-based dependency */
+        else if (dep->name[0] != '\0') {
+            /* Find module by name */
+            int module_idx = module_find_by_name(dep->name);
+            if (module_idx < 0) {
+                if (dep->optional) {
+                    LOG_INFO("Optional dependency on named module %s not satisfied - module not found",
+                             dep->name);
+                    continue;
+                } else {
+                    LOG_ERROR("Required dependency on named module %s not satisfied - module not found",
+                             dep->name);
+                    return MODULE_STATUS_DEPENDENCY_NOT_FOUND;
+                }
+            }
+            
+            /* Check if dependency is active */
+            if (!global_module_registry->modules[module_idx].active) {
+                if (dep->optional) {
+                    LOG_INFO("Optional dependency on named module %s not satisfied - module not active",
+                             dep->name);
+                    continue;
+                } else {
+                    LOG_ERROR("Required dependency on named module %s not satisfied - module not active",
+                             dep->name);
+                    return MODULE_STATUS_DEPENDENCY_NOT_FOUND;
+                }
+            }
+            
+            /* Check type if specified */
+            if (dep->type != MODULE_TYPE_UNKNOWN) {
+                struct base_module *dep_module = global_module_registry->modules[module_idx].module;
+                if (dep_module->type != dep->type) {
+                    LOG_ERROR("Dependency on named module %s has wrong type: expected %s, got %s",
+                             dep->name, module_type_name(dep->type), module_type_name(dep_module->type));
+                    return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                }
+            }
+            
+            LOG_DEBUG("Dependency on named module %s satisfied", dep->name);
+        }
+    }
+    
+    return MODULE_STATUS_SUCCESS;
 }
 
 /**
@@ -1474,6 +1700,14 @@ int module_set_active(int module_id) {
     if (!global_module_registry->modules[module_id].initialized) {
         LOG_ERROR("Module ID %d not initialized", module_id);
         return MODULE_STATUS_NOT_INITIALIZED;
+    }
+    
+    /* Validate runtime dependencies */
+    int status = module_validate_runtime_dependencies(module_id);
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to validate runtime dependencies for module ID %d: %d", 
+                 module_id, status);
+        return status;
     }
     
     struct base_module *module = global_module_registry->modules[module_id].module;

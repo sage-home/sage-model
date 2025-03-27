@@ -33,7 +33,8 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/progressbar.c core/core_tree_utils.c core/core_parameter_views.c \
         core/core_logging.c core/core_module_system.c \
         core/core_galaxy_extensions.c core/core_event_system.c \
-        core/core_pipeline_system.c core/core_config_system.c
+        core/core_pipeline_system.c core/core_config_system.c \
+        core/core_module_callback.c
 
 # Physics model source files
 PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \

@@ -4,16 +4,24 @@ CFLAGS := -g -Wall -I../src -I../src/core
 
 # Sources from the core
 CORE_SRC := ../src/core/core_logging.c \
+            ../src/core/core_mymalloc.c \
+            ../src/core/core_utils.c \
             ../src/core/core_event_system.c \
+            ../src/core/core_module_system.c \
+            ../src/core/core_module_callback.c \
             ../src/core/core_pipeline_system.c
 
 # Test programs
 TEST_PIPELINE := test_pipeline
+TEST_MODULE_CALLBACK := test_module_callback
 
-all: $(TEST_PIPELINE)
+all: $(TEST_PIPELINE) $(TEST_MODULE_CALLBACK)
 
 $(TEST_PIPELINE): test_pipeline.c $(CORE_SRC)
 	$(CC) $(CFLAGS) -o $@ $^ -lm
 
+$(TEST_MODULE_CALLBACK): test_module_callback.c $(CORE_SRC)
+	$(CC) $(CFLAGS) -o $@ $^ -lm
+
 clean:
-	rm -f $(TEST_PIPELINE)
+	rm -f $(TEST_PIPELINE) $(TEST_MODULE_CALLBACK)
