@@ -45,6 +45,22 @@
 
 ## Next Actions
 
+### Prerequisite: Phase 2.7 Module Callback System Implementation
+1. Module Dependencies Framework:
+   - Design and implement module dependency declaration system
+   - Create dependency validation mechanism to prevent circular dependencies
+   - Update module registration to track dependencies between modules
+
+2. Module Callback Mechanism:
+   - Implement module_invoke function for direct module-to-module calls
+   - Create call stack tracking system for debugging and error handling
+   - Develop context preservation mechanism for consistent state during callbacks
+
+3. Pipeline Integration:
+   - Update pipeline execution to handle module callbacks
+   - Modify physics_step_executor to respect inter-module dependencies
+   - Implement proper error handling for callback failures
+
 ### Phase 3.1 Interface Design
 1. I/O Interface Definition:
    - Design a unified I/O interface with common operations (initialize, read_forest, write_galaxies, cleanup)
@@ -67,6 +83,7 @@
    - Develop benchmarks to measure the impact of optimizations
 
 ## Completion Criteria
+- Phase 2.7 Module Callback System is implemented and integrated with the pipeline
 - All I/O operations function through the unified interface
 - Format-specific handlers implement all required functionality
 - Extended properties are properly serialized across formats
@@ -82,10 +99,12 @@
 - Phase 2.3 (Event System): ✅ COMPLETED
 - Phase 2.4 (Module Registry): ✅ COMPLETED
 - Phase 2.5-2.6 (Pipeline/Config): ✅ COMPLETED
+- Phase 2.7 (Module Callback System): ⏳ PENDING
 - Phase 3 (I/O Abstraction): 🔄 IN PROGRESS
-- Phase 4 (Plugin Infrastructure): BLOCKED by Phase 3
+- Phase 4 (Plugin Infrastructure): BLOCKED by Phase 2.7 and Phase 3
 
 ## Reference Material
+- Module Callback System: See refactoring plan section 2.7
 - I/O Interface: See refactoring plan section 3.1
 - Memory Optimization: See refactoring plan section 3.3
-- Implementation examples: See refactoring plan "Practical Examples" section 3
+- Implementation examples: See refactoring plan "Practical Examples" section 3 and 4

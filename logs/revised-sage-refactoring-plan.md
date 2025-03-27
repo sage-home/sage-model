@@ -11,6 +11,7 @@ This document outlines a comprehensive plan for refactoring the SAGE (Semi-Analy
 The plan includes advanced features to maximize flexibility and performance:
 
 - **Galaxy Property Extension Mechanism**: Allowing modules to add custom properties to galaxies without modifying core structures
+- **Module Callback System**: Enabling modules to directly invoke other modules while maintaining a clean architecture
 - **Event-Based Communication System**: Facilitating module interaction without direct dependencies
 - **Advanced Memory Optimizations**: Implementing cache-friendly data structures and memory pooling
 - **Comprehensive Development Tools**: Providing tools for module creation, testing, and validation
@@ -34,6 +35,7 @@ This transformation will create a modular, extensible platform for galaxy evolut
 - Non-optimal memory layout for cache efficiency
 - Limited abstraction across different input/output formats
 - Duplicate code paths for different formats
+- Inter-module dependencies that complicate modularization
 
 ## Detailed Refactoring Strategy
 
@@ -187,6 +189,52 @@ This transformation will create a modular, extensible platform for galaxy evolut
 #### 2.6 Configuration System
 - Develop a configuration parser for module chains and parameters
 
+#### 2.7 Module Callback System
+- Implement a mechanism for inter-module function calls:
+  ```c
+  // Module dependency declarations
+  typedef struct {
+      char module_type[32];          // Type of module dependency
+      char module_name[64];          // Optional specific module name
+      bool required;                 // Whether dependency is required
+  } module_dependency_t;
+  
+  // Add to base_module structure
+  struct base_module {
+      // ... existing fields ...
+      
+      // Dependencies
+      module_dependency_t *dependencies;
+      int num_dependencies;
+  };
+  
+  // Module invocation function
+  int module_invoke(
+      enum module_type type,
+      const char* module_name,      // Optional, NULL for active module of type
+      const char* function_name,    // Name of function to call
+      void* context,                // Context to pass to function
+      void* args,                   // Arguments specific to function
+      void* result                  // Optional result pointer
+  );
+  
+  // Call stack management
+  typedef struct {
+      int caller_module_id;
+      int callee_module_id;
+      const char* function_name;
+      void* context;
+  } module_call_frame_t;
+  
+  typedef struct {
+      module_call_frame_t frames[MAX_CALL_DEPTH];
+      int depth;
+  } module_call_stack_t;
+  ```
+- Create stack management for tracking module invocations
+- Implement context preservation during calls
+- Add validation for circular dependencies
+
 ### Phase 3: I/O Abstraction and Optimization
 
 #### 3.1 I/O Interface Abstraction
@@ -241,9 +289,11 @@ This transformation will create a modular, extensible platform for galaxy evolut
 - Implement directory scanning for modules
 - Create manifest parsing
 - Develop dependency resolution
+- Add validation of module dependencies
 
 #### 4.5 Error Handling
 - Design comprehensive error reporting system
+- Implement call stack tracing for debugging module interactions
 
 ### Phase 5: Core Module Migration
 
@@ -251,16 +301,19 @@ This transformation will create a modular, extensible platform for galaxy evolut
 - Transform the monolithic `evolve_galaxies()` function to use the pipeline system
 - Implement event-based communication
 - Add support for extension properties
+- Integrate module callback system for inter-module dependencies
 
 #### 5.2 Converting Physics Modules
 - Extract each physics component to a standalone module
 - Add property registration and event handling
 - Implement module-specific data management
+- Define and implement module dependencies using the callback system
 
 #### 5.3 Validation and Testing
 - Create scientific validation tests
 - Implement performance benchmarks
 - Develop compatibility tests
+- Add call graph validation to ensure proper module interactions
 
 ### Phase 6: Advanced Performance Optimization
 
@@ -323,12 +376,18 @@ This transformation will create a modular, extensible platform for galaxy evolut
 - Implement finer-grained parallel processing where beneficial
 - Optimize MPI communication patterns
 
+#### 6.5 Module Callback Optimization
+- Implement callback caching to reduce lookup overhead
+- Create optimized paths for frequent module interactions
+- Add profiling for inter-module calls to identify bottlenecks
+
 ### Phase 7: Documentation and Tools
 
 #### 7.1 Developer Documentation
 - Create comprehensive guide for module development
 - Document plugin architecture interfaces
 - Provide examples for common customizations
+- Create documentation for module dependency management
 
 #### 7.2 Scientific Documentation
 - Document physical models and implementation details
@@ -339,6 +398,7 @@ This transformation will create a modular, extensible platform for galaxy evolut
 - Create template modules for different physics components
 - Develop validation tools for module compatibility
 - Implement module dependency analyzer
+- Create module call graph visualization tools
 
 ## Implementation Plan
 
@@ -347,16 +407,16 @@ This transformation will create a modular, extensible platform for galaxy evolut
 | Phase | Description | Duration (months) | Dependencies |
 |-------|-------------|-------------------|-------------|
 | 1 | Preparatory Refactoring | 3 | None |
-| 2 | Enhanced Module Interface Definition | 4-5 | Phase 1 |
+| 2 | Enhanced Module Interface Definition | 5-6 | Phase 1 |
 | 3 | I/O Abstraction and Optimization | 2-3 | Phase 1 |
 | 4 | Advanced Plugin Infrastructure | 3-4 | Phase 2 |
 | 5 | Core Module Migration | 4-5 | Phase 4 |
 | 6 | Advanced Performance Optimization | 3-4 | Phases 3, 5 |
 | 7 | Documentation and Tools | 2-3 | Phases 1-6 |
 
-**Total Estimated Duration**: 21-27 months
+**Total Estimated Duration**: 22-28 months
 
-The critical path runs through Phases 1 → 2 → 4 → 5 → 6 → 7, with Phase 3 able to proceed in parallel with Phase 2 after Phase 1 is complete.
+The critical path runs through Phases 1 → 2 → 4 → 5 → 6 → 7, with Phase 3 able to proceed in parallel with Phase 2 after Phase 1 is complete. The addition of the Module Callback System in Phase 2.7 increases the duration of Phase 2 by approximately 1 month.
 
 ## Runtime Module System: Practical Examples
 
@@ -460,7 +520,70 @@ static int handle_star_formation_event(galaxy_event_t *event, void *module_data)
 }
 ```
 
-### Example 3: Performance Optimization with Cache-Friendly Structures
+### Example 3: Module Callback System for Direct Module Invocation
+
+#### Module Dependencies Declaration:
+```c
+// In merger module definition
+static module_dependency_t merger_dependencies[] = {
+    { .module_type = "star_formation", .module_name = NULL, .required = true },
+    { .module_type = "disk_instability", .module_name = NULL, .required = false }
+};
+
+struct mergers_module mergers_module_impl = {
+    .base = {
+        .name = "StandardMergers",
+        .version = "1.0.0",
+        .author = "SAGE Team",
+        .initialize = merger_module_initialize,
+        .cleanup = merger_module_cleanup,
+        .dependencies = merger_dependencies,
+        .num_dependencies = 2
+    },
+    .process_merger = merger_module_process
+};
+```
+
+#### Direct Module Invocation:
+```c
+// In merger module implementation
+static int merger_module_process(int p, int centralgal, struct GALAXY *galaxies, 
+                              struct merger_context *context, void *module_data) {
+    // Calculate merger parameters
+    float mass_ratio = galaxies[p].StellarMass / galaxies[centralgal].StellarMass;
+    
+    // Trigger star formation during merger
+    if (mass_ratio > 0.1) {
+        // Prepare arguments for star formation module
+        struct sf_burst_args args = {
+            .galaxy_index = p,
+            .burst_ratio = mass_ratio * 0.5,
+            .merger_triggered = true
+        };
+        
+        // Invoke star formation module directly
+        double stars_formed = 0.0;
+        int status = module_invoke(
+            MODULE_TYPE_STAR_FORMATION,
+            NULL,                           // Use active module
+            "trigger_burst",                // Function name
+            context,                        // Pass current context
+            &args,                          // Module-specific arguments
+            &stars_formed                   // Result pointer
+        );
+        
+        if (status == 0) {
+            LOG_DEBUG("Merger-triggered star formation created %.2f stars", stars_formed);
+        } else {
+            LOG_WARNING("Failed to trigger star formation burst during merger");
+        }
+    }
+    
+    return 0;
+}
+```
+
+### Example 4: Performance Optimization with Cache-Friendly Structures
 
 ```c
 // Transform from Array of Structures to Structure of Arrays for hot path
@@ -511,6 +634,8 @@ void optimize_galaxy_layout(struct GALAXY *galaxies, int ngal, galaxy_hotpath_da
 | Performance overhead of extensions | Medium | High | Profile and optimize extension access; pooled allocations; batch processing |
 | Serialization challenges with extensions | Medium | Medium | Thorough testing with real datasets; fallback mechanisms; format versioning |
 | Module incompatibility | Medium | High | Strict versioning; dependency validation; compatibility tests |
+| Circular dependencies | Medium | Medium | Static dependency analysis; runtime cycle detection; careful module design |
+| Module callback overhead | Medium | Medium | Optimize callback paths; cache frequent calls; profile and tune callback system |
 
 ## Deferred Work
 
@@ -536,6 +661,8 @@ This section documents work items that have been intentionally deferred to later
 ## Conclusion
 
 This refactoring plan provides a detailed, practical approach to modernizing the SAGE codebase. The enhanced plugin architecture will enable researchers to easily swap physics implementations and reorder processes without recompilation, significantly enhancing flexibility for experimentation. The property extension mechanism will allow for novel physics to be implemented without modifying core structures, and the event system will enable more flexible module interactions.
+
+The newly added Module Callback System addresses a critical limitation in the original design by enabling physics modules to directly invoke other modules when needed, preserving the complex interdependencies present in the original codebase while maintaining a clean architecture. This ensures that scientific accuracy is preserved while still achieving the goals of modularity and extensibility.
 
 The advanced performance optimizations will improve efficiency while maintaining compatibility with existing data formats. By following an incremental approach with continuous validation, we can ensure that the scientific integrity of the model is preserved throughout the refactoring process.
 

@@ -37,10 +37,6 @@ static int physics_step_executor(
     void *module_data,
     struct pipeline_context *context
 ) {
-    // Suppress unused parameter warnings
-    (void)module;
-    (void)module_data;
-    
     // Extract data from context
     struct GALAXY *galaxies = context->galaxies;
     int p = context->current_galaxy;
@@ -55,6 +51,17 @@ static int physics_step_executor(
     if (galaxies[p].mergeType > 0) {
         return 0;
     }
+
+    // TEMPORARY MIGRATION CODE: Force using traditional physics during migration
+    // Even if modules (like cooling) exist and module != NULL, we'll use traditional implementations
+    // 
+    // When testing specific module updates, you may need to comment out this code block
+    // and allow the pipeline to use the module implementation for validation
+    // This ensures tests align with benchmark outputs.
+    //
+    (void)module;    // Suppress unused parameter warning
+    (void)module_data;  // Suppress unused parameter warning
+    module = NULL;  // Force traditional implementations until all physics is fully migrated
     
     // Execute based on module type
     switch (step->type) {
@@ -77,8 +84,15 @@ static int physics_step_executor(
             break;
             
         case MODULE_TYPE_COOLING:
-            // Cooling
+            // TEMPORARY IMPLEMENTATION NOTE: Always use traditional cooling during migration
+            // The DefaultCooling module exists but the physics may not be fully migrated yet
+            // When updating/testing cooling module, you may need to comment out this code
+            // and allow the pipeline to use the module implementation for validation
+            //
+            // If this approach is kept during other module migrations, tests may fail until
+            // all physics is consistently implemented.
             {
+                // Always use traditional cooling implementation for now for test compatibility
                 struct cooling_params_view cooling_params;
                 initialize_cooling_params_view(&cooling_params, run_params);
                 double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);

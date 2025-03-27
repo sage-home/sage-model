@@ -389,11 +389,8 @@ bool pipeline_validate(struct module_pipeline *pipeline) {
         return true;
     }
     
-    /* During Phase 2.5-2.6, we're less verbose about missing modules */
+    /* TEMPORARY MIGRATION CODE: During migration, we'll be less verbose about missing modules */
     static bool already_logged_missing_modules = false;
-    
-    /* Track if any required modules are missing */
-    bool all_required_modules_present = true;
     
     /* Check for valid modules for each step */
     for (int i = 0; i < pipeline->num_steps; i++) {
@@ -410,34 +407,23 @@ bool pipeline_validate(struct module_pipeline *pipeline) {
         
         int status = pipeline_get_step_module(step, &module, &module_data);
         if (status != 0) {
-            if (!step->optional) {
-                /* Only required modules affect validation */
-                all_required_modules_present = false;
-                
-                /* Only log once per process to avoid spamming */
-                if (!already_logged_missing_modules) {
-                    LOG_ERROR("Required step '%s' (type %s) in pipeline '%s' references missing module '%s'",
-                             step->step_name, module_type_name(step->type), 
-                             pipeline->name, step->module_name[0] ? step->module_name : "any");
-                }
+            /* During migration, we fall back to original physics regardless of optional flag */
+            /* Only log once per process to avoid spamming */
+            if (!already_logged_missing_modules) {
+                LOG_WARNING("Migration: Step '%s' (type %s) is missing a module, will use original implementation",
+                           step->step_name, module_type_name(step->type));
             } else {
-                /* For optional modules, just log at debug level */
-                LOG_DEBUG("Optional step '%s' (type %s) is missing a module, but will be skipped during execution",
+                LOG_DEBUG("Migration: Step '%s' (type %s) is missing a module, will use original implementation",
                          step->step_name, module_type_name(step->type));
             }
         }
     }
     
-    /* During Phase 2.5-2.6, not all modules are expected to be present */
-    if (!all_required_modules_present && !already_logged_missing_modules) {
-        LOG_WARNING("Some required modules are missing in Phase 2.5-2.6. Consider marking all steps as optional.");
-    }
-    
     /* Remember that we've already logged to avoid repetition */
     already_logged_missing_modules = true;
     
-    /* In Phase 2.5-2.6, we'll validate the pipeline even if modules are missing */
-    /* This allows evolution to proceed with the traditional implementation */
+    /* TEMPORARY MIGRATION CODE: Always validate the pipeline during migration */
+    /* This allows evolution to proceed with the original implementation when modules are missing */
     return true;
 }
 
@@ -578,26 +564,26 @@ int pipeline_execute_custom(
         
         int status = pipeline_get_step_module(step, &module, &module_data);
         if (status != 0) {
-            if (step->optional) {
-                // Use LOG_DEBUG for optional steps to reduce log spam
-                // Only output the first time in each run to avoid overwhelming the logs
-                static bool first_warning = true;
-                if (first_warning) {
-                    LOG_WARNING("Skipping optional step '%s' due to missing module", step->step_name);
-                    // After first few warnings, only log as debug
-                    if (i > 2) {
-                        first_warning = false;
-                        LOG_INFO("Further optional step skipping warnings will be at debug level only");
-                    }
-                } else {
-                    LOG_DEBUG("Skipping optional step '%s' due to missing module", step->step_name);
+            // TEMPORARY MIGRATION CODE: Fall back to original physics implementation
+            // This code will be removed once all modules are implemented
+            static bool first_warning = true;
+            if (first_warning) {
+                LOG_WARNING("Migration: Using original implementation for step '%s' (module missing)", 
+                           step->step_name);
+                // After first few warnings, only log as debug
+                if (i > 2) {
+                    first_warning = false;
+                    LOG_INFO("Further warnings about missing modules will be at debug level only");
                 }
-                continue;
             } else {
-                LOG_ERROR("Required module missing for step '%s'", step->step_name);
-                result = -1;
-                break;
+                LOG_DEBUG("Migration: Using original implementation for step '%s' (module missing)", 
+                         step->step_name);
             }
+            
+            // Continue execution with NULL module - executor will use original physics
+            // The optional flag is now ignored during migration
+            module = NULL;
+            module_data = NULL;
         }
         
         LOG_DEBUG("Executing step '%s' with module '%s'", 

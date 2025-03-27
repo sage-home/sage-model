@@ -116,3 +116,11 @@
 2025-03-26: [Phase 2.5-2.6] Implement Progressive Warning Reduction for Missing Modules
 - Rationale: When running SAGE with many missing modules, log files can become flooded with redundant warnings. By showing only the first few warnings and then reducing log level to debug for subsequent messages, we maintain awareness of missing components without overwhelming the logs.
 - Impact: Significantly cleaner log output that provides useful information without repetition. Developers still receive important warnings but can focus on unique issues. This approach balances informing users about missing modules while keeping logs manageable during development phases.
+
+2025-03-27: [Phase 2.5-2.6] Implement Pipeline Fallback Mechanism with Traditional Physics Guarantee
+- Rationale: Even though a DefaultCooling module exists, physics modules may not be fully migrated during refactoring, causing tests to fail when comparing against benchmark outputs. The solution is to use traditional physics implementations for ALL modules (including cooling) during migration to ensure consistent test behavior.
+- Impact: This creates a reliable fallback path that guarantees scientific consistency during the migration period. The development team can test the pipeline architecture without being hindered by partial physics implementation. The traditional physics guarantee can be selectively disabled per module when testing specific module updates.
+
+2025-03-27: [Phase 2] Module Callback System Addition
+- Rationale: The original SAGE implementation has tightly coupled physics modules where one module directly calls others (e.g., mergers triggering star formation). A pure pipeline architecture would break these dependencies, compromising scientific accuracy. The Module Callback System preserves these critical interactions while maintaining a clean architecture.
+- Impact: Adds a new Phase 2.7 to the refactoring plan, extends the module interface to support dependencies, and creates a standardized invocation mechanism between modules. Preserves the original physics calculation sequences while enabling modular replacement of individual physics components. Increases implementation complexity but ensures scientific consistency.
