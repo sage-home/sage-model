@@ -136,41 +136,37 @@ A robust testing framework is in place:
 
 All changes are validated through this end-to-end testing framework using reference outputs from the Mini-Millennium simulation, ensuring scientific accuracy throughout the refactoring process.
 
-## Module System Architecture
-The codebase now includes a plugin architecture for physics modules:
-- `core_module_system`: Foundation for the plugin system, defines base module interface and registry
-- `module_cooling`: First physics module interface implementing the plugin architecture
-- Dynamic module lifecycle management (initialization, cleanup)
-- Module type identification, validation, and error handling
+## Modular Architecture
+The codebase now features an integrated plugin architecture with three key components:
 
 ```
-Module System
-    ┌───────────────────┐
-    │ base_module       │
-    │  - metadata       │
-    │  - lifecycle      │
-    │  - error handling │
-    └─────────┬─────────┘
-              │
-              │
-    ┌─────────▼─────────┐
-    │ module_registry   │
-    │  - registration   │
-    │  - activation     │
-    │  - lookup         │
-    └─────────┬─────────┘
-              │
-              │
-┌─────────────▼────────────┐
-│                          │
-│    Physics Modules       │
-│                          │
-└──────────────────────────┘
+┌───────────────────┐      ┌───────────────────┐      ┌───────────────────┐
+│ Module System     │      │ Pipeline System   │      │ Config System     │
+│                   │      │                   │      │                   │
+│ - Registry        │◄────▶│ - Step sequencing │◄────▶│ - JSON parsing    │
+│ - Lifecycle mgmt  │      │ - Execution       │      │ - Param hierarchy │
+│ - Extension data  │      │ - Event hooks     │      │ - Overrides       │
+└─────────┬─────────┘      └─────────┬─────────┘      └─────────┬─────────┘
+          │                          │                          │
+          │                          ▼                          │
+          │                ┌───────────────────┐                │
+          └───────────────▶│ Parameters        │◀───────────────┘
+                           │                   │
+                           │ - Physics         │
+                           │ - Cosmology       │
+                           │ - Runtime         │
+                           └───────────────────┘
 ```
 
-The module system provides:
-- Runtime module registry for physics components
-- Independent lifecycle management for each module
-- Error handling and validation
-- Support for multiple implementations of the same physics
-- Backward compatibility with existing physics functions
+Key components in the architecture:
+- `core_module_system`: Defines module interface, registry, and lifecycle management
+- `module_cooling`: First physics module using new plugin architecture (others pending)
+- `core_pipeline_system`: Configurable sequence for physics operations
+- `core_config_system`: JSON-based configuration with hierarchical parameters
+
+The modular design provides:
+- Runtime physics module registry with lifecycle management
+- Event-based communication between modules
+- Galaxy property extension mechanism
+- Configurable pipeline execution
+- Parameter validation and override capabilities

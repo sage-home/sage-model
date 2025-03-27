@@ -7,7 +7,6 @@
 #include "core_module_system.h"
 #include "core_event_system.h"
 #include "core_logging.h"
-#include "core_logging.h"
 
 /**
  * @file core_pipeline_system.c
