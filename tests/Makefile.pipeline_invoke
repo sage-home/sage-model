@@ -1,0 +1,14 @@
+# Test makefile for pipeline invoke integration
+CC := clang
+CFLAGS := -g -Wall -I../src -I../src/core
+
+# Test programs
+TEST_PIPELINE_INVOKE := test_pipeline_invoke
+
+all: $(TEST_PIPELINE_INVOKE)
+
+$(TEST_PIPELINE_INVOKE): test_pipeline_invoke.c
+	$(CC) $(CFLAGS) -o $@ $^ -L.. -lsage -lm
+
+clean:
+	rm -f $(TEST_PIPELINE_INVOKE)

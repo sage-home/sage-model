@@ -29,14 +29,18 @@
 /**
  * Execute a physics pipeline step
  * 
- * This function maps pipeline steps to physics module functions.
+ * This function maps pipeline steps to physics modules or traditional implementations.
+ * It uses module_invoke when a module is available; otherwise, it falls back to traditional code.
  */
 static int physics_step_executor(
     struct pipeline_step *step,
     struct base_module *module,
-    void *module_data,
+    void *module_data,  /* Might be unused during migration - that's expected */
     struct pipeline_context *context
 ) {
+    /* Silence unused parameter warning during migration */
+    (void)module_data;
+    
     // Extract data from context
     struct GALAXY *galaxies = context->galaxies;
     int p = context->current_galaxy;
@@ -52,18 +56,89 @@ static int physics_step_executor(
         return 0;
     }
 
-    // TEMPORARY MIGRATION CODE: Force using traditional physics during migration
-    // Even if modules (like cooling) exist and module != NULL, we'll use traditional implementations
-    // 
-    // When testing specific module updates, you may need to comment out this code block
-    // and allow the pipeline to use the module implementation for validation
-    // This ensures tests align with benchmark outputs.
-    //
-    (void)module;    // Suppress unused parameter warning
-    (void)module_data;  // Suppress unused parameter warning
-    module = NULL;  // Force traditional implementations until all physics is fully migrated
+    // Migration Phase - Choose between module callback or traditional implementation
+    bool use_module = false;
     
-    // Execute based on module type
+    // Phase 5 Integration: Check if we can use the module
+    if (module != NULL) {
+        // For testing purposes, we can enable module usage by uncommenting the line below
+        // use_module = true;
+        
+        // TEMPORARY MIGRATION CODE: During migration, we continue to use traditional
+        // implementations to maintain test compatibility. This will be removed once
+        // all modules are properly implemented and tested.
+        
+        // For selected modules that are ready for testing with the callback system,
+        // we can enable them individually here
+        if (step->type == MODULE_TYPE_COOLING && strcmp(module->name, "DefaultCooling") == 0) {
+            // Example of enabling for a specific module
+            // use_module = true;
+        }
+    }
+    
+    if (use_module) {
+        // PHASE 5: MODULE INVOKE IMPLEMENTATION
+        // Use the callback system to invoke module functions
+        
+        int status = 0;
+        
+        // We need a special case for each module type since they have different function signatures
+        switch (step->type) {
+            case MODULE_TYPE_COOLING: {
+                // Set up arguments for cooling module
+                struct {
+                    int galaxy_index;
+                    double dt;
+                } cooling_args = {
+                    .galaxy_index = p,
+                    .dt = dt
+                };
+                
+                // Invoke cooling calculation function
+                double cooling_result = 0.0;
+                status = module_invoke(
+                    0,                  // caller_id (use main code as caller)
+                    step->type,         // module_type
+                    NULL,               // use active module of type
+                    "calculate_cooling", // function name
+                    context,            // context
+                    &cooling_args,      // arguments
+                    &cooling_result     // result
+                );
+                
+                if (status == MODULE_STATUS_SUCCESS) {
+                    // Apply the result
+                    cool_gas_onto_galaxy(p, cooling_result, galaxies);
+                    LOG_DEBUG("Module invoke for cooling: galaxy=%d, cooling=%g", p, cooling_result);
+                } else {
+                    LOG_WARNING("Module invoke for cooling failed: status=%d", status);
+                    // Fall back to traditional implementation
+                    struct cooling_params_view cooling_params;
+                    initialize_cooling_params_view(&cooling_params, run_params);
+                    double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
+                    cool_gas_onto_galaxy(p, coolingGas, galaxies);
+                }
+                break;
+            }
+            
+            // Add cases for other module types as they are implemented
+            
+            default:
+                LOG_DEBUG("Module type %s doesn't have invoke implementation yet, using traditional code", 
+                        module_type_name(step->type));
+                use_module = false;
+                break;
+        }
+        
+        // If module invoke was successful, we're done
+        if (status == MODULE_STATUS_SUCCESS) {
+            return 0;
+        }
+        
+        // Otherwise, fall back to traditional implementation
+    }
+    
+    // Traditional implementation (used during migration or when module invoke fails)
     switch (step->type) {
         case MODULE_TYPE_INFALL:
             // Apply infall
@@ -84,15 +159,8 @@ static int physics_step_executor(
             break;
             
         case MODULE_TYPE_COOLING:
-            // TEMPORARY IMPLEMENTATION NOTE: Always use traditional cooling during migration
-            // The DefaultCooling module exists but the physics may not be fully migrated yet
-            // When updating/testing cooling module, you may need to comment out this code
-            // and allow the pipeline to use the module implementation for validation
-            //
-            // If this approach is kept during other module migrations, tests may fail until
-            // all physics is consistently implemented.
             {
-                // Always use traditional cooling implementation for now for test compatibility
+                // Traditional cooling implementation
                 struct cooling_params_view cooling_params;
                 initialize_cooling_params_view(&cooling_params, run_params);
                 double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
@@ -114,28 +182,16 @@ static int physics_step_executor(
             break;
             
         case MODULE_TYPE_AGN:
-            // AGN module implementation will be added in a future phase
-            LOG_DEBUG("AGN module not yet implemented as a module, skipping in pipeline");
-            break;
-            
         case MODULE_TYPE_DISK_INSTABILITY:
-            // Disk instability module implementation will be added in a future phase
-            LOG_DEBUG("Disk instability module not yet implemented as a module, skipping in pipeline");
-            break;
-            
         case MODULE_TYPE_MERGERS:
-            // Mergers module implementation will be added in a future phase
-            LOG_DEBUG("Mergers module not yet implemented as a module, skipping in pipeline");
-            break;
-            
         case MODULE_TYPE_MISC:
-            // Misc module implementation will be added in a future phase
-            LOG_DEBUG("Misc module not yet implemented as a module, skipping in pipeline");
+            // These modules are not yet implemented
+            LOG_DEBUG("Module type %s not yet implemented as module, skipping in pipeline", 
+                    module_type_name(step->type));
             break;
             
         default:
-            // Other module types not implemented yet
-            LOG_DEBUG("Module type %s not yet implemented, skipping in pipeline", 
+            LOG_DEBUG("Unknown module type %s, skipping in pipeline", 
                     module_type_name(step->type));
             break;
     }

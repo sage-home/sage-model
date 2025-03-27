@@ -688,7 +688,7 @@ int module_check_dependencies(const struct module_manifest *manifest) {
         }
         
         /* Check module type */
-        if (dep->type != MODULE_TYPE_UNKNOWN && module->type != dep->type) {
+        if (dep->type != (int)MODULE_TYPE_UNKNOWN && (int)module->type != dep->type) {
             LOG_ERROR("Dependency %s has wrong type: expected %s, got %s",
                      dep->name, module_type_name(dep->type), module_type_name(module->type));
             return MODULE_STATUS_DEPENDENCY_CONFLICT;
@@ -1555,7 +1555,7 @@ int module_validate_runtime_dependencies(int module_id) {
             /* Find active module of the specified type */
             int active_index = -1;
             for (int j = 0; j < global_module_registry->num_active_types; j++) {
-                if (global_module_registry->active_modules[j].type == dep->type) {
+                if ((int)global_module_registry->active_modules[j].type == (int)dep->type) {
                     active_index = global_module_registry->active_modules[j].module_index;
                     break;
                 }
@@ -1656,7 +1656,7 @@ int module_validate_runtime_dependencies(int module_id) {
             /* Check type if specified */
             if (dep->type != MODULE_TYPE_UNKNOWN) {
                 struct base_module *dep_module = global_module_registry->modules[module_idx].module;
-                if (dep_module->type != dep->type) {
+                if ((int)dep_module->type != (int)dep->type) {
                     LOG_ERROR("Dependency on named module %s has wrong type: expected %s, got %s",
                              dep->name, module_type_name(dep->type), module_type_name(dep_module->type));
                     return MODULE_STATUS_DEPENDENCY_CONFLICT;

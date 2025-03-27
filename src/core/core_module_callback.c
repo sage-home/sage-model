@@ -339,7 +339,7 @@ int module_call_stack_get_trace(char *buffer, size_t buffer_size) {
                               frame->function_name ? frame->function_name : "unknown");
         
         /* Check if we ran out of space */
-        if (written < 0 || written >= remaining) {
+        if (written < 0 || written >= (int)remaining) {
             /* Indicate truncation */
             strncpy(buffer + buffer_size - 12, " [truncated]", 11);
             buffer[buffer_size - 1] = '\0';
@@ -618,7 +618,7 @@ int module_call_validate(int caller_id, int callee_id) {
     /* If no direct dependency by name, look for dependency on callee's type */
     if (!dependency_found) {
         for (int i = 0; i < caller->num_dependencies; i++) {
-            if (caller->dependencies[i].type == callee->type) {
+            if ((int)caller->dependencies[i].type == (int)callee->type) {
                 dependency_found = true;
                 break;
             }
@@ -711,7 +711,7 @@ int module_invoke(
         }
         
         /* Check that module is of expected type if one was specified */
-        if (module_type != MODULE_TYPE_UNKNOWN && target->type != module_type) {
+        if ((int)module_type != (int)MODULE_TYPE_UNKNOWN && (int)target->type != (int)module_type) {
             LOG_ERROR("Module '%s' is of type %s, expected %s",
                      module_name, module_type_name(target->type), module_type_name(module_type));
             return MODULE_STATUS_ERROR;
