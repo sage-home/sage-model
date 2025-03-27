@@ -1,6 +1,7 @@
 sage
 tests/test_results/
 tests/test_env/
+tests/test_module_callback
 input/millennium/
 output/
 ignore/
