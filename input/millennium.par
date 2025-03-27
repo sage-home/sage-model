@@ -69,7 +69,7 @@ ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dyn
 
 RadioModeEfficiency     0.08  %AGN radio mode efficiency (AGNrecipeOn=2)
 QuasarModeEfficiency    0.005 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
-BlackHoleGrowthRate     0.03 %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
+BlackHoleGrowthRate     0.015 %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
 
 ThreshMajorMerger       0.3   %major merger when mass ratio greater than this
 ThresholdSatDisruption  1.0   %Mvir-to-baryonic mass ratio threshold for satellite merger or disruption
