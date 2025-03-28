@@ -45,20 +45,6 @@
 
 ## Next Actions
 
-### Phase 2.7 Module Callback System Implementation: ✅ COMPLETED
-1. Module Dependencies Framework: ✅ COMPLETED
-   - Basic Data Structures (Phase 1) ✅
-   - Dependency Management (Phase 2) ✅ 
-   - Call Stack Management (Phase 3) ✅
-   - Module Invocation (Phase 4) ✅
-   - Pipeline Integration (Phase 5) ✅
-   - Testing (Phase 6) ✅ 
-
-2. Performance Optimization: ✅ COMPLETED
-   - Fixed compiler warnings related to sign comparison ✅
-   - Improved type safety with consistent casting ✅
-   - Standardized error handling and validation ✅ 
-
 ### Phase 3.1 Interface Design
 1. I/O Interface Definition:
    - Design a unified I/O interface with common operations (initialize, read_forest, write_galaxies, cleanup)
@@ -81,7 +67,6 @@
    - Develop benchmarks to measure the impact of optimizations
 
 ## Completion Criteria
-- Phase 2.7 Module Callback System is implemented and integrated with the pipeline ✅
 - All I/O operations function through the unified interface
 - Format-specific handlers implement all required functionality
 - Extended properties are properly serialized across formats
@@ -102,7 +87,6 @@
 - Phase 4 (Plugin Infrastructure): BLOCKED by Phase 2.7 and Phase 3
 
 ## Reference Material
-- Module Callback System: See refactoring plan section 2.7
 - I/O Interface: See refactoring plan section 3.1
 - Memory Optimization: See refactoring plan section 3.3
 - Implementation examples: See refactoring plan "Practical Examples" section 3 and 4
