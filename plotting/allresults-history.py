@@ -58,10 +58,26 @@ plt.rcParams["font.size"] = 14
 
 # ==================================================================
 
-def read_hdf(filename = None, snap_num = None, param = None):
-
-    property = h5.File(DirName+FileName,'r')
-    return np.array(property[snap_num][param])
+def read_hdf(filename=None, snap_num=None, param=None):
+    """Read data from one or more SAGE model files"""
+    # Get list of all model files in directory
+    model_files = [f for f in os.listdir(DirName) if f.startswith('model_') and f.endswith('.hdf5')]
+    model_files.sort()
+    
+    # Initialize empty array for combined data
+    combined_data = None
+    
+    # Read and combine data from each model file
+    for model_file in model_files:
+        property = h5.File(DirName + model_file, 'r')
+        data = np.array(property[snap_num][param])
+        
+        if combined_data is None:
+            combined_data = data
+        else:
+            combined_data = np.concatenate((combined_data, data))
+            
+    return combined_data
 
 
 # ==================================================================

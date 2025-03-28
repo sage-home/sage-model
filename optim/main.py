@@ -195,7 +195,7 @@ def main():
     pso_opts.add_argument('-csv', '--csv-output', help='Path to save PSO results as CSV file. If not specified, no CSV will be generated.',
                       type=_abspath, default=None)
 
-### currently Shark specific, can ignore unless on HPC
+### 
     hpc_opts = parser.add_argument_group('HPC options')
     hpc_opts.add_argument('-H', '--hpc-mode', help='Enable HPC mode', action='store_true')
     hpc_opts.add_argument('-C', '--cpus', help='Number of CPUs per sage instance', default=1, type=int)
