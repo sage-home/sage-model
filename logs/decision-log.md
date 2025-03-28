@@ -124,3 +124,7 @@
 2025-03-27: [Phase 2] Module Callback System Addition
 - Rationale: The original SAGE implementation has tightly coupled physics modules where one module directly calls others (e.g., mergers triggering star formation). A pure pipeline architecture would break these dependencies, compromising scientific accuracy. The Module Callback System preserves these critical interactions while maintaining a clean architecture.
 - Impact: Adds a new Phase 2.7 to the refactoring plan, extends the module interface to support dependencies, and creates a standardized invocation mechanism between modules. Preserves the original physics calculation sequences while enabling modular replacement of individual physics components. Increases implementation complexity but ensures scientific consistency.
+
+2025-03-28: [Phase 3] Pipeline Testing Strategy
+- Rationale: Despite using traditional physics implementations, the pipeline architecture changes execution order and timing of physics operations. This creates subtle differences in galaxy evolution that cause benchmark test failures. Rather than bypassing the pipeline entirely, we'll use hybrid validation approach.
+- Impact: Will create snapshot benchmarks for progressive reference points during development, add detailed physics tracing to identify execution differences, and implement physics-based validation tests beyond binary comparison. Ensures architectural changes are tested while maintaining scientific validity.
