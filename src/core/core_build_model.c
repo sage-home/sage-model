@@ -588,11 +588,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
         pipeline_ctx.step = step;
-        
-        // Calculate time for this step
-        const double deltaT = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
-        const double time = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - (step + 0.5) * (deltaT / STEPS);
-        pipeline_ctx.time = time;
 
         // Loop over all galaxies in the halo
         for(int p = 0; p < ctx.ngal; p++) {
@@ -601,6 +596,12 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 continue;
             }
 
+            // Calculate time step and current time for this specific galaxy
+            const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
+            const double time = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
+            ctx.deltaT = deltaT;  // Store in context for potential future module use
+            pipeline_ctx.dt = deltaT;  // Update pipeline context with new dt
+
             // Calculate time step
             if(ctx.galaxies[p].dT < 0.0) {
                 ctx.galaxies[p].dT = deltaT;
@@ -608,6 +609,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             
             // Update pipeline context for current galaxy
             pipeline_ctx.current_galaxy = p;
+            pipeline_ctx.time = time;
             
             if (use_pipeline) {
                 // Execute physics via the pipeline system
@@ -664,7 +666,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                     return EXIT_FAILURE;
                 }
 
-                // Decrease merge time using deltaT from outer scope
+                // Calculate deltaT for this specific galaxy
+                const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
                 ctx.galaxies[p].MergTime -= deltaT / STEPS;
 
                 // only consider mergers or disruption for halo-to-baryonic mass ratios below the threshold
@@ -687,7 +690,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                             disrupt_satellite_to_ICS(merger_centralgal, p, ctx.galaxies);
                         } else {
                             // PHYSICS MODULE: Mergers - satellite merges with central galaxy
-                            // Use existing time variable from outer scope
+                            const double time = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
                             deal_with_galaxy_merger(p, merger_centralgal, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, ctx.galaxies, run_params);
                         }
                     }
@@ -700,7 +703,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Extra miscellaneous stuff before finishing this halo
     ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons = 0.0;
     const double deltaT = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
-    const double inv_deltaT = 1.0/deltaT;
+    const double inv_deltaT = deltaT > 0.0 ? 1.0/deltaT : 1.0; // Safety check
 
     for(int p = 0; p < ctx.ngal; p++) {
         // Don't bother with galaxies that have already merged
