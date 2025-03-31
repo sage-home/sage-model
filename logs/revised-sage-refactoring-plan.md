@@ -241,21 +241,40 @@ This transformation will create a modular, extensible platform for galaxy evolut
 - Create a unified I/O interface that preserves all existing functionality:
   ```c
   struct io_interface {
+      // Metadata
+      const char* name;           // Name of the I/O handler
+      const char* version;        // Version string
+      int format_id;              // Unique format identifier
+      uint32_t capabilities;      // Bitmap of supported features
+      
+      // Core operations with error handling
       int (*initialize)(const char* filename, struct params* params);
       int (*read_forest)(int64_t forestnr, struct halo_data** halos, struct forest_info* forest_info);
       int (*write_galaxies)(struct galaxy_output* galaxies, int ngals, struct save_info* save_info);
       int (*cleanup)();
+      
+      // Resource management (primarily for HDF5)
+      int (*close_open_handles)();
+      int (*get_open_handle_count)();
   };
   ```
+- Implement registry for format handlers with automatic format detection
+- Add validation for handler compatibility and functionality
+- Design error reporting specific to I/O operations
 
 #### 3.2 Format-Specific Implementations
 - Refactor existing I/O code into format-specific implementations of the interface
 - Implement serialization support for extended properties
+- Add cross-platform endianness detection and conversion for binary formats
+- Implement robust HDF5 resource tracking and cleanup for preventing handle leaks
+- Create format conversion utilities where appropriate
 
 #### 3.3 Memory Optimization
-- Implement buffered reading/writing while preserving existing formats
+- Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
 - Create memory mapping options for large files
 - Develop efficient caching strategies for frequently accessed halos
+- Optimize allocation strategies with geometric growth instead of fixed increments
+- Implement memory pooling for galaxy allocations
 
 ### Phase 4: Advanced Plugin Infrastructure
 

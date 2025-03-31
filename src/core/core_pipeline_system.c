@@ -643,13 +643,13 @@ struct module_pipeline *pipeline_create_default(void) {
     /* In Phase 2.5-2.6, mark all physics steps as optional since only cooling is implemented as a module */
     /* NOTE: Once all modules are migrated, non-essential modules will remain optional but core ones will become required */
     pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall", true, true);
+    pipeline_add_step(pipeline, MODULE_TYPE_REINCORPORATION, NULL, "reincorporation", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_COOLING, NULL, "cooling", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_STAR_FORMATION, NULL, "star_formation", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_FEEDBACK, NULL, "feedback", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_AGN, NULL, "agn", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_DISK_INSTABILITY, NULL, "disk_instability", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_REINCORPORATION, NULL, "reincorporation", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_MISC, NULL, "misc", true, true);
     
     LOG_DEBUG("Created default physics pipeline with %d steps", pipeline->num_steps);

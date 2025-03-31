@@ -2,122 +2,76 @@
     "modules": {
         "discovery_enabled": true,
         "search_paths": [
-            "modules",
-            "${ROOT_DIR}/modules"
+            "./modules" // From millennium.par
+            // Add "${ROOT_DIR}/modules" or other paths if needed
         ],
         "instances": [
+            // Default instance configuration for cooling - can be adjusted if specific settings are needed
             {
-                "name": "default_cooling",
-                "active": true,
-                "cooling_table_path": "tables/cooling_rates.dat",
-                "cooling_rate_multiplier": 1.0
+                "name": "default_cooling", // Assuming this is the name used by the module
+                "active": true
+                // Add module-specific parameters here if needed, e.g.,
+                // "cooling_table_path": "path/to/cooling_rates.dat",
+                // "cooling_rate_multiplier": 1.0
             }
+            // Add configurations for other modules if they exist and need specific settings
         ]
     },
     "pipeline": {
-        "name": "standard_physics",
-        "use_as_global": true,
-        "steps": [
-            {
-                "type": "infall",
-                "name": "infall",
-                "enabled": true,
-                "optional": true
-            },
-            {
-                "type": "cooling",
-                "name": "cooling",
-                "enabled": true,
-                "optional": true
-            },
-            {
-                "type": "star_formation",
-                "name": "star_formation",
-                "enabled": true,
-                "optional": true
-            },
-            {
-                "type": "feedback",
-                "name": "feedback",
-                "enabled": true,
-                "optional": true
-            },
-            {
-                "type": "agn",
-                "name": "agn",
-                "enabled": true,
-                "optional": true
-            },
-            {
-                "type": "disk_instability",
-                "name": "disk_instability",
-                "enabled": true,
-                "optional": true
-            },
-            {
-                "type": "mergers",
-                "name": "mergers",
-                "enabled": true,
-                "optional": true
-            },
-            {
-                "type": "reincorporation",
-                "name": "reincorporation",
-                "enabled": true,
-                "optional": true
-            },
-            {
-                "type": "misc",
-                "name": "misc",
-                "enabled": true,
-                "optional": true
-            }
+        "name": "standard_physics", // Name from example, seems appropriate
+        "use_as_global": true,      // Assume we want this as the main pipeline
+        "steps": [ // Matches the default SAGE order
+            {"type": "infall", "name": "infall", "enabled": true, "optional": true},
+            {"type": "reincorporation", "name": "reincorporation", "enabled": true, "optional": true},
+            {"type": "cooling", "name": "cooling", "enabled": true, "optional": true},
+            {"type": "star_formation", "name": "star_formation", "enabled": true, "optional": true},
+            {"type": "feedback", "name": "feedback", "enabled": true, "optional": true},
+            {"type": "agn", "name": "agn", "enabled": true, "optional": true},
+            {"type": "disk_instability", "name": "disk_instability", "enabled": true, "optional": true},
+            {"type": "mergers", "name": "mergers", "enabled": true, "optional": true},
+            {"type": "misc", "name": "misc", "enabled": true, "optional": true}
         ]
     },
     "simulation": {
-        "first_file": 0,
-        "last_file": 511,
-        "num_tree_files": 512,
-        "snap_list_file": "input/millennium.par",
-        "directory": ".",
-        "tree_name": "millennium_mini",
-        "tree_type": 0
+        "first_file": 0,                     // From millennium.par
+        "last_file": 7,                      // From millennium.par
+        "num_tree_files": 8,                 // From millennium.par
+        "snap_list_file": "/Volumes/Internal/data/millennium/millennium.a_list", // From millennium.par
+        "directory": "/Volumes/Internal/data/millennium/", // From millennium.par
+        "tree_name": "trees_063",            // From millennium.par
+        "tree_type": 0                       // lhalo_binary = 0
     },
     "cosmology": {
-        "omega_matter": 0.25,
-        "omega_lambda": 0.75,
-        "baryon_fraction": 0.17,
-        "hubble_h": 0.73
+        "omega_matter": 0.25,                // From millennium.par
+        "omega_lambda": 0.75,                // From millennium.par
+        "baryon_fraction": 0.17,             // From millennium.par
+        "hubble_h": 0.73                     // From millennium.par
+        // "particle_mass" is read from .par file only in this setup
     },
     "output": {
-        "directory": "output",
-        "prefix": "model",
-        "num_files": 1,
-        "format": 0
+        "directory": "/Volumes/Internal/results/sage-model/millennium/", // From millennium.par
+        "prefix": "model",                   // From millennium.par
+        "num_files": 8,                      // Matches NumSimulationTreeFiles from .par
+        "format": 1                          // sage_hdf5 = 1
     },
     "physics": {
-        "recycle_fraction": 0.43,
-        "reincorporation_factor": 0.1,
-        "feedback_reheating_epsilon": 2.0,
-        "feedback_ejection_efficiency": 0.3,
-        "eject_cutoff_velocity": 400.0,
-        "sfr_efficiency": 0.03,
-        "sfr_critical_density": 0.24,
-        "sfr_burst_efficiency": 0.5,
-        "sfr_burst_slope": 1.0,
-        "agn_efficiency": 0.03,
-        "black_hole_growth_rate": 0.03,
-        "black_hole_seed_mass": 1000.0,
-        "black_hole_cutoff_velocity": 280.0,
-        "thresh_major_merger": 0.3,
-        "threshold_satellite_disruption": 1.0,
-        "merger_time_multiplier": 1.0,
-        "ram_pressure_strip_disk": true,
-        "ram_pressure_reduction_factor": 0.3,
-        "disk_instability_enabled": true,
-        "disk_instability_threshold": 0.8
+        "recycle_fraction": 0.43,                // From millennium.par
+        "reincorporation_factor": 0.15,          // From millennium.pa
+        "feedback_reheating_epsilon": 3.0,       // From millennium.pa
+        "feedback_ejection_efficiency": 0.3,     // From millennium.pa
+        "radio_mode_efficiency": 0.08,           // From millennium.pa
+        "sfr_efficiency": 0.05,                  // From millennium.pa
+        "black_hole_growth_rate": 0.015,         // From millennium.par
+        "quasar_mode_efficiency": 0.005,         // From millennium.par
+        "thresh_major_merger": 0.3,              // From millennium.par
+        "threshold_satellite_disruption": 1.0,   // From millennium.par
+        "disk_instability_enabled": true,        // From DiskInstabilityOn=1 in .par
+        // The following are read only from .par file in this setup:
+        // Yield, FracZleaveDisk, Reionization_z0, Reionization_zr, EnergySN, EtaSN
+        // SFprescription, AGNrecipeOn (mapped), SupernovaRecipeOn, ReionizationOn
+        "agn_feedback_enabled": 2               // From AGNrecipeOn=2 in .par
     },
-    "debug": {
+    "debug": { // Keeping defaults as they are not in .par
         "enabled": false,
         "output_list_on": false
     }

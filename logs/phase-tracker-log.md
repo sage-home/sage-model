@@ -23,23 +23,27 @@
 ## Current Progress
 
 ### Phase 3.1: I/O Interface Abstraction
-- [ ] Design unified I/O interface structure
+- [ ] Design unified I/O interface structure with metadata and capabilities
 - [ ] Implement common I/O operations (initialize, read_forest, write_galaxies, cleanup)
+- [ ] Add HDF5 resource tracking for handles
 - [ ] Create registry for format-specific handlers
 - [ ] Implement format detection and automatic handler selection
 - [ ] Add error handling and validation for I/O operations
 
 ### Phase 3.2: Format-Specific Implementations
 - [ ] Refactor binary format handlers to use the common interface
+- [ ] Add cross-platform endianness detection and conversion
 - [ ] Refactor HDF5 format handlers to use the common interface
+- [ ] Implement proper HDF5 resource management to prevent handle leaks
 - [ ] Implement serialization support for extended properties
 - [ ] Add validation for data consistency across formats
 - [ ] Create format conversion utilities
 
 ### Phase 3.3: Memory Optimization
-- [ ] Implement buffered reading/writing
+- [ ] Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
 - [ ] Create memory mapping options for large files
 - [ ] Design efficient caching for frequently accessed halos
+- [ ] Optimize allocation with geometric growth instead of fixed increments
 - [ ] Add prefetching for depth-first traversal
 - [ ] Implement memory pooling for galaxy allocations
 
@@ -47,29 +51,36 @@
 
 ### Phase 3.1 Interface Design
 1. I/O Interface Definition:
-   - Design a unified I/O interface with common operations (initialize, read_forest, write_galaxies, cleanup)
-   - Create a registry for format-specific handlers that can be selected at runtime
-   - Develop error handling and validation to ensure data integrity
+   - Design a unified I/O interface with common operations and resource management functions
+   - Add metadata fields including format capabilities and versioning
+   - Create a registry for format-specific handlers with automatic format detection
+   - Develop comprehensive error handling and validation specific to I/O operations
 
 2. Binary Format Implementation:
-   - Refactor the existing binary I/O code into a format-specific implementation of the interface
+   - Refactor the existing binary I/O code into a format-specific implementation
+   - Add cross-platform endianness detection and conversion for binary data
    - Ensure backward compatibility with existing binary files
    - Implement proper error handling and validation
 
 3. HDF5 Format Implementation:
-   - Refactor the existing HDF5 I/O code into a format-specific implementation of the interface
+   - Refactor the existing HDF5 I/O code with improved resource management
+   - Implement robust handle tracking to prevent resource leaks
    - Add support for galaxy extensions and custom properties
-   - Implement metadata storage for extended properties
+   - Implement metadata storage with proper attribute handling
 
 4. Memory Optimization Strategy:
-   - Design a plan for implementing memory optimization features (buffering, mapping, caching)
-   - Identify critical paths for optimization based on profiling data
-   - Develop benchmarks to measure the impact of optimizations
+   - Implement runtime-configurable buffer sizes for I/O operations
+   - Optimize galaxy allocation with geometric growth for better performance
+   - Design intelligent caching for frequently accessed halo data
+   - Develop benchmarks to measure the impact of memory optimizations
 
 ## Completion Criteria
 - All I/O operations function through the unified interface
 - Format-specific handlers implement all required functionality
+- Endianness handling ensures cross-platform compatibility for binary formats
+- HDF5 resources are properly tracked and cleaned up with no handle leaks
 - Extended properties are properly serialized across formats
+- Memory allocation is optimized with geometric growth strategies
 - Memory usage is optimized for large merger trees
 - Backward compatibility is maintained with existing data files
 - Performance improvements are measurable and significant
