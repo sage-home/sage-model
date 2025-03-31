@@ -22,3 +22,10 @@
 - Completed testing and validation of all components of the Module Dependencies Framework
 - Integrated pipeline invocation with module callback system successfully
 - Modified files: core_module_system.c, core_module_callback.c
+
+2025-04-01: [Phase 3] Fixed Redshift Parameter in strip_from_satellite Function
+- Found and fixed bug where strip_from_satellite was called with a hardcoded 0.0 value instead of the current redshift
+- Extended pipeline_context structure to include redshift field for proper parameter passing
+- Updated physics_step_executor to use context->redshift instead of hardcoded value
+- Tests now pass and match the original benchmark results from phase 1
+- Modified files: core_pipeline_system.h, core_pipeline_system.c, core_build_model.c
