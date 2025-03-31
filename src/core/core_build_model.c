@@ -47,10 +47,10 @@ static int physics_step_executor(
     int centralgal = context->centralgal;
     double time = context->time;
     double dt = context->dt / STEPS;
+    double redshift = context->redshift;
     int halonr = context->halonr;
     int step_num = context->step;
     struct params *run_params = context->params;
-    double redshift = run_params->simulation.ZZ[galaxies[centralgal].SnapNum];
     
     // Skip if galaxy has merged
     if (galaxies[p].mergeType > 0) {
@@ -561,6 +561,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     );
     pipeline_ctx.current_galaxy = 0;
     pipeline_ctx.infall_gas = infallingGas;
+    pipeline_ctx.redshift = ctx.redshift; // Set the redshift from evolution context
     
     // Get the global physics pipeline
     struct module_pipeline *physics_pipeline = pipeline_get_global();

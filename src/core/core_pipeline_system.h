@@ -55,6 +55,7 @@ struct pipeline_context {
     void *user_data;                     /* Optional user data */
     int current_galaxy;                  /* Index of current galaxy being processed */
     double infall_gas;                   /* Result of infall calculation */
+    double redshift;                     /* Current redshift */
 };
 
 /**
@@ -290,6 +291,8 @@ bool pipeline_validate(struct module_pipeline *pipeline);
  * @param halonr Current halo number
  * @param step Current step number
  * @param user_data Optional user data
+ * 
+ * Note: The redshift field in the context must be set separately.
  */
 void pipeline_context_init(
     struct pipeline_context *context,

@@ -455,6 +455,7 @@ void pipeline_context_init(
     context->halonr = halonr;
     context->step = step;
     context->user_data = user_data;
+    context->redshift = 0.0; // Initialize to default value, will be set later
 }
 
 /**
