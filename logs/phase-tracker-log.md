@@ -33,8 +33,8 @@
 ### Phase 3.2: Format-Specific Implementations
 - [x] Refactor binary format handlers to use the common interface
 - [x] Add cross-platform endianness detection and conversion
-- [ ] Refactor HDF5 format handlers to use the common interface
-- [ ] Implement proper HDF5 resource management to prevent handle leaks
+- [/] Refactor HDF5 format handlers to use the common interface (framework complete, implementation pending)
+- [/] Implement proper HDF5 resource management to prevent handle leaks (framework designed)
 - [ ] Implement serialization support for extended properties
 - [ ] Add validation for data consistency across formats
 - [ ] Create format conversion utilities
@@ -57,10 +57,11 @@
    - Proper error handling and validation implemented
 
 2. HDF5 Format Handlers: 🔄 IN PROGRESS
-   - Refactor the existing HDF5 I/O code with improved resource management
-   - Leverage the HDF5 resource tracking system to prevent handle leaks
-   - Add support for galaxy extensions and custom properties
-   - Implement metadata storage with proper attribute handling
+   - Framework for HDF5 format handler has been implemented
+   - Header file and interface definitions completed
+   - Test suite created and passing
+   - Pending Makefile updates to include full source file
+   - Need to complete implementation of reading functions
 
 3. Galaxy Output Formats:
    - Refactor binary and HDF5 output handlers to use the common interface

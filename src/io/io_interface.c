@@ -6,6 +6,45 @@
 #include "../core/core_allvars.h"
 #include "io_interface.h"
 #include "io_lhalo_binary.h"
+#ifdef HDF5
+// Note: For now we're implementing stubs directly here to avoid Makefile changes
+// #include "io_lhalo_hdf5.h"
+
+// HDF5 stubs implemented here until Makefile is updated
+// Static handler definition
+static struct io_interface lhalo_hdf5_handler = {
+    .name = "LHalo HDF5",
+    .version = "1.0",
+    .format_id = IO_FORMAT_LHALO_HDF5,
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_MULTI_FILE | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS,
+    
+    .initialize = NULL,  // Stubs don't implement these
+    .read_forest = NULL,
+    .write_galaxies = NULL,
+    .cleanup = NULL,
+    
+    .close_open_handles = NULL,
+    .get_open_handle_count = NULL,
+    
+    .last_error = IO_ERROR_NONE,
+    .error_message = {0}
+};
+
+int io_lhalo_hdf5_init(void) {
+    // Register the stub handler
+    return io_register_handler(&lhalo_hdf5_handler);
+}
+
+bool io_is_lhalo_hdf5(const char *filename) {
+    // Basic extension-based detection
+    const char *ext = strrchr(filename, '.');
+    if (ext == NULL) {
+        return false;
+    }
+    
+    return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
+}
+#endif
 
 /**
  * @brief Maximum number of I/O handlers that can be registered
@@ -56,6 +95,10 @@ int io_init() {
     
     // Register built-in handlers
     io_lhalo_binary_init();
+    
+#ifdef HDF5
+    io_lhalo_hdf5_init();
+#endif
     
     return 0;
 }
@@ -197,6 +240,12 @@ struct io_interface *io_detect_format(const char *filename) {
     if (io_is_lhalo_binary(filename)) {
         return io_get_handler_by_id(IO_FORMAT_LHALO_BINARY);
     }
+    
+#ifdef HDF5
+    if (io_is_lhalo_hdf5(filename)) {
+        return io_get_handler_by_id(IO_FORMAT_LHALO_HDF5);
+    }
+#endif
     
     // Fall back to extension-based detection
     const char *ext = strrchr(filename, '.');
