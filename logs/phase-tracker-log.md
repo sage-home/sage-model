@@ -31,7 +31,7 @@
 - [x] Add error handling and validation for I/O operations
 
 ### Phase 3.2: Format-Specific Implementations
-- [ ] Refactor binary format handlers to use the common interface
+- [x] Refactor binary format handlers to use the common interface
 - [x] Add cross-platform endianness detection and conversion
 - [ ] Refactor HDF5 format handlers to use the common interface
 - [ ] Implement proper HDF5 resource management to prevent handle leaks
@@ -50,13 +50,13 @@
 ## Next Actions
 
 ### Phase 3.2 Format-Specific Implementation
-1. Binary Format Handlers:
-   - Refactor the existing binary I/O code (read_tree_lhalo_binary.c) to use the common I/O interface
-   - Integrate the endianness utilities for cross-platform compatibility
-   - Ensure backward compatibility with existing binary files
-   - Implement proper error handling and validation for binary formats
+1. Binary Format Handlers: ✅ COMPLETED
+   - Binary I/O code has been refactored to use the common I/O interface
+   - Endianness utilities integrated for cross-platform compatibility
+   - Backward compatibility maintained with existing binary files
+   - Proper error handling and validation implemented
 
-2. HDF5 Format Handlers:
+2. HDF5 Format Handlers: 🔄 IN PROGRESS
    - Refactor the existing HDF5 I/O code with improved resource management
    - Leverage the HDF5 resource tracking system to prevent handle leaks
    - Add support for galaxy extensions and custom properties

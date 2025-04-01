@@ -48,7 +48,7 @@ PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
         io/ctrees_utils.c io/save_gals_binary.c io/forest_utils.c \
         io/buffered_io.c io/io_interface.c io/io_galaxy_output.c \
-        io/io_endian_utils.c
+        io/io_endian_utils.c io/io_lhalo_binary.c
 
 # Combine all library sources
 LIBSRC := $(CORE_SRC) $(PHYSICS_SRC) $(IO_SRC)
@@ -256,7 +256,7 @@ else
 endif
 
 # -------------- Build Targets ----------------------------
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary
 
 all: $(SAGELIB) $(EXEC)
 
@@ -268,6 +268,9 @@ test_io_interface: tests/test_io_interface.c $(SAGELIB)
 
 test_endian_utils: tests/test_endian_utils.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_endian_utils tests/test_endian_utils.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_lhalo_binary: tests/test_lhalo_binary.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_lhalo_binary tests/test_lhalo_binary.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 $(EXEC): $(OBJS)
 	$(CC) $^ $(LIBFLAGS) -o $@
@@ -294,7 +297,8 @@ celan celna clena: clean
 clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]
 
-tests: $(EXEC) test_io_interface test_endian_utils
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary
 	./tests/test_sage.sh
 	./tests/test_io_interface
 	./tests/test_endian_utils
+	./tests/test_lhalo_binary

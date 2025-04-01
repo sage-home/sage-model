@@ -5,6 +5,7 @@
 
 #include "../core/core_allvars.h"
 #include "io_interface.h"
+#include "io_lhalo_binary.h"
 
 /**
  * @brief Maximum number of I/O handlers that can be registered
@@ -52,6 +53,10 @@ int io_init() {
     io_clear_error();
     
     initialized = true;
+    
+    // Register built-in handlers
+    io_lhalo_binary_init();
+    
     return 0;
 }
 
@@ -188,9 +193,12 @@ struct io_interface *io_detect_format(const char *filename) {
         return NULL;
     }
     
-    // Try each handler's detection function
-    // For now, just detect based on file extension
+    // Try specific format detection functions first
+    if (io_is_lhalo_binary(filename)) {
+        return io_get_handler_by_id(IO_FORMAT_LHALO_BINARY);
+    }
     
+    // Fall back to extension-based detection
     const char *ext = strrchr(filename, '.');
     if (ext != NULL) {
         if (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0) {
