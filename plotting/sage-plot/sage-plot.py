@@ -24,6 +24,7 @@ Options:
                          [default: all available plots]
   --use-tex              Use LaTeX for text rendering (not recommended)
   --verbose              Show detailed output
+  --test-mapper          Only test SnapshotRedshiftMapper functionality
   --help                 Show this help message
 """
 
@@ -38,11 +39,18 @@ import time
 import traceback  # For detailed error tracing
 from collections import OrderedDict
 
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
-from tqdm import tqdm
-import h5py  # For HDF5 file reading
+# Import these modules conditionally to allow for test-only mode
+matplotlib_imported = False
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from tqdm import tqdm
+    import h5py  # For HDF5 file reading
+    matplotlib_imported = True
+except ImportError:
+    # These will only be required for actual plotting, not for testing
+    pass
 
 random.seed(42)
 
@@ -178,7 +186,7 @@ class SAGEParameters:
                     else:
                         continue  # Skip lines that don't match our format
 
-                # Handle inline comments
+                # Handle inline comments - crucial to remove them before type conversion
                 if ";" in value_part:
                     value = value_part.split(";")[0].strip()
                 elif "#" in value_part:
@@ -192,9 +200,11 @@ class SAGEParameters:
                 value = value.strip()
 
                 # Convert to appropriate type
-                if value.isdigit():
+                if value.lstrip('-').isdigit():
+                    # This will handle negative numbers like -1
                     value = int(value)
                 elif self._is_float(value):
+                    # Handle float values
                     value = float(value)
                 elif key in ["OutputDir", "SimulationDir"]:
                     # Ensure directory paths are properly formatted
@@ -655,6 +665,14 @@ def main():
     # Parse the parameter file
     try:
         params = SAGEParameters(args.param_file)
+        
+        # Only show debug information if verbose flag is enabled
+        if args.verbose:
+            num_outputs = params.get('NumOutputs', 'Not found')
+            output_snapshots = params.get('OutputSnapshots', 'Not found')
+            print(f"DEBUG: NumOutputs = {num_outputs} (type: {type(num_outputs)})")
+            print(f"DEBUG: OutputSnapshots = {output_snapshots}")
+        
         if args.verbose:
             print(f"Loaded parameters from {args.param_file}")
 
@@ -672,8 +690,7 @@ def main():
                 if key in params.params:
                     print(f"  {key} = {params.params[key]}")
 
-        # Print raw params for debugging
-        if args.verbose:
+            # Print raw params for debugging
             print("\nRaw parameter values:")
             for key, value in params.params.items():
                 print(f"  {key} = {value} (type: {type(value)})")

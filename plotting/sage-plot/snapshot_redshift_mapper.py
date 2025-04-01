@@ -348,8 +348,9 @@ class SnapshotRedshiftMapper:
         Get snapshots for evolution plots based on parameter file.
         
         Priority:
-        1. OutputSnapshots list from parameter file (-> arrow notation in param file)
-        2. If no OutputSnapshots or invalid, use a diverse selection of available snapshots
+        1. If NumOutputs = -1, use all available snapshots from a_list
+        2. OutputSnapshots list from parameter file (-> arrow notation in param file)
+        3. If no OutputSnapshots or invalid, use a diverse selection of available snapshots
         
         Returns:
             List of snapshot indices for evolution plots
@@ -358,6 +359,48 @@ class SnapshotRedshiftMapper:
         if not self.snapshots:
             print("Error: No snapshots available in redshift mapping")
             sys.exit(1)
+        
+        # Check for NumOutputs = -1 case first
+        # First check if NumOutputs exists in params (parsed directly)
+        num_outputs = None  # Initialize with None to detect if it's set
+        
+        if "NumOutputs" in self.params:
+            # Get raw value
+            num_outputs = self.params["NumOutputs"]
+            
+            # Convert to int if it's a string
+            if isinstance(num_outputs, str):
+                # Clean up the string - remove any trailing comments
+                clean_value = num_outputs.split('%')[0].strip()
+                clean_value = clean_value.split('#')[0].strip()
+                clean_value = clean_value.split(';')[0].strip()
+                
+                try:
+                    num_outputs = int(clean_value)
+                except ValueError:
+                    if self.params.get("verbose", False):
+                        print(f"Warning: Unable to parse NumOutputs value: '{clean_value}'")
+                    num_outputs = None  # couldn't parse
+        
+        # Debug output only when verbose is enabled
+        if self.params.get("verbose", False):
+            print(f"DEBUG: NumOutputs value = {num_outputs}")
+        
+        if num_outputs == -1:
+            # Use all snapshots from a_list, sorted by redshift (low to high)
+            snap_z_pairs = [(snap, self.get_redshift(snap)) for snap in self.snapshots]
+            sorted_pairs = sorted(snap_z_pairs, key=lambda x: x[1])
+            
+            all_snapshots = [snap for snap, _ in sorted_pairs]
+            
+            print(f"Using all {len(all_snapshots)} available snapshots for evolution plots (NumOutputs = -1)")
+            
+            # Only show more detailed information if verbose is enabled
+            if self.params.get("verbose", False):
+                print(f"Snapshot range: {min(all_snapshots)} to {max(all_snapshots)}")
+                print(f"Redshift range: {sorted_pairs[0][1]:.3f} to {sorted_pairs[-1][1]:.3f}")
+            
+            return all_snapshots
             
         # Check for the OutputSnapshots parameter which is set by the arrow notation in parameter file
         if "OutputSnapshots" in self.params:
@@ -394,7 +437,7 @@ class SnapshotRedshiftMapper:
                     print("Warning: No valid snapshots found in OutputSnapshots list")
         
         # If we don't have OutputSnapshots or none are valid, select a diverse range
-        print("Note: Using a diverse selection of snapshots for evolution plots")
+        print("Note: NumOutputs != -1 and no valid OutputSnapshots found. Using a diverse selection of snapshots for evolution plots")
         
         # Sort all available snapshots by redshift (low to high)
         sorted_pairs = sorted(
