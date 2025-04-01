@@ -2,7 +2,7 @@ sage
 tests/test_data/
 input/millennium/
 output/
-*.py
+
 *.o
 *.*~
 libsage.a

@@ -30,7 +30,7 @@ float calculate_H2_fraction(const float surface_density, const float metallicity
     }
 
     // Calculate midplane pressure
-    const float P_mid = M_PI * run_params->G * surface_density * surface_density;
+    const float P_mid = M_PI/2 * run_params->G * surface_density * surface_density;
     const float P_0_internal = 5.93e-12 / run_params->UnitPressure_in_cgs;
     const float P_norm = P_mid / P_0_internal;
 
