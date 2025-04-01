@@ -47,7 +47,7 @@ PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
         io/ctrees_utils.c io/save_gals_binary.c io/forest_utils.c \
-        io/buffered_io.c
+        io/buffered_io.c io/io_interface.c io/io_galaxy_output.c
 
 # Combine all library sources
 LIBSRC := $(CORE_SRC) $(PHYSICS_SRC) $(IO_SRC)
@@ -110,7 +110,7 @@ endif
 # HDF5 source files (defined outside to support 'make clean')
 H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c \
           io/hdf5_read_utils.c io/read_tree_consistentrees_hdf5.c \
-          io/read_tree_gadget4_hdf5.c
+          io/read_tree_gadget4_hdf5.c io/io_hdf5_utils.c
 
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
@@ -255,12 +255,15 @@ else
 endif
 
 # -------------- Build Targets ----------------------------
-.PHONY: clean celan celna clena tests all test_extensions
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface
 
 all: $(SAGELIB) $(EXEC)
 
 test_extensions: tests/test_galaxy_extensions.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_extensions tests/test_galaxy_extensions.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_io_interface: tests/test_io_interface.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_interface tests/test_io_interface.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 $(EXEC): $(OBJS)
 	$(CC) $^ $(LIBFLAGS) -o $@
@@ -287,5 +290,6 @@ celan celna clena: clean
 clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]
 
-tests: $(EXEC)
+tests: $(EXEC) test_io_interface
 	./tests/test_sage.sh
+	./tests/test_io_interface

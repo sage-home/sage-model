@@ -1,0 +1,283 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+
+#include "../core/core_allvars.h"
+#include "io_interface.h"
+
+/**
+ * @brief Maximum number of I/O handlers that can be registered
+ */
+#define MAX_IO_HANDLERS 16
+
+/**
+ * @brief Global handler registry
+ */
+static struct io_interface *handlers[MAX_IO_HANDLERS];
+
+/**
+ * @brief Number of registered handlers
+ */
+static int num_handlers = 0;
+
+/**
+ * @brief Global error state
+ */
+static int last_error = IO_ERROR_NONE;
+static char error_message[256] = {0};
+
+/**
+ * @brief Initialized flag
+ */
+static bool initialized = false;
+
+/**
+ * @brief Initialize the I/O interface system
+ * 
+ * Must be called before any other I/O interface functions.
+ * 
+ * @return 0 on success, non-zero on failure
+ */
+int io_init() {
+    if (initialized) {
+        return 0;  // Already initialized
+    }
+    
+    // Reset the handler registry
+    num_handlers = 0;
+    memset(handlers, 0, sizeof(handlers));
+    
+    // Reset error state
+    io_clear_error();
+    
+    initialized = true;
+    return 0;
+}
+
+/**
+ * @brief Clean up the I/O interface system
+ * 
+ * Should be called at program exit to free resources.
+ */
+void io_cleanup() {
+    if (!initialized) {
+        return;  // Not initialized
+    }
+    
+    // We don't free the handlers here because they're typically statically
+    // allocated or managed elsewhere
+    num_handlers = 0;
+    initialized = false;
+}
+
+/**
+ * @brief Register a new I/O handler
+ * 
+ * @param handler Pointer to the handler to register
+ * @return 0 on success, non-zero on failure
+ */
+int io_register_handler(struct io_interface *handler) {
+    if (!initialized) {
+        io_set_error(IO_ERROR_UNKNOWN, "I/O interface system not initialized");
+        return -1;
+    }
+    
+    if (num_handlers >= MAX_IO_HANDLERS) {
+        io_set_error(IO_ERROR_RESOURCE_LIMIT, "Maximum number of I/O handlers reached");
+        return -1;
+    }
+    
+    if (handler == NULL) {
+        io_set_error(IO_ERROR_VALIDATION_FAILED, "NULL handler passed to io_register_handler");
+        return -1;
+    }
+    
+    // Check for duplicates
+    for (int i = 0; i < num_handlers; i++) {
+        if (handlers[i]->format_id == handler->format_id) {
+            io_set_error(IO_ERROR_VALIDATION_FAILED, "Handler with same format_id already registered");
+            return -1;
+        }
+    }
+    
+    handlers[num_handlers++] = handler;
+    return 0;
+}
+
+/**
+ * @brief Get a handler by format ID
+ * 
+ * @param format_id Format identifier
+ * @return Pointer to the handler, or NULL if not found
+ */
+struct io_interface *io_get_handler_by_id(int format_id) {
+    if (!initialized) {
+        io_set_error(IO_ERROR_UNKNOWN, "I/O interface system not initialized");
+        return NULL;
+    }
+    
+    for (int i = 0; i < num_handlers; i++) {
+        if (handlers[i]->format_id == format_id) {
+            return handlers[i];
+        }
+    }
+    
+    io_set_error(IO_ERROR_VALIDATION_FAILED, "No handler found with specified format_id");
+    return NULL;
+}
+
+/**
+ * @brief Map a TreeType enum to a format ID
+ * 
+ * @param tree_type TreeType from core_allvars.h as integer
+ * @return Corresponding format ID
+ */
+int io_map_tree_type_to_format_id(int tree_type) {
+    switch (tree_type) {
+        case lhalo_binary:
+            return IO_FORMAT_LHALO_BINARY;
+        case lhalo_hdf5:
+            return IO_FORMAT_LHALO_HDF5;
+        case consistent_trees_ascii:
+            return IO_FORMAT_CONSISTENT_TREES_ASCII;
+        case consistent_trees_hdf5:
+            return IO_FORMAT_CONSISTENT_TREES_HDF5;
+        case gadget4_hdf5:
+            return IO_FORMAT_GADGET4_HDF5;
+        case genesis_hdf5:
+            return IO_FORMAT_GENESIS_HDF5;
+        default:
+            io_set_error(IO_ERROR_VALIDATION_FAILED, "Unknown tree type");
+            return -1;
+    }
+}
+
+/**
+ * @brief Map an OutputFormat enum to a format ID
+ * 
+ * @param output_format OutputFormat from core_allvars.h as integer
+ * @return Corresponding format ID
+ */
+int io_map_output_format_to_format_id(int output_format) {
+    switch (output_format) {
+        case sage_binary:
+            return IO_FORMAT_BINARY_OUTPUT;
+        case sage_hdf5:
+            return IO_FORMAT_HDF5_OUTPUT;
+        default:
+            io_set_error(IO_ERROR_VALIDATION_FAILED, "Unknown output format");
+            return -1;
+    }
+}
+
+/**
+ * @brief Detect format from file
+ * 
+ * @param filename File to examine
+ * @return Pointer to the handler, or NULL if not detected
+ */
+struct io_interface *io_detect_format(const char *filename) {
+    if (!initialized) {
+        io_set_error(IO_ERROR_UNKNOWN, "I/O interface system not initialized");
+        return NULL;
+    }
+    
+    if (filename == NULL) {
+        io_set_error(IO_ERROR_VALIDATION_FAILED, "NULL filename passed to io_detect_format");
+        return NULL;
+    }
+    
+    // Try each handler's detection function
+    // For now, just detect based on file extension
+    
+    const char *ext = strrchr(filename, '.');
+    if (ext != NULL) {
+        if (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0) {
+            // Return first HDF5 handler
+            for (int j = 0; j < num_handlers; j++) {
+                if (strstr(handlers[j]->name, "HDF5") != NULL) {
+                    return handlers[j];
+                }
+            }
+        } else if (strcmp(ext, ".dat") == 0 || strcmp(ext, ".bin") == 0) {
+            // Return first binary handler
+            for (int j = 0; j < num_handlers; j++) {
+                if (strstr(handlers[j]->name, "Binary") != NULL) {
+                    return handlers[j];
+                }
+            }
+        }
+    }
+    
+    io_set_error(IO_ERROR_FORMAT_ERROR, "Could not detect format of file");
+    return NULL;
+}
+
+/**
+ * @brief Get the last error code
+ * 
+ * @return Last error code
+ */
+int io_get_last_error() {
+    return last_error;
+}
+
+/**
+ * @brief Get the last error message
+ * 
+ * @return Last error message
+ */
+const char *io_get_error_message() {
+    return error_message;
+}
+
+/**
+ * @brief Set an error
+ * 
+ * @param error_code Error code
+ * @param message Error message
+ */
+void io_set_error(int error_code, const char *message) {
+    last_error = error_code;
+    strncpy(error_message, message, sizeof(error_message) - 1);
+    error_message[sizeof(error_message) - 1] = '\0';
+}
+
+/**
+ * @brief Set an error with formatting
+ * 
+ * @param error_code Error code
+ * @param format Format string
+ * @param ... Format arguments
+ */
+void io_set_error_fmt(int error_code, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(error_message, sizeof(error_message), format, args);
+    va_end(args);
+    last_error = error_code;
+}
+
+/**
+ * @brief Clear the last error
+ */
+void io_clear_error() {
+    last_error = IO_ERROR_NONE;
+    error_message[0] = '\0';
+}
+
+/**
+ * @brief Check if a format supports a capability
+ * 
+ * @param handler Handler to check
+ * @param capability Capability to check for
+ * @return true if supported, false otherwise
+ */
+bool io_has_capability(struct io_interface *handler, enum io_capabilities capability) {
+    if (handler == NULL) {
+        return false;
+    }
+    
+    return (handler->capabilities & capability) != 0;
+}
