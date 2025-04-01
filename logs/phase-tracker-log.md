@@ -35,7 +35,7 @@
 - [x] Add cross-platform endianness detection and conversion
 - [/] Refactor HDF5 format handlers to use the common interface (framework complete, implementation pending)
 - [/] Implement proper HDF5 resource management to prevent handle leaks (framework designed)
-- [ ] Implement serialization support for extended properties
+- [x] Implement serialization support for extended properties
 - [ ] Add validation for data consistency across formats
 - [ ] Create format conversion utilities
 
@@ -63,11 +63,12 @@
    - Pending Makefile updates to include full source file
    - Need to complete implementation of reading functions
 
-3. Galaxy Output Formats:
-   - Refactor binary and HDF5 output handlers to use the common interface
-   - Implement serialization support for extended properties
-   - Ensure consistent format across different output mechanisms
-   - Add proper validation for data consistency
+3. Galaxy Output Formats: 🔄 IN PROGRESS
+   - Core serialization utilities for extended properties are complete
+   - Binary format header design and parsing implemented
+   - Type-specific serializers and deserializers for all basic types completed
+   - Need to integrate with binary and HDF5 output handlers
+   - Need to update galaxy save functions to include extended properties
 
 4. Validation and Conversion:
    - Add validation functions to ensure data consistency across formats
