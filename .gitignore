@@ -3,6 +3,7 @@ tests/test_results/
 tests/test_env/
 tests/test_module_callback
 tests/test_pipeline_invoke
+tests/test_data/microuchuu
 input/millennium/
 output/
 ignore/
