@@ -32,7 +32,7 @@
 
 ### Phase 3.2: Format-Specific Implementations
 - [ ] Refactor binary format handlers to use the common interface
-- [ ] Add cross-platform endianness detection and conversion
+- [x] Add cross-platform endianness detection and conversion
 - [ ] Refactor HDF5 format handlers to use the common interface
 - [ ] Implement proper HDF5 resource management to prevent handle leaks
 - [ ] Implement serialization support for extended properties
@@ -49,30 +49,30 @@
 
 ## Next Actions
 
-### Phase 3.1 Interface Design
-1. I/O Interface Definition:
-   - Design a unified I/O interface with common operations and resource management functions
-   - Add metadata fields including format capabilities and versioning
-   - Create a registry for format-specific handlers with automatic format detection
-   - Develop comprehensive error handling and validation specific to I/O operations
-
-2. Binary Format Implementation:
-   - Refactor the existing binary I/O code into a format-specific implementation
-   - Add cross-platform endianness detection and conversion for binary data
+### Phase 3.2 Format-Specific Implementation
+1. Binary Format Handlers:
+   - Refactor the existing binary I/O code (read_tree_lhalo_binary.c) to use the common I/O interface
+   - Integrate the endianness utilities for cross-platform compatibility
    - Ensure backward compatibility with existing binary files
-   - Implement proper error handling and validation
+   - Implement proper error handling and validation for binary formats
 
-3. HDF5 Format Implementation:
+2. HDF5 Format Handlers:
    - Refactor the existing HDF5 I/O code with improved resource management
-   - Implement robust handle tracking to prevent resource leaks
+   - Leverage the HDF5 resource tracking system to prevent handle leaks
    - Add support for galaxy extensions and custom properties
    - Implement metadata storage with proper attribute handling
 
-4. Memory Optimization Strategy:
-   - Implement runtime-configurable buffer sizes for I/O operations
-   - Optimize galaxy allocation with geometric growth for better performance
-   - Design intelligent caching for frequently accessed halo data
-   - Develop benchmarks to measure the impact of memory optimizations
+3. Galaxy Output Formats:
+   - Refactor binary and HDF5 output handlers to use the common interface
+   - Implement serialization support for extended properties
+   - Ensure consistent format across different output mechanisms
+   - Add proper validation for data consistency
+
+4. Validation and Conversion:
+   - Add validation functions to ensure data consistency across formats
+   - Implement format conversion utilities for migration between formats
+   - Create test cases for validation and conversion functionality
+   - Document the validation and conversion process
 
 ## Completion Criteria
 - All I/O operations function through the unified interface

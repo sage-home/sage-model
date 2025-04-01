@@ -40,3 +40,13 @@
 - Added documentation on the I/O interface architecture and implementation
 - Modified files: Makefile
 - Added files: io_interface.h, io_interface.c, io_hdf5_utils.h, io_hdf5_utils.c, io_galaxy_output.h, io_galaxy_output.c, tests/test_io_interface.c, docs/io_interface_guide.md
+
+2025-04-01: [Phase 3.2] Implemented Endianness Utilities for Cross-Platform Compatibility
+- Created comprehensive utilities for handling endianness differences across platforms
+- Implemented endianness detection, byte swapping, and host/network conversion functions
+- Developed array operations for efficient bulk endianness conversion
+- Added generic endianness swapping for handling arbitrary data types
+- Created test suite with comprehensive verification of all functionality
+- Added detailed documentation with usage examples and best practices
+- Modified files: Makefile
+- Added files: io_endian_utils.h, io_endian_utils.c, tests/test_endian_utils.c, docs/io_endian_utils_guide.md
