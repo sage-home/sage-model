@@ -63,13 +63,13 @@ DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabi
 SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 
 FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
-FeedbackEjectionEfficiency  0.2   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
+FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
 ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 
-RadioModeEfficiency     0.10  %AGN radio mode efficiency (AGNrecipeOn=2)
-QuasarModeEfficiency    0.006 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
-BlackHoleGrowthRate     0.012 %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
+RadioModeEfficiency     0.08  %AGN radio mode efficiency (AGNrecipeOn=2)
+QuasarModeEfficiency    0.008 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
+BlackHoleGrowthRate     0.015 %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
 
 ThreshMajorMerger       0.3   %major merger when mass ratio greater than this
 ThresholdSatDisruption  1.0   %Mvir-to-baryonic mass ratio threshold for satellite merger or disruption

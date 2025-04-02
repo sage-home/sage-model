@@ -227,14 +227,8 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         eburst = 0.56 * pow(mass_ratio, 0.7);
     }
 
-    // Determine which gas component to use for star formation
-    if (run_params->SFprescription >= 1) {
-        // Use H2 gas for star formation
-        stars = eburst * galaxies[merger_centralgal].H2_gas;
-    } else {
-        // Use total cold gas (original recipe)
-        stars = eburst * galaxies[merger_centralgal].ColdGas;
-    }
+    // MODIFIED: Always use total cold gas for starbursts regardless of SF prescription
+    stars = eburst * galaxies[merger_centralgal].ColdGas;
     
     if(stars < 0.0) {
         stars = 0.0;
@@ -252,20 +246,11 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
             reheated_mass);
 
     // can't use more gas than is available! so balance SF and feedback
-    if (run_params->SFprescription >= 1) {
-        // For H2-based model - check against H2 gas
-        if((stars + reheated_mass) > galaxies[merger_centralgal].H2_gas) {
-            fac = galaxies[merger_centralgal].H2_gas / (stars + reheated_mass);
-            stars *= fac;
-            reheated_mass *= fac;
-        }
-    } else {
-        // For original model - check against total cold gas
-        if((stars + reheated_mass) > galaxies[merger_centralgal].ColdGas) {
-            fac = galaxies[merger_centralgal].ColdGas / (stars + reheated_mass);
-            stars *= fac;
-            reheated_mass *= fac;
-        }
+    // MODIFIED: Always check against total cold gas
+    if((stars + reheated_mass) > galaxies[merger_centralgal].ColdGas) {
+        fac = galaxies[merger_centralgal].ColdGas / (stars + reheated_mass);
+        stars *= fac;
+        reheated_mass *= fac;
     }
 
     // starbursts add to the bulge
@@ -275,19 +260,24 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
 
     metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
     
-    // Remove stars from appropriate gas components
+    // MODIFIED: Update both H2 and total cold gas consistently
     if (run_params->SFprescription >= 1) {
-        // Remove stars from both H2 and total cold gas
-        galaxies[merger_centralgal].H2_gas -= stars;
-        galaxies[merger_centralgal].ColdGas -= (1 - run_params->RecycleFraction) * stars;
-        galaxies[merger_centralgal].MetalsColdGas -= metallicity * (1 - run_params->RecycleFraction) * stars;
+        // Calculate how much of the star formation comes from H2
+        float h2_fraction = galaxies[merger_centralgal].H2_gas / galaxies[merger_centralgal].ColdGas;
+        if (h2_fraction > 1.0) h2_fraction = 1.0; // Safety check
         
-        // Recompute gas components to maintain consistency
+        // Remove stars proportionally from H2 gas
+        galaxies[merger_centralgal].H2_gas -= h2_fraction * (1 - run_params->RecycleFraction) * stars;
+        if (galaxies[merger_centralgal].H2_gas < 0.0) galaxies[merger_centralgal].H2_gas = 0.0;
+    }
+    
+    // Remove stars from total cold gas (this happens for all prescriptions)
+    galaxies[merger_centralgal].ColdGas -= (1 - run_params->RecycleFraction) * stars;
+    galaxies[merger_centralgal].MetalsColdGas -= metallicity * (1 - run_params->RecycleFraction) * stars;
+    
+    // Recompute gas components to maintain consistency
+    if (run_params->SFprescription >= 1) {
         update_gas_components(&galaxies[merger_centralgal], run_params);
-    } else {
-        // Original model - remove stars only from cold gas
-        galaxies[merger_centralgal].ColdGas -= (1 - run_params->RecycleFraction) * stars;
-        galaxies[merger_centralgal].MetalsColdGas -= metallicity * (1 - run_params->RecycleFraction) * stars;
     }
     
     galaxies[merger_centralgal].BulgeMass += (1 - run_params->RecycleFraction) * stars;
