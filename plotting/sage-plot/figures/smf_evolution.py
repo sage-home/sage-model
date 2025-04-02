@@ -289,7 +289,7 @@ def plot(snapshots, params, output_dir="plots", output_format=".png", verbose=Fa
                 va='top'
             )
             # Move down for the next label
-            y_pos *= 0.7  # Reduces y-position by 30% each time (works well with log scale)
+            y_pos *= 0.6  # Reduces y-position by 30% each time (works well with log scale)
 
     # Add consistently styled legend
     setup_legend(ax, loc="lower left")
