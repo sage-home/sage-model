@@ -49,7 +49,7 @@ IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
         io/ctrees_utils.c io/save_gals_binary.c io/forest_utils.c \
         io/buffered_io.c io/io_interface.c io/io_galaxy_output.c \
         io/io_endian_utils.c io/io_lhalo_binary.c io/io_property_serialization.c \
-        io/io_binary_output.c
+        io/io_binary_output.c io/io_hdf5_output.c
 
 # Combine all library sources
 LIBSRC := $(CORE_SRC) $(PHYSICS_SRC) $(IO_SRC)
@@ -257,7 +257,7 @@ else
 endif
 
 # -------------- Build Targets ----------------------------
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output
 
 all: $(SAGELIB) $(EXEC)
 
@@ -278,6 +278,9 @@ test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
 
 test_binary_output: tests/test_binary_output.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_binary_output tests/test_binary_output.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_hdf5_output: tests/test_hdf5_output.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_hdf5_output tests/test_hdf5_output.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 $(EXEC): $(OBJS)
 	$(CC) $^ $(LIBFLAGS) -o $@
@@ -304,10 +307,11 @@ celan celna clena: clean
 clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]
 
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output
 	./tests/test_sage.sh
 	./tests/test_io_interface
 	./tests/test_endian_utils
 	./tests/test_lhalo_binary
 	./tests/test_property_serialization
 	./tests/test_binary_output
+	./tests/test_hdf5_output
