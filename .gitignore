@@ -18,6 +18,9 @@ tests/test_module_callback
 tests/test_pipeline_invoke
 tests/test_lhalo_hdf5
 tests/test_pipeline
+tests/test_consistent_trees_hdf5
+tests/test_gadget4_hdf5
+tests/test_genesis_hdf5
 
 trees_*
 *.o
