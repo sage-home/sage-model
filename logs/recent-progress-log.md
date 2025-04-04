@@ -8,21 +8,6 @@
   • List of new, modified and deleted files (exclude log files)
 -->
 
-2025-03-27: [Phase 2.5-2.6] Implemented Pipeline Fallback with Traditional Physics Guarantee
-- Implemented a fallback mechanism ensuring traditional physics is used for all modules during migration
-- Forced traditional cooling implementation despite module presence to ensure consistent test results
-- Added clear comments indicating when/how to re-enable module testing during development
-- Updated decision log with the rationale for this approach
-- Added code to always handle missing modules by using traditional physics code, with appropriate logging
-- Modified files: core_build_model.c, core_pipeline_system.c, logs/decision-log.md
-
-2025-03-28: [Phase 2.7] Completed Module Dependencies Framework Implementation
-- Fixed compiler warnings related to sign comparison between enum module_type and int 
-- Enhanced type safety with consistent casting throughout the codebase
-- Completed testing and validation of all components of the Module Dependencies Framework
-- Integrated pipeline invocation with module callback system successfully
-- Modified files: core_module_system.c, core_module_callback.c
-
 2025-04-01: [Phase 3] Fixed Redshift Parameter in strip_from_satellite Function
 - Found and fixed bug where strip_from_satellite was called with a hardcoded 0.0 value instead of the current redshift
 - Extended pipeline_context structure to include redshift field for proper parameter passing
@@ -135,3 +120,13 @@
 - Completed Step 8 of Phase 3.2 by implementing all required HDF5 format handlers
 - Modified files: src/io/io_interface.c
 - Added files: src/io/io_genesis_hdf5.h, tests/test_genesis_hdf5.c, docs/phase3.2_step8.3_implementation_report.md
+
+2025-04-09: [Phase 3.2 Step 9.1] Implemented Core Validation Framework
+- Created comprehensive validation system for ensuring data consistency across I/O formats
+- Implemented validation context with configurable strictness levels (RELAXED, NORMAL, STRICT)
+- Added core validation functions for pointers, numeric values, bounds, conditions, and format capabilities
+- Developed validation utilities for galaxy data validation with detailed error reporting
+- Created extensive test suite with validation scenarios and different strictness levels
+- Integrated with existing logging system for standardized error reporting
+- Modified files: Makefile
+- Added files: src/io/io_validation.h, src/io/io_validation.c, tests/test_io_validation.c, docs/io_validation_guide.md, docs/phase3.2_step9.1_implementation_report.md
