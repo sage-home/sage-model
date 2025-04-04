@@ -98,3 +98,12 @@
 - Added detailed documentation on the implementation and usage
 - Modified files: Makefile
 - Added files: io_hdf5_output.h, io_hdf5_output.c, tests/test_hdf5_output.c, docs/io_hdf5_output_guide.md, docs/phase3.2_step6_implementation_report.md
+
+2025-04-07: [Phase 3.2] Updated Core Save Functions to Use I/O Interface
+- Refactored core_save.c to use the new I/O interface for galaxy output
+- Added io_handler_data structure in core_allvars.h to track handler and format data
+- Implemented USE_IO_INTERFACE flag to control usage of the new system
+- Added comprehensive error handling with proper logging integration
+- Maintained backward compatibility with existing format-specific functions
+- Ensured all modified components pass individual tests
+- Modified files: core_allvars.h, core_save.h, core_save.c

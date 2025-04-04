@@ -10,15 +10,88 @@
 #include "core_allvars.h"
 #include "core_save.h"
 #include "core_utils.h"
+#include "core_logging.h"
 #include "../physics/model_misc.h"
 #include "core_mymalloc.h"
 #include "core_galaxy_extensions.h"
 
 #include "../io/save_gals_binary.h"
+#include "../io/io_interface.h"
 
 #ifdef HDF5
 #include "../io/save_gals_hdf5.h"
 #endif
+
+/**
+ * @brief Map I/O interface error codes to SAGE error types
+ * 
+ * @param io_error Error code from the I/O interface
+ * @return Corresponding SAGE error type
+ * 
+ * @note Currently unused, will be integrated with error handling paths in future refinements.
+ * This function is part of the comprehensive error handling framework planned for the I/O system.
+ */
+static int32_t map_io_error_to_sage_error(int io_error)
+{
+    switch (io_error) {
+        case IO_ERROR_NONE:
+            return EXIT_SUCCESS;
+        case IO_ERROR_FILE_NOT_FOUND:
+            return FILE_NOT_FOUND;
+        case IO_ERROR_FORMAT_ERROR:
+            return INVALID_OPTION_IN_PARAMS;
+        case IO_ERROR_RESOURCE_LIMIT:
+            return OUT_OF_MEMBLOCKS;
+        case IO_ERROR_MEMORY_ALLOCATION:
+            return MALLOC_FAILURE;
+        case IO_ERROR_VALIDATION_FAILED:
+            return INVALID_VALUE_READ_FROM_FILE;
+#ifdef HDF5
+        case IO_ERROR_HANDLE_INVALID:
+            return HDF5_ERROR;
+#endif
+        case IO_ERROR_UNSUPPORTED_OP:
+            return FILE_WRITE_ERROR;
+        default:
+            return INVALID_OPTION_IN_PARAMS;
+    }
+}
+
+/**
+ * @brief Log an I/O interface error with appropriate severity
+ * 
+ * @param context Context string for the error message
+ * @param io_error Error code from the I/O interface
+ * 
+ * @note Currently unused, will be integrated with error handling paths in future refinements.
+ * This function provides standardized error logging for the I/O system.
+ */
+static void log_io_error(const char *context, int io_error)
+{
+    const char *error_msg = io_get_error_message();
+    
+    switch (io_error) {
+        case IO_ERROR_NONE:
+            // No error, nothing to log
+            break;
+        case IO_ERROR_FILE_NOT_FOUND:
+        case IO_ERROR_FORMAT_ERROR:
+        case IO_ERROR_MEMORY_ALLOCATION:
+        case IO_ERROR_VALIDATION_FAILED:
+            // Log as errors
+            LOG_ERROR("%s: %s (code %d)", context, error_msg, io_error);
+            break;
+        case IO_ERROR_RESOURCE_LIMIT:
+        case IO_ERROR_HANDLE_INVALID:
+            // Log as warnings
+            LOG_WARNING("%s: %s (code %d)", context, error_msg, io_error);
+            break;
+        default:
+            // Unknown errors as errors
+            LOG_ERROR("%s: Unknown error - %s (code %d)", context, error_msg, io_error);
+            break;
+    }
+}
 
 // Local Proto-Types //
 int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo_aux_data *haloaux,
@@ -27,6 +100,9 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
                                 const int64_t filenr_mulfac, const int64_t forestnr_mulfac,const struct params *run_params);
 
 // Externally Visible Functions //
+
+// Global flag to track I/O system initialization
+static int io_initialized = 0;
 
 // Open up all the required output files and remember their file handles.  These are placed into
 // `save_info` for access later.
@@ -41,8 +117,56 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
         return INVALID_OPTION_IN_PARAMS;
     }
 
-    switch(run_params->io.OutputFormat) {
+#if USE_IO_INTERFACE
+    // Initialize I/O system if needed
+    if (!io_initialized) {
+        status = io_init();
+        if (status != 0) {
+            fprintf(stderr, "Error: Failed to initialize I/O interface system: %s\n", 
+                    io_get_error_message());
+            return INVALID_OPTION_IN_PARAMS;
+        }
+        io_initialized = 1;
+    }
+    
+    // Initialize io_handler_data
+    save_info->io_handler.using_io_interface = 0;
+    save_info->io_handler.handler = NULL;
+    save_info->io_handler.format_data = NULL;
+    
+    // Get handler for the specified format
+    int format_id = io_map_output_format_to_format_id(run_params->io.OutputFormat);
+    if (format_id >= 0) {
+        save_info->io_handler.handler = io_get_handler_by_id(format_id);
+        if (save_info->io_handler.handler != NULL) {
+            // Construct output filename
+            char filename[MAX_STRING_LEN];
+            snprintf(filename, MAX_STRING_LEN, "%s/%s", 
+                    run_params->io.OutputDir, run_params->io.FileNameGalaxies);
+            
+            // Initialize the handler
+            status = save_info->io_handler.handler->initialize(filename, (struct params *)run_params, 
+                                                            &save_info->io_handler.format_data);
+            if (status == 0) {
+                save_info->io_handler.using_io_interface = 1;
+                return EXIT_SUCCESS;
+            } else {
+                // Handle initialization error
+                fprintf(stderr, "Error initializing I/O handler: %s\n", 
+                        io_get_error_message());
+                save_info->io_handler.using_io_interface = 0;
+                // Fall through to traditional approach
+            }
+        } else {
+            // Handler not found, fall through to traditional approach
+            fprintf(stderr, "Warning: No I/O handler found for format %d, falling back to traditional approach\n", 
+                    format_id);
+        }
+    }
+#endif
 
+    // Fall back to existing approach if handler not available or I/O interface not enabled
+    switch(run_params->io.OutputFormat) {
     case(sage_binary):
       status = initialize_binary_galaxy_files(rank, forest_info, save_info, run_params);
       break;
@@ -57,7 +181,6 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
       fprintf(stderr, "Error: Unknown OutputFormat in `initialize_galaxy_files()`.\n");
       status = INVALID_OPTION_IN_PARAMS;
       break;
-
     }
 
     return status;
@@ -138,9 +261,37 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
         return EXIT_FAILURE;
     }
 
-    // All of the tracking arrays set up, time to perform the actual writing.
-    switch(run_params->io.OutputFormat) {
+#if USE_IO_INTERFACE
+    // Check if using I/O interface
+    if (save_info->io_handler.using_io_interface && save_info->io_handler.handler != NULL) {
+        // If the handler supports write_galaxies, use it
+        if (save_info->io_handler.handler->write_galaxies != NULL) {
+            // Count galaxies per snapshot for output
+            int ngals_per_snap[run_params->simulation.NumSnapOutputs];
+            for (int32_t i = 0; i < run_params->simulation.NumSnapOutputs; i++) {
+                ngals_per_snap[i] = OutputGalCount[i];
+            }
+            
+            // Call handler's write_galaxies function
+            status = save_info->io_handler.handler->write_galaxies(halogal, numgals, 
+                                                                save_info, 
+                                                                save_info->io_handler.format_data);
+            
+            if (status != 0) {
+                fprintf(stderr, "Error writing galaxies using I/O interface: %s\n", 
+                        io_get_error_message());
+                // Do not fall through to traditional approach; if the handler failed, there's likely an issue
+            } else {
+                // If successful, we're done
+                myfree(OutputGalOrder);
+                return EXIT_SUCCESS;
+            }
+        }
+    }
+#endif
 
+    // Fall back to existing approach if not using I/O interface or if it failed
+    switch(run_params->io.OutputFormat) {
     case(sage_binary):
         status = save_binary_galaxies(task_forestnr, numgals, OutputGalCount, forest_info,
                                       halos, haloaux, halogal, save_info, run_params);
@@ -153,13 +304,11 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 #endif
 
     default:
-        fprintf(stderr, "Uknown OutputFormat in `save_galaxies()`.\n");
+        fprintf(stderr, "Unknown OutputFormat in `save_galaxies()`.\n");
         status = INVALID_OPTION_IN_PARAMS;
-
     }
 
     myfree(OutputGalOrder);
-
     return status;
 }
 
@@ -168,11 +317,33 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 // relevant dataspaces.
 int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
 {
-
     int32_t status = EXIT_FAILURE;
 
-    switch(run_params->io.OutputFormat) {
+#if USE_IO_INTERFACE
+    // Check if using I/O interface
+    if (save_info->io_handler.using_io_interface && save_info->io_handler.handler != NULL) {
+        // If the handler supports cleanup, use it
+        if (save_info->io_handler.handler->cleanup != NULL) {
+            // Call handler's cleanup function
+            status = save_info->io_handler.handler->cleanup(save_info->io_handler.format_data);
+            
+            if (status != 0) {
+                fprintf(stderr, "Error finalizing galaxy files using I/O interface: %s\n", 
+                        io_get_error_message());
+                // Fall through to traditional approach as a last resort
+            } else {
+                // If successful, clean up the handler data
+                save_info->io_handler.handler = NULL;
+                save_info->io_handler.format_data = NULL;
+                save_info->io_handler.using_io_interface = 0;
+                return EXIT_SUCCESS;
+            }
+        }
+    }
+#endif
 
+    // Fall back to existing approach if not using I/O interface or if it failed
+    switch(run_params->io.OutputFormat) {
     case(sage_binary):
         status = finalize_binary_galaxy_files(forest_info, save_info, run_params);
         break;

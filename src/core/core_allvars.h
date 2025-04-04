@@ -207,8 +207,21 @@ struct halo_aux_data
     int output_snap_n;
 };
 
-/* Forward declaration of galaxy extension registry */
+/* Forward declarations */
 struct galaxy_extension_registry;
+struct io_interface;
+
+/**
+ * @brief I/O interface handler data
+ * 
+ * Used for the unified I/O interface approach in galaxy output.
+ * Manages the handler and format-specific data.
+ */
+struct io_handler_data {
+    struct io_interface *handler;  /**< I/O handler for the selected format */
+    void *format_data;             /**< Format-specific data managed by the handler */
+    int using_io_interface;        /**< Flag to indicate if using the new I/O interface */
+};
 
 
 struct lhalotree_info {
@@ -400,6 +413,11 @@ struct forest_info {
                               // Necessary because Task N's "Tree 0" could start at the middle of a file.
 };
 
+/**
+ * @brief Save information structure
+ * 
+ * Holds handles and counters for galaxy output along with I/O interface data.
+ */
 struct save_info {
     union {
         int *save_fd; // Contains the open file to write to for each output.
@@ -424,6 +442,8 @@ struct save_info {
     struct HDF5_GALAXY_OUTPUT *buffer_output_gals;
 #endif
 
+    /* I/O interface support */
+    struct io_handler_data io_handler;  /**< Handler for the I/O interface */
 };
 
 

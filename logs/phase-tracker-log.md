@@ -38,6 +38,7 @@
 - [x] Implement serialization support for extended properties
 - [x] Implement binary output handler with extended property support
 - [/] Implement HDF5 output handler with extended property support (framework complete, write functionality pending)
+- [x] Update core save function to use the I/O interface
 - [ ] Add validation for data consistency across formats
 - [ ] Create format conversion utilities
 
@@ -71,8 +72,8 @@
    - Type-specific serializers and deserializers for all basic types completed ✅
    - Binary output handler fully implemented ✅
    - HDF5 output handler framework implemented ✅
+   - Core save functions updated to use I/O interface ✅
    - Need to complete HDF5 output write functionality
-   - Need to update galaxy save functions to use the I/O interface
 
 4. Validation and Conversion:
    - Add validation functions to ensure data consistency across formats

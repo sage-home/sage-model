@@ -132,3 +132,7 @@
 2025-03-28: [Phase 3] Enhanced I/O System Implementation
 - Rationale: After code analysis, we identified several critical improvements for the I/O system: HDF5 resource leaks, lack of endianness handling, fixed buffer sizes, and inefficient memory allocation. These issues could impact stability, cross-platform compatibility, and performance.
 - Impact: Enhanced I/O interface design with explicit resource tracking for HDF5, endianness handling for binary formats, configurable buffer sizes, and optimized allocation strategies. These enhancements will improve robustness, cross-platform compatibility, and performance without significant additional implementation effort.
+
+2025-04-07: [Phase 3.2] Strategy for Unused Functions in I/O Implementation
+- Rationale: Several functions introduced in the I/O interface implementation are currently unused or stubs (map_io_error_to_sage_error, log_io_error, flush_galaxy_buffer), leading to compiler warnings. These functions represent planned functionality for future phases, particularly HDF5 buffer flushing (Phase 3.3: Memory Optimization) and comprehensive error handling.
+- Impact: We've decided to keep these functions in place with appropriate documentation comments rather than removing them. This provides a clear roadmap for future implementation while maintaining a clean architecture. The unused function warnings are acceptable as they document intended functionality without affecting runtime behavior.

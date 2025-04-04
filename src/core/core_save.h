@@ -5,7 +5,17 @@ extern "C" {
 #endif
 
     #include "core_allvars.h"
-
+    #include "../io/io_interface.h"
+    
+    /**
+     * @brief Flag to control use of the I/O interface
+     * 
+     * This will be converted to a runtime parameter in a future update.
+     * When enabled, core_save.c will use the I/O interface instead of
+     * direct format handlers.
+     */
+    #define USE_IO_INTERFACE 1
+    
     /* Functions in core_save.c */
     extern int32_t initialize_galaxy_files(const int filenr, const struct forest_info *forest_info,
                                            struct save_info *save_info,
