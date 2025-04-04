@@ -6,17 +6,76 @@
 #include "../core/core_allvars.h"
 #include "io_interface.h"
 #include "io_lhalo_binary.h"
+#include "io_hdf5_utils.h"
 #ifdef HDF5
 // Note: For now we're implementing stubs directly here to avoid Makefile changes
 // #include "io_lhalo_hdf5.h"
+// #include "io_consistent_trees_hdf5.h"
 
 // HDF5 stubs implemented here until Makefile is updated
-// Static handler definition
+// Static handler definitions
 static struct io_interface lhalo_hdf5_handler = {
     .name = "LHalo HDF5",
     .version = "1.0",
     .format_id = IO_FORMAT_LHALO_HDF5,
     .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_MULTI_FILE | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS,
+    
+    .initialize = NULL,  // Stubs don't implement these
+    .read_forest = NULL,
+    .write_galaxies = NULL,
+    .cleanup = NULL,
+    
+    .close_open_handles = NULL,
+    .get_open_handle_count = NULL,
+    
+    .last_error = IO_ERROR_NONE,
+    .error_message = {0}
+};
+
+// ConsistentTrees HDF5 handler definition (stub)
+static struct io_interface consistent_trees_hdf5_handler = {
+    .name = "ConsistentTrees HDF5",
+    .version = "1.0",
+    .format_id = IO_FORMAT_CONSISTENT_TREES_HDF5,
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS,
+    
+    .initialize = NULL,  // Stubs don't implement these
+    .read_forest = NULL,
+    .write_galaxies = NULL,
+    .cleanup = NULL,
+    
+    .close_open_handles = NULL,
+    .get_open_handle_count = NULL,
+    
+    .last_error = IO_ERROR_NONE,
+    .error_message = {0}
+};
+
+// Gadget4 HDF5 handler definition (stub)
+static struct io_interface gadget4_hdf5_handler = {
+    .name = "Gadget4 HDF5",
+    .version = "1.0",
+    .format_id = IO_FORMAT_GADGET4_HDF5,
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS | IO_CAP_MULTI_FILE,
+    
+    .initialize = NULL,  // Stubs don't implement these
+    .read_forest = NULL,
+    .write_galaxies = NULL,
+    .cleanup = NULL,
+    
+    .close_open_handles = NULL,
+    .get_open_handle_count = NULL,
+    
+    .last_error = IO_ERROR_NONE,
+    .error_message = {0}
+};
+
+// Genesis HDF5 handler definition (stub)
+static struct io_interface genesis_hdf5_handler = {
+    .name = "Genesis HDF5",
+    .version = "1.0",
+    .format_id = IO_FORMAT_GENESIS_HDF5,
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS,
     
     .initialize = NULL,  // Stubs don't implement these
     .read_forest = NULL,
@@ -42,6 +101,60 @@ bool io_is_lhalo_hdf5(const char *filename) {
         return false;
     }
     
+    return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
+}
+
+int io_consistent_trees_hdf5_init(void) {
+    // Register the stub handler
+    return io_register_handler(&consistent_trees_hdf5_handler);
+}
+
+bool io_is_consistent_trees_hdf5(const char *filename) {
+    // Basic extension-based detection
+    // TODO: When implementing full handler, add content-based detection
+    const char *ext = strrchr(filename, '.');
+    if (ext == NULL) {
+        return false;
+    }
+    
+    // For now, we just check for HDF5 extension
+    // In a full implementation, we would check for ConsistentTrees-specific markers
+    return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
+}
+
+int io_gadget4_hdf5_init(void) {
+    // Register the stub handler
+    return io_register_handler(&gadget4_hdf5_handler);
+}
+
+bool io_is_gadget4_hdf5(const char *filename) {
+    // Basic extension-based detection
+    // TODO: When implementing full handler, add content-based detection
+    const char *ext = strrchr(filename, '.');
+    if (ext == NULL) {
+        return false;
+    }
+    
+    // For now, we just check for HDF5 extension
+    // In a full implementation, we would check for Gadget4-specific markers
+    return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
+}
+
+int io_genesis_hdf5_init(void) {
+    // Register the stub handler
+    return io_register_handler(&genesis_hdf5_handler);
+}
+
+bool io_is_genesis_hdf5(const char *filename) {
+    // Basic extension-based detection
+    // TODO: When implementing full handler, add content-based detection
+    const char *ext = strrchr(filename, '.');
+    if (ext == NULL) {
+        return false;
+    }
+    
+    // For now, we just check for HDF5 extension
+    // In a full implementation, we would check for Genesis-specific markers
     return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
 }
 #endif
@@ -98,6 +211,9 @@ int io_init() {
     
 #ifdef HDF5
     io_lhalo_hdf5_init();
+    io_consistent_trees_hdf5_init();
+    io_gadget4_hdf5_init();
+    io_genesis_hdf5_init();
 #endif
     
     return 0;
@@ -244,6 +360,18 @@ struct io_interface *io_detect_format(const char *filename) {
 #ifdef HDF5
     if (io_is_lhalo_hdf5(filename)) {
         return io_get_handler_by_id(IO_FORMAT_LHALO_HDF5);
+    }
+    
+    if (io_is_consistent_trees_hdf5(filename)) {
+        return io_get_handler_by_id(IO_FORMAT_CONSISTENT_TREES_HDF5);
+    }
+    
+    if (io_is_gadget4_hdf5(filename)) {
+        return io_get_handler_by_id(IO_FORMAT_GADGET4_HDF5);
+    }
+    
+    if (io_is_genesis_hdf5(filename)) {
+        return io_get_handler_by_id(IO_FORMAT_GENESIS_HDF5);
     }
 #endif
     

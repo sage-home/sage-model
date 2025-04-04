@@ -34,6 +34,10 @@
 - [x] Refactor binary format handlers to use the common interface
 - [x] Add cross-platform endianness detection and conversion
 - [/] Refactor HDF5 format handlers to use the common interface (framework complete, implementation pending)
+  - [x] LHalo HDF5 handler framework
+  - [x] ConsistentTrees HDF5 handler framework
+  - [x] Gadget4 HDF5 handler framework
+  - [x] Genesis HDF5 handler framework
 - [/] Implement proper HDF5 resource management to prevent handle leaks (framework designed)
 - [x] Implement serialization support for extended properties
 - [x] Implement binary output handler with extended property support

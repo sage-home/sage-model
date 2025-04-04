@@ -107,3 +107,31 @@
 - Maintained backward compatibility with existing format-specific functions
 - Ensured all modified components pass individual tests
 - Modified files: core_allvars.h, core_save.h, core_save.c
+
+2025-04-08: [Phase 3.2] Implemented ConsistentTrees HDF5 Format Handler (Framework)
+- Created interface definition for ConsistentTrees HDF5 format handler
+- Implemented stub handler with basic format detection and handler registration
+- Added test suite for format detection and handler registration
+- Integrated with I/O interface system for automatic registration
+- Created detailed documentation on implementation status and future work
+- Modified files: src/io/io_interface.c
+- Added files: src/io/io_consistent_trees_hdf5.h, tests/test_consistent_trees_hdf5.c, docs/phase3.2_step8.1_implementation_report.md
+
+2025-04-08: [Phase 3.2] Implemented Gadget4 HDF5 Format Handler (Framework)
+- Created interface definition for Gadget4 HDF5 format handler
+- Implemented stub handler with basic format detection and handler registration
+- Added simplified test verifying framework implementation
+- Integrated with I/O interface system for automatic registration
+- Created detailed documentation on implementation status and future work
+- Modified files: src/io/io_interface.c
+- Added files: src/io/io_gadget4_hdf5.h, tests/test_gadget4_hdf5.c, docs/phase3.2_step8.2_implementation_report.md
+
+2025-04-08: [Phase 3.2] Implemented Genesis HDF5 Format Handler (Framework)
+- Created interface definition for Genesis HDF5 format handler
+- Implemented stub handler with basic format detection and handler registration
+- Added simplified test verifying framework implementation
+- Integrated with I/O interface system for automatic registration
+- Created detailed documentation on implementation status and future work
+- Completed Step 8 of Phase 3.2 by implementing all required HDF5 format handlers
+- Modified files: src/io/io_interface.c
+- Added files: src/io/io_genesis_hdf5.h, tests/test_genesis_hdf5.c, docs/phase3.2_step8.3_implementation_report.md
