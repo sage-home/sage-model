@@ -111,10 +111,14 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
     int32_t status;
 
     if(run_params->simulation.NumSnapOutputs > ABSOLUTEMAXSNAPS) {
-        fprintf(stderr,"Error: Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots\n",
+        char error_buffer[256];
+        snprintf(error_buffer, sizeof(error_buffer),
+                "Attempting to write snapshot = '%d' will exceed allocated memory space for '%d' snapshots. "
+                "To fix this error, simply increase the value of `ABSOLUTEMAXSNAPS` and recompile",
                 run_params->simulation.NumSnapOutputs, ABSOLUTEMAXSNAPS);
-        fprintf(stderr,"To fix this error, simply increase the value of `ABSOLUTEMAXSNAPS` and recompile\n");
-        return INVALID_OPTION_IN_PARAMS;
+        io_set_error(IO_ERROR_RESOURCE_LIMIT, error_buffer);
+        log_io_error("initialize_galaxy_files", IO_ERROR_RESOURCE_LIMIT);
+        return map_io_error_to_sage_error(IO_ERROR_RESOURCE_LIMIT);
     }
 
 #if USE_IO_INTERFACE
@@ -122,9 +126,8 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
     if (!io_initialized) {
         status = io_init();
         if (status != 0) {
-            fprintf(stderr, "Error: Failed to initialize I/O interface system: %s\n", 
-                    io_get_error_message());
-            return INVALID_OPTION_IN_PARAMS;
+            log_io_error("initialize_galaxy_files", io_get_last_error());
+            return map_io_error_to_sage_error(io_get_last_error());
         }
         io_initialized = 1;
     }
@@ -152,15 +155,18 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
                 return EXIT_SUCCESS;
             } else {
                 // Handle initialization error
-                fprintf(stderr, "Error initializing I/O handler: %s\n", 
-                        io_get_error_message());
+                log_io_error("initialize_galaxy_files", io_get_last_error());
                 save_info->io_handler.using_io_interface = 0;
                 // Fall through to traditional approach
             }
         } else {
             // Handler not found, fall through to traditional approach
-            fprintf(stderr, "Warning: No I/O handler found for format %d, falling back to traditional approach\n", 
+            char error_buffer[256];
+            snprintf(error_buffer, sizeof(error_buffer),
+                    "No I/O handler found for format %d, falling back to traditional approach", 
                     format_id);
+            io_set_error(IO_ERROR_VALIDATION_FAILED, error_buffer);
+            log_io_error("initialize_galaxy_files", IO_ERROR_VALIDATION_FAILED);
         }
     }
 #endif
@@ -178,8 +184,9 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 #endif
 
     default:
-      fprintf(stderr, "Error: Unknown OutputFormat in `initialize_galaxy_files()`.\n");
-      status = INVALID_OPTION_IN_PARAMS;
+      io_set_error(IO_ERROR_FORMAT_ERROR, "Unknown OutputFormat in initialize_galaxy_files()");
+      log_io_error("initialize_galaxy_files", IO_ERROR_FORMAT_ERROR);
+      status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
       break;
     }
 
@@ -204,8 +211,13 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     // Track the order in which galaxies are written.
     int32_t *OutputGalOrder = mymalloc(numgals * sizeof(*(OutputGalOrder)));
     if(OutputGalOrder == NULL) {
-        fprintf(stderr,"Error: Could not allocate memory for %d int elements in array `OutputGalOrder`\n", numgals);
-        return MALLOC_FAILURE;
+        char error_buffer[256];
+        snprintf(error_buffer, sizeof(error_buffer),
+                "Could not allocate memory for %d int elements in array `OutputGalOrder`", 
+                numgals);
+        io_set_error(IO_ERROR_MEMORY_ALLOCATION, error_buffer);
+        log_io_error("save_galaxies", IO_ERROR_MEMORY_ALLOCATION);
+        return map_io_error_to_sage_error(IO_ERROR_MEMORY_ALLOCATION);
     }
 
     for(int32_t gal_idx = 0; gal_idx < numgals; gal_idx++) {
@@ -228,12 +240,15 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
         const int mergeID = halogal[gal_idx].mergeIntoID;
         if(mergeID > -1) {
             if( ! (mergeID >= 0 && mergeID < numgals) ) {
-                fprintf(stderr,"Error: For galaxy number %d, expected mergeintoID to be within [0, %d) "
-                        "but found mergeintoID = %d instead\n", gal_idx, numgals, mergeID);
-                fprintf(stderr,"Additional debugging info\n");
-                fprintf(stderr,"task_forestnr = %"PRId64" snapshot = %d halonr = %d MostBoundID = %lld\n",
-                        task_forestnr, halogal[gal_idx].SnapNum, halogal[gal_idx].HaloNr, halos[halogal[gal_idx].HaloNr].MostBoundID);
-                return -1;
+                char error_buffer[512];
+                snprintf(error_buffer, sizeof(error_buffer),
+                        "For galaxy number %d, expected mergeintoID to be within [0, %d) but found mergeintoID = %d instead. "
+                        "Additional debugging info: task_forestnr = %"PRId64", snapshot = %d, halonr = %d, MostBoundID = %lld",
+                        gal_idx, numgals, mergeID, task_forestnr, halogal[gal_idx].SnapNum, 
+                        halogal[gal_idx].HaloNr, halos[halogal[gal_idx].HaloNr].MostBoundID);
+                io_set_error(IO_ERROR_VALIDATION_FAILED, error_buffer);
+                log_io_error("save_galaxies", IO_ERROR_VALIDATION_FAILED);
+                return map_io_error_to_sage_error(IO_ERROR_VALIDATION_FAILED);
             }
             halogal[gal_idx].mergeIntoID = OutputGalOrder[halogal[gal_idx].mergeIntoID];
         }
@@ -278,8 +293,7 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
                                                                 save_info->io_handler.format_data);
             
             if (status != 0) {
-                fprintf(stderr, "Error writing galaxies using I/O interface: %s\n", 
-                        io_get_error_message());
+                log_io_error("save_galaxies", io_get_last_error());
                 // Do not fall through to traditional approach; if the handler failed, there's likely an issue
             } else {
                 // If successful, we're done
@@ -304,8 +318,9 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 #endif
 
     default:
-        fprintf(stderr, "Unknown OutputFormat in `save_galaxies()`.\n");
-        status = INVALID_OPTION_IN_PARAMS;
+        io_set_error(IO_ERROR_FORMAT_ERROR, "Unknown OutputFormat in save_galaxies()");
+        log_io_error("save_galaxies", IO_ERROR_FORMAT_ERROR);
+        status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
     }
 
     myfree(OutputGalOrder);
@@ -328,8 +343,7 @@ int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save
             status = save_info->io_handler.handler->cleanup(save_info->io_handler.format_data);
             
             if (status != 0) {
-                fprintf(stderr, "Error finalizing galaxy files using I/O interface: %s\n", 
-                        io_get_error_message());
+                log_io_error("finalize_galaxy_files", io_get_last_error());
                 // Fall through to traditional approach as a last resort
             } else {
                 // If successful, clean up the handler data
@@ -355,8 +369,9 @@ int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save
 #endif
 
     default:
-        fprintf(stderr, "Error: Unknown OutputFormat in `finalize_galaxy_files()`.\n");
-        status = INVALID_OPTION_IN_PARAMS;
+        io_set_error(IO_ERROR_FORMAT_ERROR, "Unknown OutputFormat in finalize_galaxy_files()");
+        log_io_error("finalize_galaxy_files", IO_ERROR_FORMAT_ERROR);
+        status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
         break;
     }
 
