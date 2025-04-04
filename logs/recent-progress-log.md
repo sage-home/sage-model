@@ -130,3 +130,12 @@
 - Integrated with existing logging system for standardized error reporting
 - Modified files: Makefile
 - Added files: src/io/io_validation.h, src/io/io_validation.c, tests/test_io_validation.c, docs/io_validation_guide.md, docs/phase3.2_step9.1_implementation_report.md
+
+2025-04-10: [Phase 3.2 Step 9.6] Added Error Handling Integration
+- Replaced all fprintf error messages in core_save.c with log_io_error calls
+- Implemented proper error code mapping using map_io_error_to_sage_error
+- Improved error messages with detailed context information
+- Fixed warnings about unused functions in the I/O interface system
+- Added proper error buffers for formatting complex error messages
+- Ensured all tests pass with the new error handling implementation
+- Modified files: src/core/core_save.c
