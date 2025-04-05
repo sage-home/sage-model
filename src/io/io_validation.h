@@ -394,6 +394,66 @@ extern int validation_check_galaxies(struct validation_context *ctx,
                                    const char *component,
                                    enum validation_check_type check_type);
 
+/**
+ * @brief Validate format capabilities for a specific operation
+ *
+ * Checks if a handler supports all the capabilities required for an operation.
+ *
+ * @param ctx Validation context
+ * @param handler I/O interface handler
+ * @param required_caps Array of required capabilities
+ * @param num_caps Number of capabilities in the array
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @param operation_name Name of the operation being validated
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_format_capabilities(struct validation_context *ctx,
+                                             const struct io_interface *handler,
+                                             enum io_capabilities *required_caps,
+                                             int num_caps,
+                                             const char *component,
+                                             const char *file,
+                                             int line,
+                                             const char *operation_name);
+
+/**
+ * @brief Validate binary format compatibility
+ *
+ * Checks if a handler is compatible with binary format requirements.
+ *
+ * @param ctx Validation context
+ * @param handler I/O interface handler
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_binary_compatibility(struct validation_context *ctx,
+                                              const struct io_interface *handler,
+                                              const char *component,
+                                              const char *file,
+                                              int line);
+
+/**
+ * @brief Validate HDF5 format compatibility
+ *
+ * Checks if a handler is compatible with HDF5 format requirements.
+ *
+ * @param ctx Validation context
+ * @param handler I/O interface handler
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_hdf5_compatibility(struct validation_context *ctx,
+                                            const struct io_interface *handler,
+                                            const char *component,
+                                            const char *file,
+                                            int line);
+
 // Convenience macros for validation
 
 /**
@@ -428,6 +488,24 @@ extern int validation_check_galaxies(struct validation_context *ctx,
  */
 #define VALIDATE_CAPABILITY(ctx, handler, capability, component, format, ...) \
     validation_check_capability(ctx, handler, capability, component, __FILE__, __LINE__, format, ##__VA_ARGS__)
+
+/**
+ * @brief Validate format capabilities for an operation
+ */
+#define VALIDATE_FORMAT_CAPABILITIES(ctx, handler, caps, num_caps, component, operation) \
+    validation_check_format_capabilities(ctx, handler, caps, num_caps, component, __FILE__, __LINE__, operation)
+
+/**
+ * @brief Validate binary format compatibility
+ */
+#define VALIDATE_BINARY_COMPATIBILITY(ctx, handler, component) \
+    validation_check_binary_compatibility(ctx, handler, component, __FILE__, __LINE__)
+
+/**
+ * @brief Validate HDF5 format compatibility
+ */
+#define VALIDATE_HDF5_COMPATIBILITY(ctx, handler, component) \
+    validation_check_hdf5_compatibility(ctx, handler, component, __FILE__, __LINE__)
 
 /**
  * @brief Add a warning result

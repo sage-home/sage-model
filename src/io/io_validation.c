@@ -749,7 +749,45 @@ static int validate_galaxy_references(struct validation_context *ctx,
         }
     }
     
-    // More checks can be added here as needed...
+    // Check CentralGal is valid
+    if (galaxy->CentralGal >= count) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
+                                      VALIDATION_SEVERITY_ERROR,
+                                      VALIDATION_CHECK_GALAXY_REFS, component,
+                                      __FILE__, __LINE__,
+                                      "Galaxy %d has invalid CentralGal = %d (max valid value: %d)",
+                                      index, galaxy->CentralGal, count - 1);
+    }
+    
+    // Check Type is valid (0=central, 1=satellite, 2=orphan)
+    if (galaxy->Type < 0 || galaxy->Type > 2) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
+                                      VALIDATION_SEVERITY_ERROR,
+                                      VALIDATION_CHECK_GALAXY_REFS, component,
+                                      __FILE__, __LINE__,
+                                      "Galaxy %d has invalid Type = %d (valid values: 0, 1, 2)",
+                                      index, galaxy->Type);
+    }
+    
+    // Check GalaxyNr is valid (should be >= 0)
+    if (galaxy->GalaxyNr < 0) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
+                                      VALIDATION_SEVERITY_ERROR,
+                                      VALIDATION_CHECK_GALAXY_REFS, component,
+                                      __FILE__, __LINE__,
+                                      "Galaxy %d has invalid GalaxyNr = %d (should be >= 0)",
+                                      index, galaxy->GalaxyNr);
+    }
+    
+    // Check mergeType is valid (0-4)
+    if (galaxy->mergeType < 0 || galaxy->mergeType > 4) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
+                                      VALIDATION_SEVERITY_ERROR,
+                                      VALIDATION_CHECK_GALAXY_REFS, component,
+                                      __FILE__, __LINE__,
+                                      "Galaxy %d has invalid mergeType = %d (valid range: 0-4)",
+                                      index, galaxy->mergeType);
+    }
     
     return status;
 }
@@ -771,7 +809,7 @@ static int validate_galaxy_values(struct validation_context *ctx,
                                 const char *component) {
     int status = 0;
     
-    // Check numeric fields for NaN/Inf
+    // Check main mass reservoirs for NaN/Inf
     status |= validation_check_finite(ctx, galaxy->StellarMass, component, 
                                     __FILE__, __LINE__,
                                     "Galaxy %d has invalid StellarMass", index);
@@ -784,8 +822,76 @@ static int validate_galaxy_values(struct validation_context *ctx,
     status |= validation_check_finite(ctx, galaxy->ColdGas, component, 
                                     __FILE__, __LINE__,
                                     "Galaxy %d has invalid ColdGas", index);
+    status |= validation_check_finite(ctx, galaxy->EjectedMass, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid EjectedMass", index);
+    status |= validation_check_finite(ctx, galaxy->BlackHoleMass, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid BlackHoleMass", index);
+    status |= validation_check_finite(ctx, galaxy->ICS, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid ICS", index);
     
-    // More checks can be added here as needed...
+    // Check metals for NaN/Inf
+    status |= validation_check_finite(ctx, galaxy->MetalsStellarMass, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid MetalsStellarMass", index);
+    status |= validation_check_finite(ctx, galaxy->MetalsBulgeMass, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid MetalsBulgeMass", index);
+    status |= validation_check_finite(ctx, galaxy->MetalsHotGas, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid MetalsHotGas", index);
+    status |= validation_check_finite(ctx, galaxy->MetalsColdGas, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid MetalsColdGas", index);
+    status |= validation_check_finite(ctx, galaxy->MetalsEjectedMass, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid MetalsEjectedMass", index);
+    status |= validation_check_finite(ctx, galaxy->MetalsICS, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid MetalsICS", index);
+    
+    // Check halo/subhalo properties
+    status |= validation_check_finite(ctx, galaxy->Mvir, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid Mvir", index);
+    status |= validation_check_finite(ctx, galaxy->Rvir, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid Rvir", index);
+    status |= validation_check_finite(ctx, galaxy->Vvir, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid Vvir", index);
+    status |= validation_check_finite(ctx, galaxy->Vmax, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid Vmax", index);
+    
+    // Check position components
+    for (int i = 0; i < 3; i++) {
+        status |= validation_check_finite(ctx, galaxy->Pos[i], component, 
+                                        __FILE__, __LINE__,
+                                        "Galaxy %d has invalid Pos[%d]", index, i);
+    }
+    
+    // Check velocity components
+    for (int i = 0; i < 3; i++) {
+        status |= validation_check_finite(ctx, galaxy->Vel[i], component, 
+                                        __FILE__, __LINE__,
+                                        "Galaxy %d has invalid Vel[%d]", index, i);
+    }
+    
+    // Check disk properties
+    status |= validation_check_finite(ctx, galaxy->DiskScaleRadius, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid DiskScaleRadius", index);
+    
+    // Check dynamical properties
+    status |= validation_check_finite(ctx, galaxy->Cooling, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid Cooling", index);
+    status |= validation_check_finite(ctx, galaxy->Heating, component, 
+                                    __FILE__, __LINE__,
+                                    "Galaxy %d has invalid Heating", index);
     
     return status;
 }
@@ -807,44 +913,11 @@ static int validate_galaxy_consistency(struct validation_context *ctx,
                                      const char *component) {
     int status = 0;
     
-    // Check masses are non-negative
-    if (galaxy->StellarMass < 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                      VALIDATION_SEVERITY_ERROR,
-                                      VALIDATION_CHECK_CONSISTENCY, component,
-                                      __FILE__, __LINE__,
-                                      "Galaxy %d has negative StellarMass = %g",
-                                      index, galaxy->StellarMass);
-    }
+    // Note: We removed strict checking for negative values as per the human's instructions,
+    // since sometimes a mass might be set to a negative value as a flag for a future condition.
+    // We'll only check StellarMass, BulgeMass, etc. if they are NaN/Infinity in validate_galaxy_values.
     
-    if (galaxy->BulgeMass < 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                      VALIDATION_SEVERITY_ERROR,
-                                      VALIDATION_CHECK_CONSISTENCY, component,
-                                      __FILE__, __LINE__,
-                                      "Galaxy %d has negative BulgeMass = %g",
-                                      index, galaxy->BulgeMass);
-    }
-    
-    if (galaxy->HotGas < 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                      VALIDATION_SEVERITY_ERROR,
-                                      VALIDATION_CHECK_CONSISTENCY, component,
-                                      __FILE__, __LINE__,
-                                      "Galaxy %d has negative HotGas = %g",
-                                      index, galaxy->HotGas);
-    }
-    
-    if (galaxy->ColdGas < 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                      VALIDATION_SEVERITY_ERROR,
-                                      VALIDATION_CHECK_CONSISTENCY, component,
-                                      __FILE__, __LINE__,
-                                      "Galaxy %d has negative ColdGas = %g",
-                                      index, galaxy->ColdGas);
-    }
-    
-    // BulgeMass should not exceed StellarMass
+    // BulgeMass should not exceed StellarMass (but only warn about it)
     if (galaxy->BulgeMass > galaxy->StellarMass && galaxy->StellarMass > 0) {
         status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
                                        VALIDATION_SEVERITY_WARNING,
@@ -854,7 +927,51 @@ static int validate_galaxy_consistency(struct validation_context *ctx,
                                        index, galaxy->BulgeMass, galaxy->StellarMass);
     }
     
-    // More checks can be added here as needed...
+    // Warn about metals exceeding total mass (only if both are positive)
+    if (galaxy->MetalsStellarMass > galaxy->StellarMass && 
+        galaxy->StellarMass > 0 && galaxy->MetalsStellarMass > 0) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
+                                       VALIDATION_SEVERITY_WARNING,
+                                       VALIDATION_CHECK_CONSISTENCY, component,
+                                       __FILE__, __LINE__,
+                                       "Galaxy %d has MetalsStellarMass (%g) > StellarMass (%g)",
+                                       index, galaxy->MetalsStellarMass, galaxy->StellarMass);
+    }
+    
+    if (galaxy->MetalsBulgeMass > galaxy->BulgeMass && 
+        galaxy->BulgeMass > 0 && galaxy->MetalsBulgeMass > 0) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
+                                       VALIDATION_SEVERITY_WARNING,
+                                       VALIDATION_CHECK_CONSISTENCY, component,
+                                       __FILE__, __LINE__,
+                                       "Galaxy %d has MetalsBulgeMass (%g) > BulgeMass (%g)",
+                                       index, galaxy->MetalsBulgeMass, galaxy->BulgeMass);
+    }
+    
+    if (galaxy->MetalsHotGas > galaxy->HotGas && 
+        galaxy->HotGas > 0 && galaxy->MetalsHotGas > 0) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
+                                       VALIDATION_SEVERITY_WARNING,
+                                       VALIDATION_CHECK_CONSISTENCY, component,
+                                       __FILE__, __LINE__,
+                                       "Galaxy %d has MetalsHotGas (%g) > HotGas (%g)",
+                                       index, galaxy->MetalsHotGas, galaxy->HotGas);
+    }
+    
+    if (galaxy->MetalsColdGas > galaxy->ColdGas && 
+        galaxy->ColdGas > 0 && galaxy->MetalsColdGas > 0) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
+                                       VALIDATION_SEVERITY_WARNING,
+                                       VALIDATION_CHECK_CONSISTENCY, component,
+                                       __FILE__, __LINE__,
+                                       "Galaxy %d has MetalsColdGas (%g) > ColdGas (%g)",
+                                       index, galaxy->MetalsColdGas, galaxy->ColdGas);
+    }
+    
+    // Check physical consistency of velocities and positions
+    // Note: We don't check for position values to be within the simulation box
+    // since these values come directly from the input treefiles and are assumed
+    // to be correct, as per the human's instructions
     
     return status;
 }
@@ -929,4 +1046,231 @@ int validation_check_galaxies(struct validation_context *ctx,
     
     // If any errors were found or status is non-zero, return non-zero
     return (ctx->error_count > 0 || error_found || status != 0) ? -1 : 0;
+}
+
+/**
+ * @brief Validate format capabilities for a specific operation
+ *
+ * Checks if a handler supports all the capabilities required for an operation.
+ *
+ * @param ctx Validation context
+ * @param handler I/O interface handler
+ * @param required_caps Array of required capabilities
+ * @param num_caps Number of capabilities in the array
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @param operation_name Name of the operation being validated
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_format_capabilities(struct validation_context *ctx,
+                                       const struct io_interface *handler,
+                                       enum io_capabilities *required_caps,
+                                       int num_caps,
+                                       const char *component,
+                                       const char *file,
+                                       int line,
+                                       const char *operation_name) {
+    if (ctx == NULL) {
+        return -1;
+    }
+    
+    if (handler == NULL) {
+        return validation_add_result(ctx, VALIDATION_ERROR_NULL_POINTER,
+                                   VALIDATION_SEVERITY_ERROR,
+                                   VALIDATION_CHECK_FORMAT_CAPS,
+                                   component, file, line,
+                                   "I/O handler is NULL");
+    }
+    
+    if (required_caps == NULL || num_caps <= 0) {
+        return validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
+                                   VALIDATION_SEVERITY_ERROR,
+                                   VALIDATION_CHECK_FORMAT_CAPS,
+                                   component, file, line,
+                                   "Invalid required capabilities array");
+    }
+    
+    int status = 0;
+    
+    // Check each required capability
+    for (int i = 0; i < num_caps; i++) {
+        enum io_capabilities cap = required_caps[i];
+        if (!io_has_capability((struct io_interface *)handler, cap)) {
+            char cap_name[64];
+            switch (cap) {
+                case IO_CAP_RANDOM_ACCESS:
+                    strcpy(cap_name, "random access");
+                    break;
+                case IO_CAP_MULTI_FILE:
+                    strcpy(cap_name, "multi-file support");
+                    break;
+                case IO_CAP_METADATA_QUERY:
+                    strcpy(cap_name, "metadata queries");
+                    break;
+                case IO_CAP_PARALLEL_READ:
+                    strcpy(cap_name, "parallel reading");
+                    break;
+                case IO_CAP_COMPRESSION:
+                    strcpy(cap_name, "compression");
+                    break;
+                case IO_CAP_EXTENDED_PROPS:
+                    strcpy(cap_name, "extended properties");
+                    break;
+                case IO_CAP_APPEND:
+                    strcpy(cap_name, "append operations");
+                    break;
+                case IO_CAP_CHUNKED_WRITE:
+                    strcpy(cap_name, "chunked writing");
+                    break;
+                case IO_CAP_METADATA_ATTRS:
+                    strcpy(cap_name, "metadata attributes");
+                    break;
+                default:
+                    snprintf(cap_name, sizeof(cap_name), "capability %d", cap);
+                    break;
+            }
+            
+            status |= validation_add_result(ctx, VALIDATION_ERROR_FORMAT_INCOMPATIBLE,
+                                         VALIDATION_SEVERITY_ERROR,
+                                         VALIDATION_CHECK_FORMAT_CAPS,
+                                         component, file, line,
+                                         "Format '%s' does not support %s required for '%s' operation",
+                                         handler->name, cap_name, operation_name);
+        }
+    }
+    
+    return status;
+}
+
+/**
+ * @brief Validate binary format compatibility
+ *
+ * Checks if a handler is compatible with binary format requirements.
+ *
+ * @param ctx Validation context
+ * @param handler I/O interface handler
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_binary_compatibility(struct validation_context *ctx,
+                                        const struct io_interface *handler,
+                                        const char *component,
+                                        const char *file,
+                                        int line) {
+    if (ctx == NULL) {
+        return -1;
+    }
+    
+    if (handler == NULL) {
+        return validation_add_result(ctx, VALIDATION_ERROR_NULL_POINTER,
+                                   VALIDATION_SEVERITY_ERROR,
+                                   VALIDATION_CHECK_FORMAT_CAPS,
+                                   component, file, line,
+                                   "I/O handler is NULL");
+    }
+    
+    int status = 0;
+    
+    // Check binary format specific requirements
+    if (handler->format_id == IO_FORMAT_LHALO_BINARY || 
+        handler->format_id == IO_FORMAT_BINARY_OUTPUT) {
+        
+        // For binary formats, extended properties require specific capability
+        if (io_has_capability((struct io_interface *)handler, IO_CAP_EXTENDED_PROPS)) {
+            // This is good, format claims to support extended properties
+        } else {
+            // Binary format might have issues with extended properties
+            status |= validation_add_result(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE,
+                                         VALIDATION_SEVERITY_WARNING,
+                                         VALIDATION_CHECK_PROPERTY_COMPAT,
+                                         component, file, line,
+                                         "Binary format '%s' may have limited support for extended properties",
+                                         handler->name);
+        }
+    } else {
+        // Not a binary format
+        status |= validation_add_result(ctx, VALIDATION_ERROR_FORMAT_INCOMPATIBLE,
+                                     VALIDATION_SEVERITY_ERROR,
+                                     VALIDATION_CHECK_FORMAT_CAPS,
+                                     component, file, line,
+                                     "Format '%s' is not a binary format",
+                                     handler->name);
+    }
+    
+    return status;
+}
+
+/**
+ * @brief Validate HDF5 format compatibility
+ *
+ * Checks if a handler is compatible with HDF5 format requirements.
+ *
+ * @param ctx Validation context
+ * @param handler I/O interface handler
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_hdf5_compatibility(struct validation_context *ctx,
+                                      const struct io_interface *handler,
+                                      const char *component,
+                                      const char *file,
+                                      int line) {
+    if (ctx == NULL) {
+        return -1;
+    }
+    
+    if (handler == NULL) {
+        return validation_add_result(ctx, VALIDATION_ERROR_NULL_POINTER,
+                                   VALIDATION_SEVERITY_ERROR,
+                                   VALIDATION_CHECK_FORMAT_CAPS,
+                                   component, file, line,
+                                   "I/O handler is NULL");
+    }
+    
+    int status = 0;
+    
+    // Check HDF5 format specific requirements
+    if (handler->format_id == IO_FORMAT_LHALO_HDF5 || 
+        handler->format_id == IO_FORMAT_CONSISTENT_TREES_HDF5 ||
+        handler->format_id == IO_FORMAT_GADGET4_HDF5 ||
+        handler->format_id == IO_FORMAT_GENESIS_HDF5 ||
+        handler->format_id == IO_FORMAT_HDF5_OUTPUT) {
+        
+        // For HDF5 formats, metadata attributes are essential
+        if (io_has_capability((struct io_interface *)handler, IO_CAP_METADATA_ATTRS)) {
+            // This is good, format claims to support metadata attributes
+        } else {
+            status |= validation_add_result(ctx, VALIDATION_ERROR_FORMAT_INCOMPATIBLE,
+                                         VALIDATION_SEVERITY_WARNING,
+                                         VALIDATION_CHECK_FORMAT_CAPS,
+                                         component, file, line,
+                                         "HDF5 format '%s' should support metadata attributes",
+                                         handler->name);
+        }
+        
+        // Extended properties should be supported by HDF5 formats
+        if (!io_has_capability((struct io_interface *)handler, IO_CAP_EXTENDED_PROPS)) {
+            status |= validation_add_result(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE,
+                                         VALIDATION_SEVERITY_WARNING,
+                                         VALIDATION_CHECK_PROPERTY_COMPAT,
+                                         component, file, line,
+                                         "HDF5 format '%s' should support extended properties",
+                                         handler->name);
+        }
+    } else {
+        // Not an HDF5 format
+        status |= validation_add_result(ctx, VALIDATION_ERROR_FORMAT_INCOMPATIBLE,
+                                     VALIDATION_SEVERITY_ERROR,
+                                     VALIDATION_CHECK_FORMAT_CAPS,
+                                     component, file, line,
+                                     "Format '%s' is not an HDF5 format",
+                                     handler->name);
+    }
+    
+    return status;
 }

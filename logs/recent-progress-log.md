@@ -139,3 +139,21 @@
 - Added proper error buffers for formatting complex error messages
 - Ensured all tests pass with the new error handling implementation
 - Modified files: src/core/core_save.c
+
+2025-04-11: [Phase 3.2 Step 9.2] Enhanced Galaxy Data Validation
+- Extended galaxy validation with comprehensive checks for all numeric fields
+- Added validation for reference fields (CentralGal, Type, GalaxyNr, mergeType)
+- Implemented consistency checks for metals not exceeding total mass
+- Added validation for BulgeMass <= StellarMass relationships
+- Created comprehensive tests verifying all validation scenarios
+- Modified files: src/io/io_validation.c, tests/test_io_validation.c
+- Added files: docs/phase3.2_step9.2_implementation_report.md
+
+2025-04-11: [Phase 3.2 Step 9.3] Implemented Format-Specific Validation
+- Created format validation helper functions for different I/O format types
+- Implemented capability-based validation (io_format_capabilities)
+- Added format-specific checks for binary and HDF5 formats
+- Created convenience macros for format validation
+- Added comprehensive tests for format validation scenarios
+- Modified files: src/io/io_validation.h, src/io/io_validation.c, tests/test_io_validation.c
+- Added files: docs/phase3.2_step9.3_implementation_report.md

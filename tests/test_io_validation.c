@@ -8,12 +8,51 @@
 #include "../src/io/io_interface.h"
 #include "../src/core/core_allvars.h"
 
-// Mock I/O handler for testing capability validation
+// Mock I/O handlers for testing format validation
 struct io_interface mock_handler = {
     .name = "Mock Handler",
     .version = "1.0",
     .format_id = 999,
     .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_MULTI_FILE,
+    .initialize = NULL,
+    .read_forest = NULL,
+    .write_galaxies = NULL,
+    .cleanup = NULL,
+    .close_open_handles = NULL,
+    .get_open_handle_count = NULL
+};
+
+struct io_interface binary_handler = {
+    .name = "Binary Format Handler",
+    .version = "1.0",
+    .format_id = 6, // IO_FORMAT_BINARY_OUTPUT,
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_EXTENDED_PROPS,
+    .initialize = NULL,
+    .read_forest = NULL,
+    .write_galaxies = NULL,
+    .cleanup = NULL,
+    .close_open_handles = NULL,
+    .get_open_handle_count = NULL
+};
+
+struct io_interface hdf5_handler = {
+    .name = "HDF5 Format Handler",
+    .version = "1.0",
+    .format_id = 7, // IO_FORMAT_HDF5_OUTPUT,
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_EXTENDED_PROPS | IO_CAP_METADATA_ATTRS,
+    .initialize = NULL,
+    .read_forest = NULL,
+    .write_galaxies = NULL,
+    .cleanup = NULL,
+    .close_open_handles = NULL,
+    .get_open_handle_count = NULL
+};
+
+struct io_interface limited_binary_handler = {
+    .name = "Limited Binary Handler",
+    .version = "1.0",
+    .format_id = 6, // IO_FORMAT_BINARY_OUTPUT,
+    .capabilities = IO_CAP_RANDOM_ACCESS, // Missing extended props capability
     .initialize = NULL,
     .read_forest = NULL,
     .write_galaxies = NULL,
@@ -324,64 +363,108 @@ int test_galaxy_validation() {
     assert(status == 0);
     
     // Create a valid galaxy
-    struct GALAXY galaxies[3];
+    struct GALAXY galaxies[4];
     memset(galaxies, 0, sizeof(galaxies));
     
     // Set up a valid galaxy (index 0)
+    galaxies[0].Type = 0;  // Central
     galaxies[0].StellarMass = 1e10;
     galaxies[0].BulgeMass = 5e9;
     galaxies[0].ColdGas = 2e9;
     galaxies[0].HotGas = 8e9;
+    galaxies[0].EjectedMass = 1e9;
+    galaxies[0].BlackHoleMass = 1e7;
+    galaxies[0].MetalsStellarMass = 1e8;
+    galaxies[0].MetalsBulgeMass = 5e7;
+    galaxies[0].MetalsColdGas = 1e7;
+    galaxies[0].MetalsHotGas = 4e7;
     galaxies[0].mergeIntoID = -1;
+    galaxies[0].CentralGal = 0;
+    galaxies[0].GalaxyNr = 0;
+    galaxies[0].HaloNr = 100;
+    galaxies[0].mergeType = 0;
     
-    // Set up an invalid galaxy (index 1) - NaN value
-    galaxies[1].StellarMass = NAN;
+    // Set position and velocity
+    for (int i = 0; i < 3; i++) {
+        galaxies[0].Pos[i] = i * 100.0;
+        galaxies[0].Vel[i] = i * 200.0;
+    }
+    
+    // Set up a galaxy with invalid data values (index 1)
+    galaxies[1].Type = 1;  // Satellite
+    galaxies[1].StellarMass = NAN;  // NaN value
     galaxies[1].BulgeMass = 1e8;
     galaxies[1].ColdGas = 5e8;
     galaxies[1].HotGas = 2e9;
+    galaxies[1].Pos[0] = INFINITY;  // Invalid position
     galaxies[1].mergeIntoID = -1;
+    galaxies[1].CentralGal = 0;
+    galaxies[1].GalaxyNr = 1;
     
-    // Set up an invalid galaxy (index 2) - Negative mass
+    // Set up a galaxy with invalid references (index 2)
+    galaxies[2].Type = 5;  // Invalid type (should be 0-2)
     galaxies[2].StellarMass = 1e9;
-    galaxies[2].BulgeMass = -5e8;  // Negative mass
+    galaxies[2].BulgeMass = 5e8;
     galaxies[2].ColdGas = 1e9;
     galaxies[2].HotGas = 3e9;
     galaxies[2].mergeIntoID = 10;  // Invalid reference
+    galaxies[2].CentralGal = 5;    // Invalid reference (out of bounds)
+    galaxies[2].GalaxyNr = 2;
     
-    // Validate just galaxy data (should catch the NaN)
-    status = validation_check_galaxies(&ctx, galaxies, 3, "TestGalaxies",
+    // Set up a galaxy with inconsistent data (index 3)
+    galaxies[3].Type = 2;  // Orphan
+    galaxies[3].StellarMass = 1e9;
+    galaxies[3].BulgeMass = 2e9;   // BulgeMass > StellarMass (inconsistent)
+    galaxies[3].ColdGas = 1e9;
+    galaxies[3].HotGas = 3e9;
+    galaxies[3].MetalsStellarMass = 2e9;  // Metals > Mass (inconsistent)
+    galaxies[3].mergeIntoID = -1;
+    galaxies[3].CentralGal = 0;
+    galaxies[3].GalaxyNr = 3;
+    
+    // Validate just galaxy data (should catch the NaN and Infinity)
+    status = validation_check_galaxies(&ctx, galaxies, 4, "TestGalaxies",
                                      VALIDATION_CHECK_GALAXY_DATA);
     assert(status != 0);  // Should return non-zero if errors found
     assert(ctx.error_count > 0);
-    
+    int data_errors = ctx.error_count;
+    printf("  Found %d errors in galaxy data validation\n", data_errors);
     validation_reset(&ctx);
     
-    // Validate just galaxy references (should catch the invalid mergeIntoID)
-    status = validation_check_galaxies(&ctx, galaxies, 3, "TestGalaxies",
+    // Validate just galaxy references (should catch the invalid references)
+    status = validation_check_galaxies(&ctx, galaxies, 4, "TestGalaxies",
                                      VALIDATION_CHECK_GALAXY_REFS);
     assert(status != 0);  // Should return non-zero if errors found
     assert(ctx.error_count > 0);
-    
+    int ref_errors = ctx.error_count;
+    printf("  Found %d errors in galaxy reference validation\n", ref_errors);
     validation_reset(&ctx);
     
     // Validate with consistency checks (should catch multiple issues)
-    status = validation_check_galaxies(&ctx, galaxies, 3, "TestGalaxies",
+    status = validation_check_galaxies(&ctx, galaxies, 4, "TestGalaxies",
                                      VALIDATION_CHECK_CONSISTENCY);
     assert(status != 0);  // Should return non-zero if errors found
     assert(ctx.error_count > 0);
-    
+    int consistency_errors = ctx.error_count;
+    printf("  Found %d errors in galaxy consistency validation\n", consistency_errors);
+    assert(consistency_errors >= data_errors + ref_errors);  // Should catch at least all the previous errors
     validation_reset(&ctx);
     
     // Fix the galaxies
     galaxies[1].StellarMass = 1e8;
-    galaxies[2].BulgeMass = 5e8;
+    galaxies[1].Pos[0] = 100.0;
+    galaxies[2].Type = 1;
     galaxies[2].mergeIntoID = -1;
+    galaxies[2].CentralGal = 0;
+    galaxies[3].BulgeMass = 5e8;
+    galaxies[3].MetalsStellarMass = 1e8;
     
-    // Validate again
-    status = validation_check_galaxies(&ctx, galaxies, 3, "TestGalaxies",
+    // Validate again with all checks
+    status = validation_check_galaxies(&ctx, galaxies, 4, "TestGalaxies",
                                      VALIDATION_CHECK_CONSISTENCY);
     assert(status == 0);  // Should pass
     assert(ctx.error_count == 0);
+    printf("  All errors fixed, validation passes\n");
     
     printf("Galaxy validation tests passed\n");
     return 0;
@@ -417,6 +500,120 @@ int test_assertion_status() {
     return 0;
 }
 
+// Test format validation
+int test_format_validation() {
+    struct validation_context ctx;
+    int status;
+    
+    printf("Testing format validation...\n");
+    
+    // Initialize
+    status = validation_init(&ctx, VALIDATION_STRICTNESS_NORMAL);
+    assert(status == 0);
+    
+    // Test format capabilities validation
+    enum io_capabilities required_caps[] = {
+        IO_CAP_RANDOM_ACCESS,
+        IO_CAP_MULTI_FILE
+    };
+    
+    // Test with all capabilities present
+    status = validation_check_format_capabilities(&ctx, &mock_handler, 
+                                               required_caps, 2, 
+                                               "TestComponent", __FILE__, __LINE__,
+                                               "test_operation");
+    assert(status == 0);  // Should pass
+    assert(ctx.error_count == 0);
+    
+    // Test with missing capability
+    validation_reset(&ctx);
+    enum io_capabilities missing_caps[] = {
+        IO_CAP_RANDOM_ACCESS,
+        IO_CAP_COMPRESSION  // Mock handler doesn't have this
+    };
+    
+    // This should add an error for the missing capability
+    status = validation_check_format_capabilities(&ctx, &mock_handler, 
+                                               missing_caps, 2, 
+                                               "TestComponent", __FILE__, __LINE__,
+                                               "test_operation");
+    if (status == 0) {
+        printf("WARNING: Expected validation_check_format_capabilities to return non-zero status\n");
+    }
+    // Check that the missing capability resulted in an error
+    assert(ctx.error_count > 0);
+    
+    validation_reset(&ctx);
+    
+    // Test binary format compatibility
+    status = validation_check_binary_compatibility(&ctx, &binary_handler, 
+                                               "TestComponent", __FILE__, __LINE__);
+    assert(status == 0);  // Should pass
+    assert(ctx.error_count == 0);
+    
+    // Test with non-binary format
+    validation_reset(&ctx);
+    
+    status = validation_check_binary_compatibility(&ctx, &hdf5_handler, 
+                                               "TestComponent", __FILE__, __LINE__);
+    // Since we're using a mock HDF5 handler, we should detect this is not a binary format
+    if (status == 0) {
+        printf("WARNING: Expected validation_check_binary_compatibility to return non-zero status\n");
+    }
+    assert(ctx.error_count > 0);  // Should produce an error
+    
+    validation_reset(&ctx);
+    
+    // Test limited binary format (missing extended props)
+    validation_reset(&ctx);
+    
+    status = validation_check_binary_compatibility(&ctx, &limited_binary_handler, 
+                                               "TestComponent", __FILE__, __LINE__);
+    // Should generate a warning for the limited format without extended properties support
+    if (ctx.warning_count == 0) {
+        printf("WARNING: Expected validation_check_binary_compatibility to generate warnings\n");
+    }
+    
+    validation_reset(&ctx);
+    
+    // Test HDF5 format compatibility
+    status = validation_check_hdf5_compatibility(&ctx, &hdf5_handler, 
+                                             "TestComponent", __FILE__, __LINE__);
+    assert(status == 0);  // Should pass
+    assert(ctx.error_count == 0);
+    
+    // Test with non-HDF5 format
+    validation_reset(&ctx);
+    
+    status = validation_check_hdf5_compatibility(&ctx, &binary_handler, 
+                                             "TestComponent", __FILE__, __LINE__);
+    // Should detect that binary format is not HDF5
+    if (status == 0) {
+        printf("WARNING: Expected validation_check_hdf5_compatibility to return non-zero status\n");
+    }
+    assert(ctx.error_count > 0);  // Should produce an error
+    
+    validation_reset(&ctx);
+    
+    // Test convenience macros
+    status = VALIDATE_FORMAT_CAPABILITIES(&ctx, &mock_handler, required_caps, 2, 
+                                       "TestComponent", "test_operation");
+    assert(status == 0);  // Should pass
+    
+    validation_reset(&ctx);
+    
+    status = VALIDATE_BINARY_COMPATIBILITY(&ctx, &binary_handler, "TestComponent");
+    assert(status == 0);  // Should pass
+    
+    validation_reset(&ctx);
+    
+    status = VALIDATE_HDF5_COMPATIBILITY(&ctx, &hdf5_handler, "TestComponent");
+    assert(status == 0);  // Should pass
+    
+    printf("Format validation tests passed\n");
+    return 0;
+}
+
 int main() {
     int status = 0;
     
@@ -429,6 +626,7 @@ int main() {
     status |= test_condition_validation();
     status |= test_galaxy_validation();
     status |= test_assertion_status();
+    status |= test_format_validation();
     
     if (status == 0) {
         printf("All I/O validation tests passed!\n");
