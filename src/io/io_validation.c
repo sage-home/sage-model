@@ -3,10 +3,474 @@
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
+#include <ctype.h>
 
 #include "io_validation.h"
 #include "io_interface.h"
+#include "io_property_serialization.h"
 #include "../core/core_logging.h"
+#include "../core/core_galaxy_extensions.h"
+
+/**
+ * @brief Validate property type compatibility
+ *
+ * Checks if a property type is compatible with serialization.
+ *
+ * @param ctx Validation context
+ * @param type Property type to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @param property_name Name of the property
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_property_type(struct validation_context *ctx,
+                                enum galaxy_property_type type,
+                                const char *component,
+                                const char *file,
+                                int line,
+                                const char *property_name) {
+    // Mark unused parameters to avoid compiler warnings
+    (void)file;
+    (void)line;
+    
+    if (ctx == NULL) {
+        return -1;
+    }
+    
+    // Check if type is valid
+    if (type < 0 || type >= PROPERTY_TYPE_MAX) {
+        VALIDATION_ERROR(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Property '%s' has invalid type: %d", 
+                      property_name, type);
+        return -1;
+    }
+    
+    // Check if type is serializable
+    switch (type) {
+        case PROPERTY_TYPE_FLOAT:
+        case PROPERTY_TYPE_DOUBLE:
+        case PROPERTY_TYPE_INT32:
+        case PROPERTY_TYPE_INT64:
+        case PROPERTY_TYPE_UINT32:
+        case PROPERTY_TYPE_UINT64:
+        case PROPERTY_TYPE_BOOL:
+            // Basic types are supported
+            return 0;
+            
+        case PROPERTY_TYPE_STRUCT:
+            // Structs need custom serializers
+            VALIDATION_WARN(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                         component, "Property '%s' is a struct and requires custom serializers",
+                         property_name);
+            return 0;
+            
+        case PROPERTY_TYPE_ARRAY:
+            // Arrays need special handling
+            VALIDATION_WARN(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                         component, "Property '%s' is an array and requires careful serialization",
+                         property_name);
+            return 0;
+            
+        default:
+            VALIDATION_ERROR(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Property '%s' has unsupported type: %d",
+                          property_name, type);
+            return -1;
+    }
+}
+
+/**
+ * @brief Validate property serialization functions
+ *
+ * Checks if a property has valid serialization functions.
+ *
+ * @param ctx Validation context
+ * @param property Property to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_property_serialization(struct validation_context *ctx,
+                                         const galaxy_property_t *property,
+                                         const char *component,
+                                         const char *file,
+                                         int line) {
+    // Mark unused parameters to avoid compiler warnings
+    (void)file;
+    (void)line;
+    
+    if (ctx == NULL || property == NULL) {
+        return -1;
+    }
+    
+    // Skip check if property doesn't need serialization
+    if (!(property->flags & PROPERTY_FLAG_SERIALIZE)) {
+        return 0;
+    }
+    
+    // Check both serialization functions exist
+    if (property->serialize == NULL) {
+        VALIDATION_ERROR(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Property '%s' is marked for serialization but has no serialize function",
+                      property->name);
+        return -1;
+    }
+    
+    if (property->deserialize == NULL) {
+        VALIDATION_ERROR(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Property '%s' is marked for serialization but has no deserialize function",
+                      property->name);
+        return -1;
+    }
+    
+    // For basic types, check if they have a default serializer
+    void (*default_serializer)(const void *, void *, int) = 
+        property_serialization_get_default_serializer(property->type);
+    
+    void (*default_deserializer)(const void *, void *, int) = 
+        property_serialization_get_default_deserializer(property->type);
+    
+    // If defaults exist but custom functions are used, issue a warning
+    if (default_serializer != NULL && property->serialize != default_serializer) {
+        VALIDATION_WARN(ctx, VALIDATION_ERROR_NONE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                     component, "Property '%s' uses a custom serializer instead of the default",
+                     property->name);
+    }
+    
+    if (default_deserializer != NULL && property->deserialize != default_deserializer) {
+        VALIDATION_WARN(ctx, VALIDATION_ERROR_NONE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                     component, "Property '%s' uses a custom deserializer instead of the default",
+                     property->name);
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Validate property name uniqueness
+ *
+ * Checks if a property name is unique among registered properties.
+ *
+ * @param ctx Validation context
+ * @param property Property to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_property_uniqueness(struct validation_context *ctx,
+                                      const galaxy_property_t *property,
+                                      const char *component,
+                                      const char *file,
+                                      int line) {
+    // Mark unused parameters to avoid compiler warnings
+    (void)file;
+    (void)line;
+    
+    if (ctx == NULL || property == NULL) {
+        return -1;
+    }
+    
+    // Check if we have a registry
+    if (global_extension_registry == NULL) {
+        VALIDATION_ERROR(ctx, VALIDATION_ERROR_INTERNAL, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Extension registry not initialized");
+        return -1;
+    }
+    
+    // Check for duplicate name
+    for (int i = 0; i < global_extension_registry->num_extensions; i++) {
+        // Skip the property itself
+        if (global_extension_registry->extensions[i].extension_id == property->extension_id) {
+            continue;
+        }
+        
+        // Check for name collision
+        if (strcmp(global_extension_registry->extensions[i].name, property->name) == 0) {
+            VALIDATION_ERROR(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Property name '%s' is not unique (extension_id %d and %d)",
+                          property->name, property->extension_id, 
+                          global_extension_registry->extensions[i].extension_id);
+            return -1;
+        }
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Validate serialization context
+ *
+ * Checks if a property serialization context is valid.
+ *
+ * @param ctx Validation context
+ * @param ser_ctx Serialization context to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_serialization_context(struct validation_context *ctx,
+                                        const struct property_serialization_context *ser_ctx,
+                                        const char *component,
+                                        const char *file,
+                                        int line) {
+    // Mark unused parameters to avoid compiler warnings
+    (void)file;
+    (void)line;
+    
+    if (ctx == NULL || ser_ctx == NULL) {
+        return -1;
+    }
+    
+    // Check basic validity
+    if (ser_ctx->version != PROPERTY_SERIALIZATION_VERSION) {
+        VALIDATION_ERROR(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Serialization context has incorrect version (got %d, expected %d)",
+                      ser_ctx->version, PROPERTY_SERIALIZATION_VERSION);
+        return -1;
+    }
+    
+    // Check property count
+    if (ser_ctx->num_properties < 0) {
+        VALIDATION_ERROR(ctx, VALIDATION_ERROR_INVALID_VALUE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Serialization context has invalid property count: %d",
+                      ser_ctx->num_properties);
+        return -1;
+    }
+    
+    // If we have properties, validate property metadata array and ID map
+    if (ser_ctx->num_properties > 0) {
+        if (ser_ctx->properties == NULL) {
+            VALIDATION_ERROR(ctx, VALIDATION_ERROR_NULL_POINTER, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Serialization context has %d properties but NULL properties array",
+                          ser_ctx->num_properties);
+            return -1;
+        }
+        
+        if (ser_ctx->property_id_map == NULL) {
+            VALIDATION_ERROR(ctx, VALIDATION_ERROR_NULL_POINTER, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Serialization context has %d properties but NULL property ID map",
+                          ser_ctx->num_properties);
+            return -1;
+        }
+        
+        // Check total size per galaxy
+        if (ser_ctx->total_size_per_galaxy <= 0) {
+            VALIDATION_ERROR(ctx, VALIDATION_ERROR_INVALID_VALUE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Serialization context has invalid total size per galaxy: %zu",
+                          ser_ctx->total_size_per_galaxy);
+            return -1;
+        }
+        
+        // Validate individual properties
+        for (int i = 0; i < ser_ctx->num_properties; i++) {
+            const struct serialized_property_meta *property = &ser_ctx->properties[i];
+            
+            // Check name is non-empty
+            if (property->name[0] == '\0') {
+                VALIDATION_ERROR(ctx, VALIDATION_ERROR_INVALID_VALUE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                              component, "Property at index %d has empty name", i);
+                return -1;
+            }
+            
+            // Check size is valid
+            if (property->size == 0) {
+                VALIDATION_ERROR(ctx, VALIDATION_ERROR_INVALID_VALUE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                              component, "Property '%s' has zero size", property->name);
+                return -1;
+            }
+            
+            // Check type is valid
+            if (property->type < 0 || property->type >= PROPERTY_TYPE_MAX) {
+                VALIDATION_ERROR(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                              component, "Property '%s' has invalid type: %d", 
+                              property->name, property->type);
+                return -1;
+            }
+            
+            // Check offset is within bounds
+            if (property->offset < 0 || 
+                property->offset + property->size > ser_ctx->total_size_per_galaxy) {
+                VALIDATION_ERROR(ctx, VALIDATION_ERROR_ARRAY_BOUNDS, VALIDATION_CHECK_PROPERTY_COMPAT,
+                              component, "Property '%s' has invalid offset or size (offset: %lld, size: %zu, total: %zu)",
+                              property->name, (long long)property->offset, property->size, 
+                              ser_ctx->total_size_per_galaxy);
+                return -1;
+            }
+        }
+        
+        // Validate property ID map
+        for (int i = 0; i < ser_ctx->num_properties; i++) {
+            int ext_id = ser_ctx->property_id_map[i];
+            
+            // Check ID exists
+            if (global_extension_registry == NULL) {
+                VALIDATION_ERROR(ctx, VALIDATION_ERROR_INTERNAL, VALIDATION_CHECK_PROPERTY_COMPAT,
+                              component, "Extension registry not initialized when validating property ID map");
+                return -1;
+            }
+            
+            if (ext_id < 0 || ext_id >= global_extension_registry->num_extensions) {
+                VALIDATION_ERROR(ctx, VALIDATION_ERROR_REFERENCE_INVALID, VALIDATION_CHECK_PROPERTY_COMPAT,
+                              component, "Property ID map contains invalid extension ID: %d", ext_id);
+                return -1;
+            }
+        }
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Validate binary property compatibility
+ *
+ * Checks if a property is compatible with binary serialization.
+ *
+ * @param ctx Validation context
+ * @param property Property to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_binary_property_compatibility(struct validation_context *ctx,
+                                               const galaxy_property_t *property,
+                                               const char *component,
+                                               const char *file,
+                                               int line) {
+    // Mark unused parameters to avoid compiler warnings
+    (void)file;
+    (void)line;
+    
+    if (ctx == NULL || property == NULL) {
+        return -1;
+    }
+    
+    // Skip check if property doesn't need serialization
+    if (!(property->flags & PROPERTY_FLAG_SERIALIZE)) {
+        return 0;
+    }
+    
+    // Check for serialization functions
+    if (property->serialize == NULL || property->deserialize == NULL) {
+        VALIDATION_ERROR(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Property '%s' lacks required serialization functions for binary format",
+                      property->name);
+        return -1;
+    }
+    
+    // Binary format has fewer restrictions, but warn for complex types
+    if (property->type == PROPERTY_TYPE_STRUCT) {
+        VALIDATION_WARN(ctx, VALIDATION_ERROR_NONE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                     component, "Property '%s' is a struct, ensure proper binary serialization",
+                     property->name);
+    } else if (property->type == PROPERTY_TYPE_ARRAY) {
+        VALIDATION_WARN(ctx, VALIDATION_ERROR_NONE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                     component, "Property '%s' is an array, ensure proper binary serialization",
+                     property->name);
+    }
+    
+    // Validate size is reasonable
+    if (property->size > MAX_SERIALIZED_ARRAY_SIZE) {
+        VALIDATION_WARN(ctx, VALIDATION_ERROR_RESOURCE_LIMIT, VALIDATION_CHECK_PROPERTY_COMPAT,
+                     component, "Property '%s' size (%zu) exceeds recommended maximum (%d)",
+                     property->name, property->size, MAX_SERIALIZED_ARRAY_SIZE);
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Validate HDF5 property compatibility
+ *
+ * Checks if a property is compatible with HDF5 serialization.
+ *
+ * @param ctx Validation context
+ * @param property Property to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+int validation_check_hdf5_property_compatibility(struct validation_context *ctx,
+                                             const galaxy_property_t *property,
+                                             const char *component,
+                                             const char *file,
+                                             int line) {
+    // Mark unused parameters to avoid compiler warnings
+    (void)file;
+    (void)line;
+    
+    if (ctx == NULL || property == NULL) {
+        return -1;
+    }
+    
+    // Skip check if property doesn't need serialization
+    if (!(property->flags & PROPERTY_FLAG_SERIALIZE)) {
+        return 0;
+    }
+    
+    // Check for serialization functions
+    if (property->serialize == NULL || property->deserialize == NULL) {
+        VALIDATION_ERROR(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Property '%s' lacks required serialization functions for HDF5 format",
+                      property->name);
+        return -1;
+    }
+    
+    // HDF5 requires proper type mapping
+    switch (property->type) {
+        case PROPERTY_TYPE_FLOAT:
+        case PROPERTY_TYPE_DOUBLE:
+        case PROPERTY_TYPE_INT32:
+        case PROPERTY_TYPE_INT64:
+        case PROPERTY_TYPE_UINT32:
+        case PROPERTY_TYPE_UINT64:
+        case PROPERTY_TYPE_BOOL:
+            // Basic types are supported
+            break;
+            
+        case PROPERTY_TYPE_STRUCT:
+            VALIDATION_WARN(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Property '%s' is a struct which requires compound datatype in HDF5",
+                          property->name);
+            break;
+            
+        case PROPERTY_TYPE_ARRAY:
+            VALIDATION_WARN(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Property '%s' is an array which requires special handling in HDF5",
+                          property->name);
+            break;
+            
+        default:
+            VALIDATION_ERROR(ctx, VALIDATION_ERROR_TYPE_MISMATCH, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Property '%s' has unsupported type for HDF5: %d",
+                          property->name, property->type);
+            return -1;
+    }
+    
+    // Validate size for HDF5
+    if (property->size > MAX_SERIALIZED_ARRAY_SIZE) {
+        VALIDATION_WARN(ctx, VALIDATION_ERROR_RESOURCE_LIMIT, VALIDATION_CHECK_PROPERTY_COMPAT,
+                      component, "Property '%s' size (%zu) exceeds maximum for HDF5 (%d)",
+                      property->name, property->size, MAX_SERIALIZED_ARRAY_SIZE);
+    }
+    
+    // Validate property name for HDF5 (no special characters)
+    for (const char *c = property->name; *c != '\0'; c++) {
+        if (!isalnum(*c) && *c != '_' && *c != '-') {
+            VALIDATION_WARN(ctx, VALIDATION_ERROR_INVALID_VALUE, VALIDATION_CHECK_PROPERTY_COMPAT,
+                          component, "Property name '%s' contains characters not allowed in HDF5 attributes",
+                          property->name);
+            break;
+        }
+    }
+    
+    return 0;
+}
 
 /**
  * @brief Initialize a validation context

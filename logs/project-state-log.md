@@ -116,7 +116,8 @@ Galaxy Evolution Pipeline
 ```
 
 ### I/O Components
-I/O is abstracted for different input and output formats:
+I/O is now fully abstracted through a unified interface system:
+- `io_interface`: Abstract interface with standardized operations (initialize, read_forest, write_galaxies, cleanup)
 - Input handlers for multiple merger tree formats:
   - LHalo binary and HDF5
   - ConsistentTrees ASCII and HDF5
@@ -124,6 +125,31 @@ I/O is abstracted for different input and output formats:
   - Genesis HDF5
 - Output handlers for binary and HDF5 formats
 - Trees and galaxies managed through a consistent API
+- Cross-platform endianness handling for binary formats
+- Extended property serialization for module-specific data
+- Comprehensive validation system for data integrity:
+  - Data validation to prevent invalid values (NaN, Infinity)
+  - Format capability validation to ensure required features
+  - Property validation for extension compatibility
+  - Integration with core I/O pipeline
+
+```
+I/O System Architecture
+┌─────────────────────┐      ┌─────────────────────┐
+│ io_interface        │      │ core_save           │
+│ - Capabilities      │◄────▶│ - init_galaxy_files │
+│ - Format registry   │      │ - save_galaxies     │
+│ - Resource tracking │      │ - finalize_files    │
+└─────────┬───────────┘      └─────────────────────┘
+          │                              ▲
+          ▼                              │
+┌─────────────────────┐      ┌──────────┴──────────┐
+│ Format Handlers     │      │ io_validation       │
+│ - Binary            │◄────▶│ - Data validation   │
+│ - HDF5              │      │ - Format validation │
+│ - Property support  │      │ - Property checks   │
+└─────────────────────┘      └─────────────────────┘
+```
 
 ### Testing Framework
 A robust testing framework is in place:

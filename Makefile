@@ -285,6 +285,9 @@ test_hdf5_output: tests/test_hdf5_output.c $(SAGELIB)
 test_io_validation: tests/test_io_validation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_validation tests/test_io_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+test_property_validation: tests/test_property_validation.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_validation tests/test_property_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
 $(EXEC): $(OBJS)
 	$(CC) $^ $(LIBFLAGS) -o $@
 
@@ -310,7 +313,7 @@ celan celna clena: clean
 clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]
 
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation
 	./tests/test_sage.sh
 	./tests/test_io_interface
 	./tests/test_endian_utils

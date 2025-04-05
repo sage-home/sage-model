@@ -9,7 +9,9 @@ extern "C" {
 
 #include "../core/core_allvars.h"
 #include "../core/core_logging.h"
+#include "../core/core_galaxy_extensions.h"
 #include "io_interface.h"
+#include "io_property_serialization.h"
 
 /**
  * @file io_validation.h
@@ -39,7 +41,8 @@ enum validation_error_code {
     VALIDATION_ERROR_DATA_INCONSISTENT  = 10,   /**< Data inconsistency detected */
     VALIDATION_ERROR_RESOURCE_LIMIT     = 11,   /**< Resource limit exceeded */
     VALIDATION_ERROR_INTERNAL           = 12,   /**< Internal validation error */
-    VALIDATION_ERROR_UNKNOWN            = 13    /**< Unknown validation error */
+    VALIDATION_ERROR_UNKNOWN            = 13,   /**< Unknown validation error */
+    VALIDATION_ERROR_NONE               = 14    /**< No error (used for warnings) */
 };
 
 /**
@@ -454,6 +457,116 @@ extern int validation_check_hdf5_compatibility(struct validation_context *ctx,
                                             const char *file,
                                             int line);
 
+/**
+ * @brief Validate property type compatibility
+ *
+ * Checks if a property type is compatible with serialization.
+ *
+ * @param ctx Validation context
+ * @param type Property type to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @param property_name Name of the property
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_property_type(struct validation_context *ctx,
+                                       enum galaxy_property_type type,
+                                       const char *component,
+                                       const char *file,
+                                       int line,
+                                       const char *property_name);
+
+/**
+ * @brief Validate property serialization functions
+ *
+ * Checks if a property has valid serialization functions.
+ *
+ * @param ctx Validation context
+ * @param property Property to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_property_serialization(struct validation_context *ctx,
+                                                const galaxy_property_t *property,
+                                                const char *component,
+                                                const char *file,
+                                                int line);
+
+/**
+ * @brief Validate property name uniqueness
+ *
+ * Checks if a property name is unique among registered properties.
+ *
+ * @param ctx Validation context
+ * @param property Property to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_property_uniqueness(struct validation_context *ctx,
+                                            const galaxy_property_t *property,
+                                            const char *component,
+                                            const char *file,
+                                            int line);
+
+/**
+ * @brief Validate serialization context
+ *
+ * Checks if a property serialization context is valid.
+ *
+ * @param ctx Validation context
+ * @param ser_ctx Serialization context to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_serialization_context(struct validation_context *ctx,
+                                              const struct property_serialization_context *ser_ctx,
+                                              const char *component,
+                                              const char *file,
+                                              int line);
+
+/**
+ * @brief Validate binary property compatibility
+ *
+ * Checks if a property is compatible with binary serialization.
+ *
+ * @param ctx Validation context
+ * @param property Property to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_binary_property_compatibility(struct validation_context *ctx,
+                                                      const galaxy_property_t *property,
+                                                      const char *component,
+                                                      const char *file,
+                                                      int line);
+
+/**
+ * @brief Validate HDF5 property compatibility
+ *
+ * Checks if a property is compatible with HDF5 serialization.
+ *
+ * @param ctx Validation context
+ * @param property Property to check
+ * @param component Component being validated
+ * @param file Source file
+ * @param line Source line
+ * @return 0 if validation passed, non-zero otherwise
+ */
+extern int validation_check_hdf5_property_compatibility(struct validation_context *ctx,
+                                                    const galaxy_property_t *property,
+                                                    const char *component,
+                                                    const char *file,
+                                                    int line);
+
 // Convenience macros for validation
 
 /**
@@ -506,6 +619,42 @@ extern int validation_check_hdf5_compatibility(struct validation_context *ctx,
  */
 #define VALIDATE_HDF5_COMPATIBILITY(ctx, handler, component) \
     validation_check_hdf5_compatibility(ctx, handler, component, __FILE__, __LINE__)
+
+/**
+ * @brief Validate property type
+ */
+#define VALIDATE_PROPERTY_TYPE(ctx, type, component, property_name) \
+    validation_check_property_type(ctx, type, component, __FILE__, __LINE__, property_name)
+
+/**
+ * @brief Validate property serialization
+ */
+#define VALIDATE_PROPERTY_SERIALIZATION(ctx, property, component) \
+    validation_check_property_serialization(ctx, property, component, __FILE__, __LINE__)
+
+/**
+ * @brief Validate property uniqueness
+ */
+#define VALIDATE_PROPERTY_UNIQUENESS(ctx, property, component) \
+    validation_check_property_uniqueness(ctx, property, component, __FILE__, __LINE__)
+
+/**
+ * @brief Validate serialization context
+ */
+#define VALIDATE_SERIALIZATION_CONTEXT(ctx, ser_ctx, component) \
+    validation_check_serialization_context(ctx, ser_ctx, component, __FILE__, __LINE__)
+
+/**
+ * @brief Validate binary property compatibility
+ */
+#define VALIDATE_BINARY_PROPERTY_COMPATIBILITY(ctx, property, component) \
+    validation_check_binary_property_compatibility(ctx, property, component, __FILE__, __LINE__)
+
+/**
+ * @brief Validate HDF5 property compatibility
+ */
+#define VALIDATE_HDF5_PROPERTY_COMPATIBILITY(ctx, property, component) \
+    validation_check_hdf5_property_compatibility(ctx, property, component, __FILE__, __LINE__)
 
 /**
  * @brief Add a warning result

@@ -1,0 +1,39 @@
+CC          := gcc
+CFLAGS      := -Wall -Wextra -std=gnu99 -g -O0
+DEBUGFLAGS  := -fsanitize=address
+LDFLAGS     := 
+EXECUTABLE  := test_property_validation
+
+SOURCES := test_property_validation.c \
+          ../src/io/io_validation.c \
+          ../src/io/io_property_serialization.c \
+          ../src/io/io_endian_utils.c \
+          ../src/io/io_interface.c \
+          ../src/core/core_logging.c
+
+OBJS := $(patsubst %.c, %.o, $(SOURCES))
+
+# Add HDF5 support if it's available
+HDF5_INCLUDE := $(shell which h5cc >/dev/null 2>&1 && echo -I`h5cc -showconfig | grep "Installation point" | cut -d: -f2 | xargs`/include || echo)
+HDF5_LIB := $(shell which h5cc >/dev/null 2>&1 && echo -L`h5cc -showconfig | grep "Installation point" | cut -d: -f2 | xargs`/lib -lhdf5 || echo)
+
+ifdef HDF5_INCLUDE
+CFLAGS += -DHDF5 $(HDF5_INCLUDE)
+LDFLAGS += $(HDF5_LIB)
+endif
+
+.PHONY: all clean debug
+
+all: $(EXECUTABLE)
+
+debug: CFLAGS += $(DEBUGFLAGS)
+debug: all
+
+$(EXECUTABLE): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(EXECUTABLE) $(OBJS)

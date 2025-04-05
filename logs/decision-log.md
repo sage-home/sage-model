@@ -136,3 +136,7 @@
 2025-04-07: [Phase 3.2] Strategy for Unused Functions in I/O Implementation
 - Rationale: Several functions introduced in the I/O interface implementation are currently unused or stubs (map_io_error_to_sage_error, log_io_error, flush_galaxy_buffer), leading to compiler warnings. These functions represent planned functionality for future phases, particularly HDF5 buffer flushing (Phase 3.3: Memory Optimization) and comprehensive error handling.
 - Impact: We've decided to keep these functions in place with appropriate documentation comments rather than removing them. This provides a clear roadmap for future implementation while maintaining a clean architecture. The unused function warnings are acceptable as they document intended functionality without affecting runtime behavior.
+
+2025-04-12: [Phase 3.2] Remove Format Conversion Utilities from Plan
+- Rationale: After reviewing the codebase and project goals, we determined that format conversion utilities (Step 10) are unnecessary. SAGE has never needed to convert between formats at runtime, and the I/O interface already provides adequate format handling. Adding conversion would increase complexity without clear benefits to users or developers.
+- Impact: Step 10 (Format Conversion Utilities) is removed from the Phase 3.2 implementation plan. The project can proceed directly to Step 11 (Wrap-up and Review) after completing Step 9, reducing implementation time and complexity while maintaining all required functionality.

@@ -210,6 +210,7 @@ struct halo_aux_data
 /* Forward declarations */
 struct galaxy_extension_registry;
 struct io_interface;
+struct property_serialization_context;
 
 /**
  * @brief I/O interface handler data
@@ -218,9 +219,10 @@ struct io_interface;
  * Manages the handler and format-specific data.
  */
 struct io_handler_data {
-    struct io_interface *handler;  /**< I/O handler for the selected format */
-    void *format_data;             /**< Format-specific data managed by the handler */
-    int using_io_interface;        /**< Flag to indicate if using the new I/O interface */
+    struct io_interface *handler;                         /**< I/O handler for the selected format */
+    void *format_data;                                    /**< Format-specific data managed by the handler */
+    int using_io_interface;                               /**< Flag to indicate if using the new I/O interface */
+    struct property_serialization_context *property_ctx;  /**< Property serialization context */
 };
 
 
