@@ -21,6 +21,7 @@ tests/test_pipeline
 tests/test_consistent_trees_hdf5
 tests/test_gadget4_hdf5
 tests/test_genesis_hdf5
+tests/test_io_validation
 
 trees_*
 *.o
