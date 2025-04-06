@@ -8,12 +8,22 @@
 #include "io_lhalo_binary.h"
 #include "io_hdf5_utils.h"
 #ifdef HDF5
-// Note: For now we're implementing stubs directly here to avoid Makefile changes
-// #include "io_lhalo_hdf5.h"
-// #include "io_consistent_trees_hdf5.h"
+/**
+ * @brief Temporary HDF5 handler stub implementations
+ * 
+ * These stubs provide placeholder implementations for HDF5-based handlers
+ * until the full implementations are completed. This approach allows us to:
+ * 1. Register handlers with the I/O interface system
+ * 2. Test format detection and interface integration
+ * 3. Maintain compatibility with the overall architecture
+ * 
+ * Full implementations will be provided in separate files (io_lhalo_hdf5.c, etc.)
+ * as part of the completion of Phase 3.2. These stubs will be removed once the
+ * Makefile is updated to include the complete implementations.
+ */
 
 // HDF5 stubs implemented here until Makefile is updated
-// Static handler definitions
+// HDF5 handler stub definitions - These will be replaced by full implementations
 static struct io_interface lhalo_hdf5_handler = {
     .name = "LHalo HDF5",
     .version = "1.0",
@@ -32,7 +42,7 @@ static struct io_interface lhalo_hdf5_handler = {
     .error_message = {0}
 };
 
-// ConsistentTrees HDF5 handler definition (stub)
+// ConsistentTrees HDF5 handler definition (stub for framework testing)
 static struct io_interface consistent_trees_hdf5_handler = {
     .name = "ConsistentTrees HDF5",
     .version = "1.0",
@@ -51,7 +61,7 @@ static struct io_interface consistent_trees_hdf5_handler = {
     .error_message = {0}
 };
 
-// Gadget4 HDF5 handler definition (stub)
+// Gadget4 HDF5 handler definition (stub for framework testing)
 static struct io_interface gadget4_hdf5_handler = {
     .name = "Gadget4 HDF5",
     .version = "1.0",
@@ -70,7 +80,7 @@ static struct io_interface gadget4_hdf5_handler = {
     .error_message = {0}
 };
 
-// Genesis HDF5 handler definition (stub)
+// Genesis HDF5 handler definition (stub for framework testing)
 static struct io_interface genesis_hdf5_handler = {
     .name = "Genesis HDF5",
     .version = "1.0",
@@ -89,13 +99,30 @@ static struct io_interface genesis_hdf5_handler = {
     .error_message = {0}
 };
 
+/**
+ * @brief Initialize the LHalo HDF5 handler stub
+ * 
+ * Registers the stub handler with the I/O interface system.
+ * This will be replaced by a full implementation in a separate file.
+ * 
+ * @return 0 on success, non-zero on failure
+ */
 int io_lhalo_hdf5_init(void) {
-    // Register the stub handler
+    // Register the stub handler for framework testing
     return io_register_handler(&lhalo_hdf5_handler);
 }
 
+/**
+ * @brief Detect if a file is in LHalo HDF5 format
+ * 
+ * Currently uses a basic extension check, will be enhanced with
+ * content-based detection in the full implementation.
+ * 
+ * @param filename File to check
+ * @return true if the file appears to be LHalo HDF5, false otherwise
+ */
 bool io_is_lhalo_hdf5(const char *filename) {
-    // Basic extension-based detection
+    // Basic extension-based detection (temporary implementation)
     const char *ext = strrchr(filename, '.');
     if (ext == NULL) {
         return false;
@@ -104,14 +131,31 @@ bool io_is_lhalo_hdf5(const char *filename) {
     return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
 }
 
+/**
+ * @brief Initialize the ConsistentTrees HDF5 handler stub
+ * 
+ * Registers the stub handler with the I/O interface system.
+ * This will be replaced by a full implementation in a separate file.
+ * 
+ * @return 0 on success, non-zero on failure
+ */
 int io_consistent_trees_hdf5_init(void) {
-    // Register the stub handler
+    // Register the stub handler for framework testing
     return io_register_handler(&consistent_trees_hdf5_handler);
 }
 
+/**
+ * @brief Detect if a file is in ConsistentTrees HDF5 format
+ * 
+ * Currently uses a basic extension check, will be enhanced with
+ * content-based detection in the full implementation.
+ * 
+ * @param filename File to check
+ * @return true if the file appears to be ConsistentTrees HDF5, false otherwise
+ */
 bool io_is_consistent_trees_hdf5(const char *filename) {
-    // Basic extension-based detection
-    // TODO: When implementing full handler, add content-based detection
+    // Basic extension-based detection (temporary implementation)
+    // Will implement content-based detection in full implementation
     const char *ext = strrchr(filename, '.');
     if (ext == NULL) {
         return false;
@@ -122,14 +166,31 @@ bool io_is_consistent_trees_hdf5(const char *filename) {
     return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
 }
 
+/**
+ * @brief Initialize the Gadget4 HDF5 handler stub
+ * 
+ * Registers the stub handler with the I/O interface system.
+ * This will be replaced by a full implementation in a separate file.
+ * 
+ * @return 0 on success, non-zero on failure
+ */
 int io_gadget4_hdf5_init(void) {
-    // Register the stub handler
+    // Register the stub handler for framework testing
     return io_register_handler(&gadget4_hdf5_handler);
 }
 
+/**
+ * @brief Detect if a file is in Gadget4 HDF5 format
+ * 
+ * Currently uses a basic extension check, will be enhanced with
+ * content-based detection in the full implementation.
+ * 
+ * @param filename File to check
+ * @return true if the file appears to be Gadget4 HDF5, false otherwise
+ */
 bool io_is_gadget4_hdf5(const char *filename) {
-    // Basic extension-based detection
-    // TODO: When implementing full handler, add content-based detection
+    // Basic extension-based detection (temporary implementation)
+    // Will implement content-based detection in full implementation
     const char *ext = strrchr(filename, '.');
     if (ext == NULL) {
         return false;
@@ -140,14 +201,31 @@ bool io_is_gadget4_hdf5(const char *filename) {
     return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
 }
 
+/**
+ * @brief Initialize the Genesis HDF5 handler stub
+ * 
+ * Registers the stub handler with the I/O interface system.
+ * This will be replaced by a full implementation in a separate file.
+ * 
+ * @return 0 on success, non-zero on failure
+ */
 int io_genesis_hdf5_init(void) {
-    // Register the stub handler
+    // Register the stub handler for framework testing
     return io_register_handler(&genesis_hdf5_handler);
 }
 
+/**
+ * @brief Detect if a file is in Genesis HDF5 format
+ * 
+ * Currently uses a basic extension check, will be enhanced with
+ * content-based detection in the full implementation.
+ * 
+ * @param filename File to check
+ * @return true if the file appears to be Genesis HDF5, false otherwise
+ */
 bool io_is_genesis_hdf5(const char *filename) {
-    // Basic extension-based detection
-    // TODO: When implementing full handler, add content-based detection
+    // Basic extension-based detection (temporary implementation)
+    // Will implement content-based detection in full implementation
     const char *ext = strrchr(filename, '.');
     if (ext == NULL) {
         return false;

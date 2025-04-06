@@ -30,8 +30,8 @@
  * @param io_error Error code from the I/O interface
  * @return Corresponding SAGE error type
  * 
- * @note Currently unused, will be integrated with error handling paths in future refinements.
- * This function is part of the comprehensive error handling framework planned for the I/O system.
+ * This function maps error codes from the I/O interface system to SAGE's own
+ * error codes, providing consistent error handling throughout the codebase.
  */
 static int32_t map_io_error_to_sage_error(int io_error)
 {
@@ -65,8 +65,8 @@ static int32_t map_io_error_to_sage_error(int io_error)
  * @param context Context string for the error message
  * @param io_error Error code from the I/O interface
  * 
- * @note Currently unused, will be integrated with error handling paths in future refinements.
- * This function provides standardized error logging for the I/O system.
+ * This function logs errors from the I/O interface system with appropriate
+ * severity levels, providing context about where the error occurred.
  */
 static void log_io_error(const char *context, int io_error)
 {
@@ -104,7 +104,7 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
 // Externally Visible Functions //
 
 // Global flag to track I/O system initialization
-static int io_initialized = 0;
+static int io_system_initialized = 0;
 
 // Open up all the required output files and remember their file handles.  These are placed into
 // `save_info` for access later.
@@ -129,13 +129,13 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
     validation_init(&val_ctx, VALIDATION_STRICTNESS_NORMAL);
     
     // Initialize I/O system if needed
-    if (!io_initialized) {
+    if (!io_system_initialized) {
         status = io_init();
         if (status != 0) {
             log_io_error("initialize_galaxy_files", io_get_last_error());
             return map_io_error_to_sage_error(io_get_last_error());
         }
-        io_initialized = 1;
+        io_system_initialized = 1;
     }
     
     // Initialize io_handler_data
