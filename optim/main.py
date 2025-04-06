@@ -361,7 +361,7 @@ def main():
     )
 
     # Clean up all files
-    cleanup_files(opts)
+    #cleanup_files(opts)
     
 if __name__ == '__main__':
     main()

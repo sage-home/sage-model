@@ -119,7 +119,7 @@ def main():
     ]
     
     # Hard-coded output PDF filename
-    output_pdf = "./output/millennium_26.pdf"
+    output_pdf = "./output/millennium.pdf"
     
     png_files = get_png_files(folders)
     print(f"Found {len(png_files)} PNG files.")

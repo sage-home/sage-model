@@ -342,36 +342,11 @@ def plot_halo_evolution(tracked_data, output_dir="./plots", Hubble_h=0.73):
     valid_cold = log10_cold_gas > -900
     valid_hot = log10_hot_gas > -900
     
-    # Simulate H1 and H2 data (in a real scenario, these would come from the tracked data)
-    # Here we're creating mock values for illustration
-    # Note: In real implementation, you would extract these from the simulation data
-    log10_h1 = np.full_like(log10_cold_gas, -999)
-    log10_h2 = np.full_like(log10_cold_gas, -999)
-    
-    # Estimate H1 and H2 as fractions of cold gas for demonstration
-    if np.any(valid_cold):
-        h1_fraction = 0.7  # Assume 70% of cold gas is H1
-        h2_fraction = 0.2  # Assume 20% of cold gas is H2
-        for i in range(len(log10_cold_gas)):
-            if log10_cold_gas[i] > -900:
-                cold_gas_mass = 10**log10_cold_gas[i]
-                h1_mass = cold_gas_mass * h1_fraction
-                h2_mass = cold_gas_mass * h2_fraction
-                log10_h1[i] = np.log10(h1_mass)
-                log10_h2[i] = np.log10(h2_mass)
-    
-    valid_h1 = log10_h1 > -900
-    valid_h2 = log10_h2 > -900
-    
-    if np.any(valid_cold) or np.any(valid_hot) or np.any(valid_h1) or np.any(valid_h2):
+    if np.any(valid_cold) or np.any(valid_hot):
         if np.any(valid_cold):
             axes[2, 0].plot(redshifts[valid_cold], log10_cold_gas[valid_cold], 'o-', color='blue', label='Cold Gas')
         if np.any(valid_hot):
             axes[2, 0].plot(redshifts[valid_hot], log10_hot_gas[valid_hot], 'o-', color='red', label='Hot Gas')
-        if np.any(valid_h1):
-            axes[2, 0].plot(redshifts[valid_h1], log10_h1[valid_h1], 'o-', color='cyan', label='H1 Gas')
-        if np.any(valid_h2):
-            axes[2, 0].plot(redshifts[valid_h2], log10_h2[valid_h2], 'o-', color='green', label='H2 Gas')
         
         axes[2, 0].set_xlabel('Redshift (z)')
         axes[2, 0].set_ylabel('log$_{10}$ M$_{gas}$ [M$_{\odot}$]')
@@ -442,12 +417,6 @@ def plot_halo_evolution(tracked_data, output_dir="./plots", Hubble_h=0.73):
         'log10_HotGas': log10_hot_gas,
         'Vvir': vvir
     }
-    
-    # Add H1 and H2 data if available
-    if np.any(valid_h1):
-        data['log10_H1Gas'] = log10_h1
-    if np.any(valid_h2):
-        data['log10_H2Gas'] = log10_h2
     
     # Save to CSV file
     header = ','.join(data.keys())
@@ -613,12 +582,12 @@ def plot_redshift_mvir_vvir(tracked_data, output_dir="./plots", normalize=True):
 
 def main():
     # User-defined parameters - you can modify these
-    base_dir = '../output/millennium/'  # Change to your output directory
+    base_dir = './output/millennium/'  # Change to your output directory
     start_snap = 63  # Latest snapshot (z=0)
     end_snap = 15    # Earlier snapshot to track back to
     min_mass = 1e13  # Minimum halo mass to consider (in Msun, not log10)
     Hubble_h = 0.73  # Hubble parameter
-    output_dir = "../output/millennium/plots"  # Directory to save output plots
+    output_dir = "./output/millennium/plots"  # Directory to save output plots
     
     # Ask the user if they want to use the most massive halo or specify a GalaxyIndex
     print("\nGalaxy/Halo Selection Options:")
