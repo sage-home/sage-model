@@ -37,6 +37,7 @@ struct hdf5_output_data {
     hid_t file_id;                   /**< HDF5 file handle */
     hid_t *snapshot_group_ids;       /**< HDF5 group handles for snapshots */
     int num_snapshots;               /**< Number of output snapshots */
+    double *redshifts;               /**< Redshift for each snapshot */
     int64_t *total_galaxies;         /**< Total number of galaxies per snapshot */
     int64_t **galaxies_per_forest;   /**< Number of galaxies per forest for each snapshot */
     int num_forests;                 /**< Number of forests */

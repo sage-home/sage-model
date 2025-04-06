@@ -10,7 +10,7 @@
 - At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
-# Current Phase: 3/7 (I/O Abstraction and Optimization)
+# Current Phase: 3/7 (I/O Abstraction and Memory Optimization)
 
 ## Phase Objectives
 - Implement a unified I/O interface that preserves existing functionality
@@ -22,7 +22,7 @@
 
 ## Current Progress
 
-### Phase 3.1: I/O Interface Abstraction
+### Phase 3.1: I/O Interface Abstraction ✅ COMPLETED
 - [x] Design unified I/O interface structure with metadata and capabilities
 - [x] Implement common I/O operations (initialize, read_forest, write_galaxies, cleanup)
 - [x] Add HDF5 resource tracking for handles
@@ -30,27 +30,26 @@
 - [x] Implement format detection and automatic handler selection
 - [x] Add error handling and validation for I/O operations
 
-### Phase 3.2: Format-Specific Implementations
+### Phase 3.2: Format-Specific Implementations ✅ COMPLETED
 - [x] Refactor binary format handlers to use the common interface
 - [x] Add cross-platform endianness detection and conversion
-- [/] Refactor HDF5 format handlers to use the common interface (framework complete, implementation pending)
+- [x] Refactor HDF5 format handlers to use the common interface
   - [x] LHalo HDF5 handler framework
   - [x] ConsistentTrees HDF5 handler framework
   - [x] Gadget4 HDF5 handler framework
   - [x] Genesis HDF5 handler framework
-- [/] Implement proper HDF5 resource management to prevent handle leaks (framework designed)
+- [x] Implement proper HDF5 resource management to prevent handle leaks
 - [x] Implement serialization support for extended properties
 - [x] Implement binary output handler with extended property support
-- [/] Implement HDF5 output handler with extended property support (framework complete, write functionality pending)
+- [x] Implement HDF5 output handler with extended property support
 - [x] Update core save function to use the I/O interface
 - [x] Add validation for data consistency across formats
   - [x] Basic galaxy data validation
   - [x] Format-specific validation
   - [x] Extended property validation
   - [x] I/O interface integration
-- [x] Format conversion utilities (deemed unnecessary and removed from plan)
 
-### Phase 3.3: Memory Optimization
+### Phase 3.3: Memory Optimization 🔄 IN PROGRESS
 - [ ] Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
 - [ ] Create memory mapping options for large files
 - [ ] Design efficient caching for frequently accessed halos
@@ -60,61 +59,34 @@
 
 ## Next Actions
 
-### Phase 3.2 Format-Specific Implementation
-1. Binary Format Handlers: ✅ COMPLETED
-   - Binary I/O code has been refactored to use the common I/O interface
-   - Endianness utilities integrated for cross-platform compatibility
-   - Backward compatibility maintained with existing binary files
-   - Proper error handling and validation implemented
+### Phase 3.3 Memory Optimization
+1. Configurable Buffered I/O: 🔄 STARTING
+   - Design a configuration system for buffer sizes that can be adjusted at runtime
+   - Implement dynamic buffer adjustment based on available memory and dataset size
+   - Develop profiling metrics to evaluate I/O performance with different buffer sizes
 
-2. HDF5 Format Handlers: 🔄 IN PROGRESS
-   - Framework for HDF5 format handler has been implemented
-   - Header file and interface definitions completed
-   - Test suite created and passing
-   - Pending Makefile updates to include full source file
-   - Need to complete implementation of reading functions
+2. Memory Mapping: 🔄 PLANNING
+   - Research optimal memory mapping strategies for large merger tree files
+   - Implement memory mapping options for both binary and HDF5 formats
+   - Develop fallback mechanisms for platforms or file systems with limited memory mapping support
 
-3. Galaxy Output Formats: 🔄 IN PROGRESS
-   - Core serialization utilities for extended properties are complete ✅
-   - Binary format header design and parsing implemented ✅
-   - Type-specific serializers and deserializers for all basic types completed ✅
-   - Binary output handler fully implemented ✅
-   - HDF5 output handler framework implemented ✅
-   - Core save functions updated to use I/O interface ✅
-   - Need to complete HDF5 output write functionality
-
-4. Validation and Conversion: 🔄 IN PROGRESS
-   - Data validation framework for galaxies completed ✅
-   - Format-specific validation implemented ✅ 
-   - Validation for binary and HDF5 formats implemented ✅
-   - Extended property validation implemented ✅
-   - I/O interface integration with validation completed ✅
-   - Format conversion utilities marked as unnecessary and removed from plan
+3. Tree Traversal Optimization: 🔄 PLANNING
+   - Design prefetching system for depth-first tree traversal
+   - Implement predictive loading based on tree structure
+   - Optimize pointer-chasing patterns to reduce cache misses
 
 ## Completion Criteria
 - All I/O operations function through the unified interface
-- Format-specific handlers implement all required functionality
-- Endianness handling ensures cross-platform compatibility for binary formats
-- HDF5 resources are properly tracked and cleaned up with no handle leaks
-- Extended properties are properly serialized across formats
-- Memory allocation is optimized with geometric growth strategies
 - Memory usage is optimized for large merger trees
-- Backward compatibility is maintained with existing data files
-- Performance improvements are measurable and significant
-- All tests passing with the new I/O system
+- Measurable performance improvements in tree traversal and galaxy processing
+- Buffer sizes are configurable and automatically adjusted based on workload
+- Memory mapping is properly implemented for supported platforms and formats
+- Prefetching reduces cache misses during tree traversal
+- All tests passing with the new memory optimization system
 
 ## Inter-Phase Dependencies
 - Phase 1 (Preparatory Refactoring): ✅ COMPLETED
-- Phase 2.1 (Base Module Interfaces): ✅ COMPLETED
-- Phase 2.2 (Galaxy Property Extension): ✅ COMPLETED
-- Phase 2.3 (Event System): ✅ COMPLETED
-- Phase 2.4 (Module Registry): ✅ COMPLETED
-- Phase 2.5-2.6 (Pipeline/Config): ✅ COMPLETED
-- Phase 2.7 (Module Callback System): ✅ COMPLETED (all components implemented)
-- Phase 3 (I/O Abstraction): 🔄 IN PROGRESS
-- Phase 4 (Plugin Infrastructure): BLOCKED by Phase 2.7 and Phase 3
-
-## Reference Material
-- I/O Interface: See refactoring plan section 3.1
-- Memory Optimization: See refactoring plan section 3.3
-- Implementation examples: See refactoring plan "Practical Examples" section 3 and 4
+- Phase 2 (Module Interfaces): ✅ COMPLETED
+- Phase 3.1-3.2 (I/O Abstraction): ✅ COMPLETED
+- Phase 3.3 (Memory Optimization): 🔄 IN PROGRESS
+- Phase 4 (Plugin Infrastructure): BLOCKED by Phase 3.3
