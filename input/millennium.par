@@ -52,6 +52,39 @@ ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 
 %------------------------------------------
+%----- Redshift Scaling Parameters --------
+%------------------------------------------
+
+% Turn on/off the redshift scalings for each process (1=on, 0=off)
+ScaleSfrEfficiency         1         % Enable redshift-dependent star formation efficiency
+ScaleFeedbackEjection      1         % Enable redshift-dependent feedback ejection
+ScaleReIncorporation       1         % Enable redshift-dependent gas reincorporation
+ScaleQuasarRadioModes      1         % Enable redshift-dependent AGN feedback
+
+% Scaling method for each parameter (0=none, 1=power-law, 2=exponential)
+SfrScalingMethod           1         % Use power-law scaling for SF efficiency
+FeedbackScalingMethod      1         % Use power-law scaling for feedback
+ReIncorpScalingMethod      1         % Use power-law scaling for reincorporation
+QuasarRadioScalingMethod   1         % Use power-law scaling for AGN modes
+
+% Scaling parameters (exponents for power-law scaling)
+% For (1+z)^param, positive values increase the effect at high redshift
+% Recommended values based on similar SAMs:
+
+% Star formation becomes more efficient at high redshift
+SfrRedshiftScaling         0.5       % SF efficiency scales as (1+z)^0.5
+
+% Supernova feedback stronger at high redshift to regulate small galaxies
+FeedbackRedshiftScaling    0.3       % Feedback ejection scales as (1+z)^0.3
+
+% Reincorporation slower at high redshift (Henriques et al. 2015-like)
+ReIncorpRedshiftScaling    -1.5      % Reincorp factor scales as (1+z)^-1.5
+
+% AGN feedback calibration
+QuasarRedshiftScaling      0.0       % Keep quasar mode same across redshift
+RadioModeRedshiftScaling   -0.8      % Reduce radio mode at high-z as (1+z)^-0.8
+
+%------------------------------------------
 %----- SAGE model parameters --------------
 %------------------------------------------
 

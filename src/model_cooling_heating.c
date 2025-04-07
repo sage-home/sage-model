@@ -72,23 +72,30 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 
 double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, struct GALAXY *galaxies, const struct params *run_params)
 {
+    // Get current redshift from the galaxy's snapshot number
+    double redshift = run_params->ZZ[galaxies[centralgal].SnapNum];
+    
+    // Get redshift-scaled AGN efficiencies
+    double scaled_radio_efficiency = get_redshift_scaled_radio_efficiency(run_params, redshift);
+    double scaled_quasar_efficiency = get_redshift_scaled_quasar_efficiency(run_params, redshift);
+    
     double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity;
 
-	// first update the cooling rate based on the past AGN heating
-	if(galaxies[centralgal].r_heat < rcool) {
-		coolingGas = (1.0 - galaxies[centralgal].r_heat / rcool) * coolingGas;
+    // first update the cooling rate based on the past AGN heating
+    if(galaxies[centralgal].r_heat < rcool) {
+        coolingGas = (1.0 - galaxies[centralgal].r_heat / rcool) * coolingGas;
     } else {
-		coolingGas = 0.0;
+        coolingGas = 0.0;
     }
 
-	XASSERT(coolingGas >= 0.0, -1,
+    XASSERT(coolingGas >= 0.0, -1,
             "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
 
-	// now calculate the new heating rate
+    // now calculate the new heating rate
     if(galaxies[centralgal].HotGas > 0.0) {
         if(run_params->AGNrecipeOn == 2) {
             // Bondi-Hoyle accretion recipe
-            AGNrate = (2.5 * M_PI * run_params->G) * (0.375 * 0.6 * x) * galaxies[centralgal].BlackHoleMass * run_params->RadioModeEfficiency;
+            AGNrate = (2.5 * M_PI * run_params->G) * (0.375 * 0.6 * x) * galaxies[centralgal].BlackHoleMass * scaled_radio_efficiency;
         } else if(run_params->AGNrecipeOn == 3) {
             // Cold cloud accretion: trigger: rBH > 1.0e-4 Rsonic, and accretion rate = 0.01% cooling rate
             if(galaxies[centralgal].BlackHoleMass > 0.0001 * galaxies[centralgal].Mvir * CUBE(rcool/galaxies[centralgal].Rvir)) {
@@ -97,13 +104,13 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
                 AGNrate = 0.0;
             }
         } else {
-            // empirical (standard) accretion recipe
+            // empirical (standard) accretion recipe - using scaled radio mode efficiency
             if(galaxies[centralgal].Mvir > 0.0) {
-                AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
+                AGNrate = scaled_radio_efficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
                     * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0)
                     * ((galaxies[centralgal].HotGas / galaxies[centralgal].Mvir) / 0.1);
             } else {
-                AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
+                AGNrate = scaled_radio_efficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
                     * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0);
             }
         }
@@ -126,6 +133,7 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
 
         // coefficient to heat the cooling gas back to the virial temperature of the halo
         // 1.34e5 = sqrt(2*eta*c^2), eta=0.1 (standard efficiency) and c in km/s
+        // Using scaled quasar mode efficiency
         AGNcoeff = (1.34e5 / galaxies[centralgal].Vvir) * (1.34e5 / galaxies[centralgal].Vvir);
 
         // cooling mass that can be suppresed from AGN heating

@@ -3,6 +3,10 @@
 
 /* define off_t as a 64-bit long integer */
 #define _FILE_OFFSET_BITS 64
+// Scaling function types
+#define SCALING_NONE 0
+#define SCALING_POWER_LAW 1
+#define SCALING_EXPONENTIAL 2
 
 #include <stdio.h>
 #include <stdint.h>
@@ -498,5 +502,105 @@ struct params
     int32_t NTasks;
 };
 
+struct redshift_scaling {
+    // Flags to enable/disable redshift scaling for each parameter
+    int ScaleSfrEfficiency;           // Scaling for star formation efficiency
+    int ScaleFeedbackEjection;        // Scaling for feedback ejection
+    int ScaleReIncorporation;         // Scaling for gas reincorporation
+    int ScaleQuasarRadioModes;        // Scaling for quasar/radio mode efficiencies
+
+    // Scaling method (power law, exponential, etc.)
+    int SfrScalingMethod;
+    int FeedbackScalingMethod;
+    int ReIncorpScalingMethod;
+    int QuasarRadioScalingMethod;
+
+    // Scaling parameters (exponents, factors, etc.)
+    double SfrRedshiftScaling;        // Exponent for SF efficiency: (1+z)^exponent
+    double FeedbackRedshiftScaling;   // Exponent for feedback strength
+    double ReIncorpRedshiftScaling;   // Exponent for reincorporation rate
+    double QuasarRedshiftScaling;     // Exponent for quasar mode scaling
+    double RadioModeRedshiftScaling;  // Exponent for radio mode scaling
+};
+
+// Function to scale parameters based on redshift
+double scale_parameter(double base_param, int scaling_method, double scaling_param, double redshift) {
+    switch(scaling_method) {
+        case SCALING_POWER_LAW:
+            return base_param * pow(1.0 + redshift, scaling_param);
+        
+        case SCALING_EXPONENTIAL:
+            return base_param * exp(scaling_param * redshift);
+            
+        case SCALING_NONE:
+        default:
+            return base_param;
+    }
+}
+
+// Apply redshift scaling to star formation efficiency
+double get_redshift_scaled_sf_efficiency(const struct params *run_params, double redshift) {
+    if (!run_params->redshift_scaling.ScaleSfrEfficiency)
+        return run_params->SfrEfficiency;
+        
+    return scale_parameter(
+        run_params->SfrEfficiency,
+        run_params->redshift_scaling.SfrScalingMethod,
+        run_params->redshift_scaling.SfrRedshiftScaling,
+        redshift
+    );
+}
+
+// Apply redshift scaling to feedback ejection
+double get_redshift_scaled_feedback_ejection(const struct params *run_params, double redshift) {
+    if (!run_params->redshift_scaling.ScaleFeedbackEjection)
+        return run_params->FeedbackEjectionEfficiency;
+        
+    return scale_parameter(
+        run_params->FeedbackEjectionEfficiency,
+        run_params->redshift_scaling.FeedbackScalingMethod,
+        run_params->redshift_scaling.FeedbackRedshiftScaling,
+        redshift
+    );
+}
+
+// Apply redshift scaling to gas reincorporation
+double get_redshift_scaled_reincorp_factor(const struct params *run_params, double redshift) {
+    if (!run_params->redshift_scaling.ScaleReIncorporation)
+        return run_params->ReIncorporationFactor;
+        
+    return scale_parameter(
+        run_params->ReIncorporationFactor,
+        run_params->redshift_scaling.ReIncorpScalingMethod,
+        run_params->redshift_scaling.ReIncorpRedshiftScaling,
+        redshift
+    );
+}
+
+// Apply redshift scaling to quasar mode efficiency
+double get_redshift_scaled_quasar_efficiency(const struct params *run_params, double redshift) {
+    if (!run_params->redshift_scaling.ScaleQuasarRadioModes)
+        return run_params->QuasarModeEfficiency;
+        
+    return scale_parameter(
+        run_params->QuasarModeEfficiency,
+        run_params->redshift_scaling.QuasarRadioScalingMethod,
+        run_params->redshift_scaling.QuasarRedshiftScaling,
+        redshift
+    );
+}
+
+// Apply redshift scaling to radio mode efficiency
+double get_redshift_scaled_radio_efficiency(const struct params *run_params, double redshift) {
+    if (!run_params->redshift_scaling.ScaleQuasarRadioModes)
+        return run_params->RadioModeEfficiency;
+        
+    return scale_parameter(
+        run_params->RadioModeEfficiency,
+        run_params->redshift_scaling.QuasarRadioScalingMethod,
+        run_params->redshift_scaling.RadioModeRedshiftScaling,
+        redshift
+    );
+}
 
 #endif  /* #ifndef ALLVARS_H */
