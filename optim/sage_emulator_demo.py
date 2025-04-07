@@ -19,8 +19,10 @@ from sage_emulator import SAGEEmulator, EmulatorPSO
 def parse_args():
     """Parse command-line arguments"""
     parser = argparse.ArgumentParser(description='SAGE emulator demonstration')
-    parser.add_argument('--pso-dir', default='./output/millennium_pso',
-                        help='Directory containing PSO run outputs')
+    # Support both old and new ways of specifying directories
+    dir_group = parser.add_mutually_exclusive_group(required=False)  # Changed to not required
+    dir_group.add_argument('--pso-dir', help='Directory containing PSO run outputs (legacy)')
+    dir_group.add_argument('--pso-dirs', nargs='+', help='Multiple directories containing PSO run outputs')
     parser.add_argument('--space-file', default='./space.txt',
                         help='Path to space file defining parameter bounds')
     parser.add_argument('--output-dir', default='./emulator_output',
@@ -59,6 +61,12 @@ def train_emulators(args):
     emulator_dir = os.path.join(args.output_dir, 'emulators')
     os.makedirs(emulator_dir, exist_ok=True)
     
+    # Determine which directories to use
+    if hasattr(args, 'pso_dirs') and args.pso_dirs:
+        pso_dirs = args.pso_dirs
+    else:
+        pso_dirs = [args.pso_dir]
+    
     # Train an emulator for each constraint
     emulators = {}
     training_metrics = {}
@@ -73,9 +81,8 @@ def train_emulators(args):
         start_time = time.time()
         
         try:
-            # Use the track files from the PSO run
-            tracks_dir = os.path.join(args.pso_dir, 'tracks')
-            metrics = emulator.train(tracks_dir, param_names, method=args.method)
+            # Train on all specified directories
+            metrics = emulator.train(pso_dirs, param_names, method=args.method)
             training_metrics[constraint] = metrics
             emulators[constraint] = emulator
             
@@ -90,8 +97,13 @@ def train_emulators(args):
     
     print("\nEmulator training summary:")
     for constraint, metrics in training_metrics.items():
-        avg_r2 = np.mean([m['r2'] for m in metrics['test'] if m is not None])
-        print(f"{constraint}: Average test R² = {avg_r2:.4f}")
+        # Calculate average R² across all bins with metrics
+        valid_r2 = [m['r2'] for m in metrics['test'] if m is not None]
+        if valid_r2:
+            avg_r2 = np.mean(valid_r2)
+            print(f"{constraint}: Average test R² = {avg_r2:.4f}")
+        else:
+            print(f"{constraint}: No valid test metrics available")
     
     return emulators
 
@@ -280,6 +292,13 @@ def main():
     
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
+
+    # Check if we need PSO directory based on the mode
+    if args.mode == 'train' or args.mode == 'compare':
+        # Ensure at least one directory is specified
+        if not hasattr(args, 'pso_dir') and not hasattr(args, 'pso_dirs'):
+            print("Error: Either --pso-dir or --pso-dirs must be specified for train or compare modes")
+            return
     
     if args.mode == 'train':
         train_emulators(args)
@@ -291,6 +310,5 @@ def main():
         compare_with_sage(args)
     else:
         print(f"Unknown mode: {args.mode}")
-
 if __name__ == "__main__":
     main()

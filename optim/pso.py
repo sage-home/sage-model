@@ -95,7 +95,7 @@ def _cons_f_ieqcons_wrapper(f_ieqcons, args, kwargs, x):
     
 def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={}, 
         swarmsize=100, omega=0.5, phip=0.7, phig=0.3, maxiter=100, 
-        minstep=1e-3, minfunc=1e-7, debug=True, processes=1,
+        minstep=1e-3, minfunc=1e-5, debug=True, processes=1,
         particle_output=False, dumpfile_prefix=None, csv_output_path=None):
     """
     Perform a particle swarm optimization (PSO)

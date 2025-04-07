@@ -46,14 +46,14 @@ class SAGEEmulator:
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
         
-    def _prepare_data(self, pso_runs_dir, param_names):
+    def _prepare_data(self, pso_runs_dirs, param_names):
         """
-        Extract training data from PSO run outputs.
+        Extract training data from multiple PSO run outputs.
         
         Parameters:
         -----------
-        pso_runs_dir : str
-            Directory containing PSO run outputs
+        pso_runs_dirs : list
+            List of directories containing PSO run outputs
         param_names : list
             Names of model parameters
             
@@ -64,46 +64,80 @@ class SAGEEmulator:
         y : ndarray
             Model outputs for each parameter set
         """
-        print(f"Preparing training data for {self.constraint_type}...")
+        print(f"Preparing training data for {self.constraint_type} from {len(pso_runs_dirs)} directories...")
         
-        # 1. Get parameter values from track files
-        track_files = sorted([f for f in os.listdir(pso_runs_dir) if f.startswith('track_') and f.endswith('_pos.npy')])
-        fx_files = sorted([f for f in os.listdir(pso_runs_dir) if f.startswith('track_') and f.endswith('_fx.npy')])
+        # Initialize data containers
+        all_X_list = []
+        all_data_blocks = []
         
-        X_list = []
-        for track_file in track_files:
-            pos = np.load(os.path.join(pso_runs_dir, track_file))
-            X_list.append(pos)
+        # Process each directory
+        for pso_dir in pso_runs_dirs:
+            print(f"Processing directory: {pso_dir}")
+            
+            # 1. Get parameter values from track files
+            # Look for track files in the tracks subdirectory
+            tracks_dir = os.path.join(pso_dir, 'tracks')
+            if not os.path.exists(tracks_dir):
+                tracks_dir = pso_dir  # Use the main directory if no tracks subdirectory
+                print(f"No 'tracks' subdirectory found, using {tracks_dir} for track files")
+                
+            track_files = sorted([f for f in os.listdir(tracks_dir) if f.startswith('track_') and f.endswith('_pos.npy')])
+            
+            if not track_files:
+                print(f"Warning: No track files found in {tracks_dir}, skipping this directory")
+                continue
+                
+            X_list = []
+            for track_file in track_files:
+                pos = np.load(os.path.join(tracks_dir, track_file))
+                X_list.append(pos)
+            
+            all_X_list.extend(X_list)
+            
+            # 2. Get constraint outputs from dump files
+            # Look for dump files directly in the main directory
+            dump_file = os.path.join(pso_dir, f"{self.constraint_type}_dump.txt")
+            if not os.path.exists(dump_file):
+                print(f"Warning: Dump file not found: {dump_file}, skipping this directory")
+                continue
+            
+            data_blocks = []
+            current_block = []
+            
+            with open(dump_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("# New Data Block"):
+                        if current_block:
+                            data_blocks.append(np.array(current_block))
+                            current_block = []
+                    elif line:
+                        values = list(map(float, line.split('\t')))
+                        current_block.append(values)
+                        
+                # Add the last block if it exists
+                if current_block:
+                    data_blocks.append(np.array(current_block))
+            
+            all_data_blocks.extend(data_blocks)
         
-        X = np.vstack(X_list)
+        # Combine all parameter data
+        if not all_X_list:
+            raise ValueError("No valid parameter data found in any directory")
+        
+        X = np.vstack(all_X_list)
         print(f"Collected {X.shape[0]} parameter sets with {X.shape[1]} parameters each")
         
-        # 2. Get constraint outputs from dump files
-        dump_file = os.path.join(pso_runs_dir, f"{self.constraint_type}_dump.txt")
-        if not os.path.exists(dump_file):
-            raise ValueError(f"Dump file not found: {dump_file}")
+        # Extract y values from the data blocks
+        if not all_data_blocks:
+            raise ValueError("No valid output data found in any directory")
         
-        data_blocks = []
-        current_block = []
+        # Save the x bins from the first data block
+        self.x_bins = all_data_blocks[0][:, 0]
         
-        with open(dump_file, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("# New Data Block"):
-                    if current_block:
-                        data_blocks.append(np.array(current_block))
-                        current_block = []
-                elif line:
-                    values = list(map(float, line.split('\t')))
-                    current_block.append(values)
-                    
-            # Add the last block if it exists
-            if current_block:
-                data_blocks.append(np.array(current_block))
-        
-        # Extract x and y values from the data blocks
+        # Extract model outputs for each parameter set
         y_list = []
-        for block in data_blocks:
+        for block in all_data_blocks:
             if block.shape[0] > 0:
                 # Store the model y values (index 2)
                 y_list.append(block[:, 2])
@@ -119,15 +153,13 @@ class SAGEEmulator:
             y_list = y_list[:X.shape[0]]
         
         # If data blocks have different lengths, pad with NaN
-        max_length = max(block.shape[0] for block in data_blocks[:len(X)])
+        max_length = max(block.shape[0] for block in all_data_blocks)
         y = np.full((len(y_list), max_length), np.nan)
         
         for i, block in enumerate(y_list):
-            y[i, :len(block)] = block
-            
-        # Save the x bins from the first data block
-        self.x_bins = data_blocks[0][:, 0]
-        
+            if i < len(y):  # Make sure we don't go out of bounds
+                y[i, :len(block)] = block
+                
         # Store parameter bounds for later validation
         self.param_bounds = {
             'min': np.min(X, axis=0),
@@ -139,15 +171,15 @@ class SAGEEmulator:
         
         print(f"Prepared dataset with shape: X={X.shape}, y={y.shape}")
         return X, y
-    
-    def train(self, pso_runs_dir, param_names, method='random_forest', test_size=0.2):
+        
+    def train(self, pso_runs_dirs, param_names, method='random_forest', test_size=0.2):
         """
         Train the emulator using data from PSO runs.
         
         Parameters:
         -----------
-        pso_runs_dir : str
-            Directory containing PSO run outputs
+        pso_runs_dirs : str or list
+            Directory or list of directories containing PSO run outputs
         param_names : list
             Names of model parameters
         method : str
@@ -161,7 +193,12 @@ class SAGEEmulator:
             Training and testing metrics
         """
         start_time = time.time()
-        X, y = self._prepare_data(pso_runs_dir, param_names)
+        
+        # Convert single directory to list for consistent handling
+        if isinstance(pso_runs_dirs, str):
+            pso_runs_dirs = [pso_runs_dirs]
+        
+        X, y = self._prepare_data(pso_runs_dirs, param_names)
         
         # Split the data
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
@@ -712,7 +749,7 @@ if __name__ == "__main__":
                   "BlackHoleGrowthRate"]
     
     # Train emulators for multiple constraints
-    constraints = ["SMF_z0", "BHBM_z0"]
+    constraints = ["SMF_z0", "BHBM_z0", "BHMF_z0"]
     emulators = {}
     
     for constraint in constraints:
@@ -721,7 +758,7 @@ if __name__ == "__main__":
         emulators[constraint] = emulator
     
     # 2. Run emulator-based PSO
-    weights = {"SMF_z0": 1.0, "BHBM_z0": 0.5}
+    weights = {"SMF_z0": 1.0, "BHBM_z0": 0.5, "BHMF_z0": 0.5}
     space_file = "./sage-model/optim/space.txt"
     
     pso = EmulatorPSO(emulators, weights, space_file)

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Integration script for combining SAGE emulators with existing PSO workflow.
 
@@ -540,9 +541,46 @@ def run_hybrid_pso(config_path, constraints_list, space, subvols, stat_test,
     best_fitness : float
         Fitness at the best position
     """
-    # Create args tuple for SAGE function
-    args = (config_path, space, subvols, stat_test)
+
+    # Create a simple Opts class to mimic the structure expected by run_sage
+    class Opts:
+        def __init__(self, config_path, outdir, constraints_list):
+            self.config = config_path
+            self.outdir = outdir
+            # Find the SAGE binary path based on the config path
+            sage_dir = os.path.dirname(os.path.dirname(config_path))
+            self.sage_binary = os.path.join(sage_dir, "sage")
+            # Add constraints list
+            self.constraints = constraints_list
+            # Other required attributes
+            self.keep = False
     
+    # Create opts object
+    opts = Opts(config_path, emulator_dir, constraints_list)
+    
+    # Ensure the SAGE binary exists
+    if not os.path.exists(opts.sage_binary):
+        # Try to find it in other common locations
+        possible_paths = [
+            os.path.join(os.path.dirname(config_path), "sage"),
+            "/Users/mbradley/Documents/PhD/SAGE-PSO/sage-model/sage",
+            "../sage",
+            "./sage"
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                opts.sage_binary = path
+                break
+                
+    # Check if sage_binary was found
+    if not os.path.exists(opts.sage_binary):
+        raise FileNotFoundError(f"Could not find SAGE binary. Please specify its path manually.")
+    
+    print(f"Using SAGE binary: {opts.sage_binary}")
+    
+    # Create args tuple for SAGE function
+    args = (opts, space, subvols, stat_test)
+
     # Set up hybrid PSO
     hybrid_pso = HybridPSO(
         func=sage_func,
@@ -577,6 +615,52 @@ def run_hybrid_pso(config_path, constraints_list, space, subvols, stat_test,
     return best_position, best_fitness
 
 
+def get_required_snapshots(constraints_str):
+    """Get all unique snapshots needed for constraints"""
+    # Map of constraint classes to their snapshots 
+    snapshot_map = {
+        'SMF_z0': [63],
+        'SMF_z02': [43],
+        'SMF_z05': [38],
+        'SMF_z08': [34],
+        'SMF_z10': [40], 
+        'SMF_z11': [38],
+        'SMF_z15': [27],
+        'SMF_z20': [32],
+        'SMF_z24': [20],
+        'SMF_z31': [16],
+        'SMF_z36': [14],
+        'SMF_z46': [11],
+        'SMF_z57': [9],
+        'SMF_z63': [8],
+        'SMF_z77': [6],
+        'SMF_z85': [5],
+        'SMF_z104': [3],
+        'BHMF_z0': [63],
+        'BHMF_z20': [32],
+        'BHBM_z0': [63],
+        'BHBM_z20': [32],
+        'HSMR_z0': [63]
+    }
+    
+    snapshots = set()
+    print(f"Parsing constraints string: {constraints_str}")
+    for constraint in constraints_str.split(','):
+        # Remove any weight/domain specifications
+        base_constraint = constraint.split('(')[0].split('*')[0]
+        print(f"Processing constraint: {constraint}")
+        print(f"Base constraint: {base_constraint}")
+        if base_constraint in snapshot_map:
+            print(f"Found snapshot mapping: {snapshot_map[base_constraint]}")
+            snapshots.update(snapshot_map[base_constraint])
+        else:
+            print(f"Warning: No snapshot mapping found for {base_constraint}")
+    
+    result = sorted(list(snapshots))
+    print(f"Final snapshots list: {result}")
+    return result
+
+
 if __name__ == "__main__":
     import argparse
     
@@ -596,11 +680,31 @@ if __name__ == "__main__":
                         help='Maximum number of iterations')
     parser.add_argument('-p', '--processes', type=int, default=1,
                         help='Number of processes to use')
-    parser.add_argument('-x', '--constraints', default='SMF_z0',
+    parser.add_argument('-x', '--constraints', default='SMF_z0,BHBM_z0,BHMF_z0',
                         help='Comma-separated list of constraints')
     parser.add_argument('-t', '--stat-test', default='student-t',
                         choices=['student-t', 'chi2'],
                         help='Statistical test to use')
+    parser.add_argument('-o', '--output-dir', default='./emulator_output',
+                        help='Directory to save outputs')
+                        
+    # Add required parameters for constraints
+    parser.add_argument('--snapshot', nargs='+',
+                       help='Comma-separated list of snapshot numbers to analyze', 
+                       type=lambda x: [int(i) for i in x.split(',')], default=None)
+    parser.add_argument('--sim', type=int, default=0,
+                       help='Simulation to use (0=miniUchuu, 1=miniMillennium, 2=MTNG)')
+    parser.add_argument('--boxsize', type=float, default=62.5,
+                       help='Size of the simulation box in Mpc/h')
+    parser.add_argument('--vol-frac', type=float, default=1.0,
+                       help='Volume fraction of the simulation box')
+    parser.add_argument('--age-alist-file', 
+                       help='Path to the age list file, match with .par file',
+                       default=None)
+    parser.add_argument('--Omega0', type=float, default=0.25,
+                       help='Omega0 value for the simulation')
+    parser.add_argument('--h0', type=float, default=0.73,
+                       help='H0 value for the simulation')
     
     args = parser.parse_args()
     
@@ -613,8 +717,22 @@ if __name__ == "__main__":
     # Get statistical test function
     stat_test = analysis.stat_tests[args.stat_test]
     
-    # Parse constraints
-    constraints_list = constraints.parse(args.constraints)
+    # Determine snapshots based on constraints if not provided
+    if args.snapshot is None:
+        args.snapshot = get_required_snapshots(args.constraints)
+        
+    # Parse constraints with all necessary parameters
+    constraints_list = constraints.parse(
+        args.constraints, 
+        snapshot=args.snapshot,
+        sim=args.sim,
+        boxsize=args.boxsize,
+        vol_frac=args.vol_frac,
+        age_alist_file=args.age_alist_file,
+        Omega0=args.Omega0, 
+        h0=args.h0,
+        output_dir=args.output_dir
+    )
     
     # Import SAGE function
     from execution import run_sage
