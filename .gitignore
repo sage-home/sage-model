@@ -7,6 +7,7 @@ ignore/
 tests/test_env/
 tests/test_results/
 tests/test_data/microuchuu
+tests/stubs/
 
 tests/test_hdf5_output
 tests/test_io_interface
@@ -23,7 +24,7 @@ tests/test_gadget4_hdf5
 tests/test_genesis_hdf5
 tests/test_io_validation
 tests/test_property_validation
-
+tests/test_array_utils
 trees_*
 *.o
 *.*~
