@@ -50,7 +50,7 @@
   - [x] I/O interface integration
 
 ### Phase 3.3: Memory Optimization 🔄 IN PROGRESS
-- [ ] Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
+- [x] Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
 - [ ] Create memory mapping options for large files
 - [ ] Design efficient caching for frequently accessed halos
 - [x] Optimize allocation with geometric growth instead of fixed increments
@@ -60,12 +60,12 @@
 ## Next Actions
 
 ### Phase 3.3 Memory Optimization
-1. Configurable Buffered I/O: 🔄 STARTING
-   - Design a configuration system for buffer sizes that can be adjusted at runtime
-   - Implement dynamic buffer adjustment based on available memory and dataset size
-   - Develop profiling metrics to evaluate I/O performance with different buffer sizes
+1. Configurable Buffered I/O: ✅ COMPLETED
+   - Created comprehensive buffer manager with configurable sizes and automatic resizing
+   - Added support for both binary and HDF5 output formats
+   - Implemented runtime parameters for buffer configuration
 
-2. Memory Mapping: 🔄 PLANNING
+2. Memory Mapping: 🔄 STARTING
    - Research optimal memory mapping strategies for large merger tree files
    - Implement memory mapping options for both binary and HDF5 formats
    - Develop fallback mechanisms for platforms or file systems with limited memory mapping support

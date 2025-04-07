@@ -17,9 +17,7 @@
 #include "io_binary_output.h"
 #include "save_gals_binary.h"
 
-#ifdef USE_BUFFERED_WRITE
-#include "buffered_io.h"
-#endif
+#include "io_buffer_manager.h"
 
 /**
  * @brief Magic marker to identify the binary output format with extended properties
@@ -78,6 +76,27 @@ static int write_extended_property_header(int fd, struct binary_output_data *for
 static int close_all_files(struct binary_output_data *format_data);
 
 /**
+ * @brief Write callback for buffer manager
+ * 
+ * Uses the mypwrite function from core_utils.h
+ *
+ * @param fd File descriptor
+ * @param buffer Data buffer to write
+ * @param size Number of bytes to write
+ * @param offset File offset
+ * @param context Optional context data (unused)
+ * @return 0 on success, negative value on error
+ */
+static int binary_write_callback(int fd, const void* buffer, size_t size, off_t offset, void* context) {
+    (void)context; // Suppress unused parameter warning
+    ssize_t result = mypwrite(fd, buffer, size, offset);
+    if (result < 0) {
+        return result;
+    }
+    return 0;
+}
+
+/**
  * @brief Initialize the binary output handler
  *
  * @return 0 on success, non-zero on failure
@@ -132,6 +151,11 @@ int binary_output_initialize(const char *filename, struct params *params, void *
     data->extended_props_enabled = (global_extension_registry != NULL && 
                                    global_extension_registry->num_extensions > 0);
     
+    // Cache buffer parameters
+    data->buffer_size_initial_mb = params->runtime.BufferSizeInitialMB;
+    data->buffer_size_min_mb = params->runtime.BufferSizeMinMB;
+    data->buffer_size_max_mb = params->runtime.BufferSizeMaxMB;
+    
     // Allocate file descriptors array
     data->file_descriptors = calloc(data->num_snapshots, sizeof(int));
     if (data->file_descriptors == NULL) {
@@ -143,6 +167,20 @@ int binary_output_initialize(const char *filename, struct params *params, void *
     // Initialize all file descriptors to -1 (closed)
     for (int i = 0; i < data->num_snapshots; i++) {
         data->file_descriptors[i] = -1;
+    }
+    
+    // Allocate buffer array
+    data->output_buffers = calloc(data->num_snapshots, sizeof(struct io_buffer*));
+    if (data->output_buffers == NULL) {
+        io_set_error(IO_ERROR_MEMORY_ALLOCATION, "Failed to allocate output buffers array");
+        free(data->file_descriptors);
+        free(data);
+        return -1;
+    }
+    
+    // Initialize all buffers to NULL
+    for (int i = 0; i < data->num_snapshots; i++) {
+        data->output_buffers[i] = NULL;
     }
     
     // Allocate arrays for galaxy counts
@@ -286,6 +324,30 @@ int binary_output_write_galaxies(struct GALAXY *galaxies, int ngals,
                     io_set_error(IO_ERROR_FILE_NOT_FOUND, "Failed to seek in output file");
                     return -1;
                 }
+                
+                // Create buffer for this file if not already created
+                if (data->output_buffers[snap_idx] == NULL) {
+                    // Use cached buffer parameters
+                    struct io_buffer_config buffer_config = buffer_config_default(
+                        data->buffer_size_initial_mb,
+                        data->buffer_size_min_mb,
+                        data->buffer_size_max_mb
+                    );
+                    
+                    // Create buffer
+                    data->output_buffers[snap_idx] = buffer_create(
+                        &buffer_config,
+                        data->file_descriptors[snap_idx],
+                        header_size,  // Start at current position (after header)
+                        binary_write_callback,
+                        NULL
+                    );
+                    
+                    if (data->output_buffers[snap_idx] == NULL) {
+                        io_set_error(IO_ERROR_MEMORY_ALLOCATION, "Failed to create output buffer");
+                        return -1;
+                    }
+                }
             }
             
             // Write the galaxy
@@ -312,9 +374,9 @@ int binary_output_write_galaxies(struct GALAXY *galaxies, int ngals,
                 // Add more fields as needed
             }
             
-            // Write galaxy output structure
-            ssize_t written = write(data->file_descriptors[snap_idx], &output, sizeof(output));
-            if (written != sizeof(output)) {
+            // Write galaxy output structure using buffer
+            int result = buffer_write(data->output_buffers[snap_idx], &output, sizeof(output));
+            if (result != 0) {
                 io_set_error(IO_ERROR_FILE_NOT_FOUND, "Failed to write galaxy data");
                 return -1;
             }
@@ -338,11 +400,11 @@ int binary_output_write_galaxies(struct GALAXY *galaxies, int ngals,
                         return -1;
                     }
                     
-                    // Write property data
-                    written = write(data->file_descriptors[snap_idx], prop_buffer, prop_size);
+                    // Write property data using buffer
+                    result = buffer_write(data->output_buffers[snap_idx], prop_buffer, prop_size);
                     free(prop_buffer);
                     
-                    if (written != (ssize_t)prop_size) {
+                    if (result != 0) {
                         io_set_error(IO_ERROR_FILE_NOT_FOUND, "Failed to write property data");
                         return -1;
                     }
@@ -376,6 +438,13 @@ int binary_output_cleanup(void *format_data) {
     // Finalize output files
     for (int i = 0; i < data->num_snapshots; i++) {
         int fd = data->file_descriptors[i];
+        
+        // Destroy buffer if exists (this also flushes any remaining data)
+        if (data->output_buffers[i] != NULL) {
+            buffer_destroy(data->output_buffers[i]);
+            data->output_buffers[i] = NULL;
+        }
+        
         if (fd >= 0) {
             // Write header information
             int32_t header[2];
@@ -475,6 +544,10 @@ int binary_output_cleanup(void *format_data) {
     
     if (data->file_descriptors != NULL) {
         free(data->file_descriptors);
+    }
+    
+    if (data->output_buffers != NULL) {
+        free(data->output_buffers);
     }
     
     if (data->extended_props_enabled) {
@@ -580,6 +653,13 @@ static int close_all_files(struct binary_output_data *format_data) {
     }
     
     for (int i = 0; i < format_data->num_snapshots; i++) {
+        // Destroy buffer if exists (this also flushes any remaining data)
+        if (format_data->output_buffers[i] != NULL) {
+            buffer_destroy(format_data->output_buffers[i]);
+            format_data->output_buffers[i] = NULL;
+        }
+        
+        // Close file descriptor
         if (format_data->file_descriptors[i] >= 0) {
             close(format_data->file_descriptors[i]);
             format_data->file_descriptors[i] = -1;

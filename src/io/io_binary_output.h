@@ -37,6 +37,10 @@ struct binary_output_data {
     struct property_serialization_context prop_ctx; /**< Property serialization context */
     enum endian_type output_endianness; /**< Endianness of the binary files */
     bool swap_needed;                /**< Flag indicating if byte swapping is needed */
+    struct io_buffer **output_buffers; /**< Output buffers (one per snapshot) */
+    int buffer_size_initial_mb;      /**< Initial buffer size in MB */
+    int buffer_size_min_mb;          /**< Minimum buffer size in MB */
+    int buffer_size_max_mb;          /**< Maximum buffer size in MB */
 };
 
 /**

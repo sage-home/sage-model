@@ -624,6 +624,11 @@ struct runtime_params
     int64_t FileNr_Mulfac;      /* Multiplier for file number in forest indexing */
     int64_t ForestNr_Mulfac;    /* Multiplier for forest number in indexing */
     
+    /* I/O buffering */
+    int BufferSizeInitialMB;    /* Initial I/O buffer size in MB */
+    int BufferSizeMinMB;        /* Minimum I/O buffer size in MB */
+    int BufferSizeMaxMB;        /* Maximum I/O buffer size in MB */
+    
     /* Module system configuration */
     char ModuleDir[MAX_STRING_LEN];  /* Directory for module search */
     int NumModulePaths;              /* Number of additional module paths */

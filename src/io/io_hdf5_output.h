@@ -13,6 +13,7 @@ extern "C" {
 #include "io_interface.h"
 #include "io_hdf5_utils.h"
 #include "io_property_serialization.h"
+#include "io_buffer_manager.h"
 
 /**
  * @file io_hdf5_output.h
@@ -49,6 +50,12 @@ struct hdf5_output_data {
         void **property_buffers;     /**< Buffers for galaxy properties */
         int num_properties;          /**< Number of properties in buffer */
     } *snapshot_buffers;
+    
+    /* Buffer manager */
+    struct io_buffer **io_buffers;   /**< I/O buffers for efficient disk access */
+    int buffer_size_initial_mb;      /**< Initial buffer size in MB */
+    int buffer_size_min_mb;          /**< Minimum buffer size in MB */
+    int buffer_size_max_mb;          /**< Maximum buffer size in MB */
     
     /* Extended property support */
     bool extended_props_enabled;     /**< Flag indicating if extended properties are enabled */

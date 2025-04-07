@@ -132,6 +132,9 @@ I/O is now fully abstracted through a unified interface system:
   - Format capability validation to ensure required features
   - Property validation for extension compatibility
   - Integration with core I/O pipeline
+- Memory optimization components:
+  - `array_utils`: Provides geometric growth for dynamic arrays
+  - `io_buffer_manager`: Configurable buffered I/O with automatic resizing
 
 ```
 I/O System Architecture
