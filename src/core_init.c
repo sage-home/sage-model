@@ -28,7 +28,8 @@ void init(struct params *run_params)
 #ifdef VERBOSE
     const int ThisTask = run_params->ThisTask;
 #endif
-
+    init_redshift_scaling_params(run_params);
+    
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
 
     set_units(run_params);

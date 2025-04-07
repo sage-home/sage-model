@@ -233,80 +233,59 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
 
+    // After initializing the existing parameters
+    // Add the redshift scaling parameters to the read parameter list
     strncpy(ParamTag[NParam], "ScaleSfrEfficiency", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.ScaleSfrEfficiency);
-ParamID[NParam++] = INT;
+    ParamAddr[NParam] = &(run_params->ScaleSfrEfficiency);
+    ParamID[NParam++] = INT;
 
-strncpy(ParamTag[NParam], "ScaleFeedbackEjection", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.ScaleFeedbackEjection);
-ParamID[NParam++] = INT;
+    strncpy(ParamTag[NParam], "ScaleFeedbackEjection", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ScaleFeedbackEjection);
+    ParamID[NParam++] = INT;
 
-strncpy(ParamTag[NParam], "ScaleReIncorporation", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.ScaleReIncorporation);
-ParamID[NParam++] = INT;
+    strncpy(ParamTag[NParam], "ScaleReIncorporation", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ScaleReIncorporation);
+    ParamID[NParam++] = INT;
 
-strncpy(ParamTag[NParam], "ScaleQuasarRadioModes", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.ScaleQuasarRadioModes);
-ParamID[NParam++] = INT;
+    strncpy(ParamTag[NParam], "ScaleQuasarRadioModes", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ScaleQuasarRadioModes);
+    ParamID[NParam++] = INT;
 
-strncpy(ParamTag[NParam], "SfrScalingMethod", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.SfrScalingMethod);
-ParamID[NParam++] = INT;
+    strncpy(ParamTag[NParam], "SfrScalingMethod", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SfrScalingMethod);
+    ParamID[NParam++] = INT;
 
-strncpy(ParamTag[NParam], "FeedbackScalingMethod", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.FeedbackScalingMethod);
-ParamID[NParam++] = INT;
+    strncpy(ParamTag[NParam], "FeedbackScalingMethod", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->FeedbackScalingMethod);
+    ParamID[NParam++] = INT;
 
-strncpy(ParamTag[NParam], "ReIncorpScalingMethod", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.ReIncorpScalingMethod);
-ParamID[NParam++] = INT;
+    strncpy(ParamTag[NParam], "ReIncorpScalingMethod", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ReIncorpScalingMethod);
+    ParamID[NParam++] = INT;
 
-strncpy(ParamTag[NParam], "QuasarRadioScalingMethod", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.QuasarRadioScalingMethod);
-ParamID[NParam++] = INT;
+    strncpy(ParamTag[NParam], "QuasarRadioScalingMethod", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->QuasarRadioScalingMethod);
+    ParamID[NParam++] = INT;
 
-strncpy(ParamTag[NParam], "SfrRedshiftScaling", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.SfrRedshiftScaling);
-ParamID[NParam++] = DOUBLE;
+    strncpy(ParamTag[NParam], "SfrRedshiftScaling", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SfrRedshiftScaling);
+    ParamID[NParam++] = DOUBLE;
 
-strncpy(ParamTag[NParam], "FeedbackRedshiftScaling", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.FeedbackRedshiftScaling);
-ParamID[NParam++] = DOUBLE;
+    strncpy(ParamTag[NParam], "FeedbackRedshiftScaling", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->FeedbackRedshiftScaling);
+    ParamID[NParam++] = DOUBLE;
 
-strncpy(ParamTag[NParam], "ReIncorpRedshiftScaling", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.ReIncorpRedshiftScaling);
-ParamID[NParam++] = DOUBLE;
+    strncpy(ParamTag[NParam], "ReIncorpRedshiftScaling", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ReIncorpRedshiftScaling);
+    ParamID[NParam++] = DOUBLE;
 
-strncpy(ParamTag[NParam], "QuasarRedshiftScaling", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.QuasarRedshiftScaling);
-ParamID[NParam++] = DOUBLE;
+    strncpy(ParamTag[NParam], "QuasarRedshiftScaling", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->QuasarRedshiftScaling);
+    ParamID[NParam++] = DOUBLE;
 
-strncpy(ParamTag[NParam], "RadioModeRedshiftScaling", MAXTAGLEN);
-ParamAddr[NParam] = &(run_params->redshift_scaling.RadioModeRedshiftScaling);
-ParamID[NParam++] = DOUBLE;
-
-// Initialize default values for all scaling parameters in init function
-void init_redshift_scaling_params(struct params *run_params) {
-    // Default: no scaling (all works as original model)
-    run_params->redshift_scaling.ScaleSfrEfficiency = 0;
-    run_params->redshift_scaling.ScaleFeedbackEjection = 0;
-    run_params->redshift_scaling.ScaleReIncorporation = 0;
-    run_params->redshift_scaling.ScaleQuasarRadioModes = 0;
-    
-    // Default to power law scaling 
-    run_params->redshift_scaling.SfrScalingMethod = SCALING_POWER_LAW;
-    run_params->redshift_scaling.FeedbackScalingMethod = SCALING_POWER_LAW;
-    run_params->redshift_scaling.ReIncorpScalingMethod = SCALING_POWER_LAW;
-    run_params->redshift_scaling.QuasarRadioScalingMethod = SCALING_POWER_LAW;
-    
-    // Default scaling parameters (no effect if scaling is disabled)
-    // Values chosen to be neutral (power of 0 = no change)
-    run_params->redshift_scaling.SfrRedshiftScaling = 0.0;
-    run_params->redshift_scaling.FeedbackRedshiftScaling = 0.0;
-    run_params->redshift_scaling.ReIncorpRedshiftScaling = 0.0;
-    run_params->redshift_scaling.QuasarRedshiftScaling = 0.0;
-    run_params->redshift_scaling.RadioModeRedshiftScaling = 0.0;
-    }
+    strncpy(ParamTag[NParam], "RadioModeRedshiftScaling", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->RadioModeRedshiftScaling);
+    ParamID[NParam++] = DOUBLE;
 
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {

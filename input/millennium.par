@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /home/jseiler/sage-home/sage-model/output/millennium/
+OutputDir   /fred/oz004/mbradley/SAGE-PARAMS/sage-model/output/millennium/
 
 FirstFile         0
 LastFile          7
@@ -29,9 +29,9 @@ TreeType              lhalo_binary % either 'genesis_lhalo_hdf5' or 'lhalo_binar
 NumSimulationTreeFiles 8 % Number of files the trees are split over. This can be different to `FirstFile` -> `LastFile` range.
 
 %SimulationDir   /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/
-SimulationDir   /home/jseiler/sage-home/sage-model/input/millennium/trees/
+SimulationDir   /fred/oz004/mbradley/SAGE-PARAMS/sage-model/input/millennium/trees/
 %FileWithSnapList /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/millennium.a_list
-FileWithSnapList /home/jseiler/sage-home/sage-model/input/millennium/trees/millennium.a_list
+FileWithSnapList /fred/oz004/mbradley/SAGE-PARAMS/sage-model/input/millennium/trees/millennium.a_list
 LastSnapShotNr        63
 
 Omega           0.25

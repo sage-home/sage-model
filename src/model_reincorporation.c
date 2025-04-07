@@ -35,7 +35,5 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         galaxies[centralgal].HotGas += reincorporated;
         galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
 
-        // After reincorporation, update molecular fractions
-        update_gas_components(&galaxies[centralgal], run_params);
     }
 }
