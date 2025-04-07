@@ -145,6 +145,26 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->AGNrecipeOn);
     ParamID[NParam++] = INT;
 
+    strncpy(ParamTag[NParam], "SfrEfficiency_Alpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SfrEfficiency_Alpha);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "FeedbackReheatingEpsilon_Alpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->FeedbackReheatingEpsilon_Alpha);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "FeedbackEjectionEfficiency_Alpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->FeedbackEjectionEfficiency_Alpha);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "ReIncorporationFactor_Alpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ReIncorporationFactor_Alpha);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "RadioModeEfficiency_Alpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->RadioModeEfficiency_Alpha);
+    ParamID[NParam++] = DOUBLE;
+
     strncpy(ParamTag[NParam], "BaryonFrac", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->BaryonFrac);
     ParamID[NParam++] = DOUBLE;
@@ -231,60 +251,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     strncpy(ParamTag[NParam], "ExponentForestDistributionScheme", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
-    ParamID[NParam++] = DOUBLE;
-
-    // After initializing the existing parameters
-    // Add the redshift scaling parameters to the read parameter list
-    strncpy(ParamTag[NParam], "ScaleSfrEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ScaleSfrEfficiency);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "ScaleFeedbackEjection", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ScaleFeedbackEjection);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "ScaleReIncorporation", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ScaleReIncorporation);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "ScaleQuasarRadioModes", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ScaleQuasarRadioModes);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "SfrScalingMethod", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SfrScalingMethod);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "FeedbackScalingMethod", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FeedbackScalingMethod);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "ReIncorpScalingMethod", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ReIncorpScalingMethod);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "QuasarRadioScalingMethod", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->QuasarRadioScalingMethod);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "SfrRedshiftScaling", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SfrRedshiftScaling);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "FeedbackRedshiftScaling", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FeedbackRedshiftScaling);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "ReIncorpRedshiftScaling", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ReIncorpRedshiftScaling);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "QuasarRedshiftScaling", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->QuasarRedshiftScaling);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "RadioModeRedshiftScaling", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->RadioModeRedshiftScaling);
     ParamID[NParam++] = DOUBLE;
 
     used_tag = mymalloc(sizeof(int) * NParam);

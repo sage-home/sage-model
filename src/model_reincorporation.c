@@ -11,15 +11,17 @@
 
 void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
-    // Get current redshift from the galaxy's snapshot number
-    double redshift = run_params->ZZ[galaxies[centralgal].SnapNum];
+
+    // Get current redshift for this galaxy
+    double z = run_params->ZZ[galaxies[centralgal].SnapNum];
     
-    // Get redshift-scaled reincorporation factor
-    double scaled_reincorp_factor = get_redshift_scaled_reincorp_factor(run_params, redshift);
-    
+    // Calculate redshift-dependent reincorporation factor
+    double reinc_factor = get_redshift_dependent_parameter(run_params->ReIncorporationFactor, 
+                                                        run_params->ReIncorporationFactor_Alpha, z);
+
     // SN velocity is 630km/s, and the condition for reincorporation is that the
     // halo has an escape velocity greater than this, i.e. V_SN/sqrt(2) = 445.48km/s
-    const double Vcrit = 445.48 * scaled_reincorp_factor;
+    const double Vcrit = 445.48 * reinc_factor;
 
     if(galaxies[centralgal].Vvir > Vcrit) {
         double reincorporated =
@@ -34,6 +36,6 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         galaxies[centralgal].MetalsEjectedMass -= metallicity * reincorporated;
         galaxies[centralgal].HotGas += reincorporated;
         galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
-
     }
+
 }

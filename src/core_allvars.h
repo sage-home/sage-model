@@ -427,24 +427,11 @@ struct params
     int32_t    ReionizationOn;
     int32_t   DiskInstabilityOn;
 
-    // Flags to enable/disable redshift scaling for each parameter
-    int ScaleSfrEfficiency;           // Scaling for star formation efficiency
-    int ScaleFeedbackEjection;        // Scaling for feedback ejection
-    int ScaleReIncorporation;         // Scaling for gas reincorporation
-    int ScaleQuasarRadioModes;        // Scaling for quasar/radio mode efficiencies
-
-    // Scaling method (power law, exponential, etc.)
-    int SfrScalingMethod;
-    int FeedbackScalingMethod;
-    int ReIncorpScalingMethod;
-    int QuasarRadioScalingMethod;
-
-    // Scaling parameters (exponents, factors, etc.)
-    double SfrRedshiftScaling;        // Exponent for SF efficiency: (1+z)^exponent
-    double FeedbackRedshiftScaling;   // Exponent for feedback strength
-    double ReIncorpRedshiftScaling;   // Exponent for reincorporation rate
-    double QuasarRedshiftScaling;     // Exponent for quasar mode scaling
-    double RadioModeRedshiftScaling;  // Exponent for radio mode scaling
+    double SfrEfficiency_Alpha;
+    double FeedbackReheatingEpsilon_Alpha;
+    double FeedbackEjectionEfficiency_Alpha;
+    double ReIncorporationFactor_Alpha;
+    double RadioModeEfficiency_Alpha;
 
     double RecycleFraction;
     double Yield;
@@ -515,7 +502,7 @@ struct params
 
     int32_t ThisTask;
     int32_t NTasks;
-    
 };
+
 
 #endif  /* #ifndef ALLVARS_H */

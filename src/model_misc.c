@@ -163,5 +163,8 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
   return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
 }
 
-
+double get_redshift_dependent_parameter(double param_z0, double alpha, double redshift)
+{
+    return param_z0 * pow(1.0 + redshift, alpha);
+}
 
