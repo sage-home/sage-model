@@ -1,4 +1,4 @@
-#USE-MPI := yes # set this if you want to run in embarrassingly parallel (automatically set if the compiler (i.e., the CC variable) is set to `mpicc`)
+USE-MPI := yes # set this if you want to run in embarrassingly parallel (automatically set if the compiler (i.e., the CC variable) is set to `mpicc`)
 USE-HDF5 := yes # set this if you want to read in hdf5 trees (requires hdf5 libraries)
 
 #MEM-CHECK = yes # Set this if you want to check sanitize pointers/memory addresses. Slowdown of ~2x is expected.
