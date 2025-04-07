@@ -1,0 +1,7 @@
+SfrEfficiency,SFE,0,0.001,0.1
+FeedbackReheatingEpsilon,eHeat,0,0.05,3.0
+FeedbackEjectionRatio,eEject/eHeat,0,0.005,0.15
+ReIncorporationFactor,eRein,0,0.01,0.3
+RadioModeEfficiency,eRadio,0,0.001,0.15
+QuasarModeEfficiency,eQuasar,0,0.001,0.015
+BlackHoleGrowthRate,eBhgrow,0,0.005,0.2

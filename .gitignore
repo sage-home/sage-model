@@ -10,7 +10,7 @@ libsage.so
 *.so
 *.patch
 perf.data*
-*.py
+
 tmp*
 *.par
 *vscode*
@@ -21,7 +21,7 @@ codecov
 *.ipynb_checkpoints
 *.dSYM
 sage_analysis/plots/
-*.txt
+
 *.log
 *.out
 *.DS_Store
