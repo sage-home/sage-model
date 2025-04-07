@@ -1,0 +1,42 @@
+# Compiler and flags
+CC         = gcc
+CFLAGS     = -Wall -Wextra -g -fPIC -D_POSIX_SOURCE -D_GNU_SOURCE -O2 -DNO_FREETYPE -DTESTING_STANDALONE
+LDFLAGS    =
+
+# Directories
+SAGE_DIR   = ..
+SRC_DIR    = $(SAGE_DIR)/src
+CORE_DIR   = $(SRC_DIR)/core
+TEST_DIR   = .
+
+# Source files
+SOURCES    = test_array_utils.c \
+             $(CORE_DIR)/core_mymalloc.c \
+             $(CORE_DIR)/core_array_utils.c
+
+# Object files
+OBJECTS    = $(SOURCES:.c=.o)
+
+# Main test application
+TEST_APP   = test_array_utils
+
+# Default target
+all: $(TEST_APP) run
+
+# Compile source files
+%.o: %.c
+	$(CC) $(CFLAGS) -I$(CORE_DIR) -I$(SRC_DIR) -c $< -o $@
+
+# Link the test application
+$(TEST_APP): $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Run the tests
+run: $(TEST_APP)
+	./$(TEST_APP)
+
+# Clean generated files
+clean:
+	rm -f $(OBJECTS) $(TEST_APP)
+
+.PHONY: all run clean

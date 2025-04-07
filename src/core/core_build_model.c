@@ -17,6 +17,7 @@
 #include "core_galaxy_extensions.h"
 #include "core_pipeline_system.h"
 #include "core_module_system.h"
+#include "core_array_utils.h"
 
 #include "../physics/model_misc.h"
 #include "../physics/model_mergers.h"
@@ -350,11 +351,18 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
 
     while(prog >= 0) {
         for(int i = 0; i < haloaux[prog].NGalaxies; i++) {
-            if(ngal == (*maxgals - 1)) {
-                *maxgals += 10000;
-
-                *ptr_to_galaxies = myrealloc(*ptr_to_galaxies, *maxgals * sizeof(struct GALAXY));
-                *ptr_to_halogal  = myrealloc(*ptr_to_halogal, *maxgals * sizeof(struct GALAXY));
+            if(ngal >= (*maxgals - 1)) {
+                // Expand arrays with geometric growth rather than fixed increment
+                if (galaxy_array_expand(ptr_to_galaxies, maxgals, ngal + 1) != 0) {
+                    LOG_ERROR("Failed to expand galaxies array in join_galaxies_of_progenitors");
+                    return -1;
+                }
+                
+                if (galaxy_array_expand(ptr_to_halogal, maxgals, ngal + 1) != 0) {
+                    LOG_ERROR("Failed to expand halogal array in join_galaxies_of_progenitors");
+                    return -1;
+                }
+                
                 galaxies = *ptr_to_galaxies;
                 halogal = *ptr_to_halogal;
             }
@@ -787,11 +795,18 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
 
         if(ctx.galaxies[p].mergeType == 0) {
             /* realloc if needed */
-            if(*numgals == (*maxgals - 1)) {
-                *maxgals += 10000;
-
-                *ptr_to_galaxies = myrealloc(*ptr_to_galaxies, *maxgals * sizeof(struct GALAXY));
-                *ptr_to_halogal  = myrealloc(*ptr_to_halogal, *maxgals * sizeof(struct GALAXY));
+            if(*numgals >= (*maxgals - 1)) {
+                // Expand arrays with geometric growth rather than fixed increment
+                if (galaxy_array_expand(ptr_to_galaxies, maxgals, *numgals + 1) != 0) {
+                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to expand galaxies array in evolve_galaxies");
+                    return EXIT_FAILURE;
+                }
+                
+                if (galaxy_array_expand(ptr_to_halogal, maxgals, *numgals + 1) != 0) {
+                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to expand halogal array in evolve_galaxies");
+                    return EXIT_FAILURE;
+                }
+                
                 ctx.galaxies = *ptr_to_galaxies; // Update context pointer after realloc
                 halogal = *ptr_to_halogal;
             }

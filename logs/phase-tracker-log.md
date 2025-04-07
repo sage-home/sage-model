@@ -53,7 +53,7 @@
 - [ ] Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
 - [ ] Create memory mapping options for large files
 - [ ] Design efficient caching for frequently accessed halos
-- [ ] Optimize allocation with geometric growth instead of fixed increments
+- [x] Optimize allocation with geometric growth instead of fixed increments
 - [ ] Add prefetching for depth-first traversal
 - [ ] Implement memory pooling for galaxy allocations
 
