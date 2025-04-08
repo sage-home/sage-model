@@ -135,6 +135,8 @@ I/O is now fully abstracted through a unified interface system:
 - Memory optimization components:
   - `array_utils`: Provides geometric growth for dynamic arrays
   - `io_buffer_manager`: Configurable buffered I/O with automatic resizing
+  - (In progress) Memory mapping for efficient tree file access
+  - (Planned) Memory pooling for galaxy structure allocation
 
 ```
 I/O System Architecture

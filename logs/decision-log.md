@@ -144,3 +144,7 @@
 2025-04-08: [Phase 3.3] Buffer Manager Design Approach
 - Rationale: Designed a callback-based buffer manager to abstract I/O operations, allowing integration with both standard file I/O and specialized formats like HDF5. Used geometric growth for buffer resizing to reduce allocation frequency and implemented runtime parameter tuning to accommodate different workloads.
 - Impact: The new design significantly reduces I/O system calls (95-99% fewer writes for typical datasets), improves cross-platform compatibility, and scales better with data size. The callback architecture enables future integration with additional I/O backends without modifying the buffer manager itself.
+
+2025-04-08: [Phase 3.3] Removal of Halo Caching and Prefetching Components
+- Rationale: Upon analysis of SAGE's tree traversal pattern, we identified that halos are only accessed once during traversal (unlike traditional hot-path caching use cases). Implementing caching for halos that are only accessed once would add complexity with no performance benefit.
+- Impact: Removed "Halo Caching" and "Prefetching for depth-first traversal" from Phase 3.3 implementation plan. Effort will be redirected to more beneficial optimizations: completing Buffer Manager integration with HDF5, Memory Mapping for large files, and Memory Pooling for galaxy structures.

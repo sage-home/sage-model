@@ -182,7 +182,7 @@ The module interface structure establishes a consistent contract for all physics
 #### Components
 *   **3.1 I/O Interface Abstraction**: Define unified `io_interface` (init, read_forest, write_galaxies, cleanup, resource mgmt). Implement handler registry and format detection. Standardize I/O error reporting. Include unification of galaxy output preparation logic.
 *   **3.2 Format-Specific Implementations**: Refactor existing I/O into handlers implementing the `io_interface`. Add serialization for extended properties. Implement cross-platform binary endianness handling and robust HDF5 resource tracking/cleanup.
-*   **3.3 Memory Optimization**: Implement configurable buffered I/O. Add memory mapping options. Develop halo caching strategy. Use geometric growth for dynamic array reallocation. Implement memory pooling for galaxy structs.
+*   **3.3 Memory Optimization**: Implement configurable buffered I/O. Add memory mapping options. Use geometric growth for dynamic array reallocation. Implement memory pooling for galaxy structs.
 *   **3.4 Review Dynamic Limits**: Evaluate hardcoded limits like `ABSOLUTEMAXSNAPS` and implement runtime checks or dynamic resizing if necessary.
 
 #### Example Implementation
@@ -564,7 +564,7 @@ The pipeline-based evolution replaces the monolithic approach, enabling runtime 
 
 #### Components
 *   **6.1 Memory Layout Enhancement**: Implement Structure-of-Arrays (SoA) for hot-path galaxy data where beneficial. Further optimize memory pooling. Introduce size-segregated pools if needed.
-*   **6.2 Tree Traversal Optimization**: Implement prefetching for depth-first traversal. Optimize pointer-chasing patterns. Consider non-recursive traversal algorithms.
+*   **6.2 Tree Traversal Optimization**: Optimize pointer-chasing patterns (e.g., reducing indirections). Consider non-recursive traversal algorithms. Implement memory-efficient data structures for tree nodes (*Note: focuses on traversal logic/structure, not caching/prefetching of halo data itself, which is unneeded for single-pass traversal*).
 *   **6.3 Vectorized Physics Calculations**: Implement SIMD for suitable calculations. Explore batch processing of galaxies. Implement architecture-specific dispatch.
 *   **6.4 Parallelization Enhancements**: Refine load balancing. Explore finer-grained parallelism. Optimize MPI communication. Consider hybrid MPI+OpenMP.
 *   **6.5 Module Callback Optimization**: Implement callback caching. Optimize paths for frequent interactions. Add profiling for inter-module calls. Consider targeted function inlining.
@@ -614,32 +614,39 @@ void convert_AoS_to_SoA(struct GALAXY *galaxies, int ngal, galaxy_hotpath_data_t
     hotpath->count = ngal;
 }
 
-// Tree traversal with prefetching
+// Optimized tree traversal data structure
 typedef struct {
-    struct halo_data **prefetch_buffer;
-    int *prefetch_indices;
-    int buffer_size;
-    int num_prefetched;
-    int next_index;
-} prefetch_system_t;
+    int max_depth;                // Maximum depth of the tree
+    int current_depth;            // Current depth during traversal
+    struct halo_data **stack;     // Stack for non-recursive traversal
+    int stack_size;               // Current size of the stack
+    int stack_capacity;           // Maximum capacity of the stack
+} tree_traversal_context_t;
 
-void prefetch_initialize(prefetch_system_t *system, int buffer_size) {
-    system->prefetch_buffer = malloc(buffer_size * sizeof(struct halo_data*));
-    system->prefetch_indices = malloc(buffer_size * sizeof(int));
-    system->buffer_size = buffer_size;
-    system->num_prefetched = 0;
-    system->next_index = 0;
+void tree_traversal_init(tree_traversal_context_t *context, int initial_capacity, int max_depth) {
+    context->max_depth = max_depth;
+    context->current_depth = 0;
+    context->stack_capacity = initial_capacity;
+    context->stack_size = 0;
+    context->stack = malloc(initial_capacity * sizeof(struct halo_data*));
 }
 
-void prefetch_halo(prefetch_system_t *system, struct halo_data *halo) {
-    if (system->num_prefetched < system->buffer_size) {
-        // Add to buffer
-        system->prefetch_buffer[system->num_prefetched] = halo;
-        system->num_prefetched++;
+int tree_traversal_push(tree_traversal_context_t *context, struct halo_data *halo) {
+    // Check if stack needs to grow
+    if (context->stack_size >= context->stack_capacity) {
+        int new_capacity = context->stack_capacity * 1.5;
+        struct halo_data **new_stack = realloc(context->stack, 
+                                             new_capacity * sizeof(struct halo_data*));
+        if (!new_stack) return -1;
         
-        // Use compiler prefetch hint
-        __builtin_prefetch(halo, 0, 3);  // Read access, high temporal locality
+        context->stack = new_stack;
+        context->stack_capacity = new_capacity;
     }
+    
+    // Push halo onto stack
+    context->stack[context->stack_size++] = halo;
+    context->current_depth++;
+    return 0;
 }
 
 // SIMD-optimized physics calculation (example for cooling)

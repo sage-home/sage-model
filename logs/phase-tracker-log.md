@@ -15,9 +15,9 @@
 ## Phase Objectives
 - Implement a unified I/O interface that preserves existing functionality
 - Create format-specific handlers for different input/output formats
-- Add efficient caching strategies for frequently accessed merger tree nodes
 - Optimize memory usage for large datasets
-- Develop intelligent prefetching for depth-first tree traversal
+- Implement efficient buffered I/O for output operations
+- Create memory mapping options for large input files
 - Implement memory pooling for galaxy allocations
 
 ## Current Progress
@@ -52,9 +52,7 @@
 ### Phase 3.3: Memory Optimization 🔄 IN PROGRESS
 - [x] Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
 - [ ] Create memory mapping options for large files
-- [ ] Design efficient caching for frequently accessed halos
 - [x] Optimize allocation with geometric growth instead of fixed increments
-- [ ] Add prefetching for depth-first traversal
 - [ ] Implement memory pooling for galaxy allocations
 
 ## Next Actions
@@ -70,10 +68,10 @@
    - Implement memory mapping options for both binary and HDF5 formats
    - Develop fallback mechanisms for platforms or file systems with limited memory mapping support
 
-3. Tree Traversal Optimization: 🔄 PLANNING
-   - Design prefetching system for depth-first tree traversal
-   - Implement predictive loading based on tree structure
-   - Optimize pointer-chasing patterns to reduce cache misses
+3. Memory Pooling: 🔄 PLANNING
+   - Design efficient memory pooling system for galaxy structure allocations
+   - Implement size-based allocation strategies to reduce fragmentation
+   - Create comprehensive tracking and debugging facilities for memory usage
 
 ## Completion Criteria
 - All I/O operations function through the unified interface
@@ -81,7 +79,7 @@
 - Measurable performance improvements in tree traversal and galaxy processing
 - Buffer sizes are configurable and automatically adjusted based on workload
 - Memory mapping is properly implemented for supported platforms and formats
-- Prefetching reduces cache misses during tree traversal
+- Memory pooling reduces allocation overhead and fragmentation
 - All tests passing with the new memory optimization system
 
 ## Inter-Phase Dependencies
