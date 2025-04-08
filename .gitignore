@@ -26,6 +26,10 @@ tests/test_io_validation
 tests/test_property_validation
 tests/test_array_utils
 tests/test_io_buffer_manager
+tests/test_io_memory_map
+tests/test_lhalo_binary_mmap
+tests/test_memory_map
+tests/test_memory_mapping_param
 
 trees_*
 *.o
