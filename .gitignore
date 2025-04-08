@@ -30,6 +30,7 @@ tests/test_io_memory_map
 tests/test_lhalo_binary_mmap
 tests/test_memory_map
 tests/test_memory_mapping_param
+tests/test_memory_pool
 
 trees_*
 *.o

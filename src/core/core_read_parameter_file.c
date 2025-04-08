@@ -252,6 +252,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
     run_params->runtime.EnableModuleDiscovery = 0;  /* Disabled by default */
     run_params->runtime.NumModulePaths = 0;
     run_params->runtime.EnableMemoryMapping = 0;  /* Memory mapping disabled by default */
+    run_params->runtime.EnableGalaxyMemoryPool = 1;  /* Memory pooling enabled by default */
     
     /* Module system parameters - optional, if not specified use defaults */
     strncpy(ParamTag[NParam], "ModuleDir", MAXTAGLEN);
@@ -266,6 +267,11 @@ int read_parameter_file(const char *fname, struct params *run_params)
     
     strncpy(ParamTag[NParam], "EnableMemoryMapping", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->runtime.EnableMemoryMapping);
+    ParamID[NParam++] = INT;
+    used_tag[NParam-1] = 0;  /* Mark as optional */
+    
+    strncpy(ParamTag[NParam], "EnableGalaxyMemoryPool", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->runtime.EnableGalaxyMemoryPool);
     ParamID[NParam++] = INT;
     used_tag[NParam-1] = 0;  /* Mark as optional */
 

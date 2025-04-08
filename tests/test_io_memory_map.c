@@ -202,7 +202,8 @@ void test_error_handling() {
         TEST_FAILED;
     }
     
-    printf("Error message for non-existent file: %s\n", error);
+    // Print error message to stderr instead of stdout
+    fprintf(stderr, "Error message for non-existent file: %s\n", error);
     
     TEST_PASSED;
 }

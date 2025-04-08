@@ -19,6 +19,7 @@
 #include "core_event_system.h"
 #include "core_pipeline_system.h"
 #include "core_config_system.h"
+#include "core_memory_pool.h"
 
 /* Include physics module interfaces */
 #include "../physics/module_cooling.h"
@@ -71,6 +72,14 @@ void init(struct params *run_params)
     /* Initialize configuration system */
     initialize_config_system(NULL); /* Use default configuration */
     LOG_DEBUG("Configuration system initialized");
+    
+    /* Initialize memory pool system if enabled */
+    if (run_params->runtime.EnableGalaxyMemoryPool) {
+        galaxy_pool_initialize();
+        LOG_DEBUG("Galaxy memory pool initialized");
+    } else {
+        LOG_DEBUG("Galaxy memory pool disabled");
+    }
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
@@ -298,6 +307,12 @@ void cleanup(struct params *run_params)
     cleanup_event_system();
     cleanup_galaxy_extension_system();
     cleanup_module_system();
+    
+    /* Clean up memory pool if it was enabled */
+    if (galaxy_pool_is_enabled()) {
+        galaxy_pool_cleanup();
+        LOG_DEBUG("Galaxy memory pool cleaned up");
+    }
     
     cleanup_cooling();
     cleanup_simulation_times(run_params);

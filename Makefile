@@ -34,7 +34,8 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_logging.c core/core_module_system.c \
         core/core_galaxy_extensions.c core/core_event_system.c \
         core/core_pipeline_system.c core/core_config_system.c \
-        core/core_module_callback.c core/core_array_utils.c
+        core/core_module_callback.c core/core_array_utils.c \
+        core/core_memory_pool.c
 
 # Physics model source files
 PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \
@@ -317,7 +318,8 @@ clean:
 test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_memory_map tests/test_io_memory_map.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_memory_map
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation
+	@echo "Running SAGE tests..."
 	./tests/test_sage.sh
 	./tests/test_io_interface
 	./tests/test_endian_utils
@@ -326,4 +328,5 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	./tests/test_binary_output
 	./tests/test_hdf5_output
 	./tests/test_io_validation
-	./tests/test_memory_map
+	@cd tests && make
+	@echo "All tests completed successfully."

@@ -1,0 +1,26 @@
+PRE = ../
+VPATH = $(PRE)src/core
+LOCALFLAGS = -DNO_SAGE -I$(PRE)src/ -I$(PRE)src/core -I$(PRE) -Wall
+CC = gcc
+FC = gfortran
+
+OBJS = core_memory_pool.o core_mymalloc.o core_logging.o stubs/galaxy_extension_stubs.o
+
+test_memory_pool: test_memory_pool.c $(OBJS)
+	$(CC) $(LOCALFLAGS) -o test_memory_pool test_memory_pool.c $(OBJS) -lm
+
+core_memory_pool.o: $(PRE)src/core/core_memory_pool.c $(PRE)src/core/core_memory_pool.h
+	$(CC) $(LOCALFLAGS) -c -o core_memory_pool.o $(PRE)src/core/core_memory_pool.c
+
+core_mymalloc.o: $(PRE)src/core/core_mymalloc.c $(PRE)src/core/core_mymalloc.h
+	$(CC) $(LOCALFLAGS) -c -o core_mymalloc.o $(PRE)src/core/core_mymalloc.c
+
+core_logging.o: $(PRE)src/core/core_logging.c $(PRE)src/core/core_logging.h
+	$(CC) $(LOCALFLAGS) -c -o core_logging.o $(PRE)src/core/core_logging.c
+
+stubs/galaxy_extension_stubs.o: stubs/galaxy_extension_stubs.c
+	mkdir -p stubs
+	$(CC) $(LOCALFLAGS) -c -o stubs/galaxy_extension_stubs.o stubs/galaxy_extension_stubs.c
+
+clean:
+	rm -f *.o stubs/*.o test_memory_pool

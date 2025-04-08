@@ -12,11 +12,11 @@
 void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct halo_data *halos,
                  struct GALAXY *galaxies, const struct params *run_params)
 {
-
-	XASSERT(halonr == halos[halonr].FirstHaloInFOFgroup, -1,
+    XASSERT(halonr == halos[halonr].FirstHaloInFOFgroup, -1,
             "Error: halonr = %d should be equal to the FirsthaloInFOFgroup = %d\n",
             halonr, halos[halonr].FirstHaloInFOFgroup);
 
+    // Initialize memory for the galaxy - any existing extension data should already be cleaned up
     galaxies[p].Type = 0;
 
     galaxies[p].GalaxyNr = *galaxycounter;

@@ -1,32 +1,26 @@
-CC          := gcc
-GSL_INCL    :=
-GSL_LIBS    :=
+CC = gcc
+CFLAGS = -g -Wall -Wextra -Wshadow -Wunused -O3 -std=gnu99 -fPIC -Wno-unused-function -DTESTING_STANDALONE 
+INCLUDES = -I/Users/dcroton/Documents/Science/projects/sage-repos/sage-model/src
 
-CFLAGS      := -g -Wall -Wextra -Wshadow -Wunused -O3 -std=gnu99 -fPIC -Wno-unused-function -DTESTING_STANDALONE $(GSL_INCL)
-LDFLAGS     := -lm $(GSL_LIBS) 
+# Target
+TARGET = test_io_memory_map
 
-EXEC        := test_io_memory_map
+# Source files
+SOURCES = test_io_memory_map.c \
+          /Users/dcroton/Documents/Science/projects/sage-repos/sage-model/src/io/io_memory_map.o \
+          stubs/logging_stubs.c
 
-SRC_DIR     := $(realpath $(CURDIR)/../src)
-SRC_FILES   := $(SRC_DIR)/io/io_memory_map.c
-TEST_FILES  := test_io_memory_map.c
+# Object files
+OBJECTS = $(SOURCES:.c=.o)
 
-OBJ_FILES   := $(SRC_FILES:.c=.o)
-OBJ_TEST    := $(TEST_FILES:.c=.o)
-INCLUDES    := -I$(SRC_DIR)
+# Main target
+$(TARGET): $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
-all: $(EXEC)
-
-$(EXEC): $(OBJ_FILES) $(OBJ_TEST)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-
+# Compile
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
+# Clean
 clean:
-	rm -f $(OBJ_FILES) $(OBJ_TEST) $(EXEC)
-
-run: $(EXEC)
-	./$(EXEC)
-
-.PHONY: all clean run
+	rm -f $(TARGET) $(OBJECTS)

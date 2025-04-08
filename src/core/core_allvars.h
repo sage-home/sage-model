@@ -629,6 +629,7 @@ struct runtime_params
     int BufferSizeMinMB;        /* Minimum I/O buffer size in MB */
     int BufferSizeMaxMB;        /* Maximum I/O buffer size in MB */
     int EnableMemoryMapping;    /* Enable memory mapping for input files */
+    int EnableGalaxyMemoryPool; /* Enable memory pooling for galaxy allocations */
     
     /* Module system configuration */
     char ModuleDir[MAX_STRING_LEN];  /* Directory for module search */
