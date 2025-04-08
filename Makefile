@@ -328,5 +328,5 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	./tests/test_binary_output
 	./tests/test_hdf5_output
 	./tests/test_io_validation
-	@cd tests && make
+	@cd tests && make -f Makefile.memory_tests
 	@echo "All tests completed successfully."
