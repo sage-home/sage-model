@@ -10,6 +10,7 @@ extern "C" {
 #include "../core/core_allvars.h"
 #include "io_interface.h"
 #include "io_endian_utils.h"
+#include "io_memory_map.h"
 
 /**
  * @file io_lhalo_binary.h
@@ -33,6 +34,13 @@ struct lhalo_binary_data {
     off_t *offsets_per_forest;   /**< File offset for each forest */
     enum endian_type file_endianness; /**< Endianness of the binary file(s) */
     bool swap_needed;            /**< Flag indicating if byte swapping is needed */
+    
+    /* Memory mapping support */
+    bool use_mmap;               /**< Flag indicating if memory mapping is enabled */
+    struct mmap_region **mapped_files; /**< Array of memory-mapped regions (one per file) */
+    void **mapped_data;          /**< Array of pointers to mapped data (one per file) */
+    size_t *mapped_sizes;        /**< Array of sizes of mapped regions (one per file) */
+    char **filenames;            /**< Array of filenames for mapped files */
 };
 
 /* Forward declarations are not needed in the header as these are internal to the implementation */

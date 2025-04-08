@@ -3,13 +3,17 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 #include "io_lhalo_binary.h"
 #include "io_endian_utils.h"
+#include "io_memory_map.h"
 #include "forest_utils.h"
 #include "../core/core_mymalloc.h"
 #include "../core/core_utils.h"
+#include "../core/core_logging.h"
 
 /* Forward declaration of static functions */
 static int io_lhalo_binary_initialize(const char *filename, struct params *params, void **format_data);
@@ -113,6 +117,7 @@ bool io_is_lhalo_binary(const char *filename) {
  * @brief Initialize the LHalo binary handler
  *
  * Opens the files, reads header information, and prepares for reading forests.
+ * Optionally sets up memory mapping if enabled in runtime parameters.
  *
  * @param filename Tree file pattern or base name
  * @param params Run parameters
@@ -135,6 +140,42 @@ static int io_lhalo_binary_initialize(const char *filename, struct params *param
     data->file_endianness = ENDIAN_BIG;
     data->swap_needed = (get_system_endianness() != data->file_endianness);
     
+    // Check if memory mapping is enabled
+    data->use_mmap = (params->runtime.EnableMemoryMapping != 0 && mmap_is_available());
+    if (data->use_mmap) {
+        LOG_DEBUG("Memory mapping enabled for LHalo binary files");
+        
+        // Determine how many files we need to map
+        int num_files = params->io.LastFile - params->io.FirstFile + 1;
+        if (num_files <= 0) {
+            LOG_ERROR("Invalid file range: FirstFile=%d, LastFile=%d", 
+                     params->io.FirstFile, params->io.LastFile);
+            free(data);
+            return -1;
+        }
+        
+        // Allocate arrays for mapping information
+        data->mapped_files = calloc(num_files, sizeof(struct mmap_region*));
+        data->mapped_data = calloc(num_files, sizeof(void*));
+        data->mapped_sizes = calloc(num_files, sizeof(size_t));
+        data->filenames = calloc(num_files, sizeof(char*));
+        
+        if (data->mapped_files == NULL || data->mapped_data == NULL || 
+            data->mapped_sizes == NULL || data->filenames == NULL) {
+            LOG_ERROR("Failed to allocate memory for mapping arrays");
+            free(data->mapped_files);
+            free(data->mapped_data);
+            free(data->mapped_sizes);
+            free(data->filenames);
+            free(data);
+            return -1;
+        }
+        
+        data->num_open_files = num_files;
+    } else if (params->runtime.EnableMemoryMapping != 0) {
+        LOG_WARNING("Memory mapping requested but not available on this platform");
+    }
+    
     *format_data = data;
     return 0;
 }
@@ -142,7 +183,8 @@ static int io_lhalo_binary_initialize(const char *filename, struct params *param
 /**
  * @brief Read a forest from LHalo binary file
  *
- * Reads the halo data for a specific forest.
+ * Reads the halo data for a specific forest. Uses memory mapping if enabled
+ * and available, otherwise falls back to standard file I/O.
  *
  * @param forestnr Forest number to read
  * @param halos Pointer to store the halo data
@@ -165,7 +207,8 @@ static int64_t io_lhalo_binary_read_forest(int64_t forestnr, struct halo_data **
     }
     
     const int64_t nhalos = forest_info->lht.nhalos_per_forest[forestnr];
-    struct halo_data *local_halos = mymalloc(sizeof(struct halo_data) * nhalos);
+    const size_t forest_size = sizeof(struct halo_data) * nhalos;
+    struct halo_data *local_halos = mymalloc(forest_size);
     if (local_halos == NULL) {
         char error_msg[256];
         snprintf(error_msg, sizeof(error_msg), "Failed to allocate memory for halos in forestnr = %"PRId64, forestnr);
@@ -187,12 +230,47 @@ static int64_t io_lhalo_binary_read_forest(int64_t forestnr, struct halo_data **
         return -1;
     }
     
-    // Read the halo data from the file
-    ssize_t read_bytes = pread(fd, local_halos, sizeof(struct halo_data) * nhalos, offset);
-    if (read_bytes != (ssize_t)(sizeof(struct halo_data) * nhalos)) {
-        io_set_error(IO_ERROR_FORMAT_ERROR, "Failed to read all halo data");
+    // Determine the file index for this forest
+    int file_index = forest_info->FileNr[forestnr] - forest_info->firstfile;
+    if (file_index < 0 || file_index >= forest_info->lastfile - forest_info->firstfile + 1) {
+        io_set_error(IO_ERROR_VALIDATION_FAILED, "Invalid file index for forest");
         myfree(local_halos);
         return -1;
+    }
+    
+    // Read data - either from memory mapping or direct file I/O
+    bool success = false;
+    
+    if (data->use_mmap && data->mapped_files != NULL && data->mapped_data != NULL) {
+        // Use memory mapping if available
+        struct mmap_region *region = data->mapped_files[file_index];
+        void *mapped_data = data->mapped_data[file_index];
+        
+        if (region != NULL && mapped_data != NULL) {
+            size_t mapped_size = mmap_get_size(region);
+            
+            // Check if forest data is within mapped region
+            if (offset + forest_size <= mapped_size) {
+                // Copy data from mapped memory
+                char *src = (char *)mapped_data + offset;
+                memcpy(local_halos, src, forest_size);
+                success = true;
+                LOG_DEBUG("Read forest %"PRId64" using memory mapping", forestnr);
+            } else {
+                LOG_WARNING("Forest %"PRId64" extends beyond mapped region - falling back to standard I/O", forestnr);
+            }
+        }
+    }
+    
+    // Fall back to standard I/O if memory mapping is not used or failed
+    if (!success) {
+        ssize_t read_bytes = pread(fd, local_halos, forest_size, offset);
+        if (read_bytes != (ssize_t)forest_size) {
+            io_set_error(IO_ERROR_FORMAT_ERROR, "Failed to read all halo data");
+            myfree(local_halos);
+            return -1;
+        }
+        success = true;
     }
     
     // Handle endianness conversion if needed
@@ -227,6 +305,8 @@ static int64_t io_lhalo_binary_read_forest(int64_t forestnr, struct halo_data **
 /**
  * @brief Clean up resources used by the LHalo binary handler
  *
+ * Releases file handles and memory, including mapped regions.
+ *
  * @param format_data Format-specific data
  * @return 0 on success, non-zero on failure
  */
@@ -236,6 +316,29 @@ static int io_lhalo_binary_cleanup(void *format_data) {
     }
     
     struct lhalo_binary_data *data = (struct lhalo_binary_data *)format_data;
+    
+    // Unmap any memory-mapped regions
+    if (data->use_mmap && data->mapped_files != NULL) {
+        int num_files = data->num_open_files;
+        for (int i = 0; i < num_files; i++) {
+            if (data->mapped_files[i] != NULL) {
+                mmap_unmap(data->mapped_files[i]);
+                data->mapped_files[i] = NULL;
+                data->mapped_data[i] = NULL;
+            }
+        }
+        free(data->mapped_files);
+        free(data->mapped_data);
+        free(data->mapped_sizes);
+        
+        // Free filenames array if allocated
+        if (data->filenames != NULL) {
+            for (int i = 0; i < num_files; i++) {
+                free(data->filenames[i]);
+            }
+            free(data->filenames);
+        }
+    }
     
     // Close any open file descriptors
     io_lhalo_binary_close_handles(format_data);
@@ -253,6 +356,9 @@ static int io_lhalo_binary_cleanup(void *format_data) {
 /**
  * @brief Close all open file handles
  *
+ * When memory mapping is used, this keeps the mappings intact but closes
+ * the underlying file descriptors if not needed for mapping.
+ *
  * @param format_data Format-specific data
  * @return 0 on success, non-zero on failure
  */
@@ -263,11 +369,15 @@ static int io_lhalo_binary_close_handles(void *format_data) {
     
     struct lhalo_binary_data *data = (struct lhalo_binary_data *)format_data;
     
-    // Close all open file descriptors
-    for (int i = 0; i < data->num_open_files; i++) {
-        if (data->open_file_descriptors[i] > 0) {
-            close(data->open_file_descriptors[i]);
-            data->open_file_descriptors[i] = -1;
+    // Only close file descriptors if not using memory mapping
+    // or if the mapping contains its own copy of the descriptors
+    if (!data->use_mmap) {
+        // Close all open file descriptors
+        for (int i = 0; i < data->num_open_files; i++) {
+            if (data->open_file_descriptors[i] > 0) {
+                close(data->open_file_descriptors[i]);
+                data->open_file_descriptors[i] = -1;
+            }
         }
     }
     
@@ -290,3 +400,5 @@ static int io_lhalo_binary_get_handle_count(void *format_data) {
     struct lhalo_binary_data *data = (struct lhalo_binary_data *)format_data;
     return data->num_open_files;
 }
+
+/* Function removed: setup_memory_mapping was integrated in io_lhalo_binary_initialize */

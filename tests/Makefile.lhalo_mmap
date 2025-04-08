@@ -1,0 +1,32 @@
+CC          := gcc
+GSL_INCL    :=
+GSL_LIBS    :=
+
+CFLAGS      := -g -Wall -Wextra -Wshadow -Wunused -O3 -std=gnu99 -fPIC -Wno-unused-function -DTESTING_STANDALONE $(GSL_INCL)
+LDFLAGS     := -lm $(GSL_LIBS) 
+
+EXEC        := test_lhalo_binary_mmap
+
+SRC_DIR     := $(realpath $(CURDIR)/../src)
+SRC_FILES   := $(SRC_DIR)/io/io_memory_map.c
+TEST_FILES  := test_lhalo_binary_mmap.c
+
+OBJ_FILES   := $(SRC_FILES:.c=.o)
+OBJ_TEST    := $(TEST_FILES:.c=.o)
+INCLUDES    := -I$(SRC_DIR)
+
+all: $(EXEC)
+
+$(EXEC): $(OBJ_FILES) $(OBJ_TEST)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+clean:
+	rm -f $(OBJ_FILES) $(OBJ_TEST) $(EXEC)
+
+run: $(EXEC)
+	./$(EXEC)
+
+.PHONY: all clean run

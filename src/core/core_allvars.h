@@ -628,6 +628,7 @@ struct runtime_params
     int BufferSizeInitialMB;    /* Initial I/O buffer size in MB */
     int BufferSizeMinMB;        /* Minimum I/O buffer size in MB */
     int BufferSizeMaxMB;        /* Maximum I/O buffer size in MB */
+    int EnableMemoryMapping;    /* Enable memory mapping for input files */
     
     /* Module system configuration */
     char ModuleDir[MAX_STRING_LEN];  /* Directory for module search */
