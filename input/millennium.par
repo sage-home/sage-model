@@ -79,11 +79,11 @@ Reionization_zr         7.0   %using the analytic fit of Kravtsov et al. 2004 (R
 EnergySN                1.0e51  %energy per supernova
 EtaSN                   5.0e-3  %supernova efficiency
 
-SfrEfficiency_Alpha            0.0     %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
-FeedbackReheatingEpsilon_Alpha 0.0     %controls redshift dependence of reheating
-FeedbackEjectionEfficiency_Alpha 0.0   %controls redshift dependence of ejection
-ReIncorporationFactor_Alpha    0.0    %controls redshift dependence of reincorporation
-RadioModeEfficiency_Alpha      0.0    %controls redshift dependence: Radio_eff(z) = Radio_eff(0)*(1+z)^alpha
+SfrEfficiency_Alpha            0.21     %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
+FeedbackReheatingEpsilon_Alpha 0.002     %controls redshift dependence of reheating
+FeedbackEjectionEfficiency_Alpha 0.83   %controls redshift dependence of ejection
+ReIncorporationFactor_Alpha    -0.34    %controls redshift dependence of reincorporation
+RadioModeEfficiency_Alpha      -0.10    %controls redshift dependence: Radio_eff(z) = Radio_eff(0)*(1+z)^alpha
 
 %------------------------------------------
 %----- Other code-related information -----

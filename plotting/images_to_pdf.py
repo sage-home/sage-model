@@ -115,7 +115,7 @@ def create_pdf(png_files, output_pdf, images_per_page=6):
 def main():
     # Hard-coded folder paths
     folders = [
-         "/Users/mbradley/Documents/PhD/SAGE-PSO/sage-model/output/millennium/plots"
+         "./output/millennium/plots"
     ]
     
     # Hard-coded output PDF filename

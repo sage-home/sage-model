@@ -18,8 +18,12 @@ FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
 # Simulation details
-Hubble_h = 0.73        # Hubble parameter
-BoxSize = 62.5         # h-1 Mpc
+#Hubble_h = 0.677400     # Hubble parameter
+#BoxSize = 400         # h-1 Mpc
+
+# Simulation details
+Hubble_h = 0.73     # Hubble parameter
+BoxSize = 62.5       # h-1 Mpc
 VolumeFraction = 1.0   # Fraction of the full volume output by the model
 
 # Plotting options
@@ -35,10 +39,26 @@ plt.rcParams["font.size"] = 14
 
 # ==================================================================
 
-def read_hdf(filename = None, snap_num = None, param = None):
-
-    property = h5.File(DirName+FileName,'r')
-    return np.array(property[snap_num][param])
+def read_hdf(filename=None, snap_num=None, param=None):
+    """Read data from one or more SAGE model files"""
+    # Get list of all model files in directory
+    model_files = [f for f in os.listdir(DirName) if f.startswith('model_') and f.endswith('.hdf5')]
+    model_files.sort()
+    
+    # Initialize empty array for combined data
+    combined_data = None
+    
+    # Read and combine data from each model file
+    for model_file in model_files:
+        property = h5.File(DirName + model_file, 'r')
+        data = np.array(property[snap_num][param])
+        
+        if combined_data is None:
+            combined_data = data
+        else:
+            combined_data = np.concatenate((combined_data, data))
+            
+    return combined_data
 
 
 # ==================================================================
@@ -53,8 +73,9 @@ if __name__ == '__main__':
     OutputDir = DirName + 'plots/'
     if not os.path.exists(OutputDir): os.makedirs(OutputDir)
 
-    # Read galaxy properties
-    print('Reading galaxy properties from', DirName+FileName)
+    print('Reading galaxy properties from', DirName)
+    model_files = [f for f in os.listdir(DirName) if f.startswith('model_') and f.endswith('.hdf5')]
+    print(f'Found {len(model_files)} model files')
 
     CentralMvir = read_hdf(snap_num = Snapshot, param = 'CentralMvir') * 1.0e10 / Hubble_h
     Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
@@ -113,6 +134,36 @@ if __name__ == '__main__':
     w = np.where(sSFR > sSFRcut)[0]
     massBLU = mass[w]
     (countsBLU, binedges) = np.histogram(massBLU, range=(mi, ma), bins=NB)
+
+    Baldry_Red_x = [7.488977955911820, 7.673346693386770, 7.881763527054110, 8.074148296593190, 8.306613226452910, 
+     8.490981963927860, 8.69939879759519, 8.891783567134270, 9.084168336673350, 9.308617234468940, 
+     9.501002004008020, 9.701402805611220, 9.901803607214430, 10.094188376753500, 10.270541082164300, 
+     10.494989979959900, 10.711422845691400, 10.919839679358700, 11.08817635270540, 11.296593186372700, 
+     11.488977955911800]
+
+    Baldry_Red_y = [-1.9593147751606, -2.9785867237687400, -2.404710920770880, -3.038543897216280, -3.004282655246250, 
+     -2.56745182012848, -2.6959314775160600, -2.464668094218420, -2.730192719486080, -2.618843683083510, 
+     -2.6445396145610300, -2.687366167023560, -2.610278372591010, -2.490364025695930, -2.490364025695930, 
+     -2.4389721627409000, -2.533190578158460, -2.6959314775160600, -2.8929336188436800, -3.4925053533190600, 
+     -4.366167023554600]
+    
+    Baldry_Red_x = [(value - (2*np.log10(Hubble_h/0.70))) for value in Baldry_Red_x]
+    Baldry_Red_y = [10**value for value in Baldry_Red_y]
+
+    Baldry_Blue_x = [7.088176352705410, 7.264529058116230, 7.488977955911820, 7.681362725450900, 7.897795591182370, 
+     8.098196392785570, 8.298597194388780, 8.474949899799600, 8.69939879759519, 8.907815631262530, 
+     9.092184368737470, 9.30060120240481, 9.48496993987976, 9.701402805611220, 9.885771543086170, 
+     10.07815631262530, 10.294589178356700, 10.494989979959900, 10.703406813627300, 10.90380761523050, 
+     11.064128256513000, 11.288577154308600]
+
+    Baldry_Blue_y = [-1.7537473233404700, -1.376873661670240, -1.7023554603854400, -1.4796573875803000, -1.7023554603854400, 
+     -1.5653104925053500, -1.6338329764454000, -1.7965738758030000, -1.7965738758030000, -1.9764453961456100, 
+     -2.0792291220556700, -2.130620985010710, -2.293361884368310, -2.396145610278370, -2.490364025695930, 
+     -2.6445396145610300, -2.635974304068520, -2.8244111349036400, -3.1327623126338300, -3.3897216274089900, 
+     -4.383297644539620, -4.665952890792290]
+    
+    Baldry_Blue_x = [(value - (2*np.log10(Hubble_h/0.70))) for value in Baldry_Blue_x]
+    Baldry_Blue_y = [10**value for value in Baldry_Blue_y]
 
     # Baldry+ 2008 modified data used for the MCMC fitting
     Baldry = np.array([
@@ -182,6 +233,9 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, counts    / volume / binwidth, 'k-', label='Model - All')
     plt.plot(xaxeshisto, countsRED / volume / binwidth, 'r:', lw=2, label='Model - Red')
     plt.plot(xaxeshisto, countsBLU / volume / binwidth, 'b:', lw=2, label='Model - Blue')
+
+    plt.scatter(Baldry_Red_x, Baldry_Red_y, marker = 'D', s=50, c='r', label='Baldry et al. 2008 - Red')
+    plt.scatter(Baldry_Blue_x, Baldry_Blue_y, marker = 'D', s=50, c='b', label='Baldry et al. 2008 - Blue')
 
     plt.yscale('log')
     plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
@@ -418,9 +472,9 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w = np.where(StellarMass > 0.01)[0]
-    if(len(w) > dilute): w = sample(list(w), dilute)
-    mass = np.log10(StellarMass[w])
-    sSFR = np.log10( (SfrDisk[w] + SfrBulge[w]) / StellarMass[w] )
+    if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
+    mass = np.log10(StellarMass[w2])
+    sSFR = np.log10( (SfrDisk[w2] + SfrBulge[w2]) / StellarMass[w2] )
     plt.scatter(mass, sSFR, marker='o', s=1, c='k', alpha=0.5, label='Model galaxies')
 
     # overplot dividing line between SF and passive
@@ -455,7 +509,7 @@ if __name__ == '__main__':
 
     w = np.where((Type == 0) & (StellarMass + ColdGas > 0.0) & 
       (BulgeMass / StellarMass > 0.1) & (BulgeMass / StellarMass < 0.5))[0]
-    if(len(w) > dilute): w = sample(list(w), dilute)
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
     
     mass = np.log10(StellarMass[w])
     fraction = ColdGas[w] / (StellarMass[w] + ColdGas[w])
@@ -489,7 +543,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w = np.where((Type == 0) & (ColdGas / (StellarMass + ColdGas) > 0.1) & (StellarMass > 1.0e8))[0]
-    if(len(w) > dilute): w = sample(list(w), dilute)
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
     
     mass = np.log10(StellarMass[w])
     Z = np.log10((MetalsColdGas[w] / ColdGas[w]) / 0.02) + 9.0
@@ -533,7 +587,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w = np.where((BulgeMass > 1.0e8) & (BlackHoleMass > 01.0e6))[0]
-    if(len(w) > dilute): w = sample(list(w), dilute)
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
 
     bh = np.log10(BlackHoleMass[w])
     bulge = np.log10(BulgeMass[w])
@@ -722,7 +776,7 @@ if __name__ == '__main__':
 
 # -------------------------------------------------------
 
-    print('Plotting the average baryon fraction vs halo mass')
+    print('Plotting the average baryon fraction vs halo mass (can take time)')
 
     plt.figure()
     ax = plt.subplot(111)
@@ -730,11 +784,9 @@ if __name__ == '__main__':
     HaloMass = np.log10(Mvir)
     Baryons = StellarMass + ColdGas + HotGas + EjectedMass + IntraClusterStars + BlackHoleMass
 
-    MinHalo = 11.0
-    MaxHalo = 16.0
-    Interval = 0.1
-    Nbins = int((MaxHalo-MinHalo)/Interval)
-    HaloRange = np.arange(MinHalo, MaxHalo, Interval)
+    MinHalo, MaxHalo, Interval = 11.0, 16.0, 0.1
+    HaloBins = np.arange(MinHalo, MaxHalo + Interval, Interval)
+    Nbins = len(HaloBins) - 1
 
     MeanCentralHaloMass = []
     MeanBaryonFraction = []
@@ -747,90 +799,32 @@ if __name__ == '__main__':
     MeanICS = []
     MeanBH = []
 
-    # Pre-compute central indices for faster lookup
-    unique_centrals = np.unique(CentralGalaxyIndex)
+    bin_indices = np.digitize(HaloMass, HaloBins) - 1
 
-    for i in range(Nbins-1):
-        w1 = np.where((Type == 0) & (HaloMass >= HaloRange[i]) & (HaloMass < HaloRange[i+1]))[0]
+    for i in range(Nbins - 1):
+        w1 = np.where((Type == 0) & (bin_indices == i))[0]
         HalosFound = len(w1)
         
         if HalosFound > 2:
-            # Get unique central galaxies in this mass bin
-            centrals_in_bin = CentralGalaxyIndex[w1]
+            w2 = np.where(np.isin(CentralGalaxyIndex, CentralGalaxyIndex[w1]))[0]
             
-            # Create masks for all galaxies belonging to these centrals
-            central_groups = np.isin(CentralGalaxyIndex, centrals_in_bin)
+            BaryonFraction = np.sum(Baryons[w2]) / np.sum(Mvir[w1])
+            CentralHaloMass = np.log10(Mvir[w1])
             
-            # Calculate statistics for all groups at once
-            group_baryons = Baryons[central_groups]
-            group_stars = StellarMass[central_groups]
-            group_cold = ColdGas[central_groups]
-            group_hot = HotGas[central_groups]
-            group_ejected = EjectedMass[central_groups]
-            group_ics = IntraClusterStars[central_groups]
-            group_bh = BlackHoleMass[central_groups]
+            MeanCentralHaloMass.append(np.mean(CentralHaloMass))
+            MeanBaryonFraction.append(np.mean(BaryonFraction))
+            MeanBaryonFractionU.append(np.mean(BaryonFraction) + np.var(BaryonFraction))
+            MeanBaryonFractionL.append(np.mean(BaryonFraction) - np.var(BaryonFraction))
             
-            # Sum quantities per central galaxy
-            unique_centrals_in_bin = np.unique(CentralGalaxyIndex[central_groups])
-            baryon_sums = np.zeros(len(unique_centrals_in_bin))
-            star_sums = np.zeros(len(unique_centrals_in_bin))
-            cold_sums = np.zeros(len(unique_centrals_in_bin))
-            hot_sums = np.zeros(len(unique_centrals_in_bin))
-            ejected_sums = np.zeros(len(unique_centrals_in_bin))
-            ics_sums = np.zeros(len(unique_centrals_in_bin))
-            bh_sums = np.zeros(len(unique_centrals_in_bin))
-            
-            for idx, central in enumerate(unique_centrals_in_bin):
-                group_mask = CentralGalaxyIndex[central_groups] == central
-                baryon_sums[idx] = np.sum(group_baryons[group_mask])
-                star_sums[idx] = np.sum(group_stars[group_mask])
-                cold_sums[idx] = np.sum(group_cold[group_mask])
-                hot_sums[idx] = np.sum(group_hot[group_mask])
-                ejected_sums[idx] = np.sum(group_ejected[group_mask])
-                ics_sums[idx] = np.sum(group_ics[group_mask])
-                bh_sums[idx] = np.sum(group_bh[group_mask])
-            
-            # Get corresponding halo masses
-            central_halos = Mvir[w1]
-            
-            # Calculate fractions
-            baryon_fractions = baryon_sums / central_halos
-            star_fractions = star_sums / central_halos
-            cold_fractions = cold_sums / central_halos
-            hot_fractions = hot_sums / central_halos
-            ejected_fractions = ejected_sums / central_halos
-            ics_fractions = ics_sums / central_halos
-            bh_fractions = bh_sums / central_halos
-            
-            # Store means and variances
-            MeanCentralHaloMass.append(np.mean(np.log10(central_halos)))
-            MeanBaryonFraction.append(np.mean(baryon_fractions))
-            MeanBaryonFractionU.append(np.mean(baryon_fractions) + np.var(baryon_fractions))
-            MeanBaryonFractionL.append(np.mean(baryon_fractions) - np.var(baryon_fractions))
-            
-            MeanStars.append(np.mean(star_fractions))
-            MeanCold.append(np.mean(cold_fractions))
-            MeanHot.append(np.mean(hot_fractions))
-            MeanEjected.append(np.mean(ejected_fractions))
-            MeanICS.append(np.mean(ics_fractions))
-            MeanBH.append(np.mean(bh_fractions))
+            MeanStars.append(np.mean(np.sum(StellarMass[w2]) / np.sum(Mvir[w1])))
+            MeanCold.append(np.mean(np.sum(ColdGas[w2]) / np.sum(Mvir[w1])))
+            MeanHot.append(np.mean(np.sum(HotGas[w2]) / np.sum(Mvir[w1])))
+            MeanEjected.append(np.mean(np.sum(EjectedMass[w2]) / np.sum(Mvir[w1])))
+            MeanICS.append(np.mean(np.sum(IntraClusterStars[w2]) / np.sum(Mvir[w1])))
+            MeanBH.append(np.mean(np.sum(BlackHoleMass[w2]) / np.sum(Mvir[w1])))
 
-    # Convert lists to arrays for plotting
-    MeanCentralHaloMass = np.array(MeanCentralHaloMass)
-    MeanBaryonFraction = np.array(MeanBaryonFraction)
-    MeanBaryonFractionU = np.array(MeanBaryonFractionU)
-    MeanBaryonFractionL = np.array(MeanBaryonFractionL)
-    MeanStars = np.array(MeanStars)
-    MeanCold = np.array(MeanCold)
-    MeanHot = np.array(MeanHot)
-    MeanEjected = np.array(MeanEjected)
-    MeanICS = np.array(MeanICS)
-
-    # Now do all the plotting
     plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='TOTAL')
-    plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL,
-        facecolor='purple', alpha=0.25, label='TOTAL')
-
+    plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL, facecolor='purple', alpha=0.25, label='TOTAL')
     plt.plot(MeanCentralHaloMass, MeanStars, 'k--', label='Stars')
     plt.plot(MeanCentralHaloMass, MeanCold, label='Cold', color='blue')
     plt.plot(MeanCentralHaloMass, MeanHot, label='Hot', color='red')
@@ -839,10 +833,8 @@ if __name__ == '__main__':
 
     plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
     plt.ylabel(r'$\mathrm{Baryon\ Fraction}$')
-
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
-
     plt.axis([10.8, 15.0, 0.0, 0.2])
 
     leg = plt.legend(bbox_to_anchor=[0.99, 0.6])
@@ -863,7 +855,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w = np.where((Type == 0) & (Mvir > 1.0e10) & (StellarMass > 0.0))[0]
-    if(len(w) > dilute): w = sample(list(w), dilute)
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
 
     HaloMass = np.log10(Mvir[w])
     plt.scatter(HaloMass, np.log10(StellarMass[w]), marker='o', s=0.3, c='k', alpha=0.5, label='Stars')
@@ -893,8 +885,8 @@ if __name__ == '__main__':
 
     plt.figure()  # New figure
 
-    w = np.where((Mvir > 0.0) & (StellarMass > 1.0e9))[0]
-    if(len(w) > dilute): w = sample(list(w), dilute)
+    w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
+    if(len(w) > dilute): w = sample(list((w)), dilute)
 
     xx = Posx[w]
     yy = Posy[w]
@@ -925,3 +917,118 @@ if __name__ == '__main__':
     print('Saved file to', outputFile, '\n')
     plt.close()
 
+    print('Plotting the spatial distribution of galaxies in 50 Mpc^3 sub-boxes')
+
+    plt.figure(figsize=(10, 10))  # Adjust figure size as needed
+  
+    w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
+    if(len(w) > dilute): w = sample(list((w)), dilute)
+
+    xx = Posx[w]
+    print(xx)
+    yy = Posy[w]
+    print(yy)
+    zz = Posz[w]
+    print(zz)
+
+    sub_box_size = 56.0  # Size of each sub-box in Mpc
+    num_sub_boxes = int(BoxSize / sub_box_size)
+
+    for i in range(num_sub_boxes):
+        for j in range(num_sub_boxes):
+            ax = plt.subplot(num_sub_boxes, num_sub_boxes, i * num_sub_boxes + j + 1)
+            
+            x_min = i * sub_box_size
+            x_max = (i + 1) * sub_box_size
+            y_min = j * sub_box_size
+            y_max = (j + 1) * sub_box_size
+            
+            w_sub_box = np.where((xx >= x_min) & (xx < x_max) & (yy >= y_min) & (yy < y_max))[0]
+            
+            if len(w_sub_box) > 0:
+                plt.scatter(xx[w_sub_box], yy[w_sub_box], marker='o', s=0.3, c='k', alpha=0.5)
+            else:
+                # Highlight empty sub-boxes with a different color or marker
+                plt.plot([], [], 'ro', markersize=10)  # Empty sub-box marker
+            
+            plt.xlim(x_min, x_max)
+            plt.ylim(y_min, y_max)
+            plt.xticks([])
+            plt.yticks([])
+            
+            if i == num_sub_boxes - 1:
+                plt.xlabel(f'{y_min} < y < {y_max}')
+            if j == 0:
+                plt.ylabel(f'{x_min} < x < {x_max}')
+
+    plt.tight_layout()
+
+    outputFile = OutputDir + '14.SpatialDistributionSubBoxes' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # After the existing spatial plots, add:
+    plt.figure(figsize=(10,10))
+
+    w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
+    if(len(w) > dilute): w = sample(list((w)), dilute)
+
+    xx = Posx[w]
+    yy = Posy[w]
+    
+    h, xedges, yedges = np.histogram2d(xx, yy, bins=75)
+    plt.imshow(h.T, origin='lower', extent=[0, BoxSize, 0, BoxSize], 
+            aspect='equal', cmap='viridis')
+    plt.colorbar(label='Number of galaxies')
+    plt.xlabel('x (Mpc/h)')
+    plt.ylabel('y (Mpc/h)')
+    plt.title('Galaxy Density')
+    outputFile = OutputDir + '15.DensityPlot' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    print('Checking for holes in the galaxy distribution')
+
+    w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
+    if(len(w) > dilute): w = sample(list((w)), dilute)
+
+    xx = Posx[w]
+    print(xx)
+    yy = Posy[w]
+    zz = Posz[w]
+
+    width = 56.0  # Width of each sub-box in Mpc
+    uptoX = 0.0
+    uptoY = 0.0
+    uptoZ = 0.0
+
+    empty_regions = []
+
+    while uptoX < BoxSize:
+        while uptoY < BoxSize:
+            while uptoZ < BoxSize:
+                w_sub_box = np.where((xx >= uptoX) & (xx < uptoX + width) &
+                                    (yy >= uptoY) & (yy < uptoY + width) &
+                                    (zz >= uptoZ) & (zz < uptoZ + width))[0]
+                
+                if len(w_sub_box) == 0:
+                    empty_regions.append((uptoX, uptoX + width, uptoY, uptoY + width, uptoZ, uptoZ + width))
+                
+                uptoZ += width
+            
+            uptoZ = 0.0
+            uptoY += width
+        
+        uptoY = 0.0
+        uptoX += width
+
+    print("Number of empty regions found:", len(empty_regions))
+
+    if len(empty_regions) > 0:
+        print("Empty regions (x_min, x_max, y_min, y_max, z_min, z_max):")
+        for region in empty_regions:
+            print(region)
+    else:
+        print("No empty regions found.")

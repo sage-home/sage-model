@@ -1,0 +1,5 @@
+SfrEfficiency_Alpha,SFE_Alpha,0,-1.0,1.0
+FeedbackReheatingEpsilon_Alpha,eDisk_Alpha,0,0.0,2.0
+FeedbackEjectionEfficiency_Alpha,eHalo_Alpha,0,0.0,1.0
+ReIncorporationFactor_Alpha,eRein_Alpha,0,-1.0,0.05
+RadioModeEfficiency_Alpha,eRadio_Alpha,0,-0.5,0.05
