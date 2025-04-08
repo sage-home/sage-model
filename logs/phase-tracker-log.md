@@ -51,7 +51,7 @@
 
 ### Phase 3.3: Memory Optimization 🔄 IN PROGRESS
 - [x] Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
-- [ ] Create memory mapping options for large files
+- [x] Create memory mapping options for large files
 - [x] Optimize allocation with geometric growth instead of fixed increments
 - [ ] Implement memory pooling for galaxy allocations
 
@@ -63,12 +63,13 @@
    - Added support for both binary and HDF5 output formats
    - Implemented runtime parameters for buffer configuration
 
-2. Memory Mapping: 🔄 STARTING
-   - Research optimal memory mapping strategies for large merger tree files
-   - Implement memory mapping options for both binary and HDF5 formats
-   - Develop fallback mechanisms for platforms or file systems with limited memory mapping support
+2. Memory Mapping: ✅ COMPLETED
+   - Implemented cross-platform memory mapping for large input files (POSIX/Windows)
+   - Added integration with LHalo binary format for efficient file access
+   - Created fallback mechanisms to standard I/O when mapping is unavailable or fails
+   - Added runtime parameter (EnableMemoryMapping) to control memory mapping
 
-3. Memory Pooling: 🔄 PLANNING
+3. Memory Pooling: 🔄 STARTING
    - Design efficient memory pooling system for galaxy structure allocations
    - Implement size-based allocation strategies to reduce fragmentation
    - Create comprehensive tracking and debugging facilities for memory usage

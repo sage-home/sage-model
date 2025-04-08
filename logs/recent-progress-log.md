@@ -223,3 +223,12 @@
 - Added comprehensive test suite for buffer operations
 - Modified files: src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/io/io_binary_output.h, src/io/io_binary_output.c, src/io/io_hdf5_output.h, Makefile
 - Added files: src/io/io_buffer_manager.h, src/io/io_buffer_manager.c, tests/test_io_buffer_manager.c, tests/Makefile.buffer_manager, docs/buffer_manager_guide.md, docs/phase3.3_step2_implementation_report.md
+
+2025-04-08: [Phase 3.3 Step 3] Implemented Memory Mapping
+- Created cross-platform memory mapping API (POSIX/Windows) for efficient file access
+- Added EnableMemoryMapping runtime parameter with graceful fallback to standard I/O
+- Integrated with LHalo binary format for efficient merger tree file access
+- Implemented page alignment handling for proper memory mapping
+- Created comprehensive tests for memory mapping API and format integration
+- Modified files: Makefile, src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/io/io_lhalo_binary.c, src/io/io_lhalo_binary.h
+- Added files: src/io/io_memory_map.h, src/io/io_memory_map.c, tests/test_io_memory_map.c, tests/test_lhalo_binary_mmap.c, tests/test_memory_mapping_param.c, tests/Makefile.memory_map, tests/Makefile.lhalo_mmap, tests/Makefile.param, docs/memory_mapping_implementation_report.md

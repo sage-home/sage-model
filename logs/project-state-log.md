@@ -133,9 +133,9 @@ I/O is now fully abstracted through a unified interface system:
   - Property validation for extension compatibility
   - Integration with core I/O pipeline
 - Memory optimization components:
-  - `array_utils`: Provides geometric growth for dynamic arrays
+  - `array_utils`: Provides geometric growth for dynamic arrays (reduced allocation frequency)
   - `io_buffer_manager`: Configurable buffered I/O with automatic resizing
-  - (In progress) Memory mapping for efficient tree file access
+  - `io_memory_map`: Cross-platform memory mapping for efficient file access
   - (Planned) Memory pooling for galaxy structure allocation
 
 ```

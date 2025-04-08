@@ -148,3 +148,7 @@
 2025-04-08: [Phase 3.3] Removal of Halo Caching and Prefetching Components
 - Rationale: Upon analysis of SAGE's tree traversal pattern, we identified that halos are only accessed once during traversal (unlike traditional hot-path caching use cases). Implementing caching for halos that are only accessed once would add complexity with no performance benefit.
 - Impact: Removed "Halo Caching" and "Prefetching for depth-first traversal" from Phase 3.3 implementation plan. Effort will be redirected to more beneficial optimizations: completing Buffer Manager integration with HDF5, Memory Mapping for large files, and Memory Pooling for galaxy structures.
+
+2025-04-08: [Phase 3.3] Cross-Platform Memory Mapping Implementation Strategy
+- Rationale: Large merger tree files benefit from memory mapping to reduce I/O operations and leverage OS-level caching. Implementing a cross-platform solution (supporting both POSIX and Windows) with page alignment handling ensures compatibility across research environments while providing significant performance benefits for large datasets.
+- Impact: Created a unified memory mapping API that abstracts platform differences, handles page alignment requirements automatically, and provides graceful fallback to standard I/O when mapping fails. This approach improves I/O performance while maintaining compatibility with existing code and supporting different operating systems.
