@@ -183,7 +183,7 @@ The module interface structure establishes a consistent contract for all physics
 *   **3.1 I/O Interface Abstraction**: Define unified `io_interface` (init, read_forest, write_galaxies, cleanup, resource mgmt). Implement handler registry and format detection. Standardize I/O error reporting. Include unification of galaxy output preparation logic.
 *   **3.2 Format-Specific Implementations**: Refactor existing I/O into handlers implementing the `io_interface`. Add serialization for extended properties. Implement cross-platform binary endianness handling and robust HDF5 resource tracking/cleanup.
 *   **3.3 Memory Optimization**: Implement configurable buffered I/O. Add memory mapping options. Use geometric growth for dynamic array reallocation. Implement memory pooling for galaxy structs.
-*   **3.4 Review Dynamic Limits**: Evaluate hardcoded limits like `ABSOLUTEMAXSNAPS` and implement runtime checks or dynamic resizing if necessary.
+
 
 #### Example Implementation
 ```c
@@ -563,7 +563,7 @@ The pipeline-based evolution replaces the monolithic approach, enabling runtime 
 **Estimated Timeline**: 3-4 months
 
 #### Components
-*   **6.1 Memory Layout Enhancement**: Implement Structure-of-Arrays (SoA) for hot-path galaxy data where beneficial. Further optimize memory pooling. Introduce size-segregated pools if needed.
+*   **6.1 Memory Layout Enhancement**: Implement Structure-of-Arrays (SoA) for hot-path galaxy data where beneficial. Further optimize memory pooling. Introduce size-segregated pools if needed. Evaluate hardcoded limits like `ABSOLUTEMAXSNAPS` and implement runtime checks or dynamic resizing if necessary.
 *   **6.2 Tree Traversal Optimization**: Optimize pointer-chasing patterns (e.g., reducing indirections). Consider non-recursive traversal algorithms. Implement memory-efficient data structures for tree nodes (*Note: focuses on traversal logic/structure, not caching/prefetching of halo data itself, which is unneeded for single-pass traversal*).
 *   **6.3 Vectorized Physics Calculations**: Implement SIMD for suitable calculations. Explore batch processing of galaxies. Implement architecture-specific dispatch.
 *   **6.4 Parallelization Enhancements**: Refine load balancing. Explore finer-grained parallelism. Optimize MPI communication. Consider hybrid MPI+OpenMP.

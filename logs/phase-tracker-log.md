@@ -10,87 +10,82 @@
 - At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
-# Current Phase: 3/7 (I/O Abstraction and Memory Optimization)
+# Current Phase: 4/7 (Advanced Plugin Infrastructure)
 
 ## Phase Objectives
-- Implement a unified I/O interface that preserves existing functionality
-- Create format-specific handlers for different input/output formats
-- Optimize memory usage for large datasets
-- Implement efficient buffered I/O for output operations
-- Create memory mapping options for large input files
-- Implement memory pooling for galaxy allocations
+- Implement cross-platform dynamic library loading mechanism
+- Create flexible module development framework with templates and validation tools
+- Develop parameter tuning system with runtime modification capabilities
+- Implement module discovery, manifest parsing, and dependency resolution
+- Create comprehensive error handling and reporting for modules
 
 ## Current Progress
 
-### Phase 3.1: I/O Interface Abstraction ✅ COMPLETED
-- [x] Design unified I/O interface structure with metadata and capabilities
-- [x] Implement common I/O operations (initialize, read_forest, write_galaxies, cleanup)
-- [x] Add HDF5 resource tracking for handles
-- [x] Create registry for format-specific handlers
-- [x] Implement format detection and automatic handler selection
-- [x] Add error handling and validation for I/O operations
+### Phase 4.1: Dynamic Library Loading ⏳ IN PROGRESS
+- [ ] Design cross-platform loading abstraction for Linux/macOS/Windows
+- [ ] Implement dynamic library loading with proper error handling
+- [ ] Add symbol lookup and resolution
+- [ ] Implement safe library unloading
+- [ ] Create comprehensive error reporting for loading issues
 
-### Phase 3.2: Format-Specific Implementations ✅ COMPLETED
-- [x] Refactor binary format handlers to use the common interface
-- [x] Add cross-platform endianness detection and conversion
-- [x] Refactor HDF5 format handlers to use the common interface
-  - [x] LHalo HDF5 handler framework
-  - [x] ConsistentTrees HDF5 handler framework
-  - [x] Gadget4 HDF5 handler framework
-  - [x] Genesis HDF5 handler framework
-- [x] Implement proper HDF5 resource management to prevent handle leaks
-- [x] Implement serialization support for extended properties
-- [x] Implement binary output handler with extended property support
-- [x] Implement HDF5 output handler with extended property support
-- [x] Update core save function to use the I/O interface
-- [x] Add validation for data consistency across formats
-  - [x] Basic galaxy data validation
-  - [x] Format-specific validation
-  - [x] Extended property validation
-  - [x] I/O interface integration
+### Phase 4.2: Module Development Framework ⏳ QUEUED
+- [ ] Create module template generation system
+- [ ] Implement module validation framework
+- [ ] Add debugging utilities for module development
+- [ ] Provide development documentation with examples
 
-### Phase 3.3: Memory Optimization ✅ COMPLETED
-- [x] Implement configurable buffered reading/writing with runtime-adjustable buffer sizes
-- [x] Create memory mapping options for large files
-- [x] Optimize allocation with geometric growth instead of fixed increments
-- [x] Implement memory pooling for galaxy allocations
+### Phase 4.3: Parameter Tuning System ⏳ QUEUED
+- [ ] Implement parameter registration in modules
+- [ ] Create parameter validation framework with type checking
+- [ ] Add runtime modification capabilities
+- [ ] Implement parameter file import/export
+- [ ] Add bounds checking for numeric parameters
+
+### Phase 4.4: Module Discovery and Loading ⏳ QUEUED
+- [ ] Implement directory scanning for modules
+- [ ] Create manifest parsing system
+- [ ] Add dependency resolution with versioning
+- [ ] Implement module validation at load time
+- [ ] Define and implement API versioning strategy
+
+### Phase 4.5: Error Handling ⏳ QUEUED
+- [ ] Implement comprehensive module error reporting
+- [ ] Add call stack tracing for module interactions
+- [ ] Create standardized logging per module
+- [ ] Implement user-friendly diagnostic information
 
 ## Next Actions
 
-### Phase 3.3 Memory Optimization ✅ COMPLETED
-1. Configurable Buffered I/O: ✅ COMPLETED
-   - Created comprehensive buffer manager with configurable sizes and automatic resizing
-   - Added support for both binary and HDF5 output formats
-   - Implemented runtime parameters for buffer configuration
+### Phase 4.1 Dynamic Library Loading
+1. Cross-Platform Loading Design:
+   - Create a platform-independent API for dynamic library loading
+   - Implement platform-specific backends using appropriate OS functions (dlopen/LoadLibrary)
+   - Add comprehensive error reporting with detailed platform-specific messages
 
-2. Memory Mapping: ✅ COMPLETED
-   - Implemented cross-platform memory mapping for large input files (POSIX/Windows)
-   - Added integration with LHalo binary format for efficient file access
-   - Created fallback mechanisms to standard I/O when mapping is unavailable or fails
-   - Added runtime parameter (EnableMemoryMapping) to control memory mapping
+2. Symbol Resolution Implementation:
+   - Implement safe symbol lookup with proper error handling
+   - Add support for function type checking and validation
+   - Create utility functions for common symbol patterns (module_get_interface, etc.)
 
-3. Memory Pooling: ✅ COMPLETED
-   - Implemented efficient memory pooling system for galaxy structure allocations
-   - Created block-based allocation to reduce memory fragmentation
-   - Added comprehensive free list management for efficient galaxy reuse
-   - Integrated with the galaxy extension system for compatibility
-   - Added runtime parameter (EnableGalaxyMemoryPool) for control
+3. Library Lifecycle Management:
+   - Implement proper library reference counting
+   - Add safe unloading mechanisms with resource cleanup
+   - Create hooks for module lifecycle events (load, unload, activate, deactivate)
 
-### Phase 4 (Plugin Infrastructure) PLANNING
-With Phase 3 now complete, we can begin preparation for Phase 4 (Plugin Infrastructure).
+### Phase 4.2 Module Development Framework (Next Up)
+After completing Phase 4.1, we will focus on creating tools and frameworks to simplify module development, including template generation and validation utilities.
 
 ## Completion Criteria
-- All I/O operations function through the unified interface
-- Memory usage is optimized for large merger trees
-- Measurable performance improvements in tree traversal and galaxy processing
-- Buffer sizes are configurable and automatically adjusted based on workload
-- Memory mapping is properly implemented for supported platforms and formats
-- Memory pooling reduces allocation overhead and fragmentation
-- All tests passing with the new memory optimization system
+- Modules can be loaded dynamically at runtime without recompilation
+- Module developers have clear templates and tools for creating compatible modules
+- Module parameter tuning can be performed at runtime with proper validation
+- Modules can be discovered automatically in specified directories
+- Dependencies between modules are properly handled and validated
+- Error handling provides clear, actionable information for debugging
 
 ## Inter-Phase Dependencies
 - Phase 1 (Preparatory Refactoring): ✅ COMPLETED
 - Phase 2 (Module Interfaces): ✅ COMPLETED
-- Phase 3.1-3.2 (I/O Abstraction): ✅ COMPLETED
-- Phase 3.3 (Memory Optimization): ✅ COMPLETED
-- Phase 4 (Plugin Infrastructure): BLOCKED by Phase 3.3
+- Phase 3 (I/O Abstraction & Memory Optimization): ✅ COMPLETED
+- Phase 4 (Plugin Infrastructure): ⏳ IN PROGRESS
+- Phase 5 (Core Module Migration): BLOCKED by Phase 4
