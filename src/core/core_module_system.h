@@ -157,6 +157,9 @@ struct base_module {
  */
 typedef void* module_library_handle_t;
 
+/* Use types from core_module_parameter.h instead of redefining */
+#include "core_module_parameter.h"
+
 /**
  * Module registry
  * 
@@ -174,6 +177,7 @@ struct module_registry {
         bool dynamic;                     /* Whether this is a dynamically loaded module */
         module_library_handle_t handle;   /* Dynamic library handle (if dynamic) */
         char path[MAX_MODULE_PATH];       /* Path where the module was found */
+        module_parameter_registry_t *parameter_registry; /* Module parameters */
     } modules[MAX_MODULES];
     
     /* Quick lookup for modules by type */
@@ -470,6 +474,185 @@ const char *module_type_name(enum module_type type);
  * @return Module type enum value, or MODULE_TYPE_UNKNOWN if not recognized
  */
 enum module_type module_type_from_string(const char *type_name);
+
+/* Parameter system integration functions */
+
+/**
+ * Get a module's parameter registry
+ * 
+ * Retrieves the parameter registry for a specific module.
+ * 
+ * @param module_id ID of the module
+ * @param registry Output pointer to store the registry
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_parameter_registry(int module_id, module_parameter_registry_t **registry);
+
+/**
+ * Register a parameter with a module
+ * 
+ * Adds a parameter to a module's parameter registry.
+ * 
+ * @param module_id ID of the module
+ * @param param Parameter to register
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_register_parameter_with_module(int module_id, const module_parameter_t *param);
+
+/**
+ * Get a parameter from a module
+ * 
+ * Retrieves a parameter from a module's parameter registry.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param param Output parameter to store the result
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_parameter_from_module(int module_id, const char *name, module_parameter_t *param);
+
+/**
+ * Get an integer parameter from a module
+ * 
+ * Retrieves an integer parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output pointer to store the value
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_int_parameter(int module_id, const char *name, int *value);
+
+/**
+ * Get a float parameter from a module
+ * 
+ * Retrieves a float parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output pointer to store the value
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_float_parameter(int module_id, const char *name, float *value);
+
+/**
+ * Get a double parameter from a module
+ * 
+ * Retrieves a double parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output pointer to store the value
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_double_parameter(int module_id, const char *name, double *value);
+
+/**
+ * Get a boolean parameter from a module
+ * 
+ * Retrieves a boolean parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output pointer to store the value
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_bool_parameter(int module_id, const char *name, bool *value);
+
+/**
+ * Get a string parameter from a module
+ * 
+ * Retrieves a string parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output buffer to store the value
+ * @param max_len Maximum length of the output buffer
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_string_parameter(int module_id, const char *name, char *value, size_t max_len);
+
+/**
+ * Set an integer parameter in a module
+ * 
+ * Sets an integer parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_int_parameter(int module_id, const char *name, int value);
+
+/**
+ * Set a float parameter in a module
+ * 
+ * Sets a float parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_float_parameter(int module_id, const char *name, float value);
+
+/**
+ * Set a double parameter in a module
+ * 
+ * Sets a double parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_double_parameter(int module_id, const char *name, double value);
+
+/**
+ * Set a boolean parameter in a module
+ * 
+ * Sets a boolean parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_bool_parameter(int module_id, const char *name, bool value);
+
+/**
+ * Set a string parameter in a module
+ * 
+ * Sets a string parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_string_parameter(int module_id, const char *name, const char *value);
+
+/**
+ * Load parameters from a file for a module
+ * 
+ * Reads parameters from a file into a module's registry.
+ * 
+ * @param module_id ID of the module
+ * @param filename Path to the parameter file
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_load_parameters(int module_id, const char *filename);
+
+/**
+ * Save parameters to a file for a module
+ * 
+ * Writes parameters from a module's registry to a file.
+ * 
+ * @param module_id ID of the module
+ * @param filename Path to the output file
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_save_parameters(int module_id, const char *filename);
 
 #ifdef __cplusplus
 }

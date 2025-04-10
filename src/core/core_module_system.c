@@ -8,10 +8,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "core_module_system.h"
 #include "core_logging.h"
 #include "core_mymalloc.h"
+#include "core_module_parameter.h"
 #include "core_module_callback.h"
+#include "core_module_system.h"
 
 /* Global module registry */
 struct module_registry *global_module_registry = NULL;
@@ -738,6 +739,431 @@ int module_check_dependencies(const struct module_manifest *manifest) {
     return MODULE_STATUS_SUCCESS;
 }
 
+/* Parameter system integration functions */
+
+/**
+ * Get a module's parameter registry
+ * 
+ * Retrieves the parameter registry for a specific module.
+ * 
+ * @param module_id ID of the module
+ * @param registry Output pointer to store the registry
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_parameter_registry(int module_id, module_parameter_registry_t **registry) {
+    if (global_module_registry == NULL) {
+        LOG_ERROR("Module system not initialized");
+        return MODULE_STATUS_NOT_INITIALIZED;
+    }
+    
+    if (registry == NULL) {
+        LOG_ERROR("NULL registry pointer");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    if (module_id < 0 || module_id >= global_module_registry->num_modules) {
+        LOG_ERROR("Invalid module ID: %d", module_id);
+        return MODULE_STATUS_MODULE_NOT_FOUND;
+    }
+    
+    /* Check if module exists */
+    if (global_module_registry->modules[module_id].module == NULL) {
+        LOG_ERROR("Module %d not found", module_id);
+        return MODULE_STATUS_MODULE_NOT_FOUND;
+    }
+    
+    /* Check if parameter registry exists */
+    if (global_module_registry->modules[module_id].parameter_registry == NULL) {
+        /* Initialize parameter registry */
+        global_module_registry->modules[module_id].parameter_registry = 
+            (module_parameter_registry_t *)mymalloc(sizeof(module_parameter_registry_t));
+        
+        if (global_module_registry->modules[module_id].parameter_registry == NULL) {
+            LOG_ERROR("Failed to allocate memory for parameter registry");
+            return MODULE_STATUS_OUT_OF_MEMORY;
+        }
+        
+        int result = module_parameter_registry_init(global_module_registry->modules[module_id].parameter_registry);
+        if (result != MODULE_PARAM_SUCCESS) {
+            LOG_ERROR("Failed to initialize parameter registry for module %d", module_id);
+            myfree(global_module_registry->modules[module_id].parameter_registry);
+            global_module_registry->modules[module_id].parameter_registry = NULL;
+            return MODULE_STATUS_ERROR;
+        }
+        
+        LOG_DEBUG("Parameter registry initialized for module %d", module_id);
+    }
+    
+    *registry = global_module_registry->modules[module_id].parameter_registry;
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Register a parameter with a module
+ * 
+ * Adds a parameter to a module's parameter registry.
+ * 
+ * @param module_id ID of the module
+ * @param param Parameter to register
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_register_parameter_with_module(int module_id, const module_parameter_t *param) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    /* Create a copy of the parameter with the module ID set */
+    module_parameter_t param_copy = *param;
+    param_copy.module_id = module_id;
+    
+    int result = module_register_parameter(registry, &param_copy);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to register parameter for module %d", module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Get a parameter from a module
+ * 
+ * Retrieves a parameter from a module's parameter registry.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param param Output parameter to store the result
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_parameter_from_module(int module_id, const char *name, module_parameter_t *param) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_get_parameter(registry, name, module_id, param);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to get parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Get an integer parameter from a module
+ * 
+ * Retrieves an integer parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output pointer to store the value
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_int_parameter(int module_id, const char *name, int *value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_get_parameter_int(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to get int parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Get a float parameter from a module
+ * 
+ * Retrieves a float parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output pointer to store the value
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_float_parameter(int module_id, const char *name, float *value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_get_parameter_float(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to get float parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Get a double parameter from a module
+ * 
+ * Retrieves a double parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output pointer to store the value
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_double_parameter(int module_id, const char *name, double *value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_get_parameter_double(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to get double parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Get a boolean parameter from a module
+ * 
+ * Retrieves a boolean parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output pointer to store the value
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_bool_parameter(int module_id, const char *name, bool *value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_get_parameter_bool(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to get bool parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Get a string parameter from a module
+ * 
+ * Retrieves a string parameter value from a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Output buffer to store the value
+ * @param max_len Maximum length of the output buffer
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_get_string_parameter(int module_id, const char *name, char *value, size_t max_len) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_get_parameter_string(registry, name, module_id, value, max_len);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to get string parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Set an integer parameter in a module
+ * 
+ * Sets an integer parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_int_parameter(int module_id, const char *name, int value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_set_parameter_int(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to set int parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Set a float parameter in a module
+ * 
+ * Sets a float parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_float_parameter(int module_id, const char *name, float value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_set_parameter_float(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to set float parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Set a double parameter in a module
+ * 
+ * Sets a double parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_double_parameter(int module_id, const char *name, double value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_set_parameter_double(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to set double parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Set a boolean parameter in a module
+ * 
+ * Sets a boolean parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_bool_parameter(int module_id, const char *name, bool value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_set_parameter_bool(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to set bool parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Set a string parameter in a module
+ * 
+ * Sets a string parameter value in a module.
+ * 
+ * @param module_id ID of the module
+ * @param name Name of the parameter
+ * @param value Value to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_string_parameter(int module_id, const char *name, const char *value) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_set_parameter_string(registry, name, module_id, value);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to set string parameter %s for module %d", name, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Load parameters from a file for a module
+ * 
+ * Reads parameters from a file into a module's registry.
+ * 
+ * @param module_id ID of the module
+ * @param filename Path to the parameter file
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_load_parameters(int module_id, const char *filename) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_load_parameters_from_file(registry, filename);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to load parameters from file %s for module %d", filename, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Save parameters to a file for a module
+ * 
+ * Writes parameters from a module's registry to a file.
+ * 
+ * @param module_id ID of the module
+ * @param filename Path to the output file
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_save_parameters(int module_id, const char *filename) {
+    module_parameter_registry_t *registry = NULL;
+    int status = module_get_parameter_registry(module_id, &registry);
+    if (status != MODULE_STATUS_SUCCESS) {
+        return status;
+    }
+    
+    int result = module_save_parameters_to_file(registry, filename);
+    if (result != MODULE_PARAM_SUCCESS) {
+        LOG_ERROR("Failed to save parameters to file %s for module %d", filename, module_id);
+        return MODULE_STATUS_ERROR;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
 /**
  * Clean up the module system
  * 
@@ -1369,6 +1795,14 @@ int module_cleanup(int module_id) {
     /* Clear module data */
     global_module_registry->modules[module_id].module_data = NULL;
     global_module_registry->modules[module_id].initialized = false;
+    
+    /* Clean up parameter registry if it exists */
+    if (global_module_registry->modules[module_id].parameter_registry != NULL) {
+        module_parameter_registry_free(global_module_registry->modules[module_id].parameter_registry);
+        myfree(global_module_registry->modules[module_id].parameter_registry);
+        global_module_registry->modules[module_id].parameter_registry = NULL;
+        LOG_DEBUG("Freed parameter registry for module '%s' (ID %d)", module->name, module_id);
+    }
     
     LOG_INFO("Cleaned up module '%s' (ID %d)", module->name, module_id);
     
