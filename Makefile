@@ -35,7 +35,9 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_galaxy_extensions.c core/core_event_system.c \
         core/core_pipeline_system.c core/core_config_system.c \
         core/core_module_callback.c core/core_array_utils.c \
-        core/core_memory_pool.c
+        core/core_memory_pool.c core/core_dynamic_library.c \
+        core/core_module_template.c core/core_module_validation.c \
+        core/core_module_debug.c
 
 # Physics model source files
 PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \
@@ -250,6 +252,11 @@ ifeq ($(DO_CHECKS), 1)
   # Common compiler flags
   CCFLAGS += -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs
   LIBFLAGS += -lm
+  
+  # Platform-specific dynamic library linker flags
+  ifeq ($(UNAME), Linux)
+    LIBFLAGS += -ldl
+  endif
 
 else
   # For clean targets with HDF5 enabled
@@ -259,7 +266,7 @@ else
 endif
 
 # -------------- Build Targets ----------------------------
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug
 
 all: $(SAGELIB) $(EXEC)
 
@@ -318,7 +325,16 @@ clean:
 test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_memory_map tests/test_io_memory_map.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation
+test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_module_framework: tests/test_module_framework.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_framework tests/test_module_framework.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_module_debug: tests/test_module_debug.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_debug tests/test_module_debug.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug
 	@echo "Running SAGE tests..."
 	./tests/test_sage.sh
 	./tests/test_io_interface
@@ -328,5 +344,8 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	./tests/test_binary_output
 	./tests/test_hdf5_output
 	./tests/test_io_validation
+	./tests/test_dynamic_library
+	./tests/test_module_framework
+	./tests/test_module_debug
 	@cd tests && make -f Makefile.memory_tests
 	@echo "All tests completed successfully."

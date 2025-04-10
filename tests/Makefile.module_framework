@@ -1,0 +1,23 @@
+# Test makefile for module development framework
+CC := clang
+CFLAGS := -g -Wall -I../src -I../src/core
+
+# Platform detection for linker flags
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
+    LDFLAGS := -ldl
+else
+    LDFLAGS :=
+endif
+
+# Test programs
+TEST_MODULE_FRAMEWORK := test_module_framework
+
+all: $(TEST_MODULE_FRAMEWORK)
+
+$(TEST_MODULE_FRAMEWORK): test_module_framework.c
+	$(CC) $(CFLAGS) -o $@ $^ -L.. -lsage -lm $(LDFLAGS)
+
+clean:
+	rm -f $(TEST_MODULE_FRAMEWORK)
+	rm -rf test_module_output
