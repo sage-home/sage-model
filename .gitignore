@@ -34,6 +34,7 @@ tests/test_memory_pool
 tests/test_dynamic_library
 tests/test_module_debug
 tests/test_module_framework
+tests/test_module_parameter
 
 trees_*
 *.o
