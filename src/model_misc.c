@@ -172,5 +172,32 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
   return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
 }
 
+// Global counter for logging frequency control
+static int param_calculation_counter = 0;
 
+double test_redshift_param(double param_z0, double alpha, double z) {
+  double result = param_z0 * pow(1.0 + z, alpha);
+  
+  // Only log every 10000 calculations
+  if (param_calculation_counter % 500000 == 0) {
+      printf("TEST: param_z0=%f, alpha=%f, z=%f, result=%f\n", 
+             param_z0, alpha, z, result);
+  }
+
+  if (z == 0.0) {
+    printf("Z=0 CALC: param_z0=%f, alpha=%f, result=%f\n", 
+          param_z0, alpha, param_z0); // Should be exactly param_z0
+}
+  param_calculation_counter++;
+  
+  return result;
+}
+
+double get_redshift_dependent_parameter(double param_z0, double alpha, double redshift)
+{
+
+  test_redshift_param(param_z0, alpha, redshift);
+
+  return param_z0 * pow(1.0 + redshift, alpha);
+}
 

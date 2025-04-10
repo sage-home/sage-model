@@ -68,7 +68,7 @@ FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas t
 ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 
 RadioModeEfficiency     0.08  %AGN radio mode efficiency (AGNrecipeOn=2)
-QuasarModeEfficiency    0.008 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
+QuasarModeEfficiency    0.005 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
 BlackHoleGrowthRate     0.015 %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
 
 ThreshMajorMerger       0.3   %major merger when mass ratio greater than this
@@ -102,6 +102,7 @@ IntegrationBins             10     %Number of radial bins to use for integration
 %------------------------------------------
 EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
 EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
+
 
 %------------------------------------------
 %----- Other code-related information -----

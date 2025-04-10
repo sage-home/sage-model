@@ -56,6 +56,7 @@ zeros5 = lambda: np.zeros(shape=(1, len(ssfrbins)))
 zeros6 = lambda: np.zeros(shape=(1, len(mbins2)))
 zeros7 = lambda: np.zeros(shape=(1, len(mbins)))
 zeros8 = lambda: np.zeros(shape=(1, len(mbins)))
+zeros9 = lambda: np.zeros(shape=(1, len(mbins)))
 
 class Constraint(object):
     """Base classes for constraint objects"""
@@ -110,9 +111,10 @@ class Constraint(object):
             hist_bhmf = zeros6()
             hist_smf_red = zeros7()
             hist_smf_blue = zeros8()
+            hist_h2 = zeros9()
 
             seed(2222)
-            fields = ['StellarMass', 'BlackHoleMass', 'Len', 'SfrBulge', 'BulgeMass', 'Mvir', 'SfrDisk']
+            fields = ['StellarMass', 'BlackHoleMass', 'Len', 'SfrBulge', 'BulgeMass', 'Mvir', 'SfrDisk', 'H2_gas']
             Nage = 14
             snap_num = f'Snap_{snap}'
             sSFRcut = -11.0

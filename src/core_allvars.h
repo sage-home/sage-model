@@ -435,6 +435,7 @@ struct params
     int32_t   DiskInstabilityOn;
     // Environmental effects parameters
     int32_t EnvironmentalEffectsOn;  // 0 = off, 1 = on
+    int32_t    MassReincorporationOn;  /* Flag to enable mass-dependent reincorporation */
 
     double RecycleFraction;
     double Yield;
@@ -461,6 +462,15 @@ struct params
     double MetallicityExponent;  // Exponent for metallicity dependence
     double EnvEffectStrength;    // Strength multiplier (0.0-2.0)
     double IntegrationBins;
+
+    double SfrEfficiency_Alpha;
+    double FeedbackReheatingEpsilon_Alpha;
+    double FeedbackEjectionEfficiency_Alpha;
+
+    double CriticalReincMass;      /* Mass threshold below which to apply delayed reincorporation (in 10^10 M_sun/h) */
+    double ReincorporationMassExp; /* Exponent for mass dependence of reincorporation */
+    double MinReincorporationFactor; /* Minimum reincorporation rate as fraction of standard rate */
+
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;
     double UnitMass_in_g;

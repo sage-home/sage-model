@@ -17,6 +17,17 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
     double reheated_mass = 0.0; // initialise
 
+    // Get current redshift for this galaxy
+    double z = run_params->ZZ[galaxies[p].SnapNum];
+    
+    // Calculate redshift-dependent parameters
+    double sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
+                                                     run_params->SfrEfficiency_Alpha, z);
+    double fb_reheat = get_redshift_dependent_parameter(run_params->FeedbackReheatingEpsilon, 
+                                                      run_params->FeedbackReheatingEpsilon_Alpha, z);
+    double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
+                                                     run_params->FeedbackEjectionEfficiency_Alpha, z);
+
     // Star formation rate tracking
     galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
     galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
@@ -39,7 +50,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         // from Kauffmann (1996) eq7 x piR^2, (Vvir in km/s, reff in Mpc/h) in units of 10^10Msun/h
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
-            strdot = run_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
+            strdot = sfr_eff * (galaxies[p].ColdGas - cold_crit) / tdyn;
         } else {
             strdot = 0.0;
         }
@@ -53,7 +64,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         // Use H2 gas for star formation with a critical threshold
         const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].H2_gas > h2_crit && tdyn > 0.0) {
-            strdot = run_params->SfrEfficiency * (galaxies[p].H2_gas - h2_crit) / tdyn;
+            strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;
         } else {
             strdot = 0.0;
         }
@@ -76,7 +87,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
                 }
                 
                 // Scale efficiency with surface density (effectively implementing Bigiel's law)
-                double local_efficiency = run_params->SfrEfficiency;
+                double local_efficiency = sfr_eff;
                 if(h2_surface_density > 0.0) {
                     // Use lower efficiency at low surface densities
                     if(h2_surface_density < 10.0) {
@@ -117,7 +128,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
                 }
                 
                 // Apply mass-dependent efficiency
-                strdot = run_params->SfrEfficiency * mass_scaling * galaxies[p].H2_gas / tdyn;
+                strdot = sfr_eff * mass_scaling * galaxies[p].H2_gas / tdyn;
             }
         }
     } else {
@@ -132,7 +143,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     // Determine feedback reheating
     if (run_params->SupernovaRecipeOn == 1) {
-        reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
+        reheated_mass = fb_reheat * stars;
     }
 
     XASSERT(reheated_mass >= 0.0, -1,
@@ -171,9 +182,9 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             ejected_mass =
-                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
                 (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                 run_params->FeedbackReheatingEpsilon) * stars;
+                fb_reheat) * stars;
         } else {
             ejected_mass = 0.0;
         }

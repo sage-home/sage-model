@@ -115,11 +115,11 @@ def create_pdf(png_files, output_pdf, images_per_page=6):
 def main():
     # Hard-coded folder paths
     folders = [
-         "/Users/mbradley/Documents/PhD/SAGE-PSO/sage-model/output/millennium/plots"
+         "/Users/mbradley/Documents/PhD/SAGE-GAS/sage-model/output/millennium/plots"
     ]
     
     # Hard-coded output PDF filename
-    output_pdf = "./output/millennium_26.pdf"
+    output_pdf = "./output/millennium_h1h2.pdf"
     
     png_files = get_png_files(folders)
     print(f"Found {len(png_files)} PNG files.")
