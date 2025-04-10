@@ -432,6 +432,8 @@ struct params
     double FeedbackEjectionEfficiency_Alpha;
     double ReIncorporationFactor_Alpha;
     double RadioModeEfficiency_Alpha;
+    int32_t    MassReincorporationOn;  /* Flag to enable mass-dependent reincorporation */
+
 
     double RecycleFraction;
     double Yield;
@@ -448,6 +450,10 @@ struct params
     double Reionization_z0;
     double Reionization_zr;
     double ThresholdSatDisruption;
+
+    double CriticalReincMass;      /* Mass threshold below which to apply delayed reincorporation (in 10^10 M_sun/h) */
+    double ReincorporationMassExp; /* Exponent for mass dependence of reincorporation */
+    double MinReincorporationFactor; /* Minimum reincorporation rate as fraction of standard rate */
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

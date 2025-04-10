@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /fred/oz004/mbradley/SAGE-PARAMS/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-PARAMS/sage-model/output/millennium/
 
 FirstFile         0
 LastFile          7
@@ -29,9 +29,9 @@ TreeType              lhalo_binary % either 'genesis_lhalo_hdf5' or 'lhalo_binar
 NumSimulationTreeFiles 8 % Number of files the trees are split over. This can be different to `FirstFile` -> `LastFile` range.
 
 %SimulationDir   /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/
-SimulationDir   /fred/oz004/mbradley/SAGE-PARAMS/sage-model/input/millennium/trees/
+SimulationDir   /Users/mbradley/Documents/PhD/SAGE-PARAMS/sage-model/input/millennium/trees/
 %FileWithSnapList /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/millennium.a_list
-FileWithSnapList /fred/oz004/mbradley/SAGE-PARAMS/sage-model/input/millennium/trees/millennium.a_list
+FileWithSnapList /Users/mbradley/Documents/PhD/SAGE-PARAMS/sage-model/input/millennium/trees/millennium.a_list
 LastSnapShotNr        63
 
 Omega           0.25
@@ -79,11 +79,16 @@ Reionization_zr         7.0   %using the analytic fit of Kravtsov et al. 2004 (R
 EnergySN                1.0e51  %energy per supernova
 EtaSN                   5.0e-3  %supernova efficiency
 
-SfrEfficiency_Alpha            0.21     %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
-FeedbackReheatingEpsilon_Alpha 0.002     %controls redshift dependence of reheating
-FeedbackEjectionEfficiency_Alpha 0.83   %controls redshift dependence of ejection
-ReIncorporationFactor_Alpha    -0.34    %controls redshift dependence of reincorporation
-RadioModeEfficiency_Alpha      -0.10    %controls redshift dependence: Radio_eff(z) = Radio_eff(0)*(1+z)^alpha
+SfrEfficiency_Alpha            0.0     %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
+FeedbackReheatingEpsilon_Alpha 0.0     %controls redshift dependence of reheating
+FeedbackEjectionEfficiency_Alpha 0.0   %controls redshift dependence of ejection
+ReIncorporationFactor_Alpha    0.0    %controls redshift dependence of reincorporation
+RadioModeEfficiency_Alpha      0.0    %controls redshift dependence: Radio_eff(z) = Radio_eff(0)*(1+z)^alpha
+
+MassReincorporationOn       1
+CriticalReincMass           5.0      % affects more massive halos
+ReincorporationMassExp      2.0      % stronger mass dependence
+MinReincorporationFactor    0.01     % more extreme delay in dwarfs
 
 %------------------------------------------
 %----- Other code-related information -----

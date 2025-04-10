@@ -3,8 +3,8 @@
 # Define arguments for main.py
 CONFIG_PATH="/fred/oz004/mbradley/SAGE-PARAMS/sage-model/input/millennium.par"
 BASE_PATH="/fred/oz004/mbradley/SAGE-PARAMS/sage-model/sage"
-OUTPUT_PATH="/fred/oz004/mbradley/SAGE-PARAMS/sage-model/output/millennium_pso_alphas_SMFz0"
-PARTICLES=14
+OUTPUT_PATH="/fred/oz004/mbradley/SAGE-PARAMS/sage-model/output/millennium_pso_z0"
+PARTICLES=16
 ITERATIONS=30
 TEST="student-t"
 CONSTRAINTS="SMF_z0"
@@ -16,12 +16,9 @@ SIM_MINI_MILLENNIUM=1
 VOL_FRAC=1.0
 OMEGA0=0.25 
 H0=0.73
-CSVOUTPUT="/fred/oz004/mbradley/SAGE-PARAMS/sage-model/output/millennium_pso_alphas_SMFz0/params_z0.csv"
-SPACEFILE="/fred/oz004/mbradley/SAGE-PARAMS/sage-model/optim/space_alphas.txt"
+CSVOUTPUT="/fred/oz004/mbradley/SAGE-PARAMS/sage-model/output/millennium_pso_z0/params_z0.csv"
+SPACEFILE="/fred/oz004/mbradley/SAGE-PARAMS/sage-model/optim/space.txt"
 ACCOUNT="oz004"
-
-ml purge
-ml restore basic
 
 
 python3 ./main.py \

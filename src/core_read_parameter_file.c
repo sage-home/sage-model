@@ -253,6 +253,22 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
 
+    strncpy(ParamTag[NParam], "MassReincorporationOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->MassReincorporationOn);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "CriticalReincMass", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CriticalReincMass);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "ReincorporationMassExp", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ReincorporationMassExp);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "MinReincorporationFactor", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->MinReincorporationFactor);
+    ParamID[NParam++] = DOUBLE;
+
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;
