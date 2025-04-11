@@ -13,14 +13,14 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
 {
     /* If mass-dependent delayed reincorporation is enabled, log some diagnostic information if in VERBOSE mode */
 #ifdef VERBOSE
-static int counter = 0;
-if(run_params->MassReincorporationOn && galaxies[centralgal].Mvir < run_params->CriticalReincMass) {
-    counter++;
-    if(counter % 100000 == 0) { // Only print once every 50,000 galaxies
-        fprintf(stdout, "Delayed reincorporation active for galaxy: HaloNr=%d, Mvir=%g (critical mass=%g)\n",
-                galaxies[centralgal].HaloNr, galaxies[centralgal].Mvir, run_params->CriticalReincMass);
+    static int counter = 0;
+    if(run_params->MassReincorporationOn && galaxies[centralgal].Mvir < run_params->CriticalReincMass) {
+        counter++;
+        if(counter % 50000 == 0) { // Only print once every 50,000 galaxies
+            fprintf(stdout, "Delayed reincorporation active for galaxy: HaloNr=%d, Mvir=%g (critical mass=%g)\n",
+                    galaxies[centralgal].HaloNr, galaxies[centralgal].Mvir, run_params->CriticalReincMass);
+        }
     }
-}
 #endif
     
     // SN velocity is 630km/s, and the condition for reincorporation is that the

@@ -56,6 +56,8 @@ SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 
+MuratovMassLoading    0   %0: switch off; 1: Use Muratov et al. (2015) mass loading
+
 %------------------------------------------
 %----- SAGE model parameters --------------
 %------------------------------------------
@@ -103,6 +105,22 @@ IntegrationBins             10     %Number of radial bins to use for integration
 EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
 EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
 
+%------------------------------------------
+%----- MASS DEPENDANT REINCORPORATION -----
+%------------------------------------------
+
+MassReincorporationOn       1        % enable mass-dependent reincorporation
+CriticalReincMass           3.0      % critical mass in 10^10 Msun/h
+ReincorporationMassExp      1.0      % linear scaling with halo mass
+MinReincorporationFactor    0.1     % minimum 10% of standard rate
+
+%------------------------------------------
+%----- REDSHIFT DEPENDANT PARAMETERS -----
+%------------------------------------------
+
+SfrEfficiency_Alpha                 -0.2   %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
+FeedbackReheatingEpsilon_Alpha      0.0   % Redshift evolution exponent for FeedbackReheatingEpsilon (only used if MuratovMassLoading=0)
+FeedbackEjectionEfficiency_Alpha    0.0   %controls redshift dependence of ejection
 
 %------------------------------------------
 %----- Other code-related information -----

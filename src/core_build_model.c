@@ -360,7 +360,12 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             cool_gas_onto_galaxy(p, coolingGas, galaxies, run_params);
 
             // stars form and then explode!
-            starformation_and_feedback(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
+            if(run_params->MuratovMassLoading) {
+                starformation_and_feedback_with_muratov(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
+            } else {
+                starformation_and_feedback(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
+            }
+        
         }
 
         // check for satellite disruption and merger events

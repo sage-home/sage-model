@@ -471,6 +471,8 @@ struct params
     double ReincorporationMassExp; /* Exponent for mass dependence of reincorporation */
     double MinReincorporationFactor; /* Minimum reincorporation rate as fraction of standard rate */
 
+    int32_t    MuratovMassLoading;  /* Flag to enable Muratov et al. (2015) mass loading */
+
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;
     double UnitMass_in_g;

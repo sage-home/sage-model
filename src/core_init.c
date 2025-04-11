@@ -73,6 +73,11 @@ void init(struct params *run_params)
         run_params->EnvEffectStrength = 1.0;  // Default strength
     }
 
+    // Initialize MuratovMassLoading to 0 (disabled) if not set
+    if (run_params->MuratovMassLoading != 0 && run_params->MuratovMassLoading != 1) {
+        run_params->MuratovMassLoading = 0;  // Default to disabled
+    }
+
     set_units(run_params);
 
     read_snap_list(run_params);

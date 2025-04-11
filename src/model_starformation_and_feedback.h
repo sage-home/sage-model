@@ -14,6 +14,8 @@ extern "C" {
                                      struct GALAXY *galaxies, const struct params *run_params);
 
     extern void update_gas_components(struct GALAXY *g, const struct params *run_params);
+    extern void starformation_and_feedback_with_muratov(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
+        struct GALAXY *galaxies, const struct params *run_params);
 
 #ifdef __cplusplus
 }
