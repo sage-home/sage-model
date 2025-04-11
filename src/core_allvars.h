@@ -473,6 +473,12 @@ struct params
 
     int32_t    MuratovMassLoading;  /* Flag to enable Muratov et al. (2015) mass loading */
 
+    // Preventative feedback parameters
+    int PreventativeFeedbackOn;      // Flag to enable/disable preventative feedback
+    double PreventativeFeedbackVcrit; // Critical velocity scale
+    double PreventativeFeedbackAlpha; // Power-law index for velocity dependence
+    double PreventativeFeedbackZdep;  // Redshift dependence parameter
+
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;
     double UnitMass_in_g;

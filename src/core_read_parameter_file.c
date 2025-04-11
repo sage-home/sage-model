@@ -303,6 +303,22 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->MuratovMassLoading);
     ParamID[NParam++] = INT;
 
+    strncpy(ParamTag[NParam], "PreventativeFeedbackOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->PreventativeFeedbackOn);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "PreventativeFeedbackVcrit", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->PreventativeFeedbackVcrit);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "PreventativeFeedbackAlpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->PreventativeFeedbackAlpha);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "PreventativeFeedbackZdep", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->PreventativeFeedbackZdep);
+    ParamID[NParam++] = DOUBLE;
+
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;

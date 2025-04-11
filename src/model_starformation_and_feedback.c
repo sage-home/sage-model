@@ -294,15 +294,18 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
         return 0.0;  // Return zero mass loading if velocity is invalid
     }
     
-    // Calculate base mass-loading factor
+    // Modify the underlying formula directly
     double normalization = 3.0 * pow(1.0 + z, 1.3);
     double eta;
-    
-    // Apply the broken power law from Muratov et al.
+
+    // Apply modified power law
     if (vc < 60.0) {
         eta = normalization * pow(vc / 60.0, -3.2);
-    } else {
+    } else if (vc < 150.0) {
         eta = normalization * pow(vc / 60.0, -1.0);
+    } else {
+        // Steeper falloff for high-mass systems
+        eta = normalization * pow(vc / 60.0, -1.0) * pow(150.0/vc, 2.0);
     }
     
     // Add safety check for the result

@@ -66,7 +66,7 @@ if __name__ == '__main__':
     seed(2222)
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
 
-    OutputDir = DirName + 'plots_slowreinc_slowsfr_radiation/'
+    OutputDir = DirName + 'plots/'
     if not os.path.exists(OutputDir): os.makedirs(OutputDir)
 
     print('Reading galaxy properties from', DirName)
@@ -1007,18 +1007,48 @@ if __name__ == '__main__':
             ics_fractions = ics_sums / central_halos
             bh_fractions = bh_sums / central_halos
             
-            # Store means and variances
-            MeanCentralHaloMass.append(np.mean(np.log10(central_halos)))
-            MeanBaryonFraction.append(np.mean(baryon_fractions))
-            MeanBaryonFractionU.append(np.mean(baryon_fractions) + np.var(baryon_fractions))
-            MeanBaryonFractionL.append(np.mean(baryon_fractions) - np.var(baryon_fractions))
-            
-            MeanStars.append(np.mean(star_fractions))
-            MeanCold.append(np.mean(cold_fractions))
-            MeanHot.append(np.mean(hot_fractions))
-            MeanEjected.append(np.mean(ejected_fractions))
-            MeanICS.append(np.mean(ics_fractions))
-            MeanBH.append(np.mean(bh_fractions))
+            # Filter out any NaN or inf values before calculating statistics
+            valid_indices = np.isfinite(baryon_fractions)
+            if np.sum(valid_indices) > 0:  # Only proceed if we have valid data
+                # Store means and variances with safety checks
+                MeanCentralHaloMass.append(np.mean(np.log10(central_halos[valid_indices])))
+                MeanBaryonFraction.append(np.mean(baryon_fractions[valid_indices]))
+                
+                # Calculate upper and lower bounds with proper limits
+                variance = np.var(baryon_fractions[valid_indices]) if len(baryon_fractions[valid_indices]) > 1 else 0
+                MeanBaryonFractionU.append(np.mean(baryon_fractions[valid_indices]) + variance)
+                MeanBaryonFractionL.append(max(0, np.mean(baryon_fractions[valid_indices]) - variance))
+                
+                # Component fractions
+                if np.sum(np.isfinite(star_fractions)) > 0:
+                    MeanStars.append(np.mean(star_fractions[np.isfinite(star_fractions)]))
+                else:
+                    MeanStars.append(0)
+                    
+                if np.sum(np.isfinite(cold_fractions)) > 0:
+                    MeanCold.append(np.mean(cold_fractions[np.isfinite(cold_fractions)]))
+                else:
+                    MeanCold.append(0)
+                    
+                if np.sum(np.isfinite(hot_fractions)) > 0:
+                    MeanHot.append(np.mean(hot_fractions[np.isfinite(hot_fractions)]))
+                else:
+                    MeanHot.append(0)
+                    
+                if np.sum(np.isfinite(ejected_fractions)) > 0:
+                    MeanEjected.append(np.mean(ejected_fractions[np.isfinite(ejected_fractions)]))
+                else:
+                    MeanEjected.append(0)
+                    
+                if np.sum(np.isfinite(ics_fractions)) > 0:
+                    MeanICS.append(np.mean(ics_fractions[np.isfinite(ics_fractions)]))
+                else:
+                    MeanICS.append(0)
+                    
+                if np.sum(np.isfinite(bh_fractions)) > 0:
+                    MeanBH.append(np.mean(bh_fractions[np.isfinite(bh_fractions)]))
+                else:
+                    MeanBH.append(0)
 
     # Convert lists to arrays for plotting
     MeanCentralHaloMass = np.array(MeanCentralHaloMass)
@@ -1026,22 +1056,53 @@ if __name__ == '__main__':
     MeanBaryonFractionU = np.array(MeanBaryonFractionU)
     MeanBaryonFractionL = np.array(MeanBaryonFractionL)
     MeanStars = np.array(MeanStars)
-    print(MeanStars, MeanCold, MeanBaryonFraction)
     MeanCold = np.array(MeanCold)
     MeanHot = np.array(MeanHot)
     MeanEjected = np.array(MeanEjected)
     MeanICS = np.array(MeanICS)
+    MeanBH = np.array(MeanBH)
 
-    # Now do all the plotting
-    plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='TOTAL')
-    plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL,
-        facecolor='purple', alpha=0.25, label='TOTAL')
+    # Make sure upper bound isn't too high (cap at reasonable cosmological baryon fraction)
+    MeanBaryonFractionU = np.minimum(MeanBaryonFractionU, 0.2)
 
-    plt.plot(MeanCentralHaloMass, MeanStars, 'k--', label='Stars')
-    plt.plot(MeanCentralHaloMass, MeanCold, label='Cold', color='blue')
-    plt.plot(MeanCentralHaloMass, MeanHot, label='Hot', color='red')
-    plt.plot(MeanCentralHaloMass, MeanEjected, label='Ejected', color='green')
-    plt.plot(MeanCentralHaloMass, MeanICS, label='ICS', color='yellow')
+    # Ensure all arrays have valid values
+    mask = np.isfinite(MeanCentralHaloMass) & np.isfinite(MeanBaryonFraction) & \
+        np.isfinite(MeanBaryonFractionU) & np.isfinite(MeanBaryonFractionL)
+
+    # Apply mask to all arrays
+    if np.sum(mask) > 0:  # Only proceed if we have valid data
+        MeanCentralHaloMass = MeanCentralHaloMass[mask]
+        MeanBaryonFraction = MeanBaryonFraction[mask]
+        MeanBaryonFractionU = MeanBaryonFractionU[mask]
+        MeanBaryonFractionL = MeanBaryonFractionL[mask]
+        
+        # Now do all the plotting
+        plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='TOTAL')
+        try:
+            plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL,
+                facecolor='purple', alpha=0.25, label='TOTAL')
+        except:
+            print("Warning: Could not create fill_between for baryon fraction")
+
+        # Make a separate mask for component arrays
+        comp_mask = np.isfinite(MeanStars) & np.isfinite(MeanCold) & np.isfinite(MeanHot) & \
+                    np.isfinite(MeanEjected) & np.isfinite(MeanICS)
+        
+        if np.sum(comp_mask) > 0:
+            # Filter component arrays with their mask
+            MeanStars_masked = MeanStars[comp_mask]
+            MeanCold_masked = MeanCold[comp_mask]
+            MeanHot_masked = MeanHot[comp_mask]
+            MeanEjected_masked = MeanEjected[comp_mask]
+            MeanICS_masked = MeanICS[comp_mask]
+            MeanCentralHaloMass_comp = MeanCentralHaloMass[comp_mask]
+            
+            # Plot components
+            plt.plot(MeanCentralHaloMass_comp, MeanStars_masked, 'k--', label='Stars')
+            plt.plot(MeanCentralHaloMass_comp, MeanCold_masked, label='Cold', color='blue')
+            plt.plot(MeanCentralHaloMass_comp, MeanHot_masked, label='Hot', color='red')
+            plt.plot(MeanCentralHaloMass_comp, MeanEjected_masked, label='Ejected', color='green')
+            plt.plot(MeanCentralHaloMass_comp, MeanICS_masked, label='ICS', color='yellow')
 
     plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
     plt.ylabel(r'$\mathrm{Baryon\ Fraction}$')
@@ -1051,7 +1112,7 @@ if __name__ == '__main__':
 
     plt.axis([10.8, 15.0, 0.0, 0.2])
 
-    leg = plt.legend(bbox_to_anchor=[0.99, 0.6])
+    leg = plt.legend()
     leg.draw_frame(False)
     for t in leg.get_texts():
         t.set_fontsize('medium')

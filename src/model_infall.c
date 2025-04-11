@@ -48,8 +48,13 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         reionization_modifier = 1.0;
     }
 
-    infallingMass =
-        reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].Mvir - (tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS);
+   // Apply preventative feedback - this is the key addition
+   double preventative_factor = calculate_preventative_feedback(centralgal, Zcurr, galaxies, run_params);
+    
+   // Modify infalling mass with both reionization and preventative feedback
+   infallingMass = preventative_factor * reionization_modifier * run_params->BaryonFrac * 
+                  galaxies[centralgal].Mvir - 
+                  (tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS);
     /* reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].deltaMvir - newSatBaryons; */
 
     // the central galaxy keeps all the ejected mass
@@ -216,4 +221,77 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
     galaxies[gal].HotGas += infallingGas;
     if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
 
+}
+
+/**
+ * calculate_preventative_feedback - Calculate the reduction in baryonic accretion due to preventative feedback
+ * 
+ * This function implements the preventative feedback model where gas infall is reduced
+ * for low-mass halos, especially at high redshift. The suppression is stronger for
+ * halos with virial velocities below a characteristic scale.
+ * 
+ * @param gal: Index of the galaxy
+ * @param z: Current redshift
+ * @param galaxies: Array of galaxy structures
+ * @param run_params: Simulation parameters
+ * 
+ * @return: Suppression factor between 0 and 1 (1 = no suppression)
+ */
+double calculate_preventative_feedback(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Skip calculation if preventative feedback is disabled
+    if (run_params->PreventativeFeedbackOn == 0) {
+        return 1.0;
+    }
+    
+    // Get halo virial velocity in km/s
+    double vvir = galaxies[gal].Vvir;
+    
+    // Safety check for valid velocity
+    if (vvir <= 0.0) {
+        return 1.0;
+    }
+    
+    // Much stronger redshift dependence - scales with (1+z)^2 for z>1
+    double z_factor;
+    if (z <= 1.0) {
+        // Mild evolution at low redshift
+        z_factor = pow(1.0 + z, run_params->PreventativeFeedbackZdep);
+    } else {
+        // Strong evolution at high redshift
+        z_factor = pow(1.0 + 1.0, run_params->PreventativeFeedbackZdep) * 
+                   pow((1.0 + z)/(1.0 + 1.0), 2.0);
+    }
+    
+    // Calculate the critical velocity scale with enhanced redshift dependence
+    double v_crit = run_params->PreventativeFeedbackVcrit * z_factor;
+    
+    // Apply mass-dependent suppression with a redshift-dependent floor
+    // Minimum floor decreases with redshift - allowing stronger suppression at high-z
+    double min_floor = 0.3 / (1.0 + 0.5 * (z - 1.0));
+    if (min_floor < 0.05) min_floor = 0.05; // Don't go below 5%
+    if (z <= 1.0) min_floor = 0.3; // Fix floor at low redshift
+    
+    // Calculate suppression factor with redshift-dependent minimum floor
+    double f_suppress = min_floor + (1.0 - min_floor) / 
+                       (1.0 + pow(v_crit/vvir, run_params->PreventativeFeedbackAlpha));
+    
+    // Apply additional suppression for intermediate-mass halos at high redshift
+    // This targets halos in the 10^10-10^11 M☉ range that contribute to the excess
+    if (z > 1.0 && vvir > 50.0 && vvir < 150.0) {
+        double peak_suppress = 0.3 * (z - 1.0) / 2.0; // Up to 30% additional suppression at z=3
+        if (peak_suppress > 0.5) peak_suppress = 0.5;
+        
+        // Gaussian-like suppression centered at 100 km/s
+        double v_relative = (vvir - 100.0) / 50.0;
+        double extra_suppress = peak_suppress * exp(-v_relative * v_relative);
+        
+        f_suppress *= (1.0 - extra_suppress);
+    }
+    
+    // Ensure the suppression factor is between 0 and 1
+    if (f_suppress < 0.05) f_suppress = 0.05; // Absolute minimum 5%
+    if (f_suppress > 1.0) f_suppress = 1.0;
+    
+    return f_suppress;
 }
