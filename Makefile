@@ -337,7 +337,10 @@ test_module_debug: tests/test_module_debug.c $(SAGELIB)
 test_module_parameter: tests/test_module_parameter.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_parameter tests/test_module_parameter.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter
+test_module_discovery: tests/test_module_discovery.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_discovery tests/test_module_discovery.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery
 	@echo "Running SAGE tests..."
 	./tests/test_sage.sh
 	./tests/test_io_interface
@@ -351,6 +354,6 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	./tests/test_module_framework
 	./tests/test_module_debug
 	./tests/test_module_parameter
-	./tests/test_module_parameter
+	./tests/test_module_discovery
 	@cd tests && make -f Makefile.memory_tests
 	@echo "All tests completed successfully."

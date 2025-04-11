@@ -38,4 +38,7 @@
 - Impact: Component 3.4 (Review Dynamic Limits) has been moved to Phase 6.1 (Memory Layout Enhancement) where it aligns better with other memory optimization tasks. This decision allows us to maintain momentum and focus on the more critical plugin infrastructure work without compromising the scientific capabilities of the code.
 
 # Phase 4 Key Decisions
-<!-- New decisions for Phase 4 will be added here -->
+
+2025-04-11: [Phase 4.4] API Versioning Strategy for Modules
+- Rationale: To ensure compatibility between modules and the core, we implemented a dual-constant approach with CORE_API_VERSION (current) and CORE_API_MIN_VERSION (minimum compatible). This allows us to enforce exact matches for critical compatibility while supporting backward compatibility for minor improvements, avoiding unnecessary breakage of existing modules.
+- Impact: Provides a clear compatibility model for module developers and users. Modules targeting specific API versions can specify requirements, while the core can maintain compatibility with older modules. This ensures a smoother upgrade path as the system evolves over time while preserving critical compatibility requirements.

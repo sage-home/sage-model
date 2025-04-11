@@ -12,6 +12,7 @@
 #include "core_mymalloc.h"
 #include "core_module_parameter.h"
 #include "core_module_callback.h"
+#include "core_dynamic_library.h"
 #include "core_module_system.h"
 
 /* Global module registry */
@@ -38,6 +39,35 @@ static void path_join(char *dest, size_t dest_size, const char *base, const char
     } else {
         snprintf(dest, dest_size, "%s/%s", base, component);
     }
+}
+
+/**
+ * Check API version compatibility
+ * 
+ * Verifies if a module's API version is compatible with the core API version.
+ * Currently requires exact match with CORE_API_VERSION or at least CORE_API_MIN_VERSION.
+ * 
+ * @param module_api_version API version specified by the module
+ * @return true if compatible, false otherwise
+ */
+static bool check_api_compatibility(int module_api_version) {
+    /* Check exact match with current version */
+    if (module_api_version == CORE_API_VERSION) {
+        return true;
+    }
+    
+    /* Check if within supported range */
+    if (module_api_version >= CORE_API_MIN_VERSION && 
+        module_api_version < CORE_API_VERSION) {
+        LOG_DEBUG("Module API version %d is older than current version %d, but still compatible",
+                 module_api_version, CORE_API_VERSION);
+        return true;
+    }
+    
+    /* Incompatible version */
+    LOG_ERROR("Module API version %d is incompatible with core API version %d",
+             module_api_version, CORE_API_VERSION);
+    return false;
 }
 
 /**
@@ -614,6 +644,83 @@ int module_add_search_path(const char *path) {
     
     LOG_INFO("Added module search path: %s", path);
     return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Scan a directory for module manifests
+ * 
+ * Searches a directory for *.manifest files and attempts to load the modules.
+ * 
+ * @param dir_path Path to the directory to scan
+ * @param params Pointer to the global parameters structure
+ * @return Number of modules found, or negative error code on failure
+ */
+static int scan_directory_for_modules(const char *dir_path, struct params *params) {
+    DIR *dir;
+    struct dirent *entry;
+    int modules_found = 0;
+    
+    if (dir_path == NULL || params == NULL) {
+        LOG_ERROR("Invalid arguments to scan_directory_for_modules");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    dir = opendir(dir_path);
+    if (dir == NULL) {
+        LOG_WARNING("Failed to open module directory: %s", dir_path);
+        return 0;
+    }
+    
+    LOG_DEBUG("Scanning directory for modules: %s", dir_path);
+    
+    while ((entry = readdir(dir)) != NULL) {
+        /* Skip . and .. */
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        
+        /* Check for .manifest extension */
+        const char *ext = strrchr(entry->d_name, '.');
+        if (ext != NULL && strcmp(ext, ".manifest") == 0) {
+            /* Found a manifest file, try to load it */
+            char manifest_path[MAX_MODULE_PATH];
+            struct module_manifest manifest;
+            
+            path_join(manifest_path, sizeof(manifest_path), dir_path, entry->d_name);
+            LOG_DEBUG("Found manifest file: %s", manifest_path);
+            
+            /* Load and validate the manifest */
+            int status = module_load_manifest(manifest_path, &manifest);
+            if (status == MODULE_STATUS_SUCCESS) {
+                /* Try to find the library path if it's relative */
+                if (manifest.library_path[0] != '/' && 
+                    manifest.library_path[0] != '.') {
+                    /* If no path separator in library path, assume same directory */
+                    if (strchr(manifest.library_path, '/') == NULL) {
+                        char full_lib_path[MAX_MODULE_PATH];
+                        path_join(full_lib_path, sizeof(full_lib_path), dir_path, manifest.library_path);
+                        strncpy(manifest.library_path, full_lib_path, MAX_MODULE_PATH - 1);
+                    }
+                }
+                
+                /* Attempt to load the module */
+                int module_id = module_load_from_manifest(&manifest, params);
+                if (module_id >= 0) {
+                    modules_found++;
+                    LOG_INFO("Loaded module: %s (version %s)", 
+                             manifest.name, manifest.version_str);
+                }
+            } else {
+                LOG_WARNING("Failed to load manifest file: %s (error: %d)", 
+                           manifest_path, status);
+            }
+        }
+    }
+    
+    closedir(dir);
+    LOG_DEBUG("Directory scan complete: %s, found %d modules", 
+             dir_path, modules_found);
+    return modules_found;
 }
 
 /**
@@ -1230,22 +1337,57 @@ int module_discover(struct params *params) {
         LOG_ERROR("Module system not initialized");
         return MODULE_STATUS_NOT_INITIALIZED;
     }
-    
+
     if (!global_module_registry->discovery_enabled) {
         LOG_DEBUG("Module discovery is disabled");
         return 0;
     }
-    
+
     if (params == NULL) {
         LOG_ERROR("NULL parameters pointer for module discovery");
         return MODULE_STATUS_INVALID_ARGS;
     }
-    
+
     /* Check if we have any search paths configured */
     if (global_module_registry->num_module_paths <= 0) {
         LOG_WARNING("No module search paths configured, skipping discovery");
         return 0;
     }
+    
+    LOG_INFO("Starting module discovery in %d search paths", 
+             global_module_registry->num_module_paths);
+    
+    int total_modules_found = 0;
+    
+    /* Scan each search path for modules */
+    for (int i = 0; i < global_module_registry->num_module_paths; i++) {
+        const char *path = global_module_registry->module_paths[i];
+        
+        if (!is_directory(path)) {
+            LOG_WARNING("Module search path is not a directory: %s", path);
+            continue;
+        }
+        
+        LOG_DEBUG("Scanning module search path: %s", path);
+        
+        int modules_found = scan_directory_for_modules(path, params);
+        if (modules_found < 0) {
+            LOG_WARNING("Error scanning module search path: %s (error: %d)", 
+                       path, modules_found);
+            continue;
+        }
+        
+        total_modules_found += modules_found;
+        LOG_DEBUG("Found %d modules in %s", modules_found, path);
+    }
+    
+    if (total_modules_found > 0) {
+        LOG_INFO("Module discovery completed: found %d modules", total_modules_found);
+    } else {
+        LOG_INFO("Module discovery completed: no modules found");
+    }
+    
+    return total_modules_found;
     
     int modules_discovered = 0;
     
@@ -1445,111 +1587,127 @@ int module_load_from_manifest(const struct module_manifest *manifest, struct par
         LOG_ERROR("NULL manifest pointer");
         return MODULE_STATUS_INVALID_ARGS;
     }
-    
+
     if (params == NULL) {
         LOG_ERROR("NULL parameters pointer");
         return MODULE_STATUS_INVALID_ARGS;
     }
     
-    /* Check if library file exists */
+    /* Check if module with the same name already exists */
+    int existing_module = module_find_by_name(manifest->name);
+    if (existing_module >= 0) {
+        LOG_INFO("Module %s already loaded", manifest->name);
+        return existing_module;
+    }
+    
+    /* Check if library path is valid */
     if (!file_exists(manifest->library_path)) {
-        LOG_ERROR("Module library not found: %s", manifest->library_path);
+        LOG_ERROR("Module library file not found: %s", manifest->library_path);
         return MODULE_STATUS_MODULE_NOT_FOUND;
     }
     
-    /* Open the library */
+    /* Check API compatibility */
+    if (!check_api_compatibility(manifest->api_version)) {
+        return MODULE_STATUS_INCOMPATIBLE_VERSION;
+    }
+    
+    /* Open the dynamic library */
     module_library_handle_t handle = load_library(manifest->library_path);
     if (handle == NULL) {
+        LOG_ERROR("Failed to load module library: %s", manifest->library_path);
         return MODULE_STATUS_MODULE_LOADING_FAILED;
     }
     
-    /* Get module creation function */
-    typedef struct base_module *(*create_module_func_t)(void);
-    create_module_func_t create_module = (create_module_func_t)get_library_symbol(handle, "create_module");
-    
-    if (create_module == NULL) {
+    /* Get the module_get_interface function */
+    typedef struct base_module* (*get_interface_func_t)(void);
+    get_interface_func_t get_interface;
+
+    void *get_interface_ptr = get_library_symbol(handle, "module_get_interface");
+    if (get_interface_ptr == NULL) {
+        LOG_ERROR("Failed to get module_get_interface symbol from %s", 
+                 manifest->library_path);
         unload_library(handle);
         return MODULE_STATUS_MODULE_LOADING_FAILED;
     }
+
+    /* Cast the function pointer */
+    get_interface = (get_interface_func_t)get_interface_ptr;
     
-    /* Create the module */
-    struct base_module *module = create_module();
+    /* Get the module interface */
+    struct base_module *module = get_interface();
     if (module == NULL) {
-        LOG_ERROR("Failed to create module from library");
+        LOG_ERROR("Module interface is NULL: %s", manifest->library_path);
         unload_library(handle);
         return MODULE_STATUS_MODULE_LOADING_FAILED;
     }
     
-    /* Check module type */
+    /* Verify module type matches manifest */
     if (module->type != manifest->type) {
-        LOG_ERROR("Module type mismatch: manifest has type %s, module reports type %s",
-                 module_type_name(manifest->type), module_type_name(module->type));
+        LOG_ERROR("Module type mismatch for %s: manifest says %s but module is %s",
+                 manifest->name,
+                 module_type_name(manifest->type),
+                 module_type_name(module->type));
         unload_library(handle);
-        /* We can't call free on the module as it's managed by the library */
-        return MODULE_STATUS_INVALID_MANIFEST;
+        return MODULE_STATUS_ERROR;
     }
     
-    /* Verify name and version */
+    /* Verify module name matches manifest */
     if (strcmp(module->name, manifest->name) != 0) {
-        LOG_WARNING("Module name mismatch: manifest has name '%s', module reports name '%s'",
+        LOG_WARNING("Module name mismatch: manifest says %s but module is %s",
                    manifest->name, module->name);
-        /* Not a critical error, just a warning */
+        /* Continue anyway, using the name from the module interface */
     }
     
-    if (strcmp(module->version, manifest->version_str) != 0) {
-        LOG_WARNING("Module version mismatch: manifest has version '%s', module reports version '%s'",
-                   manifest->version_str, module->version);
-        /* Not a critical error, just a warning */
-    }
-    
-    /* Create and copy the manifest */
-    struct module_manifest *mod_manifest = (struct module_manifest *)mymalloc(sizeof(struct module_manifest));
-    if (mod_manifest == NULL) {
-        LOG_ERROR("Failed to allocate memory for module manifest");
+    /* Register the module with the system */
+    int module_id = module_register(module);
+    if (module_id < 0) {
+        LOG_ERROR("Failed to register module %s", manifest->name);
         unload_library(handle);
-        return MODULE_STATUS_OUT_OF_MEMORY;
+        return module_id;  /* Return the error code */
     }
     
-    memcpy(mod_manifest, manifest, sizeof(struct module_manifest));
-    module->manifest = mod_manifest;
-    
-    /* Register the module */
-    int status = module_register(module);
-    if (status != MODULE_STATUS_SUCCESS) {
-        LOG_ERROR("Failed to register module, status = %d", status);
-        myfree(mod_manifest);
-        unload_library(handle);
-        return status;
-    }
-    
-    /* Get the module ID */
-    int module_id = module->module_id;
-    
-    /* Set as dynamic module */
-    global_module_registry->modules[module_id].dynamic = true;
+    /* Store the library handle and mark as dynamically loaded */
     global_module_registry->modules[module_id].handle = handle;
+    global_module_registry->modules[module_id].dynamic = true;
     strncpy(global_module_registry->modules[module_id].path, manifest->library_path, MAX_MODULE_PATH - 1);
     
-    /* Initialize if auto-initialize is set */
+    /* Store a copy of the manifest */
+    module->manifest = (struct module_manifest *)mymalloc(sizeof(struct module_manifest));
+    if (module->manifest != NULL) {
+        memcpy(module->manifest, manifest, sizeof(struct module_manifest));
+    }
+    
+    /* Check dependencies */
+    int dep_status = module_check_dependencies(manifest);
+    if (dep_status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Failed to resolve dependencies for module %s", manifest->name);
+        module_unregister(module_id);
+        return dep_status;
+    }
+    
+    /* Initialize if auto_initialize is set */
     if (manifest->auto_initialize) {
-        status = module_initialize(module_id, params);
-        if (status != MODULE_STATUS_SUCCESS) {
-            LOG_ERROR("Failed to initialize module '%s', status = %d", module->name, status);
+        LOG_DEBUG("Auto-initializing module %s", manifest->name);
+        int init_status = module_initialize(module_id, params);
+        if (init_status != MODULE_STATUS_SUCCESS) {
+            LOG_ERROR("Failed to initialize module %s", manifest->name);
             module_unregister(module_id);
-            return status;
+            return init_status;
         }
     }
     
-    /* Activate if auto-activate is set */
-    if (manifest->auto_activate && global_module_registry->modules[module_id].initialized) {
-        status = module_set_active(module_id);
-        if (status != MODULE_STATUS_SUCCESS) {
-            LOG_ERROR("Failed to activate module '%s', status = %d", module->name, status);
-            /* Continue anyway - module is still loaded */
+    /* Set as active if auto_activate is set */
+    if (manifest->auto_activate) {
+        LOG_DEBUG("Auto-activating module %s", manifest->name);
+        int act_status = module_set_active(module_id);
+        if (act_status != MODULE_STATUS_SUCCESS) {
+            LOG_WARNING("Failed to set module %s as active", manifest->name);
+            /* Not fatal, continue */
         }
     }
     
-    LOG_INFO("Successfully loaded module '%s' from %s", module->name, manifest->library_path);
+    LOG_INFO("Successfully loaded module %s (version %s) from %s",
+manifest->name, manifest->version_str, manifest->library_path);
     return module_id;
 }
 

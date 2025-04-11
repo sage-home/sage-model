@@ -32,6 +32,10 @@ extern "C" {
 #define MAX_MANIFEST_FILE_SIZE 8192
 #define DEFAULT_MODULE_DIR "modules"
 
+/* API version information */
+#define CORE_API_VERSION 1       /* Current core API version */
+#define CORE_API_MIN_VERSION 1   /* Minimum compatible API version */
+
 /**
  * Module type identifiers
  * 
