@@ -31,7 +31,17 @@ enum module_type;
 
 /* Forward declarations */
 struct base_module;
-struct module_version;
+
+/**
+ * Version structure
+ * 
+ * Used for semantic versioning of modules
+ */
+struct module_version {
+    int major;       /* Major version (incompatible API changes) */
+    int minor;       /* Minor version (backwards-compatible functionality) */
+    int patch;       /* Patch version (backwards-compatible bug fixes) */
+};
 
 /**
  * Function return type identifiers
@@ -81,10 +91,14 @@ struct module_dependency {
     bool exact_match;                    /* Require exact version match */
     int type;                            /* Type of module (enum module_type) */
     
-    /* These fields use the forward-declared struct module_version */
-    /* Will be set to zeros by default since they need special handling */
+    /* Version constraints as strings (kept for backward compatibility) */
     char min_version_str[32];            /* Minimum version as string */
     char max_version_str[32];            /* Maximum version as string */
+    
+    /* Parsed version constraints */
+    struct module_version min_version;   /* Parsed minimum version */
+    struct module_version max_version;   /* Parsed maximum version */
+    bool has_parsed_versions;            /* Whether versions have been parsed */
 };
 typedef struct module_dependency module_dependency_t;
 

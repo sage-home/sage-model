@@ -79,17 +79,6 @@ enum module_status {
     MODULE_STATUS_MODULE_LOADING_FAILED = -13
 };
 
-/**
- * Version structure
- * 
- * Used for semantic versioning of modules
- */
-struct module_version {
-    int major;       /* Major version (incompatible API changes) */
-    int minor;       /* Minor version (backwards-compatible functionality) */
-    int patch;       /* Patch version (backwards-compatible bug fixes) */
-};
-
 
 /**
  * Module manifest structure

@@ -691,6 +691,18 @@ int module_declare_dependency(
         dep->max_version_str[0] = '\0';
     }
     
+    /* Parse the version strings */
+    dep->has_parsed_versions = false;
+    if (min_version_str != NULL && min_version_str[0] != '\0') {
+        if (module_parse_version(min_version_str, &dep->min_version) == MODULE_STATUS_SUCCESS) {
+            dep->has_parsed_versions = true;
+        }
+    }
+    
+    if (max_version_str != NULL && max_version_str[0] != '\0') {
+        module_parse_version(max_version_str, &dep->max_version);
+    }
+    
     /* Increment dependency count */
     module->num_dependencies++;
     

@@ -133,6 +133,38 @@ int module_compare_versions(const struct module_version *v1, const struct module
 }
 
 /**
+ * Parse versions for a dependency
+ * 
+ * Parses the minimum and maximum version strings in a dependency and
+ * stores the results in the structured version fields.
+ * 
+ * @param dep Dependency to parse versions for
+ */
+static void parse_dependency_versions(struct module_dependency *dep) {
+    if (dep == NULL) {
+        return;
+    }
+    
+    /* Initialize to default values */
+    memset(&dep->min_version, 0, sizeof(struct module_version));
+    memset(&dep->max_version, 0, sizeof(struct module_version));
+    dep->has_parsed_versions = false;
+    
+    /* Parse minimum version if provided */
+    if (dep->min_version_str[0] != '\0') {
+        if (module_parse_version(dep->min_version_str, &dep->min_version) == MODULE_STATUS_SUCCESS) {
+            dep->has_parsed_versions = true;
+        }
+    }
+    
+    /* Parse maximum version if provided */
+    if (dep->max_version_str[0] != '\0') {
+        module_parse_version(dep->max_version_str, &dep->max_version);
+        /* has_parsed_versions is already set based on min_version parsing */
+    }
+}
+
+/**
  * Check version compatibility
  * 
  * Checks if a module version is compatible with required constraints.
@@ -433,6 +465,9 @@ int module_load_manifest(const char *filename, struct module_manifest *manifest)
             if (dep_parts[2]) {
                 strncpy(dep->max_version_str, dep_parts[2], sizeof(dep->max_version_str) - 1);
             }
+            
+            /* Parse string versions into structured fields */
+            parse_dependency_versions(dep);
             
             free(dep_str);
             manifest->num_dependencies++;
@@ -803,39 +838,70 @@ int module_check_dependencies(const struct module_manifest *manifest) {
             return MODULE_STATUS_DEPENDENCY_CONFLICT;
         }
         
-        /* Check version compatibility using string-based approach */
+        /* Check version compatibility */
         if (dep->min_version_str[0] != '\0') {
-            struct module_version dep_min_version;
             struct module_version module_version;
             
-            /* Parse both versions */
-            if (module_parse_version(dep->min_version_str, &dep_min_version) == MODULE_STATUS_SUCCESS &&
-                module_parse_version(module->version, &module_version) == MODULE_STATUS_SUCCESS) {
+            if (module_parse_version(module->version, &module_version) == MODULE_STATUS_SUCCESS) {
                 
-                /* Check minimum version requirement */
-                if (module_compare_versions(&module_version, &dep_min_version) < 0) {
-                    LOG_ERROR("Dependency %s version conflict: %s has version %s, but minimum %s is required",
-                             dep->name, module->name, module->version, dep->min_version_str);
-                    return MODULE_STATUS_DEPENDENCY_CONFLICT;
-                }
-                
-                /* Check maximum version constraint if specified */
-                if (dep->max_version_str[0] != '\0') {
-                    struct module_version dep_max_version;
-                    if (module_parse_version(dep->max_version_str, &dep_max_version) == MODULE_STATUS_SUCCESS) {
-                        if (module_compare_versions(&module_version, &dep_max_version) > 0) {
+                /* Use parsed versions if available */
+                if (dep->has_parsed_versions) {
+                    const struct module_version *max_version = 
+                        dep->max_version_str[0] != '\0' ? &dep->max_version : NULL;
+                    
+                    if (!module_check_version_compatibility(
+                            &module_version, 
+                            &dep->min_version, 
+                            max_version, 
+                            dep->exact_match)) {
+                        
+                        /* Log appropriate error message based on the constraint that failed */
+                        if (dep->exact_match) {
+                            LOG_ERROR("Dependency %s version conflict: %s has version %s, but exact version %s is required",
+                                    dep->name, module->name, module->version, dep->min_version_str);
+                        } else if (max_version != NULL && module_compare_versions(&module_version, max_version) > 0) {
                             LOG_ERROR("Dependency %s version conflict: %s has version %s, but maximum %s is allowed",
-                                     dep->name, module->name, module->version, dep->max_version_str);
+                                    dep->name, module->name, module->version, dep->max_version_str);
+                        } else {
+                            LOG_ERROR("Dependency %s version conflict: %s has version %s, but minimum %s is required",
+                                    dep->name, module->name, module->version, dep->min_version_str);
+                        }
+                        
+                        return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                    }
+                }
+                /* Fall back to string-based approach if parsing failed */
+                else {
+                    struct module_version dep_min_version;
+                    
+                    /* Parse minimum version */
+                    if (module_parse_version(dep->min_version_str, &dep_min_version) == MODULE_STATUS_SUCCESS) {
+                        /* Check minimum version requirement */
+                        if (module_compare_versions(&module_version, &dep_min_version) < 0) {
+                            LOG_ERROR("Dependency %s version conflict: %s has version %s, but minimum %s is required",
+                                    dep->name, module->name, module->version, dep->min_version_str);
+                            return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                        }
+                        
+                        /* Check maximum version constraint if specified */
+                        if (dep->max_version_str[0] != '\0') {
+                            struct module_version dep_max_version;
+                            if (module_parse_version(dep->max_version_str, &dep_max_version) == MODULE_STATUS_SUCCESS) {
+                                if (module_compare_versions(&module_version, &dep_max_version) > 0) {
+                                    LOG_ERROR("Dependency %s version conflict: %s has version %s, but maximum %s is allowed",
+                                            dep->name, module->name, module->version, dep->max_version_str);
+                                    return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                                }
+                            }
+                        }
+                        
+                        /* Check for exact match if required */
+                        if (dep->exact_match && strcmp(module->version, dep->min_version_str) != 0) {
+                            LOG_ERROR("Dependency %s version conflict: %s has version %s, but exact version %s is required",
+                                    dep->name, module->name, module->version, dep->min_version_str);
                             return MODULE_STATUS_DEPENDENCY_CONFLICT;
                         }
                     }
-                }
-                
-                /* Check for exact match if required */
-                if (dep->exact_match && strcmp(module->version, dep->min_version_str) != 0) {
-                    LOG_ERROR("Dependency %s version conflict: %s has version %s, but exact version %s is required",
-                             dep->name, module->name, module->version, dep->min_version_str);
-                    return MODULE_STATUS_DEPENDENCY_CONFLICT;
                 }
             }
         }
@@ -2200,42 +2266,76 @@ int module_validate_runtime_dependencies(int module_id) {
                 return MODULE_STATUS_ERROR;
             }
             
-            /* Check version compatibility using string-based approach */
+            /* Check version compatibility */
             if (dep->min_version_str[0] != '\0') {
-                struct module_version dep_min_version;
                 struct module_version active_version;
                 
-                /* Parse both versions */
-                if (module_parse_version(dep->min_version_str, &dep_min_version) == MODULE_STATUS_SUCCESS &&
-                    module_parse_version(active_module->version, &active_version) == MODULE_STATUS_SUCCESS) {
+                if (module_parse_version(active_module->version, &active_version) == MODULE_STATUS_SUCCESS) {
                     
-                    /* Check minimum version requirement */
-                    if (module_compare_versions(&active_version, &dep_min_version) < 0) {
-                        LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but minimum %s is required",
-                                 module_type_name(dep->type), active_module->name, 
-                                 active_module->version, dep->min_version_str);
-                        return MODULE_STATUS_DEPENDENCY_CONFLICT;
-                    }
-                    
-                    /* Check maximum version constraint if specified */
-                    if (dep->max_version_str[0] != '\0') {
-                        struct module_version dep_max_version;
-                        if (module_parse_version(dep->max_version_str, &dep_max_version) == MODULE_STATUS_SUCCESS) {
-                            if (module_compare_versions(&active_version, &dep_max_version) > 0) {
+                    /* Use parsed versions if available */
+                    if (dep->has_parsed_versions) {
+                        const struct module_version *max_version = 
+                            dep->max_version_str[0] != '\0' ? &dep->max_version : NULL;
+                        
+                        if (!module_check_version_compatibility(
+                                &active_version, 
+                                &dep->min_version, 
+                                max_version, 
+                                dep->exact_match)) {
+                            
+                            /* Log appropriate error message based on the constraint that failed */
+                            if (dep->exact_match) {
+                                LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but exact version %s is required",
+                                        module_type_name(dep->type), active_module->name, 
+                                        active_module->version, dep->min_version_str);
+                            } else if (max_version != NULL && module_compare_versions(&active_version, max_version) > 0) {
                                 LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but maximum %s is allowed",
-                                         module_type_name(dep->type), active_module->name, 
-                                         active_module->version, dep->max_version_str);
+                                        module_type_name(dep->type), active_module->name, 
+                                        active_module->version, dep->max_version_str);
+                            } else {
+                                LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but minimum %s is required",
+                                        module_type_name(dep->type), active_module->name, 
+                                        active_module->version, dep->min_version_str);
+                            }
+                            
+                            return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                        }
+                    }
+                    /* Fall back to string-based approach if parsing failed */
+                    else {
+                        struct module_version dep_min_version;
+                        
+                        /* Parse minimum version */
+                        if (module_parse_version(dep->min_version_str, &dep_min_version) == MODULE_STATUS_SUCCESS) {
+                            /* Check minimum version requirement */
+                            if (module_compare_versions(&active_version, &dep_min_version) < 0) {
+                                LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but minimum %s is required",
+                                        module_type_name(dep->type), active_module->name, 
+                                        active_module->version, dep->min_version_str);
+                                return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                            }
+                            
+                            /* Check maximum version constraint if specified */
+                            if (dep->max_version_str[0] != '\0') {
+                                struct module_version dep_max_version;
+                                if (module_parse_version(dep->max_version_str, &dep_max_version) == MODULE_STATUS_SUCCESS) {
+                                    if (module_compare_versions(&active_version, &dep_max_version) > 0) {
+                                        LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but maximum %s is allowed",
+                                                module_type_name(dep->type), active_module->name, 
+                                                active_module->version, dep->max_version_str);
+                                        return MODULE_STATUS_DEPENDENCY_CONFLICT;
+                                    }
+                                }
+                            }
+                            
+                            /* Check for exact match if required */
+                            if (dep->exact_match && strcmp(active_module->version, dep->min_version_str) != 0) {
+                                LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but exact version %s is required",
+                                        module_type_name(dep->type), active_module->name, 
+                                        active_module->version, dep->min_version_str);
                                 return MODULE_STATUS_DEPENDENCY_CONFLICT;
                             }
                         }
-                    }
-                    
-                    /* Check for exact match if required */
-                    if (dep->exact_match && strcmp(active_module->version, dep->min_version_str) != 0) {
-                        LOG_ERROR("Dependency on type %s version conflict: %s has version %s, but exact version %s is required",
-                                 module_type_name(dep->type), active_module->name, 
-                                 active_module->version, dep->min_version_str);
-                        return MODULE_STATUS_DEPENDENCY_CONFLICT;
                     }
                 }
             }
