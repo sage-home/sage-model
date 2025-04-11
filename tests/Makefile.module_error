@@ -1,0 +1,39 @@
+# Simplified Makefile for testing module error handling system
+CC = gcc  # C compiler
+
+# Include path for header files
+INCDIR = ../src/core
+
+# Compiler flags
+CFLAGS = -g -Wall -Wextra -I$(INCDIR)
+
+# Linker flags
+LDFLAGS = -lm
+
+# Source files
+SRCS = test_module_error.c
+
+# Object files
+OBJS = $(SRCS:.c=.o)
+
+# Executable file
+EXEC = test_module_error
+
+# Default target
+all: $(EXEC)
+
+# Link object files to create executable
+$(EXEC): $(OBJS)
+	$(CC) $(OBJS) -o $(EXEC) $(LDFLAGS)
+
+# Compile source files into object files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Clean up
+clean:
+	rm -f $(OBJS) $(EXEC)
+
+# Run the test
+run: $(EXEC)
+	./$(EXEC)
