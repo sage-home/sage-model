@@ -127,9 +127,9 @@ FeedbackEjectionEfficiency_Alpha    0.0   %controls redshift dependence of eject
 %------------------------------------------
 
 PreventativeFeedbackOn     1           % Enable preventative feedback (0=off, 1=on)
-PreventativeFeedbackVcrit  40.0        % Critical velocity scale (km/s)
-PreventativeFeedbackAlpha  2.0         % Power-law slope
-PreventativeFeedbackZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
+PreventativeFeedbackVcrit  20.0        % Critical velocity scale (km/s)
+PreventativeFeedbackAlpha  1.0         % Power-law slope
+PreventativeFeedbackZdep   0.4         % Redshift dependence (0.5-1.0 recommended)
 
 %------------------------------------------
 %----- Other code-related information -----
