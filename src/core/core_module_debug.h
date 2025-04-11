@@ -7,6 +7,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "core_module_system.h"
+#include "core_module_error.h"
 
 /**
  * @file core_module_debug.h
@@ -62,6 +63,24 @@ typedef struct {
     bool circular_buffer;        /* Whether to use a circular buffer */
     int buffer_size;             /* Size of the trace buffer */
 } module_trace_config_t;
+
+/**
+ * Module debug context structure
+ * 
+ * Manages debug state and configuration for a module
+ */
+struct module_debug_context {
+    bool tracing_enabled;                /* Whether tracing is enabled for this module */
+    trace_level_t min_trace_level;       /* Minimum level to trace */
+    int module_id;                       /* ID of the module */
+    struct module_error_context *error_context; /* Reference to the module's error context */
+    
+    /* Trace buffer */
+    module_trace_entry_t *trace_entries; /* Array of trace entries */
+    int trace_count;                     /* Total traces recorded */
+    int current_trace_index;             /* Current position in trace buffer */
+    bool trace_overflow;                 /* Whether trace buffer has overflowed */
+};
 
 /**
  * Initialize the module debugging system
@@ -207,6 +226,38 @@ bool module_trace_is_enabled(void);
 
 #define MODULE_TRACE_EXIT_STATUS(module_id, status) \
     module_trace_log(TRACE_LEVEL_DEBUG, module_id, __func__, __FILE__, __LINE__, "Exiting %s with status %d", __func__, status)
+
+/**
+ * Initialize a module debug context
+ * 
+ * Allocates and initializes a debug context structure for a module.
+ * 
+ * @param module Pointer to the module interface
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_debug_context_init(struct base_module *module);
+
+/**
+ * Clean up a module debug context
+ * 
+ * Releases resources used by a debug context structure.
+ * 
+ * @param module Pointer to the module interface
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_debug_context_cleanup(struct base_module *module);
+
+/**
+ * Configure tracing for a module
+ * 
+ * Sets tracing options for a specific module.
+ * 
+ * @param module Pointer to the module interface
+ * @param enabled Whether to enable tracing for this module
+ * @param min_level Minimum trace level for this module
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_trace_options(struct base_module *module, bool enabled, trace_level_t min_level);
 
 #ifdef __cplusplus
 }

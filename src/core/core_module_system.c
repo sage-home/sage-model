@@ -14,6 +14,7 @@
 #include "core_module_callback.h"
 #include "core_dynamic_library.h"
 #include "core_module_system.h"
+#include "core_module_error.h"
 
 /* Global module registry */
 struct module_registry *global_module_registry = NULL;
@@ -1891,10 +1892,24 @@ int module_initialize(int module_id, struct params *params) {
     
     /* Store module data */
     global_module_registry->modules[module_id].module_data = module_data;
+    
+    /* Initialize error context if not already done */
+    if (module->error_context == NULL) {
+        int ec_status = module_error_context_init(&module->error_context);
+        if (ec_status != MODULE_STATUS_SUCCESS) {
+            LOG_ERROR("Failed to initialize error context for module '%s' (ID %d)",
+                    module->name, module_id);
+            /* Non-fatal, continue */
+        }
+    }
+    
+    /* Initialize debug context if needed (this will be implemented later) */
+    /* module_debug_context_init will be added in the debug system implementation */
+    
     global_module_registry->modules[module_id].initialized = true;
-    
+
     LOG_INFO("Initialized module '%s' (ID %d)", module->name, module_id);
-    
+
     return MODULE_STATUS_SUCCESS;
 }
 
@@ -1954,6 +1969,18 @@ int module_cleanup(int module_id) {
     global_module_registry->modules[module_id].module_data = NULL;
     global_module_registry->modules[module_id].initialized = false;
     
+    /* Clean up error context if it exists */
+    if (module->error_context != NULL) {
+        module_error_context_cleanup(module->error_context);
+        module->error_context = NULL;
+    }
+    
+    /* Clean up debug context if it exists (will be implemented later) */
+    /* if (module->debug_context != NULL) {
+        module_debug_context_cleanup(module->debug_context);
+        module->debug_context = NULL;
+    } */
+
     /* Clean up parameter registry if it exists */
     if (global_module_registry->modules[module_id].parameter_registry != NULL) {
         module_parameter_registry_free(global_module_registry->modules[module_id].parameter_registry);
@@ -2409,6 +2436,7 @@ void module_set_error(struct base_module *module, int error_code, const char *er
         return;
     }
     
+    /* Update the basic error fields for backward compatibility */
     module->last_error = error_code;
     
     if (error_message != NULL) {
@@ -2416,5 +2444,12 @@ void module_set_error(struct base_module *module, int error_code, const char *er
         module->error_message[MAX_ERROR_MESSAGE - 1] = '\0';
     } else {
         module->error_message[0] = '\0';
+    }
+    
+    /* Use the enhanced error system if available */
+    if (error_message != NULL) {
+        /* Record the error with enhanced context */
+        module_record_error(module, error_code, LOG_LEVEL_ERROR, 
+                          "<unknown>", 0, "<unknown>", "%s", error_message);
     }
 }

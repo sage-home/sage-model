@@ -9,6 +9,11 @@ extern "C" {
 #include <stddef.h>
 #include "core_allvars.h"
 
+/* Forward declarations and definitions to avoid circular dependencies */
+#define MAX_MODULE_NAME 64
+#define MAX_ERROR_MESSAGE 256
+enum module_type;
+
 /**
  * @file core_module_callback.h
  * @brief Module Callback System for SAGE
@@ -93,6 +98,11 @@ typedef struct {
     int callee_module_id;            /* ID of the module being called */
     const char *function_name;       /* Name of the function being called */
     void *context;                   /* Context for the call */
+    
+    /* Error information */
+    int error_code;                  /* Error code (0 if no error) */
+    char error_message[MAX_ERROR_MESSAGE]; /* Error message (if any) */
+    bool has_error;                  /* Whether this frame has an error */
 } module_call_frame_t;
 
 /**
@@ -204,6 +214,30 @@ int module_call_stack_get_depth(void);
  * @return 0 on success, error code on failure
  */
 int module_call_stack_get_trace(char *buffer, size_t buffer_size);
+
+/**
+ * Get the current call stack trace with error information
+ * 
+ * Returns a formatted string representation of the call stack including error details.
+ * 
+ * @param buffer Output buffer for the call stack trace
+ * @param buffer_size Size of the output buffer
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_call_stack_get_trace_with_errors(char *buffer, size_t buffer_size);
+
+/**
+ * Set error information for a frame in the call stack
+ * 
+ * Associates error details with a specific call frame.
+ * 
+ * @param frame_index Index of the frame to set error on (0 is oldest, depth-1 is newest)
+ * @param error_code Error code to set
+ * @param error_message Error message to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_call_stack_set_frame_error(int frame_index, int error_code, 
+                                     const char *error_message);
 
 /**
  * Get information about a specific call frame

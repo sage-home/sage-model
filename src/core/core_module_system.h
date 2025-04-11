@@ -124,6 +124,10 @@ struct module_manifest {
  * This structure defines the common interface that all physics modules must implement.
  * It includes metadata, lifecycle functions, and error handling.
  */
+/* Forward declarations for error handling system */
+struct module_error_context;
+struct module_debug_context;
+
 struct base_module {
     /* Metadata */
     char name[MAX_MODULE_NAME];           /* Module name */
@@ -140,8 +144,10 @@ struct base_module {
     int (*configure)(void *module_data, const char *config_name, const char *config_value);
     
     /* Error handling */
-    int last_error;                       /* Last error code */
-    char error_message[MAX_ERROR_MESSAGE]; /* Last error message */
+    int last_error;                       /* Last error code (for backward compat) */
+    char error_message[MAX_ERROR_MESSAGE]; /* Last error message (for backward compat) */
+    struct module_error_context *error_context; /* Enhanced error tracking */
+    struct module_debug_context *debug_context; /* Debug and trace information */
     
     /* Module manifest */
     struct module_manifest *manifest;     /* Pointer to module manifest (if available) */

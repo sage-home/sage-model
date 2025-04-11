@@ -1,39 +1,37 @@
-# Simplified Makefile for testing module error handling system
-CC = gcc  # C compiler
+# Makefile for module error handling system tests
 
-# Include path for header files
-INCDIR = ../src/core
+TEST_NAME := test_module_error
+TEST_SRC := test_module_error.c
+TEST_OBJS := test_module_error.o
+
+SAGE_LIB_DIR := ..
+SAGE_LIB := sage
+
+CC := clang
+INCLUDES := -I../src
+LIBS := -L$(SAGE_LIB_DIR) -l$(SAGE_LIB) -lm
 
 # Compiler flags
-CFLAGS = -g -Wall -Wextra -I$(INCDIR)
-
-# Linker flags
-LDFLAGS = -lm
-
-# Source files
-SRCS = test_module_error.c
-
-# Object files
-OBJS = $(SRCS:.c=.o)
-
-# Executable file
-EXEC = test_module_error
+CFLAGS := -g -O0 -Wall -Wextra -Werror
+LDFLAGS := -g
 
 # Default target
-all: $(EXEC)
+all: $(TEST_NAME)
 
-# Link object files to create executable
-$(EXEC): $(OBJS)
-	$(CC) $(OBJS) -o $(EXEC) $(LDFLAGS)
+# Link the test executable
+$(TEST_NAME): $(TEST_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-# Compile source files into object files
+# Compile test source
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Run the test
+run: $(TEST_NAME)
+	./$(TEST_NAME)
 
 # Clean up
 clean:
-	rm -f $(OBJS) $(EXEC)
+	rm -f $(TEST_OBJS) $(TEST_NAME)
 
-# Run the test
-run: $(EXEC)
-	./$(EXEC)
+.PHONY: all run clean

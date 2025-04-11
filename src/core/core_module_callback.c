@@ -177,6 +177,11 @@ int module_call_stack_push(
     frame->function_name = function_name;
     frame->context = context;
     
+    /* Initialize error fields */
+    frame->error_code = 0;
+    frame->error_message[0] = '\0';
+    frame->has_error = false;
+    
     global_call_stack->depth++;
     
     /* Log the call for debugging */
@@ -350,6 +355,162 @@ int module_call_stack_get_trace(char *buffer, size_t buffer_size) {
         ptr += written;
         remaining -= written;
     }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Get the current call stack trace with error information
+ * 
+ * Returns a formatted string representation of the call stack including error details.
+ * 
+ * @param buffer Output buffer for the call stack trace
+ * @param buffer_size Size of the output buffer
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_call_stack_get_trace_with_errors(char *buffer, size_t buffer_size) {
+    /* Check arguments */
+    if (buffer == NULL || buffer_size == 0) {
+        LOG_ERROR("Invalid arguments to module_call_stack_get_trace_with_errors");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    /* Check if callback system is initialized */
+    if (global_call_stack == NULL) {
+        LOG_ERROR("Module callback system not initialized");
+        return MODULE_STATUS_NOT_INITIALIZED;
+    }
+    
+    /* Start with an empty string */
+    buffer[0] = '\0';
+    size_t remaining = buffer_size - 1;  /* Leave room for null terminator */
+    char *ptr = buffer;
+    
+    /* Handle empty call stack */
+    if (global_call_stack->depth == 0) {
+        strncpy(ptr, "Call stack is empty", remaining);
+        return MODULE_STATUS_SUCCESS;
+    }
+    
+    /* Format each frame in the call stack */
+    for (int i = 0; i < global_call_stack->depth; i++) {
+        module_call_frame_t *frame = &global_call_stack->frames[i];
+        
+        /* Get module names for better diagnostics */
+        const char *caller_name = "unknown";
+        const char *callee_name = "unknown";
+        struct base_module *caller_module = NULL;
+        struct base_module *callee_module = NULL;
+        void *dummy_data = NULL;
+        
+        if (module_get(frame->caller_module_id, &caller_module, &dummy_data) == MODULE_STATUS_SUCCESS && 
+            caller_module != NULL) {
+            caller_name = caller_module->name;
+        }
+        
+        if (module_get(frame->callee_module_id, &callee_module, &dummy_data) == MODULE_STATUS_SUCCESS && 
+            callee_module != NULL) {
+            callee_name = callee_module->name;
+        }
+        
+        /* Format basic frame information */
+        int written = snprintf(ptr, remaining, 
+                              "%d: %s (ID: %d) -> %s (ID: %d)::%s", 
+                              i, 
+                              caller_name, frame->caller_module_id,
+                              callee_name, frame->callee_module_id,
+                              frame->function_name ? frame->function_name : "unknown");
+        
+        /* Check if we ran out of space */
+        if (written < 0 || written >= (int)remaining) {
+            /* Indicate truncation */
+            strncpy(buffer + buffer_size - 12, " [truncated]", 11);
+            buffer[buffer_size - 1] = '\0';
+            break;
+        }
+        
+        /* Update pointers */
+        ptr += written;
+        remaining -= written;
+        
+        /* Add error information if present */
+        if (frame->has_error) {
+            written = snprintf(ptr, remaining, 
+                              " [ERROR %d: %s]", 
+                              frame->error_code, 
+                              frame->error_message);
+            
+            /* Check if we ran out of space */
+            if (written < 0 || written >= (int)remaining) {
+                /* Indicate truncation */
+                strncpy(buffer + buffer_size - 12, " [truncated]", 11);
+                buffer[buffer_size - 1] = '\0';
+                break;
+            }
+            
+            /* Update pointers */
+            ptr += written;
+            remaining -= written;
+        }
+        
+        /* Add newline */
+        if (remaining > 0) {
+            *ptr++ = '\n';
+            *ptr = '\0';
+            remaining--;
+        }
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Set error information for a frame in the call stack
+ * 
+ * Associates error details with a specific call frame.
+ * 
+ * @param frame_index Index of the frame to set error on (0 is oldest, depth-1 is newest)
+ * @param error_code Error code to set
+ * @param error_message Error message to set
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_call_stack_set_frame_error(int frame_index, int error_code, 
+                                     const char *error_message) {
+    /* Check arguments */
+    if (error_message == NULL) {
+        LOG_ERROR("Invalid arguments to module_call_stack_set_frame_error");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    /* Check if callback system is initialized */
+    if (global_call_stack == NULL) {
+        LOG_ERROR("Module callback system not initialized");
+        return MODULE_STATUS_NOT_INITIALIZED;
+    }
+    
+    /* Check if call stack is empty */
+    if (global_call_stack->depth <= 0) {
+        LOG_ERROR("Call stack is empty");
+        return MODULE_STATUS_ERROR;
+    }
+    
+    /* Check if frame_index is valid */
+    if (frame_index < 0 || frame_index >= global_call_stack->depth) {
+        LOG_ERROR("Invalid frame index: %d (depth: %d)", 
+                 frame_index, global_call_stack->depth);
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    /* Set error information in the frame */
+    module_call_frame_t *frame = &global_call_stack->frames[frame_index];
+    frame->error_code = error_code;
+    strncpy(frame->error_message, error_message, MAX_ERROR_MESSAGE - 1);
+    frame->error_message[MAX_ERROR_MESSAGE - 1] = '\0';
+    frame->has_error = true;
+    
+    /* Log for debugging */
+    LOG_DEBUG("Set error on call frame %d: code=%d, message='%s'", 
+             frame_index, error_code, error_message);
     
     return MODULE_STATUS_SUCCESS;
 }

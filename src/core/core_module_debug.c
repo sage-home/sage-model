@@ -435,3 +435,118 @@ bool module_trace_set_enabled(bool enabled) {
 bool module_trace_is_enabled(void) {
     return trace_system.initialized && trace_system.config.enabled;
 }
+
+/**
+ * Initialize a module debug context
+ * 
+ * Allocates and initializes a debug context structure for a module.
+ * 
+ * @param module Pointer to the module interface
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_debug_context_init(struct base_module *module) {
+    if (module == NULL) {
+        LOG_ERROR("NULL module pointer passed to module_debug_context_init");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    /* Check if already initialized */
+    if (module->debug_context != NULL) {
+        LOG_WARNING("Module '%s' already has a debug context", module->name);
+        return MODULE_STATUS_ALREADY_INITIALIZED;
+    }
+    
+    /* Allocate debug context */
+    struct module_debug_context *context = (struct module_debug_context *)mymalloc(sizeof(struct module_debug_context));
+    if (context == NULL) {
+        LOG_ERROR("Failed to allocate memory for module debug context");
+        return MODULE_STATUS_OUT_OF_MEMORY;
+    }
+    
+    /* Initialize context fields */
+    memset(context, 0, sizeof(struct module_debug_context));
+    context->tracing_enabled = true;
+    context->min_trace_level = TRACE_LEVEL_INFO;
+    context->module_id = module->module_id;
+    context->error_context = module->error_context;
+    
+    /* Initialize trace buffer (if needed in the future) */
+    context->trace_entries = NULL;
+    context->trace_count = 0;
+    context->current_trace_index = 0;
+    context->trace_overflow = false;
+    
+    /* Assign to module */
+    module->debug_context = context;
+    
+    LOG_DEBUG("Initialized debug context for module '%s'", module->name);
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Clean up a module debug context
+ * 
+ * Releases resources used by a debug context structure.
+ * 
+ * @param module Pointer to the module interface
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_debug_context_cleanup(struct base_module *module) {
+    if (module == NULL) {
+        LOG_ERROR("NULL module pointer passed to module_debug_context_cleanup");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    /* Check if initialized */
+    if (module->debug_context == NULL) {
+        LOG_WARNING("Module '%s' has no debug context to clean up", module->name);
+        return MODULE_STATUS_NOT_INITIALIZED;
+    }
+    
+    /* Free trace buffer if allocated */
+    if (module->debug_context->trace_entries != NULL) {
+        myfree(module->debug_context->trace_entries);
+        module->debug_context->trace_entries = NULL;
+    }
+    
+    /* Free debug context */
+    myfree(module->debug_context);
+    module->debug_context = NULL;
+    
+    LOG_DEBUG("Cleaned up debug context for module '%s'", module->name);
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Configure tracing for a module
+ * 
+ * Sets tracing options for a specific module.
+ * 
+ * @param module Pointer to the module interface
+ * @param enabled Whether to enable tracing for this module
+ * @param min_level Minimum trace level for this module
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_set_trace_options(struct base_module *module, bool enabled, trace_level_t min_level) {
+    if (module == NULL) {
+        LOG_ERROR("NULL module pointer passed to module_set_trace_options");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
+    /* Ensure debug context is initialized */
+    if (module->debug_context == NULL) {
+        int status = module_debug_context_init(module);
+        if (status != MODULE_STATUS_SUCCESS) {
+            LOG_ERROR("Failed to initialize debug context for module '%s'", module->name);
+            return status;
+        }
+    }
+    
+    /* Update tracing options */
+    module->debug_context->tracing_enabled = enabled;
+    module->debug_context->min_trace_level = min_level;
+    
+    LOG_DEBUG("Updated tracing options for module '%s' (enabled: %d, min_level: %d)",
+             module->name, enabled, min_level);
+    return MODULE_STATUS_SUCCESS;
+}
