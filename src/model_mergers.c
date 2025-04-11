@@ -96,11 +96,41 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
 
 
 
+static int bh_growth_log_counter = 0;
+
+void log_black_hole_growth_details(struct GALAXY *galaxies, int gal, double BHaccrete, 
+                                   double mass_ratio, double current_bh_mass, 
+                                   double cold_gas, double vvir) {
+    // Log every 500,000th call to reduce output volume
+    bh_growth_log_counter++;
+    if (bh_growth_log_counter % 5000 == 0) {
+        FILE *log_file = fopen("black_hole_growth_diagnostics.txt", "a");
+        if (log_file) {
+            fprintf(log_file, "Galaxy Diagnostics:\n");
+            fprintf(log_file, "Galaxy Index: %d\n", galaxies[gal].GalaxyNr);
+            fprintf(log_file, "Snapshot: %d\n", galaxies[gal].SnapNum);
+            fprintf(log_file, "Halo Mass (log10): %.2f\n", log10(galaxies[gal].Mvir));
+            fprintf(log_file, "Stellar Mass (log10): %.2f\n", log10(galaxies[gal].StellarMass));
+            fprintf(log_file, "Current BH Mass (log10): %.2f\n", log10(current_bh_mass));
+            fprintf(log_file, "Black Hole Accretion: %e\n", BHaccrete);
+            fprintf(log_file, "Mass Ratio: %f\n", mass_ratio);
+            fprintf(log_file, "Cold Gas Mass: %e\n", cold_gas);
+            fprintf(log_file, "Virial Velocity: %f\n", vvir);
+            fprintf(log_file, "Galaxy Type: %d\n", galaxies[gal].Type);
+            fprintf(log_file, "-------------------\n\n");
+            fclose(log_file);
+        }
+    }
+}
+
 void grow_black_hole(const int merger_centralgal, const double mass_ratio, struct GALAXY *galaxies, const struct params *run_params)
 {
     double BHaccrete, metallicity;
 
     if(galaxies[merger_centralgal].ColdGas > 0.0) {
+        // Store original black hole mass for logging
+        double original_bh_mass = galaxies[merger_centralgal].BlackHoleMass;
+
         BHaccrete = run_params->BlackHoleGrowthRate * mass_ratio /
             (1.0 + SQR(280.0 / galaxies[merger_centralgal].Vvir)) * galaxies[merger_centralgal].ColdGas;
 
@@ -108,6 +138,17 @@ void grow_black_hole(const int merger_centralgal, const double mass_ratio, struc
         if(BHaccrete > galaxies[merger_centralgal].ColdGas) {
             BHaccrete = galaxies[merger_centralgal].ColdGas;
         }
+
+        // Log detailed growth information
+        log_black_hole_growth_details(
+            galaxies, 
+            merger_centralgal, 
+            BHaccrete, 
+            mass_ratio, 
+            original_bh_mass, 
+            galaxies[merger_centralgal].ColdGas, 
+            galaxies[merger_centralgal].Vvir
+        );
 
         metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
         galaxies[merger_centralgal].BlackHoleMass += BHaccrete;

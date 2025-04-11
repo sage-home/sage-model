@@ -236,14 +236,14 @@ float get_mass_dependent_radiation_field(struct GALAXY *g, const struct params *
         
         // Higher BH mass means stronger radiation field
         if (log_bh > 7.0) {
-            radiation_field *= 1.0 + 0.5 * (log_bh - 7.0);
+            radiation_field *= 1.0 + 0.25 * (log_bh - 7.0);
         }
         
         // Recent BH growth (quasar mode) dramatically increases radiation
         if (g->QuasarModeBHaccretionMass > 0.0 && g->BlackHoleMass > 0.0) {
             float accretion_ratio = g->QuasarModeBHaccretionMass / g->BlackHoleMass;
             if (accretion_ratio > 0.001) {
-                radiation_field *= 1.0 + 10.0 * accretion_ratio;  // Strong effect for active quasars
+                radiation_field *= 1.0 + 5.0 * accretion_ratio;  // Strong effect for active quasars
             }
         }
     }
