@@ -15,6 +15,7 @@
 #include "core_dynamic_library.h"
 #include "core_module_system.h"
 #include "core_module_error.h"
+#include "core_module_debug.h"
 
 /* Global module registry */
 struct module_registry *global_module_registry = NULL;
@@ -1968,9 +1969,16 @@ int module_initialize(int module_id, struct params *params) {
             /* Non-fatal, continue */
         }
     }
-    
-    /* Initialize debug context if needed (this will be implemented later) */
-    /* module_debug_context_init will be added in the debug system implementation */
+
+    /* Initialize debug context if not already done */
+    if (module->debug_context == NULL) {
+        int dc_status = module_debug_context_init(module);
+        if (dc_status != MODULE_STATUS_SUCCESS) {
+            LOG_ERROR("Failed to initialize debug context for module '%s' (ID %d)",
+                    module->name, module_id);
+            /* Non-fatal, continue */
+        }
+    }
     
     global_module_registry->modules[module_id].initialized = true;
 
@@ -2041,11 +2049,11 @@ int module_cleanup(int module_id) {
         module->error_context = NULL;
     }
     
-    /* Clean up debug context if it exists (will be implemented later) */
-    /* if (module->debug_context != NULL) {
-        module_debug_context_cleanup(module->debug_context);
+    /* Clean up debug context if it exists */
+    if (module->debug_context != NULL) {
+        module_debug_context_cleanup(module);
         module->debug_context = NULL;
-    } */
+    }
 
     /* Clean up parameter registry if it exists */
     if (global_module_registry->modules[module_id].parameter_registry != NULL) {
