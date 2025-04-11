@@ -66,7 +66,7 @@ if __name__ == '__main__':
     seed(2222)
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
 
-    OutputDir = DirName + 'plots_slowreinc_slowsfr/'
+    OutputDir = DirName + 'plots_slowreinc_slowsfr_radiation/'
     if not os.path.exists(OutputDir): os.makedirs(OutputDir)
 
     print('Reading galaxy properties from', DirName)

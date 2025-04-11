@@ -177,77 +177,73 @@ float calculate_midplane_pressure(float gas_density, float stellar_density,
  */
 float get_mass_dependent_radiation_field(struct GALAXY *g, const struct params *run_params)
 {
-    // Base radiation field from parameters
-    float radiation_field = run_params->RadiationFieldNorm;
-    
-    // --- IMPROVEMENT 3: BETTER RADIATION FIELD MODEL ---
-    
-    // 1. Account for galaxy type - centrals host AGN that increase radiation
-    if (g->Type == 0) {  // Central galaxy
-        radiation_field *= 1.2;  // 20% stronger field in centrals due to AGN
-    }
-    
-    // 2. More realistic mass scaling for radiation field
+    // Physical Motivation: More nuanced radiation field calculation
+    // Incorporates multiple physical processes affecting radiation
+
+    // Base radiation field with more complex initial scaling
+    float radiation_field = run_params->RadiationFieldNorm * 
+                            (1.0 + 0.2 * (g->Type == 0));  // Subtle central galaxy boost
+
+    // Mass-dependent scaling with non-linear components
     if (g->Mvir > 0.0) {
-        // Convert to solar masses
         float log_mvir = log10(g->Mvir * 1.0e10 / run_params->Hubble_h);
         
-        // Mass-dependent scaling with more realistic behavior
-        if (log_mvir > 12.0) {
-            // Strong radiation field in massive halos (AGN + many stars)
-            float mass_scale = 2.0 + 1.0 * (log_mvir - 12.0);
-            if (mass_scale > 5.0) mass_scale = 5.0;  // Cap at 5x
-            radiation_field *= mass_scale;
-        } 
-        else if (log_mvir > 10.5) {
-            // Moderate scaling for intermediate masses
-            radiation_field *= 1.0 + 0.8 * (log_mvir - 10.5);
-        } 
-        else if (log_mvir < 9.0) {
-            // Reduced field for very low-mass galaxies
-            float mass_scale = 0.3 + 0.7 * (log_mvir / 9.0);
-            radiation_field *= mass_scale;
+        // More sophisticated mass scaling
+        // Inspired by halo assembly bias and radiation field physics
+        if (log_mvir > 11.0) {
+            // Logarithmic scaling with saturation
+            radiation_field *= 1.0 + 
+                               log(1.0 + exp(log_mvir - 12.0)) * 0.5;
         }
     }
-    
-    // 3. Account for SFR and stellar feedback
-    float recent_sfr = 0.0;
-    float specific_sfr = 0.0;
-    
-    // Calculate recent SFR from SFH
+
+    // Enhanced Black Hole Growth Effects
+    if (g->BlackHoleMass > 0.0) {
+        float log_bh = log10(g->BlackHoleMass);
+        
+        // More dramatic AGN radiation scaling
+        // Motivated by AGN feedback mechanisms
+        if (log_bh > 6.0) {
+            radiation_field *= 1.0 + 
+                               pow(log_bh - 6.0, 1.5) * 0.7;  // Non-linear scaling
+        }
+
+        // Quasar mode accretion with more complex scaling
+        if (g->QuasarModeBHaccretionMass > 0.0) {
+            float accretion_ratio = g->QuasarModeBHaccretionMass / 
+                                    (g->BlackHoleMass + 1e-10);
+            
+            // Log-normal like scaling to capture burst dynamics
+            radiation_field *= 1.0 + 
+                               15.0 * accretion_ratio * 
+                               exp(-pow(log(accretion_ratio + 1), 2));
+        }
+    }
+
+    // Star Formation History Integration
+    float recent_sfr = 0.0, specific_sfr = 0.0;
     for (int step = 0; step < STEPS; step++) {
         recent_sfr += g->SfrDisk[step] + g->SfrBulge[step];
     }
     recent_sfr /= STEPS;
     
-    // Calculate specific SFR
     if (g->StellarMass > 0.0) {
         specific_sfr = recent_sfr / g->StellarMass;
         
-        // High sSFR increases radiation field (active star formation)
-        if (specific_sfr > 1e-10) {  // Active star formation
-            radiation_field *= 1.0 + log10(specific_sfr * 1e11);  // Normalize to ~1 at 10^-11 yr^-1
-        }
+        // More complex specific SFR scaling
+        // Captures stochastic star formation variations
+        radiation_field *= 1.0 + 
+                           log(1.0 + specific_sfr * 1e12) * 
+                           tanh(specific_sfr * 1e11);
     }
-    
-    // 4. Include BH mass/growth effects
-    if (g->BlackHoleMass > 0.0) {
-        float log_bh = log10(g->BlackHoleMass);
-        
-        // Higher BH mass means stronger radiation field
-        if (log_bh > 7.0) {
-            radiation_field *= 1.0 + 0.5 * (log_bh - 7.0);
-        }
-        
-        // Recent BH growth (quasar mode) dramatically increases radiation
-        if (g->QuasarModeBHaccretionMass > 0.0 && g->BlackHoleMass > 0.0) {
-            float accretion_ratio = g->QuasarModeBHaccretionMass / g->BlackHoleMass;
-            if (accretion_ratio > 0.001) {
-                radiation_field *= 1.0 + 10.0 * accretion_ratio;  // Strong effect for active quasars
-            }
-        }
-    }
-    
+
+    // Environmental Density Dependence
+    // Captures large-scale structure effects on radiation field
+    radiation_field *= pow(1.0 + g->Mvir / 1e12, 0.15);
+
+    // Limit extreme values
+    radiation_field = fmax(0.1, fmin(radiation_field, 1000.0));
+
     return radiation_field;
 }
 
