@@ -36,6 +36,7 @@ tests/test_module_debug
 tests/test_module_framework
 tests/test_module_parameter
 tests/test_module_discovery
+tests/test_module_error
 
 trees_*
 *.o
