@@ -9,7 +9,7 @@ EXEC        := test_module_parameter
 
 SRC_DIR     := $(realpath $(CURDIR)/../src)
 TEST_FILES  := test_module_parameter.c
-MODULE_FILES := $(SRC_DIR)/core/core_module_parameter.c $(SRC_DIR)/core/core_logging.c $(SRC_DIR)/core/core_mymalloc.c
+MODULE_FILES := $(SRC_DIR)/core/core_module_parameter.c $(SRC_DIR)/core/core_logging.c $(SRC_DIR)/core/core_mymalloc.c $(SRC_DIR)/core/cJSON.c
 
 OBJ_TEST    := $(TEST_FILES:.c=.o)
 OBJ_MODULE  := $(notdir $(MODULE_FILES:.c=.o))

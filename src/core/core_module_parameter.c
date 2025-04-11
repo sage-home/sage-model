@@ -12,6 +12,7 @@
 #include "core_module_parameter.h"
 #include "core_logging.h"
 #include "core_mymalloc.h"
+#include "cJSON.h"
 
 /* Initial capacity for parameter registries */
 #define INITIAL_REGISTRY_CAPACITY 16
@@ -1029,13 +1030,13 @@ int module_create_parameter_string(module_parameter_t *param, const char *name, 
     return MODULE_PARAM_SUCCESS;
 }
 
-/* Parameter import/export functions implementation */
+/* Parameter import/export functions */
 
 /**
  * Load parameters from a file
- *
+ * 
  * Reads parameters from a file into a registry.
- *
+ * 
  * @param registry Pointer to the registry
  * @param filename Path to the parameter file
  * @return MODULE_PARAM_SUCCESS on success, error code on failure
@@ -1045,463 +1046,280 @@ int module_load_parameters_from_file(module_parameter_registry_t *registry, cons
         LOG_ERROR("NULL registry or filename pointer");
         return MODULE_PARAM_INVALID_ARGS;
     }
-    
+
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         LOG_ERROR("Failed to open parameter file: %s", filename);
         return MODULE_PARAM_FILE_ERROR;
     }
-    
+
     /* Read the entire file into memory */
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
-    
+
     char *buffer = (char *)mymalloc(file_size + 1);
     if (buffer == NULL) {
         LOG_ERROR("Failed to allocate memory for file content");
         fclose(file);
         return MODULE_PARAM_OUT_OF_MEMORY;
     }
-    
+
     size_t bytes_read = fread(buffer, 1, file_size, file);
     fclose(file);
-    
+
     if (bytes_read != (size_t)file_size) {
         LOG_ERROR("Failed to read file: %s", filename);
         myfree(buffer);
         return MODULE_PARAM_FILE_ERROR;
     }
-    
+
     buffer[file_size] = '\0';  /* Ensure null termination */
-    
-    /* Parse the JSON content */
-    char *pos = strstr(buffer, "\"parameters\"");
-    if (pos == NULL) {
-        LOG_ERROR("Invalid parameter file format: missing 'parameters' array");
+
+    /* Parse the JSON content using cJSON */
+    cJSON *root = cJSON_Parse(buffer);
+    if (root == NULL) {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL) {
+            /* Calculate line number for better error reporting */
+            int line = 1;
+            const char *ptr;
+            for (ptr = buffer; ptr < error_ptr && *ptr != '\0'; ptr++) {
+                if (*ptr == '\n') line++;
+            }
+            LOG_ERROR("JSON parse error near line %d: %s", line, error_ptr);
+        } else {
+            LOG_ERROR("Failed to parse JSON from file: %s", filename);
+        }
         myfree(buffer);
         return MODULE_PARAM_PARSE_ERROR;
     }
-    
-    pos = strchr(pos, '[');
-    if (pos == NULL) {
-        LOG_ERROR("Invalid parameter file format: missing opening bracket for parameters array");
-        myfree(buffer);
+
+    /* We don't need the buffer anymore since cJSON has parsed it */
+    myfree(buffer);
+
+    /* Get the parameters array */
+    cJSON *params_array = cJSON_GetObjectItem(root, "parameters");
+    if (params_array == NULL || !cJSON_IsArray(params_array)) {
+        LOG_ERROR("Invalid parameter file format: missing or invalid 'parameters' array");
+        cJSON_Delete(root);
         return MODULE_PARAM_PARSE_ERROR;
     }
+
+    /* Process each parameter object in the array */
+    int param_count = 0;
+    int param_idx = 0;
+    cJSON *param_obj = NULL;
     
-    pos++;  /* Skip the opening bracket */
-    
-    /* Process each parameter object */
-    while (*pos != '\0' && *pos != ']') {
-        /* Skip whitespace */
-        while (*pos != '\0' && isspace(*pos)) {
-            pos++;
+    /* cJSON_ArrayForEach is a macro that expands to a for loop */
+    for (param_obj = params_array ? params_array->child : NULL; 
+         param_obj != NULL; 
+         param_obj = param_obj->next) {
+        
+        if (!cJSON_IsObject(param_obj)) {
+            LOG_WARNING("Parameter %d is not a JSON object, skipping", param_idx);
+            param_idx++;
+            continue;
         }
-        
-        if (*pos == ']') {
-            break;  /* End of array */
-        }
-        
-        if (*pos != '{') {
-            LOG_ERROR("Invalid parameter file format: missing opening brace for parameter object");
-            myfree(buffer);
-            return MODULE_PARAM_PARSE_ERROR;
-        }
-        
-        pos++;  /* Skip the opening brace */
-        
-        /* Initialize a parameter for this object */
+
+        /* Initialize a parameter structure */
         module_parameter_t param;
         memset(&param, 0, sizeof(module_parameter_t));
         
-        /* Parse parameter fields */
-        while (*pos != '\0' && *pos != '}') {
-            /* Skip whitespace */
-            while (*pos != '\0' && isspace(*pos)) {
-                pos++;
-            }
-            
-            if (*pos == '}') {
-                break;  /* End of object */
-            }
-            
-            /* Parse field name */
-            if (*pos != '"') {
-                LOG_ERROR("Invalid parameter file format: missing opening quote for field name");
-                myfree(buffer);
-                return MODULE_PARAM_PARSE_ERROR;
-            }
-            
-            pos++;  /* Skip the opening quote */
-            char field[MAX_PARAM_NAME];
-            int field_idx = 0;
-            
-            while (*pos != '\0' && *pos != '"' && field_idx < MAX_PARAM_NAME - 1) {
-                field[field_idx++] = *pos++;
-            }
-            
-            field[field_idx] = '\0';
-            
-            if (*pos != '"') {
-                LOG_ERROR("Invalid parameter file format: missing closing quote for field name");
-                myfree(buffer);
-                return MODULE_PARAM_PARSE_ERROR;
-            }
-            
-            pos++;  /* Skip the closing quote */
-            
-            /* Skip to the colon */
-            while (*pos != '\0' && *pos != ':') {
-                pos++;
-            }
-            
-            if (*pos != ':') {
-                LOG_ERROR("Invalid parameter file format: missing colon after field name");
-                myfree(buffer);
-                return MODULE_PARAM_PARSE_ERROR;
-            }
-            
-            pos++;  /* Skip the colon */
-            
-            /* Skip whitespace */
-            while (*pos != '\0' && isspace(*pos)) {
-                pos++;
-            }
-            
-            /* Parse field value based on field name */
-            if (strcmp(field, "name") == 0) {
-                /* Parse string value (name) */
-                if (*pos != '"') {
-                    LOG_ERROR("Invalid parameter file format: missing opening quote for name value");
-                    myfree(buffer);
-                    return MODULE_PARAM_PARSE_ERROR;
+        /* Extract parameter properties */
+        
+        /* Name (required) */
+        cJSON *name_item = cJSON_GetObjectItem(param_obj, "name");
+        if (name_item == NULL || !cJSON_IsString(name_item)) {
+            LOG_WARNING("Parameter %d missing required 'name' field, skipping", param_idx);
+            param_idx++;
+            continue;
+        }
+        strncpy(param.name, cJSON_GetStringValue(name_item), MAX_PARAM_NAME - 1);
+        param.name[MAX_PARAM_NAME - 1] = '\0';
+
+        /* Module ID (required) */
+        cJSON *module_id_item = cJSON_GetObjectItem(param_obj, "module_id");
+        if (module_id_item == NULL || !cJSON_IsNumber(module_id_item)) {
+            LOG_WARNING("Parameter '%s' missing required 'module_id' field, skipping", param.name);
+            param_idx++;
+            continue;
+        }
+        param.module_id = (int)cJSON_GetNumberValue(module_id_item);
+
+        /* Type (required) */
+        cJSON *type_item = cJSON_GetObjectItem(param_obj, "type");
+        if (type_item == NULL || !cJSON_IsString(type_item)) {
+            LOG_WARNING("Parameter '%s' missing required 'type' field, skipping", param.name);
+            param_idx++;
+            continue;
+        }
+        param.type = module_parameter_type_from_string(cJSON_GetStringValue(type_item));
+
+        /* Value (required, but type-dependent) */
+        cJSON *value_item = cJSON_GetObjectItem(param_obj, "value");
+        if (value_item == NULL) {
+            LOG_WARNING("Parameter '%s' missing required 'value' field, skipping", param.name);
+            param_idx++;
+            continue;
+        }
+
+        /* Set value based on type */
+        switch (param.type) {
+            case MODULE_PARAM_TYPE_INT:
+                if (!cJSON_IsNumber(value_item)) {
+                    LOG_WARNING("Parameter '%s' has type int but value is not a number, skipping", param.name);
+                    param_idx++;
+                    continue;
                 }
+                param.value.int_val = (int)cJSON_GetNumberValue(value_item);
+                break;
                 
-                pos++;  /* Skip the opening quote */
-                int name_idx = 0;
-                
-                while (*pos != '\0' && *pos != '"' && name_idx < MAX_PARAM_NAME - 1) {
-                    param.name[name_idx++] = *pos++;
+            case MODULE_PARAM_TYPE_FLOAT:
+                if (!cJSON_IsNumber(value_item)) {
+                    LOG_WARNING("Parameter '%s' has type float but value is not a number, skipping", param.name);
+                    param_idx++;
+                    continue;
                 }
+                param.value.float_val = (float)cJSON_GetNumberValue(value_item);
+                break;
                 
-                param.name[name_idx] = '\0';
-                
-                if (*pos != '"') {
-                    LOG_ERROR("Invalid parameter file format: missing closing quote for name value");
-                    myfree(buffer);
-                    return MODULE_PARAM_PARSE_ERROR;
+            case MODULE_PARAM_TYPE_DOUBLE:
+                if (!cJSON_IsNumber(value_item)) {
+                    LOG_WARNING("Parameter '%s' has type double but value is not a number, skipping", param.name);
+                    param_idx++;
+                    continue;
                 }
+                param.value.double_val = cJSON_GetNumberValue(value_item);
+                break;
                 
-                pos++;  /* Skip the closing quote */
-            } else if (strcmp(field, "module_id") == 0) {
-                /* Parse integer value (module_id) */
-                char *end;
-                param.module_id = (int)strtol(pos, &end, 10);
-                pos = end;
-            } else if (strcmp(field, "type") == 0) {
-                /* Parse string value (type) */
-                if (*pos != '"') {
-                    LOG_ERROR("Invalid parameter file format: missing opening quote for type value");
-                    myfree(buffer);
-                    return MODULE_PARAM_PARSE_ERROR;
+            case MODULE_PARAM_TYPE_BOOL:
+                if (!cJSON_IsBool(value_item)) {
+                    LOG_WARNING("Parameter '%s' has type bool but value is not a boolean, skipping", param.name);
+                    param_idx++;
+                    continue;
                 }
+                param.value.bool_val = cJSON_IsTrue(value_item);
+                break;
                 
-                pos++;  /* Skip the opening quote */
-                char type_str[MAX_PARAM_NAME];
-                int type_idx = 0;
-                
-                while (*pos != '\0' && *pos != '"' && type_idx < MAX_PARAM_NAME - 1) {
-                    type_str[type_idx++] = *pos++;
+            case MODULE_PARAM_TYPE_STRING:
+                if (!cJSON_IsString(value_item)) {
+                    LOG_WARNING("Parameter '%s' has type string but value is not a string, skipping", param.name);
+                    param_idx++;
+                    continue;
                 }
+                strncpy(param.value.string_val, cJSON_GetStringValue(value_item), MAX_PARAM_STRING - 1);
+                param.value.string_val[MAX_PARAM_STRING - 1] = '\0';
+                break;
                 
-                type_str[type_idx] = '\0';
-                
-                if (*pos != '"') {
-                    LOG_ERROR("Invalid parameter file format: missing closing quote for type value");
-                    myfree(buffer);
-                    return MODULE_PARAM_PARSE_ERROR;
-                }
-                
-                pos++;  /* Skip the closing quote */
-                
-                /* Convert type string to enum */
-                param.type = module_parameter_type_from_string(type_str);
-            } else if (strcmp(field, "value") == 0) {
-                /* Parse value based on parameter type */
+            default:
+                LOG_WARNING("Parameter '%s' has unknown type: %d, skipping", param.name, param.type);
+                param_idx++;
+                continue;
+        }
+
+        /* Has limits (optional) */
+        cJSON *has_limits_item = cJSON_GetObjectItem(param_obj, "has_limits");
+        if (has_limits_item != NULL && cJSON_IsBool(has_limits_item)) {
+            param.has_limits = cJSON_IsTrue(has_limits_item);
+            
+            /* If has_limits is true, read min and max based on type */
+            if (param.has_limits) {
                 switch (param.type) {
                     case MODULE_PARAM_TYPE_INT:
                         {
-                            char *end;
-                            param.value.int_val = (int)strtol(pos, &end, 10);
-                            pos = end;
-                        }
-                        break;
-                    case MODULE_PARAM_TYPE_FLOAT:
-                        {
-                            char *end;
-                            param.value.float_val = (float)strtod(pos, &end);
-                            pos = end;
-                        }
-                        break;
-                    case MODULE_PARAM_TYPE_DOUBLE:
-                        {
-                            char *end;
-                            param.value.double_val = strtod(pos, &end);
-                            pos = end;
-                        }
-                        break;
-                    case MODULE_PARAM_TYPE_BOOL:
-                        if (strncmp(pos, "true", 4) == 0) {
-                            param.value.bool_val = true;
-                            pos += 4;
-                        } else if (strncmp(pos, "false", 5) == 0) {
-                            param.value.bool_val = false;
-                            pos += 5;
-                        } else {
-                            /* Try to parse as 0/1 */
-                            char *end;
-                            param.value.bool_val = (strtol(pos, &end, 10) != 0);
-                            pos = end;
-                        }
-                        break;
-                    case MODULE_PARAM_TYPE_STRING:
-                        if (*pos != '"') {
-                            LOG_ERROR("Invalid parameter file format: missing opening quote for string value");
-                            myfree(buffer);
-                            return MODULE_PARAM_PARSE_ERROR;
-                        }
-                        
-                        pos++;  /* Skip the opening quote */
-                        int value_idx = 0;
-                        
-                        while (*pos != '\0' && *pos != '"' && value_idx < MAX_PARAM_STRING - 1) {
-                            /* Handle escaped characters */
-                            if (*pos == '\\' && *(pos + 1) != '\0') {
-                                pos++;
-                                switch (*pos) {
-                                    case 'n': param.value.string_val[value_idx++] = '\n'; break;
-                                    case 'r': param.value.string_val[value_idx++] = '\r'; break;
-                                    case 't': param.value.string_val[value_idx++] = '\t'; break;
-                                    case '\\': param.value.string_val[value_idx++] = '\\'; break;
-                                    case '"': param.value.string_val[value_idx++] = '"'; break;
-                                    default: param.value.string_val[value_idx++] = *pos; break;
-                                }
+                            cJSON *min_item = cJSON_GetObjectItem(param_obj, "min");
+                            cJSON *max_item = cJSON_GetObjectItem(param_obj, "max");
+                            
+                            if (min_item && cJSON_IsNumber(min_item) && 
+                                max_item && cJSON_IsNumber(max_item)) {
+                                param.limits.int_range.min = (int)cJSON_GetNumberValue(min_item);
+                                param.limits.int_range.max = (int)cJSON_GetNumberValue(max_item);
                             } else {
-                                param.value.string_val[value_idx++] = *pos;
+                                param.has_limits = false;
+                                LOG_WARNING("Parameter '%s' has incomplete limit values, ignoring limits", param.name);
                             }
-                            pos++;
-                        }
-                        
-                        param.value.string_val[value_idx] = '\0';
-                        
-                        if (*pos != '"') {
-                            LOG_ERROR("Invalid parameter file format: missing closing quote for string value");
-                            myfree(buffer);
-                            return MODULE_PARAM_PARSE_ERROR;
-                        }
-                        
-                        pos++;  /* Skip the closing quote */
-                        break;
-                    default:
-                        /* Skip unknown value */
-                        while (*pos != '\0' && *pos != ',' && *pos != '}') {
-                            pos++;
                         }
                         break;
-                }
-            } else if (strcmp(field, "has_limits") == 0) {
-                /* Parse boolean value (has_limits) */
-                if (strncmp(pos, "true", 4) == 0) {
-                    param.has_limits = true;
-                    pos += 4;
-                } else if (strncmp(pos, "false", 5) == 0) {
-                    param.has_limits = false;
-                    pos += 5;
-                } else {
-                    /* Try to parse as 0/1 */
-                    char *end;
-                    param.has_limits = (strtol(pos, &end, 10) != 0);
-                    pos = end;
-                }
-            } else if (strcmp(field, "min") == 0) {
-                /* Parse numeric min value based on parameter type */
-                switch (param.type) {
-                    case MODULE_PARAM_TYPE_INT:
-                        {
-                            char *end;
-                            param.limits.int_range.min = (int)strtol(pos, &end, 10);
-                            pos = end;
-                        }
-                        break;
+                        
                     case MODULE_PARAM_TYPE_FLOAT:
                         {
-                            char *end;
-                            param.limits.float_range.min = (float)strtod(pos, &end);
-                            pos = end;
+                            cJSON *min_item = cJSON_GetObjectItem(param_obj, "min");
+                            cJSON *max_item = cJSON_GetObjectItem(param_obj, "max");
+                            
+                            if (min_item && cJSON_IsNumber(min_item) && 
+                                max_item && cJSON_IsNumber(max_item)) {
+                                param.limits.float_range.min = (float)cJSON_GetNumberValue(min_item);
+                                param.limits.float_range.max = (float)cJSON_GetNumberValue(max_item);
+                            } else {
+                                param.has_limits = false;
+                                LOG_WARNING("Parameter '%s' has incomplete limit values, ignoring limits", param.name);
+                            }
                         }
                         break;
+                        
                     case MODULE_PARAM_TYPE_DOUBLE:
                         {
-                            char *end;
-                            param.limits.double_range.min = strtod(pos, &end);
-                            pos = end;
+                            cJSON *min_item = cJSON_GetObjectItem(param_obj, "min");
+                            cJSON *max_item = cJSON_GetObjectItem(param_obj, "max");
+                            
+                            if (min_item && cJSON_IsNumber(min_item) && 
+                                max_item && cJSON_IsNumber(max_item)) {
+                                param.limits.double_range.min = cJSON_GetNumberValue(min_item);
+                                param.limits.double_range.max = cJSON_GetNumberValue(max_item);
+                            } else {
+                                param.has_limits = false;
+                                LOG_WARNING("Parameter '%s' has incomplete limit values, ignoring limits", param.name);
+                            }
                         }
                         break;
+                        
                     default:
-                        /* Skip value for non-numeric types */
-                        while (*pos != '\0' && *pos != ',' && *pos != '}') {
-                            pos++;
-                        }
+                        param.has_limits = false;
+                        LOG_WARNING("Parameter '%s' has limits but is not a numeric type, ignoring limits", param.name);
                         break;
-                }
-            } else if (strcmp(field, "max") == 0) {
-                /* Parse numeric max value based on parameter type */
-                switch (param.type) {
-                    case MODULE_PARAM_TYPE_INT:
-                        {
-                            char *end;
-                            param.limits.int_range.max = (int)strtol(pos, &end, 10);
-                            pos = end;
-                        }
-                        break;
-                    case MODULE_PARAM_TYPE_FLOAT:
-                        {
-                            char *end;
-                            param.limits.float_range.max = (float)strtod(pos, &end);
-                            pos = end;
-                        }
-                        break;
-                    case MODULE_PARAM_TYPE_DOUBLE:
-                        {
-                            char *end;
-                            param.limits.double_range.max = strtod(pos, &end);
-                            pos = end;
-                        }
-                        break;
-                    default:
-                        /* Skip value for non-numeric types */
-                        while (*pos != '\0' && *pos != ',' && *pos != '}') {
-                            pos++;
-                        }
-                        break;
-                }
-            } else if (strcmp(field, "description") == 0) {
-                /* Parse string value (description) */
-                if (*pos != '"') {
-                    LOG_ERROR("Invalid parameter file format: missing opening quote for description");
-                    myfree(buffer);
-                    return MODULE_PARAM_PARSE_ERROR;
-                }
-                
-                pos++;  /* Skip the opening quote */
-                int desc_idx = 0;
-                
-                while (*pos != '\0' && *pos != '"' && desc_idx < MAX_PARAM_DESCRIPTION - 1) {
-                    /* Handle escaped characters */
-                    if (*pos == '\\' && *(pos + 1) != '\0') {
-                        pos++;
-                        switch (*pos) {
-                            case 'n': param.description[desc_idx++] = '\n'; break;
-                            case 'r': param.description[desc_idx++] = '\r'; break;
-                            case 't': param.description[desc_idx++] = '\t'; break;
-                            case '\\': param.description[desc_idx++] = '\\'; break;
-                            case '"': param.description[desc_idx++] = '"'; break;
-                            default: param.description[desc_idx++] = *pos; break;
-                        }
-                    } else {
-                        param.description[desc_idx++] = *pos;
-                    }
-                    pos++;
-                }
-                
-                param.description[desc_idx] = '\0';
-                
-                if (*pos != '"') {
-                    LOG_ERROR("Invalid parameter file format: missing closing quote for description");
-                    myfree(buffer);
-                    return MODULE_PARAM_PARSE_ERROR;
-                }
-                
-                pos++;  /* Skip the closing quote */
-            } else if (strcmp(field, "units") == 0) {
-                /* Parse string value (units) */
-                if (*pos != '"') {
-                    LOG_ERROR("Invalid parameter file format: missing opening quote for units");
-                    myfree(buffer);
-                    return MODULE_PARAM_PARSE_ERROR;
-                }
-                
-                pos++;  /* Skip the opening quote */
-                int units_idx = 0;
-                
-                while (*pos != '\0' && *pos != '"' && units_idx < MAX_PARAM_UNITS - 1) {
-                    param.units[units_idx++] = *pos++;
-                }
-                
-                param.units[units_idx] = '\0';
-                
-                if (*pos != '"') {
-                    LOG_ERROR("Invalid parameter file format: missing closing quote for units");
-                    myfree(buffer);
-                    return MODULE_PARAM_PARSE_ERROR;
-                }
-                
-                pos++;  /* Skip the closing quote */
-            } else {
-                /* Skip unknown field */
-                LOG_WARNING("Unknown parameter field: %s", field);
-                while (*pos != '\0' && *pos != ',' && *pos != '}') {
-                    pos++;
                 }
             }
-            
-            /* Skip to the next field or end of object */
-            while (*pos != '\0' && *pos != ',' && *pos != '}') {
-                pos++;
-            }
-            
-            if (*pos == ',') {
-                pos++;  /* Skip the comma */
-            }
+        }
+
+        /* Description (optional) */
+        cJSON *desc_item = cJSON_GetObjectItem(param_obj, "description");
+        if (desc_item != NULL && cJSON_IsString(desc_item)) {
+            strncpy(param.description, cJSON_GetStringValue(desc_item), MAX_PARAM_DESCRIPTION - 1);
+            param.description[MAX_PARAM_DESCRIPTION - 1] = '\0';
+        }
+
+        /* Units (optional) */
+        cJSON *units_item = cJSON_GetObjectItem(param_obj, "units");
+        if (units_item != NULL && cJSON_IsString(units_item)) {
+            strncpy(param.units, cJSON_GetStringValue(units_item), MAX_PARAM_UNITS - 1);
+            param.units[MAX_PARAM_UNITS - 1] = '\0';
+        }
+
+        /* Register the parameter */
+        int status = module_register_parameter(registry, &param);
+        if (status == MODULE_PARAM_SUCCESS) {
+            param_count++;
+        } else if (status == MODULE_PARAM_ALREADY_EXISTS) {
+            LOG_INFO("Parameter '%s' already exists, skipping", param.name);
+        } else {
+            LOG_WARNING("Failed to register parameter '%s' from file: %d", param.name, status);
         }
         
-        if (*pos != '}') {
-            LOG_ERROR("Invalid parameter file format: missing closing brace for parameter object");
-            myfree(buffer);
-            return MODULE_PARAM_PARSE_ERROR;
-        }
-        
-        pos++;  /* Skip the closing brace */
-        
-        /* Register the parameter if it has a valid name and type */
-        if (param.name[0] != '\0') {
-            int status = module_register_parameter(registry, &param);
-            if (status != MODULE_PARAM_SUCCESS && status != MODULE_PARAM_ALREADY_EXISTS) {
-                LOG_WARNING("Failed to register parameter %s from file: %d", param.name, status);
-            }
-        }
-        
-        /* Skip to the next object or end of array */
-        while (*pos != '\0' && *pos != ',' && *pos != ']') {
-            pos++;
-        }
-        
-        if (*pos == ',') {
-            pos++;  /* Skip the comma */
-        }
+        param_idx++;
     }
-    
-    LOG_INFO("Loaded parameters from file: %s", filename);
-    myfree(buffer);
+
+    /* Clean up */
+    cJSON_Delete(root);
+    LOG_INFO("Loaded %d parameters from file: %s", param_count, filename);
     return MODULE_PARAM_SUCCESS;
 }
 
 /**
  * Save parameters to a file
- *
+ * 
  * Writes parameters from a registry to a file.
- *
+ * 
  * @param registry Pointer to the registry
  * @param filename Path to the output file
  * @return MODULE_PARAM_SUCCESS on success, error code on failure
@@ -1511,90 +1329,198 @@ int module_save_parameters_to_file(module_parameter_registry_t *registry, const 
         LOG_ERROR("NULL registry or filename pointer");
         return MODULE_PARAM_INVALID_ARGS;
     }
-    
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) {
-        LOG_ERROR("Failed to open output file: %s", filename);
-        return MODULE_PARAM_FILE_ERROR;
+
+    /* Create root JSON object */
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        LOG_ERROR("Failed to create JSON root object");
+        return MODULE_PARAM_OUT_OF_MEMORY;
     }
-    
-    /* Write JSON header */
-    fprintf(file, "{\n  \"parameters\": [\n");
-    
-    /* Write each parameter */
+
+    /* Create parameters array */
+    cJSON *params_array = cJSON_CreateArray();
+    if (params_array == NULL) {
+        LOG_ERROR("Failed to create parameters array");
+        cJSON_Delete(root);
+        return MODULE_PARAM_OUT_OF_MEMORY;
+    }
+
+    /* Add parameters array to root object */
+    if (!cJSON_AddItemToObject(root, "parameters", params_array)) {
+        LOG_ERROR("Failed to add parameters array to root object");
+        cJSON_Delete(root);
+        return MODULE_PARAM_OUT_OF_MEMORY;
+    }
+
+    /* Add each parameter to the array */
     for (int i = 0; i < registry->num_parameters; i++) {
         module_parameter_t *param = &registry->parameters[i];
-        
-        fprintf(file, "    {\n");
-        fprintf(file, "      \"name\": \"%s\",\n", param->name);
-        fprintf(file, "      \"module_id\": %d,\n", param->module_id);
-        fprintf(file, "      \"type\": \"%s\",\n", module_parameter_type_to_string(param->type));
-        
-        /* Write value based on type */
+
+        /* Create parameter object */
+        cJSON *param_obj = cJSON_CreateObject();
+        if (param_obj == NULL) {
+            LOG_ERROR("Failed to create parameter object");
+            cJSON_Delete(root);
+            return MODULE_PARAM_OUT_OF_MEMORY;
+        }
+
+        /* Add parameter properties */
+        if (!cJSON_AddStringToObject(param_obj, "name", param->name) ||
+            !cJSON_AddNumberToObject(param_obj, "module_id", param->module_id) ||
+            !cJSON_AddStringToObject(param_obj, "type", module_parameter_type_to_string(param->type))) {
+            LOG_ERROR("Failed to add basic properties to parameter object");
+            cJSON_Delete(param_obj);
+            cJSON_Delete(root);
+            return MODULE_PARAM_OUT_OF_MEMORY;
+        }
+
+        /* Add value based on type */
         switch (param->type) {
             case MODULE_PARAM_TYPE_INT:
-                fprintf(file, "      \"value\": %d", param->value.int_val);
+                if (!cJSON_AddNumberToObject(param_obj, "value", param->value.int_val)) {
+                    LOG_ERROR("Failed to add int value to parameter object");
+                    cJSON_Delete(param_obj);
+                    cJSON_Delete(root);
+                    return MODULE_PARAM_OUT_OF_MEMORY;
+                }
                 break;
             case MODULE_PARAM_TYPE_FLOAT:
-                fprintf(file, "      \"value\": %f", param->value.float_val);
+                if (!cJSON_AddNumberToObject(param_obj, "value", param->value.float_val)) {
+                    LOG_ERROR("Failed to add float value to parameter object");
+                    cJSON_Delete(param_obj);
+                    cJSON_Delete(root);
+                    return MODULE_PARAM_OUT_OF_MEMORY;
+                }
                 break;
             case MODULE_PARAM_TYPE_DOUBLE:
-                fprintf(file, "      \"value\": %f", param->value.double_val);
+                if (!cJSON_AddNumberToObject(param_obj, "value", param->value.double_val)) {
+                    LOG_ERROR("Failed to add double value to parameter object");
+                    cJSON_Delete(param_obj);
+                    cJSON_Delete(root);
+                    return MODULE_PARAM_OUT_OF_MEMORY;
+                }
                 break;
             case MODULE_PARAM_TYPE_BOOL:
-                fprintf(file, "      \"value\": %s", param->value.bool_val ? "true" : "false");
+                if (!cJSON_AddBoolToObject(param_obj, "value", param->value.bool_val)) {
+                    LOG_ERROR("Failed to add bool value to parameter object");
+                    cJSON_Delete(param_obj);
+                    cJSON_Delete(root);
+                    return MODULE_PARAM_OUT_OF_MEMORY;
+                }
                 break;
             case MODULE_PARAM_TYPE_STRING:
-                fprintf(file, "      \"value\": \"%s\"", param->value.string_val);
+                if (!cJSON_AddStringToObject(param_obj, "value", param->value.string_val)) {
+                    LOG_ERROR("Failed to add string value to parameter object");
+                    cJSON_Delete(param_obj);
+                    cJSON_Delete(root);
+                    return MODULE_PARAM_OUT_OF_MEMORY;
+                }
                 break;
         }
-        
-        /* Write limits if present */
+
+        /* Add limits if present */
         if (param->has_limits) {
-            fprintf(file, ",\n      \"has_limits\": true,\n");
-            
+            if (!cJSON_AddBoolToObject(param_obj, "has_limits", true)) {
+                LOG_ERROR("Failed to add has_limits to parameter object");
+                cJSON_Delete(param_obj);
+                cJSON_Delete(root);
+                return MODULE_PARAM_OUT_OF_MEMORY;
+            }
+
+            /* Add min/max values based on parameter type */
             switch (param->type) {
                 case MODULE_PARAM_TYPE_INT:
-                    fprintf(file, "      \"min\": %d,\n", param->limits.int_range.min);
-                    fprintf(file, "      \"max\": %d", param->limits.int_range.max);
+                    if (!cJSON_AddNumberToObject(param_obj, "min", param->limits.int_range.min) ||
+                        !cJSON_AddNumberToObject(param_obj, "max", param->limits.int_range.max)) {
+                        LOG_ERROR("Failed to add int limits to parameter object");
+                        cJSON_Delete(param_obj);
+                        cJSON_Delete(root);
+                        return MODULE_PARAM_OUT_OF_MEMORY;
+                    }
                     break;
                 case MODULE_PARAM_TYPE_FLOAT:
-                    fprintf(file, "      \"min\": %f,\n", param->limits.float_range.min);
-                    fprintf(file, "      \"max\": %f", param->limits.float_range.max);
+                    if (!cJSON_AddNumberToObject(param_obj, "min", param->limits.float_range.min) ||
+                        !cJSON_AddNumberToObject(param_obj, "max", param->limits.float_range.max)) {
+                        LOG_ERROR("Failed to add float limits to parameter object");
+                        cJSON_Delete(param_obj);
+                        cJSON_Delete(root);
+                        return MODULE_PARAM_OUT_OF_MEMORY;
+                    }
                     break;
                 case MODULE_PARAM_TYPE_DOUBLE:
-                    fprintf(file, "      \"min\": %f,\n", param->limits.double_range.min);
-                    fprintf(file, "      \"max\": %f", param->limits.double_range.max);
+                    if (!cJSON_AddNumberToObject(param_obj, "min", param->limits.double_range.min) ||
+                        !cJSON_AddNumberToObject(param_obj, "max", param->limits.double_range.max)) {
+                        LOG_ERROR("Failed to add double limits to parameter object");
+                        cJSON_Delete(param_obj);
+                        cJSON_Delete(root);
+                        return MODULE_PARAM_OUT_OF_MEMORY;
+                    }
                     break;
                 default:
-                    fprintf(file, "      \"has_limits\": false");
+                    /* Non-numeric types don't have meaningful limits */
                     break;
             }
         }
-        
-        /* Write description if present */
+
+        /* Add description if present */
         if (param->description[0] != '\0') {
-            fprintf(file, param->has_limits ? ",\n" : ",\n");
-            fprintf(file, "      \"description\": \"%s\"", param->description);
+            if (!cJSON_AddStringToObject(param_obj, "description", param->description)) {
+                LOG_ERROR("Failed to add description to parameter object");
+                cJSON_Delete(param_obj);
+                cJSON_Delete(root);
+                return MODULE_PARAM_OUT_OF_MEMORY;
+            }
         }
-        
-        /* Write units if present */
+
+        /* Add units if present */
         if (param->units[0] != '\0') {
-            fprintf(file, ",\n      \"units\": \"%s\"", param->units);
+            if (!cJSON_AddStringToObject(param_obj, "units", param->units)) {
+                LOG_ERROR("Failed to add units to parameter object");
+                cJSON_Delete(param_obj);
+                cJSON_Delete(root);
+                return MODULE_PARAM_OUT_OF_MEMORY;
+            }
         }
-        
-        /* Close parameter object */
-        if (i < registry->num_parameters - 1) {
-            fprintf(file, "\n    },\n");
-        } else {
-            fprintf(file, "\n    }\n");
+
+        /* Add parameter object to parameters array */
+        if (!cJSON_AddItemToArray(params_array, param_obj)) {
+            LOG_ERROR("Failed to add parameter object to parameters array");
+            cJSON_Delete(param_obj);
+            cJSON_Delete(root);
+            return MODULE_PARAM_OUT_OF_MEMORY;
         }
     }
-    
-    /* Write JSON footer */
-    fprintf(file, "  ]\n}\n");
-    
+
+    /* Generate JSON string with formatting */
+    char *json_str = cJSON_Print(root);
+    if (json_str == NULL) {
+        LOG_ERROR("Failed to generate JSON string");
+        cJSON_Delete(root);
+        return MODULE_PARAM_OUT_OF_MEMORY;
+    }
+
+    /* Write JSON string to file */
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        LOG_ERROR("Failed to open output file: %s", filename);
+        cJSON_free(json_str);
+        cJSON_Delete(root);
+        return MODULE_PARAM_FILE_ERROR;
+    }
+
+    if (fputs(json_str, file) < 0) {
+        LOG_ERROR("Failed to write to output file: %s", filename);
+        fclose(file);
+        cJSON_free(json_str);
+        cJSON_Delete(root);
+        return MODULE_PARAM_FILE_ERROR;
+    }
+
+    /* Clean up */
     fclose(file);
-    LOG_INFO("Saved parameters to file: %s", filename);
+    cJSON_free(json_str);
+    cJSON_Delete(root);
+
+    LOG_INFO("Saved %d parameters to file: %s", registry->num_parameters, filename);
     return MODULE_PARAM_SUCCESS;
 }
