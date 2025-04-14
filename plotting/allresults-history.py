@@ -89,7 +89,7 @@ if __name__ == '__main__':
     seed(2222)
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
 
-    OutputDir = DirName + 'plots/'
+    OutputDir = DirName + 'plots_BandR/'
     if not os.path.exists(OutputDir): os.makedirs(OutputDir)
 
     # Read galaxy properties
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     plt.scatter(x, y, c='k', alpha=0.3, s=5, label='Model galaxies')
 
     ###### z=0
-
+    """
     w = np.where(StellarMassFull[SMFsnaps[1]] > 0.0)[0]
     if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
     y = np.log10(StellarMassFull[SMFsnaps[1]][w])
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     x = np.log10(HaloMassFull[SMFsnaps[6]][w])
 
     #plt.plot(x, y, c='k', alpha=0.1, label='Model galaxies')
-    
+    """
     print('Plotting the halo-stellar mass relation')
 
     # Initialize list to store binned data for each redshift
@@ -244,7 +244,7 @@ if __name__ == '__main__':
         
         # Store binned data
         binned_data.append((bin_centers, bin_means_y, bin_stds_y, bin_counts))
-        
+        """
         # Plot binned data as a line with shaded error region
         valid = ~np.isnan(bin_means_y)
         if np.any(valid):
@@ -254,7 +254,7 @@ if __name__ == '__main__':
                             bin_means_y[valid] - bin_stds_y[valid],
                             bin_means_y[valid] + bin_stds_y[valid],
                             color=colors[i], alpha=0.2)
-
+        """
     # Write binned data to CSV
     try:
         with open('halostellar_binned_all_redshifts.csv', 'w', newline='') as file:

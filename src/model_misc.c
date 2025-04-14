@@ -179,10 +179,10 @@ double test_redshift_param(double param_z0, double alpha, double z) {
   double result = param_z0 * pow(1.0 + z, alpha);
   
   // Only log every 10000 calculations
-  if (param_calculation_counter % 500000 == 0) {
-      printf("TEST: param_z0=%f, alpha=%f, z=%f, result=%f\n", 
-             param_z0, alpha, z, result);
-  }
+  //if (param_calculation_counter % 500000 == 0) {
+      //printf("TEST: param_z0=%f, alpha=%f, z=%f, result=%f\n", 
+            // param_z0, alpha, z, result);
+  //}
 
   if (z == 0.0) {
     printf("Z=0 CALC: param_z0=%f, alpha=%f, result=%f\n", 

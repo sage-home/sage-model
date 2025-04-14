@@ -73,11 +73,6 @@ void init(struct params *run_params)
         run_params->EnvEffectStrength = 1.0;  // Default strength
     }
 
-    // Initialize MuratovMassLoading to 0 (disabled) if not set
-    if (run_params->MuratovMassLoading != 0 && run_params->MuratovMassLoading != 1) {
-        run_params->MuratovMassLoading = 0;  // Default to disabled
-    }
-
     // Initialize preventative feedback parameters with default values if not set
     if (run_params->PreventativeFeedbackOn != 0 && run_params->PreventativeFeedbackOn != 1) {
         run_params->PreventativeFeedbackOn = 1;  // Enable by default
@@ -90,6 +85,12 @@ void init(struct params *run_params)
     }
     if (run_params->PreventativeFeedbackZdep <= 0.0) {
         run_params->PreventativeFeedbackZdep = 0.5;  // Default redshift dependence
+    }
+
+    if (run_params->MassLoadingModel != 0 && 
+        run_params->MassLoadingModel != 1 && 
+        run_params->MassLoadingModel != 2) {
+        run_params->MassLoadingModel = 0;  // Default to standard model
     }
 
     set_units(run_params);

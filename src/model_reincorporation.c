@@ -12,16 +12,74 @@
 void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
     /* If mass-dependent delayed reincorporation is enabled, log some diagnostic information if in VERBOSE mode */
-#ifdef VERBOSE
+    #ifdef VERBOSE
     static int counter = 0;
+    static int total_modified_galaxies = 0;
+    static double total_reincorporated_mass = 0.0;
+    static double min_reincorporation_mass = INFINITY;
+    static double max_reincorporation_mass = -INFINITY;
+    
     if(run_params->MassReincorporationOn && galaxies[centralgal].Mvir < run_params->CriticalReincMass) {
         counter++;
-        if(counter % 50000 == 0) { // Only print once every 50,000 galaxies
-            fprintf(stdout, "Delayed reincorporation active for galaxy: HaloNr=%d, Mvir=%g (critical mass=%g)\n",
-                    galaxies[centralgal].HaloNr, galaxies[centralgal].Mvir, run_params->CriticalReincMass);
+        total_modified_galaxies++;
+    
+        // Calculate mass-dependent factor
+        double mass_dependent_factor = galaxies[centralgal].Mvir / run_params->CriticalReincMass;
+        mass_dependent_factor = pow(mass_dependent_factor, run_params->ReincorporationMassExp);
+        
+        // Ensure factor is in sensible range
+        if (mass_dependent_factor < run_params->MinReincorporationFactor)
+            mass_dependent_factor = run_params->MinReincorporationFactor;
+        if (mass_dependent_factor > 1.0)
+            mass_dependent_factor = 1.0;
+    
+        // Track min and max masses modified
+        if (galaxies[centralgal].Mvir < min_reincorporation_mass) 
+            min_reincorporation_mass = galaxies[centralgal].Mvir;
+        if (galaxies[centralgal].Mvir > max_reincorporation_mass) 
+            max_reincorporation_mass = galaxies[centralgal].Mvir;
+    
+        // Periodically print detailed diagnostics
+        if(counter % 1000000 == 0) { 
+            fprintf(stdout, "\n--- Mass-Dependent Reincorporation Diagnostics ---\n");
+            fprintf(stdout, "Total Modified Galaxies: %d\n", total_modified_galaxies);
+            fprintf(stdout, "Current Galaxy: HaloNr=%d\n", galaxies[centralgal].HaloNr);
+            fprintf(stdout, "Halo Mass: %g (log10: %.2f)\n", 
+                    galaxies[centralgal].Mvir, 
+                    log10(galaxies[centralgal].Mvir));
+            fprintf(stdout, "Critical Mass: %g (log10: %.2f)\n", 
+                    run_params->CriticalReincMass, 
+                    log10(run_params->CriticalReincMass));
+            fprintf(stdout, "Mass Dependent Factor: %g\n", mass_dependent_factor);
+            fprintf(stdout, "Reincorporation Mass Exponent: %g\n", run_params->ReincorporationMassExp);
+            fprintf(stdout, "Min Reincorporation Factor: %g\n", run_params->MinReincorporationFactor);
+            fprintf(stdout, "Ejected Mass Before: %g\n", galaxies[centralgal].EjectedMass);
+            
+            fprintf(stdout, "\nMass Range of Modified Galaxies:\n");
+            fprintf(stdout, "Min Mass: %g (log10: %.2f)\n", 
+                    min_reincorporation_mass, 
+                    log10(min_reincorporation_mass));
+            fprintf(stdout, "Max Mass: %g (log10: %.2f)\n", 
+                    max_reincorporation_mass, 
+                    log10(max_reincorporation_mass));
+            
+            fprintf(stdout, "\n--- End of Diagnostic Block ---\n");
+        }
+    
+        // Optional: More granular logging
+        if(counter % 10000000 == 0) {
+            FILE *log_file = fopen("reincorporation_diagnostics.txt", "a");
+            if(log_file) {
+                fprintf(log_file, "Timestamp: %ld\n", time(NULL));
+                fprintf(log_file, "Total Modified Galaxies: %d\n", total_modified_galaxies);
+                fprintf(log_file, "Halo Mass Range: %g - %g\n", 
+                        min_reincorporation_mass, 
+                        max_reincorporation_mass);
+                fclose(log_file);
+            }
         }
     }
-#endif
+    #endif
     
     // SN velocity is 630km/s, and the condition for reincorporation is that the
     // halo has an escape velocity greater than this, i.e. V_SN/sqrt(2) = 445.48km/s

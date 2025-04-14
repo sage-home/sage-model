@@ -471,7 +471,7 @@ struct params
     double ReincorporationMassExp; /* Exponent for mass dependence of reincorporation */
     double MinReincorporationFactor; /* Minimum reincorporation rate as fraction of standard rate */
 
-    int32_t    MuratovMassLoading;  /* Flag to enable Muratov et al. (2015) mass loading */
+    int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov, 2=Lagos) */
 
     // Preventative feedback parameters
     int PreventativeFeedbackOn;      // Flag to enable/disable preventative feedback

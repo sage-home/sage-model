@@ -14,8 +14,29 @@ extern "C" {
                                      struct GALAXY *galaxies, const struct params *run_params);
 
     extern void update_gas_components(struct GALAXY *g, const struct params *run_params);
+
+    // Add to model_starformation_and_feedback.h
+
     extern void starformation_and_feedback_with_muratov(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
         struct GALAXY *galaxies, const struct params *run_params);
+
+    extern double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY *galaxies, const struct params *run_params);
+
+    extern void starformation_and_feedback_with_lagos(const int p, const int centralgal, 
+        const double time, const double dt, 
+        const int halonr, const int step,
+        struct GALAXY *galaxies, 
+        const struct params *run_params);
+
+    extern double calculate_lagos_mass_loading(const int p, const double z, 
+    struct GALAXY *galaxies, 
+    const struct params *run_params);
+
+    // Mass loading model options
+    #define MASS_LOADING_STANDARD 0
+    #define MASS_LOADING_MURATOV 1
+    #define MASS_LOADING_LAGOS 2
+
 
 #ifdef __cplusplus
 }

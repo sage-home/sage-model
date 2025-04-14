@@ -50,13 +50,12 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        3   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
+SFprescription        1   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-
-MuratovMassLoading    0   %0: switch off; 1: Use Muratov et al. (2015) mass loading
+MassLoadingModel      0   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 
 %------------------------------------------
 %----- SAGE model parameters --------------
@@ -90,29 +89,30 @@ EtaSN                   5.0e-3  %supernova efficiency
 %----- H2 formation parameters ------------
 %------------------------------------------
 
-H2FractionFactor            1.0    %Controls the normalisation of the H2/HI calculation
-H2FractionExponent          0.92   %Controls the H2/HI ratio calculation
+H2FractionFactor            1.0    %Controls the normalisation of the H2/HI calculation for Blitz & Rosolowsky
+H2FractionExponent          0.92   %Controls the H2/HI ratio calculation for Blitz & Rosolowsky
+
 ClumpFactor                 5.0    %Clumping factor for Krumholz & Dekel H2
 ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz & Dekel H2
 
-RadiationFieldNorm          1.0    %Radiation field normalization relative to Milky Way (1.0 = MW)
+RadiationFieldNorm          0.5    %Radiation field normalization relative to Milky Way (1.0 = MW)
 MetallicityExponent         0.7    %Exponent for metallicity dependence in GD14 model
 IntegrationBins             10     %Number of radial bins to use for integration (higher = more accurate but slower)
 
 %------------------------------------------
 %----- MOLECULAR GAS MODEL PARAMETERS -----
 %------------------------------------------
-EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
+EnvironmentalEffectsOn        0       % Enable environmental effects on H2 gas (0=off, 1=on)
 EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- MASS-DEPENDANT REINCORPORATION -----
 %------------------------------------------
 
-MassReincorporationOn       1        % enable mass-dependent reincorporation
-CriticalReincMass           3.0      % critical mass in 10^10 Msun/h
+MassReincorporationOn       0        % enable mass-dependent reincorporation
+CriticalReincMass           8.5      % critical mass in 10^10 Msun/h
 ReincorporationMassExp      1.0      % linear scaling with halo mass
-MinReincorporationFactor    0.1     % minimum 10% of standard rate
+MinReincorporationFactor    0.1      % minimum 10% of standard rate
 
 %------------------------------------------
 %----- REDSHIFT-DEPENDANT PARAMETERS -----
@@ -126,10 +126,10 @@ FeedbackEjectionEfficiency_Alpha    0.0   %controls redshift dependence of eject
 %----- PREVENTATIVE FEEDBACK PARAMETERS -----
 %------------------------------------------
 
-PreventativeFeedbackOn     1           % Enable preventative feedback (0=off, 1=on)
-PreventativeFeedbackVcrit  20.0        % Critical velocity scale (km/s)
-PreventativeFeedbackAlpha  1.0         % Power-law slope
-PreventativeFeedbackZdep   0.4         % Redshift dependence (0.5-1.0 recommended)
+PreventativeFeedbackOn     0           % Enable preventative feedback (0=off, 1=on)
+PreventativeFeedbackVcrit  30.0        % Critical velocity scale (km/s)
+PreventativeFeedbackAlpha  2.0         % Power-law slope
+PreventativeFeedbackZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
 
 %------------------------------------------
 %----- Other code-related information -----

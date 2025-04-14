@@ -299,10 +299,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->FeedbackEjectionEfficiency_Alpha);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "MuratovMassLoading", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->MuratovMassLoading);
-    ParamID[NParam++] = INT;
-
     strncpy(ParamTag[NParam], "PreventativeFeedbackOn", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->PreventativeFeedbackOn);
     ParamID[NParam++] = INT;
@@ -318,6 +314,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     strncpy(ParamTag[NParam], "PreventativeFeedbackZdep", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->PreventativeFeedbackZdep);
     ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "MassLoadingModel", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->MassLoadingModel);
+    ParamID[NParam++] = INT;
 
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
