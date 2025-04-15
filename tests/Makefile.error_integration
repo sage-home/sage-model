@@ -1,0 +1,37 @@
+# Makefile for module error integration tests
+
+TEST_NAME := test_error_integration
+TEST_SRC := test_error_integration.c
+TEST_OBJS := test_error_integration.o
+
+SAGE_LIB_DIR := ..
+SAGE_LIB := sage
+
+CC := clang
+INCLUDES := -I../src
+LIBS := -L$(SAGE_LIB_DIR) -l$(SAGE_LIB) -lm
+
+# Compiler flags
+CFLAGS := -g -O0 -Wall -Wextra -Werror
+LDFLAGS := -g
+
+# Default target
+all: $(TEST_NAME)
+
+# Link the test executable
+$(TEST_NAME): $(TEST_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+# Compile test source
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Run the test
+run: $(TEST_NAME)
+	./$(TEST_NAME)
+
+# Clean up
+clean:
+	rm -f $(TEST_OBJS) $(TEST_NAME)
+
+.PHONY: all run clean

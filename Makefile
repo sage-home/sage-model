@@ -267,7 +267,7 @@ else
 endif
 
 # -------------- Build Targets ----------------------------
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration
 
 all: $(SAGELIB) $(EXEC)
 
@@ -350,7 +350,10 @@ test_module_dependency: tests/test_module_dependency.c $(SAGELIB)
 test_validation_logic: tests/test_validation_logic.c tests/test_invalid_module.c tests/test_invalid_module.h $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_validation_logic tests/test_validation_logic.c tests/test_invalid_module.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic
+test_error_integration: tests/test_error_integration.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_error_integration tests/test_error_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration
 	@echo "Running SAGE tests..."
 	./tests/test_sage.sh
 	./tests/test_io_interface
@@ -368,5 +371,6 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	./tests/test_module_error
 	./tests/test_module_dependency
 	./tests/test_validation_logic
+	./tests/test_error_integration
 	@cd tests && make -f Makefile.memory_tests
 	@echo "All tests completed successfully."
