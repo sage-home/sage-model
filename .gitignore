@@ -64,6 +64,7 @@ sage_analysis/plots/
 xx*
 yy*
 *.hdf5
+*.code-workspace
 
 # sage_analysis Package Stuff #
 *.egg-info
