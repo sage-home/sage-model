@@ -11,23 +11,25 @@
 #include "../src/core/core_module_template.h"
 #include "../src/core/core_module_validation.h"
 #include "../src/core/core_dynamic_library.h"
-
-/* Constants for testing */
-#define TEST_OUTPUT_DIR "./test_module_output"
-#define TEST_MODULE_NAME "test_cooling_module"
-#define TEST_MODULE_PREFIX "tcm"
-#define TEST_MODULE_AUTHOR "SAGE Test Framework"
-#define TEST_MODULE_EMAIL "test@example.com"
-#define TEST_MODULE_DESCRIPTION "Test cooling module for SAGE"
-#define TEST_MODULE_VERSION "1.0.0"
+#include "test_module_template_validation.h"
 
 /* Function prototypes */
 void test_module_template_generation(void);
 void test_module_validation(void);
 void cleanup_test_files(void);
+void test_minimal_module_template(void);
+void test_full_module_template(void);
+void test_mixed_module_template(void);
+void create_test_dirs(void);
 
 /* Main test function */
-int main(void) {
+int main(int argc, char *argv[]) {
+    /* Check for the no-cleanup option */
+    bool skip_cleanup = false;
+    if (argc > 1 && strcmp(argv[1], "--no-cleanup") == 0) {
+        skip_cleanup = true;
+    }
+    
     /* Initialize logging */
     initialize_logging(NULL);
     
@@ -41,9 +43,17 @@ int main(void) {
     int status = module_system_initialize();
     assert(status == MODULE_STATUS_SUCCESS);
     
+    /* Create test directories */
+    create_test_dirs();
+    
     /* Run tests */
-    test_module_template_generation();
-    test_module_validation();
+    test_module_template_generation(); /* Original basic test */
+    test_module_validation();          /* Original validation test */
+    
+    /* Enhanced template tests with content validation */
+    test_minimal_module_template();
+    test_full_module_template();
+    test_mixed_module_template();
     
     /* Clean up the module system */
     status = module_system_cleanup();
@@ -53,22 +63,45 @@ int main(void) {
     dl_result = dynamic_library_system_cleanup();
     assert(dl_result == DL_SUCCESS);
     
-    /* Clean up test files */
-    cleanup_test_files();
+    /* Clean up test files unless skipped */
+    if (!skip_cleanup) {
+        cleanup_test_files();
+    } else {
+        printf("\nSkipping cleanup of test files.\n");
+    }
     
     printf("\nAll tests passed!\n");
     return 0;
 }
 
-/* Test module template generation */
-void test_module_template_generation(void) {
-    printf("Testing module template generation...\n");
-    
-    /* Create the test output directory if it doesn't exist */
+/* Create test directories */
+void create_test_dirs(void) {
     struct stat st = {0};
-    if (stat(TEST_OUTPUT_DIR, &st) == -1) {
-        mkdir(TEST_OUTPUT_DIR, 0755);
+    
+    /* Create base output directory if it doesn't exist */
+    if (stat(TEST_BASE_DIR, &st) == -1) {
+        mkdir(TEST_BASE_DIR, 0755);
     }
+    
+    /* Create minimal output directory */
+    if (stat(TEST_MIN_DIR, &st) == -1) {
+        mkdir(TEST_MIN_DIR, 0755);
+    }
+    
+    /* Create full output directory */
+    if (stat(TEST_FULL_DIR, &st) == -1) {
+        mkdir(TEST_FULL_DIR, 0755);
+    }
+    
+    /* Create mixed output directory */
+    if (stat(TEST_MIXED_DIR, &st) == -1) {
+        mkdir(TEST_MIXED_DIR, 0755);
+    }
+}
+
+/* Test module template generation (original basic test) */
+void test_module_template_generation(void) {
+    printf("Testing basic module template generation...\n");
     
     /* Initialize template parameters */
     struct module_template_params params;
@@ -76,12 +109,12 @@ void test_module_template_generation(void) {
     assert(result == 0);
     
     /* Set template parameters */
-    strcpy(params.module_name, TEST_MODULE_NAME);
-    strcpy(params.module_prefix, TEST_MODULE_PREFIX);
-    strcpy(params.author, TEST_MODULE_AUTHOR);
-    strcpy(params.email, TEST_MODULE_EMAIL);
-    strcpy(params.description, TEST_MODULE_DESCRIPTION);
-    strcpy(params.version, TEST_MODULE_VERSION);
+    strcpy(params.module_name, TEST_MODULE_COOLING);
+    strcpy(params.module_prefix, TEST_MODULE_COOLING_PREFIX);
+    strcpy(params.author, "SAGE Test Framework");
+    strcpy(params.email, "test@example.com");
+    strcpy(params.description, "Test cooling module for SAGE");
+    strcpy(params.version, "1.0.0");
     params.type = MODULE_TYPE_COOLING;
     
     /* Set template features */
@@ -94,7 +127,7 @@ void test_module_template_generation(void) {
     params.include_readme = true;
     
     /* Set output directory */
-    strcpy(params.output_dir, TEST_OUTPUT_DIR);
+    strcpy(params.output_dir, TEST_BASE_DIR);
     
     /* Generate the template */
     result = module_generate_template(&params);
@@ -104,30 +137,30 @@ void test_module_template_generation(void) {
     char path[PATH_MAX];
     
     /* Check header file */
-    snprintf(path, sizeof(path), "%s/%s.h", TEST_OUTPUT_DIR, TEST_MODULE_NAME);
+    snprintf(path, sizeof(path), "%s/%s.h", TEST_BASE_DIR, TEST_MODULE_COOLING);
     assert(access(path, F_OK) == 0);
     
     /* Check implementation file */
-    snprintf(path, sizeof(path), "%s/%s.c", TEST_OUTPUT_DIR, TEST_MODULE_NAME);
+    snprintf(path, sizeof(path), "%s/%s.c", TEST_BASE_DIR, TEST_MODULE_COOLING);
     assert(access(path, F_OK) == 0);
     
     /* Check manifest file */
-    snprintf(path, sizeof(path), "%s/%s.manifest", TEST_OUTPUT_DIR, TEST_MODULE_NAME);
+    snprintf(path, sizeof(path), "%s/%s.manifest", TEST_BASE_DIR, TEST_MODULE_COOLING);
     assert(access(path, F_OK) == 0);
     
     /* Check Makefile */
-    snprintf(path, sizeof(path), "%s/Makefile", TEST_OUTPUT_DIR);
+    snprintf(path, sizeof(path), "%s/Makefile", TEST_BASE_DIR);
     assert(access(path, F_OK) == 0);
     
     /* Check README file */
-    snprintf(path, sizeof(path), "%s/README.md", TEST_OUTPUT_DIR);
+    snprintf(path, sizeof(path), "%s/README.md", TEST_BASE_DIR);
     assert(access(path, F_OK) == 0);
     
     /* Check test file */
-    snprintf(path, sizeof(path), "%s/test_%s.c", TEST_OUTPUT_DIR, TEST_MODULE_NAME);
+    snprintf(path, sizeof(path), "%s/test_%s.c", TEST_BASE_DIR, TEST_MODULE_COOLING);
     assert(access(path, F_OK) == 0);
     
-    printf("Module template generation tests passed.\n");
+    printf("Basic module template generation tests passed.\n");
 }
 
 /* Test module validation */
@@ -206,10 +239,67 @@ void test_module_validation(void) {
     printf("Module validation tests passed.\n");
 }
 
+/* Test minimal module template */
+void test_minimal_module_template(void) {
+    printf("\nTesting minimal module template generation with content validation...\n");
+    
+    /* Setup minimal template parameters */
+    struct module_template_params params;
+    setup_minimal_template_params(&params, TEST_MIN_DIR, MODULE_TYPE_COOLING);
+    
+    /* Generate the template */
+    int result = module_generate_template(&params);
+    assert(result == 0);
+    
+    /* Validate all generated files */
+    bool valid = validate_all_module_files(&params);
+    assert(valid);
+    
+    printf("Minimal module template generation tests passed.\n");
+}
+
+/* Test full module template */
+void test_full_module_template(void) {
+    printf("\nTesting full module template generation with content validation...\n");
+    
+    /* Setup full template parameters */
+    struct module_template_params params;
+    setup_full_template_params(&params, TEST_FULL_DIR, MODULE_TYPE_STAR_FORMATION);
+    
+    /* Generate the template */
+    int result = module_generate_template(&params);
+    assert(result == 0);
+    
+    /* Validate all generated files */
+    bool valid = validate_all_module_files(&params);
+    assert(valid);
+    
+    printf("Full module template generation tests passed.\n");
+}
+
+/* Test mixed module template */
+void test_mixed_module_template(void) {
+    printf("\nTesting mixed module template generation with content validation...\n");
+    
+    /* Setup mixed template parameters */
+    struct module_template_params params;
+    setup_mixed_template_params(&params, TEST_MIXED_DIR, MODULE_TYPE_FEEDBACK);
+    
+    /* Generate the template */
+    int result = module_generate_template(&params);
+    assert(result == 0);
+    
+    /* Validate all generated files */
+    bool valid = validate_all_module_files(&params);
+    assert(valid);
+    
+    printf("Mixed module template generation tests passed.\n");
+}
+
 /* Clean up test files */
 void cleanup_test_files(void) {
     /* Remove generated files */
     char command[PATH_MAX];
-    snprintf(command, sizeof(command), "rm -rf %s", TEST_OUTPUT_DIR);
+    snprintf(command, sizeof(command), "rm -rf %s", TEST_BASE_DIR);
     system(command);
 }

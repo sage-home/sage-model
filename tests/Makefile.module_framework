@@ -10,12 +10,15 @@ else
     LDFLAGS :=
 endif
 
+# Test sources
+TEST_SOURCES := test_module_framework.c test_module_template_validation.c
+
 # Test programs
 TEST_MODULE_FRAMEWORK := test_module_framework
 
 all: $(TEST_MODULE_FRAMEWORK)
 
-$(TEST_MODULE_FRAMEWORK): test_module_framework.c
+$(TEST_MODULE_FRAMEWORK): $(TEST_SOURCES)
 	$(CC) $(CFLAGS) -o $@ $^ -L.. -lsage -lm $(LDFLAGS)
 
 clean:

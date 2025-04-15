@@ -329,8 +329,8 @@ test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_module_framework: tests/test_module_framework.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_framework tests/test_module_framework.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_module_framework: tests/test_module_framework.c tests/test_module_template_validation.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_framework tests/test_module_framework.c tests/test_module_template_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_module_debug: tests/test_module_debug.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_debug tests/test_module_debug.c -L. -l$(LIBNAME) $(LIBFLAGS)
