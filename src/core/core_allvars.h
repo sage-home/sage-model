@@ -15,6 +15,9 @@
 #include "macros.h"
 #include "core_simulation.h"
 
+/* Maximum number of galaxies per halo - used for merger event queue sizing */
+#define MAX_GALAXIES_PER_HALO 1000
+
 
 enum Valid_TreeTypes
 {
@@ -87,6 +90,37 @@ enum sage_error_types {
     HDF5_ERROR,
 };
 
+/**
+ * Merger event structure
+ * 
+ * Contains all information needed to process a merger or disruption event.
+ * Used in the merger event queue to defer processing until all galaxies
+ * have completed their physics calculations for a timestep.
+ */
+struct merger_event {
+    int satellite_index;           /* Index of the satellite galaxy */
+    int central_index;             /* Index of the central galaxy */
+    double merger_time;            /* Remaining merger time */
+    double time;                   /* Current simulation time */
+    double dt;                     /* Timestep */
+    int halo_nr;                   /* Halo number */
+    int step;                      /* Current step */
+    int merger_type;               /* Type of merger event (merger/disruption) */
+};
+
+/**
+ * Merger event queue
+ * 
+ * Collects potential merger events during galaxy physics processing
+ * and allows deferred execution once all galaxies have been processed.
+ * This maintains scientific consistency by ensuring all galaxies see
+ * the same pre-merger state during physics calculations.
+ */
+struct merger_event_queue {
+    struct merger_event events[MAX_GALAXIES_PER_HALO];  /* Array of merger events */
+    int num_events;                                     /* Number of events in queue */
+};
+
 /* 
  * This structure contains context data for galaxy evolution
  * It encapsulates the state needed during the evolution of galaxies
@@ -109,6 +143,9 @@ struct evolution_context {
     
     /* Parameters */
     const struct params *params; /* Reference to runtime parameters */
+    
+    /* Merger queue */
+    struct merger_event_queue *merger_queue; /* Queue for deferred merger processing */
 };
 
 

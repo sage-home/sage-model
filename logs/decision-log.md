@@ -56,3 +56,7 @@
 2025-04-16: [Phase 5.1] Merger Event Queue Approach for Galaxy Evolution
 - Rationale: The current `evolve_galaxies()` implementation uses separate loops for physics processing and merger handling to ensure all galaxies see the same pre-merger state. We've decided to implement an event queue approach that maintains this scientific property while simplifying code structure and aligning with our event-driven pipeline architecture.
 - Impact: Provides a cleaner integration path for the pipeline system while preserving scientific consistency. This approach will be implemented before full pipeline integration, allowing us to validate the event-based pattern independently before combining with other architectural changes.
+
+2025-04-16: [Phase 5.1] Careful Parameter Management for Merger Events
+- Rationale: When implementing the merger event queue, we discovered that preserving exact numerical results required careful attention to parameter passing. Specifically, we needed to ensure the central galaxy index and merge destination IDs matched the original code exactly.
+- Impact: Ensures that the event queue implementation produces results consistent with the previous approach, maintaining scientific accuracy while benefiting from the cleaner code structure. The successful implementation validates our approach to incremental refactoring that preserves scientific outcomes.

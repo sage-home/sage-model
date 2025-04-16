@@ -20,3 +20,10 @@
 - Created detailed handover document for merger event queue implementation
 - Identified key path to maintain scientific consistency while simplifying code structure
 - Modified files: logs/decision-log.md, logs/phase-tracker-log.md
+
+2025-04-16: [Phase 5.1] Merger Event Queue Implementation Complete
+- Implemented merger event queue data structures and management functions
+- Modified `evolve_galaxies()` to collect and defer merger events 
+- Processed all merger events after physics calculations to maintain scientific consistency
+- Created files: src/core/core_merger_queue.h, src/core/core_merger_queue.c
+- Modified files: src/core/core_allvars.h, src/core/core_build_model.c, Makefile

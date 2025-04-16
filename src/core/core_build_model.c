@@ -18,6 +18,7 @@
 #include "core_pipeline_system.h"
 #include "core_module_system.h"
 #include "core_array_utils.h"
+#include "core_merger_queue.h"
 
 #include "../physics/model_misc.h"
 #include "../physics/model_mergers.h"
@@ -610,9 +611,19 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         }
     }
     
+    // Create and initialize merger event queue
+    struct merger_event_queue merger_queue;
+    init_merger_queue(&merger_queue);
+    
+    // Attach queue to evolution context
+    ctx.merger_queue = &merger_queue;
+    
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
         pipeline_ctx.step = step;
+        
+        // Reset merger queue for this timestep
+        init_merger_queue(&merger_queue);
 
         // Loop over all galaxies in the halo
         for(int p = 0; p < ctx.ngal; p++) {
@@ -682,11 +693,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                                          galaxies, &sf_params, &fb_params);
                 
             }
-        }
-
-        // PHYSICS MODULE: Mergers and Disruption - still handled outside the pipeline for now
-        for(int p = 0; p < ctx.ngal; p++) {
-            // satellite galaxy!
+            
+            // Check for potential mergers (satellite galaxies only)
             if((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && ctx.galaxies[p].mergeType == 0) {
                 if(ctx.galaxies[p].MergTime >= 999.0) {
                     CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
@@ -695,8 +703,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                     return EXIT_FAILURE;
                 }
 
-                // Calculate deltaT for this specific galaxy
-                const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
                 ctx.galaxies[p].MergTime -= deltaT / STEPS;
 
                 // only consider mergers or disruption for halo-to-baryonic mass ratios below the threshold
@@ -711,21 +717,36 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                         merger_centralgal = ctx.galaxies[merger_centralgal].CentralGal;
                     }
 
+                    // Store mergeIntoID for later use by process_merger_events
                     ctx.galaxies[p].mergeIntoID = *numgals + merger_centralgal;  // position in output
 
                     if(isfinite(ctx.galaxies[p].MergTime)) {
-                        // PHYSICS MODULE: Disruption - satellite is disrupted and stars added to ICS
-                        if(ctx.galaxies[p].MergTime > 0.0) {
-                            disrupt_satellite_to_ICS(merger_centralgal, p, ctx.galaxies);
-                        } else {
-                            // PHYSICS MODULE: Mergers - satellite merges with central galaxy
-                            const double time = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
-                            deal_with_galaxy_merger(p, merger_centralgal, ctx.centralgal, time, deltaT / STEPS, ctx.halo_nr, step, ctx.galaxies, run_params);
-                        }
+                        // Instead of processing merger now, add to queue for later processing
+                        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG,
+                                  "Queuing merger event: satellite=%d, central=%d, merger_time=%g",
+                                  p, merger_centralgal, ctx.galaxies[p].MergTime);
+                                  
+                        queue_merger_event(
+                            &merger_queue,         // Queue to add to
+                            p,                     // Satellite galaxy index
+                            merger_centralgal,     // Central galaxy index
+                            ctx.galaxies[p].MergTime, // Merger time
+                            time,                  // Current time
+                            deltaT / STEPS,        // Timestep
+                            ctx.centralgal,        // Store centralgal for merger processing
+                            step,                  // Current step
+                            ctx.galaxies[p].mergeType // Merger type
+                        );
                     }
                 }
             }
         }
+        
+        // After all galaxies have their physics processed, process merger events
+        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processing %d merger events for step %d", 
+                  merger_queue.num_events, step);
+        process_merger_events(&merger_queue, ctx.galaxies, run_params);
+        
     } // Go on to the next STEPS substep
 
 

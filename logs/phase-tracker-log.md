@@ -22,7 +22,7 @@
 ## Current Progress
 
 ### Phase 5.1: Refactoring Main Evolution Loop ⏳ IN PROGRESS
-- [ ] Implement merger event queue approach in traditional architecture
+- [x] Implement merger event queue approach in traditional architecture
 - [ ] Transform `evolve_galaxies()` to use the pipeline system
 - [ ] Integrate event dispatch/handling points
 - [ ] Add support for reading/writing extension properties
