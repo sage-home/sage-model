@@ -111,6 +111,44 @@ static double get_timestamp(void) {
     return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
+/* Helper function to format trace entry components */
+static void format_trace_components(
+    const module_trace_entry_t *entry,
+    char *timestamp_buffer, size_t timestamp_size,
+    const char **level_str,
+    int *millis
+) {
+    /* Format timestamp */
+    time_t t = (time_t)entry->timestamp;
+    struct tm *tm = localtime(&t);
+    strftime(timestamp_buffer, timestamp_size, "%Y-%m-%d %H:%M:%S", tm);
+    
+    /* Calculate milliseconds */
+    *millis = (int)((entry->timestamp - (int)entry->timestamp) * 1000);
+    
+    /* Format trace level */
+    switch (entry->level) {
+        case TRACE_LEVEL_DEBUG:
+            *level_str = "DEBUG";
+            break;
+        case TRACE_LEVEL_INFO:
+            *level_str = "INFO";
+            break;
+        case TRACE_LEVEL_WARNING:
+            *level_str = "WARNING";
+            break;
+        case TRACE_LEVEL_ERROR:
+            *level_str = "ERROR";
+            break;
+        case TRACE_LEVEL_FATAL:
+            *level_str = "FATAL";
+            break;
+        default:
+            *level_str = "UNKNOWN";
+            break;
+    }
+}
+
 /* Add an entry to the module trace log */
 bool module_trace_log(
     trace_level_t level,
@@ -176,38 +214,14 @@ bool module_trace_log(
     
     /* Log to file if enabled */
     if (trace_system.config.log_to_file && trace_system.log_file) {
-        /* Format timestamp */
-        time_t t = (time_t)entry->timestamp;
-        struct tm *tm = localtime(&t);
         char timestamp[32];
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm);
-        
-        /* Format trace level */
         const char *level_str;
-        switch (entry->level) {
-            case TRACE_LEVEL_DEBUG:
-                level_str = "DEBUG";
-                break;
-            case TRACE_LEVEL_INFO:
-                level_str = "INFO";
-                break;
-            case TRACE_LEVEL_WARNING:
-                level_str = "WARNING";
-                break;
-            case TRACE_LEVEL_ERROR:
-                level_str = "ERROR";
-                break;
-            case TRACE_LEVEL_FATAL:
-                level_str = "FATAL";
-                break;
-            default:
-                level_str = "UNKNOWN";
-                break;
-        }
+        int millis;
+        format_trace_components(entry, timestamp, sizeof(timestamp), &level_str, &millis);
         
         /* Write to file */
         fprintf(trace_system.log_file, "%s.%03d, %s, %d, %s, %s, %d, %s\n",
-               timestamp, (int)((entry->timestamp - (int)entry->timestamp) * 1000),
+               timestamp, millis,
                level_str, entry->module_id, 
                entry->function ? entry->function : "unknown",
                entry->file ? entry->file : "unknown",
@@ -283,39 +297,15 @@ bool module_trace_format_entry(
         return false;
     }
     
-    /* Format timestamp */
-    time_t t = (time_t)entry->timestamp;
-    struct tm *tm = localtime(&t);
+    /* Get formatted components */
     char timestamp[32];
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm);
-    
-    /* Format trace level */
     const char *level_str;
-    switch (entry->level) {
-        case TRACE_LEVEL_DEBUG:
-            level_str = "DEBUG";
-            break;
-        case TRACE_LEVEL_INFO:
-            level_str = "INFO";
-            break;
-        case TRACE_LEVEL_WARNING:
-            level_str = "WARNING";
-            break;
-        case TRACE_LEVEL_ERROR:
-            level_str = "ERROR";
-            break;
-        case TRACE_LEVEL_FATAL:
-            level_str = "FATAL";
-            break;
-        default:
-            level_str = "UNKNOWN";
-            break;
-    }
+    int millis;
+    format_trace_components(entry, timestamp, sizeof(timestamp), &level_str, &millis);
     
     /* Format the entry */
     snprintf(output, size, "[%s.%03d] [%s] [Module %d] %s",
-             timestamp, (int)((entry->timestamp - (int)entry->timestamp) * 1000),
-             level_str, entry->module_id, entry->message);
+             timestamp, millis, level_str, entry->module_id, entry->message);
     
     /* Add file and line information if available */
     if (entry->file && entry->line > 0) {
@@ -366,38 +356,14 @@ bool module_trace_write_to_file(const char *filename) {
     for (int i = 0; i < count; i++) {
         const module_trace_entry_t *entry = &entries[i];
         
-        /* Format timestamp */
-        time_t t = (time_t)entry->timestamp;
-        struct tm *tm = localtime(&t);
         char timestamp[32];
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm);
-        
-        /* Format trace level */
         const char *level_str;
-        switch (entry->level) {
-            case TRACE_LEVEL_DEBUG:
-                level_str = "DEBUG";
-                break;
-            case TRACE_LEVEL_INFO:
-                level_str = "INFO";
-                break;
-            case TRACE_LEVEL_WARNING:
-                level_str = "WARNING";
-                break;
-            case TRACE_LEVEL_ERROR:
-                level_str = "ERROR";
-                break;
-            case TRACE_LEVEL_FATAL:
-                level_str = "FATAL";
-                break;
-            default:
-                level_str = "UNKNOWN";
-                break;
-        }
+        int millis;
+        format_trace_components(entry, timestamp, sizeof(timestamp), &level_str, &millis);
         
         /* Write to file */
         fprintf(file, "%s.%03d, %s, %d, %s, %s, %d, %s\n",
-               timestamp, (int)((entry->timestamp - (int)entry->timestamp) * 1000),
+               timestamp, millis,
                level_str, entry->module_id, 
                entry->function ? entry->function : "unknown",
                entry->file ? entry->file : "unknown",

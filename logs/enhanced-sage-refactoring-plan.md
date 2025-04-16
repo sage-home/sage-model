@@ -932,6 +932,7 @@ Comprehensive documentation is essential for a modular system to be usable by sc
 *   **Full SIMD Vectorization**: Deferred (post-project). Implement for critical hotspots in Phase 6.3, full vectorization later if needed.
 *   **Testing Approach Documentation**: Document the rationale behind different testing approaches rather than forcing consistency across the entire test suite.
 *   **Test Build Simplification**: Consider addressing during a dedicated testing infrastructure improvement phase to consolidate Makefiles and standardize build process.
+*   **Dynamic Library Loading Limits**: Consider making `MAX_LOADED_LIBRARIES` (64) configurable or dynamically expandable. The current limit may be restrictive for complex systems with many modules.
 
 ## Risk Assessment and Mitigation
 
