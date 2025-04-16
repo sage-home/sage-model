@@ -42,3 +42,13 @@
 2025-04-11: [Phase 4.4] API Versioning Strategy for Modules
 - Rationale: To ensure compatibility between modules and the core, we implemented a dual-constant approach with CORE_API_VERSION (current) and CORE_API_MIN_VERSION (minimum compatible). This allows us to enforce exact matches for critical compatibility while supporting backward compatibility for minor improvements, avoiding unnecessary breakage of existing modules.
 - Impact: Provides a clear compatibility model for module developers and users. Modules targeting specific API versions can specify requirements, while the core can maintain compatibility with older modules. This ensures a smoother upgrade path as the system evolves over time while preserving critical compatibility requirements.
+
+2025-04-16: [Phase 4.7] Code Maintenance Approach for Debug System
+- Rationale: Identified code duplication in `core_module_debug.c` with identical formatting logic repeated in three places. Created a helper function to centralize this logic and improve maintainability without changing functionality.
+- Impact: Establishes a pattern for incremental code quality improvements during the refactoring process. By addressing maintenance issues while implementing new features, we ensure the codebase remains sustainable long-term while meeting immediate functional requirements.
+
+# Phase 5 Key Decisions
+
+2025-04-16: [Phase 5.1] Incremental Evolution Pipeline Transformation
+- Rationale: The evolution pipeline is central to SAGE's scientific calculations, so a big-bang replacement would be too risky. Instead, we'll implement a hybrid approach where the pipeline system is gradually introduced in parallel to the existing monolithic `evolve_galaxies()` function.
+- Impact: Allows continuous validation against reference outputs, minimizes risk to scientific accuracy, and enables us to validate each physics module independently as it's migrated. This reduces risk while maintaining momentum toward the modular architecture.

@@ -9,73 +9,55 @@
 - At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
-# Current Phase: 4/7 (Advanced Plugin Infrastructure)
+# Current Phase: 5/7 (Core Module Migration)
 
 ## Phase Objectives
-- Implement cross-platform dynamic library loading mechanism
-- Create flexible module development framework with templates and validation tools
-- Develop parameter tuning system with runtime modification capabilities
-- Implement module discovery, manifest parsing, and dependency resolution
-- Create comprehensive error handling and reporting for modules
+- Transform `evolve_galaxies()` to use the pipeline system
+- Extract physics components into standalone modules
+- Ensure physics modules register required extension properties
+- Implement event dispatching and handling for physics modules
+- Integrate module callbacks for cross-module interactions
+- Validate scientific accuracy against baseline SAGE results
 
 ## Current Progress
 
-### Phase 4.1: Dynamic Library Loading ✅ COMPLETED
-- [x] Design cross-platform loading abstraction for Linux/macOS/Windows
-- [x] Implement dynamic library loading with proper error handling
-- [x] Add symbol lookup and resolution
-- [x] Implement safe library unloading
-- [x] Create comprehensive error reporting for loading issues
+### Phase 5.1: Refactoring Main Evolution Loop ⏳ IN PROGRESS
+- [ ] Transform `evolve_galaxies()` to use the pipeline system
+- [ ] Integrate event dispatch/handling points
+- [ ] Add support for reading/writing extension properties
+- [ ] Integrate module callbacks
+- [ ] Add evolution diagnostics
 
-### Phase 4.2: Module Development Framework ✅ COMPLETED
-- [x] Create module template generation system
-- [x] Implement module validation framework
-- [x] Add debugging utilities for module development
-- [x] Provide development documentation with examples
+### Phase 5.2: Converting Physics Modules ⏳ PENDING
+- [ ] Extract cooling module (already partially implemented)
+- [ ] Extract star formation and feedback module
+- [ ] Extract infall module
+- [ ] Extract mergers module
+- [ ] Extract disk instability module
+- [ ] Extract reincorporation module
+- [ ] Ensure all modules register required extension properties
+- [ ] Add event triggers at appropriate points
+- [ ] Implement necessary callbacks between modules
 
-### Phase 4.3: Parameter Tuning System ✅ COMPLETED
-- [x] Implement parameter registration in modules
-- [x] Create parameter validation framework with type checking
-- [x] Add runtime modification capabilities
-- [x] Implement parameter file import/export
-- [x] Add bounds checking for numeric parameters
-
-### Phase 4.4: Module Discovery and Loading ✅ COMPLETED
-- [x] Implement directory scanning for modules
-- [x] Create manifest parsing system
-- [x] Add dependency resolution with versioning
-- [x] Implement module validation at load time
-- [x] Define and implement API versioning strategy
-
-### Phase 4.5: Error Handling ✅ COMPLETED
-- [x] Implement comprehensive module error reporting
-- [x] Add call stack tracing for module interactions
-- [x] Create standardized logging per module
-- [x] Implement user-friendly diagnostic information
-
-### Phase 4.6: Core Functionality Refinements ✅ COMPLETED
-- [x] Improve parameter file parsing with more robust JSON handling
-- [x] Complete dependency version checking integration
-- [x] Add automatic debug context lifecycle management
-
-### Phase 4.7: Test Suite Enhancements ✅ COMPLETED
-- [x] Implement comprehensive validation logic testing
-- [x] Enhance template generation testing with content validation
-- [x] Add integration tests for error handling and diagnostics
+### Phase 5.3: Validation and Testing ⏳ PENDING
+- [ ] Perform scientific validation against baseline SAGE
+- [ ] Implement performance benchmarks
+- [ ] Develop module compatibility tests
+- [ ] Add call graph validation
 
 ## Completion Criteria
-- Modules can be loaded dynamically at runtime without recompilation
-- Module developers have clear templates and tools for creating compatible modules
-- Module parameter tuning can be performed at runtime with proper validation
-- Modules can be discovered automatically in specified directories
-- Dependencies between modules are properly handled and validated
-- Error handling provides clear, actionable information for debugging
-- Core functionality is robust against edge cases and invalid inputs
-- Test suite comprehensively verifies all aspects of the plugin infrastructure
+- The main galaxy evolution loop uses the pipeline system
+- All physics components are implemented as standalone modules
+- Extension properties are properly registered and used by all modules
+- Event handling and module callbacks correctly preserve physics interdependencies
+- Scientific results match baseline SAGE simulation outputs
+- All tests pass, including validation tests
 
 ## Inter-Phase Dependencies
 - Phase 1 (Preparatory Refactoring): ✅ COMPLETED
 - Phase 2 (Module Interfaces): ✅ COMPLETED
 - Phase 3 (I/O Abstraction & Memory Optimization): ✅ COMPLETED
 - Phase 4 (Plugin Infrastructure): ✅ COMPLETED
-- Phase 5 (Core Module Migration): ⏳ READY TO START
+- Phase 5 (Core Module Migration): ⏳ IN PROGRESS
+- Phase 6 (Advanced Performance Optimization): 🔒 BLOCKED
+- Phase 7 (Documentation and Tools): 🔒 BLOCKED

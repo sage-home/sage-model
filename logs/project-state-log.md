@@ -194,6 +194,9 @@ Key components in the architecture:
 - `module_cooling`: First physics module using new plugin architecture (others pending)
 - `core_pipeline_system`: Configurable sequence for physics operations
 - `core_config_system`: JSON-based configuration with hierarchical parameters
+- `core_module_debug`: Module debugging with tracing and diagnostics
+- `core_module_error`: Error handling with context tracking and history
+- `core_dynamic_library`: Cross-platform dynamic library loading
 
 The modular design provides:
 - Runtime physics module registry with lifecycle management
@@ -201,3 +204,5 @@ The modular design provides:
 - Galaxy property extension mechanism
 - Configurable pipeline execution
 - Parameter validation and override capabilities
+- Comprehensive error handling and diagnostics
+- Dynamic loading of module implementations
