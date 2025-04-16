@@ -356,8 +356,8 @@ test_error_integration: tests/test_error_integration.c $(SAGELIB)
 
 tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration
 	@echo "Running SAGE tests..."
-	@echo "\n--- Running end-to-end comparison tests (expected to fail during Phase 5) ---"
-	@./tests/test_sage.sh || echo "End-to-end tests failed (expected during Phase 5)"
+	@# Save test_sage.sh output to a log file to check for failures
+	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
 	@echo "\n--- Running unit tests and component tests ---"
 	@echo "Running test_io_interface..."
 	@./tests/test_io_interface || FAILED="$$FAILED test_io_interface"
@@ -403,6 +403,11 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	else \
 		echo "\n============================================"; \
 		echo "All unit tests completed successfully."; \
-		echo "End-to-end comparison test failures (if any) are expected during Phase 5."; \
+		if grep -q "Binary checks failed: [1-9]" tests/test_output.log; then \
+			echo "End-to-end comparison test: Binary comparison failed! NOTE: this is expected during Phase 5."; \
+		fi; \
+		if grep -q "HDF5 checks failed: [1-9]" tests/test_output.log; then \
+			echo "End-to-end comparison test: HDF5 comparison failed! NOTE: this is expected during Phase 5."; \
+		fi; \
 		echo "============================================\n"; \
 	fi
