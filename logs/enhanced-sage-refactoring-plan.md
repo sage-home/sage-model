@@ -6,7 +6,7 @@
 2. **Optimized Merger Tree Processing**: Enhance merger tree handling efficiency via improved memory layout, unified I/O abstraction, and caching, preserving existing formats.
 
 **Overall Timeline**: ~22-28 months total project duration
-**Current Status**: Phase 3 (I/O Abstraction)
+**Current Status**: Phase 5 (Core Module Migration)
 
 ## Current Architecture Assessment
 
@@ -426,15 +426,42 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 **Estimated Timeline**: 4-5 months
 
 #### Components
-*   **5.1 Refactoring Main Evolution Loop**: Transform `evolve_galaxies()` to use the pipeline system. Integrate event dispatch/handling. Add support for reading/writing extension properties. Integrate module callbacks. Add evolution diagnostics.
+*   **5.1 Refactoring Main Evolution Loop**: 
+    * **5.1.1 Merger Event Queue Implementation**: Implement event queue approach for mergers in traditional architecture
+    * **5.1.2 Pipeline Integration**: Transform `evolve_galaxies()` to use the pipeline system 
+    * **5.1.3 Event System Integration**: Add event dispatch/handling points
+    * **5.1.4 Extension Properties Support**: Add support for reading/writing extension properties
+    * **5.1.5 Module Callback Integration**: Integrate module callbacks
+    * **5.1.6 Diagnostics**: Add evolution diagnostics
 *   **5.2 Converting Physics Modules**: Extract components into standalone modules implementing the defined interfaces. Add property registration and event triggers. Manage module-specific data. Define/implement dependencies via callbacks.
 *   **5.3 Validation and Testing**: Perform scientific validation against baseline SAGE. Implement performance benchmarks. Develop module compatibility tests. Add call graph validation.
 
 #### Example Implementation
 ```c
-// Transformed evolution loop using pipeline
+// Event queue for deferred merger processing
+struct merger_event {
+    int satellite_index;           // Index of the satellite galaxy
+    int central_index;             // Index of the central galaxy
+    double merger_time;            // Remaining merger time
+    double time;                   // Current simulation time
+    double dt;                     // Timestep
+    int halo_nr;                   // Halo number
+    int step;                      // Current step
+    int merger_type;               // Type of merger event (merger/disruption)
+};
+
+struct merger_event_queue {
+    struct merger_event events[MAX_GALAXIES_PER_HALO];  // Array of merger events
+    int num_events;                                     // Number of events in queue
+};
+
+// Transformed evolution loop using pipeline and event queue
 int evolve_galaxies_pipeline(int p, int centralgal, double time, double dt, 
                           int halonr, int step, struct GALAXY *galaxies) {
+    // Create merger event queue
+    struct merger_event_queue merger_queue;
+    merger_queue.num_events = 0;
+    
     // Setup evolution context
     struct evolution_context context = {
         .galaxy_index = p,
@@ -443,7 +470,8 @@ int evolve_galaxies_pipeline(int p, int centralgal, double time, double dt,
         .timestep = dt,
         .halo_number = halonr,
         .step = step,
-        .galaxies = galaxies
+        .galaxies = galaxies,
+        .merger_queue = &merger_queue  // Include merger queue in context
     };
     
     // Execute each pipeline step

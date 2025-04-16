@@ -52,3 +52,7 @@
 2025-04-16: [Phase 5.1] Incremental Evolution Pipeline Transformation
 - Rationale: The evolution pipeline is central to SAGE's scientific calculations, so a big-bang replacement would be too risky. Instead, we'll implement a hybrid approach where the pipeline system is gradually introduced in parallel to the existing monolithic `evolve_galaxies()` function.
 - Impact: Allows continuous validation against reference outputs, minimizes risk to scientific accuracy, and enables us to validate each physics module independently as it's migrated. This reduces risk while maintaining momentum toward the modular architecture.
+
+2025-04-16: [Phase 5.1] Merger Event Queue Approach for Galaxy Evolution
+- Rationale: The current `evolve_galaxies()` implementation uses separate loops for physics processing and merger handling to ensure all galaxies see the same pre-merger state. We've decided to implement an event queue approach that maintains this scientific property while simplifying code structure and aligning with our event-driven pipeline architecture.
+- Impact: Provides a cleaner integration path for the pipeline system while preserving scientific consistency. This approach will be implemented before full pipeline integration, allowing us to validate the event-based pattern independently before combining with other architectural changes.
