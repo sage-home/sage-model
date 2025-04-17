@@ -147,6 +147,9 @@ struct base_module {
     /* Runtime dependencies */
     module_dependency_t *dependencies;    /* Array of module dependencies */
     int num_dependencies;                 /* Number of dependencies */
+    
+    /* Execution phases */
+    uint32_t phases;                      /* Bitmap of supported execution phases */
 };
 
 /**

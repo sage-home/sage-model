@@ -11,6 +11,22 @@ extern "C" {
 #include "core_event_system.h"
 
 /**
+ * Pipeline execution phases
+ * 
+ * Defines the different execution contexts in which modules can operate:
+ * - HALO: Calculations that happen once per halo (outside galaxy loop)
+ * - GALAXY: Calculations that happen for each galaxy
+ * - POST: Calculations that happen after processing all galaxies (per step)
+ * - FINAL: Calculations that happen after all steps are complete
+ */
+enum pipeline_execution_phase {
+    PIPELINE_PHASE_HALO = 1,    /* Execute once per halo (outside galaxy loop) */
+    PIPELINE_PHASE_GALAXY = 2,  /* Execute for each galaxy (inside galaxy loop) */
+    PIPELINE_PHASE_POST = 4,    /* Execute after processing all galaxies (for each integration step) */
+    PIPELINE_PHASE_FINAL = 8    /* Execute after all steps are complete, before exiting evolve_galaxies */
+};
+
+/**
  * @file core_pipeline_system.h
  * @brief Module pipeline system for SAGE
  * 
@@ -56,6 +72,7 @@ struct pipeline_context {
     int current_galaxy;                  /* Index of current galaxy being processed */
     double infall_gas;                   /* Result of infall calculation */
     double redshift;                     /* Current redshift */
+    enum pipeline_execution_phase execution_phase; /* Current execution phase */
 };
 
 /**
@@ -317,6 +334,18 @@ void pipeline_context_init(
  * @return 0 on success, error code on failure
  */
 int pipeline_execute(struct module_pipeline *pipeline, struct pipeline_context *context);
+
+/**
+ * Execute a pipeline for a specific phase
+ * 
+ * Runs all enabled steps in a pipeline that support the given execution phase.
+ * 
+ * @param pipeline Pipeline to execute
+ * @param context Execution context
+ * @param phase Execution phase to run
+ * @return 0 on success, error code on failure
+ */
+int pipeline_execute_phase(struct module_pipeline *pipeline, struct pipeline_context *context, enum pipeline_execution_phase phase);
 
 /**
  * Execute a pipeline with a custom execution function

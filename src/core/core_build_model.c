@@ -33,8 +33,11 @@
  * 
  * This function maps pipeline steps to physics modules or traditional implementations.
  * It uses module_invoke when a module is available; otherwise, it falls back to traditional code.
+ * 
+ * The execution is phase-aware, meaning different code paths are taken depending on whether
+ * we're executing in HALO, GALAXY, POST, or FINAL phase.
  */
-static int physics_step_executor(
+int physics_step_executor(
     struct pipeline_step *step,
     struct base_module *module,
     void *module_data,  /* Might be unused during migration - that's expected */
@@ -53,9 +56,10 @@ static int physics_step_executor(
     int halonr = context->halonr;
     int step_num = context->step;
     struct params *run_params = context->params;
+    enum pipeline_execution_phase phase = context->execution_phase;
     
-    // Skip if galaxy has merged
-    if (galaxies[p].mergeType > 0) {
+    // Skip if galaxy has merged and we're in GALAXY phase
+    if (phase == PIPELINE_PHASE_GALAXY && galaxies[p].mergeType > 0) {
         return 0;
     }
 
@@ -142,76 +146,125 @@ static int physics_step_executor(
     }
     
     // Traditional implementation (used during migration or when module invoke fails)
-    switch (step->type) {
-        
-        case MODULE_TYPE_INFALL: 
-            // Apply infall
-            {
-                if (p == centralgal) {
-                    add_infall_to_hot(p, context->infall_gas / STEPS, galaxies);
+    // Handle the execution based on the current phase
+    switch (phase) {
+        case PIPELINE_PHASE_HALO:
+            // HALO phase - calculations that happen once per halo (outside galaxy loop)
+            switch (step->type) {
+                case MODULE_TYPE_INFALL:
+                    // Calculate infall for the entire halo
+                    // This is typically done outside this function, but we could modify it
+                    // to use the pipeline system in the future
+                    LOG_DEBUG("HALO phase - infall step");
+                    break;
                     
-                    // Reincorporation
-                    if (run_params->physics.ReIncorporationFactor > 0.0) {
-                        struct reincorporation_params_view reincorp_params;
-                        initialize_reincorporation_params_view(&reincorp_params, run_params);
-                        reincorporate_gas(p, dt, galaxies, &reincorp_params);
+                default:
+                    LOG_DEBUG("Skipping step '%s' in HALO phase - not applicable", 
+                            module_type_name(step->type));
+                    break;
+            }
+            break;
+            
+        case PIPELINE_PHASE_GALAXY:
+            // GALAXY phase - calculations that happen for each galaxy
+            switch (step->type) {
+                case MODULE_TYPE_INFALL: 
+                    // Apply infall
+                    if (p == centralgal) {
+                        // Apply infall to central galaxy
+                        add_infall_to_hot(p, context->infall_gas / STEPS, galaxies);
+                        
+                        // Reincorporation
+                        if (run_params->physics.ReIncorporationFactor > 0.0) {
+                            struct reincorporation_params_view reincorp_params;
+                            initialize_reincorporation_params_view(&reincorp_params, run_params);
+                            reincorporate_gas(p, dt, galaxies, &reincorp_params);
+                        }
+                    } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
+                        // Stripping for satellites
+                        strip_from_satellite(centralgal, p, redshift, galaxies, run_params);
                     }
+                    break;
                     
-                } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
-                    // Stripping
-                    strip_from_satellite(centralgal, p, redshift, galaxies, run_params);
-                }
+                case MODULE_TYPE_REINCORPORATION: 
+                    // Handled together with infall
+                    break;     
+
+                case MODULE_TYPE_COOLING: 
+                    // Traditional cooling implementation
+                    {
+                        struct cooling_params_view cooling_params;
+                        initialize_cooling_params_view(&cooling_params, run_params);
+                        double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
+                        cool_gas_onto_galaxy(p, coolingGas, galaxies);
+                    }
+                    break;
+                    
+                case MODULE_TYPE_STAR_FORMATION: 
+                    // Handled by feedback
+                    break;     
+
+                case MODULE_TYPE_FEEDBACK: 
+                    // Star formation and feedback
+                    {
+                        struct star_formation_params_view sf_params;
+                        struct feedback_params_view fb_params;
+                        initialize_star_formation_params_view(&sf_params, run_params);
+                        initialize_feedback_params_view(&fb_params, run_params);
+                        starformation_and_feedback(p, centralgal, time, dt, halonr, step_num, 
+                            galaxies, &sf_params, &fb_params);
+                    }
+                    break;
+                    
+                case MODULE_TYPE_AGN: 
+                    // Not separately implemented in traditional code
+                    break;     
+
+                case MODULE_TYPE_DISK_INSTABILITY: 
+                    // Not separately implemented in traditional code
+                    break;     
+
+                default:
+                    LOG_DEBUG("Skipping step '%s' in GALAXY phase - not applicable", 
+                            module_type_name(step->type));
+                    break;
             }
             break;
             
-        case MODULE_TYPE_REINCORPORATION: 
-            break;     
-
-        case MODULE_TYPE_COOLING: 
-            // Traditional cooling implementation
-            {
-                struct cooling_params_view cooling_params;
-                initialize_cooling_params_view(&cooling_params, run_params);
-                double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
-                cool_gas_onto_galaxy(p, coolingGas, galaxies);
+        case PIPELINE_PHASE_POST:
+            // POST phase - calculations that happen after processing all galaxies (per step)
+            switch (step->type) {
+                case MODULE_TYPE_MERGERS:
+                    // Mergers are handled separately using the merger event queue
+                    // This is already implemented outside of the pipeline in evolve_galaxies
+                    LOG_DEBUG("POST phase - mergers step - handled via merger_queue");
+                    break;
+                    
+                default:
+                    LOG_DEBUG("Skipping step '%s' in POST phase - not applicable", 
+                            module_type_name(step->type));
+                    break;
             }
             break;
             
-        case MODULE_TYPE_STAR_FORMATION: 
-            break;     
-
-        case MODULE_TYPE_FEEDBACK: 
-            // Star formation and feedback
-            {
-                struct star_formation_params_view sf_params;
-                struct feedback_params_view fb_params;
-                initialize_star_formation_params_view(&sf_params, run_params);
-                initialize_feedback_params_view(&fb_params, run_params);
-                starformation_and_feedback(p, centralgal, time, dt, halonr, step_num, 
-                    galaxies, &sf_params, &fb_params);
+        case PIPELINE_PHASE_FINAL:
+            // FINAL phase - calculations that happen after all steps are complete
+            switch (step->type) {
+                case MODULE_TYPE_MISC:
+                    // Final calculations, normalizations, etc.
+                    LOG_DEBUG("FINAL phase - misc calculations");
+                    break;
+                    
+                default:
+                    LOG_DEBUG("Skipping step '%s' in FINAL phase - not applicable", 
+                            module_type_name(step->type));
+                    break;
             }
             break;
             
-        case MODULE_TYPE_AGN: 
-            break;     
-
-        case MODULE_TYPE_DISK_INSTABILITY: 
-            break;     
-
-        case MODULE_TYPE_MERGERS: 
-            break;     
-
-        case MODULE_TYPE_MISC: 
-            // These modules are not yet implemented
-            LOG_DEBUG("Module type %s not yet implemented as module, skipping in pipeline", 
-                module_type_name(step->type));
-            break;
-        
         default:
-            LOG_DEBUG("Unknown module type %s, skipping in pipeline", 
-                    module_type_name(step->type));
-            break;
-
+            LOG_ERROR("Unknown execution phase: %d", phase);
+            return -1;
     }
     
     return 0;
@@ -618,6 +671,17 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Attach queue to evolution context
     ctx.merger_queue = &merger_queue;
     
+    // Execute the HALO phase (calculations that happen once per halo)
+    if (use_pipeline) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Executing HALO phase for halo %d", ctx.halo_nr);
+        pipeline_ctx.execution_phase = PIPELINE_PHASE_HALO;
+        int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
+        if (status != 0) {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute HALO phase for halo %d", ctx.halo_nr);
+            return EXIT_FAILURE;
+        }
+    }
+    
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
         pipeline_ctx.step = step;
@@ -648,10 +712,11 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             pipeline_ctx.current_galaxy = p;
             
             if (use_pipeline) {
-                // Execute physics via the pipeline system
-                int status = pipeline_execute_custom(physics_pipeline, &pipeline_ctx, physics_step_executor);
+                // Execute GALAXY phase for this specific galaxy
+                pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
+                int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
                 if (status != 0) {
-                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute physics pipeline for galaxy %d", p);
+                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute GALAXY phase for galaxy %d", p);
                     return EXIT_FAILURE;
                 }
             } 
@@ -742,12 +807,34 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             }
         }
         
-        // After all galaxies have their physics processed, process merger events
+        // After all galaxies have been processed, execute the POST phase
+        if (use_pipeline) {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Executing POST phase for step %d", step);
+            pipeline_ctx.execution_phase = PIPELINE_PHASE_POST;
+            int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
+            if (status != 0) {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute POST phase for step %d", step);
+                return EXIT_FAILURE;
+            }
+        }
+        
+        // Process merger events (this is currently outside the pipeline system but could be moved into a module)
         CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processing %d merger events for step %d", 
                   merger_queue.num_events, step);
         process_merger_events(&merger_queue, ctx.galaxies, run_params);
         
     } // Go on to the next STEPS substep
+    
+    // Execute the FINAL phase (calculations that happen after all steps are complete)
+    if (use_pipeline) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Executing FINAL phase for halo %d", ctx.halo_nr);
+        pipeline_ctx.execution_phase = PIPELINE_PHASE_FINAL;
+        int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
+        if (status != 0) {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute FINAL phase for halo %d", ctx.halo_nr);
+            return EXIT_FAILURE;
+        }
+    }
 
 
     // Extra miscellaneous stuff before finishing this halo

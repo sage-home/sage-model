@@ -24,8 +24,8 @@
 
 ### Phase 5.1: Refactoring Main Evolution Loop ⏳ IN PROGRESS
 - [x] Implement merger event queue approach in traditional architecture
-- [ ] Implement pipeline phase system (HALO, GALAXY, POST, FINAL)
-- [ ] Transform `evolve_galaxies()` to use the pipeline system with proper phase handling
+- [x] Implement pipeline phase system (HALO, GALAXY, POST, FINAL)
+- [x] Transform `evolve_galaxies()` to use the pipeline system with proper phase handling
 - [ ] Integrate event dispatch/handling points
 - [ ] Add support for reading/writing extension properties
 - [ ] Integrate module callbacks
