@@ -428,11 +428,12 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 #### Components
 *   **5.1 Refactoring Main Evolution Loop**: 
     * **5.1.1 Merger Event Queue Implementation**: Implement event queue approach for mergers in traditional architecture
-    * **5.1.2 Pipeline Integration**: Transform `evolve_galaxies()` to use the pipeline system 
-    * **5.1.3 Event System Integration**: Add event dispatch/handling points
-    * **5.1.4 Extension Properties Support**: Add support for reading/writing extension properties
-    * **5.1.5 Module Callback Integration**: Integrate module callbacks
-    * **5.1.6 Diagnostics**: Add evolution diagnostics
+    * **5.1.2 Pipeline Phase System**: Implement execution phases (HALO, GALAXY, POST, FINAL) in pipeline context to distinguish between calculations that happen at the halo level versus galaxy level
+    * **5.1.3 Pipeline Integration**: Transform `evolve_galaxies()` to use the pipeline system with proper phase handling
+    * **5.1.4 Event System Integration**: Add event dispatch/handling points
+    * **5.1.5 Extension Properties Support**: Add support for reading/writing extension properties
+    * **5.1.6 Module Callback Integration**: Integrate module callbacks
+    * **5.1.7 Diagnostics**: Add evolution diagnostics
 *   **5.2 Converting Physics Modules**: Extract components into standalone modules implementing the defined interfaces. Add property registration and event triggers. Manage module-specific data. Define/implement dependencies via callbacks.
 *   **5.3 Validation and Testing**: Perform scientific validation against baseline SAGE. Implement performance benchmarks. Develop module compatibility tests. Add call graph validation.
 
@@ -455,75 +456,162 @@ struct merger_event_queue {
     int num_events;                                     // Number of events in queue
 };
 
-// Transformed evolution loop using pipeline and event queue
-int evolve_galaxies_pipeline(int p, int centralgal, double time, double dt, 
-                          int halonr, int step, struct GALAXY *galaxies) {
+// Transformed evolution loop using pipeline phases and event queue
+int evolve_galaxies_pipeline(const int halonr, const int ngal, int *numgals, int *maxgals, 
+                          struct halo_data *halos, struct GALAXY *galaxies, struct params *run_params) {
+    // Set up evolution context
+    struct evolution_context ctx;
+    initialize_evolution_context(&ctx, halonr, galaxies, ngal, halos, run_params);
+    
+    // Create pipeline context
+    struct pipeline_context pipeline_ctx;
+    pipeline_context_init(&pipeline_ctx, run_params, galaxies, ngal, ctx.centralgal, 
+                        ctx.time, ctx.deltaT, halonr, 0, NULL);
+    
+    // Get the global physics pipeline
+    struct module_pipeline *physics_pipeline = pipeline_get_global();
+    
     // Create merger event queue
     struct merger_event_queue merger_queue;
-    merger_queue.num_events = 0;
+    init_merger_queue(&merger_queue);
+    ctx.merger_queue = &merger_queue;
     
-    // Setup evolution context
-    struct evolution_context context = {
-        .galaxy_index = p,
-        .central_galaxy_index = centralgal,
-        .time = time,
-        .timestep = dt,
-        .halo_number = halonr,
-        .step = step,
-        .galaxies = galaxies,
-        .merger_queue = &merger_queue  // Include merger queue in context
-    };
-    
-    // Execute each pipeline step
-    for (int i = 0; i < pipeline.num_steps; i++) {
-        const char* module_type = pipeline.steps[i].type;
-        const char* module_name = pipeline.steps[i].name;
-        
-        // Find active module of this type
-        int module_id = registry_find_active_module(module_type, module_name);
-        if (module_id < 0) continue;  // Skip if module not found
-        
-        // Create evolution diagnostic for this step
-        struct evolution_diagnostics diag;
-        evolution_diagnostics_init(&diag, p, step, time);
-        evolution_diagnostics_capture_before(&diag, &galaxies[p]);
-        
-        // Execute module
-        int64_t start_time = get_current_time_ns();
-        int result = module_execute(module_id, &context);
-        int64_t end_time = get_current_time_ns();
-        
-        // Capture diagnostics
-        evolution_diagnostics_capture_after(&diag, &galaxies[p]);
-        diag.module_stats[0].execution_time_ns = end_time - start_time;
-        strcpy(diag.module_stats[0].module_name, registry.modules[module_id].name);
-        
-        // Log diagnostics
-        evolution_log_diagnostics(&diag);
-        
-        // Validate galaxy changes
-        evolution_validate_galaxy_changes(&diag);
-        
-        if (result != 0) {
-            // Handle error
-            return result;
-        }
+    // PHASE 1: Execute HALO-level physics (outside galaxy loop)
+    // These calculations apply to the entire halo (e.g., infall)
+    pipeline_ctx.execution_phase = PIPELINE_PHASE_HALO;
+    int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
+    if (status != 0) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute halo-level pipeline for halo %d", halonr);
+        return EXIT_FAILURE;
     }
+    
+    // Main integration steps
+    for (int step = 0; step < STEPS; step++) {
+        pipeline_ctx.step = step;
+        
+        // Reset merger queue for this timestep
+        init_merger_queue(&merger_queue);
+        
+        // PHASE 2: Galaxy-level physics, loop over all galaxies in the halo
+        for (int p = 0; p < ctx.ngal; p++) {
+            // Skip already merged galaxies
+            if (ctx.galaxies[p].mergeType > 0) {
+                continue;
+            }
+            
+            // Update context for current galaxy
+            pipeline_ctx.current_galaxy = p;
+            
+            // Execute GALAXY-level physics (for each galaxy)
+            pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
+            int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
+            if (status != 0) {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
+                           "Failed to execute galaxy-level pipeline for galaxy %d", p);
+                return EXIT_FAILURE;
+            }
+            
+            // Queue potential mergers
+            if ((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && 
+                ctx.galaxies[p].mergeType == 0 && ctx.galaxies[p].MergTime < 999.0) {
+                // Check merger conditions and add to queue if appropriate
+                queue_merger_event(&merger_queue, p, ctx.galaxies[p].CentralGal, 
+                                 ctx.galaxies[p].MergTime, ctx.time, ctx.deltaT/STEPS, 
+                                 ctx.centralgal, step, ctx.galaxies[p].mergeType);
+            }
+        }
+        
+        // PHASE 3: Execute POST-processing physics (after all galaxies processed in step)
+        // These calculations need all galaxies to be processed first (e.g., mergers)
+        pipeline_ctx.execution_phase = PIPELINE_PHASE_POST;
+        status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
+        if (status != 0) {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
+                       "Failed to execute post-processing pipeline for step %d", step);
+            return EXIT_FAILURE;
+        }
+        
+        // Process merger events
+        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processing %d merger events for step %d", 
+                  merger_queue.num_events, step);
+        process_merger_events(&merger_queue, ctx.galaxies, run_params);
+    }
+    
+    // PHASE 4: Execute FINAL phase (after all steps complete)
+    // Final calculations and cleanup (e.g., normalizing rates, gathering statistics)
+    pipeline_ctx.execution_phase = PIPELINE_PHASE_FINAL;
+    status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
+    if (status != 0) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
+                   "Failed to execute final pipeline for halo %d", halonr);
+        return EXIT_FAILURE;
+    }
+    
+    // Handle final rate normalizations and other cleanup not in modules
+    // ...
     
     return 0;
 }
 
 // Example of converted physics module (cooling)
+// Pipeline phase definition for module execution
+enum pipeline_execution_phase {
+    PIPELINE_PHASE_HALO,    // Execute once per halo (outside galaxy loop)
+    PIPELINE_PHASE_GALAXY,  // Execute for each galaxy (inside galaxy loop)
+    PIPELINE_PHASE_POST,    // Execute after processing all galaxies (for each integration step)
+    PIPELINE_PHASE_FINAL    // Execute after all steps are complete, before exiting evolve_galaxies
+};
+
+// Enhanced pipeline_context with execution phase
+struct pipeline_context {
+    // ... existing fields ...
+    enum pipeline_execution_phase execution_phase; // Current execution phase
+    double infall_gas;                            // Result of infall calculation (example of HALO phase result)
+    // ... other fields ...
+};
+
+// Example module implementation with phase support
 struct cooling_module cooling_module_impl = {
     .base = {
         .name = "StandardCooling",
         .version = "1.0.0",
         .author = "SAGE Team",
         .initialize = cooling_module_initialize,
-        .cleanup = cooling_module_cleanup
+        .cleanup = cooling_module_cleanup,
+        .phases = PIPELINE_PHASE_GALAXY // This module runs during galaxy-level processing
     },
     .calculate_cooling = cooling_module_calculate,
     .get_cooling_radius = cooling_module_get_radius
+};
+
+// Example infall module implementation
+struct infall_module infall_module_impl = {
+    .base = {
+        .name = "StandardInfall",
+        .version = "1.0.0",
+        .author = "SAGE Team",
+        .initialize = infall_module_initialize,
+        .cleanup = infall_module_cleanup,
+        .phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY | PIPELINE_PHASE_FINAL // Operates in multiple phases
+    },
+    .calculate_infall = infall_module_calculate_infall,        // HALO phase
+    .apply_infall = infall_module_apply_infall,               // GALAXY phase (central only)
+    .strip_satellite = infall_module_strip_satellite,         // GALAXY phase (satellites)
+    .normalize_rates = infall_module_normalize_rates          // FINAL phase (normalize rates)
+};
+
+// Example module that operates in the POST phase
+struct merger_module merger_module_impl = {
+    .base = {
+        .name = "StandardMergers",
+        .version = "1.0.0",
+        .author = "SAGE Team",
+        .initialize = merger_module_initialize,
+        .cleanup = merger_module_cleanup,
+        .phases = PIPELINE_PHASE_POST // This module runs during post-processing
+    },
+    .process_mergers = merger_module_process_mergers,
+    .calculate_merger_timescale = merger_module_calculate_timescale
 };
 
 static int cooling_module_initialize(struct params *params, void **module_data) {

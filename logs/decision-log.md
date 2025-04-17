@@ -60,3 +60,7 @@
 2025-04-16: [Phase 5.1] Careful Parameter Management for Merger Events
 - Rationale: When implementing the merger event queue, we discovered that preserving exact numerical results required careful attention to parameter passing. Specifically, we needed to ensure the central galaxy index and merge destination IDs matched the original code exactly.
 - Impact: Ensures that the event queue implementation produces results consistent with the previous approach, maintaining scientific accuracy while benefiting from the cleaner code structure. The successful implementation validates our approach to incremental refactoring that preserves scientific outcomes.
+
+2025-04-17: [Phase 5.1] Pipeline Phase Architecture for Evolution Loop
+- Rationale: Analysis of physics processing revealed two distinct calculation scopes: halo-level calculations (like infall) that happen outside the galaxy loop, and galaxy-level calculations (like cooling) that happen for each galaxy. A pure modular pipeline requires a structured way to handle these different scopes.
+- Impact: Introduction of execution phases (HALO, GALAXY, POST, FINAL) in the pipeline architecture addresses this critical design need. Modules can now declare which phases they participate in, preserving the scientific model while maintaining modularity. This eliminates the need for special cases in the evolution loop while ensuring calculations happen in the correct order.

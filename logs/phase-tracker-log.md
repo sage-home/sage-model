@@ -12,8 +12,9 @@
 # Current Phase: 5/7 (Core Module Migration)
 
 ## Phase Objectives
+- Implement pipeline execution phases (HALO, GALAXY, POST) for handling different scope calculations
 - Transform `evolve_galaxies()` to use the pipeline system
-- Extract physics components into standalone modules
+- Extract physics components into standalone modules with appropriate phase declarations
 - Ensure physics modules register required extension properties
 - Implement event dispatching and handling for physics modules
 - Integrate module callbacks for cross-module interactions
@@ -23,19 +24,21 @@
 
 ### Phase 5.1: Refactoring Main Evolution Loop ⏳ IN PROGRESS
 - [x] Implement merger event queue approach in traditional architecture
-- [ ] Transform `evolve_galaxies()` to use the pipeline system
+- [ ] Implement pipeline phase system (HALO, GALAXY, POST, FINAL)
+- [ ] Transform `evolve_galaxies()` to use the pipeline system with proper phase handling
 - [ ] Integrate event dispatch/handling points
 - [ ] Add support for reading/writing extension properties
 - [ ] Integrate module callbacks
 - [ ] Add evolution diagnostics
 
 ### Phase 5.2: Converting Physics Modules ⏳ PENDING
-- [ ] Extract cooling module (already partially implemented)
-- [ ] Extract star formation and feedback module
-- [ ] Extract infall module
-- [ ] Extract mergers module
-- [ ] Extract disk instability module
-- [ ] Extract reincorporation module
+- [ ] Extract cooling module (GALAXY phase)
+- [ ] Extract star formation and feedback module (GALAXY phase)
+- [ ] Extract infall module (HALO and GALAXY phases)
+- [ ] Extract mergers module (POST phase)
+- [ ] Extract disk instability module (GALAXY phase)
+- [ ] Extract reincorporation module (GALAXY phase)
+- [ ] Ensure all modules declare appropriate execution phases
 - [ ] Ensure all modules register required extension properties
 - [ ] Add event triggers at appropriate points
 - [ ] Implement necessary callbacks between modules
@@ -47,8 +50,11 @@
 - [ ] Add call graph validation
 
 ## Completion Criteria
-- The main galaxy evolution loop uses the pipeline system
-- All physics components are implemented as standalone modules
+- The main galaxy evolution loop uses the pipeline system with proper phase handling
+- All physics components are implemented as standalone modules with appropriate phase declarations
+- Halo-level calculations (like infall) are executed in the HALO phase
+- Galaxy-level calculations (like cooling) are executed in the GALAXY phase
+- Post-processing calculations (like mergers) are executed in the POST phase
 - Extension properties are properly registered and used by all modules
 - Event handling and module callbacks correctly preserve physics interdependencies
 - Scientific results match baseline SAGE simulation outputs
