@@ -9,17 +9,9 @@ extern "C" {
 
 #include "../core/core_allvars.h"
 #include "../core/core_galaxy_extensions.h"
+#include "../core/core_property_types.h"
 #include "io_interface.h"
 #include "io_endian_utils.h"
-
-/**
- * @file io_property_serialization.h
- * @brief Galaxy extended property serialization utilities
- *
- * This file provides utilities for serializing and deserializing
- * extended galaxy properties. These utilities are used by both binary
- * and HDF5 output handlers to save and load module-specific galaxy properties.
- */
 
 /**
  * @brief Property serialization version

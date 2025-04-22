@@ -44,6 +44,28 @@ int physics_step_executor(
     void *module_data,  /* Might be unused during migration - that's expected */
     struct pipeline_context *context
 ) {
+    // Validate property serialization if module requires it
+    if (module != NULL && module->manifest) {
+        // Check if module requires serialization
+        if (module->manifest->capabilities & MODULE_FLAG_REQUIRES_SERIALIZATION) {
+            if (context->prop_ctx == NULL) {
+                LOG_ERROR("Module '%s' requires property serialization but context not initialized", 
+                         module->name);
+                return MODULE_STATUS_NOT_INITIALIZED;
+            }
+        }
+        
+        // Check if module uses extensions but doesn't necessarily require serialization
+        else if (module->manifest->capabilities & MODULE_FLAG_HAS_EXTENSIONS) {
+            if (context->prop_ctx == NULL) {
+                LOG_WARNING("Module '%s' uses extensions but property serialization context not initialized. "
+                           "This may cause issues if the module attempts to access extension data.", 
+                           module->name);
+                // Continue execution as this is just a warning
+            }
+        }
+    }
+
     /* Silence unused parameter warning during migration */
     (void)module_data;
     
@@ -725,6 +747,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     pipeline_ctx.infall_gas = infallingGas;
     pipeline_ctx.redshift = ctx.redshift; // Set the redshift from evolution context
     
+    // Initialize property serialization if module extensions are enabled
+    if (global_extension_registry != NULL && global_extension_registry->num_extensions > 0) {
+        int status = pipeline_init_property_serialization(&pipeline_ctx, PROPERTY_FLAG_SERIALIZE);
+        if (status != 0) {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to initialize property serialization");
+            return EXIT_FAILURE;
+        }
+    }
+
     // Get the global physics pipeline
     struct module_pipeline *physics_pipeline = pipeline_get_global();
     bool use_pipeline = false;
@@ -965,6 +996,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         }
     }
 
+    // Clean up property serialization if it was initialized
+    pipeline_cleanup_property_serialization(&pipeline_ctx);
 
     // Extra miscellaneous stuff before finishing this halo
     ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons = 0.0;

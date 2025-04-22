@@ -7,6 +7,8 @@
 #include "core_module_system.h"
 #include "core_event_system.h"
 #include "core_logging.h"
+#include "core_galaxy_extensions.h"
+#include "../io/io_property_serialization.h"
 
 /**
  * @file core_pipeline_system.c
@@ -446,15 +448,43 @@ bool pipeline_validate(struct module_pipeline *pipeline) {
                     LOG_DEBUG("Required module not found for step '%s' (type %s).",
                                step->step_name, module_type_name(step->type));
                 }
-                /* TEMPORARY MIGRATION CODE: During migration, don't return false here.
-                   We fall back to original physics implementation. */
-                // return false; // Re-enable this check after migration
             } else {
                 LOG_DEBUG("Optional module not found for step '%s' (type %s).",
                          step->step_name, module_type_name(step->type));
             }
+            continue;
+        }
+
+        /* Validate module extensions if it has them */
+        if (module != NULL && module->manifest && (module->manifest->capabilities & MODULE_FLAG_HAS_EXTENSIONS)) {
+            /* This module uses extensions, ensure serialization is supported */
+            if (module->manifest->capabilities & MODULE_FLAG_REQUIRES_SERIALIZATION) {
+                /* Check if module has required serialization functions */
+                const galaxy_property_t **properties = NULL;
+                int max_properties = 32;  // Reasonable limit for temp array
+                properties = calloc(max_properties, sizeof(galaxy_property_t*));
+                
+                if (properties != NULL) {
+                    int num_props = galaxy_extension_find_properties_by_module(
+                        module->module_id, properties, max_properties);
+                    
+                    for (int j = 0; j < num_props; j++) {
+                        const galaxy_property_t *prop = properties[j];
+                        if ((prop->flags & PROPERTY_FLAG_SERIALIZE) && 
+                            (prop->serialize == NULL || prop->deserialize == NULL)) {
+                            LOG_ERROR("Module '%s' property '%s' marked for serialization but missing required functions",
+                                     module->name, prop->name);
+                            free(properties);
+                            return false;
+                        }
+                    }
+                    free(properties);
+                }
+            }
         }
     }
+
+    /* We've already validated extensions in the loop above, no need to check again */
 
     return true;
 }
@@ -487,8 +517,72 @@ void pipeline_context_init(
     context->halonr = halonr;
     context->step = step;
     context->user_data = user_data;
-    context->redshift = 0.0; // Initialize to default value, will be set later
-    context->execution_phase = 0; // Initialize phase
+    context->redshift = 0.0;  // Initialize to default value
+    context->execution_phase = 0;  // Initialize phase
+    context->current_galaxy = -1;  // Initialize to invalid index
+    context->infall_gas = 0.0;    // Initialize infall result
+    
+    // Initialize property serialization context
+    context->prop_ctx = NULL;  // Will be initialized when needed by I/O handlers
+}
+
+/**
+ * Initialize property serialization context for pipeline
+ */
+int pipeline_init_property_serialization(
+    struct pipeline_context *context,
+    uint32_t filter_flags
+) {
+    if (context == NULL) {
+        LOG_ERROR("Pipeline context is NULL");
+        return -1;
+    }
+
+    // Clean up existing context if any
+    pipeline_cleanup_property_serialization(context);
+
+    // Allocate new context
+    context->prop_ctx = calloc(1, sizeof(struct property_serialization_context));
+    if (context->prop_ctx == NULL) {
+        LOG_ERROR("Failed to allocate property serialization context");
+        return -1;
+    }
+
+    // Initialize context
+    int status = property_serialization_init(context->prop_ctx, filter_flags);
+    if (status != 0) {
+        LOG_ERROR("Failed to initialize property serialization context");
+        free(context->prop_ctx);
+        context->prop_ctx = NULL;
+        return status;
+    }
+
+    // Add properties from registry
+    status = property_serialization_add_properties(context->prop_ctx);
+    if (status != 0) {
+        LOG_ERROR("Failed to add properties to serialization context");
+        property_serialization_cleanup(context->prop_ctx);
+        free(context->prop_ctx);
+        context->prop_ctx = NULL;
+        return status;
+    }
+
+    LOG_DEBUG("Initialized property serialization context with %d properties",
+             context->prop_ctx->num_properties);
+    return 0;
+}
+
+/**
+ * Clean up property serialization context
+ */
+void pipeline_cleanup_property_serialization(struct pipeline_context *context) {
+    if (context == NULL || context->prop_ctx == NULL) {
+        return;
+    }
+
+    property_serialization_cleanup(context->prop_ctx);
+    free(context->prop_ctx);
+    context->prop_ctx = NULL;
 }
 
 /**
@@ -602,6 +696,33 @@ static int pipeline_execute_phase_with_executor(
     LOG_DEBUG("Executing pipeline '%s' phase %s with %d steps",
              pipeline->name, pipeline_phase_names[get_phase_index(phase)], pipeline->num_steps);
 
+    /* Check if any enabled step requires property serialization and initialize if needed */
+    bool needs_property_serialization = false;
+    for (int i = 0; i < pipeline->num_steps; i++) {
+        struct pipeline_step *step = &pipeline->steps[i];
+        if (!step->enabled) continue;
+
+        struct base_module *module;
+        void *module_data;
+        if (pipeline_get_step_module(step, &module, &module_data) == 0 && 
+            module != NULL && module->manifest && 
+            (module->manifest->capabilities & MODULE_FLAG_REQUIRES_SERIALIZATION)) {
+            needs_property_serialization = true;
+            break;
+        }
+    }
+
+    /* Initialize property serialization context if needed */
+    if (needs_property_serialization && context->prop_ctx == NULL) {
+        LOG_DEBUG("Initializing property serialization for pipeline execution");
+        /* Use the explicit flag from io_property_serialization.h to only serialize properties marked for serialization */
+        int status = pipeline_init_property_serialization(context, SERIALIZE_EXPLICIT);
+        if (status != 0) {
+            LOG_ERROR("Failed to initialize property serialization context for pipeline execution");
+            return status;
+        }
+    }
+
     /* Emit pipeline started event */
     pipeline_emit_event(PIPELINE_EVENT_STARTED, pipeline, NULL, context, -1, 0);
 
@@ -695,6 +816,12 @@ static int pipeline_execute_phase_with_executor(
         pipeline_emit_event(PIPELINE_EVENT_ABORTED, pipeline, NULL, context, -1, result);
         LOG_ERROR("Pipeline '%s' phase %d aborted with status %d",
                  pipeline->name, phase, result);
+    }
+
+    /* Clean up property serialization if we initialized it for this execution */
+    if (needs_property_serialization) {
+        pipeline_cleanup_property_serialization(context);
+        LOG_DEBUG("Cleaned up property serialization context");
     }
 
     return result;

@@ -36,6 +36,10 @@ extern "C" {
 #define CORE_API_VERSION 1       /* Current core API version */
 #define CORE_API_MIN_VERSION 1   /* Minimum compatible API version */
 
+/* Module flags */
+#define MODULE_FLAG_HAS_EXTENSIONS      (1UL << 4)  /* Module uses galaxy extensions */
+#define MODULE_FLAG_REQUIRES_SERIALIZATION (1UL << 5)  /* Module requires property serialization */
+
 /**
  * Module type identifiers
  * 

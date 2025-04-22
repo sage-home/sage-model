@@ -73,6 +73,7 @@ struct pipeline_context {
     double infall_gas;                   /* Result of infall calculation */
     double redshift;                     /* Current redshift */
     enum pipeline_execution_phase execution_phase; /* Current execution phase */
+    struct property_serialization_context *prop_ctx; /* Property serialization context */
 };
 
 /**
@@ -426,6 +427,29 @@ int pipeline_get_step_module(
     struct base_module **module,
     void **module_data
 );
+
+/**
+ * Initialize property serialization context for pipeline
+ * 
+ * Sets up a property serialization context in the pipeline context.
+ * 
+ * @param context Pipeline context to initialize
+ * @param filter_flags Flags controlling which properties to serialize
+ * @return 0 on success, error code on failure 
+ */
+int pipeline_init_property_serialization(
+    struct pipeline_context *context,
+    uint32_t filter_flags
+);
+
+/**
+ * Clean up property serialization context
+ * 
+ * Releases resources used by property serialization.
+ * 
+ * @param context Pipeline context containing serialization context
+ */
+void pipeline_cleanup_property_serialization(struct pipeline_context *context);
 
 #ifdef __cplusplus
 }

@@ -8,14 +8,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include "core_allvars.h"
-
-/**
- * @file core_galaxy_extensions.h
- * @brief Galaxy property extension system for SAGE
- * 
- * This file defines the extension system that allows modules to add custom
- * properties to galaxies without modifying the core GALAXY structure.
- */
+#include "core_property_types.h"
 
 /* Forward declaration to avoid circular dependencies */
 /* Use the same MAX_MODULES value as in core_module_system.h */
@@ -25,34 +18,9 @@ extern "C" {
 
 /* Maximum number of extension properties that can be registered */
 #define MAX_GALAXY_EXTENSIONS 64
-#define MAX_PROPERTY_NAME 32
-#define MAX_PROPERTY_DESCRIPTION 128
-#define MAX_PROPERTY_UNITS 32
-
-/**
- * Galaxy property data type identifiers
- * 
- * Used to identify the type of a galaxy property for serialization
- * and validation purposes.
- */
-enum galaxy_property_type {
-    PROPERTY_TYPE_FLOAT = 0,
-    PROPERTY_TYPE_DOUBLE = 1,
-    PROPERTY_TYPE_INT32 = 2,
-    PROPERTY_TYPE_INT64 = 3,
-    PROPERTY_TYPE_UINT32 = 4,
-    PROPERTY_TYPE_UINT64 = 5,
-    PROPERTY_TYPE_BOOL = 6,
-    PROPERTY_TYPE_STRUCT = 7,  /* Custom struct types */
-    PROPERTY_TYPE_ARRAY = 8,   /* Array types */
-    PROPERTY_TYPE_MAX
-};
 
 /**
  * Galaxy property flags
- * 
- * Flags that can be set on galaxy properties to control
- * behavior during I/O, initialization, etc.
  */
 enum galaxy_property_flags {
     PROPERTY_FLAG_NONE = 0,
@@ -65,9 +33,6 @@ enum galaxy_property_flags {
 
 /**
  * Galaxy property registration information
- * 
- * This structure defines a galaxy property extension that can be
- * registered by modules to extend the GALAXY structure.
  */
 typedef struct {
     char name[MAX_PROPERTY_NAME];            /* Property name */
