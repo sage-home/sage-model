@@ -19,4 +19,4 @@
 5. At task completion, list all affected files and update logs.
 6. Write documentation to `docs/` if relevant.
 7. Commit with descriptive messages (`Task #X – short summary`).
-8. Assume no persistent memory — rely on files for all continuity.
+8. Assume no persistent memory — rely on logs for all continuity.
