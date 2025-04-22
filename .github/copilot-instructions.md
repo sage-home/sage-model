@@ -15,7 +15,7 @@
 1. Begin each task by reviewing the plan and all logs.
 2. Propose a plan of action before making changes. Pause for approval.
 3. Once approved, make edits incrementally. Present diffs before staging.
-4. Use `LOG_DEBUG`, `LOG_ERROR` etc to print relevant output information (not printf).
+4. Prefer `LOG_DEBUG`, `LOG_ERROR` etc over `printf` when outputting information.
 5. Run tests via `/terminal make tests`.
 6. At task completion, list all affected files and update logs.
 7. Write documentation to `docs/` when relevant.
