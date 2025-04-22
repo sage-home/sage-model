@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "../core/core_allvars.h"
+#include "../core/core_event_system.h"
 
 #include "../physics/model_mergers.h"
 #include "../physics/model_misc.h"
@@ -67,6 +68,33 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
         mass_ratio = mi / ma;
     } else {
         mass_ratio = 1.0;
+    }
+    
+    // Emit merger event if system is initialized
+    if (event_system_is_initialized()) {
+        // Prepare merger event data
+        event_galaxy_merged_data_t merger_data = {
+            .primary_index = merger_centralgal,
+            .secondary_index = p,
+            .mass_ratio = (float)mass_ratio,
+            .merger_type = (mass_ratio > run_params->physics.ThreshMajorMerger) ? 1 : 0  // 1 = major, 0 = minor
+        };
+        
+        // Emit the merger event
+        event_status_t status = event_emit(
+            EVENT_MERGER_DETECTED,      // Event type
+            0,                          // Source module ID (0 = traditional code)
+            p,                          // Galaxy index
+            step,                       // Current step
+            &merger_data,               // Event data
+            sizeof(merger_data),        // Size of event data
+            EVENT_FLAG_NONE             // No special flags
+        );
+        
+        if (status != EVENT_STATUS_SUCCESS) {
+            fprintf(stderr, "Failed to emit merger event for galaxy %d: status=%d\n", 
+                   p, status);
+        }
     }
 
     add_galaxies_together(merger_centralgal, p, galaxies);

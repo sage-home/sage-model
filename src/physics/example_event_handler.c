@@ -31,6 +31,9 @@ bool handle_cooling_event(const event_t *event, void *user_data) {
     /* Suppress unused parameter warning */
     (void)user_data;
     
+    // Static variable to track if we've already logged a message
+    static bool first_message_logged = false;
+    
     if (event == NULL) {
         LOG_ERROR("NULL event pointer in cooling event handler");
         return false;
@@ -45,12 +48,18 @@ bool handle_cooling_event(const event_t *event, void *user_data) {
     /* Cast the event data to the appropriate type */
     const event_cooling_completed_data_t *cooling_data = EVENT_DATA(event, event_cooling_completed_data_t);
     
-    /* Print information about the cooling event */
-    LOG_INFO("Cooling Event: galaxy=%d, cooling_rate=%.4e, cooling_radius=%.4e, hot_gas_cooled=%.4e",
-            event->galaxy_index,
-            cooling_data->cooling_rate,
-            cooling_data->cooling_radius,
-            cooling_data->hot_gas_cooled);
+    /* Print information about the cooling event - only for the first occurrence */
+    if (!first_message_logged) {
+        LOG_INFO("Cooling Event: galaxy=%d, cooling_rate=%.4e, cooling_radius=%.4e, hot_gas_cooled=%.4e",
+                event->galaxy_index,
+                cooling_data->cooling_rate,
+                cooling_data->cooling_radius,
+                cooling_data->hot_gas_cooled);
+        
+        // Set the flag to prevent further logging
+        first_message_logged = true;
+        LOG_INFO("Suppressing further cooling event messages");
+    }
     
     return true;
 }
@@ -69,6 +78,9 @@ bool handle_star_formation_event(const event_t *event, void *user_data) {
     /* Suppress unused parameter warning */
     (void)user_data;
     
+    // Static variable to track if we've already logged a message
+    static bool first_message_logged = false;
+    
     if (event == NULL) {
         LOG_ERROR("NULL event pointer in star formation event handler");
         return false;
@@ -83,12 +95,18 @@ bool handle_star_formation_event(const event_t *event, void *user_data) {
     /* Cast the event data to the appropriate type */
     const event_star_formation_occurred_data_t *sf_data = EVENT_DATA(event, event_star_formation_occurred_data_t);
     
-    /* Print information about the star formation event */
-    LOG_INFO("Star Formation Event: galaxy=%d, stars_formed=%.4e, to_disk=%.4e, to_bulge=%.4e",
-            event->galaxy_index,
-            sf_data->stars_formed,
-            sf_data->stars_to_disk,
-            sf_data->stars_to_bulge);
+    /* Print information about the star formation event - only for the first occurrence */
+    if (!first_message_logged) {
+        LOG_INFO("Star Formation Event: galaxy=%d, stars_formed=%.4e, to_disk=%.4e, to_bulge=%.4e",
+                event->galaxy_index,
+                sf_data->stars_formed,
+                sf_data->stars_to_disk,
+                sf_data->stars_to_bulge);
+        
+        // Set the flag to prevent further logging
+        first_message_logged = true;
+        LOG_INFO("Suppressing further star formation event messages");
+    }
     
     return true;
 }

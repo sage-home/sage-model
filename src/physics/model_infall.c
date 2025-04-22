@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "../core/core_allvars.h"
+#include "../core/core_event_system.h"
 
 #include "../physics/model_infall.h"
 #include "../physics/model_misc.h"
@@ -81,6 +82,36 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
 
     if(galaxies[centralgal].MetalsICS < 0.0) {
         galaxies[centralgal].MetalsICS = 0.0;
+    }
+    
+    // Emit infall event if system is initialized and there's non-zero infalling mass
+    if (event_system_is_initialized() && infallingMass != 0.0) {
+        // Custom struct for infall event data - not defined in header, so create simple one here
+        struct {
+            float infalling_mass;
+            float reionization_modifier;
+            float baryon_fraction;
+        } infall_data = {
+            .infalling_mass = (float)infallingMass,
+            .reionization_modifier = (float)reionization_modifier,
+            .baryon_fraction = (float)run_params->physics.BaryonFrac
+        };
+        
+        // Emit the infall event
+        event_status_t status = event_emit(
+            EVENT_INFALL_COMPUTED,       // Event type
+            0,                           // Source module ID (0 = traditional code)
+            centralgal,                  // Galaxy index
+            -1,                          // Step not available in this context
+            &infall_data,                // Event data
+            sizeof(infall_data),         // Size of event data
+            EVENT_FLAG_NONE              // No special flags
+        );
+        
+        if (status != EVENT_STATUS_SUCCESS) {
+            fprintf(stderr, "Failed to emit infall event for galaxy %d: status=%d\n", 
+                   centralgal, status);
+        }
     }
 
     return infallingMass;

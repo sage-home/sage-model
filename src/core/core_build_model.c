@@ -19,6 +19,7 @@
 #include "core_module_system.h"
 #include "core_array_utils.h"
 #include "core_merger_queue.h"
+#include "core_event_system.h"
 
 #include "../physics/model_misc.h"
 #include "../physics/model_mergers.h"
@@ -117,6 +118,35 @@ int physics_step_executor(
                     // Apply the result
                     cool_gas_onto_galaxy(p, cooling_result, galaxies);
                     LOG_DEBUG("Module invoke for cooling: galaxy=%d, cooling=%g", p, cooling_result);
+                    
+                    // Emit cooling completed event if system is initialized
+                    if (event_system_is_initialized()) {
+                        // Prepare cooling event data
+                        event_cooling_completed_data_t cooling_data = {
+                            .cooling_rate = (float)(cooling_result / dt),
+                            .cooling_radius = 0.0f,  // Not provided by module
+                            .hot_gas_cooled = (float)cooling_result
+                        };
+                        
+                        // Emit the cooling completed event
+                        event_status_t event_status = event_emit(
+                            EVENT_COOLING_COMPLETED,   // Event type
+                            module->module_id,         // Source module ID
+                            p,                         // Galaxy index
+                            step_num,                  // Current step
+                            &cooling_data,             // Event data
+                            sizeof(cooling_data),      // Size of event data
+                            EVENT_FLAG_NONE            // No special flags
+                        );
+                        
+                        if (event_status != EVENT_STATUS_SUCCESS) {
+                            LOG_WARNING("Failed to emit cooling event from module '%s' for galaxy %d: status=%d", 
+                                      module->name, p, event_status);
+                        } else {
+                            LOG_DEBUG("Module '%s' emitted cooling event for galaxy %d: cooling=%g", 
+                                    module->name, p, cooling_result);
+                        }
+                    }
                 } else {
                     LOG_WARNING("Module invoke for cooling failed: status=%d", status);
                     // Fall back to traditional implementation
@@ -124,6 +154,72 @@ int physics_step_executor(
                     initialize_cooling_params_view(&cooling_params, run_params);
                     double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
                     cool_gas_onto_galaxy(p, coolingGas, galaxies);
+                }
+                break;
+            }
+            
+            case MODULE_TYPE_STAR_FORMATION: {
+                // Set up arguments for star formation module
+                struct {
+                    int galaxy_index;
+                    double dt;
+                } sf_args = {
+                    .galaxy_index = p,
+                    .dt = dt
+                };
+                
+                // Invoke star formation calculation function
+                double stars_formed = 0.0;
+                status = module_invoke(
+                    0,                  // caller_id (use main code as caller)
+                    step->type,         // module_type
+                    NULL,               // use active module of type
+                    "form_stars",       // function name
+                    context,            // context
+                    &sf_args,           // arguments
+                    &stars_formed       // result
+                );
+                
+                if (status == MODULE_STATUS_SUCCESS) {
+                    // Apply the result - note: in a module, this would be handled internally
+                    LOG_DEBUG("Module invoke for star formation: galaxy=%d, stars_formed=%g", p, stars_formed);
+                    
+                    // Emit star formation event if system is initialized
+                    if (event_system_is_initialized()) {
+                        // Get metallicity for event data
+                        double metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
+                        
+                        // Prepare star formation event data
+                        event_star_formation_occurred_data_t sf_event_data = {
+                            .stars_formed = (float)stars_formed,
+                            .stars_to_disk = (float)stars_formed,  // All stars to disk in standard model
+                            .stars_to_bulge = 0.0f,               // No bulge formation in standard star formation
+                            .metallicity = (float)metallicity
+                        };
+                        
+                        // Emit the star formation event
+                        event_status_t event_status = event_emit(
+                            EVENT_STAR_FORMATION_OCCURRED,  // Event type
+                            module->module_id,             // Source module ID
+                            p,                             // Galaxy index
+                            step_num,                      // Current step
+                            &sf_event_data,                // Event data
+                            sizeof(sf_event_data),         // Size of event data
+                            EVENT_FLAG_NONE                // No special flags
+                        );
+                        
+                        if (event_status != EVENT_STATUS_SUCCESS) {
+                            LOG_WARNING("Failed to emit star formation event from module '%s' for galaxy %d: status=%d", 
+                                      module->name, p, event_status);
+                        } else {
+                            LOG_DEBUG("Module '%s' emitted star formation event for galaxy %d: stars_formed=%g", 
+                                    module->name, p, stars_formed);
+                        }
+                    }
+                } else {
+                    LOG_WARNING("Module invoke for star formation failed: status=%d", status);
+                    // Fall back to traditional implementation
+                    // Note: Traditional star formation is handled with feedback
                 }
                 break;
             }
@@ -211,8 +307,12 @@ int physics_step_executor(
                         struct feedback_params_view fb_params;
                         initialize_star_formation_params_view(&sf_params, run_params);
                         initialize_feedback_params_view(&fb_params, run_params);
+                        
+                        // Call the traditional implementation
                         starformation_and_feedback(p, centralgal, time, dt, halonr, step_num, 
                             galaxies, &sf_params, &fb_params);
+                        
+                        // Note: Event dispatch for star formation is now handled inside the starformation_and_feedback function
                     }
                     break;
                     
@@ -748,6 +848,35 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 initialize_cooling_params_view(&cooling_params, run_params);
                 double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
                 cool_gas_onto_galaxy(p, coolingGas, galaxies);
+                
+                // Emit cooling completed event if system is initialized
+                if (event_system_is_initialized()) {
+                    // Prepare cooling event data
+                    event_cooling_completed_data_t cooling_data = {
+                        .cooling_rate = (float)(coolingGas / dt),
+                        .cooling_radius = 0.0f,  // Not calculated in traditional implementation
+                        .hot_gas_cooled = (float)coolingGas
+                    };
+                    
+                    // Emit the cooling completed event
+                    event_status_t status = event_emit(
+                        EVENT_COOLING_COMPLETED,   // Event type
+                        0,                         // Source module ID (0 = traditional code)
+                        p,                         // Galaxy index
+                        step,                      // Current step
+                        &cooling_data,             // Event data
+                        sizeof(cooling_data),      // Size of event data
+                        EVENT_FLAG_NONE            // No special flags
+                    );
+                    
+                    if (status != EVENT_STATUS_SUCCESS) {
+                        LOG_WARNING("Failed to emit cooling event for galaxy %d: status=%d", 
+                                   p, status);
+                    } else {
+                        LOG_DEBUG("Emitted cooling event for galaxy %d: cooling_gas=%g", 
+                                 p, coolingGas);
+                    }
+                }
                 
                 // PHYSICS MODULE: Star Formation and Feedback
                 struct star_formation_params_view sf_params;

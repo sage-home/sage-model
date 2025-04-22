@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "../core/core_allvars.h"
+#include "../core/core_event_system.h"
 
 #include "../physics/model_disk_instability.h"
 #include "../physics/model_misc.h"
@@ -69,6 +70,40 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
             }
 
             collisional_starburst_recipe(unstable_gas_fraction, p, centralgal, time, dt, halonr, 1, step, galaxies, run_params);
+        }
+        
+        // Emit disk instability event if system is initialized and there's significant instability
+        if (event_system_is_initialized() && (unstable_stars > 0.0 || unstable_gas > 0.0)) {
+            // Create custom disk instability event data structure 
+            struct {
+                float disk_mass;
+                float critical_mass;
+                float unstable_stars;
+                float unstable_gas;
+                float disk_scale_radius;
+            } disk_instability_data = {
+                .disk_mass = (float)diskmass,
+                .critical_mass = (float)Mcrit,
+                .unstable_stars = (float)unstable_stars,
+                .unstable_gas = (float)unstable_gas,
+                .disk_scale_radius = (float)galaxies[p].DiskScaleRadius
+            };
+            
+            // Emit the disk instability event
+            event_status_t status = event_emit(
+                EVENT_DISK_INSTABILITY,      // Event type
+                0,                           // Source module ID (0 = traditional code)
+                p,                           // Galaxy index
+                step,                        // Current step
+                &disk_instability_data,      // Event data
+                sizeof(disk_instability_data), // Size of event data
+                EVENT_FLAG_NONE              // No special flags
+            );
+            
+            if (status != EVENT_STATUS_SUCCESS) {
+                fprintf(stderr, "Failed to emit disk instability event for galaxy %d: status=%d\n", 
+                       p, status);
+            }
         }
     }
 }

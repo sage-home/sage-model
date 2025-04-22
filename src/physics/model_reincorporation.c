@@ -6,6 +6,7 @@
 
 #include "../core/core_allvars.h"
 #include "../core/core_parameter_views.h"
+#include "../core/core_event_system.h"
 
 #include "../physics/model_reincorporation.h"
 #include "../physics/model_misc.h"
@@ -36,6 +37,38 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         galaxies[centralgal].MetalsEjectedMass -= metallicity * reincorporated;
         galaxies[centralgal].HotGas += reincorporated;
         galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
+        
+        // Emit reincorporation event if system is initialized and there's non-zero reincorporation
+        if (event_system_is_initialized() && reincorporated > 0.0) {
+            // Create custom reincorporation event data structure
+            struct {
+                float reincorporated_mass;
+                float metals_reincorporated;
+                float critical_velocity;
+                float virial_velocity;
+            } reincorp_event_data = {
+                .reincorporated_mass = (float)reincorporated,
+                .metals_reincorporated = (float)(metallicity * reincorporated),
+                .critical_velocity = (float)Vcrit,
+                .virial_velocity = (float)galaxies[centralgal].Vvir
+            };
+            
+            // Emit the reincorporation event
+            event_status_t status = event_emit(
+                EVENT_REINCORPORATION_COMPUTED, // Event type
+                0,                              // Source module ID (0 = traditional code)
+                centralgal,                     // Galaxy index
+                -1,                             // Step not available in this context
+                &reincorp_event_data,           // Event data
+                sizeof(reincorp_event_data),    // Size of event data
+                EVENT_FLAG_NONE                 // No special flags
+            );
+            
+            if (status != EVENT_STATUS_SUCCESS) {
+                fprintf(stderr, "Failed to emit reincorporation event for galaxy %d: status=%d\n", 
+                       centralgal, status);
+            }
+        }
     }
 }
 

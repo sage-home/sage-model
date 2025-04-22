@@ -6,6 +6,7 @@
 
 #include "../core/core_allvars.h"
 #include "../core/core_parameter_views.h"
+#include "../core/core_event_system.h"
 
 #include "../physics/model_starformation_and_feedback.h"
 #include "../physics/model_misc.h"
@@ -86,10 +87,37 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     galaxies[p].SfrDisk[step] += stars / dt;
     galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
     galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
-
+    
     // update for star formation
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
     update_from_star_formation(p, stars, metallicity, galaxies, sf_params);
+
+    // Emit star formation event if system is initialized - placed after metallicity is calculated
+    if (event_system_is_initialized()) {
+        // Prepare star formation event data
+        event_star_formation_occurred_data_t sf_event_data = {
+            .stars_formed = (float)stars,
+            .stars_to_disk = (float)stars,  // All stars go to disk in standard model
+            .stars_to_bulge = 0.0f,         // No bulge formation in standard star formation
+            .metallicity = (float)metallicity
+        };
+        
+        // Emit the star formation event
+        event_status_t status = event_emit(
+            EVENT_STAR_FORMATION_OCCURRED, // Event type
+            0,                             // Source module ID (0 = traditional code)
+            p,                             // Galaxy index
+            step,                          // Current step
+            &sf_event_data,                // Event data
+            sizeof(sf_event_data),         // Size of event data
+            EVENT_FLAG_NONE                // No special flags
+        );
+        
+        if (status != EVENT_STATUS_SUCCESS) {
+            fprintf(stderr, "Failed to emit star formation event for galaxy %d: status=%d\n", 
+                   p, status);
+        }
+    }
 
     // recompute the metallicity of the cold phase
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
@@ -206,6 +234,32 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_mass;
 
         galaxies[p].OutflowRate += reheated_mass;
+        
+        // Emit feedback event if system is initialized
+        if (event_system_is_initialized()) {
+            // Prepare feedback event data
+            event_feedback_applied_data_t feedback_data = {
+                .energy_injected = 0.0f,  // Energy not directly tracked in current implementation
+                .mass_reheated = (float)reheated_mass,
+                .metals_ejected = (float)(metallicityHot * ejected_mass)
+            };
+            
+            // Emit the feedback event
+            event_status_t status = event_emit(
+                EVENT_FEEDBACK_APPLIED,    // Event type
+                0,                         // Source module ID (0 = traditional code)
+                p,                         // Galaxy index
+                -1,                        // Step not available in this context
+                &feedback_data,            // Event data
+                sizeof(feedback_data),     // Size of event data
+                EVENT_FLAG_NONE            // No special flags
+            );
+            
+            if (status != EVENT_STATUS_SUCCESS) {
+                fprintf(stderr, "Failed to emit feedback event for galaxy %d: status=%d\n", 
+                       p, status);
+            }
+        }
     }
 }
 
