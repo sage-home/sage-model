@@ -7,6 +7,7 @@
 #include "../core/core_allvars.h"
 #include "../core/core_parameter_views.h"
 #include "../core/core_event_system.h"
+#include "../core/core_logging.h"
 
 #include "../physics/model_starformation_and_feedback.h"
 #include "../physics/model_misc.h"
@@ -114,7 +115,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         );
         
         if (status != EVENT_STATUS_SUCCESS) {
-            fprintf(stderr, "Failed to emit star formation event for galaxy %d: status=%d\n", 
+            LOG_ERROR("Failed to emit star formation event for galaxy %d: status=%d", 
                    p, status);
         }
     }
@@ -256,7 +257,7 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             );
             
             if (status != EVENT_STATUS_SUCCESS) {
-                fprintf(stderr, "Failed to emit feedback event for galaxy %d: status=%d\n", 
+                LOG_ERROR("Failed to emit feedback event for galaxy %d: status=%d", 
                        p, status);
             }
         }

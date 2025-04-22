@@ -8,6 +8,7 @@
 #include "../core/core_cool_func.h"
 #include "../core/core_parameter_views.h"
 #include "../core/core_event_system.h"
+#include "../core/core_logging.h"
 
 #include "../physics/model_cooling_heating.h"
 #include "../physics/model_misc.h"
@@ -265,7 +266,7 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
             );
             
             if (status != EVENT_STATUS_SUCCESS) {
-                fprintf(stderr, "Failed to emit cooling event for galaxy %d: status=%d\n", 
+                LOG_ERROR("Failed to emit cooling event for galaxy %d: status=%d", 
                        centralgal, status);
             }
         }

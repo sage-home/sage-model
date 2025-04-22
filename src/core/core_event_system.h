@@ -345,69 +345,73 @@ event_status_t event_emit(
  * 
  * These structures define the data payload for different event types.
  * They should be used when creating events to ensure type safety.
+ * Each structure contains physical properties relevant to the particular event.
+ * All mass values are in the simulation's mass units (typically 10^10 Msun/h)
+ * All radii are in the simulation's length units (typically Mpc/h)
+ * All rates are per timestep unless otherwise specified
  */
 
 /* Galaxy lifecycle events */
 typedef struct {
-    int32_t halo_index;
-    float cooling_radius;
+    int32_t halo_index;        /* Index of the halo containing this galaxy */
+    float cooling_radius;      /* Initial cooling radius of the galaxy in Mpc/h - defines the region where hot gas can cool */
 } event_galaxy_created_data_t;
 
 typedef struct {
-    int32_t source_index;
-    int32_t source_halo_index;
+    int32_t source_index;      /* Index of the galaxy being copied from */
+    int32_t source_halo_index; /* Index of the halo containing the source galaxy */
 } event_galaxy_copied_data_t;
 
 typedef struct {
-    int32_t primary_index;
-    int32_t secondary_index;
-    float mass_ratio;
-    int32_t merger_type;  /* 0 = minor, 1 = major */
+    int32_t primary_index;     /* Index of the central/larger galaxy in the merger */
+    int32_t secondary_index;   /* Index of the satellite/smaller galaxy in the merger */
+    float mass_ratio;          /* Ratio of secondary to primary galaxy stellar mass - determines merger type */
+    int32_t merger_type;       /* 0 = minor merger (satellite absorbed into disk), 1 = major merger (creates spheroid) */
 } event_galaxy_merged_data_t;
 
 /* Physics process events */
 typedef struct {
-    float cooling_rate;
-    float cooling_radius;
-    float hot_gas_cooled;
+    float cooling_rate;        /* Rate at which hot gas is cooling in 10^10 Msun/h per timestep */
+    float cooling_radius;      /* Radius within which gas can cool in Mpc/h - related to density profile and cooling function */
+    float hot_gas_cooled;      /* Total amount of hot gas that cooled onto the disk in this step in 10^10 Msun/h */
 } event_cooling_completed_data_t;
 
 typedef struct {
-    float stars_formed;
-    float stars_to_disk;
-    float stars_to_bulge;
-    float metallicity;
+    float stars_formed;        /* Total stellar mass formed in this timestep in 10^10 Msun/h */
+    float stars_to_disk;       /* Stellar mass added to the disk component in 10^10 Msun/h */
+    float stars_to_bulge;      /* Stellar mass added to the bulge component in 10^10 Msun/h */
+    float metallicity;         /* Metal fraction of the newly formed stars (Mmetals/Mstars) - dimensionless */
 } event_star_formation_occurred_data_t;
 
 typedef struct {
-    float energy_injected;
-    float mass_reheated;
-    float metals_ejected;
+    float energy_injected;     /* Energy from supernovae in standard units (typically 10^51 erg scaled to simulation units) */
+    float mass_reheated;       /* Cold gas reheated to hot phase by SN feedback in 10^10 Msun/h */
+    float metals_ejected;      /* Metal mass ejected by SN feedback in 10^10 Msun/h */
 } event_feedback_applied_data_t;
 
 typedef struct {
-    float energy_released;
-    float mass_accreted;
-    float mass_ejected;
+    float energy_released;     /* Energy released by AGN feedback in standard units */
+    float mass_accreted;       /* Mass accreted onto the black hole in 10^10 Msun/h */
+    float mass_ejected;        /* Hot gas mass ejected from halo due to AGN feedback in 10^10 Msun/h */
 } event_agn_activity_data_t;
 
 /* Property update events */
 typedef struct {
-    float old_value;
-    float new_value;
-    float delta;
+    float old_value;           /* Previous value of the property before update - units depend on property type */
+    float new_value;           /* New value of the property after update - units depend on property type */
+    float delta;               /* Change in the property value (new - old) - units depend on property type */
 } event_property_updated_data_t;
 
 /* System events */
 typedef struct {
-    int module_id;
-    int module_type;
-    char module_name[MAX_EVENT_HANDLER_NAME];
+    int module_id;             /* Unique identifier for the module */
+    int module_type;           /* Type of module (cooling, star formation, etc.) */
+    char module_name[MAX_EVENT_HANDLER_NAME]; /* Name of the module */
 } event_module_status_data_t;
 
 typedef struct {
-    char param_name[MAX_EVENT_HANDLER_NAME];
-    char param_value[MAX_EVENT_HANDLER_NAME];
+    char param_name[MAX_EVENT_HANDLER_NAME];  /* Name of the parameter that changed */
+    char param_value[MAX_EVENT_HANDLER_NAME]; /* New value of the parameter (as string) */
 } event_parameter_changed_data_t;
 
 /* Helper macros for working with event data */
