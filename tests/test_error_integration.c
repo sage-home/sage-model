@@ -19,6 +19,8 @@
 #include "../src/core/core_module_callback.h"
 #include "../src/core/core_module_diagnostics.h"
 #include "../src/core/core_logging.h"
+#include "../src/core/core_pipeline_system.h"
+#include "../src/core/physics_pipeline_executor.h"
 
 /* Test status definitions */
 #define TEST_SUCCESS 0
@@ -1494,6 +1496,150 @@ static void test_multiple_error_types(void) {
     printf("Multiple error types test completed.\n");
 }
 
+/* Forward declarations for helper functions */
+static int test_pipeline_function(void *module_data, struct pipeline_context *ctx);
+static int test_pipeline_function_with_error(void *module_data, struct pipeline_context *ctx);
+
+/* Mock implementation for pipeline_execute_with_callback for testing */
+int pipeline_execute_with_callback(
+    struct pipeline_context *context,
+    int caller_id,
+    int callee_id,
+    const char *function_name,
+    void *module_data,
+    int (*func)(void *, struct pipeline_context *)
+) {
+    /* Just call the function directly in our test implementation */
+    if (func == NULL) {
+        printf("ERROR: Null function pointer in pipeline_execute_with_callback\n");
+        return MODULE_STATUS_ERROR;
+    }
+    
+    /* Push to call stack - simplified for testing */
+    int status = module_call_stack_push(caller_id, callee_id, function_name, module_data);
+    if (status != 0) {
+        printf("ERROR: Failed to push call stack frame: %d\n", status);
+        return status;
+    }
+    
+    /* Execute the function with the module data and context */
+    int result = func(module_data, context);
+    
+    /* Pop from call stack */
+    module_call_stack_pop();
+    
+    return result;
+}
+
+/* Global variable for testing function calls */
+static int g_function_called = 0;
+
+/* Test pipeline callback integration */
+static void test_pipeline_callback_integration(void) {
+    printf("\n=== Testing Pipeline Callback Integration ===\n");
+    
+    /* Mock pipeline context */
+    struct pipeline_context context = {0};
+    struct GALAXY galaxies[10] = {0};
+    context.galaxies = galaxies;
+    context.ngal = 10;
+    context.centralgal = 0;
+    context.current_galaxy = 1;  /* Process a satellite galaxy */
+    
+    /* Reset globals for testing */
+    g_function_called = 0;
+    
+    /* Set up test configuration */
+    struct test_config config = {0};
+    configure_test(&config);
+    
+    /* Get module data for testing */
+    cooling_data_t *cooling_data = get_module_data(cooling_module_id);
+    assert_condition(cooling_data != NULL, "Could not get cooling module data");
+    
+    printf("Executing test: calling pipeline_execute_with_callback\n");
+    
+    /* Execute the test function using pipeline_execute_with_callback */
+    int status = pipeline_execute_with_callback(
+        &context,                   /* Pipeline context */
+        merger_module_id,           /* Caller module ID */
+        cooling_module_id,          /* Callee module ID */
+        "test_function",            /* Function name */
+        cooling_data,               /* Module data */
+        test_pipeline_function      /* Function to call */
+    );
+    
+    /* Verify the results */
+    printf("Status: %d, Function called: %d\n", status, g_function_called);
+    assert_condition(status == MODULE_STATUS_SUCCESS, "pipeline_execute_with_callback should succeed");
+    assert_condition(g_function_called == 1, "Test function should be called");
+    
+    /* Verify the call stack was properly cleaned up */
+    verify_call_stack(0);
+    printf("Call stack properly cleaned\n");
+    
+    /* Test with error injection */
+    printf("\n--- Testing pipeline_execute_with_callback with error injection ---\n");
+    g_function_called = 0;
+    
+    /* Execute the test function with error using pipeline_execute_with_callback */
+    status = pipeline_execute_with_callback(
+        &context,                      /* Pipeline context */
+        merger_module_id,              /* Caller module ID */
+        cooling_module_id,             /* Callee module ID */
+        "test_function_with_error",    /* Function name */
+        cooling_data,                  /* Module data */
+        test_pipeline_function_with_error /* Function to call */
+    );
+    
+    /* Verify the results */
+    printf("Status with error: %d, Function called: %d\n", status, g_function_called);
+    assert_condition(status == MODULE_STATUS_ERROR, "pipeline_execute_with_callback should return error status");
+    assert_condition(g_function_called == 1, "Test function with error should be called");
+    
+    /* Verify the module has an error set */
+    verify_error_context(cooling_module_id, true, MODULE_STATUS_ERROR);
+    
+    /* Verify the call stack was properly cleaned up even with error */
+    verify_call_stack(0);
+    printf("Call stack properly cleaned after error\n");
+    
+    tests_run++;
+    printf("Pipeline callback integration test completed.\n");
+}
+
+/* Test helper function that will be called with pipeline_execute_with_callback */
+static int test_pipeline_function(void *module_data, struct pipeline_context *ctx) {
+    printf("Test module function called with galaxy index: %d\n", ctx->current_galaxy);
+    g_function_called = 1;
+    
+    /* Verify context is passed correctly */
+    assert_condition(ctx->ngal == 10, "Context ngal should be preserved");
+    assert_condition(ctx->current_galaxy == 1, "Context current_galaxy should be preserved");
+    
+    /* Simulate using the module data */
+    if (module_data) {
+        cooling_data_t *data = (cooling_data_t *)module_data;
+        printf("  - Using module data with magic: 0x%x\n", data->magic);
+        assert_condition(data->magic == COOLING_MAGIC, "Module data should have correct magic number");
+    }
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/* Error-injecting test function */
+static int test_pipeline_function_with_error(void *module_data, struct pipeline_context *ctx) {
+    (void)module_data; /* Suppress unused parameter warning */
+    printf("Test module function (with error) called with galaxy index: %d\n", ctx->current_galaxy);
+    g_function_called = 1;
+    
+    /* Set the error for this call */
+    MODULE_ERROR(&cooling_module, MODULE_STATUS_ERROR, "Test error in pipeline callback");
+    cooling_module.last_error = MODULE_STATUS_ERROR;
+    
+    return MODULE_STATUS_ERROR;
+}
+
 /*
  * Main test function
  */
@@ -1536,7 +1682,7 @@ int main(int argc, char *argv[]) {
     status = setup_modules();
     if (status != MODULE_STATUS_SUCCESS) {
         printf("Failed to set up test modules: %d\n", status);
-        module_callback_system_cleanup();
+        module_callback_system_cleanup(); /* Function returns void */
         module_system_cleanup();
         return TEST_FAILURE;
     }
@@ -1551,6 +1697,9 @@ int main(int argc, char *argv[]) {
     test_multiple_error_types();
     test_circular_dependency();
     
+    /* Line to be preserved, pipeline integration test called in main */
+    test_pipeline_callback_integration();
+
     /* Clean up */
     printf("\nCleaning up...\n");
     status = cleanup_modules();
@@ -1560,12 +1709,9 @@ int main(int argc, char *argv[]) {
         printf("Test modules cleaned up successfully\n");
     }
     
-    status = module_callback_system_cleanup();
-    if (status != MODULE_STATUS_SUCCESS) {
-        printf("Warning: Failed to clean up callback system: %d\n", status);
-    } else {
-        printf("Callback system cleaned up successfully\n");
-    }
+    module_callback_system_cleanup();
+    /* Function now returns void, no status check needed */
+    printf("Callback system cleaned up successfully\n");
     
     status = module_system_cleanup();
     if (status != MODULE_STATUS_SUCCESS) {

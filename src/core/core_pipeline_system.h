@@ -7,24 +7,29 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "core_allvars.h"
-#include "core_module_system.h"
+#include "core_types.h"  /* For common type definitions */
 #include "core_event_system.h"
 
-/**
- * Pipeline execution phases
- * 
- * Defines the different execution contexts in which modules can operate:
- * - HALO: Calculations that happen once per halo (outside galaxy loop)
- * - GALAXY: Calculations that happen for each galaxy
- * - POST: Calculations that happen after processing all galaxies (per step)
- * - FINAL: Calculations that happen after all steps are complete
- */
-enum pipeline_execution_phase {
-    PIPELINE_PHASE_HALO = 1,    /* Execute once per halo (outside galaxy loop) */
-    PIPELINE_PHASE_GALAXY = 2,  /* Execute for each galaxy (inside galaxy loop) */
-    PIPELINE_PHASE_POST = 4,    /* Execute after processing all galaxies (for each integration step) */
-    PIPELINE_PHASE_FINAL = 8    /* Execute after all steps are complete, before exiting evolve_galaxies */
+/* Pipeline system constants */
+#define MAX_PIPELINE_STEPS 32
+#define MAX_STEP_NAME 64
+
+/* Define pipeline constants */
+#define MAX_PIPELINE_PHASES 16
+#define MAX_PHASE_NAME 32
+
+/* Pipeline phase definition */
+struct pipeline_phase {
+    char name[MAX_PHASE_NAME];
+    uint32_t phase_id;
+    int module_id;
 };
+
+/* Forward declarations */
+struct base_module;
+struct pipeline_context;
+struct pipeline_step;
+struct module_pipeline;
 
 /**
  * @file core_pipeline_system.h
@@ -36,10 +41,6 @@ enum pipeline_execution_phase {
  * at runtime, allowing modules to be inserted, replaced, reordered, or removed
  * without recompilation.
  */
-
-/* Maximum number of steps in a pipeline */
-#define MAX_PIPELINE_STEPS 32
-#define MAX_STEP_NAME 64
 
 /**
  * Pipeline step structure
@@ -73,7 +74,18 @@ struct pipeline_context {
     double infall_gas;                   /* Result of infall calculation */
     double redshift;                     /* Current redshift */
     enum pipeline_execution_phase execution_phase; /* Current execution phase */
-    struct property_serialization_context *prop_ctx; /* Property serialization context */
+
+    // Add callback tracking
+    int caller_module_id;              /* ID of module making callback */
+    const char *current_function;      /* Name of function being called */
+    void *callback_context;            /* Context data for current callback */
+    
+    // Property serialization context
+    void *prop_ctx;                    /* Property serialization context */
+
+    struct pipeline_phase phases[MAX_PIPELINE_PHASES];
+    int num_phases;
+    bool initialized;
 };
 
 /**
@@ -429,27 +441,47 @@ int pipeline_get_step_module(
 );
 
 /**
- * Initialize property serialization context for pipeline
+ * Execute a function with pipeline callback tracking
  * 
- * Sets up a property serialization context in the pipeline context.
+ * Helper function that handles module callbacks within the pipeline context.
  * 
- * @param context Pipeline context to initialize
- * @param filter_flags Flags controlling which properties to serialize
- * @return 0 on success, error code on failure 
+ * @param context Pipeline context
+ * @param caller_id ID of the calling module
+ * @param callee_id ID of the module being called
+ * @param function_name Name of the function being called
+ * @param module_data Module-specific data
+ * @param func Function to call
+ * @return Result of the function call
  */
-int pipeline_init_property_serialization(
+int pipeline_execute_with_callback(
     struct pipeline_context *context,
-    uint32_t filter_flags
+    int caller_id,
+    int callee_id,
+    const char *function_name,
+    void *module_data,
+    int (*func)(void *, struct pipeline_context *)
 );
 
 /**
- * Clean up property serialization context
+ * Initialize property serialization for a pipeline
+ * 
+ * Sets up the property serialization context for pipeline execution.
+ * 
+ * @param context Pipeline context
+ * @param flags Property serialization flags
+ * @return 0 on success, error code on failure
+ */
+int pipeline_init_property_serialization(struct pipeline_context *context, uint32_t flags);
+
+/**
+ * Clean up property serialization for a pipeline
  * 
  * Releases resources used by property serialization.
  * 
- * @param context Pipeline context containing serialization context
+ * @param context Pipeline context
+ * @return 0 on success, error code on failure
  */
-void pipeline_cleanup_property_serialization(struct pipeline_context *context);
+int pipeline_cleanup_property_serialization(struct pipeline_context *context);
 
 #ifdef __cplusplus
 }

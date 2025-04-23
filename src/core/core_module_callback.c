@@ -7,6 +7,28 @@
 #include "core_module_system.h"
 #include "core_logging.h"
 #include "core_mymalloc.h"
+#include "core_pipeline_system.h"
+
+/**
+ * @file core_module_callback.c
+ * @brief Implementation of the module callback system
+ * 
+ * This file contains the implementation of the module callback system, which
+ * allows modules to call functions in other modules with proper dependency
+ * tracking, error handling, and call stack management.
+ * 
+ * The callback system supports:
+ * - Declaring dependencies between modules
+ * - Calling functions in other modules
+ * - Tracking the call stack for diagnostics
+ * - Detecting and preventing circular dependencies
+ * - Error propagation between modules
+ * 
+ * To use the callback system:
+ * 1. A module must declare its dependencies using module_declare_dependency()
+ * 2. It can then call functions in other modules using module_invoke()
+ * 3. Errors are automatically tracked and can be handled at the call site
+ */
 
 /* Global call stack */
 module_call_stack_t *global_call_stack = NULL;
@@ -19,25 +41,17 @@ module_call_stack_t *global_call_stack = NULL;
  * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
 int module_callback_system_initialize(void) {
-    /* Check if already initialized */
-    if (global_call_stack != NULL) {
-        LOG_WARNING("Module callback system already initialized");
-        return MODULE_STATUS_ALREADY_INITIALIZED;
-    }
-    
-    /* Allocate memory for the call stack */
-    global_call_stack = (module_call_stack_t *)mymalloc(sizeof(module_call_stack_t));
+    /* Allocate and initialize global call stack */
+    global_call_stack = calloc(1, sizeof(module_call_stack_t));
     if (global_call_stack == NULL) {
-        LOG_ERROR("Failed to allocate memory for call stack");
-        return MODULE_STATUS_OUT_OF_MEMORY;
+        LOG_ERROR("Failed to allocate memory for module call stack");
+        return -1;
     }
     
-    /* Initialize call stack fields */
-    memset(global_call_stack, 0, sizeof(module_call_stack_t));
     global_call_stack->depth = 0;
     
-    LOG_INFO("Module callback system initialized");
-    return MODULE_STATUS_SUCCESS;
+    LOG_DEBUG("Module callback system initialized");
+    return 0;
 }
 
 /**
@@ -47,23 +61,19 @@ int module_callback_system_initialize(void) {
  * 
  * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
-int module_callback_system_cleanup(void) {
-    if (global_call_stack == NULL) {
-        LOG_WARNING("Module callback system not initialized");
-        return MODULE_STATUS_NOT_INITIALIZED;
+void module_callback_system_cleanup(void) {
+    if (global_call_stack != NULL) {
+        /* Check for unclosed calls */
+        if (global_call_stack->depth > 0) {
+            LOG_WARNING("Cleaning up call stack with %d unclosed calls", 
+                       global_call_stack->depth);
+        }
+        
+        free(global_call_stack);
+        global_call_stack = NULL;
     }
     
-    /* Check for leftover call frames */
-    if (global_call_stack->depth > 0) {
-        LOG_WARNING("Call stack not empty during cleanup (depth: %d)", global_call_stack->depth);
-    }
-    
-    /* Free the call stack */
-    myfree(global_call_stack);
-    global_call_stack = NULL;
-    
-    LOG_INFO("Module callback system cleaned up");
-    return MODULE_STATUS_SUCCESS;
+    LOG_DEBUG("Module callback system cleaned up");
 }
 
 /**
@@ -158,37 +168,38 @@ int module_call_stack_push(
     const char *function_name,
     void *context
 ) {
-    /* Check if callback system is initialized */
     if (global_call_stack == NULL) {
-        LOG_ERROR("Module callback system not initialized");
-        return MODULE_STATUS_NOT_INITIALIZED;
+        LOG_ERROR("Call stack not initialized");
+        return -1;
     }
     
-    /* Check if stack is full */
     if (global_call_stack->depth >= MAX_CALL_DEPTH) {
-        LOG_ERROR("Call stack overflow (max depth: %d)", MAX_CALL_DEPTH);
-        return MODULE_STATUS_ERROR;
+        LOG_ERROR("Call stack overflow (max depth %d)", MAX_CALL_DEPTH);
+        return -1;
     }
     
-    /* Add frame to stack */
+    /* Check for circular dependencies */
+    if (module_call_stack_check_circular(callee_id)) {
+        LOG_ERROR("Circular dependency detected calling module %d", callee_id);
+        return -1;
+    }
+    
+    /* Create new frame */
     module_call_frame_t *frame = &global_call_stack->frames[global_call_stack->depth];
     frame->caller_module_id = caller_id;
     frame->callee_module_id = callee_id;
     frame->function_name = function_name;
     frame->context = context;
-    
-    /* Initialize error fields */
     frame->error_code = 0;
-    frame->error_message[0] = '\0';
     frame->has_error = false;
+    frame->error_message[0] = '\0';
     
     global_call_stack->depth++;
     
-    /* Log the call for debugging */
-    LOG_DEBUG("Module call: %d -> %d::%s (depth: %d)", 
-             caller_id, callee_id, function_name, global_call_stack->depth);
-             
-    return MODULE_STATUS_SUCCESS;
+    LOG_DEBUG("Pushed call frame: %s (caller=%d, callee=%d)", 
+              function_name, caller_id, callee_id);
+    
+    return 0;
 }
 
 /**
@@ -198,29 +209,18 @@ int module_call_stack_push(
  * 
  * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
-int module_call_stack_pop(void) {
-    /* Check if callback system is initialized */
-    if (global_call_stack == NULL) {
-        LOG_ERROR("Module callback system not initialized");
-        return MODULE_STATUS_NOT_INITIALIZED;
+module_call_frame_t *module_call_stack_pop(void) {
+    if (global_call_stack == NULL || global_call_stack->depth == 0) {
+        return NULL;
     }
     
-    /* Check if stack is empty */
-    if (global_call_stack->depth <= 0) {
-        LOG_ERROR("Call stack underflow");
-        return MODULE_STATUS_ERROR;
-    }
-    
-    /* Remove frame from stack */
     global_call_stack->depth--;
-    
-    /* Log the return for debugging */
     module_call_frame_t *frame = &global_call_stack->frames[global_call_stack->depth];
-    LOG_DEBUG("Module return: %d <- %d::%s (depth: %d)", 
-             frame->caller_module_id, frame->callee_module_id, 
-             frame->function_name, global_call_stack->depth);
-             
-    return MODULE_STATUS_SUCCESS;
+    
+    LOG_DEBUG("Popped call frame: %s (caller=%d, callee=%d)", 
+              frame->function_name, frame->caller_module_id, frame->callee_module_id);
+    
+    return frame;
 }
 
 /**
@@ -232,36 +232,60 @@ int module_call_stack_pop(void) {
  * @return true if a circular dependency exists, false otherwise
  */
 bool module_call_stack_check_circular(int module_id) {
-    /* Check if callback system is initialized */
     if (global_call_stack == NULL) {
-        LOG_ERROR("Module callback system not initialized");
         return false;
     }
     
-    /* Search for the module in the call stack */
     for (int i = 0; i < global_call_stack->depth; i++) {
         if (global_call_stack->frames[i].callee_module_id == module_id) {
-            /* Get the module name for better diagnostics */
-            const char *module_name = "unknown";
-            struct base_module *module = NULL;
-            void *module_data = NULL;
-            if (module_get(module_id, &module, &module_data) == MODULE_STATUS_SUCCESS && module != NULL) {
-                module_name = module->name;
-            }
-            
-            LOG_WARNING("Circular dependency detected: module %s (ID: %d) already in call chain at depth %d", 
-                       module_name, module_id, i);
-            
-            /* Print the call chain for debugging */
-            char trace_buffer[1024];
-            module_call_stack_get_trace(trace_buffer, sizeof(trace_buffer));
-            LOG_DEBUG("Call stack trace:\n%s", trace_buffer);
-            
             return true;
         }
     }
     
     return false;
+}
+
+/**
+ * Get the current call stack trace
+ * 
+ * Returns a formatted string representation of the call stack for debugging.
+ * 
+ * @param buffer Output buffer for the call stack trace
+ * @param buffer_size Size of the output buffer
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_call_stack_get_trace(char *buffer, size_t buffer_size) {
+    if (buffer == NULL || buffer_size == 0) {
+        return -1;
+    }
+    
+    if (global_call_stack == NULL || global_call_stack->depth == 0) {
+        snprintf(buffer, buffer_size, "<empty call stack>");
+        return 0;
+    }
+    
+    size_t offset = 0;
+    
+    for (int i = 0; i < global_call_stack->depth && offset < buffer_size; i++) {
+        module_call_frame_t *frame = &global_call_stack->frames[i];
+        
+        int written = snprintf(buffer + offset, buffer_size - offset,
+                             "%s%s%s[%d->%d]",
+                             (i > 0) ? " -> " : "",
+                             frame->function_name,
+                             frame->has_error ? "(error)" : "",
+                             frame->caller_module_id,
+                             frame->callee_module_id);
+        
+        if (written < 0 || written >= (int)(buffer_size - offset)) {
+            /* Buffer full */
+            break;
+        }
+        
+        offset += written;
+    }
+    
+    return 0;
 }
 
 /**
@@ -279,84 +303,6 @@ int module_call_stack_get_depth(void) {
     }
     
     return global_call_stack->depth;
-}
-
-/**
- * Get the current call stack trace
- * 
- * Returns a formatted string representation of the call stack for debugging.
- * 
- * @param buffer Output buffer for the call stack trace
- * @param buffer_size Size of the output buffer
- * @return MODULE_STATUS_SUCCESS on success, error code on failure
- */
-int module_call_stack_get_trace(char *buffer, size_t buffer_size) {
-    /* Check arguments */
-    if (buffer == NULL || buffer_size == 0) {
-        LOG_ERROR("Invalid arguments to module_call_stack_get_trace");
-        return MODULE_STATUS_INVALID_ARGS;
-    }
-    
-    /* Check if callback system is initialized */
-    if (global_call_stack == NULL) {
-        LOG_ERROR("Module callback system not initialized");
-        return MODULE_STATUS_NOT_INITIALIZED;
-    }
-    
-    /* Start with an empty string */
-    buffer[0] = '\0';
-    size_t remaining = buffer_size - 1;  /* Leave room for null terminator */
-    char *ptr = buffer;
-    
-    /* Handle empty call stack */
-    if (global_call_stack->depth == 0) {
-        strncpy(ptr, "Call stack is empty", remaining);
-        return MODULE_STATUS_SUCCESS;
-    }
-    
-    /* Format each frame in the call stack */
-    for (int i = 0; i < global_call_stack->depth; i++) {
-        module_call_frame_t *frame = &global_call_stack->frames[i];
-        
-        /* Get module names for better diagnostics */
-        const char *caller_name = "unknown";
-        const char *callee_name = "unknown";
-        struct base_module *caller_module = NULL;
-        struct base_module *callee_module = NULL;
-        void *dummy_data = NULL;
-        
-        if (module_get(frame->caller_module_id, &caller_module, &dummy_data) == MODULE_STATUS_SUCCESS && 
-            caller_module != NULL) {
-            caller_name = caller_module->name;
-        }
-        
-        if (module_get(frame->callee_module_id, &callee_module, &dummy_data) == MODULE_STATUS_SUCCESS && 
-            callee_module != NULL) {
-            callee_name = callee_module->name;
-        }
-        
-        /* Format this frame */
-        int written = snprintf(ptr, remaining, 
-                              "%d: %s (ID: %d) -> %s (ID: %d)::%s\n", 
-                              i, 
-                              caller_name, frame->caller_module_id,
-                              callee_name, frame->callee_module_id,
-                              frame->function_name ? frame->function_name : "unknown");
-        
-        /* Check if we ran out of space */
-        if (written < 0 || written >= (int)remaining) {
-            /* Indicate truncation */
-            strncpy(buffer + buffer_size - 12, " [truncated]", 11);
-            buffer[buffer_size - 1] = '\0';
-            break;
-        }
-        
-        /* Update pointers */
-        ptr += written;
-        remaining -= written;
-    }
-    
-    return MODULE_STATUS_SUCCESS;
 }
 
 /**
@@ -820,6 +766,88 @@ int module_call_validate(int caller_id, int callee_id) {
 }
 
 /**
+ * Execute a function in a module with callback tracking
+ * 
+ * This function can be used by core_pipeline_system.c to execute a 
+ * function with proper call stack management.
+ * 
+ * @param context Pipeline context
+ * @param caller_id ID of the calling module
+ * @param callee_id ID of the module being called
+ * @param function_name Name of the function being called
+ * @param callback_context Context data for the callback
+ * @param func Function to execute with context
+ * @return Result of the function execution
+ */
+int module_execute_with_callback(
+    struct pipeline_context *context,
+    int caller_id,
+    int callee_id,
+    const char *function_name,
+    void *callback_context,
+    int (*func)(void *, struct pipeline_context *)
+);
+
+/**
+ * Get the current call frame
+ * 
+ * Returns a pointer to the current call frame (most recent).
+ * 
+ * @return Pointer to current call frame, or NULL if stack is empty
+ */
+module_call_frame_t *module_call_stack_current(void) {
+    if (global_call_stack == NULL || global_call_stack->depth == 0) {
+        return NULL;
+    }
+    
+    return &global_call_stack->frames[global_call_stack->depth - 1];
+}
+
+/**
+ * Set error information for the current frame
+ *
+ * A convenience function to set error information on the most recent frame.
+ *
+ * @param error_code Error code to set
+ * @param error_message Error message to set
+ */
+void module_call_set_error(int error_code, const char *error_message) {
+    if (global_call_stack == NULL || global_call_stack->depth == 0 || error_message == NULL) {
+        return;
+    }
+
+    module_call_frame_t *frame = &global_call_stack->frames[global_call_stack->depth - 1];
+    frame->error_code = error_code;
+    
+    /* Copy the error message */
+    strncpy(frame->error_message, error_message, MAX_ERROR_MESSAGE - 1);
+    frame->error_message[MAX_ERROR_MESSAGE - 1] = '\0';
+    
+    frame->error_message[MAX_ERROR_MESSAGE - 1] = '\0';
+    frame->has_error = true;
+    
+    /* Log the error for debugging */
+    LOG_DEBUG("Set error on current call frame: code=%d, message='%s'", 
+             error_code, frame->error_message);
+}
+
+/**
+ * Clear error information for the current frame
+ * 
+ * Removes any error information from the most recent frame.
+ */
+void module_call_clear_error(void) {
+    if (global_call_stack == NULL || global_call_stack->depth == 0) {
+        return;
+    }
+    
+    module_call_frame_t *frame = &global_call_stack->frames[global_call_stack->depth - 1];
+    frame->error_code = 0;
+    frame->error_message[0] = '\0';
+    frame->has_error = false;
+}
+
+/**
  * Invoke a function in another module
  * 
  * Calls a registered function in a module.
@@ -833,6 +861,11 @@ int module_call_validate(int caller_id, int callee_id) {
  * @param result Optional pointer to store result (type depends on function)
  * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
+/* The implementation of module_execute_with_callback below is used
+ * by pipeline_execute_with_callback in physics_pipeline_executor.c
+ */
+
+
 int module_invoke(
     int caller_id,
     int module_type,
@@ -987,11 +1020,73 @@ int module_invoke(
     }
     
     /* Pop from call stack */
-    status = module_call_stack_pop();
-    if (status != MODULE_STATUS_SUCCESS) {
-        LOG_ERROR("Failed to pop call stack frame: %d", status);
+    module_call_stack_pop();
+    
+    return MODULE_STATUS_SUCCESS;
+}
+
+/**
+ * Execute a function in a module with callback tracking
+ *
+ * Wraps a module function execution in a callback tracking system.
+ *
+ * @param context Pipeline context for execution
+ * @param caller_id ID of the calling module
+ * @param callee_id ID of the module being called
+ * @param function_name Name of the function being called
+ * @param callback_context Context data for the callback
+ * @param func Function to execute
+ * @return Result of the function execution
+ */
+int module_execute_with_callback(
+    struct pipeline_context *context,
+    int caller_id,
+    int callee_id,
+    const char *function_name,
+    void *callback_context,
+    int (*func)(void *, struct pipeline_context *)
+) {
+    /* Save previous callback state from context if any */
+    int prev_caller_id = context->caller_module_id;
+    const char *prev_function = context->current_function;
+    void *prev_context = context->callback_context;
+    
+    /* Set new callback state */
+    context->caller_module_id = caller_id;
+    context->current_function = function_name;
+    context->callback_context = callback_context;
+    
+    /* Push to call stack */
+    int status = module_call_stack_push(caller_id, callee_id, function_name, callback_context);
+    if (status != 0) {
+        LOG_ERROR("Failed to push call stack frame: %d", status);
+        
+        /* Restore previous callback state */
+        context->caller_module_id = prev_caller_id;
+        context->current_function = prev_function;
+        context->callback_context = prev_context;
+        
         return status;
     }
     
-    return MODULE_STATUS_SUCCESS;
+    /* Execute the function */
+    status = func(callback_context, context);
+    
+    /* Pop from call stack */
+    module_call_stack_pop();
+    
+    /* Check for any leftover frames (module didn't clean up properly) */
+    if (global_call_stack->depth > 0) {
+        LOG_WARNING("Leftover call frames after module_execute_with_callback");
+        while (global_call_stack->depth > 0) {
+            module_call_stack_pop();
+        }
+    }
+    
+    /* Restore previous callback state */
+    context->caller_module_id = prev_caller_id;
+    context->current_function = prev_function;
+    context->callback_context = prev_context;
+    
+    return status;
 }

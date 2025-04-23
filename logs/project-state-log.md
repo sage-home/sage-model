@@ -191,7 +191,10 @@ The codebase now features an integrated plugin architecture with three key compo
 
 Key components in the architecture:
 - `core_module_system`: Defines module interface, registry, and lifecycle management
+- `core_module_callback`: Enables cross-module function calls with dependency tracking
+- `physics_pipeline_executor`: Integrates module callbacks with pipeline execution
 - `module_cooling`: First physics module using new plugin architecture (others pending)
+- `standard_infall_module`: Example module implementation using callback system
 - `core_pipeline_system`: Configurable sequence for physics operations
 - `core_config_system`: JSON-based configuration with hierarchical parameters
 - `core_module_debug`: Module debugging with tracing and diagnostics
@@ -202,7 +205,9 @@ The modular design provides:
 - Runtime physics module registry with lifecycle management
 - Event-based communication between modules
 - Galaxy property extension mechanism
-- Configurable pipeline execution
+- Controlled module-to-module function calls via callback system
+- Call stack tracking and circular dependency detection
+- Pipeline execution with phase-aware module invocation
 - Parameter validation and override capabilities
 - Comprehensive error handling and diagnostics
 - Dynamic loading of module implementations

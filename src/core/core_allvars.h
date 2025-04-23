@@ -140,12 +140,18 @@ struct evolution_context {
     
     /* Time integration */
     double deltaT;              /* Time step for evolution */
+    double time;                /* Current simulation time */
     
     /* Parameters */
     const struct params *params; /* Reference to runtime parameters */
     
     /* Merger queue */
     struct merger_event_queue *merger_queue; /* Queue for deferred merger processing */
+    
+    /* Pipeline phase tracking */
+    int current_phase;         /* Current pipeline execution phase */
+    int current_galaxy;        /* Index of galaxy being processed (for GALAXY phase) */
+    void *callback_context;    /* Context data for module callbacks */
 };
 
 

@@ -8,11 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include "core_allvars.h"
-
-/* Forward declarations and definitions to avoid circular dependencies */
-#define MAX_MODULE_NAME 64
-#define MAX_ERROR_MESSAGE 256
-enum module_type;
+#include "core_types.h"  /* For common type definitions */
 
 /**
  * @file core_module_callback.h
@@ -21,27 +17,61 @@ enum module_type;
  * This file defines the module callback system that allows direct module-to-module
  * communication while maintaining a clean architecture. It enables modules to declare
  * dependencies on other modules and call functions in those modules at runtime.
+ * 
+ * The callback system supports:
+ * - Declaring dependencies between modules
+ * - Registering functions for other modules to call
+ * - Invoking functions in other modules
+ * - Tracking the call stack for diagnostics
+ * - Detecting and preventing circular dependencies
+ * - Error propagation between modules
+ * 
+ * Usage Example:
+ * 
+ * 1. Initialize the system:
+ *    ```c
+ *    int status = module_callback_system_initialize();
+ *    ```
+ * 
+ * 2. Register callable functions from your module:
+ *    ```c
+ *    module_register_function(module_id, "function_name", function_ptr,
+ *                            FUNCTION_TYPE_DOUBLE, "double (void*, void*)",
+ *                            "Description of the function");
+ *    ```
+ * 
+ * 3. Declare dependencies on other modules:
+ *    ```c
+ *    module_declare_simple_dependency(module_id, MODULE_TYPE_COOLING, 
+ *                                   NULL, false);
+ *    ```
+ * 
+ * 4. Call functions in other modules:
+ *    ```c
+ *    double result = 0.0;
+ *    int error_code = 0;
+ *    int status = module_invoke(calling_module_id, MODULE_TYPE_COOLING, 
+ *                             NULL, "get_cooling_rate", &error_code,
+ *                             arg1, arg2, &result);
+ *    ```
+ * 
+ * 5. Check for errors:
+ *    ```c
+ *    if (status != MODULE_STATUS_SUCCESS || error_code != 0) {
+ *        // Handle error
+ *    }
+ *    ```
+ * 
+ * Note: The module callback system must be initialized before use,
+ * and modules must register their functions before other modules can call them.
+ * Dependencies must be declared to maintain architectural integrity.
  */
 
 /* Maximum numbers */
 #define MAX_MODULE_FUNCTIONS 32
 #define MAX_FUNCTION_NAME 64
-#define MAX_CALL_DEPTH 16
+#define MAX_CALL_DEPTH 32
 #define MAX_DEPENDENCY_NAME 64
-
-/* Forward declarations */
-struct base_module;
-
-/**
- * Version structure
- * 
- * Used for semantic versioning of modules
- */
-struct module_version {
-    int major;       /* Major version (incompatible API changes) */
-    int minor;       /* Minor version (backwards-compatible functionality) */
-    int patch;       /* Patch version (backwards-compatible bug fixes) */
-};
 
 /**
  * Function return type identifiers
@@ -145,10 +175,8 @@ int module_callback_system_initialize(void);
  * Clean up the module callback system
  * 
  * Releases resources used by the callback system.
- * 
- * @return 0 on success, error code on failure
  */
-int module_callback_system_cleanup(void);
+void module_callback_system_cleanup(void);
 
 /**
  * Register a function with a module
@@ -193,11 +221,11 @@ int module_call_stack_push(
 /**
  * Pop a frame from the call stack
  * 
- * Removes the most recent invocation record.
+ * Removes the most recent invocation record and returns it.
  * 
- * @return 0 on success, error code on failure
+ * @return Pointer to the popped frame, or NULL if stack is empty
  */
-int module_call_stack_pop(void);
+module_call_frame_t *module_call_stack_pop(void);
 
 /**
  * Check for circular dependencies
@@ -341,16 +369,29 @@ int module_call_validate(int caller_id, int callee_id);
 /**
  * Invoke a function in another module
  * 
- * Calls a registered function in a module.
+ * Calls a registered function in a module. This is the main entry point for
+ * the module callback system.
  * 
  * @param caller_id ID of the calling module
  * @param module_type Type of module to invoke (can be MODULE_TYPE_UNKNOWN if module_name is provided)
  * @param module_name Optional specific module name (can be NULL to use active module of type)
  * @param function_name Name of function to call
- * @param context Context to pass to function
+ * @param context Context to pass to function (typically used to return error code)
  * @param args Arguments to pass to the function
  * @param result Optional pointer to store result (type depends on function)
  * @return 0 on success, error code on failure
+ * 
+ * @note The meaning of the @p context parameter depends on the invoked function,
+ *       but it typically points to an integer that will be set to an error code
+ *       if the function fails. The return value of module_invoke only indicates
+ *       whether the invocation mechanics succeeded, not whether the called function
+ *       completed successfully. You should always check the context parameter for
+ *       error codes even if module_invoke returns MODULE_STATUS_SUCCESS.
+ * 
+ * @note The type of @p args and @p result depends on the function being called.
+ *       It is the caller's responsibility to ensure that these parameters have
+ *       the correct type for the function being called. Incorrect types can lead
+ *       to memory corruption or crashes.
  */
 int module_invoke(
     int caller_id,
@@ -361,6 +402,50 @@ int module_invoke(
     void *args,
     void *result
 );
+
+/* Get the current call frame */
+module_call_frame_t *module_call_stack_current(void);
+
+/* Set error information for the current frame */
+void module_call_set_error(
+    int error_code,
+    const char *error_message
+);
+
+/* Clear error information for the current frame */
+void module_call_clear_error(void);
+
+/* Note: module_execute_with_callback is declared in core_pipeline_system.h 
+ * to avoid circular dependencies
+ */
+
+/**
+ * Error Handling in the Module Callback System
+ * 
+ * The callback system provides several mechanisms for error handling:
+ * 
+ * 1. Return values: Functions in the callback system return status codes
+ *    (MODULE_STATUS_SUCCESS on success, error code on failure).
+ * 
+ * 2. Context parameter: When calling module_invoke(), a context parameter
+ *    is passed that can be used to store error codes from the called function.
+ * 
+ * 3. Call stack errors: Errors can be set on the call stack using
+ *    module_call_set_error() and retrieved using module_call_stack_get_frame().
+ * 
+ * 4. Module errors: Each module maintains its own error state that can be
+ *    accessed using module_get_last_error().
+ * 
+ * Best Practices:
+ * 
+ * - Always check both the return value of module_invoke() and the context
+ *   parameter for errors.
+ * - Use module_call_set_error() to set detailed error information from
+ *   within called functions.
+ * - Propagate errors up the call chain rather than silently ignoring them.
+ * - When declaring dependencies, consider whether they are required or
+ *   optional and handle missing dependencies gracefully.
+ */
 
 #ifdef __cplusplus
 }

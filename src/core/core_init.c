@@ -20,6 +20,7 @@
 #include "core_pipeline_system.h"
 #include "core_config_system.h"
 #include "core_memory_pool.h"
+#include "core_module_callback.h"
 
 /* Include physics module interfaces */
 #include "../physics/module_cooling.h"
@@ -56,6 +57,10 @@ void init(struct params *run_params)
     /* Initialize module system */
     initialize_module_system(run_params);
     LOG_DEBUG("Module system initialized");
+    
+    /* Initialize module callback system */
+    initialize_module_callback_system();
+    LOG_DEBUG("Module callback system initialized");
     
     /* Initialize galaxy extension system */
     initialize_galaxy_extension_system();
@@ -306,6 +311,7 @@ void cleanup(struct params *run_params)
     cleanup_pipeline_system();
     cleanup_event_system();
     cleanup_galaxy_extension_system();
+    cleanup_module_callback_system();
     cleanup_module_system();
     
     /* Clean up memory pool if it was enabled */
@@ -538,6 +544,33 @@ void cleanup_config_system(void)
     }
 }
 
+/**
+ * Initialize the module callback system
+ * 
+ * Sets up the callback system that enables modules to call functions
+ * in other modules with proper dependency tracking and error handling.
+ */
+void initialize_module_callback_system(void)
+{
+    int status = module_callback_system_initialize();
+    if (status != 0) {
+        LOG_ERROR("Failed to initialize module callback system, status = %d", status);
+    } else {
+        LOG_INFO("Module callback system initialized");
+    }
+}
+
+/**
+ * Clean up the module callback system
+ * 
+ * Releases resources used by the module callback system.
+ */
+void cleanup_module_callback_system(void)
+{
+    module_callback_system_cleanup();
+    LOG_DEBUG("Module callback system cleaned up");
+}
+
 /*
  * Initialize the galaxy evolution context
  * 
@@ -643,9 +676,15 @@ void initialize_evolution_context(struct evolution_context *ctx,
     
     /* Initialize time integration */
     ctx->deltaT = 0.0;  /* Will be set during evolution */
+    ctx->time = 0.0;    /* Will be set during evolution */
     
     /* Initialize parameters reference */
     ctx->params = run_params;
+    
+    /* Initialize pipeline state */
+    ctx->current_phase = 0;
+    ctx->current_galaxy = -1;
+    ctx->callback_context = NULL;
     
     /* Validate the newly initialized context */
     if (!validate_evolution_context(ctx)) {

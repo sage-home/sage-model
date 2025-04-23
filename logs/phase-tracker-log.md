@@ -28,7 +28,7 @@
 - [x] Transform `evolve_galaxies()` to use the pipeline system with proper phase handling
 - [x] Integrate event dispatch/handling points
 - [x] Add support for reading/writing extension properties
-- [ ] Integrate module callbacks
+- [x] Integrate module callbacks
 - [ ] Add evolution diagnostics
 
 ### Phase 5.2: Converting Physics Modules ⏳ PENDING

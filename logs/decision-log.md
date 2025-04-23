@@ -64,3 +64,7 @@
 2025-04-17: [Phase 5.1] Pipeline Phase Architecture for Evolution Loop
 - Rationale: Analysis of physics processing revealed two distinct calculation scopes: halo-level calculations (like infall) that happen outside the galaxy loop, and galaxy-level calculations (like cooling) that happen for each galaxy. A pure modular pipeline requires a structured way to handle these different scopes.
 - Impact: Introduction of execution phases (HALO, GALAXY, POST, FINAL) in the pipeline architecture addresses this critical design need. Modules can now declare which phases they participate in, preserving the scientific model while maintaining modularity. This eliminates the need for special cases in the evolution loop while ensuring calculations happen in the correct order.
+
+2025-04-23: [Phase 5.1] Using Pipeline Context for Module Callbacks
+- Rationale: Module callbacks required tracking multiple types of context: call stack for circular dependency detection, error propagation between modules, and execution context for the current pipeline. We implemented a unified approach where the pipeline context carries callback information, allowing modules to correctly track dependencies while operating within the pipeline.
+- Impact: This design ensures consistent behavior between direct module invocation and pipeline execution, maintains clear error propagation paths, and simplifies integration of callbacks into the pipeline architecture. This preserves the original physics model's interdependencies while maintaining modularity.

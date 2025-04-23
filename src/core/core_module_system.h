@@ -7,6 +7,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "core_allvars.h"
+#include "core_types.h"  /* Include common types first */
 #include "core_module_callback.h"
 
 /**
@@ -20,13 +21,7 @@ extern "C" {
 
 /* Maximum number of modules that can be registered */
 #define MAX_MODULES 64
-#define MAX_MODULE_NAME 64
-#define MAX_MODULE_VERSION 32
-#define MAX_MODULE_AUTHOR 64
-#define MAX_MODULE_DESCRIPTION 256
-#define MAX_ERROR_MESSAGE 256
 #define MAX_DEPENDENCIES 16
-#define MAX_DEPENDENCY_NAME 64
 #define MAX_MODULE_PATH 256
 #define MAX_MODULE_PATHS 10
 #define MAX_MANIFEST_FILE_SIZE 8192
@@ -37,29 +32,12 @@ extern "C" {
 #define CORE_API_MIN_VERSION 1   /* Minimum compatible API version */
 
 /* Module flags */
+#define MODULE_FLAG_THREADSAFE          (1UL << 0)  /* Module is thread-safe */
+#define MODULE_FLAG_STATELESS           (1UL << 1)  /* Module is stateless */
+#define MODULE_FLAG_REENTRANT           (1UL << 2)  /* Module is reentrant */
+#define MODULE_FLAG_SUPPORTS_STREAMING  (1UL << 3)  /* Module supports streaming mode */
 #define MODULE_FLAG_HAS_EXTENSIONS      (1UL << 4)  /* Module uses galaxy extensions */
 #define MODULE_FLAG_REQUIRES_SERIALIZATION (1UL << 5)  /* Module requires property serialization */
-
-/**
- * Module type identifiers
- * 
- * Each physics module has a unique type identifier that determines what
- * interface it implements and where it fits in the physics pipeline.
- */
-enum module_type {
-    MODULE_TYPE_UNKNOWN = 0,
-    MODULE_TYPE_COOLING = 1,
-    MODULE_TYPE_STAR_FORMATION = 2,
-    MODULE_TYPE_FEEDBACK = 3,
-    MODULE_TYPE_AGN = 4,
-    MODULE_TYPE_MERGERS = 5,
-    MODULE_TYPE_DISK_INSTABILITY = 6,
-    MODULE_TYPE_REINCORPORATION = 7,
-    MODULE_TYPE_INFALL = 8,
-    MODULE_TYPE_MISC = 9,
-    /* Add other types as needed */
-    MODULE_TYPE_MAX
-};
 
 /**
  * Module status codes
@@ -135,6 +113,18 @@ struct base_module {
     
     /* Configuration functions */
     int (*configure)(void *module_data, const char *config_name, const char *config_value);
+    
+    /* Execution phase functions */
+    int (*execute_halo_phase)(void *module_data, struct pipeline_context *context);
+    int (*execute_galaxy_phase)(void *module_data, struct pipeline_context *context);
+    int (*execute_post_phase)(void *module_data, struct pipeline_context *context);
+    int (*execute_final_phase)(void *module_data, struct pipeline_context *context);
+    
+    /* Additional physics functions */
+    int (*execute_physics)(void *module_data, struct pipeline_context *context);
+    int (*post_process)(void *module_data, struct pipeline_context *context);
+    int (*process_halo)(void *module_data, struct pipeline_context *context);
+    int (*finalize)(void *module_data, struct pipeline_context *context);
     
     /* Error handling */
     int last_error;                       /* Last error code (for backward compat) */

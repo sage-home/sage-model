@@ -50,3 +50,13 @@
 - Added property type definitions and standardized serialization/deserialization functions for all data types
 - Ensured proper cleanup of serialization resources after pipeline execution
 - Modified files: src/core/core_build_model.c, src/core/core_galaxy_extensions.h, src/core/core_module_system.h, src/core/core_pipeline_system.c, src/core/core_pipeline_system.h, src/io/io_property_serialization.h, src/core/core_property_types.h
+
+2025-04-23: [Phase 5.1] Module Callbacks Integration Complete
+- Implemented comprehensive module callback system to allow controlled inter-module communication
+- Created proper call stack tracking for diagnostics and circular dependency detection
+- Added function registration capabilities for modules to expose callable functions
+- Integrated with the pipeline system via pipeline_execute_with_callback
+- Created standard_infall_module as example implementation using callbacks
+- Implemented error propagation between modules and enhanced error reporting
+- Modified files: src/core/core_allvars.h, src/core/core_init.c, src/core/core_init.h, src/core/core_module_callback.c, src/core/core_module_callback.h, src/core/core_module_system.h, src/core/core_pipeline_system.c, src/core/core_pipeline_system.h
+- Added files: src/core/core_types.h, src/core/physics_pipeline_executor.c, src/core/physics_pipeline_executor.h, src/physics/physics_modules.h, src/physics/standard_infall_module.c

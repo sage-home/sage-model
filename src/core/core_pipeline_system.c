@@ -8,12 +8,107 @@
 #include "core_event_system.h"
 #include "core_logging.h"
 #include "core_galaxy_extensions.h"
+#include "core_module_callback.h"
 #include "../io/io_property_serialization.h"
+
+/* Macro to suppress unused function warnings for functions needed by external modules */
+#define USED_BY_EXTERNAL_MODULE __attribute__((used))
+
+/* Forward declarations */
+int pipeline_execute_with_callback(
+    struct pipeline_context *context,
+    int caller_id,
+    int callee_id,
+    const char *function_name,
+    void *module_data,
+    int (*func)(void *, struct pipeline_context *)
+);
 
 /**
  * @file core_pipeline_system.c
  * @brief Implementation of the module pipeline system
  */
+
+/* Forward declarations */
+
+/**
+ * Execute a pipeline for a specific phase using the provided executor function
+ */
+static int pipeline_execute_phase_with_executor(
+    struct module_pipeline *pipeline,
+    struct pipeline_context *context,
+    enum pipeline_execution_phase phase,
+    pipeline_step_exec_fn exec_fn
+) {
+    if (pipeline == NULL || context == NULL || exec_fn == NULL) {
+        LOG_ERROR("Invalid arguments for pipeline phase execution");
+        return -1;
+    }
+
+    /* Set the execution phase in the context */
+    context->execution_phase = phase;
+
+    LOG_DEBUG("Executing pipeline '%s' for phase %d", pipeline->name, phase);
+
+    /* Execute each enabled step that supports this phase */
+    for (int i = 0; i < pipeline->num_steps; i++) {
+        struct pipeline_step *step = &pipeline->steps[i];
+
+        /* Skip disabled steps */
+        if (!step->enabled) {
+            LOG_DEBUG("Skipping disabled step '%s'", step->step_name);
+            continue;
+        }
+
+        /* Get the module for this step */
+        struct base_module *module = NULL;
+        void *module_data = NULL;
+
+        int status = pipeline_get_step_module(step, &module, &module_data);
+        if (status != 0) {
+            if (step->optional) {
+                LOG_DEBUG("Optional step '%s' skipped - no module found", step->step_name);
+                continue;
+            } else {
+                LOG_ERROR("Required module not found for step '%s'", step->step_name);
+                return -1;
+            }
+        }
+
+        /* Skip modules that don't support this execution phase */
+        if (!(module->phases & phase)) {
+            LOG_DEBUG("Step '%s' doesn't support phase %d", step->step_name, phase);
+            continue;
+        }
+
+        /* Execute the step */
+        LOG_DEBUG("Executing step '%s' for phase %d", step->step_name, phase);
+
+        status = exec_fn(step, module, module_data, context);
+
+        if (status != 0 && !step->optional) {
+            LOG_ERROR("Step '%s' failed with status %d", step->step_name, status);
+            return status;
+        }
+    }
+
+    LOG_DEBUG("Pipeline phase %d execution completed", phase);
+    return 0;
+}
+
+/* Pipeline event constants (should match definitions in core_event_system.h) */
+#define EVENT_PIPELINE_STEP_STARTED  100
+#define EVENT_PIPELINE_STEP_COMPLETED 101
+#define EVENT_PIPELINE_STEP_ERROR    102
+
+/* Pipeline step event data structure */
+typedef struct {
+    struct module_pipeline *pipeline;
+    struct pipeline_step *step;
+    enum pipeline_execution_phase phase;
+    int step_index;
+    int status;
+} event_pipeline_step_data_t;
 
 /* Global default pipeline */
 struct module_pipeline *global_pipeline = NULL;
@@ -31,36 +126,24 @@ static const char *pipeline_event_type_names[] = {
 /* Event ID for pipeline events */
 static int pipeline_event_id = -1;
 
-/* Phase name lookup for logging */
-static const char *pipeline_phase_names[] = {
+/* Phase name lookup for logging - used for debug outputs */
+#if defined(PIPELINE_DEBUG_LOGGING)
     "HALO",
     "GALAXY",
     "POST",
     "FINAL"
 };
+#endif
 
 /* Static flags to prevent flooding logs with the same message across multiple calls */
 static bool s_logged_missing_module_warning = false;        // Renamed from already_logged_missing_modules
 static bool s_logged_migration_fallback_warning = false;    // Renamed from first_warning
 
-/**
- * Convert phase value to index
- *
- * Converts a phase bit flag value to an array index.
- * PIPELINE_PHASE_HALO (1) -> 0
- * PIPELINE_PHASE_GALAXY (2) -> 1
- * PIPELINE_PHASE_POST (4) -> 2
- * PIPELINE_PHASE_FINAL (8) -> 3
- */
-static int get_phase_index(enum pipeline_execution_phase phase) {
-    switch (phase) {
-        case PIPELINE_PHASE_HALO:   return 0;
-        case PIPELINE_PHASE_GALAXY: return 1;
-        case PIPELINE_PHASE_POST:   return 2;
-        case PIPELINE_PHASE_FINAL:  return 3;
-        default: return 0;  // Default to HALO if invalid
-    }
-}
+/* Global call stack reference for checking depth */
+extern module_call_stack_t *global_call_stack;
+
+#if defined(PIPELINE_DEBUG_LOGGING)
+#endif
 
 /**
  * Initialize the pipeline system
@@ -320,7 +403,7 @@ int pipeline_move_step(struct module_pipeline *pipeline, int from_index, int to_
     }
 
     /* Save the step being moved */
-    struct pipeline_step temp = pipeline->steps[from_index];
+    struct pipeline_step *temp = &pipeline->steps[from_index];
 
     if (from_index < to_index) {
         /* Moving forward: shift steps backward */
@@ -335,10 +418,10 @@ int pipeline_move_step(struct module_pipeline *pipeline, int from_index, int to_
     }
 
     /* Place the moved step at the destination */
-    pipeline->steps[to_index] = temp;
+    pipeline->steps[to_index] = *temp;
 
     LOG_DEBUG("Moved step '%s' from index %d to %d in pipeline '%s'",
-             temp.step_name, from_index, to_index, pipeline->name);
+             temp->step_name, from_index, to_index, pipeline->name);
 
     return 0;
 }
@@ -505,9 +588,11 @@ void pipeline_context_init(
     void *user_data
 ) {
     if (context == NULL) {
+        LOG_ERROR("Null context in pipeline_context_init");
         return;
     }
 
+    /* Initialize basic context fields */
     context->params = params;
     context->galaxies = galaxies;
     context->ngal = ngal;
@@ -517,13 +602,18 @@ void pipeline_context_init(
     context->halonr = halonr;
     context->step = step;
     context->user_data = user_data;
-    context->redshift = 0.0;  // Initialize to default value
-    context->execution_phase = 0;  // Initialize phase
-    context->current_galaxy = -1;  // Initialize to invalid index
-    context->infall_gas = 0.0;    // Initialize infall result
-    
-    // Initialize property serialization context
-    context->prop_ctx = NULL;  // Will be initialized when needed by I/O handlers
+
+    /* Initialize module callback state */
+    context->current_galaxy = -1;
+    context->infall_gas = 0.0;
+    context->redshift = 0.0;
+    context->execution_phase = 0;
+    context->caller_module_id = -1;
+    context->current_function = NULL;
+    context->callback_context = NULL;
+    context->prop_ctx = NULL;
+
+    LOG_DEBUG("Pipeline context initialized");
 }
 
 /**
@@ -567,22 +657,25 @@ int pipeline_init_property_serialization(
         return status;
     }
 
+    struct property_serialization_context *prop_ctx = (struct property_serialization_context *)context->prop_ctx;
     LOG_DEBUG("Initialized property serialization context with %d properties",
-             context->prop_ctx->num_properties);
+             prop_ctx->num_properties);
     return 0;
 }
 
 /**
  * Clean up property serialization context
  */
-void pipeline_cleanup_property_serialization(struct pipeline_context *context) {
+int pipeline_cleanup_property_serialization(struct pipeline_context *context) {
     if (context == NULL || context->prop_ctx == NULL) {
-        return;
+        return 0;
     }
 
     property_serialization_cleanup(context->prop_ctx);
     free(context->prop_ctx);
     context->prop_ctx = NULL;
+    
+    return 0;
 }
 
 /**
@@ -663,177 +756,10 @@ int pipeline_execute(struct module_pipeline *pipeline, struct pipeline_context *
 }
 
 /**
- * Execute a pipeline for a specific phase
- *
- * Runs all enabled steps in a pipeline that support the given execution phase.
- * Uses the provided custom execution function.
- *
- * @param pipeline Pipeline to execute
- * @param context Execution context
- * @param phase Execution phase to run
- * @param exec_fn Custom execution function
- * @return 0 on success, error code on failure
- */
-static int pipeline_execute_phase_with_executor(
-    struct module_pipeline *pipeline,
-    struct pipeline_context *context,
-    enum pipeline_execution_phase phase,
-    pipeline_step_exec_fn exec_fn
-) {
-    if (pipeline == NULL || context == NULL || exec_fn == NULL) {
-        LOG_ERROR("Invalid arguments for pipeline phase execution");
-        return -1;
-    }
-
-    if (!pipeline->initialized) {
-        LOG_ERROR("Attempt to execute uninitialized pipeline '%s'", pipeline->name);
-        return -1;
-    }
-
-    /* Update context with the current phase */
-    context->execution_phase = phase;
-
-    LOG_DEBUG("Executing pipeline '%s' phase %s with %d steps",
-             pipeline->name, pipeline_phase_names[get_phase_index(phase)], pipeline->num_steps);
-
-    /* Check if any enabled step requires property serialization and initialize if needed */
-    bool needs_property_serialization = false;
-    for (int i = 0; i < pipeline->num_steps; i++) {
-        struct pipeline_step *step = &pipeline->steps[i];
-        if (!step->enabled) continue;
-
-        struct base_module *module;
-        void *module_data;
-        if (pipeline_get_step_module(step, &module, &module_data) == 0 && 
-            module != NULL && module->manifest && 
-            (module->manifest->capabilities & MODULE_FLAG_REQUIRES_SERIALIZATION)) {
-            needs_property_serialization = true;
-            break;
-        }
-    }
-
-    /* Initialize property serialization context if needed */
-    if (needs_property_serialization && context->prop_ctx == NULL) {
-        LOG_DEBUG("Initializing property serialization for pipeline execution");
-        /* Use the explicit flag from io_property_serialization.h to only serialize properties marked for serialization */
-        int status = pipeline_init_property_serialization(context, SERIALIZE_EXPLICIT);
-        if (status != 0) {
-            LOG_ERROR("Failed to initialize property serialization context for pipeline execution");
-            return status;
-        }
-    }
-
-    /* Emit pipeline started event */
-    pipeline_emit_event(PIPELINE_EVENT_STARTED, pipeline, NULL, context, -1, 0);
-
-    int result = 0;
-    // Use local flags to suppress repeated errors *within this phase execution*
-    bool errors_logged_this_phase[MODULE_TYPE_MAX] = {false};
-
-    /* Execute each enabled step */
-    for (int i = 0; i < pipeline->num_steps; i++) {
-        struct pipeline_step *step = &pipeline->steps[i];
-
-        /* Skip disabled steps */
-        if (!step->enabled) {
-            LOG_DEBUG("Skipping disabled step '%s'", step->step_name);
-            continue;
-        }
-
-        /* Get the module for this step */
-        struct base_module *module;
-        void *module_data;
-
-        int status = pipeline_get_step_module(step, &module, &module_data);
-        if (status != 0) {
-            /* TEMPORARY MIGRATION CODE: Fall back to original physics implementation */
-            if (!s_logged_migration_fallback_warning) {
-                LOG_WARNING("Migration: Using original implementation for step '%s' (module missing)",
-                           step->step_name);
-                s_logged_migration_fallback_warning = true; // Log only once globally
-            } else {
-                LOG_DEBUG("Migration: Using original implementation for step '%s' (module missing)",
-                         step->step_name);
-            }
-            module = NULL;
-            module_data = NULL;
-            /* Continue execution with NULL module - executor must handle this */
-        }
-
-        /* Skip modules that don't support this phase (only if a module exists) */
-        if (module != NULL && !(module->phases & phase)) {
-            LOG_DEBUG("Skipping step '%s' as module '%s' does not support phase %d",
-                     step->step_name, module->name, phase);
-            continue;
-        }
-
-        LOG_DEBUG("Executing step '%s' with module '%s' in phase %d",
-                 step->step_name, module ? module->name : "original", phase);
-
-        /* Track current step for error handling */
-        pipeline->current_step_index = i;
-
-        /* Emit step before event */
-        pipeline_emit_event(PIPELINE_EVENT_STEP_BEFORE, pipeline, step, context, i, 0);
-
-        /* Execute the step using the custom executor */
-        status = exec_fn(step, module, module_data, context);
-
-        if (status != 0) {
-            /* Log only the first error per module type within this phase call */
-            if (!errors_logged_this_phase[step->type]) {
-                LOG_ERROR("Step '%s' (type: %s) failed with status %d during phase %d",
-                          step->step_name, module_type_name(step->type), status, phase);
-                errors_logged_this_phase[step->type] = true;
-            } else {
-                LOG_DEBUG("Suppressed repeated error for step '%s' (type: %s), status: %d",
-                          step->step_name, module_type_name(step->type), status);
-            }
-
-            /* Emit step error event */
-            pipeline_emit_event(PIPELINE_EVENT_STEP_ERROR, pipeline, step, context, i, status);
-
-            /* Abort pipeline if step is not optional */
-            if (!step->optional) {
-                result = status;
-                break; // Exit the loop over steps
-            }
-        }
-
-        /* Emit step after event */
-        pipeline_emit_event(PIPELINE_EVENT_STEP_AFTER, pipeline, step, context, i, status);
-    } // End of loop over steps
-
-    /* Reset current step */
-    pipeline->current_step_index = -1;
-
-    /* Emit pipeline completed or aborted event */
-    if (result == 0) {
-        pipeline_emit_event(PIPELINE_EVENT_COMPLETED, pipeline, NULL, context, -1, 0);
-        LOG_DEBUG("Pipeline '%s' phase %d completed successfully",
-                 pipeline->name, phase);
-    } else {
-        pipeline_emit_event(PIPELINE_EVENT_ABORTED, pipeline, NULL, context, -1, result);
-        LOG_ERROR("Pipeline '%s' phase %d aborted with status %d",
-                 pipeline->name, phase, result);
-    }
-
-    /* Clean up property serialization if we initialized it for this execution */
-    if (needs_property_serialization) {
-        pipeline_cleanup_property_serialization(context);
-        LOG_DEBUG("Cleaned up property serialization context");
-    }
-
-    return result;
-}
-
-/**
  * Execute a pipeline for a specific phase using the default executor
  */
 int pipeline_execute_phase(struct module_pipeline *pipeline, struct pipeline_context *context, enum pipeline_execution_phase phase) {
-    /* This function is defined in core_build_model.c and must be passed explicitly */
-    /* Here we use the placeholder as a default, but in the real code, the caller
-       (evolve_galaxies) passes its custom executor. */
+    /* This function is defined in physics_pipeline_executor.c */
     extern int physics_step_executor(struct pipeline_step *, struct base_module *, void *, struct pipeline_context *);
     return pipeline_execute_phase_with_executor(pipeline, context, phase, physics_step_executor);
 }
@@ -1106,3 +1032,37 @@ int pipeline_get_step_module(
     /* Otherwise, get the active module of the specified type */
     return module_get_active_by_type(step->type, module, module_data);
 }
+
+/**
+ * Initialize a pipeline context
+ */
+void pipeline_context_cleanup(struct pipeline_context *context) {
+    if (context == NULL) {
+        return;
+    }
+
+    /* Clean up property serialization if initialized */
+    if (context->prop_ctx != NULL) {
+        pipeline_cleanup_property_serialization(context);
+    }
+
+    /* Reset pointers to avoid dangling references */
+    context->galaxies = NULL;
+    context->params = NULL;
+    context->user_data = NULL;
+    context->callback_context = NULL;
+    context->current_function = NULL;
+    
+    /* Reset state */
+    context->ngal = 0;
+    context->centralgal = -1;
+    context->current_galaxy = -1;
+    context->execution_phase = 0;
+    context->caller_module_id = -1;
+
+    LOG_DEBUG("Pipeline context cleaned up");
+}
+
+/* Note: The implementation of pipeline_execute_with_callback is now in 
+ * physics_pipeline_executor.c to avoid function signature conflicts.
+ */
