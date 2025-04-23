@@ -291,11 +291,15 @@ int module_format_error(const module_error_info_t *error,
     /* Get severity name */
     const char *severity_name = "UNKNOWN";
     switch (error->severity) {
+        case LOG_LEVEL_TRACE:   severity_name = "TRACE";   break;
         case LOG_LEVEL_DEBUG:   severity_name = "DEBUG";   break;
         case LOG_LEVEL_INFO:    severity_name = "INFO";    break;
+        case LOG_LEVEL_NOTICE:  severity_name = "NOTICE";  break;
         case LOG_LEVEL_WARNING: severity_name = "WARNING"; break;
         case LOG_LEVEL_ERROR:   severity_name = "ERROR";   break;
-        case LOG_LEVEL_FATAL:   severity_name = "FATAL";   break;
+        case LOG_LEVEL_CRITICAL: severity_name = "CRITICAL"; break;
+        case LOG_LEVEL_OFF:     severity_name = "OFF";     break;
+        default:                severity_name = "UNKNOWN"; break;
     }
     
     /* Format the error */

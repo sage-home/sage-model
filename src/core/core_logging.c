@@ -24,20 +24,24 @@ static struct logging_state global_logging_state = {
 
 /* String representations of log levels */
 static const char *log_level_names[] = {
+    "TRACE",
     "DEBUG",
     "INFO",
+    "NOTICE",
     "WARNING",
     "ERROR",
-    "FATAL"
+    "CRITICAL"
 };
 
 /* ANSI color codes for different log levels (if terminal supports it) */
 static const char *log_level_colors[] = {
+    "\033[90m",  /* Gray for TRACE */
     "\033[36m",  /* Cyan for DEBUG */
     "\033[32m",  /* Green for INFO */
+    "\033[34m",  /* Blue for NOTICE */
     "\033[33m",  /* Yellow for WARNING */
     "\033[31m",  /* Red for ERROR */
-    "\033[1;31m" /* Bold Red for FATAL */
+    "\033[1;31m" /* Bold Red for CRITICAL */
 };
 
 /* Reset ANSI color code */
@@ -54,7 +58,7 @@ static bool is_terminal(FILE *stream) {
  * Get string representation of a log level
  */
 static const char *get_log_level_name(log_level_t level) {
-    if (level < LOG_LEVEL_DEBUG || level > LOG_LEVEL_FATAL) {
+    if (level < LOG_LEVEL_TRACE || level > LOG_LEVEL_CRITICAL) {
         return "UNKNOWN";
     }
     return log_level_names[level];
@@ -134,7 +138,7 @@ static void write_log_to_destination(FILE *dest, const struct logging_params_vie
     /* Write the actual message */
     fprintf(dest, "%s\n", message);
     
-    /* Ensure immediate output for ERROR and FATAL levels */
+    /* Ensure immediate output for ERROR and higher levels */
     if (level >= LOG_LEVEL_ERROR) {
         fflush(dest);
     }
@@ -153,7 +157,7 @@ static void write_log(log_level_t level, const char *file, int line,
         return;
     }
     
-    /* Always show ERROR and FATAL logs regardless of verbosity */
+    /* Always show ERROR and CRITICAL logs regardless of verbosity */
     if (level >= LOG_LEVEL_ERROR) {
         write_log_to_destination(stderr, config, level, file, line, func, message, ctx);
         return;
@@ -186,7 +190,54 @@ static void write_log(log_level_t level, const char *file, int line,
 }
 
 /**
- * Initialize the logging system
+ * Initialize the logging system with minimum level and output
+ */
+void logging_init(log_level_t min_level, FILE *output) {
+    struct logging_params_view view = {0};
+    
+    view.min_level = min_level;
+    view.prefix_style = LOG_PREFIX_DETAILED;
+    view.destinations = LOG_DEST_STDERR;  /* Default to stderr */
+    view.include_mpi_rank = false;
+    view.disable_assertions = false;
+    view.include_extra_context = true;
+    
+    memcpy(&global_logging_state.config, &view, sizeof(view));
+    
+    if (output != NULL) {
+        global_logging_state.log_file = output;
+        global_logging_state.config.destinations |= LOG_DEST_FILE;
+    }
+    
+    global_logging_state.initialized = true;
+    
+    /* Log a message to show successful initialization */
+    log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, 
+              "Logging system initialized (min level: %s)", 
+              get_log_level_name(min_level));
+}
+
+/**
+ * Set global log level
+ */
+void logging_set_level(log_level_t level) {
+    if (!global_logging_state.initialized) {
+        /* Initialize with default settings if not already initialized */
+        logging_init(level, NULL);
+        return;
+    }
+    
+    global_logging_state.config.min_level = level;
+    
+    /* Log the level change if not too verbose */
+    if (level <= LOG_LEVEL_INFO) {
+        log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, 
+                  "Log level changed to %s", get_log_level_name(level));
+    }
+}
+
+/**
+ * Initialize the logging system with parameters
  */
 int initialize_logging(const struct params *params) {
     if (global_logging_state.initialized) {
@@ -225,7 +276,9 @@ int cleanup_logging(void) {
     log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, "Logging system shutting down");
     
     /* Close log file if it was opened */
-    if (global_logging_state.log_file != NULL) {
+    if (global_logging_state.log_file != NULL && 
+        global_logging_state.log_file != stdout && 
+        global_logging_state.log_file != stderr) {
         fclose(global_logging_state.log_file);
         global_logging_state.log_file = NULL;
     }
@@ -255,7 +308,44 @@ void log_message(log_level_t level, const char *file, int line, const char *func
     write_log(level, file, line, func, message, NULL);
     
     /* For fatal errors, abort the program */
-    if (level == LOG_LEVEL_FATAL) {
+    if (level == LOG_LEVEL_CRITICAL) {
+        /* Ensure all logs are flushed */
+        if (global_logging_state.log_file != NULL) {
+            fflush(global_logging_state.log_file);
+        }
+        fflush(stdout);
+        fflush(stderr);
+        
+        /* Abort the program */
+        abort();
+    }
+}
+
+/**
+ * Log a module-specific message
+ */
+void log_module_message(const char *module, log_level_t level, const char *file, int line, const char *func, const char *format, ...) {
+    /* Skip processing if logging isn't initialized or level is filtered */
+    if (!global_logging_state.initialized || level < global_logging_state.config.min_level) {
+        return;
+    }
+    
+    /* Format the message with module prefix */
+    char module_message[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(module_message, sizeof(module_message), format, args);
+    va_end(args);
+    
+    /* Create full message with module name */
+    char full_message[1100];
+    snprintf(full_message, sizeof(full_message), "[%s] %s", module, module_message);
+    
+    /* Write to all configured destinations */
+    write_log(level, file, line, func, full_message, NULL);
+    
+    /* For fatal errors, abort the program */
+    if (level == LOG_LEVEL_CRITICAL) {
         /* Ensure all logs are flushed */
         if (global_logging_state.log_file != NULL) {
             fflush(global_logging_state.log_file);
@@ -290,7 +380,7 @@ void context_log_message(const struct evolution_context *ctx, log_level_t level,
     write_log(level, file, line, func, message, ctx);
     
     /* For fatal errors, abort the program */
-    if (level == LOG_LEVEL_FATAL) {
+    if (level == LOG_LEVEL_CRITICAL) {
         /* Ensure all logs are flushed */
         if (global_logging_state.log_file != NULL) {
             fflush(global_logging_state.log_file);
@@ -380,3 +470,5 @@ bool is_log_level_enabled(log_level_t level) {
 struct logging_state *get_logging_state(void) {
     return &global_logging_state;
 }
+
+/* These functions are now implemented in core_parameter_views.c */

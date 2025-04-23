@@ -2,16 +2,13 @@
  * @file core_logging.h
  * @brief Enhanced error logging system for SAGE
  * 
- * This file defines an enhanced logging system that supports different 
+ * This file defines a comprehensive logging system that supports different 
  * severity levels, provides contextual information, and integrates with 
- * the evolution context.
+ * the evolution context and modules.
  */
 
-#pragma once
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef CORE_LOGGING_H
+#define CORE_LOGGING_H
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -24,12 +21,15 @@ extern "C" {
  * Define the different severity levels for log messages.
  * Each level is more severe than the previous one.
  */
-typedef enum {
-    LOG_LEVEL_DEBUG = 0,    /**< Detailed information for debugging */
-    LOG_LEVEL_INFO = 1,     /**< General information about program execution */
-    LOG_LEVEL_WARNING = 2,  /**< Potential issues that don't prevent execution */
-    LOG_LEVEL_ERROR = 3,    /**< Errors that may allow the program to continue */
-    LOG_LEVEL_FATAL = 4     /**< Critical errors that prevent execution */
+typedef enum log_level {
+    LOG_LEVEL_TRACE,    /**< Detailed flow (only in debug builds) */
+    LOG_LEVEL_DEBUG,    /**< Information useful for debugging */
+    LOG_LEVEL_INFO,     /**< General information about execution flow */
+    LOG_LEVEL_NOTICE,   /**< Important but normal events */
+    LOG_LEVEL_WARNING,  /**< Concerning but non-fatal issues */
+    LOG_LEVEL_ERROR,    /**< Errors that prevent specific operations */
+    LOG_LEVEL_CRITICAL, /**< Errors that prevent further execution */
+    LOG_LEVEL_OFF       /**< No logging */
 } log_level_t;
 
 /**
@@ -104,6 +104,25 @@ struct logging_state {
 /**
  * @brief Initialize the logging system
  * 
+ * Sets up the logging system with minimum level and output destination.
+ * 
+ * @param min_level Minimum log level to display
+ * @param output File handle for output (NULL for stderr)
+ */
+extern void logging_init(log_level_t min_level, FILE *output);
+
+/**
+ * @brief Set global log level
+ * 
+ * Changes the minimum log level that will be displayed.
+ * 
+ * @param level New minimum log level
+ */
+extern void logging_set_level(log_level_t level);
+
+/**
+ * @brief Initialize the logging system with parameters
+ * 
  * Sets up the logging system with the provided configuration.
  * 
  * @param params The SAGE parameter structure
@@ -153,6 +172,21 @@ extern bool validate_logging_params_view(const struct logging_params_view *view)
  * @param ... Additional arguments for the format string
  */
 extern void log_message(log_level_t level, const char *file, int line, const char *func, const char *format, ...);
+
+/**
+ * @brief Log a module-specific message
+ * 
+ * Logs a message with a module name for better identification of the source.
+ * 
+ * @param module The module name to include in the log
+ * @param level The severity level of the message
+ * @param file The source file where the log occurs
+ * @param line The line number where the log occurs
+ * @param func The function where the log occurs
+ * @param format The printf-style format string
+ * @param ... Additional arguments for the format string
+ */
+extern void log_module_message(const char *module, log_level_t level, const char *file, int line, const char *func, const char *format, ...);
 
 /**
  * @brief Log a message with context information
@@ -228,13 +262,22 @@ extern struct logging_state *get_logging_state(void);
 /* Convenience macros for logging */
 
 /**
+ * @brief Log a trace message
+ * 
+ * @param format The printf-style format string
+ * @param ... Additional arguments for the format string
+ */
+#define LOG_TRACE(...) \
+    log_message(LOG_LEVEL_TRACE, __FILE__, __LINE__, __func__, __VA_ARGS__)
+
+/**
  * @brief Log a debug message
  * 
  * @param format The printf-style format string
  * @param ... Additional arguments for the format string
  */
-#define LOG_DEBUG(format, ...) \
-    log_message(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+#define LOG_DEBUG(...) \
+    log_message(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 /**
  * @brief Log an informational message
@@ -242,8 +285,17 @@ extern struct logging_state *get_logging_state(void);
  * @param format The printf-style format string
  * @param ... Additional arguments for the format string
  */
-#define LOG_INFO(format, ...) \
-    log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+#define LOG_INFO(...) \
+    log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
+
+/**
+ * @brief Log a notice message
+ * 
+ * @param format The printf-style format string
+ * @param ... Additional arguments for the format string
+ */
+#define LOG_NOTICE(...) \
+    log_message(LOG_LEVEL_NOTICE, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 /**
  * @brief Log a warning message
@@ -251,8 +303,8 @@ extern struct logging_state *get_logging_state(void);
  * @param format The printf-style format string
  * @param ... Additional arguments for the format string
  */
-#define LOG_WARNING(format, ...) \
-    log_message(LOG_LEVEL_WARNING, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+#define LOG_WARNING(...) \
+    log_message(LOG_LEVEL_WARNING, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 /**
  * @brief Log an error message
@@ -260,17 +312,28 @@ extern struct logging_state *get_logging_state(void);
  * @param format The printf-style format string
  * @param ... Additional arguments for the format string
  */
-#define LOG_ERROR(format, ...) \
-    log_message(LOG_LEVEL_ERROR, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+#define LOG_ERROR(...) \
+    log_message(LOG_LEVEL_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 /**
- * @brief Log a fatal error message
+ * @brief Log a critical error message
  * 
  * @param format The printf-style format string
  * @param ... Additional arguments for the format string
  */
-#define LOG_FATAL(format, ...) \
-    log_message(LOG_LEVEL_FATAL, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+#define LOG_CRITICAL(...) \
+    log_message(LOG_LEVEL_CRITICAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
+
+/**
+ * @brief Log a module-specific message
+ * 
+ * @param module The module name
+ * @param level The severity level
+ * @param format The printf-style format string
+ * @param ... Additional arguments for the format string
+ */
+#define MODULE_LOG(module, level, ...) \
+    log_module_message(module, level, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 /**
  * @brief Log a message with evolution context
@@ -335,6 +398,4 @@ extern struct logging_state *get_logging_state(void);
             return (retval); \
     } while (0)
 
-#ifdef __cplusplus
-}
-#endif
+#endif /* CORE_LOGGING_H */

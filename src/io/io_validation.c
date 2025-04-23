@@ -765,7 +765,7 @@ static log_level_t severity_to_log_level(enum validation_severity severity) {
         case VALIDATION_SEVERITY_ERROR:
             return LOG_LEVEL_ERROR;
         case VALIDATION_SEVERITY_FATAL:
-            return LOG_LEVEL_FATAL;
+            return LOG_LEVEL_CRITICAL;
         default:
             return LOG_LEVEL_INFO;
     }

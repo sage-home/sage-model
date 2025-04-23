@@ -29,6 +29,7 @@
 - [x] Integrate event dispatch/handling points
 - [x] Add support for reading/writing extension properties
 - [x] Integrate module callbacks
+- [x] Enhance error propagation testing and diagnostic logging
 - [ ] Add evolution diagnostics
 
 ### Phase 5.2: Converting Physics Modules ⏳ PENDING
