@@ -8,9 +8,18 @@ TEST_EXES = test_evolution_diagnostics
 # Core files needed for tests
 CORE_SRCS = ../src/core/core_evolution_diagnostics.c \
             ../src/core/core_logging.c \
-            ../src/core/core_event_system.c 
+            ../src/core/core_event_system.c \
+            ../src/core/core_parameter_views.c \
+            ../src/core/core_mymalloc.c
 
 CORE_OBJS = $(CORE_SRCS:.c=.o)
+
+# We need to explicitly compile these objects if they don't exist
+../src/core/core_parameter_views.o:
+	$(MAKE) -C ../src/core core_parameter_views.o
+
+../src/core/core_mymalloc.o:
+	$(MAKE) -C ../src/core core_mymalloc.o
 
 # Compiler flags
 CFLAGS += -I.. -g -DUNIT_TESTING -Wall -Wextra
