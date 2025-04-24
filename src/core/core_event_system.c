@@ -597,6 +597,7 @@ static void log_event(const event_t *event) {
  * @return EVENT_STATUS_SUCCESS on success, error code on failure
  */
 event_status_t event_dispatch(const event_t *event) {
+    // Input validation
     if (!event_system_is_initialized()) {
         LOG_ERROR("Event system not initialized");
         return EVENT_STATUS_NOT_INITIALIZED;
@@ -616,25 +617,53 @@ event_status_t event_dispatch(const event_t *event) {
         }
     }
     
-    /* Track event in evolution diagnostics if available */
-    /* Extract evolution_context from event user_data if provided */
-    struct pipeline_context *pipeline_ctx = NULL;
-    struct evolution_context *evolution_ctx = NULL;
-    
-    /* First try to get the pipeline context from the event data */
-    if (event->data_size >= sizeof(void*)) {
-        void *possible_ctx = *(void**)event->data;
-        if (possible_ctx != NULL) {
-            /* Validate that it's a pipeline context (simple check) */
-            pipeline_ctx = (struct pipeline_context*)possible_ctx;
+    /* 
+     * Track event in evolution diagnostics if available.
+     * We need to handle this carefully to avoid accessing potentially invalid memory.
+     * Events may come from different sources, and not all events will have
+     * a pipeline context that contains an evolution context.
+     */
+    if (event->source_module_id >= 0 && event->galaxy_index >= 0) {
+        /* Only attempt to extract diagnostics from events we know contain pipeline context
+         * Currently, we only add pipeline context for specific event types emitted from
+         * modular physics components rather than traditional code.
+         * 
+         * Events from traditional code (source_module_id == 0) with custom event data,
+         * like infall_recipe() and others, don't contain pipeline context and should be skipped.
+         */
+        if (event->source_module_id > 0 && event->data_size >= sizeof(void*)) {
+            void *possible_ctx = NULL;
             
-            /* If it has user_data set to an evolution context, we can use that */
-            if (pipeline_ctx->user_data != NULL) {
-                evolution_ctx = (struct evolution_context*)pipeline_ctx->user_data;
+            /* Using memcpy to safely extract the pointer */
+            memcpy(&possible_ctx, event->data, sizeof(void*));
+            
+            if (possible_ctx != NULL) {
+                /* Basic pointer validation - further validation done before dereferencing */
+                struct pipeline_context *pipeline_ctx = NULL;
                 
-                /* If we have valid diagnostics, count this event */
-                if (evolution_ctx->diagnostics != NULL) {
-                    evolution_diagnostics_add_event(evolution_ctx->diagnostics, event->type);
+                /* Validate the pointer is valid before casting/using it */
+                if (possible_ctx) {
+                    pipeline_ctx = (struct pipeline_context*)possible_ctx;
+                }
+                
+                /* Access user_data only if pipeline context looks valid */
+                if (pipeline_ctx != NULL && pipeline_ctx->galaxies != NULL && 
+                    pipeline_ctx->user_data != NULL) {
+                    
+                    /* Extract evolution context, checking for validity */
+                    struct evolution_context *evolution_ctx = (struct evolution_context*)pipeline_ctx->user_data;
+                    
+                    /* Only proceed if the evolution context is valid */
+                    if (evolution_ctx != NULL) {
+                        /* Check if diagnostics is initialized */
+                        if (evolution_ctx->diagnostics != NULL) {
+                            /* Track the event safely */
+                            evolution_diagnostics_add_event(evolution_ctx->diagnostics, event->type);
+                        } else {
+                            /* Diagnostics not initialized, but that's OK in some paths */
+                            LOG_DEBUG("Evolution diagnostics not initialized for event type %d", event->type);
+                        }
+                    }
                 }
             }
         }
@@ -724,6 +753,24 @@ event_status_t event_emit(
     size_t data_size,
     uint32_t flags) {
     
+    // Input validation
+    if (global_event_system == NULL) {
+        // No event system, nothing to do
+        LOG_DEBUG("Attempted to emit event with NULL event system");
+        return EVENT_STATUS_NOT_INITIALIZED;
+    }
+    
+  // Validate data size and pointer
+  if (data_size > 0 && data == NULL) {
+    LOG_ERROR("Invalid event data: data_size > 0 but data is NULL");
+    return EVENT_STATUS_INVALID_ARGS;
+  }
+  
+  if (data_size > MAX_EVENT_DATA_SIZE) {
+    LOG_ERROR("Event data size %zu exceeds maximum %d", data_size, MAX_EVENT_DATA_SIZE);
+    return EVENT_STATUS_INVALID_ARGS;
+  }
+    
     event_t event;
     
     /* Create the event */
@@ -742,5 +789,6 @@ event_status_t event_emit(
     }
     
     /* Dispatch the event */
+    LOG_DEBUG("Emitting event type %d with data_size %zu", type, data_size);
     return event_dispatch(&event);
 }

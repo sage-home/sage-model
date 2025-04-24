@@ -354,7 +354,10 @@ test_validation_logic: tests/test_validation_logic.c tests/test_invalid_module.c
 test_error_integration: tests/test_error_integration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_error_integration tests/test_error_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration
+test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolution_diagnostics tests/test_evolution_diagnostics.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
@@ -391,6 +394,8 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_validation_logic || FAILED="$$FAILED test_validation_logic"
 	@echo "Running test_error_integration..."
 	@./tests/test_error_integration || FAILED="$$FAILED test_error_integration"
+	@echo "Running test_evolution_diagnostics..."
+	@./tests/test_evolution_diagnostics || FAILED="$$FAILED test_evolution_diagnostics"
 	@echo "Running memory tests..."
 	@cd tests && make -f Makefile.memory_tests || FAILED="$$FAILED memory_tests"
 	@if [ -n "$$FAILED" ]; then \

@@ -274,10 +274,13 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
             // Handler not found, fall through to traditional approach
             char error_buffer[256];
             snprintf(error_buffer, sizeof(error_buffer),
-                    "No I/O handler found for format %d, falling back to traditional approach", 
-                    format_id);
-            io_set_error(IO_ERROR_VALIDATION_FAILED, error_buffer);
-            log_io_error("initialize_galaxy_files", IO_ERROR_VALIDATION_FAILED);
+                    "No I/O handler found for format %d, falling back to traditional approach (code %d)", 
+                    format_id, run_params->io.OutputFormat);
+            io_set_error(IO_ERROR_FORMAT_ERROR, error_buffer);
+            
+            // Log as warning instead of error to avoid crashing
+            LOG_WARNING("No I/O handler found for format %d, falling back to traditional approach (code %d)", 
+                      format_id, run_params->io.OutputFormat);
         }
     }
     

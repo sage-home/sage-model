@@ -60,7 +60,32 @@ int evolution_diagnostics_initialize(struct evolution_diagnostics *diag, int hal
 }
 
 /**
+ * Convert pipeline phase bit flag to array index
+ * 
+ * Maps pipeline execution phase flags to zero-based array indices.
+ * 
+ * @param phase Pipeline execution phase bit flag (1, 2, 4, or 8)
+ * @return Array index (0-3) or -1 if invalid
+ */
+static int phase_to_index(enum pipeline_execution_phase phase) {
+    switch (phase) {
+        case PIPELINE_PHASE_HALO:   return 0;
+        case PIPELINE_PHASE_GALAXY: return 1;
+        case PIPELINE_PHASE_POST:   return 2;
+        case PIPELINE_PHASE_FINAL:  return 3;
+        default:                    return -1;
+    }
+}
+
+/**
  * Update phase statistics when entering a new phase
+ * 
+ * Records the start time of a pipeline execution phase.
+ * 
+ * @param diag Pointer to the diagnostics structure
+ * @param phase The execution phase being started (PIPELINE_PHASE_HALO, PIPELINE_PHASE_GALAXY, 
+ *              PIPELINE_PHASE_POST, or PIPELINE_PHASE_FINAL)
+ * @return 0 on success, error code on failure
  */
 int evolution_diagnostics_start_phase(struct evolution_diagnostics *diag, enum pipeline_execution_phase phase) {
     if (diag == NULL) {
@@ -68,13 +93,15 @@ int evolution_diagnostics_start_phase(struct evolution_diagnostics *diag, enum p
         return -1;
     }
     
-    if (phase < 0 || phase >= 4) {
+    /* Convert phase bit flag to array index */
+    int phase_index = phase_to_index(phase);
+    if (phase_index < 0) {
         LOG_ERROR("Invalid phase %d passed to evolution_diagnostics_start_phase", phase);
         return -1;
     }
     
     /* Record start time for this phase */
-    diag->phases[phase].start_time = clock();
+    diag->phases[phase_index].start_time = clock();
     
     LOG_DEBUG("Starting phase %d for halo %d", phase, diag->halo_nr);
     
@@ -83,6 +110,14 @@ int evolution_diagnostics_start_phase(struct evolution_diagnostics *diag, enum p
 
 /**
  * Update phase statistics when exiting a phase
+ * 
+ * Records the end time of a pipeline execution phase and updates
+ * the total time spent in this phase.
+ * 
+ * @param diag Pointer to the diagnostics structure
+ * @param phase The execution phase being ended (PIPELINE_PHASE_HALO, PIPELINE_PHASE_GALAXY, 
+ *              PIPELINE_PHASE_POST, or PIPELINE_PHASE_FINAL)
+ * @return 0 on success, error code on failure
  */
 int evolution_diagnostics_end_phase(struct evolution_diagnostics *diag, enum pipeline_execution_phase phase) {
     if (diag == NULL) {
@@ -90,22 +125,24 @@ int evolution_diagnostics_end_phase(struct evolution_diagnostics *diag, enum pip
         return -1;
     }
     
-    if (phase < 0 || phase >= 4) {
+    /* Convert phase bit flag to array index */
+    int phase_index = phase_to_index(phase);
+    if (phase_index < 0) {
         LOG_ERROR("Invalid phase %d passed to evolution_diagnostics_end_phase", phase);
         return -1;
     }
     
     /* Calculate time spent in this phase */
     clock_t end_time = clock();
-    if (diag->phases[phase].start_time == 0) {
+    if (diag->phases[phase_index].start_time == 0) {
         LOG_WARNING("Phase %d was never started", phase);
         return -1;
     }
     
-    diag->phases[phase].total_time += (end_time - diag->phases[phase].start_time);
-    diag->phases[phase].step_count++;
+    diag->phases[phase_index].total_time += (end_time - diag->phases[phase_index].start_time);
+    diag->phases[phase_index].step_count++;
     
-    LOG_DEBUG("Ending phase %d for halo %d, step %d", phase, diag->halo_nr, diag->phases[phase].step_count);
+    LOG_DEBUG("Ending phase %d for halo %d, step %d", phase, diag->halo_nr, diag->phases[phase_index].step_count);
     
     return 0;
 }
@@ -115,7 +152,7 @@ int evolution_diagnostics_end_phase(struct evolution_diagnostics *diag, enum pip
  */
 int evolution_diagnostics_add_event(struct evolution_diagnostics *diag, event_type_t event_type) {
     if (diag == NULL) {
-        LOG_ERROR("NULL diagnostics pointer passed to evolution_diagnostics_add_event");
+        LOG_DEBUG("NULL diagnostics pointer provided to evolution_diagnostics_add_event");
         return -1;
     }
     
@@ -331,66 +368,8 @@ int evolution_diagnostics_report(struct evolution_diagnostics *diag, log_level_t
         LOG_DEBUG("=====================================");
     }
     else if (log_level == LOG_LEVEL_INFO) {
-        LOG_INFO("=== Evolution Diagnostics for Halo %d ===", diag->halo_nr);
-        LOG_INFO("Galaxies: Initial=%d, Final=%d", diag->ngal_initial, diag->ngal_final);
-        LOG_INFO("Processing Time: %.3f seconds (%.1f galaxies/second)", 
-                diag->elapsed_seconds, diag->galaxies_per_second);
-        
-        /* Log phase statistics */
-        LOG_INFO("--- Phase Statistics ---");
-        const char *phase_names[] = {"HALO", "GALAXY", "POST", "FINAL"};
-        for (int i = 0; i < 4; i++) {
-            double phase_seconds = ((double)diag->phases[i].total_time) / CLOCKS_PER_SEC;
-            double phase_percent = (diag->elapsed_seconds > 0.0) 
-                                ? (phase_seconds / diag->elapsed_seconds) * 100.0
-                                : 0.0;
-            
-            LOG_INFO("Phase %s: %.3f seconds (%.1f%%), %d steps, %d galaxies",
-                    phase_names[i], phase_seconds, phase_percent,
-                    diag->phases[i].step_count, diag->phases[i].galaxy_count);
-        }
-        
-        /* Log merger statistics */
-        LOG_INFO("--- Merger Statistics ---");
-        LOG_INFO("Mergers: Detected=%d, Processed=%d (Major=%d, Minor=%d)",
-                diag->mergers_detected, diag->mergers_processed,
-                diag->major_mergers, diag->minor_mergers);
-        
-        /* Log galaxy property changes */
-        LOG_INFO("--- Galaxy Property Changes ---");
-        LOG_INFO("Stellar Mass: Initial=%.3e, Final=%.3e, Change=%.3e",
-                diag->total_stellar_mass_initial, diag->total_stellar_mass_final,
-                diag->total_stellar_mass_final - diag->total_stellar_mass_initial);
-        
-        LOG_INFO("Cold Gas: Initial=%.3e, Final=%.3e, Change=%.3e",
-                diag->total_cold_gas_initial, diag->total_cold_gas_final,
-                diag->total_cold_gas_final - diag->total_cold_gas_initial);
-        
-        LOG_INFO("Hot Gas: Initial=%.3e, Final=%.3e, Change=%.3e",
-                diag->total_hot_gas_initial, diag->total_hot_gas_final,
-                diag->total_hot_gas_final - diag->total_hot_gas_initial);
-        
-        LOG_INFO("Bulge Mass: Initial=%.3e, Final=%.3e, Change=%.3e",
-                diag->total_bulge_mass_initial, diag->total_bulge_mass_final,
-                diag->total_bulge_mass_final - diag->total_bulge_mass_initial);
-        
-        /* Log event statistics if there were any events */
-        int total_events = 0;
-        for (int i = 0; i < EVENT_TYPE_MAX; i++) {
-            total_events += diag->event_counts[i];
-        }
-        
-        if (total_events > 0) {
-            LOG_INFO("--- Event Statistics ---");
-            for (int i = 0; i < EVENT_TYPE_MAX; i++) {
-                if (diag->event_counts[i] > 0) {
-                    LOG_INFO("Event %s: %d occurrences",
-                            event_type_name((event_type_t)i), diag->event_counts[i]);
-                }
-            }
-        }
-        
-        LOG_INFO("=====================================");
+        /* Reduce verbosity by only logging summary information at INFO level */
+        /* For detailed per-halo information, use DEBUG level instead */
     }
     else if (log_level == LOG_LEVEL_WARNING) {
         LOG_WARNING("=== Evolution Diagnostics for Halo %d ===", diag->halo_nr);

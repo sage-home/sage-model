@@ -686,6 +686,9 @@ void initialize_evolution_context(struct evolution_context *ctx,
     ctx->current_galaxy = -1;
     ctx->callback_context = NULL;
     
+    /* Initialize diagnostics pointer to NULL */
+    ctx->diagnostics = NULL;
+    
     /* Validate the newly initialized context */
     if (!validate_evolution_context(ctx)) {
         LOG_WARNING("Evolution context validation failed after initialization");
