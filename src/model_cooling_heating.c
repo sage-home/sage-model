@@ -76,7 +76,7 @@ double log_agn_accretion_details(const int gal, double AGNrate, struct GALAXY *g
     static int agn_log_counter = 0;
     agn_log_counter++;
 
-    if (agn_log_counter % 500000 == 0) {
+    if (agn_log_counter % 100000 == 0) {
         FILE *log_file = fopen("agn_accretion_diagnostics.txt", "a");
         if (log_file) {
             fprintf(log_file, "AGN Accretion Diagnostics:\n");

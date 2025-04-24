@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium/'
+DirName = './output/millennium_supernovachange_muratov_h1h2/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     seed(2222)
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
 
-    OutputDir = DirName + 'plots_BandR/'
+    OutputDir = DirName + 'plots/'
     if not os.path.exists(OutputDir): os.makedirs(OutputDir)
 
     print('Reading galaxy properties from', DirName)
@@ -107,6 +107,87 @@ if __name__ == '__main__':
     print('Galaxies more massive than 10^10 h-1 Msun:', len(w), '\n')
 
 # --------------------------------------------------------
+
+    """
+    Plot the cumulative stellar mass function.
+    Shows the number density of galaxies with stellar mass greater than M_*.
+    """
+    print('Plotting the cumulative stellar mass function')
+
+    # Calculate volume in (Mpc/h)^3
+    #volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
+    print(f"Simulation volume: {volume:.1f} (Mpc/h)^3")
+    
+    # Read required galaxy properties
+    print("Reading galaxy properties...")
+    StellarMass = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
+    Type = read_hdf(snap_num=Snapshot, param='Type')
+    
+    print(f"Read {len(StellarMass)} galaxies")
+    
+    plt.figure(figsize=(10, 8))  # New figure with specified size
+    ax = plt.subplot(111)  # 1 plot on the figure
+
+    # Use galaxies with non-zero stellar mass
+    w = np.where(StellarMass > 0.0)[0]
+    mass = np.log10(StellarMass[w])
+    print(f"Found {len(mass)} galaxies with non-zero stellar mass")
+
+    # For cumulative function, we need to sort the masses
+    sorted_masses = np.sort(mass)
+    
+    # Calculate cumulative number density (galaxies per cubic Mpc)
+    # Divide by volume to get number density
+    # For each mass value, this gives the number of galaxies with mass > that value
+    cumulative_counts = np.arange(len(sorted_masses), 0, -1) / volume
+    
+    # Plot the CSMF for all galaxies
+    plt.plot(sorted_masses, cumulative_counts, '-', color='red', lw=2, label='This Work - SAGE')
+    
+    # Split by galaxy type (central vs. satellite)
+    # Centrals
+    w_cen = np.where((Type == 0) & (StellarMass > 0.0))[0]
+    mass_cen = np.log10(StellarMass[w_cen])
+    sorted_masses_cen = np.sort(mass_cen)
+    cumulative_counts_cen = np.arange(len(sorted_masses_cen), 0, -1) / volume
+    plt.plot(sorted_masses_cen, cumulative_counts_cen, '--', color='blue', lw=2, label='Centrals')
+    
+    # Satellites
+    w_sat = np.where((Type == 1) & (StellarMass > 0.0))[0]
+    mass_sat = np.log10(StellarMass[w_sat])
+    sorted_masses_sat = np.sort(mass_sat)
+    cumulative_counts_sat = np.arange(len(sorted_masses_sat), 0, -1) / volume
+    plt.plot(sorted_masses_sat, cumulative_counts_sat, '--', color='green', lw=2, label='Satellites')
+    
+    # Set up plot details to match the reference image
+    plt.yscale('log')
+    plt.xscale('linear')  # Ensure x-axis is linear
+    
+    # Set axis range to match the reference image
+    plt.axis([7.0, 12.0, 1.0e-4, 1.0e3])
+    
+    # Set tick marks
+    ax.xaxis.set_major_locator(plt.MultipleLocator(1.0))
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.2))
+    
+    # Add grid to match reference image
+    plt.grid(True, linestyle='--', alpha=0.3, which='both')
+
+    # Set labels
+    plt.ylabel(r'$n(>M)\ [\mathrm{Mpc}^{-3}]$')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ [M_{\odot}]$')
+    
+    # Add legend
+    leg = plt.legend(loc='upper right', frameon=False)
+    for t in leg.get_texts():
+        t.set_fontsize('medium')
+
+    outputFile = OutputDir + '1.CumulativeStellarMassFunction' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
 
     print('Plotting the stellar mass function splitting centrals and satellites')
 
@@ -1346,4 +1427,42 @@ if __name__ == '__main__':
             print(region)
     else:
         print("No empty regions found.")
+
+    # -------------------------------------------------------
+
+    print('Plotting galaxy velocity diagnostics')
+
+    plt.figure(figsize=(10, 8))  # New figure
+
+    # First subplot: Vmax vs Stellar Mass
+    ax1 = plt.subplot(111)  # Top plot
+
+    w = np.where((Type == 0) & (StellarMass > 1.0e7) & (Vmax > 0))[0]  # Central galaxies only
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+
+    mass = np.log10(StellarMass[w])
+    vel = Vvir[w]
+
+    # Color points by halo mass
+    halo_mass = np.log10(Mvir[w])
+    sc = plt.scatter(mass, vel, c=halo_mass, cmap='viridis', s=5, alpha=0.7)
+    cbar = plt.colorbar(sc)
+    cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+
+    plt.ylabel(r'$V_{\mathrm{vir}}\ (\mathrm{km/s})$')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.title('Virial Velocity vs Stellar Mass (Centrals)')
+
+    # Add Tully-Fisher reference line
+    mass_tf = np.arange(8, 12, 0.1)
+    vel_tf = 10**(0.27 * mass_tf - 0.55)  # Simple Tully-Fisher relation
+    plt.plot(mass_tf, vel_tf, 'r--', lw=2, label='Tully-Fisher Relation')
+    plt.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    outputFile = OutputDir + '15.VelocityDiagnostics' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
 

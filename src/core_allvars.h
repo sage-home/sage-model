@@ -463,9 +463,9 @@ struct params
     double EnvEffectStrength;    // Strength multiplier (0.0-2.0)
     double IntegrationBins;
 
-    double SfrEfficiency_Alpha;
-    double FeedbackReheatingEpsilon_Alpha;
-    double FeedbackEjectionEfficiency_Alpha;
+    double SFR_Alpha;
+    double Reheating_Alpha;
+    double Ejection_Alpha;
 
     double CriticalReincMass;      /* Mass threshold below which to apply delayed reincorporation (in 10^10 M_sun/h) */
     double ReincorporationMassExp; /* Exponent for mass dependence of reincorporation */

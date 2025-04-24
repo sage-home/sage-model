@@ -287,16 +287,16 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->MinReincorporationFactor);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "SfrEfficiency_Alpha", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SfrEfficiency_Alpha);
+    strncpy(ParamTag[NParam], "SFR_Alpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SFR_Alpha);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "FeedbackReheatingEpsilon_Alpha", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FeedbackReheatingEpsilon_Alpha);
+    strncpy(ParamTag[NParam], "Reheating_Alpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->Reheating_Alpha);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "FeedbackEjectionEfficiency_Alpha", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FeedbackEjectionEfficiency_Alpha);
+    strncpy(ParamTag[NParam], "Ejection_Alpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->Ejection_Alpha);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "PreventativeFeedbackOn", MAXTAGLEN);

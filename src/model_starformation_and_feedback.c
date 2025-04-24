@@ -22,11 +22,11 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     
     // Calculate redshift-dependent parameters
     double sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
-                                                     run_params->SfrEfficiency_Alpha, z);
+                                                     run_params->SFR_Alpha, z);
     double fb_reheat = get_redshift_dependent_parameter(run_params->FeedbackReheatingEpsilon, 
-                                                      run_params->FeedbackReheatingEpsilon_Alpha, z);
+                                                      run_params->Reheating_Alpha, z);
     double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
-                                                     run_params->FeedbackEjectionEfficiency_Alpha, z);
+                                                     run_params->Ejection_Alpha, z);
 
     // Star formation rate tracking
     galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
@@ -263,7 +263,7 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[p].ColdGas -= adjusted_reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * adjusted_reheated_mass;
 
-        galaxies[centralgal].HotGas += adjusted_reheated_mass;
+        galaxies[centralgal].EjectedMass += adjusted_reheated_mass;
         galaxies[centralgal].MetalsHotGas += metallicity * adjusted_reheated_mass;
 
         if (run_params->SFprescription >= 1) {
@@ -373,7 +373,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     
     // Calculate redshift-dependent parameters for star formation efficiency only
     double sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
-                                                     run_params->SfrEfficiency_Alpha, z);
+                                                     run_params->SFR_Alpha, z);
 
     // Star formation rate tracking
     galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
@@ -478,7 +478,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         if(galaxies[centralgal].Vvir > 0.0) {
             // Get redshift-dependent ejection efficiency with significant reduction
             double fb_eject = 0.2 * get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
-                                                             run_params->FeedbackEjectionEfficiency_Alpha, z);
+                                                             run_params->Ejection_Alpha, z);
             
             // For smaller halos, further reduce ejection to allow gas to accumulate
             if (galaxies[centralgal].Vvir < 80.0) {
@@ -557,35 +557,33 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
 double calculate_lagos_mass_loading(const int p, const double z, struct GALAXY *galaxies, const struct params *run_params)
 {
     // Get circular velocity in km/s
-    double vcirc = galaxies[p].Vvir;  // Using virial velocity as proxy for circular velocity
+    double vcirc = galaxies[p].Vvir;
     
-    // Safety check to prevent division by zero
     if (vcirc <= 0.0) {
         return 0.0;
     }
     
-    // Parameters for modified Lagos+13 model with reduced strength
-    const double epsilon_disk = 2.0;    // Reduced from 4.5 to 2.0
-    const double v_hot = 110.0;         // Characteristic velocity (km/s)
-    const double beta = 2.0;            // Reduced from 2.9 to 2.0
-    const double z_p = 0.05;            // Reduced from 0.12 to 0.05
+    // DRASTICALLY REDUCED PARAMETERS
+    const double epsilon_disk = 0.5;    // Reduced from 2.0 to 0.5
+    const double v_hot = 120.0;         // Slightly higher characteristic velocity
+    const double beta = 1.0;            // Drastically reduced from 2.0 to 1.0
+    const double z_p = 0.0;             // Eliminate redshift dependence temporarily
     
-    // Apply redshift evolution to v_hot (weaker redshift dependence)
-    double v_hot_z = v_hot * pow(1.0 + z, z_p);
+    // Simplified model with no redshift evolution for now
+    double v_hot_z = v_hot;
     
-    // Calculate mass loading factor
+    // Calculate mass loading with lower power law
     double eta = epsilon_disk * pow(vcirc / v_hot_z, -beta);
     
-    // Hard cap the mass-loading factor to 3.0 as per observational constraints
-    if (eta > 3.0) {
-        eta = 3.0;
+    // Much lower cap - start with very conservative value
+    if (eta > 1.0) {
+        eta = 1.0;
     }
     
-    // For massive galaxies (MW-sized and above), reduce the feedback further
-    if (vcirc > 150.0) {
-        // Linear decrease from full strength at 150 km/s to 30% at 250 km/s and above
-        double scale = 1.0 - 0.7 * fmin(1.0, (vcirc - 150.0) / 100.0);
-        eta *= scale;
+    // Extra reduction for dwarf galaxies which are most affected
+    if (vcirc < 80.0) {
+        // Scale down even further for smallest galaxies
+        eta *= 0.3 + 0.7 * (vcirc / 80.0);
     }
     
     // Add diagnostic logging
@@ -612,7 +610,7 @@ void starformation_and_feedback_with_lagos(const int p, const int centralgal, co
     
     // Calculate redshift-dependent parameters
     double sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
-                                                     run_params->SfrEfficiency_Alpha, z);
+                                                     run_params->SFR_Alpha, z);
     
     // Star formation rate tracking
     galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
@@ -692,7 +690,7 @@ void starformation_and_feedback_with_lagos(const int p, const int centralgal, co
 
     // Calculate ejection - using redshift-dependent ejection efficiency
     double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
-                                                     run_params->FeedbackEjectionEfficiency_Alpha, z);
+                                                     run_params->Ejection_Alpha, z);
     
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {

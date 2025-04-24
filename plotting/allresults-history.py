@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium/'
+DirName = './output/millennium_supernovachange_muratov_h1h2/'
 FileName = 'model_0.hdf5'
 
 # Simulation details
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     seed(2222)
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
 
-    OutputDir = DirName + 'plots_BandR/'
+    OutputDir = DirName + 'plots/'
     if not os.path.exists(OutputDir): os.makedirs(OutputDir)
 
     # Read galaxy properties
