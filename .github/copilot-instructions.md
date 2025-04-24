@@ -14,10 +14,12 @@
 **Workflow:**
 1. Begin each task by reviewing the plan and all logs.
 2. Propose a plan of action before making changes. Pause for approval.
-3. Once approved, make edits incrementally. Present diffs before staging.
-4. In the code, prefer `LOG_DEBUG`, `LOG_ERROR` etc over `printf`.
-5. Run tests via `/terminal make tests`.
-6. When reporting progress, include EVERY FILE that was changed and created.
-7. Write documentation to `docs/` when relevant.
-8. Commit with descriptive messages (`Task #X – short summary`).
-9. Assume no persistent memory — rely on logs for all continuity.
+3. Once approved, make edits incrementally.
+4. EVERY group of edits to a SINGLE function/header/new file should be recorded in `logs/todays-edits.md` before moving on.
+5. BEFORE starting a new group of edits, check `logs/todays-edits.md` to avoid duplication.
+6. Output should prefer `LOG_DEBUG`, `LOG_ERROR` etc over `printf`.
+7. Run tests via `/terminal make tests`.
+8. When reporting progress, include EVERY FILE that was changed and created.
+9.  Write documentation to `docs/` when relevant.
+10. Commit with descriptive messages (`Phase #X Task #Y – short summary`).
+11. Assume no persistent memory — rely on logs for all continuity.
