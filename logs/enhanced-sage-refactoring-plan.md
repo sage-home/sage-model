@@ -1040,7 +1040,7 @@ Comprehensive documentation is essential for a modular system to be usable by sc
 - **Risk**: Incomplete tooling leading to debugging challenges
   - **Mitigation**: Focus on critical tools first, then expand based on developer feedback
 
-## Deferred Work
+## Deferred Work - General List
 
 *   **Performance Benchmarking**: Moved from Phase 1 to Phase 5/6. Profiling on the refactored structure is more valuable than embedding benchmarks during heavy changes.
 *   **Enhanced End-to-End Test Diagnostics**: Skipped. Current logging + `sagediff.py` deemed sufficient.
@@ -1049,6 +1049,62 @@ Comprehensive documentation is essential for a modular system to be usable by sc
 *   **Testing Approach Documentation**: Document the rationale behind different testing approaches rather than forcing consistency across the entire test suite.
 *   **Test Build Simplification**: Consider addressing during a dedicated testing infrastructure improvement phase to consolidate Makefiles and standardize build process.
 *   **Dynamic Library Loading Limits**: Consider making `MAX_LOADED_LIBRARIES` (64) configurable or dynamically expandable. The current limit may be restrictive for complex systems with many modules.
+
+## Deferred Work - From Phase 5
+
+The following tasks have been deferred to later consideration after completing the main refactoring phases:
+
+### Evolution Diagnostics Refactoring
+
+**Description**: Refactor evolution diagnostics to be more flexible with pipeline phases.
+
+**Rationale**: The current implementation is too rigid and doesn't gracefully handle phase values outside its expected range.
+
+**Implementation Tasks**:
+- Modify `evolution_diagnostics.h` to define a more flexible phase representation
+- Update phase validation to use an enum range check or bitfield rather than a hard-coded range
+- Add a runtime phase registration mechanism so modules can define their own phases
+
+**Example**:
+```c
+// Example of a more flexible phase representation
+typedef enum {
+    DIAG_PHASE_UNKNOWN = 0,
+    DIAG_PHASE_HALO = 1,
+    DIAG_PHASE_GALAXY = 2,
+    DIAG_PHASE_POST = 3,
+    DIAG_PHASE_FINAL = 4,
+    DIAG_PHASE_CUSTOM_BEGIN = 8,
+    DIAG_PHASE_CUSTOM_END = 15,
+    DIAG_PHASE_MAX = 16
+} diagnostic_phase_t;
+```
+
+### Event Data Protocol Enhancement
+
+**Description**: Define a clear protocol for what event data may contain, with explicit support for diagnostics.
+
+**Rationale**: The current approach of trying to extract diagnostics from events without a clear protocol is error-prone.
+
+**Implementation Tasks**:
+- Define a standard event data header structure indicating whether events contain diagnostics information
+- Update all event emission sites to include this header
+- Use tagged unions or type codes to safely handle different event data formats
+
+**Example**:
+```c
+// Example of a standard event header
+typedef struct {
+    uint32_t type_code;               // Code indicating event data type
+    uint32_t flags;                   // Event-specific flags
+    bool has_pipeline_context;        // Explicit flag for pipeline context
+    bool has_diagnostics;             // Explicit flag for diagnostics
+    void *pipeline_context;           // Optional pipeline context (NULL if not present)
+    void *diagnostics;                // Optional diagnostics context (NULL if not present)
+    size_t payload_size;              // Size of event-specific payload after header
+    // Followed by event-specific payload data
+} event_data_header_t;
+```
 
 ## Risk Assessment and Mitigation
 

@@ -72,3 +72,7 @@
 2025-04-24: [Phase 5.1.7] Evolution Diagnostics Integration Approach
 - Rationale: Implementing evolution diagnostics as a standalone component rather than embedding the functionality directly in the evolution loop provides better maintainability and flexibility. We added the diagnostics structure to the evolution context to make metrics available consistently across the pipeline.
 - Impact: This design enables diagnostic data collection with minimal impact on the core evolution logic. It provides a clear, consistent API for performance analysis and scientific validation while maintaining separation of concerns. The integration with the event system enables tracking dynamic event occurrences without modifying physics implementations.
+
+2025-04-24: [Phase 5.1.7] Evolution Diagnostics Phase Representation
+- Rationale: The pipeline system uses bit flags (1, 2, 4, 8) for pipeline phases, while the diagnostics system was using sequential integers (0-3) for array indices. Rather than refactoring the entire diagnostics system, we implemented a mapping function that translates between these representations.
+- Impact: This approach addresses the immediate issue of invalid phase errors while minimizing code changes and risk. By deferring a more comprehensive refactoring, we maintain project momentum while recognizing the need for a more flexible phase representation in future work.
