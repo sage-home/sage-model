@@ -230,6 +230,7 @@ A robust testing framework is in place:
 - Comprehensive error reporting and diagnostics
 - CI/CD integration with GitHub Actions
 - Unit tests for core components including the evolution diagnostics system
+- Integration tests for the refactored evolve_galaxies loop verifying phase transitions, event handling, and diagnostics
 
 All changes are validated through this end-to-end testing framework using reference outputs from the Mini-Millennium simulation, ensuring scientific accuracy throughout the refactoring process.
 

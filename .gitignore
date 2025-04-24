@@ -41,6 +41,7 @@ tests/test_module_dependency
 tests/test_validation_logic
 tests/test_error_integration
 tests/test_evolution_diagnostics
+tests/test_evolve_integration
 
 .repomix/
 trees_*
