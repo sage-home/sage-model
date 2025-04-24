@@ -32,7 +32,7 @@
 - [x] Enhance error propagation testing and diagnostic logging
 - [x] Add evolution diagnostics
 
-### Phase 5.2: Converting Physics Modules ⏳ PENDING
+### Phase 5.2: Converting Physics Modules ⏳ IN PROGRESS
 - [ ] Extract cooling module (GALAXY phase)
 - [ ] Extract star formation and feedback module (GALAXY phase)
 - [ ] Extract infall module (HALO and GALAXY phases)
@@ -44,7 +44,7 @@
 - [ ] Add event triggers at appropriate points
 - [ ] Implement necessary callbacks between modules
 
-### Phase 5.3: Validation and Testing ⏳ IN PROGRESS
+### Phase 5.3: Validation and Testing ⏳ PENDING
 - [x] Implement integration tests for evolve_galaxies loop phase transitions
 - [ ] Perform scientific validation against baseline SAGE
 - [ ] Implement performance benchmarks
