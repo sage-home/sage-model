@@ -1,0 +1,27 @@
+# Makefile for evolution diagnostics tests
+# Part of SAGE model test suite
+
+TEST_SRCS = test_evolution_diagnostics.c
+TEST_OBJS = $(TEST_SRCS:.c=.o)
+TEST_EXES = test_evolution_diagnostics
+
+# Core files needed for tests
+CORE_SRCS = ../src/core/core_evolution_diagnostics.c \
+            ../src/core/core_logging.c \
+            ../src/core/core_event_system.c 
+
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+
+# Compiler flags
+CFLAGS += -I.. -g -DUNIT_TESTING -Wall -Wextra
+
+# Rules
+all: $(TEST_EXES)
+
+test_evolution_diagnostics: test_evolution_diagnostics.o $(CORE_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lm
+
+clean:
+	rm -f $(TEST_OBJS) $(TEST_EXES)
+
+.PHONY: all clean

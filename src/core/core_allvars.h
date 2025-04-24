@@ -152,6 +152,9 @@ struct evolution_context {
     int current_phase;         /* Current pipeline execution phase */
     int current_galaxy;        /* Index of galaxy being processed (for GALAXY phase) */
     void *callback_context;    /* Context data for module callbacks */
+    
+    /* Diagnostics (added for Phase 5.1.7) */
+    struct evolution_diagnostics *diagnostics; /* Evolution diagnostics data */
 };
 
 

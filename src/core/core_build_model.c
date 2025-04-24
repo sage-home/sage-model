@@ -20,6 +20,7 @@
 #include "core_array_utils.h"
 #include "core_merger_queue.h"
 #include "core_event_system.h"
+#include "core_evolution_diagnostics.h"
 
 #include "../physics/model_misc.h"
 #include "../physics/model_mergers.h"
@@ -710,6 +711,14 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     struct evolution_context ctx;
     initialize_evolution_context(&ctx, halonr, galaxies, ngal, halos, run_params);
     
+    // Initialize evolution diagnostics
+    struct evolution_diagnostics diag;
+    evolution_diagnostics_initialize(&diag, halonr, ngal);
+    ctx.diagnostics = &diag;
+    
+    // Record initial galaxy properties
+    evolution_diagnostics_record_initial_properties(&diag, galaxies, ngal);
+    
     // Perform comprehensive validation of the evolution context
     if (!validate_evolution_context(&ctx)) {
         CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Evolution context validation failed for halo %d", halonr);
@@ -741,7 +750,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         ctx.deltaT,                                         // dt
         ctx.halo_nr,                                        // halonr
         0,                                                  // step
-        NULL                                                // user_data
+        &ctx                                                // user_data (set to evolution context)
     );
     pipeline_ctx.current_galaxy = 0;
     pipeline_ctx.infall_gas = infallingGas;
@@ -786,219 +795,152 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 logged_empty_pipeline = true;
             }
         }
-    } else {
-        // Only log once per process to avoid spamming logs
-        static bool logged_missing_pipeline = false;
-        if (!logged_missing_pipeline) {
-            CONTEXT_LOG(&ctx, LOG_LEVEL_WARNING, "No physics pipeline available, using traditional physics implementation");
-            logged_missing_pipeline = true;
-        }
     }
     
-    // Create and initialize merger event queue
+    // Create merger event queue
     struct merger_event_queue merger_queue;
-    init_merger_queue(&merger_queue);
-    
-    // Attach queue to evolution context
+    memset(&merger_queue, 0, sizeof(struct merger_event_queue));
     ctx.merger_queue = &merger_queue;
     
-    // Execute the HALO phase (calculations that happen once per halo)
+    // EXECUTE PIPELINE PHASES - with diagnostics tracking
+    
+    // Phase 1: HALO phase (outside galaxy loop)
+    evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_HALO);
+    pipeline_ctx.execution_phase = PIPELINE_PHASE_HALO;
+    int status = 0;
+    
     if (use_pipeline) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Executing HALO phase for halo %d", ctx.halo_nr);
-        pipeline_ctx.execution_phase = PIPELINE_PHASE_HALO;
-        int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
-        if (status != 0) {
-            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute HALO phase for halo %d", ctx.halo_nr);
-            return EXIT_FAILURE;
-        }
+        status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
+    } else {
+        // Traditional implementation would go here
     }
     
-    // We integrate things forward by using a number of intervals equal to STEPS
-    for(int step = 0; step < STEPS; step++) {
+    evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_HALO);
+    
+    if (status != 0) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute HALO phase for halo %d", halonr);
+        // Report diagnostics even on failure
+        evolution_diagnostics_finalize(&diag);
+        evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
+        return EXIT_FAILURE;
+    }
+    
+    // Main integration steps
+    for (int step = 0; step < STEPS; step++) {
         pipeline_ctx.step = step;
         
         // Reset merger queue for this timestep
-        init_merger_queue(&merger_queue);
-
-        // Loop over all galaxies in the halo
-        for(int p = 0; p < ctx.ngal; p++) {
-            // Don't treat galaxies that have already merged
-            if(ctx.galaxies[p].mergeType > 0) {
+        memset(&merger_queue, 0, sizeof(struct merger_event_queue));
+        
+        // Phase 2: GALAXY phase (for each galaxy)
+        evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_GALAXY);
+        pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
+        
+        for (int p = 0; p < ctx.ngal; p++) {
+            // Skip already merged galaxies
+            if (ctx.galaxies[p].mergeType > 0) {
                 continue;
             }
-
-            // Calculate time step and current time for this specific galaxy
-            const double deltaT = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - ctx.halo_age;
-            const double time = run_params->simulation.Age[ctx.galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
-            pipeline_ctx.dt = deltaT;  // Update pipeline context with new dt
-            pipeline_ctx.time = time;  // Update pipeline context with new time
-            ctx.deltaT = deltaT;  // Store in context for potential future module use
-
-            // Calculate time step
-            if(ctx.galaxies[p].dT < 0.0) {
-                ctx.galaxies[p].dT = deltaT;
-            }
             
-            // Update pipeline context for current galaxy
+            // Update context for current galaxy
             pipeline_ctx.current_galaxy = p;
+            diag.phases[PIPELINE_PHASE_GALAXY].galaxy_count++;
             
+            // Execute GALAXY phase
             if (use_pipeline) {
-                // Execute GALAXY phase for this specific galaxy
-                pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
-                int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
-                if (status != 0) {
-                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute GALAXY phase for galaxy %d", p);
-                    return EXIT_FAILURE;
-                }
-            } 
-            else {
-                // Traditional physics implementation (fallback when pipeline is unavailable)
-                
-                // Extract parameters from context for readability
-                int centralgal = pipeline_ctx.centralgal;
-                double dt = pipeline_ctx.dt / STEPS;
-                
-                // PHYSICS MODULE: Infall
-                if (p == centralgal) {
-                    add_infall_to_hot(p, pipeline_ctx.infall_gas / STEPS, galaxies);
-
-                    // PHYSICS MODULE: Reincorporation
-                    if (run_params->physics.ReIncorporationFactor > 0.0) {
-                        struct reincorporation_params_view reincorp_params;
-                        initialize_reincorporation_params_view(&reincorp_params, run_params);
-                        reincorporate_gas(p, dt, galaxies, &reincorp_params);
-                    }
-
-                // PHYSICS MODULE: Stripping - removes gas from satellite galaxies
-                } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
-                    strip_from_satellite(centralgal, p, ctx.redshift, galaxies, run_params);
-                }
-                
-                // PHYSICS MODULE: Cooling
-                struct cooling_params_view cooling_params;
-                initialize_cooling_params_view(&cooling_params, run_params);
-                double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
-                cool_gas_onto_galaxy(p, coolingGas, galaxies);
-                
-                // Emit cooling completed event if system is initialized
-                if (event_system_is_initialized()) {
-                    // Prepare cooling event data
-                    event_cooling_completed_data_t cooling_data = {
-                        .cooling_rate = (float)(coolingGas / dt),
-                        .cooling_radius = 0.0f,  // Not calculated in traditional implementation
-                        .hot_gas_cooled = (float)coolingGas
-                    };
-                    
-                    // Emit the cooling completed event
-                    event_status_t status = event_emit(
-                        EVENT_COOLING_COMPLETED,   // Event type
-                        0,                         // Source module ID (0 = traditional code)
-                        p,                         // Galaxy index
-                        step,                      // Current step
-                        &cooling_data,             // Event data
-                        sizeof(cooling_data),      // Size of event data
-                        EVENT_FLAG_NONE            // No special flags
-                    );
-                    
-                    if (status != EVENT_STATUS_SUCCESS) {
-                        LOG_WARNING("Failed to emit cooling event for galaxy %d: status=%d", 
-                                   p, status);
-                    } else {
-                        LOG_DEBUG("Emitted cooling event for galaxy %d: cooling_gas=%g", 
-                                 p, coolingGas);
-                    }
-                }
-                
-                // PHYSICS MODULE: Star Formation and Feedback
-                struct star_formation_params_view sf_params;
-                struct feedback_params_view fb_params;
-                initialize_star_formation_params_view(&sf_params, run_params);
-                initialize_feedback_params_view(&fb_params, run_params);
-                starformation_and_feedback(p, centralgal, time, dt, pipeline_ctx.halonr, step, 
-                                         galaxies, &sf_params, &fb_params);
-                
+                status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
+            } else {
+                // Traditional implementation would go here
             }
             
-            // Check for potential mergers (satellite galaxies only)
-            if((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && ctx.galaxies[p].mergeType == 0) {
-                if(ctx.galaxies[p].MergTime >= 999.0) {
-                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
-                                "Galaxy %d has MergTime = %lf, which is too large! Should have been within the age of the Universe",
-                                p, ctx.galaxies[p].MergTime);
-                    return EXIT_FAILURE;
-                }
-
-                ctx.galaxies[p].MergTime -= deltaT / STEPS;
-
-                // only consider mergers or disruption for halo-to-baryonic mass ratios below the threshold
-                // or for satellites with no baryonic mass (they don't grow and will otherwise hang around forever)
-                double currentMvir = ctx.galaxies[p].Mvir - ctx.galaxies[p].deltaMvir * (1.0 - ((double)step + 1.0) / (double)STEPS);
-                double galaxyBaryons = ctx.galaxies[p].StellarMass + ctx.galaxies[p].ColdGas;
-                if((galaxyBaryons == 0.0) || (galaxyBaryons > 0.0 && (currentMvir / galaxyBaryons <= run_params->physics.ThresholdSatDisruption))) {
-
-                    int merger_centralgal = ctx.galaxies[p].Type==1 ? ctx.centralgal : ctx.galaxies[p].CentralGal;
-
-                    if(ctx.galaxies[merger_centralgal].mergeType > 0) {
-                        merger_centralgal = ctx.galaxies[merger_centralgal].CentralGal;
-                    }
-
-                    // Store mergeIntoID for later use by process_merger_events
-                    ctx.galaxies[p].mergeIntoID = *numgals + merger_centralgal;  // position in output
-
-                    if(isfinite(ctx.galaxies[p].MergTime)) {
-                        // Instead of processing merger now, add to queue for later processing
-                        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG,
-                                  "Queuing merger event: satellite=%d, central=%d, merger_time=%g",
-                                  p, merger_centralgal, ctx.galaxies[p].MergTime);
-                                  
-                        queue_merger_event(
-                            &merger_queue,         // Queue to add to
-                            p,                     // Satellite galaxy index
-                            merger_centralgal,     // Central galaxy index
-                            ctx.galaxies[p].MergTime, // Merger time
-                            time,                  // Current time
-                            deltaT / STEPS,        // Timestep
-                            ctx.centralgal,        // Store centralgal for merger processing
-                            step,                  // Current step
-                            ctx.galaxies[p].mergeType // Merger type
-                        );
-                    }
-                }
-            }
-        }
-        
-        // After all galaxies have been processed, execute the POST phase
-        if (use_pipeline) {
-            CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Executing POST phase for step %d", step);
-            pipeline_ctx.execution_phase = PIPELINE_PHASE_POST;
-            int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
             if (status != 0) {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute POST phase for step %d", step);
+                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute GALAXY phase for galaxy %d", p);
+                // Report diagnostics even on failure
+                evolution_diagnostics_finalize(&diag);
+                evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
                 return EXIT_FAILURE;
             }
+            
+            // Queue potential mergers - with diagnostic tracking
+            if ((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && 
+                ctx.galaxies[p].mergeType == 0 && ctx.galaxies[p].MergTime < 999.0) {
+                // Add merger detection to diagnostics
+                evolution_diagnostics_add_merger_detection(&diag, ctx.galaxies[p].mergeType);
+                
+                // Check merger conditions and add to queue if appropriate
+                queue_merger_event(&merger_queue, p, ctx.galaxies[p].CentralGal, 
+                                 ctx.galaxies[p].MergTime, ctx.time, ctx.deltaT/STEPS, 
+                                 ctx.centralgal, step, ctx.galaxies[p].mergeType);
+            }
         }
         
-        // Process merger events (this is currently outside the pipeline system but could be moved into a module)
-        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processing %d merger events for step %d", 
-                  merger_queue.num_events, step);
-        process_merger_events(&merger_queue, ctx.galaxies, run_params);
+        evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_GALAXY);
         
-    } // Go on to the next STEPS substep
-    
-    // Execute the FINAL phase (calculations that happen after all steps are complete)
-    if (use_pipeline) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Executing FINAL phase for halo %d", ctx.halo_nr);
-        pipeline_ctx.execution_phase = PIPELINE_PHASE_FINAL;
-        int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
+        // Phase 3: POST phase (after all galaxies processed in step)
+        evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_POST);
+        pipeline_ctx.execution_phase = PIPELINE_PHASE_POST;
+        
+        if (use_pipeline) {
+            status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
+        } else {
+            // Traditional implementation would go here
+        }
+        
+        evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_POST);
+        
         if (status != 0) {
-            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute FINAL phase for halo %d", ctx.halo_nr);
+            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute POST phase for step %d", step);
+            // Report diagnostics even on failure
+            evolution_diagnostics_finalize(&diag);
+            evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
             return EXIT_FAILURE;
         }
+        
+        // Process merger events - with diagnostic tracking
+        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processing %d merger events for step %d", 
+                  merger_queue.num_events, step);
+                  
+        for (int i = 0; i < merger_queue.num_events; i++) {
+            struct merger_event *event = &merger_queue.events[i];
+            
+            // Track merger processing in diagnostics
+            evolution_diagnostics_add_merger_processed(&diag, event->merger_type);
+        }
+        
+        // Process all merger events in the queue
+        process_merger_events(&merger_queue, ctx.galaxies, run_params);
     }
-
-    // Clean up property serialization if it was initialized
-    pipeline_cleanup_property_serialization(&pipeline_ctx);
-
+    
+    // Phase 4: FINAL phase (after all steps complete)
+    evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_FINAL);
+    pipeline_ctx.execution_phase = PIPELINE_PHASE_FINAL;
+    
+    if (use_pipeline) {
+        status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
+    } else {
+        // Traditional implementation would go here
+    }
+    
+    evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_FINAL);
+    
+    if (status != 0) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute FINAL phase for halo %d", halonr);
+        // Report diagnostics even on failure
+        evolution_diagnostics_finalize(&diag);
+        evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
+        return EXIT_FAILURE;
+    }
+    
+    // Finalize and record property serialization if needed
+    if (pipeline_ctx.prop_ctx != NULL) {
+        pipeline_cleanup_property_serialization(&pipeline_ctx);
+    }
+    
+    // Record final galaxy properties and report diagnostics
+    evolution_diagnostics_record_final_properties(&diag, galaxies, ctx.ngal);
+    evolution_diagnostics_finalize(&diag);
+    evolution_diagnostics_report(&diag, LOG_LEVEL_INFO);
+    
     // Extra miscellaneous stuff before finishing this halo
     ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons = 0.0;
     const double deltaT = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;

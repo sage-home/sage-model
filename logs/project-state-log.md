@@ -33,6 +33,7 @@ The core infrastructure has been refactored to separate concerns and reduce glob
 - `core_init`: Initialization and cleanup routines with GSL dependency removed
 - `core_logging`: Enhanced error logging system with severity levels (DEBUG to FATAL), context-aware messaging, configurable output formatting, and standardized verbosity control
 - `evolution_context`: Context structure for galaxy evolution to reduce global state
+- `core_evolution_diagnostics`: Comprehensive metrics and statistics for galaxy evolution
 
 ```
 evolution_context                enhanced_logging_system
@@ -42,9 +43,40 @@ evolution_context                enhanced_logging_system
     │ centralgal     │<─────────▶│ - prefix_style     │
     │ halo properties│            │ - destinations     │
     │ params         │            │ - color_enabled    │
-    └────────────────┘            │ - format_options   │
-                                 │ - context_support  │
+    │ diagnostics    │            │ - format_options   │
+    └────────────────┘            │ - context_support  │
                                  └────────────────────┘
+```
+
+### Evolution Diagnostics
+The evolution diagnostics system provides metrics and statistics for the galaxy evolution process:
+- Phase timing and performance analysis
+- Event occurrence tracking
+- Merger statistics (detections, processing, types)
+- Galaxy property changes during evolution
+- Per-galaxy processing rates and overall performance
+
+```
+diagnostics_system
+    ┌────────────────────────┐
+    │ evolution_diagnostics  │
+    │ - phase statistics     │
+    │ - event counters       │<───┐
+    │ - merger statistics    │    │
+    │ - property tracking    │    │
+    │ - performance metrics  │    │
+    └────────────────────────┘    │
+               ▲                  │
+               │                  │
+    ┌──────────┴───────────┐     │
+    │ core_build_model.c   │     │
+    │ - evolve_galaxies()  │     │
+    └──────────────────────┘     │
+                                 │
+    ┌─────────────────────┐      │
+    │ core_event_system.c │      │
+    │ - event_dispatch()  │──────┘
+    └─────────────────────┘
 ```
 
 ### Physics Modules
@@ -82,8 +114,8 @@ Physics Module
 ### Evolution Pipeline
 The main galaxy evolution pipeline has been refactored for better modularity:
 - `evolve_galaxies()`: Coordinates galaxy evolution using the evolution context
-- Physics modules are applied in sequence but with clear boundaries
-- Comprehensive validation and logging at key points in the pipeline
+- Pipeline phases (HALO, GALAXY, POST, FINAL) for different scopes of calculation
+- Comprehensive validation, logging, and diagnostics throughout the pipeline
 
 ```
 Galaxy Evolution Pipeline
@@ -101,18 +133,51 @@ Galaxy Evolution Pipeline
 └─────────┬───────────┘         │
           │                     │
           │  ┌─────────────────┐│
-          ├─▶│ infall_recipe   ││
+          ├─▶│ HALO phase      ││
           │  └─────────────────┘│
           │                     │
           │  ┌─────────────────┐│
-          ├─▶│ cooling_recipe  ││
+          ├─▶│ GALAXY phase    ││
+          │  └─────────────────┘│
+          │                     │
+          │  ┌─────────────────┐│
+          ├─▶│ POST phase      ││
+          │  └─────────────────┘│
+          │                     │
+          │  ┌─────────────────┐│
+          ├─▶│ FINAL phase     ││
           │  └─────────────────┘│
           │                     │
 ┌─────────▼───────────┐        │
-│  Physics Modules    │────────┘
-│  (Applied in        │
-│   sequence)         │
+│ evolution_          │        │
+│ diagnostics_report  │────────┘
 └─────────────────────┘
+```
+
+### Merger Event Queue
+A fully implemented merger event queue provides controlled processing of mergers:
+- Collects potential mergers during galaxy processing 
+- Defers merger processing until appropriate pipeline phase
+- Maintains scientific consistency with original merger implementation
+- Tracks merger statistics through diagnostics
+
+```
+Merger Event Queue
+    ┌─────────────────────┐
+    │ merger_event_queue  │
+    │ - events[]          │◄────────┐
+    │ - num_events        │         │
+    └─────────┬───────────┘         │
+              │                     │
+    ┌─────────▼───────────┐         │
+    │ process_merger      │         │
+    │ _events()           │         │
+    └──────────────────────┘         │
+                                   │
+    ┌─────────────────────┐         │
+    │ evolve_galaxies     │         │
+    │ - merge detection   │─────────┘
+    └─────────────────────┘
 ```
 
 ### I/O Components
@@ -164,6 +229,7 @@ A robust testing framework is in place:
 - Detailed comparison utility (sagediff.py) with configurable tolerances
 - Comprehensive error reporting and diagnostics
 - CI/CD integration with GitHub Actions
+- Unit tests for core components including the evolution diagnostics system
 
 All changes are validated through this end-to-end testing framework using reference outputs from the Mini-Millennium simulation, ensuring scientific accuracy throughout the refactoring process.
 
@@ -200,6 +266,7 @@ Key components in the architecture:
 - `core_module_debug`: Module debugging with tracing and diagnostics
 - `core_module_error`: Error handling with context tracking and history
 - `core_dynamic_library`: Cross-platform dynamic library loading
+- `core_evolution_diagnostics`: Comprehensive metrics for performance and scientific analysis
 
 The modular design provides:
 - Runtime physics module registry with lifecycle management
@@ -211,3 +278,4 @@ The modular design provides:
 - Parameter validation and override capabilities
 - Comprehensive error handling and diagnostics
 - Dynamic loading of module implementations
+- Performance tracking and scientific validation through diagnostics

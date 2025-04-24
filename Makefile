@@ -39,7 +39,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_module_template.c core/core_module_validation.c \
         core/core_module_debug.c core/core_module_parameter.c \
         core/core_module_error.c core/core_module_diagnostics.c \
-        core/core_merger_queue.c core/cJSON.c
+        core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c
 
 # Physics model source files
 PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \

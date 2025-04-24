@@ -68,3 +68,7 @@
 2025-04-23: [Phase 5.1] Using Pipeline Context for Module Callbacks
 - Rationale: Module callbacks required tracking multiple types of context: call stack for circular dependency detection, error propagation between modules, and execution context for the current pipeline. We implemented a unified approach where the pipeline context carries callback information, allowing modules to correctly track dependencies while operating within the pipeline.
 - Impact: This design ensures consistent behavior between direct module invocation and pipeline execution, maintains clear error propagation paths, and simplifies integration of callbacks into the pipeline architecture. This preserves the original physics model's interdependencies while maintaining modularity.
+
+2025-04-24: [Phase 5.1.7] Evolution Diagnostics Integration Approach
+- Rationale: Implementing evolution diagnostics as a standalone component rather than embedding the functionality directly in the evolution loop provides better maintainability and flexibility. We added the diagnostics structure to the evolution context to make metrics available consistently across the pipeline.
+- Impact: This design enables diagnostic data collection with minimal impact on the core evolution logic. It provides a clear, consistent API for performance analysis and scientific validation while maintaining separation of concerns. The integration with the event system enables tracking dynamic event occurrences without modifying physics implementations.

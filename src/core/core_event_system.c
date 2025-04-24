@@ -6,6 +6,8 @@
 #include "core_event_system.h"
 #include "core_logging.h"
 #include "core_mymalloc.h"
+#include "core_pipeline_system.h"  /* Include for pipeline_context definition */
+#include "core_evolution_diagnostics.h"  /* Include for evolution_diagnostics_add_event */
 
 /* Global event system */
 event_system_t *global_event_system = NULL;
@@ -595,7 +597,7 @@ static void log_event(const event_t *event) {
  * @return EVENT_STATUS_SUCCESS on success, error code on failure
  */
 event_status_t event_dispatch(const event_t *event) {
-    if (global_event_system == NULL) {
+    if (!event_system_is_initialized()) {
         LOG_ERROR("Event system not initialized");
         return EVENT_STATUS_NOT_INITIALIZED;
     }
@@ -611,6 +613,30 @@ event_status_t event_dispatch(const event_t *event) {
         if (global_event_system->log_filter == 0 || 
             (global_event_system->log_filter & (1 << (event->type % 32)))) {
             log_event(event);
+        }
+    }
+    
+    /* Track event in evolution diagnostics if available */
+    /* Extract evolution_context from event user_data if provided */
+    struct pipeline_context *pipeline_ctx = NULL;
+    struct evolution_context *evolution_ctx = NULL;
+    
+    /* First try to get the pipeline context from the event data */
+    if (event->data_size >= sizeof(void*)) {
+        void *possible_ctx = *(void**)event->data;
+        if (possible_ctx != NULL) {
+            /* Validate that it's a pipeline context (simple check) */
+            pipeline_ctx = (struct pipeline_context*)possible_ctx;
+            
+            /* If it has user_data set to an evolution context, we can use that */
+            if (pipeline_ctx->user_data != NULL) {
+                evolution_ctx = (struct evolution_context*)pipeline_ctx->user_data;
+                
+                /* If we have valid diagnostics, count this event */
+                if (evolution_ctx->diagnostics != NULL) {
+                    evolution_diagnostics_add_event(evolution_ctx->diagnostics, event->type);
+                }
+            }
         }
     }
     
