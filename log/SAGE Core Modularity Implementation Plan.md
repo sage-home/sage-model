@@ -16,7 +16,7 @@ This implementation plan outlines the steps needed to complete the core refactor
 -   Provides a clear and robust framework for migrating remaining legacy physics code.
 -   Improves maintainability and extensibility of the SAGE model.
 
-## Phase 1: Directory Restructuring
+## Step 1: Directory Restructuring
 
 ### Step 1.1: Reorganize Physics Directories
 **WHERE:** File system operations
@@ -54,7 +54,7 @@ git mv src/physics/modules/infall_module.c src/physics/modules/infall_module.h s
 #include "cooling_tables.h" // Now cooling_tables is also in src/physics/
 ```
 
-## Phase 2: Core Execution Framework Update
+## Step 2: Core Execution Framework Update
 
 ### Step 2.1: Clean Up Core Build Model Imports
 **WHERE:** `src/core/core_build_model.c`
@@ -361,7 +361,7 @@ if (status != 0) {
 // ...
 ```
 
-## Phase 3: Module API Refinement
+## Step 3: Module API Refinement
 
 ### Step 3.1: Define Standard Physics Module Interface
 **WHERE:** Create `src/physics/physics_module_interface.h`
@@ -624,7 +624,7 @@ double cooling_module_calculate(int gal_idx, double dt, struct GALAXY *galaxies,
 }
 ```
 
-## Phase 4: Event System, Serialization, and Validation
+## Step 4: Event System, Serialization, and Validation
 
 ### Step 4.1: Update Event System Integration
 **WHERE:** `src/core/core_event_system.c` and `src/core/core_event_system.h`
@@ -766,7 +766,7 @@ tests: $(EXEC) $(TEST_EXECS) # Add new test executables here
 	@echo "All tests completed successfully."
 ```
 
-## Phase 5: Documentation and Future Extensibility
+## Step 5: Documentation and Future Extensibility
 
 ### Step 5.1: Update Module Development Guide
 **WHERE:** `docs/module_development.md`
