@@ -280,3 +280,33 @@ The modular design provides:
 - Comprehensive error handling and diagnostics
 - Dynamic loading of module implementations
 - Performance tracking and scientific validation through diagnostics
+
+### Physics Modularization Strategy
+The codebase is implementing a dual approach for physics modularization:
+
+```
+┌───────────────────────┐      ┌───────────────────────┐
+│ Galaxy Properties     │      │ Extension Registry    │
+│                       │      │                       │
+│ - Direct fields       │◄────▶│ - Registered props    │
+│ - Accessor functions  │      │ - Standard definitions│
+└─────────┬─────────────┘      └─────────┬─────────────┘
+          │                              │
+          ▼                              ▼
+┌───────────────────────┐      ┌───────────────────────┐
+│ Legacy Implementation │      │ Module Implementation │
+│                       │      │                       │
+│ - Direct field access │      │ - Extension-based     │
+│ - Traditional code    │      │ - Plugin architecture │
+└───────────────────────┘      └───────────────────────┘
+```
+
+This approach allows gradual migration of physics modules while maintaining scientific consistency. Each physics domain defines standard extension properties that can be accessed either directly (for backward compatibility) or through the extension mechanism (for modularity). Configuration options control which implementation is used, enabling incremental validation and testing.
+
+Key components of this architecture:
+- Standard extension property registry for all physics domains
+- Accessor functions that abstract property access methods
+- Dual implementation support for transitional period
+- Pipeline-based execution of all physics modules
+- Physics-agnostic pipeline context with generic data sharing
+- Event-based inter-module communication

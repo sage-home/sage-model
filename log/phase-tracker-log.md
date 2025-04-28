@@ -33,9 +33,17 @@
 - [x] Add evolution diagnostics
 
 ### Phase 5.2: Converting Physics Modules ⏳ IN PROGRESS
-- [ ] Extract cooling module (GALAXY phase)
+- [ ] Create standard extension property registry for all physics domains
+- [ ] Implement accessor functions for galaxy physics properties
+- [ ] Add dual implementation support for transitional period
+- [ ] Make pipeline context physics-agnostic with generic data sharing
+- [ ] Extract infall module using extension properties (HALO and GALAXY phases)
+- [ ] Extract cooling module using extension properties (GALAXY phase)
+- [ ] Update join_galaxies_of_progenitors to use accessor functions
+- [ ] Update evolve_galaxies to use pipeline for infall calculations
+- [ ] Implement pipeline registration system for module loading
+- [ ] Add global configuration control for extension usage
 - [ ] Extract star formation and feedback module (GALAXY phase)
-- [ ] Extract infall module (HALO and GALAXY phases)
 - [ ] Extract mergers module (POST phase)
 - [ ] Extract disk instability module (GALAXY phase)
 - [ ] Extract reincorporation module (GALAXY phase)
