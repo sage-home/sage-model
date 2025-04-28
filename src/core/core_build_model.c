@@ -21,6 +21,7 @@
 #include "core_merger_queue.h"
 #include "core_event_system.h"
 #include "core_evolution_diagnostics.h"
+#include "core_galaxy_accessors.h"
 
 #include "../physics/model_misc.h"
 #include "../physics/model_mergers.h"
@@ -291,7 +292,11 @@ int physics_step_executor(
                     // Apply infall
                     if (p == centralgal) {
                         // Apply infall to central galaxy
-                        add_infall_to_hot(p, context->infall_gas / STEPS, galaxies);
+                        double infall_gas = 0.0;
+                        if (pipeline_context_get_data(context, "infallingGas", &infall_gas) != 0) {
+                            LOG_WARNING("Failed to get infallingGas from pipeline context, using zero as fallback");
+                        }
+                        add_infall_to_hot(p, infall_gas / STEPS, galaxies);
                         
                         // Reincorporation
                         if (run_params->physics.ReIncorporationFactor > 0.0) {
@@ -598,10 +603,11 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
                     }
                     galaxies[ngal].Mvir = get_virial_mass(halonr, halos, run_params);
 
-                    galaxies[ngal].Cooling = 0.0;
-                    galaxies[ngal].Heating = 0.0;
-                    galaxies[ngal].QuasarModeBHaccretionMass = 0.0;
-                    galaxies[ngal].OutflowRate = 0.0;
+                    // Replace direct field access with accessor functions
+                    galaxy_set_cooling(&galaxies[ngal], 0.0);
+                    galaxy_set_heating(&galaxies[ngal], 0.0);
+                    galaxy_set_quasar_accretion(&galaxies[ngal], 0.0);
+                    galaxy_set_outflow_rate(&galaxies[ngal], 0.0);
 
                     for(int step = 0; step < STEPS; step++) {
                         galaxies[ngal].SfrDisk[step] = galaxies[ngal].SfrBulge[step] = 0.0;
@@ -735,9 +741,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         return EXIT_FAILURE;
     }
     
-    // Calculate initial infall (still done outside the pipeline for now)
-    const double infallingGas = infall_recipe(ctx.centralgal, ctx.ngal, ctx.redshift, ctx.galaxies, run_params);
-
     // Set up pipeline context
     struct pipeline_context pipeline_ctx;
     pipeline_context_init(
@@ -753,9 +756,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         &ctx                                                // user_data (set to evolution context)
     );
     pipeline_ctx.current_galaxy = 0;
-    pipeline_ctx.infall_gas = infallingGas;
     pipeline_ctx.redshift = ctx.redshift; // Set the redshift from evolution context
-    
+
     // Initialize property serialization if module extensions are enabled
     if (global_extension_registry != NULL && global_extension_registry->num_extensions > 0) {
         int status = pipeline_init_property_serialization(&pipeline_ctx, PROPERTY_FLAG_SERIALIZE);
@@ -953,9 +955,14 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             continue;
         }
 
-        ctx.galaxies[p].Cooling *= inv_deltaT;
-        ctx.galaxies[p].Heating *= inv_deltaT;
-        ctx.galaxies[p].OutflowRate *= inv_deltaT;
+        // Use accessor functions for normalizing rates
+        double cooling = galaxy_get_cooling(&ctx.galaxies[p]);
+        double heating = galaxy_get_heating(&ctx.galaxies[p]);
+        double outflow = galaxy_get_outflow_rate(&ctx.galaxies[p]);
+        
+        galaxy_set_cooling(&ctx.galaxies[p], cooling * inv_deltaT);
+        galaxy_set_heating(&ctx.galaxies[p], heating * inv_deltaT);
+        galaxy_set_outflow_rate(&ctx.galaxies[p], outflow * inv_deltaT);
 
         if(p != ctx.centralgal) {
             ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons +=

@@ -33,16 +33,16 @@
 - [x] Add evolution diagnostics
 
 ### Phase 5.2: Converting Physics Modules ⏳ IN PROGRESS
-- [ ] Create standard extension property registry for all physics domains
-- [ ] Implement accessor functions for galaxy physics properties
-- [ ] Add dual implementation support for transitional period
-- [ ] Make pipeline context physics-agnostic with generic data sharing
-- [ ] Extract infall module using extension properties (HALO and GALAXY phases)
-- [ ] Extract cooling module using extension properties (GALAXY phase)
-- [ ] Update join_galaxies_of_progenitors to use accessor functions
-- [ ] Update evolve_galaxies to use pipeline for infall calculations
-- [ ] Implement pipeline registration system for module loading
-- [ ] Add global configuration control for extension usage
+- [x] Create standard extension property registry for all physics domains
+- [x] Implement accessor functions for galaxy physics properties
+- [x] Add dual implementation support for transitional period
+- [x] Make pipeline context physics-agnostic with generic data sharing
+- [x] Extract infall module using extension properties (HALO and GALAXY phases)
+- [x] Extract cooling module using extension properties (GALAXY phase)
+- [x] Update join_galaxies_of_progenitors to use accessor functions
+- [x] Update evolve_galaxies to use pipeline for infall calculations
+- [x] Implement pipeline registration system for module loading
+- [x] Add global configuration control for extension usage
 - [ ] Extract star formation and feedback module (GALAXY phase)
 - [ ] Extract mergers module (POST phase)
 - [ ] Extract disk instability module (GALAXY phase)
@@ -58,6 +58,7 @@
 - [ ] Implement performance benchmarks
 - [ ] Develop module compatibility tests
 - [ ] Add call graph validation
+- [ ] Cleanup to remove the dual implementation and commit fully to the extension-based approach
 
 ## Completion Criteria
 - The main galaxy evolution loop uses the pipeline system with proper phase handling

@@ -128,6 +128,7 @@ static int pipeline_event_id = -1;
 
 /* Phase name lookup for logging - used for debug outputs */
 #if defined(PIPELINE_DEBUG_LOGGING)
+static const char* phase_names[] = {
     "HALO",
     "GALAXY",
     "POST",
@@ -605,13 +606,15 @@ void pipeline_context_init(
 
     /* Initialize module callback state */
     context->current_galaxy = -1;
-    context->infall_gas = 0.0;
     context->redshift = 0.0;
     context->execution_phase = 0;
     context->caller_module_id = -1;
     context->current_function = NULL;
     context->callback_context = NULL;
     context->prop_ctx = NULL;
+    
+    /* Initialize shared data */
+    context->shared_data.num_entries = 0;
 
     LOG_DEBUG("Pipeline context initialized");
 }
@@ -1066,3 +1069,42 @@ void pipeline_context_cleanup(struct pipeline_context *context) {
 /* Note: The implementation of pipeline_execute_with_callback is now in 
  * physics_pipeline_executor.c to avoid function signature conflicts.
  */
+int pipeline_context_set_data(struct pipeline_context *context, const char *key, double value) {
+    if (!context || !key) {
+        LOG_ERROR("pipeline_context_set_data: NULL context or key");
+        return -1;
+    }
+    for (int i = 0; i < context->shared_data.num_entries; ++i) {
+        if (strncmp(context->shared_data.key[i], key, MAX_PIPELINE_DATA_KEY_LENGTH) == 0) {
+            context->shared_data.value[i] = value;
+            LOG_DEBUG("Updated shared data key '%s' to value %g", key, value);
+            return 0;
+        }
+    }
+    if (context->shared_data.num_entries >= MAX_PIPELINE_DATA_KEYS) {
+        LOG_ERROR("pipeline_context_set_data: shared data map full (key '%s')", key);
+        return -1;
+    }
+    strncpy(context->shared_data.key[context->shared_data.num_entries], key, MAX_PIPELINE_DATA_KEY_LENGTH-1);
+    context->shared_data.key[context->shared_data.num_entries][MAX_PIPELINE_DATA_KEY_LENGTH-1] = '\0';
+    context->shared_data.value[context->shared_data.num_entries] = value;
+    context->shared_data.num_entries++;
+    LOG_DEBUG("Added shared data key '%s' with value %g", key, value);
+    return 0;
+}
+
+int pipeline_context_get_data(struct pipeline_context *context, const char *key, double *value) {
+    if (!context || !key || !value) {
+        LOG_ERROR("pipeline_context_get_data: NULL context, key, or value pointer");
+        return -1;
+    }
+    for (int i = 0; i < context->shared_data.num_entries; ++i) {
+        if (strncmp(context->shared_data.key[i], key, MAX_PIPELINE_DATA_KEY_LENGTH) == 0) {
+            *value = context->shared_data.value[i];
+            LOG_DEBUG("Retrieved shared data key '%s' with value %g", key, *value);
+            return 0;
+        }
+    }
+    LOG_ERROR("pipeline_context_get_data: key '%s' not found", key);
+    return -1;
+}

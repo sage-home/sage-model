@@ -39,7 +39,8 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_module_template.c core/core_module_validation.c \
         core/core_module_debug.c core/core_module_parameter.c \
         core/core_module_error.c core/core_module_diagnostics.c \
-        core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c
+        core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \
+        core/core_galaxy_accessors.c core/core_pipeline_registry.c core/core_module_config.c
 
 # Physics model source files
 PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \
@@ -47,7 +48,8 @@ PHYSICS_SRC := physics/model_infall.c physics/model_cooling_heating.c \
         physics/model_disk_instability.c physics/model_reincorporation.c \
         physics/model_mergers.c physics/model_misc.c \
         physics/module_cooling.c physics/example_galaxy_extension.c \
-        physics/example_event_handler.c
+        physics/example_event_handler.c physics/standard_physics_properties.c \
+        physics/modules/infall_module.c physics/modules/cooling_module.c
 
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \

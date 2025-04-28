@@ -84,3 +84,7 @@
 2025-04-28: [Phase 5.2] Dual Implementation Approach for Physics Modularization
 - Rationale: Analysis revealed hard-coded physics in multiple core components, violating our goal of runtime functional modularity. Rather than a "big bang" replacement, we'll implement a dual approach with accessor functions that can switch between direct property access and extension-based access, along with standardized extension property definitions for all physics modules.
 - Impact: Allows gradual migration of physics modules while ensuring consistent scientific results. This minimizes risks during transition and enables incremental validation. Each physics domain will define standard extension properties, with a comprehensive implementation plan addressing core infrastructure dependencies through a phased approach.
+
+2025-04-28: [Phase 5.2] Extension-Based Property Access Method Selection
+- Rationale: When implementing the standard physics properties, we chose to use direct pointer access via `galaxy_extension_get_data()` rather than creating a new property-specific get/set function pattern. This approach is more memory-efficient (avoiding temporary double copies) and aligns with the existing extension system design.
+- Impact: Provides a consistent pattern for all physics property access while maintaining performance. The implementation still maintains proper error handling and module context segregation. This helps developers understand the memory model more clearly while working with galaxy extensions.

@@ -61,31 +61,34 @@ struct pipeline_step {
  * Contains runtime state for pipeline execution
  */
 struct pipeline_context {
-    struct params *params;               /* Global parameters */
-    struct GALAXY *galaxies;             /* Galaxy array */
-    int ngal;                            /* Number of galaxies */
-    int centralgal;                      /* Index of central galaxy */
-    double time;                         /* Current time */
-    double dt;                           /* Time step */
-    int halonr;                          /* Current halo number */
-    int step;                            /* Current step number */
-    void *user_data;                     /* Optional user data */
-    int current_galaxy;                  /* Index of current galaxy being processed */
-    double infall_gas;                   /* Result of infall calculation */
-    double redshift;                     /* Current redshift */
-    enum pipeline_execution_phase execution_phase; /* Current execution phase */
-
-    // Add callback tracking
-    int caller_module_id;              /* ID of module making callback */
-    const char *current_function;      /* Name of function being called */
-    void *callback_context;            /* Context data for current callback */
-    
-    // Property serialization context
-    void *prop_ctx;                    /* Property serialization context */
-
+    struct params *params;
+    struct GALAXY *galaxies;
+    int ngal;
+    int centralgal;
+    double time;
+    double dt;
+    int halonr;
+    int step;
+    void *user_data;
+    int current_galaxy;
+    double redshift;
+    enum pipeline_execution_phase execution_phase;
+    int caller_module_id;
+    const char *current_function;
+    void *callback_context;
+    void *prop_ctx;
     struct pipeline_phase phases[MAX_PIPELINE_PHASES];
     int num_phases;
     bool initialized;
+
+    // Generic data sharing mechanism
+    #define MAX_PIPELINE_DATA_KEYS 16
+    #define MAX_PIPELINE_DATA_KEY_LENGTH 32
+    struct {
+        char key[MAX_PIPELINE_DATA_KEYS][MAX_PIPELINE_DATA_KEY_LENGTH];
+        double value[MAX_PIPELINE_DATA_KEYS];
+        int num_entries;
+    } shared_data;
 };
 
 /**
@@ -482,6 +485,11 @@ int pipeline_init_property_serialization(struct pipeline_context *context, uint3
  * @return 0 on success, error code on failure
  */
 int pipeline_cleanup_property_serialization(struct pipeline_context *context);
+
+// Set a shared data value in the pipeline context
+int pipeline_context_set_data(struct pipeline_context *context, const char *key, double value);
+// Get a shared data value from the pipeline context
+int pipeline_context_get_data(struct pipeline_context *context, const char *key, double *value);
 
 #ifdef __cplusplus
 }

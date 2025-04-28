@@ -10,6 +10,7 @@
 #include "core_pipeline_system.h"
 #include "physics_pipeline_executor.h"
 #include "../physics/physics_modules.h"
+#include "core_galaxy_accessors.h"
 
 /* Forward declarations for legacy compatibility */
 double infall_recipe_compat(int centralgal, struct GALAXY *galaxies, int ngal, struct params *params);
@@ -53,6 +54,10 @@ int physics_step_executor(
                     /* Legacy cooling calculation */
                     cooling_recipe_compat(context->current_galaxy, context->dt,
                                        context->galaxies, context->params);
+                    // After legacy calculation, update via accessor for dual support
+                    double cooling_val = context->galaxies[context->current_galaxy].Cooling;
+                    galaxy_set_cooling(&context->galaxies[context->current_galaxy], cooling_val);
+                    LOG_DEBUG("[Dual] Set cooling property for galaxy %d via accessor (value=%g)", context->current_galaxy, cooling_val);
                     return 0;
                 }
                 return 0;
