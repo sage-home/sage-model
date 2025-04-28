@@ -8,7 +8,9 @@
 #include <math.h>
 
 // Internal constants and definitions
+#ifndef CUBE
 #define CUBE(x) ((x)*(x)*(x))
+#endif
 #define dmax(a,b) ((a)>(b)?(a):(b))
 
 // Module data structure

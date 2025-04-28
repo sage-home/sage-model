@@ -394,6 +394,8 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
 }
 
 static int cooling_module_initialize(struct params *params, void **module_data) {
+    /* Silence unused parameter warning */
+    (void)params;
     struct cooling_module_data *data = malloc(sizeof(struct cooling_module_data));
     if (!data) return -1;
     

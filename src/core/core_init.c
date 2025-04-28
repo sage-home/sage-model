@@ -128,10 +128,10 @@ void initialize_module_system(struct params *run_params)
             LOG_INFO("Discovered %d modules", modules_found);
             
             /* Attempt to find and activate default modules for each physics type */
-            for (int type = MODULE_TYPE_COOLING; type < MODULE_TYPE_MAX; type++) {
+            for (int type = MODULE_TYPE_COOLING; type < (int)MODULE_TYPE_MAX; type++) {
                 /* Look for module of this type */
                 for (int i = 0; i < global_module_registry->num_modules; i++) {
-                    if (global_module_registry->modules[i].module->type == type) {
+                    if (global_module_registry->modules[i].module->type == (enum module_type)type) {
                         /* Found a module of this type, activate it */
                         status = module_set_active(global_module_registry->modules[i].module->module_id);
                         if (status == MODULE_STATUS_SUCCESS) {
