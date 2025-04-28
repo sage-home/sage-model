@@ -4,6 +4,7 @@
 extern "C" {
 #endif
 
+    #include <stdbool.h>  /* Added for bool type */
     #include "core_allvars.h"
 
     /* Main initialization and cleanup functions */

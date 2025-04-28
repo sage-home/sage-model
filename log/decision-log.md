@@ -88,3 +88,7 @@
 2025-04-28: [Phase 5.2] Single Approach for Physics Modularization
 - Rationale: Analysis revealed hard-coded physics in multiple core components, violating our goal of runtime functional modularity. Some of the code uses a dual approach, which we will need to update. Phase 5.2 is about moving away from the traditional physics fallback implementation. All traditional physics modules will need to be ported and be fully self contained within their respective .c/h physics module files.
 - Impact: By the end of Phase 5, we will have achieved our primary refactoring goal: "Runtime Functional Modularity: Implement a dynamic plugin architecture allowing runtime insertion, replacement, reordering, or removal of physics modules without recompilation."
+
+2025-04-28: [Phase 5.2] Enforcing Runtime Modularity in Core Systems
+- Rationale: Analysis of core initialization code revealed direct dependencies on example implementation code (specifically example_event_handler.h/c). This violates our principle of runtime functional modularity, where core code should initialize infrastructure without embedding specific implementations.
+- Impact: Modified core event system initialization to remove these direct dependencies, ensuring proper separation between infrastructure and implementation. Established pattern where event handlers are registered by modules during their initialization phase rather than in core code. This improves consistency with our module architecture and makes the core more maintainable.

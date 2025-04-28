@@ -1,142 +1,27 @@
-#include "cooling_module.h"
-#include "../../core/core_event_system.h"
-#include "../../core/core_logging.h"
-#include "../../core/core_pipeline_system.h"
-#include "../../core/core_module_system.h"
-#include "../../core/core_cool_func.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
-// Internal constants for the cooling module
-#define PROTONMASS 1.6726e-24
-#define BOLTZMANN 1.3806e-16
-#define SEC_PER_YEAR 3.155e7
-#define SOLAR_MASS 1.989e33
+#include "../core/core_allvars.h"
+#include "../core/core_cool_func.h"
+#include "../core/core_parameter_views.h"
+#include "../core/core_event_system.h"
+#include "../core/core_logging.h"
 
-// Module data structure
-struct cooling_module_data {
-    int module_id;
-    struct cooling_property_ids prop_ids;
-};
+#include "../physics/model_cooling_heating.h"
+#include "../physics/model_misc.h"
 
-// Internal static property ID storage
-static struct cooling_property_ids cooling_ids = { -1, -1, -1 };
 
-// Helper function to get metallicity ratio safely
-static double get_metallicity(double mass, double metals) {
-    if (mass > 0.0) {
-        return metals / mass;
-    }
-    return 0.0;
-}
-
-// Property registration implementation
-int register_cooling_properties(int module_id) {
-    LOG_DEBUG("register_cooling_properties() called for module_id=%d", module_id);
-    galaxy_property_t prop;
-    memset(&prop, 0, sizeof(prop));
-    prop.module_id = module_id;
-    prop.size = sizeof(double);
-    
-    strcpy(prop.name, "cooling_rate");
-    strcpy(prop.description, "Gas cooling rate (Msun/yr)");
-    strcpy(prop.units, "Msun/yr");
-    cooling_ids.cooling_rate_id = galaxy_extension_register(&prop);
-    if (cooling_ids.cooling_rate_id < 0) {
-        LOG_ERROR("Failed to register cooling_rate property");
-        return -1;
-    }
-    
-    strcpy(prop.name, "heating_rate");
-    strcpy(prop.description, "Gas heating rate (Msun/yr)");
-    strcpy(prop.units, "Msun/yr");
-    cooling_ids.heating_rate_id = galaxy_extension_register(&prop);
-    if (cooling_ids.heating_rate_id < 0) {
-        LOG_ERROR("Failed to register heating_rate property");
-        return -1;
-    }
-    
-    strcpy(prop.name, "cooling_radius");
-    strcpy(prop.description, "Cooling radius (kpc)");
-    strcpy(prop.units, "kpc");
-    cooling_ids.cooling_radius_id = galaxy_extension_register(&prop);
-    if (cooling_ids.cooling_radius_id < 0) {
-        LOG_ERROR("Failed to register cooling_radius property");
-        return -1;
-    }
-    return 0;
-}
-
-// Getter for property ID struct
-const struct cooling_property_ids* get_cooling_property_ids(void) { 
-    return &cooling_ids; 
-}
-
-// Utility accessors
-double galaxy_get_cooling_rate(const struct GALAXY *galaxy) {
-    int prop_id = cooling_ids.cooling_rate_id;
-    if (prop_id < 0) {
-        LOG_ERROR("cooling_rate property not registered");
-        return 0.0;
-    }
-    double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
-    if (value_ptr == NULL) {
-        LOG_ERROR("Failed to get cooling_rate property for galaxy");
-        return 0.0;
-    }
-    return *value_ptr;
-}
-
-void galaxy_set_cooling_rate(struct GALAXY *galaxy, double value) {
-    int prop_id = cooling_ids.cooling_rate_id;
-    if (prop_id < 0) {
-        LOG_ERROR("cooling_rate property not registered");
-        return;
-    }
-    double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
-    if (value_ptr == NULL) {
-        LOG_ERROR("Failed to set cooling_rate property for galaxy");
-        return;
-    }
-    *value_ptr = value;
-}
-
-double galaxy_get_heating_rate(const struct GALAXY *galaxy) {
-    int prop_id = cooling_ids.heating_rate_id;
-    if (prop_id < 0) {
-        LOG_ERROR("heating_rate property not registered");
-        return 0.0;
-    }
-    double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
-    if (value_ptr == NULL) {
-        LOG_ERROR("Failed to get heating_rate property for galaxy");
-        return 0.0;
-    }
-    return *value_ptr;
-}
-
-void galaxy_set_heating_rate(struct GALAXY *galaxy, double value) {
-    int prop_id = cooling_ids.heating_rate_id;
-    if (prop_id < 0) {
-        LOG_ERROR("heating_rate property not registered");
-        return;
-    }
-    double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
-    if (value_ptr == NULL) {
-        LOG_ERROR("Failed to set heating_rate property for galaxy");
-        return;
-    }
-    *value_ptr = value;
-}
-
-// Get metal-dependent cooling rate for gas
-double get_metaldependent_cooling_rate(double logTemp, double logZ) {
-    return get_rate_from_tables(logTemp, logZ);
-}
-
-// Primary cooling recipe implementation
-double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct cooling_params_view *cooling_params) {
+/*
+ * Main cooling calculation function
+ * 
+ * Calculates the amount of gas that cools from the hot halo onto the galaxy disk.
+ * Uses parameter views for improved modularity.
+ */
+double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct cooling_params_view *cooling_params)
+{
     double coolingGas;
 
     if(galaxies[gal].HotGas > 0.0 && galaxies[gal].Vvir > 0.0) {
@@ -194,9 +79,30 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
     return coolingGas;
 }
 
-// AGN heating implementation
+/*
+ * Compatibility wrapper for cooling_recipe
+ * 
+ * Provides backwards compatibility with the old interface while
+ * using the new parameter view-based implementation internally.
+ */
+double cooling_recipe_compat(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+{
+    struct cooling_params_view cooling_params;
+    initialize_cooling_params_view(&cooling_params, run_params);
+    return cooling_recipe(gal, dt, galaxies, &cooling_params);
+}
+
+
+
+/*
+ * AGN heating calculation
+ * 
+ * Models the impact of AGN feedback on gas cooling.
+ * Uses parameter views for improved modularity.
+ */
 double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, 
-                     const double rcool, struct GALAXY *galaxies, const struct agn_params_view *agn_params) {
+                     const double rcool, struct GALAXY *galaxies, const struct agn_params_view *agn_params)
+{
     double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity;
 
 	// first update the cooling rate based on the past AGN heating
@@ -264,7 +170,7 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
         // cooling mass that can be suppresed from AGN heating
         AGNheating = AGNcoeff * AGNaccreted;
 
-        // The above is the maximal heating rate. We now limit it to the current cooling rate
+        /// the above is the maximal heating rate. we now limit it to the current cooling rate
         if(AGNheating > coolingGas) {
             AGNaccreted = coolingGas / AGNcoeff;
             AGNheating = coolingGas;
@@ -292,8 +198,25 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
     return coolingGas;
 }
 
-// Function to transfer cooled gas to the galaxy
-void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies) {
+/*
+ * Compatibility wrapper for do_AGN_heating
+ * 
+ * Provides backwards compatibility with the old interface while
+ * using the new parameter view-based implementation internally.
+ */
+double do_AGN_heating_compat(double coolingGas, const int centralgal, const double dt, 
+                           const double x, const double rcool, struct GALAXY *galaxies, 
+                           const struct params *run_params)
+{
+    struct agn_params_view agn_params;
+    initialize_agn_params_view(&agn_params, run_params);
+    return do_AGN_heating(coolingGas, centralgal, dt, x, rcool, galaxies, &agn_params);
+}
+
+
+
+void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies)
+{
     // add the fraction 1/STEPS of the total cooling gas to the cold disk
     if(coolingGas > 0.0) {
         double actual_cooled_gas = 0.0;
@@ -325,18 +248,14 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
             }
             
             // Prepare cooling event data
-            struct { 
-                float cooling_rate; 
-                float cooling_radius; 
-                float hot_gas_cooled; 
-            } cooling_data = {
+            event_cooling_completed_data_t cooling_data = {
                 .cooling_rate = (float)(actual_cooled_gas),
                 .cooling_radius = (float)(cooling_radius),
                 .hot_gas_cooled = (float)(actual_cooled_gas)
             };
             
             // Emit the cooling event
-            event_emit(
+            event_status_t status = event_emit(
                 EVENT_COOLING_COMPLETED,    // Event type
                 0,                          // Source module ID (0 = traditional code)
                 centralgal,                 // Galaxy index
@@ -345,69 +264,11 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
                 sizeof(cooling_data),       // Size of event data
                 EVENT_FLAG_NONE             // No special flags
             );
+            
+            if (status != EVENT_STATUS_SUCCESS) {
+                LOG_ERROR("Failed to emit cooling event for galaxy %d: status=%d", 
+                       centralgal, status);
+            }
         }
     }
-}
-
-static int cooling_module_initialize(struct params *params, void **module_data) {
-    // Unused parameter
-    (void)params;
-    
-    struct cooling_module_data *data = malloc(sizeof(struct cooling_module_data));
-    if (!data) return -1;
-    
-    // Get the current module ID (or use 0 if not available)
-    int module_id = module_get_active_by_type(MODULE_TYPE_COOLING, NULL, NULL);
-    if (module_id < 0) module_id = 0;
-    
-    register_cooling_properties(module_id);
-    data->prop_ids = cooling_ids;
-    data->module_id = module_id;
-    *module_data = data;
-    return 0;
-}
-
-static int cooling_module_execute_galaxy_phase(void *module_data, struct pipeline_context *context) {
-    struct cooling_module_data *data = (struct cooling_module_data*)module_data;
-    struct GALAXY *galaxies = context->galaxies;
-    int p = context->current_galaxy;
-    double dt = context->dt / STEPS;
-    
-    // Call cooling calculation
-    struct cooling_params_view cooling_params;
-    initialize_cooling_params_view(&cooling_params, context->params);
-    double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
-    cool_gas_onto_galaxy(p, coolingGas, galaxies);
-    galaxy_set_cooling_rate(&galaxies[p], 0.5 * coolingGas * galaxies[p].Vvir * galaxies[p].Vvir);
-    
-    // Emit event if needed
-    if (event_system_is_initialized() && coolingGas > 0.0) {
-        struct { 
-            float cooling_rate; 
-            float cooling_radius; 
-            float hot_gas_cooled; 
-        } cooling_data = {
-            .cooling_rate = (float)(coolingGas / dt),
-            .cooling_radius = 0.0f, // Could be calculated if needed
-            .hot_gas_cooled = (float)coolingGas
-        };
-        event_emit(EVENT_COOLING_COMPLETED, data->module_id, p, context->step, &cooling_data, sizeof(cooling_data), EVENT_FLAG_NONE);
-    }
-    return 0;
-}
-
-struct base_module *cooling_module_create(void) {
-    struct base_module *module = malloc(sizeof(struct base_module));
-    if (!module) return NULL;
-    memset(module, 0, sizeof(struct base_module));
-    snprintf(module->name, MAX_MODULE_NAME, "StandardCooling");
-    snprintf(module->version, MAX_MODULE_VERSION, "1.0.0");
-    snprintf(module->author, MAX_MODULE_AUTHOR, "SAGE Team");
-    module->type = MODULE_TYPE_COOLING;
-    module->module_id = -1;
-    module->initialize = cooling_module_initialize;
-    module->cleanup = NULL;
-    module->execute_galaxy_phase = cooling_module_execute_galaxy_phase;
-    module->phases = PIPELINE_PHASE_GALAXY;
-    return module;
 }

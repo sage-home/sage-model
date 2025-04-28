@@ -119,3 +119,13 @@
 - Implemented pipeline registration and global configuration control systems
 - Fixed various integration issues to ensure proper compilation and testing
 - Modified files: src/core/core_galaxy_accessors.h, src/core/core_galaxy_accessors.c, src/core/core_pipeline_registry.h, src/core/core_pipeline_registry.c, src/core/core_module_config.h, src/core/core_module_config.c, src/core/core_pipeline_system.c, src/physics/standard_physics_properties.h, src/physics/standard_physics_properties.c, src/physics/modules/infall_module.h, src/physics/modules/infall_module.c, src/physics/modules/cooling_module.h, src/physics/modules/cooling_module.c, Makefile
+
+2025-04-28: [Phase 5.2] Improved Core Runtime Modularity with Event System Enhancement
+- Removed direct dependency on example event handlers from core initialization code
+- Refactored initialize_event_system() and cleanup_event_system() to follow runtime modularity principles
+- Made the core event system infrastructure independent of specific handler implementations
+- Ensured proper separation of concerns between core system initialization and module-specific functionality
+- Established pattern for event handlers to be registered by modules during their initialization phase
+- Preserved event logging capabilities for debugging while removing hard-coded implementation dependencies
+- Modified files: src/core/core_init.c, src/physics/modules/cooling_module.h, src/physics/modules/cooling_module.c, src/physics/modules/infall_module.h, src/physics/modules/infall_module.c
+- Moved files: src/physics/model_cooling_heating.c, src/physics/model_cooling_heating.h, src/physics/model_infall.c, src/physics/model_infall.h to src/physics/old/

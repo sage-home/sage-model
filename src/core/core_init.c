@@ -22,10 +22,6 @@
 #include "core_memory_pool.h"
 #include "core_module_callback.h"
 
-/* Include physics module interfaces */
-#include "../physics/module_cooling.h"
-#include "../physics/example_event_handler.h"
-
 /* These functions do not need to be exposed externally */
 double integrand_time_to_present(const double a, void *param);
 void read_snap_list(struct params *run_params);
@@ -115,56 +111,52 @@ void initialize_module_system(struct params *run_params)
         /* Continue anyway - configure handles NULL params with defaults */
     }
     
-    /* Create and register the default cooling module */
-    struct cooling_module *cooling_module = create_default_cooling_module();
-    if (cooling_module == NULL) {
-        LOG_ERROR("Failed to create default cooling module");
-        module_system_cleanup();  /* Clean up to avoid memory leaks */
-        return;
-    }
-    
-    /* Register the module with the system */
-    status = cooling_module_register(cooling_module);
+    /* Set up default module search paths */
+    status = module_add_search_path("modules");
     if (status != MODULE_STATUS_SUCCESS) {
-        LOG_ERROR("Failed to register cooling module, status = %d", status);
-        module_system_cleanup();  /* Clean up to avoid memory leaks */
-        return;
+        LOG_WARNING("Failed to add default module search path, status = %d", status);
     }
     
-    /* Initialize the cooling module */
-    status = cooling_module_initialize(cooling_module, run_params);
+    status = module_add_search_path("src/physics/modules");
     if (status != MODULE_STATUS_SUCCESS) {
-        LOG_ERROR("Failed to initialize cooling module, status = %d", status);
-        module_system_cleanup();  /* Clean up to avoid memory leaks */
-        return;
+        LOG_WARNING("Failed to add physics module search path, status = %d", status);
     }
     
-    /* Set the module as active */
-    status = module_set_active(cooling_module->base.module_id);
-    if (status != MODULE_STATUS_SUCCESS) {
-        LOG_ERROR("Failed to set cooling module as active, status = %d", status);
-        module_system_cleanup();  /* Clean up to avoid memory leaks */
-        return;
-    }
-    
-    LOG_INFO("Default cooling module registered and activated");
-    
-    /* Discover additional modules if enabled and registry is initialized */
+    /* Discover modules if registry is initialized */
     if (global_module_registry != NULL && global_module_registry->discovery_enabled) {
         LOG_INFO("Starting module discovery");
         
         int modules_found = module_discover(run_params);
         
         if (modules_found > 0) {
-            LOG_INFO("Discovered %d additional modules", modules_found);
+            LOG_INFO("Discovered %d modules", modules_found);
+            
+            /* Attempt to find and activate default modules for each physics type */
+            for (int type = MODULE_TYPE_COOLING; type < MODULE_TYPE_MAX; type++) {
+                /* Look for module of this type */
+                for (int i = 0; i < global_module_registry->num_modules; i++) {
+                    if (global_module_registry->modules[i].module->type == type) {
+                        /* Found a module of this type, activate it */
+                        status = module_set_active(global_module_registry->modules[i].module->module_id);
+                        if (status == MODULE_STATUS_SUCCESS) {
+                            LOG_INFO("Activated %s module: %s", 
+                                    module_type_name(type), 
+                                    global_module_registry->modules[i].module->name);
+                            break;
+                        }
+                    }
+                }
+            }
         } else if (modules_found < 0) {
-            LOG_ERROR("Module discovery failed, status = %d", modules_found);
-            /* Continue anyway - failing to discover additional modules is not fatal */
+            LOG_WARNING("Module discovery failed, status = %d", modules_found);
+            LOG_WARNING("Using fallback legacy physics implementations");
         } else {
-            LOG_DEBUG("No additional modules found");
+            LOG_WARNING("No modules found during discovery");
+            LOG_WARNING("Using fallback legacy physics implementations");
         }
     } else {
-        LOG_DEBUG("Module discovery not enabled or registry not initialized");
+        LOG_WARNING("Module discovery not enabled or registry not initialized");
+        LOG_WARNING("Using fallback legacy physics implementations");
     }
 }
 
@@ -360,7 +352,8 @@ void initialize_galaxy_extension_system(void)
 /**
  * Initialize the event system
  * 
- * Sets up the event system and registers example event handlers.
+ * Sets up the event system infrastructure without directly registering handlers.
+ * Event handlers should be registered by modules during their initialization.
  */
 void initialize_event_system(void)
 {
@@ -371,14 +364,19 @@ void initialize_event_system(void)
         return;
     }
     
-    /* Register example event handlers for demonstration */
-    int handler_status = register_example_event_handlers();
-    if (handler_status != 0) {
-        LOG_ERROR("Failed to register example event handlers, status = %d", handler_status);
-        return;
+    /* Enable event logging for debugging */
+    status = event_enable_logging(
+        true,   /* Enable logging */
+        0,      /* Log all event types */
+        NULL    /* Use default logging function */
+    );
+    
+    if (status != EVENT_STATUS_SUCCESS) {
+        LOG_WARNING("Failed to enable event logging, status = %d", status);
+        /* Continue anyway - logging is not critical */
     }
     
-    LOG_INFO("Event system initialized with example handlers");
+    LOG_INFO("Event system initialized");
 }
 
 /*
@@ -399,18 +397,11 @@ void cleanup_galaxy_extension_system(void)
 /**
  * Clean up the event system
  * 
- * Unregisters event handlers and cleans up resources.
+ * Releases resources used by the event system.
+ * Any event handlers registered by modules will be cleaned up automatically.
  */
 void cleanup_event_system(void)
 {
-    /* Unregister example event handlers */
-    int handler_status = unregister_example_event_handlers();
-    if (handler_status != 0) {
-        LOG_ERROR("Failed to unregister example event handlers, status = %d", handler_status);
-    } else {
-        LOG_DEBUG("Example event handlers unregistered");
-    }
-    
     /* Clean up the event system */
     event_status_t status = event_system_cleanup();
     if (status != EVENT_STATUS_SUCCESS) {
