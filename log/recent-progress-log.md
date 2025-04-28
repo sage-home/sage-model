@@ -141,3 +141,13 @@
 - Modified files: src/core/core_init.c, src/core/core_init.h, src/core/core_build_model.c, src/core/core_galaxy_accessors.c, src/core/core_galaxy_accessors.h, src/physics/modules/cooling_module.c, src/physics/modules/cooling_module.h, Makefile
 - Added files: src/physics/modules/cooling_tables.c, src/physics/modules/cooling_tables.h, src/physics/modules/agn_module.h, src/physics/modules/feedback_module.h
 - Removed files: src/core/core_cool_func.c, src/core/core_cool_func.h, src/physics/cooling_compat.c, src/physics/cooling_compat.h
+
+2025-04-28: [Phase 5.2] Comprehensive Core Modularity Implementation Plan
+- Completed deep analysis of remaining modularity challenges in the codebase
+- Created detailed implementation plan to fully eliminate dual implementation path
+- Designed directory restructuring approach to separate migrated and unmigrated code
+- Mapped out precise sequence for updating core execution framework with no legacy fallbacks
+- Defined enhanced module API with standardized interfaces for all physics components
+- Established roadmap for module parameter handling, callbacks, and event systems
+- Added validation tests to verify core can run with no physics modules
+- Modified files: log/decision-log.md, log/phase-tracker-log.md
