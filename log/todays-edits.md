@@ -21,3 +21,14 @@
 2025-04-28 14:30: edit include section in `src/core/core_init.c` - Removed dependency on example_event_handler.h to improve runtime modularity
 2025-04-28 14:45: edit function `initialize_event_system()` in `src/core/core_init.c` - Removed direct references to example handlers to maintain clean core implementation
 2025-04-28 15:00: edit function `cleanup_event_system()` in `src/core/core_init.c` - Removed direct references to example handlers to maintain clean core implementation
+2025-04-28 18:15: new file `src/physics/modules/cooling_tables.h` - Created header for cooling table functionality moved from core
+2025-04-28 18:20: new file `src/physics/modules/cooling_tables.c` - Moved cooling table functionality from core_cool_func.c to cooling module
+2025-04-28 18:25: edit file `src/core/core_galaxy_accessors.h` - Replaced physics-specific accessors with generic accessor registration system
+2025-04-28 18:30: edit file `src/core/core_galaxy_accessors.c` - Implemented generic property accessor registration functionality
+2025-04-28 18:35: new file `src/physics/modules/agn_module.h` - Added stub for AGN module accessors
+2025-04-28 18:40: new file `src/physics/modules/feedback_module.h` - Added stub for feedback module accessors
+2025-04-28 18:45: edit file `src/physics/modules/cooling_module.c` - Integrated cooling_compat functionality and added accessor registration
+2025-04-28 18:50: edit file `src/core/core_build_model.c` - Updated to use proper module accessor functions
+2025-04-28 18:55: edit file `Makefile` - Updated to reflect removal of core_cool_func.c and cooling_compat.c
+2025-04-28 19:00: removed files `src/core/core_cool_func.c` and `src/core/core_cool_func.h` - Eliminated physics-specific code from core
+2025-04-28 19:05: removed files `src/physics/cooling_compat.c` and `src/physics/cooling_compat.h` - Integrated into cooling module

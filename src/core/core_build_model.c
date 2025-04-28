@@ -28,7 +28,9 @@
 #include "../physics/model_infall.h"
 #include "../physics/model_reincorporation.h"
 #include "../physics/model_starformation_and_feedback.h"
-#include "../physics/model_cooling_heating.h"
+#include "../physics/modules/cooling_module.h"
+#include "../physics/modules/agn_module.h"
+#include "../physics/modules/feedback_module.h"
 #include "../core/core_parameter_views.h"
 
 /**
@@ -604,8 +606,8 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
                     galaxies[ngal].Mvir = get_virial_mass(halonr, halos, run_params);
 
                     // Replace direct field access with accessor functions
-                    galaxy_set_cooling(&galaxies[ngal], 0.0);
-                    galaxy_set_heating(&galaxies[ngal], 0.0);
+                    galaxy_set_cooling_rate(&galaxies[ngal], 0.0);
+                    galaxy_set_heating_rate(&galaxies[ngal], 0.0);
                     galaxy_set_quasar_accretion(&galaxies[ngal], 0.0);
                     galaxy_set_outflow_rate(&galaxies[ngal], 0.0);
 
@@ -956,12 +958,12 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         }
 
         // Use accessor functions for normalizing rates
-        double cooling = galaxy_get_cooling(&ctx.galaxies[p]);
-        double heating = galaxy_get_heating(&ctx.galaxies[p]);
+        double cooling = galaxy_get_cooling_rate(&ctx.galaxies[p]);
+        double heating = galaxy_get_heating_rate(&ctx.galaxies[p]);
         double outflow = galaxy_get_outflow_rate(&ctx.galaxies[p]);
         
-        galaxy_set_cooling(&ctx.galaxies[p], cooling * inv_deltaT);
-        galaxy_set_heating(&ctx.galaxies[p], heating * inv_deltaT);
+        galaxy_set_cooling_rate(&ctx.galaxies[p], cooling * inv_deltaT);
+        galaxy_set_heating_rate(&ctx.galaxies[p], heating * inv_deltaT);
         galaxy_set_outflow_rate(&ctx.galaxies[p], outflow * inv_deltaT);
 
         if(p != ctx.centralgal) {

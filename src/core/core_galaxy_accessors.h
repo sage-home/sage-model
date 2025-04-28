@@ -1,118 +1,71 @@
 #pragma once
 
 #include "core_allvars.h"
-#include "../physics/standard_physics_properties.h"
+
+/**
+ * @file core_galaxy_accessors.h
+ * @brief Generic accessor interface for galaxy properties
+ * 
+ * This file provides a modular accessor system for galaxy properties.
+ * All physics-specific accessors should be defined in their respective modules,
+ * not in the core. This file only defines the infrastructure for module-based
+ * property access.
+ */
 
 // Configuration for accessor behavior
 extern int use_extension_properties;  // 0 = direct access, 1 = extensions
 
-// Cooling accessors
-// Direct access
-static inline double galaxy_get_cooling_direct(const struct GALAXY *galaxy) {
-    return galaxy->Cooling;
-}
-static inline void galaxy_set_cooling_direct(struct GALAXY *galaxy, double value) {
-    galaxy->Cooling = value;
-}
-// Extension access
-static inline double galaxy_get_cooling_extension(const struct GALAXY *galaxy) {
-    return galaxy_get_cooling_rate(galaxy);
-}
-static inline void galaxy_set_cooling_extension(struct GALAXY *galaxy, double value) {
-    galaxy_set_cooling_rate(galaxy, value);
-}
-// Unified accessors
-static inline double galaxy_get_cooling(const struct GALAXY *galaxy) {
-    return use_extension_properties ? galaxy_get_cooling_extension(galaxy) : galaxy_get_cooling_direct(galaxy);
-}
-static inline void galaxy_set_cooling(struct GALAXY *galaxy, double value) {
-    if (use_extension_properties) {
-        galaxy_set_cooling_extension(galaxy, value);
-    } else {
-        galaxy_set_cooling_direct(galaxy, value);
-    }
-}
-// Heating accessors
-// Direct access
-static inline double galaxy_get_heating_direct(const struct GALAXY *galaxy) {
-    return galaxy->Heating;
-}
-static inline void galaxy_set_heating_direct(struct GALAXY *galaxy, double value) {
-    galaxy->Heating = value;
-}
-// Extension access
-static inline double galaxy_get_heating_extension(const struct GALAXY *galaxy) {
-    const struct cooling_property_ids *ids = get_cooling_property_ids();
-    double *heating = galaxy_extension_get_data(galaxy, ids->heating_rate_id);
-    return heating ? *heating : 0.0;
-}
-static inline void galaxy_set_heating_extension(struct GALAXY *galaxy, double value) {
-    const struct cooling_property_ids *ids = get_cooling_property_ids();
-    double *heating = galaxy_extension_get_data(galaxy, ids->heating_rate_id);
-    if (heating) *heating = value;
-}
-// Unified accessors
-static inline double galaxy_get_heating(const struct GALAXY *galaxy) {
-    return use_extension_properties ? galaxy_get_heating_extension(galaxy) : galaxy_get_heating_direct(galaxy);
-}
-static inline void galaxy_set_heating(struct GALAXY *galaxy, double value) {
-    if (use_extension_properties) {
-        galaxy_set_heating_extension(galaxy, value);
-    } else {
-        galaxy_set_heating_direct(galaxy, value);
-    }
-}
+/**
+ * Typedef for galaxy property get/set function pointers
+ * These are used by modules to register their accessor functions
+ */
+typedef double (*galaxy_get_property_fn)(const struct GALAXY *galaxy);
+typedef void (*galaxy_set_property_fn)(struct GALAXY *galaxy, double value);
 
-// AGN accessors
-// Direct access
-static inline double galaxy_get_quasar_accretion_direct(const struct GALAXY *galaxy) {
-    return galaxy->QuasarModeBHaccretionMass;
-}
-static inline void galaxy_set_quasar_accretion_direct(struct GALAXY *galaxy, double value) {
-    galaxy->QuasarModeBHaccretionMass = value;
-}
-// Extension access
-static inline double galaxy_get_quasar_accretion_extension(const struct GALAXY *galaxy) {
-    return galaxy_get_quasar_accretion_rate(galaxy);
-}
-static inline void galaxy_set_quasar_accretion_extension(struct GALAXY *galaxy, double value) {
-    galaxy_set_quasar_accretion_rate(galaxy, value);
-}
-// Unified accessors
-static inline double galaxy_get_quasar_accretion(const struct GALAXY *galaxy) {
-    return use_extension_properties ? galaxy_get_quasar_accretion_extension(galaxy) : galaxy_get_quasar_accretion_direct(galaxy);
-}
-static inline void galaxy_set_quasar_accretion(struct GALAXY *galaxy, double value) {
-    if (use_extension_properties) {
-        galaxy_set_quasar_accretion_extension(galaxy, value);
-    } else {
-        galaxy_set_quasar_accretion_direct(galaxy, value);
-    }
-}
+/**
+ * Runtime property registration structure
+ * Used by modules to register their property access functions
+ */
+struct galaxy_property_accessor {
+    const char *property_name;          // Name of the property
+    galaxy_get_property_fn get_fn;      // Function to get property value
+    galaxy_set_property_fn set_fn;      // Function to set property value
+    int module_id;                      // ID of module that registered this accessor
+};
 
-// Outflow accessors
-// Direct access
-static inline double galaxy_get_outflow_rate_direct(const struct GALAXY *galaxy) {
-    return galaxy->OutflowRate;
-}
-static inline void galaxy_set_outflow_rate_direct(struct GALAXY *galaxy, double value) {
-    galaxy->OutflowRate = value;
-}
-// Extension access
-static inline double galaxy_get_outflow_rate_extension(const struct GALAXY *galaxy) {
-    return galaxy_get_outflow_value(galaxy);
-}
-static inline void galaxy_set_outflow_rate_extension(struct GALAXY *galaxy, double value) {
-    galaxy_set_outflow_value(galaxy, value);
-}
-// Unified accessors
-static inline double galaxy_get_outflow_rate(const struct GALAXY *galaxy) {
-    return use_extension_properties ? galaxy_get_outflow_rate_extension(galaxy) : galaxy_get_outflow_rate_direct(galaxy);
-}
-static inline void galaxy_set_outflow_rate(struct GALAXY *galaxy, double value) {
-    if (use_extension_properties) {
-        galaxy_set_outflow_rate_extension(galaxy, value);
-    } else {
-        galaxy_set_outflow_rate_direct(galaxy, value);
-    }
-}
+// Function declarations for the accessor registry system
+// These will be implemented in core_galaxy_accessors.c
+
+/**
+ * Register a property accessor
+ * 
+ * @param accessor Accessor structure with function pointers
+ * @return Accessor ID on success, negative value on failure
+ */
+int register_galaxy_property_accessor(const struct galaxy_property_accessor *accessor);
+
+/**
+ * Find a property accessor by name
+ * 
+ * @param property_name Name of the property to find
+ * @return Accessor ID on success, negative value if not found
+ */
+int find_galaxy_property_accessor(const char *property_name);
+
+/**
+ * Get a property value using a registered accessor
+ * 
+ * @param galaxy Galaxy to get property from
+ * @param accessor_id ID of the registered accessor
+ * @return Property value
+ */
+double get_galaxy_property(const struct GALAXY *galaxy, int accessor_id);
+
+/**
+ * Set a property value using a registered accessor
+ * 
+ * @param galaxy Galaxy to set property on
+ * @param accessor_id ID of the registered accessor
+ * @param value Value to set
+ */
+void set_galaxy_property(struct GALAXY *galaxy, int accessor_id, double value);

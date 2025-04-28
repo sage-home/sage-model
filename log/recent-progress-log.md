@@ -129,3 +129,15 @@
 - Preserved event logging capabilities for debugging while removing hard-coded implementation dependencies
 - Modified files: src/core/core_init.c, src/physics/modules/cooling_module.h, src/physics/modules/cooling_module.c, src/physics/modules/infall_module.h, src/physics/modules/infall_module.c
 - Moved files: src/physics/model_cooling_heating.c, src/physics/model_cooling_heating.h, src/physics/model_infall.c, src/physics/model_infall.h to src/physics/old/
+
+2025-04-28: [Phase 5.2] Complete Physics Module Independence via Self-contained Implementation
+- Eliminated physics-specific code from core components to achieve true modularity
+- Moved cooling table functionality from core_cool_func.c to a dedicated cooling_tables.c/h in the cooling module
+- Implemented a generic accessor registration system in core_galaxy_accessors.c/h to replace direct property access
+- Created module-specific property accessors in respective modules with proper registration
+- Integrated cooling_compat functionality directly into cooling_module.c for better encapsulation
+- Fixed application to properly use cooling_rate accessors throughout the codebase
+- Updated the Makefile to reflect the changes and remove obsolete references
+- Modified files: src/core/core_init.c, src/core/core_init.h, src/core/core_build_model.c, src/core/core_galaxy_accessors.c, src/core/core_galaxy_accessors.h, src/physics/modules/cooling_module.c, src/physics/modules/cooling_module.h, Makefile
+- Added files: src/physics/modules/cooling_tables.c, src/physics/modules/cooling_tables.h, src/physics/modules/agn_module.h, src/physics/modules/feedback_module.h
+- Removed files: src/core/core_cool_func.c, src/core/core_cool_func.h, src/physics/cooling_compat.c, src/physics/cooling_compat.h

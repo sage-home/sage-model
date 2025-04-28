@@ -6,6 +6,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <limits.h>
 #include "core_module_system.h"
 
 /**

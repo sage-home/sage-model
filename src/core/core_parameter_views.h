@@ -4,6 +4,8 @@
 extern "C" {
 #endif
 
+    #include <stdbool.h>
+    #include <limits.h>  // For PATH_MAX
     #include "core_allvars.h"
 
     /*

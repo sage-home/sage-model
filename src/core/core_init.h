@@ -19,10 +19,6 @@ extern "C" {
     extern void initialize_simulation_times(struct params *run_params);
     extern void cleanup_simulation_times(struct params *run_params);
     
-    /* Cooling system initialization */
-    extern void initialize_cooling(void);
-    extern void cleanup_cooling(void);
-    
     /* Module system initialization */
     extern void initialize_module_system(struct params *run_params);
     extern void cleanup_module_system(void);

@@ -1,9 +1,10 @@
 #include "cooling_module.h"
+#include "cooling_tables.h"
 #include "../../core/core_event_system.h"
 #include "../../core/core_logging.h"
 #include "../../core/core_pipeline_system.h"
 #include "../../core/core_module_system.h"
-#include "../../core/core_cool_func.h"
+#include "../../core/core_galaxy_accessors.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -18,6 +19,7 @@
 struct cooling_module_data {
     int module_id;
     struct cooling_property_ids prop_ids;
+    char root_dir[PATH_MAX];  // Store root directory for locating data files
 };
 
 // Internal static property ID storage
@@ -73,67 +75,109 @@ const struct cooling_property_ids* get_cooling_property_ids(void) {
     return &cooling_ids; 
 }
 
-// Utility accessors
+// Utility accessors - These are local to the cooling module
+// Get cooling rate from extension property or direct access
 double galaxy_get_cooling_rate(const struct GALAXY *galaxy) {
-    int prop_id = cooling_ids.cooling_rate_id;
-    if (prop_id < 0) {
-        LOG_ERROR("cooling_rate property not registered");
-        return 0.0;
+    if (use_extension_properties) {
+        int prop_id = cooling_ids.cooling_rate_id;
+        if (prop_id < 0) {
+            LOG_ERROR("cooling_rate property not registered");
+            return 0.0;
+        }
+        double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
+        if (value_ptr == NULL) {
+            LOG_ERROR("Failed to get cooling_rate property for galaxy");
+            return 0.0;
+        }
+        return *value_ptr;
+    } else {
+        // Direct access for backwards compatibility
+        return galaxy->Cooling;
     }
-    double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
-    if (value_ptr == NULL) {
-        LOG_ERROR("Failed to get cooling_rate property for galaxy");
-        return 0.0;
-    }
-    return *value_ptr;
 }
 
+// Set cooling rate to extension property or direct access
 void galaxy_set_cooling_rate(struct GALAXY *galaxy, double value) {
-    int prop_id = cooling_ids.cooling_rate_id;
-    if (prop_id < 0) {
-        LOG_ERROR("cooling_rate property not registered");
-        return;
+    if (use_extension_properties) {
+        int prop_id = cooling_ids.cooling_rate_id;
+        if (prop_id < 0) {
+            LOG_ERROR("cooling_rate property not registered");
+            return;
+        }
+        double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
+        if (value_ptr == NULL) {
+            LOG_ERROR("Failed to set cooling_rate property for galaxy");
+            return;
+        }
+        *value_ptr = value;
+    } else {
+        // Direct access for backwards compatibility
+        galaxy->Cooling = value;
     }
-    double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
-    if (value_ptr == NULL) {
-        LOG_ERROR("Failed to set cooling_rate property for galaxy");
-        return;
-    }
-    *value_ptr = value;
 }
 
+// Get heating rate from extension property or direct access
 double galaxy_get_heating_rate(const struct GALAXY *galaxy) {
-    int prop_id = cooling_ids.heating_rate_id;
-    if (prop_id < 0) {
-        LOG_ERROR("heating_rate property not registered");
-        return 0.0;
+    if (use_extension_properties) {
+        int prop_id = cooling_ids.heating_rate_id;
+        if (prop_id < 0) {
+            LOG_ERROR("heating_rate property not registered");
+            return 0.0;
+        }
+        double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
+        if (value_ptr == NULL) {
+            LOG_ERROR("Failed to get heating_rate property for galaxy");
+            return 0.0;
+        }
+        return *value_ptr;
+    } else {
+        // Direct access for backwards compatibility
+        return galaxy->Heating;
     }
-    double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
-    if (value_ptr == NULL) {
-        LOG_ERROR("Failed to get heating_rate property for galaxy");
-        return 0.0;
-    }
-    return *value_ptr;
 }
 
+// Set heating rate to extension property or direct access
 void galaxy_set_heating_rate(struct GALAXY *galaxy, double value) {
-    int prop_id = cooling_ids.heating_rate_id;
-    if (prop_id < 0) {
-        LOG_ERROR("heating_rate property not registered");
-        return;
+    if (use_extension_properties) {
+        int prop_id = cooling_ids.heating_rate_id;
+        if (prop_id < 0) {
+            LOG_ERROR("heating_rate property not registered");
+            return;
+        }
+        double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
+        if (value_ptr == NULL) {
+            LOG_ERROR("Failed to set heating_rate property for galaxy");
+            return;
+        }
+        *value_ptr = value;
+    } else {
+        // Direct access for backwards compatibility
+        galaxy->Heating = value;
     }
-    double *value_ptr = (double*)galaxy_extension_get_data(galaxy, prop_id);
-    if (value_ptr == NULL) {
-        LOG_ERROR("Failed to set heating_rate property for galaxy");
-        return;
-    }
-    *value_ptr = value;
 }
 
-// Get metal-dependent cooling rate for gas
-double get_metaldependent_cooling_rate(double logTemp, double logZ) {
-    return get_rate_from_tables(logTemp, logZ);
+// Register accessors with the core registry system
+static void register_cooling_accessors(int module_id) {
+    // Register cooling rate accessor
+    struct galaxy_property_accessor cooling_accessor = {
+        .property_name = "cooling_rate",
+        .get_fn = galaxy_get_cooling_rate,
+        .set_fn = galaxy_set_cooling_rate,
+        .module_id = module_id
+    };
+    register_galaxy_property_accessor(&cooling_accessor);
+    
+    // Register heating rate accessor
+    struct galaxy_property_accessor heating_accessor = {
+        .property_name = "heating_rate",
+        .get_fn = galaxy_get_heating_rate,
+        .set_fn = galaxy_set_heating_rate,
+        .module_id = module_id
+    };
+    register_galaxy_property_accessor(&heating_accessor);
 }
+
+// The get_metaldependent_cooling_rate function is now imported from core_cool_func.h
 
 // Primary cooling recipe implementation
 double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct cooling_params_view *cooling_params) {
@@ -350,9 +394,6 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
 }
 
 static int cooling_module_initialize(struct params *params, void **module_data) {
-    // Unused parameter
-    (void)params;
-    
     struct cooling_module_data *data = malloc(sizeof(struct cooling_module_data));
     if (!data) return -1;
     
@@ -360,11 +401,50 @@ static int cooling_module_initialize(struct params *params, void **module_data) 
     int module_id = module_get_active_by_type(MODULE_TYPE_COOLING, NULL, NULL);
     if (module_id < 0) module_id = 0;
     
+    // Register extension properties
     register_cooling_properties(module_id);
     data->prop_ids = cooling_ids;
     data->module_id = module_id;
+    
+    // Register accessors with the core registry
+    register_cooling_accessors(module_id);
+    
+    // Store the root directory for data file access
+    // Use ROOT_DIR from Makefile if defined and available via params
+    #ifdef ROOT_DIR
+    strncpy(data->root_dir, ROOT_DIR, PATH_MAX - 1);
+    #else
+    // Fallback to current directory
+    strncpy(data->root_dir, ".", PATH_MAX - 1);
+    #endif
+    data->root_dir[PATH_MAX - 1] = '\0';  // Ensure null termination
+    
+    // Initialize cooling tables
+    read_cooling_functions(data->root_dir);
+    
     *module_data = data;
     return 0;
+}
+
+/**
+ * Compatibility function for legacy cooling calculations
+ * 
+ * This function provides a backward compatibility interface for modules 
+ * that need to access the cooling implementation when called outside
+ * the module framework.
+ * 
+ * @param gal Galaxy index
+ * @param dt Time step
+ * @param galaxies Array of galaxies
+ * @param run_params Global parameters
+ * @return Amount of gas that cooled
+ */
+double cooling_recipe_compat(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+{
+    struct cooling_params_view cooling_params;
+    initialize_cooling_params_view(&cooling_params, run_params);
+    
+    return cooling_recipe(gal, dt, galaxies, &cooling_params);
 }
 
 static int cooling_module_execute_galaxy_phase(void *module_data, struct pipeline_context *context) {

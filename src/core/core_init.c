@@ -11,7 +11,6 @@
 #include "core_allvars.h"
 #include "core_init.h"
 #include "core_mymalloc.h"
-#include "core_cool_func.h"
 #include "core_tree_utils.h"
 #include "core_logging.h"
 #include "core_module_system.h"
@@ -46,9 +45,6 @@ void init(struct params *run_params)
     
     initialize_simulation_times(run_params);
     LOG_DEBUG("Simulation times initialized");
-    
-    initialize_cooling();
-    LOG_DEBUG("Cooling tables initialized");
     
     /* Initialize module system */
     initialize_module_system(run_params);
@@ -265,26 +261,6 @@ void cleanup_simulation_times(struct params *run_params)
     myfree(run_params->simulation.Age);
 }
 
-/*
- * Initialize cooling functions
- * 
- * Reads the cooling tables and prepares them for use in the model
- */
-void initialize_cooling(void)
-{
-    read_cooling_functions();
-}
-
-/*
- * Cleanup cooling resources
- * 
- * Frees any memory allocated for cooling tables.
- */
-void cleanup_cooling(void)
-{
-    /* Currently, there's no explicit cleanup for cooling tables.
-       This function is a placeholder for future extensions. */
-}
 
 /*
  * Main cleanup function - calls component-specific cleanup
@@ -312,7 +288,6 @@ void cleanup(struct params *run_params)
         LOG_DEBUG("Galaxy memory pool cleaned up");
     }
     
-    cleanup_cooling();
     cleanup_simulation_times(run_params);
     cleanup_units(run_params);
     
