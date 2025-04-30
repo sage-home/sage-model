@@ -16,9 +16,9 @@ This implementation plan outlines the steps needed to complete the core refactor
 -   Provides a clear and robust framework for migrating remaining legacy physics code.
 -   Improves maintainability and extensibility of the SAGE model.
 
-## Step 1: Directory Restructuring
+## Step 1: Directory Restructuring ✅ COMPLETED
 
-### Step 1.1: Reorganize Physics Directories
+### Step 1.1: Reorganize Physics Directories ✅ COMPLETED
 **WHERE:** File system operations
 **WHY:** Clearly separate migrated modules from physics code yet to be migrated.
 **WHAT:**
@@ -36,7 +36,7 @@ git mv src/physics/modules/infall_module.c src/physics/modules/infall_module.h s
 # Update Makefile paths for legacy and module sources
 ```
 
-### Step 1.2: Update Include Paths in Migrated Files
+### Step 1.2: Update Include Paths in Migrated Files ✅ COMPLETED
 **WHERE:** All migrated module files now in `src/physics/` (e.g., `cooling_module.c/h`, `infall_module.c/h`).
 **WHY:** Ensure imports work correctly with the new directory structure.
 **WHAT:**
@@ -54,7 +54,7 @@ git mv src/physics/modules/infall_module.c src/physics/modules/infall_module.h s
 #include "cooling_tables.h" // Now cooling_tables is also in src/physics/
 ```
 
-## Step 2: Core Execution Framework Update
+## Step 2: Core Execution Framework Update ⏳ IN PROGRESS
 
 ### Step 2.1: Clean Up Core Build Model Imports
 **WHERE:** `src/core/core_build_model.c`
