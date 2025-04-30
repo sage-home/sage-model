@@ -43,10 +43,7 @@
 - [x] Update evolve_galaxies to use pipeline for infall calculations
 - [x] Implement pipeline registration system for module loading
 - [x] Add global configuration control for extension usage
-- [x] Create comprehensive core modularity implementation plan
-- [x] Reorganize physics directory structure (legacy vs. module)
-- [ ] Remove all legacy fallbacks from core execution framework
-- [ ] Update module API with enhanced parameter and callback support
+- [ ] Implement "SAGE Core Modularity Implementation Plan.md"
 - [ ] Extract star formation and feedback module (GALAXY phase)
 - [ ] Extract mergers module (POST phase)
 - [ ] Extract disk instability module (GALAXY phase)
