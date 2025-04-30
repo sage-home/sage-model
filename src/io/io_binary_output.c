@@ -10,7 +10,7 @@
 #include "../core/core_mymalloc.h"
 #include "../core/core_logging.h"
 #include "../core/core_galaxy_extensions.h"
-#include "../physics/model_misc.h"
+#include "../physics/legacy/model_misc.h"
 #include "io_interface.h"
 #include "io_endian_utils.h"
 #include "io_property_serialization.h"

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../../core/core_module_system.h"
-#include "../../core/core_allvars.h"
-#include "../../core/core_parameter_views.h"
-#include "../../core/core_galaxy_extensions.h"
+#include "../core/core_module_system.h"
+#include "../core/core_allvars.h"
+#include "../core/core_parameter_views.h"
+#include "../core/core_galaxy_extensions.h"
 
 // Property IDs structure - internal to the module
 struct infall_property_ids {

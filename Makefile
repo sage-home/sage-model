@@ -43,13 +43,13 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c core/core_module_config.c
 
 # Physics model source files
-PHYSICS_SRC := physics/model_starformation_and_feedback.c \
-        physics/model_disk_instability.c physics/model_reincorporation.c \
-        physics/model_mergers.c physics/model_misc.c \
+PHYSICS_SRC := physics/legacy/model_starformation_and_feedback.c \
+        physics/legacy/model_disk_instability.c physics/legacy/model_reincorporation.c \
+        physics/legacy/model_mergers.c physics/legacy/model_misc.c \
         physics/example_galaxy_extension.c \
         physics/example_event_handler.c \
-        physics/modules/infall_module.c physics/modules/cooling_module.c \
-        physics/modules/cooling_tables.c
+        physics/infall_module.c physics/cooling_module.c \
+        physics/cooling_tables.c
 
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \

@@ -1,6 +1,6 @@
 #include "core_pipeline_registry.h"
-#include "../physics/modules/infall_module.h"
-#include "../physics/modules/cooling_module.h"
+#include "../physics/infall_module.h"
+#include "../physics/cooling_module.h"
 #include "core_galaxy_accessors.h"
 #include <string.h>
 

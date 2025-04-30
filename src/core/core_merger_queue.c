@@ -7,7 +7,7 @@
 #include "core_merger_queue.h"
 #include "core_logging.h"
 
-#include "../physics/model_mergers.h"
+#include "../physics/legacy/model_mergers.h"
 
 void init_merger_queue(struct merger_event_queue *queue)
 {

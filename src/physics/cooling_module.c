@@ -1,10 +1,10 @@
 #include "cooling_module.h"
 #include "cooling_tables.h"
-#include "../../core/core_event_system.h"
-#include "../../core/core_logging.h"
-#include "../../core/core_pipeline_system.h"
-#include "../../core/core_module_system.h"
-#include "../../core/core_galaxy_accessors.h"
+#include "../core/core_event_system.h"
+#include "../core/core_logging.h"
+#include "../core/core_pipeline_system.h"
+#include "../core/core_module_system.h"
+#include "../core/core_galaxy_accessors.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

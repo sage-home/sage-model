@@ -4,8 +4,8 @@
 #include <math.h>
 
 #include "cooling_tables.h"
-#include "../../core/core_allvars.h"
-#include "../../core/core_logging.h"
+#include "../core/core_allvars.h"
+#include "../core/core_logging.h"
 
 #define TABSIZE 91
 #define LAST_TAB_INDEX (TABSIZE - 1)

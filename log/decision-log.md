@@ -96,3 +96,7 @@
 2025-04-28: [Phase 5.2] Abandon Dual Implementation Approach for Full Modularity
 - Rationale: After analyzing the challenges of maintaining dual implementation paths (modular and traditional), we recognized that fully embracing modularity would accelerate development and simplify the codebase. The transitional dual-path approach was causing increased complexity and hindering progress toward true runtime functional modularity.
 - Impact: Created a comprehensive implementation plan to eliminate all legacy fallbacks from the core code. This will enable the framework to run without any physics modules loaded, ensuring complete separation between core infrastructure and physics implementations. The resulting architecture will provide a clean foundation for migrating remaining physics modules one at a time.
+
+2025-04-30: [Phase 5.2] Directory Naming Convention for Migrated Physics Modules
+- Rationale: The "old" directory name was misleading as it contained modules that had been actively migrated to the new system, not simply outdated code. Renaming to "migrated" better communicates the purpose of these files as successfully converted implementations.
+- Impact: Improves code organization clarity for new developers by using more accurate terminology. This change maintains a clear distinction between unmigrated legacy code (in /legacy) and successfully migrated modules that have been extracted from the core codebase. No functional changes were required as there were no direct code references to this directory.

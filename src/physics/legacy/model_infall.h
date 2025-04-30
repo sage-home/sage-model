@@ -4,8 +4,8 @@
 extern "C" {
 #endif
 
-    #include "../core/core_allvars.h"
-    #include "../core/core_parameter_views.h"
+    #include "../../core/core_allvars.h"
+    #include "../../core/core_parameter_views.h"
 
     /* 
      * Infall module functions

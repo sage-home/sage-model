@@ -11,7 +11,7 @@
 #include "core_save.h"
 #include "core_utils.h"
 #include "core_logging.h"
-#include "../physics/model_misc.h"
+#include "../physics/legacy/model_misc.h"
 #include "core_mymalloc.h"
 #include "core_galaxy_extensions.h"
 

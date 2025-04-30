@@ -4,14 +4,14 @@
 #include <math.h>
 #include <time.h>
 
-#include "../core/core_allvars.h"
-#include "../core/core_parameter_views.h"
-#include "../core/core_event_system.h"
-#include "../core/core_logging.h"
+#include "../../core/core_allvars.h"
+#include "../../core/core_parameter_views.h"
+#include "../../core/core_event_system.h"
+#include "../../core/core_logging.h"
 
-#include "../physics/model_starformation_and_feedback.h"
-#include "../physics/model_misc.h"
-#include "../physics/model_disk_instability.h"
+#include "model_starformation_and_feedback.h"
+#include "model_misc.h"
+#include "model_disk_instability.h"
 
 /*
  * Main star formation and feedback function

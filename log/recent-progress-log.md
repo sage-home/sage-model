@@ -151,3 +151,21 @@
 - Established roadmap for module parameter handling, callbacks, and event systems
 - Added validation tests to verify core can run with no physics modules
 - Modified files: log/decision-log.md, log/phase-tracker-log.md
+
+2025-04-30: [Phase 5.2] Updated Include Paths in Refactored Physics Modules
+- Systematically updated include paths in all legacy physics module files to match new directory structure
+- Fixed "../core/" includes to "../../core/" in legacy module files moved to src/physics/legacy/
+- Converted "../physics/legacy/" includes to local includes within the same directory
+- Updated cooling_module.c to correctly reference modules/cooling_tables.h
+- Fixed multiple build errors related to incorrect include paths after directory restructuring
+- Ensured smooth compilation of the entire codebase after migration of physics modules
+- Modified files: src/physics/legacy/model_reincorporation.c, src/physics/legacy/model_misc.c, src/physics/legacy/model_cooling_heating.c, src/physics/legacy/model_mergers.c, src/physics/legacy/model_infall.c, src/physics/legacy/model_disk_instability.c, src/physics/cooling_module.c, log/todays-edits.md
+
+2025-04-30: [Phase 5.2] Improved Physics Directory Structure Organization
+- Renamed src/physics/old directory to src/physics/migrated to better reflect its purpose
+- Verified the successful transfer of model_cooling_heating.c/h and model_infall.c/h files
+- Ensured no code references needed to be updated due to the directory rename
+- Updated documentation in log files to reflect the improved directory structure
+- This change completes the directory restructuring portion of the Core Modularity Implementation Plan (Step 1)
+- Modified files: log/todays-edits.md, log/decision-log.md, log/recent-progress-log.md
+- Renamed directory: src/physics/old → src/physics/migrated

@@ -4,12 +4,12 @@
 #include <math.h>
 #include <time.h>
 
-#include "../core/core_allvars.h"
-#include "../core/core_event_system.h"
+#include "../../core/core_allvars.h"
+#include "../../core/core_event_system.h"
 
-#include "../physics/model_disk_instability.h"
-#include "../physics/model_misc.h"
-#include "../physics/model_mergers.h"
+#include "model_disk_instability.h"
+#include "model_misc.h"
+#include "model_mergers.h"
 
 void check_disk_instability(const int p, const int centralgal, const int halonr, const double time, const double dt, const int step,
                             struct GALAXY *galaxies, struct params *run_params)

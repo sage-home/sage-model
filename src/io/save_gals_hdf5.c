@@ -10,7 +10,7 @@
 #include "../core/core_mymalloc.h"
 #include "../core/core_utils.h"
 #include "../core/macros.h"
-#include "../physics/model_misc.h"
+#include "../physics/legacy/model_misc.h"
 #include "../core/sage.h"
 
 
@@ -1029,7 +1029,7 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
                                     "The dataset ID value is %d.\n"     \
                                     "The old dimensions were %d and we attempting to extend this by %d elements.\n", \
                                     snap_idx, (int32_t) dataset_id, (int32_t) old_dims[0], (int32_t) dims_extend[0]); \
-    status = H5Tclose(h5_dtype);                                        \
+       status = H5Tclose(h5_dtype);                                        \
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,           \
                                     "Error: Failed to close the datatype for the " #field_name" dataset for output snapshot %d.\n" \
                                     "The dataset ID value is %d.\n"     \

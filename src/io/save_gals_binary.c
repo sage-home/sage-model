@@ -9,7 +9,7 @@
 #include "save_gals_binary.h"
 #include "../core/core_mymalloc.h"
 #include "../core/core_utils.h"
-#include "../physics/model_misc.h"
+#include "../physics/legacy/model_misc.h"
 
 #ifdef USE_BUFFERED_WRITE
 #include "buffered_io.h"

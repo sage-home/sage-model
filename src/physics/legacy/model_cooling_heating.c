@@ -4,14 +4,12 @@
 #include <math.h>
 #include <time.h>
 
-#include "../core/core_allvars.h"
-#include "../core/core_cool_func.h"
-#include "../core/core_parameter_views.h"
-#include "../core/core_event_system.h"
-#include "../core/core_logging.h"
+#include "../../core/core_allvars.h"
+#include "../../core/core_cool_func.h"
+#include "../../core/core_parameter_views.h"
 
-#include "../physics/model_cooling_heating.h"
-#include "../physics/model_misc.h"
+#include "model_cooling_heating.h"
+#include "model_misc.h"
 
 
 /*
@@ -219,56 +217,17 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
 {
     // add the fraction 1/STEPS of the total cooling gas to the cold disk
     if(coolingGas > 0.0) {
-        double actual_cooled_gas = 0.0;
-        double cooling_radius = 0.0;
-        
         if(coolingGas < galaxies[centralgal].HotGas) {
             const double metallicity = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
             galaxies[centralgal].ColdGas += coolingGas;
             galaxies[centralgal].MetalsColdGas += metallicity * coolingGas;
             galaxies[centralgal].HotGas -= coolingGas;
             galaxies[centralgal].MetalsHotGas -= metallicity * coolingGas;
-            actual_cooled_gas = coolingGas;
         } else {
-            actual_cooled_gas = galaxies[centralgal].HotGas;
             galaxies[centralgal].ColdGas += galaxies[centralgal].HotGas;
             galaxies[centralgal].MetalsColdGas += galaxies[centralgal].MetalsHotGas;
             galaxies[centralgal].HotGas = 0.0;
             galaxies[centralgal].MetalsHotGas = 0.0;
-        }
-        
-        // If the event system is initialized, emit a cooling event
-        if (event_system_is_initialized()) {
-            // Calculate cooling radius - this is approximate since we don't have rcool here
-            if(galaxies[centralgal].Rvir > 0.0 && galaxies[centralgal].Vvir > 0.0) {
-                cooling_radius = galaxies[centralgal].Rvir * sqrt(actual_cooled_gas / galaxies[centralgal].HotGas);
-                if(cooling_radius > galaxies[centralgal].Rvir) {
-                    cooling_radius = galaxies[centralgal].Rvir;
-                }
-            }
-            
-            // Prepare cooling event data
-            event_cooling_completed_data_t cooling_data = {
-                .cooling_rate = (float)(actual_cooled_gas),
-                .cooling_radius = (float)(cooling_radius),
-                .hot_gas_cooled = (float)(actual_cooled_gas)
-            };
-            
-            // Emit the cooling event
-            event_status_t status = event_emit(
-                EVENT_COOLING_COMPLETED,    // Event type
-                0,                          // Source module ID (0 = traditional code)
-                centralgal,                 // Galaxy index
-                -1,                         // Step not available in this context
-                &cooling_data,              // Event data
-                sizeof(cooling_data),       // Size of event data
-                EVENT_FLAG_NONE             // No special flags
-            );
-            
-            if (status != EVENT_STATUS_SUCCESS) {
-                LOG_ERROR("Failed to emit cooling event for galaxy %d: status=%d", 
-                       centralgal, status);
-            }
         }
     }
 }

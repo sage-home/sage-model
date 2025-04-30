@@ -4,12 +4,12 @@
 #include <math.h>
 #include <time.h>
 
-#include "../core/core_allvars.h"
-#include "../core/core_parameter_views.h"
-#include "../core/core_event_system.h"
+#include "../../core/core_allvars.h"
+#include "../../core/core_parameter_views.h"
+#include "../../core/core_event_system.h"
 
-#include "../physics/model_reincorporation.h"
-#include "../physics/model_misc.h"
+#include "model_reincorporation.h"
+#include "model_misc.h"
 
 /*
  * Main gas reincorporation function
