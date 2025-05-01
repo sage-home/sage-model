@@ -449,7 +449,33 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 
 ##### 5.2.B: Define and Integrate Central Property Definition
 *   **5.2.B.0: Establish Performance Baseline**: Run and record performance benchmarks (runtime, memory usage) for key test cases (e.g., Mini-Millennium) using the codebase before implementing the subsequent changes in Phase 5.2.B-F. Store these baseline results for later comparison in Phase 5.3.3.
-*   **5.2.B.1 Define Properties Format**: Establish structure and syntax for `properties.yaml`, specifying required fields (`name`, `type`, `initial_value`) and optional fields (`units`, `description`, `output`)
+*   **5.2.B.1 Define Properties Format**: Establish structure and syntax for `properties.yaml`, specifying required fields (`name`, `type`, `initial_value`) and optional fields (`units`, `description`, `output`, `read_only`). Include support for dynamic arrays with runtime-determined sizes.
+
+> **Dynamic Arrays in SAGE**: 
+> Dynamic arrays are a critical feature of the property system that allow array sizes to be determined at runtime based on simulation parameters rather than fixed at compile time. This is essential for properties like star formation histories, merger histories, and other simulation outputs that depend on the number of snapshots or other variable factors.
+> 
+> **Implementation Details**:
+> - Array sizes are determined using runtime parameters (e.g., `simulation.NumSnapOutputs`)
+> - Memory is allocated dynamically at galaxy creation time and freed during destruction
+> - Type-safe accessor macros generate bounds-checking code for safe array access
+> - Deep copying is handled automatically for operations like galaxy mergers
+> 
+> **Example YAML Definition**:
+> ```yaml
+> - name: StarFormationHistory
+>   type: float[]
+>   size_parameter: "simulation.NumSnapOutputs"
+>   initial_value: 0.0
+>   units: "Msun/yr"
+>   description: "Star formation rate history for each output snapshot"
+>   output: true
+> ```
+> 
+> **Memory and I/O Impact**:
+> - Memory usage scales with the actual requirements rather than worst-case assumptions
+> - HDF5 output format natively supports variable-length arrays, simplifying I/O
+> - Eliminates STEPS and other hardcoded array dimensions that limited model flexibility
+> - Improves scalability for large simulations with many snapshots or high time resolution
 *   **5.2.B.2 Create Header Generation Script**: Implement script to validate definitions and generate `standard_properties.h` with type-safe accessor macros
 *   **5.2.B.3 Integrate Header Generation into Build System**: Add Makefile rules to run the generation script during the build process
 *   **5.2.B.4 Implement Core Registration**: Create system to read property definitions and register them with the Galaxy Extension system at startup
@@ -471,13 +497,14 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 *   **5.2.E.1 Remove GALAXY_OUTPUT Struct**: Delete the static output structure definition
 *   **5.2.E.2 Remove prepare_galaxy_for_output Logic**: Eliminate the static mapping code
 *   **5.2.E.3 Implement Output Preparation Logic**: Create a new `OutputPreparationModule` (or similar name) running in the `PIPELINE_PHASE_FINAL` to handle unit conversions and derived value calculations previously done in `prepare_galaxy_for_output`, using the standard property accessor macros
-*   **5.2.E.4 Update I/O Handlers**: Modify handlers to use the property definition and accessor macros
-*   **5.2.E.5 Update Property Serialization**: Adapt serialization for the module-driven approach
+*   **5.2.E.4 Update HDF5 I/O Handler**: Modify HDF5 handler to use the property definition and accessor macros (binary output format support discontinued)
+*   **5.2.E.5 Update Property Serialization**: Adapt HDF5 serialization for the module-driven approach, including support for dynamic-sized arrays
 
 #### Example Implementation for Properties Module
 ```yaml
 # properties.yaml - Central property definition
 properties:
+  # Standard scalar property
   - name: HotGas
     type: double
     initial_value: 0.0
@@ -485,11 +512,29 @@ properties:
     description: "Mass of gas in the hot halo reservoir."
     output: true
 
+  # Standard scalar property
   - name: StellarMass
     type: double
     initial_value: 0.0
     units: "1e10 Msun/h"
     description: "Total stellar mass in the galaxy."
+    output: true
+    
+  # Fixed-size array property
+  - name: Pos
+    type: float[3]
+    initial_value: [0.0, 0.0, 0.0]
+    units: "Mpc/h"
+    description: "Position coordinates (x,y,z)"
+    output: true
+    
+  # Dynamic array property
+  - name: StarFormationHistory
+    type: float[]
+    size_parameter: "simulation.NumSnapOutputs"
+    initial_value: 0.0
+    units: "Msun/yr" 
+    description: "Star formation history for each output snapshot"
     output: true
 ```
 

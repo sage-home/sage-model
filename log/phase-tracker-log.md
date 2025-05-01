@@ -47,10 +47,11 @@
 
 #### Phase 5.2.B: Central Property Definition ⏳ PLANNED
 - [x] Establish performance baseline for current implementation
-- [ ] Define properties format (`properties.yaml`)
-- [ ] Create header generation script
+- [ ] Define properties format (`properties.yaml`) with dynamic array support
+- [ ] Create header generation script with dynamic array allocation support
 - [ ] Integrate header generation into build system
 - [ ] Implement core registration of standard properties
+- [ ] Implement memory management for dynamic array properties
 - [ ] Minimize core `struct GALAXY` by removing physics fields
 
 #### Phase 5.2.C: Core Integration ⏳ PENDING
@@ -69,8 +70,9 @@
 - [ ] Remove `GALAXY_OUTPUT` struct 
 - [ ] Remove `prepare_galaxy_for_output` logic
 - [ ] Implement output preparation module
-- [ ] Update I/O handlers (binary, HDF5)
-- [ ] Update property serialization system
+- [ ] Remove binary output format support (standardize on HDF5)
+- [ ] Update HDF5 I/O handler to support dynamic array properties
+- [ ] Enhance HDF5 serialization for improved format compatibility
 
 #### Phase 5.2.F: Physics Module Migration ⏳ PENDING
 - [ ] Define physics module migration sequence
@@ -100,7 +102,9 @@
 - Physics modules are implemented as standalone modules with appropriate phase declarations
 - The core GALAXY struct contains only essential identifiers, not physics fields
 - Output properties are determined by flags in the central definition
+- Property system fully supports dynamic array properties with runtime size determination
 - Event handling and module callbacks correctly preserve physics interdependencies
+- HDF5 output format is the exclusive output format with enhanced property serialization
 - Scientific results match baseline SAGE simulation outputs
 - All tests pass, including validation tests
 

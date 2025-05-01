@@ -1,0 +1,461 @@
+# properties.yaml - Central property definition for SAGE
+# This file defines all galaxy properties used by physics modules
+#
+# Required fields:
+#   name: Property name (used in accessor macros)
+#   type: Data type (int32_t, float, double, arrays, etc.)
+#   initial_value: Default value when initializing
+#   units: Physical units of the property
+#   description: Human-readable description
+#   output: Boolean flag for whether to include in output files
+#   read_only: Property access control (false, true, "after_first_set")
+#
+# Dynamic array syntax:
+#   type: float[] - Empty brackets indicate dynamic size
+#   size_parameter: "parameter_name" - Name of runtime parameter determining size
+
+properties:
+  # Identification Properties
+  - name: SnapNum
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Snapshot number of the galaxy"
+    output: true
+    read_only: false
+
+  - name: Type
+    type: int32_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Galaxy type (0=central, 1=satellite)"
+    output: true
+    read_only: false
+    
+  - name: GalaxyNr
+    type: int32_t
+    initial_value: 0
+    units: "dimensionless" 
+    description: "Galaxy number within the tree"
+    output: true
+    read_only: false
+  
+  - name: CentralGal
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Index of the central galaxy in the same FoF group"
+    output: true
+    read_only: false
+
+  - name: HaloNr
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Halo number in the tree"
+    output: true
+    read_only: false
+    
+  - name: MostBoundID
+    type: long long
+    initial_value: -1
+    units: "dimensionless"
+    description: "ID of the most bound particle in the subhalo"
+    output: true
+    read_only: false
+
+  - name: GalaxyIndex
+    type: uint64_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Unique galaxy identifier based on tree local galaxy number, file local tree number and file number"
+    output: true
+    read_only: "after_first_set"
+    
+  - name: CentralGalaxyIndex
+    type: uint64_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Galaxy index of the central galaxy of this galaxy's FoF group"
+    output: true
+    read_only: "after_first_set"
+    
+  # Merger Properties
+  - name: mergeType
+    type: int32_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Merger type (0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS)"
+    output: true
+    read_only: false
+
+  - name: mergeIntoID
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Galaxy ID that this galaxy merges into"
+    output: true
+    read_only: false
+    
+  - name: mergeIntoSnapNum
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Snapshot number when the merger occurs"
+    output: true
+    read_only: false
+    
+  - name: dT
+    type: float
+    initial_value: 0.0
+    units: "Gyr"
+    description: "Time step for galaxy evolution"
+    output: true
+    read_only: false
+    
+  # Halo Properties
+  - name: Pos
+    type: float[3]
+    initial_value: [0.0, 0.0, 0.0]
+    units: "Mpc/h"
+    description: "Position coordinates (x,y,z)"
+    output: true
+    read_only: false
+    
+  - name: Vel
+    type: float[3]
+    initial_value: [0.0, 0.0, 0.0]
+    units: "km/s"
+    description: "Velocity components (vx,vy,vz)"
+    output: true
+    read_only: false
+    
+  - name: Len
+    type: int
+    initial_value: 0
+    units: "dimensionless"
+    description: "Number of particles in the halo"
+    output: true
+    read_only: false
+    
+  - name: Mvir
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Virial mass of the halo"
+    output: true
+    read_only: false
+    
+  - name: deltaMvir
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Change in virial mass since last snapshot"
+    output: true
+    read_only: false
+    
+  - name: CentralMvir
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Virial mass of the central subhalo"
+    output: true
+    read_only: false
+    
+  - name: Rvir
+    type: float
+    initial_value: 0.0
+    units: "Mpc/h"
+    description: "Virial radius"
+    output: true
+    read_only: false
+    
+  - name: Vvir
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Virial velocity"
+    output: true
+    read_only: false
+    
+  - name: Vmax
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Maximum circular velocity"
+    output: true
+    read_only: false
+    
+  # Baryonic Components
+  - name: ColdGas
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Cold gas mass in the disk"
+    output: true
+    read_only: false
+    
+  - name: StellarMass
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Total stellar mass (disk + bulge)"
+    output: true
+    read_only: false
+    
+  - name: BulgeMass
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Stellar mass in the bulge"
+    output: true
+    read_only: false
+    
+  - name: HotGas
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Hot gas mass in the halo"
+    output: true
+    read_only: false
+    
+  - name: EjectedMass
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Gas mass ejected by feedback"
+    output: true
+    read_only: false
+    
+  - name: BlackHoleMass
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Black hole mass"
+    output: true
+    read_only: false
+    
+  - name: ICS
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Intracluster stars mass"
+    output: true
+    read_only: false
+    
+  # Metals
+  - name: MetalsColdGas
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Metal mass in cold gas"
+    output: true
+    read_only: false
+    
+  - name: MetalsStellarMass
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Metal mass in stars"
+    output: true
+    read_only: false
+    
+  - name: MetalsBulgeMass
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Metal mass in bulge"
+    output: true
+    read_only: false
+    
+  - name: MetalsHotGas
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Metal mass in hot gas"
+    output: true
+    read_only: false
+    
+  - name: MetalsEjectedMass
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Metal mass in ejected gas"
+    output: true
+    read_only: false
+    
+  - name: MetalsICS
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Metal mass in intracluster stars"
+    output: true
+    read_only: false
+    
+  # Star Formation History - Fixed Size Arrays (Legacy)
+  - name: SfrDisk
+    type: float[STEPS]
+    initial_value: 0.0
+    units: "Msun/yr"
+    description: "Star formation rate in disk for each timestep"
+    output: true
+    read_only: false
+    
+  - name: SfrBulge
+    type: float[STEPS]
+    initial_value: 0.0
+    units: "Msun/yr"
+    description: "Star formation rate in bulge for each timestep"
+    output: true
+    read_only: false
+    
+  - name: SfrDiskColdGas
+    type: float[STEPS]
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Cold gas mass during disk star formation for each timestep"
+    output: true
+    read_only: false
+    
+  - name: SfrDiskColdGasMetals
+    type: float[STEPS]
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Cold gas metals during disk star formation for each timestep"
+    output: true
+    read_only: false
+    
+  - name: SfrBulgeColdGas
+    type: float[STEPS]
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Cold gas mass during bulge star formation for each timestep"
+    output: true
+    read_only: false
+    
+  - name: SfrBulgeColdGasMetals
+    type: float[STEPS]
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Cold gas metals during bulge star formation for each timestep"
+    output: true
+    read_only: false
+    
+  # Example of Dynamic Array Property
+  - name: StarFormationHistory
+    type: float[]
+    size_parameter: "simulation.NumSnapOutputs"
+    initial_value: 0.0
+    units: "Msun/yr"
+    description: "Complete star formation history for all output snapshots"
+    output: true
+    read_only: false
+    
+  # Structural Properties
+  - name: DiskScaleRadius
+    type: float
+    initial_value: 0.0
+    units: "Mpc/h"
+    description: "Scale radius of the stellar disk"
+    output: true
+    read_only: false
+    
+  - name: MergTime
+    type: float
+    initial_value: 0.0
+    units: "Gyr"
+    description: "Time until merger"
+    output: true
+    read_only: false
+    
+  # Cooling & Heating
+  - name: Cooling
+    type: double
+    initial_value: 0.0
+    units: "erg/s"
+    description: "Cooling energy rate"
+    output: true
+    read_only: false
+    
+  - name: Heating
+    type: double
+    initial_value: 0.0
+    units: "erg/s"
+    description: "Heating energy rate (from AGN)"
+    output: true
+    read_only: false
+    
+  - name: r_heat
+    type: float
+    initial_value: 0.0
+    units: "Mpc/h"
+    description: "Heating radius for AGN feedback"
+    output: true
+    read_only: false
+    
+  - name: QuasarModeBHaccretionMass
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Mass accreted by black hole in quasar mode"
+    output: true
+    read_only: false
+    
+  # History
+  - name: TimeOfLastMajorMerger
+    type: float
+    initial_value: 0.0
+    units: "Gyr"
+    description: "Time of last major merger"
+    output: true
+    read_only: false
+    
+  - name: TimeOfLastMinorMerger
+    type: float
+    initial_value: 0.0
+    units: "Gyr"
+    description: "Time of last minor merger"
+    output: true
+    read_only: false
+    
+  # Feedback
+  - name: OutflowRate
+    type: float
+    initial_value: 0.0
+    units: "Msun/yr"
+    description: "Outflow rate from feedback"
+    output: true
+    read_only: false
+    
+  - name: TotalSatelliteBaryons
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Total baryon mass in satellites"
+    output: true
+    read_only: false
+    
+  # Infall Properties
+  - name: infallMvir
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Virial mass at infall"
+    output: true
+    read_only: false
+    
+  - name: infallVvir
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Virial velocity at infall"
+    output: true
+    read_only: false
+    
+  - name: infallVmax
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Maximum circular velocity at infall"
+    output: true
+    read_only: false
