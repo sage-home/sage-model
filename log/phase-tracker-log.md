@@ -14,10 +14,10 @@
 ## Phase Objectives
 - Implement pipeline execution phases (HALO, GALAXY, POST) for handling different scope calculations
 - Transform `evolve_galaxies()` to use the pipeline system
-- Extract physics components into standalone modules with appropriate phase declarations
-- Ensure physics modules register required extension properties
-- Implement event dispatching and handling for physics modules
-- Integrate module callbacks for cross-module interactions
+- Implement the Properties Module architecture for complete core-physics decoupling
+- Create type-safe, centrally-defined galaxy property mechanism
+- Minimize core `struct GALAXY` to remove physics dependencies
+- Refactor modules to use the standardized property access system
 - Validate scientific accuracy against baseline SAGE results
 
 ## Current Progress
@@ -32,42 +32,73 @@
 - [x] Enhance error propagation testing and diagnostic logging
 - [x] Add evolution diagnostics
 
-### Phase 5.2: Converting Physics Modules ⏳ IN PROGRESS
-- [x] Create standard extension property registry for all physics domains
-- [x] Implement accessor functions for galaxy physics properties
-- [x] Add dual implementation support for transitional period
-- [x] Make pipeline context physics-agnostic with generic data sharing
-- [x] Extract infall module using extension properties (HALO and GALAXY phases)
-- [x] Extract cooling module using extension properties (GALAXY phase)
-- [x] Update join_galaxies_of_progenitors to use accessor functions
-- [x] Update evolve_galaxies to use pipeline for infall calculations
-- [x] Implement pipeline registration system for module loading
-- [x] Add global configuration control for extension usage
-- [ ] Implement "SAGE Core Modularity Implementation Plan.md"
-- [ ] Extract star formation and feedback module (GALAXY phase)
-- [ ] Extract mergers module (POST phase)
-- [ ] Extract disk instability module (GALAXY phase)
-- [ ] Extract reincorporation module (GALAXY phase)
-- [ ] Ensure all modules declare appropriate execution phases
-- [ ] Ensure all modules register required extension properties
-- [ ] Add event triggers at appropriate points
-- [ ] Implement necessary callbacks between modules
+### Phase 5.2: Properties Module Implementation ⏳ ARCHITECTURAL SHIFT
+**Note**: After careful evaluation, we've decided to replace the piecemeal physics module migration with a more elegant "Properties Module" architecture that provides cleaner separation between core and physics.
+
+#### Phase 5.2.A: Initial Proof-of-Concept ⏳ PLANNED
+- [ ] Establish performance baseline for current implementation
+- [ ] Create minimal property definition for essential properties in YAML
+- [ ] Implement basic header generation script
+- [ ] Create core integration test with generated macros
+- [ ] Convert one simple module to use the new access pattern
+- [ ] Validate scientific equivalence with previous implementation
+- [ ] Assess performance impact of the new architecture
+- [ ] Make go/no-go decision for full implementation
+
+#### Phase 5.2.B: Central Property Definition ⏳ PLANNED
+- [ ] Define properties format (`properties.yaml`)
+- [ ] Create header generation script
+- [ ] Integrate header generation into build system
+- [ ] Implement core registration of standard properties
+- [ ] Minimize core `struct GALAXY` by removing physics fields
+
+#### Phase 5.2.C: Core Integration ⏳ PENDING
+- [ ] Implement and use accessor macros in core code
+- [ ] Remove obsolete core accessors and parameter views
+- [ ] Refine core initialization logic
+- [ ] Update galaxy creation and management
+
+#### Phase 5.2.D: Module Adaptation ⏳ PENDING
+- [ ] Update physics module interface
+- [ ] Update migrated modules (cooling, infall)
+- [ ] Update module template generator
+- [ ] Revise module dependency management
+
+#### Phase 5.2.E: I/O System Update ⏳ PENDING
+- [ ] Remove `GALAXY_OUTPUT` struct 
+- [ ] Remove `prepare_galaxy_for_output` logic
+- [ ] Implement output preparation module
+- [ ] Update I/O handlers (binary, HDF5)
+- [ ] Update property serialization system
+
+#### Phase 5.2.F: Physics Module Migration ⏳ PENDING
+- [ ] Define physics module migration sequence
+- [ ] Centralize common physics utilities
+- [ ] Migrate star formation and feedback module
+- [ ] Migrate disk instability module
+- [ ] Migrate reincorporation module
+- [ ] Migrate AGN feedback and black holes modules
+- [ ] Migrate metals and chemical evolution tracking
+- [ ] Migrate mergers module
 
 ### Phase 5.3: Validation and Testing ⏳ PENDING
 - [x] Implement integration tests for evolve_galaxies loop phase transitions
+- [ ] Implement property definition validation tools
 - [ ] Perform scientific validation against baseline SAGE
 - [ ] Implement performance benchmarks
 - [ ] Develop module compatibility tests
 - [ ] Add call graph validation
-- [ ] Cleanup to remove the dual implementation and commit fully to the extension-based approach
+- [ ] Validate file format compatibility and I/O
+- [ ] Test error handling and recovery mechanisms
 
 ## Completion Criteria
 - The main galaxy evolution loop uses the pipeline system with proper phase handling
-- All physics components are implemented as standalone modules with appropriate phase declarations
-- Halo-level calculations (like infall) are executed in the HALO phase
-- Galaxy-level calculations (like cooling) are executed in the GALAXY phase
-- Post-processing calculations (like mergers) are executed in the POST phase
-- Extension properties are properly registered and used by all modules
+- All persistent per-galaxy physics state is defined centrally via `properties.yaml`
+- Core infrastructure has no direct knowledge of specific physics properties
+- All physics components access galaxy properties via generated macros
+- Physics modules are implemented as standalone modules with appropriate phase declarations
+- The core GALAXY struct contains only essential identifiers, not physics fields
+- Output properties are determined by flags in the central definition
 - Event handling and module callbacks correctly preserve physics interdependencies
 - Scientific results match baseline SAGE simulation outputs
 - All tests pass, including validation tests

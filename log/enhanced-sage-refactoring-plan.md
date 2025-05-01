@@ -26,7 +26,7 @@
 
 ## Detailed Refactoring Strategy
 
-### Phase 1: Preparatory Refactoring (Foundation) [Partially Complete]
+### Phase 1: Preparatory Refactoring (Foundation) [COMPLETED]
 **Estimated Timeline**: 3 months
 
 #### Components
@@ -68,7 +68,7 @@ Reducing global state and making parameter passing explicit creates cleaner inte
 - **Risk**: Breaking existing functionality during reorganization
   - **Mitigation**: Apply incremental changes with testing at each step
 
-### Phase 2: Enhanced Module Interface Definition [Partially Complete]
+### Phase 2: Enhanced Module Interface Definition [COMPLETED]
 **Estimated Timeline**: 5-6 months
 
 #### Components
@@ -176,7 +176,7 @@ The module interface structure establishes a consistent contract for all physics
 - **Risk**: Event handling complexity
   - **Mitigation**: Provide clear documentation on event usage patterns, implement event debugging tools
 
-### Phase 3: I/O Abstraction and Optimization [Current Phase]
+### Phase 3: I/O Abstraction and Optimization [COMPLETED]
 **Estimated Timeline**: 2-3 months
 
 #### Components
@@ -272,7 +272,7 @@ A unified I/O interface allows support for multiple formats without duplicating 
 - **Risk**: Performance regression from abstraction
   - **Mitigation**: Carefully optimize critical I/O paths, implement buffering strategies
 
-### Phase 4: Advanced Plugin Infrastructure
+### Phase 4: Advanced Plugin Infrastructure [COMPLETED]
 **Estimated Timeline**: 3-4 months
 
 #### Components
@@ -423,257 +423,193 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
   - **Mitigation**: Build visualization tools, implement robust cycle detection
 
 ### Phase 5: Core Module Migration
-**Estimated Timeline**: 4-5 months
+**Estimated Timeline**: 6-7 months
 
-#### Components
-*   **5.1 Refactoring Main Evolution Loop**: 
-    * **5.1.1 Merger Event Queue Implementation**: Implement event queue approach for mergers in traditional architecture
-    * **5.1.2 Pipeline Phase System**: Implement execution phases (HALO, GALAXY, POST, FINAL) in pipeline context to distinguish between calculations that happen at the halo level versus galaxy level
-    * **5.1.3 Pipeline Integration**: Transform `evolve_galaxies()` to use the pipeline system with proper phase handling
-    * **5.1.4 Event System Integration**: Add event dispatch/handling points
-    * **5.1.5 Extension Properties Support**: Add support for reading/writing extension properties
-    * **5.1.6 Module Callback Integration**: Integrate module callbacks
-    * **5.1.7 Diagnostics**: Add evolution diagnostics
-*   **5.2 Converting Physics Modules**: Extract components into standalone modules implementing the defined interfaces. Add property registration and event triggers. Manage module-specific data. Define/implement dependencies via callbacks.
-*   **5.3 Validation and Testing**: Perform scientific validation against baseline SAGE. Implement performance benchmarks. Develop module compatibility tests. Add call graph validation.
+#### Subphase 5.1: Refactoring Main Evolution Loop [COMPLETED]
+*   **5.1.1 Merger Event Queue Implementation**: Implement event queue approach for mergers in traditional architecture
+*   **5.1.2 Pipeline Phase System**: Implement execution phases (HALO, GALAXY, POST, FINAL) in pipeline context to distinguish between calculations that happen at the halo level versus galaxy level
+*   **5.1.3 Pipeline Integration**: Transform `evolve_galaxies()` to use the pipeline system with proper phase handling
+*   **5.1.4 Event System Integration**: Add event dispatch/handling points
+*   **5.1.5 Extension Properties Support**: Add support for reading/writing extension properties
+*   **5.1.6 Module Callback Integration**: Integrate module callbacks
+*   **5.1.7 Diagnostics**: Add evolution diagnostics
 
-#### Example Implementation
+#### Subphase 5.2: Properties Module Architecture Implementation [ARCHITECTURAL SHIFT]
+**IMPORTANT NOTE:** After careful evaluation, the implementation strategy for Phase 5.2 has been significantly revised to adopt a "Properties Module" architecture. This approach provides cleaner separation between core infrastructure and physics, treating all physics modules as equal consumers/modifiers of galaxy properties through a centrally-defined mechanism. This architectural shift supersedes the previous piecemeal approach to physics module migration.
+
+##### 5.2.A: Initial Proof-of-Concept [NEW]
+*   **5.2.A.1 Performance Baseline**: Establish performance benchmarks for the current implementation
+*   **5.2.A.2 Minimal Property Definition**: Create a small subset of essential properties in YAML format
+*   **5.2.A.3 Basic Header Generator**: Implement a minimal script to generate accessor macros
+*   **5.2.A.4 Core Integration Test**: Adapt a small portion of the core code to use the generated macros
+*   **5.2.A.5 Test Module Migration**: Convert one simple module (e.g., cooling) to use the new access pattern
+*   **5.2.A.6 Validation**: Verify scientific equivalence with previous implementation
+*   **5.2.A.7 Performance Assessment**: Measure performance impact of the new architecture
+*   **5.2.A.8 Go/No-Go Decision**: Evaluate results and confirm continuation with full implementation
+
+##### 5.2.B: Define and Integrate Central Property Definition
+*   **5.2.B.1 Define Properties Format**: Establish structure and syntax for `properties.yaml`, specifying required fields (`name`, `type`, `initial_value`) and optional fields (`units`, `description`, `output`)
+*   **5.2.B.2 Create Header Generation Script**: Implement script to validate definitions and generate `standard_properties.h` with type-safe accessor macros
+*   **5.2.B.3 Integrate Header Generation into Build System**: Add Makefile rules to run the generation script during the build process
+*   **5.2.B.4 Implement Core Registration**: Create system to read property definitions and register them with the Galaxy Extension system at startup
+*   **5.2.B.5 Minimize Core GALAXY Struct**: Remove physical properties from the core definition, keeping only essential identifiers, type/merger info, and extension fields
+
+##### 5.2.C: Integrate New Property System into Core
+*   **5.2.C.1 Implement and Use Accessor Macros**: Refactor core code to use the generated `GALAXY_GET_*` and `GALAXY_SET_*` macros
+*   **5.2.C.2 Remove Obsolete Core Accessors**: Remove `core_galaxy_accessors.c/h` and `core_parameter_views.c/h` and their usage
+*   **5.2.C.3 Refine Core Initialization Logic**: Update galaxy initialization to use the new property system
+*   **5.2.C.4 Galaxy Creation and Management**: Ensure all code that creates or manipulates galaxies uses the new property system
+
+##### 5.2.D: Adapt Modules and Interfaces
+*   **5.2.D.1 Update Physics Module Interface**: Add hooks for module-specific serialization of private properties
+*   **5.2.D.2 Update Migrated Modules**: Adapt existing modules (cooling, infall) to use the new property access system
+*   **5.2.D.3 Update Module Template Generator**: Ensure new modules follow the latest patterns
+*   **5.2.D.4 Module Dependency Management**: Update the dependency declaration system to work with the new property access pattern
+
+##### 5.2.E: I/O and Output Refactoring
+*   **5.2.E.1 Remove GALAXY_OUTPUT Struct**: Delete the static output structure definition
+*   **5.2.E.2 Remove prepare_galaxy_for_output Logic**: Eliminate the static mapping code
+*   **5.2.E.3 Implement Output Preparation Logic**: Create a new `OutputPreparationModule` (or similar name) running in the `PIPELINE_PHASE_FINAL` to handle unit conversions and derived value calculations previously done in `prepare_galaxy_for_output`, using the standard property accessor macros
+*   **5.2.E.4 Update I/O Handlers**: Modify handlers to use the property definition and accessor macros
+*   **5.2.E.5 Update Property Serialization**: Adapt serialization for the module-driven approach
+
+#### Example Implementation for Properties Module
+```yaml
+# properties.yaml - Central property definition
+properties:
+  - name: HotGas
+    type: double
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Mass of gas in the hot halo reservoir."
+    output: true
+
+  - name: StellarMass
+    type: double
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Total stellar mass in the galaxy."
+    output: true
+```
+
 ```c
-// Event queue for deferred merger processing
-struct merger_event {
-    int satellite_index;           // Index of the satellite galaxy
-    int central_index;             // Index of the central galaxy
-    double merger_time;            // Remaining merger time
-    double time;                   // Current simulation time
-    double dt;                     // Timestep
-    int halo_nr;                   // Halo number
-    int step;                      // Current step
-    int merger_type;               // Type of merger event (merger/disruption)
-};
+// Generated standard_properties.h
+#ifndef STANDARD_PROPERTIES_H
+#define STANDARD_PROPERTIES_H
 
-struct merger_event_queue {
-    struct merger_event events[MAX_GALAXIES_PER_HALO];  // Array of merger events
-    int num_events;                                     // Number of events in queue
-};
+#include "core_galaxy_extensions.h"
+#include "core_types.h"
 
-// Transformed evolution loop using pipeline phases and event queue
-int evolve_galaxies_pipeline(const int halonr, const int ngal, int *numgals, int *maxgals, 
-                          struct halo_data *halos, struct GALAXY *galaxies, struct params *run_params) {
-    // Set up evolution context
-    struct evolution_context ctx;
-    initialize_evolution_context(&ctx, halonr, galaxies, ngal, halos, run_params);
-    
-    // Create pipeline context
-    struct pipeline_context pipeline_ctx;
-    pipeline_context_init(&pipeline_ctx, run_params, galaxies, ngal, ctx.centralgal, 
-                        ctx.time, ctx.deltaT, halonr, 0, NULL);
-    
-    // Get the global physics pipeline
-    struct module_pipeline *physics_pipeline = pipeline_get_global();
-    
-    // Create merger event queue
-    struct merger_event_queue merger_queue;
-    init_merger_queue(&merger_queue);
-    ctx.merger_queue = &merger_queue;
-    
-    // PHASE 1: Execute HALO-level physics (outside galaxy loop)
-    // These calculations apply to the entire halo (e.g., infall)
-    pipeline_ctx.execution_phase = PIPELINE_PHASE_HALO;
-    int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
-    if (status != 0) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute halo-level pipeline for halo %d", halonr);
-        return EXIT_FAILURE;
-    }
-    
-    // Main integration steps
-    for (int step = 0; step < STEPS; step++) {
-        pipeline_ctx.step = step;
-        
-        // Reset merger queue for this timestep
-        init_merger_queue(&merger_queue);
-        
-        // PHASE 2: Galaxy-level physics, loop over all galaxies in the halo
-        for (int p = 0; p < ctx.ngal; p++) {
-            // Skip already merged galaxies
-            if (ctx.galaxies[p].mergeType > 0) {
-                continue;
-            }
-            
-            // Update context for current galaxy
-            pipeline_ctx.current_galaxy = p;
-            
-            // Execute GALAXY-level physics (for each galaxy)
-            pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
-            int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
-            if (status != 0) {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
-                           "Failed to execute galaxy-level pipeline for galaxy %d", p);
-                return EXIT_FAILURE;
-            }
-            
-            // Queue potential mergers
-            if ((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && 
-                ctx.galaxies[p].mergeType == 0 && ctx.galaxies[p].MergTime < 999.0) {
-                // Check merger conditions and add to queue if appropriate
-                queue_merger_event(&merger_queue, p, ctx.galaxies[p].CentralGal, 
-                                 ctx.galaxies[p].MergTime, ctx.time, ctx.deltaT/STEPS, 
-                                 ctx.centralgal, step, ctx.galaxies[p].mergeType);
-            }
-        }
-        
-        // PHASE 3: Execute POST-processing physics (after all galaxies processed in step)
-        // These calculations need all galaxies to be processed first (e.g., mergers)
-        pipeline_ctx.execution_phase = PIPELINE_PHASE_POST;
-        status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
-        if (status != 0) {
-            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
-                       "Failed to execute post-processing pipeline for step %d", step);
-            return EXIT_FAILURE;
-        }
-        
-        // Process merger events
-        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processing %d merger events for step %d", 
-                  merger_queue.num_events, step);
-        process_merger_events(&merger_queue, ctx.galaxies, run_params);
-    }
-    
-    // PHASE 4: Execute FINAL phase (after all steps complete)
-    // Final calculations and cleanup (e.g., normalizing rates, gathering statistics)
-    pipeline_ctx.execution_phase = PIPELINE_PHASE_FINAL;
-    status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
-    if (status != 0) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
-                   "Failed to execute final pipeline for halo %d", halonr);
-        return EXIT_FAILURE;
-    }
-    
-    // Handle final rate normalizations and other cleanup not in modules
-    // ...
-    
-    return 0;
-}
+// Hot Gas
+#define GALAXY_GET_HOTGAS(galaxy) \
+    (*(double*)galaxy_extension_get_data(galaxy, get_standard_property_id_by_name("HotGas")))
 
-// Example of converted physics module (cooling)
-// Pipeline phase definition for module execution
-enum pipeline_execution_phase {
-    PIPELINE_PHASE_HALO,    // Execute once per halo (outside galaxy loop)
-    PIPELINE_PHASE_GALAXY,  // Execute for each galaxy (inside galaxy loop)
-    PIPELINE_PHASE_POST,    // Execute after processing all galaxies (for each integration step)
-    PIPELINE_PHASE_FINAL    // Execute after all steps are complete, before exiting evolve_galaxies
-};
+#define GALAXY_SET_HOTGAS(galaxy, value) do { \
+    double* prop = (double*)galaxy_extension_get_data(galaxy, get_standard_property_id_by_name("HotGas")); \
+    *prop = (double)(value); \
+} while(0)
 
-// Enhanced pipeline_context with execution phase
-struct pipeline_context {
-    // ... existing fields ...
-    enum pipeline_execution_phase execution_phase; // Current execution phase
-    double infall_gas;                            // Result of infall calculation (example of HALO phase result)
-    // ... other fields ...
-};
+// Stellar Mass
+#define GALAXY_GET_STELLARMASS(galaxy) \
+    (*(double*)galaxy_extension_get_data(galaxy, get_standard_property_id_by_name("StellarMass")))
 
-// Example module implementation with phase support
-struct cooling_module cooling_module_impl = {
-    .base = {
-        .name = "StandardCooling",
-        .version = "1.0.0",
-        .author = "SAGE Team",
-        .initialize = cooling_module_initialize,
-        .cleanup = cooling_module_cleanup,
-        .phases = PIPELINE_PHASE_GALAXY // This module runs during galaxy-level processing
-    },
-    .calculate_cooling = cooling_module_calculate,
-    .get_cooling_radius = cooling_module_get_radius
-};
+#define GALAXY_SET_STELLARMASS(galaxy, value) do { \
+    double* prop = (double*)galaxy_extension_get_data(galaxy, get_standard_property_id_by_name("StellarMass")); \
+    *prop = (double)(value); \
+} while(0)
 
-// Example infall module implementation
-struct infall_module infall_module_impl = {
-    .base = {
-        .name = "StandardInfall",
-        .version = "1.0.0",
-        .author = "SAGE Team",
-        .initialize = infall_module_initialize,
-        .cleanup = infall_module_cleanup,
-        .phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY | PIPELINE_PHASE_FINAL // Operates in multiple phases
-    },
-    .calculate_infall = infall_module_calculate_infall,        // HALO phase
-    .apply_infall = infall_module_apply_infall,               // GALAXY phase (central only)
-    .strip_satellite = infall_module_strip_satellite,         // GALAXY phase (satellites)
-    .normalize_rates = infall_module_normalize_rates          // FINAL phase (normalize rates)
-};
+// Other property macros...
 
-// Example module that operates in the POST phase
-struct merger_module merger_module_impl = {
-    .base = {
-        .name = "StandardMergers",
-        .version = "1.0.0",
-        .author = "SAGE Team",
-        .initialize = merger_module_initialize,
-        .cleanup = merger_module_cleanup,
-        .phases = PIPELINE_PHASE_POST // This module runs during post-processing
-    },
-    .process_mergers = merger_module_process_mergers,
-    .calculate_merger_timescale = merger_module_calculate_timescale
-};
+#endif // STANDARD_PROPERTIES_H
+```
 
-static int cooling_module_initialize(struct params *params, void **module_data) {
-    // Allocate module data
-    cooling_data_t *data = malloc(sizeof(cooling_data_t));
-    if (!data) return -1;
-    
-    // Initialize module data
-    data->cooling_table = load_cooling_table(params->cooling_table_file);
-    
-    // Register galaxy extensions
-    galaxy_property_t cooling_radius_prop = {
-        .name = "cooling_radius",
-        .size = sizeof(float),
-        .module_id = getCurrentModuleId(),
-        .serialize = serialize_float,
-        .deserialize = deserialize_float,
-        .description = "Current cooling radius",
-        .units = "kpc"
-    };
-    data->cooling_radius_prop_id = register_galaxy_property(&cooling_radius_prop);
-    
-    // Register for events
-    event_register_handler(EVENT_AGN_FEEDBACK_APPLIED, 
-                         cooling_handle_agn_feedback, data);
-    
-    *module_data = data;
-    return 0;
-}
+```c
+// In a module (e.g., cooling_module.c)
+#include "standard_properties.h"
 
-static double cooling_module_calculate(const int gal, const double dt, 
-                                     struct GALAXY *galaxies, void *module_data) {
-    cooling_data_t *data = (cooling_data_t*)module_data;
+static double calculate_cooling(struct GALAXY *galaxy, double dt, void *module_data) {
+    // Get current hot gas and metals
+    double hot_gas = GALAXY_GET_HOTGAS(galaxy);
+    double metals_hot = GALAXY_GET_METALSHOT(galaxy);
     
-    // Calculate cooling
-    double temp = calculate_temperature(galaxies[gal].HotGas);
-    double metallicity = galaxies[gal].MetalsHotGas / galaxies[gal].HotGas;
-    double cooling_rate = interpolate_cooling_rate(data->cooling_table, 
-                                                 temp, metallicity);
+    // Calculate cooling rate
+    double cooling_rate = compute_rate(hot_gas, metals_hot, dt);
     
-    // Store cooling radius in extension
-    float *cooling_radius = galaxy_extension_get_data(&galaxies[gal], 
-                                                  data->cooling_radius_prop_id);
-    if (cooling_radius) {
-        *cooling_radius = calculate_cooling_radius(galaxies[gal].HotGas, 
-                                                cooling_rate, dt);
-    }
+    // Apply cooling
+    double cooled_gas = cooling_rate * dt;
+    GALAXY_SET_HOTGAS(galaxy, hot_gas - cooled_gas);
+    GALAXY_SET_COLDGAS(galaxy, GALAXY_GET_COLDGAS(galaxy) + cooled_gas);
     
     return cooling_rate;
 }
 ```
 
-#### Design Rationale
-The pipeline-based evolution replaces the monolithic approach, enabling runtime configuration of the galaxy evolution process. Individual physics modules (like cooling) now encapsulate their own data and register for specific events. This separation of concerns allows physics components to be implemented, tested, and reasoned about independently. Extension properties provide storage for module-specific data without modifying the core galaxy structure.
+##### 5.2.F: Systematic Physics Module Migration
+*   **Goal:** Convert all remaining legacy physics implementations into standalone modules conforming to the new architecture.
+*   **Process for each legacy physics area** (Star Formation, Feedback, Mergers, Disk Instability, Reincorporation, AGN, Metals, Misc):
+    *   Create new module files (e.g., `src/physics/star_formation_module.c/h`) implementing the `physics_module_interface`.
+    *   Transfer the core physics logic from the corresponding `src/physics/legacy/model_*.c` file into the new module's functions (likely mapping to `execute_galaxy_phase` or other appropriate phases).
+    *   Include `standard_properties.h` in the new module's C file.
+    *   Replace *all* direct `struct GALAXY` field access for physical properties (e.g., `galaxy->StellarMass`) with the generated `GALAXY_GET_*` / `GALAXY_SET_*` macros.
+    *   Manage any internal module parameters within the module's `_data` struct (allocated in `initialize`, freed in `cleanup`). Read initial parameter values from `run_params` for now (configuration system integration can refine this later).
+    *   Implement the `serialize_properties` / `deserialize_properties` functions *only if* the module defines and uses private, persistent, per-galaxy extension properties that need saving (most physics modules likely won't need this, relying on standard properties). Implement empty stubs returning 0 otherwise.
+    *   Implement the `declare_dependencies` function if the module needs to call functions in other modules via `module_invoke`.
+    *   Create a module factory function (e.g., `star_formation_module_create()`) that returns the module's interface struct.
+    *   Register the new module by calling its factory function during SAGE initialization (e.g., in `core_init.c` or a dedicated physics registration function).
+    *   Remove the corresponding legacy file(s) from `src/physics/legacy/` and update the Makefile (`LEGACY_PHYSICS_SRC`).
+*   **Migration Sequence Planning**: Define clear order of module migration based on dependencies (e.g., migrate SF/Feedback before Mergers if Mergers calls them).
+*   **Common Physics Utilities**: Extract and centralize shared physics calculations (e.g., timescale calculations, density profiles if not property-related) into utility functions or potentially a core utility module, if appropriate, to avoid duplication across the new physics modules.
+*   **Module List (to be migrated):**
+    *   Star Formation and Feedback
+    *   Disk Instability
+    *   Reincorporation
+    *   AGN Feedback and Black Holes
+    *   Metals and Chemical Evolution
+    *   Mergers
+    *   Miscellaneous physics (determine if needed or absorbed)
 
-#### Key Risks and Mitigation
-- **Risk**: Scientific accuracy during migration
-  - **Mitigation**: Implement comprehensive validation against baseline SAGE results
-- **Risk**: Performance regression from modularization
-  - **Mitigation**: Profile critical paths, optimize inter-module communication
-- **Risk**: Complex evolution state management
-  - **Mitigation**: Ensure clear context passing, implement diagnostic tracking
+*   **5.2.F.1 Migration Sequence Planning**: Define clear order of module migration based on dependencies
+*   **5.2.F.2 Common Physics Utilities**: Extract and centralize shared physics calculations into utility modules
+*   **5.2.F.3 Star Formation and Feedback**: Migrate star formation and feedback modules
+*   **5.2.F.4 Disk Instability**: Migrate disk instability module
+*   **5.2.F.5 Reincorporation**: Migrate reincorporation module
+*   **5.2.F.6 AGN Feedback and Black Holes**: Migrate AGN-related modules
+*   **5.2.F.7 Metals and Chemical Evolution**: Migrate metals tracking and chemical evolution
+*   **5.2.F.8 Mergers**: Migrate merger handling module
+
+#### Design Rationale for Properties Module Approach
+The Properties Module architecture achieves true physics-agnostic core infrastructure while providing a centralized, well-defined mechanism for modules to interact with shared galaxy state. This approach:
+
+1. **Eliminates Core-Physics Coupling**: Core code works with abstract "extensions" without knowing their physics meaning
+2. **Centralizes Property Definition**: All shared properties are defined once in a human-readable file
+3. **Ensures Type Safety**: Generated macros provide compile-time type checking
+4. **Simplifies Maintenance**: Adding or modifying properties requires changes to a single file
+5. **Standardizes Access Patterns**: All modules use identical mechanisms to interact with properties
+6. **Removes Ownership Hierarchy**: No module "owns" shared properties used by others
+7. **Enables Core Independence**: Core remains unaware of physics implementations or property specifics
+8. **Streamlines Output Management**: Property output decisions are declarative in the central definition
+
+#### Key Risks and Mitigation for Properties Module Implementation
+- **Risk**: Build-time dependency on the property generation script
+  - **Mitigation**: Ensure script is robust, well-tested, and properly integrated with the build system
+- **Risk**: Refactoring scope and complexity
+  - **Mitigation**: Begin with the proof-of-concept phase to validate approach before full implementation
+- **Risk**: Performance overhead from macros and indirect property access
+  - **Mitigation**: Perform thorough performance testing, optimize macro expansion, consider caching property IDs
+- **Risk**: Scientific inconsistency during transition
+  - **Mitigation**: Implement comprehensive validation against reference outputs, migrate physics one module at a time
+- **Risk**: File format compatibility issues
+  - **Mitigation**: Implement backward compatibility in I/O handlers for reading old file formats
+
+#### Subphase 5.3: Validation and Testing
+*   **5.3.1 Property Definition Validation**: Develop tools to validate `properties.yaml` for syntax and consistency
+*   **5.3.2 Scientific Output Validation**: Validate results of the fully migrated system against baseline SAGE using reference merger trees
+*   **5.3.3 Performance Benchmarks**: Compare performance against baseline and previous implementation
+*   **5.3.4 Module Compatibility Testing**: Verify combinations of modules work correctly
+*   **5.3.5 Call Graph Validation**: Check for circular dependencies and proper module interactions
+*   **5.3.6 I/O Format Validation**: Verify file compatibility and correct serialization/deserialization
+*   **5.3.7 Error Handling Testing**: Validate error reporting and recovery mechanisms
+*   **5.3.8 Comprehensive Integration Tests**: Test the entire system end-to-end with various configurations
 
 ### Phase 6: Advanced Performance Optimization
 **Estimated Timeline**: 3-4 months
@@ -684,6 +620,7 @@ The pipeline-based evolution replaces the monolithic approach, enabling runtime 
 *   **6.3 Vectorized Physics Calculations**: Implement SIMD for suitable calculations. Explore batch processing of galaxies. Implement architecture-specific dispatch.
 *   **6.4 Parallelization Enhancements**: Refine load balancing. Explore finer-grained parallelism. Optimize MPI communication. Consider hybrid MPI+OpenMP.
 *   **6.5 Module Callback Optimization**: Implement callback caching. Optimize paths for frequent interactions. Add profiling for inter-module calls. Consider targeted function inlining.
+*   **6.6 Property Access Optimization**: Implement caching for frequently accessed property IDs. Consider specialized batch access for hot-path calculations.
 
 #### Example Implementation
 ```c
@@ -716,410 +653,116 @@ void convert_AoS_to_SoA(struct GALAXY *galaxies, int ngal, galaxy_hotpath_data_t
     
     // Copy data to SoA layout
     for (int i = 0; i < ngal; i++) {
-        hotpath->ColdGas[i] = galaxies[i].ColdGas;
-        hotpath->HotGas[i] = galaxies[i].HotGas;
-        hotpath->StellarMass[i] = galaxies[i].StellarMass;
-        hotpath->BulgeMass[i] = galaxies[i].BulgeMass;
+        hotpath->ColdGas[i] = GALAXY_GET_COLDGAS(&galaxies[i]);
+        hotpath->HotGas[i] = GALAXY_GET_HOTGAS(&galaxies[i]);
+        hotpath->StellarMass[i] = GALAXY_GET_STELLARMASS(&galaxies[i]);
+        hotpath->BulgeMass[i] = GALAXY_GET_BULGEMASS(&galaxies[i]);
         
-        hotpath->MetalsColdGas[i] = galaxies[i].MetalsColdGas;
-        hotpath->MetalsHotGas[i] = galaxies[i].MetalsHotGas;
-        hotpath->MetalsStellarMass[i] = galaxies[i].MetalsStellarMass;
-        hotpath->MetalsBulgeMass[i] = galaxies[i].MetalsBulgeMass;
+        // ... other properties ...
     }
     
     hotpath->count = ngal;
 }
 
-// Optimized tree traversal data structure
-typedef struct {
-    int max_depth;                // Maximum depth of the tree
-    int current_depth;            // Current depth during traversal
-    struct halo_data **stack;     // Stack for non-recursive traversal
-    int stack_size;               // Current size of the stack
-    int stack_capacity;           // Maximum capacity of the stack
-} tree_traversal_context_t;
+// Optimized property access using cached IDs (post implementation)
+static int hotgas_prop_id = -1;
+static int coldgas_prop_id = -1;
 
-void tree_traversal_init(tree_traversal_context_t *context, int initial_capacity, int max_depth) {
-    context->max_depth = max_depth;
-    context->current_depth = 0;
-    context->stack_capacity = initial_capacity;
-    context->stack_size = 0;
-    context->stack = malloc(initial_capacity * sizeof(struct halo_data*));
+void init_property_id_cache() {
+    hotgas_prop_id = get_standard_property_id_by_name("HotGas");
+    coldgas_prop_id = get_standard_property_id_by_name("ColdGas");
+    // ... other properties ...
 }
 
-int tree_traversal_push(tree_traversal_context_t *context, struct halo_data *halo) {
-    // Check if stack needs to grow
-    if (context->stack_size >= context->stack_capacity) {
-        int new_capacity = context->stack_capacity * 1.5;
-        struct halo_data **new_stack = realloc(context->stack, 
-                                             new_capacity * sizeof(struct halo_data*));
-        if (!new_stack) return -1;
-        
-        context->stack = new_stack;
-        context->stack_capacity = new_capacity;
+double get_hot_gas_optimized(struct GALAXY *galaxy) {
+    if (hotgas_prop_id == -1) {
+        hotgas_prop_id = get_standard_property_id_by_name("HotGas");
     }
-    
-    // Push halo onto stack
-    context->stack[context->stack_size++] = halo;
-    context->current_depth++;
-    return 0;
-}
-
-// SIMD-optimized physics calculation (example for cooling)
-#ifdef __SSE4_1__
-#include <smmintrin.h>
-
-void calculate_cooling_vectorized(galaxy_hotpath_data_t *hotpath, int start_idx, int count) {
-    // Process 4 galaxies at once using SSE
-    for (int i = start_idx; i < start_idx + count - 3; i += 4) {
-        // Load 4 hot gas values
-        __m128 hot_gas = _mm_loadu_ps(&hotpath->HotGas[i]);
-        // Load 4 metal values
-        __m128 metals = _mm_loadu_ps(&hotpath->MetalsHotGas[i]);
-        
-        // Calculate metallicity (metals / hot gas)
-        __m128 metallicity = _mm_div_ps(metals, hot_gas);
-        
-        // Calculate temperature based on hot gas
-        __m128 temperature = calculate_temperature_sse(hot_gas);
-        
-        // Calculate cooling rate
-        __m128 cooling_rate = calculate_cooling_rate_sse(temperature, metallicity);
-        
-        // Apply cooling to hot gas
-        hot_gas = _mm_sub_ps(hot_gas, cooling_rate);
-        
-        // Store results back
-        _mm_storeu_ps(&hotpath->HotGas[i], hot_gas);
-    }
-    
-    // Handle remaining elements (less than 4)
-    // ...
-}
-#endif
-
-// Callback caching system
-struct cached_callback {
-    int caller_id;
-    int callee_id;
-    char function_name[64];
-    void *function_ptr;
-    int64_t last_used;
-    int hit_count;
-};
-
-struct callback_cache {
-    struct cached_callback entries[MAX_CACHED_CALLBACKS];
-    int num_entries;
-    int64_t access_counter;
-    int hit_count;
-    int miss_count;
-};
-
-void *lookup_cached_callback(struct callback_cache *cache, int caller_id, 
-                           int callee_id, const char *function_name) {
-    // Look for existing cache entry
-    for (int i = 0; i < cache->num_entries; i++) {
-        struct cached_callback *entry = &cache->entries[i];
-        if (entry->caller_id == caller_id && 
-            entry->callee_id == callee_id && 
-            strcmp(entry->function_name, function_name) == 0) {
-            
-            entry->last_used = cache->access_counter++;
-            entry->hit_count++;
-            cache->hit_count++;
-            return entry->function_ptr;
-        }
-    }
-    
-    cache->miss_count++;
-    return NULL;  // Not found
+    return *(double*)galaxy_extension_get_data(galaxy, hotgas_prop_id);
 }
 ```
 
 #### Design Rationale
-Structure-of-Arrays (SoA) layouts improve cache efficiency for vectorized operations by ensuring data is contiguous in memory. Prefetching reduces cache miss penalties during tree traversal by loading data before it's needed. SIMD vectorization exploits modern CPU capabilities for processing multiple data elements simultaneously. Callback caching reduces the overhead of repeated function lookups in the module system.
+Performance optimization builds on the established modular architecture, focusing on reducing memory access patterns, improving cache utilization, and enabling parallel execution. The Structure-of-Arrays approach can significantly improve performance for hot-path physics calculations by enhancing data locality and enabling SIMD operations. Property access optimizations help minimize the overhead of the extension-based property system while maintaining its modularity benefits.
 
 #### Key Risks and Mitigation
-- **Risk**: Complex memory management with SoA/AoS conversions
-  - **Mitigation**: Limit conversions to hot code paths, encapsulate conversions in helper functions
-- **Risk**: Platform-specific optimization compatibility
-  - **Mitigation**: Implement feature detection, provide fallback implementations
-- **Risk**: Increased code complexity
-  - **Mitigation**: Isolate optimizations behind clean interfaces, use macros for readability
+- **Risk**: Optimization complexity interfering with modularity
+  - **Mitigation**: Maintain clear separation between infrastructure optimization and physics implementation
+- **Risk**: Platform-specific optimizations limiting portability
+  - **Mitigation**: Implement architecture detection and dispatch mechanisms
+- **Risk**: Performance regression in less common usage patterns
+  - **Mitigation**: Maintain comprehensive benchmarks covering diverse use cases
 
 ### Phase 7: Documentation and Tools
 **Estimated Timeline**: 2-3 months
 
 #### Components
-*   **7.1 Developer Documentation**: Create guides for module development, plugin interfaces, extensions, events, callbacks, and dependency management. Provide clear guidance on when to use Events vs Callbacks.
-*   **7.2 Scientific Documentation**: Document physical models, create validation reports, scientific usage guides, and reproducibility guidelines.
-*   **7.3 Tool Development**: Provide template modules, validation tools (module & scientific), dependency analyzer, call graph visualizer, and benchmarking/profiling tools.
+*   **7.1 Comprehensive Architecture Guide**: Document core components, module system, pipeline phases, property system, and interfaces.
+*   **7.2 Module Development Guide**: Create detailed guides for developing physics modules, galaxy property extensions, and integration with the pipeline.
+*   **7.3 Property System Guide**: Document the property definition format, header generation, and best practices for property access.
+*   **7.4 Visualization and Debugging Tools**: Implement tools for visualizing module dependencies, pipeline configuration, and property access patterns.
+*   **7.5 Performance Profiling Tools**: Create specialized tools for analyzing module performance, pipeline bottlenecks, and profiling galaxy evolution.
+*   **7.6 Example Modules and Templates**: Provide comprehensive examples and templates for different types of physics modules.
+*   **7.7 User Guide**: Document system configuration, module selection, and parameter tuning for end users.
+*   **7.8 API Documentation**: Generate comprehensive API documentation for core systems and interfaces.
 
 #### Example Implementation
-```c
-// Template generator for new modules
-struct module_template_params {
-    char module_name[64];
-    enum module_type type;
-    char author[64];
-    char description[256];
-    bool include_serialization;
-    bool include_extension_properties;
-    bool include_event_handlers;
-    module_dependency_t dependencies[MAX_DEPENDENCIES];
-    int num_dependencies;
-};
-
-int module_generate_template(const struct module_template_params* params, const char* output_dir) {
-    // Create directory if it doesn't exist
-    mkdir_recursive(output_dir);
+```python
+# Property usage analysis script (conceptual)
+def analyze_property_usage():
+    property_usage = {}
+    modules = []
     
-    // Generate header file
-    char header_path[PATH_MAX];
-    snprintf(header_path, sizeof(header_path), "%s/%s.h", output_dir, params->module_name);
-    FILE* header_file = fopen(header_path, "w");
-    if (!header_file) return -1;
+    # Read property definitions
+    with open('properties.yaml') as f:
+        properties = yaml.safe_load(f)['properties']
+        for prop in properties:
+            property_usage[prop['name']] = {
+                'read_by': [],
+                'written_by': [],
+                'serialized': prop.get('output', False)
+            }
     
-    // Write header content
-    fprintf(header_file, "/**\n");
-    fprintf(header_file, " * %s - %s\n", params->module_name, params->description);
-    fprintf(header_file, " * Author: %s\n", params->author);
-    fprintf(header_file, " */\n\n");
-    fprintf(header_file, "#ifndef %s_H\n", strupr(params->module_name));
-    fprintf(header_file, "#define %s_H\n\n", strupr(params->module_name));
-    
-    // Include base module headers
-    fprintf(header_file, "#include \"base_module.h\"\n");
-    fprintf(header_file, "#include \"%s_module.h\"\n\n", module_type_to_string(params->type));
-    
-    // Generate module interface
-    fprintf(header_file, "// Module interface\n");
-    fprintf(header_file, "extern struct %s_module %s_module_impl;\n\n", 
-           module_type_to_string(params->type), params->module_name);
-    
-    // Generate extension property declarations if requested
-    if (params->include_extension_properties) {
-        fprintf(header_file, "// Extension properties\n");
-        fprintf(header_file, "extern int %s_property_ids[MAX_MODULE_PROPERTIES];\n\n", 
-               params->module_name);
-    }
-    
-    fprintf(header_file, "#endif // %s_H\n", strupr(params->module_name));
-    fclose(header_file);
-    
-    // Generate implementation file
-    // ...
-    
-    // Generate module data file
-    // ...
-    
-    // Generate test file
-    // ...
-    
-    return 0;
-}
-
-// Module validation framework
-typedef struct {
-    int severity;
-    char message[256];
-    char component[64];
-    char file[128];
-    int line;
-} module_validation_issue_t;
-
-typedef struct {
-    module_validation_issue_t issues[MAX_VALIDATION_ISSUES];
-    int num_issues;
-    int error_count;
-} module_validation_result_t;
-
-module_validation_result_t module_validate(const char* module_path) {
-    module_validation_result_t result = {0};
-    
-    // Check if file exists
-    if (!file_exists(module_path)) {
-        module_validation_issue_t issue = {
-            .severity = VALIDATION_ERROR,
-            .component = "file_system",
-            .line = 0
-        };
-        snprintf(issue.message, sizeof(issue.message), "Module file not found: %s", module_path);
-        snprintf(issue.file, sizeof(issue.file), "%s", module_path);
+    # Scan module source files
+    for module_file in glob.glob('src/physics/*.c'):
+        module_name = os.path.basename(module_file).split('.')[0]
+        modules.append(module_name)
         
-        result.issues[result.num_issues++] = issue;
-        result.error_count++;
-        return result;
-    }
-    
-    // Load the module
-    module_handle_t handle = load_module(module_path);
-    if (!handle) {
-        module_validation_issue_t issue = {
-            .severity = VALIDATION_ERROR,
-            .component = "loader",
-            .line = 0
-        };
-        snprintf(issue.message, sizeof(issue.message), "Failed to load module: %s", 
-               get_load_error());
-        snprintf(issue.file, sizeof(issue.file), "%s", module_path);
-        
-        result.issues[result.num_issues++] = issue;
-        result.error_count++;
-        return result;
-    }
-    
-    // Check for required symbols
-    const char* required_symbols[] = {
-        "module_get_interface",
-        "module_get_manifest",
-        "module_initialize",
-        "module_cleanup"
-    };
-    
-    for (int i = 0; i < sizeof(required_symbols) / sizeof(required_symbols[0]); i++) {
-        void* symbol = get_symbol(handle, required_symbols[i]);
-        if (!symbol) {
-            module_validation_issue_t issue = {
-                .severity = VALIDATION_ERROR,
-                .component = "symbols",
-                .line = 0
-            };
-            snprintf(issue.message, sizeof(issue.message), 
-                   "Required symbol not found: %s", required_symbols[i]);
-            snprintf(issue.file, sizeof(issue.file), "%s", module_path);
+        with open(module_file) as f:
+            content = f.read()
             
-            result.issues[result.num_issues++] = issue;
-            result.error_count++;
-        }
-    }
+            for prop in property_usage:
+                # Check read patterns
+                if f'GALAXY_GET_{prop.upper()}' in content:
+                    property_usage[prop]['read_by'].append(module_name)
+                
+                # Check write patterns
+                if f'GALAXY_SET_{prop.upper()}' in content:
+                    property_usage[prop]['written_by'].append(module_name)
     
-    // Get and validate manifest
-    void* manifest_fn = get_symbol(handle, "module_get_manifest");
-    if (manifest_fn) {
-        struct module_manifest* (*get_manifest)() = manifest_fn;
-        struct module_manifest* manifest = get_manifest();
-        
-        // Validate manifest
-        if (!manifest->name[0]) {
-            module_validation_issue_t issue = {
-                .severity = VALIDATION_ERROR,
-                .component = "manifest",
-                .line = 0
-            };
-            snprintf(issue.message, sizeof(issue.message), "Manifest missing module name");
-            snprintf(issue.file, sizeof(issue.file), "%s", module_path);
-            
-            result.issues[result.num_issues++] = issue;
-            result.error_count++;
-        }
-        
-        // More manifest validation...
-    }
+    # Generate usage matrix visualization
+    visualize_property_usage(properties, modules, property_usage)
     
-    // Check for memory leaks
-    // Validate interface consistency
-    // Verify dependencies
+    # Check for potential conflicts
+    check_write_conflicts(property_usage)
     
-    // Unload the module
-    unload_module(handle);
-    
-    return result;
-}
+    # Report properties with no readers or writers
+    report_unused_properties(property_usage)
 ```
 
 #### Design Rationale
-Comprehensive documentation is essential for a modular system to be usable by scientists who might not be familiar with the low-level details. Tools that automate common tasks like module creation and validation reduce barriers to entry for new module developers. The validation framework helps ensure modules meet the expected interface contracts and prevents common issues like memory leaks or missing symbols.
+Comprehensive documentation and tools ensure the modular architecture is understood and utilized effectively. Documentation is structured to cover both architectural understanding and practical usage. Tools for analyzing property usage and module interactions help identify potential issues early in development and support maintenance. The guides make the system accessible to new developers and users.
 
 #### Key Risks and Mitigation
-- **Risk**: Documentation becoming outdated as the system evolves
-  - **Mitigation**: Generate documentation from code where possible, implement documentation checks in CI
-- **Risk**: Steep learning curve for new module developers
-  - **Mitigation**: Provide comprehensive examples, templates, and validation tools
-- **Risk**: Incomplete tooling leading to debugging challenges
-  - **Mitigation**: Focus on critical tools first, then expand based on developer feedback
+- **Risk**: Documentation becoming outdated as implementation evolves
+  - **Mitigation**: Integrate documentation updates into development workflow, automate where possible
+- **Risk**: Steep learning curve for new contributors
+  - **Mitigation**: Provide detailed examples, templates, and step-by-step guides
+- **Risk**: Insufficient adoption of analysis tools
+  - **Mitigation**: Integrate tools into CI/CD pipeline, make them part of standard development process
 
-## Deferred Work - General List
+## Conclusion
 
-*   **Performance Benchmarking**: Moved from Phase 1 to Phase 5/6. Profiling on the refactored structure is more valuable than embedding benchmarks during heavy changes.
-*   **Enhanced End-to-End Test Diagnostics**: Skipped. Current logging + `sagediff.py` deemed sufficient.
-*   **Dynamic Memory Defragmentation**: Deferred (post-project). Focus on preventative measures (pooling, allocation strategy) first.
-*   **Full SIMD Vectorization**: Deferred (post-project). Implement for critical hotspots in Phase 6.3, full vectorization later if needed.
-*   **Testing Approach Documentation**: Document the rationale behind different testing approaches rather than forcing consistency across the entire test suite.
-*   **Test Build Simplification**: Consider addressing during a dedicated testing infrastructure improvement phase to consolidate Makefiles and standardize build process.
-*   **Dynamic Library Loading Limits**: Consider making `MAX_LOADED_LIBRARIES` (64) configurable or dynamically expandable. The current limit may be restrictive for complex systems with many modules.
+This enhanced refactoring plan provides a comprehensive roadmap for transforming the SAGE model into a truly modular, maintainable system with runtime functional modularity. The Properties Module architecture introduced in Phase 5.2 represents a significant architectural improvement that provides cleaner separation between core infrastructure and physics implementation, enabling independent development and runtime configuration of physics modules.
 
-## Deferred Work - From Phase 5
-
-The following tasks have been deferred to later consideration after completing the main refactoring phases:
-
-### Evolution Diagnostics Refactoring
-
-**Description**: Refactor evolution diagnostics to be more flexible with pipeline phases.
-
-**Rationale**: The current implementation is too rigid and doesn't gracefully handle phase values outside its expected range.
-
-**Implementation Tasks**:
-- Modify `evolution_diagnostics.h` to define a more flexible phase representation
-- Update phase validation to use an enum range check or bitfield rather than a hard-coded range
-- Add a runtime phase registration mechanism so modules can define their own phases
-
-**Example**:
-```c
-// Example of a more flexible phase representation
-typedef enum {
-    DIAG_PHASE_UNKNOWN = 0,
-    DIAG_PHASE_HALO = 1,
-    DIAG_PHASE_GALAXY = 2,
-    DIAG_PHASE_POST = 3,
-    DIAG_PHASE_FINAL = 4,
-    DIAG_PHASE_CUSTOM_BEGIN = 8,
-    DIAG_PHASE_CUSTOM_END = 15,
-    DIAG_PHASE_MAX = 16
-} diagnostic_phase_t;
-```
-
-### Event Data Protocol Enhancement
-
-**Description**: Define a clear protocol for what event data may contain, with explicit support for diagnostics.
-
-**Rationale**: The current approach of trying to extract diagnostics from events without a clear protocol is error-prone.
-
-**Implementation Tasks**:
-- Define a standard event data header structure indicating whether events contain diagnostics information
-- Update all event emission sites to include this header
-- Use tagged unions or type codes to safely handle different event data formats
-
-**Example**:
-```c
-// Example of a standard event header
-typedef struct {
-    uint32_t type_code;               // Code indicating event data type
-    uint32_t flags;                   // Event-specific flags
-    bool has_pipeline_context;        // Explicit flag for pipeline context
-    bool has_diagnostics;             // Explicit flag for diagnostics
-    void *pipeline_context;           // Optional pipeline context (NULL if not present)
-    void *diagnostics;                // Optional diagnostics context (NULL if not present)
-    size_t payload_size;              // Size of event-specific payload after header
-    // Followed by event-specific payload data
-} event_data_header_t;
-```
-
-## Risk Assessment and Mitigation
-
-| Risk | Probability | Impact | Mitigation |
-|------|------------|--------|------------|
-| Scientific accuracy compromised | Medium | Critical | Comprehensive validation tests against baseline results; incremental refactoring with validation at each step |
-| Performance regression | Medium | High | Benchmarking at each phase; performance profiling; optimization of critical paths |
-| Increased complexity | High | Medium | Thorough documentation; clear interfaces; developer guides; training sessions |
-| Compatibility issues with existing analysis pipelines | Medium | High | Backward compatibility layers; gradual migration path; support for legacy interfaces |
-| Resource limitations | Medium | Medium | Prioritize high-impact changes; modular approach allowing partial implementation |
-| Performance overhead of extensions | Medium | High | Profile and optimize extension access; pooled allocations; batch processing |
-| Serialization challenges with extensions | Medium | Medium | Thorough testing with real datasets; fallback mechanisms; format versioning |
-| Module incompatibility | Medium | High | Strict versioning; dependency validation; compatibility tests |
-| Circular dependencies | Medium | Medium | Static dependency analysis; runtime cycle detection; careful module design |
-| Module callback overhead | Medium | Medium | Optimize callback paths; cache frequent calls; profile and tune callback system |
-| Cross-platform compatibility issues | Medium | Medium | Implement proper endianness handling; abstract platform-specific code; standardized error handling |
-| HDF5 resource leaks | Medium | High | Implement comprehensive resource tracking; validate handle management; add cleanup checks |
-| Memory allocation inefficiency | Medium | Medium | Implement geometric growth strategies; optimize pooled allocations; reduce fragmentation |
+By centralizing the definition of all persistent per-galaxy physical state, eliminating core dependencies on specific physics knowledge, and providing standardized access patterns, the system achieves the core goal of runtime functional modularity while maintaining scientific accuracy and improving maintainability. The comprehensive testing and validation approach ensures that the refactored system maintains consistency with the original SAGE model while enabling new capabilities for physics exploration and extension.
