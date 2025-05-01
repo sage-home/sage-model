@@ -169,3 +169,11 @@
 - This change completes the directory restructuring portion of the Core Modularity Implementation Plan (Step 1)
 - Modified files: log/todays-edits.md, log/decision-log.md, log/recent-progress-log.md
 - Renamed directory: src/physics/old → src/physics/migrated
+
+2025-05-01: [Phase 5.2.B.0] Implemented Performance Baseline for Properties Module Architecture
+- Created benchmark_sage.sh script to measure execution time and memory usage
+- Established baseline measurements for Mini-Millennium test case (28s runtime, ~82MB memory)
+- Set up JSON output format with placeholders for phase timing metrics
+- Added cross-platform support for both macOS and Linux environments
+- Created benchmarking documentation with measurement protocol and interpretation guide
+- Added files: tests/benchmark_sage.sh, docs/SAGE Performance Benchmarking.md, benchmarks/baseline_*.json

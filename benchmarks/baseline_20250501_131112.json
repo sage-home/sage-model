@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-05-01T03:11:50Z",
+  "version": "ebacf00",
+  "system": "Darwin HAW10012892 24.4.0 Darwin Kernel Version 24.4.0: Fri Apr 11 18:33:47 PDT 2025; root:xnu-11417.101.15~117/RELEASE_ARM64_T6000 arm64",
+  "test_case": "Mini-Millennium",
+  "overall_performance": {
+    "real_time": "27",
+    "max_memory_mb": 88.71
+  },
+  "phase_timing": {
+    "halo_phase": {
+      "time": "N/A",
+      "percentage": "N/A"
+    },
+    "galaxy_phase": {
+      "time": "N/A",
+      "percentage": "N/A"
+    },
+    "post_phase": {
+      "time": "N/A",
+      "percentage": "N/A"
+    },
+    "final_phase": {
+      "time": "N/A",
+      "percentage": "N/A"
+    }
+  }
+}
