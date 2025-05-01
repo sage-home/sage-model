@@ -14,6 +14,7 @@
 
 #include "macros.h"
 #include "core_simulation.h"
+#include "core_properties.h"  /* For galaxy_properties_t */
 
 /* Maximum number of galaxies per halo - used for merger event queue sizing */
 #define MAX_GALAXIES_PER_HALO 1000
@@ -236,6 +237,9 @@ struct GALAXY
     void **extension_data;        /* Array of pointers to module-specific data */
     int num_extensions;           /* Number of registered extensions */
     uint64_t extension_flags;     /* Bitmap to track which extensions are in use */
+    
+    /* Property system integration */
+    galaxy_properties_t *properties;  /* All properties managed by the property system */
 };
 
 

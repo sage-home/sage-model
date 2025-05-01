@@ -18,13 +18,17 @@ ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 
 # -------------- Compiler Options --------------------------
-CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC
 LIBFLAGS :=
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
 SRC_PREFIX := src
 
 # -------------- Library Configuration ---------------------
 LIBNAME := sage
+
+# Generated source files
+GENERATED_SRC := core_properties.h core_properties.c
+GENERATED_FILES := $(addprefix $(SRC_PREFIX)/, $(GENERATED_SRC))
+GENERATED_DEPS := properties.yaml generate_property_headers.py
 
 # Core source files
 CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
@@ -40,7 +44,8 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_module_debug.c core/core_module_parameter.c \
         core/core_module_error.c core/core_module_diagnostics.c \
         core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \
-        core/core_galaxy_accessors.c core/core_pipeline_registry.c core/core_module_config.c
+        core/core_galaxy_accessors.c core/core_pipeline_registry.c \
+        core/core_module_config.c core/core_properties.c
 
 # Physics model source files
 PHYSICS_SRC := physics/legacy/model_starformation_and_feedback.c \
@@ -69,7 +74,7 @@ SRC := $(addprefix $(SRC_PREFIX)/, $(SRC))
 OBJS := $(SRC:.c=.o)
 
 # Include files
-INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL)
+INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL) core/core_properties.h
 INCL := $(addprefix $(SRC_PREFIX)/, $(INCL))
 
 # Library objects and includes
@@ -254,9 +259,9 @@ ifeq ($(DO_CHECKS), 1)
   endif
 
   # Common compiler flags
-  CCFLAGS += -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs
+  CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs
   LIBFLAGS += -lm
-  
+
   # Platform-specific dynamic library linker flags
   ifeq ($(UNAME), Linux)
     LIBFLAGS += -ldl
@@ -270,10 +275,47 @@ else
 endif
 
 # -------------- Build Targets ----------------------------
+
+# Main Targets
 .PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration
 
 all: $(SAGELIB) $(EXEC)
 
+$(EXEC): $(OBJS)
+	$(CC) $^ $(LIBFLAGS) -o $@
+
+lib libs: $(SAGELIB)
+
+lib$(LIBNAME).a: $(LIBOBJS)
+	@echo "Creating static library"
+	$(AR) rcs $@ $(LIBOBJS)
+
+lib$(LIBNAME).so: $(LIBOBJS)
+	@echo "Creating shared library"
+	$(CC) -shared $(LIBOBJS) -o $@ $(LIBFLAGS)
+
+pyext: lib$(LIBNAME).so
+	@echo "Creating Python extension"
+	python -c "from sage import build_sage_pyext; build_sage_pyext();"
+
+# Rule to generate property headers
+.SECONDARY: $(GENERATED_FILES)
+$(SRC_PREFIX)/core_properties.h $(SRC_PREFIX)/core_properties.c: $(SRC_PREFIX)/properties.yaml $(SRC_PREFIX)/generate_property_headers.py
+	@echo "Generating property headers from YAML definition"
+	cd $(SRC_PREFIX) && python generate_property_headers.py
+
+# Mark as order-only prerequisites to prevent duplicate generation
+$(OBJS): | $(GENERATED_FILES)
+
+%.o: %.c $(INCL) Makefile
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
+
+# Clean targets with common typo aliases
+celan celna clena: clean
+clean:
+	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co] $(GENERATED_FILES) # <-- ADDED generated files
+
+# Test targets
 test_extensions: tests/test_galaxy_extensions.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_extensions tests/test_galaxy_extensions.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -300,31 +342,6 @@ test_io_validation: tests/test_io_validation.c $(SAGELIB)
 
 test_property_validation: tests/test_property_validation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_validation tests/test_property_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-$(EXEC): $(OBJS)
-	$(CC) $^ $(LIBFLAGS) -o $@
-
-lib libs: $(SAGELIB)
-
-lib$(LIBNAME).a: $(LIBOBJS)
-	@echo "Creating static library"
-	$(AR) rcs $@ $(LIBOBJS)
-
-lib$(LIBNAME).so: $(LIBOBJS)
-	@echo "Creating shared library"
-	$(CC) -shared $(LIBOBJS) -o $@ $(LIBFLAGS)
-
-pyext: lib$(LIBNAME).so
-	@echo "Creating Python extension"
-	python -c "from sage import build_sage_pyext; build_sage_pyext();"
-
-%.o: %.c $(INCL) Makefile
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
-
-# Clean targets with common typo aliases
-celan celna clena: clean
-clean:
-	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co]
 
 test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_memory_map tests/test_io_memory_map.c -L. -l$(LIBNAME) $(LIBFLAGS)
@@ -362,6 +379,7 @@ test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
 test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolve_integration tests/test_evolve_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+# Tests execution target
 tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
@@ -399,7 +417,7 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_validation_logic || FAILED="$$FAILED test_validation_logic"
 	@echo "Running test_error_integration..."
 	@./tests/test_error_integration || FAILED="$$FAILED test_error_integration"
-	@echo "Running test_evolution_diagnostics..."
+	@echo "Running test_evolution_ diagnostics..."
 	@./tests/test_evolution_diagnostics || FAILED="$$FAILED test_evolution_diagnostics"
 	@echo "Running test_evolve_integration..."
 	@./tests/test_evolve_integration || FAILED="$$FAILED test_evolve_integration"

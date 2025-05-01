@@ -135,6 +135,14 @@ setup_python_environment() {
             echo "h5py found"
         fi
         
+        # Check for PyYAML
+        if ! python -c "import yaml" &> /dev/null; then
+            echo "PyYAML not found, installing..."
+            pip install PyYAML || echo "Warning: Failed to install PyYAML. YAML-based tests will be skipped."
+        else
+            echo "PyYAML found"
+        fi
+        
         # Deactivate to ensure a clean slate before the real activation
         deactivate 2>/dev/null || true
     else
@@ -170,6 +178,9 @@ setup_python_environment() {
         
         # Install h5py (optional, with a warning if it fails)
         pip install h5py || echo "Warning: Failed to install h5py. HDF5 tests will be skipped."
+        
+        # Install PyYAML (optional, with a warning if it fails)
+        pip install PyYAML || echo "Warning: Failed to install PyYAML. YAML-based tests will be skipped."
         
         # Mark dependencies as installed
         touch "$ENV_PATH/.dependencies_installed"

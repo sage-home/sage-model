@@ -45,11 +45,11 @@
 - [ ] ~~Assess performance impact of the new architecture~~
 - [ ] ~~Make go/no-go decision for full implementation~~
 
-#### Phase 5.2.B: Central Property Definition ⏳ PLANNED
+#### Phase 5.2.B: Central Property Definition ⏳ IN PROGRESS
 - [x] Establish performance baseline for current implementation
-- [ ] Define properties format (`properties.yaml`) with dynamic array support
-- [ ] Create header generation script with dynamic array allocation support
-- [ ] Integrate header generation into build system
+- [x] Define properties format (`properties.yaml`) with dynamic array support
+- [x] Create header generation script with dynamic array allocation support
+- [x] Integrate header generation into build system
 - [ ] Implement core registration of standard properties
 - [ ] Implement memory management for dynamic array properties
 - [ ] Minimize core `struct GALAXY` by removing physics fields

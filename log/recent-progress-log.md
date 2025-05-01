@@ -177,3 +177,13 @@
 - Added cross-platform support for both macOS and Linux environments
 - Created benchmarking documentation with measurement protocol and interpretation guide
 - Added files: tests/benchmark_sage.sh, docs/SAGE Performance Benchmarking.md, benchmarks/baseline_*.json
+
+2025-05-01: [Phase 5.2.B.3] Implemented Property Header Generation Script with Dynamic Array Support
+- Created `generate_property_headers.py` to process property definitions from YAML
+- Implemented struct and macro generation for both fixed-size and dynamic arrays
+- Added `STEPS` constant definition to support legacy star formation history arrays
+- Generated proper function prototypes for memory management of dynamic arrays
+- Fixed struct naming inconsistencies (`struct GALAXY` vs. `struct galaxy`)
+- Integrated generation into build process through Makefile dependencies
+- Ensured compatibility with test suite environment by including PyYAML dependency
+- Added files: src/generate_property_headers.py, src/core/core_properties.c, src/core/core_properties.h
