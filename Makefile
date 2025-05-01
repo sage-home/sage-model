@@ -298,11 +298,19 @@ pyext: lib$(LIBNAME).so
 	@echo "Creating Python extension"
 	python -c "from sage import build_sage_pyext; build_sage_pyext();"
 
+# Create a stamp file directory if needed
+$(shell mkdir -p $(ROOT_DIR)/.stamps)
+
 # Rule to generate property headers
 .SECONDARY: $(GENERATED_FILES)
-$(SRC_PREFIX)/core_properties.h $(SRC_PREFIX)/core_properties.c: $(SRC_PREFIX)/properties.yaml $(SRC_PREFIX)/generate_property_headers.py
+$(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/properties.yaml $(SRC_PREFIX)/generate_property_headers.py
 	@echo "Generating property headers from YAML definition"
 	cd $(SRC_PREFIX) && python generate_property_headers.py
+	@mkdir -p $(dir $@)
+	@touch $@
+
+# Make the generated files depend on the stamp file
+$(SRC_PREFIX)/core_properties.h $(SRC_PREFIX)/core_properties.c: $(ROOT_DIR)/.stamps/generate_properties.stamp
 
 # Mark as order-only prerequisites to prevent duplicate generation
 $(OBJS): | $(GENERATED_FILES)
@@ -313,7 +321,7 @@ $(OBJS): | $(GENERATED_FILES)
 # Clean targets with common typo aliases
 celan celna clena: clean
 clean:
-	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co] $(GENERATED_FILES) # <-- ADDED generated files
+	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co] $(GENERATED_FILES) $(ROOT_DIR)/.stamps/generate_properties.stamp # <-- ALSO CLEAN stamp file
 
 # Test targets
 test_extensions: tests/test_galaxy_extensions.c $(SAGELIB)

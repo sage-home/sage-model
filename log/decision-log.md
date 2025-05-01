@@ -112,3 +112,7 @@
 2025-05-01: [Phase 5.2.E] Standardize on HDF5 Output Format
 - Rationale: Supporting multiple output formats increases complexity and maintenance burden. HDF5 provides superior capabilities for scientific data with built-in compression, chunking, metadata support, and native handling of complex data types including variable-length arrays. Binary format lacks many of these features and requires custom serialization code.
 - Impact: Eliminating binary output format support simplifies the codebase by removing one I/O handler path. Focusing on HDF5 enables better leveraging of its advanced features like hierarchical organization and self-describing datasets. This change allows more resources to be directed toward making the HDF5 output robust and feature-rich while reducing the testing matrix.
+
+2025-05-01: [Phase 5.2.B] Stamp File Approach for Build System Generation
+- Rationale: The Makefile rule for property header generation was running twice because it had multiple targets (both .h and .c files) but used a single command that generated both files. This caused unnecessary duplicated work and confusing output during builds.
+- Impact: Implementing a stamp file approach creates a single primary target that depends on the YAML source, with both generated files depending on this stamp. This ensures the generation script runs exactly once per build cycle, improving build clarity and efficiency while maintaining proper dependency tracking in the build system.

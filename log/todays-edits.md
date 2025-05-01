@@ -24,3 +24,4 @@
 2025-05-01 19:50: edit file `src/core/core_properties.h` - Fixed struct naming inconsistency (galaxy vs. GALAXY)
 2025-05-01 19:52: edit file `src/core/core_properties.c` - Fixed struct naming inconsistency and added dynamic array handling
 2025-05-01 19:55: edit Makefile - Added .SECONDARY directive to prevent duplicate header generation
+2025-05-01 20:15: edit Makefile - Fixed duplicate property header generation with stamp file approach
