@@ -29,8 +29,8 @@
 #include "../physics/legacy/model_reincorporation.h"
 #include "../physics/legacy/model_starformation_and_feedback.h"
 #include "../physics/cooling_module.h"
-#include "../physics/modules/agn_module.h"
-#include "../physics/modules/feedback_module.h"
+#include "../physics/agn_module.h"
+#include "../physics/feedback_module.h"
 #include "../core/core_parameter_views.h"
 
 /**

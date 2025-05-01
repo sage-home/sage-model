@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../core/core_allvars.h"
+#include "../core/core_allvars.h"
 
 // Stubs for AGN-related accessors (to be implemented fully in a future phase)
 

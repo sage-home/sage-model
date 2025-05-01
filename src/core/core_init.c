@@ -113,11 +113,6 @@ void initialize_module_system(struct params *run_params)
         LOG_WARNING("Failed to add default module search path, status = %d", status);
     }
     
-    status = module_add_search_path("src/physics/modules");
-    if (status != MODULE_STATUS_SUCCESS) {
-        LOG_WARNING("Failed to add physics module search path, status = %d", status);
-    }
-    
     /* Discover modules if registry is initialized */
     if (global_module_registry != NULL && global_module_registry->discovery_enabled) {
         LOG_INFO("Starting module discovery");
