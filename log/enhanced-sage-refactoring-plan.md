@@ -437,8 +437,8 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 #### Subphase 5.2: Properties Module Architecture Implementation [ARCHITECTURAL SHIFT]
 **IMPORTANT NOTE:** After careful evaluation, the implementation strategy for Phase 5.2 has been significantly revised to adopt a "Properties Module" architecture. This approach provides cleaner separation between core infrastructure and physics, treating all physics modules as equal consumers/modifiers of galaxy properties through a centrally-defined mechanism. This architectural shift supersedes the previous piecemeal approach to physics module migration.
 
-##### 5.2.A: Initial Proof-of-Concept [NEW]
-*   **5.2.A.1 Performance Baseline**: Establish performance benchmarks for the current implementation
+##### 5.2.A: Initial Proof-of-Concept [SKIPPED]
+*   **5.2.A.1 Performance Baseline**: Establish performance benchmarks for the current implementation <-moved to 5.2.B.0
 *   **5.2.A.2 Minimal Property Definition**: Create a small subset of essential properties in YAML format
 *   **5.2.A.3 Basic Header Generator**: Implement a minimal script to generate accessor macros
 *   **5.2.A.4 Core Integration Test**: Adapt a small portion of the core code to use the generated macros
@@ -448,6 +448,7 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 *   **5.2.A.8 Go/No-Go Decision**: Evaluate results and confirm continuation with full implementation
 
 ##### 5.2.B: Define and Integrate Central Property Definition
+*   **5.2.B.0: Establish Performance Baseline**: Run and record performance benchmarks (runtime, memory usage) for key test cases (e.g., Mini-Millennium) using the codebase before implementing the subsequent changes in Phase 5.2.B-F. Store these baseline results for later comparison in Phase 5.3.3.
 *   **5.2.B.1 Define Properties Format**: Establish structure and syntax for `properties.yaml`, specifying required fields (`name`, `type`, `initial_value`) and optional fields (`units`, `description`, `output`)
 *   **5.2.B.2 Create Header Generation Script**: Implement script to validate definitions and generate `standard_properties.h` with type-safe accessor macros
 *   **5.2.B.3 Integrate Header Generation into Build System**: Add Makefile rules to run the generation script during the build process

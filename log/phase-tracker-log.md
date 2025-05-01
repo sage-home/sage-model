@@ -35,17 +35,18 @@
 ### Phase 5.2: Properties Module Implementation ⏳ ARCHITECTURAL SHIFT
 **Note**: After careful evaluation, we've decided to replace the piecemeal physics module migration with a more elegant "Properties Module" architecture that provides cleaner separation between core and physics.
 
-#### Phase 5.2.A: Initial Proof-of-Concept ⏳ PLANNED
-- [ ] Establish performance baseline for current implementation
-- [ ] Create minimal property definition for essential properties in YAML
-- [ ] Implement basic header generation script
-- [ ] Create core integration test with generated macros
-- [ ] Convert one simple module to use the new access pattern
-- [ ] Validate scientific equivalence with previous implementation
-- [ ] Assess performance impact of the new architecture
-- [ ] Make go/no-go decision for full implementation
+#### Phase 5.2.A: Initial Proof-of-Concept ➖ SKIPPED
+- [ ] ~~Establish performance baseline for current implementation~~
+- [ ] ~~Create minimal property definition for essential properties in YAML~~
+- [ ] ~~Implement basic header generation script~~
+- [ ] ~~Create core integration test with generated macros~~
+- [ ] ~~Convert one simple module to use the new access pattern~~
+- [ ] ~~Validate scientific equivalence with previous implementation~~
+- [ ] ~~Assess performance impact of the new architecture~~
+- [ ] ~~Make go/no-go decision for full implementation~~
 
 #### Phase 5.2.B: Central Property Definition ⏳ PLANNED
+- [ ] Establish performance baseline for current implementation
 - [ ] Define properties format (`properties.yaml`)
 - [ ] Create header generation script
 - [ ] Integrate header generation into build system
