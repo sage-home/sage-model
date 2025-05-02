@@ -391,7 +391,7 @@ test_property_registration: tests/test_property_registration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_registration tests/test_property_registration.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration  test_property_registration
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
@@ -410,6 +410,8 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_hdf5_output || FAILED="$$FAILED test_hdf5_output"
 	@echo "Running test_io_validation..."
 	@./tests/test_io_validation || FAILED="$$FAILED test_io_validation"
+	@echo "Running test_property_validation..."
+	@./tests/test_property_validation || FAILED="$$FAILED test_property_validation"
 	@echo "Running test_dynamic_library..."
 	@./tests/test_dynamic_library || FAILED="$$FAILED test_dynamic_library"
 	@echo "Running test_module_framework..."
