@@ -13,11 +13,11 @@
 
 **Workflow:**
 1. Begin each task by reviewing the plan and all logs.
-2. FIRST TIME ONLY: Propose a plan of action, pause for approval.
+2. FIRST TIME ONLY: Propose a plan of action, ALWAYS STOP for approval.
 3. Make edits incrementally.
 4. EVERY group of edits to a SINGLE function/header/new file should be recorded in `log/todays-edits.md` before moving on.
 5. BEFORE starting a new group of edits, check `log/todays-edits.md` to avoid duplication.
-6. Output should prefer `LOG_DEBUG`, `LOG_ERROR` etc over `printf`.
+6. Code output should prefer `LOG_DEBUG`, `LOG_ERROR` etc over `printf`.
 7. Run tests via `/terminal make tests`.
 8. When reporting progress, include EVERY FILE that was changed and created.
 9.  Write documentation to `docs/` when relevant.
