@@ -26,18 +26,19 @@ struct params SimulationParams;
 /* Test data */
 static const float test_float_value = 42.5f;
 static const double test_double_value = 123.456;
-static const int32_t test_int32_value = 42;
-static const int64_t test_int64_value = 9223372036854775807LL;
-static const uint64_t test_uint64_value = 18446744073709551615ULL;
-static const float test_array_float[] = {1.1f, 2.2f, 3.3f, 4.4f, 5.5f};
-static const int test_array_size = 5;
+static const float test_pos_value[3] = {10.0f, 20.0f, 30.0f};
+static const float test_sfh_value[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+static const int test_sfh_size = sizeof(test_sfh_value) / sizeof(test_sfh_value[0]);
 
 /* Helper functions */
 static void test_scalar_property_access(struct GALAXY *galaxy, property_id_t prop_id, const char *property_name);
-static void test_array_property_access(struct GALAXY *galaxy, property_id_t prop_id, const char *property_name, int array_size);
+static void test_fixed_array_property_access(struct GALAXY *galaxy, property_id_t prop_id, const char *property_name);
+static void test_dynamic_array_property_access(struct GALAXY *galaxy, property_id_t prop_id, const char *property_name);
+static void test_serialization_functions(void);
 static int setup_test_galaxy(struct GALAXY *galaxy);
 static void cleanup_test_galaxy(struct GALAXY *galaxy);
 static int get_property_type_size(property_id_t prop_id);
+static void map_standard_properties_to_extensions(struct GALAXY *galaxy);
 
 /**
  * Main test function
@@ -74,6 +75,14 @@ int main(void)
     test_scalar_property_access(&test_galaxy, PROP_StellarMass, "StellarMass");
     test_scalar_property_access(&test_galaxy, PROP_BulgeMass, "BulgeMass");
     test_scalar_property_access(&test_galaxy, PROP_BlackHoleMass, "BlackHoleMass");
+    
+    /* Test fixed-size array property */
+    printf("\nTesting fixed-size array property access:\n");
+    test_fixed_array_property_access(&test_galaxy, PROP_Pos, "Pos");
+    
+    /* Test dynamic array property */
+    printf("\nTesting dynamic array property access:\n");
+    test_dynamic_array_property_access(&test_galaxy, PROP_StarFormationHistory, "StarFormationHistory");
     
     /* Test property lookup by name */
     printf("\nTesting property lookup by name:\n");
@@ -114,6 +123,9 @@ int main(void)
         printf("Invalid extension ID lookup handled correctly\n");
     }
     
+    /* Test serialization functions */
+    test_serialization_functions();
+    
     /* Cleanup */
     cleanup_test_galaxy(&test_galaxy);
     
@@ -140,10 +152,32 @@ static int setup_test_galaxy(struct GALAXY *galaxy)
         return 1;
     }
     
+    /* Allocate properties for dynamic arrays */
+    if (allocate_galaxy_properties(galaxy) != 0) {
+        printf("Error: Failed to allocate galaxy properties\n");
+        return 1;
+    }
+    
     /* Set some test values via direct access */
     galaxy->StellarMass = test_float_value;
     galaxy->BulgeMass = test_double_value;
     galaxy->BlackHoleMass = test_float_value * 2;
+    
+    /* Initialize Pos fixed array */
+    memcpy(galaxy->Pos, test_pos_value, sizeof(test_pos_value));
+    
+    /* Set StarFormationHistory dynamic array size and values */
+    if (galaxy_set_StarFormationHistory_size(galaxy, test_sfh_size) != 0) {
+        printf("Error: Failed to set StarFormationHistory size\n");
+        return 1;
+    }
+    
+    /* Verify allocation and copy data to array */
+    assert(galaxy->properties != NULL && galaxy->properties->StarFormationHistory != NULL);
+    memcpy(galaxy->properties->StarFormationHistory, test_sfh_value, test_sfh_size * sizeof(float));
+    
+    /* Map standard properties to extensions */
+    map_standard_properties_to_extensions(galaxy);
     
     return 0;
 }
@@ -152,9 +186,87 @@ static int setup_test_galaxy(struct GALAXY *galaxy)
  * Clean up test galaxy resources
  */
 static void cleanup_test_galaxy(struct GALAXY *galaxy)
-{    
+{
+    /* Clear extension flags for standard properties to avoid double frees */
+    int ext_id;
+    
+    /* StellarMass */
+    ext_id = get_extension_id_for_standard_property(PROP_StellarMass);
+    if (ext_id >= 0) galaxy->extension_flags &= ~(1ULL << ext_id);
+    
+    /* BulgeMass */
+    ext_id = get_extension_id_for_standard_property(PROP_BulgeMass);
+    if (ext_id >= 0) galaxy->extension_flags &= ~(1ULL << ext_id);
+    
+    /* BlackHoleMass */
+    ext_id = get_extension_id_for_standard_property(PROP_BlackHoleMass);
+    if (ext_id >= 0) galaxy->extension_flags &= ~(1ULL << ext_id);
+    
+    /* Pos */
+    ext_id = get_extension_id_for_standard_property(PROP_Pos);
+    if (ext_id >= 0) galaxy->extension_flags &= ~(1ULL << ext_id);
+    
+    /* StarFormationHistory */
+    ext_id = get_extension_id_for_standard_property(PROP_StarFormationHistory);
+    if (ext_id >= 0) galaxy->extension_flags &= ~(1ULL << ext_id);
+    
+    /* Set all these pointers to NULL to prevent freeing them */
+    for (int i = 0; i < galaxy->num_extensions; i++) {
+        if (!(galaxy->extension_flags & (1ULL << i))) {
+            galaxy->extension_data[i] = NULL;
+        }
+    }
+    
+    /* Free galaxy properties (including dynamic arrays) */
+    free_galaxy_properties(galaxy);
+    
     /* Free extension data */
     galaxy_extension_cleanup(galaxy);
+}
+
+/**
+ * Map galaxy properties to extension system
+ * This function creates the correct mappings between standard properties
+ * stored directly in the galaxy struct and their extension system representations.
+ */
+static void map_standard_properties_to_extensions(struct GALAXY *galaxy)
+{
+    int ext_id;
+    
+    /* Map StellarMass (float) */
+    ext_id = get_extension_id_for_standard_property(PROP_StellarMass);
+    if (ext_id >= 0) {
+        galaxy->extension_data[ext_id] = &(galaxy->StellarMass);
+        galaxy->extension_flags |= (1ULL << ext_id);
+    }
+    
+    /* Map BulgeMass (double) */
+    ext_id = get_extension_id_for_standard_property(PROP_BulgeMass);
+    if (ext_id >= 0) {
+        galaxy->extension_data[ext_id] = &(galaxy->BulgeMass);
+        galaxy->extension_flags |= (1ULL << ext_id);
+    }
+    
+    /* Map BlackHoleMass (float) */
+    ext_id = get_extension_id_for_standard_property(PROP_BlackHoleMass);
+    if (ext_id >= 0) {
+        galaxy->extension_data[ext_id] = &(galaxy->BlackHoleMass);
+        galaxy->extension_flags |= (1ULL << ext_id);
+    }
+    
+    /* Map Pos (float[3]) */
+    ext_id = get_extension_id_for_standard_property(PROP_Pos);
+    if (ext_id >= 0) {
+        galaxy->extension_data[ext_id] = galaxy->Pos;
+        galaxy->extension_flags |= (1ULL << ext_id);
+    }
+    
+    /* Map StarFormationHistory (float[]) - this one is a pointer */
+    ext_id = get_extension_id_for_standard_property(PROP_StarFormationHistory);
+    if (ext_id >= 0 && galaxy->properties != NULL) {
+        galaxy->extension_data[ext_id] = &(galaxy->properties->StarFormationHistory);
+        galaxy->extension_flags |= (1ULL << ext_id);
+    }
 }
 
 /**
@@ -234,16 +346,127 @@ static void test_scalar_property_access(struct GALAXY *galaxy, property_id_t pro
 }
 
 /**
- * Test access to array property - Not used in this simplified test
+ * Test access to fixed-size array property
  */
-static void test_array_property_access(struct GALAXY *galaxy, property_id_t prop_id, 
-                                      const char *property_name, int array_size)
+static void test_fixed_array_property_access(struct GALAXY *galaxy, property_id_t prop_id, const char *property_name)
 {
-    /* Not implemented - simplified version */
-    (void)galaxy;
-    (void)prop_id;
-    (void)property_name;
-    (void)array_size;
+    /* Get extension ID for this property */
+    int ext_id = get_extension_id_for_standard_property(prop_id);
+    assert(ext_id >= 0 && "Property not registered with extension system");
+    
+    /* Print property name for clearer test output */
+    printf("Testing fixed-size array property: %s\n", property_name);
+    
+    /* For Pos, we know it's float[3] */
+    size_t expected_size = 3 * sizeof(float);
+    printf("  Expected array size: %zu bytes (float[3])\n", expected_size);
+    
+    /* Allocate buffer for the array data */
+    void *buffer = malloc(expected_size);
+    assert(buffer != NULL && "Failed to allocate buffer");
+    
+    /* Read property via extension system */
+    void *ext_data = galaxy_extension_get_data(galaxy, ext_id);
+    assert(ext_data != NULL && "Failed to get extension data");
+    
+    /* Copy data from extension to buffer */
+    memcpy(buffer, ext_data, expected_size);
+    
+    /* Get direct access pointer based on property ID */
+    void *direct_ptr = NULL;
+    if (prop_id == PROP_Pos) {
+        direct_ptr = galaxy->Pos;
+    } else {
+        printf("Error: Unsupported fixed array property '%s' in test\n", property_name);
+        free(buffer);
+        return;
+    }
+    
+    /* Compare values */
+    if (memcmp(buffer, direct_ptr, expected_size) != 0) {
+        printf("Error: Fixed array property '%s' extension value doesn't match direct access\n", 
+               property_name);
+        
+        /* Print values for debugging */
+        float *ext_values = (float*)buffer;
+        float *direct_values = (float*)direct_ptr;
+        printf("  Direct: [%f, %f, %f], Extension: [%f, %f, %f]\n",
+               direct_values[0], direct_values[1], direct_values[2],
+               ext_values[0], ext_values[1], ext_values[2]);
+    } else {
+        /* Print values for verification */
+        float *values = (float*)buffer;
+        printf("  Array contents verified: [%f, %f, %f]\n", 
+               values[0], values[1], values[2]);
+        printf("Fixed array property '%s' extension access verified!\n", property_name);
+    }
+    
+    free(buffer);
+}
+
+/**
+ * Test access to dynamic array property
+ */
+static void test_dynamic_array_property_access(struct GALAXY *galaxy, property_id_t prop_id, const char *property_name)
+{
+    /* Get extension ID for this property */
+    int ext_id = get_extension_id_for_standard_property(prop_id);
+    assert(ext_id >= 0 && "Property not registered with extension system");
+    
+    /* Print property name for clearer test output */
+    printf("Testing dynamic array property: %s\n", property_name);
+    
+    /* Check the array size */
+    int actual_size = 0;
+    if (prop_id == PROP_StarFormationHistory) {
+        actual_size = GALAXY_PROP_StarFormationHistory_SIZE(galaxy);
+        assert(actual_size == test_sfh_size && "StarFormationHistory size mismatch");
+        printf("  Array size verified: %d\n", actual_size);
+    } else {
+        printf("Error: Unsupported dynamic array property '%s' in test\n", property_name);
+        return;
+    }
+    
+    /* Get pointer to the array pointer via extension */
+    void *ext_ptr_to_array_ptr = galaxy_extension_get_data(galaxy, ext_id);
+    assert(ext_ptr_to_array_ptr != NULL && "Failed to get extension data pointer");
+    
+    /* Dereference to get the actual array pointer */
+    float *ext_array_ptr = *(float**)ext_ptr_to_array_ptr;
+    assert(ext_array_ptr != NULL && "Dynamic array pointer is NULL");
+    
+    /* Get direct access pointer */
+    float *direct_array_ptr = NULL;
+    if (prop_id == PROP_StarFormationHistory) {
+        direct_array_ptr = galaxy->properties->StarFormationHistory;
+    } else {
+        printf("Error: Unsupported dynamic array property '%s' in test\n", property_name);
+        return;
+    }
+    
+    /* Compare array pointers - should be the same pointer */
+    if (ext_array_ptr != direct_array_ptr) {
+        printf("Error: Dynamic array property '%s' pointers don't match\n"
+               "  Direct: %p, Extension: %p\n", 
+               property_name, (void*)direct_array_ptr, (void*)ext_array_ptr);
+        return;
+    } else {
+        printf("  Array pointers match: %p\n", (void*)ext_array_ptr);
+    }
+    
+    /* Compare array contents */
+    if (memcmp(ext_array_ptr, test_sfh_value, actual_size * sizeof(float)) != 0) {
+        printf("Error: Dynamic array property '%s' values don't match test data\n", property_name);
+        
+        /* Print a few values for debugging */
+        printf("  Expected: [%f, %f, %f, ...], Actual: [%f, %f, %f, ...]\n",
+               test_sfh_value[0], test_sfh_value[1], test_sfh_value[2],
+               ext_array_ptr[0], ext_array_ptr[1], ext_array_ptr[2]);
+    } else {
+        printf("  Array contents verified: [%f, %f, %f, ...]\n", 
+               ext_array_ptr[0], ext_array_ptr[1], ext_array_ptr[2]);
+        printf("Dynamic array property '%s' extension access verified!\n", property_name);
+    }
 }
 
 /**
@@ -270,4 +493,92 @@ static int get_property_type_size(property_id_t prop_id)
     }
     
     return -1;
+}
+
+/**
+ * Test serialization functions for properties
+ */
+static void test_serialization_functions(void)
+{
+    printf("\nTesting serialization functions:\n");
+    
+    /* Test scalar serialization (StellarMass - float) */
+    {
+        printf("Testing scalar (float) serialization for StellarMass:\n");
+        
+        const galaxy_property_t *prop_meta = galaxy_extension_find_property_by_id(PROP_StellarMass);
+        assert(prop_meta != NULL && "Failed to find property metadata");
+        assert(prop_meta->serialize != NULL && "Serialization function is NULL");
+        assert(prop_meta->deserialize != NULL && "Deserialization function is NULL");
+        
+        float src_val = test_float_value;
+        float dest_val = 0.0f;
+        float final_val = 0.0f;
+        
+        /* Serialize */
+        prop_meta->serialize(&src_val, &dest_val, 1);
+        
+        /* Verify serialization */
+        if (dest_val != src_val) {
+            printf("Error: Serialization failed for StellarMass\n");
+            printf("  Source: %f, Serialized: %f\n", src_val, dest_val);
+        } else {
+            printf("  Serialization successful: %f -> %f\n", src_val, dest_val);
+        }
+        
+        /* Deserialize */
+        prop_meta->deserialize(&dest_val, &final_val, 1);
+        
+        /* Verify deserialization */
+        if (final_val != src_val) {
+            printf("Error: Deserialization failed for StellarMass\n");
+            printf("  Source: %f, Deserialized: %f\n", src_val, final_val);
+        } else {
+            printf("  Deserialization successful: %f -> %f\n", dest_val, final_val);
+        }
+    }
+    
+    /* Test fixed array serialization (Pos - float[3]) */
+    {
+        printf("Testing fixed array serialization for Pos:\n");
+        
+        const galaxy_property_t *prop_meta = galaxy_extension_find_property_by_id(PROP_Pos);
+        assert(prop_meta != NULL && "Failed to find property metadata");
+        assert(prop_meta->serialize != NULL && "Serialization function is NULL");
+        assert(prop_meta->deserialize != NULL && "Deserialization function is NULL");
+        
+        /* Create test arrays */
+        float src_arr[3];
+        memcpy(src_arr, test_pos_value, sizeof(src_arr));
+        float dest_arr[3] = {0};
+        float final_arr[3] = {0};
+        
+        /* Serialize */
+        prop_meta->serialize(src_arr, dest_arr, 3);
+        
+        /* Verify serialization */
+        if (memcmp(src_arr, dest_arr, sizeof(src_arr)) != 0) {
+            printf("Error: Array serialization failed for Pos\n");
+            printf("  Source: [%f, %f, %f], Serialized: [%f, %f, %f]\n",
+                   src_arr[0], src_arr[1], src_arr[2],
+                   dest_arr[0], dest_arr[1], dest_arr[2]);
+        } else {
+            printf("  Array serialization successful: [%f, %f, %f]\n", 
+                   dest_arr[0], dest_arr[1], dest_arr[2]);
+        }
+        
+        /* Deserialize */
+        prop_meta->deserialize(dest_arr, final_arr, 3);
+        
+        /* Verify deserialization */
+        if (memcmp(src_arr, final_arr, sizeof(src_arr)) != 0) {
+            printf("Error: Array deserialization failed for Pos\n");
+            printf("  Source: [%f, %f, %f], Deserialized: [%f, %f, %f]\n",
+                   src_arr[0], src_arr[1], src_arr[2],
+                   final_arr[0], final_arr[1], final_arr[2]);
+        } else {
+            printf("  Array deserialization successful: [%f, %f, %f]\n", 
+                   final_arr[0], final_arr[1], final_arr[2]);
+        }
+    }
 }
