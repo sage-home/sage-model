@@ -7,4 +7,4 @@
 
 #file:log/todays-edits.md
 
-We’re starting a new task. Please review the plan and logs. Wait for approval before making any changes. Always keep `todays-edits.md` updated as instructed.
+We’re starting a new task. Please review the plan and logs. Stop for approval before making any changes. Always keep `todays-edits.md` updated as instructed.
