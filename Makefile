@@ -45,7 +45,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_module_error.c core/core_module_diagnostics.c \
         core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c \
-        core/core_module_config.c core/core_properties.c
+        core/core_module_config.c core/core_properties.c core/standard_properties.c
 
 # Physics model source files
 PHYSICS_SRC := physics/legacy/model_starformation_and_feedback.c \
@@ -277,7 +277,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration
 
 all: $(SAGELIB) $(EXEC)
 
@@ -387,8 +387,11 @@ test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
 test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolve_integration tests/test_evolve_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+test_property_registration: tests/test_property_registration.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_registration tests/test_property_registration.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"

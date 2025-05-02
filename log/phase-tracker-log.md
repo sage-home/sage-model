@@ -50,7 +50,7 @@
 - [x] Define properties format (`properties.yaml`) with dynamic array support
 - [x] Create header generation script with dynamic array allocation support
 - [x] Integrate header generation into build system
-- [ ] Implement core registration of standard properties
+- [x] Implement core registration of standard properties
 - [ ] Implement memory management for dynamic array properties
 - [ ] Minimize core `struct GALAXY` by removing physics fields
 

@@ -20,6 +20,8 @@
 #include "core_config_system.h"
 #include "core_memory_pool.h"
 #include "core_module_callback.h"
+#include "core_properties.h"
+#include "standard_properties.h"
 
 /* These functions do not need to be exposed externally */
 double integrand_time_to_present(const double a, void *param);
@@ -57,6 +59,10 @@ void init(struct params *run_params)
     /* Initialize galaxy extension system */
     initialize_galaxy_extension_system();
     LOG_DEBUG("Galaxy extension system initialized");
+    
+    /* Initialize property system */
+    initialize_standard_properties();
+    LOG_DEBUG("Property system initialized");
     
     /* Initialize event system */
     initialize_event_system();
@@ -531,6 +537,39 @@ void cleanup_module_callback_system(void)
     module_callback_system_cleanup();
     LOG_DEBUG("Module callback system cleaned up");
 }
+
+/**
+ * Initialize the standard property system
+ * 
+ * Sets up the property system and registers standard properties with 
+ * the extension system.
+ */
+void initialize_standard_properties(void)
+{
+    /* Initialize the property system */
+    LOG_DEBUG("Initializing property system");
+    int status = initialize_property_system();
+    if (status != 0) {
+        LOG_ERROR("Failed to initialize property system, status = %d", status);
+        return;
+    }
+    
+    /* Register standard properties with the extension system */
+    status = register_standard_properties();
+    if (status != 0) {
+        LOG_ERROR("Failed to register standard properties, status = %d", status);
+        return;
+    }
+    
+    LOG_INFO("Property system initialized with standard properties");
+}
+
+/**
+ * Clean up the property system
+ * 
+ * Releases resources used by the property system.
+ */
+/* Implementation moved to core_properties.c to avoid duplication */
 
 /*
  * Initialize the galaxy evolution context
