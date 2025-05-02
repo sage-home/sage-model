@@ -217,6 +217,10 @@ static void cleanup_test_galaxy(struct GALAXY *galaxy)
     ext_id = get_extension_id_for_standard_property(PROP_StarFormationHistory);
     if (ext_id >= 0) galaxy->extension_flags &= ~(1ULL << ext_id);
     
+    /* TestNonZeroArray */
+    ext_id = get_extension_id_for_standard_property(PROP_TestNonZeroArray);
+    if (ext_id >= 0) galaxy->extension_flags &= ~(1ULL << ext_id);
+    
     /* Set all these pointers to NULL to prevent freeing them */
     for (int i = 0; i < galaxy->num_extensions; i++) {
         if (!(galaxy->extension_flags & (1ULL << i))) {
@@ -272,6 +276,13 @@ static void map_standard_properties_to_extensions(struct GALAXY *galaxy)
     ext_id = get_extension_id_for_standard_property(PROP_StarFormationHistory);
     if (ext_id >= 0 && galaxy->properties != NULL) {
         galaxy->extension_data[ext_id] = &(galaxy->properties->StarFormationHistory);
+        galaxy->extension_flags |= (1ULL << ext_id);
+    }
+    
+    /* Map TestNonZeroArray (float[]) - also a pointer */
+    ext_id = get_extension_id_for_standard_property(PROP_TestNonZeroArray);
+    if (ext_id >= 0 && galaxy->properties != NULL) {
+        galaxy->extension_data[ext_id] = &(galaxy->properties->TestNonZeroArray);
         galaxy->extension_flags |= (1ULL << ext_id);
     }
 }
@@ -708,6 +719,44 @@ static void test_dynamic_array_memory(void)
     free_galaxy_properties(&galaxy2);
     galaxy_extension_cleanup(&galaxy);
     galaxy_extension_cleanup(&galaxy2);
+    
+    /* Test non-zero initialization */
+    printf("  Testing non-zero initialization of TestNonZeroArray...\n");
+    
+    // Create a galaxy to test non-zero initialization
+    struct GALAXY nonzero_galaxy;
+    memset(&nonzero_galaxy, 0, sizeof(struct GALAXY));
+    
+    // Initialize extensions
+    status = galaxy_extension_initialize(&nonzero_galaxy);
+    assert(status == 0 && "Failed to initialize non-zero test galaxy extensions");
+    
+    // Allocate properties with parameters
+    status = allocate_galaxy_properties(&nonzero_galaxy, &SimulationParams);
+    assert(status == 0 && "Failed to allocate non-zero test galaxy properties");
+    
+    // Check TestNonZeroArray size
+    int nonzero_size = GALAXY_PROP_TestNonZeroArray_SIZE(&nonzero_galaxy);
+    printf("  TestNonZeroArray size: %d\n", nonzero_size);
+    assert(nonzero_size == SimulationParams.simulation.NumSnapOutputs && 
+           "TestNonZeroArray size mismatch");
+    
+    // Verify all elements are initialized to 1.0
+    bool all_nonzero = true;
+    for (int i = 0; i < nonzero_size; i++) {
+        if (nonzero_galaxy.properties->TestNonZeroArray[i] != 1.0f) {
+            all_nonzero = false;
+            printf("  ERROR: TestNonZeroArray[%d] = %f (expected 1.0)\n", 
+                   i, nonzero_galaxy.properties->TestNonZeroArray[i]);
+            break;
+        }
+    }
+    printf("  All elements initialized to 1.0: %s\n", all_nonzero ? "Yes" : "No");
+    assert(all_nonzero && "TestNonZeroArray elements not correctly initialized");
+    
+    // Clean up
+    free_galaxy_properties(&nonzero_galaxy);
+    galaxy_extension_cleanup(&nonzero_galaxy);
     
     printf("  Dynamic array memory tests passed!\n");
 }

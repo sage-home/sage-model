@@ -627,7 +627,9 @@ def generate_helper_functions(properties):
     dynamic_arrays = [p for p in properties if parse_type(p['type'])[3]]
     for prop in dynamic_arrays:
         base_type = parse_type(prop['type'])[0]
-        functions.extend([
+        
+        # Start with standard function header and validation
+        func_lines = [
             f"/**",
             f" * @brief Set the size of the {prop['name']} dynamic array",
             f" * @param g Galaxy pointer",
@@ -662,12 +664,30 @@ def generate_helper_functions(properties):
             f"            LOG_ERROR(\"Failed to allocate memory for {prop['name']} array\");",
             f"            g->properties->{prop['name']}_size = 0;",
             f"            return -1;",
-            f"        }}",
+            f"        }}"
+        ]
+        
+        # Check for non-zero initial value
+        initial_value = prop.get('initial_value')
+        if initial_value is not None and str(initial_value) != '0' and str(initial_value) != '0.0':
+            func_lines.extend([
+                f"        ",
+                f"        /* Initialize array with non-zero value {initial_value} */",
+                f"        for (int i = 0; i < size; i++) {{",
+                f"            g->properties->{prop['name']}[i] = {initial_value};",
+                f"        }}"
+            ])
+        
+        # Add function closing
+        func_lines.extend([
             f"    }}",
             f"    ",
             f"    return 0;",
             "}"
         ])
+        
+        # Add function lines to the overall functions list
+        functions.extend(func_lines)
     
     return "\n".join(functions)
 

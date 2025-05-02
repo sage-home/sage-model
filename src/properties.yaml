@@ -351,6 +351,16 @@ properties:
     output: true
     read_only: false
     
+  # Test property with non-zero initial value
+  - name: TestNonZeroArray
+    type: float[]
+    size_parameter: "simulation.NumSnapOutputs"
+    initial_value: 1.0
+    units: "1"
+    description: "Test array with non-zero initial value"
+    output: false
+    read_only: false
+    
   # Structural Properties
   - name: DiskScaleRadius
     type: float
