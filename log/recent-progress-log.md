@@ -197,3 +197,11 @@
 - Discovered memory allocation failure when running full model, to be fixed in "Implement memory management for dynamic array properties" task
 - Added files: src/core/standard_properties.h, src/core/standard_properties.c, tests/test_property_registration.c
 - Modified files: src/core/core_init.c, Makefile
+
+2025-05-02: [Phase 5.2.B.5] Fixed Dynamic Array Memory Management for Galaxy Properties
+- Fixed critical issue in `copy_galaxy_properties()` that was causing test failures and memory corruption
+- Added proper dynamic array handling to allocate and copy data for properties like StarFormationHistory
+- Fixed memory leaks in galaxy properties by properly freeing and reallocating only when necessary
+- Ensured all tests now pass including `test_property_registration` that was failing previously
+- This removes the last critical blocker for the auto-generated property system implementation
+- Modified files: src/core/core_properties.c, src/core/core_init.c, src/core/core_init.h, src/generate_property_headers.py, tests/test_property_registration.c

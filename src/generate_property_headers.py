@@ -70,14 +70,16 @@ extern property_meta_t PROPERTY_META[PROP_COUNT];
 
 /* Forward declarations for property system */
 struct GALAXY;
+struct params;
 
 /* Property system functions */
 
 /**
  * @brief Initialize the property system
+ * @param params Pointer to runtime parameters
  * @return 0 on success, non-zero on failure
  */
-int initialize_property_system(void);
+int initialize_property_system(const struct params *params);
 
 /**
  * @brief Clean up the property system resources
@@ -87,9 +89,10 @@ void cleanup_property_system(void);
 /**
  * @brief Allocate property memory for a galaxy
  * @param g Galaxy pointer
+ * @param params Pointer to runtime parameters
  * @return 0 on success, non-zero on failure
  */
-int allocate_galaxy_properties(struct GALAXY *g);
+int allocate_galaxy_properties(struct GALAXY *g, const struct params *params);
 
 /**
  * @brief Free property memory for a galaxy
@@ -101,9 +104,10 @@ void free_galaxy_properties(struct GALAXY *g);
  * @brief Copy all properties from source galaxy to destination galaxy
  * @param dest Destination galaxy
  * @param src Source galaxy
+ * @param params Pointer to runtime parameters
  * @return 0 on success, non-zero on failure
  */
-int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src);
+int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src, const struct params *params);
 
 /**
  * @brief Reset properties to initial values
@@ -153,24 +157,18 @@ property_meta_t PROPERTY_META[PROP_COUNT] = {{
 {property_meta_entries}
 }};
 
-/* Support function for dynamic array sizing */
-/**
- * @brief Fetch NumSnapOutputs parameter for sizing dynamic arrays
- * @return Number of snapshot outputs or a default value
- */
-int fetch_NumSnapOutputs(void) 
-{{
-    /* Use a default value for now - will be replaced with actual parameter in future */
-    return 100;
-}}
+/* Parameter resolution function for dynamic arrays */
+{resolve_parameter_function}
 
 /**
  * @brief Initialize the property system
+ * @param params Pointer to runtime parameters
+ * @return 0 on success, non-zero on failure
  */
-int initialize_property_system(void)
+int initialize_property_system(const struct params *params)
 {{
     LOG_DEBUG("Initializing property system with %d properties", PROP_COUNT);
-    /* Dynamic size determination happens here */
+    /* Validate sizes of dynamic arrays from parameters */
 {initialize_property_system_code}
     return 0;
 }}
@@ -186,8 +184,11 @@ void cleanup_property_system(void)
 
 /**
  * @brief Allocate property memory for a galaxy
+ * @param g Galaxy pointer
+ * @param params Pointer to runtime parameters
+ * @return 0 on success, non-zero on failure
  */
-int allocate_galaxy_properties(struct GALAXY *g)
+int allocate_galaxy_properties(struct GALAXY *g, const struct params *params)
 {{
     if (g == NULL) {{
         LOG_ERROR("Cannot allocate properties for NULL galaxy pointer");
@@ -226,8 +227,12 @@ void free_galaxy_properties(struct GALAXY *g)
 
 /**
  * @brief Copy all properties from source galaxy to destination galaxy
+ * @param dest Destination galaxy
+ * @param src Source galaxy
+ * @param params Pointer to runtime parameters
+ * @return 0 on success, non-zero on failure
  */
-int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src)
+int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src, const struct params *params)
 {{
     if (dest == NULL || src == NULL) {{
         LOG_ERROR("NULL galaxy pointer in property copy");
@@ -238,7 +243,7 @@ int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src)
     free_galaxy_properties(dest);
     
     /* Allocate new properties */
-    if (allocate_galaxy_properties(dest) != 0) {{
+    if (allocate_galaxy_properties(dest, params) != 0) {{
         return -1;
     }}
     
@@ -377,6 +382,21 @@ def generate_property_accessor_macros(properties):
     """Generate accessor macros for all properties"""
     macros = []
     
+    # Add the safe array access macro at the beginning
+    macros.append("""/**
+ * @brief Safely access an element of a galaxy property array with bounds checking.
+ * @param g Pointer to the GALAXY struct.
+ * @param prop_base_name The base name of the property (e.g., StarFormationHistory).
+ * @param idx The index to access.
+ * @param default_val The value to return if the index is out of bounds.
+ * @return The array element value or default_val on error.
+ */
+#define GALAXY_PROP_ARRAY_SAFE(g, prop_base_name, idx, default_val) \\
+    (((idx) >= 0 && (idx) < (g)->properties->prop_base_name##_size) ? \\
+     ((g)->properties->prop_base_name[idx]) : \\
+     (LOG_ERROR("Array index out of bounds: %s[%d] (size: %d)", #prop_base_name, (idx), (g)->properties->prop_base_name##_size), (default_val)))
+""")
+    
     for prop in properties:
         # Get type information
         type_str = prop['type']
@@ -455,20 +475,24 @@ def generate_initialize_code(properties):
     """Generate code for initializing the property system"""
     code_lines = []
     
-    # Add dynamic array size initialization
-    dynamic_arrays = [p for p in properties if parse_type(p['type'])[3] and 'size_parameter' in p]
-    if dynamic_arrays:
-        code_lines.append("    /* Set up dynamic array sizes */")
-        
-        for prop in dynamic_arrays:
-            if prop['size_parameter'].startswith("simulation."):
-                param_name = prop['size_parameter'].split('.')[1]
-                code_lines.extend([
-                    f"    /* Handle size parameter: {prop['size_parameter']} */",
-                    f"    extern int fetch_{param_name}(void); /* Forward declaration */",
-                    f"    int {param_name}_size = fetch_{param_name}();",
-                    f"    LOG_DEBUG(\"Setting {prop['name']} array size to %d\", {param_name}_size);"
-                ])
+    code_lines.append("    if (params == NULL) {")
+    code_lines.append("        LOG_ERROR(\"Params pointer is NULL during property system initialization.\");")
+    code_lines.append("        return -1;")
+    code_lines.append("    }")
+    code_lines.append("    LOG_DEBUG(\"Validating dynamic array size parameters...\");")
+    code_lines.append("    for (int i = 0; i < PROP_COUNT; i++) {")
+    code_lines.append("        if (PROPERTY_META[i].is_array && PROPERTY_META[i].array_dimension == 0 &&")
+    code_lines.append("            PROPERTY_META[i].size_parameter != NULL) {")
+    code_lines.append("            int size = resolve_parameter_value(PROPERTY_META[i].size_parameter, params);")
+    code_lines.append("            if (size < 0) {") # Check for negative size (error from resolve)
+    code_lines.append("                LOG_ERROR(\"Failed to resolve or invalid size parameter '%s' for dynamic array '%s'\",")
+    code_lines.append("                         PROPERTY_META[i].size_parameter, PROPERTY_META[i].name);")
+    code_lines.append("                return -1; // Fail initialization")
+    code_lines.append("            }")
+    code_lines.append("            LOG_DEBUG(\"Validated size parameter '%s' for dynamic array '%s' (resolved size: %d)\",")
+    code_lines.append("                       PROPERTY_META[i].size_parameter, PROPERTY_META[i].name, size);")
+    code_lines.append("        }")
+    code_lines.append("    }")
     
     return "\n".join(code_lines)
 
@@ -484,20 +508,21 @@ def generate_allocate_arrays_code(properties):
             code_lines.extend([
                 f"    /* Allocate {prop['name']} array */",
                 f"    if (PROPERTY_META[PROP_{prop['name']}].size_parameter != NULL) {{",
-                f"        /* Size determined from parameter at initialization */",
-                f"        int size = g->properties->{prop['name']}_size;",
-                f"        if (size > 0) {{",
-                f"            g->properties->{prop['name']} = ({base_type} *)calloc(size, sizeof({base_type}));",
-                f"            if (g->properties->{prop['name']} == NULL) {{",
-                f"                LOG_ERROR(\"Failed to allocate memory for {prop['name']} property\");",
-                f"                return -1;",
-                f"            }}",
-                f"            ",
-                f"            /* Initialize array with default value */",
-                f"            for (int i = 0; i < size; i++) {{",
-                f"                g->properties->{prop['name']}[i] = {prop.get('initial_value', 0.0)};",
-                f"            }}",
+                f"        // Get size from parameters",
+                f"        int resolved_size = resolve_parameter_value(PROPERTY_META[PROP_{prop['name']}].size_parameter, params);",
+                f"        if (resolved_size < 0) {{",
+                f"            LOG_ERROR(\"Failed to resolve size for dynamic array '{prop['name']}' during allocation\");",
+                f"            free_galaxy_properties(g); // Cleanup partially allocated",
+                f"            return -1;",
                 f"        }}",
+                f"        // Call the specific generated size setter",
+                f"        int status = galaxy_set_{prop['name']}_size(g, resolved_size);",
+                f"        if (status != 0) {{",
+                f"            LOG_ERROR(\"Failed to set size and allocate for dynamic array '{prop['name']}'\");",
+                f"            free_galaxy_properties(g); // Cleanup partially allocated",
+                f"            return -1;",
+                f"        }}",
+                f"        LOG_DEBUG(\"Allocated dynamic array '{prop['name']}' with size %d\", resolved_size);",
                 f"    }}"
             ])
     
@@ -646,6 +671,41 @@ def generate_helper_functions(properties):
     
     return "\n".join(functions)
 
+def generate_resolve_parameter_function():
+    """Generate the resolve_parameter_value function"""
+    return '''
+/**
+ * @brief Resolve a parameter name to its integer value
+ * @param param_name Name of the parameter (e.g., "simulation.NumSnapOutputs")
+ * @param params Pointer to the runtime parameters structure
+ * @return Parameter value, or -1 on error
+ */
+static int resolve_parameter_value(const char *param_name, const struct params *params) {
+    if (param_name == NULL || params == NULL) {
+        LOG_ERROR("NULL parameter name or params pointer in resolve_parameter_value");
+        return -1;
+    }
+    
+    // Add specific parameter lookups here
+    if (strcmp(param_name, "simulation.NumSnapOutputs") == 0) {
+        // Ensure NumSnapOutputs is valid before returning
+        if (params->simulation.NumSnapOutputs <= 0) {
+            LOG_ERROR("Invalid value for simulation.NumSnapOutputs: %d", params->simulation.NumSnapOutputs);
+            return -1;
+        }
+        return params->simulation.NumSnapOutputs;
+    }
+    // Add lookups for other potential size parameters here...
+    // Example:
+    // else if (strcmp(param_name, "some_other_section.some_size") == 0) {
+    //     return params->some_other_section.some_size;
+    // }
+
+    LOG_ERROR("Unknown parameter name for dynamic array size: %s", param_name);
+    return -1;
+}
+'''
+
 def generate_header_file(properties, output_dir=""):
     """Generate the property header file"""
     header_filename = "core_properties.h"
@@ -660,8 +720,8 @@ def generate_header_file(properties, output_dir=""):
     # Fill in the template
     header_content = HEADER_TEMPLATE.format(
         header_filename=header_filename,
-        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         include_guard=include_guard,
+        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         property_id_enum=property_id_enum,
         property_struct_fields=property_struct_fields,
         property_accessor_macros=property_accessor_macros
@@ -688,6 +748,7 @@ def generate_implementation_file(properties, output_dir=""):
     copy_dynamic_arrays_code = generate_copy_dynamic_arrays_code(properties)
     reset_property_values_code = generate_reset_property_values_code(properties)
     additional_helper_functions = generate_helper_functions(properties)
+    resolve_parameter_function = generate_resolve_parameter_function()
     
     # Fill in the template
     impl_content = IMPLEMENTATION_TEMPLATE.format(
@@ -701,7 +762,8 @@ def generate_implementation_file(properties, output_dir=""):
         copy_fixed_fields_code=copy_fixed_fields_code,
         copy_dynamic_arrays_code=copy_dynamic_arrays_code,
         reset_property_values_code=reset_property_values_code,
-        additional_helper_functions=additional_helper_functions
+        additional_helper_functions=additional_helper_functions,
+        resolve_parameter_function=resolve_parameter_function
     )
     
     # Write the implementation file

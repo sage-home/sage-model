@@ -44,7 +44,7 @@ extern "C" {
     extern void cleanup_module_callback_system(void);
     
     /* Property system initialization */
-    extern void initialize_standard_properties(void);
+    extern void initialize_standard_properties(const struct params *run_params);
     extern void cleanup_property_system(void);
     
     /* Evolution context initialization and validation */

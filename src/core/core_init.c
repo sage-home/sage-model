@@ -61,7 +61,7 @@ void init(struct params *run_params)
     LOG_DEBUG("Galaxy extension system initialized");
     
     /* Initialize property system */
-    initialize_standard_properties();
+    initialize_standard_properties(run_params);
     LOG_DEBUG("Property system initialized");
     
     /* Initialize event system */
@@ -543,12 +543,14 @@ void cleanup_module_callback_system(void)
  * 
  * Sets up the property system and registers standard properties with 
  * the extension system.
+ * 
+ * @param run_params Pointer to runtime parameters
  */
-void initialize_standard_properties(void)
+void initialize_standard_properties(const struct params *run_params)
 {
     /* Initialize the property system */
     LOG_DEBUG("Initializing property system");
-    int status = initialize_property_system();
+    int status = initialize_property_system(run_params);
     if (status != 0) {
         LOG_ERROR("Failed to initialize property system, status = %d", status);
         return;

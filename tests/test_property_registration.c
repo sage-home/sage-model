@@ -35,6 +35,7 @@ static void test_scalar_property_access(struct GALAXY *galaxy, property_id_t pro
 static void test_fixed_array_property_access(struct GALAXY *galaxy, property_id_t prop_id, const char *property_name);
 static void test_dynamic_array_property_access(struct GALAXY *galaxy, property_id_t prop_id, const char *property_name);
 static void test_serialization_functions(void);
+static void test_dynamic_array_memory(void);
 static int setup_test_galaxy(struct GALAXY *galaxy);
 static void cleanup_test_galaxy(struct GALAXY *galaxy);
 static int get_property_type_size(property_id_t prop_id);
@@ -50,12 +51,16 @@ int main(void)
     
     printf("==== Testing Standard Properties Registration ====\n");
     
+    /* Initialize simulation parameters */
+    memset(&SimulationParams, 0, sizeof(struct params));
+    SimulationParams.simulation.NumSnapOutputs = 5;  // Set expected size for StarFormationHistory
+    
     /* Initialize extension system */
     status = galaxy_extension_system_initialize();
     assert(status == 0 && "Failed to initialize galaxy extension system");
     
     /* Initialize property system */
-    status = initialize_property_system();
+    status = initialize_property_system(&SimulationParams);
     assert(status == 0 && "Failed to initialize property system");
     
     /* Register standard properties */
@@ -126,6 +131,9 @@ int main(void)
     /* Test serialization functions */
     test_serialization_functions();
     
+    /* Test dynamic array memory management */
+    test_dynamic_array_memory();
+    
     /* Cleanup */
     cleanup_test_galaxy(&test_galaxy);
     
@@ -152,8 +160,11 @@ static int setup_test_galaxy(struct GALAXY *galaxy)
         return 1;
     }
     
-    /* Allocate properties for dynamic arrays */
-    if (allocate_galaxy_properties(galaxy) != 0) {
+    /* Initialize simulation parameters for consistent sizes */
+    SimulationParams.simulation.NumSnapOutputs = 5; // Match test_sfh_size
+    
+    /* Allocate properties for dynamic arrays with parameters */
+    if (allocate_galaxy_properties(galaxy, &SimulationParams) != 0) {
         printf("Error: Failed to allocate galaxy properties\n");
         return 1;
     }
@@ -166,14 +177,10 @@ static int setup_test_galaxy(struct GALAXY *galaxy)
     /* Initialize Pos fixed array */
     memcpy(galaxy->Pos, test_pos_value, sizeof(test_pos_value));
     
-    /* Set StarFormationHistory dynamic array size and values */
-    if (galaxy_set_StarFormationHistory_size(galaxy, test_sfh_size) != 0) {
-        printf("Error: Failed to set StarFormationHistory size\n");
-        return 1;
-    }
-    
-    /* Verify allocation and copy data to array */
-    assert(galaxy->properties != NULL && galaxy->properties->StarFormationHistory != NULL);
+    /* Verify StarFormationHistory was allocated to right size and copy test values */
+    assert(galaxy->properties != NULL);
+    assert(GALAXY_PROP_StarFormationHistory_SIZE(galaxy) == test_sfh_size);
+    assert(galaxy->properties->StarFormationHistory != NULL);
     memcpy(galaxy->properties->StarFormationHistory, test_sfh_value, test_sfh_size * sizeof(float));
     
     /* Map standard properties to extensions */
@@ -581,4 +588,126 @@ static void test_serialization_functions(void)
                    final_arr[0], final_arr[1], final_arr[2]);
         }
     }
+}
+
+/**
+ * Test dynamic array memory management
+ * 
+ * This test verifies that the dynamic array memory management works correctly
+ * for allocation, reallocation, and deep copying. It specifically tests
+ * the parameter-based size determination and proper memory management.
+ */
+static void test_dynamic_array_memory(void)
+{
+    printf("\nTesting dynamic array memory management:\n");
+    
+    // Initialize simulation parameters for testing
+    memset(&SimulationParams, 0, sizeof(struct params));
+    SimulationParams.simulation.NumSnapOutputs = 10;  // Set expected size for StarFormationHistory
+    
+    // Create first test galaxy
+    struct GALAXY galaxy;
+    memset(&galaxy, 0, sizeof(struct GALAXY));
+    
+    // Allocate extensions and properties
+    int status = galaxy_extension_initialize(&galaxy);
+    assert(status == 0 && "Failed to initialize galaxy extensions");
+    
+    // Use the new parameter-based allocation
+    status = allocate_galaxy_properties(&galaxy, &SimulationParams);
+    assert(status == 0 && "Failed to allocate galaxy properties");
+    assert(galaxy.properties != NULL && "Galaxy properties struct not allocated");
+    
+    // Check StarFormationHistory size is correctly set from parameters
+    int expected_size = SimulationParams.simulation.NumSnapOutputs;
+    int actual_size = GALAXY_PROP_StarFormationHistory_SIZE(&galaxy);
+    printf("  StarFormationHistory array size: %d (expected %d)\n", actual_size, expected_size);
+    assert(actual_size == expected_size && "StarFormationHistory size mismatch");
+    
+    // Check that the array was allocated correctly
+    assert(galaxy.properties->StarFormationHistory != NULL && "StarFormationHistory array not allocated");
+    printf("  StarFormationHistory array allocated successfully at %p\n", 
+           (void*)galaxy.properties->StarFormationHistory);
+    
+    // Initialize array with test values
+    for (int i = 0; i < actual_size; i++) {
+        galaxy.properties->StarFormationHistory[i] = i * 0.1f;
+    }
+    
+    // Test array access within bounds
+    float test_val = GALAXY_PROP_StarFormationHistory_ELEM(&galaxy, 5);
+    printf("  Array element access: index 5 = %f (expected %f)\n", test_val, 5 * 0.1f);
+    assert(test_val == 5 * 0.1f && "Array element value incorrect");
+    
+    // Test array bounds checking (safely, without crashing)
+    printf("  Testing safe array access with bounds checking...\n");
+    float out_of_bounds_val = GALAXY_PROP_ARRAY_SAFE(&galaxy, StarFormationHistory, actual_size + 5, -1.0f);
+    printf("  Out-of-bounds access returned: %f (expected -1.0)\n", out_of_bounds_val);
+    assert(out_of_bounds_val == -1.0f && "Safe array accessor failed to handle out-of-bounds access");
+    
+    // Create second galaxy and test copy functionality
+    struct GALAXY galaxy2;
+    memset(&galaxy2, 0, sizeof(struct GALAXY));
+    
+    // Initialize extensions
+    status = galaxy_extension_initialize(&galaxy2);
+    assert(status == 0 && "Failed to initialize second galaxy extensions");
+    
+    // Copy properties from galaxy to galaxy2
+    status = copy_galaxy_properties(&galaxy2, &galaxy, &SimulationParams);
+    assert(status == 0 && "Failed to copy galaxy properties");
+    assert(galaxy2.properties != NULL && "Copied galaxy properties struct not allocated");
+    
+    // Check size and array copying was done correctly
+    assert(GALAXY_PROP_StarFormationHistory_SIZE(&galaxy2) == actual_size && 
+           "Copied array size mismatch");
+    assert(galaxy2.properties->StarFormationHistory != NULL && 
+           "StarFormationHistory array not allocated in copied galaxy");
+    assert(galaxy2.properties->StarFormationHistory != galaxy.properties->StarFormationHistory &&
+           "Arrays should be deep copied, not sharing the same memory");
+    
+    // Compare array contents
+    int content_match = (memcmp(galaxy.properties->StarFormationHistory, 
+                               galaxy2.properties->StarFormationHistory, 
+                               actual_size * sizeof(float)) == 0);
+    printf("  Array contents match after copy: %s\n", content_match ? "Yes" : "No");
+    assert(content_match && "Array contents don't match after copy");
+    
+    // Test array resizing
+    int new_size = 20;  // Larger than the original
+    printf("  Testing array resizing from %d to %d elements...\n", actual_size, new_size);
+    status = galaxy_set_StarFormationHistory_size(&galaxy, new_size);
+    assert(status == 0 && "Failed to resize array");
+    assert(GALAXY_PROP_StarFormationHistory_SIZE(&galaxy) == new_size && 
+           "Array size not updated after resize");
+    assert(galaxy.properties->StarFormationHistory != NULL && 
+           "StarFormationHistory array not allocated after resize");
+    
+    // Verify memory is properly initialized to zero
+    bool initialized = true;
+    for (int i = actual_size; i < new_size; i++) {
+        if (galaxy.properties->StarFormationHistory[i] != 0.0f) {
+            initialized = false;
+            break;
+        }
+    }
+    printf("  New array elements initialized to zero: %s\n", initialized ? "Yes" : "No");
+    assert(initialized && "New array elements not initialized to zero");
+    
+    // Test zero-sizing
+    printf("  Testing resizing to zero...\n");
+    status = galaxy_set_StarFormationHistory_size(&galaxy, 0);
+    assert(status == 0 && "Failed to resize array to zero");
+    assert(GALAXY_PROP_StarFormationHistory_SIZE(&galaxy) == 0 && 
+           "Array size not zero after resize to zero");
+    assert(galaxy.properties->StarFormationHistory == NULL && 
+           "StarFormationHistory array not NULL after resize to zero");
+    
+    // Clean up
+    free_galaxy_properties(&galaxy);
+    free_galaxy_properties(&galaxy2);
+    galaxy_extension_cleanup(&galaxy);
+    galaxy_extension_cleanup(&galaxy2);
+    
+    printf("  Dynamic array memory tests passed!\n");
 }
