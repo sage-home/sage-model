@@ -45,45 +45,50 @@
 - [ ] ~~Assess performance impact of the new architecture~~
 - [ ] ~~Make go/no-go decision for full implementation~~
 
-#### Phase 5.2.B: Central Property Definition ⏳ IN PROGRESS
+#### Phase 5.2.B: Central Property Definition & Infrastructure ✅ COMPLETED
 - [x] Establish performance baseline for current implementation
 - [x] Define properties format (`properties.yaml`) with dynamic array support
 - [x] Create header generation script with dynamic array allocation support
 - [x] Integrate header generation into build system
 - [x] Implement core registration of standard properties
 - [x] Implement memory management for dynamic array properties
-- [ ] Minimize core `struct GALAXY` by removing physics fields
+- [x] Implement synchronization functions (`sync_direct_to_properties`, `sync_properties_to_direct`) in `core_properties_sync.c/h`
 
-#### Phase 5.2.C: Core Integration ⏳ PENDING
-- [ ] Implement and use accessor macros in core code
-- [ ] Remove obsolete core accessors and parameter views
-- [ ] Refine core initialization logic
-- [ ] Update galaxy creation and management
+#### Phase 5.2.C: Core Integration & Synchronization ⏳ IN PROGRESS
+- [ ] Integrate synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) into pipeline execution points (e.g., `physics_pipeline_executor.c`)
+- [ ] Ensure core galaxy lifecycle functions (`init_galaxy`, copying, freeing) correctly manage the `galaxy->properties` struct allocation, copying, and freeing
+- [ ] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
 
 #### Phase 5.2.D: Module Adaptation ⏳ PENDING
-- [ ] Update physics module interface
-- [ ] Update migrated modules (cooling, infall)
-- [ ] Update module template generator
-- [ ] Revise module dependency management
+- [ ] Update migrated modules (cooling, infall) to use `GALAXY_PROP_*` macros exclusively
+- [ ] Update module template generator (`core_module_template.c/h`) for new property patterns
+- [ ] Revise module dependency management for property-based interactions (if needed)
 
 #### Phase 5.2.E: I/O System Update ⏳ PENDING
-- [ ] Remove `GALAXY_OUTPUT` struct 
+- [ ] Remove `GALAXY_OUTPUT` struct
 - [ ] Remove `prepare_galaxy_for_output` logic
-- [ ] Implement output preparation module
+- [ ] Implement output preparation module using `GALAXY_PROP_*` macros
 - [ ] Remove binary output format support (standardize on HDF5)
-- [ ] Update HDF5 I/O handler to support dynamic array properties
-- [ ] Enhance HDF5 serialization for improved format compatibility
+- [ ] Update HDF5 I/O handler to read property metadata and use `GALAXY_PROP_*` macros for writing
+- [ ] Enhance HDF5 serialization/deserialization for dynamic arrays and module-specific properties
 
 #### Phase 5.2.F: Physics Module Migration ⏳ PENDING
-- [ ] Define physics module migration sequence
-- [ ] Centralize common physics utilities
-- [ ] Migrate star formation and feedback module
-- [ ] Migrate disk instability module
-- [ ] Migrate reincorporation module
-- [ ] Migrate AGN feedback and black holes modules
-- [ ] Migrate metals and chemical evolution tracking
-- [ ] Migrate mergers module
+- [ ] Define physics module migration sequence based on dependencies
+- [ ] Centralize common physics utilities (if applicable)
+- [ ] Migrate Star Formation & Feedback module (using `GALAXY_PROP_*` macros)
+- [ ] Migrate Disk Instability module (using `GALAXY_PROP_*` macros)
+- [ ] Migrate Reincorporation module (using `GALAXY_PROP_*` macros)
+- [ ] Migrate AGN Feedback & Black Holes module (using `GALAXY_PROP_*` macros)
+- [ ] Migrate Metals & Chemical Evolution module (using `GALAXY_PROP_*` macros)
+- [ ] Migrate Mergers module (using `GALAXY_PROP_*` macros)
+- [ ] Remove corresponding legacy files from `src/physics/legacy/` and Makefile
 
+#### Phase 5.2.G: Final Cleanup & Core Minimization ⏳ PENDING
+- [ ] Remove synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) and files (`core_properties_sync.c/h`)
+- [ ] Refactor remaining core code (validation, misc utils) to use `GALAXY_PROP_*` macros if any direct field access remains
+- [ ] Remove physics fields from `struct GALAXY` definition (`core_allvars.h`)
+- [ ] (Optional) Refactor accessor macros/core/module code to directly access `galaxy->properties->FieldName` if performance analysis indicates benefit
+  
 ### Phase 5.3: Validation and Testing ⏳ PENDING
 - [x] Implement integration tests for evolve_galaxies loop phase transitions
 - [ ] Implement property definition validation tools
