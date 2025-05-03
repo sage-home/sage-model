@@ -54,7 +54,7 @@
 - [x] Implement memory management for dynamic array properties
 - [ ] Implement synchronization functions (`sync_direct_to_properties`, `sync_properties_to_direct`) in `core_properties_sync.c/h`
 
-#### Phase 5.2.C: Core Integration & Synchronization ⏳ IN PROGRESS
+#### Phase 5.2.C: Core Integration & Synchronization ⏳ PENDING
 - [ ] Integrate synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) into pipeline execution points (e.g., `physics_pipeline_executor.c`)
 - [ ] Ensure core galaxy lifecycle functions (`init_galaxy`, copying, freeing) correctly manage the `galaxy->properties` struct allocation, copying, and freeing
 - [ ] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
