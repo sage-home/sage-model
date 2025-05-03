@@ -45,14 +45,14 @@
 - [ ] ~~Assess performance impact of the new architecture~~
 - [ ] ~~Make go/no-go decision for full implementation~~
 
-#### Phase 5.2.B: Central Property Definition & Infrastructure ✅ COMPLETED
+#### Phase 5.2.B: Central Property Definition & Infrastructure ⏳ IN PROGRESS
 - [x] Establish performance baseline for current implementation
 - [x] Define properties format (`properties.yaml`) with dynamic array support
 - [x] Create header generation script with dynamic array allocation support
 - [x] Integrate header generation into build system
 - [x] Implement core registration of standard properties
 - [x] Implement memory management for dynamic array properties
-- [x] Implement synchronization functions (`sync_direct_to_properties`, `sync_properties_to_direct`) in `core_properties_sync.c/h`
+- [ ] Implement synchronization functions (`sync_direct_to_properties`, `sync_properties_to_direct`) in `core_properties_sync.c/h`
 
 #### Phase 5.2.C: Core Integration & Synchronization ⏳ IN PROGRESS
 - [ ] Integrate synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) into pipeline execution points (e.g., `physics_pipeline_executor.c`)
