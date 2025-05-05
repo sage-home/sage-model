@@ -45,7 +45,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_module_error.c core/core_module_diagnostics.c \
         core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c \
-        core/core_module_config.c core/core_properties.c core/standard_properties.c
+        core/core_module_config.c core/core_properties.c core/standard_properties.c core/core_properties_sync.c
 
 # Physics model source files
 PHYSICS_SRC := physics/legacy/model_starformation_and_feedback.c \
@@ -74,7 +74,7 @@ SRC := $(addprefix $(SRC_PREFIX)/, $(SRC))
 OBJS := $(SRC:.c=.o)
 
 # Include files
-INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL) core/core_properties.h
+INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL) core/core_properties.h core/core_properties_sync.h
 INCL := $(addprefix $(SRC_PREFIX)/, $(INCL))
 
 # Library objects and includes
