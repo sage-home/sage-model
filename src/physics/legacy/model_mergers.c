@@ -111,6 +111,9 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
 		galaxies[merger_centralgal].TimeOfLastMinorMerger = time;
     }
 
+    // Free the properties of the satellite BEFORE marking it as merged
+    free_galaxy_properties(&galaxies[p]);
+
     if(mass_ratio > run_params->physics.ThreshMajorMerger) {
         make_bulge_from_burst(merger_centralgal, galaxies);
         galaxies[merger_centralgal].TimeOfLastMajorMerger = time;
@@ -339,6 +342,9 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
 
     galaxies[centralgal].ICS += galaxies[gal].StellarMass;
     galaxies[centralgal].MetalsICS += galaxies[gal].MetalsStellarMass;
+
+    // Free the properties of the satellite BEFORE marking it as disrupted
+    free_galaxy_properties(&galaxies[gal]);
 
     // what should we do with the disrupted satellite BH?
     galaxies[gal].mergeType = 4;  // mark as disruption to the ICS

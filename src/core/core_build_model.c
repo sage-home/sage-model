@@ -213,6 +213,13 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
             
             // Copy extension data (this will just copy flags since the data is accessed on demand)
             galaxy_extension_copy(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i]);
+            
+            // Perform a deep copy of the properties struct content, including dynamic arrays
+            int copy_status = copy_galaxy_properties(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i], run_params);
+            if (copy_status != 0) {
+                LOG_ERROR("Failed to copy properties for galaxy %d (prog %d, halo %d)", ngal, prog, halonr);
+                return -1;
+            }
 
             // this deals with the central galaxies of (sub)halos
             if(galaxies[ngal].Type == 0 || galaxies[ngal].Type == 1) {

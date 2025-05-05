@@ -6,6 +6,7 @@
 
 #include "../../core/core_allvars.h"
 #include "../../core/core_galaxy_extensions.h"
+#include "../../core/core_logging.h"
 
 #include "model_misc.h"
 
@@ -30,6 +31,12 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].mergeIntoID = -1;
     galaxies[p].mergeIntoSnapNum = -1;
     galaxies[p].dT = -1.0;
+
+    // Allocate the properties structure FIRST
+    if (allocate_galaxy_properties(&galaxies[p], run_params) != 0) {
+        LOG_CRITICAL("Failed to allocate properties for new galaxy %d in init_galaxy", galaxies[p].GalaxyNr);
+        return; // Error handling should be improved in a real production system
+    }
 
     for(int j = 0; j < 3; j++) {
         galaxies[p].Pos[j] = halos[halonr].Pos[j];
@@ -93,6 +100,9 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     if (global_extension_registry != NULL) {
         galaxy_extension_initialize(&galaxies[p]);
     }
+    
+    // Initialize values within the properties struct using the defaults from properties.yaml
+    reset_galaxy_properties(&galaxies[p]);
 }
 
 

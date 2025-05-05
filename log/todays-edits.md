@@ -12,3 +12,8 @@
 - If you discover duplication go back and check the code, then report and stop for instructions
 -->
 
+2025-05-05 09:00: planned edits for Phase 5.2.C Task 2 - Core Galaxy Lifecycle Management for `galaxy->properties`
+2025-05-05 09:15: edit function `init_galaxy()` in `src/physics/legacy/model_misc.c` - Added property allocation and reset calls to properly initialize galaxy properties
+2025-05-05 09:25: edit function `join_galaxies_of_progenitors()` in `src/core/core_build_model.c` - Added deep copy of galaxy properties when copying a galaxy
+2025-05-05 09:35: edit function `deal_with_galaxy_merger()` in `src/physics/legacy/model_mergers.c` - Added call to free galaxy properties before marking a galaxy as merged
+2025-05-05 09:40: edit function `disrupt_satellite_to_ICS()` in `src/physics/legacy/model_mergers.c` - Added call to free galaxy properties before marking a galaxy as disrupted

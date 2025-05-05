@@ -222,3 +222,10 @@
 - Updated core code (`evolve_galaxies`) to use these standard accessors.
 - Resolved compilation and linker errors by removing duplicate definitions, correcting legacy function calls, and updating the Makefile.
 - Modified files: src/core/core_build_model.c, src/core/core_galaxy_accessors.h, src/core/core_galaxy_accessors.c, src/physics/feedback_module.h, src/physics/cooling_module.c, src/core/physics_pipeline_executor.c, Makefile, log/recent-progress-log.md, log/phase-tracker-log.md
+
+2025-05-05: [Phase 5.2.C Task 2] Implemented Core Galaxy Lifecycle Management for Properties
+- Updated `init_galaxy()` to properly allocate and initialize the `galaxy->properties` struct with error handling
+- Enhanced `join_galaxies_of_progenitors()` to perform deep copying of galaxy properties when copying a galaxy
+- Modified merger functions (`deal_with_galaxy_merger()` and `disrupt_satellite_to_ICS()`) to free galaxy properties before marking galaxies as merged/disrupted
+- Ensured proper memory management throughout the galaxy lifecycle to prevent leaks or invalid accesses
+- Modified files: src/physics/legacy/model_misc.c, src/core/core_build_model.c, src/physics/legacy/model_mergers.c, log/phase-tracker-log.md, log/todays-edits.md
