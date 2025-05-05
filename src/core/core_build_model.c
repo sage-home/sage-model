@@ -464,11 +464,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     if (ctx.galaxies[ctx.centralgal].properties != NULL) {
         sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
     } else {
-        LOG_DEBUG("Central galaxy %d properties pointer is NULL before HALO phase", ctx.centralgal);
-        // Instead of just logging, allocate properties if needed
+        // Allocate properties if needed
         if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
-            LOG_DEBUG("Successfully allocated properties for central galaxy %d", ctx.centralgal);
-            // After allocation, we can sync the direct fields to the newly allocated properties
             sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
         } else {
             LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
@@ -528,11 +525,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             if (ctx.galaxies[p].properties != NULL) {
                 sync_direct_to_properties(&ctx.galaxies[p]);
             } else {
-                LOG_DEBUG("Galaxy %d properties pointer is NULL before executing GALAXY phase step", p);
-                // Instead of just logging, allocate properties if needed
+                // Allocate properties if needed
                 if (allocate_galaxy_properties(&ctx.galaxies[p], run_params) == 0) {
-                    LOG_DEBUG("Successfully allocated properties for galaxy %d", p);
-                    // After allocation, we can sync the direct fields to the newly allocated properties
                     sync_direct_to_properties(&ctx.galaxies[p]);
                 } else {
                     LOG_WARNING("Failed to allocate properties for galaxy %d", p);
@@ -573,8 +567,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             // Sync properties struct -> direct fields AFTER module runs for current galaxy
             if (ctx.galaxies[p].properties != NULL) {
                 sync_properties_to_direct(&ctx.galaxies[p]);
-            } else {
-                LOG_DEBUG("Galaxy %d properties pointer is NULL after executing GALAXY phase step", p);
             }
 
             if (status != 0) {
@@ -614,11 +606,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         if (ctx.galaxies[ctx.centralgal].properties != NULL) {
             sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
         } else {
-            LOG_DEBUG("Central galaxy %d properties pointer is NULL before POST phase", ctx.centralgal);
-            // Instead of just logging, allocate properties if needed
+            // Allocate properties if needed
             if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
-                LOG_DEBUG("Successfully allocated properties for central galaxy %d", ctx.centralgal);
-                // After allocation, we can sync the direct fields to the newly allocated properties
                 sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
             } else {
                 LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
@@ -636,8 +625,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         // Sync central galaxy after POST phase
         if (ctx.galaxies[ctx.centralgal].properties != NULL) {
             sync_properties_to_direct(&ctx.galaxies[ctx.centralgal]);
-        } else {
-            LOG_WARNING("Central galaxy %d properties pointer is NULL after POST phase", ctx.centralgal);
         }
 
         evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_POST);
@@ -666,11 +653,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     if (ctx.galaxies[ctx.centralgal].properties != NULL) {
         sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
     } else {
-        LOG_DEBUG("Central galaxy %d properties pointer is NULL before FINAL phase", ctx.centralgal);
-        // Instead of just logging, allocate properties if needed
+        // Allocate properties if needed
         if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
-            LOG_DEBUG("Successfully allocated properties for central galaxy %d", ctx.centralgal);
-            // After allocation, we can sync the direct fields to the newly allocated properties
             sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
         } else {
             LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
@@ -687,8 +671,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Sync central galaxy after FINAL phase
     if (ctx.galaxies[ctx.centralgal].properties != NULL) {
         sync_properties_to_direct(&ctx.galaxies[ctx.centralgal]);
-    } else {
-        LOG_WARNING("Central galaxy %d properties pointer is NULL after FINAL phase", ctx.centralgal);
     }
 
     evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_FINAL);

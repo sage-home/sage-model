@@ -96,21 +96,11 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
     int status = array_expand_default((void **)array, galaxy_size, current_capacity, min_new_size);
     
     // Special handling for galaxy properties if array pointer changed during reallocation
+    // This is just a sanity check - realloc should preserve the pointers correctly
     if (status == 0 && old_array != *array) {
-        LOG_DEBUG("Galaxy array was reallocated, fixing property pointers");
-        
-        // Properties requires special handling after reallocation
-        // We need to manually update property pointers for already allocated galaxies
-        for (int i = 0; i < min_new_size; i++) {
-            // Skip galaxies that don't have properties allocated yet
-            if ((*array)[i].properties != NULL) {
-                // If the property was allocated, make sure it's properly kept through reallocation
-                // No need to deep copy - just ensure pointer remains valid
-                LOG_DEBUG("Fixing property pointer for galaxy %d", i);
-                // We don't need to do anything here - the behavior of realloc should preserve the pointers
-                // This space is for any additional fixes if needed
-            }
-        }
+        // The array was reallocated to a new memory location
+        // No special handling needed as realloc preserves the memory contents
+        // and property pointers should remain valid
     }
     
     return status;
