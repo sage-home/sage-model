@@ -2,13 +2,13 @@
     "modules": {
         "discovery_enabled": true,
         "search_paths": [
-            "./modules" // From millennium.par
+            "./src/physics" // From millennium.par
             // Add "${ROOT_DIR}/modules" or other paths if needed
         ],
         "instances": [
             // Default instance configuration for cooling - can be adjusted if specific settings are needed
             {
-                "name": "default_cooling", // Assuming this is the name used by the module
+                "name": "cooling_module", // Assuming this is the name used by the module
                 "active": true
                 // Add module-specific parameters here if needed, e.g.,
                 // "cooling_table_path": "path/to/cooling_rates.dat",

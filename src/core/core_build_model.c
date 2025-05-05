@@ -22,383 +22,25 @@
 #include "core_event_system.h"
 #include "core_evolution_diagnostics.h"
 #include "core_galaxy_accessors.h"
+#include "core_properties_sync.h" // Needed for synchronization functions
 
+// Include headers for legacy physics compatibility functions
 #include "../physics/legacy/model_misc.h"
 #include "../physics/legacy/model_mergers.h"
-#include "../physics/legacy/model_infall.h"
+#include "../physics/legacy/model_infall.h" // Added
 #include "../physics/legacy/model_reincorporation.h"
 #include "../physics/legacy/model_starformation_and_feedback.h"
-#include "../physics/cooling_module.h"
-#include "../physics/agn_module.h"
-#include "../physics/feedback_module.h"
+#include "../physics/legacy/model_disk_instability.h" // Added
+#include "../physics/cooling_module.h" // Still needed for cool_gas_onto_galaxy
+#include "../physics/agn_module.h" // Still needed for AGN parameters view
+#include "../physics/feedback_module.h" // Still needed for feedback parameters view
 #include "../core/core_parameter_views.h"
 
-/**
- * Execute a physics pipeline step
- * 
- * This function maps pipeline steps to physics modules or traditional implementations.
- * It uses module_invoke when a module is available; otherwise, it falls back to traditional code.
- * 
- * The execution is phase-aware, meaning different code paths are taken depending on whether
- * we're executing in HALO, GALAXY, POST, or FINAL phase.
- */
-int physics_step_executor(
-    struct pipeline_step *step,
-    struct base_module *module,
-    void *module_data,  /* Might be unused during migration - that's expected */
-    struct pipeline_context *context
-) {
-    // Validate property serialization if module requires it
-    if (module != NULL && module->manifest) {
-        // Check if module requires serialization
-        if (module->manifest->capabilities & MODULE_FLAG_REQUIRES_SERIALIZATION) {
-            if (context->prop_ctx == NULL) {
-                LOG_ERROR("Module '%s' requires property serialization but context not initialized", 
-                         module->name);
-                return MODULE_STATUS_NOT_INITIALIZED;
-            }
-        }
-        
-        // Check if module uses extensions but doesn't necessarily require serialization
-        else if (module->manifest->capabilities & MODULE_FLAG_HAS_EXTENSIONS) {
-            if (context->prop_ctx == NULL) {
-                LOG_WARNING("Module '%s' uses extensions but property serialization context not initialized. "
-                           "This may cause issues if the module attempts to access extension data.", 
-                           module->name);
-                // Continue execution as this is just a warning
-            }
-        }
-    }
 
-    /* Silence unused parameter warning during migration */
-    (void)module_data;
-    
-    // Extract data from context
-    struct GALAXY *galaxies = context->galaxies;
-    int p = context->current_galaxy;
-    int centralgal = context->centralgal;
-    double time = context->time;
-    double dt = context->dt / STEPS;
-    double redshift = context->redshift;
-    int halonr = context->halonr;
-    int step_num = context->step;
-    struct params *run_params = context->params;
-    enum pipeline_execution_phase phase = context->execution_phase;
-    
-    // Skip if galaxy has merged and we're in GALAXY phase
-    if (phase == PIPELINE_PHASE_GALAXY && galaxies[p].mergeType > 0) {
-        return 0;
-    }
-
-    // Migration Phase - Choose between module callback or traditional implementation
-    bool use_module = false;
-    
-    // Phase 5 Integration: Check if we can use the module
-    if (module != NULL) {
-        // For testing purposes, we can enable module usage by uncommenting the line below
-        // use_module = true;
-        
-        // TEMPORARY MIGRATION CODE: During migration, we continue to use traditional
-        // implementations to maintain test compatibility. This will be removed once
-        // all modules are properly implemented and tested.
-        
-        // For selected modules that are ready for testing with the callback system,
-        // we can enable them individually here
-        if (step->type == MODULE_TYPE_COOLING && strcmp(module->name, "DefaultCooling") == 0) {
-            // Example of enabling for a specific module
-            // use_module = true;
-        }
-    }
-    
-    if (use_module) {
-        // PHASE 5: MODULE INVOKE IMPLEMENTATION
-        // Use the callback system to invoke module functions
-        
-        int status = 0;
-        
-        // We need a special case for each module type since they have different function signatures
-        switch (step->type) {
-            case MODULE_TYPE_COOLING: {
-                // Set up arguments for cooling module
-                struct {
-                    int galaxy_index;
-                    double dt;
-                } cooling_args = {
-                    .galaxy_index = p,
-                    .dt = dt
-                };
-                
-                // Invoke cooling calculation function
-                double cooling_result = 0.0;
-                status = module_invoke(
-                    0,                  // caller_id (use main code as caller)
-                    step->type,         // module_type
-                    NULL,               // use active module of type
-                    "calculate_cooling", // function name
-                    context,            // context
-                    &cooling_args,      // arguments
-                    &cooling_result     // result
-                );
-                
-                if (status == MODULE_STATUS_SUCCESS) {
-                    // Apply the result
-                    cool_gas_onto_galaxy(p, cooling_result, galaxies);
-                    LOG_DEBUG("Module invoke for cooling: galaxy=%d, cooling=%g", p, cooling_result);
-                    
-                    // Emit cooling completed event if system is initialized
-                    if (event_system_is_initialized()) {
-                        // Prepare cooling event data
-                        event_cooling_completed_data_t cooling_data = {
-                            .cooling_rate = (float)(cooling_result / dt),
-                            .cooling_radius = 0.0f,  // Not provided by module
-                            .hot_gas_cooled = (float)cooling_result
-                        };
-                        
-                        // Emit the cooling completed event
-                        event_status_t event_status = event_emit(
-                            EVENT_COOLING_COMPLETED,   // Event type
-                            module->module_id,         // Source module ID
-                            p,                         // Galaxy index
-                            step_num,                  // Current step
-                            &cooling_data,             // Event data
-                            sizeof(cooling_data),      // Size of event data
-                            EVENT_FLAG_NONE            // No special flags
-                        );
-                        
-                        if (event_status != EVENT_STATUS_SUCCESS) {
-                            LOG_WARNING("Failed to emit cooling event from module '%s' for galaxy %d: status=%d", 
-                                      module->name, p, event_status);
-                        } else {
-                            LOG_DEBUG("Module '%s' emitted cooling event for galaxy %d: cooling=%g", 
-                                    module->name, p, cooling_result);
-                        }
-                    }
-                } else {
-                    LOG_WARNING("Module invoke for cooling failed: status=%d", status);
-                    // Fall back to traditional implementation
-                    struct cooling_params_view cooling_params;
-                    initialize_cooling_params_view(&cooling_params, run_params);
-                    double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
-                    cool_gas_onto_galaxy(p, coolingGas, galaxies);
-                }
-                break;
-            }
-            
-            case MODULE_TYPE_STAR_FORMATION: {
-                // Set up arguments for star formation module
-                struct {
-                    int galaxy_index;
-                    double dt;
-                } sf_args = {
-                    .galaxy_index = p,
-                    .dt = dt
-                };
-                
-                // Invoke star formation calculation function
-                double stars_formed = 0.0;
-                status = module_invoke(
-                    0,                  // caller_id (use main code as caller)
-                    step->type,         // module_type
-                    NULL,               // use active module of type
-                    "form_stars",       // function name
-                    context,            // context
-                    &sf_args,           // arguments
-                    &stars_formed       // result
-                );
-                
-                if (status == MODULE_STATUS_SUCCESS) {
-                    // Apply the result - note: in a module, this would be handled internally
-                    LOG_DEBUG("Module invoke for star formation: galaxy=%d, stars_formed=%g", p, stars_formed);
-                    
-                    // Emit star formation event if system is initialized
-                    if (event_system_is_initialized()) {
-                        // Get metallicity for event data
-                        double metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
-                        
-                        // Prepare star formation event data
-                        event_star_formation_occurred_data_t sf_event_data = {
-                            .stars_formed = (float)stars_formed,
-                            .stars_to_disk = (float)stars_formed,  // All stars to disk in standard model
-                            .stars_to_bulge = 0.0f,               // No bulge formation in standard star formation
-                            .metallicity = (float)metallicity
-                        };
-                        
-                        // Emit the star formation event
-                        event_status_t event_status = event_emit(
-                            EVENT_STAR_FORMATION_OCCURRED,  // Event type
-                            module->module_id,             // Source module ID
-                            p,                             // Galaxy index
-                            step_num,                      // Current step
-                            &sf_event_data,                // Event data
-                            sizeof(sf_event_data),         // Size of event data
-                            EVENT_FLAG_NONE                // No special flags
-                        );
-                        
-                        if (event_status != EVENT_STATUS_SUCCESS) {
-                            LOG_WARNING("Failed to emit star formation event from module '%s' for galaxy %d: status=%d", 
-                                      module->name, p, event_status);
-                        } else {
-                            LOG_DEBUG("Module '%s' emitted star formation event for galaxy %d: stars_formed=%g", 
-                                    module->name, p, stars_formed);
-                        }
-                    }
-                } else {
-                    LOG_WARNING("Module invoke for star formation failed: status=%d", status);
-                    // Fall back to traditional implementation
-                    // Note: Traditional star formation is handled with feedback
-                }
-                break;
-            }
-            
-            // Add cases for other module types as they are implemented
-            
-            default:
-                LOG_DEBUG("Module type %s doesn't have invoke implementation yet, using traditional code", 
-                        module_type_name(step->type));
-                use_module = false;
-                break;
-        }
-        
-        // If module invoke was successful, we're done
-        if (status == MODULE_STATUS_SUCCESS) {
-            return 0;
-        }
-        
-        // Otherwise, fall back to traditional implementation
-    }
-    
-    // Traditional implementation (used during migration or when module invoke fails)
-    // Handle the execution based on the current phase
-    switch (phase) {
-        case PIPELINE_PHASE_HALO:
-            // HALO phase - calculations that happen once per halo (outside galaxy loop)
-            switch (step->type) {
-                case MODULE_TYPE_INFALL:
-                    // Calculate infall for the entire halo
-                    // This is typically done outside this function, but we could modify it
-                    // to use the pipeline system in the future
-                    LOG_DEBUG("HALO phase - infall step");
-                    break;
-                    
-                default:
-                    LOG_DEBUG("Skipping step '%s' in HALO phase - not applicable", 
-                            module_type_name(step->type));
-                    break;
-            }
-            break;
-            
-        case PIPELINE_PHASE_GALAXY:
-            // GALAXY phase - calculations that happen for each galaxy
-            switch (step->type) {
-                case MODULE_TYPE_INFALL: 
-                    // Apply infall
-                    if (p == centralgal) {
-                        // Apply infall to central galaxy
-                        double infall_gas = 0.0;
-                        if (pipeline_context_get_data(context, "infallingGas", &infall_gas) != 0) {
-                            LOG_WARNING("Failed to get infallingGas from pipeline context, using zero as fallback");
-                        }
-                        add_infall_to_hot(p, infall_gas / STEPS, galaxies);
-                        
-                        // Reincorporation
-                        if (run_params->physics.ReIncorporationFactor > 0.0) {
-                            struct reincorporation_params_view reincorp_params;
-                            initialize_reincorporation_params_view(&reincorp_params, run_params);
-                            reincorporate_gas(p, dt, galaxies, &reincorp_params);
-                        }
-                    } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
-                        // Stripping for satellites
-                        strip_from_satellite(centralgal, p, redshift, galaxies, run_params);
-                    }
-                    break;
-                    
-                case MODULE_TYPE_REINCORPORATION: 
-                    // Handled together with infall
-                    break;     
-
-                case MODULE_TYPE_COOLING: 
-                    // Traditional cooling implementation
-                    {
-                        struct cooling_params_view cooling_params;
-                        initialize_cooling_params_view(&cooling_params, run_params);
-                        double coolingGas = cooling_recipe(p, dt, galaxies, &cooling_params);
-                        cool_gas_onto_galaxy(p, coolingGas, galaxies);
-                    }
-                    break;
-                    
-                case MODULE_TYPE_STAR_FORMATION: 
-                    // Handled by feedback
-                    break;     
-
-                case MODULE_TYPE_FEEDBACK: 
-                    // Star formation and feedback
-                    {
-                        struct star_formation_params_view sf_params;
-                        struct feedback_params_view fb_params;
-                        initialize_star_formation_params_view(&sf_params, run_params);
-                        initialize_feedback_params_view(&fb_params, run_params);
-                        
-                        // Call the traditional implementation
-                        starformation_and_feedback(p, centralgal, time, dt, halonr, step_num, 
-                            galaxies, &sf_params, &fb_params);
-                        
-                        // Note: Event dispatch for star formation is now handled inside the starformation_and_feedback function
-                    }
-                    break;
-                    
-                case MODULE_TYPE_AGN: 
-                    // Not separately implemented in traditional code
-                    break;     
-
-                case MODULE_TYPE_DISK_INSTABILITY: 
-                    // Not separately implemented in traditional code
-                    break;     
-
-                default:
-                    LOG_DEBUG("Skipping step '%s' in GALAXY phase - not applicable", 
-                            module_type_name(step->type));
-                    break;
-            }
-            break;
-            
-        case PIPELINE_PHASE_POST:
-            // POST phase - calculations that happen after processing all galaxies (per step)
-            switch (step->type) {
-                case MODULE_TYPE_MERGERS:
-                    // Mergers are handled separately using the merger event queue
-                    // This is already implemented outside of the pipeline in evolve_galaxies
-                    LOG_DEBUG("POST phase - mergers step - handled via merger_queue");
-                    break;
-                    
-                default:
-                    LOG_DEBUG("Skipping step '%s' in POST phase - not applicable", 
-                            module_type_name(step->type));
-                    break;
-            }
-            break;
-            
-        case PIPELINE_PHASE_FINAL:
-            // FINAL phase - calculations that happen after all steps are complete
-            switch (step->type) {
-                case MODULE_TYPE_MISC:
-                    // Final calculations, normalizations, etc.
-                    LOG_DEBUG("FINAL phase - misc calculations");
-                    break;
-                    
-                default:
-                    LOG_DEBUG("Skipping step '%s' in FINAL phase - not applicable", 
-                            module_type_name(step->type));
-                    break;
-            }
-            break;
-            
-        default:
-            LOG_ERROR("Unknown execution phase: %d", phase);
-            return -1;
-    }
-    
-    return 0;
-}
+// Forward declarations for legacy compatibility functions called in fallbacks
+double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
+void check_disk_instability(const int p, const int centralgal, const int halonr, const double time, const double dt, const int step,
+                            struct GALAXY *galaxies, struct params *run_params);
 
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
@@ -704,9 +346,10 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
 
 /*
  * This function evolves galaxies and applies all physics modules.
- * 
+ *
  * The physics modules are applied via a configurable pipeline system,
  * allowing modules to be replaced, reordered, or removed at runtime.
+ * Synchronization calls are placed around phase executions.
  */
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
                           struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
@@ -718,31 +361,35 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Initialize galaxy evolution context
     struct evolution_context ctx;
     initialize_evolution_context(&ctx, halonr, galaxies, ngal, halos, run_params);
-    
+
     // Initialize evolution diagnostics
     struct evolution_diagnostics diag;
     evolution_diagnostics_initialize(&diag, halonr, ngal);
     ctx.diagnostics = &diag;
-    
+
     // Record initial galaxy properties
     evolution_diagnostics_record_initial_properties(&diag, galaxies, ngal);
-    
+
     // Perform comprehensive validation of the evolution context
     if (!validate_evolution_context(&ctx)) {
         CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Evolution context validation failed for halo %d", halonr);
         return EXIT_FAILURE;
     }
-    
+
     CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Starting evolution for halo %d with %d galaxies", halonr, ngal);
 
     // Validate central galaxy
     if(galaxies[ctx.centralgal].Type != 0 || galaxies[ctx.centralgal].HaloNr != halonr) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR,
                     "Invalid central galaxy: expected type=0, halonr=%d but found type=%d, halonr=%d",
                     halonr, galaxies[ctx.centralgal].Type, galaxies[ctx.centralgal].HaloNr);
         return EXIT_FAILURE;
     }
-    
+
+    // Calculate the timestep for this snapshot
+    ctx.deltaT = run_params->simulation.Age[halos[halonr].SnapNum] - ctx.halo_age;
+    ctx.time = run_params->simulation.Age[halos[halonr].SnapNum];
+
     // Set up pipeline context
     struct pipeline_context pipeline_ctx;
     pipeline_context_init(
@@ -751,19 +398,18 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         ctx.galaxies,
         ctx.ngal,
         ctx.centralgal,
-        run_params->simulation.Age[ctx.galaxies[0].SnapNum], // time
-        ctx.deltaT,                                         // dt
-        ctx.halo_nr,                                        // halonr
-        0,                                                  // step
-        &ctx                                                // user_data (set to evolution context)
+        ctx.time,           // Use calculated time
+        ctx.deltaT,         // Use calculated deltaT
+        ctx.halo_nr,        // halonr
+        0,                  // step (will be updated in loop)
+        &ctx                // user_data (set to evolution context)
     );
-    pipeline_ctx.current_galaxy = 0;
     pipeline_ctx.redshift = ctx.redshift; // Set the redshift from evolution context
 
     // Initialize property serialization if module extensions are enabled
     if (global_extension_registry != NULL && global_extension_registry->num_extensions > 0) {
-        int status = pipeline_init_property_serialization(&pipeline_ctx, PROPERTY_FLAG_SERIALIZE);
-        if (status != 0) {
+        int status_prop = pipeline_init_property_serialization(&pipeline_ctx, PROPERTY_FLAG_SERIALIZE);
+        if (status_prop != 0) {
             CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to initialize property serialization");
             return EXIT_FAILURE;
         }
@@ -772,19 +418,14 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Get the global physics pipeline
     struct module_pipeline *physics_pipeline = pipeline_get_global();
     bool use_pipeline = false;
-    
+
     // Check if the pipeline is available and properly configured
     if (physics_pipeline != NULL) {
-        // During Phase 2.5-2.6, we are more flexible with pipeline validation
-        // Always returns true in Phase 2.5-2.6 but logs helpful information
-        pipeline_validate(physics_pipeline); 
-        
-        // For Phase 2.5-2.6, we check if there are any steps in the pipeline
+        pipeline_validate(physics_pipeline);
         if (physics_pipeline->num_steps > 0) {
-            // First time messaging per run
             static bool first_pipeline_usage = true;
             if (first_pipeline_usage) {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_INFO, "Using physics pipeline '%s' with %d steps", 
+                CONTEXT_LOG(&ctx, LOG_LEVEL_INFO, "Using physics pipeline '%s' with %d steps",
                         physics_pipeline->name, physics_pipeline->num_steps);
                 first_pipeline_usage = false;
             } else {
@@ -792,7 +433,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             }
             use_pipeline = true;
         } else {
-            // Only log once per process to avoid spamming logs
             static bool logged_empty_pipeline = false;
             if (!logged_empty_pipeline) {
                 CONTEXT_LOG(&ctx, LOG_LEVEL_WARNING, "Physics pipeline is empty, using traditional physics implementation");
@@ -800,156 +440,241 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             }
         }
     }
-    
+
     // Create merger event queue
     struct merger_event_queue merger_queue;
-    memset(&merger_queue, 0, sizeof(struct merger_event_queue));
+    init_merger_queue(&merger_queue); // Use init function
     ctx.merger_queue = &merger_queue;
-    
+
     // EXECUTE PIPELINE PHASES - with diagnostics tracking
-    
+
     // Phase 1: HALO phase (outside galaxy loop)
     evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_HALO);
     pipeline_ctx.execution_phase = PIPELINE_PHASE_HALO;
     int status = 0;
-    
+
+    // Sync central galaxy before HALO phase
+    if (ctx.galaxies[ctx.centralgal].properties != NULL) {
+        sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
+    } else {
+        LOG_WARNING("Central galaxy %d properties pointer is NULL before HALO phase", ctx.centralgal);
+    }
+
     if (use_pipeline) {
+        // Execute HALO phase using the pipeline executor defined elsewhere
         status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
     } else {
-        // Traditional implementation would go here
+        // Traditional HALO phase implementation (infall calculation)
+        double calculated_infall_gas = infall_recipe(ctx.centralgal, ctx.ngal, ctx.redshift, ctx.galaxies, run_params);
+        pipeline_context_set_data(&pipeline_ctx, "infallingGas", calculated_infall_gas); // Store for GALAXY phase
+        status = 0; // Assume success for legacy path
     }
-    
+
+    // Sync central galaxy after HALO phase
+    if (ctx.galaxies[ctx.centralgal].properties != NULL) {
+        sync_properties_to_direct(&ctx.galaxies[ctx.centralgal]);
+    } else {
+        LOG_WARNING("Central galaxy %d properties pointer is NULL after HALO phase", ctx.centralgal);
+    }
+
     evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_HALO);
-    
+
     if (status != 0) {
         CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute HALO phase for halo %d", halonr);
-        // Report diagnostics even on failure
         evolution_diagnostics_finalize(&diag);
         evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
         return EXIT_FAILURE;
     }
-    
+
     // Main integration steps
     for (int step = 0; step < STEPS; step++) {
         pipeline_ctx.step = step;
-        
+        double dt = ctx.deltaT / STEPS; // Timestep for this sub-step
+        pipeline_ctx.dt = ctx.deltaT; // Pass the full deltaT to context, modules should use STEPS
+
         // Reset merger queue for this timestep
-        memset(&merger_queue, 0, sizeof(struct merger_event_queue));
-        
+        init_merger_queue(&merger_queue); // Use init function
+
         // Phase 2: GALAXY phase (for each galaxy)
         evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_GALAXY);
         pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
-        
+
         for (int p = 0; p < ctx.ngal; p++) {
             // Skip already merged galaxies
             if (ctx.galaxies[p].mergeType > 0) {
                 continue;
             }
-            
+
             // Update context for current galaxy
             pipeline_ctx.current_galaxy = p;
-            diag.phases[PIPELINE_PHASE_GALAXY].galaxy_count++;
-            
+            diag.phases[1].galaxy_count++; // Index 1 corresponds to GALAXY phase
+
+            // Sync direct fields -> properties struct BEFORE module runs for current galaxy
+            if (ctx.galaxies[p].properties != NULL) {
+                sync_direct_to_properties(&ctx.galaxies[p]);
+            } else {
+                LOG_WARNING("Galaxy %d properties pointer is NULL before executing GALAXY phase step", p);
+            }
+
             // Execute GALAXY phase
             if (use_pipeline) {
                 status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
             } else {
-                // Traditional implementation would go here
+                // Traditional GALAXY phase implementation
+                // Infall application
+                if (p == ctx.centralgal) {
+                    double infall_gas = 0.0;
+                    pipeline_context_get_data(&pipeline_ctx, "infallingGas", &infall_gas);
+                    add_infall_to_hot(p, infall_gas / STEPS, galaxies);
+                    if (run_params->physics.ReIncorporationFactor > 0.0) {
+                        reincorporate_gas_compat(p, dt, galaxies, run_params);
+                    }
+                } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
+                    strip_from_satellite(ctx.centralgal, p, ctx.redshift, galaxies, run_params);
+                }
+                // Cooling
+                cooling_recipe_compat(p, dt, galaxies, run_params);
+                // Star formation & Feedback
+                starformation_and_feedback_compat(p, ctx.centralgal, ctx.time, dt, ctx.halo_nr, step, galaxies, run_params);
+                // Disk Instability
+                if(run_params->physics.DiskInstabilityOn) {
+                    check_disk_instability(
+                        p, ctx.centralgal,              // Use loop variable 'p' and ctx.centralgal
+                        ctx.halo_nr, ctx.time, dt,      // Use ctx fields and per-step dt
+                        step, ctx.galaxies, run_params); // Use loop variable 'step', ctx.galaxies, and run_params
+                }
+                // AGN (handled implicitly in cooling/mergers in legacy)
+                status = 0; // Assume success for legacy path
             }
-            
+
+            // Sync properties struct -> direct fields AFTER module runs for current galaxy
+            if (ctx.galaxies[p].properties != NULL) {
+                sync_properties_to_direct(&ctx.galaxies[p]);
+            } else {
+                LOG_WARNING("Galaxy %d properties pointer is NULL after executing GALAXY phase step", p);
+            }
+
             if (status != 0) {
                 CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute GALAXY phase for galaxy %d", p);
-                // Report diagnostics even on failure
                 evolution_diagnostics_finalize(&diag);
                 evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
                 return EXIT_FAILURE;
             }
-            
+
             // Queue potential mergers - with diagnostic tracking
-            if ((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) && 
+            if ((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) &&
                 ctx.galaxies[p].mergeType == 0 && ctx.galaxies[p].MergTime < 999.0) {
-                // Add merger detection to diagnostics
-                evolution_diagnostics_add_merger_detection(&diag, ctx.galaxies[p].mergeType);
-                
-                // Check merger conditions and add to queue if appropriate
-                queue_merger_event(&merger_queue, p, ctx.galaxies[p].CentralGal, 
-                                 ctx.galaxies[p].MergTime, ctx.time, ctx.deltaT/STEPS, 
-                                 ctx.centralgal, step, ctx.galaxies[p].mergeType);
+
+                // Calculate merger time decrement
+                double mergtime = ctx.galaxies[p].MergTime - dt; // Use dt for this step
+
+                // Check if merger occurs in this step
+                if (mergtime <= 0.0) {
+                    evolution_diagnostics_add_merger_detection(&diag, ctx.galaxies[p].mergeType);
+                    queue_merger_event(&merger_queue, p, ctx.galaxies[p].CentralGal,
+                                     mergtime, ctx.time, dt,
+                                     ctx.centralgal, step, ctx.galaxies[p].mergeType); // Pass centralgal as halo_nr context
+                } else {
+                    // Update remaining merger time if no merger this step
+                    ctx.galaxies[p].MergTime = mergtime;
+                }
             }
-        }
-        
+        } // End loop over galaxies p
+
         evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_GALAXY);
-        
+
         // Phase 3: POST phase (after all galaxies processed in step)
         evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_POST);
         pipeline_ctx.execution_phase = PIPELINE_PHASE_POST;
-        
+
+        // Sync central galaxy before POST phase
+        if (ctx.galaxies[ctx.centralgal].properties != NULL) {
+            sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
+        } else {
+            LOG_WARNING("Central galaxy %d properties pointer is NULL before POST phase", ctx.centralgal);
+        }
+
         if (use_pipeline) {
             status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
         } else {
-            // Traditional implementation would go here
+            // Traditional POST phase implementation (Mergers)
+            process_merger_events(&merger_queue, ctx.galaxies, run_params);
+            status = 0; // Assume success for legacy path
         }
-        
+
+        // Sync central galaxy after POST phase
+        if (ctx.galaxies[ctx.centralgal].properties != NULL) {
+            sync_properties_to_direct(&ctx.galaxies[ctx.centralgal]);
+        } else {
+            LOG_WARNING("Central galaxy %d properties pointer is NULL after POST phase", ctx.centralgal);
+        }
+
         evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_POST);
-        
+
         if (status != 0) {
             CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute POST phase for step %d", step);
-            // Report diagnostics even on failure
             evolution_diagnostics_finalize(&diag);
             evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
             return EXIT_FAILURE;
         }
-        
-        // Process merger events - with diagnostic tracking
-        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processing %d merger events for step %d", 
+
+        // Diagnostic tracking for processed mergers
+        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processed %d merger events for step %d",
                   merger_queue.num_events, step);
-                  
         for (int i = 0; i < merger_queue.num_events; i++) {
-            struct merger_event *event = &merger_queue.events[i];
-            
-            // Track merger processing in diagnostics
-            evolution_diagnostics_add_merger_processed(&diag, event->merger_type);
+            evolution_diagnostics_add_merger_processed(&diag, merger_queue.events[i].merger_type);
         }
-        
-        // Process all merger events in the queue
-        process_merger_events(&merger_queue, ctx.galaxies, run_params);
-    }
-    
+
+    } // End loop over steps
+
     // Phase 4: FINAL phase (after all steps complete)
     evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_FINAL);
     pipeline_ctx.execution_phase = PIPELINE_PHASE_FINAL;
-    
+
+    // Sync central galaxy before FINAL phase
+    if (ctx.galaxies[ctx.centralgal].properties != NULL) {
+        sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
+    } else {
+        LOG_WARNING("Central galaxy %d properties pointer is NULL before FINAL phase", ctx.centralgal);
+    }
+
     if (use_pipeline) {
         status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
     } else {
-        // Traditional implementation would go here
+        // Traditional FINAL phase implementation (if any)
+        status = 0; // Assume success for legacy path
     }
-    
+
+    // Sync central galaxy after FINAL phase
+    if (ctx.galaxies[ctx.centralgal].properties != NULL) {
+        sync_properties_to_direct(&ctx.galaxies[ctx.centralgal]);
+    } else {
+        LOG_WARNING("Central galaxy %d properties pointer is NULL after FINAL phase", ctx.centralgal);
+    }
+
     evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_FINAL);
-    
+
     if (status != 0) {
         CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute FINAL phase for halo %d", halonr);
-        // Report diagnostics even on failure
         evolution_diagnostics_finalize(&diag);
         evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
         return EXIT_FAILURE;
     }
-    
+
     // Finalize and record property serialization if needed
     if (pipeline_ctx.prop_ctx != NULL) {
         pipeline_cleanup_property_serialization(&pipeline_ctx);
     }
-    
+
     // Record final galaxy properties and report diagnostics
     evolution_diagnostics_record_final_properties(&diag, galaxies, ctx.ngal);
     evolution_diagnostics_finalize(&diag);
     evolution_diagnostics_report(&diag, LOG_LEVEL_INFO);
-    
+
     // Extra miscellaneous stuff before finishing this halo
     ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons = 0.0;
-    const double deltaT = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
-    const double inv_deltaT = 1.0/deltaT;
-    // const double inv_deltaT = deltaT > 0.0 ? 1.0/deltaT : 1.0; // Safety check
+    const double time_diff = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
+    const double inv_deltaT = (time_diff > 1e-10) ? 1.0 / time_diff : 0.0; // Avoid division by zero or very small numbers
 
     for(int p = 0; p < ctx.ngal; p++) {
         // Don't bother with galaxies that have already merged
@@ -961,15 +686,21 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         double cooling = galaxy_get_cooling_rate(&ctx.galaxies[p]);
         double heating = galaxy_get_heating_rate(&ctx.galaxies[p]);
         double outflow = galaxy_get_outflow_rate(&ctx.galaxies[p]);
-        
+
         galaxy_set_cooling_rate(&ctx.galaxies[p], cooling * inv_deltaT);
         galaxy_set_heating_rate(&ctx.galaxies[p], heating * inv_deltaT);
         galaxy_set_outflow_rate(&ctx.galaxies[p], outflow * inv_deltaT);
 
         if(p != ctx.centralgal) {
-            ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons +=
-                (ctx.galaxies[p].StellarMass + ctx.galaxies[p].BlackHoleMass + 
-                 ctx.galaxies[p].ColdGas + ctx.galaxies[p].HotGas);
+            // Use accessors to get masses for summation
+            double stellar_mass = galaxy_get_stellar_mass(&ctx.galaxies[p]);
+            double bh_mass = galaxy_get_blackhole_mass(&ctx.galaxies[p]);
+            double cold_gas = galaxy_get_cold_gas(&ctx.galaxies[p]);
+            double hot_gas = galaxy_get_hot_gas(&ctx.galaxies[p]);
+            // Need to use the setter for TotalSatelliteBaryons on the central galaxy
+            galaxy_set_totalsatellitebaryons(&ctx.galaxies[ctx.centralgal],
+                                             galaxy_get_totalsatellitebaryons(&ctx.galaxies[ctx.centralgal]) +
+                                             (stellar_mass + bh_mass + cold_gas + hot_gas));
         }
     }
 
@@ -987,34 +718,44 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         int i = p-1;
         while(i >= 0) {
             if(ctx.galaxies[i].mergeType > 0) {
-                if(ctx.galaxies[p].mergeIntoID > ctx.galaxies[i].mergeIntoID) {
-                    offset++;  // these galaxies won't be kept so offset mergeIntoID below
-                }
+                // Original logic might be flawed if mergeIntoID isn't sequential
+                // Let's assume mergeIntoID refers to the *final* index in the output list
+                // This part might need careful review depending on how mergeIntoID is assigned
+                 if(ctx.galaxies[p].mergeIntoID > ctx.galaxies[i].mergeIntoID && ctx.galaxies[i].mergeIntoID != -1) {
+                     offset++;
+                 }
             }
             i--;
         }
 
         i = -1;
         if(ctx.galaxies[p].mergeType > 0) {
-            i = haloaux[currenthalo].FirstGalaxy - 1;
+            i = haloaux[currenthalo].FirstGalaxy - 1; // Start searching from the end of the previous halo's galaxies
             while(i >= 0) {
-                if(halogal[i].GalaxyNr == ctx.galaxies[p].GalaxyNr) {
-                    break;
+                // Compare GalaxyNr as the persistent identifier across snapshots
+                if(halogal[i].GalaxyNr == ctx.galaxies[p].GalaxyNr && halogal[i].SnapNum == ctx.galaxies[p].SnapNum - 1) {
+                    break; // Found the progenitor in the previous snapshot's output list
                 }
                 i--;
             }
 
             if(i < 0) {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to find galaxy in halogal array: i=%d should be >=0", i);
-                return EXIT_FAILURE;
+                // This case might happen if the progenitor wasn't saved in the previous output snapshot
+                // Or if GalaxyNr isn't reliably unique across snapshots in this context
+                CONTEXT_LOG(&ctx, LOG_LEVEL_WARNING, "Failed to find progenitor galaxy %d in halogal array for merged galaxy %d (HaloNr %d)",
+                            ctx.galaxies[p].GalaxyNr, p, currenthalo);
+                // Continue without updating merger info for the progenitor if not found
+            } else {
+                // Found the progenitor, update its merger info
+                halogal[i].mergeType = ctx.galaxies[p].mergeType;
+                // Adjust mergeIntoID based on the offset calculated
+                // This assumes mergeIntoID refers to the index within the *current* snapshot's output list
+                halogal[i].mergeIntoID = ctx.galaxies[p].mergeIntoID - offset;
+                halogal[i].mergeIntoSnapNum = halos[currenthalo].SnapNum;
             }
-
-            halogal[i].mergeType = ctx.galaxies[p].mergeType;
-            halogal[i].mergeIntoID = ctx.galaxies[p].mergeIntoID - offset;
-            halogal[i].mergeIntoSnapNum = halos[currenthalo].SnapNum;
         }
 
-        if(ctx.galaxies[p].mergeType == 0) {
+        if(ctx.galaxies[p].mergeType == 0) { // Only save galaxies that haven't merged
             /* realloc if needed */
             if(*numgals >= (*maxgals - 1)) {
                 // Expand arrays with geometric growth rather than fixed increment
@@ -1022,37 +763,50 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                     CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to expand galaxies array in evolve_galaxies");
                     return EXIT_FAILURE;
                 }
-                
+
                 if (galaxy_array_expand(ptr_to_halogal, maxgals, *numgals + 1) != 0) {
                     CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to expand halogal array in evolve_galaxies");
                     return EXIT_FAILURE;
                 }
-                
-                ctx.galaxies = *ptr_to_galaxies; // Update context pointer after realloc
+
+                // Update local pointers after realloc
+                // Note: ctx.galaxies points to the same memory as *ptr_to_galaxies initially,
+                // but if ptr_to_galaxies is reallocated, ctx.galaxies becomes dangling.
+                // We need to update ctx.galaxies as well.
+                galaxies = *ptr_to_galaxies;
                 halogal = *ptr_to_halogal;
+                ctx.galaxies = galaxies; // Update context pointer
             }
 
             if(*numgals >= *maxgals) {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, 
+                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR,
                             "Memory error: numgals = %d exceeds the number of galaxies allocated = %d",
                             *numgals, *maxgals);
                 return INVALID_MEMORY_ACCESS_REQUESTED;
             }
 
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
-            
-            // Initialize extension data in the destination
-            galaxy_extension_initialize(&halogal[*numgals]);
-            
+
             // Copy galaxy including extensions to the permanent list
+            // First, perform a shallow copy of the base struct GALAXY fields
             halogal[*numgals] = ctx.galaxies[p];
-            
-            // Copy extension flags (data will be allocated on demand)
-            galaxy_extension_copy(&halogal[*numgals], &ctx.galaxies[p]);
-            
+
+            // Then, perform a deep copy of the properties struct
+            int copy_status = copy_galaxy_properties(&halogal[*numgals], &ctx.galaxies[p], run_params);
+            if (copy_status != 0) {
+                 CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to copy properties for galaxy %d", p);
+                 // Need to decide how to handle this error - potentially free allocated properties?
+                 return EXIT_FAILURE;
+            }
+
             (*numgals)++;
             haloaux[currenthalo].NGalaxies++;
         }
+    } // End loop attaching final galaxy list
+
+    // Cleanup property serialization context if it was initialized
+    if (pipeline_ctx.prop_ctx != NULL) {
+        pipeline_cleanup_property_serialization(&pipeline_ctx);
     }
 
     return EXIT_SUCCESS;

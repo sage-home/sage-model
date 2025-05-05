@@ -215,3 +215,10 @@
 - All tests pass, confirming implementation works correctly
 - Created files: src/core/core_properties_sync.h, src/core/core_properties_sync.c
 - Modified files: Makefile
+
+2025-05-05: [Phase 5.2.C Task 1] Integrated Property Synchronization and Standard Accessors
+- Implemented calls to `sync_direct_to_properties` and `sync_properties_to_direct` around pipeline phase executions in `evolve_galaxies`.
+- Added declarations and definitions for standard property accessor functions (e.g., `galaxy_get_stellar_mass`) to `core_galaxy_accessors.h/.c` to bridge direct field access and the property system.
+- Updated core code (`evolve_galaxies`) to use these standard accessors.
+- Resolved compilation and linker errors by removing duplicate definitions, correcting legacy function calls, and updating the Makefile.
+- Modified files: src/core/core_build_model.c, src/core/core_galaxy_accessors.h, src/core/core_galaxy_accessors.c, src/physics/feedback_module.h, src/physics/cooling_module.c, src/core/physics_pipeline_executor.c, Makefile, log/recent-progress-log.md, log/phase-tracker-log.md
