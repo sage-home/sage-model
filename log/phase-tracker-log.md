@@ -59,6 +59,8 @@
 - [x] Ensure core galaxy lifecycle functions (`init_galaxy`, copying, freeing) correctly manage the `galaxy->properties` struct allocation, copying, and freeing
 - [ ] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
 
+**Architectural Decision Note (2025-05-05):** The project focus has shifted from *runtime* dynamic loading (initially planned in Phase 4) to *compile-time* modularity with static linking. The primary goal remains achieving a clean separation between a physics-agnostic core and modular physics implementations. Runtime dynamic loading infrastructure (dynamic library loader, manifest parsing, discovery) will be removed to simplify the core system during the ongoing physics migration. Module management (adding, removing, swapping implementations) will now require code changes and recompilation, but the core remains physics-agnostic.
+
 #### Phase 5.2.D: Module Adaptation ⏳ PENDING
 - [ ] Update migrated modules (cooling, infall) to use `GALAXY_PROP_*` macros exclusively
 - [ ] Update module template generator (`core_module_template.c/h`) for new property patterns

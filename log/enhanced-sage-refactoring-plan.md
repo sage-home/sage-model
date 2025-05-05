@@ -2,7 +2,7 @@
 
 ## Goals and Overview
 
-1. **Runtime Functional Modularity**: Implement a dynamic plugin architecture allowing runtime insertion, replacement, reordering, or removal of physics modules without recompilation.
+1. **Core-Physics Separation and Modularity**: Implement a modular architecture where core infrastructure is physics-agnostic and physics modules are self-contained units with standardized interfaces, allowing for clear separation of concerns and easier modification or replacement of physics components at compile time.
 2. **Optimized Merger Tree Processing**: Enhance merger tree handling efficiency via improved memory layout, unified I/O abstraction, and caching, preserving existing formats.
 
 **Overall Timeline**: ~22-28 months total project duration
