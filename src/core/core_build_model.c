@@ -464,7 +464,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     if (ctx.galaxies[ctx.centralgal].properties != NULL) {
         sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
     } else {
-        LOG_WARNING("Central galaxy %d properties pointer is NULL before HALO phase", ctx.centralgal);
+        LOG_DEBUG("Central galaxy %d properties pointer is NULL before HALO phase", ctx.centralgal);
+        // Instead of just logging, allocate properties if needed
+        if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
+            LOG_DEBUG("Successfully allocated properties for central galaxy %d", ctx.centralgal);
+            // After allocation, we can sync the direct fields to the newly allocated properties
+            sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
+        } else {
+            LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
+        }
     }
 
     if (use_pipeline) {
@@ -520,7 +528,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             if (ctx.galaxies[p].properties != NULL) {
                 sync_direct_to_properties(&ctx.galaxies[p]);
             } else {
-                LOG_WARNING("Galaxy %d properties pointer is NULL before executing GALAXY phase step", p);
+                LOG_DEBUG("Galaxy %d properties pointer is NULL before executing GALAXY phase step", p);
+                // Instead of just logging, allocate properties if needed
+                if (allocate_galaxy_properties(&ctx.galaxies[p], run_params) == 0) {
+                    LOG_DEBUG("Successfully allocated properties for galaxy %d", p);
+                    // After allocation, we can sync the direct fields to the newly allocated properties
+                    sync_direct_to_properties(&ctx.galaxies[p]);
+                } else {
+                    LOG_WARNING("Failed to allocate properties for galaxy %d", p);
+                }
             }
 
             // Execute GALAXY phase
@@ -558,7 +574,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             if (ctx.galaxies[p].properties != NULL) {
                 sync_properties_to_direct(&ctx.galaxies[p]);
             } else {
-                LOG_WARNING("Galaxy %d properties pointer is NULL after executing GALAXY phase step", p);
+                LOG_DEBUG("Galaxy %d properties pointer is NULL after executing GALAXY phase step", p);
             }
 
             if (status != 0) {
@@ -598,7 +614,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         if (ctx.galaxies[ctx.centralgal].properties != NULL) {
             sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
         } else {
-            LOG_WARNING("Central galaxy %d properties pointer is NULL before POST phase", ctx.centralgal);
+            LOG_DEBUG("Central galaxy %d properties pointer is NULL before POST phase", ctx.centralgal);
+            // Instead of just logging, allocate properties if needed
+            if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
+                LOG_DEBUG("Successfully allocated properties for central galaxy %d", ctx.centralgal);
+                // After allocation, we can sync the direct fields to the newly allocated properties
+                sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
+            } else {
+                LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
+            }
         }
 
         if (use_pipeline) {
@@ -642,7 +666,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     if (ctx.galaxies[ctx.centralgal].properties != NULL) {
         sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
     } else {
-        LOG_WARNING("Central galaxy %d properties pointer is NULL before FINAL phase", ctx.centralgal);
+        LOG_DEBUG("Central galaxy %d properties pointer is NULL before FINAL phase", ctx.centralgal);
+        // Instead of just logging, allocate properties if needed
+        if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
+            LOG_DEBUG("Successfully allocated properties for central galaxy %d", ctx.centralgal);
+            // After allocation, we can sync the direct fields to the newly allocated properties
+            sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
+        } else {
+            LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
+        }
     }
 
     if (use_pipeline) {
@@ -795,9 +827,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
 
             // Copy galaxy including extensions to the permanent list
-            // First, perform a shallow copy of the base struct GALAXY fields
-            halogal[*numgals] = ctx.galaxies[p];
+            // First initialize the destination galaxy's properties and extensions
+            galaxy_extension_initialize(&halogal[*numgals]);
 
+            // Then, perform a shallow copy of the base struct GALAXY fields
+            halogal[*numgals] = ctx.galaxies[p];
+            
+            // Reset the properties pointer to avoid double free issues
+            halogal[*numgals].properties = NULL;
+            
             // Then, perform a deep copy of the properties struct
             int copy_status = copy_galaxy_properties(&halogal[*numgals], &ctx.galaxies[p], run_params);
             if (copy_status != 0) {
