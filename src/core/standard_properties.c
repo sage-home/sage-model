@@ -179,7 +179,7 @@ static int register_fixed_array_property(property_id_t property_id,
     /* Set property attributes */
     strncpy(property.name, name, sizeof(property.name) - 1);
     
-    /* Calculate size based on element type and array size */
+    /* Determine size based on element type parameter and array size */
     size_t element_size = (element_type == PROPERTY_TYPE_FLOAT) ? sizeof(float) :
                          (element_type == PROPERTY_TYPE_DOUBLE) ? sizeof(double) :
                          (element_type == PROPERTY_TYPE_INT32) ? sizeof(int32_t) :
@@ -230,6 +230,9 @@ static int register_dynamic_array_property(property_id_t property_id,
                                          void (*serialize_func)(const void*, void*, int),
                                          void (*deserialize_func)(const void*, void*, int))
 {
+    /* Suppress unused parameter warning - DEBUG IF THIS PARAMETER REMAINES UNUSED */
+    (void)element_type;
+    
     const char *name = get_property_name(property_id);
     if (name == NULL) {
         LOG_ERROR("Invalid property ID: %d", property_id);
