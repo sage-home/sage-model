@@ -319,6 +319,71 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->MassLoadingModel);
     ParamID[NParam++] = INT;
 
+    strncpy(ParamTag[NParam], "RedshiftReincorporationOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->RedshiftReincorporationOn);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "ReincorporationRedshiftExp", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ReincorporationRedshiftExp);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "LowMassHighzSuppressionOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->LowMassHighzSuppressionOn);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "SuppressionMassThreshold", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SuppressionMassThreshold);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "SuppressionMassExponent", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SuppressionMassExponent);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "SuppressionRedshiftExp", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SuppressionRedshiftExp);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "ReionizationModel", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ReionizationModel);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "FilteringMassNorm", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->FilteringMassNorm);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "UVBackgroundStrength", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->UVBackgroundStrength);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "PatchyReionWidth", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->PatchyReionWidth);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "LocalReionVariance", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->LocalReionVariance);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "PostReionSlope", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->PostReionSlope);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "MassDependentSFEnabled", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->MassDependentSFEnabled);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "SFMassPivot", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SFMassPivot);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "SFLowMassSlope", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SFLowMassSlope);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "SFHighMassSlope", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->SFHighMassSlope);
+    ParamID[NParam++] = DOUBLE;
+    
+
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;

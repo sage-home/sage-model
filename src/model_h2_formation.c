@@ -2,6 +2,7 @@
 #include "core_allvars.h"
 #include "model_h2_formation.h"
 #include "model_misc.h"
+#include "model_lowmass_suppression.h" 
 
 /**
  * init_gas_components - Initialize gas components in a galaxy
@@ -601,6 +602,12 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
             env_strength *= orbit_phase;  // Reduce effect for recent infall
         }
     }
+#ifdef VERBOSE
+    // Declare variables for logging purposes only, within VERBOSE block
+    float original_h2 = g->H2_gas;
+    float h2_removed = 0.0;
+    float h2_to_hi = 0.0;
+#endif
     
     // Apply the effect - remove H2 gas
     if (env_strength > 0.0) {
@@ -620,6 +627,29 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
         if (g->HI_gas < 0.0) g->HI_gas = 0.0;
         if (g->ColdGas < 0.0) g->ColdGas = 0.0;
     }
+
+#ifdef VERBOSE
+    static int counter = 0;
+    counter++;
+    if (counter % 500000 == 0) {
+        printf("ENVIRONMENTAL EFFECTS: Galaxy=%d, Type=%d, log_mass=%.2f\n", 
+               g->GalaxyNr, g->Type, log_mass);
+        printf("  env_strength=%.3f, type_factor=%.2f, EnvEffectStrength=%.2f\n", 
+               env_strength, type_factor, run_params->EnvEffectStrength);
+        printf("  H2 before=%.2e, after=%.2e, removed=%.2e, converted to HI=%.2e\n", 
+               original_h2, g->H2_gas, h2_removed, h2_to_hi);
+        
+        // More detailed logging occasionally
+        if (counter % 500000 == 0) {
+            printf("  Merger status: MergTime=%.2f, infallVvir=%.2f\n",
+                   g->MergTime, g->infallVvir);
+            if (g->Type > 0) {
+                float orbit_phase = 1.0 - g->MergTime / 3.0;
+                printf("  Orbit phase=%.2f (affects env. strength)\n", orbit_phase);
+            }
+        }
+    }
+#endif
 }
 
 /**
@@ -822,6 +852,15 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     else {
         // Default for model 0 or anything else - simple prescription
         total_molecular_gas = 0.3 * g->ColdGas;  // Fixed 30% molecular fraction
+    }
+
+    // Apply targeted suppression to H₂ content
+    if (run_params->LowMassHighzSuppressionOn == 1) {
+        double z = run_params->ZZ[g->SnapNum];
+        // Since we only have a pointer to a single galaxy, we need to pass that directly
+        double suppression = calculate_lowmass_suppression(0, z, g, run_params);
+        g->H2_gas *= suppression;
+        g->HI_gas = g->ColdGas - g->H2_gas;
     }
     
     // Update gas components

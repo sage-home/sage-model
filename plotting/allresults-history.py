@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_supernovachange_muratov_h1h2/'
+DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
 
 # Simulation details
@@ -113,6 +113,19 @@ if __name__ == '__main__':
         BulgeMassFull[snap] = read_hdf(snap_num = Snapshot, param = 'BulgeMass') * 1.0e10 / Hubble_h
         HaloMassFull[snap] = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
 
+    Wright = pd.read_csv('./optim/Wright_2018_z1_z2.csv', delimiter='\t', header=None)
+
+    z1_x = Wright.iloc[:, 0]   # First column
+    z1_y = Wright.iloc[:, 1]   # Second column  
+
+    z2_x = Wright.iloc[:, 2]   # First column
+    z2_y = Wright.iloc[:, 3]   # Second column
+
+    Shuntov = pd.read_csv('./optim/shuntov_2024_all.csv', delimiter='\t', header=None)
+
+    z3_x = Shuntov.iloc[:, 14]   # First column
+    z3_y = Shuntov.iloc[:, 15]   # Second column
+
 # --------------------------------------------------------
 
     print('Plotting the halo-stellar mass relation')
@@ -130,60 +143,6 @@ if __name__ == '__main__':
 
     plt.scatter(x, y, c='k', alpha=0.3, s=5, label='Model galaxies')
 
-    ###### z=0
-    """
-    w = np.where(StellarMassFull[SMFsnaps[1]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(StellarMassFull[SMFsnaps[1]][w])
-    x = np.log10(HaloMassFull[SMFsnaps[1]][w])
-
-    #plt.plot(x, y, c='k', label='Model galaxies')
-
-    ###### z=0
-    
-    w = np.where(StellarMassFull[SMFsnaps[2]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(StellarMassFull[SMFsnaps[2]][w])
-    x = np.log10(HaloMassFull[SMFsnaps[2]][w])
-
-    #plt.plot(x, y, c='k', label='Model galaxies')
-
-    ###### z=0
-
-    w = np.where(StellarMassFull[SMFsnaps[3]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(StellarMassFull[SMFsnaps[3]][w])
-    x = np.log10(HaloMassFull[SMFsnaps[3]][w])
-
-    #plt.plot(x, y, c='k', label='Model galaxies')
-
-    ###### z=0
-
-    w = np.where(StellarMassFull[SMFsnaps[4]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(StellarMassFull[SMFsnaps[4]][w])
-    x = np.log10(HaloMassFull[SMFsnaps[4]][w])
-
-    #plt.plot(x, y, c='k', label='Model galaxies')
-
-    ###### z=0
-
-    w = np.where(StellarMassFull[SMFsnaps[5]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(StellarMassFull[SMFsnaps[5]][w])
-    x = np.log10(HaloMassFull[SMFsnaps[5]][w])
-
-    #plt.plot(x, y, c='k', label='Model galaxies')
-
-    ###### z=0
-
-    w = np.where(StellarMassFull[SMFsnaps[6]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(StellarMassFull[SMFsnaps[6]][w])
-    x = np.log10(HaloMassFull[SMFsnaps[6]][w])
-
-    #plt.plot(x, y, c='k', alpha=0.1, label='Model galaxies')
-    """
     print('Plotting the halo-stellar mass relation')
 
     # Initialize list to store binned data for each redshift
@@ -244,17 +203,7 @@ if __name__ == '__main__':
         
         # Store binned data
         binned_data.append((bin_centers, bin_means_y, bin_stds_y, bin_counts))
-        """
-        # Plot binned data as a line with shaded error region
-        valid = ~np.isnan(bin_means_y)
-        if np.any(valid):
-            plt.scatter(bin_centers[valid], bin_means_y[valid], 
-                    color=colors[i], label=f'z = {i}')
-            plt.fill_between(bin_centers[valid], 
-                            bin_means_y[valid] - bin_stds_y[valid],
-                            bin_means_y[valid] + bin_stds_y[valid],
-                            color=colors[i], alpha=0.2)
-        """
+        
     # Write binned data to CSV
     try:
         with open('halostellar_binned_all_redshifts.csv', 'w', newline='') as file:
@@ -350,43 +299,7 @@ if __name__ == '__main__':
     x = np.log10(BulgeMassFull[SMFsnaps[2]][w])
 
     plt.scatter(x, y, s=0.5, c='k', alpha=0.6, label='Model galaxies')
-    """
-    ###### z=0
-
-    w = np.where(BlackHoleMassFull[SMFsnaps[3]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(BlackHoleMassFull[SMFsnaps[3]][w])
-    x = np.log10(BulgeMassFull[SMFsnaps[3]][w])
-
-    plt.scatter(x, y, s=0.1, c='k', alpha=0.1, label='Model galaxies')
-
-    ###### z=0
-
-    w = np.where(BlackHoleMassFull[SMFsnaps[4]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(BlackHoleMassFull[SMFsnaps[4]][w])
-    x = np.log10(BulgeMassFull[SMFsnaps[4]][w])
-
-    plt.scatter(x, y, s=0.1, c='k', alpha=0.1, label='Model galaxies')
-
-    ###### z=0
-
-    w = np.where(BlackHoleMassFull[SMFsnaps[5]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(BlackHoleMassFull[SMFsnaps[5]][w])
-    x = np.log10(BulgeMassFull[SMFsnaps[5]][w])
-
-    plt.scatter(x, y, s=0.1, c='k', alpha=0.1, label='Model galaxies')
-
-    ###### z=0
-
-    w = np.where(BlackHoleMassFull[SMFsnaps[6]] > 0.0)[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-    y = np.log10(BlackHoleMassFull[SMFsnaps[6]][w])
-    x = np.log10(BulgeMassFull[SMFsnaps[6]][w])
-
-    plt.scatter(x, y, s=0.1, c='k', alpha=0.1, label='Model galaxies')
-    """
+    
     print('Plotting the black hole-bulge relation')
 
     # Initialize list to store binned data for each redshift
@@ -530,36 +443,18 @@ if __name__ == '__main__':
     y_z0 = [10**y_z0 for y_z0 in y_z0]
     plt.plot(x_z0, y_z0, 'b:', lw=10, alpha=0.5, label='Driver et al., 2022 z=[0.1]')
 
-    x_z1 = [8.726315789473684, 8.857894736842105, 8.973684210526315, 9.115789474, 9.236842105263158,
-          9.363157894736842, 9.5, 9.642105263157895, 9.794736842105262, 9.952631578947368, 10.126315789473683,
-            10.305263157894736, 10.51578947368421, 10.742105263157894, 10.921052631578947, 11.136842105263158,
-              11.252631578947367, 11.368421052631579, 11.44736842105263, 11.510526315789473, 11.58421052631579,
-                11.647368421052631, 11.678947368421053]
-    y_z1 = [-2.151750973, -2.186770428, -2.221789883, -2.256809339, -2.291828794, -2.326848249, -2.373540856,
-          -2.408560311, -2.455252918, -2.490272374, -2.536964981, -2.618677043, -2.653696498, -2.770428016,
-            -2.898832685, -3.143968872, -3.412451362, -3.680933852, -3.996108949, -4.369649805, -4.766536965,
-              -5.151750973, -5.420233463]
-    y_z1 = [10**y_z1 for y_z1 in y_z1]
-    plt.plot(x_z1, y_z1, 'b:', lw=10, alpha=0.5, label='Ilbert et al., 2010 z=[1.0]')
-    
-    x_z2 = [8.609848485, 8.856060606, 9.140151515, 9.386363636, 9.613636364, 9.897727273, 10.10606061,
-             10.37121212, 10.65530303, 10.88257576, 11.14772727, 11.35606061, 11.64015152, 11.90530303]
-    y_z2 = [-2.616161616, -2.792929293, -2.919191919, -3.146464646, -3.398989899, -3.727272727,
-             -4.055555556, -4.308080808, -4.308080808, -4.585858586, -5.090909091, -5.570707071,
-               -5.671717172, -6.050505051]
-    y_z2 = [10**y_z2 for y_z2 in y_z2]
-    plt.plot(x_z2, y_z2, 'g:', lw=10, alpha=0.5, label='Shuntov et al., 2024 z=[2.0]')
-    
-    x_z3 = [8.889312977, 9.118320611, 9.385496183, 9.652671756, 9.919847328, 10.16793893,
-             10.4351145, 10.66412214]
-    y_z3 = [-3.969543147, -4.375634518, -4.578680203, -4.680203046, -5.035532995, -5.390862944,
-             -5.517766497, -6.025380711]
-    y_z3 = [10**y_z3 for y_z3 in y_z3]
-    plt.plot(x_z3, y_z3, 'r:', lw=10, alpha=0.5, label='... z=[3.0]')
-    
+    plt.plot(z1_x, 10**z1_y, 'b:', lw=10, alpha=0.5, label='Wright et al., z=[1.0]')
+    plt.plot(z2_x, 10**z2_y, 'g:', lw=10, alpha=0.5, label='... z=[2.0]')
+    plt.plot(z3_x, 10**z3_y, 'r:', lw=10, alpha=0.5, label='Shuntov et al., z=[3.0]')
+
+
     ###### z=0
 
-    w = np.where(StellarMassFull[SMFsnaps[0]] > 0.0)[0]
+    # Define minimum number of particles
+    min_particles = 30  # Change this to your desired minimum number of particles
+    min_halo_mass = min_particles * 0.08 * 1.0e10  # Convert to solar masses
+
+    w = np.where((StellarMassFull[SMFsnaps[0]] > 0.0) & (HaloMassFull[SMFsnaps[0]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[0]][w])
 
     binwidth = 0.1
@@ -573,7 +468,7 @@ if __name__ == '__main__':
 
     ###### z=1.3
     
-    w = np.where(StellarMassFull[SMFsnaps[1]] > 0.0)[0]
+    w = np.where((StellarMassFull[SMFsnaps[1]] > 0.0) & (HaloMassFull[SMFsnaps[1]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[1]][w])
 
     mi = np.floor(min(mass)) - 2
@@ -586,7 +481,7 @@ if __name__ == '__main__':
 
     ###### z=2
     
-    w = np.where(StellarMassFull[SMFsnaps[2]] > 0.0)[0]
+    w = np.where((StellarMassFull[SMFsnaps[2]] > 0.0) & (HaloMassFull[SMFsnaps[2]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[2]][w])
 
     mi = np.floor(min(mass)) - 2
@@ -599,7 +494,7 @@ if __name__ == '__main__':
 
     ###### z=3
     
-    w = np.where(StellarMassFull[SMFsnaps[3]] > 0.0)[0]
+    w = np.where((StellarMassFull[SMFsnaps[3]] > 0.0) & (HaloMassFull[SMFsnaps[3]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[3]][w])
 
     mi = np.floor(min(mass)) - 2
@@ -609,10 +504,10 @@ if __name__ == '__main__':
     xaxeshisto = binedges[:-1] + 0.5 * binwidth
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-    """
-      ###### z=3
+
+     ###### z=4
     
-    w = np.where(StellarMassFull[SMFsnaps[4]] > 0.0)[0]
+    w = np.where((StellarMassFull[SMFsnaps[4]] > 0.0) & (HaloMassFull[SMFsnaps[4]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[4]][w])
 
     mi = np.floor(min(mass)) - 2
@@ -623,9 +518,9 @@ if __name__ == '__main__':
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
 
-      ###### z=3
+     ###### z=5
     
-    w = np.where(StellarMassFull[SMFsnaps[5]] > 0.0)[0]
+    w = np.where((StellarMassFull[SMFsnaps[5]] > 0.0) & (HaloMassFull[SMFsnaps[5]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[5]][w])
 
     mi = np.floor(min(mass)) - 2
@@ -635,70 +530,7 @@ if __name__ == '__main__':
     xaxeshisto = binedges[:-1] + 0.5 * binwidth
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
     
-    w = np.where(StellarMassFull[SMFsnaps[6]] > 0.0)[0]
-    mass = np.log10(StellarMassFull[SMFsnaps[6]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(StellarMassFull[SMFsnaps[7]] > 0.0)[0]
-    mass = np.log10(StellarMassFull[SMFsnaps[7]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(StellarMassFull[SMFsnaps[8]] > 0.0)[0]
-    mass = np.log10(StellarMassFull[SMFsnaps[8]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(StellarMassFull[SMFsnaps[9]] > 0.0)[0]
-    mass = np.log10(StellarMassFull[SMFsnaps[9]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-    w = np.where(StellarMassFull[SMFsnaps[10]] > 0.0)[0]
-    mass = np.log10(StellarMassFull[SMFsnaps[10]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-"""
 # Calculate the data for each redshift
     data = []
     for snap in SMFsnaps:
@@ -885,99 +717,7 @@ if __name__ == '__main__':
     plt.plot(zhang_x3, zhang_y3, 'r:', lw=10, alpha=0.5, label='... z=[3.0]')
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-    """
-      ###### z=3
-    
-    w = np.where(BlackHoleMassFull[BHMFsnaps[4]] > 0.0)[0]
-    mass = np.log10(BlackHoleMassFull[BHMFsnaps[4]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(BlackHoleMassFull[BHMFsnaps[5]] > 0.0)[0]
-    mass = np.log10(BlackHoleMassFull[BHMFsnaps[5]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(BlackHoleMassFull[BHMFsnaps[6]] > 0.0)[0]
-    mass = np.log10(BlackHoleMassFull[BHMFsnaps[6]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(BlackHoleMassFull[BHMFsnaps[7]] > 0.0)[0]
-    mass = np.log10(BlackHoleMassFull[BHMFsnaps[7]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(BlackHoleMassFull[BHMFsnaps[8]] > 0.0)[0]
-    mass = np.log10(BlackHoleMassFull[BHMFsnaps[8]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(BlackHoleMassFull[BHMFsnaps[9]] > 0.0)[0]
-    mass = np.log10(BlackHoleMassFull[BHMFsnaps[9]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
-      ###### z=3
-    
-    w = np.where(BlackHoleMassFull[BHMFsnaps[10]] > 0.0)[0]
-    mass = np.log10(BlackHoleMassFull[BHMFsnaps[10]][w])
-
-    mi = np.floor(min(mass)) - 2
-    ma = np.floor(max(mass)) + 2
-    NB = int((ma - mi) / binwidth)
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth
-
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-    """    
-
+   
 # Calculate the data for each redshift
     data = []
     for snap in BHMFsnaps:
@@ -1194,6 +934,162 @@ if __name__ == '__main__':
     plt.axis([0.0, 4.2, 6.5, 9.0])   
 
     outputFile = OutputDir + 'C.History-stellar-mass-density' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+
+    print('Plotting the stellar mass function with halo particle count filtering')
+
+    plt.figure()  # New figure
+    ax = plt.subplot(111)  # 1 plot on the figure
+
+    x_z0 = [11.625, 11.5, 11.375, 11.25, 11.125, 11, 10.875, 10.75, 10.625, 10.5, 10.375, 10.25,
+        10.125, 10, 9.875, 9.75, 9.625, 9.5, 9.375, 9.25, 9.125, 9, 8.875, 8.75, 8.625,
+            8.5, 8.375, 8.25, 8.125, 8, 7.875, 7.75, 7.625, 7.5, 7.375, 7.25, 7.125, 7, 6.875]
+    y_z0 = [-4.704, -3.944, -3.414, -3.172, -2.937, -2.698, -2.566, -2.455, -2.355, -2.301,
+        -2.305, -2.274, -2.281, -2.259, -2.201, -2.176, -2.151, -2.095, -2.044, -1.986,
+            -1.906, -1.812, -1.806, -1.767, -1.627, -1.646, -1.692, -1.599, -1.581,
+            -1.377, -1.417, -1.242, -1.236, -1.236, -1.043, -0.969, -0.937, -0.799, -1.009]
+    y_z0 = [10**y_z0 for y_z0 in y_z0]
+    plt.plot(x_z0, y_z0, 'b:', lw=10, alpha=0.5, label='Driver et al., 2022 z=[0.1]')
+
+    plt.plot(z1_x, 10**z1_y, 'b:', lw=10, alpha=0.5, label='Wright et al., z=[1.0]')
+    plt.plot(z2_x, 10**z2_y, 'g:', lw=10, alpha=0.5, label='... z=[2.0]')
+    plt.plot(z3_x, 10**z3_y, 'r:', lw=10, alpha=0.5, label='Shuntov et al., z=[3.0]')
+
+    # Load "Len" property for each snapshot
+    LenFull = [0]*(LastSnap-FirstSnap+1)
+    for snap in range(FirstSnap, LastSnap+1):
+        Snapshot = 'Snap_'+str(snap)
+        LenFull[snap] = read_hdf(snap_num=Snapshot, param='Len')
+
+    # The minimum number of particles we want in halos
+    min_particles = 30
+
+    ###### z=0
+    w = np.where((StellarMassFull[SMFsnaps[0]] > 0.0) & (LenFull[SMFsnaps[0]] > min_particles))[0]
+    mass = np.log10(StellarMassFull[SMFsnaps[0]][w])
+
+    binwidth = 0.1
+    mi = np.floor(min(mass)) - 2 if len(mass) > 0 else 8.0
+    ma = np.floor(max(mass)) + 2 if len(mass) > 0 else 12.0
+    NB = int((ma - mi) / binwidth)
+    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
+    xaxeshisto = binedges[:-1] + 0.5 * binwidth
+
+    plt.plot(xaxeshisto, counts / volume / binwidth, 'k-', label='Model galaxies')
+
+    ###### z=1.3
+    w = np.where((StellarMassFull[SMFsnaps[1]] > 0.0) & (LenFull[SMFsnaps[1]] > min_particles))[0]
+    mass = np.log10(StellarMassFull[SMFsnaps[1]][w])
+
+    mi = np.floor(min(mass)) - 2 if len(mass) > 0 else 8.0
+    ma = np.floor(max(mass)) + 2 if len(mass) > 0 else 12.0
+    NB = int((ma - mi) / binwidth)
+    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
+    xaxeshisto = binedges[:-1] + 0.5 * binwidth
+
+    plt.plot(xaxeshisto, counts / volume / binwidth, 'b-')
+
+    ###### z=2
+    w = np.where((StellarMassFull[SMFsnaps[2]] > 0.0) & (LenFull[SMFsnaps[2]] > min_particles))[0]
+    mass = np.log10(StellarMassFull[SMFsnaps[2]][w])
+
+    mi = np.floor(min(mass)) - 2 if len(mass) > 0 else 8.0
+    ma = np.floor(max(mass)) + 2 if len(mass) > 0 else 12.0
+    NB = int((ma - mi) / binwidth)
+    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
+    xaxeshisto = binedges[:-1] + 0.5 * binwidth
+
+    plt.plot(xaxeshisto, counts / volume / binwidth, 'g-')
+
+    ###### z=3
+    w = np.where((StellarMassFull[SMFsnaps[3]] > 0.0) & (LenFull[SMFsnaps[3]] > min_particles))[0]
+    mass = np.log10(StellarMassFull[SMFsnaps[3]][w])
+
+    mi = np.floor(min(mass)) - 2 if len(mass) > 0 else 8.0
+    ma = np.floor(max(mass)) + 2 if len(mass) > 0 else 12.0
+    NB = int((ma - mi) / binwidth)
+    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
+    xaxeshisto = binedges[:-1] + 0.5 * binwidth
+
+    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
+
+    ###### z=4
+    w = np.where((StellarMassFull[SMFsnaps[4]] > 0.0) & (LenFull[SMFsnaps[4]] > min_particles))[0]
+    mass = np.log10(StellarMassFull[SMFsnaps[4]][w])
+
+    mi = np.floor(min(mass)) - 2 if len(mass) > 0 else 8.0
+    ma = np.floor(max(mass)) + 2 if len(mass) > 0 else 12.0
+    NB = int((ma - mi) / binwidth)
+    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
+    xaxeshisto = binedges[:-1] + 0.5 * binwidth
+
+    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
+
+    ###### z=5
+    w = np.where((StellarMassFull[SMFsnaps[5]] > 0.0) & (LenFull[SMFsnaps[5]] > min_particles))[0]
+    mass = np.log10(StellarMassFull[SMFsnaps[5]][w])
+
+    mi = np.floor(min(mass)) - 2 if len(mass) > 0 else 8.0
+    ma = np.floor(max(mass)) + 2 if len(mass) > 0 else 12.0
+    NB = int((ma - mi) / binwidth)
+    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
+    xaxeshisto = binedges[:-1] + 0.5 * binwidth
+
+    plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
+
+    # Calculate the data for each redshift for CSV export
+    data = []
+    for snap in SMFsnaps:
+        w = np.where((StellarMassFull[snap] > 0.0) & (LenFull[snap] > min_particles))[0]
+        mass = np.log10(StellarMassFull[snap][w])
+
+        binwidth = 0.1
+        mi = 7.0
+        ma = 15.0
+        NB = int((ma - mi) / binwidth)
+        (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
+        xaxeshisto = binedges[:-1] + 0.5 * binwidth
+        yaxeshisto = counts / volume / binwidth
+
+        data.append((xaxeshisto, yaxeshisto))
+
+    # Find the maximum length of x and y arrays
+    max_length = max(len(x) for x, _ in data)
+
+    # Open a single tab-delimited file for writing
+    with open('smf_all_redshifts_filtered.csv', 'w', newline='') as file:
+        writer = csv.writer(file, delimiter='\t')
+
+        # Write data rows
+        for i in range(max_length):
+            row = []
+            for x, y in data:
+                if i < len(x):
+                    row.extend([x[i], y[i]])
+                else:
+                    row.extend(['', ''])
+            writer.writerow(row)
+
+    ######
+
+    plt.yscale('log')
+    plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
+
+    # Set the x-axis minor ticks
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+
+    plt.ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1}$)')  # Set the y...
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
+
+    leg = plt.legend(loc='lower left', numpoints=1, labelspacing=0.1)
+    leg.draw_frame(False)  # Don't want a box frame
+    for t in leg.get_texts():  # Reduce the size of the text
+        t.set_fontsize('medium')
+
+    outputFile = OutputDir + 'A.StellarMassFunction_Filtered_z' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()

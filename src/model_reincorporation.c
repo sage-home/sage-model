@@ -8,6 +8,7 @@
 
 #include "model_reincorporation.h"
 #include "model_misc.h"
+#include "model_lowmass_suppression.h"
 
 void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
@@ -81,6 +82,9 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
     }
     #endif
     
+    // Get current redshift for this galaxy
+    double z = run_params->ZZ[galaxies[centralgal].SnapNum];
+    
     // SN velocity is 630km/s, and the condition for reincorporation is that the
     // halo has an escape velocity greater than this, i.e. V_SN/sqrt(2) = 445.48km/s
     const double Vcrit = 445.48 * run_params->ReIncorporationFactor;
@@ -91,18 +95,15 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
             (galaxies[centralgal].Vvir / Vcrit - 1.0) * 
             galaxies[centralgal].EjectedMass / (galaxies[centralgal].Rvir / galaxies[centralgal].Vvir);
 
-        // Apply mass-dependent scaling for low-mass halos
-        // This follows Henriques et al. (2015) approach where reincorporation is proportional to 1/Mhalo
-        double mass_dependent_factor = 1.0;
+        // Apply scaling factors
+        double total_scaling = 1.0;
         
+        // Mass-dependent scaling (if enabled)
         if (run_params->MassReincorporationOn == 1) {
-            // Only apply to halos below the critical mass (set to 10^10.5 M_sun by default)
+            // Only apply to halos below the critical mass
             if (galaxies[centralgal].Mvir < run_params->CriticalReincMass) {
-                // Mass-dependent reincorporation time: larger halos reincorporate faster
-                // Scale inversely with halo mass relative to the critical mass
-                mass_dependent_factor = galaxies[centralgal].Mvir / run_params->CriticalReincMass;
-                
-                // Apply exponent to control strength of mass dependence
+                // Calculate mass-dependent factor
+                double mass_dependent_factor = galaxies[centralgal].Mvir / run_params->CriticalReincMass;
                 mass_dependent_factor = pow(mass_dependent_factor, run_params->ReincorporationMassExp);
                 
                 // Ensure factor is in sensible range
@@ -110,11 +111,35 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
                     mass_dependent_factor = run_params->MinReincorporationFactor;
                 if (mass_dependent_factor > 1.0)
                     mass_dependent_factor = 1.0;
+                
+                // Apply to total scaling
+                total_scaling *= mass_dependent_factor;
+                
+                #ifdef VERBOSE
+                if(run_params->MassReincorporationOn && galaxies[centralgal].Mvir < run_params->CriticalReincMass) {
+                    total_modified_galaxies++;
+                    
+                    // Track min and max masses modified
+                    if (galaxies[centralgal].Mvir < min_reincorporation_mass) 
+                        min_reincorporation_mass = galaxies[centralgal].Mvir;
+                    if (galaxies[centralgal].Mvir > max_reincorporation_mass) 
+                        max_reincorporation_mass = galaxies[centralgal].Mvir;
+                }
+                #endif
             }
         }
         
+        // Redshift-dependent scaling (if enabled)
+        if (run_params->RedshiftReincorporationOn == 1) {
+            // Calculate redshift-dependent factor: slower reincorporation at high redshift
+            double redshift_factor = pow(1.0 + z, -run_params->ReincorporationRedshiftExp);
+            
+            // Apply to total scaling
+            total_scaling *= redshift_factor;
+        }
+        
         // Calculate final reincorporation amount
-        double reincorporated = base_reincorporation_rate * mass_dependent_factor * dt;
+        double reincorporated = base_reincorporation_rate * total_scaling * dt;
 
         if(reincorporated > galaxies[centralgal].EjectedMass)
             reincorporated = galaxies[centralgal].EjectedMass;
@@ -124,5 +149,25 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         galaxies[centralgal].MetalsEjectedMass -= metallicity * reincorporated;
         galaxies[centralgal].HotGas += reincorporated;
         galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
+
+        // Apply targeted suppression
+        if (run_params->LowMassHighzSuppressionOn == 1) {
+            double z = run_params->ZZ[galaxies[centralgal].SnapNum];
+            double suppression = calculate_lowmass_suppression(centralgal, z, galaxies, run_params);
+            reincorporated *= suppression;
+        }
+            
+        #ifdef VERBOSE
+        // Only print the mass-dependent diagnostics once per simulation
+        // (previously was printing once per million galaxies)
+        if(run_params->MassReincorporationOn == 1 && 
+           counter == 20000000 && 
+           total_modified_galaxies > 0) { 
+            fprintf(stdout, "Mass-dep Reinc Summary: modified=%d mass_range=[%.2g-%.2g]\n",
+                    total_modified_galaxies,
+                    min_reincorporation_mass,
+                    max_reincorporation_mass);
+        }
+        #endif
     }
 }

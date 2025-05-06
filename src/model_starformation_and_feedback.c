@@ -10,6 +10,64 @@
 #include "model_misc.h"
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
+#include "model_lowmass_suppression.h"
+
+double calculate_mass_dependent_sf_efficiency(const struct GALAXY *galaxy, const double base_efficiency, const struct params *run_params)
+{
+
+    // If mass-dependent SF is disabled, return base efficiency
+    if (run_params->MassDependentSFEnabled != 1) {
+        return base_efficiency;
+    }
+
+    // Get galaxy virial mass in 10^10 M_sun/h (SAGE's internal units)
+    double mvir = galaxy->Mvir;
+    
+    // Parameters for mass dependence
+    const double PIVOT_MASS = 1.0;  // 10^10 M_sun/h
+    const double LOW_MASS_SLOPE = 0.5;  // Power-law slope for low-mass galaxies
+    const double HIGH_MASS_SLOPE = -0.3; // Power-law slope for high-mass galaxies
+    
+    // Calculate mass-dependent scaling
+    double scaling_factor = 1.0;
+    
+    if (mvir < PIVOT_MASS) {
+        // For low-mass galaxies: reduce SF efficiency
+        // Scales as (M/M_pivot)^slope where slope is positive
+        scaling_factor = pow(mvir / PIVOT_MASS, LOW_MASS_SLOPE);
+    } else {
+        // For high-mass galaxies: enhance SF efficiency
+        // Scales as (M/M_pivot)^slope where slope is negative
+        scaling_factor = pow(mvir / PIVOT_MASS, HIGH_MASS_SLOPE);
+    }
+    
+    // Constrain scaling factor to reasonable bounds
+    if (scaling_factor < 0.1) scaling_factor = 0.1;  // Lower limit
+    if (scaling_factor > 3.0) scaling_factor = 3.0;  // Upper limit
+    
+#ifdef VERBOSE
+    static int counter = 0;
+    counter++;
+    if (counter % 500000 == 0) {
+        double final_eff = base_efficiency * scaling_factor;
+        printf("MASS-DEP SF: Galaxy=%d, Mvir=%.2e, base_eff=%.3f, scaling=%.3f, final_eff=%.3f\n",
+               galaxy->GalaxyNr, mvir, base_efficiency, scaling_factor, final_eff);
+        printf("  Parameters: pivot=%.2f, low_slope=%.2f, high_slope=%.2f\n",
+               PIVOT_MASS, LOW_MASS_SLOPE, HIGH_MASS_SLOPE);
+               
+        // More detailed information occasionally
+        if (counter % 500000 == 0) {
+            double mass_ratio = mvir / PIVOT_MASS;
+            printf("  Mass ratio=%.3f, used slope=%.2f\n",
+                   mass_ratio, (mvir < PIVOT_MASS) ? LOW_MASS_SLOPE : HIGH_MASS_SLOPE);
+            printf("  Galaxy details: StellarMass=%.2e, ColdGas=%.2e, H2_gas=%.2e\n",
+                   galaxy->StellarMass, galaxy->ColdGas, galaxy->H2_gas);
+        }
+    }
+#endif
+    
+    return base_efficiency * scaling_factor;
+}
 
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
                 struct GALAXY *galaxies, const struct params *run_params)
@@ -21,8 +79,11 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     double z = run_params->ZZ[galaxies[p].SnapNum];
     
     // Calculate redshift-dependent parameters
-    double sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
-                                                     run_params->SFR_Alpha, z);
+    double base_sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
+        run_params->SFR_Alpha, z);
+
+    // NEW: Calculate mass-dependent star formation efficiency
+    double sfr_eff = calculate_mass_dependent_sf_efficiency(&galaxies[p], base_sfr_eff, run_params);
     double fb_reheat = get_redshift_dependent_parameter(run_params->FeedbackReheatingEpsilon, 
                                                       run_params->Reheating_Alpha, z);
     double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
@@ -223,6 +284,12 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     } else {
         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
     }
+
+    // Apply targeted suppression to stars
+    if (run_params->LowMassHighzSuppressionOn == 1) {
+        double suppression = calculate_lowmass_suppression(p, z, galaxies, run_params);
+        stars *= suppression;
+    }
 }
 
 
@@ -335,8 +402,8 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     double eta = 0.5 * NORM * z_term * v_term;
     
     // Cap the maximum mass-loading factor to prevent extreme feedback
-    if (eta > 30.0) {
-        eta = 30.0;
+    if (eta > 50.0) {
+        eta = 50.0;
     }
     
     // Safety check for the result
@@ -371,9 +438,12 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     // Get current redshift for this galaxy
     double z = run_params->ZZ[galaxies[p].SnapNum];
     
-    // Calculate redshift-dependent parameters for star formation efficiency only
-    double sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
-                                                     run_params->SFR_Alpha, z);
+    // Calculate redshift-dependent parameters
+    double base_sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
+        run_params->SFR_Alpha, z);
+
+    // NEW: Calculate mass-dependent star formation efficiency
+    double sfr_eff = calculate_mass_dependent_sf_efficiency(&galaxies[p], base_sfr_eff, run_params);
 
     // Star formation rate tracking
     galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
@@ -521,7 +591,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     // Log significant star formation events for debugging
 #ifdef VERBOSE
     static int sf_event_counter = 0;
-    if (stars > 0.005 && (sf_event_counter % 100000 == 0)) {  // Only log larger star formation events and only 1 in 1000
+    if (stars > 0.005 && (sf_event_counter % 10000 == 0)) {  // Only log larger star formation events and only 1 in 1000
         printf("SF EVENT: Galaxy=%d, z=%.2f, Stars=%.3f, ColdGas before=%.3f, reheated=%.3f, ejected=%.3f, HotGas=%.3f\n", 
                galaxies[p].GalaxyNr, z, stars, cold_gas_before, reheated_mass, ejected_mass, galaxies[centralgal].HotGas);
     }
@@ -551,6 +621,11 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
     } else {
         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+    }
+    // Apply targeted suppression to stars
+    if (run_params->LowMassHighzSuppressionOn == 1) {
+        double suppression = calculate_lowmass_suppression(p, z, galaxies, run_params);
+        stars *= suppression;
     }
 }
 

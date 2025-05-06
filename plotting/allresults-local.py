@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import math
 import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_supernovachange_muratov_h1h2/'
+DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -101,91 +101,31 @@ if __name__ == '__main__':
     Posx = read_hdf(snap_num = Snapshot, param = 'Posx')
     Posy = read_hdf(snap_num = Snapshot, param = 'Posy')
     Posz = read_hdf(snap_num = Snapshot, param = 'Posz')
+    NDM = read_hdf(snap_num = Snapshot, param = 'Len')
+ 
+    mask_ndm_20 = np.where((NDM <= 20))[0]
+    print('Number of galaxies with less than or equal to 20 particles: ', len(NDM[mask_ndm_20]))
+    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_20]))
+
+    mask_ndm_30 = np.where((NDM <= 30))[0]
+    print('Number of galaxies with less than or equal to 30 particles: ', len(NDM[mask_ndm_30]))
+    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_30]))
+
+    mask_ndm_50 = np.where((NDM <= 50))[0]
+    print('Number of galaxies with less than or equal to 50 particles: ', len(NDM[mask_ndm_50]))
+    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_50]))
+
+    mask_ndm_100 = np.where((NDM <= 100))[0]
+    print('Number of galaxies with less than or equal to 100 particles: ', len(NDM[mask_ndm_100]))
+    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_100]))
+
+    mask_ndm_massive = np.where((NDM > 100))[0]
+    print('Number of galaxies with greater than 100 particles: ', len(NDM[mask_ndm_massive]))
+    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_massive]))
 
     w = np.where(StellarMass > 1.0e10)[0]
     print('Number of galaxies read:', len(StellarMass))
     print('Galaxies more massive than 10^10 h-1 Msun:', len(w), '\n')
-
-# --------------------------------------------------------
-
-    """
-    Plot the cumulative stellar mass function.
-    Shows the number density of galaxies with stellar mass greater than M_*.
-    """
-    print('Plotting the cumulative stellar mass function')
-
-    # Calculate volume in (Mpc/h)^3
-    #volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
-    print(f"Simulation volume: {volume:.1f} (Mpc/h)^3")
-    
-    # Read required galaxy properties
-    print("Reading galaxy properties...")
-    StellarMass = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
-    Type = read_hdf(snap_num=Snapshot, param='Type')
-    
-    print(f"Read {len(StellarMass)} galaxies")
-    
-    plt.figure(figsize=(10, 8))  # New figure with specified size
-    ax = plt.subplot(111)  # 1 plot on the figure
-
-    # Use galaxies with non-zero stellar mass
-    w = np.where(StellarMass > 0.0)[0]
-    mass = np.log10(StellarMass[w])
-    print(f"Found {len(mass)} galaxies with non-zero stellar mass")
-
-    # For cumulative function, we need to sort the masses
-    sorted_masses = np.sort(mass)
-    
-    # Calculate cumulative number density (galaxies per cubic Mpc)
-    # Divide by volume to get number density
-    # For each mass value, this gives the number of galaxies with mass > that value
-    cumulative_counts = np.arange(len(sorted_masses), 0, -1) / volume
-    
-    # Plot the CSMF for all galaxies
-    plt.plot(sorted_masses, cumulative_counts, '-', color='red', lw=2, label='This Work - SAGE')
-    
-    # Split by galaxy type (central vs. satellite)
-    # Centrals
-    w_cen = np.where((Type == 0) & (StellarMass > 0.0))[0]
-    mass_cen = np.log10(StellarMass[w_cen])
-    sorted_masses_cen = np.sort(mass_cen)
-    cumulative_counts_cen = np.arange(len(sorted_masses_cen), 0, -1) / volume
-    plt.plot(sorted_masses_cen, cumulative_counts_cen, '--', color='blue', lw=2, label='Centrals')
-    
-    # Satellites
-    w_sat = np.where((Type == 1) & (StellarMass > 0.0))[0]
-    mass_sat = np.log10(StellarMass[w_sat])
-    sorted_masses_sat = np.sort(mass_sat)
-    cumulative_counts_sat = np.arange(len(sorted_masses_sat), 0, -1) / volume
-    plt.plot(sorted_masses_sat, cumulative_counts_sat, '--', color='green', lw=2, label='Satellites')
-    
-    # Set up plot details to match the reference image
-    plt.yscale('log')
-    plt.xscale('linear')  # Ensure x-axis is linear
-    
-    # Set axis range to match the reference image
-    plt.axis([7.0, 12.0, 1.0e-4, 1.0e3])
-    
-    # Set tick marks
-    ax.xaxis.set_major_locator(plt.MultipleLocator(1.0))
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.2))
-    
-    # Add grid to match reference image
-    plt.grid(True, linestyle='--', alpha=0.3, which='both')
-
-    # Set labels
-    plt.ylabel(r'$n(>M)\ [\mathrm{Mpc}^{-3}]$')
-    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ [M_{\odot}]$')
-    
-    # Add legend
-    leg = plt.legend(loc='upper right', frameon=False)
-    for t in leg.get_texts():
-        t.set_fontsize('medium')
-
-    outputFile = OutputDir + '1.CumulativeStellarMassFunction' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved to', outputFile, '\n')
-    plt.close()
 
     # --------------------------------------------------------
 
@@ -313,7 +253,7 @@ if __name__ == '__main__':
     binwidth = 0.1  # mass function histogram bin width
 
     # calculate all
-    w = np.where(StellarMass > 0.0)[0]
+    w = np.where((StellarMass > 0.0))[0]
     mass = np.log10(StellarMass[w])
     sSFR = np.log10( (SfrDisk[w] + SfrBulge[w]) / StellarMass[w] )
 
@@ -332,6 +272,19 @@ if __name__ == '__main__':
     w = np.where(sSFR > sSFRcut)[0]
     massBLU = mass[w]
     (countsBLU, binedges) = np.histogram(massBLU, range=(mi, ma), bins=NB)
+
+    # calculate different particle number cuts
+    w = np.where((StellarMass > 0.0)&(NDM > 20))[0]
+    mass20 = np.log10(StellarMass[w])
+    (counts20, binedges) = np.histogram(mass20, range=(mi, ma), bins=NB)
+
+    w = np.where((StellarMass > 0.0)&(NDM > 50))[0]
+    mass50 = np.log10(StellarMass[w])
+    (counts50, binedges) = np.histogram(mass50, range=(mi, ma), bins=NB)
+
+    w = np.where((StellarMass > 0.0)&(NDM > 100))[0]
+    mass100 = np.log10(StellarMass[w])
+    (counts100, binedges) = np.histogram(mass100, range=(mi, ma), bins=NB)
 
     # Baldry+ 2008 modified data used for the MCMC fitting
     Baldry = np.array([
@@ -455,6 +408,10 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, counts    / volume / binwidth, 'k-', lw=2, label='Model - All')
     plt.plot(xaxeshisto, countsRED / volume / binwidth, 'r-', lw=2, label='Model - Red')
     plt.plot(xaxeshisto, countsBLU / volume / binwidth, 'b-', lw=2, label='Model - Blue')
+
+    plt.plot(xaxeshisto, counts20    / volume / binwidth, 'g--', lw=1, label='Model - 20 particles or less')
+    plt.plot(xaxeshisto, counts50    / volume / binwidth, 'g--', lw=1, label='Model - 50 particles or less')
+    plt.plot(xaxeshisto, counts100    / volume / binwidth, 'g--', lw=1, label='Model - 100 particles or less')
 
     plt.yscale('log')
     plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])

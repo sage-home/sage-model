@@ -93,6 +93,56 @@ void init(struct params *run_params)
         run_params->MassLoadingModel = 0;  // Default to standard model
     }
 
+    // Initialize redshift reincorporation parameters with default values if not set
+    if (run_params->RedshiftReincorporationOn != 0 && run_params->RedshiftReincorporationOn != 1) {
+        run_params->RedshiftReincorporationOn = 0;  // Disabled by default
+    }
+    if (run_params->ReincorporationRedshiftExp <= 0.0) {
+        run_params->ReincorporationRedshiftExp = 2.0;  // Default exponent value
+    }
+
+    // Initialize low-mass high-z suppression parameters
+    if (run_params->LowMassHighzSuppressionOn != 0 && run_params->LowMassHighzSuppressionOn != 1) {
+        run_params->LowMassHighzSuppressionOn = 0;  // Disabled by default
+    }
+    if (run_params->SuppressionMassThreshold <= 0.0) {
+        run_params->SuppressionMassThreshold = 0.3;  // Default: 3×10^9 Msun/h
+    }
+    if (run_params->SuppressionMassExponent <= 0.0) {
+        run_params->SuppressionMassExponent = 4.0;  // Default: sharp transition
+    }
+    if (run_params->SuppressionRedshiftExp <= 0.0) {
+        run_params->SuppressionRedshiftExp = 1.0;  // Default: linear with redshift
+    }
+
+    // Initialize reionization parameters with default values
+    if (run_params->ReionizationModel != 0 && 
+        run_params->ReionizationModel != 1 && 
+        run_params->ReionizationModel != 2 && 
+        run_params->ReionizationModel != 3) {
+        run_params->ReionizationModel = 0;  // Default to simple model
+    }
+
+    if (run_params->FilteringMassNorm <= 0.0) {
+        run_params->FilteringMassNorm = 0.7;  // Based on Okamoto et al. (2008)
+    }
+
+    if (run_params->UVBackgroundStrength < 0.0) {
+        run_params->UVBackgroundStrength = 0.1;  // Default mild pre-reionization UV 
+    }
+
+    if (run_params->PatchyReionWidth <= 0.0) {
+        run_params->PatchyReionWidth = 1.0;  // Default reionization width dz
+    }
+
+    if (run_params->LocalReionVariance < 0.0) {
+        run_params->LocalReionVariance = 0.5;  // Default variance strength
+    }
+
+    if (run_params->PostReionSlope <= 0.0) {
+        run_params->PostReionSlope = -2.0/3.0;  // Default from Sobacchi & Mesinger (2013)
+    }
+
     set_units(run_params);
 
     read_snap_list(run_params);

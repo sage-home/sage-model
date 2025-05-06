@@ -11,7 +11,7 @@
 #include "model_h2_formation.h"
 
 
-double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
+double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, struct params *run_params)
 {
     double tot_stellarMass, tot_BHMass, tot_coldMass, tot_hotMass, tot_ejected, tot_ICS;
     double tot_ejectedMetals, tot_ICSMetals;
@@ -55,7 +55,6 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
    infallingMass = preventative_factor * reionization_modifier * run_params->BaryonFrac * 
                   galaxies[centralgal].Mvir - 
                   (tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS);
-    /* reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].deltaMvir - newSatBaryons; */
 
     // the central galaxy keeps all the ejected mass
     galaxies[centralgal].EjectedMass = tot_ejected;
@@ -94,13 +93,13 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
 
 
 
-void strip_from_satellite(const int centralgal, const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
+void strip_from_satellite(const int centralgal, const int gal, const double Zcurr, struct GALAXY *galaxies, struct params *run_params)
 {
     double reionization_modifier;
 
     if(run_params->ReionizationOn) {
-        /* reionization_modifier = do_reionization(gal, ZZ[halos[halonr].SnapNum]); */
-        reionization_modifier = do_reionization(gal, Zcurr, galaxies, run_params);
+        // Use the enhanced reionization model
+        reionization_modifier = do_reionization_enhanced(gal, Zcurr, galaxies, run_params);
     } else {
         reionization_modifier = 1.0;
     }
@@ -137,7 +136,7 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
 
 
 
-double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
+double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxies, struct params *run_params)
 {
     double f_of_a;
 
@@ -246,52 +245,342 @@ double calculate_preventative_feedback(const int gal, const double z, struct GAL
     
     // Get halo virial velocity in km/s
     double vvir = galaxies[gal].Vvir;
+    if (vvir <= 0.0) return 1.0;
     
-    // Safety check for valid velocity
-    if (vvir <= 0.0) {
-        return 1.0;
-    }
+    // Calculate z-factor and critical velocity
+    double z_factor = (z <= 1.0) ? 
+        pow(1.0 + z, run_params->PreventativeFeedbackZdep) :
+        pow(1.0 + 1.0, run_params->PreventativeFeedbackZdep) * pow((1.0 + z)/(1.0 + 1.0), 2.0);
     
-    // Much stronger redshift dependence - scales with (1+z)^2 for z>1
-    double z_factor;
-    if (z <= 1.0) {
-        // Mild evolution at low redshift
-        z_factor = pow(1.0 + z, run_params->PreventativeFeedbackZdep);
-    } else {
-        // Strong evolution at high redshift
-        z_factor = pow(1.0 + 1.0, run_params->PreventativeFeedbackZdep) * 
-                   pow((1.0 + z)/(1.0 + 1.0), 2.0);
-    }
-    
-    // Calculate the critical velocity scale with enhanced redshift dependence
     double v_crit = run_params->PreventativeFeedbackVcrit * z_factor;
     
-    // Apply mass-dependent suppression with a redshift-dependent floor
-    // Minimum floor decreases with redshift - allowing stronger suppression at high-z
+    // Calculate minimum floor
     double min_floor = 0.3 / (1.0 + 0.5 * (z - 1.0));
-    if (min_floor < 0.05) min_floor = 0.05; // Don't go below 5%
-    if (z <= 1.0) min_floor = 0.3; // Fix floor at low redshift
+    if (min_floor < 0.05) min_floor = 0.05;
+    if (z <= 1.0) min_floor = 0.3;
     
-    // Calculate suppression factor with redshift-dependent minimum floor
+    // Calculate suppression factor
     double f_suppress = min_floor + (1.0 - min_floor) / 
                        (1.0 + pow(v_crit/vvir, run_params->PreventativeFeedbackAlpha));
     
-    // Apply additional suppression for intermediate-mass halos at high redshift
-    // This targets halos in the 10^10-10^11 M☉ range that contribute to the excess
+    // Apply additional suppression for intermediate-mass halos at high-z
     if (z > 1.0 && vvir > 50.0 && vvir < 150.0) {
-        double peak_suppress = 0.3 * (z - 1.0) / 2.0; // Up to 30% additional suppression at z=3
+        double peak_suppress = 0.3 * (z - 1.0) / 2.0;
         if (peak_suppress > 0.5) peak_suppress = 0.5;
         
-        // Gaussian-like suppression centered at 100 km/s
         double v_relative = (vvir - 100.0) / 50.0;
         double extra_suppress = peak_suppress * exp(-v_relative * v_relative);
         
         f_suppress *= (1.0 - extra_suppress);
     }
     
-    // Ensure the suppression factor is between 0 and 1
-    if (f_suppress < 0.05) f_suppress = 0.05; // Absolute minimum 5%
+    // Ensure bounds
+    if (f_suppress < 0.05) f_suppress = 0.05;
     if (f_suppress > 1.0) f_suppress = 1.0;
+
+#ifdef VERBOSE
+    static int counter = 0;
+    counter++;
+    if (counter % 500000 == 0) {
+        printf("PREVENTATIVE FEEDBACK: Galaxy=%d, z=%.2f, Vvir=%.1f km/s, v_crit=%.1f, z_factor=%.2f\n", 
+               galaxies[gal].GalaxyNr, z, vvir, v_crit, z_factor);
+        printf("  Suppression: f_suppress=%.3f, min_floor=%.3f, PreventativeFeedbackAlpha=%.2f\n", 
+               f_suppress, min_floor, run_params->PreventativeFeedbackAlpha);
+        
+        // Log full galaxy properties for deeper understanding
+        if (counter % 500000 == 0) {
+            printf("  Galaxy details: Mvir=%.2e, StellarMass=%.2e, HotGas=%.2e\n",
+                   galaxies[gal].Mvir, galaxies[gal].StellarMass, galaxies[gal].HotGas);
+        }
+    }
+#endif
+
     
     return f_suppress;
+}
+
+double do_reionization_enhanced(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Skip if reionization is turned off
+    if (!run_params->ReionizationOn) {
+        return 1.0;  // No suppression
+    }
+    
+    double modifier = 1.0;
+    
+    // Choose model based on parameter
+    switch(run_params->ReionizationModel) {
+        case 0:  // Legacy model (Gnedin 2000, Kravtsov 2004)
+            modifier = do_reionization(gal, z, galaxies, (struct params *)run_params);
+            break;
+            
+        case 1:  // Enhanced Gnedin model
+            modifier = enhanced_gnedin_model(gal, z, galaxies, run_params);
+            break;
+            
+        case 2:  // Sobacchi & Mesinger model
+            modifier = sobacchi_mesinger_model(gal, z, galaxies, run_params);
+            break;
+            
+        case 3:  // Patchy reionization
+            modifier = patchy_reionization_model(gal, z, galaxies, run_params);
+            break;
+            
+        default:
+            // Default to legacy model
+            modifier = do_reionization(gal, z, galaxies, (struct params *)run_params);
+    }
+    
+    // Apply early UV background effects if enabled
+    if (run_params->UVBackgroundStrength > 0.0) {
+        modifier = apply_early_uv_background(gal, z, modifier, galaxies, run_params);
+    }
+    
+    // Ensure safety bounds
+    if (modifier < 0.01) modifier = 0.01; // Never completely suppress
+    if (modifier > 1.0) modifier = 1.0;   // Never enhance
+
+#ifdef VERBOSE
+    static int counter = 0;
+    counter++;
+    if (counter % 500000 == 0) {
+        printf("REIONIZATION MODEL: Galaxy=%d, z=%.2f, Model=%d, Modifier=%.3f\n", 
+               galaxies[gal].GalaxyNr, z, run_params->ReionizationModel, modifier);
+        printf("  Halo properties: Mvir=%.2e, Vvir=%.2f\n", 
+               galaxies[gal].Mvir, galaxies[gal].Vvir);
+        
+        // More detailed information occasionally
+        if (counter % 500000 == 0) {
+            float Mfilter = calculate_filtering_mass(z, run_params);
+            float z_reion = run_params->Reionization_zr;
+            if (run_params->ReionizationModel == 3) {
+                z_reion = calculate_local_reionization_redshift(gal, galaxies, run_params);
+            }
+            
+            printf("  Filtering mass=%.2e, Reion_z=%.2f, UVBStrength=%.2f\n",
+                   Mfilter, z_reion, run_params->UVBackgroundStrength);
+            printf("  Pre-reionization UV effects: %s\n", 
+                   (run_params->UVBackgroundStrength > 0.0) ? "On" : "Off");
+        }
+    }
+#endif
+    
+    return modifier;
+}
+
+double calculate_filtering_mass(const double z, const struct params *run_params)
+{
+    // Implementation based on Naoz & Barkana (2007) and Hoeft et al. (2006)
+    // Cited in Okamoto et al. (2008) and used in L-GALAXIES
+    
+    // Base filtering mass at z=zr (reionization)
+    const double Mfilt_zr = run_params->FilteringMassNorm;  // [10^10 Msun/h]
+    
+    // Filtering mass evolution depends on redshift regime
+    if (z >= run_params->Reionization_zr) {
+        // Pre-reionization: minimal suppression
+        return 0.1 * Mfilt_zr;
+    } 
+    else if (z >= run_params->Reionization_z0) {
+        // During reionization transition
+        double z_frac = (z - run_params->Reionization_z0) / 
+                        (run_params->Reionization_zr - run_params->Reionization_z0);
+        // Interpolate between values
+        return Mfilt_zr * pow(10.0, -3.0 * z_frac);
+    }
+    else {
+        // Post-reionization: power-law evolution
+        double alpha = run_params->PostReionSlope;
+        return Mfilt_zr * pow((1.0 + z)/(1.0 + run_params->Reionization_z0), alpha);
+    }
+}
+
+double calculate_local_reionization_redshift(const int gal, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Based on Aubert et al. (2018) and Ocvirk et al. (2020) showing that
+    // denser regions typically reionize earlier
+    
+    // Base reionization redshift from parameter
+    double base_zreion = run_params->Reionization_zr;
+    
+    // Maximum variance allowed
+    const double max_dz = 2.0 * run_params->LocalReionVariance;
+    
+    // Skip if no local variance is requested
+    if (run_params->LocalReionVariance <= 0.0) {
+        return base_zreion;
+    }
+    
+    // Calculate environmental density proxy based on halo properties
+    double density_factor = 0.0;
+    
+    if (galaxies[gal].Mvir > 0.0) {
+        // For central galaxies, use direct proxies
+        if (galaxies[gal].Type == 0) {
+            // Normalize to rough average halo mass at that redshift
+            // Follows Trac et al. (2008) scaling relation
+            const double avg_mass = 1.0 * pow(1.0 + base_zreion, -2.5); // [10^10 Msun/h]
+            
+            // Calculate overdensity (capped to avoid extreme values)
+            density_factor = log10(galaxies[gal].Mvir / avg_mass);
+            if (density_factor > 1.0) density_factor = 1.0;
+            if (density_factor < -1.0) density_factor = -1.0;
+        }
+        // For satellites, use host halo properties
+        else if (galaxies[gal].Type > 0 && galaxies[gal].CentralGal >= 0) {
+            // Use central galaxy's halo as proxy for local density
+            int central_idx = galaxies[gal].CentralGal;
+            const double avg_mass = 1.0 * pow(1.0 + base_zreion, -2.5); // [10^10 Msun/h]
+            density_factor = log10(galaxies[central_idx].Mvir / avg_mass);
+            if (density_factor > 1.0) density_factor = 1.0;
+            if (density_factor < -1.0) density_factor = -1.0;
+        }
+    }
+    
+    // Modulate reionization redshift by density factor
+    // Denser regions reionize earlier
+    return base_zreion + max_dz * density_factor;
+}
+
+double enhanced_gnedin_model(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Enhanced version of the Gnedin (2000) model
+    // Uses improved filtering mass calculation
+    
+    // Calculate the filtering mass at this redshift
+    const double Mfilt = calculate_filtering_mass(z, run_params);
+    
+    // Convert to actual mass in model units
+    const double filtering_mass = Mfilt; // Already in 10^10 Msun/h
+    
+    // Apply formula from Gnedin (2000) with α = 2 rather than original α = 1
+    // This steeper slope matches recent simulation results better
+    // See Okamoto et al. (2008) and Sobacchi & Mesinger (2013)
+    const double modifier = 1.0 / pow(1.0 + pow(2.0 * filtering_mass / galaxies[gal].Mvir, 2.0), 1.5);
+    
+    return modifier;
+}
+
+double sobacchi_mesinger_model(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Implementation of Sobacchi & Mesinger (2013) reionization model
+    // Based on radiative-hydrodynamic simulations
+    
+    // Parameter values from S&M13 paper
+    const double Mc0 = run_params->FilteringMassNorm; // Base critical mass
+    const double a_M = 2.0/3.0;  // Mass power-law slope
+    const double zion = run_params->Reionization_zr; // Reionization redshift
+    const double gamma_UV = 2.0;  // UVB spectral index (default = 2.0)
+    
+    // Calculate the critical mass as function of redshift & reionization redshift
+    // Following equation 5 from Sobacchi & Mesinger (2013)
+    double Mc = 0.0;
+    
+    if (z <= zion) {
+        // After reionization
+        double t_over_trec = pow(1.0 + z, -5.0/2.0) - pow(1.0 + zion, -5.0/2.0);
+        t_over_trec *= pow(10.0/3.0, 1.5) * 100.0 * pow(0.3, -0.5);  // Convert to t/t_rec
+        
+        if (t_over_trec < 0.01) t_over_trec = 0.01;  // Avoid numerical issues
+        
+        // Calculate critical mass using the S&M13 formula
+        const double J21 = 1.0;  // Normalized UVB intensity at z (can be improved)
+        Mc = Mc0 * pow(J21, a_M) * pow(1.0 + z, 0.5 * a_M * (gamma_UV - 1.0)) *
+             pow(1.0 - exp(-t_over_trec / 2.0), -a_M);
+    } else {
+        // Before reionization - minimal suppression
+        Mc = 0.1 * Mc0;
+    }
+    
+    // Calculate suppression factor
+    // Using their equation 6
+    double x = galaxies[gal].Mvir / Mc;
+    double modifier = pow(1.0 + pow(3.0*x, -0.7), -2.5);
+    
+    // Bound the result
+    if (modifier > 0.99) modifier = 0.99;
+    if (modifier < 0.01) modifier = 0.01;
+    
+    return modifier;
+}
+
+double patchy_reionization_model(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Implementation of patchy reionization based on Choudhury et al. (2009) 
+    // and recent large-scale simulations like CROC (Gnedin 2014)
+    
+    // Calculate local reionization redshift for this galaxy
+    const double z_reion_local = calculate_local_reionization_redshift(gal, galaxies, run_params);
+    
+    // Width of reionization transition in redshift units
+    const double dz = run_params->PatchyReionWidth;
+    
+    // Calculate suppression based on position in reionization history
+    double modifier = 1.0;
+    
+    if (z <= z_reion_local - dz) {
+        // Fully reionized region - apply the Sobacchi & Mesinger model
+        modifier = sobacchi_mesinger_model(gal, z, galaxies, run_params);
+    }
+    else if (z >= z_reion_local + dz) {
+        // Not yet reionized - minimal suppression
+        modifier = 0.95;
+    }
+    else {
+        // During transition - smooth interpolation
+        double phase = (z_reion_local + dz - z) / (2.0 * dz);
+        
+        // Mix between full and minimal suppression
+        double post_reion_modifier = sobacchi_mesinger_model(gal, z_reion_local - dz, galaxies, run_params);
+        modifier = 0.95 - phase * (0.95 - post_reion_modifier);
+    }
+    
+    return modifier;
+}
+
+double apply_early_uv_background(const int gal, const double z, double reion_modifier, 
+                                struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Implements early UV background effects before full reionization
+    // Based on Finkelstein et al. (2019) and Yung et al. (2020)
+    
+    // Only apply at high redshift, before reionization
+    if (z < run_params->Reionization_zr) {
+        return reion_modifier;  // Use standard model after reionization
+    }
+    
+    // Calculate early UV strength increasing toward reionization
+    const double base_strength = run_params->UVBackgroundStrength;
+    
+    // Scale with redshift - stronger closer to reionization
+    // Following Yung et al. (2020) model for pre-reionization feedback
+    double uvb_strength = base_strength * 
+                          (1.0 - (z - run_params->Reionization_zr) / 
+                                (15.0 - run_params->Reionization_zr));
+    
+    // Bound the result
+    if (uvb_strength < 0.0) uvb_strength = 0.0;
+    if (uvb_strength > base_strength) uvb_strength = base_strength;
+    
+    // Small halos are more affected by early UV background
+    // Sensitivity depends on circular velocity following Finkelstein et al. (2019)
+    double mass_factor = 1.0;
+    if (galaxies[gal].Vvir > 0.0) {
+        if (galaxies[gal].Vvir < 30.0) {
+            // Strong suppression for low-mass halos
+            mass_factor = galaxies[gal].Vvir / 30.0;
+            
+            // Apply more suppression for very small halos
+            // Based on Finlator et al. (2011) simulation results
+            if (galaxies[gal].Vvir < 20.0) {
+                mass_factor *= 0.8;
+            }
+        }
+    }
+    
+    // Calculate combined modifier
+    // Early UV background can only make suppression stronger
+    double early_uvb_modifier = 1.0 - uvb_strength * (1.0 - mass_factor);
+    
+    return reion_modifier * early_uvb_modifier;
 }
