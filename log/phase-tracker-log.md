@@ -57,7 +57,7 @@
 #### Phase 5.2.C: Core Integration & Synchronization ✅ COMPLETED
 - [x] Integrate synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) into pipeline execution points (e.g., `physics_pipeline_executor.c`)
 - [x] Ensure core galaxy lifecycle functions (`init_galaxy`, copying, freeing) correctly manage the `galaxy->properties` struct allocation, copying, and freeing
-- [x] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
+- [ ] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
 
 #### Phase 5.2.D: Module Adaptation ⏳ PENDING
 - [ ] Update migrated modules (cooling, infall) to use `GALAXY_PROP_*` macros exclusively
