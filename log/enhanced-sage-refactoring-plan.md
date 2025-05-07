@@ -467,7 +467,7 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 
 ##### 5.2.F: Systematic Physics Module Migration ⏳ PENDING
 *   **Goal:** Convert all remaining legacy physics implementations (`src/physics/legacy/`) into standalone modules using the property system.
-*   **Process:** For each legacy area: Create new module, move logic, replace *all* direct field access with `GALAXY_PROP_*` macros, register module, update pipeline, remove legacy file.
+*   **Process:** For each legacy area: Create new module, move logic, replace *all* direct field access with `GALAXY_PROP_*` macros, consider local caching for properties accessed multiple times in tight loops, register module, update pipeline, remove legacy file
 *   **5.2.F.1 Migration Sequence Planning**: Define clear order of module migration based on dependencies.
 *   **5.2.F.2 Common Physics Utilities**: Extract and centralize shared physics calculations.
 *   **5.2.F.3 Star Formation and Feedback**: Migrate module.
