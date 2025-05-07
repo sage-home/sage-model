@@ -372,7 +372,7 @@ properties:
     
   - name: MergTime
     type: float
-    initial_value: 0.0
+    initial_value: 999.9
     units: "Gyr"
     description: "Time until merger"
     output: true

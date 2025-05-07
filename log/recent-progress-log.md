@@ -229,3 +229,10 @@
 - Modified merger functions (`deal_with_galaxy_merger()` and `disrupt_satellite_to_ICS()`) to free galaxy properties before marking galaxies as merged/disrupted
 - Ensured proper memory management throughout the galaxy lifecycle to prevent leaks or invalid accesses
 - Modified files: src/physics/legacy/model_misc.c, src/core/core_build_model.c, src/physics/legacy/model_mergers.c, log/phase-tracker-log.md, log/todays-edits.md
+
+2025-05-07: [Phase 5.2.C Task 3] Refined Core Initialization Logic for Properties
+- Updated properties.yaml to fix MergTime initial value (changed from 0.0 to 999.9) to match direct field value in model_misc.c
+- Verified that `init_galaxy` correctly initializes both direct fields and calls `reset_galaxy_properties` in the proper order
+- Created temporary diagnostic tests to verify property initialization consistency
+- Verified all existing unit tests pass, confirming correct initialization
+- Modified files: src/properties.yaml, log/phase-tracker-log.md, log/recent-progress-log.md
