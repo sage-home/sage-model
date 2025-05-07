@@ -219,21 +219,13 @@ int galaxy_extension_initialize(struct GALAXY *galaxy) {
         return MODULE_STATUS_INVALID_ARGS;
     }
     
-    if (global_extension_registry == NULL) {
-        /* Nothing to do if extension system is not initialized */
-        galaxy->extension_data = NULL;
-        galaxy->num_extensions = 0;
-        galaxy->extension_flags = 0;
-        return MODULE_STATUS_SUCCESS;
-    }
-    
-    /* Check if extensions are already initialized - if so, just return success */
     if (galaxy->extension_data != NULL) {
-        return MODULE_STATUS_SUCCESS;
+        /* Already initialized, cleanup first */
+        galaxy_extension_cleanup(galaxy);
     }
     
-    /* If there are no extensions registered, just initialize the fields */
-    if (global_extension_registry->num_extensions == 0) {
+    /* If no global registry, nothing to initialize */
+    if (global_extension_registry == NULL || global_extension_registry->num_extensions == 0) {
         galaxy->extension_data = NULL;
         galaxy->num_extensions = 0;
         galaxy->extension_flags = 0;
@@ -241,17 +233,16 @@ int galaxy_extension_initialize(struct GALAXY *galaxy) {
     }
     
     /* Allocate memory for extension data pointers */
-    galaxy->extension_data = (void **)mymalloc(global_extension_registry->num_extensions * sizeof(void *));
+    galaxy->extension_data = (void **)mymalloc(
+        global_extension_registry->num_extensions * sizeof(void *));
+    
     if (galaxy->extension_data == NULL) {
         LOG_ERROR("Failed to allocate memory for galaxy extension data");
         return MODULE_STATUS_OUT_OF_MEMORY;
     }
     
-    /* Initialize extension data pointers to NULL */
-    for (int i = 0; i < global_extension_registry->num_extensions; i++) {
-        galaxy->extension_data[i] = NULL;
-    }
-    
+    /* Initialize all pointers to NULL */
+    memset(galaxy->extension_data, 0, global_extension_registry->num_extensions * sizeof(void *));
     galaxy->num_extensions = global_extension_registry->num_extensions;
     galaxy->extension_flags = 0;
     
@@ -326,6 +317,7 @@ void *galaxy_extension_get_data(const struct GALAXY *galaxy, int extension_id) {
         /* Cast away const to modify the galaxy's extension data */
         struct GALAXY *mutable_galaxy = (struct GALAXY *)galaxy;
         
+        // Use standard allocation for now until we fully implement the diagnostic system
         mutable_galaxy->extension_data[extension_id] = mymalloc(property->size);
         if (mutable_galaxy->extension_data[extension_id] == NULL) {
             LOG_ERROR("Failed to allocate memory for galaxy extension data (ID %d)", extension_id);
@@ -572,7 +564,9 @@ int galaxy_extension_copy(struct GALAXY *dest, const struct GALAXY *src) {
         }
         
         /* Allocate memory for extension data */
-        dest->extension_data[i] = mymalloc(property->size);
+        char copy_desc[128];
+        snprintf(copy_desc, sizeof(copy_desc), "galaxy_ext_copy_%d", i);
+        dest->extension_data[i] = malloc(property->size);
         if (dest->extension_data[i] == NULL) {
             LOG_ERROR("Failed to allocate memory for galaxy extension data (ID %d)", i);
             continue;

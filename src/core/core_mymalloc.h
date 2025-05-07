@@ -4,14 +4,15 @@
 extern "C" {
 #endif
 
-    /* functions in core_mymalloc.c */
+    /* Standard memory management functions */
     extern void *mymalloc(size_t n);
     extern void *mycalloc(const size_t count, const size_t size);
     extern void *myrealloc(void *p, size_t n);
     extern void myfree(void *p);
-#ifdef VERBOSE
     extern void print_allocated(void);
-#endif
+    
+    /* Simplified memory allocation with description */
+    extern void *mymalloc_full(size_t n, const char *desc);
 
 #ifdef __cplusplus
 }

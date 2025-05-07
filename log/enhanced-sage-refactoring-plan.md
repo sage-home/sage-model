@@ -481,7 +481,8 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 *   **5.2.G.1 Remove Synchronization**: Remove calls to sync functions and delete `core_properties_sync.c/h`.
 *   **5.2.G.2 Refactor Core Code**: Update any remaining core code (validation, utils) to use `GALAXY_PROP_*` macros if direct field access persists.
 *   **5.2.G.3 Minimize Core GALAXY Struct**: Remove the direct physics fields from `struct GALAXY` in `core_allvars.h`.
-*   **5.2.G.4 (Optional) Optimize Accessors**: Refactor macros/code to directly access `galaxy->properties->FieldName` if performance warrants.
+*   **5.2.G.4 Optimize memory management with increased allocation limits (`MAXBLOCKS`) and proper cleanup of diagnostic code.
+*   **5.2.G.5 (Optional) Optimize Accessors**: Refactor macros/code to directly access `galaxy->properties->FieldName` if performance warrants.
 
 #### Example Implementation for Properties Module
 ```yaml
@@ -760,6 +761,90 @@ Comprehensive documentation and tools ensure the modular architecture is underst
   - **Mitigation**: Provide detailed examples, templates, and step-by-step guides
 - **Risk**: Insufficient adoption of analysis tools
   - **Mitigation**: Integrate tools into CI/CD pipeline, make them part of standard development process
+
+## Deferred Work - General List
+
+*   **Performance Benchmarking**: Moved from Phase 1 to Phase 5/6. Profiling on the refactored structure is more valuable than embedding benchmarks during heavy changes.
+*   **Enhanced End-to-End Test Diagnostics**: Skipped. Current logging + `sagediff.py` deemed sufficient.
+*   **Dynamic Memory Defragmentation**: Deferred (post-project). Focus on preventative measures (pooling, allocation strategy) first.
+*   **Full SIMD Vectorization**: Deferred (post-project). Implement for critical hotspots in Phase 6.3, full vectorization later if needed.
+*   **Testing Approach Documentation**: Document the rationale behind different testing approaches rather than forcing consistency across the entire test suite.
+*   **Test Build Simplification**: Consider addressing during a dedicated testing infrastructure improvement phase to consolidate Makefiles and standardize build process.
+*   **Dynamic Library Loading Limits**: Consider making `MAX_LOADED_LIBRARIES` (64) configurable or dynamically expandable. The current limit may be restrictive for complex systems with many modules.
+
+## Deferred Work - From Phase 5
+
+The following tasks have been deferred to later consideration after completing the main refactoring phases:
+
+### Evolution Diagnostics Refactoring
+
+**Description**: Refactor evolution diagnostics to be more flexible with pipeline phases.
+
+**Rationale**: The current implementation is too rigid and doesn't gracefully handle phase values outside its expected range.
+
+**Implementation Tasks**:
+- Modify `evolution_diagnostics.h` to define a more flexible phase representation
+- Update phase validation to use an enum range check or bitfield rather than a hard-coded range
+- Add a runtime phase registration mechanism so modules can define their own phases
+
+**Example**:
+```c
+// Example of a more flexible phase representation
+typedef enum {
+    DIAG_PHASE_UNKNOWN = 0,
+    DIAG_PHASE_HALO = 1,
+    DIAG_PHASE_GALAXY = 2,
+    DIAG_PHASE_POST = 3,
+    DIAG_PHASE_FINAL = 4,
+    DIAG_PHASE_CUSTOM_BEGIN = 8,
+    DIAG_PHASE_CUSTOM_END = 15,
+    DIAG_PHASE_MAX = 16
+} diagnostic_phase_t;
+```
+
+### Event Data Protocol Enhancement
+
+**Description**: Define a clear protocol for what event data may contain, with explicit support for diagnostics.
+
+**Rationale**: The current approach of trying to extract diagnostics from events without a clear protocol is error-prone.
+
+**Implementation Tasks**:
+- Define a standard event data header structure indicating whether events contain diagnostics information
+- Update all event emission sites to include this header
+- Use tagged unions or type codes to safely handle different event data formats
+
+**Example**:
+```c
+// Example of a standard event header
+typedef struct {
+    uint32_t type_code;               // Code indicating event data type
+    uint32_t flags;                   // Event-specific flags
+    bool has_pipeline_context;        // Explicit flag for pipeline context
+    bool has_diagnostics;             // Explicit flag for diagnostics
+    void *pipeline_context;           // Optional pipeline context (NULL if not present)
+    void *diagnostics;                // Optional diagnostics context (NULL if not present)
+    size_t payload_size;              // Size of event-specific payload after header
+    // Followed by event-specific payload data
+} event_data_header_t;
+```
+
+## Risk Assessment and Mitigation
+
+| Risk | Probability | Impact | Mitigation |
+|------|------------|--------|------------|
+| Scientific accuracy compromised | Medium | Critical | Comprehensive validation tests against baseline results; incremental refactoring with validation at each step |
+| Performance regression | Medium | High | Benchmarking at each phase; performance profiling; optimization of critical paths |
+| Increased complexity | High | Medium | Thorough documentation; clear interfaces; developer guides; training sessions |
+| Compatibility issues with existing analysis pipelines | Medium | High | Backward compatibility layers; gradual migration path; support for legacy interfaces |
+| Resource limitations | Medium | Medium | Prioritize high-impact changes; modular approach allowing partial implementation |
+| Performance overhead of extensions | Medium | High | Profile and optimize extension access; pooled allocations; batch processing |
+| Serialization challenges with extensions | Medium | Medium | Thorough testing with real datasets; fallback mechanisms; format versioning |
+| Module incompatibility | Medium | High | Strict versioning; dependency validation; compatibility tests |
+| Circular dependencies | Medium | Medium | Static dependency analysis; runtime cycle detection; careful module design |
+| Module callback overhead | Medium | Medium | Optimize callback paths; cache frequent calls; profile and tune callback system |
+| Cross-platform compatibility issues | Medium | Medium | Implement proper endianness handling; abstract platform-specific code; standardized error handling |
+| HDF5 resource leaks | Medium | High | Implement comprehensive resource tracking; validate handle management; add cleanup checks |
+| Memory allocation inefficiency | Medium | Medium | Implement geometric growth strategies; optimize pooled allocations; reduce fragmentation |
 
 ## Conclusion
 

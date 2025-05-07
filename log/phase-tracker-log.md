@@ -54,10 +54,10 @@
 - [x] Implement memory management for dynamic array properties
 - [x] Implement synchronization functions (`sync_direct_to_properties`, `sync_properties_to_direct`) in `core_properties_sync.c/h`
 
-#### Phase 5.2.C: Core Integration & Synchronization ⏳ PENDING
+#### Phase 5.2.C: Core Integration & Synchronization ✅ COMPLETED
 - [x] Integrate synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) into pipeline execution points (e.g., `physics_pipeline_executor.c`)
 - [x] Ensure core galaxy lifecycle functions (`init_galaxy`, copying, freeing) correctly manage the `galaxy->properties` struct allocation, copying, and freeing
-- [ ] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
+- [x] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
 
 #### Phase 5.2.D: Module Adaptation ⏳ PENDING
 - [ ] Update migrated modules (cooling, infall) to use `GALAXY_PROP_*` macros exclusively
@@ -87,10 +87,11 @@
 - [ ] Remove synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) and files (`core_properties_sync.c/h`)
 - [ ] Refactor remaining core code (validation, misc utils) to use `GALAXY_PROP_*` macros if any direct field access remains
 - [ ] Remove physics fields from `struct GALAXY` definition (`core_allvars.h`)
+- [ ] Optimize memory management with increased allocation limits (`MAXBLOCKS`) and proper cleanup of diagnostic code
 - [ ] (Optional) Refactor accessor macros/core/module code to directly access `galaxy->properties->FieldName` if performance analysis indicates benefit
   
 ### Phase 5.3: Validation and Testing ⏳ PENDING
-- [x] Implement integration tests for evolve_galaxies loop phase transitions
+- [ ] Implement integration tests for evolve_galaxies loop phase transitions
 - [ ] Implement property definition validation tools
 - [ ] Perform scientific validation against baseline SAGE
 - [ ] Implement performance benchmarks

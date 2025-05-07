@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #include "core_allvars.h"
 #include "core_mymalloc.h"
+#include "core_logging.h"
 
-#define MAXBLOCKS 2048
+// Increased from 8192 to provide more memory blocks for galaxy properties
+#define MAXBLOCKS 20000
 
 static long Nblocks = 0;
 static void *Table[MAXBLOCKS];
@@ -18,12 +21,19 @@ long find_block(const void *p);
 size_t get_aligned_memsize(size_t n);
 void set_and_print_highwater_mark(void);
 
-void *mymalloc(size_t n)
+void *mymalloc_full(size_t n, const char *desc)
 {
     n = get_aligned_memsize(n);
+    
+    /* Log large allocations for debugging */
+    if (n > 1024*1024) { // Allocations larger than 1MB
+        LOG_DEBUG("Large allocation requested: %.2f MB (%s)", 
+                 n / (1024.0 * 1024.0), desc ? desc : "unknown");
+    }
 
     if(Nblocks >= MAXBLOCKS) {
-        fprintf(stderr, "Nblocks = %ld No blocks left in mymalloc().\n", Nblocks);
+        fprintf(stderr, "ERROR: Nblocks = %ld. No blocks left in mymalloc().\n", Nblocks);
+        fprintf(stderr, "Total memory allocated: %.2f MB\n", TotMem / (1024.0 * 1024.0));
         ABORT(OUT_OF_MEMBLOCKS);
     }
 
@@ -34,13 +44,20 @@ void *mymalloc(size_t n)
 
     Table[Nblocks] = malloc(n);
     if(Table[Nblocks] == NULL) {
-        fprintf(stderr, "Failed to allocate memory for %g MB\n",  n / (1024.0 * 1024.0) );
+        fprintf(stderr, "Failed to allocate memory for %g MB\n", n / (1024.0 * 1024.0));
         ABORT(MALLOC_FAILURE);
     }
-
+    
+    void *ptr = Table[Nblocks];
     Nblocks += 1;
+    
+    return ptr;
+}
 
-    return Table[Nblocks - 1];
+/* Standard memory allocation function */
+void *mymalloc(size_t n)
+{
+    return mymalloc_full(n, "unknown");
 }
 
 void *mycalloc(const size_t count, const size_t size)
@@ -68,7 +85,6 @@ long find_block(const void *p)
     return iblock;
 }
 
-
 void *myrealloc(void *p, size_t n)
 {
     n = get_aligned_memsize(n);
@@ -76,9 +92,10 @@ void *myrealloc(void *p, size_t n)
     long iblock = find_block(p);
     if(iblock < 0) {
         fprintf(stderr,"Error: Could not locate ptr address = %p within the allocated blocks\n", p);
-        for(int i=0;i<Nblocks;i++) {
-            fprintf(stderr,"Address = %p size = %zu bytes\n", Table[i], SizeTable[i]);
-        }
+        // MEMORY DEBUG CODE - commented out for now but should revisit later in Phase 5.2.G or 5.3
+        // for(int i=0;i<Nblocks;i++) {
+        //     fprintf(stderr,"Address = %p size = %zu bytes\n", Table[i], SizeTable[i]);
+        // }
         ABORT(INVALID_PTR_REALLOC_REQ);
     }
     void *newp = realloc(Table[iblock], n);
@@ -96,7 +113,6 @@ void *myrealloc(void *p, size_t n)
     return Table[iblock];
 }
 
-
 void myfree(void *p)
 {
     if(p == NULL) return;
@@ -108,10 +124,17 @@ void myfree(void *p)
     long iblock = find_block(p);
     if(iblock < 0) {
         fprintf(stderr,"Error: Could not locate ptr address = %p within the allocated blocks\n", p);
-        for(int i=0;i<Nblocks;i++) {
-            fprintf(stderr,"Address = %p size = %zu bytes\n", Table[i], SizeTable[i]);
-        }
+        // MEMORY DEBUG CODE - commented out for now but should revisit later in Phase 5.2.G or 5.3
+        // for(int i=0;i<Nblocks;i++) {
+        //     fprintf(stderr,"Address = %p size = %zu bytes\n", Table[i], SizeTable[i]);
+        // }
         ABORT(INVALID_PTR_REALLOC_REQ);
+    }
+
+    /* Record freeing of large allocations */
+    if(SizeTable[iblock] > 1024*1024) {
+        LOG_DEBUG("Freeing large allocation: %p, size: %.2f MB", 
+                 p, SizeTable[iblock] / (1024.0 * 1024.0));
     }
 
     free(p);
@@ -144,7 +167,6 @@ size_t get_aligned_memsize(size_t n)
     return n;
 }
 
-
 void print_allocated(void)
 {
 #ifdef VERBOSE
@@ -159,9 +181,8 @@ void set_and_print_highwater_mark(void)
     if(TotMem > HighMarkMem) {
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-#ifdef VERBOSE
-            fprintf(stderr, "\nnew high mark = %g MB\n", HighMarkMem / (1024.0 * 1024.0));
-#endif
+            fprintf(stderr, "\nMEMORY HIGHWATER: %.2f MB with %ld blocks\n", 
+                   HighMarkMem / (1024.0 * 1024.0), Nblocks);
             OldPrintedHighMark = HighMarkMem;
         }
     }
