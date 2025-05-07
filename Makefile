@@ -391,8 +391,11 @@ test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
 test_property_registration: tests/test_property_registration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_registration tests/test_property_registration.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+test_galaxy_property_macros: tests/test_galaxy_property_macros.c tests/test_validation_mocks.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_property_macros tests/test_galaxy_property_macros.c tests/test_validation_mocks.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
@@ -437,6 +440,8 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_evolve_integration || FAILED="$$FAILED test_evolve_integration"
 	@echo "Running test_property_registration..."
 	@./tests/test_property_registration || FAILED="$$FAILED test_property_registration"
+	@echo "Running test_galaxy_property_macros..."
+	@./tests/test_galaxy_property_macros || FAILED="$$FAILED test_galaxy_property_macros"
 	@echo "Running memory tests..."
 	@cd tests && make -f Makefile.memory_tests || FAILED="$$FAILED memory_tests"
 	@if [ -n "$$FAILED" ]; then \

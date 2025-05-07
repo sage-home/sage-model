@@ -3,6 +3,7 @@
 #include "../core/core_logging.h"
 #include "../core/core_pipeline_system.h"
 #include "../core/core_module_system.h"
+#include "../core/core_properties.h"    // For GALAXY_PROP_* macros
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -104,21 +105,23 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
 
     // loop over all galaxies in the FoF-halo
     for(int i = 0; i < ngal; i++) {
-        tot_stellarMass += galaxies[i].StellarMass;
-        tot_BHMass += galaxies[i].BlackHoleMass;
-        tot_coldMass += galaxies[i].ColdGas;
-        tot_hotMass += galaxies[i].HotGas;
-        tot_ejected += galaxies[i].EjectedMass;
-        tot_ejectedMetals += galaxies[i].MetalsEjectedMass;
-        tot_ICS += galaxies[i].ICS;
-        tot_ICSMetals += galaxies[i].MetalsICS;
+        tot_stellarMass += GALAXY_PROP_StellarMass(&galaxies[i]);
+        tot_BHMass += GALAXY_PROP_BlackHoleMass(&galaxies[i]);
+        tot_coldMass += GALAXY_PROP_ColdGas(&galaxies[i]);
+        tot_hotMass += GALAXY_PROP_HotGas(&galaxies[i]);
+        tot_ejected += GALAXY_PROP_EjectedMass(&galaxies[i]);
+        tot_ejectedMetals += GALAXY_PROP_MetalsEjectedMass(&galaxies[i]);
+        tot_ICS += GALAXY_PROP_ICS(&galaxies[i]);
+        tot_ICSMetals += GALAXY_PROP_MetalsICS(&galaxies[i]);
 
         if(i != centralgal) {
             // satellite ejected gas goes to central ejected reservoir
-            galaxies[i].EjectedMass = galaxies[i].MetalsEjectedMass = 0.0;
+            GALAXY_PROP_EjectedMass(&galaxies[i]) = 0.0;
+            GALAXY_PROP_MetalsEjectedMass(&galaxies[i]) = 0.0;
 
             // satellite ICS goes to central ICS
-            galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
+            GALAXY_PROP_ICS(&galaxies[i]) = 0.0;
+            GALAXY_PROP_MetalsICS(&galaxies[i]) = 0.0;
         }
     }
 
@@ -130,39 +133,41 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     }
 
     infallingMass =
-        reionization_modifier * run_params->physics.BaryonFrac * galaxies[centralgal].Mvir - 
+        reionization_modifier * run_params->physics.BaryonFrac * GALAXY_PROP_Mvir(&galaxies[centralgal]) - 
         (tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS);
 
     // the central galaxy keeps all the ejected mass
-    galaxies[centralgal].EjectedMass = tot_ejected;
-    galaxies[centralgal].MetalsEjectedMass = tot_ejectedMetals;
+    GALAXY_PROP_EjectedMass(&galaxies[centralgal]) = tot_ejected;
+    GALAXY_PROP_MetalsEjectedMass(&galaxies[centralgal]) = tot_ejectedMetals;
 
-    if(galaxies[centralgal].MetalsEjectedMass > galaxies[centralgal].EjectedMass) {
-        galaxies[centralgal].MetalsEjectedMass = galaxies[centralgal].EjectedMass;
+    if(GALAXY_PROP_MetalsEjectedMass(&galaxies[centralgal]) > GALAXY_PROP_EjectedMass(&galaxies[centralgal])) {
+        GALAXY_PROP_MetalsEjectedMass(&galaxies[centralgal]) = GALAXY_PROP_EjectedMass(&galaxies[centralgal]);
     }
 
-    if(galaxies[centralgal].EjectedMass < 0.0) {
-        galaxies[centralgal].EjectedMass = galaxies[centralgal].MetalsEjectedMass = 0.0;
+    if(GALAXY_PROP_EjectedMass(&galaxies[centralgal]) < 0.0) {
+        GALAXY_PROP_EjectedMass(&galaxies[centralgal]) = 0.0;
+        GALAXY_PROP_MetalsEjectedMass(&galaxies[centralgal]) = 0.0;
     }
 
-    if(galaxies[centralgal].MetalsEjectedMass < 0.0) {
-        galaxies[centralgal].MetalsEjectedMass = 0.0;
+    if(GALAXY_PROP_MetalsEjectedMass(&galaxies[centralgal]) < 0.0) {
+        GALAXY_PROP_MetalsEjectedMass(&galaxies[centralgal]) = 0.0;
     }
 
     // the central galaxy keeps all the ICS (mostly for numerical convenience)
-    galaxies[centralgal].ICS = tot_ICS;
-    galaxies[centralgal].MetalsICS = tot_ICSMetals;
+    GALAXY_PROP_ICS(&galaxies[centralgal]) = tot_ICS;
+    GALAXY_PROP_MetalsICS(&galaxies[centralgal]) = tot_ICSMetals;
 
-    if(galaxies[centralgal].MetalsICS > galaxies[centralgal].ICS) {
-        galaxies[centralgal].MetalsICS = galaxies[centralgal].ICS;
+    if(GALAXY_PROP_MetalsICS(&galaxies[centralgal]) > GALAXY_PROP_ICS(&galaxies[centralgal])) {
+        GALAXY_PROP_MetalsICS(&galaxies[centralgal]) = GALAXY_PROP_ICS(&galaxies[centralgal]);
     }
 
-    if(galaxies[centralgal].ICS < 0.0) {
-        galaxies[centralgal].ICS = galaxies[centralgal].MetalsICS = 0.0;
+    if(GALAXY_PROP_ICS(&galaxies[centralgal]) < 0.0) {
+        GALAXY_PROP_ICS(&galaxies[centralgal]) = 0.0;
+        GALAXY_PROP_MetalsICS(&galaxies[centralgal]) = 0.0;
     }
 
-    if(galaxies[centralgal].MetalsICS < 0.0) {
-        galaxies[centralgal].MetalsICS = 0.0;
+    if(GALAXY_PROP_MetalsICS(&galaxies[centralgal]) < 0.0) {
+        GALAXY_PROP_MetalsICS(&galaxies[centralgal]) = 0.0;
     }
     
     // Emit infall event if system is initialized
@@ -204,21 +209,23 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
     }
 
     double strippedGas = -1.0 * 
-        (reionization_modifier * run_params->physics.BaryonFrac * galaxies[gal].Mvir - 
-         (galaxies[gal].StellarMass + galaxies[gal].ColdGas + galaxies[gal].HotGas + galaxies[gal].EjectedMass + galaxies[gal].BlackHoleMass + galaxies[gal].ICS)) / STEPS;
+        (reionization_modifier * run_params->physics.BaryonFrac * GALAXY_PROP_Mvir(&galaxies[gal]) - 
+         (GALAXY_PROP_StellarMass(&galaxies[gal]) + GALAXY_PROP_ColdGas(&galaxies[gal]) + 
+          GALAXY_PROP_HotGas(&galaxies[gal]) + GALAXY_PROP_EjectedMass(&galaxies[gal]) + 
+          GALAXY_PROP_BlackHoleMass(&galaxies[gal]) + GALAXY_PROP_ICS(&galaxies[gal]))) / STEPS;
 
     if(strippedGas > 0.0) {
-        const double metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
+        const double metallicity = get_metallicity(GALAXY_PROP_HotGas(&galaxies[gal]), GALAXY_PROP_MetalsHotGas(&galaxies[gal]));
         double strippedGasMetals = strippedGas * metallicity;
 
-        if(strippedGas > galaxies[gal].HotGas) strippedGas = galaxies[gal].HotGas;
-        if(strippedGasMetals > galaxies[gal].MetalsHotGas) strippedGasMetals = galaxies[gal].MetalsHotGas;
+        if(strippedGas > GALAXY_PROP_HotGas(&galaxies[gal])) strippedGas = GALAXY_PROP_HotGas(&galaxies[gal]);
+        if(strippedGasMetals > GALAXY_PROP_MetalsHotGas(&galaxies[gal])) strippedGasMetals = GALAXY_PROP_MetalsHotGas(&galaxies[gal]);
 
-        galaxies[gal].HotGas -= strippedGas;
-        galaxies[gal].MetalsHotGas -= strippedGasMetals;
+        GALAXY_PROP_HotGas(&galaxies[gal]) -= strippedGas;
+        GALAXY_PROP_MetalsHotGas(&galaxies[gal]) -= strippedGasMetals;
 
-        galaxies[centralgal].HotGas += strippedGas;
-        galaxies[centralgal].MetalsHotGas += strippedGas * metallicity;
+        GALAXY_PROP_HotGas(&galaxies[centralgal]) += strippedGas;
+        GALAXY_PROP_MetalsHotGas(&galaxies[centralgal]) += strippedGas * metallicity;
     }
 }
 
@@ -267,7 +274,7 @@ double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxie
 
     // we use the maximum of Mfiltering and Mchar
     const double mass_to_use = dmax(Mfiltering, Mchar);
-    const double modifier = 1.0 / CUBE(1.0 + 0.26 * (mass_to_use / galaxies[gal].Mvir));
+    const double modifier = 1.0 / CUBE(1.0 + 0.26 * (mass_to_use / GALAXY_PROP_Mvir(&galaxies[gal])));
 
     return modifier;
 }
@@ -277,30 +284,34 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
     float metallicity;
 
     // if the halo has lost mass, subtract baryons from the ejected mass first, then the hot gas
-    if(infallingGas < 0.0 && galaxies[gal].EjectedMass > 0.0) {
-        metallicity = get_metallicity(galaxies[gal].EjectedMass, galaxies[gal].MetalsEjectedMass);
-        galaxies[gal].MetalsEjectedMass += infallingGas * metallicity;
-        if(galaxies[gal].MetalsEjectedMass < 0.0) galaxies[gal].MetalsEjectedMass = 0.0;
+    if(infallingGas < 0.0 && GALAXY_PROP_EjectedMass(&galaxies[gal]) > 0.0) {
+        metallicity = get_metallicity(GALAXY_PROP_EjectedMass(&galaxies[gal]), GALAXY_PROP_MetalsEjectedMass(&galaxies[gal]));
+        GALAXY_PROP_MetalsEjectedMass(&galaxies[gal]) += infallingGas * metallicity;
+        if(GALAXY_PROP_MetalsEjectedMass(&galaxies[gal]) < 0.0) GALAXY_PROP_MetalsEjectedMass(&galaxies[gal]) = 0.0;
 
-        galaxies[gal].EjectedMass += infallingGas;
-        if(galaxies[gal].EjectedMass < 0.0) {
-            infallingGas = galaxies[gal].EjectedMass;
-            galaxies[gal].EjectedMass = galaxies[gal].MetalsEjectedMass = 0.0;
+        GALAXY_PROP_EjectedMass(&galaxies[gal]) += infallingGas;
+        if(GALAXY_PROP_EjectedMass(&galaxies[gal]) < 0.0) {
+            infallingGas = GALAXY_PROP_EjectedMass(&galaxies[gal]);
+            GALAXY_PROP_EjectedMass(&galaxies[gal]) = 0.0;
+            GALAXY_PROP_MetalsEjectedMass(&galaxies[gal]) = 0.0;
         } else {
             infallingGas = 0.0;
         }
     }
 
     // if the halo has lost mass, subtract hot metals mass next, then the hot gas
-    if(infallingGas < 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
-        metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
-        galaxies[gal].MetalsHotGas += infallingGas * metallicity;
-        if(galaxies[gal].MetalsHotGas < 0.0) galaxies[gal].MetalsHotGas = 0.0;
+    if(infallingGas < 0.0 && GALAXY_PROP_MetalsHotGas(&galaxies[gal]) > 0.0) {
+        metallicity = get_metallicity(GALAXY_PROP_HotGas(&galaxies[gal]), GALAXY_PROP_MetalsHotGas(&galaxies[gal]));
+        GALAXY_PROP_MetalsHotGas(&galaxies[gal]) += infallingGas * metallicity;
+        if(GALAXY_PROP_MetalsHotGas(&galaxies[gal]) < 0.0) GALAXY_PROP_MetalsHotGas(&galaxies[gal]) = 0.0;
     }
 
     // add (subtract) the ambient (enriched) infalling gas to the central galaxy hot component
-    galaxies[gal].HotGas += infallingGas;
-    if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
+    GALAXY_PROP_HotGas(&galaxies[gal]) += infallingGas;
+    if(GALAXY_PROP_HotGas(&galaxies[gal]) < 0.0) {
+        GALAXY_PROP_HotGas(&galaxies[gal]) = 0.0;
+        GALAXY_PROP_MetalsHotGas(&galaxies[gal]) = 0.0;
+    }
 }
 
 static int infall_module_initialize(struct params *params, void **module_data) {
@@ -356,7 +367,7 @@ static int infall_module_execute_galaxy_phase(void *module_data, struct pipeline
     if (p == centralgal) {
         // Apply infall to central galaxy
         add_infall_to_hot(p, data->current_infall / STEPS, galaxies);
-    } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
+    } else if (GALAXY_PROP_Type(&galaxies[p]) == 1 && GALAXY_PROP_HotGas(&galaxies[p]) > 0.0) {
         // Strip gas from satellite
         strip_from_satellite(centralgal, p, context->redshift, galaxies, context->params);
     }

@@ -236,3 +236,13 @@
 - Created temporary diagnostic tests to verify property initialization consistency
 - Verified all existing unit tests pass, confirming correct initialization
 - Modified files: src/properties.yaml, log/phase-tracker-log.md, log/recent-progress-log.md
+
+2025-05-07: [Phase 5.2.D Task 1] Updated Cooling and Infall Modules to Use GALAXY_PROP_* Macros
+- Completely refactored cooling_module.c to use GALAXY_PROP_* macros instead of direct galaxy field access
+- Completely refactored infall_module.c to use GALAXY_PROP_* macros instead of direct galaxy field access
+- Created property validation tests to ensure no direct field access remains in the refactored modules
+- Implemented test_galaxy_property_macros.c for integration with main testing pipeline
+- Integrated validation script and tests for property macro conversions with proper memory management
+- Verified all property accesses now happen through the new macro system
+- Modified files: src/physics/cooling_module.c, src/physics/infall_module.c
+- Added files: tests/test_galaxy_property_macros.c, tests/test_validation_mocks.c, tests/verify_property_access.py, tests/validate_property_conversion.sh
