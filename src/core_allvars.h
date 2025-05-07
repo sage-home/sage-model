@@ -446,7 +446,7 @@ struct params
     double     SuppressionMassExponent;     /* How steeply suppression depends on mass */
     double     SuppressionRedshiftExp;      /* Redshift dependence exponent */
 
-    double MassDependentSFEnabled;  // 0 = off, 1 = on
+    int32_t MassDependentSFEnabled;  // 0 = off, 1 = on
     double SFMassPivot;            // Pivot mass in 10^10 Msun/h
     double SFLowMassSlope;         // Power-law slope for M < Mpivot
     double SFHighMassSlope;        // Power-law slope for M > Mpivot
@@ -496,7 +496,7 @@ struct params
     int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov, 2=Lagos) */
 
     // Preventative feedback parameters
-    int PreventativeFeedbackOn;      // Flag to enable/disable preventative feedback
+    int32_t PreventativeFeedbackOn;      // Flag to enable/disable preventative feedback
     double PreventativeFeedbackVcrit; // Critical velocity scale
     double PreventativeFeedbackAlpha; // Power-law index for velocity dependence
     double PreventativeFeedbackZdep;  // Redshift dependence parameter

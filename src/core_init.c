@@ -143,6 +143,23 @@ void init(struct params *run_params)
         run_params->PostReionSlope = -2.0/3.0;  // Default from Sobacchi & Mesinger (2013)
     }
 
+    // Initialize mass-dependent SF parameters with default values if not set
+    if (run_params->MassDependentSFEnabled != 0 && run_params->MassDependentSFEnabled != 1) {
+        run_params->MassDependentSFEnabled = 0;  // Disabled by default
+    }
+    
+    if (run_params->SFMassPivot <= 0.0) {
+        run_params->SFMassPivot = 1.0;  // Default pivot mass (10^10 M_sun/h)
+    }
+    
+    if (run_params->SFLowMassSlope <= 0.0) {
+        run_params->SFLowMassSlope = 0.5;  // Default low-mass slope
+    }
+    
+    if (run_params->SFHighMassSlope >= 0.0) {
+        run_params->SFHighMassSlope = -0.3;  // Default high-mass slope (negative)
+    }
+
     set_units(run_params);
 
     read_snap_list(run_params);

@@ -12,9 +12,10 @@
 #include "model_h2_formation.h"
 #include "model_lowmass_suppression.h"
 
+// Fix for model_starformation_and_feedback.c
+
 double calculate_mass_dependent_sf_efficiency(const struct GALAXY *galaxy, const double base_efficiency, const struct params *run_params)
 {
-
     // If mass-dependent SF is disabled, return base efficiency
     if (run_params->MassDependentSFEnabled != 1) {
         return base_efficiency;
@@ -23,47 +24,36 @@ double calculate_mass_dependent_sf_efficiency(const struct GALAXY *galaxy, const
     // Get galaxy virial mass in 10^10 M_sun/h (SAGE's internal units)
     double mvir = galaxy->Mvir;
     
-    // Parameters for mass dependence
-    const double PIVOT_MASS = 1.0;  // 10^10 M_sun/h
-    const double LOW_MASS_SLOPE = 0.5;  // Power-law slope for low-mass galaxies
-    const double HIGH_MASS_SLOPE = -0.3; // Power-law slope for high-mass galaxies
+    // Use parameters from run_params instead of hardcoded values
+    const double pivot_mass = run_params->SFMassPivot;
+    const double low_mass_slope = run_params->SFLowMassSlope;
+    const double high_mass_slope = run_params->SFHighMassSlope;
     
     // Calculate mass-dependent scaling
     double scaling_factor = 1.0;
     
-    if (mvir < PIVOT_MASS) {
+    if (mvir < pivot_mass) {
         // For low-mass galaxies: reduce SF efficiency
         // Scales as (M/M_pivot)^slope where slope is positive
-        scaling_factor = pow(mvir / PIVOT_MASS, LOW_MASS_SLOPE);
+        scaling_factor = pow(mvir / pivot_mass, low_mass_slope);
     } else {
         // For high-mass galaxies: enhance SF efficiency
         // Scales as (M/M_pivot)^slope where slope is negative
-        scaling_factor = pow(mvir / PIVOT_MASS, HIGH_MASS_SLOPE);
+        scaling_factor = pow(mvir / pivot_mass, high_mass_slope);
     }
     
     // Constrain scaling factor to reasonable bounds
     if (scaling_factor < 0.1) scaling_factor = 0.1;  // Lower limit
     if (scaling_factor > 3.0) scaling_factor = 3.0;  // Upper limit
     
+    // Optional: Add diagnostic logging
 #ifdef VERBOSE
     static int counter = 0;
-    counter++;
-    if (counter % 500000 == 0) {
-        double final_eff = base_efficiency * scaling_factor;
-        printf("MASS-DEP SF: Galaxy=%d, Mvir=%.2e, base_eff=%.3f, scaling=%.3f, final_eff=%.3f\n",
-               galaxy->GalaxyNr, mvir, base_efficiency, scaling_factor, final_eff);
-        printf("  Parameters: pivot=%.2f, low_slope=%.2f, high_slope=%.2f\n",
-               PIVOT_MASS, LOW_MASS_SLOPE, HIGH_MASS_SLOPE);
-               
-        // More detailed information occasionally
-        if (counter % 500000 == 0) {
-            double mass_ratio = mvir / PIVOT_MASS;
-            printf("  Mass ratio=%.3f, used slope=%.2f\n",
-                   mass_ratio, (mvir < PIVOT_MASS) ? LOW_MASS_SLOPE : HIGH_MASS_SLOPE);
-            printf("  Galaxy details: StellarMass=%.2e, ColdGas=%.2e, H2_gas=%.2e\n",
-                   galaxy->StellarMass, galaxy->ColdGas, galaxy->H2_gas);
-        }
+    if (counter % 1000000 == 0) {
+        printf("Mass-dependent SF: Mvir=%.2e, base_eff=%.2f, scaling=%.2f, final_eff=%.2f\n",
+               mvir, base_efficiency, scaling_factor, base_efficiency * scaling_factor);
     }
+    counter++;
 #endif
     
     return base_efficiency * scaling_factor;
@@ -330,7 +320,7 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[p].ColdGas -= adjusted_reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * adjusted_reheated_mass;
 
-        galaxies[centralgal].EjectedMass += adjusted_reheated_mass;
+        galaxies[centralgal].HotGas += adjusted_reheated_mass;
         galaxies[centralgal].MetalsHotGas += metallicity * adjusted_reheated_mass;
 
         if (run_params->SFprescription >= 1) {

@@ -50,12 +50,12 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        3   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
+SFprescription        0   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-MassLoadingModel      1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
+MassLoadingModel      0   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 
 ReionizationModel         0       % 0=Simple, 1=Gnedin, 2=Sobacchi-Mesinger, 3=Patchy
 FilteringMassNorm         1.4     % [10^10 Msun/h] Based on Okamoto et al. 2008
@@ -64,10 +64,10 @@ PatchyReionWidth          1.0     % Width of reionization transition in dz
 LocalReionVariance        0.8     % Spatial variance in reionization timing
 PostReionSlope           -0.65    % Evolution of critical mass after reionization
 
-MassDependentSFEnabled     0       % 0 = off, 1 = on
-SFMassPivot                1.0     % Pivot mass in 10^10 Msun/h
-SFLowMassSlope             0.5     % Power-law slope for M < Mpivot
-SFHighMassSlope            -0.3    % Power-law slope for M > Mpivot
+MassDependentSFEnabled     1       % 0 = off, 1 = on
+SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
+SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
+SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
 
 %------------------------------------------
 %----- SAGE model parameters --------------
@@ -76,7 +76,7 @@ SFHighMassSlope            -0.3    % Power-law slope for M > Mpivot
 SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 
 FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
-FeedbackEjectionEfficiency  0.8   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
+FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
 ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 
@@ -107,21 +107,21 @@ H2FractionExponent          0.92   %Controls the H2/HI ratio calculation for Bli
 ClumpFactor                 5.0    %Clumping factor for Krumholz & Dekel H2
 ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz & Dekel H2
 
-RadiationFieldNorm          0.7    %Radiation field normalization relative to Milky Way (1.0 = MW)
-MetallicityExponent         0.9    %Exponent for metallicity dependence in GD14 model
+RadiationFieldNorm          0.5    %Radiation field normalization relative to Milky Way (1.0 = MW)
+MetallicityExponent         0.7    %Exponent for metallicity dependence in GD14 model
 IntegrationBins             10     %Number of radial bins to use for integration (higher = more accurate but slower)
 
 %------------------------------------------
 %----- MOLECULAR GAS MODEL PARAMETERS -----
 %------------------------------------------
-EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
+EnvironmentalEffectsOn        0       % Enable environmental effects on H2 gas (0=off, 1=on)
 EnvEffectStrength             0.2     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- MASS-DEPENDANT REINCORPORATION -----
 %------------------------------------------
 
-MassReincorporationOn       1        % enable mass-dependent reincorporation
+MassReincorporationOn       0        % enable mass-dependent reincorporation
 CriticalReincMass           10.0      % critical mass in 10^10 Msun/h
 ReincorporationMassExp      3.5      % linear scaling with halo mass
 MinReincorporationFactor    0.03      % minimum 10% of standard rate
@@ -145,8 +145,8 @@ PreventativeFeedbackVcrit  30.0        % Critical velocity scale (km/s)
 PreventativeFeedbackAlpha  2.0         % Power-law slope
 PreventativeFeedbackZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
 
-LowMassHighzSuppressionOn       1        % Enable suppression (0=off, 1=on)
-SuppressionMassThreshold        0.7      % In units of 10^10 Msun/h
+LowMassHighzSuppressionOn       0        % Enable suppression (0=off, 1=on)
+SuppressionMassThreshold        0.1      % In units of 10^10 Msun/h
 SuppressionMassExponent         5.5      % Power-law exponent for mass dependence 
 SuppressionRedshiftExp          3.5      % Redshift scaling factor
 

@@ -119,6 +119,10 @@ if __name__ == '__main__':
     print('Number of galaxies with less than or equal to 100 particles: ', len(NDM[mask_ndm_100]))
     print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_100]))
 
+    mask_ndm_200 = np.where((NDM <= 200))[0]
+    print('Number of galaxies with less than or equal to 200 particles: ', len(NDM[mask_ndm_200]))
+    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_200]))
+
     mask_ndm_massive = np.where((NDM > 100))[0]
     print('Number of galaxies with greater than 100 particles: ', len(NDM[mask_ndm_massive]))
     print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_massive]))
@@ -156,6 +160,11 @@ if __name__ == '__main__':
     w = np.where((StellarMass > 0.0)&(Type==0))[0]
     massBLU = np.log10(StellarMass[w])
     (countsBLU, binedges) = np.histogram(massBLU, range=(mi, ma), bins=NB)
+
+    # additionally calculate orpans
+    w = np.where((StellarMass > 0.0)&(Type==2))[0]
+    massBLU2 = np.log10(StellarMass[w])
+    (countsBLU2, binedges) = np.histogram(massBLU2, range=(mi, ma), bins=NB)
 
     # Baldry+ 2008 modified data used for the MCMC fitting
     Baldry = np.array([
@@ -226,6 +235,8 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, countsBLU / volume / binwidth, 'b--', lw=2, label='Model - Centrals')
     plt.plot(xaxeshisto, countsRED / volume / binwidth, 'g--', lw=2, label='Model - Satellites')
 
+    plt.plot(xaxeshisto, countsBLU2 / volume / binwidth, 'r--', lw=2, label='Model - Orphans')
+
     plt.yscale('log')
     plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
@@ -285,6 +296,10 @@ if __name__ == '__main__':
     w = np.where((StellarMass > 0.0)&(NDM > 100))[0]
     mass100 = np.log10(StellarMass[w])
     (counts100, binedges) = np.histogram(mass100, range=(mi, ma), bins=NB)
+
+    w = np.where((StellarMass > 0.0)&(NDM > 200))[0]
+    mass200 = np.log10(StellarMass[w])
+    (counts200, binedges) = np.histogram(mass200, range=(mi, ma), bins=NB)
 
     # Baldry+ 2008 modified data used for the MCMC fitting
     Baldry = np.array([
@@ -409,9 +424,11 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, countsRED / volume / binwidth, 'r-', lw=2, label='Model - Red')
     plt.plot(xaxeshisto, countsBLU / volume / binwidth, 'b-', lw=2, label='Model - Blue')
 
-    plt.plot(xaxeshisto, counts20    / volume / binwidth, 'g--', lw=1, label='Model - 20 particles or less')
+    plt.plot(xaxeshisto, counts20    / volume / binwidth, 'r--', lw=1, label='Model - 20 particles or less')
     plt.plot(xaxeshisto, counts50    / volume / binwidth, 'g--', lw=1, label='Model - 50 particles or less')
-    plt.plot(xaxeshisto, counts100    / volume / binwidth, 'g--', lw=1, label='Model - 100 particles or less')
+    plt.plot(xaxeshisto, counts100    / volume / binwidth, 'b--', lw=1, label='Model - 100 particles or less')
+    plt.plot(xaxeshisto, counts200    / volume / binwidth, 'k--', lw=1, label='Model - 200 particles or less')
+
 
     plt.yscale('log')
     plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])

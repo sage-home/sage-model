@@ -506,7 +506,7 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
 
      ###### z=4
-    
+    """    
     w = np.where((StellarMassFull[SMFsnaps[4]] > 0.0) & (HaloMassFull[SMFsnaps[4]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[4]][w])
 
@@ -530,7 +530,7 @@ if __name__ == '__main__':
     xaxeshisto = binedges[:-1] + 0.5 * binwidth
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-    
+    """
 # Calculate the data for each redshift
     data = []
     for snap in SMFsnaps:
@@ -1015,7 +1015,7 @@ if __name__ == '__main__':
     xaxeshisto = binedges[:-1] + 0.5 * binwidth
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
+    """
     ###### z=4
     w = np.where((StellarMassFull[SMFsnaps[4]] > 0.0) & (LenFull[SMFsnaps[4]] > min_particles))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[4]][w])
@@ -1039,7 +1039,7 @@ if __name__ == '__main__':
     xaxeshisto = binedges[:-1] + 0.5 * binwidth
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-
+    """
     # Calculate the data for each redshift for CSV export
     data = []
     for snap in SMFsnaps:
