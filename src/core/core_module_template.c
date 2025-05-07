@@ -80,6 +80,9 @@ static void get_current_date(char *date_str, size_t size) {
     strftime(date_str, size, "%Y-%m-%d", tm);
 }
 
+/* Forward declaration of sample prop usage function */
+static void generate_sample_prop_usage(FILE *file, enum module_type type);
+
 /* Initialize template parameters with defaults */
 int module_template_params_init(struct module_template_params *params) {
     if (!params) return -1;
@@ -260,6 +263,7 @@ int module_generate_header(const struct module_template_params *params, const ch
     
     fprintf(file, "#include \"core_allvars.h\"\n");
     fprintf(file, "#include \"core_module_system.h\"\n");
+    fprintf(file, "#include \"core_properties.h\"    // For GALAXY_PROP_* macros\n");
     
     if (params->include_galaxy_extension) {
         fprintf(file, "#include \"core_galaxy_extensions.h\"\n");
@@ -396,7 +400,11 @@ int module_generate_implementation(const struct module_template_params *params, 
     
     fprintf(file, "#include \"%s.h\"\n", params->module_name);
     fprintf(file, "#include \"core_logging.h\"\n");
-    fprintf(file, "#include \"core_mymalloc.h\"\n\n");
+    fprintf(file, "#include \"core_mymalloc.h\"\n");
+    fprintf(file, "#include \"core_properties.h\"\n\n");
+    
+    /* Add sample property usage demonstration */
+    generate_sample_prop_usage(file, params->type);
     
     /* Module initialization function */
     fprintf(file, "/**\n");
@@ -507,7 +515,84 @@ int module_generate_implementation(const struct module_template_params *params, 
             fprintf(file, "    /* Cast to module data type */\n");
             fprintf(file, "    %s_data_t *data = (%s_data_t *)module_data;\n\n", params->module_prefix, params->module_prefix);
             
-            fprintf(file, "    /* TODO: Implement function logic */\n\n");
+            // Add example implementations using GALAXY_PROP_* macros
+            if (strstr(sig_copy, "cooling")) {
+                fprintf(file, "    /* Example implementation using property accessors */\n");
+                fprintf(file, "    double result = 0.0;\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* Access galaxy properties using GALAXY_PROP_* macros */\n");
+                fprintf(file, "    if (GALAXY_PROP_HotGas(&galaxies[gal_idx]) > 0.0 && GALAXY_PROP_Vvir(&galaxies[gal_idx]) > 0.0) {\n");
+                fprintf(file, "        const double tcool = GALAXY_PROP_Rvir(&galaxies[gal_idx]) / GALAXY_PROP_Vvir(&galaxies[gal_idx]);\n");
+                fprintf(file, "        const double temp = 35.9 * GALAXY_PROP_Vvir(&galaxies[gal_idx]) * GALAXY_PROP_Vvir(&galaxies[gal_idx]);\n");
+                fprintf(file, "        \n");
+                fprintf(file, "        /* Calculate cooling rate based on properties */\n");
+                fprintf(file, "        result = 0.1 * GALAXY_PROP_HotGas(&galaxies[gal_idx]) / tcool * dt;\n");
+                fprintf(file, "        \n");
+                fprintf(file, "        /* Ensure we don't cool more than available */\n");
+                fprintf(file, "        if (result > GALAXY_PROP_HotGas(&galaxies[gal_idx]))\n");
+                fprintf(file, "            result = GALAXY_PROP_HotGas(&galaxies[gal_idx]);\n");
+                fprintf(file, "    }\n\n");
+                fprintf(file, "    /* TODO: Implement your actual cooling logic here */\n\n");
+            } else if (strstr(sig_copy, "infall")) {
+                fprintf(file, "    /* Example implementation using property accessors */\n");
+                fprintf(file, "    double result = 0.0;\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* Access galaxy properties using GALAXY_PROP_* macros */\n");
+                fprintf(file, "    double baryon_fraction = 0.17; /* Example value, should come from params */\n");
+                fprintf(file, "    double total_baryons = baryon_fraction * GALAXY_PROP_Mvir(&galaxies[gal_idx]);\n");
+                fprintf(file, "    double current_baryons = GALAXY_PROP_StellarMass(&galaxies[gal_idx]) + \n");
+                fprintf(file, "                             GALAXY_PROP_ColdGas(&galaxies[gal_idx]) + \n");
+                fprintf(file, "                             GALAXY_PROP_HotGas(&galaxies[gal_idx]) + \n");
+                fprintf(file, "                             GALAXY_PROP_EjectedMass(&galaxies[gal_idx]);\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    result = total_baryons - current_baryons;\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* TODO: Implement your actual infall logic here */\n\n");
+            } else if (strstr(sig_copy, "star")) {
+                fprintf(file, "    /* Example implementation using property accessors */\n");
+                fprintf(file, "    double stars_formed = 0.0;\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* Access galaxy properties using GALAXY_PROP_* macros */\n");
+                fprintf(file, "    if (GALAXY_PROP_ColdGas(&galaxies[gal_idx]) > 0.0) {\n");
+                fprintf(file, "        double efficiency = 0.05; /* Example efficiency, should come from params */\n");
+                fprintf(file, "        stars_formed = efficiency * GALAXY_PROP_ColdGas(&galaxies[gal_idx]) * dt;\n");
+                fprintf(file, "        \n");
+                fprintf(file, "        /* Update galaxy properties */\n");
+                fprintf(file, "        double metallicity = GALAXY_PROP_MetalsColdGas(&galaxies[gal_idx]) / GALAXY_PROP_ColdGas(&galaxies[gal_idx]);\n");
+                fprintf(file, "        \n");
+                fprintf(file, "        /* Ensure we don't use more gas than available */\n");
+                fprintf(file, "        if (stars_formed > GALAXY_PROP_ColdGas(&galaxies[gal_idx]))\n");
+                fprintf(file, "            stars_formed = GALAXY_PROP_ColdGas(&galaxies[gal_idx]);\n");
+                fprintf(file, "    }\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* TODO: Implement your actual star formation logic here */\n\n");
+            } else if (strstr(sig_copy, "feedback")) {
+                fprintf(file, "    /* Example implementation using property accessors */\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* Access galaxy properties using GALAXY_PROP_* macros */\n");
+                fprintf(file, "    double stellar_mass = GALAXY_PROP_StellarMass(&galaxies[gal_idx]);\n");
+                fprintf(file, "    double ejection_fraction = 0.1; /* Example fraction, should come from params */\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* Eject some hot gas */\n");
+                fprintf(file, "    if (GALAXY_PROP_HotGas(&galaxies[gal_idx]) > 0.0) {\n");
+                fprintf(file, "        double ejected = ejection_fraction * GALAXY_PROP_HotGas(&galaxies[gal_idx]);\n");
+                fprintf(file, "        double metals_ejected = ejection_fraction * GALAXY_PROP_MetalsHotGas(&galaxies[gal_idx]);\n");
+                fprintf(file, "        \n");
+                fprintf(file, "        /* Update galaxy properties */\n");
+                fprintf(file, "        GALAXY_PROP_HotGas(&galaxies[gal_idx]) -= ejected;\n");
+                fprintf(file, "        GALAXY_PROP_MetalsHotGas(&galaxies[gal_idx]) -= metals_ejected;\n");
+                fprintf(file, "        GALAXY_PROP_EjectedMass(&galaxies[gal_idx]) += ejected;\n");
+                fprintf(file, "        GALAXY_PROP_MetalsEjectedMass(&galaxies[gal_idx]) += metals_ejected;\n");
+                fprintf(file, "    }\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* TODO: Implement your actual feedback logic here */\n\n");
+            } else {
+                fprintf(file, "    /* Example implementation using property accessors */\n");
+                fprintf(file, "    /* Access galaxy properties using GALAXY_PROP_* macros */\n");
+                fprintf(file, "    /* For example: GALAXY_PROP_StellarMass(&galaxies[gal_idx]) */\n");
+                fprintf(file, "    \n");
+                fprintf(file, "    /* TODO: Implement function logic */\n\n");
+            }
             
             /* Add appropriate return value */
             if (strstr(sig_copy, "double")) {
@@ -545,6 +630,10 @@ int module_generate_implementation(const struct module_template_params *params, 
         fprintf(file, "    switch (event->type) {\n");
         fprintf(file, "        case EVENT_GALAXY_CREATED:\n");
         fprintf(file, "            /* Handle galaxy creation event */\n");
+        fprintf(file, "            if (event->galaxy_index >= 0) {\n");
+        fprintf(file, "                /* Can access galaxy properties with GALAXY_PROP_* macros */\n");
+        fprintf(file, "                /* in the actual galaxy processing functions */\n");
+        fprintf(file, "            }\n");
         fprintf(file, "            break;\n");
         fprintf(file, "        default:\n");
         fprintf(file, "            /* Ignore unknown events */\n");
@@ -570,6 +659,10 @@ int module_generate_implementation(const struct module_template_params *params, 
         fprintf(file, "    /* Cast to module data type */\n");
         fprintf(file, "    %s_data_t *data = (%s_data_t *)module_data;\n\n", params->module_prefix, params->module_prefix);
         
+        fprintf(file, "    /* Example using property macros */\n");
+        fprintf(file, "    double stellar_mass = GALAXY_PROP_StellarMass(&galaxies[gal_idx]);\n");
+        fprintf(file, "    double cold_gas = GALAXY_PROP_ColdGas(&galaxies[gal_idx]);\n");
+        fprintf(file, "    \n");
         fprintf(file, "    /* TODO: Implement function logic */\n\n");
         
         fprintf(file, "    return 0;\n");
@@ -737,6 +830,93 @@ int module_generate_manifest(const struct module_template_params *params, const 
     
     LOG_INFO("Generated module manifest file: %s", output_path);
     return 0;
+}
+
+/* Generate sample function demonstrating GALAXY_PROP_* macros usage */
+static void generate_sample_prop_usage(FILE *file, enum module_type type) {
+    fprintf(file, "/**\n");
+    fprintf(file, " * Sample function demonstrating how to use GALAXY_PROP_* macros\n");
+    fprintf(file, " * This shows the proper way to access galaxy properties in SAGE modules\n");
+    fprintf(file, " */\n");
+    fprintf(file, "static void demonstrate_property_usage(struct GALAXY *galaxy) {\n");
+    fprintf(file, "    /* Examples of accessing scalar properties */\n");
+    
+    switch (type) {
+        case MODULE_TYPE_COOLING:
+            fprintf(file, "    if (GALAXY_PROP_HotGas(galaxy) > 0.0 && GALAXY_PROP_Vvir(galaxy) > 0.0) {\n");
+            fprintf(file, "        /* Calculate cooling properties */\n");
+            fprintf(file, "        double temp = 35.9 * GALAXY_PROP_Vvir(galaxy) * GALAXY_PROP_Vvir(galaxy);\n");
+            fprintf(file, "        \n");
+            fprintf(file, "        /* Access metals with safety check */\n");
+            fprintf(file, "        double metallicity = 0.0;\n");
+            fprintf(file, "        if (GALAXY_PROP_MetalsHotGas(galaxy) > 0.0) {\n");
+            fprintf(file, "            metallicity = GALAXY_PROP_MetalsHotGas(galaxy) / GALAXY_PROP_HotGas(galaxy);\n");
+            fprintf(file, "        }\n");
+            fprintf(file, "        \n");
+            fprintf(file, "        /* Update a property */\n");
+            fprintf(file, "        GALAXY_PROP_Cooling(galaxy) += 0.5 * GALAXY_PROP_Vvir(galaxy) * GALAXY_PROP_Vvir(galaxy);\n");
+            fprintf(file, "    }\n");
+            break;
+            
+        case MODULE_TYPE_STAR_FORMATION:
+            fprintf(file, "    if (GALAXY_PROP_ColdGas(galaxy) > 0.0) {\n");
+            fprintf(file, "        /* Calculate star formation properties */\n");
+            fprintf(file, "        double sfr = 0.01 * GALAXY_PROP_ColdGas(galaxy);\n");
+            fprintf(file, "        \n");
+            fprintf(file, "        /* Update stellar mass and reduce cold gas */\n");
+            fprintf(file, "        GALAXY_PROP_StellarMass(galaxy) += sfr;\n");
+            fprintf(file, "        GALAXY_PROP_ColdGas(galaxy) -= sfr;\n");
+            fprintf(file, "        \n");
+            fprintf(file, "        /* Handle metals */\n");
+            fprintf(file, "        double metallicity = 0.0;\n");
+            fprintf(file, "        if (GALAXY_PROP_ColdGas(galaxy) > 0.0) {\n");
+            fprintf(file, "            metallicity = GALAXY_PROP_MetalsColdGas(galaxy) / GALAXY_PROP_ColdGas(galaxy);\n");
+            fprintf(file, "            GALAXY_PROP_MetalsStellarMass(galaxy) += sfr * metallicity;\n");
+            fprintf(file, "            GALAXY_PROP_MetalsColdGas(galaxy) -= sfr * metallicity;\n");
+            fprintf(file, "        }\n");
+            fprintf(file, "    }\n");
+            break;
+            
+        case MODULE_TYPE_DISK_INSTABILITY:
+            fprintf(file, "    /* Calculate disk instability */\n");
+            fprintf(file, "    double diskMass = GALAXY_PROP_ColdGas(galaxy) + (GALAXY_PROP_StellarMass(galaxy) - GALAXY_PROP_BulgeMass(galaxy));\n");
+            fprintf(file, "    \n");
+            fprintf(file, "    if (diskMass > 0.0) {\n");
+            fprintf(file, "        double diskRadius = GALAXY_PROP_DiskScaleRadius(galaxy);\n");
+            fprintf(file, "        /* Stability calculation would go here */\n");
+            fprintf(file, "        \n");
+            fprintf(file, "        /* Example of updating properties */\n");
+            fprintf(file, "        double unstable_stars = 0.1 * diskMass; /* Example value */\n");
+            fprintf(file, "        GALAXY_PROP_BulgeMass(galaxy) += unstable_stars;\n");
+            fprintf(file, "    }\n");
+            break;
+            
+        default:
+            fprintf(file, "    /* Basic property access examples */\n");
+            fprintf(file, "    double stellar_mass = GALAXY_PROP_StellarMass(galaxy);\n");
+            fprintf(file, "    double gas_mass = GALAXY_PROP_ColdGas(galaxy) + GALAXY_PROP_HotGas(galaxy);\n");
+            fprintf(file, "    \n");
+            fprintf(file, "    /* Position vector access */\n");
+            fprintf(file, "    double x = GALAXY_PROP_Pos_ELEM(galaxy, 0);\n");
+            fprintf(file, "    double y = GALAXY_PROP_Pos_ELEM(galaxy, 1);\n");
+            fprintf(file, "    double z = GALAXY_PROP_Pos_ELEM(galaxy, 2);\n");
+            break;
+    }
+    
+    fprintf(file, "    \n");
+    fprintf(file, "    /* Example of array access */\n");
+    fprintf(file, "    int step = 0; /* Example step */\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    /* Fixed-size array access (SFR history) */\n");
+    fprintf(file, "    double disk_sfr = GALAXY_PROP_SfrDisk_ELEM(galaxy, step);\n");
+    fprintf(file, "    double bulge_sfr = GALAXY_PROP_SfrBulge_ELEM(galaxy, step);\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    /* Dynamic array access (if available) */\n");
+    fprintf(file, "    if (GALAXY_PROP_StarFormationHistory_SIZE(galaxy) > step) {\n");
+    fprintf(file, "        double sf_history = GALAXY_PROP_StarFormationHistory_ELEM(galaxy, step);\n");
+    fprintf(file, "        /* Use sf_history */\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "}\n\n");
 }
 
 /* Generate module Makefile */
@@ -909,12 +1089,40 @@ int module_generate_readme(const struct module_template_params *params, const ch
         fprintf(file, "- `%s`\n", signatures[i]);
     }
     
-    fprintf(file, "\n### Properties\n\n");
+    fprintf(file, "\n### Galaxy Property Access\n\n");
+    fprintf(file, "This module uses the GALAXY_PROP_* macros to access galaxy properties. These macros provide\n");
+    fprintf(file, "type-safe access to the centrally-defined galaxy properties in the SAGE model.\n\n");
+    fprintf(file, "#### Examples:\n\n");
+    fprintf(file, "```c\n");
+    fprintf(file, "// Access basic scalar properties\n");
+    fprintf(file, "double stellar_mass = GALAXY_PROP_StellarMass(galaxy);\n");
+    fprintf(file, "double hot_gas = GALAXY_PROP_HotGas(galaxy);\n\n");
+    
+    fprintf(file, "// Update properties\n");
+    fprintf(file, "GALAXY_PROP_ColdGas(galaxy) += gas_cooling_amount;\n");
+    fprintf(file, "GALAXY_PROP_HotGas(galaxy) -= gas_cooling_amount;\n\n");
+    
+    fprintf(file, "// Access array elements (fixed-size arrays)\n");
+    fprintf(file, "float disk_sfr = GALAXY_PROP_SfrDisk_ELEM(galaxy, step);\n\n");
+    
+    fprintf(file, "// Access dynamic arrays (with size checking)\n");
+    fprintf(file, "if (step < GALAXY_PROP_StarFormationHistory_SIZE(galaxy)) {\n");
+    fprintf(file, "    float history_value = GALAXY_PROP_StarFormationHistory_ELEM(galaxy, step);\n");
+    fprintf(file, "}\n");
+    fprintf(file, "```\n\n");
+    
+    fprintf(file, "#### Best Practices:\n\n");
+    fprintf(file, "1. **Always use GALAXY_PROP_* macros** instead of direct field access\n");
+    fprintf(file, "2. Check sizes before accessing array elements\n");
+    fprintf(file, "3. For frequently accessed properties in tight loops, consider caching the value in a local variable\n");
+    fprintf(file, "4. For metallicity calculations, always check if the mass is > 0 before dividing\n\n");
+    
+    fprintf(file, "### Module-Specific Properties\n\n");
     
     if (params->include_galaxy_extension) {
         fprintf(file, "- `%s_example_property`: Example property\n", params->module_prefix);
     } else {
-        fprintf(file, "This module does not define any galaxy properties.\n");
+        fprintf(file, "This module does not define any additional galaxy properties.\n");
     }
     
     fprintf(file, "\n## Building and Installation\n\n");
@@ -1063,6 +1271,7 @@ int module_generate_test(const struct module_template_params *params, const char
     
     fprintf(file, "#include \"../src/core/core_module_system.h\"\n");
     fprintf(file, "#include \"../src/core/core_logging.h\"\n");
+    fprintf(file, "#include \"../src/core/core_properties.h\"\n");
     fprintf(file, "#include \"%s.h\"\n\n", params->module_name);
     
     fprintf(file, "/**\n");
@@ -1111,7 +1320,25 @@ int module_generate_test(const struct module_template_params *params, const char
     
     /* Add test for module-specific functions */
     fprintf(file, "    /* Test module-specific functions */\n");
-    fprintf(file, "    /* TODO: Add tests for module-specific functions */\n\n");
+    fprintf(file, "    /* Create a test galaxy with GALAXY_PROP macros */\n");
+    fprintf(file, "    struct GALAXY test_galaxy;\n");
+    fprintf(file, "    memset(&test_galaxy, 0, sizeof(struct GALAXY));\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    /* Initialize property system */\n");
+    fprintf(file, "    if (allocate_galaxy_properties(&test_galaxy, &test_params) != 0) {\n");
+    fprintf(file, "        printf(\"Failed to allocate galaxy properties\\n\");\n");
+    fprintf(file, "        return;\n");
+    fprintf(file, "    }\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    /* Set some test values */\n");
+    fprintf(file, "    GALAXY_PROP_StellarMass(&test_galaxy) = 1.0;\n");
+    fprintf(file, "    GALAXY_PROP_ColdGas(&test_galaxy) = 2.0;\n");
+    fprintf(file, "    GALAXY_PROP_HotGas(&test_galaxy) = 5.0;\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    /* TODO: Add your actual module function tests here */\n");
+    fprintf(file, "    \n");
+    fprintf(file, "    /* Clean up */\n");
+    fprintf(file, "    free_galaxy_properties(&test_galaxy);\n\n");
     
     fprintf(file, "    /* Cleanup module */\n");
     fprintf(file, "    result = %s_cleanup(module_data);\n", params->module_prefix);
@@ -1166,6 +1393,12 @@ int module_generate_test(const struct module_template_params *params, const char
     fprintf(file, "    /* Set up test environment */\n");
     fprintf(file, "    setup_test_params();\n\n");
     
+    fprintf(file, "    /* Initialize property system for testing */\n");
+    fprintf(file, "    if (initialize_property_system(&test_params) != 0) {\n");
+    fprintf(file, "        printf(\"Failed to initialize property system\\n\");\n");
+    fprintf(file, "        return -1;\n");
+    fprintf(file, "    }\n\n");
+    
     fprintf(file, "    /* Run tests */\n");
     fprintf(file, "    test_initialize_cleanup();\n");
     fprintf(file, "    test_module_functionality();\n");
@@ -1174,7 +1407,10 @@ int module_generate_test(const struct module_template_params *params, const char
         fprintf(file, "    test_galaxy_extensions();\n");
     }
     
-    fprintf(file, "\n    printf(\"\\nAll tests passed!\\n\");\n");
+    fprintf(file, "\n    /* Clean up property system */\n");
+    fprintf(file, "    cleanup_property_system();\n\n");
+    
+    fprintf(file, "    printf(\"\\nAll tests passed!\\n\");\n");
     fprintf(file, "    return 0;\n");
     fprintf(file, "}\n");
     

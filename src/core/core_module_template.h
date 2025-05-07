@@ -8,6 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <limits.h>
 #include "core_module_system.h"
+#include "core_properties.h"
 
 /**
  * @file core_module_template.h

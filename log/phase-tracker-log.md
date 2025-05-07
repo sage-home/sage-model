@@ -61,7 +61,7 @@
 
 #### Phase 5.2.D: Module Adaptation ⏳ IN PROGRESS
 - [x] Update migrated modules (cooling, infall) to use `GALAXY_PROP_*` macros exclusively
-- [ ] Update module template generator (`core_module_template.c/h`) for new property patterns
+- [x] Update module template generator (`core_module_template.c/h`) for new property patterns
 - [ ] Revise module dependency management for property-based interactions (if needed)
 
 #### Phase 5.2.E: I/O System Update ⏳ PENDING

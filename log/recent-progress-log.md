@@ -246,3 +246,14 @@
 - Verified all property accesses now happen through the new macro system
 - Modified files: src/physics/cooling_module.c, src/physics/infall_module.c
 - Added files: tests/test_galaxy_property_macros.c, tests/test_validation_mocks.c, tests/verify_property_access.py, tests/validate_property_conversion.sh
+
+2025-05-07: [Phase 5.2.D Task 2] Updated Module Template Generator for Property System
+- Modified core_module_template.c/h to include core_properties.h and use GALAXY_PROP_* macros
+- Added example implementations showcasing proper property access patterns for different module types
+- Incorporated type-specific property usage examples based on module type (cooling, infall, etc.)
+- Enhanced test generation to include property system initialization and cleanup
+- Added comprehensive documentation on property access best practices in generated README files
+- Created test_module_template.c for validating the updated template system
+- Updated Makefile to include the new test in the test suite
+- Modified files: src/core/core_module_template.c, src/core/core_module_template.h, Makefile
+- Added files: tests/test_module_template.c
