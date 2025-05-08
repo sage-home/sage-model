@@ -59,10 +59,10 @@
 - [x] Ensure core galaxy lifecycle functions (`init_galaxy`, copying, freeing) correctly manage the `galaxy->properties` struct allocation, copying, and freeing
 - [x] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
 
-#### Phase 5.2.D: Module Adaptation ⏳ IN PROGRESS
+#### Phase 5.2.D: Module Adaptation ✅ COMPLETED
 - [x] Update migrated modules (cooling, infall) to use `GALAXY_PROP_*` macros exclusively
 - [x] Update module template generator (`core_module_template.c/h`) for new property patterns
-- [ ] Revise module dependency management for property-based interactions (if needed)
+- [x] Revise module dependency management for property-based interactions (if needed)
 
 #### Phase 5.2.E: I/O System Update ⏳ PENDING
 - [ ] Remove `GALAXY_OUTPUT` struct

@@ -282,7 +282,7 @@ The modular design provides:
 - Performance tracking and scientific validation through diagnostics
 
 ### Physics Modularization Strategy
-The codebase is implementing a dual approach for physics modularization:
+The codebase is implementing the Properties Module architecture for physics modularization:
 
 ```
 ┌───────────────────────┐      ┌───────────────────────┐
@@ -304,9 +304,11 @@ The codebase is implementing a dual approach for physics modularization:
 This approach allows gradual migration of physics modules while maintaining scientific consistency. Each physics domain defines standard extension properties that can be accessed either directly (for backward compatibility) or through the extension mechanism (for modularity). Configuration options control which implementation is used, enabling incremental validation and testing.
 
 Key components of this architecture:
-- Standard extension property registry for all physics domains
-- Accessor functions that abstract property access methods
-- Dual implementation support for transitional period
-- Pipeline-based execution of all physics modules
+- Centralized property definitions in properties.yaml (single source of truth)
+- Auto-generated typesafe accessors (GALAXY_PROP_* macros)
+- Pipeline-based execution with phase support (HALO, GALAXY, POST, FINAL)
+- Module dependency management through pipeline phases and event system
 - Physics-agnostic pipeline context with generic data sharing
 - Event-based inter-module communication
+
+The analysis of module dependency management for property-based interactions concluded that no significant revisions are needed to the current system. The combination of centralized property definitions, pipeline phases, and the event system provides sufficient structure for module interactions while maintaining clean separation between core infrastructure and physics implementations.
