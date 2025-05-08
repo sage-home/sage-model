@@ -9,6 +9,7 @@
 #include "../core/core_mymalloc.h"
 #include "../core/core_logging.h"
 #include "../core/core_galaxy_extensions.h"
+#include "../core/core_properties.h"
 #include "../physics/legacy/model_misc.h"
 #include "io_interface.h"
 #include "io_hdf5_utils.h"
@@ -423,66 +424,148 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             
             // Copy appropriate field based on field name
             const char *field_name = data->field_names[j];
+            struct GALAXY *galaxy = &galaxies[i];
             
-            // Map field name to galaxy property
-            if (strcmp(field_name, "Type") == 0) {
-                *(int32_t *)dest_ptr = galaxies[i].Type;
+            // Synchronize direct fields to properties for access through macros
+            if (galaxy->properties == NULL) {
+                LOG_WARNING("Galaxy %d has NULL properties pointer, skipping property access", i);
+                continue;
             }
-            else if (strcmp(field_name, "GalaxyIndex") == 0) {
-                *(int64_t *)dest_ptr = galaxies[i].GalaxyIndex;
+            
+            // Special handling for derived or component fields
+            if (strcmp(field_name, "SAGETreeIndex") == 0) {
+                *(int32_t *)dest_ptr = 0;  // Default value - not stored in property system
             }
-            else if (strcmp(field_name, "CentralGalaxyIndex") == 0) {
-                *(int64_t *)dest_ptr = galaxies[i].CentralGalaxyIndex;
-            }
-            else if (strcmp(field_name, "SAGEHaloIndex") == 0) {
-                *(int32_t *)dest_ptr = galaxies[i].HaloNr;
-            }
-            else if (strcmp(field_name, "SAGETreeIndex") == 0) {
-                *(int32_t *)dest_ptr = 0;  // Use a default value for now
-            }
-            else if (strcmp(field_name, "SimulationFOFHaloIndex") == 0) {
-                *(int32_t *)dest_ptr = galaxies[i].MostBoundID;
-            }
-            else if (strcmp(field_name, "mergeType") == 0) {
-                *(int32_t *)dest_ptr = galaxies[i].mergeType;
-            }
-            else if (strcmp(field_name, "mergeIntoID") == 0) {
-                *(int32_t *)dest_ptr = galaxies[i].mergeIntoID;
-            }
-            else if (strcmp(field_name, "mergeIntoSnapNum") == 0) {
-                *(int32_t *)dest_ptr = galaxies[i].mergeIntoSnapNum;
-            }
-            else if (strcmp(field_name, "dT") == 0) {
-                *(float *)dest_ptr = galaxies[i].dT;
-            }
+            // Handle position components
             else if (strcmp(field_name, "Pos_x") == 0) {
-                *(float *)dest_ptr = galaxies[i].Pos[0];
+                *(float *)dest_ptr = GALAXY_PROP_Pos_ELEM(galaxy, 0);
             }
             else if (strcmp(field_name, "Pos_y") == 0) {
-                *(float *)dest_ptr = galaxies[i].Pos[1];
+                *(float *)dest_ptr = GALAXY_PROP_Pos_ELEM(galaxy, 1);
             }
             else if (strcmp(field_name, "Pos_z") == 0) {
-                *(float *)dest_ptr = galaxies[i].Pos[2];
+                *(float *)dest_ptr = GALAXY_PROP_Pos_ELEM(galaxy, 2);
             }
+            // Handle velocity components
             else if (strcmp(field_name, "Vel_x") == 0) {
-                *(float *)dest_ptr = galaxies[i].Vel[0];
+                *(float *)dest_ptr = GALAXY_PROP_Vel_ELEM(galaxy, 0);
             }
             else if (strcmp(field_name, "Vel_y") == 0) {
-                *(float *)dest_ptr = galaxies[i].Vel[1];
+                *(float *)dest_ptr = GALAXY_PROP_Vel_ELEM(galaxy, 1);
             }
             else if (strcmp(field_name, "Vel_z") == 0) {
-                *(float *)dest_ptr = galaxies[i].Vel[2];
+                *(float *)dest_ptr = GALAXY_PROP_Vel_ELEM(galaxy, 2);
+            }
+            // Handle other standard properties using property macros
+            else if (strcmp(field_name, "Type") == 0) {
+                *(int32_t *)dest_ptr = GALAXY_PROP_Type(galaxy);
+            }
+            else if (strcmp(field_name, "GalaxyIndex") == 0) {
+                *(int64_t *)dest_ptr = GALAXY_PROP_GalaxyIndex(galaxy);
+            }
+            else if (strcmp(field_name, "CentralGalaxyIndex") == 0) {
+                *(int64_t *)dest_ptr = GALAXY_PROP_CentralGalaxyIndex(galaxy);
+            }
+            else if (strcmp(field_name, "HaloNr") == 0 || strcmp(field_name, "SAGEHaloIndex") == 0) {
+                *(int32_t *)dest_ptr = GALAXY_PROP_HaloNr(galaxy);
+            }
+            else if (strcmp(field_name, "MostBoundID") == 0 || strcmp(field_name, "SimulationFOFHaloIndex") == 0) {
+                *(int64_t *)dest_ptr = GALAXY_PROP_MostBoundID(galaxy);
+            }
+            else if (strcmp(field_name, "mergeType") == 0) {
+                *(int32_t *)dest_ptr = GALAXY_PROP_mergeType(galaxy);
+            }
+            else if (strcmp(field_name, "mergeIntoID") == 0) {
+                *(int32_t *)dest_ptr = GALAXY_PROP_mergeIntoID(galaxy);
+            }
+            else if (strcmp(field_name, "mergeIntoSnapNum") == 0) {
+                *(int32_t *)dest_ptr = GALAXY_PROP_mergeIntoSnapNum(galaxy);
+            }
+            else if (strcmp(field_name, "dT") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_dT(galaxy);
             }
             else if (strcmp(field_name, "Mvir") == 0) {
-                *(float *)dest_ptr = galaxies[i].Mvir;
+                *(float *)dest_ptr = GALAXY_PROP_Mvir(galaxy);
             }
             else if (strcmp(field_name, "CentralMvir") == 0) {
-                *(float *)dest_ptr = galaxies[i].CentralMvir;
+                *(float *)dest_ptr = GALAXY_PROP_CentralMvir(galaxy);
             }
-            // Add more field mappings as needed
-            
-            // If no specific handling, default to zero
-            // This is a placeholder - ideally every field should be mapped
+            else if (strcmp(field_name, "Rvir") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_Rvir(galaxy);
+            }
+            else if (strcmp(field_name, "Vvir") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_Vvir(galaxy);
+            }
+            else if (strcmp(field_name, "Vmax") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_Vmax(galaxy);
+            }
+            else if (strcmp(field_name, "ColdGas") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_ColdGas(galaxy);
+            }
+            else if (strcmp(field_name, "StellarMass") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_StellarMass(galaxy);
+            }
+            else if (strcmp(field_name, "BulgeMass") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_BulgeMass(galaxy);
+            }
+            else if (strcmp(field_name, "HotGas") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_HotGas(galaxy);
+            }
+            else if (strcmp(field_name, "EjectedMass") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_EjectedMass(galaxy);
+            }
+            else if (strcmp(field_name, "BlackHoleMass") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_BlackHoleMass(galaxy);
+            }
+            else if (strcmp(field_name, "DiskScaleRadius") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_DiskScaleRadius(galaxy);
+            }
+            else if (strcmp(field_name, "Cooling") == 0) {
+                *(double *)dest_ptr = GALAXY_PROP_Cooling(galaxy);
+            }
+            else if (strcmp(field_name, "Heating") == 0) {
+                *(double *)dest_ptr = GALAXY_PROP_Heating(galaxy);
+            }
+            else if (strcmp(field_name, "TimeOfLastMajorMerger") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_TimeOfLastMajorMerger(galaxy);
+            }
+            else if (strcmp(field_name, "TimeOfLastMinorMerger") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_TimeOfLastMinorMerger(galaxy);
+            }
+            else {
+                // For other fields, try to look up by property name
+                property_id_t prop_id = get_property_id(field_name);
+                
+                if (prop_id != PROP_COUNT) {
+                    // Property exists, extract it based on type
+                    const property_meta_t *meta = &PROPERTY_META[prop_id];
+                    
+                    if (strcmp(meta->type, "int32_t") == 0) {
+                        // For simplicity, we're not handling the full range of property types
+                        // In a real implementation, you'd need proper macro generation for each type
+                        LOG_WARNING("Property access for %s type not implemented", meta->type);
+                        // Zero-fill as fallback
+                        memset(dest_ptr, 0, dtype_size);
+                    }
+                    else if (strcmp(meta->type, "float") == 0) {
+                        // For float type, we would need a generic accessor
+                        LOG_WARNING("Generic property access for %s not implemented", field_name);
+                        // Zero-fill as fallback
+                        memset(dest_ptr, 0, dtype_size);
+                    }
+                    else {
+                        // Other types not handled in this example
+                        LOG_WARNING("Property access for %s type not implemented", meta->type);
+                        // Zero-fill as fallback
+                        memset(dest_ptr, 0, dtype_size);
+                    }
+                }
+                else {
+                    // Property not found, zero-fill
+                    LOG_WARNING("Unknown property name: %s", field_name);
+                    memset(dest_ptr, 0, dtype_size);
+                }
+            }
         }
         
         // Handle extended properties if enabled
@@ -698,40 +781,107 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
     // Initialize field index
     int field_idx = 0;
     
-    // Define metadata for required standard fields
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "Type", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Galaxy type: 0=central, 1=satellite", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_INT32;
-        field_idx++;
+    // Generate field metadata from property metadata
+    for (int prop_id = 0; prop_id < PROP_COUNT; prop_id++) {
+        const property_meta_t *meta = &PROPERTY_META[prop_id];
+        
+        // Skip properties that aren't marked for output
+        if (!meta->output) {
+            continue;
+        }
+        
+        // Skip if we've reached our maximum field count
+        if (field_idx >= NUM_OUTPUT_FIELDS) {
+            LOG_WARNING("Too many properties marked for output (limit: %d), skipping %s", 
+                       NUM_OUTPUT_FIELDS, meta->name);
+            break;
+        }
+        
+        // Handle array properties with special naming conventions
+        if (meta->is_array && strcmp(meta->type, "float") == 0) {
+            // For fixed-size arrays like Pos[3], create separate fields for each component
+            if (meta->array_dimension > 0) {
+                if (strcmp(meta->name, "Pos") == 0) {
+                    // Add Pos_x, Pos_y, Pos_z as separate fields
+                    for (int dim = 0; dim < meta->array_dimension && field_idx < NUM_OUTPUT_FIELDS; dim++) {
+                        char component = 'x' + dim; // x, y, z
+                        snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, component);
+                        snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component", &component);
+                        strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
+                        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
+                        field_idx++;
+                    }
+                } 
+                else if (strcmp(meta->name, "Vel") == 0) {
+                    // Add Vel_x, Vel_y, Vel_z as separate fields
+                    for (int dim = 0; dim < meta->array_dimension && field_idx < NUM_OUTPUT_FIELDS; dim++) {
+                        char component = 'x' + dim; // x, y, z
+                        snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, component);
+                        snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component", &component);
+                        strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
+                        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
+                        field_idx++;
+                    }
+                }
+                // Skip other fixed-size arrays for now - they'll be handled by extended properties
+            }
+            else {
+                // Dynamic arrays handled via property serialization (extended properties)
+                continue;
+            }
+        }
+        else if (!meta->is_array) {
+            // Standard scalar property
+            strncpy(field_names[field_idx], meta->name, MAX_STRING_LEN-1);
+            strncpy(field_descriptions[field_idx], meta->description, MAX_STRING_LEN-1);
+            strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
+            
+            // Set appropriate HDF5 datatype based on property type
+            if (strcmp(meta->type, "int32_t") == 0) {
+                field_dtypes[field_idx] = H5T_NATIVE_INT32;
+            }
+            else if (strcmp(meta->type, "int64_t") == 0 || strcmp(meta->type, "uint64_t") == 0) {
+                field_dtypes[field_idx] = H5T_NATIVE_INT64;
+            }
+            else if (strcmp(meta->type, "float") == 0) {
+                field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
+            }
+            else if (strcmp(meta->type, "double") == 0) {
+                field_dtypes[field_idx] = H5T_NATIVE_DOUBLE;
+            }
+            else if (strcmp(meta->type, "long long") == 0) {
+                field_dtypes[field_idx] = H5T_NATIVE_INT64;
+            }
+            else {
+                // Default to float for unknown types
+                field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
+                LOG_WARNING("Unknown property type '%s' for property '%s', defaulting to float", 
+                           meta->type, meta->name);
+            }
+            
+            field_idx++;
+        }
     }
     
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "GalaxyIndex", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Unique ID for this galaxy", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_INT64;
-        field_idx++;
+    // Make sure we have added at least some fields
+    if (field_idx == 0) {
+        LOG_ERROR("No properties marked for output in properties.yaml");
+        return -1;
     }
     
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "CentralGalaxyIndex", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Unique ID for the central galaxy of this galaxy's FoF group", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_INT64;
-        field_idx++;
+    // Add specific fields that might not be in the property system but are required
+    // for compatibility or analysis purposes
+    
+    // Check if SAGETreeIndex is already added
+    bool has_tree_index = false;
+    for (int i = 0; i < field_idx; i++) {
+        if (strcmp(field_names[i], "SAGETreeIndex") == 0) {
+            has_tree_index = true;
+            break;
+        }
     }
     
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "SAGEHaloIndex", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Index of the dark matter halo in the simulation", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_INT32;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
+    if (!has_tree_index && field_idx < NUM_OUTPUT_FIELDS) {
         strncpy(field_names[field_idx], "SAGETreeIndex", MAX_STRING_LEN-1);
         strncpy(field_descriptions[field_idx], "Index of the dark matter tree in the simulation", MAX_STRING_LEN-1);
         strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
@@ -739,120 +889,15 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
         field_idx++;
     }
     
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "SimulationFOFHaloIndex", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Index of the dark matter FoF group in the simulation", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_INT32;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "mergeType", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Merger type: 0=none, 1=minor, 2=major", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_INT32;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "mergeIntoID", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Galaxy ID that this galaxy merged into", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_INT32;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "mergeIntoSnapNum", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Snapshot where this galaxy merged into another", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_INT32;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "dT", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Time between snapshots", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "Myr/h", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    // Physical properties
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "Pos_x", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "X coordinate", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "cMpc/h", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "Pos_y", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Y coordinate", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "cMpc/h", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "Pos_z", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Z coordinate", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "cMpc/h", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "Vel_x", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "X velocity", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "km/s", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "Vel_y", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Y velocity", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "km/s", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "Vel_z", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Z velocity", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "km/s", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    // Mass properties
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "Mvir", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Virial mass of halo", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "1e10 Msun/h", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    if (field_idx < NUM_OUTPUT_FIELDS) {
-        strncpy(field_names[field_idx], "CentralMvir", MAX_STRING_LEN-1);
-        strncpy(field_descriptions[field_idx], "Virial mass of central halo", MAX_STRING_LEN-1);
-        strncpy(field_units[field_idx], "1e10 Msun/h", MAX_STRING_LEN-1);
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-        field_idx++;
-    }
-    
-    // Add more fields as needed
+    // Log field count
+    LOG_INFO("Generated metadata for %d output fields from property system", field_idx);
     
     // Fill remaining fields with placeholders if we have less than NUM_OUTPUT_FIELDS
     for (; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
         snprintf(field_names[field_idx], MAX_STRING_LEN, "Field%d", field_idx);
         snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "Description for Field%d", field_idx);
         snprintf(field_units[field_idx], MAX_STRING_LEN, "units");
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;  // Default to float for testing
+        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;  // Default to float for unused fields
     }
     
     return 0;

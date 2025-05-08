@@ -20,6 +20,10 @@ static void test_module_property_access(void);
 static int run_python_validation(void);
 
 int main(int argc, char *argv[]) {
+    // Suppress unused parameter warnings
+    (void)argc;
+    (void)argv;
+    
     printf("==================================================\n");
     printf("Testing Galaxy Property Macro Implementation\n");
     printf("==================================================\n");

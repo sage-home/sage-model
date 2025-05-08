@@ -214,10 +214,7 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
                                                            "initialize_galaxy_files", property->name);
                                         
                                         // Validate format-specific compatibility
-                                        if (save_info->io_handler.handler->format_id == IO_FORMAT_BINARY_OUTPUT) {
-                                            VALIDATE_BINARY_PROPERTY_COMPATIBILITY(&val_ctx, property, 
-                                                                               "initialize_galaxy_files");
-                                        } else if (save_info->io_handler.handler->format_id == IO_FORMAT_HDF5_OUTPUT) {
+                                        if (save_info->io_handler.handler->format_id == IO_FORMAT_HDF5_OUTPUT) {
                                             VALIDATE_HDF5_PROPERTY_COMPATIBILITY(&val_ctx, property, 
                                                                              "initialize_galaxy_files");
                                         }

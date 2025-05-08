@@ -22,8 +22,7 @@ extern "C" {
                                                 struct save_info *save_info,
                                                 const struct params *run_params);
     
-    extern int32_t prepare_galaxy_for_output(const struct GALAXY *g, void *o, 
-                                           const int32_t original_treenr, const struct params *run_params);
+
 #ifdef __cplusplus
 }
 #endif

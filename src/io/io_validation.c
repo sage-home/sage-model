@@ -1639,8 +1639,7 @@ int validation_check_binary_compatibility(struct validation_context *ctx,
     int status = 0;
     
     // Check binary format specific requirements
-    if (handler->format_id == IO_FORMAT_LHALO_BINARY || 
-        handler->format_id == IO_FORMAT_BINARY_OUTPUT) {
+    if (handler->format_id == IO_FORMAT_LHALO_BINARY) {
         
         // For binary formats, extended properties require specific capability
         if (io_has_capability((struct io_interface *)handler, IO_CAP_EXTENDED_PROPS)) {

@@ -34,6 +34,7 @@
 #include "../physics/cooling_module.h" // Still needed for cool_gas_onto_galaxy
 #include "../physics/agn_module.h" // Still needed for AGN parameters view
 #include "../physics/feedback_module.h" // Still needed for feedback parameters view
+#include "../physics/physics_modules.h" // Include physics modules interface
 #include "../core/core_parameter_views.h"
 
 

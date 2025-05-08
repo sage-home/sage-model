@@ -24,10 +24,10 @@ galaxy_property_t mock_properties[10];
 
 // Mock I/O handlers
 struct io_interface binary_handler = {
-    .name = "Binary Format Handler",
+    .name = "Binary Format Handler (Deprecated)",
     .version = "1.0",
-    .format_id = IO_FORMAT_BINARY_OUTPUT,
-    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_EXTENDED_PROPS,
+    .format_id = -1, // Binary output format is deprecated
+    .capabilities = 0,
     .initialize = NULL,
     .read_forest = NULL,
     .write_galaxies = NULL,

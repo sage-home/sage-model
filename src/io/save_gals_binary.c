@@ -14,16 +14,17 @@
 
 // Externally Visible Functions //
 
-int32_t prepare_galaxy_for_output(const struct GALAXY *g, void *o,
-                                 const int32_t original_treenr, const struct params *run_params)
-{
-    LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
-    return EXIT_FAILURE;
-}
+
 
 int32_t initialize_binary_galaxy_files(const int filenr, const struct forest_info *forest_info, 
                                       struct save_info *save_info, const struct params *run_params)
 {
+    /* Suppress unused parameter warnings */
+    (void)filenr;
+    (void)forest_info;
+    (void)save_info;
+    (void)run_params;
+    
     LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
     return EXIT_FAILURE;
 }
@@ -34,6 +35,17 @@ int32_t save_binary_galaxies(const int32_t task_treenr, const int32_t num_gals,
                             struct GALAXY *halogal, struct save_info *save_info, 
                             const struct params *run_params)
 {
+    /* Suppress unused parameter warnings */
+    (void)task_treenr;
+    (void)num_gals;
+    (void)OutputGalCount;
+    (void)forest_info;
+    (void)halos;
+    (void)haloaux;
+    (void)halogal;
+    (void)save_info;
+    (void)run_params;
+    
     LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
     return EXIT_FAILURE;
 }
@@ -42,6 +54,11 @@ int32_t finalize_binary_galaxy_files(const struct forest_info *forest_info,
                                     struct save_info *save_info, 
                                     const struct params *run_params)
 {
+    /* Suppress unused parameter warnings */
+    (void)forest_info;
+    (void)save_info;
+    (void)run_params;
+    
     LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
     return EXIT_FAILURE;
 }

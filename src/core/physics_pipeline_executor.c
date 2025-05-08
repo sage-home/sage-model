@@ -10,7 +10,7 @@
 #include "core_pipeline_system.h"
 #include "physics_pipeline_executor.h"
 #include "core_properties_sync.h" // Include header for synchronization functions
-// #include "../physics/physics_modules.h" // REMOVED - File does not exist and is not needed here
+#include "../physics/physics_modules.h" // Include physics modules interface
 
 /**
  * Safely synchronize galaxy properties to/from direct fields
@@ -277,6 +277,7 @@ int physics_pipeline_initialize(void) {
     pipeline_add_step(pipeline, MODULE_TYPE_DISK_INSTABILITY, NULL, "disk_instability", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers", true, true);
     pipeline_add_step(pipeline, MODULE_TYPE_MISC, NULL, "misc", true, true); // Example misc step
+    // Note: output_preparation module is now registered through the physics_modules.h system
 
     LOG_INFO("Physics pipeline initialized with %d steps", pipeline->num_steps);
     return 0;

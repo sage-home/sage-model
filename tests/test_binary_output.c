@@ -333,9 +333,11 @@ void cleanup_test_files() {
 
 /**
  * @brief Test binary output handler registration
+ * 
+ * Since binary output is deprecated, we now verify it returns NULL
  */
 void test_handler_registration() {
-    printf("Testing binary output handler registration...\n");
+    printf("Testing binary output handler registration (deprecated)...\n");
     
     // Initialize I/O system
     int ret = io_init();
@@ -345,96 +347,60 @@ void test_handler_registration() {
     ret = io_binary_output_init();
     assert(ret == 0);
     
-    // Get handler by ID
-    struct io_interface *handler = io_get_handler_by_id(IO_FORMAT_BINARY_OUTPUT);
+    // Get handler by ID - expect NULL since binary output is deprecated
+    struct io_interface *handler = io_get_binary_output_handler();
     
-    // Check if handler was found
-    assert(handler != NULL);
+    // Verify handler is NULL (binary output is deprecated)
+    assert(handler == NULL);
     
-    // Verify handler properties
-    assert(handler->format_id == IO_FORMAT_BINARY_OUTPUT);
-    assert(strcmp(handler->name, "Binary Output") == 0);
-    assert(handler->initialize != NULL);
-    assert(handler->write_galaxies != NULL);
-    assert(handler->cleanup != NULL);
+    // Verify error state is set appropriately
+    assert(io_get_last_error() == IO_ERROR_UNSUPPORTED_OP);
+    assert(strstr(io_get_error_message(), "deprecated") != NULL);
     
-    // Verify capabilities
-    assert(io_has_capability(handler, IO_CAP_APPEND));
-    assert(io_has_capability(handler, IO_CAP_EXTENDED_PROPS));
-    
-    printf("Binary output handler registration tests passed.\n");
+    printf("Binary output handler deprecation tests passed.\n");
 }
 
 /**
  * @brief Test binary output handler initialization
+ * 
+ * Since binary output is deprecated, just check that handler is properly NULL
  */
 void test_handler_initialization() {
-    printf("Testing binary output handler initialization...\n");
+    printf("Testing binary output handler initialization (deprecated)...\n");
     
-    // Get handler
+    // Get handler - should be NULL since binary output is deprecated
     struct io_interface *handler = io_get_binary_output_handler();
-    assert(handler != NULL);
+    assert(handler == NULL);
     
-    // Initialize handler
-    void *format_data = NULL;
-    int ret = handler->initialize("test_galaxies", &mock_params, &format_data);
+    // Verify error state is set appropriately
+    assert(io_get_last_error() == IO_ERROR_UNSUPPORTED_OP);
     
-    // Check initialization
-    assert(ret == 0);
-    assert(format_data != NULL);
-    
-    // Clean up
-    ret = handler->cleanup(format_data);
-    assert(ret == 0);
-    
-    printf("Binary output handler initialization tests passed.\n");
+    printf("Binary output handler initialization test passed.\n");
 }
 
 /**
  * @brief Test writing galaxies with the binary output handler
+ * 
+ * Since binary output is deprecated, just verify it's properly rejected
  */
 void test_write_galaxies() {
-    printf("Testing galaxy writing with binary output handler...\n");
-    
-    // Clean up any existing test files
-    cleanup_test_files();
-    
-    // Get handler
-    struct io_interface *handler = io_get_binary_output_handler();
-    assert(handler != NULL);
-    
-    // Initialize handler
-    void *format_data = NULL;
-    int ret = handler->initialize("test_galaxies", &mock_params, &format_data);
-    assert(ret == 0);
+    printf("Testing galaxy writing with binary output handler (deprecated)...\n");
     
     // Create a single test galaxy
     struct GALAXY *galaxy = create_test_galaxy(mock_params.simulation.ListOutputSnaps[0], 0);
     assert(galaxy != NULL);
     
-    // Write the galaxy
-    printf("Writing galaxy data...\n");
-    ret = handler->write_galaxies(galaxy, 1, &mock_save_info.base, format_data);
+    // Attempt to get handler (should be NULL)
+    struct io_interface *handler = io_get_binary_output_handler();
+    assert(handler == NULL);
     
-    // Don't assert - just check result
-    if (ret == 0) {
-        printf("Galaxy written successfully\n");
-    } else {
-        printf("Note: Could not write galaxy (ret=%d). This is expected in test environment.\n", ret);
-    }
+    // Verify error state
+    assert(io_get_last_error() == IO_ERROR_UNSUPPORTED_OP);
     
     // Clean up galaxy
     free_test_galaxy(galaxy);
     
-    // Clean up handler
-    ret = handler->cleanup(format_data);
-    if (ret == 0) {
-        printf("Handler cleanup successful\n");
-    } else {
-        printf("Note: Handler cleanup returned %d. This is expected in test environment.\n", ret);
-    }
-    
-    printf("Galaxy writing test completed.\n");
+    printf("Binary output galaxy writing test completed.\n");
 }
 
 /**

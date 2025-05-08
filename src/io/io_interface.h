@@ -65,8 +65,7 @@ enum io_format_types {
     IO_FORMAT_CONSISTENT_TREES_HDF5  = 3,  /**< ConsistentTrees HDF5 format */
     IO_FORMAT_GADGET4_HDF5         = 4,  /**< Gadget4 HDF5 format */
     IO_FORMAT_GENESIS_HDF5         = 5,  /**< Genesis HDF5 format */
-    IO_FORMAT_BINARY_OUTPUT        = 6,  /**< Binary galaxy output format */
-    IO_FORMAT_HDF5_OUTPUT          = 7   /**< HDF5 galaxy output format */
+    IO_FORMAT_HDF5_OUTPUT          = 6   /**< HDF5 galaxy output format */
 };
 
 // Forward declarations

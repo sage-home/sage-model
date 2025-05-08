@@ -188,10 +188,12 @@ I/O is now fully abstracted through a unified interface system:
   - ConsistentTrees ASCII and HDF5
   - Gadget4 HDF5
   - Genesis HDF5
-- Output handlers for binary and HDF5 formats
+- Output handlers exclusively using HDF5 format
 - Trees and galaxies managed through a consistent API
 - Cross-platform endianness handling for binary formats
 - Extended property serialization for module-specific data
+- Property-driven output system using GALAXY_PROP_* macros
+- Output preparation module in FINAL pipeline phase
 - Comprehensive validation system for data integrity:
   - Data validation to prevent invalid values (NaN, Infinity)
   - Format capability validation to ensure required features
@@ -215,10 +217,17 @@ I/O System Architecture
           ▼                              │
 ┌─────────────────────┐      ┌──────────┴──────────┐
 │ Format Handlers     │      │ io_validation       │
-│ - Binary            │◄────▶│ - Data validation   │
-│ - HDF5              │      │ - Format validation │
-│ - Property support  │      │ - Property checks   │
-└─────────────────────┘      └─────────────────────┘
+│ - HDF5              │◄────▶│ - Data validation   │
+│ - Property support  │      │ - Format validation │
+└─────────┬───────────┘      │ - Property checks   │
+          │                  └─────────────────────┘
+          ▼
+┌─────────────────────┐
+│ output_preparation  │
+│ module (FINAL phase)│
+│ - Unit conversion   │
+│ - Derived properties│
+└─────────────────────┘
 ```
 
 ### Testing Framework
@@ -310,5 +319,7 @@ Key components of this architecture:
 - Module dependency management through pipeline phases and event system
 - Physics-agnostic pipeline context with generic data sharing
 - Event-based inter-module communication
+- Property-based output system using FINAL phase preparation module
+- Output handler using property metadata for field generation
 
 The analysis of module dependency management for property-based interactions concluded that no significant revisions are needed to the current system. The combination of centralized property definitions, pipeline phases, and the event system provides sufficient structure for module interactions while maintaining clean separation between core infrastructure and physics implementations.

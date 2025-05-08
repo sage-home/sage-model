@@ -40,23 +40,23 @@ int binary_output_cleanup(void *format_data);
 int binary_output_close_handles(void *format_data);
 int binary_output_get_handle_count(void *format_data);
 
-// Static handler definition
+// Static handler definition - binary output is deprecated and not supported
 static struct io_interface binary_output_handler = {
-    .name = "Binary Output",
+    .name = "Binary Output (Deprecated)",
     .version = "1.0",
-    .format_id = IO_FORMAT_BINARY_OUTPUT,
-    .capabilities = IO_CAP_APPEND | IO_CAP_EXTENDED_PROPS,
+    .format_id = -1, // Using -1 for deprecated format
+    .capabilities = 0, // No capabilities
     
-    .initialize = binary_output_initialize,
-    .read_forest = NULL,  // Output format doesn't support reading forests
-    .write_galaxies = binary_output_write_galaxies,
-    .cleanup = binary_output_cleanup,
+    .initialize = NULL,
+    .read_forest = NULL,
+    .write_galaxies = NULL,
+    .cleanup = NULL,
     
-    .close_open_handles = binary_output_close_handles,
-    .get_open_handle_count = binary_output_get_handle_count,
+    .close_open_handles = NULL,
+    .get_open_handle_count = NULL,
     
-    .last_error = IO_ERROR_NONE,
-    .error_message = {0}
+    .last_error = IO_ERROR_UNSUPPORTED_OP,
+    .error_message = "Binary output format is deprecated and no longer supported"
 };
 
 /**
@@ -75,26 +75,7 @@ struct extended_property_info {
 static int write_extended_property_header(int fd, struct binary_output_data *format_data);
 static int close_all_files(struct binary_output_data *format_data);
 
-/**
- * @brief Write callback for buffer manager
- * 
- * Uses the mypwrite function from core_utils.h
- *
- * @param fd File descriptor
- * @param buffer Data buffer to write
- * @param size Number of bytes to write
- * @param offset File offset
- * @param context Optional context data (unused)
- * @return 0 on success, negative value on error
- */
-static int binary_write_callback(int fd, const void* buffer, size_t size, off_t offset, void* context) {
-    (void)context; // Suppress unused parameter warning
-    ssize_t result = mypwrite(fd, buffer, size, offset);
-    if (result < 0) {
-        return result;
-    }
-    return 0;
-}
+/* This function is intentionally removed as binary output is deprecated */
 
 /**
  * @brief Initialize the binary output handler
@@ -111,7 +92,9 @@ int io_binary_output_init(void) {
  * @return Pointer to the handler, or NULL if not registered
  */
 struct io_interface *io_get_binary_output_handler(void) {
-    return io_get_handler_by_id(IO_FORMAT_BINARY_OUTPUT);
+    // Binary output is deprecated, return NULL
+    io_set_error(IO_ERROR_UNSUPPORTED_OP, "Binary output format is deprecated and no longer supported");
+    return NULL;
 }
 
 /**
@@ -233,6 +216,12 @@ int binary_output_initialize(const char *filename, struct params *params, void *
  */
 int binary_output_write_galaxies(struct GALAXY *galaxies, int ngals, 
                               struct save_info *save_info, void *format_data) {
+    /* Suppress unused parameter warnings */
+    (void)galaxies;
+    (void)ngals;
+    (void)save_info;
+    (void)format_data;
+    
     LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
     return EXIT_FAILURE;
 }

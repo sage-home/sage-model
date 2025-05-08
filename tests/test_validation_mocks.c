@@ -17,6 +17,8 @@ void log_message(int level, const char *format, ...) {
 
 // Memory management mocks
 int allocate_galaxy_properties(struct GALAXY *g, const struct params *params) {
+    (void)params; // Suppress unused parameter warning
+    
     galaxy_properties_t *props = malloc(sizeof(galaxy_properties_t));
     if (!props) return -1;
     
@@ -49,6 +51,10 @@ int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src, const 
 // Cooling module mocks
 double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, 
                      const struct cooling_params_view *cooling_params) {
+    // Suppress unused parameter warnings
+    (void)dt;
+    (void)cooling_params;
+    
     // Simple mock that returns a fixed value and updates a property
     GALAXY_PROP_Cooling(&galaxies[gal]) += 0.1;
     return 0.1;
@@ -69,12 +75,23 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
 // Infall module mocks
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, 
                     struct GALAXY *galaxies, const struct params *run_params) {
+    // Suppress unused parameter warnings
+    (void)centralgal;
+    (void)ngal;
+    (void)Zcurr;
+    (void)galaxies;
+    (void)run_params;
+    
     // Simple mock that returns a fixed value
     return 0.2;
 }
 
 void strip_from_satellite(const int centralgal, const int gal, const double Zcurr, 
                          struct GALAXY *galaxies, const struct params *run_params) {
+    // Suppress unused parameter warnings
+    (void)Zcurr;
+    (void)run_params;
+    
     // Simple mock that strips gas
     if (GALAXY_PROP_HotGas(&galaxies[gal]) > 0.0) {
         double strippedGas = 0.05;

@@ -135,10 +135,10 @@ setup_python_environment() {
             echo "h5py found"
         fi
         
-        # Check for PyYAML
+        # Check for PyYAML - required for YAML property definitions
         if ! python -c "import yaml" &> /dev/null; then
             echo "PyYAML not found, installing..."
-            pip install PyYAML || echo "Warning: Failed to install PyYAML. YAML-based tests will be skipped."
+            pip install PyYAML || error_exit "Failed to install PyYAML. This is required for property generation."
         else
             echo "PyYAML found"
         fi

@@ -404,7 +404,9 @@ int io_map_tree_type_to_format_id(int tree_type) {
 int io_map_output_format_to_format_id(int output_format) {
     switch (output_format) {
         case sage_binary:
-            return IO_FORMAT_BINARY_OUTPUT;
+            // Binary output format is no longer supported
+            io_set_error(IO_ERROR_UNSUPPORTED_OP, "Binary output format is deprecated and no longer supported");
+            return -1;
         case sage_hdf5:
             return IO_FORMAT_HDF5_OUTPUT;
         default:

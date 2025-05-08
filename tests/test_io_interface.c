@@ -112,9 +112,9 @@ int test_format_mapping() {
         return 1;
     }
     
-    // Test output format mapping
-    format_id = io_map_output_format_to_format_id(sage_binary);
-    if (format_id != IO_FORMAT_BINARY_OUTPUT) {
+    // Test output format mapping - binary format is now unsupported
+    format_id = io_map_output_format_to_format_id(sage_hdf5);
+    if (format_id != IO_FORMAT_HDF5_OUTPUT) {
         fprintf(stderr, "Output format mapping failed\n");
         return 1;
     }
