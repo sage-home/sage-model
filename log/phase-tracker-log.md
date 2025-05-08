@@ -64,8 +64,8 @@
 - [x] Update module template generator (`core_module_template.c/h`) for new property patterns
 - [x] Revise module dependency management for property-based interactions (if needed)
 
-#### Phase 5.2.E: I/O System Update ⏳ PENDING
-- [ ] Remove `GALAXY_OUTPUT` struct
+#### Phase 5.2.E: I/O System Update ⏳ IN PROGRESS
+- [x] Remove `GALAXY_OUTPUT` struct
 - [ ] Remove `prepare_galaxy_for_output` logic
 - [ ] Implement output preparation module using `GALAXY_PROP_*` macros
 - [ ] Remove binary output format support (standardize on HDF5)
