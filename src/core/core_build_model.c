@@ -603,6 +603,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     
     const double time_diff = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
     const double inv_deltaT = (time_diff > 1e-10) ? 1.0 / time_diff : 0.0; // Avoid division by zero or very small numbers
+    (void)inv_deltaT; // Mark as intentionally unused
 
     // Attach final galaxy list to halo
     for(int p = 0, currenthalo = -1; p < ctx.ngal; p++) {

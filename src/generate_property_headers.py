@@ -770,8 +770,14 @@ def generate_implementation_file(properties, output_dir=""):
     additional_helper_functions = generate_helper_functions(properties)
     resolve_parameter_function = generate_resolve_parameter_function()
     
+    # Modify the IMPLEMENTATION_TEMPLATE to add __attribute__((unused)) to params in allocate_galaxy_properties
+    modified_template = IMPLEMENTATION_TEMPLATE.replace(
+        "int allocate_galaxy_properties(struct GALAXY *g, const struct params *params)",
+        "int allocate_galaxy_properties(struct GALAXY *g, const struct params *params __attribute__((unused)))"
+    )
+    
     # Fill in the template
-    impl_content = IMPLEMENTATION_TEMPLATE.format(
+    impl_content = modified_template.format(
         impl_filename=impl_filename,
         header_filename=header_filename,
         timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

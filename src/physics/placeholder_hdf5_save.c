@@ -25,6 +25,15 @@ int32_t placeholder_prepare_galaxy_for_hdf5_output(const struct GALAXY *g,
                                                   const int64_t original_treenr,
                                                   const struct params *run_params)
 {
+    /* Mark unused parameters */
+    (void)g;
+    (void)save_info;
+    (void)output_snap_idx;
+    (void)halos;
+    (void)task_forestnr;
+    (void)original_treenr;
+    (void)run_params;
+    
     /* This function shouldn't be called directly in core-only mode */
     /* The real implementation is conditionally compiled in save_gals_hdf5.c */
     return EXIT_SUCCESS;

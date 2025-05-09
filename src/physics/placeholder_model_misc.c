@@ -17,6 +17,9 @@
  */
 float get_virial_mass(int halonr, const struct halo_data *halos, const struct params *run_params)
 {
+    /* Mark unused parameter */
+    (void)run_params;
+    
     if (halonr < 0) {
         return 0.0;
     }
@@ -29,6 +32,9 @@ float get_virial_mass(int halonr, const struct halo_data *halos, const struct pa
  */
 float get_virial_radius(int halonr, const struct halo_data *halos, const struct params *run_params)
 {
+    /* Mark unused parameter */
+    (void)run_params;
+    
     if (halonr < 0) {
         return 0.0;
     }
@@ -43,6 +49,9 @@ float get_virial_radius(int halonr, const struct halo_data *halos, const struct 
  */
 float get_virial_velocity(int halonr, const struct halo_data *halos, const struct params *run_params)
 {
+    /* Mark unused parameter */
+    (void)run_params;
+    
     if (halonr < 0) {
         return 0.0;
     }

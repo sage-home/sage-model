@@ -22,6 +22,12 @@ int placeholder_validate_galaxy_values(struct validation_context *ctx,
                                       int index,
                                       const char *component) 
 {
+    /* Mark unused parameters */
+    (void)ctx;
+    (void)galaxy;
+    (void)index;
+    (void)component;
+    
     /* In core-only mode, we don't validate physics properties */
     return 0;
 }
@@ -36,28 +42,57 @@ int placeholder_validate_galaxy_consistency(struct validation_context *ctx,
                                           int index,
                                           const char *component)
 {
+    /* Mark unused parameters */
+    (void)ctx;
+    (void)galaxy;
+    (void)index;
+    (void)component;
+    
     /* In core-only mode, we don't validate physics consistency */
     return 0;
 }
 
 /* Additional placeholder functions required by core_build_model.c */
 void init_galaxy(struct GALAXY *g, int p, int snap) {
+    /* Mark unused parameter */
+    (void)p;
+    
     /* Basic initialization - just set zeros for physics fields */
     g->Type = 0;
     g->SnapNum = snap;
 }
 
 double estimate_merging_time(int halonr, struct halo_data *halos, const struct params *run_params) {
+    /* Mark unused parameters */
+    (void)halonr;
+    (void)halos;
+    (void)run_params;
+    
     /* Return a placeholder value for merger time */
     return 999.9;
 }
 
 void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, double time, 
                            int ngal, struct GALAXY *galaxy, struct params *run_params) {
+    /* Mark unused parameters */
+    (void)p;
+    (void)merger_centralgal;
+    (void)centralgal;
+    (void)time;
+    (void)ngal;
+    (void)galaxy;
+    (void)run_params;
+    
     /* Empty implementation for core-only mode */
 }
 
 void disrupt_satellite_to_ICS(int gal, int centralgal, int ngal, struct GALAXY *galaxy) {
+    /* Mark unused parameters */
+    (void)gal;
+    (void)centralgal;
+    (void)ngal;
+    (void)galaxy;
+    
     /* Empty implementation for core-only mode */
 }
 

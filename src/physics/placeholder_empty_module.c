@@ -35,6 +35,9 @@ static int placeholder_execute_final_phase(void *data, struct pipeline_context *
  * @brief Initialize the placeholder module
  */
 static int placeholder_init(struct params *params, void **data_ptr) {
+    /* Mark unused parameter */
+    (void)params;
+    
     /* Allocate module data */
     struct placeholder_module_data *data = calloc(1, sizeof(struct placeholder_module_data));
     if (data == NULL) {
@@ -68,6 +71,10 @@ static int placeholder_cleanup(void *data) {
  * @brief Execute HALO phase (does nothing)
  */
 static int placeholder_execute_halo_phase(void *data, struct pipeline_context *context) {
+    /* Mark unused parameters */
+    (void)data;
+    (void)context;
+    
     LOG_DEBUG("Placeholder module HALO phase (no-op)");
     return MODULE_STATUS_SUCCESS;
 }
@@ -76,6 +83,10 @@ static int placeholder_execute_halo_phase(void *data, struct pipeline_context *c
  * @brief Execute GALAXY phase (does nothing)
  */
 static int placeholder_execute_galaxy_phase(void *data, struct pipeline_context *context) {
+    /* Mark unused parameters */
+    (void)data;
+    (void)context;
+    
     LOG_DEBUG("Placeholder module GALAXY phase (no-op)");
     return MODULE_STATUS_SUCCESS;
 }
@@ -84,6 +95,10 @@ static int placeholder_execute_galaxy_phase(void *data, struct pipeline_context 
  * @brief Execute POST phase (does nothing)
  */
 static int placeholder_execute_post_phase(void *data, struct pipeline_context *context) {
+    /* Mark unused parameters */
+    (void)data;
+    (void)context;
+    
     LOG_DEBUG("Placeholder module POST phase (no-op)");
     return MODULE_STATUS_SUCCESS;
 }
@@ -92,6 +107,10 @@ static int placeholder_execute_post_phase(void *data, struct pipeline_context *c
  * @brief Execute FINAL phase (does nothing)
  */
 static int placeholder_execute_final_phase(void *data, struct pipeline_context *context) {
+    /* Mark unused parameters */
+    (void)data;
+    (void)context;
+    
     LOG_DEBUG("Placeholder module FINAL phase (no-op)");
     return MODULE_STATUS_SUCCESS;
 }

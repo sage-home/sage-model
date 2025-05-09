@@ -83,12 +83,15 @@ void set_galaxy_property(struct GALAXY *galaxy, int accessor_id, double value) {
 // These will be implemented in physics modules
 #define STUB_GETTER(prop_name) \
 double galaxy_get_##prop_name(const struct GALAXY *galaxy) { \
+    (void)galaxy; /* Mark parameter as intentionally unused */ \
     LOG_WARNING("No implementation for galaxy_get_" #prop_name " (physics property)"); \
     return 0.0; \
 }
 
 #define STUB_SETTER(prop_name) \
 void galaxy_set_##prop_name(struct GALAXY *galaxy, double value) { \
+    (void)galaxy; /* Mark parameters as intentionally unused */ \
+    (void)value; \
     LOG_WARNING("No implementation for galaxy_set_" #prop_name " (physics property)"); \
 }
 
