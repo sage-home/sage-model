@@ -435,7 +435,7 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 *   **5.1.7 Diagnostics**: Add evolution diagnostics
 
 #### Subphase 5.2: Properties Module Architecture Implementation [ARCHITECTURAL SHIFT]
-**Description**: This subphase implements the "Properties Module" architecture. It centralizes the definition of all persistent physical galaxy properties into `properties.yaml`, generates type-safe accessor macros (`GALAXY_PROP_*`), and establishes the infrastructure for modules to interact with galaxy state via these properties. A temporary synchronization mechanism bridges the direct fields in `struct GALAXY` and the new `properties` struct during the migration of physics code. The core SAGE infrastructure becomes physics-agnostic.
+**Description**: This subphase implements the "Properties Module" architecture. It centralizes the definition of all persistent physical galaxy properties into `properties.yaml`, generates type-safe accessor macros (`GALAXY_PROP_*`), and establishes the infrastructure for modules to interact with galaxy state via these properties. The core SAGE infrastructure becomes completely physics-agnostic, able to run with no physics modules at all.
 
 ##### 5.2.B: Central Property Definition & Infrastructure ✅ COMPLETED
 *   **5.2.B.0: Establish Performance Baseline**: Run and record performance benchmarks using the codebase *before* these changes.
@@ -446,18 +446,18 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 *   **5.2.B.5 Implement Memory Management**: Ensure `allocate/free/copy/reset_galaxy_properties` correctly handle dynamic arrays based on runtime parameters.
 *   **5.2.B.6 Implement Synchronization Functions**: Create `sync_direct_to_properties` and `sync_properties_to_direct` in `core_properties_sync.c/h` to copy data between direct fields and the `properties` struct.
 
-##### 5.2.C: Core Integration & Synchronization ⏳ IN PROGRESS
+##### 5.2.C: Core Integration & Synchronization ✅ COMPLETED
 *   **5.2.C.1 Integrate Synchronization Calls**: Insert calls to synchronization functions around module execution points in the pipeline executor (`physics_pipeline_executor.c`).
 *   **5.2.C.2 Ensure Core Galaxy Lifecycle Management**: Update `init_galaxy`, galaxy copying (mergers, progenitors), and destruction logic to correctly manage the `galaxy->properties` struct lifecycle (`allocate_`, `copy_`, `free_`, `reset_galaxy_properties`).
 *   **5.2.C.3 Refine Core Initialization Logic**: Verify `init_galaxy` correctly initializes both direct fields (for legacy compatibility) and calls `reset_galaxy_properties`.
 
-##### 5.2.D: Module Adaptation ⏳ PENDING
+##### 5.2.D: Module Adaptation ✅ COMPLETED
 *   **5.2.D.1 Update Migrated Modules**: Adapt existing migrated modules (e.g., cooling, infall) to use `GALAXY_PROP_*` macros exclusively.
 *   **5.2.D.2 Update Module Template Generator**: Ensure `core_module_template.c/h` generates code compatible with the property system.
 *   **5.2.D.3 Revise Module Dependency Management**: Update dependency system if property-based interactions require changes (likely minimal).
 *   **5.2.D.4 Update Physics Module Interface**: Add hooks for module-specific serialization/deserialization of *private* properties (if any module needs them).
 
-##### 5.2.E: I/O System Update ⏳ PENDING
+##### 5.2.E: I/O System Update ✅ COMPLETED
 *   **5.2.E.1 Remove GALAXY_OUTPUT Struct**: Delete the static `GALAXY_OUTPUT` struct definition.
 *   **5.2.E.2 Remove prepare_galaxy_for_output Logic**: Eliminate the static mapping code.
 *   **5.2.E.3 Implement Output Preparation Module**: Create a module running in `PIPELINE_PHASE_FINAL` to handle unit conversions/derived values using `GALAXY_PROP_*` macros.
@@ -465,163 +465,38 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 *   **5.2.E.5 Update HDF5 I/O Handler**: Modify HDF5 handler to read property metadata from `PROPERTY_META` and use `GALAXY_PROP_*` macros for writing galaxy data.
 *   **5.2.E.6 Enhance HDF5 Serialization**: Adapt HDF5 serialization to support dynamic arrays and potentially module-specific private properties.
 
-##### 5.2.F: Systematic Physics Module Migration ⏳ PENDING
-*   **Goal:** Convert all remaining legacy physics implementations (`src/physics/legacy/`) into standalone modules using the property system.
-*   **Process:** For each legacy area: Create new module, move logic, replace *all* direct field access with `GALAXY_PROP_*` macros, consider local caching for properties accessed multiple times in tight loops, register module, update pipeline, remove legacy file
-*   **5.2.F.1 Migration Sequence Planning**: Define clear order of module migration based on dependencies.
-*   **5.2.F.2 Common Physics Utilities**: Extract and centralize shared physics calculations.
-*   **5.2.F.3 Star Formation and Feedback**: Migrate module.
-*   **5.2.F.4 Disk Instability**: Migrate module.
-*   **5.2.F.5 Reincorporation**: Migrate module.
-*   **5.2.F.6 AGN Feedback and Black Holes**: Migrate module.
-*   **5.2.F.7 Metals and Chemical Evolution**: Migrate module.
-*   **5.2.F.8 Mergers**: Migrate module.
+##### 5.2.F: Core-Physics Separation ⏳ PENDING
+**Goal:** Achieve complete independence between core infrastructure and physics to create a truly physics-agnostic system.
+*   **5.2.F.1 Core Isolation**: Remove ALL physics dependencies from core infrastructure. Remove all direct physics calls in `evolve_galaxies.c`. Remove physics-related include statements from core files. Create minimal properties definition with only core infrastructure properties. Remove direct field synchronization from pipeline executor. Remove physics fields from `struct GALAXY` definition. Update all core code to be physics-property-agnostic.
+*   **5.2.F.2 Empty Pipeline Validation**: Create empty placeholder modules for essential pipeline points. Register empty modules in the pipeline. Configure pipeline to execute all phases with no physics operations. Test that the system can run end-to-end with empty properties.yaml. Implement tests verifying core independence from physics. Document the physics-free model baseline. Optimize memory management.
+*   **5.2.F.3 Legacy Code Removal**: Remove all legacy physics implementation files. Update build system to remove legacy components. Clean up any remaining legacy references. Remove all synchronization infrastructure after verifying it's no longer needed. Final verification of clean core-physics separation.
 
-##### 5.2.G: Final Cleanup & Core Minimization ⏳ PENDING
-*   **5.2.G.1 Remove Synchronization**: Remove calls to sync functions and delete `core_properties_sync.c/h`.
-*   **5.2.G.2 Refactor Core Code**: Update any remaining core code (validation, utils) to use `GALAXY_PROP_*` macros if direct field access persists.
-*   **5.2.G.3 Minimize Core GALAXY Struct**: Remove the direct physics fields from `struct GALAXY` in `core_allvars.h`.
-*   **5.2.G.4 Optimize memory management with increased allocation limits (`MAXBLOCKS`) and proper cleanup of diagnostic code.
-*   **5.2.G.5 (Optional) Optimize Accessors**: Refactor macros/code to directly access `galaxy->properties->FieldName` if performance warrants.
+##### 5.2.G: Physics Module Migration ⏳ PENDING
+**Goal:** With the core now completely physics-agnostic, implement physics modules as pure add-ons.
+*   **5.2.G.1 Physics Foundation**: Develop standard physics utility functions independent of core code. Create common physics constants and conversion factors. Implement shared calculation libraries for physics modules. Establish module-to-module communication protocols. Create physics property definitions separate from core properties.
+*   **5.2.G.2 Module Implementation**: Determine optimal module sequence based on dependencies. Implement and validate each physics module (Star Formation & Feedback, Disk Instability, Reincorporation, AGN Feedback & Black Holes, Metals & Chemical Evolution, Mergers). Optimize property access patterns if performance analysis indicates benefit.
 
-#### Example Implementation for Properties Module
-```yaml
-# properties.yaml - Central property definition
-properties:
-  # Standard scalar property
-  - name: HotGas
-    type: double
-    initial_value: 0.0
-    units: "1e10 Msun/h"
-    description: "Mass of gas in the hot halo reservoir."
-    output: true
-
-  # Standard scalar property
-  - name: StellarMass
-    type: double
-    initial_value: 0.0
-    units: "1e10 Msun/h"
-    description: "Total stellar mass in the galaxy."
-    output: true
-
-  # Fixed-size array property
-  - name: Pos
-    type: float[3]
-    initial_value: [0.0, 0.0, 0.0]
-    units: "Mpc/h"
-    description: "Position coordinates (x,y,z)"
-    output: true
-
-  # Dynamic array property
-  - name: StarFormationHistory
-    type: float[]
-    size_parameter: "simulation.NumSnapOutputs"
-    initial_value: 0.0
-    units: "Msun/yr"
-    description: "Star formation history for each output snapshot"
-    output: true
-```
-
-```c
-// Generated core_properties.h
-#ifndef CORE_PROPERTIES_H
-#define CORE_PROPERTIES_H
-
-#include "core_galaxy_extensions.h" // Assuming this is where GALAXY struct is defined or included
-#include "core_types.h"
-
-// Hot Gas
-#define GALAXY_PROP_HotGas(galaxy) \
-    ((galaxy)->properties->HotGas)
-
-// Stellar Mass
-#define GALAXY_PROP_StellarMass(galaxy) \
-    ((galaxy)->properties->StellarMass)
-
-// Pos (fixed array)
-#define GALAXY_PROP_Pos(galaxy) \
-    ((galaxy)->properties->Pos)
-#define GALAXY_PROP_Pos_ELEM(galaxy, idx) \
-    ((galaxy)->properties->Pos[idx])
-
-// StarFormationHistory (dynamic array)
-#define GALAXY_PROP_StarFormationHistory(galaxy) \
-    ((galaxy)->properties->StarFormationHistory)
-#define GALAXY_PROP_StarFormationHistory_SIZE(galaxy) \
-    ((galaxy)->properties->StarFormationHistory_size)
-#define GALAXY_PROP_StarFormationHistory_ELEM(galaxy, idx) \
-    ((galaxy)->properties->StarFormationHistory[idx])
-
-// Other property macros...
-
-#endif // CORE_PROPERTIES_H
-```
-
-```c
-// In a module (e.g., cooling_module.c)
-#include "core_properties.h" // Use the generated header
-
-static double calculate_cooling(struct GALAXY *galaxy, double dt, void *module_data) {
-    // Get current hot gas and metals using macros
-    double hot_gas = GALAXY_PROP_HotGas(galaxy);
-    double metals_hot = GALAXY_PROP_MetalsHotGas(galaxy); // Assuming this macro exists
-
-    // Calculate cooling rate
-    double cooling_rate = compute_rate(hot_gas, metals_hot, dt);
-
-    // Apply cooling using macros
-    double cooled_gas = cooling_rate * dt;
-    GALAXY_PROP_HotGas(galaxy) = hot_gas - cooled_gas;
-    GALAXY_PROP_ColdGas(galaxy) = GALAXY_PROP_ColdGas(galaxy) + cooled_gas; // Assuming ColdGas macro exists
-
-    return cooling_rate;
-}
-```
-
-#### Design Rationale for Properties Module Approach
-The Properties Module architecture achieves true physics-agnostic core infrastructure while providing a centralized, well-defined mechanism for modules to interact with shared galaxy state. This approach:
-
-1. **Eliminates Core-Physics Coupling**: Core code works with abstract "extensions" without knowing their physics meaning
-2. **Centralizes Property Definition**: All shared properties are defined once in a human-readable file
-3. **Ensures Type Safety**: Generated macros provide compile-time type checking
-4. **Simplifies Maintenance**: Adding or modifying properties requires changes to a single file
-5. **Standardizes Access Patterns**: All modules use identical mechanisms to interact with properties
-6. **Removes Ownership Hierarchy**: No module "owns" shared properties used by others
-7. **Enables Core Independence**: Core remains unaware of physics implementations or property specifics
-8. **Streamlines Output Management**: Property output decisions are declarative in the central definition
-
-#### Key Risks and Mitigation for Properties Module Implementation
-- **Risk**: Build-time dependency on the property generation script
-  - **Mitigation**: Ensure script is robust, well-tested, and properly integrated with the build system
-- **Risk**: Refactoring scope and complexity
-  - **Mitigation**: Begin with the proof-of-concept phase to validate approach before full implementation
-- **Risk**: Performance overhead from macros and indirect property access
-  - **Mitigation**: Perform thorough performance testing, optimize macro expansion, consider caching property IDs
-- **Risk**: Scientific inconsistency during transition
-  - **Mitigation**: Implement comprehensive validation against reference outputs, migrate physics one module at a time
-- **Risk**: File format compatibility issues
-  - **Mitigation**: Implement backward compatibility in I/O handlers for reading old file formats
-
-#### Subphase 5.3: Validation and Testing
-*   **5.3.1 Property Definition Validation**: Develop tools to validate `properties.yaml`.
-*   **5.3.2 Scientific Output Validation**: Validate results against baseline SAGE.
-*   **5.3.3 Performance Benchmarks**: Compare performance against baseline.
-*   **5.3.4 Module Compatibility Testing**: Verify combinations of modules.
-*   **5.3.5 Call Graph Validation**: Check dependencies and interactions.
-*   **5.3.6 I/O Format Validation**: Verify HDF5 output correctness.
-*   **5.3.7 Error Handling Testing**: Validate error reporting and recovery.
-*   **5.3.8 Comprehensive Integration Tests**: Test end-to-end system.
+#### Subphase 5.3: Comprehensive Validation ⏳ PENDING
+After completely separating the core from physics and implementing all physics modules:
+*   **5.3.1 Integration Testing**: Develop complete end-to-end integration tests for all module combinations.
+*   **5.3.2 Scientific Validation**: Implement scientific validation comparing new modules to baseline SAGE.
+*   **5.3.3 Compatibility Testing**: Create module compatibility test matrix.
+*   **5.3.4 Performance Analysis**: Develop performance benchmarks comparing to original implementation.
+*   **5.3.5 I/O Validation**: Test file format compatibility and I/O across module configurations.
+*   **5.3.6 Dependency Analysis**: Validate module dependency chains using call graph analysis.
+*   **5.3.7 Error Handling**: Test error handling and recovery mechanisms.
+*   **5.3.8 Documentation**: Create comprehensive documentation of the validation approach.
 
 ### Phase 6: Advanced Performance Optimization
 **Estimated Timeline**: 3-4 months
 
 #### Components
-*   **6.1 Memory Layout Enhancement**: Implement SoA. Optimize memory pooling. Dynamic limits review (e.g., `ABSOLUTEMAXSNAPS`).
-*   **6.2 Tree Traversal Optimization**: Optimize pointer-chasing. Non-recursive traversal. Memory-efficient tree nodes.
-*   **6.3 Vectorized Physics Calculations**: Implement SIMD. Batch processing. Architecture-specific dispatch.
-*   **6.4 Parallelization Enhancements**: Refine load balancing. Finer-grained parallelism. Optimize MPI. Hybrid MPI+OpenMP.
-*   **6.5 Module Callback Optimization**: Callback caching. Optimize frequent interactions. Profiling. Inlining.
-*   **6.6 Property Access Optimization**: Cache property IDs. Batch property access. *(Added emphasis)*
+*   **6.1 Memory Layout Enhancement**: Implement Structure-of-Arrays (SoA) for hot-path galaxy properties. Optimize memory pooling. Review and optimize dynamic limits (e.g., `ABSOLUTEMAXSNAPS`).
+*   **6.2 Tree Traversal Optimization**: Optimize pointer-chasing in merger tree traversal. Implement non-recursive traversal options. Develop memory-efficient tree node representations.
+*   **6.3 Physics Calculation Optimization**: Implement vectorized calculations (SIMD) for physics modules. Create batch processing for similar galaxies. Develop architecture-specific dispatch.
+*   **6.4 Parallelization Enhancements**: Refine load balancing for distributed processing. Implement finer-grained parallelism. Optimize MPI communication. Develop hybrid MPI+OpenMP approach.
+*   **6.5 Module System Optimization**: Optimize callback mechanisms. Cache frequent module interactions. Implement profiling for module operations. Consider strategic function inlining.
+*   **6.6 Property Access Optimization**: Cache property IDs for frequent access. Implement batch property access for group operations on multiple galaxies.
 
 #### Example Implementation
 ```c
@@ -665,7 +540,7 @@ void convert_AoS_to_SoA(struct GALAXY *galaxies, int ngal, galaxy_hotpath_data_t
     hotpath->count = ngal;
 }
 
-// Optimized property access using cached IDs (post implementation)
+// Optimized property access using cached IDs
 static int hotgas_prop_id = -1;
 static int coldgas_prop_id = -1;
 
@@ -679,14 +554,13 @@ double get_hot_gas_optimized(struct GALAXY *galaxy) {
     if (hotgas_prop_id == -1) {
         hotgas_prop_id = get_standard_property_id_by_name("HotGas");
     }
-    // Note: galaxy_extension_get_data might need adjustment if properties
-    // are no longer strictly extensions but directly in galaxy->properties
-    return *(double*)galaxy_extension_get_data(galaxy, hotgas_prop_id);
+    // Direct property access using cached ID
+    return GALAXY_PROP_BY_ID(galaxy, hotgas_prop_id, double);
 }
 ```
 
 #### Design Rationale
-Performance optimization builds on the established modular architecture, focusing on reducing memory access patterns, improving cache utilization, and enabling parallel execution. The Structure-of-Arrays approach can significantly improve performance for hot-path physics calculations by enhancing data locality and enabling SIMD operations. Property access optimizations help minimize the overhead of the extension-based property system while maintaining its modularity benefits.
+Performance optimization builds on the established modular architecture, focusing on reducing memory access patterns, improving cache utilization, and enabling parallel execution. The Structure-of-Arrays approach can significantly improve performance for hot-path physics calculations by enhancing data locality and enabling SIMD operations. Property access optimizations help minimize the overhead of the property system while maintaining its modularity benefits.
 
 #### Key Risks and Mitigation
 - **Risk**: Optimization complexity interfering with modularity
@@ -702,16 +576,16 @@ Performance optimization builds on the established modular architecture, focusin
 #### Components
 *   **7.1 Comprehensive Architecture Guide**: Document core components, module system, pipeline phases, property system, and interfaces.
 *   **7.2 Module Development Guide**: Create detailed guides for developing physics modules, galaxy property extensions, and integration with the pipeline.
-*   **7.3 Property System Guide**: Document `properties.yaml`, generation script, access patterns. *(Enhanced importance)*
-*   **7.4 Visualization and Debugging Tools**: Implement tools for visualizing module dependencies, pipeline configuration, and property usage.
-*   **7.5 Performance Profiling Tools**: Create specialized tools for analyzing module performance, pipeline bottlenecks.
-*   **7.6 Example Modules and Templates**: Provide comprehensive examples.
-*   **7.7 User Guide**: System config, module selection, parameter tuning.
-*   **7.8 API Documentation**: Generate API docs.
+*   **7.3 Property System Guide**: Document `properties.yaml`, generation script, access patterns, and best practices.
+*   **7.4 Visualization and Debugging Tools**: Implement tools for visualizing module dependencies, pipeline configuration, and property usage across modules.
+*   **7.5 Performance Profiling Tools**: Create specialized tools for analyzing module performance, pipeline bottlenecks, and property access patterns.
+*   **7.6 Example Modules and Templates**: Provide comprehensive examples of each module type, including documentation, tests, and sample configurations.
+*   **7.7 User Guide**: Document system configuration, module selection, parameter tuning, and runtime operation.
+*   **7.8 API Documentation**: Generate comprehensive API documentation for both core infrastructure and module interfaces.
 
 #### Example Implementation
 ```python
-# Property usage analysis script (conceptual)
+# Property usage analysis script
 def analyze_property_usage():
     property_usage = {}
     modules = []

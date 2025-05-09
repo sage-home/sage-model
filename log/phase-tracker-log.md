@@ -12,12 +12,14 @@
 # Current Phase: 5/7 (Core Module Migration)
 
 ## Phase Objectives
-- Implement pipeline execution phases (HALO, GALAXY, POST) for handling different scope calculations
+- Implement pipeline execution phases (HALO, GALAXY, POST, FINAL) for handling different scope calculations
 - Transform `evolve_galaxies()` to use the pipeline system
 - Implement the Properties Module architecture for complete core-physics decoupling
 - Create type-safe, centrally-defined galaxy property mechanism
-- Minimize core `struct GALAXY` to remove physics dependencies
-- Refactor modules to use the standardized property access system
+- Achieve complete independence between core infrastructure and physics modules
+- Enable the core system to operate correctly with no physics modules
+- Migrate physics components as pure add-ons to the core
+- Minimize core `struct GALAXY` to remove all physics dependencies
 - Validate scientific accuracy against baseline SAGE results
 
 ## Current Progress
@@ -72,38 +74,74 @@
 - [x] Update HDF5 I/O handler to read property metadata and use `GALAXY_PROP_*` macros for writing
 - [x] Enhance HDF5 serialization/deserialization for dynamic arrays and module-specific properties
 
-#### Phase 5.2.F: Physics Module Migration ⏳ PENDING
-- [ ] Define physics module migration sequence based on dependencies
-- [ ] Centralize common physics utilities (if applicable)
-- [ ] Migrate Star Formation & Feedback module (using `GALAXY_PROP_*` macros)
-- [ ] Migrate Disk Instability module (using `GALAXY_PROP_*` macros)
-- [ ] Migrate Reincorporation module (using `GALAXY_PROP_*` macros)
-- [ ] Migrate AGN Feedback & Black Holes module (using `GALAXY_PROP_*` macros)
-- [ ] Migrate Metals & Chemical Evolution module (using `GALAXY_PROP_*` macros)
-- [ ] Migrate Mergers module (using `GALAXY_PROP_*` macros)
-- [ ] Remove corresponding legacy files from `src/physics/legacy/` and Makefile
+#### Phase 5.2.F: Core-Physics Separation ⏳ PENDING
+This phase achieves true physics-agnostic core infrastructure that can run without any physics modules.
 
-#### Phase 5.2.G: Final Cleanup & Core Minimization ⏳ PENDING
-- [ ] Remove synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) and files (`core_properties_sync.c/h`)
-- [ ] Refactor remaining core code (validation, misc utils) to use `GALAXY_PROP_*` macros if any direct field access remains
+##### Phase 5.2.F.1: Core Isolation ⏳ PENDING
+- [ ] Remove ALL physics dependencies from core infrastructure
+- [ ] Remove all direct physics calls in `evolve_galaxies.c`
+- [ ] Remove physics-related include statements from core files
+- [ ] Create minimal properties definition that only includes core infrastructure properties
+- [ ] Remove direct field synchronization from pipeline executor
 - [ ] Remove physics fields from `struct GALAXY` definition (`core_allvars.h`)
-- [ ] Optimize memory management with increased allocation limits (`MAXBLOCKS`) and proper cleanup of diagnostic code
-- [ ] (Optional) Refactor accessor macros/core/module code to directly access `galaxy->properties->FieldName` if performance analysis indicates benefit
-  
-### Phase 5.3: Validation and Testing ⏳ PENDING
-- [ ] Implement integration tests for evolve_galaxies loop phase transitions
-- [ ] Implement property definition validation tools
-- [ ] Perform scientific validation against baseline SAGE
-- [ ] Implement performance benchmarks
-- [ ] Develop module compatibility tests
-- [ ] Add call graph validation
-- [ ] Validate file format compatibility and I/O
+- [ ] Update all core code to be physics-property-agnostic
+- [ ] Verify pipeline system's structural integrity without physics
+
+##### Phase 5.2.F.2: Empty Pipeline Validation ⏳ PENDING
+- [ ] Create empty placeholder modules for essential pipeline points
+- [ ] Register empty modules in the pipeline
+- [ ] Configure pipeline to execute all phases with no physics operations
+- [ ] Test that the system can run end-to-end with empty properties.yaml
+- [ ] Implement tests verifying core independence from physics
+- [ ] Document the physics-free model baseline
+- [ ] Optimize memory management with increased allocation limits
+
+##### Phase 5.2.F.3: Legacy Code Removal ⏳ PENDING
+- [ ] Remove all legacy physics implementation files
+- [ ] Update build system to remove legacy components
+- [ ] Clean up any remaining legacy references
+- [ ] Remove all synchronization infrastructure after verifying it's no longer needed
+- [ ] Final verification of clean core-physics separation
+
+#### Phase 5.2.G: Physics Module Migration ⏳ PENDING
+With the core now completely physics-agnostic, we can implement physics modules as pure add-ons.
+
+##### Phase 5.2.G.1: Physics Foundation ⏳ PENDING
+- [ ] Develop standard physics utility functions independent of core code
+- [ ] Create common physics constants and conversion factors
+- [ ] Implement shared calculation libraries for physics modules
+- [ ] Establish module-to-module communication protocols
+- [ ] Create physics property definitions separate from core properties
+
+##### Phase 5.2.G.2: Module Implementation ⏳ PENDING
+- [ ] Determine optimal module sequence based on dependencies
+- [ ] Implement/validate Star Formation & Feedback Module
+- [ ] Implement/validate Disk Instability Module
+- [ ] Implement/validate Reincorporation Module
+- [ ] Implement/validate AGN Feedback & Black Holes Module
+- [ ] Implement/validate Metals & Chemical Evolution Module
+- [ ] Implement/validate Mergers Module
+- [ ] (Optional) Optimize property access patterns if performance analysis indicates benefit
+
+### Phase 5.3: Comprehensive Validation ⏳ PENDING
+After completely separating the core from physics and implementing all physics modules:
+
+- [ ] Develop complete end-to-end integration tests for all module combinations
+- [ ] Implement scientific validation comparing new modules to baseline SAGE
+- [ ] Create module compatibility test matrix
+- [ ] Develop performance benchmarks comparing to original implementation
+- [ ] Test file format compatibility and I/O across module configurations
+- [ ] Validate module dependency chains using call graph analysis
 - [ ] Test error handling and recovery mechanisms
+- [ ] Create comprehensive documentation of the validation approach
 
 ## Completion Criteria
 - The main galaxy evolution loop uses the pipeline system with proper phase handling
+- The core system operates correctly with empty or minimal properties.yaml
+- Core infrastructure runs without any physics modules loaded
 - All persistent per-galaxy physics state is defined centrally via `properties.yaml`
-- Core infrastructure has no direct knowledge of specific physics properties
+- Core infrastructure has zero knowledge of specific physics properties
+- All physics components are implemented as pure add-ons to the core
 - All physics components access galaxy properties via generated macros
 - Physics modules are implemented as standalone modules with appropriate phase declarations
 - The core GALAXY struct contains only essential identifiers, not physics fields
