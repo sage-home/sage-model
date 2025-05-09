@@ -162,84 +162,49 @@ struct evolution_context {
 /* This structure contains the properties used within the code */
 struct GALAXY
 {
-    int32_t   SnapNum;
-    int32_t  Type;
+    /* Core galaxy identification */
+    int32_t   SnapNum;            /* Snapshot number of the galaxy */
+    int32_t   Type;               /* Galaxy type (0=central, 1=satellite, 2=orphan, 3=merged) */
+    int32_t   GalaxyNr;           /* Galaxy number within the tree */
+    int32_t   CentralGal;         /* Index of the central galaxy in the same FoF group */
+    int32_t   HaloNr;             /* Halo number in the tree */
+    long long MostBoundID;        /* ID of the most bound particle in the subhalo */
+    uint64_t  GalaxyIndex;        /* Unique galaxy identifier based on tree local galaxy number, 
+                                     file local tree number and file number */
+    uint64_t  CentralGalaxyIndex; /* Galaxy index of the central galaxy of this galaxy's FoF group */
 
-    int32_t   GalaxyNr;
-    int32_t   CentralGal;
-    int32_t   HaloNr;
-    long long MostBoundID;
-    uint64_t GalaxyIndex; // This is a unique value based on the tree local galaxy number,
-    // file local tree number and the file number itself.
-                       // See ``generate_galaxy_index()`` in ``core_save.c``.
-    uint64_t CentralGalaxyIndex; // Same as above, except the ``GalaxyIndex`` value for the CentralGalaxy
-    // of this galaxy's FoF group.
+    /* Merger properties */
+    int32_t   mergeType;          /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
+    int32_t   mergeIntoID;        /* Galaxy ID that this galaxy merges into */
+    int32_t   mergeIntoSnapNum;   /* Snapshot number when the merger occurs */
+    float     dT;                 /* Time step for galaxy evolution */
 
-    int32_t   mergeType;  /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
-    int32_t   mergeIntoID;
-    int32_t   mergeIntoSnapNum;
-    float dT;
+    /* Core halo properties */
+    float     Pos[3];             /* Position coordinates (x,y,z) */
+    float     Vel[3];             /* Velocity components (vx,vy,vz) */
+    int       Len;                /* Number of particles in the halo */
+    float     Mvir;               /* Virial mass of the halo */
+    float     deltaMvir;          /* Change in virial mass since last snapshot */
+    float     CentralMvir;        /* Virial mass of the central subhalo */
+    float     Rvir;               /* Virial radius */
+    float     Vvir;               /* Virial velocity */
+    float     Vmax;               /* Maximum circular velocity */
 
-    /* (sub)halo properties */
-    float Pos[3];
-    float Vel[3];
-    int   Len;
-    float Mvir;
-    float deltaMvir;
-    float CentralMvir;
-    float Rvir;
-    float Vvir;
-    float Vmax;
-
-    /* baryonic reservoirs */
-    float ColdGas;
-    float StellarMass;
-    float BulgeMass;
-    float HotGas;
-    float EjectedMass;
-    float BlackHoleMass;
-    float ICS;
-
-    /* metals */
-    float MetalsColdGas;
-    float MetalsStellarMass;
-    float MetalsBulgeMass;
-    float MetalsHotGas;
-    float MetalsEjectedMass;
-    float MetalsICS;
-
-    /* to calculate magnitudes */
-    float SfrDisk[STEPS];
-    float SfrBulge[STEPS];
-    float SfrDiskColdGas[STEPS];
-    float SfrDiskColdGasMetals[STEPS];
-    float SfrBulgeColdGas[STEPS];
-    float SfrBulgeColdGasMetals[STEPS];
-
-    /* misc */
-    float DiskScaleRadius;
-    float MergTime;
-    double Cooling;
-    double Heating;
-    float r_heat;
-    float QuasarModeBHaccretionMass;
-    float TimeOfLastMajorMerger;
-    float TimeOfLastMinorMerger;
-    float OutflowRate;
-    float TotalSatelliteBaryons;
-
-    /* infall properties */
-    float infallMvir;
-    float infallVvir;
-    float infallVmax;
+    /* Core merger tracking */
+    float     MergTime;           /* Time until merger */
+    
+    /* Core infall properties */
+    float     infallMvir;         /* Virial mass at infall */
+    float     infallVvir;         /* Virial velocity at infall */
+    float     infallVmax;         /* Maximum circular velocity at infall */
     
     /* Extension mechanism - placed at the end for binary compatibility */
-    void **extension_data;        /* Array of pointers to module-specific data */
-    int num_extensions;           /* Number of registered extensions */
-    uint64_t extension_flags;     /* Bitmap to track which extensions are in use */
+    void     **extension_data;    /* Array of pointers to module-specific data */
+    int        num_extensions;    /* Number of registered extensions */
+    uint64_t   extension_flags;   /* Bitmap to track which extensions are in use */
     
     /* Property system integration */
-    galaxy_properties_t *properties;  /* All properties managed by the property system */
+    galaxy_properties_t *properties; /* All properties managed by the property system */
 };
 
 

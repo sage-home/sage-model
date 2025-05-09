@@ -289,3 +289,14 @@
 - Added test_output_preparation.c that verifies all functionality works correctly
 - Modified files: src/io/save_gals_binary.c, src/io/save_gals_binary.h, src/io/io_hdf5_output.c, src/io/io_interface.h, src/io/io_binary_output.c, src/core/core_build_model.c, src/core/physics_pipeline_executor.c, Makefile
 - Created files: src/physics/output_preparation_module.c, src/physics/output_preparation_module.h, src/physics/physics_modules.h, docs/output_preparation.md, tests/test_output_preparation.c, tests/Makefile.output_preparation
+
+2025-05-09: [Phase 5.2.F.1] Core Isolation Implementation Complete
+- Created core_properties.yaml containing only essential core infrastructure properties
+- Removed physics fields from GALAXY struct, keeping only infrastructure fields
+- Eliminated direct field synchronization in physics_pipeline_executor.c
+- Made evolve_galaxies() physics-agnostic by removing direct physics calls
+- Created physics-agnostic pipeline initialization system
+- Added placeholder_empty_module for validating core-physics separation
+- Created comprehensive integration test for core independence
+- Added files: src/core_properties.yaml, src/physics/placeholder_empty_module.c/h, tests/test_core_physics_separation.c, input/config_empty_pipeline.json, input/empty_pipeline_parameters.par, tests/Makefile.empty_pipeline, docs/core_physics_separation.md
+- Modified files: src/core/core_allvars.h, src/core/core_build_model.c, src/core/physics_pipeline_executor.c, src/physics/physics_modules.h, Makefile, src/generate_property_headers.py

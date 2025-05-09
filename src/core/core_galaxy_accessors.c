@@ -2,11 +2,11 @@
 #include <math.h> // For isnan, isfinite
 #include "core_galaxy_accessors.h"
 #include "core_logging.h"
-#include "core_properties.h" // For GALAXY_PROP_* macros
 #include "core_allvars.h"    // For struct GALAXY definition
+#include "core_properties.h" // For GALAXY_PROP_* macros
 
-// Default to direct access initially
-int use_extension_properties = 0;
+// Always use properties now
+int use_extension_properties = 1;
 
 // Define maximum number of registered accessors
 #define MAX_PROPERTY_ACCESSORS 128
@@ -79,76 +79,55 @@ void set_galaxy_property(struct GALAXY *galaxy, int accessor_id, double value) {
     set_fn(galaxy, value);
 }
 
-// ===== Standard Property Accessor Implementations =====
-
-// Helper macro for getter functions
-// Returns double for consistency, handles potential NaN
-#define DEFINE_GETTER(prop_name, return_type, direct_field, prop_macro) \
-double galaxy_get_##prop_name(const struct GALAXY *galaxy) {            \
-    if (galaxy == NULL) { LOG_ERROR("Null galaxy pointer in getter for %s", #prop_name); return NAN; } \
-    if (use_extension_properties) {                                     \
-        if (galaxy->properties == NULL) { LOG_ERROR("Galaxy properties not allocated for %s (GalaxyNr %d)", #prop_name, galaxy->GalaxyNr); return NAN; } \
-        /* Cast result to double for consistent return type */          \
-        return (return_type)prop_macro(galaxy);                         \
-    } else {                                                            \
-        /* Cast result to double for consistent return type */          \
-        return (return_type)galaxy->direct_field;                       \
-    }                                                                   \
+// Define stubs for physics-specific accessors
+// These will be implemented in physics modules
+#define STUB_GETTER(prop_name) \
+double galaxy_get_##prop_name(const struct GALAXY *galaxy) { \
+    LOG_WARNING("No implementation for galaxy_get_" #prop_name " (physics property)"); \
+    return 0.0; \
 }
 
-// Helper macro for setter functions
-// Takes double, casts to appropriate type for setting
-#define DEFINE_SETTER(prop_name, value_type, direct_field, prop_macro) \
-void galaxy_set_##prop_name(struct GALAXY *galaxy, double value) {      \
-    if (galaxy == NULL) { LOG_ERROR("Null galaxy pointer in setter for %s", #prop_name); return; } \
-    if (use_extension_properties) {                                     \
-        if (galaxy->properties == NULL) { LOG_ERROR("Galaxy properties not allocated for %s (GalaxyNr %d)", #prop_name, galaxy->GalaxyNr); return; } \
-        /* Cast input double to the correct storage type */             \
-        prop_macro(galaxy) = (value_type)value;                         \
-    } else {                                                            \
-        /* Cast input double to the correct storage type */             \
-        galaxy->direct_field = (value_type)value;                       \
-    }                                                                   \
+#define STUB_SETTER(prop_name) \
+void galaxy_set_##prop_name(struct GALAXY *galaxy, double value) { \
+    LOG_WARNING("No implementation for galaxy_set_" #prop_name " (physics property)"); \
 }
 
-// --- Implementations for required accessors ---
-DEFINE_GETTER(stellar_mass, double, StellarMass, GALAXY_PROP_StellarMass)
-DEFINE_GETTER(blackhole_mass, double, BlackHoleMass, GALAXY_PROP_BlackHoleMass)
-DEFINE_GETTER(cold_gas, double, ColdGas, GALAXY_PROP_ColdGas)
-DEFINE_GETTER(hot_gas, double, HotGas, GALAXY_PROP_HotGas)
-DEFINE_GETTER(ejected_mass, double, EjectedMass, GALAXY_PROP_EjectedMass)
-DEFINE_GETTER(metals_stellar_mass, double, MetalsStellarMass, GALAXY_PROP_MetalsStellarMass)
-DEFINE_GETTER(metals_cold_gas, double, MetalsColdGas, GALAXY_PROP_MetalsColdGas)
-DEFINE_GETTER(metals_hot_gas, double, MetalsHotGas, GALAXY_PROP_MetalsHotGas)
-DEFINE_GETTER(metals_ejected_mass, double, MetalsEjectedMass, GALAXY_PROP_MetalsEjectedMass)
-DEFINE_GETTER(bulge_mass, double, BulgeMass, GALAXY_PROP_BulgeMass)
-DEFINE_GETTER(metals_bulge_mass, double, MetalsBulgeMass, GALAXY_PROP_MetalsBulgeMass)
-DEFINE_GETTER(ics, double, ICS, GALAXY_PROP_ICS)
-DEFINE_GETTER(metals_ics, double, MetalsICS, GALAXY_PROP_MetalsICS)
-DEFINE_GETTER(cooling_rate, double, Cooling, GALAXY_PROP_Cooling)
-DEFINE_GETTER(heating_rate, double, Heating, GALAXY_PROP_Heating)
-DEFINE_GETTER(outflow_rate, double, OutflowRate, GALAXY_PROP_OutflowRate)
-DEFINE_GETTER(totalsatellitebaryons, double, TotalSatelliteBaryons, GALAXY_PROP_TotalSatelliteBaryons)
+// Stub implementations for physics properties
+STUB_GETTER(stellar_mass)
+STUB_GETTER(blackhole_mass)
+STUB_GETTER(cold_gas)
+STUB_GETTER(hot_gas)
+STUB_GETTER(ejected_mass)
+STUB_GETTER(metals_stellar_mass)
+STUB_GETTER(metals_cold_gas)
+STUB_GETTER(metals_hot_gas)
+STUB_GETTER(metals_ejected_mass)
+STUB_GETTER(bulge_mass)
+STUB_GETTER(metals_bulge_mass)
+STUB_GETTER(ics)
+STUB_GETTER(metals_ics)
+STUB_GETTER(cooling_rate)
+STUB_GETTER(heating_rate)
+STUB_GETTER(outflow_rate)
+STUB_GETTER(totalsatellitebaryons)
 
-DEFINE_SETTER(stellar_mass, float, StellarMass, GALAXY_PROP_StellarMass)
-DEFINE_SETTER(blackhole_mass, float, BlackHoleMass, GALAXY_PROP_BlackHoleMass)
-DEFINE_SETTER(cold_gas, float, ColdGas, GALAXY_PROP_ColdGas)
-DEFINE_SETTER(hot_gas, float, HotGas, GALAXY_PROP_HotGas)
-DEFINE_SETTER(ejected_mass, float, EjectedMass, GALAXY_PROP_EjectedMass)
-DEFINE_SETTER(metals_stellar_mass, float, MetalsStellarMass, GALAXY_PROP_MetalsStellarMass)
-DEFINE_SETTER(metals_cold_gas, float, MetalsColdGas, GALAXY_PROP_MetalsColdGas)
-DEFINE_SETTER(metals_hot_gas, float, MetalsHotGas, GALAXY_PROP_MetalsHotGas)
-DEFINE_SETTER(metals_ejected_mass, float, MetalsEjectedMass, GALAXY_PROP_MetalsEjectedMass)
-DEFINE_SETTER(bulge_mass, float, BulgeMass, GALAXY_PROP_BulgeMass)
-DEFINE_SETTER(metals_bulge_mass, float, MetalsBulgeMass, GALAXY_PROP_MetalsBulgeMass)
-DEFINE_SETTER(ics, float, ICS, GALAXY_PROP_ICS)
-DEFINE_SETTER(metals_ics, float, MetalsICS, GALAXY_PROP_MetalsICS)
-DEFINE_SETTER(cooling_rate, double, Cooling, GALAXY_PROP_Cooling) // Note: Cooling/Heating are double
-DEFINE_SETTER(heating_rate, double, Heating, GALAXY_PROP_Heating) // Note: Cooling/Heating are double
-DEFINE_SETTER(outflow_rate, float, OutflowRate, GALAXY_PROP_OutflowRate)
-DEFINE_SETTER(totalsatellitebaryons, float, TotalSatelliteBaryons, GALAXY_PROP_TotalSatelliteBaryons)
+STUB_SETTER(stellar_mass)
+STUB_SETTER(blackhole_mass)
+STUB_SETTER(cold_gas)
+STUB_SETTER(hot_gas)
+STUB_SETTER(ejected_mass) 
+STUB_SETTER(metals_stellar_mass)
+STUB_SETTER(metals_cold_gas)
+STUB_SETTER(metals_hot_gas)
+STUB_SETTER(metals_ejected_mass)
+STUB_SETTER(bulge_mass)
+STUB_SETTER(metals_bulge_mass)
+STUB_SETTER(ics)
+STUB_SETTER(metals_ics)
+STUB_SETTER(cooling_rate)
+STUB_SETTER(heating_rate)
+STUB_SETTER(outflow_rate)
+STUB_SETTER(totalsatellitebaryons)
 
-// Add definitions for other standard properties as they become needed...
-
-#undef DEFINE_GETTER
-#undef DEFINE_SETTER
+#undef STUB_GETTER
+#undef STUB_SETTER

@@ -809,14 +809,20 @@ int fetch_NumSnapOutputs(void) {
 
 def main():
     """Main entry point for the script"""
+    # Parse command line arguments for input file
+    import argparse
+    parser = argparse.ArgumentParser(description='Generate property headers from YAML definition')
+    parser.add_argument('--input', default='properties.yaml', help='Input YAML file (default: properties.yaml)')
+    args = parser.parse_args()
+    
     # Determine file paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    yaml_file = os.path.join(script_dir, "properties.yaml")
+    yaml_file = os.path.join(script_dir, args.input)
     core_dir = os.path.join(script_dir, "core")
     
-    # Check if properties.yaml exists
+    # Check if input file exists
     if not os.path.exists(yaml_file):
-        print(f"Error: Could not find properties.yaml at {yaml_file}")
+        print(f"Error: Could not find {args.input} at {yaml_file}")
         sys.exit(1)
     
     try:
@@ -826,7 +832,7 @@ def main():
             properties = data.get("properties", [])
         
         if not properties:
-            print("Error: No properties found in properties.yaml")
+            print(f"Error: No properties found in {args.input}")
             sys.exit(1)
         
         # Generate the header and implementation files

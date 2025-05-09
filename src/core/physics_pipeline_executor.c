@@ -3,67 +3,37 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "core_allvars.h" // Include for GALAXY struct if needed by phase functions
+#include "core_allvars.h" // Include for GALAXY struct needed by phase functions
 #include "core_logging.h"
 #include "core_module_system.h"
 #include "core_module_callback.h" // Needed for pipeline_execute_with_callback
 #include "core_pipeline_system.h"
 #include "physics_pipeline_executor.h"
-#include "core_properties_sync.h" // Include header for synchronization functions
-#include "../physics/physics_modules.h" // Include physics modules interface
 
 /**
- * Safely synchronize galaxy properties to/from direct fields
+ * Check if a galaxy is valid for property access
  * with thorough safety checks to prevent segmentation faults
  */
-static void safe_sync_direct_to_properties(struct GALAXY *galaxy) {
+static bool galaxy_is_valid_for_properties(struct GALAXY *galaxy) {
     if (galaxy == NULL) {
-        LOG_ERROR("safe_sync_direct_to_properties: galaxy pointer is NULL");
-        return;
+        LOG_ERROR("galaxy_is_valid_for_properties: galaxy pointer is NULL");
+        return false;
     }
     
     if (galaxy->properties == NULL) {
-        LOG_DEBUG("safe_sync_direct_to_properties: galaxy->properties pointer is NULL for GalaxyNr %d", 
+        LOG_DEBUG("galaxy_is_valid_for_properties: galaxy->properties pointer is NULL for GalaxyNr %d", 
                   galaxy->GalaxyNr);
-        return;
+        return false;
     }
     
-    // Only sync if the galaxy is not merged or disrupted
+    // Only consider galaxies that haven't merged or been disrupted
     if (galaxy->mergeType > 0) {
-        LOG_DEBUG("Skipping sync for merged galaxy %d (mergeType=%d)", 
+        LOG_DEBUG("Galaxy %d is not valid for property access (mergeType=%d)", 
                 galaxy->GalaxyNr, galaxy->mergeType);
-        return;
+        return false;
     }
     
-    // Call the actual sync function
-    sync_direct_to_properties(galaxy);
-}
-
-/**
- * Safely synchronize galaxy properties from properties struct to direct fields
- * with thorough safety checks to prevent segmentation faults
- */
-static void safe_sync_properties_to_direct(struct GALAXY *galaxy) {
-    if (galaxy == NULL) {
-        LOG_ERROR("safe_sync_properties_to_direct: galaxy pointer is NULL");
-        return;
-    }
-    
-    if (galaxy->properties == NULL) {
-        LOG_DEBUG("safe_sync_properties_to_direct: galaxy->properties pointer is NULL for GalaxyNr %d", 
-                  galaxy->GalaxyNr);
-        return;
-    }
-    
-    // Only sync if the galaxy is not merged or disrupted
-    if (galaxy->mergeType > 0) {
-        LOG_DEBUG("Skipping sync for merged galaxy %d (mergeType=%d)", 
-                galaxy->GalaxyNr, galaxy->mergeType);
-        return;
-    }
-    
-    // Call the actual sync function
-    sync_properties_to_direct(galaxy);
+    return true;
 }
 
 /*
@@ -102,81 +72,62 @@ int physics_step_executor(
     switch (context->execution_phase) {
         case PIPELINE_PHASE_HALO:
             if (module->execute_halo_phase != NULL) {
-                // For HALO phase, sync the central galaxy before module execution
+                // Verify the central galaxy has valid properties before execution
                 int centralgal = context->centralgal;
+                bool valid = false;
                 if (centralgal >= 0 && centralgal < context->ngal && context->galaxies != NULL) {
-                    safe_sync_direct_to_properties(&context->galaxies[centralgal]);
+                    valid = galaxy_is_valid_for_properties(&context->galaxies[centralgal]);
                 }
                 
-                LOG_DEBUG("Executing HALO phase for module '%s'", module->name);
-                status = module->execute_halo_phase(module_data, context);
-                
-                // Sync back after module execution
-                if (centralgal >= 0 && centralgal < context->ngal && context->galaxies != NULL) {
-                    safe_sync_properties_to_direct(&context->galaxies[centralgal]);
+                if (valid) {
+                    LOG_DEBUG("Executing HALO phase for module '%s'", module->name);
+                    status = module->execute_halo_phase(module_data, context);
+                } else {
+                    LOG_WARNING("HALO phase skipped for module '%s': central galaxy properties not available", module->name);
+                    status = 0; // Skip but don't fail
                 }
             } else {
-                 LOG_DEBUG("Module '%s' has no HALO phase implementation.", module->name);
+                LOG_DEBUG("Module '%s' has no HALO phase implementation.", module->name);
             }
             break;
 
         case PIPELINE_PHASE_GALAXY:
             if (module->execute_galaxy_phase != NULL) {
-                // For GALAXY phase, sync the current galaxy before module execution
+                // Verify the current galaxy has valid properties before execution
                 int galaxy_idx = context->current_galaxy;
+                bool valid = false;
                 if (galaxy_idx >= 0 && galaxy_idx < context->ngal && context->galaxies != NULL) {
-                    safe_sync_direct_to_properties(&context->galaxies[galaxy_idx]);
+                    valid = galaxy_is_valid_for_properties(&context->galaxies[galaxy_idx]);
                 }
                 
-                LOG_DEBUG("Executing GALAXY phase for module '%s', galaxy %d", module->name, context->current_galaxy);
-                status = module->execute_galaxy_phase(module_data, context);
-                
-                // Sync back after module execution
-                if (galaxy_idx >= 0 && galaxy_idx < context->ngal && context->galaxies != NULL) {
-                    safe_sync_properties_to_direct(&context->galaxies[galaxy_idx]);
+                if (valid) {
+                    LOG_DEBUG("Executing GALAXY phase for module '%s', galaxy %d", module->name, context->current_galaxy);
+                    status = module->execute_galaxy_phase(module_data, context);
+                } else {
+                    LOG_DEBUG("GALAXY phase skipped for module '%s', galaxy %d: properties not available", 
+                            module->name, context->current_galaxy);
+                    status = 0; // Skip but don't fail
                 }
             } else {
-                 LOG_DEBUG("Module '%s' has no GALAXY phase implementation.", module->name);
+                LOG_DEBUG("Module '%s' has no GALAXY phase implementation.", module->name);
             }
             break;
 
         case PIPELINE_PHASE_POST:
             if (module->execute_post_phase != NULL) {
-                // For POST phase, sync the central galaxy before module execution
-                int centralgal = context->centralgal;
-                if (centralgal >= 0 && centralgal < context->ngal && context->galaxies != NULL) {
-                    safe_sync_direct_to_properties(&context->galaxies[centralgal]);
-                }
-                
                 LOG_DEBUG("Executing POST phase for module '%s'", module->name);
                 status = module->execute_post_phase(module_data, context);
-                
-                // Sync back after module execution
-                if (centralgal >= 0 && centralgal < context->ngal && context->galaxies != NULL) {
-                    safe_sync_properties_to_direct(&context->galaxies[centralgal]);
-                }
             } else {
-                 LOG_DEBUG("Module '%s' has no POST phase implementation.", module->name);
+                LOG_DEBUG("Module '%s' has no POST phase implementation.", module->name);
             }
             break;
 
         case PIPELINE_PHASE_FINAL:
             if (module->execute_final_phase != NULL) {
-                // For FINAL phase, sync the central galaxy before module execution
-                int centralgal = context->centralgal;
-                if (centralgal >= 0 && centralgal < context->ngal && context->galaxies != NULL) {
-                    safe_sync_direct_to_properties(&context->galaxies[centralgal]);
-                }
-                
                 LOG_DEBUG("Executing FINAL phase for module '%s'", module->name);
                 status = module->execute_final_phase(module_data, context);
-                
-                // Sync back after module execution
-                if (centralgal >= 0 && centralgal < context->ngal && context->galaxies != NULL) {
-                    safe_sync_properties_to_direct(&context->galaxies[centralgal]);
-                }
             } else {
-                 LOG_DEBUG("Module '%s' has no FINAL phase implementation.", module->name);
+                LOG_DEBUG("Module '%s' has no FINAL phase implementation.", module->name);
             }
             break;
 
@@ -259,7 +210,7 @@ int pipeline_execute_with_callback(
     return result;
 }
 
-/* Initialize physics pipeline - Placeholder, real implementation might differ */
+/* Initialize a minimal physics-agnostic pipeline */
 int physics_pipeline_initialize(void) {
     struct module_pipeline *pipeline = pipeline_get_global();
     if (pipeline == NULL) {
@@ -267,18 +218,10 @@ int physics_pipeline_initialize(void) {
         return -1;
     }
 
-    /* Add standard physics steps in the correct order */
-    pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_REINCORPORATION, NULL, "reincorporation", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_COOLING, NULL, "cooling", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_STAR_FORMATION, NULL, "star_formation", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_FEEDBACK, NULL, "feedback", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_AGN, NULL, "agn", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_DISK_INSTABILITY, NULL, "disk_instability", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_MISC, NULL, "misc", true, true); // Example misc step
-    // Note: output_preparation module is now registered through the physics_modules.h system
-
-    LOG_INFO("Physics pipeline initialized with %d steps", pipeline->num_steps);
+    /* Initialize with an empty pipeline */
+    /* Physics modules will register themselves during their initialization */
+    /* This keeps the core completely physics-agnostic */
+    
+    LOG_INFO("Core physics-agnostic pipeline initialized successfully");
     return 0;
 }

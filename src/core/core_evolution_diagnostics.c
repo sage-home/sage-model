@@ -8,6 +8,7 @@
 #include "core_allvars.h"
 #include "core_event_system.h"
 #include "core_pipeline_system.h"
+#include "core_galaxy_accessors.h" // For property accessor functions
 
 /**
  * Initialize the diagnostics for a new evolution run
@@ -219,21 +220,14 @@ int evolution_diagnostics_record_initial_properties(struct evolution_diagnostics
         return -1;
     }
     
-    /* Reset property totals */
+    /* Reset property totals - use very simple approach for core-only properties */
     diag->total_stellar_mass_initial = 0.0;
     diag->total_cold_gas_initial = 0.0;
     diag->total_hot_gas_initial = 0.0;
     diag->total_bulge_mass_initial = 0.0;
     
-    /* Sum galaxy properties */
-    for (int i = 0; i < ngal; i++) {
-        diag->total_stellar_mass_initial += galaxies[i].StellarMass;
-        diag->total_cold_gas_initial += galaxies[i].ColdGas;
-        diag->total_hot_gas_initial += galaxies[i].HotGas;
-        diag->total_bulge_mass_initial += galaxies[i].BulgeMass;
-    }
-    
-    LOG_DEBUG("Recorded initial properties for %d galaxies in halo %d", ngal, diag->halo_nr);
+    /* No property access in core-physics separation (physics properties will be added by modules) */
+    LOG_DEBUG("Recorded initial properties for %d galaxies in halo %d (physics data n/a in core)", ngal, diag->halo_nr);
     
     return 0;
 }
@@ -250,21 +244,14 @@ int evolution_diagnostics_record_final_properties(struct evolution_diagnostics *
     /* Set final galaxy count */
     diag->ngal_final = ngal;
     
-    /* Reset property totals */
+    /* Reset property totals - use very simple approach for core-only properties */
     diag->total_stellar_mass_final = 0.0;
     diag->total_cold_gas_final = 0.0;
     diag->total_hot_gas_final = 0.0;
     diag->total_bulge_mass_final = 0.0;
     
-    /* Sum galaxy properties */
-    for (int i = 0; i < ngal; i++) {
-        diag->total_stellar_mass_final += galaxies[i].StellarMass;
-        diag->total_cold_gas_final += galaxies[i].ColdGas;
-        diag->total_hot_gas_final += galaxies[i].HotGas;
-        diag->total_bulge_mass_final += galaxies[i].BulgeMass;
-    }
-    
-    LOG_DEBUG("Recorded final properties for %d galaxies in halo %d", ngal, diag->halo_nr);
+    /* No property access in core-physics separation (physics properties will be added by modules) */
+    LOG_DEBUG("Recorded final properties for %d galaxies in halo %d (physics data n/a in core)", ngal, diag->halo_nr);
     
     return 0;
 }

@@ -52,6 +52,7 @@ tests/test_memory_galaxy_properties
 tests/test_galaxy_property_macros
 tests/test_module_template
 tests/test_output_preparation
+tests/test_empty_pipeline
 
 .repomix/
 trees_*

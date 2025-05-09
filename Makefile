@@ -55,7 +55,8 @@ PHYSICS_SRC := physics/legacy/model_starformation_and_feedback.c \
         physics/example_galaxy_extension.c \
         physics/example_event_handler.c \
         physics/infall_module.c physics/cooling_module.c \
-        physics/cooling_tables.c physics/output_preparation_module.c
+        physics/cooling_tables.c physics/output_preparation_module.c \
+        physics/placeholder_empty_module.c
 
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
@@ -304,9 +305,9 @@ $(shell mkdir -p $(ROOT_DIR)/.stamps)
 
 # Rule to generate property headers
 .SECONDARY: $(GENERATED_FILES)
-$(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/properties.yaml $(SRC_PREFIX)/generate_property_headers.py
+$(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/core_properties.yaml $(SRC_PREFIX)/generate_property_headers.py
 	@echo "Generating property headers from YAML definition"
-	cd $(SRC_PREFIX) && python3 generate_property_headers.py
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input core_properties.yaml
 	@mkdir -p $(dir $@)
 	@touch $@
 
@@ -400,8 +401,11 @@ test_module_template: tests/test_module_template.c $(SAGELIB)
 test_output_preparation: tests/test_output_preparation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_output_preparation tests/test_output_preparation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+test_core_physics_separation: tests/test_core_physics_separation.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_physics_separation tests/test_core_physics_separation.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
@@ -452,6 +456,8 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_module_template || FAILED="$$FAILED test_module_template"
 	@echo "Running test_output_preparation..."
 	@./tests/test_output_preparation || FAILED="$$FAILED test_output_preparation"
+	@echo "Running test_core_physics_separation..."
+	@./tests/test_core_physics_separation || FAILED="$$FAILED test_core_physics_separation"
 	@echo "Running memory tests..."
 	@cd tests && make -f Makefile.memory_tests || FAILED="$$FAILED memory_tests"
 	@if [ -n "$$FAILED" ]; then \

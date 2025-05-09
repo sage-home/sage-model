@@ -1,0 +1,21 @@
+{
+    "pipeline": {
+        "name": "empty_pipeline",
+        "description": "Empty pipeline for testing core-physics separation",
+        "steps": [
+            {
+                "module_type": "MISC",
+                "module_name": "placeholder_module",
+                "step_name": "placeholder",
+                "required": true,
+                "auto_activate": true
+            }
+        ]
+    },
+    "modules": {
+        "placeholder_module": {
+            "auto_initialize": true,
+            "phases": ["HALO", "GALAXY", "POST", "FINAL"]
+        }
+    }
+}

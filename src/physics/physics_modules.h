@@ -9,6 +9,7 @@
 #include "cooling_module.h"
 #include "infall_module.h"
 #include "output_preparation_module.h"
+#include "placeholder_empty_module.h"
 
 /**
  * @brief Initialize all physics modules

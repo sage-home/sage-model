@@ -21,27 +21,25 @@
 #include "core_merger_queue.h"
 #include "core_event_system.h"
 #include "core_evolution_diagnostics.h"
-#include "core_galaxy_accessors.h"
-#include "core_properties_sync.h" // Needed for synchronization functions
+#include "core_galaxy_accessors.h"  // For galaxy_set_* functions
 
-// Include headers for legacy physics compatibility functions
-#include "../physics/legacy/model_misc.h"
-#include "../physics/legacy/model_mergers.h"
-#include "../physics/legacy/model_infall.h" // Added
-#include "../physics/legacy/model_reincorporation.h"
-#include "../physics/legacy/model_starformation_and_feedback.h"
-#include "../physics/legacy/model_disk_instability.h" // Added
-#include "../physics/cooling_module.h" // Still needed for cool_gas_onto_galaxy
-#include "../physics/agn_module.h" // Still needed for AGN parameters view
-#include "../physics/feedback_module.h" // Still needed for feedback parameters view
-#include "../physics/physics_modules.h" // Include physics modules interface
-#include "../core/core_parameter_views.h"
+// Legacy function forward declarations for temporary compatibility
+// These will be replaced by pipeline modules in the physics-agnostic core
+double estimate_merging_time(const int halonr, const int mostmassive, const int p, struct halo_data *halos, struct GALAXY *galaxies, struct params *run_params);
+double get_virial_mass(const int halonr, struct halo_data *halos, struct params *run_params);
+double get_virial_radius(const int halonr, struct halo_data *halos, struct params *run_params);
+double get_virial_velocity(const int halonr, struct halo_data *halos, struct params *run_params);
+double get_disk_radius(const int halonr, const int p, struct halo_data *halos, struct GALAXY *galaxies);
 
 
 // Forward declarations for legacy compatibility functions called in fallbacks
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
 void check_disk_instability(const int p, const int centralgal, const int halonr, const double time, const double dt, const int step,
                             struct GALAXY *galaxies, struct params *run_params);
+
+// Forward declaration for init_galaxy function
+void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_data *halos,
+                struct GALAXY *galaxies, struct params *run_params);
 
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
@@ -256,16 +254,12 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
                     galaxies[ngal].Mvir = get_virial_mass(halonr, halos, run_params);
 
                     // Replace direct field access with accessor functions
+                    // Set physics-related properties through accessors
                     galaxy_set_cooling_rate(&galaxies[ngal], 0.0);
                     galaxy_set_heating_rate(&galaxies[ngal], 0.0);
-                    galaxy_set_quasar_accretion(&galaxies[ngal], 0.0);
                     galaxy_set_outflow_rate(&galaxies[ngal], 0.0);
-
-                    for(int step = 0; step < STEPS; step++) {
-                        galaxies[ngal].SfrDisk[step] = galaxies[ngal].SfrBulge[step] = 0.0;
-                        galaxies[ngal].SfrDiskColdGas[step] = galaxies[ngal].SfrDiskColdGasMetals[step] = 0.0;
-                        galaxies[ngal].SfrBulgeColdGas[step] = galaxies[ngal].SfrBulgeColdGasMetals[step] = 0.0;
-                    }
+                    
+                    // SFR history arrays now handled in physics modules as needed
 
                     if(halonr == halos[halonr].FirstHaloInFOFgroup) {
                         // a central galaxy
@@ -273,7 +267,7 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
                         galaxies[ngal].mergeIntoID = -1;
                         galaxies[ngal].MergTime = 999.9f;
 
-                        galaxies[ngal].DiskScaleRadius = get_disk_radius(halonr, ngal, halos, galaxies);
+                        // DiskScaleRadius now handled in physics modules
 
                         galaxies[ngal].Type = 0;
                     } else {
@@ -425,33 +419,28 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
 
     // Get the global physics pipeline
     struct module_pipeline *physics_pipeline = pipeline_get_global();
-    bool use_pipeline = false;
-
-    // Check if the pipeline is available and properly configured
-    if (physics_pipeline != NULL) {
-        pipeline_validate(physics_pipeline);
-        if (physics_pipeline->num_steps > 0) {
-            static bool first_pipeline_usage = true;
-            if (first_pipeline_usage) {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_INFO, "Using physics pipeline '%s' with %d steps",
-                        physics_pipeline->name, physics_pipeline->num_steps);
-                first_pipeline_usage = false;
-            } else {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Using physics pipeline for halo %d", ctx.halo_nr);
-            }
-            use_pipeline = true;
-        } else {
-            static bool logged_empty_pipeline = false;
-            if (!logged_empty_pipeline) {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_WARNING, "Physics pipeline is empty, using traditional physics implementation");
-                logged_empty_pipeline = true;
-            }
-        }
+    
+    // Validate pipeline is available
+    if (physics_pipeline == NULL || physics_pipeline->num_steps == 0) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "No physics pipeline available. The core infrastructure requires at least an empty pipeline.");
+        evolution_diagnostics_finalize(&diag);
+        evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
+        return EXIT_FAILURE;
+    }
+    
+    // Log pipeline usage
+    static bool first_pipeline_usage = true;
+    if (first_pipeline_usage) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_INFO, "Using physics pipeline '%s' with %d steps",
+                physics_pipeline->name, physics_pipeline->num_steps);
+        first_pipeline_usage = false;
+    } else {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Using physics pipeline for halo %d", ctx.halo_nr);
     }
 
     // Create merger event queue
     struct merger_event_queue merger_queue;
-    init_merger_queue(&merger_queue); // Use init function
+    init_merger_queue(&merger_queue);
     ctx.merger_queue = &merger_queue;
 
     // EXECUTE PIPELINE PHASES - with diagnostics tracking
@@ -461,34 +450,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     pipeline_ctx.execution_phase = PIPELINE_PHASE_HALO;
     int status = 0;
 
-    // Sync central galaxy before HALO phase
-    if (ctx.galaxies[ctx.centralgal].properties != NULL) {
-        sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
-    } else {
-        // Allocate properties if needed
-        if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
-            sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
-        } else {
+    // Ensure properties are available for the central galaxy if needed
+    if (ctx.galaxies[ctx.centralgal].properties == NULL) {
+        if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) != 0) {
             LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
         }
     }
 
-    if (use_pipeline) {
-        // Execute HALO phase using the pipeline executor defined elsewhere
-        status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
-    } else {
-        // Traditional HALO phase implementation (infall calculation)
-        double calculated_infall_gas = infall_recipe(ctx.centralgal, ctx.ngal, ctx.redshift, ctx.galaxies, run_params);
-        pipeline_context_set_data(&pipeline_ctx, "infallingGas", calculated_infall_gas); // Store for GALAXY phase
-        status = 0; // Assume success for legacy path
-    }
-
-    // Sync central galaxy after HALO phase
-    if (ctx.galaxies[ctx.centralgal].properties != NULL) {
-        sync_properties_to_direct(&ctx.galaxies[ctx.centralgal]);
-    } else {
-        LOG_WARNING("Central galaxy %d properties pointer is NULL after HALO phase", ctx.centralgal);
-    }
+    // Execute HALO phase (physics agnostic)
+    status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
 
     evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_HALO);
 
@@ -506,7 +476,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         pipeline_ctx.dt = ctx.deltaT; // Pass the full deltaT to context, modules should use STEPS
 
         // Reset merger queue for this timestep
-        init_merger_queue(&merger_queue); // Use init function
+        init_merger_queue(&merger_queue);
 
         // Phase 2: GALAXY phase (for each galaxy)
         evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_GALAXY);
@@ -522,53 +492,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             pipeline_ctx.current_galaxy = p;
             diag.phases[1].galaxy_count++; // Index 1 corresponds to GALAXY phase
 
-            // Sync direct fields -> properties struct BEFORE module runs for current galaxy
-            if (ctx.galaxies[p].properties != NULL) {
-                sync_direct_to_properties(&ctx.galaxies[p]);
-            } else {
-                // Allocate properties if needed
-                if (allocate_galaxy_properties(&ctx.galaxies[p], run_params) == 0) {
-                    sync_direct_to_properties(&ctx.galaxies[p]);
-                } else {
+            // Ensure properties are available for current galaxy if needed
+            if (ctx.galaxies[p].properties == NULL) {
+                if (allocate_galaxy_properties(&ctx.galaxies[p], run_params) != 0) {
                     LOG_WARNING("Failed to allocate properties for galaxy %d", p);
                 }
             }
 
-            // Execute GALAXY phase
-            if (use_pipeline) {
-                status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
-            } else {
-                // Traditional GALAXY phase implementation
-                // Infall application
-                if (p == ctx.centralgal) {
-                    double infall_gas = 0.0;
-                    pipeline_context_get_data(&pipeline_ctx, "infallingGas", &infall_gas);
-                    add_infall_to_hot(p, infall_gas / STEPS, galaxies);
-                    if (run_params->physics.ReIncorporationFactor > 0.0) {
-                        reincorporate_gas_compat(p, dt, galaxies, run_params);
-                    }
-                } else if (galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
-                    strip_from_satellite(ctx.centralgal, p, ctx.redshift, galaxies, run_params);
-                }
-                // Cooling
-                cooling_recipe_compat(p, dt, galaxies, run_params);
-                // Star formation & Feedback
-                starformation_and_feedback_compat(p, ctx.centralgal, ctx.time, dt, ctx.halo_nr, step, galaxies, run_params);
-                // Disk Instability
-                if(run_params->physics.DiskInstabilityOn) {
-                    check_disk_instability(
-                        p, ctx.centralgal,              // Use loop variable 'p' and ctx.centralgal
-                        ctx.halo_nr, ctx.time, dt,      // Use ctx fields and per-step dt
-                        step, ctx.galaxies, run_params); // Use loop variable 'step', ctx.galaxies, and run_params
-                }
-                // AGN (handled implicitly in cooling/mergers in legacy)
-                status = 0; // Assume success for legacy path
-            }
-
-            // Sync properties struct -> direct fields AFTER module runs for current galaxy
-            if (ctx.galaxies[p].properties != NULL) {
-                sync_properties_to_direct(&ctx.galaxies[p]);
-            }
+            // Execute GALAXY phase for current galaxy (physics agnostic)
+            status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
 
             if (status != 0) {
                 CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute GALAXY phase for galaxy %d", p);
@@ -582,14 +514,14 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 ctx.galaxies[p].mergeType == 0 && ctx.galaxies[p].MergTime < 999.0) {
 
                 // Calculate merger time decrement
-                double mergtime = ctx.galaxies[p].MergTime - dt; // Use dt for this step
+                double mergtime = ctx.galaxies[p].MergTime - dt;
 
                 // Check if merger occurs in this step
                 if (mergtime <= 0.0) {
                     evolution_diagnostics_add_merger_detection(&diag, ctx.galaxies[p].mergeType);
                     queue_merger_event(&merger_queue, p, ctx.galaxies[p].CentralGal,
                                      mergtime, ctx.time, dt,
-                                     ctx.centralgal, step, ctx.galaxies[p].mergeType); // Pass centralgal as halo_nr context
+                                     ctx.centralgal, step, ctx.galaxies[p].mergeType);
                 } else {
                     // Update remaining merger time if no merger this step
                     ctx.galaxies[p].MergTime = mergtime;
@@ -602,31 +534,16 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         // Phase 3: POST phase (after all galaxies processed in step)
         evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_POST);
         pipeline_ctx.execution_phase = PIPELINE_PHASE_POST;
-
-        // Sync central galaxy before POST phase
-        if (ctx.galaxies[ctx.centralgal].properties != NULL) {
-            sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
-        } else {
-            // Allocate properties if needed
-            if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
-                sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
-            } else {
+        
+        // Ensure central galaxy has properties allocated if needed
+        if (ctx.galaxies[ctx.centralgal].properties == NULL) {
+            if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) != 0) {
                 LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
             }
         }
 
-        if (use_pipeline) {
-            status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
-        } else {
-            // Traditional POST phase implementation (Mergers)
-            process_merger_events(&merger_queue, ctx.galaxies, run_params);
-            status = 0; // Assume success for legacy path
-        }
-
-        // Sync central galaxy after POST phase
-        if (ctx.galaxies[ctx.centralgal].properties != NULL) {
-            sync_properties_to_direct(&ctx.galaxies[ctx.centralgal]);
-        }
+        // Execute POST phase (physics agnostic)
+        status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
 
         evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_POST);
 
@@ -650,29 +567,15 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_FINAL);
     pipeline_ctx.execution_phase = PIPELINE_PHASE_FINAL;
 
-    // Sync central galaxy before FINAL phase
-    if (ctx.galaxies[ctx.centralgal].properties != NULL) {
-        sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
-    } else {
-        // Allocate properties if needed
-        if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) == 0) {
-            sync_direct_to_properties(&ctx.galaxies[ctx.centralgal]);
-        } else {
+    // Ensure central galaxy has properties allocated if needed
+    if (ctx.galaxies[ctx.centralgal].properties == NULL) {
+        if (allocate_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params) != 0) {
             LOG_WARNING("Failed to allocate properties for central galaxy %d", ctx.centralgal);
         }
     }
 
-    if (use_pipeline) {
-        status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
-    } else {
-        // Traditional FINAL phase implementation (if any)
-        status = 0; // Assume success for legacy path
-    }
-
-    // Sync central galaxy after FINAL phase
-    if (ctx.galaxies[ctx.centralgal].properties != NULL) {
-        sync_properties_to_direct(&ctx.galaxies[ctx.centralgal]);
-    }
+    // Execute FINAL phase (physics agnostic)
+    status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
 
     evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_FINAL);
 
@@ -694,37 +597,12 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     evolution_diagnostics_report(&diag, LOG_LEVEL_INFO);
 
     // Extra miscellaneous stuff before finishing this halo
-    ctx.galaxies[ctx.centralgal].TotalSatelliteBaryons = 0.0;
+    // Set TotalSatelliteBaryons to 0.0 - this would normally be calculated based on physics components
+    // Set total satellite baryons through accessor
+    galaxy_set_totalsatellitebaryons(&ctx.galaxies[ctx.centralgal], 0.0);
+    
     const double time_diff = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
     const double inv_deltaT = (time_diff > 1e-10) ? 1.0 / time_diff : 0.0; // Avoid division by zero or very small numbers
-
-    for(int p = 0; p < ctx.ngal; p++) {
-        // Don't bother with galaxies that have already merged
-        if(ctx.galaxies[p].mergeType > 0) {
-            continue;
-        }
-
-        // Use accessor functions for normalizing rates
-        double cooling = galaxy_get_cooling_rate(&ctx.galaxies[p]);
-        double heating = galaxy_get_heating_rate(&ctx.galaxies[p]);
-        double outflow = galaxy_get_outflow_rate(&ctx.galaxies[p]);
-
-        galaxy_set_cooling_rate(&ctx.galaxies[p], cooling * inv_deltaT);
-        galaxy_set_heating_rate(&ctx.galaxies[p], heating * inv_deltaT);
-        galaxy_set_outflow_rate(&ctx.galaxies[p], outflow * inv_deltaT);
-
-        if(p != ctx.centralgal) {
-            // Use accessors to get masses for summation
-            double stellar_mass = galaxy_get_stellar_mass(&ctx.galaxies[p]);
-            double bh_mass = galaxy_get_blackhole_mass(&ctx.galaxies[p]);
-            double cold_gas = galaxy_get_cold_gas(&ctx.galaxies[p]);
-            double hot_gas = galaxy_get_hot_gas(&ctx.galaxies[p]);
-            // Need to use the setter for TotalSatelliteBaryons on the central galaxy
-            galaxy_set_totalsatellitebaryons(&ctx.galaxies[ctx.centralgal],
-                                             galaxy_get_totalsatellitebaryons(&ctx.galaxies[ctx.centralgal]) +
-                                             (stellar_mass + bh_mass + cold_gas + hot_gas));
-        }
-    }
 
     // Attach final galaxy list to halo
     for(int p = 0, currenthalo = -1; p < ctx.ngal; p++) {

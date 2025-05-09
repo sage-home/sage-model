@@ -1,0 +1,209 @@
+# core_properties.yaml - Core infrastructure properties only
+# This file defines only the core properties needed for the infrastructure to function
+# All physics-specific properties should be defined in physics modules
+
+properties:
+  # Identification Properties
+  - name: SnapNum
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Snapshot number of the galaxy"
+    output: true
+    read_only: false
+
+  - name: Type
+    type: int32_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Galaxy type (0=central, 1=satellite)"
+    output: true
+    read_only: false
+    
+  - name: GalaxyNr
+    type: int32_t
+    initial_value: 0
+    units: "dimensionless" 
+    description: "Galaxy number within the tree"
+    output: true
+    read_only: false
+  
+  - name: CentralGal
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Index of the central galaxy in the same FoF group"
+    output: true
+    read_only: false
+
+  - name: HaloNr
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Halo number in the tree"
+    output: true
+    read_only: false
+    
+  - name: MostBoundID
+    type: long long
+    initial_value: -1
+    units: "dimensionless"
+    description: "ID of the most bound particle in the subhalo"
+    output: true
+    read_only: false
+
+  - name: GalaxyIndex
+    type: uint64_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Unique galaxy identifier based on tree local galaxy number, file local tree number and file number"
+    output: true
+    read_only: "after_first_set"
+    
+  - name: CentralGalaxyIndex
+    type: uint64_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Galaxy index of the central galaxy of this galaxy's FoF group"
+    output: true
+    read_only: "after_first_set"
+    
+  # Merger Properties
+  - name: mergeType
+    type: int32_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Merger type (0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS)"
+    output: true
+    read_only: false
+
+  - name: mergeIntoID
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Galaxy ID that this galaxy merges into"
+    output: true
+    read_only: false
+    
+  - name: mergeIntoSnapNum
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "Snapshot number when the merger occurs"
+    output: true
+    read_only: false
+    
+  - name: dT
+    type: float
+    initial_value: 0.0
+    units: "Gyr"
+    description: "Time step for galaxy evolution"
+    output: true
+    read_only: false
+    
+  # Halo Properties (core infrastructure properties only)
+  - name: Pos
+    type: float[3]
+    initial_value: [0.0, 0.0, 0.0]
+    units: "Mpc/h"
+    description: "Position coordinates (x,y,z)"
+    output: true
+    read_only: false
+    
+  - name: Vel
+    type: float[3]
+    initial_value: [0.0, 0.0, 0.0]
+    units: "km/s"
+    description: "Velocity components (vx,vy,vz)"
+    output: true
+    read_only: false
+    
+  - name: Len
+    type: int
+    initial_value: 0
+    units: "dimensionless"
+    description: "Number of particles in the halo"
+    output: true
+    read_only: false
+    
+  - name: Mvir
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Virial mass of the halo"
+    output: true
+    read_only: false
+    
+  - name: deltaMvir
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Change in virial mass since last snapshot"
+    output: true
+    read_only: false
+    
+  - name: CentralMvir
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Virial mass of the central subhalo"
+    output: true
+    read_only: false
+    
+  - name: Rvir
+    type: float
+    initial_value: 0.0
+    units: "Mpc/h"
+    description: "Virial radius"
+    output: true
+    read_only: false
+    
+  - name: Vvir
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Virial velocity"
+    output: true
+    read_only: false
+    
+  - name: Vmax
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Maximum circular velocity"
+    output: true
+    read_only: false
+    
+  # Core merger tracking
+  - name: MergTime
+    type: float
+    initial_value: 999.9
+    units: "Gyr"
+    description: "Time until merger"
+    output: true
+    read_only: false
+    
+  # Core tracking for infall properties
+  - name: infallMvir
+    type: float
+    initial_value: 0.0
+    units: "1e10 Msun/h"
+    description: "Virial mass at infall"
+    output: true
+    read_only: false
+    
+  - name: infallVvir
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Virial velocity at infall"
+    output: true
+    read_only: false
+    
+  - name: infallVmax
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Maximum circular velocity at infall"
+    output: true
+    read_only: false

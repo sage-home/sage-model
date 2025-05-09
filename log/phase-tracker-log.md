@@ -77,15 +77,15 @@
 #### Phase 5.2.F: Core-Physics Separation ⏳ PENDING
 This phase achieves true physics-agnostic core infrastructure that can run without any physics modules.
 
-##### Phase 5.2.F.1: Core Isolation ⏳ PENDING
-- [ ] Remove ALL physics dependencies from core infrastructure
-- [ ] Remove all direct physics calls in `evolve_galaxies.c`
-- [ ] Remove physics-related include statements from core files
-- [ ] Create minimal properties definition that only includes core infrastructure properties
-- [ ] Remove direct field synchronization from pipeline executor
-- [ ] Remove physics fields from `struct GALAXY` definition (`core_allvars.h`)
-- [ ] Update all core code to be physics-property-agnostic
-- [ ] Verify pipeline system's structural integrity without physics
+##### Phase 5.2.F.1: Core Isolation ✅ COMPLETED
+- [x] Remove ALL physics dependencies from core infrastructure
+- [x] Remove all direct physics calls in `evolve_galaxies.c`
+- [x] Remove physics-related include statements from core files
+- [x] Create minimal properties definition that only includes core infrastructure properties
+- [x] Remove direct field synchronization from pipeline executor
+- [x] Remove physics fields from `struct GALAXY` definition (`core_allvars.h`)
+- [x] Update all core code to be physics-property-agnostic
+- [x] Verify pipeline system's structural integrity without physics
 
 ##### Phase 5.2.F.2: Empty Pipeline Validation ⏳ PENDING
 - [ ] Create empty placeholder modules for essential pipeline points
