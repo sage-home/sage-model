@@ -10,7 +10,12 @@
 #include "../core/core_logging.h"
 #include "../core/core_galaxy_extensions.h"
 #include "../core/core_properties.h"
+
+#ifdef CORE_ONLY
+#include "../physics/placeholder_hdf5_macros.h"
+#else
 #include "../physics/legacy/model_misc.h"
+#endif
 #include "io_interface.h"
 #include "io_hdf5_utils.h"
 #include "io_property_serialization.h"

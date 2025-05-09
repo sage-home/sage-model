@@ -12,6 +12,17 @@ USE-BUFFERED-WRITE := yes  # Enable chunked binary output for better performance
 MAKE-SHARED-LIB := yes     # Build shared library instead of static
 # MAKE-VERBOSE := yes      # Enable verbose information messages
 
+# -------------- Core-Physics Separation Options --------------
+# Physics modules can be disabled for core-only builds
+ifndef PHYSICS_MODULES
+PHYSICS_MODULES := yes
+endif
+
+# Property definition file can be changed
+ifndef PROPERTIES_FILE
+PROPERTIES_FILE := core_properties.yaml
+endif
+
 # -------------- Directory Setup ----------------------------
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # Fallback to current dir if detection fails
@@ -49,6 +60,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_properties_sync.c core/physics_pipeline_executor.c
 
 # Physics model source files
+ifeq ($(PHYSICS_MODULES), yes)
 PHYSICS_SRC := physics/legacy/model_starformation_and_feedback.c \
         physics/legacy/model_disk_instability.c physics/legacy/model_reincorporation.c \
         physics/legacy/model_mergers.c physics/legacy/model_misc.c \
@@ -57,6 +69,12 @@ PHYSICS_SRC := physics/legacy/model_starformation_and_feedback.c \
         physics/infall_module.c physics/cooling_module.c \
         physics/cooling_tables.c physics/output_preparation_module.c \
         physics/placeholder_empty_module.c
+else
+# Include only placeholder modules for core-only build
+PHYSICS_SRC := physics/placeholder_empty_module.c \
+        physics/placeholder_model_misc.c physics/placeholder_validation.c \
+        physics/placeholder_hdf5_save.c
+endif
 
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
@@ -279,9 +297,19 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration
+.PHONY: clean celan celna clena tests all core-only $(EXEC)-core-only test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation
 
 all: $(SAGELIB) $(EXEC)
+
+# Core-only build target
+core-only: 
+	@echo "Building core-only infrastructure..."
+	@PHYSICS_MODULES=no PROPERTIES_FILE=core_properties.yaml CCFLAGS="$(CCFLAGS) -DCORE_ONLY" $(MAKE) $(SAGELIB)
+
+# Core-only executable
+$(EXEC)-core-only: core-only $(SRC_PREFIX)/core/main.c
+	@echo "Building core-only executable..."
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -DCORE_ONLY $(SRC_PREFIX)/core/main.c -L. -l$(LIBNAME) $(LIBFLAGS) -o $@
 
 $(EXEC): $(OBJS)
 	$(CC) $^ $(LIBFLAGS) -o $@
@@ -305,9 +333,9 @@ $(shell mkdir -p $(ROOT_DIR)/.stamps)
 
 # Rule to generate property headers
 .SECONDARY: $(GENERATED_FILES)
-$(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/core_properties.yaml $(SRC_PREFIX)/generate_property_headers.py
-	@echo "Generating property headers from YAML definition"
-	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input core_properties.yaml
+$(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
+	@echo "Generating property headers from $(PROPERTIES_FILE)..."
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE))
 	@mkdir -p $(dir $@)
 	@touch $@
 
@@ -401,8 +429,11 @@ test_module_template: tests/test_module_template.c $(SAGELIB)
 test_output_preparation: tests/test_output_preparation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_output_preparation tests/test_output_preparation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_core_physics_separation: tests/test_core_physics_separation.c $(SAGELIB)
+test_core_physics_separation: tests/test_core_physics_separation.c core-only
+	@echo "Building core physics separation test..."
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_physics_separation tests/test_core_physics_separation.c -L. -l$(LIBNAME) $(LIBFLAGS)
+	@echo "Running core physics separation test..."
+	@cd tests && ./test_core_physics_separation
 
 # Tests execution target
 tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation

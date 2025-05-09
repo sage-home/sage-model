@@ -11,6 +11,11 @@
 #include "../core/core_logging.h"
 #include "../core/core_galaxy_extensions.h"
 
+#ifdef CORE_ONLY
+#include "../physics/placeholder_hdf5_macros.h"
+#include "../physics/placeholder_validation.h"
+#endif
+
 /**
  * @brief Validate property type compatibility
  *
@@ -1267,6 +1272,16 @@ static int validate_galaxy_references(struct validation_context *ctx,
  * @param component Component being validated
  * @return 0 if validation passed, non-zero otherwise
  */
+#ifdef CORE_ONLY
+/* In core-only builds, use placeholder implementation */
+static int validate_galaxy_values(struct validation_context *ctx,
+                                const struct GALAXY *galaxy,
+                                int index,
+                                const char *component) {
+    return placeholder_validate_galaxy_values(ctx, galaxy, index, component);
+}
+#else
+/* In full builds, use complete implementation */
 static int validate_galaxy_values(struct validation_context *ctx,
                                 const struct GALAXY *galaxy,
                                 int index,
@@ -1359,6 +1374,7 @@ static int validate_galaxy_values(struct validation_context *ctx,
     
     return status;
 }
+#endif
 
 /**
  * @brief Check if a galaxy has logical consistency
@@ -1371,6 +1387,16 @@ static int validate_galaxy_values(struct validation_context *ctx,
  * @param component Component being validated
  * @return 0 if validation passed, non-zero otherwise
  */
+#ifdef CORE_ONLY
+/* In core-only builds, use placeholder implementation */
+static int validate_galaxy_consistency(struct validation_context *ctx,
+                                     const struct GALAXY *galaxy,
+                                     int index,
+                                     const char *component) {
+    return placeholder_validate_galaxy_consistency(ctx, galaxy, index, component);
+}
+#else
+/* In full builds, use complete implementation */
 static int validate_galaxy_consistency(struct validation_context *ctx,
                                      const struct GALAXY *galaxy,
                                      int index,
@@ -1439,6 +1465,7 @@ static int validate_galaxy_consistency(struct validation_context *ctx,
     
     return status;
 }
+#endif
 
 /**
  * @brief Validate each galaxy in an array

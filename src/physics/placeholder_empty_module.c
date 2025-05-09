@@ -99,21 +99,22 @@ static int placeholder_execute_final_phase(void *data, struct pipeline_context *
 /**
  * Module definition
  */
-REGISTER_MODULE(
-    placeholder_module,              /* Module name */
-    MODULE_TYPE_MISC,                /* Module type */
-    "placeholder",                   /* Short name */
-    "1.0",                           /* Version */
-    "Placeholder Empty Module",      /* Display name */
-    "SAGE Team",                     /* Author */
-    placeholder_init,                /* Initialize function */
-    placeholder_cleanup,             /* Cleanup function */
-    NULL,                            /* Configure function */
-    false,                           /* Auto-initialize */
-    true,                            /* Auto-register */
-    PIPELINE_PHASE_ALL,              /* Supported phases */
+struct base_module placeholder_module = {
+    .name = "placeholder_module",              /* Module name */
+    .type = MODULE_TYPE_MISC,                /* Module type */
+    .version = "1.0",                        /* Version */
+    .author = "SAGE Team",                   /* Author */
+    .initialize = placeholder_init,          /* Initialize function */
+    .cleanup = placeholder_cleanup,          /* Cleanup function */
+    .configure = NULL,                       /* Configure function */
     .execute_halo_phase = placeholder_execute_halo_phase,
     .execute_galaxy_phase = placeholder_execute_galaxy_phase,
     .execute_post_phase = placeholder_execute_post_phase,
-    .execute_final_phase = placeholder_execute_final_phase
-);
+    .execute_final_phase = placeholder_execute_final_phase,
+    .phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY | PIPELINE_PHASE_POST | PIPELINE_PHASE_FINAL /* All phases */
+};
+
+/* Register the module at startup */
+static void __attribute__((constructor)) register_module(void) {
+    module_register(&placeholder_module);
+}

@@ -18,10 +18,10 @@
 #include "../src/core/core_galaxy_extensions.h"
 #include "../src/core/core_event_system.h"
 #include "../src/core/physics_pipeline_executor.h"
-#include "../src/physics/placeholder_empty_module.h"
+#include "../src/core/core_properties.h"
 
 /* Test helper functions */
-static void setup_minimal_galaxy_data(struct GALAXY *galaxy);
+static void setup_minimal_galaxy_data(struct GALAXY *galaxy, struct params *params);
 static void setup_minimal_pipeline(void);
 static int test_pipeline_execution(void);
 
@@ -30,19 +30,20 @@ int main(int argc, char **argv) {
     (void)argv;
     
     /* Initialize logging */
-    set_logging_level(LOG_LEVEL_INFO);
+    logging_set_level(LOG_LEVEL_INFO);
     LOG_INFO("Testing core physics separation...");
     
-    /* Initialize core systems */
-    if (initialize_module_system() != 0) {
-        LOG_ERROR("Failed to initialize module system");
-        return EXIT_FAILURE;
-    }
+    /* The module system may already be initialized by shared library constructor
+     * Let's just move forward assuming it's initialized */
+    LOG_INFO("Using module system");
     
-    if (initialize_event_system() != 0) {
-        LOG_ERROR("Failed to initialize event system");
-        module_system_cleanup();
-        return EXIT_FAILURE;
+    /* Let's initialize the event system if not already initialized */
+    if (!event_system_is_initialized()) {
+        int status = event_system_initialize();
+        if (status != 0) {
+            LOG_ERROR("Failed to initialize event system");
+            return EXIT_FAILURE;
+        }
     }
     
     /* Set up minimal pipeline with placeholder module */
@@ -73,7 +74,7 @@ static void setup_minimal_pipeline(void) {
     pipeline_set_global(pipeline);
     
     /* Get placeholder module handle (registered via REGISTER_MODULE in placeholder_empty_module.c) */
-    int module_idx = module_get_index_by_name("placeholder_module");
+    int module_idx = module_find_by_name("placeholder_module");
     if (module_idx < 0) {
         LOG_ERROR("Failed to find placeholder module");
         return;
@@ -86,9 +87,10 @@ static void setup_minimal_pipeline(void) {
 }
 
 /**
- * Initialize a galaxy with minimal fields required by core (no physics fields)
+ * Initialize a galaxy with minimal fields and properly allocated properties
  */
-static void setup_minimal_galaxy_data(struct GALAXY *galaxy) {
+static void setup_minimal_galaxy_data(struct GALAXY *galaxy, struct params *params) {
+    /* Initialize basic fields */
     galaxy->SnapNum = 1;
     galaxy->Type = 0;
     galaxy->GalaxyNr = 1;
@@ -123,8 +125,45 @@ static void setup_minimal_galaxy_data(struct GALAXY *galaxy) {
     galaxy->num_extensions = 0;
     galaxy->extension_flags = 0;
     
-    /* Initialize property system */
+    /* Initialize property system properly */
     galaxy->properties = NULL;
+    if (allocate_galaxy_properties(galaxy, params) != 0) {
+        LOG_ERROR("Failed to allocate galaxy properties");
+        return;
+    }
+    
+    /* Initialize core properties with proper values */
+    GALAXY_PROP_SnapNum(galaxy) = 1;
+    GALAXY_PROP_Type(galaxy) = 0;
+    GALAXY_PROP_GalaxyNr(galaxy) = 1;
+    GALAXY_PROP_CentralGal(galaxy) = 0;
+    GALAXY_PROP_HaloNr(galaxy) = 1;
+    GALAXY_PROP_MostBoundID(galaxy) = 1234;
+    GALAXY_PROP_GalaxyIndex(galaxy) = 10000;
+    GALAXY_PROP_CentralGalaxyIndex(galaxy) = 10000;
+    
+    GALAXY_PROP_mergeType(galaxy) = 0;
+    GALAXY_PROP_mergeIntoID(galaxy) = -1;
+    GALAXY_PROP_mergeIntoSnapNum(galaxy) = -1;
+    GALAXY_PROP_dT(galaxy) = 0.1;
+    
+    for (int i = 0; i < 3; i++) {
+        GALAXY_PROP_Pos_ELEM(galaxy, i) = 0.0;
+        GALAXY_PROP_Vel_ELEM(galaxy, i) = 0.0;
+    }
+    
+    GALAXY_PROP_Len(galaxy) = 1000;
+    GALAXY_PROP_Mvir(galaxy) = 1e12;
+    GALAXY_PROP_deltaMvir(galaxy) = 0.0;
+    GALAXY_PROP_CentralMvir(galaxy) = 1e12;
+    GALAXY_PROP_Rvir(galaxy) = 200.0;
+    GALAXY_PROP_Vvir(galaxy) = 200.0;
+    GALAXY_PROP_Vmax(galaxy) = 220.0;
+    
+    GALAXY_PROP_MergTime(galaxy) = 999.9;
+    GALAXY_PROP_infallMvir(galaxy) = 0.0;
+    GALAXY_PROP_infallVvir(galaxy) = 0.0;
+    GALAXY_PROP_infallVmax(galaxy) = 0.0;
 }
 
 /**
@@ -135,10 +174,20 @@ static int test_pipeline_execution(void) {
     struct params params;
     memset(&params, 0, sizeof(struct params));
     
+    /* Set up minimal parameters needed for property allocation */
+    params.simulation.nsnapshots = 10;
+    params.simulation.SimMaxSnaps = 60;
+    
+    /* Initialize times/redshifts arrays */
+    for (int i = 0; i < params.simulation.SimMaxSnaps; i++) {
+        params.simulation.ZZ[i] = 10.0 / (i + 1) - 1.0;  /* Simple redshift calculation */
+        params.simulation.AA[i] = 1.0 / (params.simulation.ZZ[i] + 1.0); /* Scale factor */
+    }
+    
     /* Create a test galaxy */
     struct GALAXY galaxy;
     memset(&galaxy, 0, sizeof(struct GALAXY));
-    setup_minimal_galaxy_data(&galaxy);
+    setup_minimal_galaxy_data(&galaxy, &params);
     
     /* Create pipeline context */
     struct pipeline_context ctx;
@@ -168,6 +217,7 @@ static int test_pipeline_execution(void) {
     int status = pipeline_execute_phase(pipeline, &ctx, PIPELINE_PHASE_HALO);
     if (status != 0) {
         LOG_ERROR("HALO phase execution failed: %d", status);
+        free_galaxy_properties(&galaxy);
         return -1;
     }
     
@@ -178,6 +228,7 @@ static int test_pipeline_execution(void) {
     status = pipeline_execute_phase(pipeline, &ctx, PIPELINE_PHASE_GALAXY);
     if (status != 0) {
         LOG_ERROR("GALAXY phase execution failed: %d", status);
+        free_galaxy_properties(&galaxy);
         return -1;
     }
     
@@ -187,6 +238,7 @@ static int test_pipeline_execution(void) {
     status = pipeline_execute_phase(pipeline, &ctx, PIPELINE_PHASE_POST);
     if (status != 0) {
         LOG_ERROR("POST phase execution failed: %d", status);
+        free_galaxy_properties(&galaxy);
         return -1;
     }
     
@@ -196,9 +248,14 @@ static int test_pipeline_execution(void) {
     status = pipeline_execute_phase(pipeline, &ctx, PIPELINE_PHASE_FINAL);
     if (status != 0) {
         LOG_ERROR("FINAL phase execution failed: %d", status);
+        free_galaxy_properties(&galaxy);
         return -1;
     }
     
     LOG_INFO("All pipeline phases executed successfully");
+    
+    /* Clean up property resources */
+    free_galaxy_properties(&galaxy);
+    
     return 0;
 }

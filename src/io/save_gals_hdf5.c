@@ -10,7 +10,12 @@
 #include "../core/core_mymalloc.h"
 #include "../core/core_utils.h"
 #include "../core/macros.h"
+#ifdef CORE_ONLY
+#include "../physics/placeholder_hdf5_save.h"
+#include "../physics/placeholder_model_misc.h"
+#else
 #include "../physics/legacy/model_misc.h"
+#endif
 #include "../core/sage.h"
 
 
@@ -833,7 +838,87 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
                                        const int64_t original_treenr,
                                        const struct params *run_params)
 {
+#ifdef CORE_ONLY
+    // In core-only mode, use a simplified version with only core fields
+    int64_t gals_in_buffer = save_info->num_gals_in_buffer[output_snap_idx];
 
+    save_info->buffer_output_gals[output_snap_idx].SnapNum[gals_in_buffer] = g->SnapNum;
+
+    if(g->Type < SHRT_MIN || g->Type > SHRT_MAX) {
+        fprintf(stderr,"Error: Galaxy type = %d can not be represented in 2 bytes\n", g->Type);
+        fprintf(stderr,"Converting galaxy type while saving from integer to short will result in data corruption");
+        return EXIT_FAILURE;
+    }
+    save_info->buffer_output_gals[output_snap_idx].Type[gals_in_buffer] = g->Type;
+
+    save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyIndex;
+    save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = g->CentralGalaxyIndex;
+
+    save_info->buffer_output_gals[output_snap_idx].SAGEHaloIndex[gals_in_buffer] = g->HaloNr;
+    save_info->buffer_output_gals[output_snap_idx].SAGETreeIndex[gals_in_buffer] = original_treenr;
+    save_info->buffer_output_gals[output_snap_idx].SimulationHaloIndex[gals_in_buffer] = llabs(halos[g->HaloNr].MostBoundID);
+    save_info->buffer_output_gals[output_snap_idx].TaskForestNr[gals_in_buffer] = task_forestnr;
+
+    save_info->buffer_output_gals[output_snap_idx].mergeType[gals_in_buffer] = g->mergeType;
+    save_info->buffer_output_gals[output_snap_idx].mergeIntoID[gals_in_buffer] = g->mergeIntoID;
+    save_info->buffer_output_gals[output_snap_idx].mergeIntoSnapNum[gals_in_buffer] = g->mergeIntoSnapNum;
+    save_info->buffer_output_gals[output_snap_idx].dT[gals_in_buffer] = g->dT * run_params->units.UnitTime_in_s / SEC_PER_MEGAYEAR;
+
+    save_info->buffer_output_gals[output_snap_idx].Posx[gals_in_buffer] = g->Pos[0];
+    save_info->buffer_output_gals[output_snap_idx].Posy[gals_in_buffer] = g->Pos[1];
+    save_info->buffer_output_gals[output_snap_idx].Posz[gals_in_buffer] = g->Pos[2];
+
+    save_info->buffer_output_gals[output_snap_idx].Velx[gals_in_buffer] = g->Vel[0];
+    save_info->buffer_output_gals[output_snap_idx].Vely[gals_in_buffer] = g->Vel[1];
+    save_info->buffer_output_gals[output_snap_idx].Velz[gals_in_buffer] = g->Vel[2];
+
+    save_info->buffer_output_gals[output_snap_idx].Spinx[gals_in_buffer] = halos[g->HaloNr].Spin[0];
+    save_info->buffer_output_gals[output_snap_idx].Spiny[gals_in_buffer] = halos[g->HaloNr].Spin[1];
+    save_info->buffer_output_gals[output_snap_idx].Spinz[gals_in_buffer] = halos[g->HaloNr].Spin[2];
+
+    save_info->buffer_output_gals[output_snap_idx].Len[gals_in_buffer] = g->Len;
+    save_info->buffer_output_gals[output_snap_idx].Mvir[gals_in_buffer] = g->Mvir;
+    save_info->buffer_output_gals[output_snap_idx].CentralMvir[gals_in_buffer] = get_virial_mass(halos[g->HaloNr].FirstHaloInFOFgroup, halos, run_params);
+    save_info->buffer_output_gals[output_snap_idx].Rvir[gals_in_buffer] = get_virial_radius(g->HaloNr, halos, run_params);
+    save_info->buffer_output_gals[output_snap_idx].Vvir[gals_in_buffer] = get_virial_velocity(g->HaloNr, halos, run_params);
+    save_info->buffer_output_gals[output_snap_idx].Vmax[gals_in_buffer] = g->Vmax;
+    save_info->buffer_output_gals[output_snap_idx].VelDisp[gals_in_buffer] = halos[g->HaloNr].VelDisp;
+
+    // In core-only mode, set all physics-specific fields to zero
+    save_info->buffer_output_gals[output_snap_idx].ColdGas[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].StellarMass[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].BulgeMass[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].HotGas[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].EjectedMass[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].BlackHoleMass[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].ICS[gals_in_buffer] = 0.0;
+    
+    save_info->buffer_output_gals[output_snap_idx].MetalsColdGas[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].MetalsStellarMass[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].MetalsBulgeMass[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].MetalsHotGas[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].MetalsEjectedMass[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].MetalsICS[gals_in_buffer] = 0.0;
+    
+    save_info->buffer_output_gals[output_snap_idx].SfrDisk[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].SfrBulge[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].SfrDiskZ[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].SfrBulgeZ[gals_in_buffer] = 0.0;
+    
+    save_info->buffer_output_gals[output_snap_idx].DiskScaleRadius[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].Cooling[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].Heating[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].QuasarModeBHaccretionMass[gals_in_buffer] = 0.0;
+    
+    save_info->buffer_output_gals[output_snap_idx].TimeOfLastMajorMerger[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].TimeOfLastMinorMerger[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].OutflowRate[gals_in_buffer] = 0.0;
+    
+    save_info->buffer_output_gals[output_snap_idx].infallMvir[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].infallVvir[gals_in_buffer] = 0.0;
+    save_info->buffer_output_gals[output_snap_idx].infallVmax[gals_in_buffer] = 0.0;
+#else
+    // In full physics mode, use the original implementation
     int64_t gals_in_buffer = save_info->num_gals_in_buffer[output_snap_idx];
     //fprintf(stderr, "Task %d, Snap %d, has %"PRId64" gals in buffer.\n", run_params->runtime.ThisTask, output_snap_idx, gals_in_buffer);
 
@@ -949,6 +1034,7 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
         save_info->buffer_output_gals[output_snap_idx].infallVvir[gals_in_buffer] = 0.0;
         save_info->buffer_output_gals[output_snap_idx].infallVmax[gals_in_buffer] = 0.0;
     }
+#endif
 
     return EXIT_SUCCESS;
 }
