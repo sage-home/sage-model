@@ -300,3 +300,11 @@
 - Created comprehensive integration test for core independence
 - Added files: src/core_properties.yaml, src/physics/placeholder_empty_module.c/h, tests/test_core_physics_separation.c, input/config_empty_pipeline.json, input/empty_pipeline_parameters.par, tests/Makefile.empty_pipeline, docs/core_physics_separation.md
 - Modified files: src/core/core_allvars.h, src/core/core_build_model.c, src/core/physics_pipeline_executor.c, src/physics/physics_modules.h, Makefile, src/generate_property_headers.py
+
+2025-05-09: [Phase 5.2] Fixed Compiler Warning in Auto-Generated Properties Code
+- Fixed compiler warning in the core-only build for unused `params` parameter in `allocate_galaxy_properties`
+- Modified `generate_property_headers.py` to add `__attribute__((unused))` to the parameter declaration
+- Used string replacement to modify the implementation template before code generation
+- Verified fix by rebuilding with `make core-only clean && make core-only`
+- This fix ensures clean compilation with no warnings when building the core-only version
+- Modified files: src/generate_property_headers.py, src/core/core_build_model.c, src/core/core_galaxy_accessors.c, src/physics/placeholder_empty_module.c, src/physics/placeholder_hdf5_save.c, src/physics/placeholder_model_misc.c, src/physics/placeholder_validation.c

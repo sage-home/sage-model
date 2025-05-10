@@ -29,9 +29,9 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
     
-    /* Initialize logging */
-    logging_set_level(LOG_LEVEL_INFO);
-    LOG_INFO("Testing core physics separation...");
+    /* Force direct console output for all log messages */
+    logging_init(LOG_LEVEL_INFO, stderr);
+    fprintf(stderr, "=== Core Physics Separation Test ===\n");
     
     /* The module system may already be initialized by shared library constructor
      * Let's just move forward assuming it's initialized */
@@ -50,17 +50,21 @@ int main(int argc, char **argv) {
     setup_minimal_pipeline();
     
     /* Run pipeline execution test */
+    fprintf(stderr, "* Running pipeline execution test\n");
     int result = test_pipeline_execution();
     
     /* Cleanup core systems */
+    fprintf(stderr, "* Cleaning up systems\n");
     event_system_cleanup();
     module_system_cleanup();
     
     if (result == 0) {
         LOG_INFO("Core physics separation test PASSED");
+        fprintf(stderr, "=== Test completed successfully ===\n");
         return EXIT_SUCCESS;
     } else {
         LOG_ERROR("Core physics separation test FAILED");
+        fprintf(stderr, "=== Test FAILED ===\n");
         return EXIT_FAILURE;
     }
 }
@@ -71,19 +75,30 @@ int main(int argc, char **argv) {
 static void setup_minimal_pipeline(void) {
     /* Create global pipeline */
     struct module_pipeline *pipeline = pipeline_create("test_pipeline");
+    fprintf(stderr, "  - Created pipeline 'test_pipeline'\n");
+    
     pipeline_set_global(pipeline);
+    fprintf(stderr, "  - Set as global pipeline\n");
     
     /* Get placeholder module handle (registered via REGISTER_MODULE in placeholder_empty_module.c) */
     int module_idx = module_find_by_name("placeholder_module");
     if (module_idx < 0) {
+        fprintf(stderr, "ERROR: Failed to find placeholder module\n");
         LOG_ERROR("Failed to find placeholder module");
         return;
     }
+    fprintf(stderr, "  - Found placeholder module at index %d\n", module_idx);
     
     /* Add steps to pipeline */
-    pipeline_add_step(pipeline, MODULE_TYPE_MISC, "placeholder_module", "placeholder", true, true);
+    int status = pipeline_add_step(pipeline, MODULE_TYPE_MISC, "placeholder_module", "placeholder", true, true);
+    if (status != 0) {
+        fprintf(stderr, "ERROR: Failed to add step to pipeline: %d\n", status);
+    } else {
+        fprintf(stderr, "  - Added 'placeholder' step to pipeline\n");
+    }
     
     LOG_INFO("Set up minimal pipeline with %d steps", pipeline->num_steps);
+    fprintf(stderr, "  - Minimal pipeline has %d steps\n", pipeline->num_steps);
 }
 
 /**
@@ -178,16 +193,21 @@ static int test_pipeline_execution(void) {
     params.simulation.nsnapshots = 10;
     params.simulation.SimMaxSnaps = 60;
     
+    fprintf(stderr, "  - Initialized parameters (nsnapshots=%d, SimMaxSnaps=%d)\n", 
+            params.simulation.nsnapshots, params.simulation.SimMaxSnaps);
+    
     /* Initialize times/redshifts arrays */
     for (int i = 0; i < params.simulation.SimMaxSnaps; i++) {
         params.simulation.ZZ[i] = 10.0 / (i + 1) - 1.0;  /* Simple redshift calculation */
         params.simulation.AA[i] = 1.0 / (params.simulation.ZZ[i] + 1.0); /* Scale factor */
     }
+    fprintf(stderr, "  - Initialized redshift and scale factor arrays\n");
     
     /* Create a test galaxy */
     struct GALAXY galaxy;
     memset(&galaxy, 0, sizeof(struct GALAXY));
     setup_minimal_galaxy_data(&galaxy, &params);
+    fprintf(stderr, "  - Created test galaxy with properties\n");
     
     /* Create pipeline context */
     struct pipeline_context ctx;
@@ -203,59 +223,71 @@ static int test_pipeline_execution(void) {
         0,    /* step */
         NULL  /* user_data */
     );
+    fprintf(stderr, "  - Created pipeline context\n");
     
     /* Get global pipeline */
     struct module_pipeline *pipeline = pipeline_get_global();
     if (pipeline == NULL) {
+        fprintf(stderr, "ERROR: Global pipeline not found\n");
         LOG_ERROR("Global pipeline not found");
         return -1;
     }
+    fprintf(stderr, "  - Retrieved global pipeline with %d steps\n", pipeline->num_steps);
     
     /* Test HALO phase */
-    LOG_INFO("Testing HALO phase...");
+    fprintf(stderr, "  - Testing HALO phase...\n");
     ctx.execution_phase = PIPELINE_PHASE_HALO;
     int status = pipeline_execute_phase(pipeline, &ctx, PIPELINE_PHASE_HALO);
     if (status != 0) {
+        fprintf(stderr, "ERROR: HALO phase execution failed: %d\n", status);
         LOG_ERROR("HALO phase execution failed: %d", status);
         free_galaxy_properties(&galaxy);
         return -1;
     }
+    fprintf(stderr, "    HALO phase completed successfully\n");
     
     /* Test GALAXY phase */
-    LOG_INFO("Testing GALAXY phase...");
+    fprintf(stderr, "  - Testing GALAXY phase...\n");
     ctx.execution_phase = PIPELINE_PHASE_GALAXY;
     ctx.current_galaxy = 0;
     status = pipeline_execute_phase(pipeline, &ctx, PIPELINE_PHASE_GALAXY);
     if (status != 0) {
+        fprintf(stderr, "ERROR: GALAXY phase execution failed: %d\n", status);
         LOG_ERROR("GALAXY phase execution failed: %d", status);
         free_galaxy_properties(&galaxy);
         return -1;
     }
+    fprintf(stderr, "    GALAXY phase completed successfully\n");
     
     /* Test POST phase */
-    LOG_INFO("Testing POST phase...");
+    fprintf(stderr, "  - Testing POST phase...\n");
     ctx.execution_phase = PIPELINE_PHASE_POST;
     status = pipeline_execute_phase(pipeline, &ctx, PIPELINE_PHASE_POST);
     if (status != 0) {
+        fprintf(stderr, "ERROR: POST phase execution failed: %d\n", status);
         LOG_ERROR("POST phase execution failed: %d", status);
         free_galaxy_properties(&galaxy);
         return -1;
     }
+    fprintf(stderr, "    POST phase completed successfully\n");
     
     /* Test FINAL phase */
-    LOG_INFO("Testing FINAL phase...");
+    fprintf(stderr, "  - Testing FINAL phase...\n");
     ctx.execution_phase = PIPELINE_PHASE_FINAL;
     status = pipeline_execute_phase(pipeline, &ctx, PIPELINE_PHASE_FINAL);
     if (status != 0) {
+        fprintf(stderr, "ERROR: FINAL phase execution failed: %d\n", status);
         LOG_ERROR("FINAL phase execution failed: %d", status);
         free_galaxy_properties(&galaxy);
         return -1;
     }
+    fprintf(stderr, "    FINAL phase completed successfully\n");
     
-    LOG_INFO("All pipeline phases executed successfully");
+    fprintf(stderr, "  - All pipeline phases executed successfully\n");
     
     /* Clean up property resources */
     free_galaxy_properties(&galaxy);
+    fprintf(stderr, "  - Cleaned up galaxy properties\n");
     
     return 0;
 }

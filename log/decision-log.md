@@ -124,3 +124,7 @@
 2025-05-09: [Phase 5.2.F] Complete Physics-Core Separation Approach
 - Rationale: We discovered memory issues caused by running dual physics systems in parallel (legacy and new modules). Rather than migrating physics components incrementally within the existing structure, we've decided to implement a truly physics-agnostic core first that can run with no physics at all. This achieves total separation between infrastructure and physics and resolves memory issues.
 - Impact: This approach allows us to remove all physics dependencies from the core, verify the pipeline runs with an empty properties.yaml, then add physics modules one by one. Each physics component becomes a pure add-on to a functioning core rather than an integral component. This implements true "Runtime Functional Modularity" where the core has zero physics knowledge.
+
+2025-05-09: [Phase 5.2] Fix Compiler Warning in Auto-Generated Properties Code
+- Rationale: When compiling with CORE_ONLY, the function `allocate_galaxy_properties` in auto-generated `core_properties.c` showed a warning for unused parameter `params`. Since this file is regenerated during build, a direct edit would be lost. The proper solution is modifying the generator script.
+- Impact: Modified `generate_property_headers.py` to add `__attribute__((unused))` to the `params` parameter in the generated function. This ensures clean compilation with no warnings when building the core-only option, improving code quality and development experience while maintaining the proper architecture of auto-generated code.
