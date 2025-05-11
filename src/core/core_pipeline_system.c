@@ -101,6 +101,37 @@ static int pipeline_execute_phase_with_executor(
 #define EVENT_PIPELINE_STEP_COMPLETED 101
 #define EVENT_PIPELINE_STEP_ERROR    102
 
+/**
+ * Validate phase transition to ensure execution occurs in the correct scientific order
+ * 
+ * @param prev_phase Previous execution phase
+ * @param new_phase New execution phase being transitioned to
+ * @return true if transition is valid, false if unexpected order
+ */
+bool validate_phase_transition(enum pipeline_execution_phase prev_phase, enum pipeline_execution_phase new_phase) {
+    // Validate phase ordering
+    if (prev_phase == PIPELINE_PHASE_NONE) {
+        // First phase can be any valid phase
+        return new_phase == PIPELINE_PHASE_HALO || 
+               new_phase == PIPELINE_PHASE_GALAXY || 
+               new_phase == PIPELINE_PHASE_POST || 
+               new_phase == PIPELINE_PHASE_FINAL;
+    }
+    
+    // Expected phase order: HALO -> GALAXY -> POST -> FINAL
+    if (prev_phase == PIPELINE_PHASE_HALO) {
+        return new_phase == PIPELINE_PHASE_GALAXY;
+    } else if (prev_phase == PIPELINE_PHASE_GALAXY) {
+        return new_phase == PIPELINE_PHASE_POST;
+    } else if (prev_phase == PIPELINE_PHASE_POST) {
+        return new_phase == PIPELINE_PHASE_FINAL || new_phase == PIPELINE_PHASE_GALAXY;
+    } else if (prev_phase == PIPELINE_PHASE_FINAL) {
+        return new_phase == PIPELINE_PHASE_HALO; // Start of a new cycle
+    }
+    
+    return false;
+}
+
 /* Pipeline step event data structure */
 typedef struct {
     struct module_pipeline *pipeline;
@@ -764,6 +795,16 @@ int pipeline_execute(struct module_pipeline *pipeline, struct pipeline_context *
 int pipeline_execute_phase(struct module_pipeline *pipeline, struct pipeline_context *context, enum pipeline_execution_phase phase) {
     /* This function is defined in physics_pipeline_executor.c */
     extern int physics_step_executor(struct pipeline_step *, struct base_module *, void *, struct pipeline_context *);
+    
+    /* Validate phase transition */
+    static enum pipeline_execution_phase last_executed_phase = PIPELINE_PHASE_NONE;
+    
+    if (!validate_phase_transition(last_executed_phase, phase)) {
+        LOG_WARNING("Unusual phase transition: %d -> %d", last_executed_phase, phase);
+    }
+    
+    last_executed_phase = phase;
+    
     return pipeline_execute_phase_with_executor(pipeline, context, phase, physics_step_executor);
 }
 

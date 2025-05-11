@@ -11,6 +11,27 @@
 #include "physics_pipeline_executor.h"
 
 /**
+ * @file physics_pipeline_executor.c
+ * @brief Physics-agnostic pipeline execution system
+ *
+ * This component implements the core-physics separation pattern, where the
+ * core infrastructure has no knowledge of specific physics implementations.
+ * Key design principles:
+ *
+ * 1. Core infrastructure depends only on module interfaces, not implementations
+ * 2. Physics modules register themselves with the pipeline at initialization
+ * 3. The pipeline executes phases without knowing module internals
+ * 4. Property validation replaces direct field synchronization
+ * 5. The core can run with a completely empty physics pipeline
+ *
+ * This design enables:
+ * - Complete independence between core and physics
+ * - Runtime modularity where physics components can be added/removed
+ * - Simplified testing through minimal placeholder modules
+ * - Future optimizations through alternative memory layouts
+ */
+
+/**
  * Check if a galaxy is valid for property access
  * with thorough safety checks to prevent segmentation faults
  */
@@ -138,9 +159,31 @@ int physics_step_executor(
 
     /* Check for errors reported by the module execution */
     if (status != MODULE_STATUS_SUCCESS) {
-        LOG_ERROR("Module '%s' (step '%s') failed during phase %d execution with status %d",
-                  module->name, step->step_name, context->execution_phase, status);
-        // Optionally propagate the error using module_set_error or similar
+        const char *phase_name = "UNKNOWN";
+        switch (context->execution_phase) {
+            case PIPELINE_PHASE_NONE:   phase_name = "NONE"; break;
+            case PIPELINE_PHASE_HALO:   phase_name = "HALO"; break;
+            case PIPELINE_PHASE_GALAXY: phase_name = "GALAXY"; break;
+            case PIPELINE_PHASE_POST:   phase_name = "POST"; break;
+            case PIPELINE_PHASE_FINAL:  phase_name = "FINAL"; break;
+        }
+        
+        if (context->execution_phase == PIPELINE_PHASE_GALAXY) {
+            LOG_ERROR("Module '%s' (step '%s') failed during %s phase execution for galaxy %d (type %d) with status %d",
+                    module->name, step->step_name, phase_name, 
+                    context->current_galaxy,
+                    (context->current_galaxy >= 0 && context->current_galaxy < context->ngal) ? 
+                        context->galaxies[context->current_galaxy].Type : -1,
+                    status);
+        } else {
+            LOG_ERROR("Module '%s' (step '%s') failed during %s phase execution with status %d",
+                    module->name, step->step_name, phase_name, status);
+        }
+        
+        // Check for module-specific error message
+        if (module->last_error != 0) {
+            LOG_ERROR("Module error: %s", module->error_message);
+        }
     }
 
     return status; // Return the status from the module's execution function

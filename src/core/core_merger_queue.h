@@ -5,6 +5,28 @@ extern "C" {
 #endif
 
     #include "core_allvars.h"
+    
+    /**
+     * @file core_merger_queue.h
+     * @brief Merger event queue implementation for deferred merger processing
+     *
+     * The merger event queue is a critical component for maintaining scientific 
+     * consistency during galaxy evolution. It addresses a fundamental requirement 
+     * of the SAGE model: all galaxies must see the same pre-merger state when 
+     * undergoing physics calculations.
+     *
+     * Scientific rationale:
+     * 1. In the original SAGE implementation, this was achieved by processing
+     *    all physics for all galaxies first, then handling mergers separately.
+     * 2. The pipeline architecture initially threatened this separation, as
+     *    modules execute in sequence rather than in parallel across galaxies.
+     * 3. The merger queue preserves the original scientific model by:
+     *    - Collecting potential mergers during galaxy processing without executing them
+     *    - Deferring merger execution until all galaxies have completed physics
+     *    - Processing mergers in a separate step after all normal physics
+     *
+     * This approach maintains scientific consistency while enabling modularity.
+     */
 
     /**
      * @brief Initialize a merger event queue

@@ -55,6 +55,7 @@ enum module_type {
  * - FINAL: Calculations that happen after all steps are complete
  */
 enum pipeline_execution_phase {
+    PIPELINE_PHASE_NONE = 0,    /* No phase - initial state or reset */
     PIPELINE_PHASE_HALO = 1,    /* Execute once per halo (outside galaxy loop) */
     PIPELINE_PHASE_GALAXY = 2,  /* Execute for each galaxy (inside galaxy loop) */
     PIPELINE_PHASE_POST = 4,    /* Execute after processing all galaxies (for each integration step) */

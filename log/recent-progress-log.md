@@ -308,3 +308,12 @@
 - Verified fix by rebuilding with `make core-only clean && make core-only`
 - This fix ensures clean compilation with no warnings when building the core-only version
 - Modified files: src/generate_property_headers.py, src/core/core_build_model.c, src/core/core_galaxy_accessors.c, src/physics/placeholder_empty_module.c, src/physics/placeholder_hdf5_save.c, src/physics/placeholder_model_misc.c, src/physics/placeholder_validation.c
+
+2025-05-12: [Phase 5.2.F.1] Enhanced Error Handling and Documentation for Core-Physics Separation
+- Improved error context in physics_step_executor with phase-specific information and better error reporting
+- Added phase transition validation in pipeline_execute_phase to ensure scientifically correct execution order
+- Enhanced merger queue documentation with scientific rationale explaining its importance for consistency
+- Added comprehensive physics-agnostic design documentation explaining core-physics separation approach
+- Added detailed phase organization documentation explaining the HALO, GALAXY, POST, and FINAL phases
+- Verified changes with successful core-only build without warnings
+- Modified files: src/core/physics_pipeline_executor.c, src/core/core_pipeline_system.c, src/core/core_merger_queue.h, src/core/core_types.h, src/core/core_build_model.c

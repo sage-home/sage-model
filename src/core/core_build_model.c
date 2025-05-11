@@ -443,6 +443,36 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     init_merger_queue(&merger_queue);
     ctx.merger_queue = &merger_queue;
 
+    /*
+     * The galaxy evolution pipeline executes in four distinct phases:
+     *
+     * 1. HALO phase: 
+     *    - Processes calculations at the halo level, outside the galaxy loop
+     *    - Examples: gas infall onto halos, environment effects
+     *    - Runs once per halo and affects all galaxies in the halo
+     *
+     * 2. GALAXY phase:
+     *    - Processes each galaxy individually
+     *    - Examples: star formation, cooling, AGN feedback
+     *    - Runs for each non-merged galaxy
+     *    - Mergers are detected but NOT executed (added to queue instead)
+     *
+     * 3. POST phase:
+     *    - Processes after all galaxies have been evolved
+     *    - Examples: multi-galaxy interactions, environment calculations
+     *    - Runs once per halo after all galaxies processed
+     *
+     * 4. FINAL phase:
+     *    - Handles final cleanup and output preparation
+     *    - Examples: output unit conversion, derived property calculation
+     *    - Runs once at the very end of evolution
+     *
+     * This phase organization maintains scientific consistency with the original
+     * SAGE implementation while enabling modularity. Particularly, the merger
+     * event queue ensures that all galaxies see the same pre-merger state during
+     * physics calculations, just as in the original implementation.
+     */
+    
     // EXECUTE PIPELINE PHASES - with diagnostics tracking
 
     // Phase 1: HALO phase (outside galaxy loop)
