@@ -54,9 +54,9 @@ The evolution pipeline has been refactored into a modular system:
           ├─▶│ FINAL phase     ││
           │  └─────────────────┘│
           │                     │
-┌─────────▼───────────┐        │
-│ evolution_          │        │
-│ diagnostics_report  │────────┘
+┌─────────▼───────────┐         │
+│ evolution_          │         │
+│ diagnostics_report  │─────────┘
 └─────────────────────┘
 ```
 
@@ -126,7 +126,7 @@ Properties Module Architecture
 ┌─────────────────────┐      ┌─────────────────────┐
 │ properties.yaml     │      │ core_properties.h/c │
 │ (Source of Truth)   │─────▶│ (Auto-generated)    │
-└─────────────────────┘      └─────────┬───────────┘
+└─────────────────────┘      └────────┬────────────┘
                                       │
 ┌─────────────────────┐      ┌────────▼────────────┐
 │ Physics Modules     │      │ standard_properties │
@@ -176,7 +176,7 @@ I/O System
 │ io_interface        │      │ HDF5 Handler        │
 │ - Capabilities      │◄────▶│ - Metadata-driven   │
 │ - Format registry   │      │ - GALAXY_PROP_*     │
-└─────────────────────┘      └─────────┬───────────┘
+└─────────────────────┘      └────────┬────────────┘
                                       │
 ┌─────────────────────┐      ┌────────▼────────────┐
 │ Forest Handlers     │      │ Output Preparation  │
