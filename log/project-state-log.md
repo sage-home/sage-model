@@ -12,123 +12,29 @@
 ```
 sage-model/
 ├── src/
-│   ├── core/         # Core infrastructure components
-│   ├── physics/      # Physics modules implementing galaxy evolution processes 
-│   ├── io/           # Input/output handlers for different file formats
-│   └── auxdata/      # Auxiliary data files (cooling tables, etc.)
-├── tests/            # Comprehensive testing framework with end-to-end tests
-│   ├── test_data/    # Test merger trees and reference outputs
-│   └── test_sage.sh  # Main test script with environment setup and comparisons
-├── input/            # Input parameter files
-├── logs/             # Project tracking and documentation
-└── plotting/         # Analysis and visualization tools
+│   ├── core/                # Core infrastructure components
+│   ├── physics/             # Physics modules 
+│   │   ├── legacy/          # Traditional physics implementations to be migrated
+│   │   └── migrated/        # Successfully migrated physics modules
+│   ├── io/                  # Input/output handlers
+│   └── auxdata/             # Auxiliary data files
+├── tests/                   # Testing framework
+├── input/                   # Input parameter files
+├── docs/                    # Documentation
+└── log/                     # Project tracking logs
 ```
 
-## Component Organization
-
-### Core Components
-The core infrastructure has been refactored to separate concerns and reduce global state:
-- `core_allvars.h`: Primary data structures organized into logical groups
-- `core_parameter_views`: Module-specific parameter views for cleaner interfaces
-- `core_init`: Initialization and cleanup routines with GSL dependency removed
-- `core_logging`: Enhanced error logging system with severity levels (DEBUG to FATAL), context-aware messaging, configurable output formatting, and standardized verbosity control
-- `evolution_context`: Context structure for galaxy evolution to reduce global state
-- `core_evolution_diagnostics`: Comprehensive metrics and statistics for galaxy evolution
-
-```
-evolution_context                enhanced_logging_system
-    ┌────────────────┐            ┌────────────────────┐
-    │ galaxies[]     │            │ logging_state      │
-    │ ngal           │            │ - min_level        │
-    │ centralgal     │<─────────▶│ - prefix_style     │
-    │ halo properties│            │ - destinations     │
-    │ params         │            │ - color_enabled    │
-    │ diagnostics    │            │ - format_options   │
-    └────────────────┘            │ - context_support  │
-                                 └────────────────────┘
-```
-
-### Evolution Diagnostics
-The evolution diagnostics system provides metrics and statistics for the galaxy evolution process:
-- Phase timing and performance analysis
-- Event occurrence tracking
-- Merger statistics (detections, processing, types)
-- Galaxy property changes during evolution
-- Per-galaxy processing rates and overall performance
-
-```
-diagnostics_system
-    ┌────────────────────────┐
-    │ evolution_diagnostics  │
-    │ - phase statistics     │
-    │ - event counters       │<───┐
-    │ - merger statistics    │    │
-    │ - property tracking    │    │
-    │ - performance metrics  │    │
-    └────────────────────────┘    │
-               ▲                  │
-               │                  │
-    ┌──────────┴───────────┐     │
-    │ core_build_model.c   │     │
-    │ - evolve_galaxies()  │     │
-    └──────────────────────┘     │
-                                 │
-    ┌─────────────────────┐      │
-    │ core_event_system.c │      │
-    │ - event_dispatch()  │──────┘
-    └─────────────────────┘
-```
-
-### Physics Modules
-Physics processes are organized into separate modules, each with a targeted parameter view:
-- `model_cooling_heating.c`: Gas cooling and AGN heating
-- `model_starformation_and_feedback.c`: Star formation and feedback
-- `model_infall.c`: Gas infall onto halos
-- `model_mergers.c`: Galaxy merger handling
-- `model_disk_instability.c`: Disk instability calculations
-- `model_reincorporation.c`: Gas reincorporation
-
-```
-Physics Module
-    ┌───────────────────┐
-    │ *_params_view     │──────┐
-    └───────────────────┘      │
-                               │
-    ┌───────────────────┐      │
-    │ core functions    │      │
-    └───────────────────┘      │
-                               │
-                       ┌───────────────────┐
-                       │ struct params     │
-                       │  ┌─────────────┐  │
-                       │  │ cosmology   │  │
-                       │  │ physics     │  │
-                       │  │ io          │  │
-                       │  │ units       │  │
-                       │  │ simulation  │  │
-                       │  │ runtime     │  │
-                       │  └─────────────┘  │
-                       └───────────────────┘
-```
+## Core Infrastructure
 
 ### Evolution Pipeline
-The main galaxy evolution pipeline has been refactored for better modularity:
-- `evolve_galaxies()`: Coordinates galaxy evolution using the evolution context
-- Pipeline phases (HALO, GALAXY, POST, FINAL) for different scopes of calculation
-- Comprehensive validation, logging, and diagnostics throughout the pipeline
+The evolution pipeline has been refactored into a modular system:
+- `physics_pipeline_executor.c`: Manages phase-based execution
+- `core_pipeline_system.c`: Configurable execution pipeline
+- Pipeline phases (HALO, GALAXY, POST, FINAL) for different calculation scopes
+- Event-based communication between modules
 
 ```
-Galaxy Evolution Pipeline
 ┌─────────────────────┐
-│ construct_galaxies  │
-└─────────┬───────────┘
-          │
-┌─────────▼───────────┐
-│ join_galaxies_of_   │
-│ progenitors         │
-└─────────┬───────────┘
-          │
-┌─────────▼───────────┐
 │ evolve_galaxies     │◄────────┐
 └─────────┬───────────┘         │
           │                     │
@@ -155,11 +61,10 @@ Galaxy Evolution Pipeline
 ```
 
 ### Merger Event Queue
-A fully implemented merger event queue provides controlled processing of mergers:
-- Collects potential mergers during galaxy processing 
-- Defers merger processing until appropriate pipeline phase
-- Maintains scientific consistency with original merger implementation
-- Tracks merger statistics through diagnostics
+A merger event queue system provides controlled processing of mergers:
+- `core_merger_queue.c`: Collects and processes mergers
+- Defers merger processing to maintain scientific consistency
+- Integrated with the evolution diagnostics system
 
 ```
 Merger Event Queue
@@ -172,154 +77,180 @@ Merger Event Queue
     ┌─────────▼───────────┐         │
     │ process_merger      │         │
     │ _events()           │         │
-    └──────────────────────┘         │
-                                   │
+    └─────────────────────┘         │
+                                    │
     ┌─────────────────────┐         │
     │ evolve_galaxies     │         │
     │ - merge detection   │─────────┘
     └─────────────────────┘
 ```
 
-### I/O Components
-I/O is now fully abstracted through a unified interface system:
-- `io_interface`: Abstract interface with standardized operations (initialize, read_forest, write_galaxies, cleanup)
-- Input handlers for multiple merger tree formats:
-  - LHalo binary and HDF5
-  - ConsistentTrees ASCII and HDF5
-  - Gadget4 HDF5
-  - Genesis HDF5
-- Output handlers exclusively using HDF5 format
-- Trees and galaxies managed through a consistent API
-- Cross-platform endianness handling for binary formats
-- Extended property serialization for module-specific data
-- Property-driven output system using GALAXY_PROP_* macros
-- Output preparation module in FINAL pipeline phase
-- Comprehensive validation system for data integrity:
-  - Data validation to prevent invalid values (NaN, Infinity)
-  - Format capability validation to ensure required features
-  - Property validation for extension compatibility
-  - Integration with core I/O pipeline
-- Memory optimization components:
-  - `array_utils`: Provides geometric growth for dynamic arrays (reduced allocation frequency)
-  - `io_buffer_manager`: Configurable buffered I/O with automatic resizing
-  - `io_memory_map`: Cross-platform memory mapping for efficient file access
-  - (Planned) Memory pooling for galaxy structure allocation
+### Module System
+A comprehensive module system enables plugin-based physics:
+- `core_module_system.c`: Module registration, loading, and lifecycle
+- `core_module_callback.c`: Inter-module communication
+- `core_galaxy_extensions.h`: Galaxy property extension mechanism
 
 ```
-I/O System Architecture
+Module System
+    ┌───────────────────┐      
+    │ Module Registry   │      
+    │ - Loaded modules  │      
+    │ - Function tables │      
+    │ - Lifecycle mgmt  │      
+    └─────────┬─────────┘      
+              │               
+    ┌─────────▼─────────┐     
+    │ Module Callbacks  │     
+    │ - Inter-module    │     
+    │ - Call stack      │     
+    │ - Error tracking  │     
+    └─────────┬─────────┘     
+              │               
+    ┌─────────▼─────────┐
+    │ Pipeline Executor │
+    │ - Phase execution │
+    │ - Event dispatch  │
+    └───────────────────┘
+```
+
+### Properties Module Architecture
+The Properties Module architecture provides complete core-physics decoupling:
+- `properties.yaml`: Centralized definition of all galaxy properties
+- `generate_property_headers.py`: Generates type-safe accessors (GALAXY_PROP_*)
+- `core_properties.c/h`: Auto-generated property infrastructure
+- `standard_properties.c/h`: Registration with extension system
+
+```
+Properties Module Architecture
 ┌─────────────────────┐      ┌─────────────────────┐
-│ io_interface        │      │ core_save           │
-│ - Capabilities      │◄────▶│ - init_galaxy_files │
-│ - Format registry   │      │ - save_galaxies     │
-│ - Resource tracking │      │ - finalize_files    │
-└─────────┬───────────┘      └─────────────────────┘
-          │                              ▲
-          ▼                              │
-┌─────────────────────┐      ┌──────────┴──────────┐
-│ Format Handlers     │      │ io_validation       │
-│ - HDF5              │◄────▶│ - Data validation   │
-│ - Property support  │      │ - Format validation │
-└─────────┬───────────┘      │ - Property checks   │
-          │                  └─────────────────────┘
-          ▼
-┌─────────────────────┐
-│ output_preparation  │
-│ module (FINAL phase)│
-│ - Unit conversion   │
-│ - Derived properties│
-└─────────────────────┘
+│ properties.yaml     │      │ core_properties.h/c │
+│ (Source of Truth)   │─────▶│ (Auto-generated)    │
+└─────────────────────┘      └─────────┬───────────┘
+                                      │
+┌─────────────────────┐      ┌────────▼────────────┐
+│ Physics Modules     │      │ standard_properties │
+│ - Use GALAXY_PROP_* │◄─────│ - Registration      │
+│ - No direct access  │      │ - Mapping to exts   │
+└─────────────────────┘      └─────────────────────┘
 ```
 
-### Testing Framework
-A robust testing framework is in place:
-- Automated test environment setup and dependency management
-- Validation against reference Mini-Millennium outputs
-- Support for both binary and HDF5 format testing
-- Detailed comparison utility (sagediff.py) with configurable tolerances
-- Comprehensive error reporting and diagnostics
-- CI/CD integration with GitHub Actions
-- Unit tests for core components including the evolution diagnostics system
-- Integration tests for the refactored evolve_galaxies loop verifying phase transitions, event handling, and diagnostics
-
-All changes are validated through this end-to-end testing framework using reference outputs from the Mini-Millennium simulation, ensuring scientific accuracy throughout the refactoring process.
-
-## Modular Architecture
-The codebase now features an integrated plugin architecture with three key components:
+### Core Galaxy Structure
+The core GALAXY struct now contains only essential infrastructure:
+- Removed all physics fields from `core_allvars.h`
+- Added `properties` pointer to the generated properties struct
+- Reduced direct field access, preferring GALAXY_PROP_* macros
 
 ```
-┌───────────────────┐      ┌───────────────────┐      ┌───────────────────┐
-│ Module System     │      │ Pipeline System   │      │ Config System     │
-│                   │      │                   │      │                   │
-│ - Registry        │◄────▶│ - Step sequencing │◄────▶│ - JSON parsing    │
-│ - Lifecycle mgmt  │      │ - Execution       │      │ - Param hierarchy │
-│ - Extension data  │      │ - Event hooks     │      │ - Overrides       │
-└─────────┬─────────┘      └─────────┬─────────┘      └─────────┬─────────┘
-          │                          │                          │
-          │                          ▼                          │
-          │                ┌───────────────────┐                │
-          └───────────────▶│ Parameters        │◀───────────────┘
-                           │                   │
-                           │ - Physics         │
-                           │ - Cosmology       │
-                           │ - Runtime         │
-                           └───────────────────┘
+struct GALAXY {
+    // Core identifiers
+    int SnapNum;
+    long long GalaxyIndex;
+    int TreeIndex;
+    
+    // Tree structure
+    int Type;
+    long long HaloIndex;
+    int MostBoundID;
+    int NextGalaxy;
+    
+    // Core infrastructure
+    galaxy_properties_t *properties;  // All physics properties
+    void **extension_data;            // Module extensions
+    int num_extensions;
+    uint64_t extension_flags;
+};
 ```
 
-Key components in the architecture:
-- `core_module_system`: Defines module interface, registry, and lifecycle management
-- `core_module_callback`: Enables cross-module function calls with dependency tracking
-- `physics_pipeline_executor`: Integrates module callbacks with pipeline execution
-- `module_cooling`: First physics module using new plugin architecture (others pending)
-- `standard_infall_module`: Example module implementation using callback system
-- `core_pipeline_system`: Configurable sequence for physics operations
-- `core_config_system`: JSON-based configuration with hierarchical parameters
-- `core_module_debug`: Module debugging with tracing and diagnostics
-- `core_module_error`: Error handling with context tracking and history
-- `core_dynamic_library`: Cross-platform dynamic library loading
-- `core_evolution_diagnostics`: Comprehensive metrics for performance and scientific analysis
-
-The modular design provides:
-- Runtime physics module registry with lifecycle management
-- Event-based communication between modules
-- Galaxy property extension mechanism
-- Controlled module-to-module function calls via callback system
-- Call stack tracking and circular dependency detection
-- Pipeline execution with phase-aware module invocation
-- Parameter validation and override capabilities
-- Comprehensive error handling and diagnostics
-- Dynamic loading of module implementations
-- Performance tracking and scientific validation through diagnostics
-
-### Physics Modularization Strategy
-The codebase is implementing the Properties Module architecture for physics modularization:
+## I/O System
+The I/O system has been enhanced with property-based serialization:
+- `io_interface.h`: Unified interface for all I/O operations
+- Standardized on HDF5 output format (binary removed)
+- `output_preparation_module.c`: FINAL phase module for output preparation
+- HDF5 handler reads property metadata for field generation
+- Enhanced property serialization for dynamic arrays
 
 ```
-┌───────────────────────┐      ┌───────────────────────┐
-│ Galaxy Properties     │      │ Extension Registry    │
-│                       │      │                       │
-│ - Direct fields       │◄────▶│ - Registered props    │
-│ - Accessor functions  │      │ - Standard definitions│
-└─────────┬─────────────┘      └─────────┬─────────────┘
-          │                              │
-          ▼                              ▼
-┌───────────────────────┐      ┌───────────────────────┐
-│ Legacy Implementation │      │ Module Implementation │
-│                       │      │                       │
-│ - Direct field access │      │ - Extension-based     │
-│ - Traditional code    │      │ - Plugin architecture │
-└───────────────────────┘      └───────────────────────┘
+I/O System
+┌─────────────────────┐      ┌─────────────────────┐
+│ io_interface        │      │ HDF5 Handler        │
+│ - Capabilities      │◄────▶│ - Metadata-driven   │
+│ - Format registry   │      │ - GALAXY_PROP_*     │
+└─────────────────────┘      └─────────┬───────────┘
+                                      │
+┌─────────────────────┐      ┌────────▼────────────┐
+│ Forest Handlers     │      │ Output Preparation  │
+│ - LHalo             │      │ - FINAL phase       │
+│ - ConsistentTrees   │      │ - Unit conversion   │
+└─────────────────────┘      └─────────────────────┘
 ```
 
-This approach allows gradual migration of physics modules while maintaining scientific consistency. Each physics domain defines standard extension properties that can be accessed either directly (for backward compatibility) or through the extension mechanism (for modularity). Configuration options control which implementation is used, enabling incremental validation and testing.
+## Physics Modules
+Physics modules are in transition to the new architecture:
+- Some modules migrated to use GALAXY_PROP_* macros (cooling, infall)
+- Legacy modules remain operational but marked for migration
+- Placeholder modules demonstrate core-physics separation
+- Output preparation module implements final preparation in property system
 
-Key components of this architecture:
-- Centralized property definitions in properties.yaml (single source of truth)
-- Auto-generated typesafe accessors (GALAXY_PROP_* macros)
-- Pipeline-based execution with phase support (HALO, GALAXY, POST, FINAL)
-- Module dependency management through pipeline phases and event system
-- Physics-agnostic pipeline context with generic data sharing
-- Event-based inter-module communication
-- Property-based output system using FINAL phase preparation module
-- Output handler using property metadata for field generation
+```
+Physics Module Types
+┌─────────────────────┐      ┌─────────────────────┐
+│ Migrated Modules    │      │ Legacy Modules      │
+│ - GALAXY_PROP_*     │      │ - Direct field      │
+│ - Phase declarations│      │ - Traditional code  │
+└─────────────────────┘      └─────────────────────┘
+        │                               │
+        │                               │
+        ▼                               ▼
+┌─────────────────────┐      ┌─────────────────────┐
+│ Pipeline System     │      │ evolve_galaxies     │
+│ - Phase awareness   │      │ - Direct execution  │
+│ - Module registry   │      │ - Synchronization   │
+└─────────────────────┘      └─────────────────────┘
+```
 
-The analysis of module dependency management for property-based interactions concluded that no significant revisions are needed to the current system. The combination of centralized property definitions, pipeline phases, and the event system provides sufficient structure for module interactions while maintaining clean separation between core infrastructure and physics implementations.
+## Testing Framework
+A comprehensive testing framework validates all changes:
+- End-to-end tests against Mini-Millennium reference outputs
+- Unit tests for core components
+- Integration tests for pipeline, modules, and properties
+- Property validation tests
+- Core-physics separation tests
+- Benchmark system for performance tracking
+
+```
+Testing Framework
+┌─────────────────────┐      ┌─────────────────────┐
+│ End-to-End Tests    │      │ Unit Tests          │
+│ - Mini-Millennium   │      │ - Core components   │
+│ - Scientific output │      │ - Module system     │
+└─────────────────────┘      └─────────────────────┘
+        │                               │
+        │                               │
+        ▼                               ▼
+┌─────────────────────┐      ┌─────────────────────┐
+│ Integration Tests   │      │ Validation Tests    │
+│ - Pipeline          │      │ - Properties        │
+│ - Phase transitions │      │ - Core separation   │
+└─────────────────────┘      └─────────────────────┘
+```
+
+## Current Development Focus
+The current development focus is on completing the core-physics separation:
+1. Empty Pipeline Validation - Verifying the core functions without physics modules
+2. Legacy Code Removal - Eliminating physics dependencies from core components
+3. Physics Module Migration - Implementing physics as pure add-ons to the core
+
+The Properties Module architecture represents a significant advancement toward true runtime functional modularity. By centralizing all persistent per-galaxy physical state in properties.yaml, the system achieves complete separation between core infrastructure and physics implementations. This enables independent development and runtime configuration of physics modules without requiring core changes.
+
+Key benefits of the current architecture:
+- Physics-agnostic core with no knowledge of specific physical properties
+- Centralized definition of all galaxy properties in a single source of truth
+- Type-safe property access via generated macros
+- Clear phase-based execution model for different calculation scopes
+- Runtime module registration and configuration
+- Comprehensive event and callback systems for module interactions
+- Metadata-driven HDF5 output based on property definitions
+- Thorough testing and validation to maintain scientific accuracy
+
+Next steps will include completing the empty pipeline validation, removing legacy physics code, and implementing all physics components as pure add-on modules to demonstrate complete runtime functional modularity.

@@ -12,13 +12,14 @@
 # Current Phase: 5/7 (Core Module Migration)
 
 ## Phase Objectives
-- Implement pipeline execution phases for handling different calculation scopes
+- Implement pipeline execution phases (HALO, GALAXY, POST, FINAL) for handling different scope calculations
 - Transform `evolve_galaxies()` to use the pipeline system
 - Implement the Properties Module architecture for complete core-physics decoupling
 - Create type-safe, centrally-defined galaxy property mechanism
 - Achieve complete independence between core infrastructure and physics modules
 - Enable the core system to operate correctly with no physics modules
 - Migrate physics components as pure add-ons to the core
+- Minimize core `struct GALAXY` to remove all physics dependencies
 - Validate scientific accuracy against baseline SAGE results
 
 ## Current Progress
@@ -30,9 +31,21 @@
 - [x] Integrate event dispatch/handling points
 - [x] Add support for reading/writing extension properties
 - [x] Integrate module callbacks
+- [x] Enhance error propagation testing and diagnostic logging
 - [x] Add evolution diagnostics
 
-### Phase 5.2: Properties Module Implementation ⏳ IN PROGRESS
+### Phase 5.2: Properties Module Implementation ⏳ ARCHITECTURAL SHIFT
+**Note**: After careful evaluation, we've decided to replace the piecemeal physics module migration with a more elegant "Properties Module" architecture that provides cleaner separation between core and physics.
+
+#### Phase 5.2.A: Initial Proof-of-Concept ➖ SKIPPED
+- [ ] ~~Establish performance baseline for current implementation~~
+- [ ] ~~Create minimal property definition for essential properties in YAML~~
+- [ ] ~~Implement basic header generation script~~
+- [ ] ~~Create core integration test with generated macros~~
+- [ ] ~~Convert one simple module to use the new access pattern~~
+- [ ] ~~Validate scientific equivalence with previous implementation~~
+- [ ] ~~Assess performance impact of the new architecture~~
+- [ ] ~~Make go/no-go decision for full implementation~~
 
 #### Phase 5.2.B: Central Property Definition & Infrastructure ✅ COMPLETED
 - [x] Establish performance baseline for current implementation
@@ -41,37 +54,42 @@
 - [x] Integrate header generation into build system
 - [x] Implement core registration of standard properties
 - [x] Implement memory management for dynamic array properties
-- [x] Implement synchronization functions in `core_properties_sync.c/h`
+- [x] Implement synchronization functions (`sync_direct_to_properties`, `sync_properties_to_direct`) in `core_properties_sync.c/h`
 
 #### Phase 5.2.C: Core Integration & Synchronization ✅ COMPLETED
-- [x] Integrate synchronization calls into pipeline execution points
-- [x] Ensure core galaxy lifecycle functions correctly manage the `galaxy->properties` struct
-- [x] Refine core initialization logic to correctly initialize direct fields and properties
+- [x] Integrate synchronization calls (`sync_direct_to_properties`, `sync_properties_to_direct`) into pipeline execution points (e.g., `physics_pipeline_executor.c`)
+- [x] Ensure core galaxy lifecycle functions (`init_galaxy`, copying, freeing) correctly manage the `galaxy->properties` struct allocation, copying, and freeing
+- [x] Refine core initialization logic to correctly initialize direct fields AND call `reset_galaxy_properties`
 
 #### Phase 5.2.D: Module Adaptation ✅ COMPLETED
-- [x] Update migrated modules to use `GALAXY_PROP_*` macros exclusively
-- [x] Update module template generator for new property patterns
-- [x] Revise module dependency management for property-based interactions
+- [x] Update migrated modules (cooling, infall) to use `GALAXY_PROP_*` macros exclusively
+- [x] Update module template generator (`core_module_template.c/h`) for new property patterns
+- [x] Revise module dependency management for property-based interactions (if needed)
 
 #### Phase 5.2.E: I/O System Update ✅ COMPLETED
 - [x] Remove `GALAXY_OUTPUT` struct
 - [x] Remove `prepare_galaxy_for_output` logic
 - [x] Implement output preparation module using `GALAXY_PROP_*` macros
 - [x] Remove binary output format support (standardize on HDF5)
-- [x] Update HDF5 I/O handler to read property metadata and use macros for writing
-- [x] Enhance HDF5 serialization for dynamic arrays and module-specific properties
+- [x] Update HDF5 I/O handler to read property metadata and use `GALAXY_PROP_*` macros for writing
+- [x] Enhance HDF5 serialization/deserialization for dynamic arrays and module-specific properties
 
-#### Phase 5.2.F: Core-Physics Separation ⏳ IN PROGRESS
+#### Phase 5.2.F: Core-Physics Separation ⏳ PENDING
+This phase achieves true physics-agnostic core infrastructure that can run without any physics modules.
 
 ##### Phase 5.2.F.1: Core Isolation ✅ COMPLETED
 - [x] Remove ALL physics dependencies from core infrastructure
 - [x] Remove all direct physics calls in `evolve_galaxies.c`
 - [x] Remove physics-related include statements from core files
-- [x] Create minimal properties definition with only core infrastructure properties
+- [x] Create minimal properties definition that only includes core infrastructure properties
 - [x] Remove direct field synchronization from pipeline executor
-- [x] Remove physics fields from `struct GALAXY` definition
+- [x] Remove physics fields from `struct GALAXY` definition (`core_allvars.h`)
 - [x] Update all core code to be physics-property-agnostic
-- [x] Enhance error handling and documentation
+- [x] Verify pipeline system's structural integrity without physics
+- [x] Create core-only build target, update `tests/Makefile.empty_pipeline` to use core-only build, property definition compiler flag
+- [x] Error handling enhancement: improve error context in `physics_step_executor`, add phase transition validation
+- [x] Documentation enhancements: enhance merger event queue documentation, document physics-agnostic design
+- [x] Memory management improvement: enhance `setup_minimal_galaxy_data` in test, add property system cleanup
 
 ##### Phase 5.2.F.2: Empty Pipeline Validation ⏳ PENDING
 - [ ] Create empty placeholder modules for essential pipeline points
@@ -86,11 +104,11 @@
 - [ ] Remove all legacy physics implementation files
 - [ ] Update build system to remove legacy components
 - [ ] Clean up any remaining legacy references
-- [ ] Remove all synchronization infrastructure after verification
+- [ ] Remove all synchronization infrastructure after verifying it's no longer needed
 - [ ] Final verification of clean core-physics separation
 
 #### Phase 5.2.G: Physics Module Migration ⏳ PENDING
-With the core now completely physics-agnostic, we'll implement physics modules as pure add-ons.
+With the core now completely physics-agnostic, we can implement physics modules as pure add-ons.
 
 ##### Phase 5.2.G.1: Physics Foundation ⏳ PENDING
 - [ ] Develop standard physics utility functions independent of core code
@@ -107,9 +125,11 @@ With the core now completely physics-agnostic, we'll implement physics modules a
 - [ ] Implement/validate AGN Feedback & Black Holes Module
 - [ ] Implement/validate Metals & Chemical Evolution Module
 - [ ] Implement/validate Mergers Module
-- [ ] Optimize property access patterns if performance analysis indicates benefit
+- [ ] (Optional) Optimize property access patterns if performance analysis indicates benefit
 
 ### Phase 5.3: Comprehensive Validation ⏳ PENDING
+After completely separating the core from physics and implementing all physics modules:
+
 - [ ] Develop complete end-to-end integration tests for all module combinations
 - [ ] Implement scientific validation comparing new modules to baseline SAGE
 - [ ] Create module compatibility test matrix

@@ -10,287 +10,134 @@
   • List of new, modified and deleted files (exclude log files)
 -->
 
-2025-04-16: [Phase 5 Initialization] Prepared for Core Module Migration
-- Archived Phase 4 documentation and updated log files
-- Set up tracking for Phase 5 tasks
-- Created milestone tracking for evolution pipeline refactoring
-- Modified files: logs/phase-tracker-log.md
-- Added files: logs/completed-phase-4/phase-4.md
-
-2025-04-16: [Phase 5.1] Merger Event Queue Design for Evolution Loop
-- Designed two-stage approach for refactoring `evolve_galaxies()` to improve pipeline integration
-- Created detailed handover document for merger event queue implementation
-- Identified key path to maintain scientific consistency while simplifying code structure
-- Modified files: logs/decision-log.md, logs/phase-tracker-log.md
-
-2025-04-16: [Phase 5.1] Merger Event Queue Implementation Complete
+2025-04-16: [Phase 5.1] Merger Event Queue Implementation
 - Implemented merger event queue data structures and management functions
 - Modified `evolve_galaxies()` to collect and defer merger events 
 - Processed all merger events after physics calculations to maintain scientific consistency
 - Created files: src/core/core_merger_queue.h, src/core/core_merger_queue.c
 - Modified files: src/core/core_allvars.h, src/core/core_build_model.c, Makefile
 
-2025-04-17: [Phase 5.1] Pipeline Phase System Implementation Complete
+2025-04-17: [Phase 5.1] Pipeline Phase System Implementation
 - Fixed duplicate implementation of pipeline_execute_phase function
-- Verified proper handling of 4 execution phases in the pipeline system: HALO, GALAXY, POST, FINAL
-- Confirmed phases assigned to appropriate modules in pipeline_create_default
+- Verified proper handling of 4 execution phases in the pipeline system
+- Confirmed phases assigned to appropriate modules
 - Validated phase-aware execution in test_pipeline.c
 - Modified files: src/core/core_build_model.c, src/core/core_module_system.h, src/core/core_pipeline_system.c, src/core/core_pipeline_system.h, tests/test_pipeline.c
 
-2025-04-22: [Phase 5.1] Event Dispatch Integration Complete
+2025-04-22: [Phase 5.1] Event Dispatch Integration
 - Implemented event dispatch points in all key physics processes
 - Added event emission for cooling, disk instability, reincorporation, and other events
 - Verified proper event data structure usage and error handling
-- Ensured conditional logic to check if event system is initialized before emitting events
-- Modified files: logs/phase-tracker-log.md, logs/recent-progress-log.md, src/physics/model_cooling_heating.c, src/physics/model_disk_instability.c, src/physics/model_reincorporation.c, src/core/core_build_model.c, src/physics/example_event_handler.c, src/physics/model_infall.c, src/physics/model_mergers.c, src/physics/model_starformation_and_feedback.c
+- Modified files: src/physics/model_cooling_heating.c, src/physics/model_disk_instability.c, src/physics/model_reincorporation.c, src/core/core_build_model.c, src/physics/example_event_handler.c, src/physics/model_infall.c, src/physics/model_mergers.c, src/physics/model_starformation_and_feedback.c
 
-2025-04-22: [Phase 5.1] Extension Property Support Complete
+2025-04-22: [Phase 5.1] Extension Property Support
 - Implemented property serialization integration in the pipeline system
-- Added automatic detection and initialization of property serialization for modules that require it
-- Enhanced validation to ensure modules using extension properties have proper serialization support
-- Improved error handling for property access when serialization context is unavailable
-- Added property type definitions and standardized serialization/deserialization functions for all data types
-- Ensured proper cleanup of serialization resources after pipeline execution
+- Added automatic detection and initialization of property serialization for modules
+- Enhanced validation for modules using extension properties
+- Added property type definitions and standardized serialization functions
 - Modified files: src/core/core_build_model.c, src/core/core_galaxy_extensions.h, src/core/core_module_system.h, src/core/core_pipeline_system.c, src/core/core_pipeline_system.h, src/io/io_property_serialization.h, src/core/core_property_types.h
 
-2025-04-23: [Phase 5.1] Module Callbacks Integration Complete
-- Implemented comprehensive module callback system to allow controlled inter-module communication
-- Created proper call stack tracking for diagnostics and circular dependency detection
+2025-04-23: [Phase 5.1] Module Callbacks Integration
+- Implemented comprehensive module callback system for controlled inter-module communication
+- Created call stack tracking for diagnostics and circular dependency detection
 - Added function registration capabilities for modules to expose callable functions
 - Integrated with the pipeline system via pipeline_execute_with_callback
 - Created standard_infall_module as example implementation using callbacks
-- Implemented error propagation between modules and enhanced error reporting
 - Modified files: src/core/core_allvars.h, src/core/core_init.c, src/core/core_init.h, src/core/core_module_callback.c, src/core/core_module_callback.h, src/core/core_module_system.h, src/core/core_pipeline_system.c, src/core/core_pipeline_system.h
 - Added files: src/core/core_types.h, src/core/physics_pipeline_executor.c, src/core/physics_pipeline_executor.h, src/physics/physics_modules.h, src/physics/standard_infall_module.c
 
-2025-04-23: [Phase 5.1.6] Enhanced Error Propagation Testing Complete
-- Implemented comprehensive test cases for complex error scenarios
-- Added tests for simultaneous errors, error recovery, and performance with large module sets
-- Created helper functions to support dynamic module configuration and testing
-- Ensured robust detection and reporting of errors in various module interaction patterns
-- Modified files: tests/test_error_integration.c
-- Added files: tests/test_module_system.h, docs/logging_guidelines.md
-
-2025-04-23: [Phase 5.1.6] Diagnostic Logging System Enhancement Complete
-- Implemented enhanced logging system with more granular log levels (TRACE, NOTICE, CRITICAL)
-- Added module-specific logging capabilities for better source identification
-- Improved color-coding for different severity levels in terminal output
-- Created comprehensive logging guidelines document
-- Modified files: src/core/core_logging.h, src/core/core_logging.c, src/core/core_module_error.c
-
-2025-04-24: [Phase 5.1.7] Evolution Diagnostics System Complete
-- Implemented comprehensive evolution diagnostics system for monitoring galaxy evolution
-- Added tracking for phase timing, event statistics, merger statistics, and galaxy property changes
-- Created unit tests for all diagnostics functionality with comprehensive error handling
-- Produced detailed documentation on diagnostics interpretation and extension
+2025-04-24: [Phase 5.1] Evolution Diagnostics System
+- Implemented comprehensive evolution diagnostics for monitoring galaxy evolution
+- Added tracking for phase timing, event statistics, merger statistics, and property changes
+- Created unit tests with comprehensive error handling
 - Added files: src/core/core_evolution_diagnostics.h, src/core/core_evolution_diagnostics.c, tests/test_evolution_diagnostics.c, tests/Makefile.evolution_diagnostics, docs/evolution_diagnostics.md
 - Modified files: src/core/core_allvars.h, src/core/core_build_model.c, src/core/core_event_system.c, Makefile
 
-2025-04-24: [Phase 5.1.7] Evolution Diagnostics Phase Validation Fix
-- Implemented phase mapping function to translate pipeline phase bit flags (1, 2, 4, 8) to array indices (0-3)
-- Removed verbose INFO-level diagnostic output to reduce log clutter
-- Fixed segmentation fault in evolution diagnostics system when processing events from traditional code
-- Added deferred work items for more comprehensive diagnostics refactoring and event data protocol enhancement
-- Modified files: src/core/core_evolution_diagnostics.c, logs/enhanced-sage-refactoring-plan.md
-
-2025-04-24: [Phase 5.3] Integration Tests for Evolve Galaxies Loop Interactions
-- Implemented comprehensive integration tests for the refactored evolve_galaxies loop with phase-based execution
+2025-04-24: [Phase 5.3] Integration Tests for Evolve Galaxies Loop
+- Implemented integration tests for the refactored evolve_galaxies with phase-based execution
 - Created mock modules with controlled phase support (HALO, GALAXY, POST, FINAL)
 - Verified correct module execution based on declared phase support
-- Confirmed proper integration of evolution diagnostics for phase timing and metrics
-- Validated event system integration with diagnostics
-- Created a test runner script with debug, verbose, and memory validation options
+- Confirmed proper integration of evolution diagnostics
 - Added files: tests/test_evolve_integration.c, tests/Makefile.evolve_integration, tests/run_evolve_integration.sh
 - Modified files: Makefile
 
-2025-04-28: [Phase 5.2] Comprehensive Implementation Plan for Physics Modularization
-- Completed detailed analysis of hard-coded physics throughout the codebase
-- Created comprehensive implementation plan for physics module extraction
-- Designed dual implementation approach with accessor functions and extension properties
-- Established standardized extension property registry for all physics domains
-- Defined phased implementation strategy to minimize risks
-- Added tasks to phase tracker for enhanced Phase 5.2 implementation
-- Modified files: logs/decision-log.md, logs/phase-tracker-log.md
-
-2025-04-28: [Phase 5.2] Physics Modularization Steps 1-9 Completed
-- Implemented standard extension property registry for all physics domains
-- Created accessor functions for galaxy physics properties with dual access support
-- Made pipeline context physics-agnostic with generic data sharing mechanism
-- Extracted infall and cooling modules using extension properties with proper phase declarations
-- Updated join_galaxies_of_progenitors and evolve_galaxies to use accessor framework
-- Implemented pipeline registration and global configuration control systems
-- Fixed various integration issues to ensure proper compilation and testing
-- Modified files: src/core/core_galaxy_accessors.h, src/core/core_galaxy_accessors.c, src/core/core_pipeline_registry.h, src/core/core_pipeline_registry.c, src/core/core_module_config.h, src/core/core_module_config.c, src/core/core_pipeline_system.c, src/physics/standard_physics_properties.h, src/physics/standard_physics_properties.c, src/physics/modules/infall_module.h, src/physics/modules/infall_module.c, src/physics/modules/cooling_module.h, src/physics/modules/cooling_module.c, Makefile
-
-2025-04-28: [Phase 5.2] Improved Core Runtime Modularity with Event System Enhancement
-- Removed direct dependency on example event handlers from core initialization code
-- Refactored initialize_event_system() and cleanup_event_system() to follow runtime modularity principles
-- Made the core event system infrastructure independent of specific handler implementations
-- Ensured proper separation of concerns between core system initialization and module-specific functionality
-- Established pattern for event handlers to be registered by modules during their initialization phase
-- Preserved event logging capabilities for debugging while removing hard-coded implementation dependencies
-- Modified files: src/core/core_init.c, src/physics/modules/cooling_module.h, src/physics/modules/cooling_module.c, src/physics/modules/infall_module.h, src/physics/modules/infall_module.c
-- Moved files: src/physics/model_cooling_heating.c, src/physics/model_cooling_heating.h, src/physics/model_infall.c, src/physics/model_infall.h to src/physics/old/
-
-2025-04-28: [Phase 5.2] Complete Physics Module Independence via Self-contained Implementation
-- Eliminated physics-specific code from core components to achieve true modularity
-- Moved cooling table functionality from core_cool_func.c to a dedicated cooling_tables.c/h in the cooling module
-- Implemented a generic accessor registration system in core_galaxy_accessors.c/h to replace direct property access
-- Created module-specific property accessors in respective modules with proper registration
-- Integrated cooling_compat functionality directly into cooling_module.c for better encapsulation
-- Fixed application to properly use cooling_rate accessors throughout the codebase
-- Updated the Makefile to reflect the changes and remove obsolete references
-- Modified files: src/core/core_init.c, src/core/core_init.h, src/core/core_build_model.c, src/core/core_galaxy_accessors.c, src/core/core_galaxy_accessors.h, src/physics/modules/cooling_module.c, src/physics/modules/cooling_module.h, Makefile
-- Added files: src/physics/modules/cooling_tables.c, src/physics/modules/cooling_tables.h, src/physics/modules/agn_module.h, src/physics/modules/feedback_module.h
-- Removed files: src/core/core_cool_func.c, src/core/core_cool_func.h, src/physics/cooling_compat.c, src/physics/cooling_compat.h
-
-2025-04-28: [Phase 5.2] Comprehensive Core Modularity Implementation Plan
-- Completed deep analysis of remaining modularity challenges in the codebase
-- Created detailed implementation plan to fully eliminate dual implementation path
-- Designed directory restructuring approach to separate migrated and unmigrated code
-- Mapped out precise sequence for updating core execution framework with no legacy fallbacks
-- Defined enhanced module API with standardized interfaces for all physics components
-- Established roadmap for module parameter handling, callbacks, and event systems
-- Added validation tests to verify core can run with no physics modules
-- Modified files: log/decision-log.md, log/phase-tracker-log.md
-
-2025-04-30: [Phase 5.2] Updated Include Paths in Refactored Physics Modules
-- Systematically updated include paths in all legacy physics module files to match new directory structure
-- Fixed "../core/" includes to "../../core/" in legacy module files moved to src/physics/legacy/
-- Converted "../physics/legacy/" includes to local includes within the same directory
-- Updated cooling_module.c to correctly reference modules/cooling_tables.h
-- Fixed multiple build errors related to incorrect include paths after directory restructuring
-- Ensured smooth compilation of the entire codebase after migration of physics modules
-- Modified files: src/physics/legacy/model_reincorporation.c, src/physics/legacy/model_misc.c, src/physics/legacy/model_cooling_heating.c, src/physics/legacy/model_mergers.c, src/physics/legacy/model_infall.c, src/physics/legacy/model_disk_instability.c, src/physics/cooling_module.c, log/todays-edits.md
-
-2025-04-30: [Phase 5.2] Improved Physics Directory Structure Organization
-- Renamed src/physics/old directory to src/physics/migrated to better reflect its purpose
-- Verified the successful transfer of model_cooling_heating.c/h and model_infall.c/h files
-- Ensured no code references needed to be updated due to the directory rename
-- Updated documentation in log files to reflect the improved directory structure
-- This change completes the directory restructuring portion of the Core Modularity Implementation Plan (Step 1)
-- Modified files: log/todays-edits.md, log/decision-log.md, log/recent-progress-log.md
-- Renamed directory: src/physics/old → src/physics/migrated
-
-2025-05-01: [Phase 5.2.B.0] Implemented Performance Baseline for Properties Module Architecture
-- Created benchmark_sage.sh script to measure execution time and memory usage
-- Established baseline measurements for Mini-Millennium test case (28s runtime, ~82MB memory)
-- Set up JSON output format with placeholders for phase timing metrics
-- Added cross-platform support for both macOS and Linux environments
-- Created benchmarking documentation with measurement protocol and interpretation guide
-- Added files: tests/benchmark_sage.sh, docs/SAGE Performance Benchmarking.md, benchmarks/baseline_*.json
-
-2025-05-01: [Phase 5.2.B.3] Implemented Property Header Generation Script with Dynamic Array Support
-- Created `generate_property_headers.py` to process property definitions from YAML into core_properties.c/h (autogenerated files)
-- Implemented struct and macro generation for both fixed-size and dynamic arrays
+2025-05-01: [Phase 5.2.B] Property Header Generation Script Implementation
+- Created `generate_property_headers.py` to process property definitions from YAML
+- Implemented struct and macro generation for fixed-size and dynamic arrays
 - Added `STEPS` constant definition to support legacy star formation history arrays
-- Generated proper function prototypes for memory management of dynamic arrays
 - Fixed struct naming inconsistencies (`struct GALAXY` vs. `struct galaxy`)
 - Integrated generation into build process through Makefile dependencies
-- Ensured compatibility with test suite environment by including PyYAML dependency
-- Added files: src/generate_property_headers.py, src/core/core_properties.c (autogenerated file), src/core/core_properties.h (autogenerated file)
+- Added files: src/generate_property_headers.py, src/core/core_properties.c, src/core/core_properties.h
 
-2025-05-02: [Phase 5.2.B.4] Implemented Core Registration of Standard Properties
+2025-05-02: [Phase 5.2.B] Core Registration of Standard Properties
 - Created standard properties registration system to bridge auto-generated properties with extension system
 - Implemented mapping from property IDs to extension IDs for seamless property access
 - Added type-safe serialization functions for all supported data types
-- Fixed duplicate definition of `cleanup_property_system()` by consolidating implementation in core_properties.c (autogenerated file)
+- Fixed duplicate definition of `cleanup_property_system()`
 - Created test suite for property registration with extension system verification
-- Discovered memory allocation failure when running full model, to be fixed in "Implement memory management for dynamic array properties" task
 - Added files: src/core/standard_properties.h, src/core/standard_properties.c, tests/test_property_registration.c
 - Modified files: src/core/core_init.c, Makefile
 
-2025-05-02: [Phase 5.2.B.5] Fixed Dynamic Array Memory Management for Galaxy Properties
-- Fixed critical issue in `copy_galaxy_properties()` that was causing test failures and memory corruption
-- Added proper dynamic array handling to allocate and copy data for properties like StarFormationHistory
-- Fixed memory leaks in galaxy properties by properly freeing and reallocating only when necessary
-- Ensured all tests now pass including `test_property_registration` that was failing previously
-- This removes the last critical blocker for the auto-generated property system implementation
+2025-05-02: [Phase 5.2.B] Dynamic Array Memory Management for Galaxy Properties
+- Fixed critical issue in `copy_galaxy_properties()` that was causing test failures
+- Added proper dynamic array handling to allocate and copy data
+- Fixed memory leaks in galaxy properties
+- Ensured all tests now pass including `test_property_registration`
 - Modified files: src/core/core_properties.c, src/core/core_init.c, src/core/core_init.h, src/generate_property_headers.py, tests/test_property_registration.c
 
-2025-05-05: [Phase 5.2.B.6] Implemented Property Synchronization Functions
-- Created synchronization functions to bridge between legacy direct fields and the new property system
-- Implemented `sync_direct_to_properties()` to copy data from direct fields to property structure
-- Implemented `sync_properties_to_direct()` to copy data from property structure to direct fields
-- Added comprehensive error handling with NULL pointer checks for galaxy and properties pointers
-- Added debug logging to track when synchronization is performed
-- All tests pass, confirming implementation works correctly
+2025-05-05: [Phase 5.2.B] Property Synchronization Functions
+- Created synchronization functions to bridge between legacy fields and the property system
+- Implemented `sync_direct_to_properties()` and `sync_properties_to_direct()`
+- Added comprehensive error handling with NULL pointer checks
 - Created files: src/core/core_properties_sync.h, src/core/core_properties_sync.c
 - Modified files: Makefile
 
-2025-05-05: [Phase 5.2.C Task 1] Integrated Property Synchronization and Standard Accessors
-- Implemented calls to `sync_direct_to_properties` and `sync_properties_to_direct` around pipeline phase executions in `evolve_galaxies`.
-- Added declarations and definitions for standard property accessor functions (e.g., `galaxy_get_stellar_mass`) to `core_galaxy_accessors.h/.c` to bridge direct field access and the property system.
-- Updated core code (`evolve_galaxies`) to use these standard accessors.
-- Resolved compilation and linker errors by removing duplicate definitions, correcting legacy function calls, and updating the Makefile.
-- Modified files: src/core/core_build_model.c, src/core/core_galaxy_accessors.h, src/core/core_galaxy_accessors.c, src/physics/feedback_module.h, src/physics/cooling_module.c, src/core/physics_pipeline_executor.c, Makefile, log/recent-progress-log.md, log/phase-tracker-log.md
+2025-05-05: [Phase 5.2.C] Property Synchronization & Standard Accessors Integration
+- Implemented synchronization calls around pipeline phase executions in `evolve_galaxies`
+- Added declarations for standard property accessor functions
+- Updated core code to use these standard accessors
+- Resolved compilation and linker errors
+- Modified files: src/core/core_build_model.c, src/core/core_galaxy_accessors.h, src/core/core_galaxy_accessors.c, src/physics/feedback_module.h, src/physics/cooling_module.c, src/core/physics_pipeline_executor.c, Makefile
 
-2025-05-05: [Phase 5.2.C Task 2] Implemented Core Galaxy Lifecycle Management for Properties
-- Updated `init_galaxy()` to properly allocate and initialize the `galaxy->properties` struct with error handling
-- Enhanced `join_galaxies_of_progenitors()` to perform deep copying of galaxy properties when copying a galaxy
-- Modified merger functions (`deal_with_galaxy_merger()` and `disrupt_satellite_to_ICS()`) to free galaxy properties before marking galaxies as merged/disrupted
-- Ensured proper memory management throughout the galaxy lifecycle to prevent leaks or invalid accesses
-- Modified files: src/physics/legacy/model_misc.c, src/core/core_build_model.c, src/physics/legacy/model_mergers.c, log/phase-tracker-log.md, log/todays-edits.md
+2025-05-05: [Phase 5.2.C] Core Galaxy Lifecycle Management for Properties
+- Updated `init_galaxy()` to properly allocate and initialize the `galaxy->properties` struct
+- Enhanced `join_galaxies_of_progenitors()` to perform deep copying of galaxy properties
+- Modified merger functions to free galaxy properties before marking galaxies as merged/disrupted
+- Modified files: src/physics/legacy/model_misc.c, src/core/core_build_model.c, src/physics/legacy/model_mergers.c
 
-2025-05-07: [Phase 5.2.C Task 3] Refined Core Initialization Logic for Properties
-- Updated properties.yaml to fix MergTime initial value (changed from 0.0 to 999.9) to match direct field value in model_misc.c
-- Verified that `init_galaxy` correctly initializes both direct fields and calls `reset_galaxy_properties` in the proper order
-- Created temporary diagnostic tests to verify property initialization consistency
-- Verified all existing unit tests pass, confirming correct initialization
-- Modified files: src/properties.yaml, log/phase-tracker-log.md, log/recent-progress-log.md
-
-2025-05-07: [Phase 5.2.D Task 1] Updated Cooling and Infall Modules to Use GALAXY_PROP_* Macros
-- Completely refactored cooling_module.c to use GALAXY_PROP_* macros instead of direct galaxy field access
-- Completely refactored infall_module.c to use GALAXY_PROP_* macros instead of direct galaxy field access
-- Created property validation tests to ensure no direct field access remains in the refactored modules
-- Implemented test_galaxy_property_macros.c for integration with main testing pipeline
-- Integrated validation script and tests for property macro conversions with proper memory management
+2025-05-07: [Phase 5.2.D] Module Adaptation to GALAXY_PROP_* Macros
+- Refactored cooling_module.c and infall_module.c to use GALAXY_PROP_* macros
+- Created property validation tests to ensure no direct field access remains
+- Implemented test_galaxy_property_macros.c for integration with testing pipeline
 - Verified all property accesses now happen through the new macro system
 - Modified files: src/physics/cooling_module.c, src/physics/infall_module.c
 - Added files: tests/test_galaxy_property_macros.c, tests/test_validation_mocks.c, tests/verify_property_access.py, tests/validate_property_conversion.sh
 
-2025-05-07: [Phase 5.2.D Task 2] Updated Module Template Generator for Property System
+2025-05-07: [Phase 5.2.D] Module Template Generator Update
 - Modified core_module_template.c/h to include core_properties.h and use GALAXY_PROP_* macros
-- Added example implementations showcasing proper property access patterns for different module types
-- Incorporated type-specific property usage examples based on module type (cooling, infall, etc.)
-- Enhanced test generation to include property system initialization and cleanup
-- Added comprehensive documentation on property access best practices in generated README files
-- Created test_module_template.c for validating the updated template system
-- Updated Makefile to include the new test in the test suite
+- Added example implementations showcasing proper property access patterns
+- Enhanced test generation to include property system initialization
+- Added property access best practices documentation
 - Modified files: src/core/core_module_template.c, src/core/core_module_template.h, Makefile
 - Added files: tests/test_module_template.c
 
-2025-05-08: [Phase 5.2.D Task 3] Analyzed Module Dependency Management for Property-Based Interactions
-- Conducted comprehensive analysis of module dependency management for property-based interactions
-- Determined that no significant revisions are needed to the existing dependency management system
-- Confirmed that the Properties Module architecture with centralized property definitions already addresses key concerns
-- Identified that pipeline phases and event system provide sufficient structure for module interactions
-- Proposed minor enhancements to property metadata for future consideration (Phase 7)
-- Documented analysis in detailed report for future reference
-- Added task completion to phase tracker log
-- Modified files: log/phase-tracker-log.md, log/recent-progress-log.md, log/project-state-log.md
-
-2025-05-08: [Phase 5.2.E Task 1] Removed GALAXY_OUTPUT Struct
+2025-05-08: [Phase 5.2.E] GALAXY_OUTPUT Struct Removal
 - Removed static GALAXY_OUTPUT struct definition from binary output files
-- Implemented stub functions in save_gals_binary.c that return appropriate error messages
+- Implemented stub functions in save_gals_binary.c returning appropriate error messages
 - Updated io_binary_output.c to return errors when binary output is requested
-- Verified HDF5 output using existing HDF5_GALAXY_OUTPUT struct continues to work correctly
-- Ensured code compiles successfully and all tests pass
-- Binary output now correctly returns "Binary output format is no longer supported" error
+- Verified HDF5 output using existing HDF5_GALAXY_OUTPUT struct works correctly
 - Modified files: src/io/save_gals_binary.c, src/io/save_gals_binary.h, src/io/io_binary_output.c
 
-2025-05-08: [Phase 5.2.E Tasks 2-6] Implemented Property-Based Output System
-- Removed deprecated prepare_galaxy_for_output function from save_gals_binary.c/h
-- Created output_preparation_module that runs in FINAL pipeline phase and prepares galaxies for output
+2025-05-08: [Phase 5.2.E] Property-Based Output System Implementation
+- Removed deprecated prepare_galaxy_for_output function
+- Created output_preparation_module running in FINAL pipeline phase
 - Refactored HDF5 output handler to use GALAXY_PROP_* macros and property metadata
 - Updated io_interface.h to remove binary output format references
-- Modified io_binary_output.c to clearly mark the format as deprecated
-- Wrote comprehensive documentation for the new property-based output system
-- Added test_output_preparation.c that verifies all functionality works correctly
+- Added comprehensive documentation and tests
 - Modified files: src/io/save_gals_binary.c, src/io/save_gals_binary.h, src/io/io_hdf5_output.c, src/io/io_interface.h, src/io/io_binary_output.c, src/core/core_build_model.c, src/core/physics_pipeline_executor.c, Makefile
 - Created files: src/physics/output_preparation_module.c, src/physics/output_preparation_module.h, src/physics/physics_modules.h, docs/output_preparation.md, tests/test_output_preparation.c, tests/Makefile.output_preparation
 
-2025-05-09: [Phase 5.2.F.1] Core Isolation Implementation Complete
+2025-05-09: [Phase 5.2.F] Core Isolation Implementation
 - Created core_properties.yaml containing only essential core infrastructure properties
 - Removed physics fields from GALAXY struct, keeping only infrastructure fields
 - Eliminated direct field synchronization in physics_pipeline_executor.c
@@ -301,19 +148,10 @@
 - Added files: src/core_properties.yaml, src/physics/placeholder_empty_module.c/h, tests/test_core_physics_separation.c, input/config_empty_pipeline.json, input/empty_pipeline_parameters.par, tests/Makefile.empty_pipeline, docs/core_physics_separation.md
 - Modified files: src/core/core_allvars.h, src/core/core_build_model.c, src/core/physics_pipeline_executor.c, src/physics/physics_modules.h, Makefile, src/generate_property_headers.py
 
-2025-05-09: [Phase 5.2] Fixed Compiler Warning in Auto-Generated Properties Code
-- Fixed compiler warning in the core-only build for unused `params` parameter in `allocate_galaxy_properties`
-- Modified `generate_property_headers.py` to add `__attribute__((unused))` to the parameter declaration
-- Used string replacement to modify the implementation template before code generation
-- Verified fix by rebuilding with `make core-only clean && make core-only`
-- This fix ensures clean compilation with no warnings when building the core-only version
-- Modified files: src/generate_property_headers.py, src/core/core_build_model.c, src/core/core_galaxy_accessors.c, src/physics/placeholder_empty_module.c, src/physics/placeholder_hdf5_save.c, src/physics/placeholder_model_misc.c, src/physics/placeholder_validation.c
-
-2025-05-12: [Phase 5.2.F.1] Enhanced Error Handling and Documentation for Core-Physics Separation
-- Improved error context in physics_step_executor with phase-specific information and better error reporting
-- Added phase transition validation in pipeline_execute_phase to ensure scientifically correct execution order
-- Enhanced merger queue documentation with scientific rationale explaining its importance for consistency
-- Added comprehensive physics-agnostic design documentation explaining core-physics separation approach
-- Added detailed phase organization documentation explaining the HALO, GALAXY, POST, and FINAL phases
-- Verified changes with successful core-only build without warnings
+2025-05-12: [Phase 5.2.F] Error Handling and Documentation Enhancement
+- Improved error context in physics_step_executor with phase-specific information
+- Added phase transition validation in pipeline_execute_phase
+- Enhanced merger queue documentation with scientific rationale
+- Added comprehensive physics-agnostic design documentation
+- Added detailed phase organization documentation
 - Modified files: src/core/physics_pipeline_executor.c, src/core/core_pipeline_system.c, src/core/core_merger_queue.h, src/core/core_types.h, src/core/core_build_model.c
