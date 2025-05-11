@@ -54,6 +54,6 @@ When working with SAGE:
 
 **Security Boundary Notes**
 Important limitations:
-- File operations restricted to /Users/dcroton/Documents/Science/projects/sage-repos/sage-model
+- File operations restricted to `/Users/dcroton/Documents/Science/projects/sage-repos/sage-model`
 - Terminal commands aren't fully sandboxed and can access other directories
 - Always make configuration changes in a separate chat
