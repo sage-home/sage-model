@@ -89,7 +89,7 @@ This phase achieves true physics-agnostic core infrastructure that can run witho
 - [x] Create core-only build target, update `tests/Makefile.empty_pipeline` to use core-only build, property definition compiler flag
 - [x] Error handling enhancement: improve error context in `physics_step_executor`, add phase transition validation
 - [x] Documentation enhancements: enhance merger event queue documentation, document physics-agnostic design
-- [ ] Memory management improvement: enhance `setup_minimal_galaxy_data` in test, add property system cleanup
+- [x] Memory management improvement: enhance `setup_minimal_galaxy_data` in test, add property system cleanup
 
 ##### Phase 5.2.F.2: Empty Pipeline Validation ⏳ PENDING
 - [ ] Create empty placeholder modules for essential pipeline points
