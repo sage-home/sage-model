@@ -1,61 +1,83 @@
 # Makefile for testing empty pipeline
 # This tests the core's ability to run without physics dependencies
 
-# Default target
-all: test_empty_pipeline
-
-# Run the test
-run:
-	@echo "Testing empty pipeline execution..."
-	@echo "Using parameter file: $(PARAM_FILE)"
-	@if [ ! -f $(EXEC) ]; then \
-		echo "Building core-only executable..."; \
-		cd $(ROOT_DIR) && make $(notdir $(EXEC)); \
-	fi
-	@$(EXEC) $(PARAM_FILE)
-
 # Directory setup
 TEST_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOT_DIR := $(shell dirname $(TEST_DIR))
+SRC_DIR := $(ROOT_DIR)/src
+CORE_DIR := $(SRC_DIR)/core
+PHYSICS_DIR := $(SRC_DIR)/physics
+IO_DIR := $(SRC_DIR)/io
 INPUT_DIR := $(ROOT_DIR)/input
 OUTPUT_DIR := $(ROOT_DIR)/output
-EXEC := $(ROOT_DIR)/sage-core-only
+
+# Compiler options
+CC = gcc
+CFLAGS = -DHDF5 -O2 -march=native -std=gnu99 -fPIC -g -Wall -Wextra
+INCLUDES = -I$(ROOT_DIR) -I$(SRC_DIR) -I$(CORE_DIR) -I$(PHYSICS_DIR) -I/opt/homebrew/include
+LDFLAGS = -L/opt/homebrew/lib
+LIBS = -lhdf5 -lhdf5_hl -lm
+
+# Source files for test
+TEST_SOURCES = test_empty_pipeline.c
+TEST_EXECUTABLE = test_empty_pipeline
+
+# Core library files
+CORE_SOURCES = $(CORE_DIR)/core_init.c \
+               $(CORE_DIR)/core_logging.c \
+               $(CORE_DIR)/core_mymalloc.c \
+               $(CORE_DIR)/core_allvars.c \
+               $(CORE_DIR)/core_build_model.c \
+               $(CORE_DIR)/core_read_parameter_file.c \
+               $(CORE_DIR)/core_module_system.c \
+               $(CORE_DIR)/core_pipeline_system.c \
+               $(CORE_DIR)/core_event_system.c \
+               $(CORE_DIR)/core_evolution_diagnostics.c \
+               $(CORE_DIR)/core_module_callback.c \
+               $(CORE_DIR)/core_properties.c \
+               $(CORE_DIR)/standard_properties.c \
+               $(CORE_DIR)/core_properties_sync.c \
+               $(CORE_DIR)/core_galaxy_extensions.c \
+               $(CORE_DIR)/physics_pipeline_executor.c \
+               $(PHYSICS_DIR)/placeholder_empty_module.c \
+               $(IO_DIR)/io_module_registry.c
+
+CORE_OBJECTS = $(CORE_SOURCES:.c=.o)
 
 # Input parameter file
 PARAM_FILE := $(INPUT_DIR)/empty_pipeline_parameters.par
 
-# Create output directory if it doesn't exist
-$(shell mkdir -p $(OUTPUT_DIR))
+# Default target
+all: setup $(TEST_EXECUTABLE)
 
-# Create symbolic link to the mini-millennium trees if needed
-$(shell ln -sf $(TEST_DIR)/test_data/trees_063.0 $(INPUT_DIR)/trees_063.0 2>/dev/null)
-$(shell ln -sf $(TEST_DIR)/test_data/millennium.a_list $(INPUT_DIR)/millennium.a_list 2>/dev/null)
+# Setup directories and links
+setup:
+	@mkdir -p $(OUTPUT_DIR)
+	@ln -sf $(TEST_DIR)/test_data/trees_063.0 $(INPUT_DIR)/trees_063.0 2>/dev/null || true
+	@ln -sf $(TEST_DIR)/test_data/millennium.a_list $(INPUT_DIR)/millennium.a_list 2>/dev/null || true
 
-# Create a small test program that runs with the empty pipeline
-test_empty_pipeline: test_empty_pipeline.c
-	@echo "Compiling test empty pipeline runner..."
-	@clang -DROOT_DIR='"$(ROOT_DIR)"' -DHDF5 -O2 -march=native -std=gnu99 -fPIC -g -Wall -I$(ROOT_DIR) -I$(ROOT_DIR)/src/core -I$(ROOT_DIR)/src/physics -I/opt/homebrew/include -o test_empty_pipeline test_empty_pipeline.c
+# Compile core objects
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-test_empty_pipeline.c:
-	@echo "Creating test_empty_pipeline.c..."
-	@echo '#include <stdio.h>' > $@
-	@echo '#include <stdlib.h>' >> $@
-	@echo '#include <string.h>' >> $@
-	@echo '' >> $@
-	@echo 'int main(int argc, char **argv) {' >> $@
-	@echo '    if (argc != 2) {' >> $@
-	@echo '        printf("Usage: %s <parameter_file>\\n", argv[0]);' >> $@
-	@echo '        return 1;' >> $@
-	@echo '    }' >> $@
-	@echo '    printf("Empty pipeline test would run SAGE with: %s\\n", argv[1]);' >> $@
-	@echo '    printf("This is a placeholder since building the full SAGE model with core-physics separation\\n");' >> $@
-	@echo '    printf("requires significant changes to the build system.\\n");' >> $@
-	@echo '    return 0;' >> $@
-	@echo '}' >> $@
+# Link test executable
+$(TEST_EXECUTABLE): $(TEST_SOURCES) $(CORE_OBJECTS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+# Run the test
+run: $(TEST_EXECUTABLE)
+	@echo "Testing empty pipeline execution..."
+	@echo "Using parameter file: $(PARAM_FILE)"
+	./$(TEST_EXECUTABLE) $(PARAM_FILE)
 
 # Clean up
 clean:
 	@echo "Cleaning up empty pipeline test output..."
-	@rm -f $(OUTPUT_DIR)/empty_pipeline_*.hdf5
+	@rm -f $(TEST_EXECUTABLE) $(OUTPUT_DIR)/empty_pipeline_*.hdf5 $(CORE_OBJECTS)
+	@rm -f *.o
 
-.PHONY: all run clean
+# Detailed compiler output for debugging build issues
+verbose: CFLAGS += -v
+verbose: all
+
+.PHONY: all setup run clean verbose

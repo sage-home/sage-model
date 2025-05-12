@@ -1,5 +1,5 @@
-# Makefile for core physics separation test
-# This compiles only the core components and placeholder module, without full SAGE
+# Makefile for testing core-physics separation
+# This tests the core's complete independence from physics
 
 # Directory setup
 TEST_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
@@ -7,48 +7,53 @@ ROOT_DIR := $(shell dirname $(TEST_DIR))
 SRC_DIR := $(ROOT_DIR)/src
 CORE_DIR := $(SRC_DIR)/core
 PHYSICS_DIR := $(SRC_DIR)/physics
+IO_DIR := $(SRC_DIR)/io
 
-# Compiler and flags
-CC := clang
-CFLAGS := -DROOT_DIR='$(ROOT_DIR)' -DHDF5 -O2 -march=native -std=gnu99 -fPIC -g -Wall
-INCLUDES := -I$(ROOT_DIR) -I$(CORE_DIR) -I$(PHYSICS_DIR) -I/opt/homebrew/include
+# Compiler options
+CC = gcc
+CFLAGS = -DHDF5 -O2 -march=native -std=gnu99 -fPIC -g -Wall -Wextra
+INCLUDES = -I$(ROOT_DIR) -I$(SRC_DIR) -I$(CORE_DIR) -I$(PHYSICS_DIR) -I/opt/homebrew/include
+LDFLAGS = -L/opt/homebrew/lib
+LIBS = -lhdf5 -lhdf5_hl -lm
 
-# Core and test source files
-CORE_SRC := \
-	$(CORE_DIR)/core_logging.c \
-	$(CORE_DIR)/core_module_system.c \
-	$(CORE_DIR)/core_galaxy_extensions.c \
-	$(CORE_DIR)/core_event_system.c \
-	$(CORE_DIR)/core_pipeline_system.c \
-	$(CORE_DIR)/core_module_callback.c \
-	$(CORE_DIR)/physics_pipeline_executor.c \
-	$(PHYSICS_DIR)/placeholder_empty_module.c \
-	$(CORE_DIR)/core_properties.c \
-	$(CORE_DIR)/core_properties_sync.c \
-	$(CORE_DIR)/standard_properties.c \
-	$(CORE_DIR)/core_galaxy_accessors.c
+# Source files for test
+TEST_SOURCES = test_core_physics_separation.c
+TEST_EXECUTABLE = test_core_physics_separation
 
-TEST_SRC := test_core_physics_separation.c
+# Core library files
+CORE_SOURCES = $(CORE_DIR)/core_init.c \
+               $(CORE_DIR)/core_logging.c \
+               $(CORE_DIR)/core_mymalloc.c \
+               $(CORE_DIR)/core_allvars.c \
+               $(CORE_DIR)/core_module_system.c \
+               $(CORE_DIR)/core_pipeline_system.c \
+               $(CORE_DIR)/core_event_system.c \
+               $(CORE_DIR)/core_properties.c \
+               $(CORE_DIR)/standard_properties.c \
+               $(CORE_DIR)/core_galaxy_extensions.c
 
-# Output target
-TEST_EXEC := test_core_physics_separation
+CORE_OBJECTS = $(CORE_SOURCES:.c=.o)
 
 # Default target
-all: $(TEST_EXEC)
+all: $(TEST_EXECUTABLE)
+
+# Compile core objects
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Link test executable
+$(TEST_EXECUTABLE): $(TEST_SOURCES) $(CORE_OBJECTS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 # Run the test
-run: $(TEST_EXEC)
-	@echo "Running core physics separation test..."
-	@./$(TEST_EXEC)
-
-# Compile the test executable
-$(TEST_EXEC): $(TEST_SRC) $(CORE_SRC)
-	@echo "Compiling core physics separation test..."
-	@$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^
+run: $(TEST_EXECUTABLE)
+	@echo "Testing core-physics separation..."
+	./$(TEST_EXECUTABLE)
 
 # Clean up
 clean:
-	@echo "Cleaning up core physics separation test..."
-	@rm -f $(TEST_EXEC)
+	@echo "Cleaning up core-physics separation test output..."
+	@rm -f $(TEST_EXECUTABLE) $(CORE_OBJECTS)
+	@rm -f *.o
 
 .PHONY: all run clean
