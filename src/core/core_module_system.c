@@ -18,7 +18,7 @@
 #include "core_module_debug.h"
 #include "core_galaxy_extensions.h" // For galaxy_property_t, galaxy_extension_register, etc.
 #include "core_property_types.h"    // For enum galaxy_property_type
-#include "core_properties.h"        // For GalaxyPropertyInfo struct definition
+#include "core_property_descriptor.h"  // For GalaxyPropertyInfo struct definition
 
 /* Global module registry */
 struct module_registry *global_module_registry = NULL;
@@ -2662,7 +2662,8 @@ int module_register_properties(int module_id, const GalaxyPropertyInfo *properti
             if (info->is_dynamic_array) {
                 prop_to_register.size = sizeof(void*); // Dynamic arrays are stored as pointers in the extension data.
                                                        // Actual allocation handled by property system using size_param_name.
-                prop_to_register.flags |= PROPERTY_FLAG_DYNAMIC_ARRAY; // Add a flag if extension system uses it
+                // Note: Currently no PROPERTY_FLAG_DYNAMIC_ARRAY is defined in galaxy_property_flags
+                // Will need to be handled specially in the galaxy extension system
             } else { // Fixed-size array
                 size_t element_size = 0;
                 if (strcmp(info->type_str, "float") == 0) element_size = sizeof(float);
@@ -2699,7 +2700,7 @@ int module_register_properties(int module_id, const GalaxyPropertyInfo *properti
                 prop_to_register.type = PROPERTY_TYPE_BOOL;
                 prop_to_register.size = sizeof(bool); // Or char, ensure consistency
             } else if (strcmp(info->type_str, "string") == 0) { // Assuming dynamic string (char*)
-                prop_to_register.type = PROPERTY_TYPE_STRING;
+                prop_to_register.type = PROPERTY_TYPE_STRUCT; // Using PROPERTY_TYPE_STRUCT for strings
                 prop_to_register.size = sizeof(char*); // Stored as a pointer
             } else if (strcmp(info->type_str, "struct") == 0 || strcmp(info->type_str, "object") == 0) {
                 LOG_ERROR("Module %d property '%s': type_str '%s' suggests a custom struct. "

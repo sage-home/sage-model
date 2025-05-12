@@ -11,7 +11,7 @@ extern "C" {
 #include "core_module_callback.h"
 #include "core_init.h"
 #include "core_property_types.h" // For property_id_t
-#include "core_properties.h"     // For GalaxyPropertyInfo
+#include "core_property_descriptor.h"  // For GalaxyPropertyInfo
 
 /**
  * @file core_module_system.h

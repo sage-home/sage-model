@@ -3,6 +3,10 @@
 #include "core_allvars.h"
 #include "core_properties.h" // Will be generated, so might not exist yet
 
+#ifndef GALAXY_PROP_BY_ID
+#define GALAXY_PROP_BY_ID(g, pid, type) (((type*)(g)->properties)[(pid)])
+#endif
+
 // Forward declaration if core_properties.h or its dependencies are not yet fully available
 // For example, if property_id_t is defined there.
 // If GALAXY struct is defined in core_allvars.h, it's fine.

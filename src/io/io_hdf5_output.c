@@ -9,7 +9,8 @@
 #include "../core/core_mymalloc.h"
 #include "../core/core_logging.h"
 #include "../core/core_galaxy_extensions.h"
-#include "../core/core_properties.h"
+#include "../core/core_properties.h"  // For GALAXY_PROP_* macros
+#include "../core/core_property_descriptor.h"  // For GalaxyPropertyInfo
 #include "../core/core_property_utils.h" // Added for new helper functions
 
 #ifdef CORE_ONLY
@@ -443,7 +444,8 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             char *dest_ptr = (char *)dest + (buffer_idx * dtype_size);
             
             // Copy appropriate field based on field name
-            // struct GALAXY *galaxy = &galaxies[i]; // Already defined above
+            struct GALAXY *galaxy = &galaxies[i];
+            const char *field_name = data->field_names[j];
             
             // Ensure properties are accessible
             if (galaxy->properties == NULL) {
@@ -454,7 +456,7 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             
             // Special handling for derived or component fields that are still part of the "core" output definition
             if (strcmp(field_name, "SAGETreeIndex") == 0) {
-                *(int32_t *)dest_ptr = galaxy->TreeIndex; // Assuming TreeIndex is a direct core field
+                *(int32_t *)dest_ptr = galaxy->HaloNr; // Using HaloNr instead of TreeIndex
             }
             // Handle position components from core GALAXY_PROP_Pos_ELEM macro
             else if (strcmp(field_name, "Pos_x") == 0) {
@@ -508,10 +510,14 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
                         // For the listed physics properties, they were floats or doubles.
                         // The GALAXY_PROP_ macros handle types correctly. The new utils must too.
                         // The most robust is to switch on `prop_id` for known core properties that are int64.
-                        if (prop_id == get_cached_property_id("GalaxyIndex") || prop_id == get_cached_property_id("CentralGalaxyIndex") || prop_id == get_cached_property_id("MostBoundID")) {
-                             *(int64_t *)dest_ptr = GALAXY_PROP_BY_ID(galaxy, prop_id, int64_t); // Use direct macro for known int64 core props
+                        if (prop_id == get_cached_property_id("GalaxyIndex")) {
+                             *(int64_t *)dest_ptr = GALAXY_PROP_GalaxyIndex(galaxy); // Direct access with specific macro
+                        } else if (prop_id == get_cached_property_id("CentralGalaxyIndex")) {
+                             *(int64_t *)dest_ptr = GALAXY_PROP_CentralGalaxyIndex(galaxy); // Direct access with specific macro
+                        } else if (prop_id == get_cached_property_id("MostBoundID")) {
+                             *(int64_t *)dest_ptr = GALAXY_PROP_MostBoundID(galaxy); // Direct access with specific macro
                         } else {
-                            LOG_WARN("HDF5 output: Unhandled int64 HDF5 type for generic property '%s' (ID %d). Zeroing.", field_name, prop_id);
+                            LOG_WARNING("HDF5 output: Unhandled int64 HDF5 type for generic property '%s' (ID %d). Zeroing.", field_name, prop_id);
                             *(int64_t *)dest_ptr = 0;
                         }
                     } else if (H5Tequal(dtype, H5T_NATIVE_DOUBLE)) {
@@ -519,7 +525,7 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
                     } else if (H5Tequal(dtype, H5T_NATIVE_UINT64)) {
                         // Similar to int64, needs a get_uint64_property.
                         // Using direct macro for known uint64 core properties if any.
-                        LOG_WARN("HDF5 output: Unhandled uint64 HDF5 type for generic property '%s' (ID %d). Zeroing.", field_name, prop_id);
+                        LOG_WARNING("HDF5 output: Unhandled uint64 HDF5 type for generic property '%s' (ID %d). Zeroing.", field_name, prop_id);
                         *(uint64_t *)dest_ptr = 0;
                     } else if (H5Tequal(dtype, H5T_NATIVE_INT8)) { // For bools
                          *(int8_t *)dest_ptr = (int8_t)get_int32_property(galaxy, prop_id, 0); // Assuming bool stored as int32_t in props
@@ -529,7 +535,7 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
                     }
                 } else {
                     // Property ID not found by name or galaxy doesn't have it (e.g. optional physics property)
-                    LOG_WARN("HDF5 output: Property '%s' (ID %d) not found or not available for galaxy %lld. Zeroing value.", field_name, prop_id, galaxy->GalaxyIndex);
+                    LOG_WARNING("HDF5 output: Property '%s' (ID %d) not found or not available for galaxy %lld. Zeroing value.", field_name, prop_id, galaxy->GalaxyIndex);
                     memset(dest_ptr, 0, dtype_size);
                 }
             }

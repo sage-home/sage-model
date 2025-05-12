@@ -1,6 +1,7 @@
 #include "core_property_utils.h"
 #include "core_mymalloc.h" // For mymalloc/myfree if used for cache
 #include "core_utils.h"    // For sage_assert, LOG_ERROR etc.
+#include "core_property_descriptor.h"  // For GalaxyPropertyInfo
 #include <stdio.h>
 #include <string.h>
 
