@@ -2,6 +2,7 @@
 
 #include "core_allvars.h"
 #include "core_properties.h" // Will be generated, so might not exist yet
+#include "core_property_descriptor.h" // For property_meta_t
 
 #ifndef GALAXY_PROP_BY_ID
 #define GALAXY_PROP_BY_ID(g, pid, type) (((type*)(g)->properties)[(pid)])
@@ -15,19 +16,25 @@
 // For now, assuming property_id_t will be available via core_properties.h -> core_galaxy_properties.h
 
 /* Get property by ID with error checking */
-float get_float_property(struct GALAXY *galaxy, property_id_t prop_id, float default_value);
-int32_t get_int32_property(struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value);
-double get_double_property(struct GALAXY *galaxy, property_id_t prop_id, double default_value);
+float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, float default_value);
+int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value);
+double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, double default_value);
 
 /* Check if property exists */
 // Assuming property_id_t is an enum or integral type that can be checked against a known range
 // or a special "NOT_FOUND" value. The current GALAXY_PROP_BY_ID macro handles out-of-bounds access
 // by erroring or returning a default, so this function provides a cleaner check.
-bool has_property(struct GALAXY *galaxy, property_id_t prop_id);
+bool has_property(const struct GALAXY *galaxy, property_id_t prop_id);
 
 /* Get property ID by name with caching */
 // This function will need access to the property metadata generated in core_properties.c
 property_id_t get_cached_property_id(const char *name);
+
+/* Determine if property is a core property */
+bool is_core_property(property_id_t prop_id);
+
+/* Get property metadata */
+const property_meta_t* get_property_meta(property_id_t prop_id);
 
 // It's good practice to also declare any helper static functions if they were in the .c file
 // and might be useful for testing or other modules, though typically static functions are not in headers.

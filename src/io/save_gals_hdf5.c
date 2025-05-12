@@ -10,6 +10,7 @@
 #include "../core/core_mymalloc.h"
 #include "../core/core_utils.h"
 #include "../core/macros.h"
+#include "../core/core_property_utils.h"  // Added for property system access
 #ifdef CORE_ONLY
 #include "../physics/placeholder_hdf5_save.h"
 #include "../physics/placeholder_model_misc.h"

@@ -15,8 +15,9 @@
 #define PROP_ID_INT32   1
 #define PROP_ID_DOUBLE  2
 
-// Initialize galaxy properties for testing
-void allocate_galaxy_properties(struct GALAXY *galaxy) {
+// Mock allocate_galaxy_properties for testing
+// The function in core_properties.h has a different signature now
+static void mock_allocate_galaxy_properties(struct GALAXY *galaxy) {
     if (!galaxy->properties) {
         galaxy->properties = calloc(1, sizeof(galaxy_properties_t));
         assert(galaxy->properties != NULL);
@@ -33,19 +34,19 @@ void reset_galaxy_properties(struct GALAXY *galaxy) {
 
 // Mock setters: write directly into properties buffer at fixed offsets for physics properties
 void set_mock_physics_property_float(struct GALAXY *g, property_id_t pid, float value) {
-    allocate_galaxy_properties(g);
+    mock_allocate_galaxy_properties(g);
     float *buf = (float *)g->properties;
     buf[pid] = value;
 }
 
 void set_mock_physics_property_int32(struct GALAXY *g, property_id_t pid, int32_t value) {
-    allocate_galaxy_properties(g);
+    mock_allocate_galaxy_properties(g);
     int32_t *buf = (int32_t *)g->properties;
     buf[pid] = value;
 }
 
 void set_mock_physics_property_double(struct GALAXY *g, property_id_t pid, double value) {
-    allocate_galaxy_properties(g);
+    mock_allocate_galaxy_properties(g);
     double *buf = (double *)g->properties;
     buf[pid] = value;
 }
@@ -55,7 +56,7 @@ void test_core_property_access(void) {
     struct GALAXY mock_galaxy = {0};
     
     // Initialize properties
-    allocate_galaxy_properties(&mock_galaxy);
+    mock_allocate_galaxy_properties(&mock_galaxy);
     reset_galaxy_properties(&mock_galaxy);
     
     // Test setting/getting Type (core property)
@@ -140,20 +141,20 @@ void test_property_system_integration(void) {
     struct GALAXY gal = {0};
     
     // Initialize properties
-    allocate_galaxy_properties(&gal);
+    mock_allocate_galaxy_properties(&gal);
     reset_galaxy_properties(&gal);
     
     // Set core properties using GALAXY_PROP_* macros
-    GALAXY_PROP_Mvir(&gal) = 1e12;
+    GALAXY_PROP_Mvir(&gal) = 1e12f; // Use float literal for accurate comparison
     GALAXY_PROP_Type(&gal) = 0;
     
     // Set physics properties using the generic system
     set_mock_physics_property_float(&gal, PROP_ID_FLOAT, 5.0f);
     
     // Verify all properties can be accessed correctly
-    assert(GALAXY_PROP_Mvir(&gal) == 1e12);
+    assert(fabs(GALAXY_PROP_Mvir(&gal) - 1e12f) < 1e-5f); // Use approximate comparison for floats
     assert(GALAXY_PROP_Type(&gal) == 0);
-    assert(get_float_property(&gal, PROP_ID_FLOAT, 0.0f) == 5.0f);
+    assert(fabs(get_float_property(&gal, PROP_ID_FLOAT, 0.0f) - 5.0f) < 1e-5f);
     
     free(gal.properties);
     printf("test_property_system_integration PASSED\n");

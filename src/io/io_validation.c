@@ -10,6 +10,7 @@
 #include "io_property_serialization.h"
 #include "../core/core_logging.h"
 #include "../core/core_galaxy_extensions.h"
+#include "../core/core_property_utils.h"
 
 #ifdef CORE_ONLY
 #include "../physics/placeholder_hdf5_macros.h"
@@ -1426,7 +1427,7 @@ static int validate_galaxy_consistency(struct validation_context *ctx,
             property_id_t base_id = get_cached_property_id(base_name);
             
             // If we found the base property and galaxy has it, add to related list
-            if (base_id != INVALID_PROPERTY_ID && has_property(galaxy, base_id)) {
+            if (base_id != -1 && has_property(galaxy, base_id)) {
                 if (num_related < 20) {
                     related_props[num_related].metals_id = id;
                     related_props[num_related].base_id = base_id;

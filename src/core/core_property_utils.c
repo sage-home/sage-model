@@ -1,7 +1,7 @@
 #include "core_property_utils.h"
 #include "core_mymalloc.h" // For mymalloc/myfree if used for cache
 #include "core_utils.h"    // For sage_assert, LOG_ERROR etc.
-#include "core_property_descriptor.h"  // For GalaxyPropertyInfo
+#include "core_property_descriptor.h"  // For GalaxyPropertyInfo and property_meta_t
 #include <stdio.h>
 #include <string.h>
 
@@ -17,9 +17,13 @@ static CachedProperty property_cache[MAX_CACHED_PROPERTIES];
 static int32_t num_cached_properties = 0;
 static bool property_cache_initialized = false;
 
+// External declarations for generated property metadata
+extern const property_meta_t PROPERTY_META[];
+extern const int32_t TotGalaxyProperties;
+extern const int32_t CORE_PROP_COUNT;
+
 // Forward declaration for internal helper, if any.
 // e.g. static property_id_t find_property_id_in_registry(const char *name);
-
 
 // Initialize the cache (simple version)
 static void init_property_cache_if_needed(void) {
@@ -33,7 +37,7 @@ static void init_property_cache_if_needed(void) {
     }
 }
 
-float get_float_property(struct GALAXY *galaxy, property_id_t prop_id, float default_value) {
+float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, float default_value) {
     sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in get_float_property.");
     sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in get_float_property.");
 
@@ -52,7 +56,7 @@ float get_float_property(struct GALAXY *galaxy, property_id_t prop_id, float def
     return GALAXY_PROP_BY_ID(galaxy, prop_id, float);
 }
 
-int32_t get_int32_property(struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value) {
+int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value) {
     sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in get_int32_property.");
     sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in get_int32_property.");
 
@@ -63,7 +67,7 @@ int32_t get_int32_property(struct GALAXY *galaxy, property_id_t prop_id, int32_t
     return GALAXY_PROP_BY_ID(galaxy, prop_id, int32_t);
 }
 
-double get_double_property(struct GALAXY *galaxy, property_id_t prop_id, double default_value) {
+double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, double default_value) {
     sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in get_double_property.");
     sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in get_double_property.");
 
@@ -74,7 +78,7 @@ double get_double_property(struct GALAXY *galaxy, property_id_t prop_id, double 
     return GALAXY_PROP_BY_ID(galaxy, prop_id, double);
 }
 
-bool has_property(struct GALAXY *galaxy, property_id_t prop_id) {
+bool has_property(const struct GALAXY *galaxy, property_id_t prop_id) {
     sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in has_property.");
     // If galaxy->properties can be NULL for some valid states, check that too.
     // sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in has_property.");
@@ -111,24 +115,21 @@ property_id_t get_cached_property_id(const char *name) {
         }
     }
 
-    // If not in cache, find in the global property registry and add to cache
-    // This requires access to the generated property metadata.
-    // The galaxy_property_info array contains property descriptors,
-    // and we need to find the property index based on name.
-    // The property index itself serves as the property ID.
+    // If not in cache, find in the global property registry
+    extern const GalaxyPropertyInfo galaxy_property_info[MAX_GALAXY_PROPERTIES];
     
     for (int32_t i = 0; i < TotGalaxyProperties; ++i) {
         if (strcmp(galaxy_property_info[i].name, name) == 0) {
-            property_id_t found_id = i; // Use array index as property ID
+            // Use array index as property ID (not a field)
+            property_id_t found_id = i;
             
             // Add to cache if there's space
             if (num_cached_properties < MAX_CACHED_PROPERTIES) {
-                strncpy(property_cache[num_cached_properties].name, name, MAX_STRING_LEN -1);
-                property_cache[num_cached_properties].name[MAX_STRING_LEN-1] = '\0';
+                strncpy(property_cache[num_cached_properties].name, name, MAX_STRING_LEN - 1);
+                property_cache[num_cached_properties].name[MAX_STRING_LEN - 1] = '\0';
                 property_cache[num_cached_properties].id = found_id;
                 num_cached_properties++;
             } else {
-                // Cache full, could implement LRU or other eviction, or just log
                 LOG_WARN("Property ID cache is full. Consider increasing MAX_CACHED_PROPERTIES.");
             }
             return found_id;
@@ -137,6 +138,20 @@ property_id_t get_cached_property_id(const char *name) {
 
     LOG_ERROR("Property with name '%s' not found in global property registry.", name);
     return -1; // Or some defined INVALID_PROPERTY_ID
+}
+
+bool is_core_property(property_id_t prop_id) {
+    // Core properties typically have IDs below a certain threshold
+    // This threshold (CORE_PROP_COUNT) is defined in the generated code
+    return prop_id >= 0 && prop_id < CORE_PROP_COUNT;
+}
+
+const property_meta_t* get_property_meta(property_id_t prop_id) {
+    // Return metadata for a property by ID
+    if (prop_id >= 0 && prop_id < TotGalaxyProperties) {
+        return &PROPERTY_META[prop_id];
+    }
+    return NULL;
 }
 
 // Cleanup function for the cache, if necessary (e.g., if using mymalloc)
