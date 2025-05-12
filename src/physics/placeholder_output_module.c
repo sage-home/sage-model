@@ -89,7 +89,7 @@ static int placeholder_output_execute_final_phase(void *data, struct pipeline_co
  */
 struct base_module placeholder_output_module = {
     .name = "placeholder_output_module",
-    .type = MODULE_TYPE_OUTPUT,
+    .type = MODULE_TYPE_MISC, /* Using MISC type for output module */
     .version = "1.0",
     .author = "SAGE Team",
     .initialize = placeholder_output_init,

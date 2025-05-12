@@ -5,12 +5,7 @@
 #include "../core/core_pipeline_system.h"
 #include "../core/core_logging.h"
 
-// Include module headers
-#include "cooling_module.h"
-#include "infall_module.h"
-#include "output_preparation_module.h"
-
-// Placeholder modules
+// Only include placeholder modules
 #include "placeholder_empty_module.h"
 #include "placeholder_cooling_module.h"
 #include "placeholder_infall_module.h"
@@ -20,66 +15,55 @@
 #include "placeholder_reincorporation_module.h"
 #include "placeholder_mergers_module.h"
 
+// Remove includes for non-placeholder modules
+// #include "cooling_module.h"
+// #include "infall_module.h"
+// #include "output_preparation_module.h"
+
 /**
  * @brief Initialize all physics modules
  * 
- * @return 0 on success, non-zero on failure
+ * Empty implementation for core-only build with placeholder modules.
+ * Real physics modules register themselves automatically via constructor functions.
+ * 
+ * @return 0 (always success)
  */
 static inline int init_physics_modules(void) {
-    int ret;
-    
-    // Initialize output preparation module
-    ret = init_output_preparation_module();
-    if (ret != 0) {
-        LOG_ERROR("Failed to initialize output preparation module");
-        return ret;
-    }
-    
-    // For cooling and infall modules, we need to create and initialize them
-    // using their create functions, which we'll do in register_physics_modules
-    
+    LOG_INFO("Initializing placeholder physics modules");
+    // All placeholder modules are auto-registered via constructor attributes
     return 0;
 }
 
 /**
  * @brief Clean up all physics modules
  * 
- * @return 0 on success, non-zero on failure
+ * Empty implementation for core-only build with placeholder modules.
+ * Module cleanup is handled by the module system.
+ * 
+ * @return 0 (always success)
  */
 static inline int cleanup_physics_modules(void) {
-    int ret;
-    
-    // Clean up output preparation module
-    ret = cleanup_output_preparation_module();
-    if (ret != 0) {
-        LOG_ERROR("Failed to clean up output preparation module");
-        return ret;
-    }
-    
-    // For cooling and infall modules, cleanup is handled by the module system
-    
+    LOG_INFO("Cleaning up placeholder physics modules");
+    // Cleanup is handled by the module system
     return 0;
 }
 
 /**
  * @brief Register all physics modules with the pipeline
  * 
- * @param config Pipeline configuration
- * @return 0 on success, non-zero on failure
+ * For placeholder modules, registration happens automatically through 
+ * the module system's discovery mechanism. This function exists
+ * to maintain API compatibility with the full physics version.
+ * 
+ * @param pipeline Pipeline configuration
+ * @return 0 (always success)
  */
 static inline int register_physics_modules(struct module_pipeline *pipeline) {
-    int ret;
+    LOG_INFO("Using placeholder physics modules only");
+    // Placeholder modules automatically register themselves
+    // with the pipeline via their constructor functions
     
-    // Register output preparation module
-    ret = register_output_preparation_module(pipeline);
-    if (ret != 0) {
-        LOG_ERROR("Failed to register output preparation module");
-        return ret;
-    }
-    
-    // For cooling and infall modules, we would register them here
-    // but their module-specific registration functions aren't exposed
-    
+    (void)pipeline; // Mark as unused
     return 0;
 }
 

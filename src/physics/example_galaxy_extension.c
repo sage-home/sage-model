@@ -119,28 +119,33 @@ void demonstrate_extension_usage(struct GALAXY *galaxy, int extension_id) {
         return;
     }
     
-    /* Calculate H2 fraction based on metallicity and gas mass */
-    ext_data->pressure = galaxy->Vvir * galaxy->Vvir * galaxy->ColdGas / galaxy->DiskScaleRadius;
-    ext_data->h2_fraction = 0.5 * galaxy->MetalsColdGas / (galaxy->ColdGas + 1.0e-10);
+#ifdef PHYSICS_MODULES
+    /* Original code with physics properties would go here */
+    /* This section would be enabled when physics modules are built */
+#else
+    /* No-op version with dummy values for core-only build */
+    ext_data->pressure = galaxy->Vvir * galaxy->Vvir * 0.1; /* Use dummy value instead of ColdGas */
+    ext_data->h2_fraction = 0.5; /* Use constant instead of MetalsColdGas/ColdGas ratio */
     
     /* Ensure fraction is between 0 and 1 */
     if (ext_data->h2_fraction < 0.0) ext_data->h2_fraction = 0.0;
     if (ext_data->h2_fraction > 1.0) ext_data->h2_fraction = 1.0;
     
-    /* Set up some example regions */
+    /* Set up some example regions with stub values */
     ext_data->num_regions = 3;
     
     /* Central region */
-    ext_data->regions[0].radius = 0.1 * galaxy->DiskScaleRadius;
-    ext_data->regions[0].sfr = 0.5 * galaxy->ColdGas * ext_data->h2_fraction / 1000.0;
+    ext_data->regions[0].radius = 0.1;
+    ext_data->regions[0].sfr = 0.01;
     
     /* Middle region */
-    ext_data->regions[1].radius = 0.5 * galaxy->DiskScaleRadius;
-    ext_data->regions[1].sfr = 0.3 * galaxy->ColdGas * ext_data->h2_fraction / 1000.0;
+    ext_data->regions[1].radius = 0.5;
+    ext_data->regions[1].sfr = 0.005;
     
     /* Outer region */
-    ext_data->regions[2].radius = 1.0 * galaxy->DiskScaleRadius;
-    ext_data->regions[2].sfr = 0.2 * galaxy->ColdGas * ext_data->h2_fraction / 1000.0;
+    ext_data->regions[2].radius = 1.0;
+    ext_data->regions[2].sfr = 0.002;
+#endif
     
     /* Log some information */
     LOG_DEBUG("Example extension for galaxy %d: h2_fraction=%f, pressure=%f, regions=%d",
