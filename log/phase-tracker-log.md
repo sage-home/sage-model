@@ -82,12 +82,12 @@
 - [x] Document the physics-free model baseline
 - [x] Optimize memory management with increased allocation limits
 
-##### Phase 5.2.F.3: Legacy Code Removal ⏳ PENDING
-- [ ] Remove all legacy physics implementation files
-- [ ] Update build system to remove legacy components
-- [ ] Clean up any remaining legacy references
-- [ ] Remove all synchronization infrastructure after verification
-- [ ] Final verification of clean core-physics separation
+##### Phase 5.2.F.3: Legacy Code Removal ✅ COMPLETED
+- [x] Remove all legacy physics implementation files
+- [x] Update build system to remove legacy components
+- [x] Clean up any remaining legacy references
+- [x] Remove all synchronization infrastructure after verification
+- [x] Final verification of clean core-physics separation
 
 #### Phase 5.2.G: Physics Module Migration ⏳ PENDING
 With the core now completely physics-agnostic, we'll implement physics modules as pure add-ons.

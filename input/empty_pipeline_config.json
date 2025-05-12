@@ -1,0 +1,57 @@
+{
+  "title": "Empty Physics Pipeline Configuration",
+  "description": "Configuration for running SAGE with an empty physics pipeline for development purposes",
+  "version": "1.0",
+  "execution_mode": "sequential",
+  "modules": [
+    {
+      "name": "placeholder_empty_module",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "name": "placeholder_cooling_module",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "name": "placeholder_infall_module",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "name": "placeholder_starformation_module",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "name": "placeholder_disk_instability_module",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "name": "placeholder_reincorporation_module",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "name": "placeholder_mergers_module",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "name": "placeholder_output_module",
+      "enabled": true,
+      "parameters": {}
+    }
+  ],
+  "global_parameters": {
+    "log_level": "INFO"
+  },
+  "phase_execution": {
+    "HALO": { "enabled": true },
+    "GALAXY": { "enabled": true },
+    "POST": { "enabled": true },
+    "FINAL": { "enabled": true }
+  }
+}

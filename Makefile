@@ -61,14 +61,17 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
 
 # Physics model source files
 ifeq ($(PHYSICS_MODULES), yes)
-PHYSICS_SRC := physics/legacy/model_starformation_and_feedback.c \
-        physics/legacy/model_disk_instability.c physics/legacy/model_reincorporation.c \
-        physics/legacy/model_mergers.c physics/legacy/model_misc.c \
-        physics/example_galaxy_extension.c \
+PHYSICS_SRC := physics/example_galaxy_extension.c \
         physics/example_event_handler.c \
         physics/infall_module.c physics/cooling_module.c \
         physics/cooling_tables.c physics/output_preparation_module.c \
-        physics/placeholder_empty_module.c
+        physics/placeholder_empty_module.c \
+        physics/placeholder_cooling_module.c physics/placeholder_infall_module.c \
+        physics/placeholder_output_module.c \
+        physics/placeholder_starformation_module.c \
+        physics/placeholder_disk_instability_module.c \
+        physics/placeholder_reincorporation_module.c \
+        physics/placeholder_mergers_module.c
 else
 # Include only placeholder modules for core-only build
 PHYSICS_SRC := physics/placeholder_empty_module.c \

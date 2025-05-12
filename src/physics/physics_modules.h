@@ -9,7 +9,16 @@
 #include "cooling_module.h"
 #include "infall_module.h"
 #include "output_preparation_module.h"
+
+// Placeholder modules
 #include "placeholder_empty_module.h"
+#include "placeholder_cooling_module.h"
+#include "placeholder_infall_module.h"
+#include "placeholder_output_module.h"
+#include "placeholder_starformation_module.h"
+#include "placeholder_disk_instability_module.h"
+#include "placeholder_reincorporation_module.h"
+#include "placeholder_mergers_module.h"
 
 /**
  * @brief Initialize all physics modules
