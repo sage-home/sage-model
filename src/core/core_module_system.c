@@ -16,6 +16,9 @@
 #include "core_module_system.h"
 #include "core_module_error.h"
 #include "core_module_debug.h"
+#include "core_galaxy_extensions.h" // For galaxy_property_t, galaxy_extension_register, etc.
+#include "core_property_types.h"    // For enum galaxy_property_type
+#include "core_properties.h"        // For GalaxyPropertyInfo struct definition
 
 /* Global module registry */
 struct module_registry *global_module_registry = NULL;
@@ -2561,3 +2564,186 @@ void module_set_error(struct base_module *module, int error_code, const char *er
                           "<unknown>", 0, "<unknown>", "%s", error_message);
     }
 }
+
+/**
+ * @brief Register properties defined by a module with the galaxy extension system.
+ *
+ * This function takes an array of GalaxyPropertyInfo structures, typically generated
+ * from a module's property definition file (e.g., a YAML file), and registers
+ * them with the core SAGE galaxy extension system. This allows module-specific
+ * data to be attached to galaxy structures.
+ *
+ * @param module_id The ID of the module registering these properties. This ID
+ *                  is used to associate the properties with the correct module.
+ * @param properties_info_array A pointer to an array of GalaxyPropertyInfo
+ *                              structures that describe the properties to be
+ *                              registered.
+ * @param num_properties_to_register The number of properties in the
+ *                                   properties_info_array.
+ *
+ * @return MODULE_STATUS_SUCCESS if all properties were registered successfully.
+ *         MODULE_STATUS_ERROR if one or more properties failed to register,
+ *                             or if there were critical errors during the process.
+ *         MODULE_STATUS_INVALID_ARGS if input parameters are invalid.
+ *         MODULE_STATUS_NOT_INITIALIZED if the module or extension system is not ready.
+ */
+int module_register_properties(int module_id, const GalaxyPropertyInfo *properties_info_array, int num_properties_to_register) {
+    if (global_module_registry == NULL) {
+        LOG_ERROR("Module system not initialized. Cannot register properties for module_id %d.", module_id);
+        return MODULE_STATUS_NOT_INITIALIZED;
+    }
+
+    // It might be good to validate module_id against registered modules here if feasible.
+    // For now, assume module_id is valid as it's typically called by the module itself during its init.
+
+    if (properties_info_array == NULL) {
+        LOG_ERROR("properties_info_array is NULL for module_id %d.", module_id);
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+
+    if (num_properties_to_register <= 0) {
+        LOG_INFO("No properties to register for module_id %d (count = %d).", module_id, num_properties_to_register);
+        return MODULE_STATUS_SUCCESS; // Not an error, just nothing to do.
+    }
+
+    // Ensure galaxy extension system is up. galaxy_extension_register will auto-initialize if needed.
+    if (global_extension_registry == NULL) {
+        LOG_INFO("Galaxy extension system not yet initialized. galaxy_extension_register will attempt to initialize it for module %d.", module_id);
+    }
+
+    int successful_registrations = 0;
+    for (int i = 0; i < num_properties_to_register; ++i) {
+        const GalaxyPropertyInfo *info = &properties_info_array[i];
+        galaxy_property_t prop_to_register;
+        memset(&prop_to_register, 0, sizeof(galaxy_property_t));
+
+        // Name
+        if (info->name == NULL || info->name[0] == '\0') {
+            LOG_ERROR("Module %d property %d: Name is NULL or empty. Skipping.", module_id, i);
+            continue;
+        }
+        strncpy(prop_to_register.name, info->name, MAX_PROPERTY_NAME - 1);
+        prop_to_register.name[MAX_PROPERTY_NAME - 1] = '\0';
+
+        // Module ID
+        prop_to_register.module_id = module_id;
+
+        // Description and Units
+        if (info->description) {
+            strncpy(prop_to_register.description, info->description, MAX_PROPERTY_DESCRIPTION - 1);
+            prop_to_register.description[MAX_PROPERTY_DESCRIPTION - 1] = '\0';
+        }
+        if (info->units) {
+            strncpy(prop_to_register.units, info->units, MAX_PROPERTY_UNITS - 1);
+            prop_to_register.units[MAX_PROPERTY_UNITS - 1] = '\0';
+        }
+
+        // Flags
+        prop_to_register.flags = PROPERTY_FLAG_INITIALIZE; // Default: initialize to zero/NULL
+        if (info->output_field) {
+            prop_to_register.flags |= PROPERTY_FLAG_SERIALIZE;
+        }
+        if (info->read_only_level > 0) { // Assuming 1 and 2 mean read-only
+            prop_to_register.flags |= PROPERTY_FLAG_READONLY;
+        }
+
+
+        // Type and Size from GalaxyPropertyInfo.type_str
+        if (info->type_str == NULL) {
+            LOG_ERROR("Module %d property '%s': type_str is NULL. Skipping.", module_id, info->name);
+            continue;
+        }
+
+        if (info->is_array) {
+            prop_to_register.type = PROPERTY_TYPE_ARRAY;
+            // For arrays, 'size' in galaxy_property_t refers to the size of the data block if fixed,
+            // or sizeof(void*) if it's a pointer to dynamically allocated data.
+            // The GalaxyPropertyInfo's is_dynamic_array flag is key here.
+            if (info->is_dynamic_array) {
+                prop_to_register.size = sizeof(void*); // Dynamic arrays are stored as pointers in the extension data.
+                                                       // Actual allocation handled by property system using size_param_name.
+                prop_to_register.flags |= PROPERTY_FLAG_DYNAMIC_ARRAY; // Add a flag if extension system uses it
+            } else { // Fixed-size array
+                size_t element_size = 0;
+                if (strcmp(info->type_str, "float") == 0) element_size = sizeof(float);
+                else if (strcmp(info->type_str, "double") == 0) element_size = sizeof(double);
+                else if (strcmp(info->type_str, "int") == 0 || strcmp(info->type_str, "int32_t") == 0) element_size = sizeof(int32_t);
+                else if (strcmp(info->type_str, "long") == 0 || strcmp(info->type_str, "int64_t") == 0) element_size = sizeof(int64_t);
+                else if (strcmp(info->type_str, "bool") == 0) element_size = sizeof(bool);
+                // Add other supported element types for fixed arrays
+                else {
+                    LOG_ERROR("Module %d property '%s': Unsupported element type_str '%s' for fixed array. Skipping.", module_id, info->name, info->type_str);
+                    continue;
+                }
+
+                if (info->array_len <= 0) {
+                     LOG_ERROR("Module %d property '%s': Fixed array has invalid length %d. Skipping.", module_id, info->name, info->array_len);
+                     continue;
+                }
+                prop_to_register.size = element_size * info->array_len;
+            }
+        } else { // Scalar type
+            if (strcmp(info->type_str, "float") == 0) {
+                prop_to_register.type = PROPERTY_TYPE_FLOAT;
+                prop_to_register.size = sizeof(float);
+            } else if (strcmp(info->type_str, "double") == 0) {
+                prop_to_register.type = PROPERTY_TYPE_DOUBLE;
+                prop_to_register.size = sizeof(double);
+            } else if (strcmp(info->type_str, "int") == 0 || strcmp(info->type_str, "int32_t") == 0) {
+                prop_to_register.type = PROPERTY_TYPE_INT32;
+                prop_to_register.size = sizeof(int32_t);
+            } else if (strcmp(info->type_str, "long") == 0 || strcmp(info->type_str, "int64_t") == 0) {
+                prop_to_register.type = PROPERTY_TYPE_INT64;
+                prop_to_register.size = sizeof(int64_t);
+            } else if (strcmp(info->type_str, "bool") == 0) {
+                prop_to_register.type = PROPERTY_TYPE_BOOL;
+                prop_to_register.size = sizeof(bool); // Or char, ensure consistency
+            } else if (strcmp(info->type_str, "string") == 0) { // Assuming dynamic string (char*)
+                prop_to_register.type = PROPERTY_TYPE_STRING;
+                prop_to_register.size = sizeof(char*); // Stored as a pointer
+            } else if (strcmp(info->type_str, "struct") == 0 || strcmp(info->type_str, "object") == 0) {
+                LOG_ERROR("Module %d property '%s': type_str '%s' suggests a custom struct. "
+                          "Size cannot be determined from GalaxyPropertyInfo alone. "
+                          "Module should register complex structs directly using galaxy_extension_register with explicit size. Skipping.",
+                          module_id, info->name, info->type_str);
+                continue;
+            }
+            // Add other scalar types like uint32, uint64, char if needed
+            else {
+                LOG_ERROR("Module %d property '%s': Unknown or unsupported scalar type_str '%s'. Skipping.", module_id, info->name, info->type_str);
+                continue;
+            }
+        }
+
+        // Serialization functions:
+        // For properties registered via this generic mechanism, we assume they are simple types
+        // that can use default serialization or don't need custom functions.
+        // If a module has complex structs, it should register them directly with galaxy_extension_register
+        // and provide its own serialize/deserialize functions.
+        prop_to_register.serialize = NULL;
+        prop_to_register.deserialize = NULL;
+
+        // Register the property
+        int extension_id = galaxy_extension_register(&prop_to_register);
+        if (extension_id < 0) {
+            LOG_ERROR("Module %d: Failed to register property '%s'. Error code from galaxy_extension_register: %d", module_id, info->name, extension_id);
+        } else {
+            LOG_INFO("Module %d: Successfully registered property '%s' with extension ID %d.", module_id, info->name, extension_id);
+            successful_registrations++;
+        }
+    } // End loop over properties
+
+    if (successful_registrations == num_properties_to_register) {
+        return MODULE_STATUS_SUCCESS;
+    } else if (successful_registrations > 0) {
+        LOG_WARNING("Module %d: Partially registered properties (%d out of %d).", module_id, successful_registrations, num_properties_to_register);
+        return MODULE_STATUS_ERROR; // Partial success is treated as an error for atomicity.
+    } else {
+        if (num_properties_to_register > 0) { // Only log error if there was something to register
+            LOG_ERROR("Module %d: Failed to register any properties (attempted %d).", module_id, num_properties_to_register);
+        }
+        return MODULE_STATUS_ERROR;
+    }
+}
+
+/* Parameter system integration functions */

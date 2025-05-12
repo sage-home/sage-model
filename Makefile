@@ -442,8 +442,11 @@ test_output_preparation: tests/test_output_preparation.c $(SAGELIB)
 test_core_physics_separation: tests/test_core_physics_separation.c core-only
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_physics_separation tests/test_core_physics_separation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+test_property_system: tests/test_property_system.c $(SAGELIB) $(GENERATED_FILES)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -I$(SRC_PREFIX) tests/test_property_system.c -L. -l$(LIBNAME) $(LIBFLAGS) -o tests/test_property_system
+
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
@@ -496,6 +499,8 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_output_preparation || FAILED="$$FAILED test_output_preparation"
 	@echo "Running test_core_physics_separation..."
 	@./tests/test_core_physics_separation || FAILED="$$FAILED test_core_physics_separation"
+	@echo "Running test_property_system..."
+	@./tests/test_property_system || FAILED="$$FAILED test_property_system"
 	@echo "Running memory tests..."
 	@cd tests && make -f Makefile.memory_tests || FAILED="$$FAILED memory_tests"
 	@if [ -n "$$FAILED" ]; then \

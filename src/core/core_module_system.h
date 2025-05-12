@@ -9,6 +9,9 @@ extern "C" {
 #include "core_allvars.h"
 #include "core_types.h"  /* Include common types first */
 #include "core_module_callback.h"
+#include "core_init.h"
+#include "core_property_types.h" // For property_id_t
+#include "core_properties.h"     // For GalaxyPropertyInfo
 
 /**
  * @file core_module_system.h
@@ -649,6 +652,16 @@ int module_load_parameters(int module_id, const char *filename);
  * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
 int module_save_parameters(int module_id, const char *filename);
+
+/**
+ * Function for modules to register their custom properties
+ * 
+ * @param module_id ID of the module
+ * @param properties_info_array Array of GalaxyPropertyInfo structures
+ * @param num_properties_to_register Number of properties in the array
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
+ */
+int module_register_properties(int module_id, const GalaxyPropertyInfo *properties_info_array, int num_properties_to_register);
 
 #ifdef __cplusplus
 }

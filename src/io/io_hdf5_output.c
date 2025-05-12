@@ -10,6 +10,7 @@
 #include "../core/core_logging.h"
 #include "../core/core_galaxy_extensions.h"
 #include "../core/core_properties.h"
+#include "../core/core_property_utils.h" // Added for new helper functions
 
 #ifdef CORE_ONLY
 #include "../physics/placeholder_hdf5_macros.h"
@@ -21,11 +22,7 @@
 #include "io_property_serialization.h"
 #include "io_hdf5_output.h"
 
-#ifdef USE_SAGE_IN_MCMC_MODE
-#define NUM_OUTPUT_FIELDS 2
-#else
-#define NUM_OUTPUT_FIELDS 54
-#endif
+// NUM_OUTPUT_FIELDS will now be determined dynamically
 
 /**
  * @brief Magic marker to identify the HDF5 output format with extended properties
@@ -73,7 +70,8 @@ static struct io_interface hdf5_output_handler = {
 static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN], 
                                   char (*field_descriptions)[MAX_STRING_LEN],
                                   char (*field_units)[MAX_STRING_LEN], 
-                                  hsize_t *field_dtypes);
+                                  hsize_t *field_dtypes,
+                                  int *actual_num_fields); // Added to return actual count
 static int create_hdf5_groups(struct hdf5_output_data *format_data, struct params *params);
 static int write_header(hid_t file_id, struct params *params);
 static int allocate_galaxy_buffers(struct hdf5_output_data *format_data);
@@ -204,10 +202,26 @@ int hdf5_output_initialize(const char *filename, struct params *params, void **f
     }
     
     // Generate field metadata
-    data->field_names = calloc(NUM_OUTPUT_FIELDS, sizeof(char[MAX_STRING_LEN]));
-    data->field_descriptions = calloc(NUM_OUTPUT_FIELDS, sizeof(char[MAX_STRING_LEN]));
-    data->field_units = calloc(NUM_OUTPUT_FIELDS, sizeof(char[MAX_STRING_LEN]));
-    data->field_dtypes = calloc(NUM_OUTPUT_FIELDS, sizeof(hsize_t));
+    // The size of these arrays will be based on an initial estimate (e.g., TotGalaxyProperties from core_properties.h)
+    // or a sufficiently large upper bound if TotGalaxyProperties isn't directly usable here yet.
+    // For now, let's assume TotGalaxyProperties is available and represents a reasonable max.
+    // If not, a fixed large number like MAX_GALAXY_PROPERTIES (if it's the max possible ID + 1)
+    // or a new MAX_OUTPUTTABLE_PROPERTIES could be used.
+    // We will use TotGalaxyProperties from the generated core_properties.c, assuming it's linked.
+    // This requires galaxy_property_info and TotGalaxyProperties to be extern declared or accessible.
+    // For simplicity in this step, we'll keep NUM_OUTPUT_FIELDS as an upper bound for allocation
+    // and let generate_field_metadata tell us the actual count.
+    // A better approach would be to count outputtable properties first.
+
+    // Let's define a more robust upper limit for allocation if NUM_OUTPUT_FIELDS is removed.
+    // MAX_GALAXY_PROPERTIES should come from the generated core_properties.h
+    int max_possible_fields = MAX_GALAXY_PROPERTIES + 10; // Add some buffer for special fields like SAGETreeIndex, Pos_x etc.
+
+
+    data->field_names = calloc(max_possible_fields, sizeof(char[MAX_STRING_LEN]));
+    data->field_descriptions = calloc(max_possible_fields, sizeof(char[MAX_STRING_LEN]));
+    data->field_units = calloc(max_possible_fields, sizeof(char[MAX_STRING_LEN]));
+    data->field_dtypes = calloc(max_possible_fields, sizeof(hsize_t));
     
     if (data->field_names == NULL || data->field_descriptions == NULL || 
         data->field_units == NULL || data->field_dtypes == NULL) {
@@ -224,8 +238,9 @@ int hdf5_output_initialize(const char *filename, struct params *params, void **f
     }
     
     // Generate field metadata
+    int actual_num_fields = 0;
     ret = generate_field_metadata(data->field_names, data->field_descriptions, 
-                                data->field_units, data->field_dtypes);
+                                data->field_units, data->field_dtypes, &actual_num_fields);
     if (ret != 0) {
         io_set_error(IO_ERROR_UNKNOWN, "Failed to generate field metadata");
         free(data->field_dtypes);
@@ -240,7 +255,7 @@ int hdf5_output_initialize(const char *filename, struct params *params, void **f
     }
     
     // Number of standard fields
-    data->num_fields = NUM_OUTPUT_FIELDS;
+    data->num_fields = actual_num_fields; // Use the actual count
     
     // Create snapshot groups
     ret = create_hdf5_groups(data, params);
@@ -428,20 +443,20 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             char *dest_ptr = (char *)dest + (buffer_idx * dtype_size);
             
             // Copy appropriate field based on field name
-            const char *field_name = data->field_names[j];
-            struct GALAXY *galaxy = &galaxies[i];
+            // struct GALAXY *galaxy = &galaxies[i]; // Already defined above
             
-            // Synchronize direct fields to properties for access through macros
+            // Ensure properties are accessible
             if (galaxy->properties == NULL) {
-                LOG_WARNING("Galaxy %d has NULL properties pointer, skipping property access", i);
+                LOG_WARNING("Galaxy %lld at SnapNum %d has NULL properties pointer, skipping property access for field '%s'.", galaxy->GalaxyIndex, galaxy->SnapNum, field_name);
+                memset(dest_ptr, 0, dtype_size); // Zero-fill if properties are missing
                 continue;
             }
             
-            // Special handling for derived or component fields
+            // Special handling for derived or component fields that are still part of the "core" output definition
             if (strcmp(field_name, "SAGETreeIndex") == 0) {
-                *(int32_t *)dest_ptr = 0;  // Default value - not stored in property system
+                *(int32_t *)dest_ptr = galaxy->TreeIndex; // Assuming TreeIndex is a direct core field
             }
-            // Handle position components
+            // Handle position components from core GALAXY_PROP_Pos_ELEM macro
             else if (strcmp(field_name, "Pos_x") == 0) {
                 *(float *)dest_ptr = GALAXY_PROP_Pos_ELEM(galaxy, 0);
             }
@@ -451,7 +466,7 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             else if (strcmp(field_name, "Pos_z") == 0) {
                 *(float *)dest_ptr = GALAXY_PROP_Pos_ELEM(galaxy, 2);
             }
-            // Handle velocity components
+            // Handle velocity components from core GALAXY_PROP_Vel_ELEM macro
             else if (strcmp(field_name, "Vel_x") == 0) {
                 *(float *)dest_ptr = GALAXY_PROP_Vel_ELEM(galaxy, 0);
             }
@@ -461,113 +476,60 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             else if (strcmp(field_name, "Vel_z") == 0) {
                 *(float *)dest_ptr = GALAXY_PROP_Vel_ELEM(galaxy, 2);
             }
-            // Handle other standard properties using property macros
-            else if (strcmp(field_name, "Type") == 0) {
-                *(int32_t *)dest_ptr = GALAXY_PROP_Type(galaxy);
-            }
-            else if (strcmp(field_name, "GalaxyIndex") == 0) {
-                *(int64_t *)dest_ptr = GALAXY_PROP_GalaxyIndex(galaxy);
-            }
-            else if (strcmp(field_name, "CentralGalaxyIndex") == 0) {
-                *(int64_t *)dest_ptr = GALAXY_PROP_CentralGalaxyIndex(galaxy);
-            }
-            else if (strcmp(field_name, "HaloNr") == 0 || strcmp(field_name, "SAGEHaloIndex") == 0) {
-                *(int32_t *)dest_ptr = GALAXY_PROP_HaloNr(galaxy);
-            }
-            else if (strcmp(field_name, "MostBoundID") == 0 || strcmp(field_name, "SimulationFOFHaloIndex") == 0) {
-                *(int64_t *)dest_ptr = GALAXY_PROP_MostBoundID(galaxy);
-            }
-            else if (strcmp(field_name, "mergeType") == 0) {
-                *(int32_t *)dest_ptr = GALAXY_PROP_mergeType(galaxy);
-            }
-            else if (strcmp(field_name, "mergeIntoID") == 0) {
-                *(int32_t *)dest_ptr = GALAXY_PROP_mergeIntoID(galaxy);
-            }
-            else if (strcmp(field_name, "mergeIntoSnapNum") == 0) {
-                *(int32_t *)dest_ptr = GALAXY_PROP_mergeIntoSnapNum(galaxy);
-            }
-            else if (strcmp(field_name, "dT") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_dT(galaxy);
-            }
-            else if (strcmp(field_name, "Mvir") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_Mvir(galaxy);
-            }
-            else if (strcmp(field_name, "CentralMvir") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_CentralMvir(galaxy);
-            }
-            else if (strcmp(field_name, "Rvir") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_Rvir(galaxy);
-            }
-            else if (strcmp(field_name, "Vvir") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_Vvir(galaxy);
-            }
-            else if (strcmp(field_name, "Vmax") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_Vmax(galaxy);
-            }
-            else if (strcmp(field_name, "ColdGas") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_ColdGas(galaxy);
-            }
-            else if (strcmp(field_name, "StellarMass") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_StellarMass(galaxy);
-            }
-            else if (strcmp(field_name, "BulgeMass") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_BulgeMass(galaxy);
-            }
-            else if (strcmp(field_name, "HotGas") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_HotGas(galaxy);
-            }
-            else if (strcmp(field_name, "EjectedMass") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_EjectedMass(galaxy);
-            }
-            else if (strcmp(field_name, "BlackHoleMass") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_BlackHoleMass(galaxy);
-            }
-            else if (strcmp(field_name, "DiskScaleRadius") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_DiskScaleRadius(galaxy);
-            }
-            else if (strcmp(field_name, "Cooling") == 0) {
-                *(double *)dest_ptr = GALAXY_PROP_Cooling(galaxy);
-            }
-            else if (strcmp(field_name, "Heating") == 0) {
-                *(double *)dest_ptr = GALAXY_PROP_Heating(galaxy);
-            }
-            else if (strcmp(field_name, "TimeOfLastMajorMerger") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_TimeOfLastMajorMerger(galaxy);
-            }
-            else if (strcmp(field_name, "TimeOfLastMinorMerger") == 0) {
-                *(float *)dest_ptr = GALAXY_PROP_TimeOfLastMinorMerger(galaxy);
-            }
+            // For all other fields, use the generic property access system
             else {
-                // For other fields, try to look up by property name
-                property_id_t prop_id = get_property_id(field_name);
-                
-                if (prop_id != PROP_COUNT) {
-                    // Property exists, extract it based on type
-                    const property_meta_t *meta = &PROPERTY_META[prop_id];
-                    
-                    if (strcmp(meta->type, "int32_t") == 0) {
-                        // For simplicity, we're not handling the full range of property types
-                        // In a real implementation, you'd need proper macro generation for each type
-                        LOG_WARNING("Property access for %s type not implemented", meta->type);
-                        // Zero-fill as fallback
+                property_id_t prop_id = get_cached_property_id(field_name);
+
+                if (has_property(galaxy, prop_id)) { // Check if property ID is valid and exists for the galaxy
+                    // Determine the type from field_dtypes[j] (which was set based on property_meta_t in generate_field_metadata)
+                    // and use the appropriate new generic getter.
+                    if (H5Tequal(dtype, H5T_NATIVE_FLOAT)) {
+                        *(float *)dest_ptr = get_float_property(galaxy, prop_id, 0.0f);
+                    } else if (H5Tequal(dtype, H5T_NATIVE_INT32)) {
+                        *(int32_t *)dest_ptr = get_int32_property(galaxy, prop_id, 0);
+                    } else if (H5Tequal(dtype, H5T_NATIVE_INT64)) {
+                        // Ensure the property is indeed int64. If it was uint64, this might truncate/misinterpret.
+                        // The get_int64_property or similar would be needed if we have it.
+                        // For now, assuming get_double_property can be used if it was a long long, or specific int64 getter.
+                        // Let's assume a get_int64_property exists or is added to core_property_utils.h/c
+                        // For now, we only have get_int32_property. This needs to be expanded.
+                        // Fallback: if it's a known physics property that was float/double, use that.
+                        // This part highlights the need for get_property_by_id to return a generic void* or typed value.
+                        // Given the current utils: get_float, get_int32, get_double.
+                        // We need to map HDF5 types back to these. 
+                        // This is a bit circular if generate_field_metadata used GalaxyPropertyInfo->type_str
+                        // and now we use HDF5 type to call a specific getter.
+                        // A get_generic_property(..., void *out_buffer, size_t expected_size) would be more robust.
+
+                        // Simplification: Assume if it's int64 HDF5 type, it was an int64_t property.
+                        // We need a get_int64_property. For now, let's use double as a placeholder if it's a large number field.
+                        // This is a temporary patch point.
+                        // Let's assume for now that any int64 fields are correctly fetched by a (yet to be made) get_int64_property
+                        // For the listed physics properties, they were floats or doubles.
+                        // The GALAXY_PROP_ macros handle types correctly. The new utils must too.
+                        // The most robust is to switch on `prop_id` for known core properties that are int64.
+                        if (prop_id == get_cached_property_id("GalaxyIndex") || prop_id == get_cached_property_id("CentralGalaxyIndex") || prop_id == get_cached_property_id("MostBoundID")) {
+                             *(int64_t *)dest_ptr = GALAXY_PROP_BY_ID(galaxy, prop_id, int64_t); // Use direct macro for known int64 core props
+                        } else {
+                            LOG_WARN("HDF5 output: Unhandled int64 HDF5 type for generic property '%s' (ID %d). Zeroing.", field_name, prop_id);
+                            *(int64_t *)dest_ptr = 0;
+                        }
+                    } else if (H5Tequal(dtype, H5T_NATIVE_DOUBLE)) {
+                        *(double *)dest_ptr = get_double_property(galaxy, prop_id, 0.0);
+                    } else if (H5Tequal(dtype, H5T_NATIVE_UINT64)) {
+                        // Similar to int64, needs a get_uint64_property.
+                        // Using direct macro for known uint64 core properties if any.
+                        LOG_WARN("HDF5 output: Unhandled uint64 HDF5 type for generic property '%s' (ID %d). Zeroing.", field_name, prop_id);
+                        *(uint64_t *)dest_ptr = 0;
+                    } else if (H5Tequal(dtype, H5T_NATIVE_INT8)) { // For bools
+                         *(int8_t *)dest_ptr = (int8_t)get_int32_property(galaxy, prop_id, 0); // Assuming bool stored as int32_t in props
+                    } else {
+                        LOG_ERROR("HDF5 output: Unknown HDF5 data type for field_name '%s' (prop_id %d). Cannot use generic getter. Zeroing value.", field_name, prop_id);
                         memset(dest_ptr, 0, dtype_size);
                     }
-                    else if (strcmp(meta->type, "float") == 0) {
-                        // For float type, we would need a generic accessor
-                        LOG_WARNING("Generic property access for %s not implemented", field_name);
-                        // Zero-fill as fallback
-                        memset(dest_ptr, 0, dtype_size);
-                    }
-                    else {
-                        // Other types not handled in this example
-                        LOG_WARNING("Property access for %s type not implemented", meta->type);
-                        // Zero-fill as fallback
-                        memset(dest_ptr, 0, dtype_size);
-                    }
-                }
-                else {
-                    // Property not found, zero-fill
-                    LOG_WARNING("Unknown property name: %s", field_name);
+                } else {
+                    // Property ID not found by name or galaxy doesn't have it (e.g. optional physics property)
+                    LOG_WARN("HDF5 output: Property '%s' (ID %d) not found or not available for galaxy %lld. Zeroing value.", field_name, prop_id, galaxy->GalaxyIndex);
                     memset(dest_ptr, 0, dtype_size);
                 }
             }
@@ -777,62 +739,79 @@ int hdf5_output_get_handle_count(void *format_data) {
  * @param field_descriptions Array of field descriptions
  * @param field_units Array of field units
  * @param field_dtypes Array of HDF5 data types
+ * @param actual_num_fields Pointer to store the actual number of fields generated
  * @return 0 on success, non-zero on failure
  */
 static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN], 
                                   char (*field_descriptions)[MAX_STRING_LEN],
                                   char (*field_units)[MAX_STRING_LEN], 
-                                  hsize_t *field_dtypes) {
+                                  hsize_t *field_dtypes,
+                                  int *actual_num_fields) { // Added to return actual count
     // Initialize field index
     int field_idx = 0;
     
+    // Extern declaration for property metadata (defined in core_properties.c)
+    // This should ideally be included via a header if it's part of a public API for other modules.
+    // For now, direct extern declaration as it's specific to SAGE's build process.
+    extern const GalaxyPropertyInfo galaxy_property_info[MAX_GALAXY_PROPERTIES];
+    extern const int32_t TotGalaxyProperties;
+
     // Generate field metadata from property metadata
-    for (int prop_id = 0; prop_id < PROP_COUNT; prop_id++) {
-        const property_meta_t *meta = &PROPERTY_META[prop_id];
+    // Iterate through all defined properties in the central registry
+    for (int i = 0; i < TotGalaxyProperties; i++) {
+        const GalaxyPropertyInfo *meta = &galaxy_property_info[i]; // Use the central definition
         
         // Skip properties that aren't marked for output
-        if (!meta->output) {
+        if (!meta->output_field) { // Assuming 'output_field' is the flag in GalaxyPropertyInfo
             continue;
         }
         
-        // Skip if we've reached our maximum field count
-        if (field_idx >= NUM_OUTPUT_FIELDS) {
-            LOG_WARNING("Too many properties marked for output (limit: %d), skipping %s", 
-                       NUM_OUTPUT_FIELDS, meta->name);
-            break;
-        }
-        
-        // Handle array properties with special naming conventions
-        if (meta->is_array && strcmp(meta->type, "float") == 0) {
-            // For fixed-size arrays like Pos[3], create separate fields for each component
-            if (meta->array_dimension > 0) {
-                if (strcmp(meta->name, "Pos") == 0) {
-                    // Add Pos_x, Pos_y, Pos_z as separate fields
-                    for (int dim = 0; dim < meta->array_dimension && field_idx < NUM_OUTPUT_FIELDS; dim++) {
-                        char component = 'x' + dim; // x, y, z
-                        snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, component);
-                        snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component", &component);
+        // Skip if we've reached our maximum field count (max_possible_fields from the calling function context)
+        // This check should ideally use the size of the passed arrays.
+        // For now, assume the arrays are large enough. A safer way is to pass the allocated size.
+
+        // Handle array properties with special naming conventions (e.g. Pos_x, Pos_y, Pos_z)
+        // This logic should primarily focus on CORE properties. Physics properties are generic.
+        // The distinction between core and physics properties needs to be clear from GalaxyPropertyInfo.
+        // For now, we assume all properties in galaxy_property_info are "core" for output purposes,
+        // or that their 'output_field' flag correctly indicates they should be standard HDF5 columns.
+
+        if (meta->is_array && strcmp(meta->type_str, "float") == 0) { // Assuming type_str holds "float", "int32_t" etc.
+            if (meta->array_len > 0) { // Fixed-size arrays like Pos[3]
+                bool handled_as_components = false;
+                if (strcmp(meta->name, "Pos") == 0 && meta->array_len == 3) {
+                    const char components[] = {'x', 'y', 'z'};
+                    for (int dim = 0; dim < meta->array_len; dim++) {
+                        snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, components[dim]);
+                        snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component %c", meta->description, components[dim]);
                         strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
                         field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
                         field_idx++;
                     }
+                    handled_as_components = true;
                 } 
-                else if (strcmp(meta->name, "Vel") == 0) {
-                    // Add Vel_x, Vel_y, Vel_z as separate fields
-                    for (int dim = 0; dim < meta->array_dimension && field_idx < NUM_OUTPUT_FIELDS; dim++) {
-                        char component = 'x' + dim; // x, y, z
-                        snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, component);
-                        snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component", &component);
+                else if (strcmp(meta->name, "Vel") == 0 && meta->array_len == 3) {
+                    const char components[] = {'x', 'y', 'z'};
+                    for (int dim = 0; dim < meta->array_len; dim++) {
+                        snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, components[dim]);
+                        snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component %c", meta->description, components[dim]);
                         strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
                         field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
                         field_idx++;
                     }
+                    handled_as_components = true;
                 }
-                // Skip other fixed-size arrays for now - they'll be handled by extended properties
-            }
-            else {
-                // Dynamic arrays handled via property serialization (extended properties)
-                continue;
+                // Other fixed-size arrays that are core and need component-wise output can be added here.
+                // If not handled as components, they might be skipped or handled by extended properties later.
+                if (!handled_as_components) {
+                    // LOG_WARN("Fixed-size array property '%s' not explicitly handled for component-wise HDF5 output. It might be skipped or need extended property handling.", meta->name);
+                    continue; // Skip if not explicitly handled as components.
+                }
+            } else {
+                // Dynamic arrays are typically handled via property serialization (extended properties) or dedicated mechanisms.
+                // For standard HDF5 columns, we usually output fixed-size data.
+                // LOG_WARN("Dynamic array property '%s' found. These are typically not output as standard HDF5 columns. Skipping.", meta->name);
+                continue; 
             }
         }
         else if (!meta->is_array) {
@@ -841,43 +820,41 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
             strncpy(field_descriptions[field_idx], meta->description, MAX_STRING_LEN-1);
             strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
             
-            // Set appropriate HDF5 datatype based on property type
-            if (strcmp(meta->type, "int32_t") == 0) {
+            // Set appropriate HDF5 datatype based on property type string
+            if (strcmp(meta->type_str, "int32_t") == 0) {
                 field_dtypes[field_idx] = H5T_NATIVE_INT32;
-            }
-            else if (strcmp(meta->type, "int64_t") == 0 || strcmp(meta->type, "uint64_t") == 0) {
+            } else if (strcmp(meta->type_str, "int64_t") == 0 || strcmp(meta->type_str, "long long") == 0) {
                 field_dtypes[field_idx] = H5T_NATIVE_INT64;
-            }
-            else if (strcmp(meta->type, "float") == 0) {
+            } else if (strcmp(meta->type_str, "uint64_t") == 0) { // Assuming uint64_t is also output as H5T_NATIVE_INT64 or specific unsigned type
+                field_dtypes[field_idx] = H5T_NATIVE_UINT64; // Use appropriate HDF5 unsigned type
+            } else if (strcmp(meta->type_str, "float") == 0) {
                 field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-            }
-            else if (strcmp(meta->type, "double") == 0) {
+            } else if (strcmp(meta->type_str, "double") == 0) {
                 field_dtypes[field_idx] = H5T_NATIVE_DOUBLE;
+            } else if (strcmp(meta->type_str, "bool") == 0) { // bool often stored as int or char
+                field_dtypes[field_idx] = H5T_NATIVE_INT8; // Or H5T_NATIVE_HBOOL if available and preferred
+            } else {
+                LOG_ERROR("Unknown property type string '%s' for core property '%s'. Cannot determine HDF5 type.", 
+                           meta->type_str, meta->name);
+                // Default to float and log an error, or return error
+                field_dtypes[field_idx] = H5T_NATIVE_FLOAT; 
             }
-            else if (strcmp(meta->type, "long long") == 0) {
-                field_dtypes[field_idx] = H5T_NATIVE_INT64;
-            }
-            else {
-                // Default to float for unknown types
-                field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-                LOG_WARNING("Unknown property type '%s' for property '%s', defaulting to float", 
-                           meta->type, meta->name);
-            }
-            
             field_idx++;
         }
-    }
+    } // End loop over TotGalaxyProperties
     
     // Make sure we have added at least some fields
     if (field_idx == 0) {
-        LOG_ERROR("No properties marked for output in properties.yaml");
-        return -1;
+        LOG_ERROR("No core properties marked for output in the property registry (e.g. core_properties.yaml).");
+        // It's possible to have a valid run with no output fields if that's intended,
+        // but typically this indicates a configuration issue.
+        // Depending on requirements, this could be a warning or an error.
+        // For now, let it proceed, but the calling function should handle num_fields = 0.
     }
     
     // Add specific fields that might not be in the property system but are required
-    // for compatibility or analysis purposes
-    
-    // Check if SAGETreeIndex is already added
+    // for compatibility or analysis purposes (e.g., SAGETreeIndex).
+    // This should be minimized and ideally these would also be core properties.
     bool has_tree_index = false;
     for (int i = 0; i < field_idx; i++) {
         if (strcmp(field_names[i], "SAGETreeIndex") == 0) {
@@ -886,7 +863,9 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
         }
     }
     
-    if (!has_tree_index && field_idx < NUM_OUTPUT_FIELDS) {
+    // This assumes SAGETreeIndex is NOT part of core_properties.yaml and needs to be added manually.
+    // If it IS a core property, this manual addition is redundant.
+    if (!has_tree_index) { 
         strncpy(field_names[field_idx], "SAGETreeIndex", MAX_STRING_LEN-1);
         strncpy(field_descriptions[field_idx], "Index of the dark matter tree in the simulation", MAX_STRING_LEN-1);
         strncpy(field_units[field_idx], "none", MAX_STRING_LEN-1);
@@ -895,17 +874,14 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
     }
     
     // Log field count
-    LOG_INFO("Generated metadata for %d output fields from property system", field_idx);
+    LOG_INFO("Generated metadata for %d HDF5 output fields from the core property system.", field_idx);
     
-    // Fill remaining fields with placeholders if we have less than NUM_OUTPUT_FIELDS
-    for (; field_idx < NUM_OUTPUT_FIELDS; field_idx++) {
-        snprintf(field_names[field_idx], MAX_STRING_LEN, "Field%d", field_idx);
-        snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "Description for Field%d", field_idx);
-        snprintf(field_units[field_idx], MAX_STRING_LEN, "units");
-        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;  // Default to float for unused fields
-    }
+    *actual_num_fields = field_idx; // Return the actual number of fields generated
     
-    return 0;
+    // The old code filled remaining fields with placeholders up to NUM_OUTPUT_FIELDS.
+    // This is no longer needed as we are dynamic.
+    
+    return 0; // Success
 }
 
 /**

@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <stdbool.h> // For bool type
+
+// Centralize the inclusion of core_properties.h to ensure GalaxyPropertyInfo is defined early.
+#include "core_properties.h" 
 
 #ifdef HDF5
 #include <hdf5.h>

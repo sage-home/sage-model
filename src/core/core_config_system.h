@@ -7,7 +7,9 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "core_allvars.h"
-#include "core_module_system.h"
+#include "core_property_types.h" // For property_id_t
+#include "core_properties.h"     // For GalaxyPropertyInfo
+#include "core_module_system.h"  // For module_list and module_functions
 #include "core_pipeline_system.h"
 
 /**

@@ -74,3 +74,22 @@
 2025-05-09: [Phase 5.2.F] Complete Physics-Core Separation Approach
 - Rationale: We discovered memory issues caused by running dual physics systems in parallel. Rather than migrating physics components incrementally within the existing structure, we've decided to implement a truly physics-agnostic core first that can run with no physics at all. This achieves total separation between infrastructure and physics and resolves memory issues.
 - Impact: This approach allows us to remove all physics dependencies from the core, verify the pipeline runs with an empty properties.yaml, then add physics modules one by one. Each physics component becomes a pure add-on to a functioning core rather than an integral component, implementing true "Runtime Functional Modularity."
+
+## Core-Physics Property Separation (May 2025)
+
+The complete separation between core infrastructure and physics has been implemented:
+
+1.  **Core Properties (`core_properties.yaml`)**:
+    *   Direct field access via `GALAXY_PROP_*` macros is appropriate for core code when accessing properties defined in `core_properties.yaml`.
+    *   Managed by core infrastructure and always expected to be present.
+
+2.  **Physics Properties (`properties.yaml` or module-specific definitions)**:
+    *   MUST be accessed via generic property system functions (e.g., `get_float_property()`, `get_cached_property_id()`) from `core_property_utils.h`.
+    *   May be present or absent depending on loaded physics modules.
+
+3.  **Access rules**:
+    *   Core code (e.g., in `src/core/`, `src/io/`) MUST NOT use `GALAXY_PROP_*` macros for physics properties. It must use the generic accessors.
+    *   Physics modules SHOULD use generic accessors for physics properties (even their own) to promote consistency and facilitate inter-module interactions if ever needed, though they CAN use `GALAXY_PROP_*` for core properties.
+    *   All code SHOULD use `get_property_by_id()` (or the typed versions like `get_float_property()`) for physics properties to ensure runtime adaptability.
+
+This separation ensures that core infrastructure has zero compile-time or direct runtime knowledge of specific physics implementations or their associated properties, relying instead on a generic, runtime-discoverable property system.
