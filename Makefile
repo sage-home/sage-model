@@ -51,7 +51,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_pipeline_system.c core/core_config_system.c \
         core/core_module_callback.c core/core_array_utils.c \
         core/core_memory_pool.c core/core_dynamic_library.c \
-        core/core_module_template.c core/core_module_validation.c \
+        core/core_module_validation.c \
         core/core_module_debug.c core/core_module_parameter.c \
         core/core_module_error.c core/core_module_diagnostics.c \
         core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \

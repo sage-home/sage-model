@@ -113,13 +113,13 @@ property_id_t get_cached_property_id(const char *name) {
 
     // If not in cache, find in the global property registry and add to cache
     // This requires access to the generated property metadata.
-    // Let's assume `galaxy_property_info` is an array of structs/objects
-    // that contains the name and ID of each registered property.
-    // And `TotGalaxyProperties` is the actual count of registered properties.
+    // The galaxy_property_info array contains property descriptors,
+    // and we need to find the property index based on name.
+    // The property index itself serves as the property ID.
     
     for (int32_t i = 0; i < TotGalaxyProperties; ++i) {
         if (strcmp(galaxy_property_info[i].name, name) == 0) {
-            property_id_t found_id = galaxy_property_info[i].id; // Assuming the struct has an 'id' field
+            property_id_t found_id = i; // Use array index as property ID
             
             // Add to cache if there's space
             if (num_cached_properties < MAX_CACHED_PROPERTIES) {

@@ -1288,89 +1288,73 @@ static int validate_galaxy_values(struct validation_context *ctx,
                                 const char *component) {
     int status = 0;
     
-    // Check main mass reservoirs for NaN/Inf
-    status |= validation_check_finite(ctx, galaxy->StellarMass, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid StellarMass", index);
-    status |= validation_check_finite(ctx, galaxy->BulgeMass, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid BulgeMass", index);
-    status |= validation_check_finite(ctx, galaxy->HotGas, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid HotGas", index);
-    status |= validation_check_finite(ctx, galaxy->ColdGas, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid ColdGas", index);
-    status |= validation_check_finite(ctx, galaxy->EjectedMass, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid EjectedMass", index);
-    status |= validation_check_finite(ctx, galaxy->BlackHoleMass, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid BlackHoleMass", index);
-    status |= validation_check_finite(ctx, galaxy->ICS, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid ICS", index);
-    
-    // Check metals for NaN/Inf
-    status |= validation_check_finite(ctx, galaxy->MetalsStellarMass, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid MetalsStellarMass", index);
-    status |= validation_check_finite(ctx, galaxy->MetalsBulgeMass, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid MetalsBulgeMass", index);
-    status |= validation_check_finite(ctx, galaxy->MetalsHotGas, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid MetalsHotGas", index);
-    status |= validation_check_finite(ctx, galaxy->MetalsColdGas, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid MetalsColdGas", index);
-    status |= validation_check_finite(ctx, galaxy->MetalsEjectedMass, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid MetalsEjectedMass", index);
-    status |= validation_check_finite(ctx, galaxy->MetalsICS, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid MetalsICS", index);
-    
-    // Check halo/subhalo properties
-    status |= validation_check_finite(ctx, galaxy->Mvir, component, 
+    // Check core properties for NaN/Inf - using direct GALAXY_PROP_* macros for core properties
+    status |= validation_check_finite(ctx, GALAXY_PROP_Mvir(galaxy), component, 
                                     __FILE__, __LINE__,
                                     "Galaxy %d has invalid Mvir", index);
-    status |= validation_check_finite(ctx, galaxy->Rvir, component, 
+    status |= validation_check_finite(ctx, GALAXY_PROP_Rvir(galaxy), component, 
                                     __FILE__, __LINE__,
                                     "Galaxy %d has invalid Rvir", index);
-    status |= validation_check_finite(ctx, galaxy->Vvir, component, 
+    status |= validation_check_finite(ctx, GALAXY_PROP_Vvir(galaxy), component, 
                                     __FILE__, __LINE__,
                                     "Galaxy %d has invalid Vvir", index);
-    status |= validation_check_finite(ctx, galaxy->Vmax, component, 
+    status |= validation_check_finite(ctx, GALAXY_PROP_Vmax(galaxy), component, 
                                     __FILE__, __LINE__,
                                     "Galaxy %d has invalid Vmax", index);
     
-    // Check position components
+    // Check position components (core property)
     for (int i = 0; i < 3; i++) {
-        status |= validation_check_finite(ctx, galaxy->Pos[i], component, 
+        status |= validation_check_finite(ctx, GALAXY_PROP_Pos_ELEM(galaxy, i), component, 
                                         __FILE__, __LINE__,
                                         "Galaxy %d has invalid Pos[%d]", index, i);
     }
     
-    // Check velocity components
+    // Check velocity components (core property)
     for (int i = 0; i < 3; i++) {
-        status |= validation_check_finite(ctx, galaxy->Vel[i], component, 
+        status |= validation_check_finite(ctx, GALAXY_PROP_Vel_ELEM(galaxy, i), component, 
                                         __FILE__, __LINE__,
                                         "Galaxy %d has invalid Vel[%d]", index, i);
     }
     
-    // Check disk properties
-    status |= validation_check_finite(ctx, galaxy->DiskScaleRadius, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid DiskScaleRadius", index);
+    // For physics properties, we should NOT hardcode property names like "StellarMass"
+    // Instead, we iterate over all available properties on the galaxy
     
-    // Check dynamical properties
-    status |= validation_check_finite(ctx, galaxy->Cooling, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid Cooling", index);
-    status |= validation_check_finite(ctx, galaxy->Heating, component, 
-                                    __FILE__, __LINE__,
-                                    "Galaxy %d has invalid Heating", index);
+    // This requires using the property system's metadata to identify registered properties
+    extern const int32_t TotGalaxyProperties; // Total number of properties from all modules
+    
+    // Iterate through all possible property IDs and validate the ones that exist
+    for (property_id_t id = 0; id < TotGalaxyProperties; id++) {
+        // Skip properties that are core properties - we already checked those directly
+        if (is_core_property(id)) {
+            continue;
+        }
+        
+        // Check if the galaxy has this property
+        if (has_property(galaxy, id)) {
+            // Get the property's metadata to determine type
+            const property_meta_t *meta = get_property_meta(id);
+            if (meta == NULL) {
+                continue; // Skip if we can't get metadata
+            }
+            
+            // Based on the property type, validate its value
+            if (strcmp(meta->type, "float") == 0) {
+                float value = get_float_property(galaxy, id, 0.0f);
+                status |= validation_check_finite(ctx, value, component, 
+                                                __FILE__, __LINE__,
+                                                "Galaxy %d has invalid property '%s'", 
+                                                index, meta->name);
+            }
+            else if (strcmp(meta->type, "double") == 0) {
+                double value = get_double_property(galaxy, id, 0.0);
+                status |= validation_check_finite(ctx, value, component, 
+                                                __FILE__, __LINE__,
+                                                "Galaxy %d has invalid property '%s'", 
+                                                index, meta->name);
+            }
+            // Integer types don't need NaN/Inf checking
+        }
+    }
     
     return status;
 }
@@ -1405,63 +1389,78 @@ static int validate_galaxy_consistency(struct validation_context *ctx,
     
     // Note: We removed strict checking for negative values as per the human's instructions,
     // since sometimes a mass might be set to a negative value as a flag for a future condition.
-    // We'll only check StellarMass, BulgeMass, etc. if they are NaN/Infinity in validate_galaxy_values.
     
-    // BulgeMass should not exceed StellarMass (but only warn about it)
-    if (galaxy->BulgeMass > galaxy->StellarMass && galaxy->StellarMass > 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                       VALIDATION_SEVERITY_WARNING,
-                                       VALIDATION_CHECK_CONSISTENCY, component,
-                                       __FILE__, __LINE__,
-                                       "Galaxy %d has BulgeMass (%g) > StellarMass (%g)",
-                                       index, galaxy->BulgeMass, galaxy->StellarMass);
+    // Core code should not make any assumptions about specific physics property names or relationships
+    // Instead, we'll implement physics-agnostic consistency checks using the property system's metadata
+    
+    extern const int32_t TotGalaxyProperties; // Total number of properties
+    
+    // Create a temporary mapping of "Metals*" properties to their corresponding base properties
+    // for performing consistency checks. This is done generically without hardcoding names.
+    struct {
+        property_id_t metals_id;
+        property_id_t base_id;
+        const char *metals_name;
+        const char *base_name;
+    } related_props[20]; // Allow up to 20 metal-mass pairs
+    
+    int num_related = 0;
+    
+    // Scan all properties to find "Metals*" properties and their corresponding base properties
+    for (property_id_t id = 0; id < TotGalaxyProperties; id++) {
+        // Skip properties that don't exist for this galaxy
+        if (!has_property(galaxy, id)) {
+            continue;
+        }
+        
+        // Get property metadata
+        const property_meta_t *meta = get_property_meta(id);
+        if (meta == NULL || meta->name == NULL) {
+            continue;
+        }
+        
+        // Check if this is a "Metals*" property
+        if (strncmp(meta->name, "Metals", 6) == 0) {
+            // Look for the corresponding base property (the part after "Metals")
+            const char *base_name = meta->name + 6;
+            property_id_t base_id = get_cached_property_id(base_name);
+            
+            // If we found the base property and galaxy has it, add to related list
+            if (base_id != INVALID_PROPERTY_ID && has_property(galaxy, base_id)) {
+                if (num_related < 20) {
+                    related_props[num_related].metals_id = id;
+                    related_props[num_related].base_id = base_id;
+                    related_props[num_related].metals_name = meta->name;
+                    related_props[num_related].base_name = base_name;
+                    num_related++;
+                }
+            }
+        }
     }
     
-    // Warn about metals exceeding total mass (only if both are positive)
-    if (galaxy->MetalsStellarMass > galaxy->StellarMass && 
-        galaxy->StellarMass > 0 && galaxy->MetalsStellarMass > 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                       VALIDATION_SEVERITY_WARNING,
-                                       VALIDATION_CHECK_CONSISTENCY, component,
-                                       __FILE__, __LINE__,
-                                       "Galaxy %d has MetalsStellarMass (%g) > StellarMass (%g)",
-                                       index, galaxy->MetalsStellarMass, galaxy->StellarMass);
+    // Now check all metal-mass pairs we found
+    for (int i = 0; i < num_related; i++) {
+        float metals_value = get_float_property(galaxy, related_props[i].metals_id, 0.0f);
+        float base_value = get_float_property(galaxy, related_props[i].base_id, 0.0f);
+        
+        // Check that metals don't exceed total (if both are positive)
+        if (metals_value > base_value && base_value > 0.0f && metals_value > 0.0f) {
+            status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
+                                           VALIDATION_SEVERITY_WARNING,
+                                           VALIDATION_CHECK_CONSISTENCY, component,
+                                           __FILE__, __LINE__,
+                                           "Galaxy %d has %s (%g) > %s (%g)",
+                                           index, related_props[i].metals_name, metals_value,
+                                           related_props[i].base_name, base_value);
+        }
     }
     
-    if (galaxy->MetalsBulgeMass > galaxy->BulgeMass && 
-        galaxy->BulgeMass > 0 && galaxy->MetalsBulgeMass > 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                       VALIDATION_SEVERITY_WARNING,
-                                       VALIDATION_CHECK_CONSISTENCY, component,
-                                       __FILE__, __LINE__,
-                                       "Galaxy %d has MetalsBulgeMass (%g) > BulgeMass (%g)",
-                                       index, galaxy->MetalsBulgeMass, galaxy->BulgeMass);
-    }
+    // Additional generic consistency checks could be added here
+    // without referring to specific physics property names
     
-    if (galaxy->MetalsHotGas > galaxy->HotGas && 
-        galaxy->HotGas > 0 && galaxy->MetalsHotGas > 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                       VALIDATION_SEVERITY_WARNING,
-                                       VALIDATION_CHECK_CONSISTENCY, component,
-                                       __FILE__, __LINE__,
-                                       "Galaxy %d has MetalsHotGas (%g) > HotGas (%g)",
-                                       index, galaxy->MetalsHotGas, galaxy->HotGas);
-    }
-    
-    if (galaxy->MetalsColdGas > galaxy->ColdGas && 
-        galaxy->ColdGas > 0 && galaxy->MetalsColdGas > 0) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_LOGICAL_CONSTRAINT,
-                                       VALIDATION_SEVERITY_WARNING,
-                                       VALIDATION_CHECK_CONSISTENCY, component,
-                                       __FILE__, __LINE__,
-                                       "Galaxy %d has MetalsColdGas (%g) > ColdGas (%g)",
-                                       index, galaxy->MetalsColdGas, galaxy->ColdGas);
-    }
-    
-    // Check physical consistency of velocities and positions
+    // Check physical consistency of velocities and positions (core properties)
     // Note: We don't check for position values to be within the simulation box
-    // since these values come directly from the input treefiles and are assumed
-    // to be correct, as per the human's instructions
+    // since these values come directly from the input treefiles
     
     return status;
 }
