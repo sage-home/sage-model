@@ -167,22 +167,25 @@ The I/O system has been enhanced with property-based serialization:
 - `io_interface.h`: Unified interface for all I/O operations
 - Standardized on HDF5 output format (binary removed)
 - `output_preparation_module.c`: FINAL phase module for output preparation
-- HDF5 handler reads property metadata for field generation
+- HDF5 handler dynamically discovers properties for field generation
+- Property-agnostic output with proper core-physics separation
 - Enhanced property serialization for dynamic arrays
 
 ```
 I/O System
 ┌─────────────────────┐      ┌─────────────────────┐
 │ io_interface        │      │ HDF5 Handler        │
-│ - Capabilities      │◄────▶│ - Metadata-driven   │
-│ - Format registry   │      │ - GALAXY_PROP_*     │
-└─────────────────────┘      └────────┬────────────┘
+│ - Capabilities      │◄────▶│ - Property-driven   │
+│ - Format registry   │      │ - Core/Physics      │
+└─────────────────────┘      │   separation        │
+                             └────────┬────────────┘
                                       │
 ┌─────────────────────┐      ┌────────▼────────────┐
 │ Forest Handlers     │      │ Output Preparation  │
 │ - LHalo             │      │ - FINAL phase       │
 │ - ConsistentTrees   │      │ - Unit conversion   │
-└─────────────────────┘      └─────────────────────┘
+└─────────────────────┘      │ - Metadata-driven   │
+                             └─────────────────────┘
 ```
 
 ## Physics Modules

@@ -155,7 +155,10 @@ endif
 # HDF5 source files (defined outside to support 'make clean')
 H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c \
           io/hdf5_read_utils.c io/read_tree_consistentrees_hdf5.c \
-          io/read_tree_gadget4_hdf5.c io/io_hdf5_utils.c
+          io/read_tree_gadget4_hdf5.c io/io_hdf5_utils.c \
+          io/prepare_galaxy_for_hdf5_output.c io/trigger_buffer_write.c \
+          io/generate_field_metadata.c io/initialize_hdf5_galaxy_files.c \
+          io/finalize_hdf5_galaxy_files.c io/save_gals_hdf5_property_utils.c
 
 H5_INCL := $(H5_SRC:.c=.h)
 H5_OBJS := $(H5_SRC:.c=.o)
@@ -307,7 +310,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all core-only $(EXEC)-core-only test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation
+.PHONY: clean celan celna clena tests all core-only $(EXEC)-core-only test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5
 
 all: $(SAGELIB) $(EXEC)
 
@@ -442,11 +445,11 @@ test_output_preparation: tests/test_output_preparation.c $(SAGELIB)
 test_core_physics_separation: tests/test_core_physics_separation.c core-only
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_physics_separation tests/test_core_physics_separation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_property_system: tests/test_property_system.c $(SAGELIB) $(GENERATED_FILES)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -I$(SRC_PREFIX) tests/test_property_system.c -L. -l$(LIBNAME) $(LIBFLAGS) -o tests/test_property_system
+test_property_system_hdf5: tests/test_property_system_hdf5.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system_hdf5 tests/test_property_system_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system test_property_system_hdf5
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"

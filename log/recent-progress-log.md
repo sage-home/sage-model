@@ -182,3 +182,12 @@
 - Updated Makefile to remove references to these components
 - Deleted files: src/core/core_properties_sync.c, src/core/core_properties_sync.h, src/io/io_binary_output.c, src/io/io_binary_output.h, src/io/save_gals_binary.c, src/io/save_gals_binary.h
 - Modified files: Makefile
+
+2025-05-14: [Phase 5.2.F.3] Core-Physics Property Separation in HDF5 Output
+- Implemented property-based dynamic structure to replace static HDF5_GALAXY_OUTPUT
+- Refactored save_gals_hdf5.c to properly separate core and physics properties
+- Created utility functions for property system integration with HDF5 output
+- Added dynamic property discovery and metadata-driven output
+- Implemented proper error handling and resource cleanup
+- Added files: src/io/save_gals_hdf5_property_utils.c, src/io/prepare_galaxy_for_hdf5_output.c, src/io/generate_field_metadata.c, src/io/trigger_buffer_write.c, src/io/initialize_hdf5_galaxy_files.c, src/io/finalize_hdf5_galaxy_files.c, tests/test_property_system_hdf5.c
+- Modified files: src/io/save_gals_hdf5.c, src/io/save_gals_hdf5.h
