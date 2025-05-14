@@ -87,7 +87,7 @@
 - [x] Update build system to remove legacy components
 - [x] Clean up any remaining legacy references
 - [x] Remove all synchronization infrastructure after verification
-- [x] Final verification of clean core-physics separation
+- [ ] Final verification of clean core-physics separation
 
 #### Phase 5.2.G: Physics Module Migration ⏳ PENDING
 With the core now completely physics-agnostic, we'll implement physics modules as pure add-ons.
