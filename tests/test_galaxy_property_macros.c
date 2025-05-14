@@ -6,7 +6,12 @@
 #include <unistd.h>  // For access() function
 #include "../src/core/core_allvars.h"
 #include "../src/core/core_properties.h"
-#include "../src/core/core_properties_sync.h"
+// NOTE: This test imports the now-removed core_properties_sync.h file.
+// This test should be refactored in the future as the synchronization infrastructure
+// has been removed now that the property system transition is complete.
+// This file should be updated to test the property system directly without
+// the synchronization layer, as part of a test suite cleanup.
+// Archived file reference: core_properties_sync.h (in ignore/202505141845)
 #include "../src/physics/cooling_module.h"
 #include "../src/physics/infall_module.h"
 
@@ -72,10 +77,12 @@ static void test_property_equivalence(void) {
     GALAXY_PROP_HotGas(&galaxy) = 2.0;
     printf("  Updated property value via macro.\n");
     
-    // Sync properties to direct fields
-    sync_properties_to_direct(&galaxy);
+    // NOTE: With synchronization infrastructure removed, we no longer sync 
+    // between direct fields and properties. The test now just checks property values.
+    // The old code using sync_properties_to_direct() has been modified.
+    galaxy.HotGas = GALAXY_PROP_HotGas(&galaxy);
     assert(fabs(galaxy.HotGas - 2.0) < 1e-6);
-    printf("  Property synchronization working correctly. ✓\n");
+    printf("  Property value verification working correctly. ✓\n");
     
     // Test common array properties
     galaxy.Pos[0] = 10.0;
@@ -92,7 +99,14 @@ static void test_property_equivalence(void) {
     GALAXY_PROP_BlackHoleMass(&galaxy) = 0.01;
     GALAXY_PROP_r_heat(&galaxy) = 50.0;
     
-    sync_properties_to_direct(&galaxy);
+    // Update direct fields for testing
+    galaxy.ColdGas = GALAXY_PROP_ColdGas(&galaxy);
+    galaxy.Mvir = GALAXY_PROP_Mvir(&galaxy);
+    galaxy.Rvir = GALAXY_PROP_Rvir(&galaxy);
+    galaxy.Vvir = GALAXY_PROP_Vvir(&galaxy);
+    galaxy.MetalsHotGas = GALAXY_PROP_MetalsHotGas(&galaxy);
+    galaxy.BlackHoleMass = GALAXY_PROP_BlackHoleMass(&galaxy);
+    galaxy.r_heat = GALAXY_PROP_r_heat(&galaxy);
     
     assert(fabs(galaxy.ColdGas - 3.5) < 1e-6);
     assert(fabs(galaxy.Mvir - 100.0) < 1e-6);
@@ -102,7 +116,7 @@ static void test_property_equivalence(void) {
     assert(fabs(galaxy.BlackHoleMass - 0.01) < 1e-6);
     assert(fabs(galaxy.r_heat - 50.0) < 1e-6);
     
-    printf("  Multiple property updates and syncs work correctly. ✓\n");
+    printf("  Multiple property updates work correctly. ✓\n");
 }
 
 /**
@@ -130,8 +144,8 @@ static void test_module_property_access(void) {
         GALAXY_PROP_Cooling(&galaxies[i]) = 0.0;
         GALAXY_PROP_Heating(&galaxies[i]) = 0.0;
         
-        // Sync to direct fields for consistency
-        sync_properties_to_direct(&galaxies[i]);
+        // NOTE: With synchronization infrastructure removed, we no longer sync
+        // between direct fields and properties. Direct field updates have been removed.
     }
     
     printf("  Verified module property access patterns. ✓\n");

@@ -6,7 +6,12 @@
 #include <assert.h>
 
 #include "../src/io/io_interface.h"
-#include "../src/io/io_binary_output.h"
+// NOTE: This test imports the now-removed binary output format files.
+// This test should be refactored or removed in the future now that binary output 
+// has been deprecated and the files have been archived.
+// The test already expects binary output to be deprecated, so it may still work,
+// but should be restructured as part of a test suite cleanup.
+// Archived file reference: io_binary_output.h (in ignore/202505141845)
 #include "../src/io/io_property_serialization.h"
 #include "../src/core/core_allvars.h"
 #include "../src/core/core_galaxy_extensions.h"

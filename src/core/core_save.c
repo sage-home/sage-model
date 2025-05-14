@@ -15,7 +15,7 @@
 #include "core_mymalloc.h"
 #include "core_galaxy_extensions.h"
 
-#include "../io/save_gals_binary.h"
+// Binary output format has been removed
 #include "../io/io_interface.h"
 #include "../io/io_validation.h"
 #include "../io/io_property_serialization.h"
@@ -287,7 +287,8 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
     // Fall back to existing approach if handler not available or I/O interface not enabled
     switch(run_params->io.OutputFormat) {
     case(sage_binary):
-      status = initialize_binary_galaxy_files(rank, forest_info, save_info, run_params);
+      LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
+      status = INVALID_OPTION_IN_PARAMS;
       break;
 
 #ifdef HDF5
@@ -451,8 +452,8 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     // Fall back to existing approach if not using I/O interface or if it failed
     switch(run_params->io.OutputFormat) {
     case(sage_binary):
-        status = save_binary_galaxies(task_forestnr, numgals, OutputGalCount, forest_info,
-                                      halos, haloaux, halogal, save_info, run_params);
+        LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
+        status = INVALID_OPTION_IN_PARAMS;
         break;
 
 #ifdef HDF5
@@ -534,7 +535,8 @@ int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save
     // Fall back to existing approach if not using I/O interface or if it failed
     switch(run_params->io.OutputFormat) {
     case(sage_binary):
-        status = finalize_binary_galaxy_files(forest_info, save_info, run_params);
+        LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
+        status = INVALID_OPTION_IN_PARAMS;
         break;
 
 #ifdef HDF5

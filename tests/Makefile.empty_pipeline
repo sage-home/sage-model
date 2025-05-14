@@ -36,7 +36,6 @@ CORE_SOURCES = $(CORE_DIR)/core_init.c \
                $(CORE_DIR)/core_module_callback.c \
                $(CORE_DIR)/core_properties.c \
                $(CORE_DIR)/standard_properties.c \
-               $(CORE_DIR)/core_properties_sync.c \
                $(CORE_DIR)/core_galaxy_extensions.c \
                $(CORE_DIR)/physics_pipeline_executor.c \
                $(PHYSICS_DIR)/placeholder_empty_module.c \

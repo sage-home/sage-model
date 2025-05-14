@@ -174,3 +174,11 @@
 - Updated millennium.par to use the new empty pipeline configuration
 - Added files: src/physics/placeholder_starformation_module.c/.h, src/physics/placeholder_disk_instability_module.c/.h, src/physics/placeholder_reincorporation_module.c/.h, src/physics/placeholder_mergers_module.c/.h, src/physics/placeholder_cooling_module.h, src/physics/placeholder_infall_module.h, src/physics/placeholder_output_module.h, input/empty_pipeline_config.json
 - Modified files: Makefile, src/physics/physics_modules.h, input/millennium.par
+
+2025-05-14: [Phase 5.2.F.3] Legacy Components Removal
+- Removed synchronization infrastructure files now that property system transition is complete
+- Removed depreciated binary output format files, standardizing on HDF5 output format
+- Archived removed files in the `ignore/202505141845` directory for reference
+- Updated Makefile to remove references to these components
+- Deleted files: src/core/core_properties_sync.c, src/core/core_properties_sync.h, src/io/io_binary_output.c, src/io/io_binary_output.h, src/io/save_gals_binary.c, src/io/save_gals_binary.h
+- Modified files: Makefile
