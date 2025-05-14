@@ -41,7 +41,7 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
             max_reincorporation_mass = galaxies[centralgal].Mvir;
     
         // Periodically print detailed diagnostics
-        if(counter % 1000000 == 0) { 
+        if(counter % 100000 == 0) { 
             fprintf(stdout, "\n--- Mass-Dependent Reincorporation Diagnostics ---\n");
             fprintf(stdout, "Total Modified Galaxies: %d\n", total_modified_galaxies);
             fprintf(stdout, "Current Galaxy: HaloNr=%d\n", galaxies[centralgal].HaloNr);
@@ -66,19 +66,7 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
             
             fprintf(stdout, "\n--- End of Diagnostic Block ---\n");
         }
-    
-        // Optional: More granular logging
-        if(counter % 10000000 == 0) {
-            FILE *log_file = fopen("reincorporation_diagnostics.txt", "a");
-            if(log_file) {
-                fprintf(log_file, "Timestamp: %ld\n", time(NULL));
-                fprintf(log_file, "Total Modified Galaxies: %d\n", total_modified_galaxies);
-                fprintf(log_file, "Halo Mass Range: %g - %g\n", 
-                        min_reincorporation_mass, 
-                        max_reincorporation_mass);
-                fclose(log_file);
-            }
-        }
+        
     }
     #endif
     
@@ -161,7 +149,7 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         // Only print the mass-dependent diagnostics once per simulation
         // (previously was printing once per million galaxies)
         if(run_params->MassReincorporationOn == 1 && 
-           counter == 20000000 && 
+           counter == 1000000 && 
            total_modified_galaxies > 0) { 
             fprintf(stdout, "Mass-dep Reinc Summary: modified=%d mass_range=[%.2g-%.2g]\n",
                     total_modified_galaxies,

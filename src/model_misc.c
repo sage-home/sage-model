@@ -53,6 +53,8 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].EjectedMass = 0.0;
     galaxies[p].BlackHoleMass = 0.0;
     galaxies[p].ICS = 0.0;
+    galaxies[p].CGMgas = 0.0;
+    galaxies[p].MetalsCGMgas = 0.0;
 
     // Initialize H2 fractions if using that model
     if (run_params->SFprescription >= 1) {

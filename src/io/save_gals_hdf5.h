@@ -89,6 +89,9 @@ struct HDF5_GALAXY_OUTPUT
     float *infallMvir;
     float *infallVvir;
     float *infallVmax;
+
+    float *CGMgas;
+    float *MetalsCGMgas;
 };
     
     // Proto-Types //

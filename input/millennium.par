@@ -16,7 +16,7 @@ LastFile          7
 NumOutputs        -1  % sets the desired number of galaxy outputs; use -1 for all outputs
 
 % List your output snapshots after the arrow, highest to lowest (ignored when NumOutputs=-1).
--> 63 37 32 27 23 20 18 16
+-> 63 40 32 27 23 20 18 16
 
 OutputFormat      sage_hdf5 % sets the desired output format. Either 'sage_binary' or 'sage_hdf5'.
 
@@ -50,21 +50,21 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        0   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
-AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
-SupernovaRecipeOn     1   %0: switch off
-ReionizationOn        1   %0: switch off
-DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-MassLoadingModel      0   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
+SFprescription              3   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
+AGNrecipeOn                 2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
+SupernovaRecipeOn           1   %0: switch off
+ReionizationOn              1   %0: switch off
+DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
+MassLoadingModel            0   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 
 ReionizationModel         0       % 0=Simple, 1=Gnedin, 2=Sobacchi-Mesinger, 3=Patchy
-FilteringMassNorm         1.4     % [10^10 Msun/h] Based on Okamoto et al. 2008
-UVBackgroundStrength      0.4     % Range 0-1, strength of early UV feedback
-PatchyReionWidth          1.0     % Width of reionization transition in dz
-LocalReionVariance        0.8     % Spatial variance in reionization timing
-PostReionSlope           -0.65    % Evolution of critical mass after reionization
+FilteringMassNorm         10.0     % [10^10 Msun/h] Based on Okamoto et al. 2008
+UVBackgroundStrength      1.0     % Range 0-1, strength of early UV feedback
+PatchyReionWidth          0.5     % Width of reionization transition in dz
+LocalReionVariance        1.0     % Spatial variance in reionization timing
+PostReionSlope           -1.0    % Evolution of critical mass after reionization
 
-MassDependentSFEnabled     1       % 0 = off, 1 = on
+MassDependentSFEnabled     0       % 0 = off, 1 = on
 SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
 SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
 SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
@@ -109,7 +109,7 @@ ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz
 
 RadiationFieldNorm          0.5    %Radiation field normalization relative to Milky Way (1.0 = MW)
 MetallicityExponent         0.7    %Exponent for metallicity dependence in GD14 model
-IntegrationBins             10     %Number of radial bins to use for integration (higher = more accurate but slower)
+IntegrationBins             15     %Number of radial bins to use for integration (higher = more accurate but slower)
 
 %------------------------------------------
 %----- MOLECULAR GAS MODEL PARAMETERS -----
@@ -122,9 +122,9 @@ EnvEffectStrength             0.2     % Strength of environmental effects (0.0-2
 %------------------------------------------
 
 MassReincorporationOn       0        % enable mass-dependent reincorporation
-CriticalReincMass           10.0      % critical mass in 10^10 Msun/h
-ReincorporationMassExp      3.5      % linear scaling with halo mass
-MinReincorporationFactor    0.03      % minimum 10% of standard rate
+CriticalReincMass           1.0      % critical mass in 10^10 Msun/h
+ReincorporationMassExp      2.0      % linear scaling with halo mass
+MinReincorporationFactor    0.003    % minimum 10% of standard rate
 
 %------------------------------------------
 %----- REDSHIFT-DEPENDANT PARAMETERS -----
@@ -134,21 +134,21 @@ SFR_Alpha                 0.0   %controls redshift dependence: SFR_eff(z) = SFR_
 Reheating_Alpha           0.0   % Redshift evolution exponent for FeedbackReheatingEpsilon (only used if MuratovMassLoading=0)
 Ejection_Alpha            0.0   %controls redshift dependence of ejection
 RedshiftReincorporationOn        0
-ReincorporationRedshiftExp       3.0
+ReincorporationRedshiftExp       -10.0
 
 %------------------------------------------
 %----- PREVENTATIVE FEEDBACK PARAMETERS -----
 %------------------------------------------
 
-PreventativeFeedbackOn     0           % Enable preventative feedback (0=off, 1=on)
-PreventativeFeedbackVcrit  30.0        % Critical velocity scale (km/s)
-PreventativeFeedbackAlpha  2.0         % Power-law slope
-PreventativeFeedbackZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
+CGMBuildingOn     1           % Enable preventative feedback (0=off, 1=on)
+CGMBuildingVcrit  30.0        % Critical velocity scale (km/s)
+CGMBuildingAlpha  2.0         % Power-law slope
+CGMBuildingZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
 
 LowMassHighzSuppressionOn       0        % Enable suppression (0=off, 1=on)
-SuppressionMassThreshold        0.1      % In units of 10^10 Msun/h
-SuppressionMassExponent         5.5      % Power-law exponent for mass dependence 
-SuppressionRedshiftExp          3.5      % Redshift scaling factor
+SuppressionMassThreshold        10.0      % In units of 10^10 Msun/h
+SuppressionMassExponent         4.0      % Power-law exponent for mass dependence 
+SuppressionRedshiftExp          1.0      % Redshift scaling factor
 
 %------------------------------------------
 %----- Other code-related information -----

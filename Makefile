@@ -16,7 +16,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 
 
-CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC
+CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC 
 LIBFLAGS :=
 
 OPTS := -DROOT_DIR='"${ROOT_DIR}"'
@@ -28,7 +28,7 @@ LIBSRC :=  sage.c core_read_parameter_file.c core_init.c core_io_tree.c \
            core_tree_utils.c model_infall.c model_cooling_heating.c model_starformation_and_feedback.c \
            model_disk_instability.c model_reincorporation.c model_mergers.c model_misc.c \
            io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c io/ctrees_utils.c \
-	       io/save_gals_binary.c io/forest_utils.c io/buffered_io.c model_h2_formation.c  model_lowmass_suppression.c \
+	       io/save_gals_binary.c io/forest_utils.c io/buffered_io.c model_h2_formation.c model_lowmass_suppression.c \
 
 LIBINCL := $(LIBSRC:.c=.h)
 LIBINCL += io/parse_ctrees.h

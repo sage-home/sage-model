@@ -346,6 +346,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             if(p == centralgal) {
                 add_infall_to_hot(centralgal, infallingGas / STEPS, galaxies);
 
+                // NEW: Add reincorporation from CGM to hot gas
+                if (run_params->CGMBuildingOn) {
+                    reincorporate_cgm_gas(centralgal, deltaT / STEPS, galaxies, run_params);
+                }
+
                 if(run_params->ReIncorporationFactor > 0.0) {
                     reincorporate_gas(centralgal, deltaT / STEPS, galaxies, run_params);
                 }

@@ -74,17 +74,17 @@ void init(struct params *run_params)
     }
 
     // Initialize preventative feedback parameters with default values if not set
-    if (run_params->PreventativeFeedbackOn != 0 && run_params->PreventativeFeedbackOn != 1) {
-        run_params->PreventativeFeedbackOn = 1;  // Enable by default
+    if (run_params->CGMBuildingOn != 0 && run_params->CGMBuildingOn != 1) {
+        run_params->CGMBuildingOn = 1;  // Enable by default
     }
-    if (run_params->PreventativeFeedbackVcrit <= 0.0) {
-        run_params->PreventativeFeedbackVcrit = 30.0;  // Default critical velocity in km/s
+    if (run_params->CGMBuildingVcrit <= 0.0) {
+        run_params->CGMBuildingVcrit = 30.0;  // Default critical velocity in km/s
     }
-    if (run_params->PreventativeFeedbackAlpha <= 0.0) {
-        run_params->PreventativeFeedbackAlpha = 2.0;  // Default power-law index
+    if (run_params->CGMBuildingAlpha <= 0.0) {
+        run_params->CGMBuildingAlpha = 2.0;  // Default power-law index
     }
-    if (run_params->PreventativeFeedbackZdep <= 0.0) {
-        run_params->PreventativeFeedbackZdep = 0.5;  // Default redshift dependence
+    if (run_params->CGMBuildingZdep <= 0.0) {
+        run_params->CGMBuildingZdep = 0.5;  // Default redshift dependence
     }
 
     if (run_params->MassLoadingModel != 0 && 

@@ -631,7 +631,7 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
 #ifdef VERBOSE
     static int counter = 0;
     counter++;
-    if (counter % 500000 == 0) {
+    if (counter % 50000000 == 0) {
         printf("ENVIRONMENTAL EFFECTS: Galaxy=%d, Type=%d, log_mass=%.2f\n", 
                g->GalaxyNr, g->Type, log_mass);
         printf("  env_strength=%.3f, type_factor=%.2f, EnvEffectStrength=%.2f\n", 

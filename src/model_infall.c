@@ -48,13 +48,25 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         reionization_modifier = 1.0;
     }
 
-   // Apply preventative feedback - this is the key addition
-   double preventative_factor = calculate_preventative_feedback(centralgal, Zcurr, galaxies, run_params);
+   
+    // Calculate the total available baryon mass
+    double total_baryon_mass = reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].Mvir;
     
-   // Modify infalling mass with both reionization and preventative feedback
-   infallingMass = preventative_factor * reionization_modifier * run_params->BaryonFrac * 
-                  galaxies[centralgal].Mvir - 
-                  (tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS);
+    // Calculate how much of that should go to the CGM (but don't update CGM yet)
+    double cgm_fraction = 0.0;
+    if (run_params->CGMBuildingOn) {
+        cgm_fraction = calculate_cgm(centralgal, Zcurr, galaxies, run_params);
+    }
+    
+    // Calculate infall by subtracting existing baryons and CGM fraction from total baryon budget
+    double total_existing_baryons = tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS;
+    double cgm_mass = cgm_fraction * total_baryon_mass;
+    
+    // This is the actual amount available for infall after preventative effects
+    infallingMass = total_baryon_mass - cgm_mass - total_existing_baryons;
+    
+    // Update the CGM reservoir with the calculated mass
+    galaxies[centralgal].CGMgas = cgm_mass;
 
     // the central galaxy keeps all the ejected mass
     galaxies[centralgal].EjectedMass = tot_ejected;
@@ -236,10 +248,10 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
  * 
  * @return: Suppression factor between 0 and 1 (1 = no suppression)
  */
-double calculate_preventative_feedback(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
+double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
 {
     // Skip calculation if preventative feedback is disabled
-    if (run_params->PreventativeFeedbackOn == 0) {
+    if (run_params->CGMBuildingOn == 0) {
         return 1.0;
     }
     
@@ -249,10 +261,10 @@ double calculate_preventative_feedback(const int gal, const double z, struct GAL
     
     // Calculate z-factor and critical velocity
     double z_factor = (z <= 1.0) ? 
-        pow(1.0 + z, run_params->PreventativeFeedbackZdep) :
-        pow(1.0 + 1.0, run_params->PreventativeFeedbackZdep) * pow((1.0 + z)/(1.0 + 1.0), 2.0);
+        pow(1.0 + z, run_params->CGMBuildingZdep) :
+        pow(1.0 + 1.0, run_params->CGMBuildingZdep) * pow((1.0 + z)/(1.0 + 1.0), 2.0);
     
-    double v_crit = run_params->PreventativeFeedbackVcrit * z_factor;
+    double v_crit = run_params->CGMBuildingVcrit * z_factor;
     
     // Calculate minimum floor
     double min_floor = 0.3 / (1.0 + 0.5 * (z - 1.0));
@@ -261,7 +273,7 @@ double calculate_preventative_feedback(const int gal, const double z, struct GAL
     
     // Calculate suppression factor
     double f_suppress = min_floor + (1.0 - min_floor) / 
-                       (1.0 + pow(v_crit/vvir, run_params->PreventativeFeedbackAlpha));
+                       (1.0 + pow(v_crit/vvir, run_params->CGMBuildingAlpha));
     
     // Apply additional suppression for intermediate-mass halos at high-z
     if (z > 1.0 && vvir > 50.0 && vvir < 150.0) {
@@ -282,10 +294,10 @@ double calculate_preventative_feedback(const int gal, const double z, struct GAL
     static int counter = 0;
     counter++;
     if (counter % 500000 == 0) {
-        printf("PREVENTATIVE FEEDBACK: Galaxy=%d, z=%.2f, Vvir=%.1f km/s, v_crit=%.1f, z_factor=%.2f\n", 
+        printf("CGM Building: Galaxy=%d, z=%.2f, Vvir=%.1f km/s, v_crit=%.1f, z_factor=%.2f\n", 
                galaxies[gal].GalaxyNr, z, vvir, v_crit, z_factor);
-        printf("  Suppression: f_suppress=%.3f, min_floor=%.3f, PreventativeFeedbackAlpha=%.2f\n", 
-               f_suppress, min_floor, run_params->PreventativeFeedbackAlpha);
+        printf("  Suppression: f_suppress=%.3f, min_floor=%.3f, CGMBuildingAlpha=%.2f\n", 
+               f_suppress, min_floor, run_params->CGMBuildingAlpha);
         
         // Log full galaxy properties for deeper understanding
         if (counter % 500000 == 0) {
@@ -296,7 +308,123 @@ double calculate_preventative_feedback(const int gal, const double z, struct GAL
 #endif
 
     
-    return f_suppress;
+    double cgm_fraction = 1.0 - f_suppress;
+    
+    return cgm_fraction;
+}
+
+/**
+ * update_cgm_reservoir - Calculate and update the CGM gas content
+ * 
+ * This function calculates the CGM gas content based on the total baryonic budget
+ * and current galaxy gas reservoirs.
+ * 
+ * @param centralgal: Index of the central galaxy
+ * @param z: Current redshift
+ * @param galaxies: Array of galaxy structures
+ * @param run_params: Simulation parameters
+ */
+void update_cgm_reservoir(const int centralgal, const double z, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Calculate the total baryon mass expected for this halo
+    double total_baryon_budget = run_params->BaryonFrac * galaxies[centralgal].Mvir;
+    
+    // Calculate the gas fraction that should be in the CGM
+    double cgm_fraction = calculate_cgm(centralgal, z, galaxies, run_params);
+    
+    // Calculate the total mass in existing baryonic components (excluding ejected mass)
+    double stellar_mass = galaxies[centralgal].StellarMass;
+    double cold_gas = galaxies[centralgal].ColdGas;
+    double hot_gas = galaxies[centralgal].HotGas;
+    double bh_mass = galaxies[centralgal].BlackHoleMass;
+    double ics_mass = galaxies[centralgal].ICS;
+    
+    double total_non_cgm_mass = stellar_mass + cold_gas + hot_gas + bh_mass + ics_mass;
+    
+    // Calculate how much gas should be in the CGM
+    double target_cgm_mass = cgm_fraction * total_baryon_budget;
+    
+    // Update the CGM mass, ensuring we don't exceed the available baryons
+    double new_cgm_mass = target_cgm_mass;
+    if (new_cgm_mass + total_non_cgm_mass > total_baryon_budget) {
+        new_cgm_mass = total_baryon_budget - total_non_cgm_mass;
+    }
+    if (new_cgm_mass < 0.0) new_cgm_mass = 0.0;
+    
+    galaxies[centralgal].CGMgas = new_cgm_mass;
+ }
+
+ /**
+ * reincorporate_cgm_gas - Gradually return CGM gas to the hot halo
+ * 
+ * This function implements a slow, time-dependent reincorporation of gas
+ * from the CGM reservoir to the hot gas halo.
+ * 
+ * @param centralgal: Index of the central galaxy
+ * @param dt: Time step in Gyr
+ * @param galaxies: Array of galaxy structures
+ * @param run_params: Simulation parameters
+ */
+void reincorporate_cgm_gas(const int centralgal, const double dt, 
+                           struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Skip if no CGM or CGM formation is disabled
+    if (galaxies[centralgal].CGMgas <= 0.0 || run_params->CGMBuildingOn == 0) {
+        return;
+    }
+    
+    // Parameters for CGM reincorporation
+    // These could be exposed as model parameters in the future
+    const double base_cgm_reinc_rate = 0.1;  // Base rate: 10% of CGM per Gyr
+    const double halo_mass_dependence = 0.5; // Stronger reincorporation in massive halos
+    const double redshift_dependence = -0.25; // Weaker at high redshift
+    
+    // Get current redshift
+    double z = run_params->ZZ[galaxies[centralgal].SnapNum];
+    
+    // Calculate dynamical time of the halo
+    double tdyn = 0.1; // Default if calculation fails (in Gyr)
+    if (galaxies[centralgal].Rvir > 0.0 && galaxies[centralgal].Vvir > 0.0) {
+        // Convert Rvir (Mpc/h) and Vvir (km/s) to get tdyn in Gyr
+        // Factor of 0.1 converts from internal time units to Gyr
+        tdyn = 0.1 * galaxies[centralgal].Rvir / galaxies[centralgal].Vvir;
+    }
+    
+    // Calculate mass-dependent factor
+    double mass_factor = 1.0;
+    if (galaxies[centralgal].Mvir > 0.0) {
+        // Normalize to Milky Way mass halo (10^12 Msun)
+        mass_factor = pow(galaxies[centralgal].Mvir / 100.0, halo_mass_dependence);
+    }
+    
+    // Calculate redshift-dependent factor
+    double redshift_factor = pow(1.0 + z, redshift_dependence);
+    
+    // Calculate effective rate
+    double effective_rate = base_cgm_reinc_rate * mass_factor * redshift_factor;
+    
+    // Calculate reincorporation timescale (in Gyr)
+    double t_reinc = tdyn / effective_rate;
+    if (t_reinc < 0.1) t_reinc = 0.1; // Minimum 100 Myr
+    
+    // Calculate amount of gas to reincorporate in this timestep
+    double reinc_fraction = dt / t_reinc;
+    if (reinc_fraction > 0.5) reinc_fraction = 0.5; // Maximum 50% per step for stability
+    
+    double reincorporated = galaxies[centralgal].CGMgas * reinc_fraction;
+    
+    // Calculate metallicity of CGM
+    double metallicity = 0.0;
+    if (galaxies[centralgal].CGMgas > 0.0 && galaxies[centralgal].MetalsCGMgas > 0.0) {
+        metallicity = galaxies[centralgal].MetalsCGMgas / galaxies[centralgal].CGMgas;
+    }
+    
+    // Update the reservoirs
+    galaxies[centralgal].CGMgas -= reincorporated;
+    galaxies[centralgal].MetalsCGMgas -= metallicity * reincorporated;
+    
+    galaxies[centralgal].HotGas += reincorporated;
+    galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
 }
 
 double do_reionization_enhanced(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)

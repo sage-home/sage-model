@@ -80,7 +80,7 @@ if __name__ == '__main__':
     BlackHoleMass = read_hdf(snap_num = Snapshot, param = 'BlackHoleMass') * 1.0e10 / Hubble_h
     ColdGas = read_hdf(snap_num = Snapshot, param = 'ColdGas') * 1.0e10 / Hubble_h
     DiskRadius = read_hdf(snap_num = Snapshot, param = 'DiskRadius') / Hubble_h
-    print(DiskRadius)
+    #print(DiskRadius)
     H1Gas = read_hdf(snap_num = Snapshot, param = 'H1_gas') * 1.0e10 / Hubble_h
     #print(H1Gas)
     H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
@@ -89,6 +89,10 @@ if __name__ == '__main__':
     HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
     EjectedMass = read_hdf(snap_num = Snapshot, param = 'EjectedMass') * 1.0e10 / Hubble_h
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
+    InfallMvir = read_hdf(snap_num = Snapshot, param = 'infallMvir') * 1.0e10 / Hubble_h
+    outflowrate = read_hdf(snap_num = Snapshot, param = 'OutflowRate') * 1.0e10 / Hubble_h
+    CGM = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
+    #print(np.log10(CGM))
 
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
     Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
@@ -988,7 +992,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)
 
     HaloMass = np.log10(Mvir)
-    Baryons = StellarMass + ColdGas + HotGas + EjectedMass + IntraClusterStars + BlackHoleMass
+    Baryons = StellarMass + ColdGas + HotGas + EjectedMass + IntraClusterStars + BlackHoleMass + CGM
 
     MinHalo = 11.0
     MaxHalo = 16.0
@@ -1006,6 +1010,7 @@ if __name__ == '__main__':
     MeanEjected = []
     MeanICS = []
     MeanBH = []
+    MeanCGM = []
 
     # Pre-compute central indices for faster lookup
     unique_centrals = np.unique(CentralGalaxyIndex)
@@ -1029,6 +1034,7 @@ if __name__ == '__main__':
             group_ejected = EjectedMass[central_groups]
             group_ics = IntraClusterStars[central_groups]
             group_bh = BlackHoleMass[central_groups]
+            group_cgm = CGM[central_groups]
             
             # Sum quantities per central galaxy
             unique_centrals_in_bin = np.unique(CentralGalaxyIndex[central_groups])
@@ -1039,6 +1045,7 @@ if __name__ == '__main__':
             ejected_sums = np.zeros(len(unique_centrals_in_bin))
             ics_sums = np.zeros(len(unique_centrals_in_bin))
             bh_sums = np.zeros(len(unique_centrals_in_bin))
+            cgm_sums = np.zeros(len(unique_centrals_in_bin))
             
             for idx, central in enumerate(unique_centrals_in_bin):
                 group_mask = CentralGalaxyIndex[central_groups] == central
@@ -1049,6 +1056,7 @@ if __name__ == '__main__':
                 ejected_sums[idx] = np.sum(group_ejected[group_mask])
                 ics_sums[idx] = np.sum(group_ics[group_mask])
                 bh_sums[idx] = np.sum(group_bh[group_mask])
+                cgm_sums[idx] = np.sum(group_cgm[group_mask])
             
             # Get corresponding halo masses
             central_halos = Mvir[w1]
@@ -1061,6 +1069,7 @@ if __name__ == '__main__':
             ejected_fractions = ejected_sums / central_halos
             ics_fractions = ics_sums / central_halos
             bh_fractions = bh_sums / central_halos
+            cgm_fractions = cgm_sums / central_halos
             
             # Filter out any NaN or inf values before calculating statistics
             valid_indices = np.isfinite(baryon_fractions)
@@ -1105,6 +1114,11 @@ if __name__ == '__main__':
                 else:
                     MeanBH.append(0)
 
+                if np.sum(np.isfinite(cgm_fractions)) > 0:
+                    MeanCGM.append(np.mean(cgm_fractions[np.isfinite(cgm_fractions)]))
+                else:
+                    MeanCGM.append(0)
+
     # Convert lists to arrays for plotting
     MeanCentralHaloMass = np.array(MeanCentralHaloMass)
     MeanBaryonFraction = np.array(MeanBaryonFraction)
@@ -1116,6 +1130,7 @@ if __name__ == '__main__':
     MeanEjected = np.array(MeanEjected)
     MeanICS = np.array(MeanICS)
     MeanBH = np.array(MeanBH)
+    MeanCGM = np.array(MeanCGM)
 
     # Make sure upper bound isn't too high (cap at reasonable cosmological baryon fraction)
     MeanBaryonFractionU = np.minimum(MeanBaryonFractionU, 0.2)
@@ -1141,7 +1156,7 @@ if __name__ == '__main__':
 
         # Make a separate mask for component arrays
         comp_mask = np.isfinite(MeanStars) & np.isfinite(MeanCold) & np.isfinite(MeanHot) & \
-                    np.isfinite(MeanEjected) & np.isfinite(MeanICS)
+                    np.isfinite(MeanEjected) & np.isfinite(MeanICS) & np.isfinite(MeanCGM) 
         
         if np.sum(comp_mask) > 0:
             # Filter component arrays with their mask
@@ -1150,6 +1165,7 @@ if __name__ == '__main__':
             MeanHot_masked = MeanHot[comp_mask]
             MeanEjected_masked = MeanEjected[comp_mask]
             MeanICS_masked = MeanICS[comp_mask]
+            MeanCGM_masked = MeanCGM[comp_mask]
             MeanCentralHaloMass_comp = MeanCentralHaloMass[comp_mask]
             
             # Plot components
@@ -1158,6 +1174,7 @@ if __name__ == '__main__':
             plt.plot(MeanCentralHaloMass_comp, MeanHot_masked, label='Hot', color='red')
             plt.plot(MeanCentralHaloMass_comp, MeanEjected_masked, label='Ejected', color='green')
             plt.plot(MeanCentralHaloMass_comp, MeanICS_masked, label='ICS', color='yellow')
+            plt.plot(MeanCentralHaloMass_comp, MeanCGM_masked, label='CGM', color='magenta')
 
     plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
     plt.ylabel(r'$\mathrm{Baryon\ Fraction}$')
@@ -1193,6 +1210,7 @@ if __name__ == '__main__':
     plt.scatter(HaloMass, np.log10(HotGas[w]), marker='o', s=0.3, color='red', alpha=0.5, label='Hot gas')
     plt.scatter(HaloMass, np.log10(EjectedMass[w]), marker='o', s=0.3, color='green', alpha=0.5, label='Ejected gas')
     plt.scatter(HaloMass, np.log10(IntraClusterStars[w]), marker='o', s=10, color='yellow', alpha=0.5, label='Intracluster stars')
+    plt.scatter(HaloMass, np.log10(CGM[w]), marker='o', s=0.3, color='magenta', alpha=0.5, label='CGM')
 
     plt.ylabel(r'$\mathrm{stellar,\ cold,\ hot,\ ejected,\ ICS\ mass}$')  # Set the y...
     plt.xlabel(r'$\log\ M_{\mathrm{vir}}\ (h^{-1}\ M_{\odot})$')  # and the x-axis labels
@@ -1440,3 +1458,194 @@ if __name__ == '__main__':
     print('Saved file to', outputFile, '\n')
     plt.close()
 
+# -------------------------------------------------------
+
+    print('Plotting galaxy ejection diagnostics')
+
+    plt.figure(figsize=(10, 8))  # New figure
+
+    # First subplot: Vmax vs Stellar Mass
+    ax1 = plt.subplot(111)  # Top plot
+
+    w = np.where((Type == 0) & (Vmax > 0))[0]  # Central galaxies only
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+
+    sat = np.where((Type == 1) & (Vmax > 0))[0]  
+    if(len(sat) > dilute): sat = sample(list(range(len(sat))), dilute)
+
+    mass = np.log10(StellarMass[w])
+    sats = np.log10(StellarMass[sat])
+    ejected = np.log10(EjectedMass[w])
+
+    # Color points by halo mass
+    halo_mass = np.log10(Mvir[w])
+    sc = plt.scatter(mass, ejected, c=halo_mass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
+    cbar = plt.colorbar(sc)
+    cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+
+    plt.scatter(sats, np.log10(EjectedMass[sat]), marker='*', s=250, c='k', alpha=0.5, label='Satellites')
+
+    plt.ylabel(r'$\log_{10} M_{\mathrm{ejected}}\ (M_{\odot})$')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.title('Ejected Mass vs Stellar Mass')
+
+    plt.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    outputFile = OutputDir + '16.EjectionDiagnostics' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting galaxy infall diagnostics')
+
+    plt.figure(figsize=(10, 8))  # New figure
+
+    # First subplot: Vmax vs Stellar Mass
+    ax1 = plt.subplot(111)  # Top plot
+
+    w = np.where((Type == 0) & (Vmax > 0))[0]  # Central galaxies only
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+
+    sat = np.where((Type == 1) & (Vmax > 0))[0]  
+    if(len(sat) > dilute): sat = sample(list(range(len(sat))), dilute)
+
+    mass = np.log10(Mvir[w])
+    smass = np.log10(StellarMass[w])
+    sats = np.log10(Mvir[sat])
+    infall = np.log10(InfallMvir[w])
+
+    plt.scatter(sats, np.log10(InfallMvir[sat]), marker='*', s=25, c='k', alpha=0.5, label='Satellites')
+    # Color points by halo mass
+    sc = plt.scatter(mass, infall, c=smass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
+    cbar = plt.colorbar(sc)
+    cbar.set_label(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
+
+    plt.ylabel(r'$\log_{10} M_{\mathrm{infall}}\ (M_{\odot})$')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{halo}}\ (M_{\odot})$')
+    plt.title('Infall Mass vs Halo Mass')
+
+    plt.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    outputFile = OutputDir + '17.InfallDiagnostics' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+# -------------------------------------------------------
+
+    print('Plotting galaxy outflow diagnostics')
+
+    plt.figure(figsize=(10, 8))  # New figure
+
+    # First subplot: Vmax vs Stellar Mass
+    ax1 = plt.subplot(111)  # Top plot
+
+    w = np.where((Type == 0) & (Vmax > 0))[0]  # Central galaxies only
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+
+    sat = np.where((Type == 1) & (Vmax > 0))[0]  
+    if(len(sat) > dilute): sat = sample(list(range(len(sat))), dilute)
+
+    mass = np.log10(StellarMass[w])
+    sats = np.log10(StellarMass[sat])
+    outflow = np.log10(outflowrate[w])
+
+    # Color points by halo mass
+    halo_mass = np.log10(Mvir[w])
+    plt.scatter(sats, np.log10(outflowrate[sat]), marker='*', s=250, c='k', alpha=0.5, label='Satellites')
+    sc = plt.scatter(mass, outflow, c=halo_mass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
+    cbar = plt.colorbar(sc)
+    cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+
+    plt.ylabel(r'$\log_{10} M_{\mathrm{outflow}}\ (M_{\odot})$')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.title('Outflow rate vs Stellar Mass')
+
+    plt.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    outputFile = OutputDir + '18.OutflowrateDiagnostics' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting CGM outflow diagnostics')
+
+    plt.figure(figsize=(10, 8))  # New figure
+
+    # First subplot: Vmax vs Stellar Mass
+    ax1 = plt.subplot(111)  # Top plot
+
+    w = np.where((Vmax > 0))[0]
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+
+    mass = np.log10(Mvir[w])
+    cgm = np.log10(CGM[w])
+    cgm_frac = np.log10(CGM / 0.17 / Mvir)
+    cgm_frac_filtered = cgm_frac[w]
+
+    # Color points by halo mass
+    halo_mass = np.log10(StellarMass[w])
+    sc = plt.scatter(mass, cgm, c=halo_mass, cmap='viridis', s=5, alpha=0.7)
+    cbar = plt.colorbar(sc)
+    cbar.set_label(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
+
+    plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+    #plt.axis([10.0, 12.0, -2.0, -0.5])
+    plt.title('CGM vs Mvir')
+
+    #plt.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    outputFile = OutputDir + '19.CGMDiagnostics' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+# -------------------------------------------------------
+
+    print('Plotting CGM outflow diagnostics')
+
+    plt.figure(figsize=(10, 8))  # New figure
+
+    # First subplot: Vmax vs Stellar Mass
+    ax1 = plt.subplot(111)  # Top plot
+
+    w = np.where((Vmax > 0))[0]
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+
+    mass = Vvir[w]
+    cgm = np.log10(CGM[w])
+    cgm_frac = np.log10(CGM / 0.17 / Mvir)
+    cgm_frac_filtered = cgm_frac[w]
+
+    # Color points by halo mass
+    halo_mass = np.log10(Mvir[w])
+    sc = plt.scatter(mass, cgm, c=halo_mass, cmap='viridis', s=5, alpha=0.7)
+    cbar = plt.colorbar(sc)
+    cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+
+    plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+    plt.xlabel(r'$\log_{10} V_{\mathrm{vir}}\ (M_{\odot})$')
+    #plt.axis([10.0, 12.0, -2.0, -0.5])
+    plt.title('CGM vs Vvir')
+
+    #plt.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    outputFile = OutputDir + '20.CGMDiagnostics' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()

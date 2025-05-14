@@ -130,6 +130,7 @@ struct GALAXY
     float EjectedMass;
     float BlackHoleMass;
     float ICS;
+    float CGMgas;     // NEW: Circumgalactic Medium gas reservoir
 
     /* metals */
     float MetalsColdGas;
@@ -138,11 +139,7 @@ struct GALAXY
     float MetalsHotGas;
     float MetalsEjectedMass;
     float MetalsICS;
-
-    /* velocity dispersion tracking */
-    float *VelDispStars;     // Array for velocity dispersion of stars in different radial bins
-    float VelDispStellar;    // Global stellar velocity dispersion
-    float VelDispGas;        // Gas velocity dispersion
+    float MetalsCGMgas;  // NEW: Metals in the CGM
 
     /* to calculate magnitudes */
     float SfrDisk[STEPS];
@@ -496,10 +493,10 @@ struct params
     int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov, 2=Lagos) */
 
     // Preventative feedback parameters
-    int32_t PreventativeFeedbackOn;      // Flag to enable/disable preventative feedback
-    double PreventativeFeedbackVcrit; // Critical velocity scale
-    double PreventativeFeedbackAlpha; // Power-law index for velocity dependence
-    double PreventativeFeedbackZdep;  // Redshift dependence parameter
+    int32_t CGMBuildingOn;      // Flag to enable/disable preventative feedback
+    double CGMBuildingVcrit; // Critical velocity scale
+    double CGMBuildingAlpha; // Power-law index for velocity dependence
+    double CGMBuildingZdep;  // Redshift dependence parameter
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;
