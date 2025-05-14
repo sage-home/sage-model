@@ -55,7 +55,7 @@ AGNrecipeOn                 2   %0: switch off; 1: empirical model; 2: Bondi-Hoy
 SupernovaRecipeOn           1   %0: switch off
 ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-MassLoadingModel            0   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
+MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 
 ReionizationModel         0       % 0=Simple, 1=Gnedin, 2=Sobacchi-Mesinger, 3=Patchy
 FilteringMassNorm         10.0     % [10^10 Msun/h] Based on Okamoto et al. 2008
@@ -76,7 +76,7 @@ SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
 SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 
 FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
-FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
+FeedbackEjectionEfficiency  0.4   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
 ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 

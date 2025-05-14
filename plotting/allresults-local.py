@@ -1601,7 +1601,7 @@ if __name__ == '__main__':
 
     plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
     plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-    #plt.axis([10.0, 12.0, -2.0, -0.5])
+    plt.axis([9.5, 14.0, 7.0, 10.5])
     plt.title('CGM vs Mvir')
 
     #plt.legend(loc='upper left')
@@ -1638,7 +1638,7 @@ if __name__ == '__main__':
 
     plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
     plt.xlabel(r'$\log_{10} V_{\mathrm{vir}}\ (M_{\odot})$')
-    #plt.axis([10.0, 12.0, -2.0, -0.5])
+    plt.ylim([7.0, 10.5])
     plt.title('CGM vs Vvir')
 
     #plt.legend(loc='upper left')
