@@ -104,7 +104,7 @@ SRC := $(addprefix $(SRC_PREFIX)/, $(SRC))
 OBJS := $(SRC:.c=.o)
 
 # Include files
-INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL) core/core_properties.h core/core_properties_sync.h
+INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL) core/core_properties.h
 INCL := $(addprefix $(SRC_PREFIX)/, $(INCL))
 
 # Library objects and includes
@@ -160,7 +160,15 @@ H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf
           io/generate_field_metadata.c io/initialize_hdf5_galaxy_files.c \
           io/finalize_hdf5_galaxy_files.c io/save_gals_hdf5_property_utils.c
 
-H5_INCL := $(H5_SRC:.c=.h)
+# H5_INCL := $(H5_SRC:.c=.h)
+H5_INCL := io/read_tree_lhalo_hdf5.h \
+           io/save_gals_hdf5.h \
+           io/read_tree_genesis_hdf5.h \
+           io/hdf5_read_utils.h \
+           io/read_tree_consistentrees_hdf5.h \
+           io/read_tree_gadget4_hdf5.h \
+           io/io_hdf5_utils.h \
+           io/save_gals_hdf5_internal.h
 H5_OBJS := $(H5_SRC:.c=.o)
 
 H5_SRC := $(addprefix $(SRC_PREFIX)/, $(H5_SRC))
@@ -357,6 +365,15 @@ $(SRC_PREFIX)/core_properties.h $(SRC_PREFIX)/core_properties.c: $(ROOT_DIR)/.st
 
 # Mark as order-only prerequisites to prevent duplicate generation
 $(OBJS): | $(GENERATED_FILES)
+
+# ---- START DIAGNOSTIC ---- FOR TESTING COMPILE ISSUES
+# $(info --- DIAGNOSTIC ---)
+# $(info Current INCL before prefix: $(INCL)) # INCL is already prefixed here from earlier in the Makefile
+# TEMP_INCL_PREFIXED := $(addprefix $(SRC_PREFIX)/, $(INCL)) # This is the double prefixing
+# $(info Current INCL after prefix: $(TEMP_INCL_PREFIXED))
+# $(foreach H_FILE,$(TEMP_INCL_PREFIXED),$(if $(wildcard $(H_FILE)),,$(warning Missing INCL prerequisite: $(H_FILE))))
+# $(info --- END DIAGNOSTIC ---)
+# ---- END DIAGNOSTIC ----
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@
