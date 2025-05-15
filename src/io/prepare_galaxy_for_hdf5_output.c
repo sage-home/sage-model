@@ -1,13 +1,13 @@
 #include "save_gals_hdf5_internal.h"
 
 // Refactored prepare_galaxy_for_hdf5_output function using the property system
-static int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info *save_info_base,
+int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info *save_info_base,
                                      const int32_t output_snap_idx, const struct halo_data *halos,
                                      const int64_t task_forestnr, const int64_t original_treenr,
                                      const struct params *run_params)
 {
     // Convert the base save_info to hdf5_save_info
-    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->format_data;
+    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->io_handler.format_data;
     int64_t gals_in_buffer = save_info->num_gals_in_buffer[output_snap_idx];
     
     // Process each property
@@ -326,9 +326,9 @@ static int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct sav
     return EXIT_SUCCESS;
 }
 
-// Prototype for array property accessor (would need to be implemented)
-static float get_float_array_property(const struct GALAXY *g, property_id_t prop_id, int index, float default_value) {
-    // This is a placeholder function and would need real implementation
+// Implementation of the property system array accessor
+float get_float_array_property(const struct GALAXY *g, property_id_t prop_id, int index, float default_value) {
+    // This is a placeholder function that would need real implementation
     // For now, we'll return the default value
     return default_value;
 }

@@ -8,7 +8,7 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
                           struct save_info *save_info_base, const struct params *run_params)
 {
     int32_t status = EXIT_FAILURE;
-    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->format_data;
+    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->io_handler.format_data;
 
     for (int32_t gal_idx = 0; gal_idx < num_gals; gal_idx++) {
         // Only processing galaxies at selected snapshots
@@ -42,7 +42,7 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
 }
 
 // Write header information to HDF5 file
-static int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params) {
+int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params) {
     // Create header subgroups
     hid_t sim_group_id = H5Gcreate2(file_id, "Header/Simulation", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     CHECK_STATUS_AND_RETURN_ON_FAIL(sim_group_id, (int32_t) sim_group_id,
@@ -157,12 +157,67 @@ static int32_t write_header(hid_t file_id, const struct forest_info *forest_info
     return EXIT_SUCCESS;
 }
 
-// Implementation of the property system array accessor
-static float get_float_array_property(const struct GALAXY *g, property_id_t prop_id, int index, float default_value) {
+// Commented out as it's already defined in prepare_galaxy_for_hdf5_output.c
+/*
+float get_float_array_property(const struct GALAXY *g, property_id_t prop_id, int index, float default_value) {
     // This is a placeholder function that would need real implementation
     // In a complete system, this would access array properties from the property system
     // For now, we'll just return the default value
     return default_value;
+}
+*/
+
+// Property-based field metadata generation
+int32_t generate_field_metadata(struct hdf5_save_info *save_info) {
+    // Field metadata is now derived directly from property metadata
+    
+    // Property IDs, names, descriptions, units, and datatypes are already filled
+    // during discover_output_properties(), so we just need to make them visible
+    // to external code that needs this data
+    
+    // Copy names to name_output_fields for backward compatibility
+    save_info->name_output_fields = malloc(save_info->num_properties * sizeof(char*));
+    if (save_info->name_output_fields == NULL) {
+        fprintf(stderr, "Failed to allocate memory for field names array\n");
+        return -1;
+    }
+    
+    for (int i = 0; i < save_info->num_properties; i++) {
+        save_info->name_output_fields[i] = strdup(save_info->prop_names[i]);
+        if (save_info->name_output_fields[i] == NULL) {
+            fprintf(stderr, "Failed to allocate memory for field name %d\n", i);
+            // Clean up previously allocated strings
+            for (int j = 0; j < i; j++) {
+                free(save_info->name_output_fields[j]);
+            }
+            free(save_info->name_output_fields);
+            save_info->name_output_fields = NULL;
+            return -1;
+        }
+    }
+    
+    // Set num_output_fields for backward compatibility
+    save_info->num_output_fields = save_info->num_properties;
+    
+    // Allocate field_dtypes for backward compatibility
+    save_info->field_dtypes = malloc(save_info->num_properties * sizeof(hsize_t));
+    if (save_info->field_dtypes == NULL) {
+        fprintf(stderr, "Failed to allocate memory for field datatypes array\n");
+        // Clean up
+        for (int i = 0; i < save_info->num_properties; i++) {
+            free(save_info->name_output_fields[i]);
+        }
+        free(save_info->name_output_fields);
+        save_info->name_output_fields = NULL;
+        return -1;
+    }
+    
+    // Copy datatypes
+    for (int i = 0; i < save_info->num_properties; i++) {
+        save_info->field_dtypes[i] = save_info->prop_h5types[i];
+    }
+    
+    return EXIT_SUCCESS;
 }
 
 // Create HDF5 master file

@@ -1,7 +1,7 @@
 #include "save_gals_hdf5_internal.h"
 
 // Property-based field metadata generation
-static int32_t generate_field_metadata(struct hdf5_save_info *save_info) {
+int32_t generate_field_metadata(struct hdf5_save_info *save_info) {
     // Field metadata is now derived directly from property metadata
     
     // Property IDs, names, descriptions, units, and datatypes are already filled

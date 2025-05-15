@@ -4,7 +4,7 @@
 int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info_base,
                                  const struct params *run_params)
 {
-    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->format_data;
+    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->io_handler.format_data;
     hid_t group_id;
     herr_t h5_status;
     
@@ -157,7 +157,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
     
     // Free the save_info struct itself
     free(save_info);
-    save_info_base->format_data = NULL;
+    save_info_base->io_handler.format_data = NULL;
 
     return EXIT_SUCCESS;
 }

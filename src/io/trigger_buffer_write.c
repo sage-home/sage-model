@@ -1,12 +1,12 @@
 #include "save_gals_hdf5_internal.h"
 
 // Property-agnostic buffer write function
-static int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write, 
-                                   const int64_t num_already_written,
-                                   struct save_info *save_info_base, const struct params *run_params)
+int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write, 
+                           const int64_t num_already_written,
+                           struct save_info *save_info_base, const struct params *run_params)
 {
     herr_t status;
-    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->format_data;
+    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->io_handler.format_data;
     
     // Set up dimensions for writing
     hsize_t dims_extend[1] = {(hsize_t)num_to_write};      // Length to extend the dataset by

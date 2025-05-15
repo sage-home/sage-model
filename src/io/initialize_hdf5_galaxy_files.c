@@ -17,7 +17,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     memset(save_info, 0, sizeof(struct hdf5_save_info));
     
     // Store in the base save_info
-    save_info_base->format_data = save_info;
+    save_info_base->io_handler.format_data = save_info;
     
     // Create the file
     snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->io.OutputDir, run_params->io.FileNameGalaxies, filenr);
@@ -44,7 +44,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         H5Fclose(file_id);
         free_property_discovery(save_info);
         free(save_info);
-        save_info_base->format_data = NULL;
+        save_info_base->io_handler.format_data = NULL;
         return status;
     }
     
@@ -69,8 +69,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         save_info->group_ids[snap_idx] = group_id;
         
         // Add redshift attribute to the group
-        const float redshift = run_params->simulation.ZZ[run_params->simulation.ListOutputSnaps[snap_idx]];
-        CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", redshift, H5T_NATIVE_FLOAT);
+        const float snap_redshift = run_params->simulation.ZZ[run_params->simulation.ListOutputSnaps[snap_idx]];
+        CREATE_SINGLE_ATTRIBUTE(group_id, "redshift", snap_redshift, H5T_NATIVE_FLOAT);
         
         // Create datasets for each property
         for (int i = 0; i < save_info->num_properties; i++) {
@@ -95,8 +95,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
                                             snap_idx, (int32_t) dims[0]);
             
             // Set chunk size
-            herr_t status = H5Pset_chunk(prop, 1, chunk_dims);
-            CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
+            herr_t chunk_status = H5Pset_chunk(prop, 1, chunk_dims);
+            CHECK_STATUS_AND_RETURN_ON_FAIL(chunk_status, (int32_t) chunk_status,
                                             "Could not set the HDF5 chunking for output snapshot number %d. Chunk size was %d.\n",
                                             snap_idx, (int32_t) chunk_dims[0]);
             
@@ -167,7 +167,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             free(save_info->group_ids);
             free_property_discovery(save_info);
             free(save_info);
-            save_info_base->format_data = NULL;
+            save_info_base->io_handler.format_data = NULL;
             return status;
         }
     }
@@ -176,7 +176,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 }
 
 // Helper function to clean up property discovery resources
-static void free_property_discovery(struct hdf5_save_info *save_info) {
+void free_property_discovery(struct hdf5_save_info *save_info) {
     if (save_info == NULL) return;
     
     // Free property IDs
