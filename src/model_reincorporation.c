@@ -81,7 +81,7 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         // Traditional reincorporation calculation
         double base_reincorporation_rate = 
             (galaxies[centralgal].Vvir / Vcrit - 1.0) * 
-            galaxies[centralgal].EjectedMass / (galaxies[centralgal].Rvir / galaxies[centralgal].Vvir);
+            galaxies[centralgal].CGMgas / (galaxies[centralgal].Rvir / galaxies[centralgal].Vvir);
 
         // Apply scaling factors
         double total_scaling = 1.0;
@@ -133,8 +133,8 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
             reincorporated = galaxies[centralgal].EjectedMass;
 
         const double metallicity = get_metallicity(galaxies[centralgal].EjectedMass, galaxies[centralgal].MetalsEjectedMass);
-        galaxies[centralgal].EjectedMass -= reincorporated;
-        galaxies[centralgal].MetalsEjectedMass -= metallicity * reincorporated;
+        galaxies[centralgal].CGMgas -= reincorporated;
+        galaxies[centralgal].MetalsCGMgas -= metallicity * reincorporated;
         galaxies[centralgal].HotGas += reincorporated;
         galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
 

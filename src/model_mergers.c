@@ -172,8 +172,8 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
 
     // compare quasar wind and cold gas energies and eject cold
     if(quasar_energy > cold_gas_energy) {
-        galaxies[gal].EjectedMass += galaxies[gal].ColdGas;
-        galaxies[gal].MetalsEjectedMass += galaxies[gal].MetalsColdGas;
+        galaxies[gal].CGMgas += galaxies[gal].ColdGas;
+        galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsColdGas;
 
         galaxies[gal].ColdGas = 0.0;
         galaxies[gal].MetalsColdGas = 0.0;
@@ -181,8 +181,8 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
 
     // compare quasar wind and cold+hot gas energies and eject hot
     if(quasar_energy > cold_gas_energy + hot_gas_energy) {
-        galaxies[gal].EjectedMass += galaxies[gal].HotGas;
-        galaxies[gal].MetalsEjectedMass += galaxies[gal].MetalsHotGas;
+        galaxies[gal].CGMgas += galaxies[gal].HotGas;
+        galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsHotGas;
 
         galaxies[gal].HotGas = 0.0;
         galaxies[gal].MetalsHotGas = 0.0;
@@ -202,8 +202,8 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
     galaxies[t].HotGas += galaxies[p].HotGas;
     galaxies[t].MetalsHotGas += galaxies[p].MetalsHotGas;
 
-    galaxies[t].EjectedMass += galaxies[p].EjectedMass;
-    galaxies[t].MetalsEjectedMass += galaxies[p].MetalsEjectedMass;
+    //galaxies[t].EjectedMass += galaxies[p].EjectedMass;
+    //galaxies[t].MetalsEjectedMass += galaxies[p].MetalsEjectedMass;
 
     galaxies[t].CGMgas += galaxies[p].CGMgas;
     galaxies[t].MetalsCGMgas += galaxies[p].MetalsCGMgas;
@@ -383,8 +383,8 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
     galaxies[centralgal].HotGas += galaxies[gal].ColdGas + galaxies[gal].HotGas;
     galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas;
 
-    galaxies[centralgal].EjectedMass += galaxies[gal].EjectedMass;
-    galaxies[centralgal].MetalsEjectedMass += galaxies[gal].MetalsEjectedMass;
+    //galaxies[centralgal].EjectedMass += galaxies[gal].EjectedMass;
+    //galaxies[centralgal].MetalsEjectedMass += galaxies[gal].MetalsEjectedMass;
 
     galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
     galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;

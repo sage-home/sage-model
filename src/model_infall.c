@@ -54,7 +54,7 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     
     // Calculate how much of that should go to the CGM (but don't update CGM yet)
     double cgm_fraction = 0.0;
-    if (run_params->CGMBuildingOn) {
+    if (run_params->CGMBuildOn) {
         cgm_fraction = calculate_cgm(centralgal, Zcurr, galaxies, run_params);
     }
     
@@ -76,12 +76,12 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         galaxies[centralgal].MetalsEjectedMass = galaxies[centralgal].EjectedMass;
     }
 
-    if(galaxies[centralgal].EjectedMass < 0.0) {
-        galaxies[centralgal].EjectedMass = galaxies[centralgal].MetalsEjectedMass = 0.0;
+    if(galaxies[centralgal].CGMgas < 0.0) {
+        galaxies[centralgal].CGMgas = galaxies[centralgal].MetalsCGMgas = 0.0;
     }
 
-    if(galaxies[centralgal].MetalsEjectedMass < 0.0) {
-        galaxies[centralgal].MetalsEjectedMass = 0.0;
+    if(galaxies[centralgal].MetalsCGMgas < 0.0) {
+        galaxies[centralgal].MetalsCGMgas = 0.0;
     }
 
     // the central galaxy keeps all the ICS (mostly for numerical convenience)
@@ -251,7 +251,7 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
 double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
 {
     // Skip calculation if preventative feedback is disabled
-    if (run_params->CGMBuildingOn == 0) {
+    if (run_params->CGMBuildOn == 0) {
         return 1.0;
     }
     
@@ -261,10 +261,10 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
     
     // Calculate z-factor and critical velocity
     double z_factor = (z <= 1.0) ? 
-        pow(1.0 + z, run_params->CGMBuildingZdep) :
-        pow(1.0 + 1.0, run_params->CGMBuildingZdep) * pow((1.0 + z)/(1.0 + 1.0), 2.0);
+        pow(1.0 + z, run_params->CGMBuildZdep) :
+        pow(1.0 + 1.0, run_params->CGMBuildZdep) * pow((1.0 + z)/(1.0 + 1.0), 2.0);
     
-    double v_crit = run_params->CGMBuildingVcrit * z_factor;
+    double v_crit = run_params->CGMBuildVcrit * z_factor;
     
     // Calculate minimum floor
     double min_floor = 0.3 / (1.0 + 0.5 * (z - 1.0));
@@ -273,7 +273,7 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
     
     // Calculate suppression factor
     double f_suppress = min_floor + (1.0 - min_floor) / 
-                       (1.0 + pow(v_crit/vvir, run_params->CGMBuildingAlpha));
+                       (1.0 + pow(v_crit/vvir, run_params->CGMBuildAlpha));
     
     // Apply additional suppression for intermediate-mass halos at high-z
     if (z > 1.0 && vvir > 50.0 && vvir < 150.0) {
@@ -296,8 +296,8 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
     if (counter % 500000 == 0) {
         printf("CGM Building: Galaxy=%d, z=%.2f, Vvir=%.1f km/s, v_crit=%.1f, z_factor=%.2f\n", 
                galaxies[gal].GalaxyNr, z, vvir, v_crit, z_factor);
-        printf("  Suppression: f_suppress=%.3f, min_floor=%.3f, CGMBuildingAlpha=%.2f\n", 
-               f_suppress, min_floor, run_params->CGMBuildingAlpha);
+        printf("  Suppression: f_suppress=%.3f, min_floor=%.3f, CGMBuildAlpha=%.2f\n", 
+               f_suppress, min_floor, run_params->CGMBuildAlpha);
         
         // Log full galaxy properties for deeper understanding
         if (counter % 500000 == 0) {
@@ -353,79 +353,6 @@ void update_cgm_reservoir(const int centralgal, const double z, struct GALAXY *g
     
     galaxies[centralgal].CGMgas = new_cgm_mass;
  }
-
- /**
- * reincorporate_cgm_gas - Gradually return CGM gas to the hot halo
- * 
- * This function implements a slow, time-dependent reincorporation of gas
- * from the CGM reservoir to the hot gas halo.
- * 
- * @param centralgal: Index of the central galaxy
- * @param dt: Time step in Gyr
- * @param galaxies: Array of galaxy structures
- * @param run_params: Simulation parameters
- */
-void reincorporate_cgm_gas(const int centralgal, const double dt, 
-                           struct GALAXY *galaxies, const struct params *run_params)
-{
-    // Skip if no CGM or CGM formation is disabled
-    if (galaxies[centralgal].CGMgas <= 0.0 || run_params->CGMBuildingOn == 0) {
-        return;
-    }
-    
-    // Parameters for CGM reincorporation
-    // These could be exposed as model parameters in the future
-    const double base_cgm_reinc_rate = 0.1;  // Base rate: 10% of CGM per Gyr
-    const double halo_mass_dependence = 0.5; // Stronger reincorporation in massive halos
-    const double redshift_dependence = -0.25; // Weaker at high redshift
-    
-    // Get current redshift
-    double z = run_params->ZZ[galaxies[centralgal].SnapNum];
-    
-    // Calculate dynamical time of the halo
-    double tdyn = 0.1; // Default if calculation fails (in Gyr)
-    if (galaxies[centralgal].Rvir > 0.0 && galaxies[centralgal].Vvir > 0.0) {
-        // Convert Rvir (Mpc/h) and Vvir (km/s) to get tdyn in Gyr
-        // Factor of 0.1 converts from internal time units to Gyr
-        tdyn = 0.1 * galaxies[centralgal].Rvir / galaxies[centralgal].Vvir;
-    }
-    
-    // Calculate mass-dependent factor
-    double mass_factor = 1.0;
-    if (galaxies[centralgal].Mvir > 0.0) {
-        // Normalize to Milky Way mass halo (10^12 Msun)
-        mass_factor = pow(galaxies[centralgal].Mvir / 100.0, halo_mass_dependence);
-    }
-    
-    // Calculate redshift-dependent factor
-    double redshift_factor = pow(1.0 + z, redshift_dependence);
-    
-    // Calculate effective rate
-    double effective_rate = base_cgm_reinc_rate * mass_factor * redshift_factor;
-    
-    // Calculate reincorporation timescale (in Gyr)
-    double t_reinc = tdyn / effective_rate;
-    if (t_reinc < 0.1) t_reinc = 0.1; // Minimum 100 Myr
-    
-    // Calculate amount of gas to reincorporate in this timestep
-    double reinc_fraction = dt / t_reinc;
-    if (reinc_fraction > 0.5) reinc_fraction = 0.5; // Maximum 50% per step for stability
-    
-    double reincorporated = galaxies[centralgal].CGMgas * reinc_fraction;
-    
-    // Calculate metallicity of CGM
-    double metallicity = 0.0;
-    if (galaxies[centralgal].CGMgas > 0.0 && galaxies[centralgal].MetalsCGMgas > 0.0) {
-        metallicity = galaxies[centralgal].MetalsCGMgas / galaxies[centralgal].CGMgas;
-    }
-    
-    // Update the reservoirs
-    galaxies[centralgal].CGMgas -= reincorporated;
-    galaxies[centralgal].MetalsCGMgas -= metallicity * reincorporated;
-    
-    galaxies[centralgal].HotGas += reincorporated;
-    galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
-}
 
 double do_reionization_enhanced(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)
 {

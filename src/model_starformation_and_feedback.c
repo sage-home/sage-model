@@ -331,53 +331,21 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             adjusted_ejected_mass = galaxies[centralgal].HotGas;
         }
         const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
-
-         // NEW: Calculate what fraction of ejected gas goes to CGM vs. ejected reservoir
-        double cgm_capture_fraction = 0.0;
-        
-        // Only do this calculation if CGM formation is enabled
-        if (run_params->CGMBuildingOn) {
-            // Calculate ejection velocity - based on energy argument
-            // v_eject = sqrt(2*E_SN/m_eject)
-            double ejection_velocity = 0.0;
-            if (adjusted_ejected_mass > 0.0) {
-                ejection_velocity = sqrt(2.0 * run_params->EnergySNcode * run_params->EtaSNcode / 
-                                        adjusted_ejected_mass);
-            }
-            
-            // Calculate escape velocity of the halo (approximation)
-            double escape_velocity = sqrt(2.0) * galaxies[centralgal].Vvir;
-            
-            // Calculate capture fraction based on velocity ratio
-            // If v_eject >> v_escape, most gas escapes to ejected reservoir
-            // If v_eject ~ v_escape, most gas is captured by CGM
-            if (ejection_velocity > 0.0 && escape_velocity > 0.0) {
-                double velocity_ratio = ejection_velocity / escape_velocity;
-                
-                // Parametric form: exponential decay with velocity ratio
-                cgm_capture_fraction = exp(-velocity_ratio);
-                
-                // Cap the fraction for numerical stability
-                if (cgm_capture_fraction < 0.01) cgm_capture_fraction = 0.01;
-                if (cgm_capture_fraction > 0.95) cgm_capture_fraction = 0.95;
-            }
-        }
-        
-        // Divide ejected gas between CGM and ejected reservoir
-        double ejected_to_cgm = adjusted_ejected_mass * cgm_capture_fraction;
-        double ejected_to_reservoir = adjusted_ejected_mass - ejected_to_cgm;
         
         // Update the reservoirs
         galaxies[centralgal].HotGas -= adjusted_ejected_mass;
         galaxies[centralgal].MetalsHotGas -= metallicityHot * adjusted_ejected_mass;
         
         // Add to CGM
-        galaxies[centralgal].CGMgas += ejected_to_cgm;
-        galaxies[centralgal].MetalsCGMgas += metallicityHot * ejected_to_cgm;
+        galaxies[centralgal].CGMgas += adjusted_ejected_mass;
+        galaxies[centralgal].MetalsCGMgas += metallicityHot * adjusted_ejected_mass;
+
+        galaxies[centralgal].EjectedMass = 0.0;
+        galaxies[centralgal].MetalsEjectedMass = 0.0;
         
         // Add to ejected reservoir
-        galaxies[centralgal].EjectedMass += ejected_to_reservoir;
-        galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_to_reservoir;
+        //galaxies[centralgal].EjectedMass += ejected_to_reservoir;
+        //galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_to_reservoir;
 
         galaxies[p].OutflowRate += adjusted_reheated_mass;
     }

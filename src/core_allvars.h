@@ -493,10 +493,10 @@ struct params
     int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov, 2=Lagos) */
 
     // Preventative feedback parameters
-    int32_t CGMBuildingOn;      // Flag to enable/disable preventative feedback
-    double CGMBuildingVcrit; // Critical velocity scale
-    double CGMBuildingAlpha; // Power-law index for velocity dependence
-    double CGMBuildingZdep;  // Redshift dependence parameter
+    int32_t CGMBuildOn;      // Flag to enable/disable preventative feedback
+    double CGMBuildVcrit; // Critical velocity scale
+    double CGMBuildAlpha; // Power-law index for velocity dependence
+    double CGMBuildZdep;  // Redshift dependence parameter
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

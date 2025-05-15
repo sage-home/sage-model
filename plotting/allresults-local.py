@@ -1208,7 +1208,7 @@ if __name__ == '__main__':
     plt.scatter(HaloMass, np.log10(StellarMass[w]), marker='o', s=0.3, c='k', alpha=0.5, label='Stars')
     plt.scatter(HaloMass, np.log10(ColdGas[w]), marker='o', s=0.3, color='blue', alpha=0.5, label='Cold gas')
     plt.scatter(HaloMass, np.log10(HotGas[w]), marker='o', s=0.3, color='red', alpha=0.5, label='Hot gas')
-    plt.scatter(HaloMass, np.log10(EjectedMass[w]), marker='o', s=0.3, color='green', alpha=0.5, label='Ejected gas')
+    plt.scatter(HaloMass, np.log10(EjectedMass[w]), marker='o', s=50.3, color='green', alpha=0.5, label='Ejected gas')
     plt.scatter(HaloMass, np.log10(IntraClusterStars[w]), marker='o', s=10, color='yellow', alpha=0.5, label='Intracluster stars')
     plt.scatter(HaloMass, np.log10(CGM[w]), marker='o', s=0.3, color='magenta', alpha=0.5, label='CGM')
 
@@ -1649,3 +1649,56 @@ if __name__ == '__main__':
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
+
+        # Create a test plot comparing to the expected baryon fraction
+    plt.figure(figsize=(10, 6))
+    cent_mask = Type == 0 
+    log_mvir = np.log10(Mvir)
+    mass_bins = np.linspace(11, 14, 20)  # Bins in log space
+
+    # Expected baryon fraction (cosmic average)
+    expected_baryon_fraction = 0.17
+    actual_baryon_fraction = np.zeros(len(mass_bins)-1)
+    cgm_fraction = np.zeros(len(mass_bins)-1)
+    bin_centers = (mass_bins[:-1] + mass_bins[1:]) / 2
+
+    for i in range(len(mass_bins)-1):
+        bin_mask = (log_mvir[cent_mask] >= mass_bins[i]) & (log_mvir[cent_mask] < mass_bins[i+1])
+        if np.sum(bin_mask) > 0:
+            # Calculate the actual total baryon fraction
+            total_baryons = (StellarMass + ColdGas + HotGas + IntraClusterStars + BlackHoleMass + CGM)
+            baryon_fractions = total_baryons[cent_mask][bin_mask] / Mvir[cent_mask][bin_mask]
+            actual_baryon_fraction[i] = np.mean(baryon_fractions)
+            
+            # Calculate CGM fraction
+            cgm_fractions = CGM[cent_mask][bin_mask] / Mvir[cent_mask][bin_mask]
+            cgm_fraction[i] = np.mean(cgm_fractions)
+
+    # Plot results
+    plt.plot(bin_centers, actual_baryon_fraction, 'o-', color='blue', label='Actual Baryon Fraction')
+    plt.plot(bin_centers, cgm_fraction, 's-', color='magenta', label='CGM Fraction')
+    plt.axhline(y=expected_baryon_fraction, color='r', linestyle='--', label='Expected Baryon Fraction (0.17)')
+
+    # Calculate what CGM fraction should be to reach expected baryon fraction
+    difference = expected_baryon_fraction - (actual_baryon_fraction - cgm_fraction)
+    plt.plot(bin_centers, difference, '^-', color='green', label='Missing Baryon Fraction')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+    plt.ylabel('Fraction of Halo Mass')
+    plt.title('Comparison to Expected Baryon Fraction')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.savefig(OutputDir + 'baryon_fraction_comparison.png')
+    plt.close()
+
+    # Print summary statistics
+    print("\nBaryon Fraction Analysis:")
+    print(f"Mean total baryon fraction: {np.mean(actual_baryon_fraction):.4f}")
+    print(f"Mean CGM fraction: {np.mean(cgm_fraction):.4f}")
+    print(f"Expected baryon fraction: {expected_baryon_fraction:.4f}")
+    print(f"Mean missing fraction: {np.mean(difference):.4f}")
+
+    # Check if there's a scaling issue
+    if np.mean(difference) > 0.05:  # If missing more than 5% of mass
+        estimated_scaling = np.mean(difference) / np.mean(cgm_fraction) if np.mean(cgm_fraction) > 0 else 0
+        print(f"Suggested CGM scaling factor: {1 + estimated_scaling:.2f}x")

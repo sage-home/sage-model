@@ -299,20 +299,20 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Ejection_Alpha);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "CGMBuildingOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMBuildingOn);
+    strncpy(ParamTag[NParam], "CGMBuildOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMBuildOn);
     ParamID[NParam++] = INT;
 
-    strncpy(ParamTag[NParam], "CGMBuildingVcrit", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMBuildingVcrit);
+    strncpy(ParamTag[NParam], "CGMBuildVcrit", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMBuildVcrit);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "CGMBuildingAlpha", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMBuildingAlpha);
+    strncpy(ParamTag[NParam], "CGMBuildAlpha", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMBuildAlpha);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "CGMBuildingZdep", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMBuildingZdep);
+    strncpy(ParamTag[NParam], "CGMBuildZdep", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMBuildZdep);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "MassLoadingModel", MAXTAGLEN);
