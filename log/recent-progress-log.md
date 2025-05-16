@@ -191,3 +191,11 @@
 - Implemented proper error handling and resource cleanup
 - Added files: src/io/save_gals_hdf5_property_utils.c, src/io/prepare_galaxy_for_hdf5_output.c, src/io/generate_field_metadata.c, src/io/trigger_buffer_write.c, src/io/initialize_hdf5_galaxy_files.c, src/io/finalize_hdf5_galaxy_files.c, tests/test_property_system_hdf5.c
 - Modified files: src/io/save_gals_hdf5.c, src/io/save_gals_hdf5.h
+
+2025-05-16: [Phase 5.2.F.4] Core-Physics Property Separation Fix
+- Added proper `is_core` flags to all properties in `properties.yaml` to ensure correct distinction between core and physics properties
+- Migrated from dual property files to a single source of truth by moving `core_properties.yaml` to `ignore` directory
+- Updated Makefile to use `properties.yaml` for all builds, including core-only builds
+- This fix addresses the critical issue where `is_core_property()` was incorrectly returning false for core properties, causing improper property access patterns
+- Modified files: src/properties.yaml, Makefile
+- Moved files: src/core_properties.yaml → ignore/core_properties.yaml
