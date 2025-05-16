@@ -22,22 +22,45 @@ void test_property_access() {
         return;
     }
     
+    // Add a fake GalaxyIndex for more informative error messages
+    galaxy.GalaxyIndex = 12345;
+    
     // Initialize scalar properties with known values
     printf("Setting test values...\n");
     GALAXY_PROP_Mvir(&galaxy) = 1.0e12;                    // Scalar float property
     GALAXY_PROP_Type(&galaxy) = 1;                         // Scalar int property
     
-    // Test 1: Direct macro access vs. GALAXY_PROP_BY_ID access for scalars
+    // Initialize array properties
+    for (int i = 0; i < STEPS; i++) {
+        GALAXY_PROP_SfrDisk_ELEM(&galaxy, i) = 5.5f + i;   // Fixed array property
+    }
+    
+    // Test 1: Direct macro access vs. generic accessors for scalars
     printf("\nTest 1: Testing scalar property access...\n");
     float mvir_direct = GALAXY_PROP_Mvir(&galaxy);
-    float mvir_by_id = GALAXY_PROP_BY_ID(&galaxy, PROP_Mvir, float);
-    printf("  Mvir direct: %g, Mvir by ID: %g\n", mvir_direct, mvir_by_id);
-    assert(mvir_direct == mvir_by_id);
+    float mvir_by_fn = get_float_property(&galaxy, PROP_Mvir, 0.0f);
+    printf("  Mvir direct: %g, Mvir by function: %g\n", mvir_direct, mvir_by_fn);
+    assert(mvir_direct == mvir_by_fn);
     
     int type_direct = GALAXY_PROP_Type(&galaxy);
-    int type_by_id = GALAXY_PROP_BY_ID(&galaxy, PROP_Type, int32_t);
-    printf("  Type direct: %d, Type by ID: %d\n", type_direct, type_by_id);
-    assert(type_direct == type_by_id);
+    int type_by_fn = get_int32_property(&galaxy, PROP_Type, 0);
+    printf("  Type direct: %d, Type by function: %d\n", type_direct, type_by_fn);
+    assert(type_direct == type_by_fn);
+    
+    // Test 2: Array property access
+    printf("\nTest 2: Testing array property access...\n");
+    for (int i = 0; i < 3; i++) {
+        float sfr_direct = GALAXY_PROP_SfrDisk_ELEM(&galaxy, i);
+        float sfr_by_fn = get_float_array_element_property(&galaxy, PROP_SfrDisk, i, 0.0f);
+        printf("  SfrDisk[%d] direct: %g, by function: %g\n", i, sfr_direct, sfr_by_fn);
+        assert(sfr_direct == sfr_by_fn);
+    }
+    
+    // Test 3: Array size retrieval
+    printf("\nTest 3: Testing array size retrieval...\n");
+    int array_size = get_property_array_size(&galaxy, PROP_SfrDisk);
+    printf("  SfrDisk array size: %d (should be %d)\n", array_size, STEPS);
+    assert(array_size == STEPS);
     
     printf("\nAll property access tests passed!\n");
     printf("The implementation correctly follows existing codebase patterns and maintains core-physics separation.\n");
@@ -49,9 +72,9 @@ void test_property_access() {
 int main() {
     printf("=== SAGE Property System Access Test ===\n");
     printf("This test verifies that:\n");
-    printf("1. The GALAXY_PROP_BY_ID macro correctly accesses properties\n");
-    printf("2. The implementation follows existing codebase patterns\n");
-    printf("3. Core-physics separation is maintained\n\n");
+    printf("1. The property accessor functions correctly access properties\n");
+    printf("2. The auto-generated dispatcher implementation works correctly\n");
+    printf("3. Direct macro access and generic function access return the same values\n\n");
     
     test_property_access();
     return 0;

@@ -43,19 +43,13 @@ float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, flo
     sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in get_float_property.");
     sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in get_float_property.");
 
-    // Check if prop_id is valid. The GALAXY_PROP_BY_ID macro itself might do checks,
-    // but an explicit check here can provide better context or avoid macro complexities.
-    // This depends on how property_id_t and the generated macros are structured.
-    // For now, we rely on GALAXY_PROP_BY_ID to handle validity.
-    // A more robust check would involve knowing the max valid prop_id.
-    if (prop_id < 0 || prop_id >= (property_id_t)MAX_GALAXY_PROPERTIES) { // MAX_GALAXY_PROPERTIES should be defined in generated headers
+    if (prop_id < 0 || prop_id >= (property_id_t)MAX_GALAXY_PROPERTIES) {
         LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, galaxy->GalaxyIndex);
         return default_value;
     }
     
-    // Assuming GALAXY_PROP_BY_ID handles type casting or direct access correctly.
-    // The third argument to GALAXY_PROP_BY_ID is the type.
-    return GALAXY_PROP_BY_ID(galaxy, prop_id, float);
+    // Use the generated dispatcher instead of GALAXY_PROP_BY_ID
+    return get_generated_float(galaxy->properties, prop_id, default_value);
 }
 
 int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value) {
@@ -66,7 +60,9 @@ int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, i
         LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, galaxy->GalaxyIndex);
         return default_value;
     }
-    return GALAXY_PROP_BY_ID(galaxy, prop_id, int32_t);
+    
+    // Use the generated dispatcher instead of GALAXY_PROP_BY_ID
+    return get_generated_int32(galaxy->properties, prop_id, default_value);
 }
 
 double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, double default_value) {
@@ -77,7 +73,9 @@ double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, d
         LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, galaxy->GalaxyIndex);
         return default_value;
     }
-    return GALAXY_PROP_BY_ID(galaxy, prop_id, double);
+    
+    // Use the generated dispatcher instead of GALAXY_PROP_BY_ID
+    return get_generated_double(galaxy->properties, prop_id, default_value);
 }
 
 bool has_property(const struct GALAXY *galaxy, property_id_t prop_id) {
@@ -175,38 +173,14 @@ float get_float_array_element_property(const struct GALAXY *galaxy, property_id_
 
     // Get property metadata to check if it's an array
     const property_meta_t *meta = get_property_meta(prop_id);
-    if (meta == NULL) {
-        LOG_ERROR("Property metadata not found for ID %d in get_float_array_element_property.", prop_id);
-        return default_value;
-    }
-
-    // Check if this is an array property
-    if (!meta->is_array) {
+    if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but was accessed as one for galaxy %lld.", 
-                  meta->name, prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
         return default_value;
     }
-
-    // Get array size
-    int array_size = get_property_array_size(galaxy, prop_id);
     
-    // Bounds checking
-    if (array_idx < 0 || array_idx >= array_size) {
-        LOG_ERROR("Array index %d out of bounds (size: %d) for property '%s' (ID %d) for galaxy %lld.", 
-                  array_idx, array_size, meta->name, prop_id, galaxy->GalaxyIndex);
-        return default_value;
-    }
-
-    // Access the array element - this depends on how array properties are stored
-    // Assuming arrays are stored as pointers in the property structure and not directly
-    float *array_ptr = (float*)GALAXY_PROP_BY_ID(galaxy, prop_id, void*);
-    if (array_ptr == NULL) {
-        LOG_ERROR("Array pointer is NULL for property '%s' (ID %d) for galaxy %lld.", 
-                  meta->name, prop_id, galaxy->GalaxyIndex);
-        return default_value;
-    }
-
-    return array_ptr[array_idx];
+    // Use the generated array element dispatcher
+    return get_generated_float_array_element(galaxy->properties, prop_id, array_idx, default_value);
 }
 
 int32_t get_int32_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, int32_t default_value) {
@@ -221,37 +195,14 @@ int32_t get_int32_array_element_property(const struct GALAXY *galaxy, property_i
 
     // Get property metadata to check if it's an array
     const property_meta_t *meta = get_property_meta(prop_id);
-    if (meta == NULL) {
-        LOG_ERROR("Property metadata not found for ID %d in get_int32_array_element_property.", prop_id);
-        return default_value;
-    }
-
-    // Check if this is an array property
-    if (!meta->is_array) {
+    if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but was accessed as one for galaxy %lld.", 
-                  meta->name, prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
         return default_value;
     }
-
-    // Get array size
-    int array_size = get_property_array_size(galaxy, prop_id);
     
-    // Bounds checking
-    if (array_idx < 0 || array_idx >= array_size) {
-        LOG_ERROR("Array index %d out of bounds (size: %d) for property '%s' (ID %d) for galaxy %lld.", 
-                  array_idx, array_size, meta->name, prop_id, galaxy->GalaxyIndex);
-        return default_value;
-    }
-
-    // Access the array element
-    int32_t *array_ptr = (int32_t*)GALAXY_PROP_BY_ID(galaxy, prop_id, void*);
-    if (array_ptr == NULL) {
-        LOG_ERROR("Array pointer is NULL for property '%s' (ID %d) for galaxy %lld.", 
-                  meta->name, prop_id, galaxy->GalaxyIndex);
-        return default_value;
-    }
-
-    return array_ptr[array_idx];
+    // Use the generated array element dispatcher
+    return get_generated_int32_array_element(galaxy->properties, prop_id, array_idx, default_value);
 }
 
 double get_double_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, double default_value) {
@@ -266,37 +217,14 @@ double get_double_array_element_property(const struct GALAXY *galaxy, property_i
 
     // Get property metadata to check if it's an array
     const property_meta_t *meta = get_property_meta(prop_id);
-    if (meta == NULL) {
-        LOG_ERROR("Property metadata not found for ID %d in get_double_array_element_property.", prop_id);
-        return default_value;
-    }
-
-    // Check if this is an array property
-    if (!meta->is_array) {
+    if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but was accessed as one for galaxy %lld.", 
-                  meta->name, prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
         return default_value;
     }
-
-    // Get array size
-    int array_size = get_property_array_size(galaxy, prop_id);
     
-    // Bounds checking
-    if (array_idx < 0 || array_idx >= array_size) {
-        LOG_ERROR("Array index %d out of bounds (size: %d) for property '%s' (ID %d) for galaxy %lld.", 
-                  array_idx, array_size, meta->name, prop_id, galaxy->GalaxyIndex);
-        return default_value;
-    }
-
-    // Access the array element
-    double *array_ptr = (double*)GALAXY_PROP_BY_ID(galaxy, prop_id, void*);
-    if (array_ptr == NULL) {
-        LOG_ERROR("Array pointer is NULL for property '%s' (ID %d) for galaxy %lld.", 
-                  meta->name, prop_id, galaxy->GalaxyIndex);
-        return default_value;
-    }
-
-    return array_ptr[array_idx];
+    // Use the generated array element dispatcher
+    return get_generated_double_array_element(galaxy->properties, prop_id, array_idx, default_value);
 }
 
 int get_property_array_size(const struct GALAXY *galaxy, property_id_t prop_id) {
@@ -312,41 +240,12 @@ int get_property_array_size(const struct GALAXY *galaxy, property_id_t prop_id) 
 
     // Get property metadata to check if it's an array
     const property_meta_t *meta = get_property_meta(prop_id);
-    if (meta == NULL) {
-        LOG_ERROR("Property metadata not found for ID %d in get_property_array_size.", prop_id);
-        return 0;
-    }
-
-    // Check if this is an array property
-    if (!meta->is_array) {
+    if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but queried for array size for galaxy %lld.", 
-                  meta->name, prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
         return 0;
-    }
-
-    // Get the array size from metadata or from size field in property structure
-    // This depends on how array properties are implemented in the system
-    // Method 1: Fixed size from metadata
-    if (meta->array_dimension > 0) {
-        return meta->array_dimension;
     }
     
-    // Method 2: Dynamic size stored separately (e.g., in a size array or companion property)
-    // Assuming there's a convention like "{PropertyName}_size" for dynamic arrays
-    char size_prop_name[MAX_STRING_LEN];
-    snprintf(size_prop_name, sizeof(size_prop_name), "%s_size", meta->name);
-    property_id_t size_prop_id = get_cached_property_id(size_prop_name);
-    if (size_prop_id >= 0) {
-        return get_int32_property(galaxy, size_prop_id, 0);
-    }
-
-    // Method 3: First element of array is size (less common pattern)
-    // int32_t *array_ptr = (int32_t*)GALAXY_PROP_BY_ID(galaxy, prop_id, void*);
-    // if (array_ptr != NULL) {
-    //     return array_ptr[0]; // First element is size
-    // }
-
-    // If no size information found, return a default size based on common usage patterns
-    // For example, in SAGE, many array properties are tied to STEPS
-    return STEPS; // Default to STEPS for arrays without explicit size
+    // Use the generated array size dispatcher
+    return get_generated_array_size(galaxy->properties, prop_id);
 }

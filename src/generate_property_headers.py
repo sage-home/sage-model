@@ -130,6 +130,17 @@ const char* get_property_name(property_id_t id);
  */
 property_id_t get_property_id(const char *name);
 
+/* Generated property dispatcher functions */
+float get_generated_float(const galaxy_properties_t *props, property_id_t prop_id, float default_value);
+int32_t get_generated_int32(const galaxy_properties_t *props, property_id_t prop_id, int32_t default_value);
+double get_generated_double(const galaxy_properties_t *props, property_id_t prop_id, double default_value);
+
+float get_generated_float_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, float default_value);
+int32_t get_generated_int32_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, int32_t default_value);
+double get_generated_double_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, double default_value);
+
+int get_generated_array_size(const galaxy_properties_t *props, property_id_t prop_id);
+
 /* Property accessors */
 {property_accessor_macros}
 
@@ -620,6 +631,269 @@ def generate_reset_property_values_code(properties):
     
     return "\n".join(code_lines)
 
+def generate_float_dispatcher(properties):
+    """Generate the float property dispatcher function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Get a float property value by property ID")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement. This provides type-safe")
+    c_code.append(" * access to properties without requiring compile-time knowledge of the specific")
+    c_code.append(" * property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to access")
+    c_code.append(" * @param default_value Value to return in case of error")
+    c_code.append(" * @return The property value or default_value on error")
+    c_code.append(" */")
+    c_code.append("float get_generated_float(const galaxy_properties_t *props, property_id_t prop_id, float default_value) {")
+    c_code.append("    if (!props) return default_value;")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each float property
+    for prop in properties:
+        base_type, is_array, _, is_dynamic, _ = parse_type(prop['type'])
+        if not is_array and base_type == 'float':
+            c_code.append(f"        case PROP_{prop['name']}: return props->{prop['name']};")
+    
+    c_code.append("        default: return default_value;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
+def generate_int32_dispatcher(properties):
+    """Generate the int32 property dispatcher function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Get an int32 property value by property ID")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement. This provides type-safe")
+    c_code.append(" * access to properties without requiring compile-time knowledge of the specific")
+    c_code.append(" * property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to access")
+    c_code.append(" * @param default_value Value to return in case of error")
+    c_code.append(" * @return The property value or default_value on error")
+    c_code.append(" */")
+    c_code.append("int32_t get_generated_int32(const galaxy_properties_t *props, property_id_t prop_id, int32_t default_value) {")
+    c_code.append("    if (!props) return default_value;")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each int32 property
+    for prop in properties:
+        base_type, is_array, _, is_dynamic, _ = parse_type(prop['type'])
+        if not is_array and (base_type == 'int32_t' or base_type == 'int'):
+            c_code.append(f"        case PROP_{prop['name']}: return props->{prop['name']};")
+    
+    c_code.append("        default: return default_value;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
+def generate_double_dispatcher(properties):
+    """Generate the double property dispatcher function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Get a double property value by property ID")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement. This provides type-safe")
+    c_code.append(" * access to properties without requiring compile-time knowledge of the specific")
+    c_code.append(" * property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to access")
+    c_code.append(" * @param default_value Value to return in case of error")
+    c_code.append(" * @return The property value or default_value on error")
+    c_code.append(" */")
+    c_code.append("double get_generated_double(const galaxy_properties_t *props, property_id_t prop_id, double default_value) {")
+    c_code.append("    if (!props) return default_value;")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each double property
+    for prop in properties:
+        base_type, is_array, _, is_dynamic, _ = parse_type(prop['type'])
+        if not is_array and base_type == 'double':
+            c_code.append(f"        case PROP_{prop['name']}: return props->{prop['name']};")
+    
+    c_code.append("        default: return default_value;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
+def generate_float_array_dispatcher(properties):
+    """Generate the float array element property dispatcher function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Get a float array element value by property ID and index")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding array field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement, then accesses the specified")
+    c_code.append(" * array element. This provides type-safe access to array properties without requiring")
+    c_code.append(" * compile-time knowledge of the specific property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to access")
+    c_code.append(" * @param array_idx Index of the array element to access")
+    c_code.append(" * @param default_value Value to return in case of error")
+    c_code.append(" * @return The array element value or default_value on error")
+    c_code.append(" */")
+    c_code.append("float get_generated_float_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, float default_value) {")
+    c_code.append("    if (!props) return default_value;")
+    c_code.append("    ")
+    c_code.append("    // Validate array index")
+    c_code.append("    if (array_idx < 0) return default_value;")
+    c_code.append("    ")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each float array property
+    for prop in properties:
+        base_type, is_array, array_dim, is_dynamic, _ = parse_type(prop['type'])
+        if is_array and base_type == 'float':
+            if is_dynamic:
+                # Dynamic array with a size field
+                c_code.append(f"        case PROP_{prop['name']}:")
+                c_code.append(f"            if (array_idx >= props->{prop['name']}_size || !props->{prop['name']}) return default_value;")
+                c_code.append(f"            return props->{prop['name']}[array_idx];")
+            else:
+                # Fixed size array
+                c_code.append(f"        case PROP_{prop['name']}:")
+                c_code.append(f"            if (array_idx >= {array_dim}) return default_value;")
+                c_code.append(f"            return props->{prop['name']}[array_idx];")
+    
+    c_code.append("        default: return default_value;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
+def generate_int32_array_dispatcher(properties):
+    """Generate the int32 array element property dispatcher function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Get an int32 array element value by property ID and index")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding array field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement, then accesses the specified")
+    c_code.append(" * array element. This provides type-safe access to array properties without requiring")
+    c_code.append(" * compile-time knowledge of the specific property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to access")
+    c_code.append(" * @param array_idx Index of the array element to access")
+    c_code.append(" * @param default_value Value to return in case of error")
+    c_code.append(" * @return The array element value or default_value on error")
+    c_code.append(" */")
+    c_code.append("int32_t get_generated_int32_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, int32_t default_value) {")
+    c_code.append("    if (!props) return default_value;")
+    c_code.append("    ")
+    c_code.append("    // Validate array index")
+    c_code.append("    if (array_idx < 0) return default_value;")
+    c_code.append("    ")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each int32 array property
+    for prop in properties:
+        base_type, is_array, array_dim, is_dynamic, _ = parse_type(prop['type'])
+        if is_array and (base_type == 'int32_t' or base_type == 'int'):
+            if is_dynamic:
+                # Dynamic array with a size field
+                c_code.append(f"        case PROP_{prop['name']}:")
+                c_code.append(f"            if (array_idx >= props->{prop['name']}_size || !props->{prop['name']}) return default_value;")
+                c_code.append(f"            return props->{prop['name']}[array_idx];")
+            else:
+                # Fixed size array
+                c_code.append(f"        case PROP_{prop['name']}:")
+                c_code.append(f"            if (array_idx >= {array_dim}) return default_value;")
+                c_code.append(f"            return props->{prop['name']}[array_idx];")
+    
+    c_code.append("        default: return default_value;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
+def generate_double_array_dispatcher(properties):
+    """Generate the double array element property dispatcher function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Get a double array element value by property ID and index")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding array field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement, then accesses the specified")
+    c_code.append(" * array element. This provides type-safe access to array properties without requiring")
+    c_code.append(" * compile-time knowledge of the specific property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to access")
+    c_code.append(" * @param array_idx Index of the array element to access")
+    c_code.append(" * @param default_value Value to return in case of error")
+    c_code.append(" * @return The array element value or default_value on error")
+    c_code.append(" */")
+    c_code.append("double get_generated_double_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, double default_value) {")
+    c_code.append("    if (!props) return default_value;")
+    c_code.append("    ")
+    c_code.append("    // Validate array index")
+    c_code.append("    if (array_idx < 0) return default_value;")
+    c_code.append("    ")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each double array property
+    for prop in properties:
+        base_type, is_array, array_dim, is_dynamic, _ = parse_type(prop['type'])
+        if is_array and base_type == 'double':
+            if is_dynamic:
+                # Dynamic array with a size field
+                c_code.append(f"        case PROP_{prop['name']}:")
+                c_code.append(f"            if (array_idx >= props->{prop['name']}_size || !props->{prop['name']}) return default_value;")
+                c_code.append(f"            return props->{prop['name']}[array_idx];")
+            else:
+                # Fixed size array
+                c_code.append(f"        case PROP_{prop['name']}:")
+                c_code.append(f"            if (array_idx >= {array_dim}) return default_value;")
+                c_code.append(f"            return props->{prop['name']}[array_idx];")
+    
+    c_code.append("        default: return default_value;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
+def generate_array_size_dispatcher(properties):
+    """Generate the array size dispatcher function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Get the size of an array property by property ID")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding array size in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement. For dynamic arrays, this returns")
+    c_code.append(" * the size field value. For fixed arrays, it returns the compile-time array dimension.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to access")
+    c_code.append(" * @return The array size or 0 on error/not an array")
+    c_code.append(" */")
+    c_code.append("int get_generated_array_size(const galaxy_properties_t *props, property_id_t prop_id) {")
+    c_code.append("    if (!props) return 0;")
+    c_code.append("    ")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each array property
+    for prop in properties:
+        base_type, is_array, array_dim, is_dynamic, _ = parse_type(prop['type'])
+        if is_array:
+            if is_dynamic:
+                # Dynamic array with a size field
+                c_code.append(f"        case PROP_{prop['name']}: return props->{prop['name']}_size;")
+            else:
+                # Fixed size array
+                c_code.append(f"        case PROP_{prop['name']}: return {array_dim};")
+    
+    c_code.append("        default: return 0;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
 def generate_helper_functions(properties):
     """Generate additional helper functions for the property system"""
     functions = []
@@ -818,6 +1092,15 @@ def generate_implementation_file(properties, output_dir=""):
     additional_helper_functions = generate_helper_functions(properties)
     resolve_parameter_function = generate_resolve_parameter_function()
     
+    # Generate the dispatcher functions
+    float_dispatcher = generate_float_dispatcher(properties)
+    int32_dispatcher = generate_int32_dispatcher(properties)
+    double_dispatcher = generate_double_dispatcher(properties)
+    float_array_dispatcher = generate_float_array_dispatcher(properties)
+    int32_array_dispatcher = generate_int32_array_dispatcher(properties)
+    double_array_dispatcher = generate_double_array_dispatcher(properties)
+    array_size_dispatcher = generate_array_size_dispatcher(properties)
+    
     # Modify the IMPLEMENTATION_TEMPLATE to add __attribute__((unused)) to params in allocate_galaxy_properties
     modified_template = IMPLEMENTATION_TEMPLATE.replace(
         "int allocate_galaxy_properties(struct GALAXY *g, const struct params *params)",
@@ -839,6 +1122,16 @@ def generate_implementation_file(properties, output_dir=""):
         additional_helper_functions=additional_helper_functions,
         resolve_parameter_function=resolve_parameter_function
     )
+    
+    # Add the dispatcher functions to the implementation file
+    impl_content += "\n\n/* Generated property dispatcher functions */\n\n"
+    impl_content += float_dispatcher + "\n\n"
+    impl_content += int32_dispatcher + "\n\n"
+    impl_content += double_dispatcher + "\n\n"
+    impl_content += float_array_dispatcher + "\n\n"
+    impl_content += int32_array_dispatcher + "\n\n"
+    impl_content += double_array_dispatcher + "\n\n"
+    impl_content += array_size_dispatcher + "\n\n"
     
     # Add the global variable definitions at the top of the implementation file
     impl_content = f"""/* Global variables for property system */

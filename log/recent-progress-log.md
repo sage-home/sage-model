@@ -199,3 +199,13 @@
 - This fix addresses the critical issue where `is_core_property()` was incorrectly returning false for core properties, causing improper property access patterns
 - Modified files: src/properties.yaml, Makefile
 - Moved files: src/core_properties.yaml → ignore/core_properties.yaml
+
+2025-05-16: [Phase 5.2.F.4] Property Access Refactoring with Type-Safe Dispatchers
+- Replaced the flawed `GALAXY_PROP_BY_ID` macro with auto-generated type-safe dispatcher functions
+- Updated `generate_property_headers.py` to generate property-type-specific dispatcher functions
+- Modified property utility functions to use the new dispatcher functions
+- Removed the direct memory manipulation macro that caused type safety issues
+- Enhanced property access test to validate both scalar and array properties
+- Modified files: src/generate_property_headers.py, src/core/core_property_utils.h, src/core/core_property_utils.c
+- Added files: tests/test_dispatcher_access.c
+
