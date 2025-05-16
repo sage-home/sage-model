@@ -28,8 +28,7 @@ HEADER_TEMPLATE = """/**
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-
-/* STEPS is defined in macros.h */
+#include "macros.h" /* For STEPS definition */
 
 /* Property types and metadata */
 
@@ -40,6 +39,8 @@ typedef enum {{
 {property_id_enum}
     PROP_COUNT  /* Total number of properties */
 }} property_id_t;
+
+/* STEPS is already defined in macros.h - using that value for array dimensions */
 
 /**
  * @brief Property metadata structure
@@ -753,14 +754,61 @@ def generate_header_file(properties, output_dir=""):
     
     print(f"Generated {output_path}")
 
+def generate_galaxy_property_info(properties):
+    """Generate GalaxyPropertyInfo array initialization from properties"""
+    info_entries = []
+    
+    for i, prop in enumerate(properties):
+        # Get type information
+        type_str = prop['type']
+        base_type, is_array, array_dim, is_dynamic, size_spec = parse_type(type_str)
+        
+        # Convert read_only to int value (0=false, 1=true, 2=after_first_set)
+        read_only = prop.get('read_only', False)
+        read_only_level = 0
+        if read_only == True or read_only == "true":
+            read_only_level = 1
+        elif read_only == "after_first_set":
+            read_only_level = 2
+        
+        # Format the entry
+        entry = f"""    {{
+        /* name */           "{prop['name']}",
+        /* units */          "{prop.get('units', 'dimensionless')}",
+        /* description */    "{prop.get('description', '')}",
+        /* type_str */       "{type_str}",
+        /* is_array */       {str(is_array).lower()},
+        /* is_dynamic_array */{str(is_dynamic).lower()},
+        /* element_size */   sizeof({base_type}),
+        /* array_len */      {array_dim if array_dim and not is_dynamic else 0},
+        /* default_value */  NULL,
+        /* output_field */   {str(prop.get('output', True)).lower()},
+        /* read_only_level */{read_only_level}
+    }}"""
+        
+        # Add comma if not the last entry
+        if i < len(properties) - 1:
+            entry += ","
+            
+        info_entries.append(entry)
+    
+    return "\n".join(info_entries)
+
 def generate_implementation_file(properties, output_dir=""):
     """Generate the property implementation file"""
     impl_filename = "core_properties.c"
     header_filename = "core_properties.h"
     output_path = os.path.join(output_dir, impl_filename)
     
+    # Count core properties
+    core_property_count = 0
+    for prop in properties:
+        if prop.get('is_core', False):
+            core_property_count += 1
+    
     # Generate implementation components
     property_meta_entries = generate_property_meta_entries(properties)
+    galaxy_property_info_entries = generate_galaxy_property_info(properties)
     initialize_property_system_code = generate_initialize_code(properties)
     allocate_dynamic_arrays_code = generate_allocate_arrays_code(properties)
     free_dynamic_arrays_code = generate_free_arrays_code(properties)
@@ -791,6 +839,21 @@ def generate_implementation_file(properties, output_dir=""):
         additional_helper_functions=additional_helper_functions,
         resolve_parameter_function=resolve_parameter_function
     )
+    
+    # Add the global variable definitions at the top of the implementation file
+    impl_content = f"""/* Global variables for property system */
+#include <stdint.h>
+#include \"core_property_descriptor.h\"
+#include \"core_properties.h\"
+
+property_meta_t PROPERTY_META[PROP_COUNT];
+const int32_t TotGalaxyProperties = PROP_COUNT;
+const int32_t CORE_PROP_COUNT = {core_property_count}; /* Number of core properties, dynamically determined from properties.yaml */
+const GalaxyPropertyInfo galaxy_property_info[PROP_COUNT] = {{
+{galaxy_property_info_entries}
+}};
+
+""" + impl_content
     
     # Write the implementation file
     with open(output_path, "w") as f:

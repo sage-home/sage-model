@@ -15,6 +15,10 @@
 #include <sys/time.h>
 #include <sys/times.h>
 #include <sys/types.h>
+#include "core_logging.h"  // For LOG_ERROR
+
+// Assert macro for runtime verification that logs errors
+#define sage_assert(cond, msg) do { if(!(cond)) { LOG_ERROR("%s", (msg)); } } while(0)
 
 #ifdef __cplusplus
 extern "C" {

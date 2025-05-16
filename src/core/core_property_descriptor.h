@@ -44,8 +44,7 @@ typedef struct {
 } GalaxyPropertyInfo;
 
 // Global array of property information defined by core_properties.c
-extern const GalaxyPropertyInfo galaxy_property_info[MAX_GALAXY_PROPERTIES];
-extern const int galaxy_property_count;  // Number of actual properties defined
+extern const GalaxyPropertyInfo galaxy_property_info[];
 
 #ifdef __cplusplus
 }

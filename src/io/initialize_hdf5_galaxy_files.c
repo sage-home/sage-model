@@ -33,7 +33,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         fprintf(stderr, "Failed to discover output properties\n");
         H5Fclose(file_id);
         free(save_info);
-        save_info_base->format_data = NULL;
+        save_info_base->io_handler.format_data = NULL;
         return status;
     }
     

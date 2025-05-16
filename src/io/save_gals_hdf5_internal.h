@@ -55,16 +55,16 @@ extern const int32_t TotGalaxyProperties;
         CHECK_STATUS_AND_RETURN_ON_FAIL(macro_attribute_id, (int32_t) macro_attribute_id, \
                                         "Could not create an attribute ID.\n" \
                                         "The attribute we wanted to create was '" #attribute_name"' and the HDF5 datatype was '" #h5_dtype".\n"); \
-        herr_t status = H5Awrite(macro_attribute_id, h5_dtype, &(attribute_value)); \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,       \
+        herr_t h5_macro_status = H5Awrite(macro_attribute_id, h5_dtype, &(attribute_value)); \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_macro_status, (int32_t) h5_macro_status,       \
                                         "Could not write an attribute.\n" \
                                         "The attribute we wanted to create was '" #attribute_name"' and the HDF5 datatype was '" #h5_dtype".\n"); \
-        status = H5Aclose(macro_attribute_id);                          \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,       \
+        h5_macro_status = H5Aclose(macro_attribute_id);                          \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_macro_status, (int32_t) h5_macro_status,       \
                                         "Could not close an attribute ID.\n" \
                                         "The attribute we wanted to create was '" #attribute_name"' and the HDF5 datatype was '" #h5_dtype".\n"); \
-        status = H5Sclose(macro_dataspace_id);                          \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,       \
+        h5_macro_status = H5Sclose(macro_dataspace_id);                          \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_macro_status, (int32_t) h5_macro_status,       \
                                     "Could not close an attribute dataspace.\n" \
                                         "The attribute we wanted to create was '" #attribute_name"' and the HDF5 datatype was '" #h5_dtype".\n"); \
     }
@@ -78,32 +78,32 @@ extern const int32_t TotGalaxyProperties;
     CHECK_STATUS_AND_RETURN_ON_FAIL(atype, (int32_t) atype,             \
                                     "Could not copy an existing data type when creating a String attribute.\n" \
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
-    herr_t attr_status = H5Tset_size(atype, stringlen);                 \
-    CHECK_STATUS_AND_RETURN_ON_FAIL(attr_status, (int32_t) attr_status, \
+    herr_t h5_attr_status = H5Tset_size(atype, stringlen);                 \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(h5_attr_status, (int32_t) h5_attr_status, \
                                     "Could not set the total size of a datatype when creating a String attribute.\n" \
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
-    attr_status = H5Tset_strpad(atype, H5T_STR_NULLTERM);               \
-    CHECK_STATUS_AND_RETURN_ON_FAIL(attr_status, (int32_t) attr_status, \
+    h5_attr_status = H5Tset_strpad(atype, H5T_STR_NULLTERM);               \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(h5_attr_status, (int32_t) h5_attr_status, \
                                     "Could not set the padding when creating a String attribute.\n" \
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
     hid_t macro_attribute_id = H5Acreate(group_id, attribute_name, atype, macro_dataspace_id, H5P_DEFAULT, H5P_DEFAULT); \
     CHECK_STATUS_AND_RETURN_ON_FAIL(macro_attribute_id, (int32_t) macro_attribute_id, \
                                     "Could not create an attribute ID for string.\n" \
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
-    attr_status = H5Awrite(macro_attribute_id, atype, attribute_value); \
-    CHECK_STATUS_AND_RETURN_ON_FAIL(attr_status, (int32_t) attr_status, \
+    h5_attr_status = H5Awrite(macro_attribute_id, atype, attribute_value); \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(h5_attr_status, (int32_t) h5_attr_status, \
                                     "Could not write an attribute.\n"   \
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
-    attr_status = H5Aclose(macro_attribute_id);                         \
-    CHECK_STATUS_AND_RETURN_ON_FAIL(attr_status, (int32_t) attr_status,                            \
+    h5_attr_status = H5Aclose(macro_attribute_id);                         \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(h5_attr_status, (int32_t) h5_attr_status,                            \
                                     "Could not close an attribute ID.\n" \
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
-    attr_status = H5Tclose(atype);                                      \
-    CHECK_STATUS_AND_RETURN_ON_FAIL(attr_status, (int32_t) attr_status, \
+    h5_attr_status = H5Tclose(atype);                                      \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(h5_attr_status, (int32_t) h5_attr_status, \
                                     "Could not close atype value.\n"    \
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
-    attr_status = H5Sclose(macro_dataspace_id);                         \
-    CHECK_STATUS_AND_RETURN_ON_FAIL(attr_status, (int32_t) attr_status, \
+    h5_attr_status = H5Sclose(macro_dataspace_id);                         \
+    CHECK_STATUS_AND_RETURN_ON_FAIL(h5_attr_status, (int32_t) h5_attr_status, \
                                     "Could not close an attribute dataspace when creating a String attribute.\n" \
                                     "The attribute we wanted to create was '" #attribute_name"'.\n"); \
     }
@@ -123,20 +123,20 @@ extern const int32_t TotGalaxyProperties;
                                         "Could not create a dataset for field " #field_name".\n" \
                                         "The dimensions of the dataset was %d\nThe file id was %d\n.", \
                                         (int32_t) dims[0], (int32_t) file_id); \
-        herr_t dset_status = H5Dwrite(macro_dataset_id, h5_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer); \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(dset_status, (int32_t) dset_status, \
+        herr_t h5_dset_status = H5Dwrite(macro_dataset_id, h5_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer); \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_dset_status, (int32_t) h5_dset_status, \
                                         "Failed to write a dataset for field " #field_name".\n" \
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n." \
                                         "The dataset ID was %d.", (int32_t) dims[0], (int32_t) file_id, \
                                         (int32_t) macro_dataset_id);    \
-        dset_status = H5Dclose(macro_dataset_id);                       \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(dset_status, (int32_t) dset_status, \
+        h5_dset_status = H5Dclose(macro_dataset_id);                       \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_dset_status, (int32_t) h5_dset_status, \
                                         "Failed to close the dataset for field " #field_name".\n" \
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n." \
                                         "The dataset ID was %d.", (int32_t) dims[0], (int32_t) file_id, \
                                         (int32_t) macro_dataset_id);    \
-        dset_status = H5Sclose(macro_dataspace_id);                     \
-        CHECK_STATUS_AND_RETURN_ON_FAIL(dset_status, (int32_t) dset_status, \
+        h5_dset_status = H5Sclose(macro_dataspace_id);                     \
+        CHECK_STATUS_AND_RETURN_ON_FAIL(h5_dset_status, (int32_t) h5_dset_status, \
                                         "Failed to close the dataspace for field " #field_name".\n" \
                                         "The dimensions of the dataset was %d\nThe file ID was %d\n." \
                                         "The dataspace ID was %d.", (int32_t) dims[0], (int32_t) file_id, \

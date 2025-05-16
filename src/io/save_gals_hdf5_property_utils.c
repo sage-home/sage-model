@@ -1,8 +1,9 @@
 #include "save_gals_hdf5_internal.h"
 
 // Function to discover properties for output based on their metadata
-static int discover_output_properties(struct hdf5_save_info *save_info) {
-    extern const int32_t TotGalaxyProperties; // Total properties from all modules
+int discover_output_properties(struct hdf5_save_info *save_info) {
+    // Ensure TotGalaxyProperties is properly linked from core_properties.c
+    extern const int32_t TotGalaxyProperties;
     
     // First count output properties that have output=true
     int num_props = 0;
@@ -71,8 +72,8 @@ static int discover_output_properties(struct hdf5_save_info *save_info) {
 }
 
 // Allocate memory for a single property buffer
-static int allocate_output_property(struct hdf5_save_info *save_info, int snap_idx, 
-                                   int prop_idx, int buffer_size) {
+int allocate_output_property(struct hdf5_save_info *save_info, int snap_idx, 
+                            int prop_idx, int buffer_size) {
     property_id_t prop_id = save_info->prop_ids[prop_idx];
     const property_meta_t *meta = get_property_meta(prop_id);
     if (meta == NULL) {
@@ -127,7 +128,7 @@ static int allocate_output_property(struct hdf5_save_info *save_info, int snap_i
 }
 
 // Free memory for a single property buffer
-static int free_output_property(struct hdf5_save_info *save_info, int snap_idx, int prop_idx) {
+int free_output_property(struct hdf5_save_info *save_info, int snap_idx, int prop_idx) {
     if (save_info->property_buffers[snap_idx] == NULL) {
         return 0; // Nothing to free
     }
@@ -160,7 +161,7 @@ static int free_output_property(struct hdf5_save_info *save_info, int snap_idx, 
 }
 
 // Allocate all property buffers for a snapshot
-static int allocate_all_output_properties(struct hdf5_save_info *save_info, int snap_idx) {
+int allocate_all_output_properties(struct hdf5_save_info *save_info, int snap_idx) {
     // Allocate memory for all properties
     for (int i = 0; i < save_info->num_properties; i++) {
         int status = allocate_output_property(save_info, snap_idx, i, save_info->buffer_size);
@@ -173,7 +174,7 @@ static int allocate_all_output_properties(struct hdf5_save_info *save_info, int 
 }
 
 // Free all property buffers for a snapshot
-static int free_all_output_properties(struct hdf5_save_info *save_info, int snap_idx) {
+int free_all_output_properties(struct hdf5_save_info *save_info, int snap_idx) {
     if (save_info->property_buffers[snap_idx] == NULL) {
         return 0; // Nothing to free
     }
@@ -190,42 +191,5 @@ static int free_all_output_properties(struct hdf5_save_info *save_info, int snap
     return 0;
 }
 
-// Handle special cases for position, velocity components for HDF5 output
-static void special_property_handling(struct hdf5_save_info *save_info, int snap_idx, int64_t gal_idx,
-                                     const struct GALAXY *g, const struct params *run_params) {
-    // Find position and velocity buffers for special handling
-    float *pos_x = NULL, *pos_y = NULL, *pos_z = NULL;
-    float *vel_x = NULL, *vel_y = NULL, *vel_z = NULL;
-    float *spin_x = NULL, *spin_y = NULL, *spin_z = NULL;
-    
-    // We need to look through the property buffers to find these special properties
-    for (int i = 0; i < save_info->num_properties; i++) {
-        struct property_buffer_info *buffer = &save_info->property_buffers[snap_idx][i];
-        if (strcmp(buffer->name, "Posx") == 0) pos_x = (float*)buffer->data;
-        else if (strcmp(buffer->name, "Posy") == 0) pos_y = (float*)buffer->data;
-        else if (strcmp(buffer->name, "Posz") == 0) pos_z = (float*)buffer->data;
-        else if (strcmp(buffer->name, "Velx") == 0) vel_x = (float*)buffer->data;
-        else if (strcmp(buffer->name, "Vely") == 0) vel_y = (float*)buffer->data;
-        else if (strcmp(buffer->name, "Velz") == 0) vel_z = (float*)buffer->data;
-        else if (strcmp(buffer->name, "Spinx") == 0) spin_x = (float*)buffer->data;
-        else if (strcmp(buffer->name, "Spiny") == 0) spin_y = (float*)buffer->data;
-        else if (strcmp(buffer->name, "Spinz") == 0) spin_z = (float*)buffer->data;
-    }
-    
-    // Handle position array
-    if (pos_x != NULL && pos_y != NULL && pos_z != NULL) {
-        pos_x[gal_idx] = GALAXY_PROP_Pos_ELEM(g, 0);
-        pos_y[gal_idx] = GALAXY_PROP_Pos_ELEM(g, 1);
-        pos_z[gal_idx] = GALAXY_PROP_Pos_ELEM(g, 2);
-    }
-    
-    // Handle velocity array
-    if (vel_x != NULL && vel_y != NULL && vel_z != NULL) {
-        vel_x[gal_idx] = GALAXY_PROP_Vel_ELEM(g, 0);
-        vel_y[gal_idx] = GALAXY_PROP_Vel_ELEM(g, 1);
-        vel_z[gal_idx] = GALAXY_PROP_Vel_ELEM(g, 2);
-    }
-    
-    // Handle spin array (requires halos data which we don't have here)
-    // This will need to be handled in prepare_galaxy_for_hdf5_output
-}
+// Note: Special property handling for position, velocity and spin components
+// is now handled directly in prepare_galaxy_for_hdf5_output.c

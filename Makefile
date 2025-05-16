@@ -20,7 +20,7 @@ endif
 
 # Property definition file can be changed
 ifndef PROPERTIES_FILE
-PROPERTIES_FILE := core_properties.yaml
+PROPERTIES_FILE := properties.yaml
 endif
 
 # -------------- Directory Setup ----------------------------
@@ -57,7 +57,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c \
         core/core_module_config.c core/core_properties.c core/standard_properties.c \
-        core/physics_pipeline_executor.c
+        core/physics_pipeline_executor.c core/core_property_utils.c
 
 # Physics model source files
 ifeq ($(PHYSICS_MODULES), yes)

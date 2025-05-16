@@ -9,6 +9,7 @@
 #   description: Human-readable description
 #   output: Boolean flag for whether to include in output files
 #   read_only: Property access control (false, true, "after_first_set")
+#   is_core: Boolean flag indicating if property is a core property (default: false)
 #
 # Dynamic array syntax:
 #   type: float[] - Empty brackets indicate dynamic size
