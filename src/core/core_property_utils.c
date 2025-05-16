@@ -78,6 +78,53 @@ double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, d
     return get_generated_double(galaxy->properties, prop_id, default_value);
 }
 
+// Add declarations for generated set functions 
+extern void set_generated_float(struct galaxy_properties_t *properties, property_id_t prop_id, float value);
+extern void set_generated_int32(struct galaxy_properties_t *properties, property_id_t prop_id, int32_t value);
+extern void set_generated_double(struct galaxy_properties_t *properties, property_id_t prop_id, double value);
+
+int set_float_property(struct GALAXY *galaxy, property_id_t prop_id, float value) {
+    sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in set_float_property.");
+    sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in set_float_property.");
+
+    if (prop_id < 0 || prop_id >= (property_id_t)MAX_GALAXY_PROPERTIES) {
+        LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, galaxy->GalaxyIndex);
+        return -1;
+    }
+    
+    // Use the generated dispatcher for setting values
+    set_generated_float(galaxy->properties, prop_id, value);
+    return 0;
+}
+
+int set_int32_property(struct GALAXY *galaxy, property_id_t prop_id, int32_t value) {
+    sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in set_int32_property.");
+    sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in set_int32_property.");
+
+    if (prop_id < 0 || prop_id >= (property_id_t)MAX_GALAXY_PROPERTIES) {
+        LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, galaxy->GalaxyIndex);
+        return -1;
+    }
+    
+    // Use the generated dispatcher for setting values
+    set_generated_int32(galaxy->properties, prop_id, value);
+    return 0;
+}
+
+int set_double_property(struct GALAXY *galaxy, property_id_t prop_id, double value) {
+    sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in set_double_property.");
+    sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in set_double_property.");
+
+    if (prop_id < 0 || prop_id >= (property_id_t)MAX_GALAXY_PROPERTIES) {
+        LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, galaxy->GalaxyIndex);
+        return -1;
+    }
+    
+    // Use the generated dispatcher for setting values
+    set_generated_double(galaxy->properties, prop_id, value);
+    return 0;
+}
+
 bool has_property(const struct GALAXY *galaxy, property_id_t prop_id) {
     sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in has_property.");
     // If galaxy->properties can be NULL for some valid states, check that too.

@@ -40,6 +40,9 @@ struct module_pipeline *pipeline_create_with_standard_modules(void) {
     return pipeline;
 }
 
+// Define the variable as static
+static int use_extension_properties = 1; // 0 = direct access, 1 = extensions
+
 void pipeline_set_use_extensions(int enable) {
     use_extension_properties = enable;
 }

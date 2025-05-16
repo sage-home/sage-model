@@ -34,8 +34,13 @@ int module_framework_config_initialize(struct params *params) {
     return 0;
 }
 
+// Forward declaration of the function to avoid direct variable access
+void pipeline_set_use_extensions(int enable);
+
 int module_framework_config_apply(void) {
-    use_extension_properties = global_config.use_extensions;
+    // Call the pipeline function rather than accessing the variable directly
+    pipeline_set_use_extensions(global_config.use_extensions);
+    
     if (global_config.enable_events && !event_system_is_initialized()) {
         event_system_initialize();
     }

@@ -1,136 +1,125 @@
-#include <string.h>
-#include <math.h> // For isnan, isfinite
 #include "core_galaxy_accessors.h"
-#include "core_logging.h"
-#include "core_allvars.h"    // For struct GALAXY definition
-#include "core_properties.h" // For GALAXY_PROP_* macros
+#include "core_properties.h"
 
-// Always use properties now
-int use_extension_properties = 1;
+/* Core-only property accessors implementation */
 
-// Define maximum number of registered accessors
-#define MAX_PROPERTY_ACCESSORS 128
-
-// Registry for property accessors
-static struct galaxy_property_accessor property_accessors[MAX_PROPERTY_ACCESSORS];
-static int num_accessors = 0;
-
-int register_galaxy_property_accessor(const struct galaxy_property_accessor *accessor) {
-    if (num_accessors >= MAX_PROPERTY_ACCESSORS) {
-        LOG_ERROR("Cannot register more property accessors, maximum (%d) reached", MAX_PROPERTY_ACCESSORS);
-        return -1;
-    }
-
-    // Check if property already registered
-    for (int i = 0; i < num_accessors; i++) {
-        if (strcmp(property_accessors[i].property_name, accessor->property_name) == 0) {
-            LOG_WARNING("Property '%s' already registered, overwriting", accessor->property_name);
-            // Update existing accessor
-            property_accessors[i] = *accessor;
-            return i;
-        }
-    }
-
-    // Add new accessor
-    property_accessors[num_accessors] = *accessor;
-    LOG_DEBUG("Registered property accessor for '%s'", accessor->property_name);
-    return num_accessors++;
+/* Position accessor implementations */
+float galaxy_get_pos_x(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Pos_ELEM(galaxy, 0);
 }
 
-int find_galaxy_property_accessor(const char *property_name) {
-    for (int i = 0; i < num_accessors; i++) {
-        if (strcmp(property_accessors[i].property_name, property_name) == 0) {
-            return i;
-        }
-    }
-    LOG_WARNING("Property accessor for '%s' not found", property_name);
-    return -1;
+float galaxy_get_pos_y(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Pos_ELEM(galaxy, 1);
 }
 
-double get_galaxy_property(const struct GALAXY *galaxy, int accessor_id) {
-    if (accessor_id < 0 || accessor_id >= num_accessors) {
-        LOG_ERROR("Invalid accessor ID: %d", accessor_id);
-        return NAN; // Return NaN for error
-    }
-
-    galaxy_get_property_fn get_fn = property_accessors[accessor_id].get_fn;
-    if (get_fn == NULL) {
-        LOG_ERROR("Getter function not registered for accessor ID: %d (%s)",
-                  accessor_id, property_accessors[accessor_id].property_name);
-        return NAN; // Return NaN for error
-    }
-
-    return get_fn(galaxy);
+float galaxy_get_pos_z(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Pos_ELEM(galaxy, 2);
 }
 
-void set_galaxy_property(struct GALAXY *galaxy, int accessor_id, double value) {
-    if (accessor_id < 0 || accessor_id >= num_accessors) {
-        LOG_ERROR("Invalid accessor ID: %d", accessor_id);
-        return;
-    }
-
-    galaxy_set_property_fn set_fn = property_accessors[accessor_id].set_fn;
-    if (set_fn == NULL) {
-        LOG_ERROR("Setter function not registered for accessor ID: %d (%s)",
-                  accessor_id, property_accessors[accessor_id].property_name);
-        return;
-    }
-
-    set_fn(galaxy, value);
+/* Velocity accessor implementations */
+float galaxy_get_vel_x(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Vel_ELEM(galaxy, 0);
 }
 
-// Define stubs for physics-specific accessors
-// These will be implemented in physics modules
-#define STUB_GETTER(prop_name) \
-double galaxy_get_##prop_name(const struct GALAXY *galaxy) { \
-    (void)galaxy; /* Mark parameter as intentionally unused */ \
-    LOG_WARNING("No implementation for galaxy_get_" #prop_name " (physics property)"); \
-    return 0.0; \
+float galaxy_get_vel_y(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Vel_ELEM(galaxy, 1);
 }
 
-#define STUB_SETTER(prop_name) \
-void galaxy_set_##prop_name(struct GALAXY *galaxy, double value) { \
-    (void)galaxy; /* Mark parameters as intentionally unused */ \
-    (void)value; \
-    LOG_WARNING("No implementation for galaxy_set_" #prop_name " (physics property)"); \
+float galaxy_get_vel_z(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Vel_ELEM(galaxy, 2);
 }
 
-// Stub implementations for physics properties
-STUB_GETTER(stellar_mass)
-STUB_GETTER(blackhole_mass)
-STUB_GETTER(cold_gas)
-STUB_GETTER(hot_gas)
-STUB_GETTER(ejected_mass)
-STUB_GETTER(metals_stellar_mass)
-STUB_GETTER(metals_cold_gas)
-STUB_GETTER(metals_hot_gas)
-STUB_GETTER(metals_ejected_mass)
-STUB_GETTER(bulge_mass)
-STUB_GETTER(metals_bulge_mass)
-STUB_GETTER(ics)
-STUB_GETTER(metals_ics)
-STUB_GETTER(cooling_rate)
-STUB_GETTER(heating_rate)
-STUB_GETTER(outflow_rate)
-STUB_GETTER(totalsatellitebaryons)
+/* Core identification & merger properties */
+int32_t galaxy_get_snapshot_number(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_SnapNum(galaxy);
+}
 
-STUB_SETTER(stellar_mass)
-STUB_SETTER(blackhole_mass)
-STUB_SETTER(cold_gas)
-STUB_SETTER(hot_gas)
-STUB_SETTER(ejected_mass) 
-STUB_SETTER(metals_stellar_mass)
-STUB_SETTER(metals_cold_gas)
-STUB_SETTER(metals_hot_gas)
-STUB_SETTER(metals_ejected_mass)
-STUB_SETTER(bulge_mass)
-STUB_SETTER(metals_bulge_mass)
-STUB_SETTER(ics)
-STUB_SETTER(metals_ics)
-STUB_SETTER(cooling_rate)
-STUB_SETTER(heating_rate)
-STUB_SETTER(outflow_rate)
-STUB_SETTER(totalsatellitebaryons)
+int32_t galaxy_get_type(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Type(galaxy);
+}
 
-#undef STUB_GETTER
-#undef STUB_SETTER
+int32_t galaxy_get_halo_nr(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_HaloNr(galaxy);
+}
+
+int32_t galaxy_get_central_gal(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_CentralGal(galaxy);
+}
+
+long long galaxy_get_most_bound_id(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_MostBoundID(galaxy);
+}
+
+uint64_t galaxy_get_galaxy_index(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_GalaxyIndex(galaxy);
+}
+
+int32_t galaxy_get_merge_type(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_mergeType(galaxy);
+}
+
+int32_t galaxy_get_merge_into_id(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_mergeIntoID(galaxy);
+}
+
+float galaxy_get_merge_time(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_MergTime(galaxy);
+}
+
+/* Core halo properties */
+float galaxy_get_mvir(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Mvir(galaxy);
+}
+
+float galaxy_get_rvir(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Rvir(galaxy);
+}
+
+float galaxy_get_vvir(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Vvir(galaxy);
+}
+
+float galaxy_get_vmax(const struct GALAXY *galaxy) {
+    return GALAXY_PROP_Vmax(galaxy);
+}
+
+/* Setter functions for core properties */
+void galaxy_set_pos_x(struct GALAXY *galaxy, float value) {
+    GALAXY_PROP_Pos_ELEM(galaxy, 0) = value;
+}
+
+void galaxy_set_pos_y(struct GALAXY *galaxy, float value) {
+    GALAXY_PROP_Pos_ELEM(galaxy, 1) = value;
+}
+
+void galaxy_set_pos_z(struct GALAXY *galaxy, float value) {
+    GALAXY_PROP_Pos_ELEM(galaxy, 2) = value;
+}
+
+void galaxy_set_vel_x(struct GALAXY *galaxy, float value) {
+    GALAXY_PROP_Vel_ELEM(galaxy, 0) = value;
+}
+
+void galaxy_set_vel_y(struct GALAXY *galaxy, float value) {
+    GALAXY_PROP_Vel_ELEM(galaxy, 1) = value;
+}
+
+void galaxy_set_vel_z(struct GALAXY *galaxy, float value) {
+    GALAXY_PROP_Vel_ELEM(galaxy, 2) = value;
+}
+
+void galaxy_set_snapshot_number(struct GALAXY *galaxy, int32_t value) {
+    GALAXY_PROP_SnapNum(galaxy) = value;
+}
+
+void galaxy_set_type(struct GALAXY *galaxy, int32_t value) {
+    GALAXY_PROP_Type(galaxy) = value;
+}
+
+void galaxy_set_merge_type(struct GALAXY *galaxy, int32_t value) {
+    GALAXY_PROP_mergeType(galaxy) = value;
+}
+
+void galaxy_set_merge_time(struct GALAXY *galaxy, float value) {
+    GALAXY_PROP_MergTime(galaxy) = value;
+}

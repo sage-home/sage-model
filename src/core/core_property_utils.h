@@ -16,6 +16,11 @@ float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, flo
 int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value);
 double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, double default_value);
 
+/* Set property by ID with error checking */
+int set_float_property(struct GALAXY *galaxy, property_id_t prop_id, float value);
+int set_int32_property(struct GALAXY *galaxy, property_id_t prop_id, int32_t value);
+int set_double_property(struct GALAXY *galaxy, property_id_t prop_id, double value);
+
 /* Get array element property by ID with error checking */
 float get_float_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, float default_value);
 int32_t get_int32_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, int32_t default_value);
