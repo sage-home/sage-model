@@ -10,6 +10,7 @@
 #   output: Boolean flag for whether to include in output files
 #   read_only: Property access control (false, true, "after_first_set")
 #   is_core: Boolean flag indicating if property is a core property (default: false)
+#     IMPORTANT: Properties that match core_properties.yaml must have is_core: true
 #
 # Dynamic array syntax:
 #   type: float[] - Empty brackets indicate dynamic size
@@ -24,6 +25,7 @@ properties:
     description: "Snapshot number of the galaxy"
     output: true
     read_only: false
+    is_core: true
 
   - name: Type
     type: int32_t
@@ -32,6 +34,7 @@ properties:
     description: "Galaxy type (0=central, 1=satellite)"
     output: true
     read_only: false
+    is_core: true
     
   - name: GalaxyNr
     type: int32_t
@@ -40,6 +43,7 @@ properties:
     description: "Galaxy number within the tree"
     output: true
     read_only: false
+    is_core: true
   
   - name: CentralGal
     type: int32_t
@@ -48,6 +52,7 @@ properties:
     description: "Index of the central galaxy in the same FoF group"
     output: true
     read_only: false
+    is_core: true
 
   - name: HaloNr
     type: int32_t
@@ -56,6 +61,7 @@ properties:
     description: "Halo number in the tree"
     output: true
     read_only: false
+    is_core: true
     
   - name: MostBoundID
     type: long long
@@ -64,6 +70,7 @@ properties:
     description: "ID of the most bound particle in the subhalo"
     output: true
     read_only: false
+    is_core: true
 
   - name: GalaxyIndex
     type: uint64_t
@@ -72,6 +79,7 @@ properties:
     description: "Unique galaxy identifier based on tree local galaxy number, file local tree number and file number"
     output: true
     read_only: "after_first_set"
+    is_core: true
     
   - name: CentralGalaxyIndex
     type: uint64_t
@@ -80,6 +88,7 @@ properties:
     description: "Galaxy index of the central galaxy of this galaxy's FoF group"
     output: true
     read_only: "after_first_set"
+    is_core: true
     
   # Merger Properties
   - name: mergeType
@@ -89,6 +98,7 @@ properties:
     description: "Merger type (0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS)"
     output: true
     read_only: false
+    is_core: true
 
   - name: mergeIntoID
     type: int32_t
@@ -97,6 +107,7 @@ properties:
     description: "Galaxy ID that this galaxy merges into"
     output: true
     read_only: false
+    is_core: true
     
   - name: mergeIntoSnapNum
     type: int32_t
@@ -105,6 +116,7 @@ properties:
     description: "Snapshot number when the merger occurs"
     output: true
     read_only: false
+    is_core: true
     
   - name: dT
     type: float
@@ -113,6 +125,7 @@ properties:
     description: "Time step for galaxy evolution"
     output: true
     read_only: false
+    is_core: true
     
   # Halo Properties
   - name: Pos
@@ -122,6 +135,7 @@ properties:
     description: "Position coordinates (x,y,z)"
     output: true
     read_only: false
+    is_core: true
     
   - name: Vel
     type: float[3]
@@ -130,6 +144,7 @@ properties:
     description: "Velocity components (vx,vy,vz)"
     output: true
     read_only: false
+    is_core: true
     
   - name: Len
     type: int
@@ -138,6 +153,7 @@ properties:
     description: "Number of particles in the halo"
     output: true
     read_only: false
+    is_core: true
     
   - name: Mvir
     type: float
@@ -146,6 +162,7 @@ properties:
     description: "Virial mass of the halo"
     output: true
     read_only: false
+    is_core: true
     
   - name: deltaMvir
     type: float
@@ -154,6 +171,7 @@ properties:
     description: "Change in virial mass since last snapshot"
     output: true
     read_only: false
+    is_core: true
     
   - name: CentralMvir
     type: float
@@ -162,6 +180,7 @@ properties:
     description: "Virial mass of the central subhalo"
     output: true
     read_only: false
+    is_core: true
     
   - name: Rvir
     type: float
@@ -170,6 +189,7 @@ properties:
     description: "Virial radius"
     output: true
     read_only: false
+    is_core: true
     
   - name: Vvir
     type: float
@@ -178,6 +198,7 @@ properties:
     description: "Virial velocity"
     output: true
     read_only: false
+    is_core: true
     
   - name: Vmax
     type: float
@@ -186,6 +207,7 @@ properties:
     description: "Maximum circular velocity"
     output: true
     read_only: false
+    is_core: true
     
   # Baryonic Components
   - name: ColdGas
@@ -195,6 +217,7 @@ properties:
     description: "Cold gas mass in the disk"
     output: true
     read_only: false
+    is_core: false
     
   - name: StellarMass
     type: float
@@ -203,6 +226,7 @@ properties:
     description: "Total stellar mass (disk + bulge)"
     output: true
     read_only: false
+    is_core: false
     
   - name: BulgeMass
     type: float
@@ -211,6 +235,7 @@ properties:
     description: "Stellar mass in the bulge"
     output: true
     read_only: false
+    is_core: false
     
   - name: HotGas
     type: float
@@ -219,6 +244,7 @@ properties:
     description: "Hot gas mass in the halo"
     output: true
     read_only: false
+    is_core: false
     
   - name: EjectedMass
     type: float
@@ -227,6 +253,7 @@ properties:
     description: "Gas mass ejected by feedback"
     output: true
     read_only: false
+    is_core: false
     
   - name: BlackHoleMass
     type: float
@@ -235,6 +262,7 @@ properties:
     description: "Black hole mass"
     output: true
     read_only: false
+    is_core: false
     
   - name: ICS
     type: float
@@ -243,6 +271,7 @@ properties:
     description: "Intracluster stars mass"
     output: true
     read_only: false
+    is_core: false
     
   # Metals
   - name: MetalsColdGas
@@ -252,6 +281,7 @@ properties:
     description: "Metal mass in cold gas"
     output: true
     read_only: false
+    is_core: false
     
   - name: MetalsStellarMass
     type: float
@@ -260,6 +290,7 @@ properties:
     description: "Metal mass in stars"
     output: true
     read_only: false
+    is_core: false
     
   - name: MetalsBulgeMass
     type: float
@@ -268,6 +299,7 @@ properties:
     description: "Metal mass in bulge"
     output: true
     read_only: false
+    is_core: false
     
   - name: MetalsHotGas
     type: float
@@ -276,6 +308,7 @@ properties:
     description: "Metal mass in hot gas"
     output: true
     read_only: false
+    is_core: false
     
   - name: MetalsEjectedMass
     type: float
@@ -284,6 +317,7 @@ properties:
     description: "Metal mass in ejected gas"
     output: true
     read_only: false
+    is_core: false
     
   - name: MetalsICS
     type: float
@@ -292,6 +326,7 @@ properties:
     description: "Metal mass in intracluster stars"
     output: true
     read_only: false
+    is_core: false
     
   # Star Formation History - Fixed Size Arrays (Legacy)
   - name: SfrDisk
@@ -301,6 +336,7 @@ properties:
     description: "Star formation rate in disk for each timestep"
     output: true
     read_only: false
+    is_core: false
     
   - name: SfrBulge
     type: float[STEPS]
@@ -309,6 +345,7 @@ properties:
     description: "Star formation rate in bulge for each timestep"
     output: true
     read_only: false
+    is_core: false
     
   - name: SfrDiskColdGas
     type: float[STEPS]
@@ -317,6 +354,7 @@ properties:
     description: "Cold gas mass during disk star formation for each timestep"
     output: true
     read_only: false
+    is_core: false
     
   - name: SfrDiskColdGasMetals
     type: float[STEPS]
@@ -325,6 +363,7 @@ properties:
     description: "Cold gas metals during disk star formation for each timestep"
     output: true
     read_only: false
+    is_core: false
     
   - name: SfrBulgeColdGas
     type: float[STEPS]
@@ -333,6 +372,7 @@ properties:
     description: "Cold gas mass during bulge star formation for each timestep"
     output: true
     read_only: false
+    is_core: false
     
   - name: SfrBulgeColdGasMetals
     type: float[STEPS]
@@ -341,6 +381,7 @@ properties:
     description: "Cold gas metals during bulge star formation for each timestep"
     output: true
     read_only: false
+    is_core: false
     
   # Example of Dynamic Array Property
   - name: StarFormationHistory
@@ -351,6 +392,7 @@ properties:
     description: "Complete star formation history for all output snapshots"
     output: true
     read_only: false
+    is_core: false
     
   # Test property with non-zero initial value
   - name: TestNonZeroArray
@@ -361,6 +403,7 @@ properties:
     description: "Test array with non-zero initial value"
     output: false
     read_only: false
+    is_core: false
     
   # Structural Properties
   - name: DiskScaleRadius
@@ -370,6 +413,7 @@ properties:
     description: "Scale radius of the stellar disk"
     output: true
     read_only: false
+    is_core: false
     
   - name: MergTime
     type: float
@@ -378,6 +422,7 @@ properties:
     description: "Time until merger"
     output: true
     read_only: false
+    is_core: true
     
   # Cooling & Heating
   - name: Cooling
@@ -387,6 +432,7 @@ properties:
     description: "Cooling energy rate"
     output: true
     read_only: false
+    is_core: false
     
   - name: Heating
     type: double
@@ -395,6 +441,7 @@ properties:
     description: "Heating energy rate (from AGN)"
     output: true
     read_only: false
+    is_core: false
     
   - name: r_heat
     type: float
@@ -403,6 +450,7 @@ properties:
     description: "Heating radius for AGN feedback"
     output: true
     read_only: false
+    is_core: false
     
   - name: QuasarModeBHaccretionMass
     type: float
@@ -411,6 +459,7 @@ properties:
     description: "Mass accreted by black hole in quasar mode"
     output: true
     read_only: false
+    is_core: false
     
   # History
   - name: TimeOfLastMajorMerger
@@ -420,6 +469,7 @@ properties:
     description: "Time of last major merger"
     output: true
     read_only: false
+    is_core: false
     
   - name: TimeOfLastMinorMerger
     type: float
@@ -428,6 +478,7 @@ properties:
     description: "Time of last minor merger"
     output: true
     read_only: false
+    is_core: false
     
   # Feedback
   - name: OutflowRate
@@ -437,6 +488,7 @@ properties:
     description: "Outflow rate from feedback"
     output: true
     read_only: false
+    is_core: false
     
   - name: TotalSatelliteBaryons
     type: float
@@ -445,6 +497,7 @@ properties:
     description: "Total baryon mass in satellites"
     output: true
     read_only: false
+    is_core: false
     
   # Infall Properties
   - name: infallMvir
@@ -454,6 +507,7 @@ properties:
     description: "Virial mass at infall"
     output: true
     read_only: false
+    is_core: true
     
   - name: infallVvir
     type: float
@@ -462,6 +516,7 @@ properties:
     description: "Virial velocity at infall"
     output: true
     read_only: false
+    is_core: true
     
   - name: infallVmax
     type: float
@@ -470,3 +525,4 @@ properties:
     description: "Maximum circular velocity at infall"
     output: true
     read_only: false
+    is_core: true

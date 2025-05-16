@@ -325,7 +325,7 @@ all: $(SAGELIB) $(EXEC)
 # Core-only build target
 core-only: 
 	@echo "Building core-only infrastructure..."
-	@PHYSICS_MODULES=no PROPERTIES_FILE=core_properties.yaml CCFLAGS="$(CCFLAGS) -DCORE_ONLY" $(MAKE) $(SAGELIB)
+	@PHYSICS_MODULES=no CCFLAGS="$(CCFLAGS) -DCORE_ONLY" $(MAKE) $(SAGELIB)
 
 # Core-only executable
 $(EXEC)-core-only: core-only $(SRC_PREFIX)/core/main.c
