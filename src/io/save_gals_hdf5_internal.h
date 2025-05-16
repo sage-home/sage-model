@@ -152,7 +152,6 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
                                      const int64_t task_forestnr, const int64_t original_treenr,
                                      const struct params *run_params);
 void free_property_discovery(struct hdf5_save_info *save_info);
-float get_float_array_property(const struct GALAXY *g, property_id_t prop_id, int index, float default_value);
 int32_t generate_field_metadata(struct hdf5_save_info *save_info);
 int discover_output_properties(struct hdf5_save_info *save_info);
 int allocate_output_property(struct hdf5_save_info *save_info, int snap_idx, int prop_idx, int buffer_size);

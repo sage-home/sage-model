@@ -1,4 +1,5 @@
 #include "save_gals_hdf5_internal.h"
+#include "../core/core_property_utils.h" // Added for proper array property accessors
 
 // Refactored prepare_galaxy_for_hdf5_output function using the property system
 int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info *save_info_base,
@@ -258,33 +259,33 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
                 // These accessors would need to be implemented based on the property system
                 property_id_t id = sfr_disk_id;
                 if (has_property(g, id)) {
-                    // Example function to get array element - would need to be implemented
-                    sfr_disk_val = get_float_array_property(g, id, step, 0.0f);
+                    // Use the new properly implemented array accessor
+                    sfr_disk_val = get_float_array_element_property(g, id, step, 0.0f);
                 }
                 
                 id = sfr_bulge_id;
                 if (has_property(g, id)) {
-                    sfr_bulge_val = get_float_array_property(g, id, step, 0.0f);
+                    sfr_bulge_val = get_float_array_element_property(g, id, step, 0.0f);
                 }
                 
                 id = sfr_disk_cold_gas_id;
                 if (has_property(g, id)) {
-                    sfr_disk_cold_gas_val = get_float_array_property(g, id, step, 0.0f);
+                    sfr_disk_cold_gas_val = get_float_array_element_property(g, id, step, 0.0f);
                 }
                 
                 id = sfr_disk_cold_gas_metals_id;
                 if (has_property(g, id)) {
-                    sfr_disk_cold_gas_metals_val = get_float_array_property(g, id, step, 0.0f);
+                    sfr_disk_cold_gas_metals_val = get_float_array_element_property(g, id, step, 0.0f);
                 }
                 
                 id = sfr_bulge_cold_gas_id;
                 if (has_property(g, id)) {
-                    sfr_bulge_cold_gas_val = get_float_array_property(g, id, step, 0.0f);
+                    sfr_bulge_cold_gas_val = get_float_array_element_property(g, id, step, 0.0f);
                 }
                 
                 id = sfr_bulge_cold_gas_metals_id;
                 if (has_property(g, id)) {
-                    sfr_bulge_cold_gas_metals_val = get_float_array_property(g, id, step, 0.0f);
+                    sfr_bulge_cold_gas_metals_val = get_float_array_element_property(g, id, step, 0.0f);
                 }
                 
                 // Calculate SFR values
@@ -324,11 +325,4 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
     }
     
     return EXIT_SUCCESS;
-}
-
-// Implementation of the property system array accessor
-float get_float_array_property(const struct GALAXY *g, property_id_t prop_id, int index, float default_value) {
-    // This is a placeholder function that would need real implementation
-    // For now, we'll return the default value
-    return default_value;
 }

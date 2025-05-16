@@ -20,6 +20,11 @@ float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, flo
 int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value);
 double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, double default_value);
 
+/* Get array element property by ID with error checking */
+float get_float_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, float default_value);
+int32_t get_int32_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, int32_t default_value);
+double get_double_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, double default_value);
+
 /* Check if property exists */
 // Assuming property_id_t is an enum or integral type that can be checked against a known range
 // or a special "NOT_FOUND" value. The current GALAXY_PROP_BY_ID macro handles out-of-bounds access
@@ -35,6 +40,9 @@ bool is_core_property(property_id_t prop_id);
 
 /* Get property metadata */
 const property_meta_t* get_property_meta(property_id_t prop_id);
+
+/* Get array size for a property */
+int get_property_array_size(const struct GALAXY *galaxy, property_id_t prop_id);
 
 // It's good practice to also declare any helper static functions if they were in the .c file
 // and might be useful for testing or other modules, though typically static functions are not in headers.
