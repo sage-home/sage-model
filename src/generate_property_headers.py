@@ -141,6 +141,11 @@ double get_generated_double_array_element(const galaxy_properties_t *props, prop
 
 int get_generated_array_size(const galaxy_properties_t *props, property_id_t prop_id);
 
+/* Generated property dispatcher functions - setters */
+void set_generated_float(galaxy_properties_t *props, property_id_t prop_id, float value);
+void set_generated_int32(galaxy_properties_t *props, property_id_t prop_id, int32_t value);
+void set_generated_double(galaxy_properties_t *props, property_id_t prop_id, double value);
+
 /* Property accessors */
 {property_accessor_macros}
 
@@ -662,6 +667,36 @@ def generate_float_dispatcher(properties):
     c_code.append("}")
     return "\n".join(c_code)
 
+def generate_float_setter(properties):
+    """Generate the float property setter function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Set a float property value by property ID")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement. This provides type-safe")
+    c_code.append(" * access to properties without requiring compile-time knowledge of the specific")
+    c_code.append(" * property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to set")
+    c_code.append(" * @param value Value to set property to")
+    c_code.append(" */")
+    c_code.append("void set_generated_float(galaxy_properties_t *props, property_id_t prop_id, float value) {")
+    c_code.append("    if (!props) return;")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each float property
+    for prop in properties:
+        base_type, is_array, _, is_dynamic, _ = parse_type(prop['type'])
+        if not is_array and base_type == 'float':
+            c_code.append(f"        case PROP_{prop['name']}: props->{prop['name']} = value; break;")
+    
+    c_code.append("        default: break;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
 def generate_int32_dispatcher(properties):
     """Generate the int32 property dispatcher function."""
     c_code = []
@@ -693,6 +728,36 @@ def generate_int32_dispatcher(properties):
     c_code.append("}")
     return "\n".join(c_code)
 
+def generate_int32_setter(properties):
+    """Generate the int32 property setter function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Set an int32 property value by property ID")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement. This provides type-safe")
+    c_code.append(" * access to properties without requiring compile-time knowledge of the specific")
+    c_code.append(" * property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to set")
+    c_code.append(" * @param value Value to set property to")
+    c_code.append(" */")
+    c_code.append("void set_generated_int32(galaxy_properties_t *props, property_id_t prop_id, int32_t value) {")
+    c_code.append("    if (!props) return;")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each int32 property
+    for prop in properties:
+        base_type, is_array, _, is_dynamic, _ = parse_type(prop['type'])
+        if not is_array and (base_type == 'int32_t' or base_type == 'int'):
+            c_code.append(f"        case PROP_{prop['name']}: props->{prop['name']} = value; break;")
+    
+    c_code.append("        default: break;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
 def generate_double_dispatcher(properties):
     """Generate the double property dispatcher function."""
     c_code = []
@@ -720,6 +785,36 @@ def generate_double_dispatcher(properties):
             c_code.append(f"        case PROP_{prop['name']}: return props->{prop['name']};")
     
     c_code.append("        default: return default_value;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
+def generate_double_setter(properties):
+    """Generate the double property setter function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Set a double property value by property ID")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement. This provides type-safe")
+    c_code.append(" * access to properties without requiring compile-time knowledge of the specific")
+    c_code.append(" * property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to set")
+    c_code.append(" * @param value Value to set property to")
+    c_code.append(" */")
+    c_code.append("void set_generated_double(galaxy_properties_t *props, property_id_t prop_id, double value) {")
+    c_code.append("    if (!props) return;")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each double property
+    for prop in properties:
+        base_type, is_array, _, is_dynamic, _ = parse_type(prop['type'])
+        if not is_array and base_type == 'double':
+            c_code.append(f"        case PROP_{prop['name']}: props->{prop['name']} = value; break;")
+    
+    c_code.append("        default: break;")
     c_code.append("    }")
     c_code.append("}")
     return "\n".join(c_code)
@@ -1132,6 +1227,12 @@ def generate_implementation_file(properties, output_dir=""):
     impl_content += int32_array_dispatcher + "\n\n"
     impl_content += double_array_dispatcher + "\n\n"
     impl_content += array_size_dispatcher + "\n\n"
+    
+    # Add the setter functions to the implementation file
+    impl_content += "\n\n/* Generated property setter functions */\n\n"
+    impl_content += generate_float_setter(properties) + "\n\n"
+    impl_content += generate_int32_setter(properties) + "\n\n"
+    impl_content += generate_double_setter(properties) + "\n\n"
     
     # Add the global variable definitions at the top of the implementation file
     impl_content = f"""/* Global variables for property system */
