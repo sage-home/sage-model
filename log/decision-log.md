@@ -94,3 +94,7 @@ The complete separation between core infrastructure and physics has been impleme
     *   All code SHOULD use `get_property_by_id()` (or the typed versions like `get_float_property()`) for physics properties to ensure runtime adaptability.
 
 This separation ensures that core infrastructure has zero compile-time or direct runtime knowledge of specific physics implementations or their associated properties, relying instead on a generic, runtime-discoverable property system.
+
+2025-05-17: [Phase 5.2.F.3] Physics Files Reorganization
+- Rationale: After reviewing the codebase, we identified several files that violate the core-physics separation principle. We moved example/template files and non-placeholder physics modules to the `ignore/physics/` directory, and reorganized legacy physics code to ensure a clean separation between core infrastructure and physics implementations.
+- Impact: This cleanup strengthens the core-physics separation by removing direct references to specific physics implementations from core code. The `core_pipeline_registry.c` file was updated to work with placeholder modules instead of hardcoded physics implementations, maintaining the principle that core code should have no direct knowledge of physics implementations.

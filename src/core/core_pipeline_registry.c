@@ -1,7 +1,8 @@
 #include "core_pipeline_registry.h"
-#include "../physics/infall_module.h"
-#include "../physics/cooling_module.h"
+#include "../physics/placeholder_infall_module.h"
+#include "../physics/placeholder_cooling_module.h"
 #include "core_galaxy_accessors.h"
+#include "core_logging.h"
 #include <string.h>
 
 struct {
@@ -20,10 +21,11 @@ int pipeline_register_module_factory(enum module_type type, const char *name, mo
     return num_factories++;
 }
 
+// Standard modules are registered automatically via constructor annotations
+// This function is kept for API compatibility
 void pipeline_register_standard_modules(void) {
-    pipeline_register_module_factory(MODULE_TYPE_INFALL, "StandardInfall", infall_module_create);
-    pipeline_register_module_factory(MODULE_TYPE_COOLING, "StandardCooling", cooling_module_create);
-    // Add other modules as they are implemented
+    // The placeholder modules register themselves at startup via their constructor functions
+    LOG_INFO("Using placeholder modules only - registered via constructors");
 }
 
 struct module_pipeline *pipeline_create_with_standard_modules(void) {

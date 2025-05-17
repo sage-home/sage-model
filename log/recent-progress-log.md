@@ -218,3 +218,12 @@
 - Fixed a missing `set_double_property` implementation
 - Modified files: src/properties.yaml, src/generate_property_headers.py, src/core/core_property_utils.c, src/core/core_property_utils.h, src/io/prepare_galaxy_for_hdf5_output.c, Makefile
 - Added files: src/physics/physics_output_transformers.c, src/physics/physics_output_transformers.h, src/transformers_template.py
+
+2025-05-17: [Phase 5.2.F.3] File Reorganization for Core-Physics Separation
+- Moved example/template files (example_event_handler.c/h, example_galaxy_extension.c/h) to `ignore/physics/`
+- Moved non-placeholder physics modules (agn_module.h, cooling_module.c/h, feedback_module.h, infall_module.c/h) to `ignore/physics/`
+- Moved cooling_tables.c/h to `src/physics/legacy/`
+- Moved files from `src/physics/migrated/` to `src/physics/legacy/` with `_migrated` suffix to avoid conflicts
+- Updated `core_pipeline_registry.c` to use placeholder modules instead of direct physics module references
+- Modified files: src/core/core_pipeline_registry.c, src/core/sage.c
+- Moved files documented above
