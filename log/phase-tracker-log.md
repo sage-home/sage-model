@@ -87,7 +87,8 @@
 - [x] Update build system to remove legacy components
 - [x] Clean up any remaining legacy references
 - [x] Remove all synchronization infrastructure after verification
-- [ ] Complete `Verification Report and Implementation Plan for Phase 5.2.F.3.md` 
+- [ ] Complete `log/Implementation Plan for Output Transformers.md`
+- [ ] Complete `log/Final Verification Report and Implementation Plan for Phase 5.2.F.3.md` 
 - [ ] Final verification of clean core-physics separation
 
 #### Phase 5.2.G: Physics Module Migration ⏳ PENDING
