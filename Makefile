@@ -29,9 +29,10 @@ ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 
 # -------------- Compiler Options --------------------------
-LIBFLAGS :=
-OPTS := -DROOT_DIR='"${ROOT_DIR}"'
+LIBFLAGS := -lm
+OPTS := -DROOT_DIR=\'\"${ROOT_DIR}\"\'
 SRC_PREFIX := src
+INCLUDE_DIRS := -I$(ROOT_DIR)/src -I$(ROOT_DIR)/src/core -I$(ROOT_DIR)/tests # Added
 
 # -------------- Library Configuration ---------------------
 LIBNAME := sage
@@ -316,6 +317,7 @@ ifeq ($(DO_CHECKS), 1)
 
   # Common compiler flags
   CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs
+  CCFLAGS += $(INCLUDE_DIRS) # Added
   LIBFLAGS += -lm
 
   # Platform-specific dynamic library linker flags
@@ -333,7 +335,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all core-only $(EXEC)-core-only test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access
+.PHONY: clean celan celna clena tests all core-only $(EXEC)-core-only test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
 
 all: $(SAGELIB) $(EXEC)
 
@@ -480,8 +482,11 @@ test_core_physics_separation: tests/test_core_physics_separation.c core-only
 test_property_array_access: tests/test_property_array_access.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_array_access tests/test_property_array_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+test_core_pipeline_registry: tests/test_core_pipeline_registry.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_pipeline_registry tests/test_core_pipeline_registry.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system test_property_system_hdf5
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system test_property_system_hdf5 test_core_pipeline_registry
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
@@ -536,6 +541,8 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_core_physics_separation || FAILED="$$FAILED test_core_physics_separation"
 	@echo "Running test_property_system..."
 	@./tests/test_property_system || FAILED="$$FAILED test_property_system"
+	@echo "Running test_core_pipeline_registry..."
+	@./tests/test_core_pipeline_registry || FAILED="$$FAILED test_core_pipeline_registry"
 	@echo "Running memory tests..."
 	@cd tests && make -f Makefile.memory_tests || FAILED="$$FAILED memory_tests"
 	@if [ -n "$$FAILED" ]; then \

@@ -18,6 +18,7 @@
 #include "../core/core_logging.h"
 #include "../core/core_properties.h"
 #include "physics_modules.h"
+#include "../core/core_pipeline_registry.h" // Added for factory registration
 
 /* Module data structure */
 struct placeholder_infall_data {
@@ -28,6 +29,16 @@ struct placeholder_infall_data {
 static int placeholder_infall_init(struct params *params, void **data_ptr);
 static int placeholder_infall_cleanup(void *data);
 static int placeholder_infall_execute_halo_phase(void *data, struct pipeline_context *context);
+
+/* Factory function for this module */
+struct base_module *placeholder_infall_module_factory(void) {
+    /* For statically defined modules like this placeholder,
+     * the factory can simply return a pointer to the global instance.
+     * For dynamically allocated modules, this function would typically
+     * allocate and initialize a new module instance.
+     */
+    return &placeholder_infall_module;
+}
 
 /**
  * @brief Initialize the placeholder infall module
@@ -99,6 +110,11 @@ struct base_module placeholder_infall_module = {
 };
 
 /* Register the module at startup */
-static void __attribute__((constructor)) register_module(void) {
-    module_register(&placeholder_infall_module);
+static void __attribute__((constructor)) register_module_and_factory(void) {
+    module_register(&placeholder_infall_module); // Existing registration with module system
+    // New: Register factory with the pipeline registry
+    pipeline_register_module_factory(MODULE_TYPE_INFALL, 
+                                     "PlaceholderInfall", 
+                                     placeholder_infall_module_factory);
+    LOG_DEBUG("PlaceholderInfall module factory registered with pipeline registry.");
 }

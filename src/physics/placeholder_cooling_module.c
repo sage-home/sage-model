@@ -18,6 +18,7 @@
 #include "../core/core_logging.h"
 #include "../core/core_properties.h"
 #include "physics_modules.h"
+#include "../core/core_pipeline_registry.h" // Added for factory registration
 
 /* Module data structure */
 struct placeholder_cooling_data {
@@ -28,6 +29,11 @@ struct placeholder_cooling_data {
 static int placeholder_cooling_init(struct params *params, void **data_ptr);
 static int placeholder_cooling_cleanup(void *data);
 static int placeholder_cooling_execute_galaxy_phase(void *data, struct pipeline_context *context);
+
+// Factory function for this module
+struct base_module *placeholder_cooling_module_factory(void) {
+    return &placeholder_cooling_module;
+}
 
 /**
  * @brief Initialize the placeholder cooling module
@@ -99,6 +105,11 @@ struct base_module placeholder_cooling_module = {
 };
 
 /* Register the module at startup */
-static void __attribute__((constructor)) register_module(void) {
-    module_register(&placeholder_cooling_module);
+static void __attribute__((constructor)) register_module_and_factory(void) {
+    module_register(&placeholder_cooling_module); // Existing registration with module system
+    // New: Register factory with the pipeline registry
+    pipeline_register_module_factory(MODULE_TYPE_COOLING, 
+                                     "PlaceholderCooling", 
+                                     placeholder_cooling_module_factory);
+    LOG_DEBUG("PlaceholderCooling module factory registered with pipeline registry.");
 }

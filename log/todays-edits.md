@@ -1,36 +1,49 @@
-# Today's Edits - 2025-05-14
+# Today's Edits - 2025-05-17
 
-## Core-Physics Property Separation in save_gals_hdf5.c
+## Core-Physics Separation: Pipeline Registry Refactoring (Phase 5.2.F)
 
-### Files Created
-- src/io/save_gals_hdf5_property_utils.c: New utility functions for property system integration
-- src/io/prepare_galaxy_for_hdf5_output.c: Refactored property-sensitive galaxy preparation 
-- src/io/generate_field_metadata.c: Dynamic field metadata generation from property metadata
-- src/io/trigger_buffer_write.c: Property-agnostic buffer writing system
-- src/io/initialize_hdf5_galaxy_files.c: Updated initialization with property system integration
-- src/io/finalize_hdf5_galaxy_files.c: Updated finalization with proper property cleanup
-- tests/test_property_system_hdf5.c: Test file for property-based HDF5 output
+This set of changes focuses on refactoring `core_pipeline_registry.c` to decouple it from specific physics module implementations, enabling a more dynamic, self-registering module system.
 
 ### Files Modified
-- src/io/save_gals_hdf5.c: Updated to use the property system for accessing physics properties
-- src/io/save_gals_hdf5.h: Updated with dynamic property buffer structure
+
+- **`src/core/core_pipeline_registry.c`**:
+    - Removed direct includes of placeholder physics module headers (`placeholder_infall_module.h`, `placeholder_cooling_module.h`).
+    - Modified `pipeline_create_with_standard_modules()`:
+        - It now iterates through `module_factories` (populated by self-registering modules).
+        - For each factory, it creates the module instance.
+        - It then adds the created module to the pipeline using `pipeline_add_step(pipeline, module->type, module->name, module->name, true, true)`. (Initially, `pipeline_add_module` was attempted, but it does not exist; `pipeline_add_step` is the correct function).
+        - Success for `pipeline_add_step` is checked with `result == 0`.
+        - Added extensive `LOG_DEBUG` messages for tracing module factory processing, module creation, and addition to the pipeline.
+    - Modified `pipeline_register_standard_modules()`:
+        - Added a `LOG_DEBUG` message to indicate it has been called and that module self-registration is active. This function is largely a placeholder now as modules register themselves via constructor functions.
+- **`src/physics/placeholder_infall_module.c`**:
+    - Added `#include "../core/core_pipeline_registry.h"` for `pipeline_register_module_factory`.
+    - Defined `struct base_module *placeholder_infall_module_factory(void)` which returns a pointer to the module's static `struct base_module` instance (`placeholder_infall_module`).
+    - Renamed `static void __attribute__((constructor)) register_module(void)` to `register_module_and_factory(void)`.
+    - In `register_module_and_factory()`, added a call to `pipeline_register_module_factory(MODULE_TYPE_INFALL, "PlaceholderInfall", placeholder_infall_module_factory)` to register its factory function with the core pipeline registry.
+- **`src/physics/placeholder_infall_module.h`**:
+    - Added declaration: `struct base_module *placeholder_infall_module_factory(void);`
+- **`src/physics/placeholder_cooling_module.c`**:
+    - Added `#include "../core/core_pipeline_registry.h"` for `pipeline_register_module_factory`.
+    - Defined `struct base_module *placeholder_cooling_module_factory(void)` which returns a pointer to the module's static `struct base_module` instance (`placeholder_cooling_module`).
+    - Renamed `static void __attribute__((constructor)) register_module(void)` to `register_module_and_factory(void)`.
+    - In `register_module_and_factory()`, added a call to `pipeline_register_module_factory(MODULE_TYPE_COOLING, "PlaceholderCooling", placeholder_cooling_module_factory)` to register its factory function with the core pipeline registry.
+- **`src/physics/placeholder_cooling_module.h`**:
+    - Added declaration: `struct base_module *placeholder_cooling_module_factory(void);`
 
 ### Changes Summary
-1. Implemented dynamic property discovery based on metadata from `properties.yaml`
-2. Replaced hardcoded memory allocation with property-based allocation
-3. Refactored `prepare_galaxy_for_hdf5_output()` to use property system API
-   - Core properties accessed directly via `GALAXY_PROP_*` macros
-   - Physics properties accessed via `get_float_property()`, `get_cached_property_id()`, etc.
-4. Updated field metadata generation to derive from property metadata
-5. Modified buffer writing to be property-agnostic with dynamic type handling
-6. Added proper cleanup for property resources
 
-### Architecture
-The updated code respects the core-physics separation principle:
-- Core properties (from `core_properties.yaml`) are accessed directly using `GALAXY_PROP_*` macros
-- Physics properties (from `properties.yaml`) are accessed via the generic property system functions
-- The system is now completely metadata-driven, discovering properties at runtime
+1.  **Decoupled `core_pipeline_registry.c`**: Removed hardcoded dependencies on specific physics modules by eliminating direct header includes.
+2.  **Implemented Module Self-Registration**:
+    - Physics modules (`placeholder_infall_module`, `placeholder_cooling_module`) now define factory functions (`*_factory`).
+    - These modules use constructor functions (`__attribute__((constructor))`) to call `pipeline_register_module_factory` at startup, registering their name, type, and factory function with `core_pipeline_registry.c`.
+3.  **Dynamic Pipeline Population**: `pipeline_create_with_standard_modules()` now dynamically populates the pipeline by:
+    - Iterating over the registered module factories.
+    - Calling each factory to get a module instance.
+    - Adding each module to the pipeline as a step using `pipeline_add_step`.
+4.  **Enhanced Logging**: Added detailed `LOG_DEBUG` messages in `core_pipeline_registry.c` to trace the module registration and pipeline creation process.
 
-### Testing
-Created a basic test file for the property-based HDF5 output system that validates the structure.
-The full validation will be done through the existing test framework.
+### Next Steps
+- Compile the codebase.
+- Run tests to verify the new module registration and pipeline creation mechanism.
+- Address any build or runtime issues.

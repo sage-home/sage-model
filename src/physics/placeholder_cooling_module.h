@@ -11,4 +11,7 @@
 /* External module definition */
 extern struct base_module placeholder_cooling_module;
 
+/* Declare the factory function */
+struct base_module *placeholder_cooling_module_factory(void);
+
 #endif // PLACEHOLDER_COOLING_MODULE_H

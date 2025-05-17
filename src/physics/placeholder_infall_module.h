@@ -11,4 +11,7 @@
 /* External module definition */
 extern struct base_module placeholder_infall_module;
 
+/* Declare the factory function */
+struct base_module *placeholder_infall_module_factory(void);
+
 #endif // PLACEHOLDER_INFALL_MODULE_H
