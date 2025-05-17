@@ -3,15 +3,15 @@
 #include "core_logging.h"
 #include <string.h>
 
-struct {
+struct module_factory_entry {
     enum module_type type;
     char name[MAX_MODULE_NAME];
     module_factory_fn factory;
-} module_factories[MAX_MODULES];
+} module_factories[MAX_MODULE_FACTORIES];
 int num_factories = 0;
 
 int pipeline_register_module_factory(enum module_type type, const char *name, module_factory_fn factory) {
-    if (num_factories >= MAX_MODULES) return -1;
+    if (num_factories >= MAX_MODULE_FACTORIES) return -1;
     module_factories[num_factories].type = type;
     strncpy(module_factories[num_factories].name, name, MAX_MODULE_NAME - 1);
     module_factories[num_factories].name[MAX_MODULE_NAME - 1] = '\0';
@@ -31,32 +31,66 @@ struct module_pipeline *pipeline_create_with_standard_modules(void) {
     LOG_DEBUG("Attempting to create pipeline with standard modules...");
     pipeline_register_standard_modules();
 
-    struct module_pipeline *pipeline = pipeline_create_default();
+    // Create an empty pipeline specifically for standard modules
+    struct module_pipeline *pipeline = pipeline_create("standard_modules");
     if (!pipeline) {
-        LOG_ERROR("Failed to create default pipeline in pipeline_create_with_standard_modules.");
+        LOG_ERROR("Failed to create pipeline in pipeline_create_with_standard_modules.");
         return NULL;
     }
-    LOG_DEBUG("Default pipeline created successfully. Found %d registered module factories.", num_factories);
+    LOG_DEBUG("Empty pipeline created successfully. Found %d registered module factories.", num_factories);
 
+    // Track modules we've already processed to avoid duplicates
+    // (in case multiple factories return the same module)
+    int processed_module_ids[MAX_MODULES] = {0};
+    int num_processed = 0;
+
+    // For each registered module factory, create and add the module
     for (int i = 0; i < num_factories; i++) {
         LOG_DEBUG("Processing factory for module: %s (type %d)", module_factories[i].name, module_factories[i].type);
         struct base_module *module = module_factories[i].factory();
         if (module) {
-            LOG_DEBUG("Module %s (type %d, ID %d) created successfully by factory. Attempting to add to pipeline as a step.", module->name, module->type, module->module_id);
-            // Ensure module_name and step_name are valid, using module->name for both.
-            // Set enabled = true, optional = true (can be adjusted based on requirements).
+            LOG_DEBUG("Module %s (type %d, ID %d) created successfully by factory.", module->name, module->type, module->module_id);
+            
+            // Check if we've already processed this module
+            bool already_processed = false;
+            for (int j = 0; j < num_processed; j++) {
+                if (processed_module_ids[j] == module->module_id) {
+                    LOG_DEBUG("Module ID %d already processed, skipping duplicate", module->module_id);
+                    already_processed = true;
+                    break;
+                }
+            }
+            if (already_processed) {
+                continue;
+            }
+            
+            // Track this module as processed
+            if (num_processed < MAX_MODULES) {
+                processed_module_ids[num_processed++] = module->module_id;
+            } else {
+                LOG_WARNING("Exceeded capacity to track processed modules for deduplication (%d). Some modules might be added multiple times to the pipeline if factories produce identical module instances beyond this limit.", MAX_MODULES);
+            }
+            
+            // Check if we need to register the module with the module system
+            struct base_module *existing_module = NULL;
+            void *existing_data = NULL;
+            if (module_get(module->module_id, &existing_module, &existing_data) != MODULE_STATUS_SUCCESS) {
+                // Module not registered yet, register it
+                LOG_DEBUG("Registering module %s with module system", module->name);
+                if (module_register(module) != MODULE_STATUS_SUCCESS) {
+                    LOG_ERROR("Failed to register module %s with module system", module->name);
+                    continue; // Skip this module
+                }
+            }
+            
+            // Add the module to the pipeline
             int result = pipeline_add_step(pipeline, module->type, module->name, module->name, true, true);
             
             // pipeline_add_step returns 0 on success.
             if (result == 0) { 
                 LOG_DEBUG("Module %s (ID: %d) added to pipeline as step '%s' successfully.", module->name, module->module_id, module->name);
-                // Activation is typically handled by the module system or pipeline execution,
-                // but retaining module_set_active if it's part of the current expected global state management.
-                module_set_active(module->module_id);
-                LOG_DEBUG("Module %s (ID: %d) set to active.", module->name, module->module_id);
             } else {
                 LOG_ERROR("Failed to add module %s (ID: %d) to pipeline as step. Error code: %d", module->name, module->module_id, result);
-                // Consider freeing 'module' if not added and not managed elsewhere, though factories might handle this.
             }
         } else {
             LOG_ERROR("Factory for module %s failed to create module instance.", module_factories[i].name);

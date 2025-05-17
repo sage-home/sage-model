@@ -89,7 +89,7 @@
 - [x] Remove all synchronization infrastructure after verification
 - [x] Reorganize physics files to ensure core-physics separation
 - [x] Complete `log/Implementation Plan for Output Transformers.md` - Phase 1-2
-- [ ] Complete `log/core-physics-separation-req.md`
+- [x] Complete `log/core-physics-separation-req.md`
 - [ ] Complete `log/Implementation Plan for Output Transformers.md` - Phase 3-6
 - [ ] Complete `log/Final Verification Report and Implementation Plan for Phase 5.2.F.3.md` 
 - [ ] Final verification of clean core-physics separation

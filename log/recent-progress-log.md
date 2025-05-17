@@ -227,3 +227,11 @@
 - Updated `core_pipeline_registry.c` to use placeholder modules instead of direct physics module references
 - Modified files: src/core/core_pipeline_registry.c, src/core/sage.c
 - Moved files documented above
+
+2025-05-17: [Phase 5.2.F.3] Pipeline Registry Refactoring for Core-Physics Separation
+- Fixed issues in `core_pipeline_registry.c` to properly implement core-physics separation
+- Changed `processed_module_ids` array size from `MAX_MODULE_FACTORIES` to `MAX_MODULES` (64) for improved robustness
+- Added warning message when exceeding capacity to track processed modules for deduplication
+- Updated test_core_pipeline_registry.c to use printf instead of LOG_* statements for better debug visibility
+- Added detailed test output with clear pass/fail messages and pipeline step information
+- Modified files: src/core/core_pipeline_registry.c, tests/test_core_pipeline_registry.c

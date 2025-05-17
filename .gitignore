@@ -56,6 +56,7 @@ tests/test_output_preparation
 tests/test_empty_pipeline
 tests/test_core_physics_separation
 tests/test_dispatcher_access
+tests/test_core_pipeline_registry
 
 .repomix/
 trees_*
