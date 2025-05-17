@@ -8,6 +8,7 @@ ignore/
 # They have been added to the repo to highlight their existance but get overwritten each compile
 src/core/core_properties.c
 src/core/core_properties.h
+src/core/generated_output_transformers.c
 
 tests/test_env/
 tests/test_results/

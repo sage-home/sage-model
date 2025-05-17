@@ -37,8 +37,9 @@ SRC_PREFIX := src
 LIBNAME := sage
 
 # Generated source files
-GENERATED_SRC := core_properties.h core_properties.c
-GENERATED_FILES := $(addprefix $(SRC_PREFIX)/, $(GENERATED_SRC))
+GENERATED_C_FILES := core/core_properties.c core/generated_output_transformers.c
+GENERATED_H_FILES := core/core_properties.h
+GENERATED_FILES := $(addprefix $(SRC_PREFIX)/, $(GENERATED_H_FILES)) $(addprefix $(SRC_PREFIX)/, $(GENERATED_C_FILES))
 GENERATED_DEPS := properties.yaml generate_property_headers.py
 
 # Core source files
@@ -57,7 +58,8 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c \
         core/core_module_config.c core/core_properties.c core/standard_properties.c \
-        core/physics_pipeline_executor.c core/core_property_utils.c
+        core/physics_pipeline_executor.c core/core_property_utils.c \
+        core/generated_output_transformers.c
 
 # Physics model source files
 ifeq ($(PHYSICS_MODULES), yes)
@@ -69,7 +71,7 @@ PHYSICS_SRC := physics/placeholder_empty_module.c \
         physics/placeholder_reincorporation_module.c \
         physics/placeholder_mergers_module.c \
         physics/placeholder_model_misc.c physics/placeholder_validation.c \
-        physics/placeholder_hdf5_save.c
+        physics/placeholder_hdf5_save.c physics/physics_output_transformers.c
 # Example modules not included in standard build but available for special configurations
 # physics/example_galaxy_extension.c \
 # physics/example_event_handler.c
@@ -81,6 +83,9 @@ PHYSICS_SRC := physics/placeholder_empty_module.c \
         physics/placeholder_starformation_module.c \
         physics/placeholder_disk_instability_module.c \
         physics/placeholder_reincorporation_module.c \
+        physics/placeholder_mergers_module.c \
+        physics/placeholder_model_misc.c physics/placeholder_validation.c \
+        physics/placeholder_hdf5_save.c physics/physics_output_transformers.c
         physics/placeholder_mergers_module.c \
         physics/placeholder_model_misc.c physics/placeholder_validation.c \
         physics/placeholder_hdf5_save.c
@@ -96,7 +101,17 @@ IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
 
 # Combine all library sources
 LIBSRC := $(CORE_SRC) $(PHYSICS_SRC) $(IO_SRC)
-LIBINCL := $(LIBSRC:.c=.h) io/parse_ctrees.h
+
+# Files in LIBSRC that should NOT have implicit .h dependencies created for LIBINCL
+# because their interfaces are handled by other headers (e.g., core_properties.h for generated_output_transformers.c)
+LIBINCL_FILTER_OUT_IMPLICIT_H := core/generated_output_transformers.c
+# Add other .c files here if they also don't have a corresponding .h and their interface is elsewhere
+
+# Filter these out before applying the pattern to derive .h files
+LIBINCL_FILTERED_SRC_FOR_PATTERN := $(filter-out $(LIBINCL_FILTER_OUT_IMPLICIT_H), $(LIBSRC))
+
+# Define LIBINCL using the filtered list and explicitly add other necessary headers
+LIBINCL := $(LIBINCL_FILTERED_SRC_FOR_PATTERN:.c=.h) io/parse_ctrees.h
 
 # Main executable source
 SRC := core/main.c $(LIBSRC)
@@ -361,7 +376,7 @@ $(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) 
 	@touch $@
 
 # Make the generated files depend on the stamp file
-$(SRC_PREFIX)/core_properties.h $(SRC_PREFIX)/core_properties.c: $(ROOT_DIR)/.stamps/generate_properties.stamp
+$(SRC_PREFIX)/core/core_properties.h $(SRC_PREFIX)/core/core_properties.c $(SRC_PREFIX)/core/generated_output_transformers.c: $(ROOT_DIR)/.stamps/generate_properties.stamp
 
 # Mark as order-only prerequisites to prevent duplicate generation
 $(OBJS): | $(GENERATED_FILES)

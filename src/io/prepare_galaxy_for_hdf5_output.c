@@ -1,7 +1,7 @@
 #include "save_gals_hdf5_internal.h"
-#include "../core/core_property_utils.h" // Added for proper array property accessors
+#include "../core/core_property_utils.h" // For property accessors
 
-// Refactored prepare_galaxy_for_hdf5_output function using the property system
+// Refactored prepare_galaxy_for_hdf5_output function using the dispatch_property_transformer
 int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info *save_info_base,
                                      const int32_t output_snap_idx, const struct halo_data *halos,
                                      const int64_t task_forestnr, const int64_t original_treenr,
@@ -24,8 +24,8 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
             }
             else if (strcmp(buffer->name, "Type") == 0) {
                 if (GALAXY_PROP_Type(g) < SHRT_MIN || GALAXY_PROP_Type(g) > SHRT_MAX) {
-                    fprintf(stderr, "Error: Galaxy type = %d can not be represented in 2 bytes\n", GALAXY_PROP_Type(g));
-                    fprintf(stderr, "Converting galaxy type while saving from integer to short will result in data corruption");
+                    LOG_ERROR("Galaxy type = %d can not be represented in 2 bytes", GALAXY_PROP_Type(g));
+                    LOG_ERROR("Converting galaxy type while saving from integer to short will result in data corruption");
                     return EXIT_FAILURE;
                 }
                 ((int32_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Type(g);
@@ -134,193 +134,44 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
                 }
             }
         } 
-        // Handle physics properties via the property system
+        // Handle physics properties via the dispatch_property_transformer
         else {
-            // Check if galaxy has this property
-            if (has_property(g, prop_id)) {
-                // Get property based on HDF5 datatype
-                if (buffer->h5_dtype == H5T_NATIVE_FLOAT) {
-                    float value = get_float_property(g, prop_id, 0.0f);
-                    
-                    // Special handling for certain properties that need unit conversion
-                    if (strcmp(buffer->name, "Cooling") == 0 && value > 0.0) {
-                        value = log10(value * run_params->units.UnitEnergy_in_cgs / run_params->units.UnitTime_in_s);
-                    }
-                    else if (strcmp(buffer->name, "Heating") == 0 && value > 0.0) {
-                        value = log10(value * run_params->units.UnitEnergy_in_cgs / run_params->units.UnitTime_in_s);
-                    }
-                    else if (strcmp(buffer->name, "TimeOfLastMajorMerger") == 0) {
-                        value = value * run_params->units.UnitTime_in_Megayears;
-                    }
-                    else if (strcmp(buffer->name, "TimeOfLastMinorMerger") == 0) {
-                        value = value * run_params->units.UnitTime_in_Megayears;
-                    }
-                    else if (strcmp(buffer->name, "OutflowRate") == 0) {
-                        value = value * run_params->units.UnitMass_in_g / run_params->units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS;
-                    }
-                    // Special handling for SFR properties which need to be summed from arrays
-                    else if (strcmp(buffer->name, "SfrDisk") == 0 || 
-                             strcmp(buffer->name, "SfrBulge") == 0 || 
-                             strcmp(buffer->name, "SfrDiskZ") == 0 || 
-                             strcmp(buffer->name, "SfrBulgeZ") == 0) {
-                        // These properties require special processing from arrays
-                        // They will be handled below
-                        continue;
-                    }
-                    
-                    ((float*)buffer->data)[gals_in_buffer] = value;
-                }
-                else if (buffer->h5_dtype == H5T_NATIVE_DOUBLE) {
-                    double value = get_double_property(g, prop_id, 0.0);
-                    ((double*)buffer->data)[gals_in_buffer] = value;
-                }
-                else if (buffer->h5_dtype == H5T_NATIVE_INT) {
-                    int32_t value = get_int32_property(g, prop_id, 0);
-                    ((int32_t*)buffer->data)[gals_in_buffer] = value;
-                }
-                else if (buffer->h5_dtype == H5T_NATIVE_LLONG) {
-                    int64_t value = (int64_t)get_int32_property(g, prop_id, 0);
-                    ((int64_t*)buffer->data)[gals_in_buffer] = value;
-                }
+            // Determine the element size for pointer arithmetic
+            size_t element_size = 0;
+            if (buffer->h5_dtype == H5T_NATIVE_FLOAT) {
+                element_size = sizeof(float);
             }
-            else {
-                // Property not found, set to default (zero)
-                if (buffer->h5_dtype == H5T_NATIVE_FLOAT) {
-                    ((float*)buffer->data)[gals_in_buffer] = 0.0f;
-                }
-                else if (buffer->h5_dtype == H5T_NATIVE_DOUBLE) {
-                    ((double*)buffer->data)[gals_in_buffer] = 0.0;
-                }
-                else if (buffer->h5_dtype == H5T_NATIVE_INT) {
-                    ((int32_t*)buffer->data)[gals_in_buffer] = 0;
-                }
-                else if (buffer->h5_dtype == H5T_NATIVE_LLONG) {
-                    ((int64_t*)buffer->data)[gals_in_buffer] = 0;
-                }
+            else if (buffer->h5_dtype == H5T_NATIVE_DOUBLE) {
+                element_size = sizeof(double);
             }
-        }
-    }
-    
-    // Special handling for SFR history properties which need array processing
-    // Get the property IDs for these special properties
-    property_id_t sfr_disk_id = get_cached_property_id("SfrDisk");
-    property_id_t sfr_bulge_id = get_cached_property_id("SfrBulge");
-    property_id_t sfr_disk_cold_gas_id = get_cached_property_id("SfrDiskColdGas");
-    property_id_t sfr_disk_cold_gas_metals_id = get_cached_property_id("SfrDiskColdGasMetals");
-    property_id_t sfr_bulge_cold_gas_id = get_cached_property_id("SfrBulgeColdGas");
-    property_id_t sfr_bulge_cold_gas_metals_id = get_cached_property_id("SfrBulgeColdGasMetals");
-    
-    // Find the output buffer indices for these properties
-    int sfr_disk_idx = -1, sfr_bulge_idx = -1, sfr_disk_z_idx = -1, sfr_bulge_z_idx = -1;
-    for (int i = 0; i < save_info->num_properties; i++) {
-        if (strcmp(save_info->property_buffers[output_snap_idx][i].name, "SfrDisk") == 0) {
-            sfr_disk_idx = i;
-        }
-        else if (strcmp(save_info->property_buffers[output_snap_idx][i].name, "SfrBulge") == 0) {
-            sfr_bulge_idx = i;
-        }
-        else if (strcmp(save_info->property_buffers[output_snap_idx][i].name, "SfrDiskZ") == 0) {
-            sfr_disk_z_idx = i;
-        }
-        else if (strcmp(save_info->property_buffers[output_snap_idx][i].name, "SfrBulgeZ") == 0) {
-            sfr_bulge_z_idx = i;
-        }
-    }
-    
-    // Process SFR history if these properties are requested
-    if (sfr_disk_idx >= 0 || sfr_bulge_idx >= 0 || sfr_disk_z_idx >= 0 || sfr_bulge_z_idx >= 0) {
-        float tmp_SfrDisk = 0.0;
-        float tmp_SfrBulge = 0.0;
-        float tmp_SfrDiskZ = 0.0;
-        float tmp_SfrBulgeZ = 0.0;
-        
-        // Check if the galaxy has these properties
-        if (has_property(g, sfr_disk_id) && 
-            has_property(g, sfr_bulge_id) && 
-            has_property(g, sfr_disk_cold_gas_id) && 
-            has_property(g, sfr_disk_cold_gas_metals_id) && 
-            has_property(g, sfr_bulge_cold_gas_id) && 
-            has_property(g, sfr_bulge_cold_gas_metals_id)) {
-                
-            // Access the array properties
-            // In a real implementation, we would need to properly access arrays from the property system
-            // For now, we can use a special array accessor function
-            for (int step = 0; step < STEPS; step++) {
-                // Note: This is a simplified example and would need to be replaced with proper array accessors
-                // In a complete implementation, there should be functions to access array elements from properties
-                float sfr_disk_val = 0.0;
-                float sfr_bulge_val = 0.0;
-                float sfr_disk_cold_gas_val = 0.0;
-                float sfr_disk_cold_gas_metals_val = 0.0;
-                float sfr_bulge_cold_gas_val = 0.0;
-                float sfr_bulge_cold_gas_metals_val = 0.0;
-                
-                // Get array element values
-                // These accessors would need to be implemented based on the property system
-                property_id_t id = sfr_disk_id;
-                if (has_property(g, id)) {
-                    // Use the new properly implemented array accessor
-                    sfr_disk_val = get_float_array_element_property(g, id, step, 0.0f);
-                }
-                
-                id = sfr_bulge_id;
-                if (has_property(g, id)) {
-                    sfr_bulge_val = get_float_array_element_property(g, id, step, 0.0f);
-                }
-                
-                id = sfr_disk_cold_gas_id;
-                if (has_property(g, id)) {
-                    sfr_disk_cold_gas_val = get_float_array_element_property(g, id, step, 0.0f);
-                }
-                
-                id = sfr_disk_cold_gas_metals_id;
-                if (has_property(g, id)) {
-                    sfr_disk_cold_gas_metals_val = get_float_array_element_property(g, id, step, 0.0f);
-                }
-                
-                id = sfr_bulge_cold_gas_id;
-                if (has_property(g, id)) {
-                    sfr_bulge_cold_gas_val = get_float_array_element_property(g, id, step, 0.0f);
-                }
-                
-                id = sfr_bulge_cold_gas_metals_id;
-                if (has_property(g, id)) {
-                    sfr_bulge_cold_gas_metals_val = get_float_array_element_property(g, id, step, 0.0f);
-                }
-                
-                // Calculate SFR values
-                tmp_SfrDisk += sfr_disk_val * run_params->units.UnitMass_in_g / 
-                               run_params->units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
-                               
-                tmp_SfrBulge += sfr_bulge_val * run_params->units.UnitMass_in_g / 
-                                run_params->units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
-                
-                // Calculate metallicity values
-                if (sfr_disk_cold_gas_val > 0.0) {
-                    tmp_SfrDiskZ += sfr_disk_cold_gas_metals_val / sfr_disk_cold_gas_val / STEPS;
-                }
-                
-                if (sfr_bulge_cold_gas_val > 0.0) {
-                    tmp_SfrBulgeZ += sfr_bulge_cold_gas_metals_val / sfr_bulge_cold_gas_val / STEPS;
-                }
+            else if (buffer->h5_dtype == H5T_NATIVE_INT) {
+                element_size = sizeof(int32_t);
             }
-        }
-        
-        // Store the calculated values in output buffers
-        if (sfr_disk_idx >= 0) {
-            ((float*)save_info->property_buffers[output_snap_idx][sfr_disk_idx].data)[gals_in_buffer] = tmp_SfrDisk;
-        }
-        
-        if (sfr_bulge_idx >= 0) {
-            ((float*)save_info->property_buffers[output_snap_idx][sfr_bulge_idx].data)[gals_in_buffer] = tmp_SfrBulge;
-        }
-        
-        if (sfr_disk_z_idx >= 0) {
-            ((float*)save_info->property_buffers[output_snap_idx][sfr_disk_z_idx].data)[gals_in_buffer] = tmp_SfrDiskZ;
-        }
-        
-        if (sfr_bulge_z_idx >= 0) {
-            ((float*)save_info->property_buffers[output_snap_idx][sfr_bulge_z_idx].data)[gals_in_buffer] = tmp_SfrBulgeZ;
+            else if (buffer->h5_dtype == H5T_NATIVE_LLONG) {
+                element_size = sizeof(int64_t);
+            }
+            
+            if (element_size == 0) {
+                LOG_ERROR("Unsupported HDF5 type for property '%s' in prepare_galaxy_for_hdf5_output", buffer->name);
+                return EXIT_FAILURE;
+            }
+            
+            // Get the pointer to the output buffer element for this galaxy's property
+            void *output_buffer_element_ptr = ((char*)buffer->data) + (gals_in_buffer * element_size);
+            
+            // Call the dispatcher to transform the property value for output
+            int transform_status = dispatch_property_transformer(g,
+                                                               prop_id,
+                                                               buffer->name,
+                                                               output_buffer_element_ptr,
+                                                               run_params,
+                                                               buffer->h5_dtype);
+            
+            if (transform_status != 0) {
+                LOG_ERROR("Error transforming property '%s' (ID: %d) for output.", buffer->name, prop_id);
+                // Continue with other properties instead of failing the entire process
+                // The dispatcher should have set a default value on error
+            }
         }
     }
     

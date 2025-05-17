@@ -125,6 +125,19 @@ int set_double_property(struct GALAXY *galaxy, property_id_t prop_id, double val
     return 0;
 }
 
+int64_t get_int64_property(const struct GALAXY *galaxy, property_id_t prop_id, int64_t default_value) {
+    sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in get_int64_property.");
+    sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in get_int64_property.");
+
+    if (prop_id < 0 || prop_id >= (property_id_t)MAX_GALAXY_PROPERTIES) {
+        LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, galaxy->GalaxyIndex);
+        return default_value;
+    }
+    
+    // For now, just convert from int32 - in the future, may want to add specific int64 dispatcher
+    return (int64_t)get_int32_property(galaxy, prop_id, (int32_t)default_value);
+}
+
 bool has_property(const struct GALAXY *galaxy, property_id_t prop_id) {
     sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in has_property.");
     // If galaxy->properties can be NULL for some valid states, check that too.

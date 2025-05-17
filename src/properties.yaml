@@ -337,6 +337,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    output_transformer_function: "derive_output_SfrDisk"
     
   - name: SfrBulge
     type: float[STEPS]
@@ -346,6 +347,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    output_transformer_function: "derive_output_SfrBulge"
     
   - name: SfrDiskColdGas
     type: float[STEPS]
@@ -433,6 +435,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    output_transformer_function: "transform_output_Cooling"
     
   - name: Heating
     type: double
@@ -442,6 +445,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    output_transformer_function: "transform_output_Heating"
     
   - name: r_heat
     type: float
@@ -470,6 +474,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    output_transformer_function: "transform_output_TimeOfLastMajorMerger"
     
   - name: TimeOfLastMinorMerger
     type: float
@@ -479,6 +484,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    output_transformer_function: "transform_output_TimeOfLastMinorMerger"
     
   # Feedback
   - name: OutflowRate
@@ -489,6 +495,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    output_transformer_function: "transform_output_OutflowRate"
     
   - name: TotalSatelliteBaryons
     type: float
@@ -498,6 +505,28 @@ properties:
     output: true
     read_only: false
     is_core: false
+    
+  # Special derived outputs - dynamically calculated at output time
+  # These don't need to be stored in the galaxy structure, only calculated for output
+  - name: SfrDiskZ
+    type: float
+    initial_value: 0.0
+    units: "dimensionless"
+    description: "Gas-phase metallicity during disk star formation"
+    output: true
+    read_only: true
+    is_core: false
+    output_transformer_function: "derive_output_SfrDiskZ"
+    
+  - name: SfrBulgeZ
+    type: float
+    initial_value: 0.0
+    units: "dimensionless"
+    description: "Gas-phase metallicity during bulge star formation"
+    output: true
+    read_only: true
+    is_core: false
+    output_transformer_function: "derive_output_SfrBulgeZ"
     
   # Infall Properties
   - name: infallMvir

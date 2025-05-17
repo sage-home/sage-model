@@ -15,6 +15,7 @@
 float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, float default_value);
 int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value);
 double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, double default_value);
+int64_t get_int64_property(const struct GALAXY *galaxy, property_id_t prop_id, int64_t default_value);
 
 /* Set property by ID with error checking */
 int set_float_property(struct GALAXY *galaxy, property_id_t prop_id, float value);

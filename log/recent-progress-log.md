@@ -2,7 +2,7 @@
 
 <!-- Purpose: Record completed milestones -->
 <!-- Update Rules: 
-- Update from the bottom only!
+- Append new entries to the EOF (use shell script if needed)!
 - 100-word limit per entry! 
 - Include:
   • Today's date and phase identifier
@@ -209,3 +209,12 @@
 - Modified files: src/generate_property_headers.py, src/core/core_property_utils.h, src/core/core_property_utils.c
 - Added files: tests/test_dispatcher_access.c
 
+2025-05-17: [Phase 5.2.F.3] Output Transformers Implementation Phase 2
+- Implemented module-registered output transformers as per implementation plan
+- Modified `properties.yaml` to add `output_transformer_function` field for properties requiring transformation
+- Updated `generate_property_headers.py` to generate dispatcher for transformation functions
+- Created physics output transformer functions to handle unit conversions and derivations
+- Modified prepare_galaxy_for_hdf5_output.c to use the transformer dispatcher
+- Fixed a missing `set_double_property` implementation
+- Modified files: src/properties.yaml, src/generate_property_headers.py, src/core/core_property_utils.c, src/core/core_property_utils.h, src/io/prepare_galaxy_for_hdf5_output.c, Makefile
+- Added files: src/physics/physics_output_transformers.c, src/physics/physics_output_transformers.h, src/transformers_template.py
