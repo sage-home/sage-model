@@ -1,7 +1,8 @@
 <!-- Purpose: Record critical technical decisions -->
 <!-- Update Rules:
+- Append new entries to the EOF (use shell script if needed)!
 - Focus on KEY decisions that impact current and upcoming development
-- Include only decisions that are NOT covered in project-state-log.md
+- Only include decisions that are NOT covered in project-state-log.md
 - 100-word limit per entry! 
 - Include:
   • Today's date and phase identifier
