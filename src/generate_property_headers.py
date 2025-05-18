@@ -158,6 +158,7 @@ int get_generated_array_size(const galaxy_properties_t *props, property_id_t pro
 void set_generated_float(galaxy_properties_t *props, property_id_t prop_id, float value);
 void set_generated_int32(galaxy_properties_t *props, property_id_t prop_id, int32_t value);
 void set_generated_double(galaxy_properties_t *props, property_id_t prop_id, double value);
+void set_generated_float_array_element(galaxy_properties_t *props, property_id_t prop_id, int array_idx, float value);
 
 /* Output transformer dispatch function */
 /**
@@ -881,6 +882,52 @@ def generate_int32_dispatcher(properties):
     c_code.append("}")
     return "\n".join(c_code)
 
+def generate_float_array_setter(properties):
+    """Generate the float array element property setter function."""
+    c_code = []
+    c_code.append("/**")
+    c_code.append(" * @brief Set a float array element value by property ID and index")
+    c_code.append(" * ")
+    c_code.append(" * This function maps from a property_id_t to the corresponding array field in the")
+    c_code.append(" * galaxy_properties_t struct using a switch statement, then sets the specified")
+    c_code.append(" * array element. This provides type-safe access to array properties without requiring")
+    c_code.append(" * compile-time knowledge of the specific property names.")
+    c_code.append(" * ")
+    c_code.append(" * @param props Pointer to the galaxy properties structure")
+    c_code.append(" * @param prop_id Property ID to access")
+    c_code.append(" * @param array_idx Index of the array element to set")
+    c_code.append(" * @param value Value to set the array element to")
+    c_code.append(" */")
+    c_code.append("void set_generated_float_array_element(galaxy_properties_t *props, property_id_t prop_id, int array_idx, float value) {")
+    c_code.append("    if (!props) return;")
+    c_code.append("    ")
+    c_code.append("    // Validate array index")
+    c_code.append("    if (array_idx < 0) return;")
+    c_code.append("    ")
+    c_code.append("    switch (prop_id) {")
+    
+    # Add case for each float array property
+    for prop in properties:
+        base_type, is_array, array_dim, is_dynamic, _ = parse_type(prop['type'])
+        if is_array and base_type == 'float':
+            if is_dynamic:
+                # Dynamic array with a size field
+                c_code.append(f"        case PROP_{prop['name']}:")
+                c_code.append(f"            if (array_idx >= props->{prop['name']}_size || !props->{prop['name']}) return;")
+                c_code.append(f"            props->{prop['name']}[array_idx] = value;")
+                c_code.append(f"            break;")
+            else:
+                # Fixed size array
+                c_code.append(f"        case PROP_{prop['name']}:")
+                c_code.append(f"            if (array_idx >= {array_dim}) return;")
+                c_code.append(f"            props->{prop['name']}[array_idx] = value;")
+                c_code.append(f"            break;")
+    
+    c_code.append("        default: break;")
+    c_code.append("    }")
+    c_code.append("}")
+    return "\n".join(c_code)
+
 def generate_int32_setter(properties):
     """Generate the int32 property setter function."""
     c_code = []
@@ -1386,6 +1433,7 @@ def generate_implementation_file(properties, output_dir=""):
     impl_content += generate_float_setter(properties) + "\n\n"
     impl_content += generate_int32_setter(properties) + "\n\n"
     impl_content += generate_double_setter(properties) + "\n\n"
+    impl_content += generate_float_array_setter(properties) + "\n\n"
     
     # Add the global variable definitions at the top of the implementation file
     impl_content = f"""/* Global variables for property system */

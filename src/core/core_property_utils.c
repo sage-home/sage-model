@@ -82,6 +82,13 @@ double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, d
 extern void set_generated_float(galaxy_properties_t *properties, property_id_t prop_id, float value);
 extern void set_generated_int32(galaxy_properties_t *properties, property_id_t prop_id, int32_t value);
 extern void set_generated_double(galaxy_properties_t *properties, property_id_t prop_id, double value);
+extern void set_generated_float_array_element(galaxy_properties_t *properties, property_id_t prop_id, int array_idx, float value);
+
+// Declarations for generated get functions should match core_properties.h
+extern float get_generated_float_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, float default_value);
+extern int32_t get_generated_int32_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, int32_t default_value);
+extern double get_generated_double_array_element(const galaxy_properties_t *props, property_id_t prop_id, int array_idx, double default_value);
+extern int get_generated_array_size(const galaxy_properties_t *props, property_id_t prop_id);
 
 int set_float_property(struct GALAXY *galaxy, property_id_t prop_id, float value) {
     sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in set_float_property.");
@@ -308,4 +315,28 @@ int get_property_array_size(const struct GALAXY *galaxy, property_id_t prop_id) 
     
     // Use the generated array size dispatcher
     return get_generated_array_size(galaxy->properties, prop_id);
+}
+
+int set_float_array_element_property(struct GALAXY *galaxy, property_id_t prop_id, int array_idx, float value) {
+    sage_assert(galaxy != NULL, "Galaxy pointer cannot be NULL in set_float_array_element_property.");
+    sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in set_float_array_element_property.");
+
+    // Check if property ID is valid
+    if (prop_id < 0 || prop_id >= (property_id_t)MAX_GALAXY_PROPERTIES) {
+        LOG_ERROR("Invalid property ID %d requested for galaxy %lld in set_float_array_element_property.", 
+                 prop_id, galaxy->GalaxyIndex);
+        return -1;
+    }
+
+    // Get property metadata to check if it's an array
+    const property_meta_t *meta = get_property_meta(prop_id);
+    if (meta == NULL || !meta->is_array) {
+        LOG_ERROR("Property '%s' (ID %d) is not an array property but was set as one for galaxy %lld.", 
+                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
+        return -1;
+    }
+    
+    // Use the generated array element dispatcher
+    set_generated_float_array_element(galaxy->properties, prop_id, array_idx, value);
+    return 0;
 }
