@@ -4,13 +4,12 @@ The complete separation between core infrastructure and physics has been impleme
 
 ## Key Principles:
 
-1.  **Core Properties (`core_properties.yaml`)**:
+1.  **Core Properties (`properties.yaml` with `is_core: true`)**:
     *   These properties are fundamental to the SAGE infrastructure (e.g., halo properties, galaxy identifiers, positions, velocities).
-    *   They are defined in `src/core_properties.yaml`.
-    *   Core code (typically in `src/core/` and `src/io/`) can directly access these properties using the `GALAXY_PROP_*` macros generated from `core_properties.yaml`.
+    *   Core code (typically in `src/core/` and `src/io/`) can directly access these properties using the `GALAXY_PROP_*` macros generated from `properties.yaml`.
     *   These properties are managed by the core infrastructure and are expected to always be present.
 
-2.  **Physics Properties (e.g., `properties.yaml`, module-specific YAMLs)**:
+2.  **Physics Properties (e.g., `properties.yaml` with `is_core: false`, module-specific YAMLs)**:
     *   These properties are specific to particular physical processes (e.g., `HotGas`, `ColdGas`, `StellarMass`, `BlackHoleMass`).
     *   They are typically defined in `src/properties.yaml` or in YAML files specific to individual physics modules.
     *   Access to these properties from ANY part of the code (including physics modules themselves and core I/O routines) **MUST** be done through the generic property system utility functions found in `src/core/core_property_utils.h` (e.g., `get_float_property()`, `get_int32_property()`, `has_property()`).
@@ -18,7 +17,7 @@ The complete separation between core infrastructure and physics has been impleme
 
 3.  **Access Rules & Rationale**:
     *   **Core code MUST NOT use `GALAXY_PROP_*` macros for physics properties.** This is the cornerstone of the separation. Core infrastructure should have no compile-time or direct runtime knowledge of specific physics implementations or the properties they manage.
-    *   **All code (core and physics modules) SHOULD use the generic property accessors (e.g., `get_float_property()`, `get_cached_property_id()`) when dealing with properties that are not strictly part of the `core_properties.yaml` definition.** This ensures that the code can adapt to different sets of available physics properties at runtime.
+    *   **All code (core and physics modules) SHOULD use the generic property accessors (e.g., `get_float_property()`, `get_cached_property_id()`) when dealing with properties that are not strictly part of the `properties.yaml` with `is_core: true` definition.** This ensures that the code can adapt to different sets of available physics properties at runtime.
     *   Physics modules can use `GALAXY_PROP_*` macros for core properties if needed, as these are considered part of the stable infrastructure interface.
 
 ## Benefits:
