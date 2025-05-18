@@ -80,11 +80,11 @@
 
 The complete separation between core infrastructure and physics has been implemented:
 
-1.  **Core Properties (`core_properties.yaml`)**:
-    *   Direct field access via `GALAXY_PROP_*` macros is appropriate for core code when accessing properties defined in `core_properties.yaml`.
+1.  **Core Properties (`properties.yaml` with `is_core: true`)**:
+    *   Direct field access via `GALAXY_PROP_*` macros is appropriate for core code when accessing properties defined in `properties.yaml`.
     *   Managed by core infrastructure and always expected to be present.
 
-2.  **Physics Properties (`properties.yaml` or module-specific definitions)**:
+2.  **Physics Properties (`properties.yaml` with `is_core: false` or module-specific definitions)**:
     *   MUST be accessed via generic property system functions (e.g., `get_float_property()`, `get_cached_property_id()`) from `core_property_utils.h`.
     *   May be present or absent depending on loaded physics modules.
 
