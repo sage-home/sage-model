@@ -1,6 +1,6 @@
 <!-- Purpose: Record critical technical decisions -->
 <!-- Update Rules:
-- Append new entries to the EOF (use shell script if needed)!
+- Append new entries to the EOF (use `cat << EOF >> ...etc`)!
 - Focus on KEY decisions that impact current and upcoming development
 - Only include decisions that are NOT covered in project-state-log.md
 - 100-word limit per entry! 
@@ -106,3 +106,7 @@ This separation ensures that core infrastructure has zero compile-time or direct
 2025-05-17: [Phase 5.2.F.3] Module Registration and Pipeline Creation Strategy
 - Rationale: The pipeline registry code was directly referencing physics modules, violating core-physics separation. Additionally, the `pipeline_create_with_standard_modules()` function was combining default steps AND registered modules, causing test failures where 13 steps were created instead of the expected 2.
 - Impact: Updated the pipeline registry to use self-registration of modules via factories, with proper deduplication logic to avoid duplicate modules. Improved capacity tracking using `MAX_MODULES` instead of `MAX_MODULE_FACTORIES` and added a warning message when capacity is exceeded. This ensures the core pipeline registry is completely decoupled from specific physics implementations.
+
+2025-05-18: [Phase 5.2.F.3] Configuration-Driven Pipeline Creation
+- Rationale: To fully realize core-physics separation, the pipeline creation process must be decoupled from specific physics implementations. The previous implementation hardcoded module activation, violating the principle that core infrastructure should have no knowledge of specific physics modules.
+- Impact: Implementing configuration-driven pipeline creation enables users to define module combinations at runtime without code changes. The core infrastructure now reads the "modules.instances" array from JSON configuration to determine which modules to activate, with appropriate fallback to using all registered modules when no configuration is available. This completes a key aspect of core-physics separation.

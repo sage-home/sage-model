@@ -149,3 +149,14 @@ With the core now completely physics-agnostic, we'll implement physics modules a
 - Phase 5 (Core Module Migration): ⏳ IN PROGRESS
 - Phase 6 (Advanced Performance Optimization): 🔒 BLOCKED
 - Phase 7 (Documentation and Tools): 🔒 BLOCKED
+# Configuration-Driven Pipeline Creation (May 2025)
+
+The implementation of configuration-driven module activation in pipeline creation has been completed. This represents the final step in fully decoupling the core infrastructure from specific physics implementations. The pipeline registry now reads the "modules.instances" array from JSON configuration to determine which modules to activate, with appropriate fallback to using all registered modules when no configuration is available.
+
+Key benefits of this implementation:
+1. True Runtime Modularity: Users can define entirely different sets of active physics modules by changing the configuration file.
+2. Complete Core-Physics Decoupling: Core pipeline creation logic has no compile-time or hardcoded knowledge of which specific physics modules constitute a "standard" run.
+3. Enhanced Flexibility: Facilitates easier experimentation with different combinations of physics modules.
+4. Clear Separation of Concerns: Module self-registration (via constructors) makes modules *available*, while the configuration *selects and enables* them for a specific pipeline.
+
+This completes FR-1.1 and FR-1.2 from the core-physics separation requirements by making module activation fully configurable at runtime.

@@ -1,0 +1,18 @@
+{
+    "modules": {
+        "instances": [
+            {
+                "name": "MockCooling",
+                "enabled": true
+            },
+            {
+                "name": "MockInfall",
+                "enabled": true
+            },
+            {
+                "name": "MockDisabled",
+                "enabled": false
+            }
+        ]
+    }
+}

@@ -2,7 +2,7 @@
 
 <!-- Purpose: Record completed milestones -->
 <!-- Update Rules: 
-- Append new entries to the EOF (use shell script if needed)!
+- Append new entries to the EOF (use `cat << EOF >> ...etc`)!
 - 100-word limit per entry! 
 - Include:
   • Today's date and phase identifier
@@ -235,3 +235,12 @@
 - Updated test_core_pipeline_registry.c to use printf instead of LOG_* statements for better debug visibility
 - Added detailed test output with clear pass/fail messages and pipeline step information
 - Modified files: src/core/core_pipeline_registry.c, tests/test_core_pipeline_registry.c
+
+2025-05-18: [Phase 5.2.F.3] Configuration-Driven Pipeline Creation Implementation
+- Implemented configuration-driven module activation in pipeline creation
+- Added JSON configuration support for enabling/disabling modules in pipeline registry
+- Fixed module activation in pipeline_create_with_standard_modules() to work with config or fallback to all modules
+- Updated test_core_pipeline_registry.c to verify configuration-driven pipeline creation
+- Created test_config.json for testing configuration-driven pipeline creation
+- Modified files: src/core/core_pipeline_registry.c, tests/test_core_pipeline_registry.c
+- Added files: tests/test_config.json

@@ -217,6 +217,30 @@ int config_get_array_size(const char *path);
 const struct config_value *config_get_array_element(const char *path, int index);
 
 /**
+ * Get a boolean value from an object
+ * 
+ * Retrieves a boolean value from a specific key in a config object.
+ * 
+ * @param obj The configuration object
+ * @param key Key to retrieve
+ * @param default_value Value to return if key not found or invalid type
+ * @return The boolean value or default_value if not found
+ */
+bool config_get_boolean_from_object(const struct config_object *obj, const char *key, bool default_value);
+
+/**
+ * Get a string value from an object
+ * 
+ * Retrieves a string value from a specific key in a config object.
+ * 
+ * @param obj The configuration object
+ * @param key Key to retrieve
+ * @param default_value Value to return if key not found or invalid type
+ * @return The string value or default_value if not found
+ */
+const char *config_get_string_from_object(const struct config_object *obj, const char *key, const char *default_value);
+
+/**
  * Set a boolean value in the configuration
  * 
  * Sets a boolean value at the specified path.
