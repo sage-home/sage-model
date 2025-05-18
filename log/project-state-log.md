@@ -257,3 +257,38 @@ Key benefits of the current architecture:
 - Thorough testing and validation to maintain scientific accuracy
 
 Next steps will include completing the empty pipeline validation, removing legacy physics code, and implementing all physics components as pure add-on modules to demonstrate complete runtime functional modularity.
+## Recent Architectural Improvements: Configuration-Driven Pipeline
+
+The pipeline registry has been enhanced with configuration-driven module activation, representing a significant architectural improvement:
+
+
+
+This enhancement implements true runtime functional modularity by:
+
+1. **Decoupling Module Registration from Activation**: Modules register their factories via constructor attributes, making them *available*, but they're only *activated* if enabled in the configuration.
+
+2. **Eliminating Core Knowledge of Physics**: The pipeline registry now has zero hardcoded knowledge of which modules constitute a "standard" run - "standard" is defined entirely by configuration.
+
+3. **Runtime Configuration**: Users can define entirely different sets of active physics modules by changing the JSON configuration, without recompiling the code.
+
+4. **Robust Fallback Mechanism**: If no configuration is available, the system falls back to using all registered modules, preserving backward compatibility.
+
+This architectural change completes the core-physics separation requirements by making module activation fully configurable at runtime, enhancing SAGE's modularity and flexibility while maintaining scientific accuracy.
+
+## Recent Architectural Improvements: Configuration-Driven Pipeline
+
+The pipeline registry has been enhanced with configuration-driven module activation, representing a significant architectural improvement:
+
+The pipeline registry now uses the JSON configuration to determine which modules to activate, rather than hardcoding this knowledge in the core infrastructure. Modules register their factories via constructor attributes, making them *available*, but they are only *activated* if enabled in the configuration.
+
+This enhancement implements true runtime functional modularity by:
+
+1. **Decoupling Module Registration from Activation**: Modules register their factories via constructor attributes, making them *available*, but they're only *activated* if enabled in the configuration.
+
+2. **Eliminating Core Knowledge of Physics**: The pipeline registry now has zero hardcoded knowledge of which modules constitute a "standard" run - "standard" is defined entirely by configuration.
+
+3. **Runtime Configuration**: Users can define entirely different sets of active physics modules by changing the JSON configuration, without recompiling the code.
+
+4. **Robust Fallback Mechanism**: If no configuration is available, the system falls back to using all registered modules, preserving backward compatibility.
+
+This architectural change completes the core-physics separation requirements by making module activation fully configurable at runtime, enhancing SAGE's modularity and flexibility while maintaining scientific accuracy.
