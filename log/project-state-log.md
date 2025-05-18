@@ -14,7 +14,7 @@ sage-model/
 ├── src/
 │   ├── core/                # Core infrastructure components
 │   ├── physics/             # Physics modules 
-│   │   └── placeholder/     # Placeholder modules for core-physics separation
+│   │   └── legacy/          # Legacy modules for future migration
 │   ├── io/                  # Input/output handlers
 │   └── auxdata/             # Auxiliary data files
 ├── tests/                   # Testing framework
