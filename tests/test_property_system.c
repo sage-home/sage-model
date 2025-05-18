@@ -10,6 +10,39 @@
 #include "../src/core/core_properties.h" // For GALAXY_PROP_* macros 
 #include "../src/core/core_property_utils.h" // For generic property accessors
 
+// Mock versions of the property utility functions to make the test self-contained
+// These override the actual functions by being linked later
+float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, float default_value) {
+    if (!galaxy || !galaxy->properties || prop_id >= MAX_GALAXY_PROPERTIES || prop_id < 0) {
+        return default_value;
+    }
+    float *buf = (float *)galaxy->properties;
+    return buf[prop_id];
+}
+
+int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, int32_t default_value) {
+    if (!galaxy || !galaxy->properties || prop_id >= MAX_GALAXY_PROPERTIES || prop_id < 0) {
+        return default_value;
+    }
+    int32_t *buf = (int32_t *)galaxy->properties;
+    return buf[prop_id];
+}
+
+double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, double default_value) {
+    if (!galaxy || !galaxy->properties || prop_id >= MAX_GALAXY_PROPERTIES || prop_id < 0) {
+        return default_value;
+    }
+    double *buf = (double *)galaxy->properties;
+    return buf[prop_id];
+}
+
+bool has_property(const struct GALAXY *galaxy, property_id_t prop_id) {
+    if (!galaxy || !galaxy->properties || prop_id >= MAX_GALAXY_PROPERTIES || prop_id < 0) {
+        return false;
+    }
+    // Simple implementation that assumes any non-zero value means the property exists
+    
+
 // Dummy property IDs for testing
 #define PROP_ID_FLOAT   0
 #define PROP_ID_INT32   1
