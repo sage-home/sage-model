@@ -49,7 +49,7 @@
 10. Commit with descriptive messages (`Phase #X Task #Y – short summary`).
 11. Assume no persistent memory — rely on logs for all continuity.
 
-# DesktopCommanderMCP Instructions - ONLY USE WHEN EXPLICITLY INSTRUCTED
+# desktop-commander MCP Instructions - ONLY USE WHEN EXPLICITLY INSTRUCTED
 
 **File Navigation**
 When exploring the SAGE codebase, use these tools in this order:
