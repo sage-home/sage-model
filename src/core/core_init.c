@@ -98,11 +98,17 @@ void init(struct params *run_params)
  */
 void initialize_module_system(struct params *run_params)
 {
-    /* Initialize the module system */
-    int status = module_system_initialize();
-    if (status != MODULE_STATUS_SUCCESS) {
-        LOG_ERROR("Failed to initialize module system, status = %d", status);
-        return;
+    int status;
+    
+    /* Initialize the module system if not already initialized */
+    if (global_module_registry == NULL) {
+        status = module_system_initialize();
+        if (status != MODULE_STATUS_SUCCESS && status != MODULE_STATUS_ALREADY_INITIALIZED) {
+            LOG_ERROR("Failed to initialize module system, status = %d", status);
+            return;
+        }
+    } else {
+        LOG_DEBUG("Module system already initialized, skipping initialization");
     }
     
     /* Configure the module system with parameters if provided */
