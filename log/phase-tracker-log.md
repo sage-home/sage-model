@@ -91,7 +91,7 @@
 - [x] Complete `log/Implementation Plan for Output Transformers.md` - Phase 1-2
 - [x] Complete `log/core-physics-separation-req.md`
 - [x] Complete `log/Implementation Plan for Output Transformers.md` - Phase 3-6
-- [ ] Binary code removal
+- [x] Binary code removal
 - [ ] Comprehensive code cleanup
 - [ ] Test suite review and update
 - [ ] Documentation review and update

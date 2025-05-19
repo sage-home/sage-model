@@ -21,13 +21,7 @@ extern "C" {
  */
 #define PROPERTY_SERIALIZATION_VERSION 1
 
-/**
- * @brief Magic marker to identify extended property data
- * 
- * This marker was used in binary files to indicate the start of extended property data.
- * Kept for historical reference only, as binary format is no longer supported.
- */
-#define PROPERTY_SERIALIZATION_MAGIC 0x45585450  // "EXTP" in ASCII hex
+
 
 /**
  * @brief Maximum property array size for serialization
@@ -155,35 +149,7 @@ int property_deserialize_galaxy(struct property_serialization_context *ctx,
  */
 size_t property_serialization_data_size(struct property_serialization_context *ctx);
 
-/**
- * @brief Create a binary property header
- * 
- * This function is deprecated as binary output format is no longer supported.
- * Kept for reference only.
- * 
- * @param ctx Serialization context
- * @param output_buffer Output buffer for the header
- * @param buffer_size Size of the output buffer
- * @return -1 to indicate error/unsupported operation
- */
-int64_t property_serialization_create_header(struct property_serialization_context *ctx,
-                                           void *output_buffer,
-                                           size_t buffer_size);
 
-/**
- * @brief Parse a binary property header
- * 
- * This function is deprecated as binary output format is no longer supported.
- * Kept for reference only.
- * 
- * @param ctx Serialization context
- * @param input_buffer Input buffer containing the header
- * @param buffer_size Size of the input buffer
- * @return -1 to indicate error/unsupported operation
- */
-int property_serialization_parse_header(struct property_serialization_context *ctx,
-                                      const void *input_buffer,
-                                      size_t buffer_size);
 
 /**
  * @brief Type-specific serializer for int32 values

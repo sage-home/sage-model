@@ -343,43 +343,7 @@ size_t property_serialization_data_size(struct property_serialization_context *c
     return ctx->total_size_per_galaxy;
 }
 
-/**
- * @brief Create a binary property header
- * 
- * This function is deprecated as binary output format is no longer supported.
- * Kept for reference only.
- * 
- * @param ctx Serialization context
- * @param output_buffer Output buffer for the header
- * @param buffer_size Size of the output buffer
- * @return -1 to indicate error/unsupported operation
- */
-int64_t property_serialization_create_header(struct property_serialization_context *ctx,
-                                          void *output_buffer,
-                                          size_t buffer_size) {
-    // Binary output format is no longer supported
-    LOG_ERROR("Binary output format is deprecated and no longer supported");
-    return -1;
-}
 
-/**
- * @brief Parse a binary property header
- * 
- * This function is deprecated as binary output format is no longer supported.
- * Kept for reference only.
- * 
- * @param ctx Serialization context
- * @param input_buffer Input buffer containing the header
- * @param buffer_size Size of the input buffer
- * @return -1 to indicate error/unsupported operation
- */
-int property_serialization_parse_header(struct property_serialization_context *ctx,
-                                      const void *input_buffer,
-                                      size_t buffer_size) {
-    // Binary output format is no longer supported
-    LOG_ERROR("Binary output format is deprecated and no longer supported");
-    return -1;
-}
 
 /**
  * @brief Type-specific serializer for int32 values
