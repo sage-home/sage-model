@@ -8,7 +8,7 @@
 # USE-MPI := yes      # Enable MPI parallel processing (auto-set if CC=mpicc)
 USE-HDF5 := yes       # Enable HDF5 tree reading support
 # MEM-CHECK := yes    # Enable memory/pointer sanitization (~2x slower, gcc only)
-USE-BUFFERED-WRITE := yes  # Enable chunked binary output for better performance
+USE-BUFFERED-WRITE := yes  # Enable chunked output for better performance
 MAKE-SHARED-LIB := yes     # Build shared library instead of static
 # MAKE-VERBOSE := yes      # Enable verbose information messages
 
@@ -416,8 +416,8 @@ test_lhalo_binary: tests/test_lhalo_binary.c $(SAGELIB)
 test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_serialization tests/test_property_serialization.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_binary_output: tests/test_binary_output.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_binary_output tests/test_binary_output.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_binary_output:
+	@echo "Binary output format is no longer supported. Test disabled."
 
 test_hdf5_output: tests/test_hdf5_output.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_hdf5_output tests/test_hdf5_output.c -L. -l$(LIBNAME) $(LIBFLAGS)
