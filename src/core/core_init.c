@@ -114,7 +114,7 @@ void initialize_module_system(struct params *run_params)
     }
     
     /* Set up default module search paths */
-    status = module_add_search_path("modules");
+    status = module_add_search_path("src/physics");
     if (status != MODULE_STATUS_SUCCESS) {
         LOG_WARNING("Failed to add default module search path, status = %d", status);
     }
