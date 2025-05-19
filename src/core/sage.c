@@ -94,17 +94,6 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     }
 
 
-    // If we're creating a binary output, we need to be careful.
-    // The binary output contains an 32 bit header that contains the number of trees processed.
-    // Hence let's make sure that the number of trees assigned to this task doesn't exceed an 32 bit number.
-    if((run_params->io.OutputFormat == sage_binary) && (forest_info.nforests_this_task > INT_MAX)) {
-        fprintf(stderr, "When creating the binary output, we must write a 32 bit header describing the number of trees processed.\n"
-                        "However, task %d is processing %"PRId64" forests which is above the 32 bit limit.\n"
-                        "Either change the output format to HDF5 or increase the number of cores processing your trees.\n",
-                        ThisTask, forest_info.nforests_this_task);
-        return EXIT_FAILURE;
-    }
-
     /* If we are converting the input mergertree into the lhalo-binary format,
        then we just run the relevant converter: MS 12/10/2022 */
     if(run_params->io.OutputFormat == lhalo_binary_output) {
@@ -235,12 +224,6 @@ int32_t finalize_sage(void *params)
 
     switch(run_params->io.OutputFormat)
         {
-        case(sage_binary):
-            {
-                status = EXIT_SUCCESS;
-                break;
-            }
-
 #ifdef HDF5
         case(sage_hdf5):
             {

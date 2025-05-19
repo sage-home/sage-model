@@ -286,11 +286,6 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
 
     // Fall back to existing approach if handler not available or I/O interface not enabled
     switch(run_params->io.OutputFormat) {
-    case(sage_binary):
-      LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
-      status = INVALID_OPTION_IN_PARAMS;
-      break;
-
 #ifdef HDF5
     case(sage_hdf5):
       status = initialize_hdf5_galaxy_files(rank, save_info, run_params);
@@ -451,11 +446,6 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 
     // Fall back to existing approach if not using I/O interface or if it failed
     switch(run_params->io.OutputFormat) {
-    case(sage_binary):
-        LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
-        status = INVALID_OPTION_IN_PARAMS;
-        break;
-
 #ifdef HDF5
     case(sage_hdf5):
         status = save_hdf5_galaxies(task_forestnr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
@@ -534,11 +524,6 @@ int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save
 
     // Fall back to existing approach if not using I/O interface or if it failed
     switch(run_params->io.OutputFormat) {
-    case(sage_binary):
-        LOG_ERROR("Binary output format is no longer supported. Please use HDF5 output format.");
-        status = INVALID_OPTION_IN_PARAMS;
-        break;
-
 #ifdef HDF5
     case(sage_hdf5):
         status = finalize_hdf5_galaxy_files(forest_info, save_info, run_params);
