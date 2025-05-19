@@ -331,63 +331,10 @@ int validation_check_serialization_context(struct validation_context *ctx,
 }
 
 /**
- * @brief Validate binary property compatibility
- *
- * Checks if a property is compatible with binary serialization.
- *
- * @param ctx Validation context
- * @param property Property to check
- * @param component Component being validated
- * @param file Source file
- * @param line Source line
- * @return 0 if validation passed, non-zero otherwise
+ * @brief Removed binary property compatibility check function
+ * 
+ * HDF5 is now the only supported output format.
  */
-int validation_check_binary_property_compatibility(struct validation_context *ctx,
-                                               const galaxy_property_t *property,
-                                               const char *component,
-                                               const char *file,
-                                               int line) {
-    // Mark unused parameters to avoid compiler warnings
-    (void)file;
-    (void)line;
-    
-    if (ctx == NULL || property == NULL) {
-        return -1;
-    }
-    
-    // Skip check if property doesn't need serialization
-    if (!(property->flags & PROPERTY_FLAG_SERIALIZE)) {
-        return 0;
-    }
-    
-    // Check for serialization functions
-    if (property->serialize == NULL || property->deserialize == NULL) {
-        VALIDATION_ERROR(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE, VALIDATION_CHECK_PROPERTY_COMPAT,
-                      component, "Property '%s' lacks required serialization functions for binary format",
-                      property->name);
-        return -1;
-    }
-    
-    // Binary format has fewer restrictions, but warn for complex types
-    if (property->type == PROPERTY_TYPE_STRUCT) {
-        VALIDATION_WARN(ctx, VALIDATION_ERROR_NONE, VALIDATION_CHECK_PROPERTY_COMPAT,
-                     component, "Property '%s' is a struct, ensure proper binary serialization",
-                     property->name);
-    } else if (property->type == PROPERTY_TYPE_ARRAY) {
-        VALIDATION_WARN(ctx, VALIDATION_ERROR_NONE, VALIDATION_CHECK_PROPERTY_COMPAT,
-                     component, "Property '%s' is an array, ensure proper binary serialization",
-                     property->name);
-    }
-    
-    // Validate size is reasonable
-    if (property->size > MAX_SERIALIZED_ARRAY_SIZE) {
-        VALIDATION_WARN(ctx, VALIDATION_ERROR_RESOURCE_LIMIT, VALIDATION_CHECK_PROPERTY_COMPAT,
-                     component, "Property '%s' size (%zu) exceeds recommended maximum (%d)",
-                     property->name, property->size, MAX_SERIALIZED_ARRAY_SIZE);
-    }
-    
-    return 0;
-}
 
 /**
  * @brief Validate HDF5 property compatibility
@@ -1635,63 +1582,10 @@ int validation_check_format_capabilities(struct validation_context *ctx,
 }
 
 /**
- * @brief Validate binary format compatibility
- *
- * Checks if a handler is compatible with binary format requirements.
- *
- * @param ctx Validation context
- * @param handler I/O interface handler
- * @param component Component being validated
- * @param file Source file
- * @param line Source line
- * @return 0 if validation passed, non-zero otherwise
+ * @brief Removed binary format compatibility check function
+ * 
+ * HDF5 is now the only supported output format.
  */
-int validation_check_binary_compatibility(struct validation_context *ctx,
-                                        const struct io_interface *handler,
-                                        const char *component,
-                                        const char *file,
-                                        int line) {
-    if (ctx == NULL) {
-        return -1;
-    }
-    
-    if (handler == NULL) {
-        return validation_add_result(ctx, VALIDATION_ERROR_NULL_POINTER,
-                                   VALIDATION_SEVERITY_ERROR,
-                                   VALIDATION_CHECK_FORMAT_CAPS,
-                                   component, file, line,
-                                   "I/O handler is NULL");
-    }
-    
-    int status = 0;
-    
-    // Check binary format specific requirements
-    if (handler->format_id == IO_FORMAT_LHALO_BINARY) {
-        
-        // For binary formats, extended properties require specific capability
-        if (io_has_capability((struct io_interface *)handler, IO_CAP_EXTENDED_PROPS)) {
-            // This is good, format claims to support extended properties
-        } else {
-            // Binary format might have issues with extended properties
-            status |= validation_add_result(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE,
-                                         VALIDATION_SEVERITY_WARNING,
-                                         VALIDATION_CHECK_PROPERTY_COMPAT,
-                                         component, file, line,
-                                         "Binary format '%s' may have limited support for extended properties",
-                                         handler->name);
-        }
-    } else {
-        // Not a binary format
-        status |= validation_add_result(ctx, VALIDATION_ERROR_FORMAT_INCOMPATIBLE,
-                                     VALIDATION_SEVERITY_ERROR,
-                                     VALIDATION_CHECK_FORMAT_CAPS,
-                                     component, file, line,
-                                     "Format '%s' is not a binary format",
-                                     handler->name);
-    }
-    
-    return status;
-}
 
 /**
  * @brief Validate HDF5 format compatibility
@@ -1725,40 +1619,23 @@ int validation_check_hdf5_compatibility(struct validation_context *ctx,
     int status = 0;
     
     // Check HDF5 format specific requirements
-    if (handler->format_id == IO_FORMAT_LHALO_HDF5 || 
-        handler->format_id == IO_FORMAT_CONSISTENT_TREES_HDF5 ||
-        handler->format_id == IO_FORMAT_GADGET4_HDF5 ||
-        handler->format_id == IO_FORMAT_GENESIS_HDF5 ||
-        handler->format_id == IO_FORMAT_HDF5_OUTPUT) {
-        
-        // For HDF5 formats, metadata attributes are essential
-        if (io_has_capability((struct io_interface *)handler, IO_CAP_METADATA_ATTRS)) {
-            // This is good, format claims to support metadata attributes
-        } else {
-            status |= validation_add_result(ctx, VALIDATION_ERROR_FORMAT_INCOMPATIBLE,
-                                         VALIDATION_SEVERITY_WARNING,
-                                         VALIDATION_CHECK_FORMAT_CAPS,
-                                         component, file, line,
-                                         "HDF5 format '%s' should support metadata attributes",
-                                         handler->name);
-        }
-        
-        // Extended properties should be supported by HDF5 formats
-        if (!io_has_capability((struct io_interface *)handler, IO_CAP_EXTENDED_PROPS)) {
-            status |= validation_add_result(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE,
-                                         VALIDATION_SEVERITY_WARNING,
-                                         VALIDATION_CHECK_PROPERTY_COMPAT,
-                                         component, file, line,
-                                         "HDF5 format '%s' should support extended properties",
-                                         handler->name);
-        }
-    } else {
-        // Not an HDF5 format
+    // For HDF5 formats, metadata attributes are essential
+    if (!io_has_capability((struct io_interface *)handler, IO_CAP_METADATA_ATTRS)) {
         status |= validation_add_result(ctx, VALIDATION_ERROR_FORMAT_INCOMPATIBLE,
-                                     VALIDATION_SEVERITY_ERROR,
+                                     VALIDATION_SEVERITY_WARNING,
                                      VALIDATION_CHECK_FORMAT_CAPS,
                                      component, file, line,
-                                     "Format '%s' is not an HDF5 format",
+                                     "HDF5 format '%s' should support metadata attributes",
+                                     handler->name);
+    }
+    
+    // Extended properties should be supported by HDF5 formats
+    if (!io_has_capability((struct io_interface *)handler, IO_CAP_EXTENDED_PROPS)) {
+        status |= validation_add_result(ctx, VALIDATION_ERROR_PROPERTY_INCOMPATIBLE,
+                                     VALIDATION_SEVERITY_WARNING,
+                                     VALIDATION_CHECK_PROPERTY_COMPAT,
+                                     component, file, line,
+                                     "HDF5 format '%s' should support extended properties",
                                      handler->name);
     }
     

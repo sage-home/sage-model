@@ -421,23 +421,7 @@ extern int validation_check_format_capabilities(struct validation_context *ctx,
                                              int line,
                                              const char *operation_name);
 
-/**
- * @brief Validate binary format compatibility
- *
- * Checks if a handler is compatible with binary format requirements.
- *
- * @param ctx Validation context
- * @param handler I/O interface handler
- * @param component Component being validated
- * @param file Source file
- * @param line Source line
- * @return 0 if validation passed, non-zero otherwise
- */
-extern int validation_check_binary_compatibility(struct validation_context *ctx,
-                                              const struct io_interface *handler,
-                                              const char *component,
-                                              const char *file,
-                                              int line);
+/* Binary format validation has been removed as part of standardization on HDF5 */
 
 /**
  * @brief Validate HDF5 format compatibility
@@ -531,23 +515,7 @@ extern int validation_check_serialization_context(struct validation_context *ctx
                                               const char *file,
                                               int line);
 
-/**
- * @brief Validate binary property compatibility
- *
- * Checks if a property is compatible with binary serialization.
- *
- * @param ctx Validation context
- * @param property Property to check
- * @param component Component being validated
- * @param file Source file
- * @param line Source line
- * @return 0 if validation passed, non-zero otherwise
- */
-extern int validation_check_binary_property_compatibility(struct validation_context *ctx,
-                                                      const galaxy_property_t *property,
-                                                      const char *component,
-                                                      const char *file,
-                                                      int line);
+/* Binary property compatibility validation has been removed as part of standardization on HDF5 */
 
 /**
  * @brief Validate HDF5 property compatibility
@@ -608,11 +576,7 @@ extern int validation_check_hdf5_property_compatibility(struct validation_contex
 #define VALIDATE_FORMAT_CAPABILITIES(ctx, handler, caps, num_caps, component, operation) \
     validation_check_format_capabilities(ctx, handler, caps, num_caps, component, __FILE__, __LINE__, operation)
 
-/**
- * @brief Validate binary format compatibility
- */
-#define VALIDATE_BINARY_COMPATIBILITY(ctx, handler, component) \
-    validation_check_binary_compatibility(ctx, handler, component, __FILE__, __LINE__)
+/* Binary compatibility validation has been removed as part of standardization on HDF5 */
 
 /**
  * @brief Validate HDF5 format compatibility
@@ -644,11 +608,7 @@ extern int validation_check_hdf5_property_compatibility(struct validation_contex
 #define VALIDATE_SERIALIZATION_CONTEXT(ctx, ser_ctx, component) \
     validation_check_serialization_context(ctx, ser_ctx, component, __FILE__, __LINE__)
 
-/**
- * @brief Validate binary property compatibility
- */
-#define VALIDATE_BINARY_PROPERTY_COMPATIBILITY(ctx, property, component) \
-    validation_check_binary_property_compatibility(ctx, property, component, __FILE__, __LINE__)
+/* Binary property compatibility validation has been removed as part of standardization on HDF5 */
 
 /**
  * @brief Validate HDF5 property compatibility

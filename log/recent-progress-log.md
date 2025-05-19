@@ -262,10 +262,12 @@
 - Modified files: tests/test_property_system_hdf5.c
 
 2025-05-19: [Phase 5.2.F.3] Binary Output Format Removal
-- Completed removal of all binary output format references throughout the codebase
+- Completed removal of binary output format references throughout the codebase
 - Simplified output format enumeration to only support HDF5
 - Updated core save operations to assume HDF5 as the only supported format
 - Simplified I/O interface mapping code to exclusively handle HDF5
 - Modified build configuration to remove binary output compilation flags
 - Disabled binary output tests as this format is no longer supported
-- Modified files: src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/core/core_save.c, src/io/io_interface.c, Makefile
+- Modified files: src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/core/core_save.c, src/io/io_interface.c, Makefile, 
+src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/io_validation.c, src/io/io_validation.h
+- Removed file (to `ignore`): src/io/buffered_io.c, src/io/buffered_io.h
