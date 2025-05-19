@@ -472,9 +472,10 @@ void initialize_config_system(const char *config_file)
     
     /* Load configuration file if specified */
     if (config_file != NULL) {
-        status = config_load_file(config_file);
+        LOG_INFO("Loading configuration from file: %s", config_file);
+        int status = config_load_file(config_file);
         if (status != 0) {
-            LOG_WARNING("Failed to load configuration file '%s', status = %d", config_file, status);
+            LOG_ERROR("Failed to load configuration file '%s', status = %d", config_file, status);
             LOG_WARNING("Using default configuration instead");
         } else {
             LOG_INFO("Loaded configuration from '%s'", config_file);

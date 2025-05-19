@@ -16,6 +16,7 @@
 #include "../core/core_module_system.h"
 #include "../core/core_pipeline_system.h"
 #include "../core/core_logging.h"
+#include "../core/core_pipeline_registry.h"
 #include "physics_modules.h"
 
 /* Module data structure */
@@ -30,6 +31,7 @@ static int placeholder_execute_halo_phase(void *data, struct pipeline_context *c
 static int placeholder_execute_galaxy_phase(void *data, struct pipeline_context *context);
 static int placeholder_execute_post_phase(void *data, struct pipeline_context *context);
 static int placeholder_execute_final_phase(void *data, struct pipeline_context *context);
+static struct base_module *placeholder_module_factory(void);
 
 /**
  * @brief Initialize the placeholder module
@@ -73,9 +75,19 @@ static int placeholder_cleanup(void *data) {
 static int placeholder_execute_halo_phase(void *data, struct pipeline_context *context) {
     /* Mark unused parameters */
     (void)data;
-    (void)context;
     
-    LOG_DEBUG("Placeholder module HALO phase (no-op)");
+    /* Add debug logging */
+    LOG_INFO("Placeholder module HALO phase starting");
+    
+    if (context == NULL) {
+        LOG_ERROR("Pipeline context is NULL in HALO phase");
+        return MODULE_STATUS_ERROR;
+    }
+    
+    LOG_INFO("Pipeline context: execution_phase=%d, current_galaxy=%d", 
+             context->execution_phase, context->current_galaxy);
+    
+    LOG_INFO("Placeholder module HALO phase completed");
     return MODULE_STATUS_SUCCESS;
 }
 
@@ -119,7 +131,7 @@ static int placeholder_execute_final_phase(void *data, struct pipeline_context *
  * Module definition
  */
 struct base_module placeholder_module = {
-    .name = "placeholder_module",              /* Module name */
+    .name = "placeholder_empty_module",        /* Module name */
     .type = MODULE_TYPE_MISC,                /* Module type */
     .version = "1.0",                        /* Version */
     .author = "SAGE Team",                   /* Author */
@@ -133,7 +145,21 @@ struct base_module placeholder_module = {
     .phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY | PIPELINE_PHASE_POST | PIPELINE_PHASE_FINAL /* All phases */
 };
 
+/**
+ * Factory function for creating the placeholder module
+ */
+static struct base_module *placeholder_module_factory(void) {
+    LOG_DEBUG("Creating placeholder empty module from factory");
+    return &placeholder_module;
+}
+
 /* Register the module at startup */
-static void __attribute__((constructor)) register_module(void) {
+static void __attribute__((constructor)) register_module_and_factory(void) {
     module_register(&placeholder_module);
+    
+    // Register factory with the pipeline registry
+    pipeline_register_module_factory(MODULE_TYPE_MISC, 
+                                   "placeholder_empty_module", 
+                                   placeholder_module_factory);
+    LOG_DEBUG("placeholder_empty_module factory registered with pipeline registry.");
 }

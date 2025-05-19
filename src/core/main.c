@@ -43,14 +43,20 @@ int main(int argc, char **argv)
     if (config_file != NULL) {
         /* The core_init.c initialize_config_system function will have been called with NULL,
            now we call it directly with the actual config file */
+        LOG_INFO("Loading configuration file: %s", config_file);
         initialize_config_system(config_file);
         
         /* Apply configuration to params */
         if (global_config != NULL) {
+            LOG_INFO("Applying configuration to parameters and modules");
             config_configure_params((struct params *)run_params);
             config_configure_modules((struct params *)run_params);
             config_configure_pipeline();
+        } else {
+            LOG_ERROR("Failed to load configuration file: %s", config_file);
         }
+    } else {
+        LOG_INFO("No configuration file specified, using defaults");
     }
     if(status != EXIT_SUCCESS) {
         /* Use fprintf directly here since we might be in an error state before logging is fully initialized */

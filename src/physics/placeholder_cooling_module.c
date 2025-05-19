@@ -109,7 +109,7 @@ static void __attribute__((constructor)) register_module_and_factory(void) {
     module_register(&placeholder_cooling_module); // Existing registration with module system
     // New: Register factory with the pipeline registry
     pipeline_register_module_factory(MODULE_TYPE_COOLING, 
-                                     "PlaceholderCooling", 
+                                     "placeholder_cooling_module", 
                                      placeholder_cooling_module_factory);
     LOG_DEBUG("PlaceholderCooling module factory registered with pipeline registry.");
 }

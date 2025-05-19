@@ -114,7 +114,7 @@ static void __attribute__((constructor)) register_module_and_factory(void) {
     module_register(&placeholder_infall_module); // Existing registration with module system
     // New: Register factory with the pipeline registry
     pipeline_register_module_factory(MODULE_TYPE_INFALL, 
-                                     "PlaceholderInfall", 
+                                     "placeholder_infall_module", 
                                      placeholder_infall_module_factory);
     LOG_DEBUG("PlaceholderInfall module factory registered with pipeline registry.");
 }

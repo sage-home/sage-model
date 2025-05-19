@@ -1017,12 +1017,15 @@ int pipeline_register_events(void) {
         EVENT_PRIORITY_NORMAL
     );
 
-    if (status != EVENT_STATUS_SUCCESS) {
+    if (status != EVENT_STATUS_SUCCESS && status != EVENT_STATUS_HANDLER_EXISTS) {
         LOG_ERROR("Failed to register pipeline event handler");
         return -1;
+    } else if (status == EVENT_STATUS_HANDLER_EXISTS) {
+        LOG_DEBUG("Handler already registered for event type %d, skipping", pipeline_event_id);
+        return 0;  /* Success - handler already exists */
+    } else {
+        LOG_DEBUG("Registered pipeline event handler");
     }
-
-    LOG_DEBUG("Registered pipeline event handler");
 
     return 0;
 }
