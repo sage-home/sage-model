@@ -7,7 +7,7 @@ int discover_output_properties(struct hdf5_save_info *save_info) {
     
     // First count output properties that have output=true
     int num_props = 0;
-    for (property_id_t id = 0; id < TotGalaxyProperties; id++) {
+    for (property_id_t id = 0; id < (property_id_t)TotGalaxyProperties; id++) {
         const property_meta_t *meta = get_property_meta(id);
         if (meta == NULL) continue;
         
@@ -34,7 +34,7 @@ int discover_output_properties(struct hdf5_save_info *save_info) {
     
     // Fill property info
     int idx = 0;
-    for (property_id_t id = 0; id < TotGalaxyProperties; id++) {
+    for (property_id_t id = 0; id < (property_id_t)TotGalaxyProperties; id++) {
         const property_meta_t *meta = get_property_meta(id);
         if (meta == NULL) continue;
         

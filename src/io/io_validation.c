@@ -1271,7 +1271,7 @@ static int validate_galaxy_values(struct validation_context *ctx,
     extern const int32_t TotGalaxyProperties; // Total number of properties from all modules
     
     // Iterate through all possible property IDs and validate the ones that exist
-    for (property_id_t id = 0; id < TotGalaxyProperties; id++) {
+    for (property_id_t id = 0; id < (property_id_t)TotGalaxyProperties; id++) {
         // Skip properties that are core properties - we already checked those directly
         if (is_core_property(id)) {
             continue;
@@ -1355,7 +1355,7 @@ static int validate_galaxy_consistency(struct validation_context *ctx,
     int num_related = 0;
     
     // Scan all properties to find "Metals*" properties and their corresponding base properties
-    for (property_id_t id = 0; id < TotGalaxyProperties; id++) {
+    for (property_id_t id = 0; id < (property_id_t)TotGalaxyProperties; id++) {
         // Skip properties that don't exist for this galaxy
         if (!has_property(galaxy, id)) {
             continue;
@@ -1374,7 +1374,7 @@ static int validate_galaxy_consistency(struct validation_context *ctx,
             property_id_t base_id = get_cached_property_id(base_name);
             
             // If we found the base property and galaxy has it, add to related list
-            if (base_id != -1 && has_property(galaxy, base_id)) {
+            if (base_id != PROP_COUNT && has_property(galaxy, base_id)) {
                 if (num_related < 20) {
                     related_props[num_related].metals_id = id;
                     related_props[num_related].base_id = base_id;
