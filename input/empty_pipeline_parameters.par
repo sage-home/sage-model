@@ -86,6 +86,6 @@ Reionization_zr			7.0
 EndRedshift			0.0
 
 % Pipeline configuration
-UseConfigFile			./input/config_empty_pipeline.json
+ModuleConfigFile			./input/config_empty_pipeline.json
 EnableModuleDiscovery		1
 ModuleDir			./modules

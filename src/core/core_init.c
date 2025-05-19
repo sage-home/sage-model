@@ -492,7 +492,7 @@ void initialize_config_system(const char *config_file)
             }
         }
     } else {
-        LOG_INFO("Using default configuration (no file specified)");
+        LOG_WARNING("Using default configuration (no file specified)");
     }
 }
 

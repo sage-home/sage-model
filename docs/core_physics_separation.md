@@ -45,7 +45,7 @@ make -f Makefile.empty_pipeline
 
 This will use the `input/empty_pipeline_parameters.par` parameter file, which specifies:
 
-1. `UseConfigFile` pointing to `input/config_empty_pipeline.json`
+1. `ModuleConfigFile` pointing to `input/config_empty_pipeline.json`
 2. The configuration file defines a single placeholder module that does nothing
 
 ## Verifying Core Independence
