@@ -318,8 +318,7 @@ ifeq ($(DO_CHECKS), 1)
   # Common compiler flags
   CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs
   CCFLAGS += $(INCLUDE_DIRS) # Added
-  LIBFLAGS += -lm
-
+  
   # Platform-specific dynamic library linker flags
   ifeq ($(UNAME), Linux)
     LIBFLAGS += -ldl
