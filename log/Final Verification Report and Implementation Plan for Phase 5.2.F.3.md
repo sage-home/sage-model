@@ -52,7 +52,7 @@ The `save_gals_hdf5.c` file requires significant refactoring to comply with the 
      - `src/core/core_build_model.c`
      - `src/physics_pipeline_executor.c`
 
-### 4. Binary Output References Throughout the Codebase
+### 4. Binary Output References Throughout the Codebase ✅ COMPLETED
 
 The binary output format has been fully deprecated in favor of HDF5, but references to binary output still exist throughout the codebase:
 
@@ -126,15 +126,13 @@ Prior to beginning Phase 5.2.G (Physics Module Migration), a thorough cleanup of
 
 #### 5.4 Documentation
 - **Header Documentation**: Ensure all public functions have proper documentation with consistent format
-- **Architecture Documentation**: Update documentation to reflect the final core-physics separation architecture
-- **Module API Documentation**: Clearly document the module API for physics module developers
-- **Property System Documentation**: Create comprehensive documentation for the property system
 
 #### 5.5 Interface Review
 - **Module Interface Consistency**: Ensure all module interfaces follow the same patterns
 - **Core API Stability**: Review core APIs to ensure they're stable and well-defined
 - **Event System Consistency**: Verify consistent event naming and usage patterns
 - **Callback Patterns**: Standardize callback registration and invocation patterns
+
 ### 6. Test Suite Review and Update
 
 The test suite in the `tests` directory requires comprehensive review and updates:
@@ -154,6 +152,17 @@ All tests should be evaluated for:
 - Alignment with the property-based architecture
 
 Tests that are no longer applicable should be archived in the `ignore` directory, while essential tests should be updated to work with the new architecture.
+
+### 7. Final Documentation Updates
+
+- **Architecture Documentation**: Update documentation to reflect the final core-physics separation architecture
+- **Module API Documentation**: Clearly document the module API for physics module developers
+- **Property System Documentation**: Create comprehensive documentation for the property system
+
+Also:
+- Document the core-physics separation pattern
+- Update project logs to reflect completion of the synchronization infrastructure removal
+
 
 ## Implementation Plan
 
