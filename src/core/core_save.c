@@ -284,20 +284,16 @@ int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest
     validation_cleanup(&val_ctx);
 #endif
 
-    // Fall back to existing approach if handler not available or I/O interface not enabled
-    switch(run_params->io.OutputFormat) {
+    // Use HDF5 as the only supported output format
 #ifdef HDF5
-    case(sage_hdf5):
-      status = initialize_hdf5_galaxy_files(rank, save_info, run_params);
-      break;
+    // HDF5 is the standard output format
+    status = initialize_hdf5_galaxy_files(rank, save_info, run_params);
+#else
+    // HDF5 is required
+    io_set_error(IO_ERROR_FORMAT_ERROR, "HDF5 support is required but not compiled in");
+    log_io_error("initialize_galaxy_files", IO_ERROR_FORMAT_ERROR);
+    status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
 #endif
-
-    default:
-      io_set_error(IO_ERROR_FORMAT_ERROR, "Unknown OutputFormat in initialize_galaxy_files()");
-      log_io_error("initialize_galaxy_files", IO_ERROR_FORMAT_ERROR);
-      status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
-      break;
-    }
 
     return status;
 }
@@ -444,19 +440,15 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
     validation_cleanup(&val_ctx);
 #endif
 
-    // Fall back to existing approach if not using I/O interface or if it failed
-    switch(run_params->io.OutputFormat) {
+    // HDF5 is the only supported output format
 #ifdef HDF5
-    case(sage_hdf5):
-        status = save_hdf5_galaxies(task_forestnr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
-        break;
+    status = save_hdf5_galaxies(task_forestnr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
+#else
+    // HDF5 is required
+    io_set_error(IO_ERROR_FORMAT_ERROR, "HDF5 support is required but not compiled in");
+    log_io_error("save_galaxies", IO_ERROR_FORMAT_ERROR);
+    status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
 #endif
-
-    default:
-        io_set_error(IO_ERROR_FORMAT_ERROR, "Unknown OutputFormat in save_galaxies()");
-        log_io_error("save_galaxies", IO_ERROR_FORMAT_ERROR);
-        status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
-    }
 
     myfree(OutputGalOrder);
     return status;
@@ -522,20 +514,15 @@ int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save
     validation_cleanup(&val_ctx);
 #endif
 
-    // Fall back to existing approach if not using I/O interface or if it failed
-    switch(run_params->io.OutputFormat) {
+    // HDF5 is the only supported output format
 #ifdef HDF5
-    case(sage_hdf5):
-        status = finalize_hdf5_galaxy_files(forest_info, save_info, run_params);
-        break;
+    status = finalize_hdf5_galaxy_files(forest_info, save_info, run_params);
+#else
+    // HDF5 is required
+    io_set_error(IO_ERROR_FORMAT_ERROR, "HDF5 support is required but not compiled in");
+    log_io_error("finalize_galaxy_files", IO_ERROR_FORMAT_ERROR);
+    status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
 #endif
-
-    default:
-        io_set_error(IO_ERROR_FORMAT_ERROR, "Unknown OutputFormat in finalize_galaxy_files()");
-        log_io_error("finalize_galaxy_files", IO_ERROR_FORMAT_ERROR);
-        status = map_io_error_to_sage_error(IO_ERROR_FORMAT_ERROR);
-        break;
-    }
 
     return status;
 }
