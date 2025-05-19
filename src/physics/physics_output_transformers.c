@@ -27,17 +27,15 @@
  */
 int transform_output_Cooling(const struct GALAXY *galaxy, property_id_t output_prop_id, 
                             void *output_buffer_element_ptr, const struct params *run_params) {
-    // Get property ID (should match output_prop_id in this case, but safer to look it up)
-    property_id_t cooling_id = get_cached_property_id("Cooling");
     
-    if (cooling_id == PROP_COUNT || !has_property(galaxy, cooling_id)) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
         // Property not found, set default
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
     
     // Get the raw cooling value
-    double raw_cooling = get_double_property(galaxy, cooling_id, 0.0);
+    double raw_cooling = get_double_property(galaxy, output_prop_id, 0.0);
     float *output_val_ptr = (float*)output_buffer_element_ptr;
     
     if (raw_cooling > 0.0) {
@@ -59,17 +57,15 @@ int transform_output_Cooling(const struct GALAXY *galaxy, property_id_t output_p
  */
 int transform_output_Heating(const struct GALAXY *galaxy, property_id_t output_prop_id, 
                            void *output_buffer_element_ptr, const struct params *run_params) {
-    // Get property ID
-    property_id_t heating_id = get_cached_property_id("Heating");
     
-    if (heating_id == PROP_COUNT || !has_property(galaxy, heating_id)) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
         // Property not found, set default
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
     
     // Get the raw heating value
-    double raw_heating = get_double_property(galaxy, heating_id, 0.0);
+    double raw_heating = get_double_property(galaxy, output_prop_id, 0.0);
     float *output_val_ptr = (float*)output_buffer_element_ptr;
     
     if (raw_heating > 0.0) {
@@ -91,17 +87,15 @@ int transform_output_Heating(const struct GALAXY *galaxy, property_id_t output_p
  */
 int transform_output_TimeOfLastMajorMerger(const struct GALAXY *galaxy, property_id_t output_prop_id, 
                                          void *output_buffer_element_ptr, const struct params *run_params) {
-    // Get property ID
-    property_id_t merger_time_id = get_cached_property_id("TimeOfLastMajorMerger");
     
-    if (merger_time_id == PROP_COUNT || !has_property(galaxy, merger_time_id)) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
         // Property not found, set default
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
     
     // Get the raw value
-    float raw_time = get_float_property(galaxy, merger_time_id, 0.0f);
+    float raw_time = get_float_property(galaxy, output_prop_id, 0.0f);
     float *output_val_ptr = (float*)output_buffer_element_ptr;
     
     // Convert to Megayears
@@ -117,17 +111,15 @@ int transform_output_TimeOfLastMajorMerger(const struct GALAXY *galaxy, property
  */
 int transform_output_TimeOfLastMinorMerger(const struct GALAXY *galaxy, property_id_t output_prop_id, 
                                          void *output_buffer_element_ptr, const struct params *run_params) {
-    // Get property ID
-    property_id_t merger_time_id = get_cached_property_id("TimeOfLastMinorMerger");
     
-    if (merger_time_id == PROP_COUNT || !has_property(galaxy, merger_time_id)) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
         // Property not found, set default
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
     
     // Get the raw value
-    float raw_time = get_float_property(galaxy, merger_time_id, 0.0f);
+    float raw_time = get_float_property(galaxy, output_prop_id, 0.0f);
     float *output_val_ptr = (float*)output_buffer_element_ptr;
     
     // Convert to Megayears
@@ -143,17 +135,15 @@ int transform_output_TimeOfLastMinorMerger(const struct GALAXY *galaxy, property
  */
 int transform_output_OutflowRate(const struct GALAXY *galaxy, property_id_t output_prop_id, 
                                void *output_buffer_element_ptr, const struct params *run_params) {
-    // Get property ID
-    property_id_t outflow_id = get_cached_property_id("OutflowRate");
     
-    if (outflow_id == PROP_COUNT || !has_property(galaxy, outflow_id)) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
         // Property not found, set default
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
     
     // Get the raw value
-    float raw_outflow = get_float_property(galaxy, outflow_id, 0.0f);
+    float raw_outflow = get_float_property(galaxy, output_prop_id, 0.0f);
     float *output_val_ptr = (float*)output_buffer_element_ptr;
     
     // Convert to Msun/yr
@@ -170,10 +160,8 @@ int transform_output_OutflowRate(const struct GALAXY *galaxy, property_id_t outp
  */
 int derive_output_SfrDisk(const struct GALAXY *galaxy, property_id_t output_prop_id, 
                         void *output_buffer_element_ptr, const struct params *run_params) {
-    // Get source property ID for SfrDisk array
-    property_id_t sfr_disk_id = get_cached_property_id("SfrDisk");
     
-    if (sfr_disk_id == PROP_COUNT || !has_property(galaxy, sfr_disk_id)) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
         // Property not found, set default
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
@@ -184,7 +172,7 @@ int derive_output_SfrDisk(const struct GALAXY *galaxy, property_id_t output_prop
     
     // Sum over all array elements and calculate average
     for (int step = 0; step < STEPS; step++) {
-        float sfr_disk_val = get_float_array_element_property(galaxy, sfr_disk_id, step, 0.0f);
+        float sfr_disk_val = get_float_array_element_property(galaxy, output_prop_id, step, 0.0f);
         
         // Apply unit conversion for each step
         tmp_SfrDisk += sfr_disk_val * run_params->units.UnitMass_in_g / 
@@ -202,10 +190,8 @@ int derive_output_SfrDisk(const struct GALAXY *galaxy, property_id_t output_prop
  */
 int derive_output_SfrBulge(const struct GALAXY *galaxy, property_id_t output_prop_id, 
                          void *output_buffer_element_ptr, const struct params *run_params) {
-    // Get source property ID for SfrBulge array
-    property_id_t sfr_bulge_id = get_cached_property_id("SfrBulge");
     
-    if (sfr_bulge_id == PROP_COUNT || !has_property(galaxy, sfr_bulge_id)) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
         // Property not found, set default
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
@@ -216,7 +202,7 @@ int derive_output_SfrBulge(const struct GALAXY *galaxy, property_id_t output_pro
     
     // Sum over all array elements and calculate average
     for (int step = 0; step < STEPS; step++) {
-        float sfr_bulge_val = get_float_array_element_property(galaxy, sfr_bulge_id, step, 0.0f);
+        float sfr_bulge_val = get_float_array_element_property(galaxy, output_prop_id, step, 0.0f);
         
         // Apply unit conversion for each step
         tmp_SfrBulge += sfr_bulge_val * run_params->units.UnitMass_in_g / 
@@ -232,8 +218,8 @@ int derive_output_SfrBulge(const struct GALAXY *galaxy, property_id_t output_pro
  * 
  * Calculates average metallicity across steps
  */
-int derive_output_SfrDiskZ(const struct GALAXY *galaxy, property_id_t output_prop_id, 
-                         void *output_buffer_element_ptr, const struct params *run_params) {
+int derive_output_SfrDiskZ(const struct GALAXY *galaxy, property_id_t output_prop_id __attribute__((unused)), 
+                         void *output_buffer_element_ptr, const struct params *run_params __attribute__((unused))) {
     // Get source property IDs
     property_id_t sfr_disk_cold_gas_id = get_cached_property_id("SfrDiskColdGas");
     property_id_t sfr_disk_cold_gas_metals_id = get_cached_property_id("SfrDiskColdGasMetals");
@@ -275,8 +261,8 @@ int derive_output_SfrDiskZ(const struct GALAXY *galaxy, property_id_t output_pro
  * 
  * Calculates average metallicity across steps
  */
-int derive_output_SfrBulgeZ(const struct GALAXY *galaxy, property_id_t output_prop_id, 
-                          void *output_buffer_element_ptr, const struct params *run_params) {
+int derive_output_SfrBulgeZ(const struct GALAXY *galaxy, property_id_t output_prop_id __attribute__((unused)), 
+                          void *output_buffer_element_ptr, const struct params *run_params __attribute__((unused))) {
     // Get source property IDs
     property_id_t sfr_bulge_cold_gas_id = get_cached_property_id("SfrBulgeColdGas");
     property_id_t sfr_bulge_cold_gas_metals_id = get_cached_property_id("SfrBulgeColdGasMetals");
