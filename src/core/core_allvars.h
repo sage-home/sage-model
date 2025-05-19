@@ -55,7 +55,6 @@ enum Valid_OutputFormats
 {
     /* The number of output formats supported by sage */
     sage_hdf5 = 0, /* HDF5 is the standard output format */
-    lhalo_binary_output = 1, /* special functionality to convert *any* supported input mergertree into a lhalo-binary format */
     num_output_format_types
 };
 

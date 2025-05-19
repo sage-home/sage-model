@@ -520,10 +520,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     }
 #endif
 
-    const char format_names[][MAXTAGLEN] = {"sage_hdf5", "lhalo_binary_output"};
-    const enum Valid_OutputFormats format_enums[] = {sage_hdf5, lhalo_binary_output};
+    const char format_names[][MAXTAGLEN] = {"sage_hdf5"};
+    const enum Valid_OutputFormats format_enums[] = {sage_hdf5};
     const int nvalid_format_types  = sizeof(format_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_format_types == 2, EXIT_FAILURE, "nvalid_format_types = %d should have been 2\n", nvalid_format_types);
+    XRETURN(nvalid_format_types == 1, EXIT_FAILURE, "nvalid_format_types = %d should have been 1\n", nvalid_format_types);
     CHECK_VALID_ENUM_IN_PARAM_FILE(io.OutputFormat, nvalid_format_types, format_names, format_enums, my_outputformat);
 
     /* Check that the way forests are distributed over (MPI) tasks is valid */

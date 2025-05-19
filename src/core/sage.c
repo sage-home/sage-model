@@ -35,8 +35,6 @@
 /* main sage -> not exposed externally */
 int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                         struct forest_info *forest_info, struct params *run_params);
-/* additional functionality to convert *any* support mergertree format into the lhalo-binary format */
-int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *run_params, struct forest_info *forest_info);
 
 
 int run_sage(const int ThisTask, const int NTasks, const char *param_file, void **params)
@@ -93,12 +91,6 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
         return EXIT_FAILURE;
     }
 
-
-    /* If we are converting the input mergertree into the lhalo-binary format,
-       then we just run the relevant converter: MS 12/10/2022 */
-    if(run_params->io.OutputFormat == lhalo_binary_output) {
-        return convert_trees_to_lhalo(ThisTask, NTasks, run_params, &forest_info);
-    }
 
     /* If we are here, then we need to run the SAM */
     init(run_params);
@@ -250,14 +242,6 @@ int32_t finalize_sage(void *params)
                 break;
             }
 #endif
-            /* For converting input mergertrees into the lhalo-binary format,
-               there is no final cleanup required */
-        case(lhalo_binary_output):
-            {
-                status = EXIT_SUCCESS;
-                break;
-            }
-
         default:
             {
                 status = EXIT_SUCCESS;
@@ -392,174 +376,4 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     return EXIT_SUCCESS;
 }
 
-/*
-For creating the lhalo tree binary output i.e., converting from the input
-mergertree format into the lhalotree binary format.
-*/
 
-#ifdef USE_BUFFERED_WRITE
-#include "../io/buffered_io.h"
-#endif
-
-int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *run_params, struct forest_info *forest_info)
-{
-    if(forest_info->nforests_this_task > INT_MAX ||  forest_info->nhalos_this_task > INT_MAX) {
-        fprintf(stderr,"Error: Can not correctly cast totnforests (on this task) = %"PRId64" or totnhalos = %"PRId64" "
-                       "to fit within a 4-byte integer (as required by the LHaloTree binary format specification). "
-                       "Converting fewer input files or adding more parallel cores (currently using %d cores) will "
-                       "help alleviate the issue\n",
-                        forest_info->nforests_this_task, forest_info->nhalos_this_task, NTasks);
-        return EXIT_FAILURE;
-    }
-
-    if(forest_info->nforests_this_task == 0) {
-        fprintf(stderr,"ThisTask=%d no forests to process...skipping\n",ThisTask);
-        return EXIT_SUCCESS;
-    }
-
-    /* Now start the conversion */
-    struct timeval tstart;
-    gettimeofday(&tstart, NULL);
-
-    run_params->runtime.interrupted = 0;
-#ifdef VERBOSE
-    if(ThisTask == 0) {
-        init_my_progressbar(stdout, forest_info->nforests_this_task, &(run_params->runtime.interrupted));
-#ifdef MPI
-        if(NTasks > 1) {
-            fprintf(stderr, "Please Note: The progress bar is not precisely reliable in MPI. "
-                    "It should be used as a general indicator only.\n");
-        }
-#endif
-    }
-#endif
-
-    const int64_t nforests_this_task = forest_info->nforests_this_task;
-    int64_t totnhalos = 0;
-
-#define PWRITE_64BIT_TO_32BIT(fd, var, offset, kind_of_var)             \
-    do {                                                                \
-        if(sizeof(var) != sizeof(int64_t)) {                            \
-            fprintf(stderr,"Error: Bug in code - this is only "         \
-            "meant to work on 64 bit integers\n");                      \
-            return EXIT_FAILURE;                                        \
-        }                                                               \
-        if(var > INT_MAX) {                                             \
-            fprintf(stderr,"Error: Number of halos = %"PRId64" does "   \
-                            "not fit inside 32 bits "                   \
-                            "(context = %s)\n", var, kind_of_var);      \
-            return EXIT_FAILURE;                                        \
-        }                                                               \
-        const int32_t var_int32 = (int32_t) var;                        \
-        const ssize_t bytes_written = pwrite(fd, &var_int32,            \
-                                             sizeof(var_int32), offset);\
-        if(bytes_written != sizeof(var_int32)) {                        \
-            fprintf(stderr,"Error: Wrote %zd bytes instead of "         \
-                        "the required %zu bytes\n",                     \
-                        bytes_written, sizeof(var_int32));              \
-            perror(NULL);                                               \
-            return EXIT_FAILURE;                                        \
-        }                                                               \
-    } while (0)
-
-    char buffer[3*MAX_STRING_LEN + 1];
-    snprintf(buffer, 3*MAX_STRING_LEN, "%s%s.%d", run_params->io.OutputDir,
-             run_params->io.FileNameGalaxies, ThisTask);
-    int fd = open(buffer, O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-    XRETURN(fd > 0, EXIT_FAILURE, "Error: Could not open filename = %s\n", buffer);
-
-    //PWRITE does not update the file offset -> will need to be adjusted manually
-    PWRITE_64BIT_TO_32BIT(fd, nforests_this_task, 0, "total number of forests");
-    PWRITE_64BIT_TO_32BIT(fd, totnhalos, 4, "total number of halos (initial, set to 0)");
-
-    const off_t nhalos_per_forest_bytes = sizeof(int32_t)*nforests_this_task;
-    //since the previous writes for totnforests and totnhalos were with pwrite
-    //we need to adjust the file offset for those two 32-bit integers
-    const off_t halo_data_start_offset = 4 + 4 + nhalos_per_forest_bytes;
-
-    XRETURN(lseek(fd, halo_data_start_offset, SEEK_SET) == halo_data_start_offset,
-            EXIT_FAILURE,
-            "Error: Could not seek to %llu bytes to write the "
-            "start of the halo data from the first forest",
-            (unsigned long long) halo_data_start_offset);
-
-#ifdef USE_BUFFERED_WRITE
-    const size_t buffer_size = 4 * 1024 * 1024; //4 MB
-    struct buffered_io buf_io;
-    int status = setup_buffered_io(&buf_io, buffer_size, fd, halo_data_start_offset);
-    if(status != EXIT_SUCCESS)
-    {
-        fprintf(stderr,"Error: Could not setup buffered io\n");
-        return -1;
-    }
-#endif
-
-    /* simulation merger-tree data */
-    struct halo_data *Halo = NULL;
-    for(int64_t forestnr=0; forestnr < nforests_this_task; forestnr++) {
-#ifdef VERBOSE
-        if(ThisTask == 0) {
-            my_progressbar(stdout, forestnr, &(run_params->runtime.interrupted));
-            fflush(stdout);
-        }
-#endif
-
-        /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
-        const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
-        XRETURN(nhalos > 0, nhalos, "Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
-        XRETURN(nhalos <= INT_MAX, EXIT_FAILURE,
-                "Error: Number of halos = %"PRId64" must be > 0 *and* also fit inside 32 bits\n",
-                nhalos);
-        const size_t numbytes = sizeof(struct halo_data)*nhalos;
-#ifdef USE_BUFFERED_WRITE
-        status = write_buffered_io( &buf_io, Halo, numbytes);
-        if(status < 0) {
-            fprintf(stderr,"Error: Could not write (buffered). forestnr = %"PRId64" number of bytes = %zu\n", forestnr, numbytes);
-            return status;
-        }
-#else
-        mywrite(fd, Halo, numbytes);//write updates the file offset
-#endif
-        const off_t nh_per_tree_offset = sizeof(int32_t) + sizeof(int32_t) + forestnr * sizeof(int32_t);
-        PWRITE_64BIT_TO_32BIT(fd, nhalos, nh_per_tree_offset, "nhalos per tree");//pwrite does not update file offset
-
-        myfree(Halo);
-        totnhalos += nhalos;
-    }
-#ifdef USE_BUFFERED_WRITE
-    status = cleanup_buffered_io(&buf_io);
-    if(status != EXIT_SUCCESS) {
-        fprintf(stderr,"Error: Could not finalise the output file\n");
-        return status;
-    }
-#endif
-
-    /* Check that totnhalos fits within a 4 byte integer and write to the file */
-    PWRITE_64BIT_TO_32BIT(fd, totnhalos, 4, "total number of halos in file");
-
-    if(forest_info->nhalos_this_task > 0) {
-        XRETURN(totnhalos == forest_info->nhalos_this_task, -1,
-                "Error: Expected totnhalos written out = %"PRId64" to "
-                "be *exactly* equal to forests_info->nhalos_this_task = %"PRId64"\n",
-                totnhalos, forest_info->nhalos_this_task);
-    }
-
-    XRETURN(close(fd) == 0, EXIT_FAILURE, "Error while closing the output binary file");
-
-    /* sage is done running -> do the cleanup */
-    cleanup_forests_io(run_params->io.TreeType, forest_info);
-
-#ifdef VERBOSE
-    if(ThisTask == 0) {
-        finish_myprogressbar(stdout, &(run_params->runtime.interrupted));
-    }
-    fflush(stdout);
-    struct timeval tend;
-    gettimeofday(&tend, NULL);
-    char *time_string = get_time_string(tstart, tend);
-    fprintf(stderr,"ThisTask = %d done processing all forests assigned. Time taken = %s\n", ThisTask, time_string);
-    free(time_string);
-#endif
-
-    return EXIT_SUCCESS;
-}

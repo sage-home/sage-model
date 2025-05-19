@@ -91,6 +91,7 @@
 - [x] Complete `log/Implementation Plan for Output Transformers.md` - Phase 1-2
 - [x] Complete `log/core-physics-separation-req.md`
 - [x] Complete `log/Implementation Plan for Output Transformers.md` - Phase 3-6
+- [ ] Binary code removal (in steps - DO NOT check off until explicitly told)
 - [ ] Complete `log/Final Verification Report and Implementation Plan for Phase 5.2.F.3.md` 
 - [ ] Final verification of clean core-physics separation
 

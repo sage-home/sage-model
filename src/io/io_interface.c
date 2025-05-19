@@ -405,8 +405,6 @@ int io_map_output_format_to_format_id(int output_format) {
     switch (output_format) {
         case sage_hdf5:
             return IO_FORMAT_HDF5_OUTPUT;
-        case lhalo_binary_output:
-            return IO_FORMAT_LHALO_BINARY;  // Special case for conversion
         default:
             io_set_error(IO_ERROR_VALIDATION_FAILED, "Unknown output format");
             return -1;
