@@ -88,9 +88,9 @@
 - [x] Clean up any remaining legacy references
 - [x] Remove all synchronization infrastructure after verification
 - [x] Reorganize physics files to ensure core-physics separation
-- [x] Complete `log/Implementation Plan for Output Transformers.md` - Phase 1-2
-- [x] Complete `log/core-physics-separation-req.md`
-- [x] Complete `log/Implementation Plan for Output Transformers.md` - Phase 3-6
+- [x] Complete `Implementation Plan for Output Transformers.md` - Phase 1-2
+- [x] Complete `core-physics-separation-req.md`
+- [x] Complete `Implementation Plan for Output Transformers.md` - Phase 3-6
 - [x] Binary code removal
 - [ ] Comprehensive code cleanup
 - [ ] Test suite review and update
