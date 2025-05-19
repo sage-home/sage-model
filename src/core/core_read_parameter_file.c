@@ -35,7 +35,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 {
     int errorFlag = 0;
     int *used_tag = 0;
-    char my_treetype[MAX_STRING_LEN], my_outputformat[MAX_STRING_LEN], my_forest_dist_scheme[MAX_STRING_LEN];
+    char my_treetype[MAX_STRING_LEN], my_forest_dist_scheme[MAX_STRING_LEN];
     /*  recipe parameters  */
     int NParam = 0;
     char ParamTag[MAXTAGS][MAXTAGLEN + 1];
@@ -226,11 +226,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     strncpy(ParamTag[NParam], "NumOutputs", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->simulation.NumSnapOutputs);
     ParamID[NParam++] = INT;
-
-    /* I/O parameters */
-    strncpy(ParamTag[NParam], "OutputFormat", MAXTAGLEN);
-    ParamAddr[NParam] = my_outputformat;
-    ParamID[NParam++] = STRING;
 
     /* Runtime parameters */
     strncpy(ParamTag[NParam], "ForestDistributionScheme", MAXTAGLEN);
@@ -511,28 +506,22 @@ int read_parameter_file(const char *fname, struct params *run_params)
     BUILD_BUG_OR_ZERO((nvalid_tree_types == (int) num_tree_types), number_of_tree_types_is_incorrect);
     CHECK_VALID_ENUM_IN_PARAM_FILE(io.TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
 
-    /* Check output data type is valid. */
+    /* HDF5 is the only supported output format */
 #ifndef HDF5
-    if(strncmp(my_outputformat, "sage_hdf5", MAX_STRING_LEN-1) == 0) {
-        fprintf(stderr, "You have specified to use HDF5 output format but have not compiled with the HDF5 option enabled.\n");
-        fprintf(stderr, "Please check your file type and compiler options.\n");
-        ABORT(EXIT_FAILURE);
-    }
+    fprintf(stderr, "SAGE requires HDF5 support. Please compile with the HDF5 option enabled.\n");
+    ABORT(EXIT_FAILURE);
 #endif
 
-    const char format_names[][MAXTAGLEN] = {"sage_hdf5"};
-    const enum Valid_OutputFormats format_enums[] = {sage_hdf5};
-    const int nvalid_format_types  = sizeof(format_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_format_types == 1, EXIT_FAILURE, "nvalid_format_types = %d should have been 1\n", nvalid_format_types);
-    CHECK_VALID_ENUM_IN_PARAM_FILE(io.OutputFormat, nvalid_format_types, format_names, format_enums, my_outputformat);
+    /* Set output format to HDF5 - no need to check parameter file value */
+    run_params->io.OutputFormat = sage_hdf5;
 
     /* Check that the way forests are distributed over (MPI) tasks is valid */
     const char scheme_names[][MAXTAGLEN] = {"uniform_in_forests", "linear_in_nhalos", "quadratic_in_nhalos", "exponent_in_nhalos", "generic_power_in_nhalos"};
     const enum Valid_Forest_Distribution_Schemes scheme_enums[] = {uniform_in_forests, linear_in_nhalos,
                                                                    quadratic_in_nhalos, exponent_in_nhalos, generic_power_in_nhalos};
     const int nvalid_scheme_types  = sizeof(scheme_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_scheme_types == num_forest_weight_types, EXIT_FAILURE, "nvalid_format_types = %d should have been %d\n",
-            nvalid_format_types, num_forest_weight_types);
+    XRETURN(nvalid_scheme_types == num_forest_weight_types, EXIT_FAILURE, "nvalid_scheme_types = %d should have been %d\n",
+            nvalid_scheme_types, num_forest_weight_types);
 
     CHECK_VALID_ENUM_IN_PARAM_FILE(runtime.ForestDistributionScheme, nvalid_scheme_types, scheme_names, scheme_enums, my_forest_dist_scheme);
 #undef CHECK_VALID_ENUM_IN_PARAM_FILE

@@ -268,6 +268,6 @@
 - Simplified I/O interface mapping code to exclusively handle HDF5
 - Modified build configuration to remove binary output compilation flags
 - Disabled binary output tests as this format is no longer supported
-- Modified files: src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/core/core_save.c, src/io/io_interface.c, Makefile, 
+- Modified files: src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/core/core_save.c, src/core/sage.c, src/io/io_interface.c, Makefile, 
 src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/io_validation.c, src/io/io_validation.h
-- Removed file (to `ignore`): src/io/buffered_io.c, src/io/buffered_io.h
+- Removed files (to `ignore`): src/io/buffered_io.c, src/io/buffered_io.h

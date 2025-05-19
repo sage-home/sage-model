@@ -51,6 +51,7 @@ struct HDF5_METADATA_NAMES
 };
 
 
+/* Output formats enum - only HDF5 is supported */
 enum Valid_OutputFormats
 {
     /* The number of output formats supported by sage */

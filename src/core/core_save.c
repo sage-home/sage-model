@@ -110,6 +110,9 @@ static int io_system_initialized = 0;
 // `save_info` for access later.
 int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
 {
+    // Note: forest_info parameter is currently unused in this function but kept for API consistency.
+    // TODO: Revisit whether this parameter can be removed in future refactoring.
+    
     int32_t status;
 
     if(run_params->simulation.NumSnapOutputs > ABSOLUTEMAXSNAPS) {

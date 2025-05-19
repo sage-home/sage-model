@@ -214,40 +214,33 @@ int32_t finalize_sage(void *params)
     /* Log the finalization */
     LOG_INFO("Finalizing SAGE execution");
 
-    switch(run_params->io.OutputFormat)
-        {
+    // HDF5 is the only supported output format
 #ifdef HDF5
-        case(sage_hdf5):
-            {
-                status = create_hdf5_master_file(run_params);
-#ifdef VERBOSE
-                /* Check if anything was not cleaned up */
-                ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
-                if(nleaks > 0) {
-                    fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
-#define CHECK_SPECIFIC_HDF5_LEAK(objtype, h5_obj_type) {    \
+    status = create_hdf5_master_file(run_params);
+    #ifdef VERBOSE
+    /* Check if anything was not cleaned up */
+    ssize_t nleaks = H5Fget_obj_count(H5F_OBJ_ALL, H5F_OBJ_ALL);
+    if(nleaks > 0) {
+        fprintf(stderr,"Warning: Looks like there are %zd leaks associated with the hdf5 files.\n", nleaks);
+        #define CHECK_SPECIFIC_HDF5_LEAK(objtype, h5_obj_type) {    \
             nleaks = H5Fget_obj_count(H5F_OBJ_ALL, h5_obj_type);\
             if(nleaks > 0) {\
                 fprintf(stderr, "Number of open %s = %zd\n", #objtype, nleaks);\
             }\
         }
-                    CHECK_SPECIFIC_HDF5_LEAK("files", H5F_OBJ_FILE);
-                    CHECK_SPECIFIC_HDF5_LEAK("datasets", H5F_OBJ_DATASET);
-                    CHECK_SPECIFIC_HDF5_LEAK("groups", H5F_OBJ_GROUP);
-                    CHECK_SPECIFIC_HDF5_LEAK("datatypes", H5F_OBJ_DATATYPE);
-                    CHECK_SPECIFIC_HDF5_LEAK("attributes", H5F_OBJ_ATTR);
-#undef CHECK_SPECIFIC_HDF5_LEAK
-                }
+        CHECK_SPECIFIC_HDF5_LEAK("files", H5F_OBJ_FILE);
+        CHECK_SPECIFIC_HDF5_LEAK("datasets", H5F_OBJ_DATASET);
+        CHECK_SPECIFIC_HDF5_LEAK("groups", H5F_OBJ_GROUP);
+        CHECK_SPECIFIC_HDF5_LEAK("datatypes", H5F_OBJ_DATATYPE);
+        CHECK_SPECIFIC_HDF5_LEAK("attributes", H5F_OBJ_ATTR);
+        #undef CHECK_SPECIFIC_HDF5_LEAK
+    }
+    #endif
+#else
+    /* HDF5 is required */
+    LOG_ERROR("HDF5 support is required but not compiled in");
+    status = EXIT_FAILURE;
 #endif
-                break;
-            }
-#endif
-        default:
-            {
-                status = EXIT_SUCCESS;
-                break;
-            }
-        }
 
     /* Ensure logging is cleaned up before params are freed */
     cleanup_logging();

@@ -402,12 +402,8 @@ int io_map_tree_type_to_format_id(int tree_type) {
  * @return Corresponding format ID
  */
 int io_map_output_format_to_format_id(int output_format) {
-    if (output_format == sage_hdf5) {
-        return IO_FORMAT_HDF5_OUTPUT;
-    }
-    
-    io_set_error(IO_ERROR_VALIDATION_FAILED, "Unknown output format");
-    return -1;
+    /* HDF5 is the only supported output format */
+    return IO_FORMAT_HDF5_OUTPUT;
 }
 
 /**
