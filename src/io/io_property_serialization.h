@@ -24,7 +24,8 @@ extern "C" {
 /**
  * @brief Magic marker to identify extended property data
  * 
- * This marker appears in binary files to indicate the start of extended property data.
+ * This marker was used in binary files to indicate the start of extended property data.
+ * Kept for historical reference only, as binary format is no longer supported.
  */
 #define PROPERTY_SERIALIZATION_MAGIC 0x45585450  // "EXTP" in ASCII hex
 
@@ -157,12 +158,13 @@ size_t property_serialization_data_size(struct property_serialization_context *c
 /**
  * @brief Create a binary property header
  * 
- * Creates a binary representation of the property metadata.
+ * This function is deprecated as binary output format is no longer supported.
+ * Kept for reference only.
  * 
  * @param ctx Serialization context
  * @param output_buffer Output buffer for the header
  * @param buffer_size Size of the output buffer
- * @return Size of the header on success, negative value on failure
+ * @return -1 to indicate error/unsupported operation
  */
 int64_t property_serialization_create_header(struct property_serialization_context *ctx,
                                            void *output_buffer,
@@ -171,12 +173,13 @@ int64_t property_serialization_create_header(struct property_serialization_conte
 /**
  * @brief Parse a binary property header
  * 
- * Extracts property metadata from a binary header.
+ * This function is deprecated as binary output format is no longer supported.
+ * Kept for reference only.
  * 
  * @param ctx Serialization context
  * @param input_buffer Input buffer containing the header
  * @param buffer_size Size of the input buffer
- * @return 0 on success, non-zero on failure
+ * @return -1 to indicate error/unsupported operation
  */
 int property_serialization_parse_header(struct property_serialization_context *ctx,
                                       const void *input_buffer,

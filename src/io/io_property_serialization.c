@@ -346,224 +346,39 @@ size_t property_serialization_data_size(struct property_serialization_context *c
 /**
  * @brief Create a binary property header
  * 
- * Creates a binary representation of the property metadata.
+ * This function is deprecated as binary output format is no longer supported.
+ * Kept for reference only.
  * 
  * @param ctx Serialization context
  * @param output_buffer Output buffer for the header
  * @param buffer_size Size of the output buffer
- * @return Size of the header on success, negative value on failure
+ * @return -1 to indicate error/unsupported operation
  */
 int64_t property_serialization_create_header(struct property_serialization_context *ctx,
                                           void *output_buffer,
                                           size_t buffer_size) {
-    if (ctx == NULL || output_buffer == NULL) {
-        return -1;
-    }
-    
-    // Calculate minimum header size
-    size_t min_size = sizeof(uint32_t) +  // Magic marker
-                      sizeof(int) +       // Version
-                      sizeof(int) +       // Number of properties
-                      sizeof(size_t);     // Total size per galaxy
-    
-    // Add size for property metadata
-    min_size += ctx->num_properties * sizeof(struct serialized_property_meta);
-    
-    if (buffer_size < min_size) {
-        return -1;
-    }
-    
-    // Current position in buffer
-    char *pos = (char *)output_buffer;
-    
-    // Write magic marker
-    uint32_t magic = PROPERTY_SERIALIZATION_MAGIC;
-    if (ctx->endian_swap) {
-        magic = host_to_network_uint32(magic);
-    }
-    memcpy(pos, &magic, sizeof(uint32_t));
-    pos += sizeof(uint32_t);
-    
-    // Write version
-    int version = ctx->version;
-    if (ctx->endian_swap) {
-        swap_endianness(&version, sizeof(int), 1);
-    }
-    memcpy(pos, &version, sizeof(int));
-    pos += sizeof(int);
-    
-    // Write number of properties
-    int num_props = ctx->num_properties;
-    if (ctx->endian_swap) {
-        swap_endianness(&num_props, sizeof(int), 1);
-    }
-    memcpy(pos, &num_props, sizeof(int));
-    pos += sizeof(int);
-    
-    // Write total size per galaxy
-    size_t total_size = ctx->total_size_per_galaxy;
-    if (ctx->endian_swap) {
-        swap_endianness(&total_size, sizeof(size_t), 1);
-    }
-    memcpy(pos, &total_size, sizeof(size_t));
-    pos += sizeof(size_t);
-    
-    // Write property metadata
-    for (int i = 0; i < ctx->num_properties; i++) {
-        struct serialized_property_meta prop = ctx->properties[i];
-        
-        // Endian conversion for numeric fields
-        if (ctx->endian_swap) {
-            swap_endianness(&prop.type, sizeof(enum galaxy_property_type), 1);
-            swap_endianness(&prop.size, sizeof(size_t), 1);
-            swap_endianness(&prop.flags, sizeof(uint32_t), 1);
-            swap_endianness(&prop.offset, sizeof(int64_t), 1);
-        }
-        
-        // Copy property metadata
-        memcpy(pos, &prop, sizeof(struct serialized_property_meta));
-        pos += sizeof(struct serialized_property_meta);
-    }
-    
-    // Return total header size
-    return pos - (char *)output_buffer;
+    // Binary output format is no longer supported
+    LOG_ERROR("Binary output format is deprecated and no longer supported");
+    return -1;
 }
 
 /**
  * @brief Parse a binary property header
  * 
- * Extracts property metadata from a binary header.
+ * This function is deprecated as binary output format is no longer supported.
+ * Kept for reference only.
  * 
  * @param ctx Serialization context
  * @param input_buffer Input buffer containing the header
  * @param buffer_size Size of the input buffer
- * @return 0 on success, non-zero on failure
+ * @return -1 to indicate error/unsupported operation
  */
 int property_serialization_parse_header(struct property_serialization_context *ctx,
                                       const void *input_buffer,
                                       size_t buffer_size) {
-    if (ctx == NULL || input_buffer == NULL) {
-        return -1;
-    }
-    
-    // Minimum header size for validity check
-    size_t min_size = sizeof(uint32_t) +  // Magic marker
-                      sizeof(int) +       // Version
-                      sizeof(int) +       // Number of properties
-                      sizeof(size_t);     // Total size per galaxy
-    
-    if (buffer_size < min_size) {
-        return -1;
-    }
-    
-    // Current position in buffer
-    const char *pos = (const char *)input_buffer;
-    
-    // Read and verify magic marker
-    uint32_t magic;
-    memcpy(&magic, pos, sizeof(uint32_t));
-    pos += sizeof(uint32_t);
-    
-    // Check system endianness vs. file endianness
-    bool needs_swap = false;
-    if (magic != PROPERTY_SERIALIZATION_MAGIC) {
-        // Try swapped endianness
-        uint32_t swapped_magic = swap_bytes_uint32(magic);
-        if (swapped_magic == PROPERTY_SERIALIZATION_MAGIC) {
-            needs_swap = true;
-        } else {
-            // Not a valid property header
-            return -1;
-        }
-    }
-    
-    ctx->endian_swap = needs_swap;
-    
-    // Read version
-    int version;
-    memcpy(&version, pos, sizeof(int));
-    if (needs_swap) {
-        swap_endianness(&version, sizeof(int), 1);
-    }
-    pos += sizeof(int);
-    
-    if (version > PROPERTY_SERIALIZATION_VERSION) {
-        // Newer version than we support
-        return -1;
-    }
-    
-    ctx->version = version;
-    
-    // Read number of properties
-    int num_props;
-    memcpy(&num_props, pos, sizeof(int));
-    if (needs_swap) {
-        swap_endianness(&num_props, sizeof(int), 1);
-    }
-    pos += sizeof(int);
-    
-    if (num_props < 0 || num_props > MAX_GALAXY_EXTENSIONS) {
-        // Invalid number of properties
-        return -1;
-    }
-    
-    // Read total size per galaxy
-    size_t total_size;
-    memcpy(&total_size, pos, sizeof(size_t));
-    if (needs_swap) {
-        swap_endianness(&total_size, sizeof(size_t), 1);
-    }
-    pos += sizeof(size_t);
-    
-    // Check if buffer contains complete header
-    size_t expected_size = min_size + num_props * sizeof(struct serialized_property_meta);
-    if (buffer_size < expected_size) {
-        return -1;
-    }
-    
-    // Allocate property metadata array
-    ctx->properties = calloc(num_props, sizeof(struct serialized_property_meta));
-    ctx->property_id_map = calloc(num_props, sizeof(int));
-    
-    if (ctx->properties == NULL || ctx->property_id_map == NULL) {
-        free(ctx->properties);
-        free(ctx->property_id_map);
-        ctx->properties = NULL;
-        ctx->property_id_map = NULL;
-        return -1;
-    }
-    
-    // Read property metadata
-    for (int i = 0; i < num_props; i++) {
-        struct serialized_property_meta prop;
-        memcpy(&prop, pos, sizeof(struct serialized_property_meta));
-        pos += sizeof(struct serialized_property_meta);
-        
-        // Endian conversion for numeric fields
-        if (needs_swap) {
-            swap_endianness(&prop.type, sizeof(enum galaxy_property_type), 1);
-            swap_endianness(&prop.size, sizeof(size_t), 1);
-            swap_endianness(&prop.flags, sizeof(uint32_t), 1);
-            swap_endianness(&prop.offset, sizeof(int64_t), 1);
-        }
-        
-        // Store property metadata
-        ctx->properties[i] = prop;
-        
-        // Try to map to extension registry
-        const galaxy_property_t *reg_prop = galaxy_extension_find_property(prop.name);
-        if (reg_prop != NULL) {
-            ctx->property_id_map[i] = reg_prop->extension_id;
-        } else {
-            // Property not found in registry, mark as unmapped
-            ctx->property_id_map[i] = -1;
-        }
-    }
-    
-    ctx->num_properties = num_props;
-    ctx->total_size_per_galaxy = total_size;
-    
-    return 0;
+    // Binary output format is no longer supported
+    LOG_ERROR("Binary output format is deprecated and no longer supported");
+    return -1;
 }
 
 /**
