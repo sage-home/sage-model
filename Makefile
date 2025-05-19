@@ -95,7 +95,7 @@ endif
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
         io/ctrees_utils.c io/forest_utils.c \
-        io/buffered_io.c io/io_interface.c io/io_galaxy_output.c \
+        io/io_interface.c io/io_galaxy_output.c \
         io/io_endian_utils.c io/io_lhalo_binary.c io/io_property_serialization.c \
         io/io_hdf5_output.c io/io_validation.c \
         io/io_buffer_manager.c io/io_memory_map.c
