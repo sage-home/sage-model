@@ -401,8 +401,9 @@ int io_map_tree_type_to_format_id(int tree_type) {
  * @param output_format OutputFormat from core_allvars.h as integer
  * @return Corresponding format ID
  */
-int io_map_output_format_to_format_id(int output_format) {
+int io_map_output_format_to_format_id(int output_format __attribute__((unused))) {
     /* HDF5 is the only supported output format */
+    /* But keeping open the option for different output formats in the future */
     return IO_FORMAT_HDF5_OUTPUT;
 }
 

@@ -513,6 +513,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 #endif
 
     /* Set output format to HDF5 - no need to check parameter file value */
+    /* But keeping open the option for different output formats in the future */
     run_params->io.OutputFormat = sage_hdf5;
 
     /* Check that the way forests are distributed over (MPI) tasks is valid */
