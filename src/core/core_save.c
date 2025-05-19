@@ -108,10 +108,8 @@ static int io_system_initialized = 0;
 
 // Open up all the required output files and remember their file handles.  These are placed into
 // `save_info` for access later.
-int32_t initialize_galaxy_files(const int rank, const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
+int32_t initialize_galaxy_files(const int rank, struct save_info *save_info, const struct params *run_params)
 {
-    // Note: forest_info parameter is currently unused in this function but kept for API consistency.
-    // TODO: Revisit whether this parameter can be removed in future refactoring.
     
     int32_t status;
 

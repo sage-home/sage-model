@@ -17,7 +17,7 @@ extern "C" {
     #define USE_IO_INTERFACE 1
     
     /* Functions in core_save.c */
-    extern int32_t initialize_galaxy_files(const int filenr, const struct forest_info *forest_info,
+    extern int32_t initialize_galaxy_files(const int filenr,
                                            struct save_info *save_info,
                                            const struct params *run_params);
 

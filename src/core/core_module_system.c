@@ -2618,7 +2618,7 @@ int module_register_properties(int module_id, const GalaxyPropertyInfo *properti
         memset(&prop_to_register, 0, sizeof(galaxy_property_t));
 
         // Name
-        if (info->name == NULL || info->name[0] == '\0') {
+        if (info->name[0] == '\0') {
             LOG_ERROR("Module %d property %d: Name is NULL or empty. Skipping.", module_id, i);
             continue;
         }
@@ -2629,11 +2629,11 @@ int module_register_properties(int module_id, const GalaxyPropertyInfo *properti
         prop_to_register.module_id = module_id;
 
         // Description and Units
-        if (info->description) {
+        if (info->description[0] != '\0') {
             strncpy(prop_to_register.description, info->description, MAX_PROPERTY_DESCRIPTION - 1);
             prop_to_register.description[MAX_PROPERTY_DESCRIPTION - 1] = '\0';
         }
-        if (info->units) {
+        if (info->units[0] != '\0') {
             strncpy(prop_to_register.units, info->units, MAX_PROPERTY_UNITS - 1);
             prop_to_register.units[MAX_PROPERTY_UNITS - 1] = '\0';
         }
@@ -2649,7 +2649,7 @@ int module_register_properties(int module_id, const GalaxyPropertyInfo *properti
 
 
         // Type and Size from GalaxyPropertyInfo.type_str
-        if (info->type_str == NULL) {
+        if (info->type_str[0] == '\0') {
             LOG_ERROR("Module %d property '%s': type_str is NULL. Skipping.", module_id, info->name);
             continue;
         }

@@ -133,7 +133,7 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     fflush(stdout);
 
     /* open all the output files corresponding to this tree file (specified by rank) */
-    status = initialize_galaxy_files(ThisTask, &forest_info, &save_info, run_params);
+    status = initialize_galaxy_files(ThisTask, &save_info, run_params);
     if(status != EXIT_SUCCESS) {
         return status;
     }
