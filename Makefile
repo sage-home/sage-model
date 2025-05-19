@@ -12,12 +12,6 @@ USE-BUFFERED-WRITE := yes  # Enable chunked output for better performance
 MAKE-SHARED-LIB := yes     # Build shared library instead of static
 # MAKE-VERBOSE := yes      # Enable verbose information messages
 
-# -------------- Core-Physics Separation Options --------------
-# Physics modules can be disabled for core-only builds
-ifndef PHYSICS_MODULES
-PHYSICS_MODULES := yes
-endif
-
 # Property definition file can be changed
 ifndef PROPERTIES_FILE
 PROPERTIES_FILE := properties.yaml
@@ -63,7 +57,6 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/generated_output_transformers.c
 
 # Physics model source files
-ifeq ($(PHYSICS_MODULES), yes)
 PHYSICS_SRC := physics/placeholder_empty_module.c \
         physics/placeholder_cooling_module.c physics/placeholder_infall_module.c \
         physics/placeholder_output_module.c \
@@ -73,24 +66,6 @@ PHYSICS_SRC := physics/placeholder_empty_module.c \
         physics/placeholder_mergers_module.c \
         physics/placeholder_model_misc.c physics/placeholder_validation.c \
         physics/placeholder_hdf5_save.c physics/physics_output_transformers.c
-# Example modules not included in standard build but available for special configurations
-# physics/example_galaxy_extension.c \
-# physics/example_event_handler.c
-else
-# Include only placeholder modules for core-only build
-PHYSICS_SRC := physics/placeholder_empty_module.c \
-        physics/placeholder_cooling_module.c physics/placeholder_infall_module.c \
-        physics/placeholder_output_module.c \
-        physics/placeholder_starformation_module.c \
-        physics/placeholder_disk_instability_module.c \
-        physics/placeholder_reincorporation_module.c \
-        physics/placeholder_mergers_module.c \
-        physics/placeholder_model_misc.c physics/placeholder_validation.c \
-        physics/placeholder_hdf5_save.c physics/physics_output_transformers.c
-        physics/placeholder_mergers_module.c \
-        physics/placeholder_model_misc.c physics/placeholder_validation.c \
-        physics/placeholder_hdf5_save.c
-endif
 
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
@@ -334,19 +309,9 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all core-only $(EXEC)-core-only test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_binary_output test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
 
 all: $(SAGELIB) $(EXEC)
-
-# Core-only build target
-core-only: 
-	@echo "Building core-only infrastructure..."
-	@PHYSICS_MODULES=no CCFLAGS="$(CCFLAGS) -DCORE_ONLY" $(MAKE) $(SAGELIB)
-
-# Core-only executable
-$(EXEC)-core-only: core-only $(SRC_PREFIX)/core/main.c
-	@echo "Building core-only executable..."
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -DCORE_ONLY $(SRC_PREFIX)/core/main.c -L. -l$(LIBNAME) $(LIBFLAGS) -o $@
 
 $(EXEC): $(OBJS)
 	$(CC) $^ $(LIBFLAGS) -o $@

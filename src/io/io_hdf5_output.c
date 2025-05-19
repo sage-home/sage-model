@@ -13,11 +13,6 @@
 #include "../core/core_property_descriptor.h"  // For GalaxyPropertyInfo
 #include "../core/core_property_utils.h" // Added for new helper functions
 
-#ifdef CORE_ONLY
-#include "../physics/placeholder_hdf5_macros.h"
-#else
-#include "../physics/legacy/model_misc.h"
-#endif
 #include "io_interface.h"
 #include "io_hdf5_utils.h"
 #include "io_property_serialization.h"

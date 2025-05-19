@@ -24,14 +24,6 @@
 #include <hdf5.h>
 #endif
 
-// Include physics headers based on build configuration
-#ifdef CORE_ONLY
-#include "../physics/placeholder_hdf5_save.h"
-#include "../physics/placeholder_model_misc.h"
-#else
-#include "../physics/legacy/model_misc.h"
-#endif
-
 // Forward declaration of the total number of properties
 extern const int32_t TotGalaxyProperties;
 

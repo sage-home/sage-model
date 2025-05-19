@@ -97,13 +97,13 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
                 ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Mvir(g);
             }
             else if (strcmp(buffer->name, "CentralMvir") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = get_virial_mass(halos[GALAXY_PROP_HaloNr(g)].FirstHaloInFOFgroup, halos, run_params);
+                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_CentralMvir(g);
             }
             else if (strcmp(buffer->name, "Rvir") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = get_virial_radius(GALAXY_PROP_HaloNr(g), halos, run_params);
+                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Rvir(g);
             }
             else if (strcmp(buffer->name, "Vvir") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = get_virial_velocity(GALAXY_PROP_HaloNr(g), halos, run_params);
+                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Vvir(g);
             }
             else if (strcmp(buffer->name, "Vmax") == 0) {
                 ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Vmax(g);
