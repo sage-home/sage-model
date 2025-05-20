@@ -115,4 +115,54 @@ The binary output format is now deprecated and removed. All output is now perfor
 1. Better compatibility with analysis tools
 2. Support for metadata and attributes
 3. Hierarchical organization of data
-4. Improved portability across platforms
+4. Improved portability across platforms infrastructure remains physics-agnostic while allowing for flexible and extensible output formatting.
+
+## Adding New Output Properties
+
+To add a new property to the output:
+
+1. Define the property in `properties.yaml` with the `output: true` flag
+2. If special transformation is needed, add an `output_transformer_function` field
+3. Implement the transformer function in `physics_output_transformers.c`
+4. Update the declaration in `physics_output_transformers.h`
+
+Example:
+
+```yaml
+# In properties.yaml
+- name: MyCustomProperty
+  type: float
+  initial_value: 0.0
+  units: "custom_units"
+  description: "My custom property"
+  output: true
+  output_transformer_function: "transform_output_MyCustomProperty"
+```
+
+```c
+// In physics_output_transformers.h
+int transform_output_MyCustomProperty(const struct GALAXY *galaxy, property_id_t output_prop_id, 
+                                    void *output_buffer_element_ptr, const struct params *run_params);
+
+// In physics_output_transformers.c
+int transform_output_MyCustomProperty(const struct GALAXY *galaxy, property_id_t output_prop_id, 
+                                    void *output_buffer_element_ptr, const struct params *run_params) {
+    // Get the property value using generic property access
+    float raw_value = get_float_property(galaxy, output_prop_id, 0.0f);
+    
+    // Apply transformation
+    *(float*)output_buffer_element_ptr = transform_function(raw_value);
+    
+    return 0;
+}
+```
+
+## Standardization on HDF5 Output
+
+The binary output format has been removed, and SAGE now standardizes on HDF5 output for several reasons:
+
+1. **Self-describing format**: HDF5 includes metadata and is more maintainable
+2. **Better compatibility**: Widely supported by analysis tools and visualization software
+3. **Hierarchical organization**: Better represents the structure of galaxy data
+4. **Compression support**: Reduces file size without loss of precision
+5. **Property-based integration**: Better supports the property system architecture

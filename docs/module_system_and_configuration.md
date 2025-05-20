@@ -2,68 +2,221 @@
 
 ## Overview
 
-The SAGE module system provides a flexible, extensible framework for implementing, registering, and executing physics modules. The system is designed to maintain a strict separation between core infrastructure and physics implementations, allowing for runtime configuration of which modules are active without recompiling the code. This document outlines the key components of the module system, the configuration file format, and how to implement, register, and activate modules.
+The SAGE module system provides a flexible, extensible framework for implementing, registering, and executing physics modules. The system maintains strict separation between core infrastructure and physics implementations, allowing for runtime configuration of active modules without recompiling. This document provides both high-level architecture and detailed implementation specifics to aid debugging and development.
 
-## Table of Contents
+## Module System Architecture in Detail
 
-1. [Module System Architecture](#module-system-architecture)
-2. [Configuration File Format](#configuration-file-format)
-3. [Module Registration and Activation](#module-registration-and-activation)
-4. [Pipeline Execution Phases](#pipeline-execution-phases)
-5. [Core-Physics Separation](#core-physics-separation)
-6. [Property System Integration](#property-system-integration)
-7. [Configuration-Driven Pipeline Creation](#configuration-driven-pipeline-creation)
-8. [Module Development Guidelines](#module-development-guidelines)
+### Key Components and Their Interactions
 
-## Module System Architecture
+The module system consists of several interconnected components:
 
-The SAGE module system consists of several key components:
+```
+┌───────────────────────┐       ┌────────────────────────┐
+│  Module Registry      │◄──────►  Module System         │
+│ (core_module_system.c)│       │ (module_register,      │
+└───────────┬───────────┘       │  module_initialize)    │
+            │                   └────────────┬───────────┘
+            │                                │
+            ▼                                ▼
+┌───────────────────────┐       ┌────────────────────────┐
+│  Pipeline Registry    │◄──────►  Pipeline System       │
+│ (core_pipeline_        │       │ (pipeline_execute,     │
+│  registry.c)          │       │  pipeline_execute_phase)│
+└───────────┬───────────┘       └────────────┬───────────┘
+            │                                │
+            ▼                                ▼
+┌───────────────────────┐       ┌────────────────────────┐
+│  Module Factories     │       │  Pipeline Context      │
+│ (module_factory_fn    │───────► (execution state,      │
+│  functions)           │       │  galaxy data access)   │
+└───────────────────────┘       └────────────────────────┘
+```
 
 ### Module Registry
-- Defined in `src/core/core_module_system.c/h`
-- Manages module registration, initialization, and lifecycle
-- Tracks active modules and their states
-- Provides interfaces for module discovery and validation
+
+The module registry (`core_module_system.c/h`) is the central component that tracks all registered modules and their state. Key elements:
+
+- `struct module_registry` - Holds arrays of modules, their initialization state, and search paths
+- `global_module_registry` - Single instance of the registry used throughout the system
+- `module_register()` - Adds a module to the registry, assigning a unique `module_id`
+- Maximum of `MAX_MODULES` (64) modules can be registered
+- Module initialization state (initialized/active) is tracked separately from registration
+
+```c
+// Actual implementation structure
+struct module_registry {
+    int num_modules;
+    
+    struct {
+        struct base_module *module;
+        void *module_data;
+        bool initialized;
+        bool active;
+        bool dynamic;
+        module_library_handle_t handle;
+        char path[MAX_MODULE_PATH];
+        module_parameter_registry_t *parameter_registry;
+    } modules[MAX_MODULES];
+    
+    // Quick lookup for modules by type
+    struct {
+        enum module_type type;
+        int module_index;
+    } active_modules[MODULE_TYPE_MAX];
+    int num_active_types;
+    
+    // Search paths configuration
+    char module_paths[MAX_MODULE_PATHS][MAX_MODULE_PATH];
+    int num_module_paths;
+    bool discovery_enabled;
+};
+```
 
 ### Pipeline System
-- Defined in `src/core/core_pipeline_system.c/h`
-- Creates and manages execution pipelines
-- Registers modules as pipeline steps
-- Controls execution flow and phase transitions
+
+The pipeline system (`core_pipeline_system.c/h`) manages the execution flow of modules. Key elements:
+
+- `struct module_pipeline` - Contains ordered steps defining module execution sequence
+- `pipeline_execute()` - Runs all steps in the pipeline
+- `pipeline_execute_phase()` - Executes only steps that support a specific phase
+- `struct pipeline_context` - Holds runtime state during execution (galaxies, params, etc.)
+- Supports four execution phases: HALO, GALAXY, POST, FINAL
+- Maximum of `MAX_PIPELINE_STEPS` (32) steps in a single pipeline
+
+```c
+// Pipeline structure implementation
+struct module_pipeline {
+    struct pipeline_step steps[MAX_PIPELINE_STEPS];  // Pipeline steps
+    int num_steps;                        // Number of steps in the pipeline
+    char name[MAX_MODULE_NAME];           // Pipeline name
+    bool initialized;                     // Whether pipeline is initialized
+    int current_step_index;               // Current execution step (during execution)
+};
+
+// Pipeline execution phases (defined as bit flags)
+#define PIPELINE_PHASE_HALO   (1U << 0)  // Executed once per halo
+#define PIPELINE_PHASE_GALAXY (1U << 1)  // Executed for each galaxy
+#define PIPELINE_PHASE_POST   (1U << 2)  // Post-processing after galaxy calculations
+#define PIPELINE_PHASE_FINAL  (1U << 3)  // Final processing for output
+```
 
 ### Pipeline Registry
-- Defined in `src/core/core_pipeline_registry.c/h`
-- Registers module factories for runtime instantiation
-- Creates standard pipelines based on configuration
-- Manages the mapping between module names and factories
 
-### Module Callbacks
-- Defined in `src/core/core_module_callback.c/h`
-- Enables controlled inter-module communication
-- Provides call stack tracking and circular dependency detection
-- Supports function registration for module-to-module calls
+The pipeline registry (`core_pipeline_registry.c/h`) connects module factories with the pipeline system. Key elements:
 
-### Event System
-- Defined in `src/core/core_event_system.c/h`
-- Enables event-based communication between modules
-- Supports event emission, subscription, and handling
-- Preserves scientific dependencies between physics processes
+- `module_factories[]` - Array of factory function entries
+- `pipeline_register_module_factory()` - Registers a factory function by name
+- `pipeline_create_with_standard_modules()` - Creates and populates a pipeline based on configuration
+- Maximum of `MAX_MODULE_FACTORIES` (32) factories can be registered
 
-### Property System
-- Defined in `src/core/core_properties.c/h` (generated)
-- Provides a centralized definition of all galaxy properties
-- Generates type-safe accessors for property access (GALAXY_PROP_*)
-- Separates core infrastructure properties from physics properties
+```c
+// Factory entry implementation
+struct module_factory_entry {
+    enum module_type type;
+    char name[MAX_MODULE_NAME];
+    module_factory_fn factory;
+} module_factories[MAX_MODULE_FACTORIES];
+int num_factories = 0;
 
-### Galaxy Extensions
-- Defined in `src/core/core_galaxy_extensions.c/h`
-- Allows modules to attach arbitrary data to galaxies
-- Provides memory management for module-specific data
-- Supports deep copying and cleanup of extension data
+// Factory function type
+typedef struct base_module* (*module_factory_fn)(void);
+```
 
-## Configuration File Format
+### Base Module Interface
 
-SAGE uses JSON configuration files to define module activation and parameters. The standard configuration file is located at `input/config.json`. The key sections relevant to the module system are:
+The `struct base_module` defines the common interface for all physics modules:
+
+```c
+struct base_module {
+    // Metadata
+    char name[MAX_MODULE_NAME];           // Module name
+    char version[MAX_MODULE_VERSION];     // Module version string
+    char author[MAX_MODULE_AUTHOR];       // Module author(s)
+    int module_id;                        // Unique runtime ID
+    enum module_type type;                // Type of physics module
+    
+    // Lifecycle functions
+    int (*initialize)(struct params *params, void **module_data);
+    int (*cleanup)(void *module_data);
+    
+    // Configuration function
+    int (*configure)(void *module_data, const char *config_name, const char *config_value);
+    
+    // Phase execution functions
+    int (*execute_halo_phase)(void *module_data, struct pipeline_context *context);
+    int (*execute_galaxy_phase)(void *module_data, struct pipeline_context *context);
+    int (*execute_post_phase)(void *module_data, struct pipeline_context *context);
+    int (*execute_final_phase)(void *module_data, struct pipeline_context *context);
+    
+    // Error handling
+    int last_error;
+    char error_message[MAX_ERROR_MESSAGE];
+    
+    // Module manifest and function registry
+    struct module_manifest *manifest;
+    module_function_registry_t *function_registry;
+    
+    // Dependencies and phases
+    module_dependency_t *dependencies;
+    int num_dependencies;
+    uint32_t phases;                      // Bitmap of supported phases
+};
+```
+
+## Registration and Lifecycle Process
+
+### Static Registration via Constructor
+
+The most common module registration approach uses C constructor attributes:
+
+```c
+/* Register the module at startup */
+static void __attribute__((constructor)) register_module(void) {
+    module_register(&placeholder_output_module);
+}
+```
+
+This ensures modules are registered automatically when the program starts, without requiring explicit calls. The constructor attribute is a GCC feature that runs the function before `main()`.
+
+### Complete Module Lifecycle
+
+A module's lifecycle follows this sequence:
+
+1. **Registration**: Module is registered with the module system
+   ```c
+   int module_register(struct base_module *module)
+   ```
+
+2. **Factory Registration**: Module's factory function is registered with the pipeline system
+   ```c
+   int pipeline_register_module_factory(enum module_type type, const char *name, module_factory_fn factory)
+   ```
+
+3. **Pipeline Creation**: Module instances are created by factories based on configuration
+   ```c
+   struct module_pipeline *pipeline_create_with_standard_modules(void)
+   ```
+
+4. **Initialization**: Module's initialize function is called with parameters
+   ```c
+   int module_initialize(int module_id, struct params *params)
+   ```
+
+5. **Execution**: Module's phase-specific functions are called during pipeline execution
+   ```c
+   int pipeline_execute_phase(struct module_pipeline *pipeline, struct pipeline_context *context, enum pipeline_execution_phase phase)
+   ```
+
+6. **Cleanup**: Module's cleanup function is called before termination
+   ```c
+   int module_cleanup(int module_id)
+   ```
+
+## Configuration-Driven Pipeline Creation
+
+### Configuration File Format
+
+SAGE uses JSON configuration files (typically in `input/config.json`) to determine which modules to activate. The structure is:
 
 ```json
 {
@@ -71,231 +224,286 @@ SAGE uses JSON configuration files to define module activation and parameters. T
         "discovery_enabled": true,
         "search_paths": [
             "./src/physics"
-            // Additional module search paths
         ],
         "instances": [
             {
-                "name": "cooling_module",  // Name used for factory registration
-                "enabled": true,          // Whether to include in the pipeline
-                // Module-specific parameters
+                "name": "cooling_module",  // Must match factory registration name
+                "enabled": true,           // Whether to include in pipeline
+                "some_parameter": 1.5      // Module-specific parameters
             },
-            // Additional module instances
-        ]
-    },
-    "pipeline": {
-        "name": "standard_physics",
-        "use_as_global": true,
-        "steps": [
-            {"type": "infall", "name": "infall", "enabled": true, "optional": true},
-            // Additional pipeline steps
-        ]
-    }
-}
-```
-
-### Key Configuration Fields
-
-- `modules.discovery_enabled`: Whether to enable runtime module discovery
-- `modules.search_paths`: Directories to search for modules
-- `modules.instances`: Array of module instances to activate
-- `modules.instances[].name`: Name of the module factory to use
-- `modules.instances[].enabled`: Whether to activate this module (also supports `active` for backward compatibility)
-- `pipeline.name`: Name of the pipeline configuration
-- `pipeline.steps`: Array of pipeline steps (alternative to modules.instances)
-
-## Module Registration and Activation
-
-Modules in SAGE can be registered and activated through several mechanisms:
-
-### Static Registration via Constructor Attributes
-
-```c
-__attribute__((constructor))
-static void register_cooling_module_factory(void) {
-    pipeline_register_module_factory(MODULE_TYPE_COOLING, "cooling_module", cooling_module_factory);
-}
-```
-
-This approach uses the C compiler's constructor attribute to automatically register module factories at program startup. The factory function returns a pointer to a base_module instance, which is then used to create pipeline steps.
-
-### Dynamic Registration via Module Discovery
-
-The module system can dynamically discover and register modules at runtime based on the `modules.search_paths` configuration. This approach enables plugins to be added without modifying the core code.
-
-### Configuration-Driven Activation
-
-Once modules are registered, they are activated based on the configuration file. The `pipeline_create_with_standard_modules()` function reads the `modules.instances` array from the configuration and activates only the modules that have `enabled` set to true.
-
-## Pipeline Execution Phases
-
-The SAGE pipeline system supports four execution phases:
-
-1. **HALO phase**: Executed once per halo tree, used for calculations at the halo level
-2. **GALAXY phase**: Executed for each galaxy, used for per-galaxy calculations
-3. **POST phase**: Executed after all galaxies have been processed, used for post-processing
-4. **FINAL phase**: Executed at the end of the simulation, used for output preparation and cleanup
-
-Modules declare which phases they support, allowing them to participate in the appropriate execution contexts.
-
-## Core-Physics Separation
-
-SAGE maintains a strict separation between core infrastructure and physics implementations:
-
-### Core Infrastructure
-
-- Has no compile-time or direct runtime knowledge of specific physics implementations
-- Uses the generic property system for accessing physics properties
-- Provides the infrastructure for module registration, activation, and execution
-- Manages memory, I/O, and other low-level operations
-
-### Physics Modules
-
-- Implement specific physics calculations as self-contained modules
-- Register themselves with the module system
-- Access galaxy properties via the property system
-- Communicate with other modules through the callback and event systems
-
-## Property System Integration
-
-The property system is a central component of the module system:
-
-### Property Definition
-
-Properties are defined in `src/properties.yaml`, which serves as the single source of truth for all galaxy properties. The file distinguishes between core properties (essential for infrastructure) and physics properties (specific to physics implementations).
-
-### Property Access
-
-- Core code uses `GALAXY_PROP_*` macros for accessing core properties
-- All code uses generic accessors (e.g., `get_float_property()`) for accessing physics properties
-- Modules can access both core and physics properties with the appropriate accessors
-
-## Configuration-Driven Pipeline Creation
-
-The configuration-driven pipeline creation system allows for runtime configuration of which modules are active without recompiling the code. This is implemented in `src/core/core_pipeline_registry.c`:
-
-### Process Flow
-
-1. The `pipeline_create_with_standard_modules()` function is called to create a standard pipeline
-2. The function checks if a global configuration is available
-3. If available, it reads the `modules.instances` array from the configuration
-4. For each enabled module in the configuration, it looks for a matching factory and creates the module
-5. If no configuration is available or the array is not found, it falls back to using all registered modules
-
-### Benefits
-
-1. **True Runtime Modularity**: Users can define entirely different sets of active physics modules by changing the configuration file.
-2. **Complete Core-Physics Decoupling**: Core pipeline creation logic has no compile-time or hardcoded knowledge of which specific physics modules constitute a "standard" run.
-3. **Enhanced Flexibility**: Facilitates easier experimentation with different combinations of physics modules.
-4. **Clear Separation of Concerns**: Module self-registration (via constructors) makes modules *available*, while the configuration *selects and enables* them for a specific pipeline.
-
-## Module Development Guidelines
-
-When developing new modules for SAGE, follow these guidelines:
-
-### Module Structure
-
-A typical module should include:
-
-1. A factory function that creates and returns a module instance
-2. Constructor attribute for automatic registration
-3. Implementation of required module interface functions
-4. Property access using the property system
-5. Declaration of supported phases
-6. Proper error handling and resource management
-
-### Example Module Template
-
-```c
-#include "core_module_system.h"
-#include "core_properties.h"
-#include "core_property_utils.h"
-
-// Module instance structure
-static struct base_module my_module = {
-    .name = "my_module",
-    .version = "1.0",
-    .author = "Author Name",
-    .type = MODULE_TYPE_MY_TYPE,
-    .supported_phases = PHASE_GALAXY | PHASE_POST,
-    .initialize = my_module_initialize,
-    .execute = my_module_execute,
-    .cleanup = my_module_cleanup
-};
-
-// Factory function
-struct base_module* my_module_factory(void) {
-    return &my_module;
-}
-
-// Auto-registration via constructor
-__attribute__((constructor))
-static void register_my_module_factory(void) {
-    pipeline_register_module_factory(MODULE_TYPE_MY_TYPE, "my_module", my_module_factory);
-}
-
-// Initialize function
-static int my_module_initialize(struct params *params, void **data_ptr) {
-    // Allocate module data
-    *data_ptr = calloc(1, sizeof(struct my_module_data));
-    if (*data_ptr == NULL) {
-        return MODULE_STATUS_ERROR;
-    }
-    
-    // Initialize module data
-    struct my_module_data *data = *data_ptr;
-    data->some_parameter = config_get_double("modules.instances.my_module.some_parameter", 1.0);
-    
-    return MODULE_STATUS_SUCCESS;
-}
-
-// Execute function
-static int my_module_execute(enum pipeline_phase phase, struct halo_data *halo, 
-                         struct galaxy_data *galaxy, void *data) {
-    struct my_module_data *my_data = data;
-    
-    // Different behavior based on phase
-    if (phase == PHASE_GALAXY) {
-        // Per-galaxy calculations
-        double mass = get_float_property(galaxy, GALAXY_PROP_StellarMass);
-        // Perform calculations and update properties
-        set_float_property(galaxy, GALAXY_PROP_SomeProperty, calculated_value);
-    }
-    else if (phase == PHASE_POST) {
-        // Post-processing calculations
-    }
-    
-    return MODULE_STATUS_SUCCESS;
-}
-
-// Cleanup function
-static int my_module_cleanup(void *data) {
-    if (data != NULL) {
-        free(data);
-    }
-    return MODULE_STATUS_SUCCESS;
-}
-```
-
-### Configuration Example
-
-To enable your module in the configuration:
-
-```json
-{
-    "modules": {
-        "instances": [
             {
-                "name": "my_module",
-                "enabled": true,
-                "some_parameter": 2.5
+                "name": "infall_module",
+                "enabled": true
             }
         ]
     }
 }
 ```
 
+### Pipeline Creation Process
+
+The `pipeline_create_with_standard_modules()` function in `core_pipeline_registry.c` handles the configuration-driven pipeline creation:
+
+1. Checks if global configuration is available
+   ```c
+   if (global_config == NULL || global_config->root == NULL) {
+       // Fallback: Use all registered modules
+       add_all_registered_modules_to_pipeline(pipeline);
+       return pipeline;
+   }
+   ```
+
+2. Looks for the "modules.instances" array in configuration
+   ```c
+   const struct config_value *modules_instances_val = config_get_value("modules.instances");
+   ```
+
+3. For each enabled module in configuration, creates and adds it to the pipeline
+   ```c
+   // Get module name and enabled status
+   const char *config_module_name = get_string_from_object(module_config_val->u.object, "name", NULL);
+   bool enabled = get_boolean_from_object(module_config_val->u.object, "enabled", false);
+   
+   // Find matching factory and create module
+   struct base_module *module = module_factories[j].factory();
+   
+   // Add to pipeline
+   pipeline_add_step(pipeline, module->type, module->name, module->name, true, false);
+   ```
+
+4. If no valid configuration is found, falls back to using all registered modules
+
+### Module Deduplication
+
+The pipeline creation process tracks already processed modules to prevent duplicates:
+
+```c
+// Track modules we've already processed to avoid duplicates
+int processed_module_ids[MAX_MODULES] = {0};
+int num_processed = 0;
+
+// Check if we've already processed this module
+bool already_processed = false;
+for (int k = 0; k < num_processed; k++) {
+    if (processed_module_ids[k] == module->module_id) {
+        already_processed = true;
+        break;
+    }
+}
+```
+
+This is important when multiple configuration entries could create the same module.
+
+## Placeholder Module Implementation
+
+The placeholder modules are minimal implementations that fulfill the module interface requirements. They're used in the physics-free model for testing the core infrastructure. Example:
+
+```c
+struct base_module placeholder_output_module = {
+    .name = "placeholder_output_module",
+    .type = MODULE_TYPE_MISC,
+    .version = "1.0",
+    .author = "SAGE Team",
+    .initialize = placeholder_output_init,
+    .cleanup = placeholder_output_cleanup,
+    .execute_final_phase = placeholder_output_execute_final_phase,
+    .phases = PIPELINE_PHASE_FINAL
+};
+```
+
+The implementation declares which pipeline phases it participates in through the `.phases` bitmask. This module only participates in the FINAL phase.
+
+## Common Debugging Issues
+
+### Module Not Found in Pipeline
+
+If a module is missing from the pipeline:
+
+1. Check if the module's factory is registered
+   ```c
+   // Debug output during pipeline creation
+   LOG_DEBUG("Found matching registered factory for '%s'", config_module_name);
+   ```
+
+2. Verify the module name in configuration matches the factory registration
+   ```c
+   // In config.json: "name": "cooling_module"
+   // In registration: pipeline_register_module_factory(MODULE_TYPE_COOLING, "cooling_module", cooling_module_factory);
+   ```
+
+3. Ensure the module's constructor is being called
+   ```c
+   // Add debug output to constructor
+   static void __attribute__((constructor)) register_module(void) {
+       printf("Registering module: %s\n", my_module.name);
+       module_register(&my_module);
+   }
+   ```
+
+### Module Not Executing in Expected Phase
+
+If a module is not being executed in the expected pipeline phase:
+
+1. Check the module's `.phases` bitmask is correctly set
+   ```c
+   .phases = PIPELINE_PHASE_GALAXY | PIPELINE_PHASE_POST
+   ```
+
+2. Verify the phase-specific function pointer is set
+   ```c
+   .execute_galaxy_phase = my_module_execute_galaxy_phase
+   ```
+
+3. Check the pipeline is executing the correct phase
+   ```c
+   // Debug output during phase execution
+   LOG_DEBUG("Executing phase %d", (int)phase);
+   ```
+
+### Module Factory Returns NULL
+
+If a module factory is failing to create a module:
+
+1. Check for memory allocation failures
+   ```c
+   // Factory function should handle allocation failures
+   if (my_data == NULL) {
+       LOG_ERROR("Failed to allocate memory for module data");
+       return NULL;
+   }
+   ```
+
+2. Verify static module instance is properly initialized
+   ```c
+   // All required fields should be set
+   struct base_module my_module = {
+       .name = "my_module",  // Required
+       .type = MODULE_TYPE_MISC,  // Required
+       // Other fields...
+   };
+   ```
+
+## Module Development Guidelines
+
+### Essential Module Components
+
+Every module must have:
+
+1. **Base Module Structure**: Defines the module interface and metadata
+   ```c
+   struct base_module my_module = {
+       .name = "my_module",
+       .type = MODULE_TYPE_COOLING,
+       .version = "1.0",
+       .author = "Developer Name",
+       .initialize = my_module_init,
+       .cleanup = my_module_cleanup,
+       .phases = PIPELINE_PHASE_GALAXY,
+       .execute_galaxy_phase = my_module_execute_galaxy
+   };
+   ```
+
+2. **Module Data Structure**: Holds module-specific state
+   ```c
+   struct my_module_data {
+       double parameter1;
+       int parameter2;
+       bool initialized;
+   };
+   ```
+
+3. **Lifecycle Functions**: Initialize and cleanup
+   ```c
+   static int my_module_init(struct params *params, void **data_ptr) {
+       struct my_module_data *data = calloc(1, sizeof(struct my_module_data));
+       // Initialize data
+       *data_ptr = data;
+       return MODULE_STATUS_SUCCESS;
+   }
+   
+   static int my_module_cleanup(void *data) {
+       free(data);
+       return MODULE_STATUS_SUCCESS;
+   }
+   ```
+
+4. **Phase Execution Functions**: Implementation for each supported phase
+   ```c
+   static int my_module_execute_galaxy(void *data, struct pipeline_context *context) {
+       struct my_module_data *my_data = (struct my_module_data *)data;
+       // Process each galaxy
+       for (int i = 0; i < context->ngal; i++) {
+           struct GALAXY *galaxy = &context->galaxies[i];
+           // Perform calculations
+       }
+       return MODULE_STATUS_SUCCESS;
+   }
+   ```
+
+5. **Registration**: Constructor function for automatic registration
+   ```c
+   static void __attribute__((constructor)) register_my_module(void) {
+       module_register(&my_module);
+   }
+   ```
+
+6. **Factory Function**: Creates and returns the module
+   ```c
+   struct base_module* my_module_factory(void) {
+       return &my_module;
+   }
+   
+   static void __attribute__((constructor)) register_my_module_factory(void) {
+       pipeline_register_module_factory(MODULE_TYPE_COOLING, "my_module", my_module_factory);
+   }
+   ```
+
+### Property Access Guidelines
+
+Modules should follow these property access patterns:
+
+1. **For Core Properties**: Direct access using `GALAXY_PROP_*` macros
+   ```c
+   int type = GALAXY_PROP_Type(galaxy);
+   float mass = GALAXY_PROP_StellarMass(galaxy);
+   ```
+
+2. **For Physics Properties**: Use generic accessors from `core_property_utils.h`
+   ```c
+   // Get property ID (cached for performance)
+   property_id_t prop_id = get_cached_property_id("ColdGas");
+   
+   // Check if property exists
+   if (has_property(galaxy, prop_id)) {
+       // Access property with appropriate type
+       float cold_gas = get_float_property(galaxy, prop_id, 0.0f);
+   }
+   ```
+
+### Error Handling
+
+Modules should use consistent error handling:
+
+1. **Return Status Codes**: Use `MODULE_STATUS_*` constants
+   ```c
+   if (data == NULL) {
+       return MODULE_STATUS_ERROR;
+   }
+   return MODULE_STATUS_SUCCESS;
+   ```
+
+2. **Log Errors**: Use the logging system for context
+   ```c
+   LOG_ERROR("Failed to allocate memory for module data");
+   ```
+
+3. **Set Module Error**: Update module error state
+   ```c
+   module_set_error(module, MODULE_STATUS_ERROR, "Failed to initialize module");
+   ```
+
 ## Conclusion
 
-The SAGE module system provides a flexible, extensible framework for implementing, registering, and executing physics modules while maintaining a strict separation between core infrastructure and physics implementations. The configuration-driven pipeline creation system allows for runtime configuration of which modules are active without recompiling the code, enabling users to experiment with different combinations of physics modules and facilitating collaborative development.
+The SAGE module system provides a powerful, extensible framework for implementing physics components while maintaining a strict separation between core infrastructure and physics implementations. The configuration-driven approach allows modules to be enabled, disabled, or replaced at runtime without recompilation, facilitating rapid development and experimentation.
 
-The recent implementation of configuration-driven module activation in pipeline creation represents the final step in fully decoupling the core infrastructure from specific physics implementations, completing the core-physics separation requirements (FR-1.1 and FR-1.2) by making module activation fully configurable at runtime.
+Understanding the detailed implementation, particularly the registration, factory, and pipeline creation processes, is essential for debugging issues in the module system. The placeholder modules provide a minimal implementation that can be used to test the core infrastructure without any physics components.
