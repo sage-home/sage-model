@@ -107,15 +107,15 @@ H2FractionExponent          0.92   %Controls the H2/HI ratio calculation for Bli
 ClumpFactor                 5.0    %Clumping factor for Krumholz & Dekel H2
 ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz & Dekel H2
 
-RadiationFieldNorm          0.5    %Radiation field normalization relative to Milky Way (1.0 = MW)
+RadiationFieldNorm          1.0    %Radiation field normalization relative to Milky Way (1.0 = MW)
 MetallicityExponent         0.7    %Exponent for metallicity dependence in GD14 model
 IntegrationBins             15     %Number of radial bins to use for integration (higher = more accurate but slower)
 
 %------------------------------------------
 %----- MOLECULAR GAS MODEL PARAMETERS -----
 %------------------------------------------
-EnvironmentalEffectsOn        0       % Enable environmental effects on H2 gas (0=off, 1=on)
-EnvEffectStrength             0.2     % Strength of environmental effects (0.0-2.0)
+EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
+EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- MASS-DEPENDANT REINCORPORATION -----
@@ -141,14 +141,14 @@ ReincorporationRedshiftExp       -10.0
 %------------------------------------------
 
 CGMBuildOn     1           % Enable preventative feedback (0=off, 1=on)
-CGMBuildVcrit  25.0        % Critical velocity scale (km/s)
+CGMBuildVcrit  45.0        % Critical velocity scale (km/s)
 CGMBuildAlpha  2.0         % Power-law slope
 CGMBuildZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
 
 LowMassHighzSuppressionOn       0        % Enable suppression (0=off, 1=on)
-SuppressionMassThreshold        10.0      % In units of 10^10 Msun/h
-SuppressionMassExponent         4.0      % Power-law exponent for mass dependence 
-SuppressionRedshiftExp          1.0      % Redshift scaling factor
+SuppressionMassThreshold        45.0      % In units of 10^10 Msun/h
+SuppressionMassExponent         1.0      % Power-law exponent for mass dependence 
+SuppressionRedshiftExp          0.5      % Redshift scaling factor
 
 %------------------------------------------
 %----- Other code-related information -----

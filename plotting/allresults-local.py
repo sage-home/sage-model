@@ -91,7 +91,7 @@ if __name__ == '__main__':
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
     InfallMvir = read_hdf(snap_num = Snapshot, param = 'infallMvir') * 1.0e10 / Hubble_h
     outflowrate = read_hdf(snap_num = Snapshot, param = 'OutflowRate') * 1.0e10 / Hubble_h
-    CGM = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
+    cgm = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
     #print(np.log10(CGM))
 
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
@@ -305,6 +305,10 @@ if __name__ == '__main__':
     mass200 = np.log10(StellarMass[w])
     (counts200, binedges) = np.histogram(mass200, range=(mi, ma), bins=NB)
 
+    w = np.where((StellarMass > 0.0))[0]
+    mass_cgm = np.log10(cgm[w])
+    (counts_cgm, binedges) = np.histogram(mass_cgm, range=(mi, ma), bins=NB)
+
     # Baldry+ 2008 modified data used for the MCMC fitting
     Baldry = np.array([
         [7.05, 1.3531e-01, 6.0741e-02],
@@ -432,7 +436,6 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, counts50    / volume / binwidth, 'g--', lw=1, label='Model - 50 particles or less')
     plt.plot(xaxeshisto, counts100    / volume / binwidth, 'b--', lw=1, label='Model - 100 particles or less')
     plt.plot(xaxeshisto, counts200    / volume / binwidth, 'k--', lw=1, label='Model - 200 particles or less')
-
 
     plt.yscale('log')
     plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
@@ -985,21 +988,39 @@ if __name__ == '__main__':
     plt.close()
 
 # -------------------------------------------------------
+    import pandas as pd
+    import time
+
+    # Start timing for benchmarking
+    start_time = time.time()
 
     print('Plotting the average baryon fraction vs halo mass')
 
-    plt.figure()
-    ax = plt.subplot(111)
+    # Create a DataFrame from your numpy arrays
+    # Note: Create this once at the beginning to avoid repeated conversions
+    galaxy_df = pd.DataFrame({
+        'CentralGalaxyIndex': CentralGalaxyIndex,
+        'HaloMass': np.log10(Mvir),  # Pre-compute log10 of mass
+        'Mvir': Mvir,
+        'Type': Type,
+        'Baryons': StellarMass + ColdGas + HotGas + EjectedMass + IntraClusterStars + BlackHoleMass + cgm,
+        'StellarMass': StellarMass,
+        'ColdGas': ColdGas,
+        'HotGas': HotGas,
+        'EjectedMass': EjectedMass,
+        'IntraClusterStars': IntraClusterStars,
+        'BlackHoleMass': BlackHoleMass,
+        'CGM': cgm
+    })
 
-    HaloMass = np.log10(Mvir)
-    Baryons = StellarMass + ColdGas + HotGas + EjectedMass + IntraClusterStars + BlackHoleMass + CGM
-
+    # Define mass bins
     MinHalo = 11.0
     MaxHalo = 16.0
     Interval = 0.1
     Nbins = int((MaxHalo-MinHalo)/Interval)
     HaloRange = np.arange(MinHalo, MaxHalo, Interval)
 
+    # Initialize result arrays
     MeanCentralHaloMass = []
     MeanBaryonFraction = []
     MeanBaryonFractionU = []
@@ -1012,114 +1033,84 @@ if __name__ == '__main__':
     MeanBH = []
     MeanCGM = []
 
-    # Pre-compute central indices for faster lookup
-    unique_centrals = np.unique(CentralGalaxyIndex)
-
+    # Process each mass bin
     for i in range(Nbins-1):
-        w1 = np.where((Type == 0) & (HaloMass >= HaloRange[i]) & (HaloMass < HaloRange[i+1]))[0]
-        HalosFound = len(w1)
+        print(f"Processing bin {i+1}/{Nbins-1}: {HaloRange[i]:.1f} - {HaloRange[i+1]:.1f}")
         
-        if HalosFound > 2:
-            # Get unique central galaxies in this mass bin
-            centrals_in_bin = CentralGalaxyIndex[w1]
+        # Filter central galaxies in this mass bin
+        bin_mask = ((galaxy_df['Type'] == 0) & 
+                    (galaxy_df['HaloMass'] >= HaloRange[i]) & 
+                    (galaxy_df['HaloMass'] < HaloRange[i+1]))
+        
+        centrals_in_bin = galaxy_df.loc[bin_mask, 'CentralGalaxyIndex'].unique()
+        
+        if len(centrals_in_bin) > 2:
+            # Find all galaxies belonging to these centrals (both centrals and satellites)
+            group_mask = galaxy_df['CentralGalaxyIndex'].isin(centrals_in_bin)
+            group_galaxies = galaxy_df[group_mask]
             
-            # Create masks for all galaxies belonging to these centrals
-            central_groups = np.isin(CentralGalaxyIndex, centrals_in_bin)
+            # Group by central galaxy and sum all baryonic components
+            # This is the key optimization - one groupby operation instead of multiple loops
+            group_sums = group_galaxies.groupby('CentralGalaxyIndex').agg({
+                'Baryons': 'sum',
+                'StellarMass': 'sum',
+                'ColdGas': 'sum',
+                'HotGas': 'sum',
+                'EjectedMass': 'sum',
+                'IntraClusterStars': 'sum',
+                'BlackHoleMass': 'sum',
+                'CGM': 'sum'
+            })
             
-            # Calculate statistics for all groups at once
-            group_baryons = Baryons[central_groups]
-            group_stars = StellarMass[central_groups]
-            group_cold = ColdGas[central_groups]
-            group_hot = HotGas[central_groups]
-            group_ejected = EjectedMass[central_groups]
-            group_ics = IntraClusterStars[central_groups]
-            group_bh = BlackHoleMass[central_groups]
-            group_cgm = CGM[central_groups]
+            # Get the halo masses for these centrals
+            central_galaxies = galaxy_df[(galaxy_df['Type'] == 0) & 
+                                        (galaxy_df['CentralGalaxyIndex'].isin(centrals_in_bin))]
             
-            # Sum quantities per central galaxy
-            unique_centrals_in_bin = np.unique(CentralGalaxyIndex[central_groups])
-            baryon_sums = np.zeros(len(unique_centrals_in_bin))
-            star_sums = np.zeros(len(unique_centrals_in_bin))
-            cold_sums = np.zeros(len(unique_centrals_in_bin))
-            hot_sums = np.zeros(len(unique_centrals_in_bin))
-            ejected_sums = np.zeros(len(unique_centrals_in_bin))
-            ics_sums = np.zeros(len(unique_centrals_in_bin))
-            bh_sums = np.zeros(len(unique_centrals_in_bin))
-            cgm_sums = np.zeros(len(unique_centrals_in_bin))
+            # Merge halo masses with group sums
+            group_data = pd.merge(
+                group_sums, 
+                central_galaxies[['CentralGalaxyIndex', 'Mvir', 'HaloMass']],
+                left_index=True, 
+                right_on='CentralGalaxyIndex'
+            )
             
-            for idx, central in enumerate(unique_centrals_in_bin):
-                group_mask = CentralGalaxyIndex[central_groups] == central
-                baryon_sums[idx] = np.sum(group_baryons[group_mask])
-                star_sums[idx] = np.sum(group_stars[group_mask])
-                cold_sums[idx] = np.sum(group_cold[group_mask])
-                hot_sums[idx] = np.sum(group_hot[group_mask])
-                ejected_sums[idx] = np.sum(group_ejected[group_mask])
-                ics_sums[idx] = np.sum(group_ics[group_mask])
-                bh_sums[idx] = np.sum(group_bh[group_mask])
-                cgm_sums[idx] = np.sum(group_cgm[group_mask])
+            # Calculate baryon fractions
+            group_data['baryon_fraction'] = group_data['Baryons'] / group_data['Mvir']
+            group_data['star_fraction'] = group_data['StellarMass'] / group_data['Mvir']
+            group_data['cold_fraction'] = group_data['ColdGas'] / group_data['Mvir']
+            group_data['hot_fraction'] = group_data['HotGas'] / group_data['Mvir']
+            group_data['ejected_fraction'] = group_data['EjectedMass'] / group_data['Mvir']
+            group_data['ics_fraction'] = group_data['IntraClusterStars'] / group_data['Mvir']
+            group_data['bh_fraction'] = group_data['BlackHoleMass'] / group_data['Mvir']
+            group_data['cgm_fraction'] = group_data['CGM'] / group_data['Mvir']
             
-            # Get corresponding halo masses
-            central_halos = Mvir[w1]
+            # Filter out any rows with NaN or infinite values
+            group_data = group_data.replace([np.inf, -np.inf], np.nan).dropna(subset=['baryon_fraction'])
             
-            # Calculate fractions
-            baryon_fractions = baryon_sums / central_halos
-            star_fractions = star_sums / central_halos
-            cold_fractions = cold_sums / central_halos
-            hot_fractions = hot_sums / central_halos
-            ejected_fractions = ejected_sums / central_halos
-            ics_fractions = ics_sums / central_halos
-            bh_fractions = bh_sums / central_halos
-            cgm_fractions = cgm_sums / central_halos
-            
-            # Filter out any NaN or inf values before calculating statistics
-            valid_indices = np.isfinite(baryon_fractions)
-            if np.sum(valid_indices) > 0:  # Only proceed if we have valid data
-                # Store means and variances with safety checks
-                MeanCentralHaloMass.append(np.mean(np.log10(central_halos[valid_indices])))
-                MeanBaryonFraction.append(np.mean(baryon_fractions[valid_indices]))
+            if len(group_data) > 0:
+                # Store mean halo mass (in log10)
+                MeanCentralHaloMass.append(group_data['HaloMass'].mean())
                 
-                # Calculate upper and lower bounds with proper limits
-                variance = np.var(baryon_fractions[valid_indices]) if len(baryon_fractions[valid_indices]) > 1 else 0
-                MeanBaryonFractionU.append(np.mean(baryon_fractions[valid_indices]) + variance)
-                MeanBaryonFractionL.append(max(0, np.mean(baryon_fractions[valid_indices]) - variance))
+                # Store mean baryon fraction and variance
+                mean_bf = group_data['baryon_fraction'].mean()
+                var_bf = group_data['baryon_fraction'].var() if len(group_data) > 1 else 0
                 
-                # Component fractions
-                if np.sum(np.isfinite(star_fractions)) > 0:
-                    MeanStars.append(np.mean(star_fractions[np.isfinite(star_fractions)]))
-                else:
-                    MeanStars.append(0)
-                    
-                if np.sum(np.isfinite(cold_fractions)) > 0:
-                    MeanCold.append(np.mean(cold_fractions[np.isfinite(cold_fractions)]))
-                else:
-                    MeanCold.append(0)
-                    
-                if np.sum(np.isfinite(hot_fractions)) > 0:
-                    MeanHot.append(np.mean(hot_fractions[np.isfinite(hot_fractions)]))
-                else:
-                    MeanHot.append(0)
-                    
-                if np.sum(np.isfinite(ejected_fractions)) > 0:
-                    MeanEjected.append(np.mean(ejected_fractions[np.isfinite(ejected_fractions)]))
-                else:
-                    MeanEjected.append(0)
-                    
-                if np.sum(np.isfinite(ics_fractions)) > 0:
-                    MeanICS.append(np.mean(ics_fractions[np.isfinite(ics_fractions)]))
-                else:
-                    MeanICS.append(0)
-                    
-                if np.sum(np.isfinite(bh_fractions)) > 0:
-                    MeanBH.append(np.mean(bh_fractions[np.isfinite(bh_fractions)]))
-                else:
-                    MeanBH.append(0)
+                MeanBaryonFraction.append(mean_bf)
+                MeanBaryonFractionU.append(mean_bf + var_bf)
+                MeanBaryonFractionL.append(max(0, mean_bf - var_bf))
+                
+                # Store component fractions
+                MeanStars.append(group_data['star_fraction'].mean())
+                MeanCold.append(group_data['cold_fraction'].mean())
+                MeanHot.append(group_data['hot_fraction'].mean())
+                MeanEjected.append(group_data['ejected_fraction'].mean())
+                MeanICS.append(group_data['ics_fraction'].mean())
+                MeanBH.append(group_data['bh_fraction'].mean())
+                MeanCGM.append(group_data['cgm_fraction'].mean())
 
-                if np.sum(np.isfinite(cgm_fractions)) > 0:
-                    MeanCGM.append(np.mean(cgm_fractions[np.isfinite(cgm_fractions)]))
-                else:
-                    MeanCGM.append(0)
+    print(f"Bin processing complete. Processed {len(MeanCentralHaloMass)} bins.")
 
-    # Convert lists to arrays for plotting
+    # Convert lists to numpy arrays for plotting
     MeanCentralHaloMass = np.array(MeanCentralHaloMass)
     MeanBaryonFraction = np.array(MeanBaryonFraction)
     MeanBaryonFractionU = np.array(MeanBaryonFractionU)
@@ -1132,31 +1123,35 @@ if __name__ == '__main__':
     MeanBH = np.array(MeanBH)
     MeanCGM = np.array(MeanCGM)
 
-    # Make sure upper bound isn't too high (cap at reasonable cosmological baryon fraction)
+    # Cap upper bound to reasonable value
     MeanBaryonFractionU = np.minimum(MeanBaryonFractionU, 0.2)
 
-    # Ensure all arrays have valid values
+    # Ensure all arrays have valid values for plotting
     mask = np.isfinite(MeanCentralHaloMass) & np.isfinite(MeanBaryonFraction) & \
         np.isfinite(MeanBaryonFractionU) & np.isfinite(MeanBaryonFractionL)
 
-    # Apply mask to all arrays
     if np.sum(mask) > 0:  # Only proceed if we have valid data
+        # Apply mask to all arrays
         MeanCentralHaloMass = MeanCentralHaloMass[mask]
         MeanBaryonFraction = MeanBaryonFraction[mask]
         MeanBaryonFractionU = MeanBaryonFractionU[mask]
         MeanBaryonFractionL = MeanBaryonFractionL[mask]
         
-        # Now do all the plotting
+        # Create the plot
+        plt.figure()
+        ax = plt.subplot(111)
+        
+        # Plot total baryon fraction with uncertainty
         plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='TOTAL')
         try:
             plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL,
-                facecolor='purple', alpha=0.25, label='TOTAL')
-        except:
-            print("Warning: Could not create fill_between for baryon fraction")
+                            facecolor='purple', alpha=0.25)
+        except Exception as e:
+            print(f"Warning: Could not create fill_between for baryon fraction: {e}")
 
         # Make a separate mask for component arrays
         comp_mask = np.isfinite(MeanStars) & np.isfinite(MeanCold) & np.isfinite(MeanHot) & \
-                    np.isfinite(MeanEjected) & np.isfinite(MeanICS) & np.isfinite(MeanCGM) 
+                    np.isfinite(MeanEjected) & np.isfinite(MeanICS) & np.isfinite(MeanCGM)
         
         if np.sum(comp_mask) > 0:
             # Filter component arrays with their mask
@@ -1176,23 +1171,35 @@ if __name__ == '__main__':
             plt.plot(MeanCentralHaloMass_comp, MeanICS_masked, label='ICS', color='yellow')
             plt.plot(MeanCentralHaloMass_comp, MeanCGM_masked, label='CGM', color='magenta')
 
-    plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-    plt.ylabel(r'$\mathrm{Baryon\ Fraction}$')
-
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
-    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
-
-    plt.axis([10.8, 15.0, 0.0, 0.2])
-
-    leg = plt.legend()
-    leg.draw_frame(False)
-    for t in leg.get_texts():
-        t.set_fontsize('medium')
-
-    outputFile = OutputDir + '11.BaryonFraction' + OutputFormat
-    plt.savefig(outputFile)
-    print('Saved file to', outputFile, '\n')
-    plt.close()
+        # Set axis labels and limits
+        plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        plt.ylabel(r'$\mathrm{Baryon\ Fraction}$')
+        
+        # Set axis ticks
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+        ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+        
+        # Set axis limits
+        plt.axis([10.8, 15.0, 0.0, 0.2])
+        
+        # Add legend
+        leg = plt.legend()
+        leg.draw_frame(False)
+        for t in leg.get_texts():
+            t.set_fontsize('medium')
+        
+        # Save figure
+        outputFile = OutputDir + '11.BaryonFraction' + OutputFormat
+        plt.savefig(outputFile)
+        print('Saved file to', outputFile)
+        
+        # Print execution time
+        execution_time = time.time() - start_time
+        print(f'\nExecution time: {execution_time:.2f} seconds')
+        
+        plt.close()
+    else:
+        print("Error: No valid data for plotting")
 
 # -------------------------------------------------------
 
@@ -1210,7 +1217,7 @@ if __name__ == '__main__':
     plt.scatter(HaloMass, np.log10(HotGas[w]), marker='o', s=0.3, color='red', alpha=0.5, label='Hot gas')
     plt.scatter(HaloMass, np.log10(EjectedMass[w]), marker='o', s=50.3, color='green', alpha=0.5, label='Ejected gas')
     plt.scatter(HaloMass, np.log10(IntraClusterStars[w]), marker='o', s=10, color='yellow', alpha=0.5, label='Intracluster stars')
-    plt.scatter(HaloMass, np.log10(CGM[w]), marker='o', s=0.3, color='magenta', alpha=0.5, label='CGM')
+    plt.scatter(HaloMass, np.log10(cgm[w]), marker='o', s=0.3, color='magenta', alpha=0.5, label='CGM')
 
     plt.ylabel(r'$\mathrm{stellar,\ cold,\ hot,\ ejected,\ ICS\ mass}$')  # Set the y...
     plt.xlabel(r'$\log\ M_{\mathrm{vir}}\ (h^{-1}\ M_{\odot})$')  # and the x-axis labels
@@ -1575,130 +1582,3 @@ if __name__ == '__main__':
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
-
-    # -------------------------------------------------------
-
-    print('Plotting CGM outflow diagnostics')
-
-    plt.figure(figsize=(10, 8))  # New figure
-
-    # First subplot: Vmax vs Stellar Mass
-    ax1 = plt.subplot(111)  # Top plot
-
-    w = np.where((Vmax > 0))[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-
-    mass = np.log10(Mvir[w])
-    cgm = np.log10(CGM[w])
-    cgm_frac = np.log10(CGM / 0.17 / Mvir)
-    cgm_frac_filtered = cgm_frac[w]
-
-    # Color points by halo mass
-    halo_mass = np.log10(StellarMass[w])
-    sc = plt.scatter(mass, cgm, c=halo_mass, cmap='viridis', s=5, alpha=0.7)
-    cbar = plt.colorbar(sc)
-    cbar.set_label(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
-
-    plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
-    plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-    plt.axis([9.5, 14.0, 7.0, 10.5])
-    plt.title('CGM vs Mvir')
-
-    #plt.legend(loc='upper left')
-
-    plt.tight_layout()
-
-    outputFile = OutputDir + '19.CGMDiagnostics' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved file to', outputFile, '\n')
-    plt.close()
-
-# -------------------------------------------------------
-
-    print('Plotting CGM outflow diagnostics')
-
-    plt.figure(figsize=(10, 8))  # New figure
-
-    # First subplot: Vmax vs Stellar Mass
-    ax1 = plt.subplot(111)  # Top plot
-
-    w = np.where((Vmax > 0))[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-
-    mass = Vvir[w]
-    cgm = np.log10(CGM[w])
-    cgm_frac = np.log10(CGM / 0.17 / Mvir)
-    cgm_frac_filtered = cgm_frac[w]
-
-    # Color points by halo mass
-    halo_mass = np.log10(Mvir[w])
-    sc = plt.scatter(mass, cgm, c=halo_mass, cmap='viridis', s=5, alpha=0.7)
-    cbar = plt.colorbar(sc)
-    cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-
-    plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
-    plt.xlabel(r'$\log_{10} V_{\mathrm{vir}}\ (M_{\odot})$')
-    plt.ylim([7.0, 10.5])
-    plt.title('CGM vs Vvir')
-
-    #plt.legend(loc='upper left')
-
-    plt.tight_layout()
-
-    outputFile = OutputDir + '20.CGMDiagnostics' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved file to', outputFile, '\n')
-    plt.close()
-
-        # Create a test plot comparing to the expected baryon fraction
-    plt.figure(figsize=(10, 6))
-    cent_mask = Type == 0 
-    log_mvir = np.log10(Mvir)
-    mass_bins = np.linspace(11, 14, 20)  # Bins in log space
-
-    # Expected baryon fraction (cosmic average)
-    expected_baryon_fraction = 0.17
-    actual_baryon_fraction = np.zeros(len(mass_bins)-1)
-    cgm_fraction = np.zeros(len(mass_bins)-1)
-    bin_centers = (mass_bins[:-1] + mass_bins[1:]) / 2
-
-    for i in range(len(mass_bins)-1):
-        bin_mask = (log_mvir[cent_mask] >= mass_bins[i]) & (log_mvir[cent_mask] < mass_bins[i+1])
-        if np.sum(bin_mask) > 0:
-            # Calculate the actual total baryon fraction
-            total_baryons = (StellarMass + ColdGas + HotGas + IntraClusterStars + BlackHoleMass + CGM)
-            baryon_fractions = total_baryons[cent_mask][bin_mask] / Mvir[cent_mask][bin_mask]
-            actual_baryon_fraction[i] = np.mean(baryon_fractions)
-            
-            # Calculate CGM fraction
-            cgm_fractions = CGM[cent_mask][bin_mask] / Mvir[cent_mask][bin_mask]
-            cgm_fraction[i] = np.mean(cgm_fractions)
-
-    # Plot results
-    plt.plot(bin_centers, actual_baryon_fraction, 'o-', color='blue', label='Actual Baryon Fraction')
-    plt.plot(bin_centers, cgm_fraction, 's-', color='magenta', label='CGM Fraction')
-    plt.axhline(y=expected_baryon_fraction, color='r', linestyle='--', label='Expected Baryon Fraction (0.17)')
-
-    # Calculate what CGM fraction should be to reach expected baryon fraction
-    difference = expected_baryon_fraction - (actual_baryon_fraction - cgm_fraction)
-    plt.plot(bin_centers, difference, '^-', color='green', label='Missing Baryon Fraction')
-
-    plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-    plt.ylabel('Fraction of Halo Mass')
-    plt.title('Comparison to Expected Baryon Fraction')
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.savefig(OutputDir + 'baryon_fraction_comparison.png')
-    plt.close()
-
-    # Print summary statistics
-    print("\nBaryon Fraction Analysis:")
-    print(f"Mean total baryon fraction: {np.mean(actual_baryon_fraction):.4f}")
-    print(f"Mean CGM fraction: {np.mean(cgm_fraction):.4f}")
-    print(f"Expected baryon fraction: {expected_baryon_fraction:.4f}")
-    print(f"Mean missing fraction: {np.mean(difference):.4f}")
-
-    # Check if there's a scaling issue
-    if np.mean(difference) > 0.05:  # If missing more than 5% of mass
-        estimated_scaling = np.mean(difference) / np.mean(cgm_fraction) if np.mean(cgm_fraction) > 0 else 0
-        print(f"Suggested CGM scaling factor: {1 + estimated_scaling:.2f}x")

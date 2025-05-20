@@ -442,8 +442,24 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     double base_sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
         run_params->SFR_Alpha, z);
 
-    // NEW: Calculate mass-dependent star formation efficiency
-    double sfr_eff = calculate_mass_dependent_sf_efficiency(&galaxies[p], base_sfr_eff, run_params);
+    // NEW: Calculate virial velocity-based SFE enhancement
+    double sfr_eff = base_sfr_eff;
+    if (galaxies[p].Vvir > 0.0) {
+        const double VVIR_THRESHOLD = 70.0;  // km/s - threshold for enhancement
+        if (galaxies[p].Vvir > VVIR_THRESHOLD) {
+            // Strong power-law scaling with virial velocity
+            double velocity_ratio = galaxies[p].Vvir / VVIR_THRESHOLD;
+            // Using a steeper power (1.5) for stronger effect
+            double v_enhancement = pow(velocity_ratio, 0.75);
+            
+            // Allow substantial enhancement for very massive galaxies
+            // but cap at a reasonable maximum (10x)
+            if (v_enhancement > 20.0) v_enhancement = 20.0;
+            
+            // Apply the enhancement
+            sfr_eff *= v_enhancement;
+        }
+    }
 
     // Star formation rate tracking
     galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
@@ -640,7 +656,7 @@ double calculate_lagos_mass_loading(const int p, const double z, struct GALAXY *
     
     // DRASTICALLY REDUCED PARAMETERS
     const double epsilon_disk = 0.5;    // Reduced from 2.0 to 0.5
-    const double v_hot = 120.0;         // Slightly higher characteristic velocity
+    const double v_hot = 60.0;         // Slightly higher characteristic velocity
     const double beta = 1.0;            // Drastically reduced from 2.0 to 1.0
     const double z_p = 0.0;             // Eliminate redshift dependence temporarily
     

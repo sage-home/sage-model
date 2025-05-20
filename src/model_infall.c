@@ -56,6 +56,17 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     double cgm_fraction = 0.0;
     if (run_params->CGMBuildOn) {
         cgm_fraction = calculate_cgm(centralgal, Zcurr, galaxies, run_params);
+        
+        // NEW: Reduce CGM fraction for high-mass galaxies
+        if (galaxies[centralgal].Mvir > 10.0) {  // In 10^10 Msun/h units
+            double log_mvir = log10(galaxies[centralgal].Mvir * 1.0e10 / run_params->Hubble_h);
+            
+            if (log_mvir > 11.0) {
+                // Reduce CGM fraction by up to 50% for massive galaxies
+                double reduction = 0.9 * fmin(1.0, (log_mvir - 11.0) / 1.5);
+                cgm_fraction *= (1.0 - reduction);
+            }
+        }
     }
     
     // Calculate infall by subtracting existing baryons and CGM fraction from total baryon budget
