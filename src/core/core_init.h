@@ -20,7 +20,7 @@ extern "C" {
     extern void cleanup_simulation_times(struct params *run_params);
     
     /* Module system initialization */
-    extern void initialize_module_system(struct params *run_params);
+    extern int initialize_module_system(struct params *run_params);
     extern void cleanup_module_system(void);
     
     /* Galaxy extension system initialization */

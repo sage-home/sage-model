@@ -49,7 +49,12 @@ void init(struct params *run_params)
     LOG_DEBUG("Simulation times initialized");
     
     /* Initialize module system */
-    initialize_module_system(run_params);
+    int status = initialize_module_system(run_params);
+    if (status != MODULE_STATUS_SUCCESS) {
+        LOG_ERROR("Module system initialization failed with status = %d", status);
+        fprintf(stderr, "ERROR: Failed to initialize module system. SAGE requires at least one physics module to run.\n");
+        exit(EXIT_FAILURE);
+    }
     LOG_DEBUG("Module system initialized");
     
     /* Initialize module callback system */
@@ -95,8 +100,11 @@ void init(struct params *run_params)
  * Initialize the module system
  * 
  * Sets up the module system and registers the default modules
+ * 
+ * @param run_params Pointer to the runtime parameters
+ * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
-void initialize_module_system(struct params *run_params)
+int initialize_module_system(struct params *run_params)
 {
     int status;
     
@@ -105,7 +113,7 @@ void initialize_module_system(struct params *run_params)
         status = module_system_initialize();
         if (status != MODULE_STATUS_SUCCESS && status != MODULE_STATUS_ALREADY_INITIALIZED) {
             LOG_ERROR("Failed to initialize module system, status = %d", status);
-            return;
+            return MODULE_STATUS_ERROR;
         }
     } else {
         LOG_DEBUG("Module system already initialized, skipping initialization");
@@ -150,16 +158,21 @@ void initialize_module_system(struct params *run_params)
                     }
                 }
             }
+            
+            return MODULE_STATUS_SUCCESS;
         } else if (modules_found < 0) {
-            LOG_WARNING("Module discovery failed, status = %d", modules_found);
-            LOG_WARNING("Using fallback legacy physics implementations");
+            LOG_ERROR("Module discovery failed with error code %d", modules_found);
+            LOG_ERROR("SAGE requires at least one physics module to run");
+            return MODULE_STATUS_ERROR;
         } else {
-            LOG_WARNING("No modules found during discovery");
-            LOG_WARNING("Using fallback legacy physics implementations");
+            LOG_ERROR("No modules found during discovery");
+            LOG_ERROR("SAGE requires at least one physics module to run");
+            return MODULE_STATUS_ERROR;
         }
     } else {
-        LOG_WARNING("Module discovery not enabled or registry not initialized");
-        LOG_WARNING("Using fallback legacy physics implementations");
+        LOG_ERROR("Module discovery not enabled or registry not initialized");
+        LOG_ERROR("SAGE requires at least one physics module to run");
+        return MODULE_STATUS_ERROR;
     }
 }
 

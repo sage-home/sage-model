@@ -271,3 +271,10 @@
 - Modified files: src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/core/core_save.c, src/core/sage.c, src/io/io_interface.c, Makefile, 
 src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/io_validation.c, src/io/io_validation.h
 - Removed files (to `ignore`): src/io/buffered_io.c, src/io/buffered_io.h
+
+2025-05-20: [Phase 5.2.F.4] Module System Error Handling Fix
+- Fixed critical issue where SAGE would continue execution after module discovery failure
+- Modified `initialize_module_system()` to properly return error status instead of silent failure
+- Updated function prototype in core_init.h to return int status code
+- Ensured proper abort execution when no modules are found instead of continuing with segfault
+- Modified files: src/core/core_init.c, src/core/core_init.h, src/core/core_pipeline_registry.c

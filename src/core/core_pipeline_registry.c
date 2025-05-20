@@ -86,6 +86,12 @@ static void add_all_registered_modules_to_pipeline(struct module_pipeline *pipel
     int processed_module_ids[MAX_MODULES] = {0};
     int num_processed = 0;
 
+    if (num_factories <= 0) {
+        LOG_ERROR("No module factories registered. Pipeline creation failed.");
+        fprintf(stderr, "ERROR: No module factories registered. SAGE requires at least one physics module to run.\n");
+        exit(EXIT_FAILURE);
+    }
+
     LOG_INFO("Creating pipeline with all %d registered factories", num_factories);
 
     // For each registered module factory, create and add the module
