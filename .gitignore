@@ -17,7 +17,6 @@ tests/stubs/
 
 tests/test_hdf5_output
 tests/test_io_interface
-tests/test_binary_output
 tests/test_endian_utils
 tests/test_lhalo_binary
 tests/test_property_serialization
