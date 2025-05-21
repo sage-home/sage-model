@@ -11,6 +11,9 @@
 #include "../src/io/io_property_serialization.h"
 #include "../src/core/core_allvars.h"
 #include "../src/core/core_galaxy_extensions.h"
+#include "../src/core/core_properties.h"
+#include "../src/core/standard_properties.h"
+#include "../src/core/core_property_utils.h"
 
 // Mock galaxy extension registry
 struct galaxy_extension_registry mock_registry;
@@ -42,6 +45,12 @@ struct extended_save_info mock_save_info;
 float test_float = 3.14159f;
 double test_double = 2.71828;
 int32_t test_int32 = 42;
+
+// Add function to initialize the property system for testing
+void setup_mock_property_system() {
+    // Initialize the property system with mock parameters
+    initialize_property_system(&mock_params);
+}
 
 /**
  * @brief Setup mock extension registry for testing
@@ -195,58 +204,145 @@ struct GALAXY *create_test_galaxy(int snap_num, int halo_nr) {
         return NULL;
     }
     
-    // Set basic galaxy properties
+    // Allocate properties structure
+    int status = allocate_galaxy_properties(galaxy, &mock_params);
+    if (status != 0 || galaxy->properties == NULL) {
+        free(galaxy);
+        return NULL;
+    }
+    
+    // Set basic galaxy properties - CORE properties use GALAXY_PROP_* macros
     galaxy->SnapNum = snap_num;
-    galaxy->Type = 0;
+    GALAXY_PROP_Type(galaxy) = 0;
+    
+    // Use generic accessors for non-core physics properties
+    property_id_t prop_id;
+    
+    prop_id = get_property_id("GalaxyNr");
+    set_int32_property(galaxy, prop_id, halo_nr);
+    
+    prop_id = get_property_id("CentralGal");
+    set_int32_property(galaxy, prop_id, 0); // Central
+    
+    prop_id = get_property_id("HaloNr");
+    set_int32_property(galaxy, prop_id, halo_nr);
+    
     galaxy->GalaxyIndex = 1000 + halo_nr;
-    galaxy->CentralGalaxyIndex = 1000;  // All have the same central for simplicity
-    galaxy->HaloNr = halo_nr;
-    galaxy->mergeType = 0;
-    galaxy->mergeIntoID = -1;
-    galaxy->mergeIntoSnapNum = -1;
-    galaxy->dT = 0.01;
     
+    // Core property with direct access via macro
+    GALAXY_PROP_mergeType(galaxy) = 0;
+    GALAXY_PROP_mergeIntoID(galaxy) = -1;
+    GALAXY_PROP_mergeIntoSnapNum(galaxy) = -1;
+    GALAXY_PROP_dT(galaxy) = 0.01;
+    
+    // Core arrays use GALAXY_PROP_* macros
     for (int j = 0; j < 3; j++) {
-        galaxy->Pos[j] = mock_halos[halo_nr].Pos[j];
-        galaxy->Vel[j] = mock_halos[halo_nr].Vel[j];
+        GALAXY_PROP_Pos(galaxy)[j] = mock_halos[halo_nr].Pos[j];
+        GALAXY_PROP_Vel(galaxy)[j] = mock_halos[halo_nr].Vel[j];
     }
     
-    galaxy->Len = 1000 + halo_nr * 100;
-    galaxy->Mvir = mock_halos[halo_nr].Mvir;
-    galaxy->Vmax = 300.0 + halo_nr * 10.0;
+    GALAXY_PROP_Len(galaxy) = 1000 + halo_nr * 100;
+    GALAXY_PROP_Mvir(galaxy) = mock_halos[halo_nr].Mvir;
+    GALAXY_PROP_Vmax(galaxy) = 300.0 + halo_nr * 10.0;
     
-    galaxy->ColdGas = 1e10 + halo_nr * 1e9;
-    galaxy->StellarMass = 5e10 + halo_nr * 1e9;
-    galaxy->BulgeMass = 1e10 + halo_nr * 5e8;
-    galaxy->HotGas = 5e11 + halo_nr * 1e10;
-    galaxy->EjectedMass = 1e9 + halo_nr * 1e8;
-    galaxy->BlackHoleMass = 1e7 + halo_nr * 1e6;
-    galaxy->ICS = 1e8 + halo_nr * 1e7;
+    // Physics properties use generic property access functions
+    prop_id = get_property_id("ColdGas");
+    float cold_gas_val = 1e10 + halo_nr * 1e9;
+    set_float_property(galaxy, prop_id, cold_gas_val);
     
-    galaxy->MetalsColdGas = galaxy->ColdGas * 0.02;
-    galaxy->MetalsStellarMass = galaxy->StellarMass * 0.02;
-    galaxy->MetalsBulgeMass = galaxy->BulgeMass * 0.02;
-    galaxy->MetalsHotGas = galaxy->HotGas * 0.01;
-    galaxy->MetalsEjectedMass = galaxy->EjectedMass * 0.005;
-    galaxy->MetalsICS = galaxy->ICS * 0.01;
+    prop_id = get_property_id("StellarMass");
+    float stellar_mass_val = 5e10 + halo_nr * 1e9;
+    set_float_property(galaxy, prop_id, stellar_mass_val);
     
+    prop_id = get_property_id("BulgeMass");
+    float bulge_mass_val = 1e10 + halo_nr * 5e8;
+    set_float_property(galaxy, prop_id, bulge_mass_val);
+    
+    prop_id = get_property_id("HotGas");
+    float hot_gas_val = 5e11 + halo_nr * 1e10;
+    set_float_property(galaxy, prop_id, hot_gas_val);
+    
+    prop_id = get_property_id("EjectedMass");
+    float ejected_mass_val = 1e9 + halo_nr * 1e8;
+    set_float_property(galaxy, prop_id, ejected_mass_val);
+    
+    prop_id = get_property_id("BlackHoleMass");
+    float bh_mass_val = 1e7 + halo_nr * 1e6;
+    set_float_property(galaxy, prop_id, bh_mass_val);
+    
+    prop_id = get_property_id("ICS");
+    float ics_val = 1e8 + halo_nr * 1e7;
+    set_float_property(galaxy, prop_id, ics_val);
+    
+    // Set metals properties
+    prop_id = get_property_id("MetalsColdGas");
+    set_float_property(galaxy, prop_id, cold_gas_val * 0.02);
+    
+    prop_id = get_property_id("MetalsStellarMass");
+    set_float_property(galaxy, prop_id, stellar_mass_val * 0.02);
+    
+    prop_id = get_property_id("MetalsBulgeMass");
+    set_float_property(galaxy, prop_id, bulge_mass_val * 0.02);
+    
+    prop_id = get_property_id("MetalsHotGas");
+    set_float_property(galaxy, prop_id, hot_gas_val * 0.01);
+    
+    prop_id = get_property_id("MetalsEjectedMass");
+    set_float_property(galaxy, prop_id, ejected_mass_val * 0.005);
+    
+    prop_id = get_property_id("MetalsICS");
+    set_float_property(galaxy, prop_id, ics_val * 0.01);
+    
+    // Arrays require special handling with array element access
     for (int step = 0; step < STEPS; step++) {
-        galaxy->SfrDisk[step] = 10.0 + halo_nr * 1.0 + step * 0.1;
-        galaxy->SfrBulge[step] = 5.0 + halo_nr * 0.5 + step * 0.05;
-        galaxy->SfrDiskColdGas[step] = 1e9 + halo_nr * 1e8 + step * 1e7;
-        galaxy->SfrBulgeColdGas[step] = 5e8 + halo_nr * 5e7 + step * 5e6;
-        galaxy->SfrDiskColdGasMetals[step] = galaxy->SfrDiskColdGas[step] * 0.02;
-        galaxy->SfrBulgeColdGasMetals[step] = galaxy->SfrBulgeColdGas[step] * 0.02;
+        // SFR arrays
+        prop_id = get_property_id("SfrDisk");
+        float sfr_disk_val = 10.0 + halo_nr * 1.0 + step * 0.1;
+        // For fixed-size array access
+        GALAXY_PROP_SfrDisk_ELEM(galaxy, step) = sfr_disk_val;
+        
+        prop_id = get_property_id("SfrBulge");
+        float sfr_bulge_val = 5.0 + halo_nr * 0.5 + step * 0.05;
+        GALAXY_PROP_SfrBulge_ELEM(galaxy, step) = sfr_bulge_val;
+        
+        // Set other array properties similarly
+        prop_id = get_property_id("SfrDiskColdGas");
+        float sfr_disk_cold_gas_val = 1e9 + halo_nr * 1e8 + step * 1e7;
+        GALAXY_PROP_SfrDiskColdGas_ELEM(galaxy, step) = sfr_disk_cold_gas_val;
+        
+        prop_id = get_property_id("SfrBulgeColdGas");
+        float sfr_bulge_cold_gas_val = 5e8 + halo_nr * 5e7 + step * 5e6;
+        GALAXY_PROP_SfrBulgeColdGas_ELEM(galaxy, step) = sfr_bulge_cold_gas_val;
+        
+        prop_id = get_property_id("SfrDiskColdGasMetals");
+        GALAXY_PROP_SfrDiskColdGasMetals_ELEM(galaxy, step) = sfr_disk_cold_gas_val * 0.02;
+        
+        prop_id = get_property_id("SfrBulgeColdGasMetals");
+        GALAXY_PROP_SfrBulgeColdGasMetals_ELEM(galaxy, step) = sfr_bulge_cold_gas_val * 0.02;
     }
     
-    galaxy->DiskScaleRadius = 3.0 + halo_nr * 0.1;
-    galaxy->Cooling = 1e42 + halo_nr * 1e41;
-    galaxy->Heating = 1e41 + halo_nr * 1e40;
-    galaxy->QuasarModeBHaccretionMass = 1e6 + halo_nr * 1e5;
-    galaxy->TimeOfLastMajorMerger = 4.0 + halo_nr * 0.5;
-    galaxy->TimeOfLastMinorMerger = 2.0 + halo_nr * 0.2;
-    galaxy->OutflowRate = 10.0 + halo_nr * 1.0;
+    // Set more physics properties
+    prop_id = get_property_id("DiskScaleRadius");
+    set_float_property(galaxy, prop_id, 3.0 + halo_nr * 0.1);
     
+    prop_id = get_property_id("Cooling");
+    set_double_property(galaxy, prop_id, 1e42 + halo_nr * 1e41);
+    
+    prop_id = get_property_id("Heating");
+    set_double_property(galaxy, prop_id, 1e41 + halo_nr * 1e40);
+    
+    prop_id = get_property_id("QuasarModeBHaccretionMass");
+    set_float_property(galaxy, prop_id, 1e6 + halo_nr * 1e5);
+    
+    prop_id = get_property_id("TimeOfLastMajorMerger");
+    set_float_property(galaxy, prop_id, 4.0 + halo_nr * 0.5);
+    
+    prop_id = get_property_id("TimeOfLastMinorMerger");
+    set_float_property(galaxy, prop_id, 2.0 + halo_nr * 0.2);
+    
+    prop_id = get_property_id("OutflowRate");
+    set_float_property(galaxy, prop_id, 10.0 + halo_nr * 1.0);
+
     // Initialize extension data array if global registry is set
     if (global_extension_registry != NULL) {
         galaxy->extension_data = calloc(global_extension_registry->num_extensions, sizeof(void *));
@@ -254,6 +350,7 @@ struct GALAXY *create_test_galaxy(int snap_num, int halo_nr) {
         galaxy->extension_flags = 0;
         
         if (galaxy->extension_data == NULL) {
+            free_galaxy_properties(galaxy);
             free(galaxy);
             return NULL;
         }
@@ -267,6 +364,7 @@ struct GALAXY *create_test_galaxy(int snap_num, int halo_nr) {
                     free(galaxy->extension_data[j]);
                 }
                 free(galaxy->extension_data);
+                free_galaxy_properties(galaxy);
                 free(galaxy);
                 return NULL;
             }
@@ -301,6 +399,10 @@ struct GALAXY *create_test_galaxy(int snap_num, int halo_nr) {
 void free_test_galaxy(struct GALAXY *galaxy) {
     if (galaxy == NULL) {
         return;
+    }
+    
+    if (galaxy->properties != NULL) {
+        free_galaxy_properties(galaxy);
     }
     
     if (galaxy->extension_data != NULL) {
@@ -400,6 +502,7 @@ int main() {
     setup_mock_params();
     setup_mock_save_info();
     setup_mock_registry();
+    setup_mock_property_system();  // Initialize property system
     
     // Run tests
     test_handler_registration();
@@ -408,6 +511,7 @@ int main() {
     // Clean up
     io_cleanup();
     cleanup_test_files();
+    cleanup_property_system();  // Clean up property system
     
     printf("All HDF5 output handler tests passed!\n");
     return 0;
