@@ -472,7 +472,7 @@ test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline_invoke tests/test_pipeline_invoke.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Core-physics separation test targets
-test_core_physics_separation: tests/test_core_physics_separation.c core-only
+test_core_physics_separation: tests/test_core_physics_separation.c
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_physics_separation tests/test_core_physics_separation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_output_preparation: tests/test_output_preparation.c $(SAGELIB)
