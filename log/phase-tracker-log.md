@@ -9,17 +9,15 @@
 - At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
-# Current Phase: 5/7 (Core Module Migration)
+# Current Phase: 5/7 (Core Module Migration) - Transitioning to Physics Module Implementation
 
 ## Phase Objectives
-- Implement pipeline execution phases for handling different calculation scopes
-- Transform `evolve_galaxies()` to use the pipeline system
-- Implement the Properties Module architecture for complete core-physics decoupling
-- Create type-safe, centrally-defined galaxy property mechanism
-- Achieve complete independence between core infrastructure and physics modules
-- Enable the core system to operate correctly with no physics modules
-- Migrate physics components as pure add-ons to the core
+- **PRIMARY**: Implement physics modules as pure add-ons to the physics-agnostic core
+- **SECONDARY**: Address remaining architectural violations in core systems
+- Establish module-to-module communication protocols for physics interdependencies
+- Implement all physics modules (cooling, star formation, feedback, mergers, etc.)
 - Validate scientific accuracy against baseline SAGE results
+- Ensure complete core-physics separation compliance across all systems
 
 ## Current Progress
 
@@ -32,7 +30,9 @@
 - [x] Integrate module callbacks
 - [x] Add evolution diagnostics
 
-### Phase 5.2: Properties Module Implementation ✅ COMPLETED
+### Phase 5.2: Properties Module Implementation ⏳ IN PROGRESS
+
+⏳ ARCHITECTURAL SHIFT: After careful evaluation, we've decided to replace the piecemeal physics module migration with a more elegant "Properties Module" architecture that provides cleaner separation between core and physics.
 
 #### Phase 5.2.B: Central Property Definition & Infrastructure ✅ COMPLETED
 - [x] Establish performance baseline for current implementation
@@ -41,10 +41,10 @@
 - [x] Integrate header generation into build system
 - [x] Implement core registration of standard properties
 - [x] Implement memory management for dynamic array properties
-- [x] Implement synchronization functions in `core_properties_sync.c/h`
+- [x] Implement synchronization functions (later removed for core-physics separation)
 
 #### Phase 5.2.C: Core Integration & Synchronization ✅ COMPLETED
-- [x] Integrate synchronization calls into pipeline execution points
+- [x] Integrate synchronization calls into pipeline execution points (later removed)
 - [x] Ensure core galaxy lifecycle functions correctly manage the `galaxy->properties` struct
 - [x] Refine core initialization logic to correctly initialize direct fields and properties
 
@@ -56,12 +56,12 @@
 #### Phase 5.2.E: I/O System Update ✅ COMPLETED
 - [x] Remove `GALAXY_OUTPUT` struct
 - [x] Remove `prepare_galaxy_for_output` logic
-- [x] Implement output preparation module using `GALAXY_PROP_*` macros
+- [x] Implement output preparation module using property-based transformers
 - [x] Remove binary output format support (standardize on HDF5)
-- [x] Update HDF5 I/O handler to read property metadata and use macros for writing
+- [x] Update HDF5 I/O handler to read property metadata and use property-based serialization
 - [x] Enhance HDF5 serialization for dynamic arrays and module-specific properties
 
-#### Phase 5.2.F: Core-Physics Separation ⏳ IN PROGRESS
+#### Phase 5.2.F: Core-Physics Separation ⏳ PENDING
 
 ##### Phase 5.2.F.1: Core Isolation ✅ COMPLETED
 - [x] Remove ALL physics dependencies from core infrastructure
@@ -71,7 +71,6 @@
 - [x] Remove direct field synchronization from pipeline executor
 - [x] Remove physics fields from `struct GALAXY` definition
 - [x] Update all core code to be physics-property-agnostic
-- [x] Enhance error handling and documentation
 
 ##### Phase 5.2.F.2: Empty Pipeline Validation ✅ COMPLETED
 - [x] Create empty placeholder modules for essential pipeline points
@@ -87,28 +86,35 @@
 - [x] Update build system to remove legacy components
 - [x] Clean up any remaining legacy references
 - [x] Remove all synchronization infrastructure after verification
-- [x] Reorganize physics files to ensure core-physics separation
-- [x] Complete `Implementation Plan for Output Transformers.md` - Phase 1-2
-- [x] Complete `core-physics-separation-req.md`
-- [x] Complete `Implementation Plan for Output Transformers.md` - Phase 3-6
-- [x] Binary code removal
+- [x] Complete output transformers implementation and binary code removal
+- [x] Implement configuration-driven pipeline creation
+- [x] Complete core-physics separation infrastructure
 - [ ] Test suite review and update
 - [ ] Comprehensive code cleanup
 - [ ] Documentation review and update
-- [ ] Final verification of clean core-physics separation
 
-#### Phase 5.2.G: Physics Module Migration ⏳ PENDING
-With the core now completely physics-agnostic, we'll implement physics modules as pure add-ons.
+### Phase 5.2.G: Physics Module Migration ⏳ NEXT PRIORITY
 
-##### Phase 5.2.G.1: Physics Foundation ⏳ PENDING
+**CRITICAL**: Before proceeding with Phase 5.2.G, address architectural violations in existing core systems:
+
+#### Prerequisite: Architectural Compliance (⚠️ REQUIRED)
+- [ ] **Fix Evolution Diagnostics System**: Remove hardcoded physics property knowledge from core diagnostics
+- [ ] **Audit Event System**: Separate core infrastructure events from physics-specific events  
+- [ ] **Review Core Systems**: Ensure all core components comply with core-physics separation
+- [ ] **Update Failing Tests**: Fix tests that violate core-physics separation principles
+
+#### Phase 5.2.G.1: Physics Foundation ⏳ PENDING
 - [ ] Develop standard physics utility functions independent of core code
-- [ ] Create common physics constants and conversion factors
+- [ ] Create common physics constants and conversion factors  
 - [ ] Implement shared calculation libraries for physics modules
 - [ ] Establish module-to-module communication protocols
 - [ ] Create physics property definitions separate from core properties
+- [ ] Design physics module diagnostic registration system
 
-##### Phase 5.2.G.2: Module Implementation ⏳ PENDING
+#### Phase 5.2.G.2: Module Implementation ⏳ PENDING  
 - [ ] Determine optimal module sequence based on dependencies
+- [ ] Implement/validate Cooling & Heating Module
+- [ ] Implement/validate Infall Module
 - [ ] Implement/validate Star Formation & Feedback Module
 - [ ] Implement/validate Disk Instability Module
 - [ ] Implement/validate Reincorporation Module
@@ -128,38 +134,79 @@ With the core now completely physics-agnostic, we'll implement physics modules a
 - [ ] Create comprehensive documentation of the validation approach
 
 ## Completion Criteria
-- The main galaxy evolution loop uses the pipeline system with proper phase handling
-- The core system operates correctly with empty or minimal properties.yaml
-- Core infrastructure runs without any physics modules loaded
-- All persistent per-galaxy physics state is defined centrally via `properties.yaml`
-- Core infrastructure has zero knowledge of specific physics properties
-- All physics components are implemented as pure add-ons to the core
-- All physics components access galaxy properties via generated macros
-- Physics modules are implemented as standalone modules with appropriate phase declarations
-- The core GALAXY struct contains only essential identifiers, not physics fields
-- Output properties are determined by flags in the central definition
-- Property system fully supports dynamic array properties with runtime size determination
-- Event handling and module callbacks correctly preserve physics interdependencies
-- HDF5 output format is the exclusive output format with enhanced property serialization
-- Scientific results match baseline SAGE simulation outputs
-- All tests pass, including validation tests
+**Current Phase (5.2.G) Complete When:**
+- All core systems comply with core-physics separation (no hardcoded physics knowledge)
+- Physics foundation libraries provide common utilities for physics modules
+- All major physics processes are implemented as standalone modules
+- Physics modules access galaxy state only through the property system
+- Physics modules register their own diagnostic metrics and events
+- Module-to-module communication protocols enable physics interdependencies
+- Scientific validation confirms results match baseline SAGE implementation
+- Comprehensive test suite validates all module combinations
+
+**Overall Phase 5 Complete When:**
+- Core infrastructure operates independently from any physics implementation
+- Physics modules function as pure add-ons with runtime configurability
+- Property system fully supports all physics module requirements
+- Event handling preserves physics interdependencies through module communication
+- HDF5 output adapts dynamically to available physics properties
+- Performance benchmarks show acceptable overhead from modular architecture
+- Scientific accuracy is maintained across all physics module combinations
 
 ## Inter-Phase Dependencies
 - Phase 1 (Preparatory Refactoring): ✅ COMPLETED
-- Phase 2 (Module Interfaces): ✅ COMPLETED
+- Phase 2 (Module Interfaces): ✅ COMPLETED  
 - Phase 3 (I/O Abstraction & Memory Optimization): ✅ COMPLETED
 - Phase 4 (Plugin Infrastructure): ✅ COMPLETED
-- Phase 5 (Core Module Migration): ⏳ IN PROGRESS
-- Phase 6 (Advanced Performance Optimization): 🔒 BLOCKED
-- Phase 7 (Documentation and Tools): 🔒 BLOCKED
-# Configuration-Driven Pipeline Creation (May 2025)
+- Phase 5 (Core Module Migration): ⏳ IN PROGRESS - **Architectural compliance required before 5.2.G**
+- Phase 6 (Advanced Performance Optimization): 🔒 BLOCKED - Requires complete Phase 5
+- Phase 7 (Documentation and Tools): 🔒 BLOCKED - Requires complete Phase 5
 
-The implementation of configuration-driven module activation in pipeline creation has been completed. This represents the final step in fully decoupling the core infrastructure from specific physics implementations. The pipeline registry now reads the "modules.instances" array from JSON configuration to determine which modules to activate, with appropriate fallback to using all registered modules when no configuration is available.
+## Critical Next Steps
 
-Key benefits of this implementation:
-1. True Runtime Modularity: Users can define entirely different sets of active physics modules by changing the configuration file.
-2. Complete Core-Physics Decoupling: Core pipeline creation logic has no compile-time or hardcoded knowledge of which specific physics modules constitute a "standard" run.
-3. Enhanced Flexibility: Facilitates easier experimentation with different combinations of physics modules.
-4. Clear Separation of Concerns: Module self-registration (via constructors) makes modules *available*, while the configuration *selects and enables* them for a specific pipeline.
+### Immediate Actions Required (Before Phase 5.2.G):
+1. **Address Evolution Diagnostics Violations**: Redesign diagnostics system to be physics-agnostic
+2. **Audit Core Event System**: Separate core infrastructure events from physics events
+3. **Fix Failing Tests**: Update tests to comply with core-physics separation
+4. **Core System Review**: Verify all core components are truly physics-agnostic
 
-This completes FR-1.1 and FR-1.2 from the core-physics separation requirements by making module activation fully configurable at runtime.
+### Phase 5.2.G Readiness Criteria:
+- ✅ Core infrastructure completely physics-agnostic  
+- ✅ Empty pipeline runs successfully
+- ❌ All core systems comply with separation principles (diagnostics violations remain)
+- ❌ All tests pass with core-physics separation (some tests still fail)
+- ✅ Property system ready for physics module development
+- ✅ Module infrastructure supports physics module registration
+
+**Status**: Phase 5.2.F is largely complete, but critical architectural violations must be resolved before proceeding to physics module implementation.
+## Recent Milestone: Configuration-Driven Pipeline Creation (May 2025) ✅ COMPLETED
+
+The implementation of configuration-driven module activation in pipeline creation has been completed, representing the final infrastructure component for complete core-physics decoupling. The pipeline registry now reads the "modules.instances" array from JSON configuration to determine which modules to activate, with appropriate fallback to using all registered modules when no configuration is available.
+
+**Key Benefits Achieved:**
+1. **True Runtime Modularity**: Users can define entirely different sets of active physics modules by changing the configuration file
+2. **Complete Core-Physics Decoupling**: Core pipeline creation logic has no compile-time or hardcoded knowledge of specific physics modules  
+3. **Enhanced Flexibility**: Facilitates easier experimentation with different combinations of physics modules
+4. **Clear Separation of Concerns**: Module self-registration makes modules available, while configuration selects and enables them
+
+This completes the core infrastructure requirements for Phase 5.2.F and enables the transition to Phase 5.2.G physics module implementation.
+
+## Architecture Status Summary
+
+**Completed Infrastructure:**
+- ✅ Physics-agnostic core with empty pipeline capability
+- ✅ Property-based galaxy state management  
+- ✅ Configuration-driven module activation
+- ✅ HDF5-based property serialization with transformers
+- ✅ Module registration and lifecycle management
+
+**Remaining Architectural Issues:**
+- ❌ Evolution diagnostics system contains hardcoded physics property knowledge
+- ❌ Event system mixes core infrastructure and physics-specific events
+- ❌ Some tests violate core-physics separation principles
+
+**Ready for Physics Development:**
+- ✅ Property system supports all physics module needs
+- ✅ Module infrastructure enables physics module registration
+- ✅ Pipeline system supports physics module execution phases
+- ✅ Event and callback systems enable module communication

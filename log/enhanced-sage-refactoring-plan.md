@@ -460,16 +460,18 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 ##### 5.2.E: I/O System Update ✅ COMPLETED
 *   **5.2.E.1 Remove GALAXY_OUTPUT Struct**: Delete the static `GALAXY_OUTPUT` struct definition.
 *   **5.2.E.2 Remove prepare_galaxy_for_output Logic**: Eliminate the static mapping code.
-*   **5.2.E.3 Implement Output Preparation Module**: Create a module running in `PIPELINE_PHASE_FINAL` to handle unit conversions/derived values using `GALAXY_PROP_*` macros.
+*   **5.2.E.3 Implement Output Preparation Module**: Create a module running in `PIPELINE_PHASE_FINAL` to handle unit conversions/derived values using property-based transformers.
 *   **5.2.E.4 Remove Binary Output Format Support**: Standardize on HDF5 output. Update relevant code and documentation.
-*   **5.2.E.5 Update HDF5 I/O Handler**: Modify HDF5 handler to read property metadata from `PROPERTY_META` and use `GALAXY_PROP_*` macros for writing galaxy data.
-*   **5.2.E.6 Enhance HDF5 Serialization**: Adapt HDF5 serialization to support dynamic arrays and potentially module-specific private properties.
+*   **5.2.E.5 Update HDF5 I/O Handler**: Modify HDF5 handler to read property metadata and use property-based serialization for writing galaxy data.
+*   **5.2.E.6 Enhance HDF5 Serialization**: Adapt HDF5 serialization to support dynamic arrays and module-specific properties through the property system.
 
-##### 5.2.F: Core-Physics Separation ⏳ PENDING
+##### 5.2.F: Core-Physics Separation ✅ LARGELY COMPLETED
 **Goal:** Achieve complete independence between core infrastructure and physics to create a truly physics-agnostic system.
-*   **5.2.F.1 Core Isolation**: Remove ALL physics dependencies from core infrastructure. Remove all direct physics calls in `evolve_galaxies.c`. Remove physics-related include statements from core files. Create minimal properties definition with only core infrastructure properties. Remove direct field synchronization from pipeline executor. Remove physics fields from `struct GALAXY` definition. Update all core code to be physics-property-agnostic.
-*   **5.2.F.2 Empty Pipeline Validation**: Create empty placeholder modules for essential pipeline points. Register empty modules in the pipeline. Configure pipeline to execute all phases with no physics operations. Test that the system can run end-to-end with empty properties.yaml. Implement tests verifying core independence from physics. Document the physics-free model baseline. Optimize memory management.
-*   **5.2.F.3 Legacy Code Removal**: Remove all legacy physics implementation files. Update build system to remove legacy components. Clean up any remaining legacy references. Remove all synchronization infrastructure after verifying it's no longer needed. Final verification of clean core-physics separation.
+*   **5.2.F.1 Core Isolation** ✅ COMPLETED: Removed ALL physics dependencies from core infrastructure. Removed all direct physics calls in `evolve_galaxies.c`. Removed physics-related include statements from core files. Created minimal properties definition with only core infrastructure properties. Removed direct field synchronization from pipeline executor. Removed physics fields from `struct GALAXY` definition. Updated all core code to be physics-property-agnostic.
+*   **5.2.F.2 Empty Pipeline Validation** ✅ COMPLETED: Created empty placeholder modules for essential pipeline points. Registered empty modules in the pipeline. Configured pipeline to execute all phases with no physics operations. Tested that the system can run end-to-end with empty properties.yaml. Implemented tests verifying core independence from physics. Documented the physics-free model baseline. Optimized memory management.
+*   **5.2.F.3 Legacy Code Removal** ✅ COMPLETED: Removed all legacy physics implementation files. Updated build system to remove legacy components. Cleaned up remaining legacy references. Removed synchronization infrastructure after verification. Completed configuration-driven pipeline creation for full core-physics separation.
+
+**Note**: Some architectural issues remain in systems like evolution diagnostics that contain hardcoded physics property knowledge and violate core-physics separation principles. These should be addressed before proceeding to Phase 5.2.G.
 
 ##### 5.2.G: Physics Module Migration ⏳ PENDING
 **Goal:** With the core now completely physics-agnostic, implement physics modules as pure add-ons.

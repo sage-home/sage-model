@@ -93,20 +93,39 @@ The Output Preparation Module directly integrates with the HDF5 output format:
 ```c
 // Convert disk temperature from Kelvin to log(K)
 if (GALAXY_PROP_DiskTemperature(galaxy) > 0) {
+## Example: Unit Conversion for Core Properties
+
+```c
+// Apply logarithmic scaling to disk temperature (core property)
+if (GALAXY_PROP_DiskTemperature(galaxy) > 0) {
     GALAXY_PROP_DiskTemperature(galaxy) = log10(GALAXY_PROP_DiskTemperature(galaxy));
 }
 ```
 
-## Example: Calculating a Derived Property
+## Example: Calculating Derived Properties from Physics Properties
+
+For physics properties, the module must use the generic property system to maintain core-physics separation:
 
 ```c
-// Calculate specific star formation rate (if stellar mass > 0)
-if (GALAXY_PROP_StellarMass(galaxy) > 0 && GALAXY_PROP_SfrDisk(galaxy) > 0) {
-    GALAXY_PROP_SpecificSFR(galaxy) = GALAXY_PROP_SfrDisk(galaxy) / GALAXY_PROP_StellarMass(galaxy);
-} else {
-    GALAXY_PROP_SpecificSFR(galaxy) = 0.0;
+// Calculate specific star formation rate using generic property accessors
+property_id_t stellar_mass_id = get_cached_property_id("StellarMass");
+property_id_t sfr_disk_id = get_cached_property_id("SfrDisk");
+property_id_t specific_sfr_id = get_cached_property_id("SpecificSFR");
+
+if (stellar_mass_id != PROP_COUNT && sfr_disk_id != PROP_COUNT && specific_sfr_id != PROP_COUNT) {
+    float stellar_mass = get_float_property(galaxy, stellar_mass_id, 0.0f);
+    float sfr_disk = get_float_property(galaxy, sfr_disk_id, 0.0f);
+    
+    if (stellar_mass > 0.0f && sfr_disk > 0.0f) {
+        float specific_sfr = sfr_disk / stellar_mass;
+        set_float_property(galaxy, specific_sfr_id, specific_sfr);
+    } else {
+        set_float_property(galaxy, specific_sfr_id, 0.0f);
+    }
 }
 ```
+
+**Note**: This example demonstrates the correct approach for accessing physics properties in output preparation. The module uses generic property accessors rather than direct `GALAXY_PROP_*` macros for physics properties to maintain core-physics separation.
 
 ## Migration from Binary Output
 
