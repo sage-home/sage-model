@@ -498,6 +498,9 @@ struct params
     double CGMBuildAlpha; // Power-law index for velocity dependence
     double CGMBuildZdep;  // Redshift dependence parameter
 
+    double VvirThreshold;           // Virial velocity threshold for SF enhancement (km/s)
+    double VvirEnhancementPower;    // Power-law exponent for velocity enhancement
+
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;
     double UnitMass_in_g;

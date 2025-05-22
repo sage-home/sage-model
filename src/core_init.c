@@ -160,6 +160,14 @@ void init(struct params *run_params)
         run_params->SFHighMassSlope = -0.3;  // Default high-mass slope (negative)
     }
 
+    if (run_params->VvirThreshold <= 0.0) {
+        run_params->VvirThreshold = 60.0;  // Default threshold: 60 km/s
+    }
+    
+    if (run_params->VvirEnhancementPower <= 0.0) {
+        run_params->VvirEnhancementPower = 0.9;  // Default power-law exponent
+    }
+
     set_units(run_params);
 
     read_snap_list(run_params);

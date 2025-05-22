@@ -72,8 +72,31 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     double base_sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
         run_params->SFR_Alpha, z);
 
-    // NEW: Calculate mass-dependent star formation efficiency
-    double sfr_eff = calculate_mass_dependent_sf_efficiency(&galaxies[p], base_sfr_eff, run_params);
+    double sfr_eff = base_sfr_eff;
+    if (galaxies[p].Vvir > 0.0) {
+        if (galaxies[p].Vvir > run_params->VvirThreshold) {
+            // Power-law scaling with virial velocity using configurable parameters
+            double velocity_ratio = galaxies[p].Vvir / run_params->VvirThreshold;
+            double v_enhancement = pow(velocity_ratio, run_params->VvirEnhancementPower);
+            
+            // Apply maximum enhancement cap
+            if (v_enhancement > 20.0) v_enhancement = 20.0;
+            
+            // Apply the enhancement
+            sfr_eff *= v_enhancement;
+            
+    #ifdef VERBOSE
+            // Optional diagnostic logging
+            static int enhancement_counter = 0;
+            if (enhancement_counter % 1000000 == 0) {
+                printf("VVIR ENHANCEMENT: Galaxy=%d, Vvir=%.1f km/s, threshold=%.1f, power=%.2f, enhancement=%.2f\n",
+                    galaxies[p].GalaxyNr, galaxies[p].Vvir, run_params->VvirThreshold, 
+                    run_params->VvirEnhancementPower, v_enhancement);
+            }
+            enhancement_counter++;
+    #endif
+        }
+    }
     double fb_reheat = get_redshift_dependent_parameter(run_params->FeedbackReheatingEpsilon, 
                                                       run_params->Reheating_Alpha, z);
     double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
@@ -442,22 +465,29 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     double base_sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
         run_params->SFR_Alpha, z);
 
-    // NEW: Calculate virial velocity-based SFE enhancement
     double sfr_eff = base_sfr_eff;
     if (galaxies[p].Vvir > 0.0) {
-        const double VVIR_THRESHOLD = 70.0;  // km/s - threshold for enhancement
-        if (galaxies[p].Vvir > VVIR_THRESHOLD) {
-            // Strong power-law scaling with virial velocity
-            double velocity_ratio = galaxies[p].Vvir / VVIR_THRESHOLD;
-            // Using a steeper power (1.5) for stronger effect
-            double v_enhancement = pow(velocity_ratio, 0.75);
+        if (galaxies[p].Vvir > run_params->VvirThreshold) {
+            // Power-law scaling with virial velocity using configurable parameters
+            double velocity_ratio = galaxies[p].Vvir / run_params->VvirThreshold;
+            double v_enhancement = pow(velocity_ratio, run_params->VvirEnhancementPower);
             
-            // Allow substantial enhancement for very massive galaxies
-            // but cap at a reasonable maximum (10x)
+            // Apply maximum enhancement cap
             if (v_enhancement > 20.0) v_enhancement = 20.0;
             
             // Apply the enhancement
             sfr_eff *= v_enhancement;
+            
+    #ifdef VERBOSE
+            // Optional diagnostic logging
+            static int enhancement_counter = 0;
+            if (enhancement_counter % 1000000 == 0) {
+                printf("VVIR ENHANCEMENT: Galaxy=%d, Vvir=%.1f km/s, threshold=%.1f, power=%.2f, enhancement=%.2f\n",
+                    galaxies[p].GalaxyNr, galaxies[p].Vvir, run_params->VvirThreshold, 
+                    run_params->VvirEnhancementPower, v_enhancement);
+            }
+            enhancement_counter++;
+    #endif
         }
     }
 

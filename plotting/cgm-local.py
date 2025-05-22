@@ -200,11 +200,13 @@ if __name__ == '__main__':
     df['sSFR_median'] = df['sSFR'].rolling(window=window_size, center=True).median()
 
     # Handle NaN values at the edges due to rolling window
-    # Use the first/last valid median for the edges
-    first_valid = df['sSFR_median'].first_valid_index()
-    last_valid = df['sSFR_median'].last_valid_index()
-    df.loc[:first_valid, 'sSFR_median'] = df.loc[first_valid, 'sSFR_median']
-    df.loc[last_valid:, 'sSFR_median'] = df.loc[last_valid, 'sSFR_median']
+    # Only try to fill edges if we have any valid median values
+    if df['sSFR_median'].notna().any():
+        first_valid = df['sSFR_median'].first_valid_index()
+        last_valid = df['sSFR_median'].last_valid_index()
+        if first_valid is not None and last_valid is not None:
+            df.loc[:first_valid, 'sSFR_median'] = df.loc[first_valid, 'sSFR_median']
+            df.loc[last_valid:, 'sSFR_median'] = df.loc[last_valid, 'sSFR_median']
 
     # Alternative: use interpolation to handle NaN values
     # Create an interpolation function
@@ -374,4 +376,3 @@ if __name__ == '__main__':
     plt.savefig(outputFile)  # Save the figure
     print('Saved to', outputFile, '\n')
     plt.close()
-    

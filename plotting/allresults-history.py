@@ -128,6 +128,12 @@ if __name__ == '__main__':
     z3_x = Shuntov.iloc[:, 14]   # First column
     z3_y = Shuntov.iloc[:, 15]   # Second column
 
+    z4_x = Shuntov.iloc[:, 18]   # First column
+    z4_y = Shuntov.iloc[:, 19]   # Second column
+
+    z5_x = Shuntov.iloc[:, 20]   # First column
+    z5_y = Shuntov.iloc[:, 21]   # Second column
+
 # --------------------------------------------------------
 
     print('Plotting the halo-stellar mass relation')
@@ -444,6 +450,8 @@ if __name__ == '__main__':
     plt.plot(z1_x, 10**z1_y, 'b:', lw=10, alpha=0.5, label='Wright et al., z=[1.0]')
     plt.plot(z2_x, 10**z2_y, 'g:', lw=10, alpha=0.5, label='... z=[2.0]')
     plt.plot(z3_x, 10**z3_y, 'r:', lw=10, alpha=0.5, label='Shuntov et al., z=[3.0]')
+    plt.plot(z4_x, 10**z4_y, 'r:', lw=10, alpha=0.5, label='... z=[4.0]')
+    plt.plot(z5_x, 10**z5_y, 'r:', lw=10, alpha=0.5, label='..., z=[5.0]')
 
 
     ###### z=0
@@ -504,7 +512,7 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
 
      ###### z=4
-    """    
+  
     w = np.where((StellarMassFull[SMFsnaps[4]] > 0.0) & (HaloMassFull[SMFsnaps[4]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[4]][w])
 
@@ -528,7 +536,7 @@ if __name__ == '__main__':
     xaxeshisto = binedges[:-1] + 0.5 * binwidth
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-    """
+
 # Calculate the data for each redshift
     data = []
     for snap in SMFsnaps:
@@ -1157,7 +1165,7 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
 
      ###### z=4
-    """    
+      
     w = np.where((StellarMassFull[SMFsnaps[4]] > 0.0) & (HaloMassFull[SMFsnaps[4]] >= min_halo_mass))[0]
     mass = np.log10(StellarMassFull[SMFsnaps[4]][w])
 
@@ -1181,7 +1189,7 @@ if __name__ == '__main__':
     xaxeshisto = binedges[:-1] + 0.5 * binwidth
 
     plt.plot(xaxeshisto, counts / volume / binwidth, 'r-')
-    """
+  
 
     plt.yscale('log')
     plt.axis([7.0, 12.2, 1.0e-6, 1.0e-0])

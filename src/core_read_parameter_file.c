@@ -382,6 +382,14 @@ int read_parameter_file(const char *fname, struct params *run_params)
     strncpy(ParamTag[NParam], "SFHighMassSlope", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->SFHighMassSlope);
     ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "VvirThreshold", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->VvirThreshold);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "VvirEnhancementPower", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->VvirEnhancementPower);
+    ParamID[NParam++] = DOUBLE;
     
 
     used_tag = mymalloc(sizeof(int) * NParam);
