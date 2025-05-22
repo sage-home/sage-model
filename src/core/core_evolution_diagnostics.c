@@ -9,6 +9,8 @@
 #include "core_event_system.h"
 #include "core_pipeline_system.h"
 #include "core_galaxy_accessors.h" // For property accessor functions
+#include "core_property_utils.h"   // For generic property accessors
+#include "core_properties.h"       // For property definitions
 
 /**
  * Initialize the diagnostics for a new evolution run
@@ -220,14 +222,35 @@ int evolution_diagnostics_record_initial_properties(struct evolution_diagnostics
         return -1;
     }
     
-    /* Reset property totals - use very simple approach for core-only properties */
+    /* Reset property totals */
     diag->total_stellar_mass_initial = 0.0;
     diag->total_cold_gas_initial = 0.0;
     diag->total_hot_gas_initial = 0.0;
     diag->total_bulge_mass_initial = 0.0;
     
-    /* No property access in core-physics separation (physics properties will be added by modules) */
-    LOG_DEBUG("Recorded initial properties for %d galaxies in halo %d (physics data n/a in core)", ngal, diag->halo_nr);
+    /* Get property IDs for physics properties */
+    property_id_t stellar_mass_id = get_cached_property_id("StellarMass");
+    property_id_t cold_gas_id = get_cached_property_id("ColdGas"); 
+    property_id_t hot_gas_id = get_cached_property_id("HotGas");
+    property_id_t bulge_mass_id = get_cached_property_id("BulgeMass");
+    
+    /* Sum properties across all galaxies using generic property accessors */
+    for (int i = 0; i < ngal; i++) {
+        if (stellar_mass_id != PROP_COUNT && has_property(&galaxies[i], stellar_mass_id)) {
+            diag->total_stellar_mass_initial += get_float_property(&galaxies[i], stellar_mass_id, 0.0f);
+        }
+        if (cold_gas_id != PROP_COUNT && has_property(&galaxies[i], cold_gas_id)) {
+            diag->total_cold_gas_initial += get_float_property(&galaxies[i], cold_gas_id, 0.0f);
+        }
+        if (hot_gas_id != PROP_COUNT && has_property(&galaxies[i], hot_gas_id)) {
+            diag->total_hot_gas_initial += get_float_property(&galaxies[i], hot_gas_id, 0.0f);
+        }
+        if (bulge_mass_id != PROP_COUNT && has_property(&galaxies[i], bulge_mass_id)) {
+            diag->total_bulge_mass_initial += get_float_property(&galaxies[i], bulge_mass_id, 0.0f);
+        }
+    }
+    
+    LOG_DEBUG("Recorded initial properties for %d galaxies in halo %d", ngal, diag->halo_nr);
     
     return 0;
 }
@@ -244,14 +267,35 @@ int evolution_diagnostics_record_final_properties(struct evolution_diagnostics *
     /* Set final galaxy count */
     diag->ngal_final = ngal;
     
-    /* Reset property totals - use very simple approach for core-only properties */
+    /* Reset property totals */
     diag->total_stellar_mass_final = 0.0;
     diag->total_cold_gas_final = 0.0;
     diag->total_hot_gas_final = 0.0;
     diag->total_bulge_mass_final = 0.0;
     
-    /* No property access in core-physics separation (physics properties will be added by modules) */
-    LOG_DEBUG("Recorded final properties for %d galaxies in halo %d (physics data n/a in core)", ngal, diag->halo_nr);
+    /* Get property IDs for physics properties */
+    property_id_t stellar_mass_id = get_cached_property_id("StellarMass");
+    property_id_t cold_gas_id = get_cached_property_id("ColdGas"); 
+    property_id_t hot_gas_id = get_cached_property_id("HotGas");
+    property_id_t bulge_mass_id = get_cached_property_id("BulgeMass");
+    
+    /* Sum properties across all galaxies using generic property accessors */
+    for (int i = 0; i < ngal; i++) {
+        if (stellar_mass_id != PROP_COUNT && has_property(&galaxies[i], stellar_mass_id)) {
+            diag->total_stellar_mass_final += get_float_property(&galaxies[i], stellar_mass_id, 0.0f);
+        }
+        if (cold_gas_id != PROP_COUNT && has_property(&galaxies[i], cold_gas_id)) {
+            diag->total_cold_gas_final += get_float_property(&galaxies[i], cold_gas_id, 0.0f);
+        }
+        if (hot_gas_id != PROP_COUNT && has_property(&galaxies[i], hot_gas_id)) {
+            diag->total_hot_gas_final += get_float_property(&galaxies[i], hot_gas_id, 0.0f);
+        }
+        if (bulge_mass_id != PROP_COUNT && has_property(&galaxies[i], bulge_mass_id)) {
+            diag->total_bulge_mass_final += get_float_property(&galaxies[i], bulge_mass_id, 0.0f);
+        }
+    }
+    
+    LOG_DEBUG("Recorded final properties for %d galaxies in halo %d", ngal, diag->halo_nr);
     
     return 0;
 }

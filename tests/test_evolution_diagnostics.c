@@ -10,6 +10,22 @@
 #include "../src/core/core_pipeline_system.h"
 #include "../src/core/core_logging.h"
 #include "../src/core/core_allvars.h"
+#include "../src/core/core_property_utils.h"
+#include "../src/core/core_properties.h"
+
+// Property ID caching for physics properties  
+static property_id_t stellar_mass_id = PROP_COUNT;
+static property_id_t cold_gas_id = PROP_COUNT;
+static property_id_t hot_gas_id = PROP_COUNT;
+static property_id_t bulge_mass_id = PROP_COUNT;
+
+// Initialize property IDs
+static void init_property_ids(void) {
+    stellar_mass_id = get_cached_property_id("StellarMass");
+    cold_gas_id = get_cached_property_id("ColdGas"); 
+    hot_gas_id = get_cached_property_id("HotGas");
+    bulge_mass_id = get_cached_property_id("BulgeMass");
+}
 
 // Mock functions and helpers
 static struct GALAXY *create_test_galaxies(int ngal);
@@ -265,16 +281,21 @@ static void test_galaxy_properties() {
     double expected_hot_gas = 0.0;
     double expected_bulge_mass = 0.0;
     
+    // Initialize property IDs if not already done
+    if (stellar_mass_id == PROP_COUNT) {
+        init_property_ids();
+    }
+    
     for (int i = 0; i < 5; i++) {
-        galaxies[i].StellarMass = 1.0e10 * (i + 1);
-        galaxies[i].ColdGas = 2.0e10 * (i + 1);
-        galaxies[i].HotGas = 5.0e11 * (i + 1);
-        galaxies[i].BulgeMass = 0.5e10 * (i + 1);
+        set_float_property(&galaxies[i], stellar_mass_id, 1.0e10 * (i + 1));
+        set_float_property(&galaxies[i], cold_gas_id, 2.0e10 * (i + 1));
+        set_float_property(&galaxies[i], hot_gas_id, 5.0e11 * (i + 1));
+        set_float_property(&galaxies[i], bulge_mass_id, 0.5e10 * (i + 1));
         
-        expected_stellar_mass += galaxies[i].StellarMass;
-        expected_cold_gas += galaxies[i].ColdGas;
-        expected_hot_gas += galaxies[i].HotGas;
-        expected_bulge_mass += galaxies[i].BulgeMass;
+        expected_stellar_mass += get_float_property(&galaxies[i], stellar_mass_id, 0.0f);
+        expected_cold_gas += get_float_property(&galaxies[i], cold_gas_id, 0.0f);
+        expected_hot_gas += get_float_property(&galaxies[i], hot_gas_id, 0.0f);
+        expected_bulge_mass += get_float_property(&galaxies[i], bulge_mass_id, 0.0f);
     }
     
     // Record initial properties
@@ -288,10 +309,15 @@ static void test_galaxy_properties() {
     
     // Modify galaxy properties for final state
     for (int i = 0; i < 5; i++) {
-        galaxies[i].StellarMass *= 1.1; // 10% increase
-        galaxies[i].ColdGas *= 0.9;     // 10% decrease
-        galaxies[i].HotGas *= 1.05;     // 5% increase
-        galaxies[i].BulgeMass *= 1.2;   // 20% increase
+        float stellar_mass = get_float_property(&galaxies[i], stellar_mass_id, 0.0f);
+        float cold_gas = get_float_property(&galaxies[i], cold_gas_id, 0.0f);
+        float hot_gas = get_float_property(&galaxies[i], hot_gas_id, 0.0f);
+        float bulge_mass = get_float_property(&galaxies[i], bulge_mass_id, 0.0f);
+        
+        set_float_property(&galaxies[i], stellar_mass_id, stellar_mass * 1.1f); // 10% increase
+        set_float_property(&galaxies[i], cold_gas_id, cold_gas * 0.9f);         // 10% decrease  
+        set_float_property(&galaxies[i], hot_gas_id, hot_gas * 1.05f);          // 5% increase
+        set_float_property(&galaxies[i], bulge_mass_id, bulge_mass * 1.2f);     // 20% increase
     }
     
     // Recalculate expected values
@@ -301,10 +327,10 @@ static void test_galaxy_properties() {
     expected_bulge_mass = 0.0;
     
     for (int i = 0; i < 5; i++) {
-        expected_stellar_mass += galaxies[i].StellarMass;
-        expected_cold_gas += galaxies[i].ColdGas;
-        expected_hot_gas += galaxies[i].HotGas;
-        expected_bulge_mass += galaxies[i].BulgeMass;
+        expected_stellar_mass += get_float_property(&galaxies[i], stellar_mass_id, 0.0f);
+        expected_cold_gas += get_float_property(&galaxies[i], cold_gas_id, 0.0f);
+        expected_hot_gas += get_float_property(&galaxies[i], hot_gas_id, 0.0f);
+        expected_bulge_mass += get_float_property(&galaxies[i], bulge_mass_id, 0.0f);
     }
     
     // Record final properties
@@ -437,12 +463,28 @@ static struct GALAXY *create_test_galaxies(int ngal) {
     
     // Initialize with default values
     for (int i = 0; i < ngal; i++) {
-        galaxies[i].StellarMass = 1.0e10;
-        galaxies[i].ColdGas = 2.0e10;
-        galaxies[i].HotGas = 5.0e11;
-        galaxies[i].BulgeMass = 0.5e10;
-        galaxies[i].Type = (i == 0) ? 0 : 1; // First galaxy is central
-        galaxies[i].HaloNr = 1;
+        // Initialize property IDs if not already done
+        if (stellar_mass_id == PROP_COUNT) {
+            init_property_ids();
+        }
+        
+        // Create minimal params structure for property allocation
+        struct params test_params = {0};
+        test_params.simulation.NumSnapOutputs = 10; // Default value for dynamic arrays
+        
+        // Allocate properties for this galaxy
+        if (allocate_galaxy_properties(&galaxies[i], &test_params) != 0) {
+            fprintf(stderr, "Failed to allocate properties for test galaxy %d\n", i);
+            free(galaxies);
+            exit(1);
+        }
+        
+        set_float_property(&galaxies[i], stellar_mass_id, 1.0e10);
+        set_float_property(&galaxies[i], cold_gas_id, 2.0e10);
+        set_float_property(&galaxies[i], hot_gas_id, 5.0e11);
+        set_float_property(&galaxies[i], bulge_mass_id, 0.5e10);
+        GALAXY_PROP_Type(&galaxies[i]) = (i == 0) ? 0 : 1; // First galaxy is central
+        GALAXY_PROP_HaloNr(&galaxies[i]) = 1;
     }
     
     return galaxies;
@@ -452,6 +494,8 @@ static struct GALAXY *create_test_galaxies(int ngal) {
  * Free test galaxies
  */
 static void free_test_galaxies(struct GALAXY *galaxies) {
+    // Note: We should free galaxy properties here if we knew the count
+    // For now, this is a test function so we'll rely on program termination cleanup
     free(galaxies);
 }
 
