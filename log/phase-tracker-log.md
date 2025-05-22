@@ -92,8 +92,8 @@
 - [x] Complete `core-physics-separation-req.md`
 - [x] Complete `Implementation Plan for Output Transformers.md` - Phase 3-6
 - [x] Binary code removal
-- [ ] Comprehensive code cleanup
 - [ ] Test suite review and update
+- [ ] Comprehensive code cleanup
 - [ ] Documentation review and update
 - [ ] Final verification of clean core-physics separation
 
