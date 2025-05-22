@@ -52,8 +52,8 @@ These tests are integrated into the main Makefile and can be run with `make test
 
 | Test Name | Purpose | Added in Phase |
 |-----------|---------|---------------|
-| **test_pipeline_invoke** | Tests the pipeline invocation mechanisms | Phase 2.7 (Mar 2025) |
-| **test_dynamic_library** | Tests dynamic loading of modules | Phase 4.1 (Apr 2025) |
+| ✅ **test_pipeline_invoke** | Tests the pipeline invocation mechanisms | Phase 2.7 (Mar 2025) |
+| ✅ **test_dynamic_library** | Tests dynamic loading of modules | Phase 4.1 (Apr 2025) |
 
 ### Core-Physics Separation Tests (`SEPARATION_TESTS`)
 

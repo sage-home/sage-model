@@ -10,7 +10,7 @@
 #include "../src/core/core_module_callback.h"
 
 /* Mock cooling module */
-static double test_calculate_cooling(void *args, void *context) {
+static double test_calculate_cooling(void *args, void *context __attribute__((unused))) {
     struct {
         int galaxy_index;
         double dt;
@@ -26,14 +26,14 @@ static double test_calculate_cooling(void *args, void *context) {
 static int test_module_data_value = 42;
 
 /* Mock module initialization function */
-static int test_module_initialize(struct params *params, void **module_data) {
+static int test_module_initialize(struct params *params __attribute__((unused)), void **module_data) {
     /* Just point to our static data - no memory allocation needed */
     *module_data = &test_module_data_value;
     return MODULE_STATUS_SUCCESS;
 }
 
 /* Mock module cleanup function */
-static int test_module_cleanup(void *module_data) {
+static int test_module_cleanup(void *module_data __attribute__((unused))) {
     /* Nothing to free since we used static data */
     return MODULE_STATUS_SUCCESS;
 }
@@ -52,7 +52,7 @@ struct base_module test_cooling_module = {
 static int pipeline_test_executor(
     struct pipeline_step *step,
     struct base_module *module,
-    void *module_data,
+    void *module_data __attribute__((unused)),
     struct pipeline_context *context
 ) {
     printf("Executing step: '%s' (type: %s)\n", 
@@ -101,7 +101,7 @@ static int pipeline_test_executor(
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(void) {
     /* Initialize systems */
     initialize_logging(NULL);
     LOG_INFO("Pipeline Integration Test started");
