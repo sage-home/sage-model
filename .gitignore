@@ -38,7 +38,6 @@ tests/test_memory_mapping_param
 tests/test_memory_pool
 tests/test_dynamic_library
 tests/test_module_debug
-tests/test_module_framework
 tests/test_module_parameter
 tests/test_module_discovery
 tests/test_module_error
@@ -50,7 +49,6 @@ tests/test_evolve_integration
 tests/test_property_registration
 tests/test_memory_galaxy_properties
 tests/test_galaxy_property_macros
-tests/test_module_template
 tests/test_output_preparation
 tests/test_empty_pipeline
 tests/test_core_physics_separation

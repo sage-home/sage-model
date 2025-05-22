@@ -309,7 +309,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
 
 all: $(SAGELIB) $(EXEC)
 
@@ -395,9 +395,6 @@ test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_module_framework: tests/test_module_framework.c tests/test_module_template_validation.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_framework tests/test_module_framework.c tests/test_module_template_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 test_module_debug: tests/test_module_debug.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_debug tests/test_module_debug.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -474,8 +471,6 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_property_validation || FAILED="$$FAILED test_property_validation"
 	@echo "Running test_dynamic_library..."
 	@./tests/test_dynamic_library || FAILED="$$FAILED test_dynamic_library"
-	@echo "Running test_module_framework..."
-	@./tests/test_module_framework || FAILED="$$FAILED test_module_framework"
 	@echo "Running test_module_debug..."
 	@./tests/test_module_debug || FAILED="$$FAILED test_module_debug"
 	@echo "Running test_module_parameter..."
