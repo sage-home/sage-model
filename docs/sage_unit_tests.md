@@ -59,8 +59,8 @@ These tests are integrated into the main Makefile and can be run with `make test
 
 | Test Name | Purpose | Added in Phase |
 |-----------|---------|---------------|
-| **test_output_preparation** | Tests the output preparation module with transformer functions | Phase 5.2.E (May 2025) |
-| **test_core_physics_separation** | Validates complete separation between core and physics components | Phase 5.2.F (May 2025) |
+| ❌ **test_output_preparation** | Tests the output preparation module with transformer functions | Phase 5.2.E (May 2025) |
+| ❌ **test_core_physics_separation** | Validates complete separation between core and physics components | Phase 5.2.F (May 2025) |
 
 ## Standalone Tests (Individual Makefiles/Scripts)
 
