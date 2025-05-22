@@ -288,5 +288,6 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Moved files (to `ignore` directory): core_module_debug.c, core_module_debug.h, core_module_validation.c, core_module_validation.h, test_module_discovery.c, 
   test_module_parameter_simple.c, test_module_parameter.c, test_module_debug.c, test_module_parameter_standalone.h, test_invalid_module.h, 
   Makefile.module_dependency, Makefile.validation_logic, test_module_callback.c, test_module_dependency.c, test_validation_logic.c, Makefile.module_error, 
-  test_invalid_module.c, test_module_error.c
+  test_invalid_module.c, test_module_error.c, core_module_diagnostics.c, core_module_diagnostics.h, core_module_config.c, core_module_config.h, 
+  tests/Makefile.error_integration, tests/test_error_integration.c
 - Modified files: Makefile, src/core/core_module_system.c, docs/module_system_and_configuration.md

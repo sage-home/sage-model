@@ -48,10 +48,10 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_module_callback.c core/core_array_utils.c \
         core/core_memory_pool.c core/core_dynamic_library.c \
         core/core_module_parameter.c \
-        core/core_module_error.c core/core_module_diagnostics.c \
+        core/core_module_error.c \
         core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c \
-        core/core_module_config.c core/core_properties.c core/standard_properties.c \
+        core/core_properties.c core/standard_properties.c \
         core/physics_pipeline_executor.c core/core_property_utils.c \
         core/generated_output_transformers.c
 
@@ -308,7 +308,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
 
 all: $(SAGELIB) $(EXEC)
 
@@ -394,9 +394,6 @@ test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_error_integration: tests/test_error_integration.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_error_integration tests/test_error_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolution_diagnostics tests/test_evolution_diagnostics.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -431,7 +428,7 @@ test_property_system_hdf5: tests/test_property_system_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system_hdf5 tests/test_property_system_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system test_property_system_hdf5 test_core_pipeline_registry
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system test_property_system_hdf5 test_core_pipeline_registry
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
@@ -452,9 +449,7 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_property_validation || FAILED="$$FAILED test_property_validation"
 	@echo "Running test_dynamic_library..."
 	@./tests/test_dynamic_library || FAILED="$$FAILED test_dynamic_library"
-	@echo "Running test_error_integration..."
-	@./tests/test_error_integration || FAILED="$$FAILED test_error_integration"
-	@echo "Running test_evolution_ diagnostics..."
+	@echo "Running test_evolution_diagnostics..."
 	@./tests/test_evolution_diagnostics || FAILED="$$FAILED test_evolution_diagnostics"
 	@echo "Running test_evolve_integration..."
 	@./tests/test_evolve_integration || FAILED="$$FAILED test_evolve_integration"
