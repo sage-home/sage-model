@@ -32,6 +32,112 @@ The module system consists of several interconnected components:
 └───────────────────────┘       └────────────────────────┘
 ```
 
+## Module Infrastructure Components
+
+The SAGE module system includes several sophisticated infrastructure components that provide comprehensive support for module development, execution monitoring, and parameter management:
+
+### Parameter Management System
+
+The module system uses a **dual-layer parameter approach** that combines JSON configuration with programmatic parameter registration:
+
+**1. JSON Configuration Layer:**
+- Controls pipeline-level module activation and configuration
+- Defines which modules are enabled in a simulation run
+- Provides high-level simulation parameters
+
+**2. Programmatic Parameter Layer:**
+- Each module maintains its own dedicated parameter registry (`module_parameter_registry_t`)
+- Supports typed parameters (int, float, double, bool, string) with bounds checking
+- Enables runtime parameter modification and validation
+- Provides module-specific parameter namespacing
+
+```c
+// Example of module parameter registration
+module_parameter_t cooling_efficiency = {
+    .name = "cooling_efficiency",
+    .type = PARAM_TYPE_DOUBLE,
+    .value.double_val = 1.0,
+    .limits.double_range = {0.1, 10.0},
+    .has_limits = true,
+    .description = "Cooling efficiency multiplier"
+};
+
+// Register with module system
+module_register_parameter_with_module(module_id, &cooling_efficiency);
+```
+
+**Key Functions:**
+- `module_parameter_registry_init()` - Initialize parameter registry for a module
+- `module_register_parameter()` - Register a parameter with type safety and bounds
+- `module_get_parameter()` / `module_set_parameter()` - Type-safe parameter access
+
+### Error Context System
+
+Beyond simple return codes, SAGE provides an **enhanced error tracking system** that maintains detailed error context and history:
+
+**Features:**
+- **Error History:** Maintains history of errors with timestamps and context
+- **Detailed Context:** Captures function names, file locations, and error descriptions
+- **Integration:** Works alongside the standard logging system for comprehensive debugging
+- **Module-Specific:** Each module can maintain its own error context
+
+```c
+// Example of enhanced error reporting
+module_record_error(module_id, MODULE_STATUS_INVALID_INPUT, 
+                   "Invalid galaxy mass in cooling calculation", 
+                   __func__, __FILE__, __LINE__);
+```
+
+**Key Functions:**
+- `module_error_context_init()` - Initialize error tracking for a module
+- `module_record_error()` - Record detailed error with context
+- `module_get_error_history()` - Retrieve error history for diagnostics
+
+### Callback Infrastructure
+
+The callback system provides **controlled inter-module communication** and **execution monitoring**:
+
+**Current Usage:**
+- **Call Stack Tracking:** Monitors module execution flow for diagnostics
+- **Execution Context:** Tracks which module is currently executing and why
+- **Future Inter-Module Communication:** Infrastructure ready for physics modules that need to communicate
+
+**Architecture Benefits:**
+- **Controlled Communication:** Prevents ad-hoc module dependencies
+- **Circular Dependency Detection:** Prevents infinite call loops
+- **Execution Diagnostics:** Provides detailed execution traces for debugging
+
+```c
+// Example: Pipeline executor using call stack tracking
+int status = module_call_stack_push(caller_id, callee_id, function_name, context);
+// Execute module function
+int result = func(module_data, context);
+module_call_stack_pop();
+```
+
+**Key Functions:**
+- `module_callback_system_initialize()` - Initialize callback infrastructure
+- `module_call_stack_push()` / `module_call_stack_pop()` - Track execution flow
+- `module_invoke()` - Infrastructure for controlled inter-module calls (future use)
+
+**Integration Points:**
+- **Pipeline Executor:** Uses call stack tracking in `physics_pipeline_executor.c`
+- **Module Lifecycle:** Callback-related fields managed during module registration/cleanup
+- **Base Module Interface:** Callback structures embedded in `struct base_module`
+
+### Infrastructure vs. Legacy Distinction
+
+**Active Infrastructure Components:**
+- ✅ `core_module_callback` - Call stack tracking and inter-module communication framework
+- ✅ `core_module_parameter` - Module-specific parameter management
+- ✅ `core_module_error` - Enhanced error context and tracking
+
+**Removed Legacy Components:**
+- ❌ `core_module_debug` - Specialized debugging (replaced by standard logging)
+- ❌ `core_module_validation` - Module validation (minimal usage in current system)
+
+This infrastructure provides a **robust foundation** for both current placeholder modules and future physics modules requiring sophisticated parameter management, error tracking, and inter-module communication.
+
 ### Module Registry
 
 The module registry (`core_module_system.c/h`) is the central component that tracks all registered modules and their state. Key elements:
@@ -482,28 +588,72 @@ Modules should follow these property access patterns:
 
 ### Error Handling
 
-Modules should use consistent error handling:
+The SAGE module system provides **multiple layers of error handling** for comprehensive debugging and diagnostics:
 
-1. **Return Status Codes**: Use `MODULE_STATUS_*` constants
-   ```c
-   if (data == NULL) {
-       return MODULE_STATUS_ERROR;
-   }
-   return MODULE_STATUS_SUCCESS;
-   ```
+#### 1. **Return Status Codes** 
+Use standardized `MODULE_STATUS_*` constants for immediate error indication:
+```c
+if (data == NULL) {
+    return MODULE_STATUS_ERROR;
+}
+return MODULE_STATUS_SUCCESS;
+```
 
-2. **Log Errors**: Use the logging system for context
-   ```c
-   LOG_ERROR("Failed to allocate memory for module data");
-   ```
+#### 2. **Standard Logging**
+Use the logging system for immediate context and debugging:
+```c
+LOG_ERROR("Failed to allocate memory for module data");
+LOG_DEBUG("Module parameter validation passed");
+```
 
-3. **Set Module Error**: Update module error state
-   ```c
-   module_set_error(module, MODULE_STATUS_ERROR, "Failed to initialize module");
-   ```
+#### 3. **Enhanced Error Context System**
+Record detailed error information with the module error context system:
+```c
+// Record detailed error with context
+module_record_error(module_id, MODULE_STATUS_INVALID_INPUT,
+                   "Galaxy mass out of valid range: %.2e Msun", 
+                   invalid_mass);
+
+// Set module error state with enhanced context
+module_set_error_ex(module, MODULE_STATUS_ERROR, 
+                   __func__, __FILE__, __LINE__,
+                   "Failed to initialize cooling tables");
+```
+
+#### 4. **Parameter System Integration**
+Leverage the parameter system for validation and bounds checking:
+```c
+// Parameter system automatically validates bounds
+int status = module_set_parameter_double(module_id, "cooling_efficiency", 2.5);
+if (status != MODULE_PARAM_SUCCESS) {
+    LOG_ERROR("Parameter out of bounds: cooling_efficiency");
+    return MODULE_STATUS_INVALID_ARGS;
+}
+```
+
+#### **Best Practices for Module Error Handling:**
+- **Layer appropriately**: Use return codes for immediate control flow, logging for debugging, error context for detailed diagnostics
+- **Be specific**: Include relevant values and context in error messages
+- **Use parameter validation**: Let the parameter system handle bounds checking automatically
+- **Check error history**: Use `module_get_error_history()` for debugging complex issues
 
 ## Conclusion
 
-The SAGE module system provides a powerful, extensible framework for implementing physics components while maintaining a strict separation between core infrastructure and physics implementations. The configuration-driven approach allows modules to be enabled, disabled, or replaced at runtime without recompilation, facilitating rapid development and experimentation.
+The SAGE module system provides a **sophisticated, multi-layered framework** for implementing physics components while maintaining strict separation between core infrastructure and physics implementations. The system includes:
 
-Understanding the detailed implementation, particularly the registration, factory, and pipeline creation processes, is essential for debugging issues in the module system. The placeholder modules provide a minimal implementation that can be used to test the core infrastructure without any physics components.
+**Key Infrastructure Components:**
+- **Dual-layer parameter management** (JSON configuration + programmatic parameters)
+- **Enhanced error tracking** with detailed context and history
+- **Execution monitoring** through callback infrastructure and call stack tracking
+- **Configuration-driven activation** allowing runtime module selection
+
+**Development Benefits:**
+- **Runtime modularity**: Modules can be enabled, disabled, or replaced without recompilation
+- **Comprehensive debugging**: Multiple error handling layers provide detailed diagnostics
+- **Future-ready architecture**: Infrastructure supports inter-module communication for complex physics
+- **Type-safe parameter management**: Bounds checking and validation built into the parameter system
+
+**Architecture Maturity:**
+The current system represents a **mature, sophisticated modular architecture** that goes far beyond simple plugin loading. Understanding the infrastructure components—particularly the parameter management, error context system, and callback infrastructure—is essential for effective module development and system debugging.
+
+The placeholder modules demonstrate how to work within this infrastructure while the system prepares for migration to full physics modules that will leverage the complete capabilities of the framework.

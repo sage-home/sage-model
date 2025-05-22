@@ -100,7 +100,6 @@ struct module_manifest {
  */
 /* Forward declarations for error handling system */
 struct module_error_context;
-struct module_debug_context;
 
 struct base_module {
     /* Metadata */
@@ -133,7 +132,6 @@ struct base_module {
     int last_error;                       /* Last error code (for backward compat) */
     char error_message[MAX_ERROR_MESSAGE]; /* Last error message (for backward compat) */
     struct module_error_context *error_context; /* Enhanced error tracking */
-    struct module_debug_context *debug_context; /* Debug and trace information */
     
     /* Module manifest */
     struct module_manifest *manifest;     /* Pointer to module manifest (if available) */

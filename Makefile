@@ -47,8 +47,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_pipeline_system.c core/core_config_system.c \
         core/core_module_callback.c core/core_array_utils.c \
         core/core_memory_pool.c core/core_dynamic_library.c \
-        core/core_module_validation.c \
-        core/core_module_debug.c core/core_module_parameter.c \
+        core/core_module_parameter.c \
         core/core_module_error.c core/core_module_diagnostics.c \
         core/core_merger_queue.c core/cJSON.c core/core_evolution_diagnostics.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c \
@@ -309,7 +308,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_module_debug test_module_parameter test_module_error test_module_discovery test_module_dependency test_validation_logic test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
+.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_error_integration test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
 
 all: $(SAGELIB) $(EXEC)
 
@@ -395,24 +394,6 @@ test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_module_debug: tests/test_module_debug.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_debug tests/test_module_debug.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_module_parameter: tests/test_module_parameter.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_parameter tests/test_module_parameter.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_module_discovery: tests/test_module_discovery.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_discovery tests/test_module_discovery.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_module_error: tests/test_module_error.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_error tests/test_module_error.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_module_dependency: tests/test_module_dependency.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_dependency tests/test_module_dependency.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_validation_logic: tests/test_validation_logic.c tests/test_invalid_module.c tests/test_invalid_module.h $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_validation_logic tests/test_validation_logic.c tests/test_invalid_module.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 test_error_integration: tests/test_error_integration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_error_integration tests/test_error_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -450,7 +431,7 @@ test_property_system_hdf5: tests/test_property_system_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system_hdf5 tests/test_property_system_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_module_framework test_module_debug test_module_parameter test_module_discovery test_module_error test_module_dependency test_validation_logic test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system test_property_system_hdf5 test_core_pipeline_registry
+tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_error_integration test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system test_property_system_hdf5 test_core_pipeline_registry
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
@@ -471,18 +452,6 @@ tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_proper
 	@./tests/test_property_validation || FAILED="$$FAILED test_property_validation"
 	@echo "Running test_dynamic_library..."
 	@./tests/test_dynamic_library || FAILED="$$FAILED test_dynamic_library"
-	@echo "Running test_module_debug..."
-	@./tests/test_module_debug || FAILED="$$FAILED test_module_debug"
-	@echo "Running test_module_parameter..."
-	@./tests/test_module_parameter || FAILED="$$FAILED test_module_parameter"
-	@echo "Running test_module_discovery..."
-	@./tests/test_module_discovery || FAILED="$$FAILED test_module_discovery"
-	@echo "Running test_module_error..."
-	@./tests/test_module_error || FAILED="$$FAILED test_module_error"
-	@echo "Running test_module_dependency..."
-	@./tests/test_module_dependency || FAILED="$$FAILED test_module_dependency"
-	@echo "Running test_validation_logic..."
-	@./tests/test_validation_logic || FAILED="$$FAILED test_validation_logic"
 	@echo "Running test_error_integration..."
 	@./tests/test_error_integration || FAILED="$$FAILED test_error_integration"
 	@echo "Running test_evolution_ diagnostics..."

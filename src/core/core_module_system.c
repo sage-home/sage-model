@@ -15,7 +15,6 @@
 #include "core_dynamic_library.h"
 #include "core_module_system.h"
 #include "core_module_error.h"
-#include "core_module_debug.h"
 #include "core_galaxy_extensions.h" // For galaxy_property_t, galaxy_extension_register, etc.
 #include "core_property_types.h"    // For enum galaxy_property_type
 #include "core_property_descriptor.h"  // For GalaxyPropertyInfo struct definition
@@ -1974,14 +1973,6 @@ int module_initialize(int module_id, struct params *params) {
     }
 
     /* Initialize debug context if not already done */
-    if (module->debug_context == NULL) {
-        int dc_status = module_debug_context_init(module);
-        if (dc_status != MODULE_STATUS_SUCCESS) {
-            LOG_ERROR("Failed to initialize debug context for module '%s' (ID %d)",
-                    module->name, module_id);
-            /* Non-fatal, continue */
-        }
-    }
     
     global_module_registry->modules[module_id].initialized = true;
 
@@ -2053,10 +2044,6 @@ int module_cleanup(int module_id) {
     }
     
     /* Clean up debug context if it exists */
-    if (module->debug_context != NULL) {
-        module_debug_context_cleanup(module);
-        module->debug_context = NULL;
-    }
 
     /* Clean up parameter registry if it exists */
     if (global_module_registry->modules[module_id].parameter_registry != NULL) {

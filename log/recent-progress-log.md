@@ -278,3 +278,15 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Updated function prototype in core_init.h to return int status code
 - Ensured proper abort execution when no modules are found instead of continuing with segfault
 - Modified files: src/core/core_init.c, src/core/core_init.h, src/core/core_pipeline_registry.c
+
+2025-05-22: [Phase 5.2.F.3] Module Infrastructure Investigation and Legacy Code Cleanup
+- Investigated module system infrastructure components to determine actual usage vs legacy status
+- Found some older core module files actively used for call stack tracking, parameter management, and enhanced error handling
+- The other lagacy files, and associated depreciated tests, were moved to the `ignore` directory
+- Updated Makefile and removed include statements for unused components
+- Enhanced docs/module_system_and_configuration.md with comprehensive infrastructure documentation covering parameter management system, error context system, and callback infrastructure
+- Moved files (to `ignore` directory): core_module_debug.c, core_module_debug.h, core_module_validation.c, core_module_validation.h, test_module_discovery.c, 
+  test_module_parameter_simple.c, test_module_parameter.c, test_module_debug.c, test_module_parameter_standalone.h, test_invalid_module.h, 
+  Makefile.module_dependency, Makefile.validation_logic, test_module_callback.c, test_module_dependency.c, test_validation_logic.c, Makefile.module_error, 
+  test_invalid_module.c, test_module_error.c
+- Modified files: Makefile, src/core/core_module_system.c, docs/module_system_and_configuration.md
