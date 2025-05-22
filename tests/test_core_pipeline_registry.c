@@ -15,7 +15,7 @@
 #include "test_core_pipeline_registry.h"
 
 // --- Mock Module Functions ---
-static int mock_initialize(struct params *params, void **data_ptr) {
+static int mock_initialize(struct params *params __attribute__((unused)), void **data_ptr) {
     printf("Mock module initialized\n");
     // Create a dummy data structure to signal initialization
     *data_ptr = calloc(1, sizeof(int));
