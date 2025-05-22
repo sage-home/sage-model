@@ -410,7 +410,7 @@ int pipeline_execute_phase(
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(void) {
     printf("Pipeline phase system test starting\n");
     
     /* Create a test pipeline */
