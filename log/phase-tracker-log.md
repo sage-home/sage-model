@@ -89,32 +89,19 @@
 - [x] Complete output transformers implementation and binary code removal
 - [x] Implement configuration-driven pipeline creation
 - [x] Complete core-physics separation infrastructure
-- [ ] Test suite review and update
+- [ ] Test Suite Review and Validation (via `docs/sage_unit_tests.md` - ⏳ ONGOING): Update failing tests that violate core-physics separation principles
+- [ ] Fix Evolution Diagnostics System (NEW): Remove hardcoded physics property knowledge from core diagnostics (discovered via unit testing)
+- [ ] Audit Event System (NEW): Separate core infrastructure events from physics-specific events
+- [ ] Review Core Systems (NEW): Ensure all core components comply with core-physics separation principles
 - [ ] Comprehensive code cleanup
 - [ ] Documentation review and update
 
-### Phase 5.2.G: Physics Module Migration ⏳ NEXT PRIORITY
+### Phase 5.2.G: Physics Module Migration ⏳ PENDING
 
-**CRITICAL**: Before proceeding with Phase 5.2.G, address architectural violations in existing core systems:
+With the core now completely physics-agnostic and architecturally compliant, implement physics modules as pure add-ons.
 
-#### Prerequisite: Architectural Compliance (⚠️ REQUIRED)
-- [ ] **Fix Evolution Diagnostics System**: Remove hardcoded physics property knowledge from core diagnostics
-- [ ] **Audit Event System**: Separate core infrastructure events from physics-specific events  
-- [ ] **Review Core Systems**: Ensure all core components comply with core-physics separation
-- [ ] **Update Failing Tests**: Fix tests that violate core-physics separation principles
-
-#### Phase 5.2.G.1: Physics Foundation ⏳ PENDING
-- [ ] Develop standard physics utility functions independent of core code
-- [ ] Create common physics constants and conversion factors  
-- [ ] Implement shared calculation libraries for physics modules
-- [ ] Establish module-to-module communication protocols
-- [ ] Create physics property definitions separate from core properties
-- [ ] Design physics module diagnostic registration system
-
-#### Phase 5.2.G.2: Module Implementation ⏳ PENDING  
-- [ ] Determine optimal module sequence based on dependencies
-- [ ] Implement/validate Cooling & Heating Module
 - [ ] Implement/validate Infall Module
+- [ ] Implement/validate Cooling & Heating Module
 - [ ] Implement/validate Star Formation & Feedback Module
 - [ ] Implement/validate Disk Instability Module
 - [ ] Implement/validate Reincorporation Module
