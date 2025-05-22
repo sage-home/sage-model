@@ -363,10 +363,74 @@ celan celna clena: clean
 clean:
 	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co] $(GENERATED_FILES) $(ROOT_DIR)/.stamps/generate_properties.stamp
 
+# Test Categories
+# Core infrastructure tests
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration
+
+# Property system tests  
+PROPERTY_TESTS = test_property_serialization test_property_system test_property_registration test_property_array_access test_galaxy_property_macros test_property_system_hdf5 test_property_validation
+
+# I/O system tests
+IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_validation test_memory_map
+
+# Module system tests
+MODULE_TESTS = test_dynamic_library test_module_template
+
+# Core-physics separation tests (critical for Phase 5.2.F)
+SEPARATION_TESTS = test_core_physics_separation test_output_preparation
+
+# All unit tests (excludes complex integration tests with individual Makefiles)
+UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS) $(SEPARATION_TESTS)
+
 # Test targets
 test_extensions: tests/test_galaxy_extensions.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_extensions tests/test_galaxy_extensions.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+# Core infrastructure test targets
+test_pipeline: tests/test_pipeline.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline tests/test_pipeline.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_array_utils: tests/test_array_utils.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_array_utils tests/test_array_utils.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_core_property: tests/test_core_property.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_property tests/test_core_property.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_core_pipeline_registry: tests/test_core_pipeline_registry.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_pipeline_registry tests/test_core_pipeline_registry.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_dispatcher_access: tests/test_dispatcher_access.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dispatcher_access tests/test_dispatcher_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolution_diagnostics tests/test_evolution_diagnostics.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolve_integration tests/test_evolve_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+# Property system test targets
+test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_serialization tests/test_property_serialization.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_property_system: tests/test_property_system.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system tests/test_property_system.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_property_registration: tests/test_property_registration.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_registration tests/test_property_registration.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_property_array_access: tests/test_property_array_access.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_array_access tests/test_property_array_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_galaxy_property_macros: tests/test_galaxy_property_macros.c tests/test_validation_mocks.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_property_macros tests/test_galaxy_property_macros.c tests/test_validation_mocks.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_property_system_hdf5: tests/test_property_system_hdf5.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system_hdf5 tests/test_property_system_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_property_validation: tests/test_property_validation.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_validation tests/test_property_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+# I/O system test targets
 test_io_interface: tests/test_io_interface.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_interface tests/test_io_interface.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -376,98 +440,109 @@ test_endian_utils: tests/test_endian_utils.c $(SAGELIB)
 test_lhalo_binary: tests/test_lhalo_binary.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_lhalo_binary tests/test_lhalo_binary.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_serialization tests/test_property_serialization.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 test_hdf5_output: tests/test_hdf5_output.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_hdf5_output tests/test_hdf5_output.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_lhalo_hdf5: tests/test_lhalo_hdf5.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_lhalo_hdf5 tests/test_lhalo_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_gadget4_hdf5: tests/test_gadget4_hdf5.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_gadget4_hdf5 tests/test_gadget4_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_genesis_hdf5: tests/test_genesis_hdf5.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_genesis_hdf5 tests/test_genesis_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_consistent_trees_hdf5: tests/test_consistent_trees_hdf5.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_consistent_trees_hdf5 tests/test_consistent_trees_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_io_validation: tests/test_io_validation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_validation tests/test_io_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_property_validation: tests/test_property_validation.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_validation tests/test_property_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_memory_map tests/test_io_memory_map.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+# Module system test targets
 test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolution_diagnostics tests/test_evolution_diagnostics.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolve_integration tests/test_evolve_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_property_registration: tests/test_property_registration.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_registration tests/test_property_registration.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_galaxy_property_macros: tests/test_galaxy_property_macros.c tests/test_validation_mocks.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_property_macros tests/test_galaxy_property_macros.c tests/test_validation_mocks.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_module_template: tests/test_module_template.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_template tests/test_module_template.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_output_preparation: tests/test_output_preparation.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_output_preparation tests/test_output_preparation.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
+# Core-physics separation test targets
 test_core_physics_separation: tests/test_core_physics_separation.c core-only
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_physics_separation tests/test_core_physics_separation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_property_array_access: tests/test_property_array_access.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_array_access tests/test_property_array_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_output_preparation: tests/test_output_preparation.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_output_preparation tests/test_output_preparation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_core_pipeline_registry: tests/test_core_pipeline_registry.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_pipeline_registry tests/test_core_pipeline_registry.c -L. -l$(LIBNAME) $(LIBFLAGS)
+# Individual test category targets
+core_tests: $(CORE_TESTS)
+	@echo "=== Running Core Infrastructure Tests ==="
+	@for test in $(CORE_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || exit 1; \
+	done
 
-test_property_system: tests/test_property_system.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system tests/test_property_system.c -L. -l$(LIBNAME) $(LIBFLAGS)
+property_tests: $(PROPERTY_TESTS)
+	@echo "=== Running Property System Tests ==="
+	@for test in $(PROPERTY_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || exit 1; \
+	done
 
-test_property_system_hdf5: tests/test_property_system_hdf5.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system_hdf5 tests/test_property_system_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
+io_tests: $(IO_TESTS)
+	@echo "=== Running I/O System Tests ==="
+	@for test in $(IO_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || exit 1; \
+	done
+
+module_tests: $(MODULE_TESTS)
+	@echo "=== Running Module System Tests ==="
+	@for test in $(MODULE_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || exit 1; \
+	done
+
+separation_tests: $(SEPARATION_TESTS)
+	@echo "=== Running Core-Physics Separation Tests ==="
+	@for test in $(SEPARATION_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || exit 1; \
+	done
 
 # Tests execution target
-tests: $(EXEC) test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_property_validation test_dynamic_library test_evolution_diagnostics test_evolve_integration test_property_registration test_galaxy_property_macros test_module_template test_output_preparation test_core_physics_separation test_property_system test_property_system_hdf5 test_core_pipeline_registry
+tests: $(EXEC) $(UNIT_TESTS)
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
 	@echo "\n--- Running unit tests and component tests ---"
-	@echo "Running test_io_interface..."
-	@./tests/test_io_interface || FAILED="$$FAILED test_io_interface"
-	@echo "Running test_endian_utils..."
-	@./tests/test_endian_utils || FAILED="$$FAILED test_endian_utils"
-	@echo "Running test_lhalo_binary..."
-	@./tests/test_lhalo_binary || FAILED="$$FAILED test_lhalo_binary"
-	@echo "Running test_property_serialization..."
-	@./tests/test_property_serialization || FAILED="$$FAILED test_property_serialization"
-	@echo "Running test_hdf5_output..."
-	@./tests/test_hdf5_output || FAILED="$$FAILED test_hdf5_output"
-	@echo "Running test_io_validation..."
-	@./tests/test_io_validation || FAILED="$$FAILED test_io_validation"
-	@echo "Running test_property_validation..."
-	@./tests/test_property_validation || FAILED="$$FAILED test_property_validation"
-	@echo "Running test_dynamic_library..."
-	@./tests/test_dynamic_library || FAILED="$$FAILED test_dynamic_library"
-	@echo "Running test_evolution_diagnostics..."
-	@./tests/test_evolution_diagnostics || FAILED="$$FAILED test_evolution_diagnostics"
-	@echo "Running test_evolve_integration..."
-	@./tests/test_evolve_integration || FAILED="$$FAILED test_evolve_integration"
-	@echo "Running test_property_registration..."
-	@./tests/test_property_registration || FAILED="$$FAILED test_property_registration"
-	@echo "Running test_galaxy_property_macros..."
-	@./tests/test_galaxy_property_macros || FAILED="$$FAILED test_galaxy_property_macros"
-	@echo "Running test_module_template..."
-	@./tests/test_module_template || FAILED="$$FAILED test_module_template"
-	@echo "Running test_output_preparation..."
-	@./tests/test_output_preparation || FAILED="$$FAILED test_output_preparation"
-	@echo "Running test_core_physics_separation..."
-	@./tests/test_core_physics_separation || FAILED="$$FAILED test_core_physics_separation"
-	@echo "Running test_property_system..."
-	@./tests/test_property_system || FAILED="$$FAILED test_property_system"
-	@echo "Running test_core_pipeline_registry..."
-	@./tests/test_core_pipeline_registry || FAILED="$$FAILED test_core_pipeline_registry"
-	@echo "Running memory tests..."
+	@echo "=== Core Infrastructure Tests ==="
+	@for test in $(CORE_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || FAILED="$$FAILED $$test"; \
+	done
+	@echo "=== Property System Tests ==="
+	@for test in $(PROPERTY_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || FAILED="$$FAILED $$test"; \
+	done
+	@echo "=== I/O System Tests ==="
+	@for test in $(IO_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || FAILED="$$FAILED $$test"; \
+	done
+	@echo "=== Module System Tests ==="
+	@for test in $(MODULE_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || FAILED="$$FAILED $$test"; \
+	done
+	@echo "=== Core-Physics Separation Tests ==="
+	@for test in $(SEPARATION_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || FAILED="$$FAILED $$test"; \
+	done
+	@echo "=== Memory Management Tests ==="
 	@cd tests && make -f Makefile.memory_tests || FAILED="$$FAILED memory_tests"
 	@if [ -n "$$FAILED" ]; then \
 		echo "\n============================================"; \

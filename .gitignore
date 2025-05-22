@@ -50,6 +50,7 @@ tests/test_dispatcher_access
 tests/test_core_pipeline_registry
 tests/test_property_system
 tests/test_property_system_hdf5
+tests/test_core_property
 
 .repomix/
 trees_*

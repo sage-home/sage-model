@@ -291,3 +291,13 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
   test_invalid_module.c, test_module_error.c, core_module_diagnostics.c, core_module_diagnostics.h, core_module_config.c, core_module_config.h, 
   tests/Makefile.error_integration, tests/test_error_integration.c
 - Modified files: Makefile, src/core/core_module_system.c, docs/module_system_and_configuration.md
+
+2025-05-22: [Phase 5.2.F.3] Test Suite Integration and Standardisation
+- Successfully integrated all missing tests into main Makefile with categorised test groups
+- Added build targets for test_core_property, test_dispatcher_access, test_pipeline, test_array_utils, and all HDF5 format tests
+- Reorganised tests target with categorised execution (CORE_TESTS, PROPERTY_TESTS, IO_TESTS, MODULE_TESTS, SEPARATION_TESTS)
+- Added individual category test targets (core_tests, property_tests, io_tests, module_tests, separation_tests)
+- Moved 9 obsolete individual Makefiles to ignore/obsolete_test_makefiles_202505221230/
+- Modified files: Makefile
+- Created files: ignore/obsolete_test_makefiles_202505221230/ directory
+- Moved files: 9 individual test Makefiles to ignore directory
