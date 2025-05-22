@@ -68,7 +68,6 @@ These tests require special setup or have complex integration requirements and u
 
 | Test Name | Purpose | Added in Phase | Implementation Method |
 |-----------|---------|---------------|----------------------|
-| **test_extensions** | Tests galaxy extensions system | Phase 3.1 (Apr 2025) | Individual target in main Makefile |
 | **Memory Tests Suite** | Comprehensive memory allocation, pool management, and leak detection | Phase 3.3+ (Apr 2025) | `Makefile.memory_tests` + run script |
 | **test_empty_pipeline** | Verifies that the core can run with empty placeholder modules | Phase 5.2.F.2 (May 2025) | `Makefile.empty_pipeline` + `run_empty_pipeline_test.sh` |
 

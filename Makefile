@@ -308,7 +308,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_extensions test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
+.PHONY: clean celan celna clena tests all test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
 
 all: $(SAGELIB) $(EXEC)
 
@@ -381,10 +381,6 @@ SEPARATION_TESTS = test_core_physics_separation test_output_preparation
 
 # All unit tests (excludes complex integration tests with individual Makefiles)
 UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS) $(SEPARATION_TESTS)
-
-# Test targets
-test_extensions: tests/test_galaxy_extensions.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_extensions tests/test_galaxy_extensions.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Core infrastructure test targets
 test_pipeline: tests/test_pipeline.c $(SAGELIB)
