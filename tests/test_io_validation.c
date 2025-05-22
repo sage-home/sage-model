@@ -7,6 +7,8 @@
 #include "../src/io/io_validation.h"
 #include "../src/io/io_interface.h"
 #include "../src/core/core_allvars.h"
+#include "../src/core/core_properties.h" 
+#include "../src/core/core_property_utils.h"
 
 // Mock I/O handlers for testing format validation
 struct io_interface mock_handler = {
@@ -22,37 +24,11 @@ struct io_interface mock_handler = {
     .get_open_handle_count = NULL
 };
 
-struct io_interface binary_handler = {
-    .name = "Binary Format Handler",
-    .version = "1.0",
-    .format_id = 6, // IO_FORMAT_BINARY_OUTPUT,
-    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_EXTENDED_PROPS,
-    .initialize = NULL,
-    .read_forest = NULL,
-    .write_galaxies = NULL,
-    .cleanup = NULL,
-    .close_open_handles = NULL,
-    .get_open_handle_count = NULL
-};
-
 struct io_interface hdf5_handler = {
     .name = "HDF5 Format Handler",
     .version = "1.0",
     .format_id = 7, // IO_FORMAT_HDF5_OUTPUT,
     .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_EXTENDED_PROPS | IO_CAP_METADATA_ATTRS,
-    .initialize = NULL,
-    .read_forest = NULL,
-    .write_galaxies = NULL,
-    .cleanup = NULL,
-    .close_open_handles = NULL,
-    .get_open_handle_count = NULL
-};
-
-struct io_interface limited_binary_handler = {
-    .name = "Limited Binary Handler",
-    .version = "1.0",
-    .format_id = 6, // IO_FORMAT_BINARY_OUTPUT,
-    .capabilities = IO_CAP_RANDOM_ACCESS, // Missing extended props capability
     .initialize = NULL,
     .read_forest = NULL,
     .write_galaxies = NULL,
@@ -351,10 +327,28 @@ int test_condition_validation() {
     return 0;
 }
 
+// Function to initialize galaxy properties
+void initialize_test_galaxies(struct GALAXY *galaxies, int ngals) {
+    for (int i = 0; i < ngals; i++) {
+        // Initialize properties structure
+        allocate_galaxy_properties(&galaxies[i], NULL);
+    }
+}
+
+// Function to free galaxy properties
+void free_test_galaxies(struct GALAXY *galaxies, int ngals) {
+    for (int i = 0; i < ngals; i++) {
+        if (galaxies[i].properties != NULL) {
+            free_galaxy_properties(&galaxies[i]);
+        }
+    }
+}
+
 // Test galaxy validation
 int test_galaxy_validation() {
     struct validation_context ctx;
     int status;
+    property_id_t prop_id;
     
     printf("Testing galaxy validation...\n");
     
@@ -366,61 +360,119 @@ int test_galaxy_validation() {
     struct GALAXY galaxies[4];
     memset(galaxies, 0, sizeof(galaxies));
     
-    // Set up a valid galaxy (index 0)
-    galaxies[0].Type = 0;  // Central
-    galaxies[0].StellarMass = 1e10;
-    galaxies[0].BulgeMass = 5e9;
-    galaxies[0].ColdGas = 2e9;
-    galaxies[0].HotGas = 8e9;
-    galaxies[0].EjectedMass = 1e9;
-    galaxies[0].BlackHoleMass = 1e7;
-    galaxies[0].MetalsStellarMass = 1e8;
-    galaxies[0].MetalsBulgeMass = 5e7;
-    galaxies[0].MetalsColdGas = 1e7;
-    galaxies[0].MetalsHotGas = 4e7;
-    galaxies[0].mergeIntoID = -1;
-    galaxies[0].CentralGal = 0;
-    galaxies[0].GalaxyNr = 0;
-    galaxies[0].HaloNr = 100;
-    galaxies[0].mergeType = 0;
+    // Initialize properties for all galaxies
+    initialize_test_galaxies(galaxies, 4);
     
-    // Set position and velocity
+    // Set up a valid galaxy (index 0)
+    GALAXY_PROP_Type(&galaxies[0]) = 0;  // Central - core property
+    
+    // Set physics properties using generic accessor functions
+    prop_id = get_cached_property_id("StellarMass");
+    set_float_property(&galaxies[0], prop_id, 1e10);
+    
+    prop_id = get_cached_property_id("BulgeMass");
+    set_float_property(&galaxies[0], prop_id, 5e9);
+    
+    prop_id = get_cached_property_id("ColdGas");
+    set_float_property(&galaxies[0], prop_id, 2e9);
+    
+    prop_id = get_cached_property_id("HotGas");
+    set_float_property(&galaxies[0], prop_id, 8e9);
+    
+    prop_id = get_cached_property_id("EjectedMass");
+    set_float_property(&galaxies[0], prop_id, 1e9);
+    
+    prop_id = get_cached_property_id("BlackHoleMass");
+    set_float_property(&galaxies[0], prop_id, 1e7);
+    
+    prop_id = get_cached_property_id("MetalsStellarMass");
+    set_float_property(&galaxies[0], prop_id, 1e8);
+    
+    prop_id = get_cached_property_id("MetalsBulgeMass");
+    set_float_property(&galaxies[0], prop_id, 5e7);
+    
+    prop_id = get_cached_property_id("MetalsColdGas");
+    set_float_property(&galaxies[0], prop_id, 1e7);
+    
+    prop_id = get_cached_property_id("MetalsHotGas");
+    set_float_property(&galaxies[0], prop_id, 4e7);
+    
+    // Core properties use GALAXY_PROP_* macros
+    GALAXY_PROP_mergeIntoID(&galaxies[0]) = -1;
+    GALAXY_PROP_CentralGal(&galaxies[0]) = 0;
+    GALAXY_PROP_GalaxyNr(&galaxies[0]) = 0;
+    GALAXY_PROP_HaloNr(&galaxies[0]) = 100;
+    GALAXY_PROP_mergeType(&galaxies[0]) = 0;
+    
+    // Set position and velocity (core properties)
     for (int i = 0; i < 3; i++) {
-        galaxies[0].Pos[i] = i * 100.0;
-        galaxies[0].Vel[i] = i * 200.0;
+        GALAXY_PROP_Pos(&galaxies[0])[i] = i * 100.0;
+        GALAXY_PROP_Vel(&galaxies[0])[i] = i * 200.0;
     }
     
     // Set up a galaxy with invalid data values (index 1)
-    galaxies[1].Type = 1;  // Satellite
-    galaxies[1].StellarMass = NAN;  // NaN value
-    galaxies[1].BulgeMass = 1e8;
-    galaxies[1].ColdGas = 5e8;
-    galaxies[1].HotGas = 2e9;
-    galaxies[1].Pos[0] = INFINITY;  // Invalid position
-    galaxies[1].mergeIntoID = -1;
-    galaxies[1].CentralGal = 0;
-    galaxies[1].GalaxyNr = 1;
+    GALAXY_PROP_Type(&galaxies[1]) = 1;  // Satellite
+    
+    // Set physics properties with invalid values
+    prop_id = get_cached_property_id("StellarMass");
+    set_float_property(&galaxies[1], prop_id, NAN);  // NaN value
+    
+    prop_id = get_cached_property_id("BulgeMass");
+    set_float_property(&galaxies[1], prop_id, 1e8);
+    
+    prop_id = get_cached_property_id("ColdGas");
+    set_float_property(&galaxies[1], prop_id, 5e8);
+    
+    prop_id = get_cached_property_id("HotGas");
+    set_float_property(&galaxies[1], prop_id, 2e9);
+    
+    // Invalid position (core property)
+    GALAXY_PROP_Pos(&galaxies[1])[0] = INFINITY;  // Invalid position
+    GALAXY_PROP_mergeIntoID(&galaxies[1]) = -1;
+    GALAXY_PROP_CentralGal(&galaxies[1]) = 0;
+    GALAXY_PROP_GalaxyNr(&galaxies[1]) = 1;
     
     // Set up a galaxy with invalid references (index 2)
-    galaxies[2].Type = 5;  // Invalid type (should be 0-2)
-    galaxies[2].StellarMass = 1e9;
-    galaxies[2].BulgeMass = 5e8;
-    galaxies[2].ColdGas = 1e9;
-    galaxies[2].HotGas = 3e9;
-    galaxies[2].mergeIntoID = 10;  // Invalid reference
-    galaxies[2].CentralGal = 5;    // Invalid reference (out of bounds)
-    galaxies[2].GalaxyNr = 2;
+    GALAXY_PROP_Type(&galaxies[2]) = 5;  // Invalid type (should be 0-2)
+    
+    prop_id = get_cached_property_id("StellarMass");
+    set_float_property(&galaxies[2], prop_id, 1e9);
+    
+    prop_id = get_cached_property_id("BulgeMass");
+    set_float_property(&galaxies[2], prop_id, 5e8);
+    
+    prop_id = get_cached_property_id("ColdGas");
+    set_float_property(&galaxies[2], prop_id, 1e9);
+    
+    prop_id = get_cached_property_id("HotGas");
+    set_float_property(&galaxies[2], prop_id, 3e9);
+    
+    GALAXY_PROP_mergeIntoID(&galaxies[2]) = 10;  // Invalid reference
+    GALAXY_PROP_CentralGal(&galaxies[2]) = 5;    // Invalid reference (out of bounds)
+    GALAXY_PROP_GalaxyNr(&galaxies[2]) = 2;
     
     // Set up a galaxy with inconsistent data (index 3)
-    galaxies[3].Type = 2;  // Orphan
-    galaxies[3].StellarMass = 1e9;
-    galaxies[3].BulgeMass = 2e9;   // BulgeMass > StellarMass (inconsistent)
-    galaxies[3].ColdGas = 1e9;
-    galaxies[3].HotGas = 3e9;
-    galaxies[3].MetalsStellarMass = 2e9;  // Metals > Mass (inconsistent)
-    galaxies[3].mergeIntoID = -1;
-    galaxies[3].CentralGal = 0;
-    galaxies[3].GalaxyNr = 3;
+    GALAXY_PROP_Type(&galaxies[3]) = 2;  // Orphan
+    
+    // Set inconsistent mass values
+    prop_id = get_cached_property_id("StellarMass");
+    set_float_property(&galaxies[3], prop_id, 1e9);
+    
+    prop_id = get_cached_property_id("BulgeMass");
+    set_float_property(&galaxies[3], prop_id, 2e9);   // BulgeMass > StellarMass (inconsistent)
+    
+    prop_id = get_cached_property_id("ColdGas");
+    set_float_property(&galaxies[3], prop_id, 1e9);
+    
+    prop_id = get_cached_property_id("HotGas");
+    set_float_property(&galaxies[3], prop_id, 3e9);
+    
+    prop_id = get_cached_property_id("MetalsStellarMass");
+    set_float_property(&galaxies[3], prop_id, 2e9);  // Metals > Mass (inconsistent)
+    
+    GALAXY_PROP_mergeIntoID(&galaxies[3]) = -1;
+    GALAXY_PROP_CentralGal(&galaxies[3]) = 0;
+    GALAXY_PROP_GalaxyNr(&galaxies[3]) = 3;
     
     // Validate just galaxy data (should catch the NaN and Infinity)
     status = validation_check_galaxies(&ctx, galaxies, 4, "TestGalaxies",
@@ -451,13 +503,19 @@ int test_galaxy_validation() {
     validation_reset(&ctx);
     
     // Fix the galaxies
-    galaxies[1].StellarMass = 1e8;
-    galaxies[1].Pos[0] = 100.0;
-    galaxies[2].Type = 1;
-    galaxies[2].mergeIntoID = -1;
-    galaxies[2].CentralGal = 0;
-    galaxies[3].BulgeMass = 5e8;
-    galaxies[3].MetalsStellarMass = 1e8;
+    prop_id = get_cached_property_id("StellarMass");
+    set_float_property(&galaxies[1], prop_id, 1e8); // Fix NaN
+    
+    GALAXY_PROP_Pos(&galaxies[1])[0] = 100.0; // Fix infinity
+    GALAXY_PROP_Type(&galaxies[2]) = 1; // Fix invalid type
+    GALAXY_PROP_mergeIntoID(&galaxies[2]) = -1; // Fix invalid reference
+    GALAXY_PROP_CentralGal(&galaxies[2]) = 0; // Fix invalid reference
+    
+    prop_id = get_cached_property_id("BulgeMass");
+    set_float_property(&galaxies[3], prop_id, 5e8); // Fix BulgeMass > StellarMass
+    
+    prop_id = get_cached_property_id("MetalsStellarMass");
+    set_float_property(&galaxies[3], prop_id, 1e8); // Fix Metals > Mass
     
     // Validate again with all checks
     status = validation_check_galaxies(&ctx, galaxies, 4, "TestGalaxies",
@@ -465,6 +523,9 @@ int test_galaxy_validation() {
     assert(status == 0);  // Should pass
     assert(ctx.error_count == 0);
     printf("  All errors fixed, validation passes\n");
+    
+    // Free galaxy properties
+    free_test_galaxies(galaxies, 4);
     
     printf("Galaxy validation tests passed\n");
     return 0;
@@ -500,12 +561,12 @@ int test_assertion_status() {
     return 0;
 }
 
-// Test format validation
+// Test format validation - HDF5 only version (binary format removed from codebase)
 int test_format_validation() {
     struct validation_context ctx;
     int status;
     
-    printf("Testing format validation...\n");
+    printf("Testing format validation (HDF5 only)...\n");
     
     // Initialize
     status = validation_init(&ctx, VALIDATION_STRICTNESS_NORMAL);
@@ -545,49 +606,17 @@ int test_format_validation() {
     
     validation_reset(&ctx);
     
-    // Test binary format compatibility
-    status = validation_check_binary_compatibility(&ctx, &binary_handler, 
-                                               "TestComponent", __FILE__, __LINE__);
-    assert(status == 0);  // Should pass
-    assert(ctx.error_count == 0);
-    
-    // Test with non-binary format
-    validation_reset(&ctx);
-    
-    status = validation_check_binary_compatibility(&ctx, &hdf5_handler, 
-                                               "TestComponent", __FILE__, __LINE__);
-    // Since we're using a mock HDF5 handler, we should detect this is not a binary format
-    if (status == 0) {
-        printf("WARNING: Expected validation_check_binary_compatibility to return non-zero status\n");
-    }
-    assert(ctx.error_count > 0);  // Should produce an error
-    
-    validation_reset(&ctx);
-    
-    // Test limited binary format (missing extended props)
-    validation_reset(&ctx);
-    
-    status = validation_check_binary_compatibility(&ctx, &limited_binary_handler, 
-                                               "TestComponent", __FILE__, __LINE__);
-    // Should generate a warning for the limited format without extended properties support
-    if (ctx.warning_count == 0) {
-        printf("WARNING: Expected validation_check_binary_compatibility to generate warnings\n");
-    }
-    
-    validation_reset(&ctx);
-    
     // Test HDF5 format compatibility
     status = validation_check_hdf5_compatibility(&ctx, &hdf5_handler, 
                                              "TestComponent", __FILE__, __LINE__);
     assert(status == 0);  // Should pass
     assert(ctx.error_count == 0);
     
-    // Test with non-HDF5 format
+    // Test with non-HDF5 format (using mock handler which isn't HDF5)
     validation_reset(&ctx);
-    
-    status = validation_check_hdf5_compatibility(&ctx, &binary_handler, 
+    status = validation_check_hdf5_compatibility(&ctx, &mock_handler, 
                                              "TestComponent", __FILE__, __LINE__);
-    // Should detect that binary format is not HDF5
+    // Should detect that mock format is not HDF5
     if (status == 0) {
         printf("WARNING: Expected validation_check_hdf5_compatibility to return non-zero status\n");
     }
@@ -602,11 +631,6 @@ int test_format_validation() {
     
     validation_reset(&ctx);
     
-    status = VALIDATE_BINARY_COMPATIBILITY(&ctx, &binary_handler, "TestComponent");
-    assert(status == 0);  // Should pass
-    
-    validation_reset(&ctx);
-    
     status = VALIDATE_HDF5_COMPATIBILITY(&ctx, &hdf5_handler, "TestComponent");
     assert(status == 0);  // Should pass
     
@@ -614,10 +638,39 @@ int test_format_validation() {
     return 0;
 }
 
+// Initialize mock parameters for the property system
+struct params mock_params;
+
+// Function to initialize mock parameters
+void setup_mock_params() {
+    memset(&mock_params, 0, sizeof(struct params));
+    
+    // Set basic parameters that exist in current struct
+    mock_params.simulation.NumSnapOutputs = 10;
+}
+
+// Function to initialize property system for testing
+void my_initialize_property_system() {
+    // Initialize mock parameters
+    setup_mock_params();
+    
+    // Initialize the real property system with mock parameters
+    initialize_property_system(&mock_params);
+}
+
+// Function to clean up property system
+void my_cleanup_property_system() {
+    // Call the real cleanup function
+    cleanup_property_system();
+}
+
 int main() {
     int status = 0;
     
     printf("Running I/O validation tests...\n");
+    
+    // Initialize property system
+    my_initialize_property_system();
     
     status |= test_context_init();
     status |= test_result_collection();
@@ -627,6 +680,9 @@ int main() {
     status |= test_galaxy_validation();
     status |= test_assertion_status();
     status |= test_format_validation();
+    
+    // Clean up property system
+    my_cleanup_property_system();
     
     if (status == 0) {
         printf("All I/O validation tests passed!\n");

@@ -323,50 +323,7 @@ void test_serialization_context_validation() {
     printf("Serialization context validation tests passed\n");
 }
 
-/**
- * @brief Test binary property compatibility validation
- */
-void test_binary_property_compatibility() {
-    struct validation_context ctx;
-    int status;
-    
-    printf("Testing binary property compatibility validation...\n");
-    
-    // Initialize validation context
-    validation_init(&ctx, VALIDATION_STRICTNESS_NORMAL);
-    
-    // Test valid property with binary format
-    status = VALIDATE_BINARY_PROPERTY_COMPATIBILITY(&ctx, &mock_properties[0], "test");
-    assert(status == 0);
-    assert(!validation_has_errors(&ctx));
-    
-    validation_reset(&ctx);
-    
-    // Test property without serialization functions
-    status = VALIDATE_BINARY_PROPERTY_COMPATIBILITY(&ctx, &mock_properties[2], "test");
-    assert(status != 0);
-    assert(validation_has_errors(&ctx));
-    
-    validation_reset(&ctx);
-    
-    // Test struct property (should warn but pass)
-    status = VALIDATE_BINARY_PROPERTY_COMPATIBILITY(&ctx, &mock_properties[6], "test");
-    assert(status == 0);
-    assert(!validation_has_errors(&ctx));
-    assert(validation_has_warnings(&ctx));
-    
-    validation_reset(&ctx);
-    
-    // Test large property (should warn but pass for binary)
-    status = VALIDATE_BINARY_PROPERTY_COMPATIBILITY(&ctx, &mock_properties[5], "test");
-    assert(status == 0);
-    assert(!validation_has_errors(&ctx));
-    assert(validation_has_warnings(&ctx));
-    
-    validation_cleanup(&ctx);
-    
-    printf("Binary property compatibility tests passed\n");
-}
+// Binary compatibility tests have been removed as SAGE has standardized on HDF5 output
 
 /**
  * @brief Test HDF5 property compatibility validation
@@ -432,7 +389,7 @@ int main() {
     test_property_serialization_validation();
     test_property_uniqueness_validation();
     test_serialization_context_validation();
-    test_binary_property_compatibility();
+    // Binary tests removed - SAGE has standardized on HDF5
     test_hdf5_property_compatibility();
     
     printf("All tests PASSED\n");
