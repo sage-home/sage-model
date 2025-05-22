@@ -301,3 +301,12 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Modified files: Makefile
 - Created files: ignore/obsolete_test_makefiles_202505221230/ directory
 - Moved files: 9 individual test Makefiles to ignore directory
+
+2025-05-22: [Phase 5.2.F.3] Test Infrastructure Integration and Module Callback Analysis
+- Investigated module callback system (`core_module_callback.c/.h`) to determine if `test_pipeline_invoke.c` should be removed
+- Found callback system is active infrastructure: call stack tracking used by `physics_pipeline_executor.c`, initialization called from `core_init.c`
+- Inter-module function calling (`module_invoke`, `module_register_function`) currently unused but part of intended architecture for future physics module communication
+- Conclusion: Keep both callback system and test as this validates future-ready infrastructure
+- Integrated `test_io_buffer_manager` into main Makefile as part of `IO_TESTS` category
+- Integrated `test_pipeline_invoke` into main Makefile as part of `MODULE_TESTS` category
+- Moved `tests/Makefile.buffer_manager` and `tests/Makefile.pipeline_invoke` to `ignore/obsolete_test_makefiles_202505221230/`

@@ -371,10 +371,10 @@ CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipelin
 PROPERTY_TESTS = test_property_serialization test_property_system test_property_registration test_property_array_access test_galaxy_property_macros test_property_system_hdf5 test_property_validation
 
 # I/O system tests
-IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_validation test_memory_map
+IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_validation test_memory_map test_io_buffer_manager
 
 # Module system tests
-MODULE_TESTS = test_dynamic_library test_module_template
+MODULE_TESTS = test_dynamic_library test_pipeline_invoke
 
 # Core-physics separation tests (critical for Phase 5.2.F)
 SEPARATION_TESTS = test_core_physics_separation test_output_preparation
@@ -461,12 +461,15 @@ test_io_validation: tests/test_io_validation.c $(SAGELIB)
 test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_memory_map tests/test_io_memory_map.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+test_io_buffer_manager: tests/test_io_buffer_manager.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_buffer_manager tests/test_io_buffer_manager.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
 # Module system test targets
 test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_module_template: tests/test_module_template.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_template tests/test_module_template.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline_invoke tests/test_pipeline_invoke.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Core-physics separation test targets
 test_core_physics_separation: tests/test_core_physics_separation.c core-only
