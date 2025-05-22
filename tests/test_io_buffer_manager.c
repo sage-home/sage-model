@@ -10,11 +10,11 @@
 #include "../src/io/io_buffer_manager.h"
 
 /* Test callback functions */
-static int test_write_callback(int fd, const void* buffer, size_t size, off_t offset, void* context) {
+static int test_write_callback(int fd, const void* buffer, size_t size, off_t offset, void* context __attribute__((unused))) {
     return pwrite(fd, buffer, size, offset);
 }
 
-static ssize_t test_read_callback(int fd, void* buffer, size_t size, off_t offset, void* context) {
+static ssize_t test_read_callback(int fd, void* buffer, size_t size, off_t offset, void* context __attribute__((unused))) {
     return pread(fd, buffer, size, offset);
 }
 
