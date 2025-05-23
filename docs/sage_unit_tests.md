@@ -26,7 +26,6 @@ These tests are integrated into the main Makefile and can be run with `make test
 |-----------|---------|---------------|
 | ✅ **test_property_serialization** | Tests property serialization for I/O operations | Phase 3.2 (Apr 2025) |
 | ✅ **test_property_validation** | Tests validation of property definitions | Phase 3.2 (Apr 2025) |
-| ❌ **test_property_system** | Tests the core property system | Phase 5.2.B (May 2025) |
 | ❌ **test_property_registration** | Tests registration of properties with the extension system | Phase 5.2.B (May 2025) |
 | ✅ **test_property_array_access** | Tests access to array properties | Phase 5.2.B (May 2025) |
 | ❌ **test_galaxy_property_macros** | Tests the GALAXY_PROP_* macros for property access | Phase 5.2.D (May 2025) |
@@ -90,7 +89,7 @@ make separation_tests  # Core-physics separation tests
 ### Individual Tests
 ```bash
 make test_pipeline
-make test_property_system
+make test_property_registration
 # etc.
 ```
 
