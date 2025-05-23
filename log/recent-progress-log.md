@@ -320,3 +320,12 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Created files: src/physics/physics_events.h, src/physics/physics_events.c, docs/physics_events_system.md
 - Modified files: src/core/core_evolution_diagnostics.h, src/core/core_evolution_diagnostics.c, src/core/core_event_system.c, src/core/core_event_system.h, src/core/core_build_model.c, 
   src/core/core_allvars.h, dtests/test_evolution_diagnostics.c, ocs/core_physics_separation.md, docs/evolution_diagnostics.md
+
+2025-05-23: [Phase 5.2.F.3] Evolve Galaxies Integration Test Refactoring
+- Restored and corrected `test_evolve_integration.c` to accurately test core pipeline system integration with mock modules, phase-based execution, event handling, and diagnostics.
+- Resolved issues with mock module registration, initialization, and data retrieval, ensuring unique module IDs are correctly used.
+- Updated test logic to use `pipeline_execute_phase` for driving module execution, replacing manual calls.
+- Validated that mock modules are executed in their declared phases and that diagnostics correctly track phase timings and core event emissions from modules.
+- Confirmed test adherence to core-physics property separation principles.
+- Identified and documented minor warnings in core SAGE systems revealed by the test for future investigation.
+- Modified files: tests/test_evolve_integration.c
