@@ -19,63 +19,21 @@ static int compare_handlers_by_priority(const void *a, const void *b);
 static void sort_handlers_by_priority(int event_type_index);
 static void log_event(const event_t *event);
 
-/* Static event type names for debugging and logging */
+/* Static event type names for debugging and logging (core events only) */
 static const char *event_type_names[] = {
-    "UNKNOWN",
-    "GALAXY_CREATED",
-    "GALAXY_COPIED",
-    "GALAXY_MERGED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "COOLING_COMPLETED",
-    "STAR_FORMATION_OCCURRED",
-    "FEEDBACK_APPLIED",
-    "AGN_ACTIVITY",
-    "DISK_INSTABILITY",
-    "MERGER_DETECTED",
-    "REINCORPORATION_COMPUTED",
-    "INFALL_COMPUTED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "COLD_GAS_UPDATED",
-    "HOT_GAS_UPDATED",
-    "STELLAR_MASS_UPDATED",
-    "METALS_UPDATED",
-    "BLACK_HOLE_MASS_UPDATED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "UNDEFINED",
-    "MODULE_ACTIVATED",
-    "MODULE_DEACTIVATED",
-    "PARAMETER_CHANGED",
-    "CUSTOM_EVENT"
+    "UNKNOWN",              // 0
+    "PIPELINE_STARTED",     // 1
+    "PIPELINE_COMPLETED",   // 2
+    "PHASE_STARTED",        // 3
+    "PHASE_COMPLETED",      // 4
+    "GALAXY_CREATED",       // 5
+    "GALAXY_COPIED",        // 6
+    "GALAXY_MERGED",        // 7
+    "MODULE_ACTIVATED",     // 8
+    "MODULE_DEACTIVATED",   // 9
+    "PARAMETER_CHANGED"     // 10
 };
+
 
 /**
  * Get the name of an event type
@@ -657,11 +615,15 @@ event_status_t event_dispatch(const event_t *event) {
                     if (evolution_ctx != NULL) {
                         /* Check if diagnostics is initialized */
                         if (evolution_ctx->diagnostics != NULL) {
-                            /* Track the event safely */
-                            evolution_diagnostics_add_event(evolution_ctx->diagnostics, event->type);
+                            /* Only track core events, ignore physics events */
+                            if (event->type < CORE_EVENT_TYPE_MAX) {
+                                core_evolution_diagnostics_add_event(evolution_ctx->diagnostics, (core_event_type_t)event->type);
+                            } else {
+                                LOG_DEBUG("Ignoring physics event type %d in core diagnostics", event->type);
+                            }
                         } else {
                             /* Diagnostics not initialized, but that's OK in some paths */
-                            LOG_DEBUG("Evolution diagnostics not initialized for event type %d", event->type);
+                            LOG_DEBUG("Core evolution diagnostics not initialized for event type %d", event->type);
                         }
                     }
                 }

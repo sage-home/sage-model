@@ -310,3 +310,13 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Integrated `test_io_buffer_manager` into main Makefile as part of `IO_TESTS` category
 - Integrated `test_pipeline_invoke` into main Makefile as part of `MODULE_TESTS` category
 - Moved `tests/Makefile.buffer_manager` and `tests/Makefile.pipeline_invoke` to `ignore/obsolete_test_makefiles_202505221230/`
+
+2025-05-23: [Phase 5.2.F.3] Evolution Diagnostics System Refactoring
+- Completed comprehensive redesign of evolution diagnostics to achieve core-physics separation compliance
+- Removed all hardcoded physics property knowledge from core diagnostics structure
+- Separated core infrastructure events from physics-specific events into dedicated physics_events.h/c files
+- Updated all function names to use core_evolution_diagnostics_* prefix for clarity
+- Completely rewrote test_evolution_diagnostics.c to validate only core infrastructure functionality
+- Created files: src/physics/physics_events.h, src/physics/physics_events.c, docs/physics_events_system.md
+- Modified files: src/core/core_evolution_diagnostics.h, src/core/core_evolution_diagnostics.c, src/core/core_event_system.c, src/core/core_event_system.h, src/core/core_build_model.c, 
+  src/core/core_allvars.h, dtests/test_evolution_diagnostics.c, ocs/core_physics_separation.md, docs/evolution_diagnostics.md

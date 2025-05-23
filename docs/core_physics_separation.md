@@ -14,6 +14,7 @@ The core infrastructure is now completely physics-agnostic:
 4. **Module System**: Allows physics modules to register themselves at runtime
 5. **No direct field synchronization**: Removed synchronization between direct fields and properties
 6. **Configuration-based**: Physics modules and pipeline steps are defined in configuration files
+7. **Separated Event Systems**: Core infrastructure events and physics events are completely separated
 
 ### Physics Modules
 
@@ -24,6 +25,30 @@ Physics modules are now implemented as pure add-ons:
 3. **Property access**: Modules use GALAXY_PROP_* macros to access properties
 4. **Phase support**: Modules declare which pipeline phases they support
 5. **No core dependencies**: Modules don't depend on core infrastructure details
+6. **Independent Events**: Physics modules use dedicated physics event system (`src/physics/physics_events.h`)
+
+### Event System Architecture
+
+The event system maintains strict separation between core and physics concerns:
+
+```
+Core Event System (src/core/core_event_system.h)
+├── PIPELINE_STARTED/COMPLETED     # Pipeline lifecycle
+├── PHASE_STARTED/COMPLETED        # Phase transitions  
+├── GALAXY_CREATED/COPIED/MERGED   # Galaxy lifecycle
+└── MODULE_ACTIVATED/DEACTIVATED   # Module system events
+
+Physics Event System (src/physics/physics_events.h)
+├── COOLING_COMPLETED              # Physics processes
+├── STAR_FORMATION_OCCURRED        # Physics calculations
+├── FEEDBACK_APPLIED               # Physics interactions
+└── [Custom Physics Events]        # Module-specific events
+```
+
+This separation enables:
+- **Core Infrastructure Monitoring**: Track pipeline performance and system health
+- **Physics Module Communication**: Enable inter-module physics interactions
+- **Runtime Adaptability**: Support any combination of physics modules
 
 ## Testing Core-Physics Separation
 

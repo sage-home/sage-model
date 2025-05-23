@@ -52,6 +52,7 @@ tests/test_property_system
 tests/test_property_system_hdf5
 tests/test_core_property
 tests/test_property_array_access
+tests/test_core_evolution_diagnostics
 
 .repomix/
 trees_*

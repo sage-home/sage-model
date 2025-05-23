@@ -8,15 +8,35 @@ extern "C" {
 #include <stdbool.h>
 #include "core_allvars.h"
 #include "core_logging.h"
-#include "core_event_system.h"
 #include "core_pipeline_system.h"  /* Added for pipeline_execution_phase enum */
 
 /**
- * Evolution diagnostics data structure
+ * Core event types (infrastructure events only)
+ * 
+ * These events represent core SAGE infrastructure operations,
+ * not physics-specific processes. Physics modules manage their own events.
+ */
+typedef enum core_event_type {
+    CORE_EVENT_PIPELINE_STARTED = 0,
+    CORE_EVENT_PIPELINE_COMPLETED = 1,
+    CORE_EVENT_PHASE_STARTED = 2,
+    CORE_EVENT_PHASE_COMPLETED = 3,
+    CORE_EVENT_GALAXY_CREATED = 4,
+    CORE_EVENT_GALAXY_COPIED = 5,
+    CORE_EVENT_GALAXY_MERGED = 6,
+    CORE_EVENT_MODULE_ACTIVATED = 7,
+    CORE_EVENT_MODULE_DEACTIVATED = 8,
+    CORE_EVENT_TYPE_MAX = 10
+} core_event_type_t;
+
+/**
+ * Core evolution diagnostics data structure
  * 
  * Contains runtime statistics for the galaxy evolution process.
+ * Only tracks core infrastructure metrics - physics modules register
+ * their own diagnostic metrics separately.
  */
-struct evolution_diagnostics {
+struct core_evolution_diagnostics {
     /* General stats */
     int halo_nr;                   /* Current halo number */
     int ngal_initial;              /* Initial number of galaxies */
@@ -35,24 +55,14 @@ struct evolution_diagnostics {
         int step_count;            /* Number of timesteps processed */
     } phases[4];                   /* HALO, GALAXY, POST, FINAL phases */
     
-    /* Event statistics */
-    int event_counts[EVENT_TYPE_MAX]; /* Counts of each event type */
+    /* Core event statistics (infrastructure events only) */
+    int core_event_counts[CORE_EVENT_TYPE_MAX]; /* Counts of each core event type */
     
-    /* Merger statistics */
+    /* Merger statistics (borderline core/physics - keeping for now) */
     int mergers_detected;          /* Number of potential mergers detected */
     int mergers_processed;         /* Number of mergers actually processed */
     int major_mergers;             /* Number of major mergers */
     int minor_mergers;             /* Number of minor mergers */
-    
-    /* Galaxy property statistics */
-    double total_stellar_mass_initial;   /* Total stellar mass before evolution */
-    double total_stellar_mass_final;     /* Total stellar mass after evolution */
-    double total_cold_gas_initial;       /* Total cold gas before evolution */
-    double total_cold_gas_final;         /* Total cold gas after evolution */
-    double total_hot_gas_initial;        /* Total hot gas before evolution */
-    double total_hot_gas_final;          /* Total hot gas after evolution */
-    double total_bulge_mass_initial;     /* Total bulge mass before evolution */
-    double total_bulge_mass_final;       /* Total bulge mass after evolution */
     
     /* Pipeline statistics */
     int pipeline_steps_executed;   /* Number of pipeline steps executed */
@@ -72,7 +82,7 @@ struct evolution_diagnostics {
  * @param ngal Initial number of galaxies
  * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_initialize(struct evolution_diagnostics *diag, int halo_nr, int ngal);
+int core_evolution_diagnostics_initialize(struct core_evolution_diagnostics *diag, int halo_nr, int ngal);
 
 /**
  * Update phase statistics when entering a new phase
@@ -83,7 +93,7 @@ int evolution_diagnostics_initialize(struct evolution_diagnostics *diag, int hal
  * @param phase The execution phase being started
  * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_start_phase(struct evolution_diagnostics *diag, enum pipeline_execution_phase phase);
+int core_evolution_diagnostics_start_phase(struct core_evolution_diagnostics *diag, enum pipeline_execution_phase phase);
 
 /**
  * Update phase statistics when exiting a phase
@@ -95,18 +105,19 @@ int evolution_diagnostics_start_phase(struct evolution_diagnostics *diag, enum p
  * @param phase The execution phase being ended
  * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_end_phase(struct evolution_diagnostics *diag, enum pipeline_execution_phase phase);
+int core_evolution_diagnostics_end_phase(struct core_evolution_diagnostics *diag, enum pipeline_execution_phase phase);
 
 /**
- * Track an event occurrence
+ * Track a core infrastructure event occurrence
  * 
- * Increments the counter for a specific event type.
+ * Increments the counter for a specific core event type.
+ * Only accepts core infrastructure events, not physics events.
  * 
  * @param diag Pointer to the diagnostics structure
- * @param event_type Type of event that occurred
+ * @param event_type Type of core event that occurred
  * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_add_event(struct evolution_diagnostics *diag, event_type_t event_type);
+int core_evolution_diagnostics_add_event(struct core_evolution_diagnostics *diag, core_event_type_t event_type);
 
 /**
  * Record a merger detection
@@ -117,7 +128,7 @@ int evolution_diagnostics_add_event(struct evolution_diagnostics *diag, event_ty
  * @param merger_type Type of merger detected (1=minor, 2=major)
  * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_add_merger_detection(struct evolution_diagnostics *diag, int merger_type);
+int core_evolution_diagnostics_add_merger_detection(struct core_evolution_diagnostics *diag, int merger_type);
 
 /**
  * Record a merger being processed
@@ -128,31 +139,7 @@ int evolution_diagnostics_add_merger_detection(struct evolution_diagnostics *dia
  * @param merger_type Type of merger processed (1=minor, 2=major)
  * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_add_merger_processed(struct evolution_diagnostics *diag, int merger_type);
-
-/**
- * Record initial galaxy property statistics
- * 
- * Computes and stores aggregate galaxy properties at the start of evolution.
- * 
- * @param diag Pointer to the diagnostics structure
- * @param galaxies Array of galaxies
- * @param ngal Number of galaxies
- * @return 0 on success, error code on failure
- */
-int evolution_diagnostics_record_initial_properties(struct evolution_diagnostics *diag, struct GALAXY *galaxies, int ngal);
-
-/**
- * Record final galaxy property statistics
- * 
- * Computes and stores aggregate galaxy properties at the end of evolution.
- * 
- * @param diag Pointer to the diagnostics structure
- * @param galaxies Array of galaxies
- * @param ngal Number of galaxies
- * @return 0 on success, error code on failure
- */
-int evolution_diagnostics_record_final_properties(struct evolution_diagnostics *diag, struct GALAXY *galaxies, int ngal);
+int core_evolution_diagnostics_add_merger_processed(struct core_evolution_diagnostics *diag, int merger_type);
 
 /**
  * Finalize the diagnostics and compute derived metrics
@@ -162,7 +149,7 @@ int evolution_diagnostics_record_final_properties(struct evolution_diagnostics *
  * @param diag Pointer to the diagnostics structure
  * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_finalize(struct evolution_diagnostics *diag);
+int core_evolution_diagnostics_finalize(struct core_evolution_diagnostics *diag);
 
 /**
  * Report diagnostics to log
@@ -173,7 +160,7 @@ int evolution_diagnostics_finalize(struct evolution_diagnostics *diag);
  * @param log_level Log level to use for reporting
  * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_report(struct evolution_diagnostics *diag, log_level_t log_level);
+int core_evolution_diagnostics_report(struct core_evolution_diagnostics *diag, log_level_t log_level);
 
 #ifdef __cplusplus
 }

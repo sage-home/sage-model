@@ -29,44 +29,37 @@ extern "C" {
 /**
  * Event type identifiers
  * 
- * Each event has a unique type identifier that determines what
- * data it contains and which handlers will receive it.
+ * Core infrastructure events only. Physics modules should define their own
+ * event types separately to maintain core-physics separation.
  */
 typedef enum event_type {
     EVENT_TYPE_UNKNOWN = 0,
     
-    /* Galaxy lifecycle events */
-    EVENT_GALAXY_CREATED = 1,
-    EVENT_GALAXY_COPIED = 2,
-    EVENT_GALAXY_MERGED = 3,
+    /* Core infrastructure events only */
+    EVENT_PIPELINE_STARTED = 1,
+    EVENT_PIPELINE_COMPLETED = 2,
+    EVENT_PHASE_STARTED = 3,
+    EVENT_PHASE_COMPLETED = 4,
     
-    /* Major physics process events */
-    EVENT_COOLING_COMPLETED = 10,
-    EVENT_STAR_FORMATION_OCCURRED = 11,
-    EVENT_FEEDBACK_APPLIED = 12,
-    EVENT_AGN_ACTIVITY = 13,
-    EVENT_DISK_INSTABILITY = 14,
-    EVENT_MERGER_DETECTED = 15,
-    EVENT_REINCORPORATION_COMPUTED = 16,
-    EVENT_INFALL_COMPUTED = 17,
+    /* Galaxy lifecycle events (core infrastructure) */
+    EVENT_GALAXY_CREATED = 5,
+    EVENT_GALAXY_COPIED = 6,
+    EVENT_GALAXY_MERGED = 7,
     
-    /* Property update events */
-    EVENT_COLD_GAS_UPDATED = 30,
-    EVENT_HOT_GAS_UPDATED = 31,
-    EVENT_STELLAR_MASS_UPDATED = 32,
-    EVENT_METALS_UPDATED = 33,
-    EVENT_BLACK_HOLE_MASS_UPDATED = 34,
+    /* Module system events (core infrastructure) */
+    EVENT_MODULE_ACTIVATED = 8,
+    EVENT_MODULE_DEACTIVATED = 9,
+    EVENT_PARAMETER_CHANGED = 10,
     
-    /* System events */
-    EVENT_MODULE_ACTIVATED = 50,
-    EVENT_MODULE_DEACTIVATED = 51,
-    EVENT_PARAMETER_CHANGED = 52,
+    /* Reserved range for physics modules (not used by core) */
+    EVENT_PHYSICS_BEGIN = 100,
+    EVENT_PHYSICS_END = 999,
     
     /* Custom/reserved events (for module-specific use) */
     EVENT_CUSTOM_BEGIN = 1000,
     EVENT_CUSTOM_END = 1999,
     
-    EVENT_TYPE_MAX
+    EVENT_TYPE_MAX = 2000
 } event_type_t;
 
 /**
@@ -369,40 +362,7 @@ typedef struct {
     int32_t merger_type;       /* 0 = minor merger (satellite absorbed into disk), 1 = major merger (creates spheroid) */
 } event_galaxy_merged_data_t;
 
-/* Physics process events */
-typedef struct {
-    float cooling_rate;        /* Rate at which hot gas is cooling in 10^10 Msun/h per timestep */
-    float cooling_radius;      /* Radius within which gas can cool in Mpc/h - related to density profile and cooling function */
-    float hot_gas_cooled;      /* Total amount of hot gas that cooled onto the disk in this step in 10^10 Msun/h */
-} event_cooling_completed_data_t;
-
-typedef struct {
-    float stars_formed;        /* Total stellar mass formed in this timestep in 10^10 Msun/h */
-    float stars_to_disk;       /* Stellar mass added to the disk component in 10^10 Msun/h */
-    float stars_to_bulge;      /* Stellar mass added to the bulge component in 10^10 Msun/h */
-    float metallicity;         /* Metal fraction of the newly formed stars (Mmetals/Mstars) - dimensionless */
-} event_star_formation_occurred_data_t;
-
-typedef struct {
-    float energy_injected;     /* Energy from supernovae in standard units (typically 10^51 erg scaled to simulation units) */
-    float mass_reheated;       /* Cold gas reheated to hot phase by SN feedback in 10^10 Msun/h */
-    float metals_ejected;      /* Metal mass ejected by SN feedback in 10^10 Msun/h */
-} event_feedback_applied_data_t;
-
-typedef struct {
-    float energy_released;     /* Energy released by AGN feedback in standard units */
-    float mass_accreted;       /* Mass accreted onto the black hole in 10^10 Msun/h */
-    float mass_ejected;        /* Hot gas mass ejected from halo due to AGN feedback in 10^10 Msun/h */
-} event_agn_activity_data_t;
-
-/* Property update events */
-typedef struct {
-    float old_value;           /* Previous value of the property before update - units depend on property type */
-    float new_value;           /* New value of the property after update - units depend on property type */
-    float delta;               /* Change in the property value (new - old) - units depend on property type */
-} event_property_updated_data_t;
-
-/* System events */
+/* Core system events */
 typedef struct {
     int module_id;             /* Unique identifier for the module */
     int module_type;           /* Type of module (cooling, star formation, etc.) */

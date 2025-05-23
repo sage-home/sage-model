@@ -6,23 +6,19 @@
 #include "core_evolution_diagnostics.h"
 #include "core_logging.h"
 #include "core_allvars.h"
-#include "core_event_system.h"
 #include "core_pipeline_system.h"
-#include "core_galaxy_accessors.h" // For property accessor functions
-#include "core_property_utils.h"   // For generic property accessors
-#include "core_properties.h"       // For property definitions
 
 /**
  * Initialize the diagnostics for a new evolution run
  */
-int evolution_diagnostics_initialize(struct evolution_diagnostics *diag, int halo_nr, int ngal) {
+int core_evolution_diagnostics_initialize(struct core_evolution_diagnostics *diag, int halo_nr, int ngal) {
     if (diag == NULL) {
-        LOG_ERROR("NULL diagnostics pointer passed to evolution_diagnostics_initialize");
+        LOG_ERROR("NULL diagnostics pointer passed to core_evolution_diagnostics_initialize");
         return -1;
     }
     
     /* Clear the structure */
-    memset(diag, 0, sizeof(struct evolution_diagnostics));
+    memset(diag, 0, sizeof(struct core_evolution_diagnostics));
     
     /* Set basic information */
     diag->halo_nr = halo_nr;
@@ -42,9 +38,9 @@ int evolution_diagnostics_initialize(struct evolution_diagnostics *diag, int hal
         diag->phases[i].step_count = 0;
     }
     
-    /* Initialize event statistics */
-    for (int i = 0; i < EVENT_TYPE_MAX; i++) {
-        diag->event_counts[i] = 0;
+    /* Initialize core event statistics */
+    for (int i = 0; i < CORE_EVENT_TYPE_MAX; i++) {
+        diag->core_event_counts[i] = 0;
     }
     
     /* Initialize merger statistics */
@@ -57,7 +53,7 @@ int evolution_diagnostics_initialize(struct evolution_diagnostics *diag, int hal
     diag->pipeline_steps_executed = 0;
     diag->module_callbacks_executed = 0;
     
-    LOG_DEBUG("Initialized evolution diagnostics for halo %d with %d galaxies", halo_nr, ngal);
+    LOG_DEBUG("Initialized core evolution diagnostics for halo %d with %d galaxies", halo_nr, ngal);
     
     return 0;
 }
@@ -82,24 +78,17 @@ static int phase_to_index(enum pipeline_execution_phase phase) {
 
 /**
  * Update phase statistics when entering a new phase
- * 
- * Records the start time of a pipeline execution phase.
- * 
- * @param diag Pointer to the diagnostics structure
- * @param phase The execution phase being started (PIPELINE_PHASE_HALO, PIPELINE_PHASE_GALAXY, 
- *              PIPELINE_PHASE_POST, or PIPELINE_PHASE_FINAL)
- * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_start_phase(struct evolution_diagnostics *diag, enum pipeline_execution_phase phase) {
+int core_evolution_diagnostics_start_phase(struct core_evolution_diagnostics *diag, enum pipeline_execution_phase phase) {
     if (diag == NULL) {
-        LOG_ERROR("NULL diagnostics pointer passed to evolution_diagnostics_start_phase");
+        LOG_ERROR("NULL diagnostics pointer passed to core_evolution_diagnostics_start_phase");
         return -1;
     }
     
     /* Convert phase bit flag to array index */
     int phase_index = phase_to_index(phase);
     if (phase_index < 0) {
-        LOG_ERROR("Invalid phase %d passed to evolution_diagnostics_start_phase", phase);
+        LOG_ERROR("Invalid phase %d passed to core_evolution_diagnostics_start_phase", phase);
         return -1;
     }
     
@@ -113,25 +102,17 @@ int evolution_diagnostics_start_phase(struct evolution_diagnostics *diag, enum p
 
 /**
  * Update phase statistics when exiting a phase
- * 
- * Records the end time of a pipeline execution phase and updates
- * the total time spent in this phase.
- * 
- * @param diag Pointer to the diagnostics structure
- * @param phase The execution phase being ended (PIPELINE_PHASE_HALO, PIPELINE_PHASE_GALAXY, 
- *              PIPELINE_PHASE_POST, or PIPELINE_PHASE_FINAL)
- * @return 0 on success, error code on failure
  */
-int evolution_diagnostics_end_phase(struct evolution_diagnostics *diag, enum pipeline_execution_phase phase) {
+int core_evolution_diagnostics_end_phase(struct core_evolution_diagnostics *diag, enum pipeline_execution_phase phase) {
     if (diag == NULL) {
-        LOG_ERROR("NULL diagnostics pointer passed to evolution_diagnostics_end_phase");
+        LOG_ERROR("NULL diagnostics pointer passed to core_evolution_diagnostics_end_phase");
         return -1;
     }
     
     /* Convert phase bit flag to array index */
     int phase_index = phase_to_index(phase);
     if (phase_index < 0) {
-        LOG_ERROR("Invalid phase %d passed to evolution_diagnostics_end_phase", phase);
+        LOG_ERROR("Invalid phase %d passed to core_evolution_diagnostics_end_phase", phase);
         return -1;
     }
     
@@ -151,23 +132,23 @@ int evolution_diagnostics_end_phase(struct evolution_diagnostics *diag, enum pip
 }
 
 /**
- * Track an event occurrence
+ * Track a core infrastructure event occurrence
  */
-int evolution_diagnostics_add_event(struct evolution_diagnostics *diag, event_type_t event_type) {
+int core_evolution_diagnostics_add_event(struct core_evolution_diagnostics *diag, core_event_type_t event_type) {
     if (diag == NULL) {
-        LOG_DEBUG("NULL diagnostics pointer provided to evolution_diagnostics_add_event");
+        LOG_DEBUG("NULL diagnostics pointer provided to core_evolution_diagnostics_add_event");
         return -1;
     }
     
-    if (event_type < 0 || event_type >= EVENT_TYPE_MAX) {
-        LOG_ERROR("Invalid event type %d passed to evolution_diagnostics_add_event", event_type);
+    if (event_type < 0 || event_type >= CORE_EVENT_TYPE_MAX) {
+        LOG_ERROR("Invalid core event type %d passed to core_evolution_diagnostics_add_event", event_type);
         return -1;
     }
     
-    /* Increment counter for this event type */
-    diag->event_counts[event_type]++;
+    /* Increment counter for this core event type */
+    diag->core_event_counts[event_type]++;
     
-    LOG_DEBUG("Added event of type %d to diagnostics for halo %d", event_type, diag->halo_nr);
+    LOG_DEBUG("Added core event of type %d to diagnostics for halo %d", event_type, diag->halo_nr);
     
     return 0;
 }
@@ -175,9 +156,9 @@ int evolution_diagnostics_add_event(struct evolution_diagnostics *diag, event_ty
 /**
  * Record a merger detection
  */
-int evolution_diagnostics_add_merger_detection(struct evolution_diagnostics *diag, int merger_type) {
+int core_evolution_diagnostics_add_merger_detection(struct core_evolution_diagnostics *diag, int merger_type) {
     if (diag == NULL) {
-        LOG_ERROR("NULL diagnostics pointer passed to evolution_diagnostics_add_merger_detection");
+        LOG_ERROR("NULL diagnostics pointer passed to core_evolution_diagnostics_add_merger_detection");
         return -1;
     }
     
@@ -199,9 +180,9 @@ int evolution_diagnostics_add_merger_detection(struct evolution_diagnostics *dia
 /**
  * Record a merger being processed
  */
-int evolution_diagnostics_add_merger_processed(struct evolution_diagnostics *diag, int merger_type) {
+int core_evolution_diagnostics_add_merger_processed(struct core_evolution_diagnostics *diag, int merger_type) {
     if (diag == NULL) {
-        LOG_ERROR("NULL diagnostics pointer passed to evolution_diagnostics_add_merger_processed");
+        LOG_ERROR("NULL diagnostics pointer passed to core_evolution_diagnostics_add_merger_processed");
         return -1;
     }
     
@@ -214,98 +195,11 @@ int evolution_diagnostics_add_merger_processed(struct evolution_diagnostics *dia
 }
 
 /**
- * Record initial galaxy property statistics
- */
-int evolution_diagnostics_record_initial_properties(struct evolution_diagnostics *diag, struct GALAXY *galaxies, int ngal) {
-    if (diag == NULL || galaxies == NULL) {
-        LOG_ERROR("NULL pointer passed to evolution_diagnostics_record_initial_properties");
-        return -1;
-    }
-    
-    /* Reset property totals */
-    diag->total_stellar_mass_initial = 0.0;
-    diag->total_cold_gas_initial = 0.0;
-    diag->total_hot_gas_initial = 0.0;
-    diag->total_bulge_mass_initial = 0.0;
-    
-    /* Get property IDs for physics properties */
-    property_id_t stellar_mass_id = get_cached_property_id("StellarMass");
-    property_id_t cold_gas_id = get_cached_property_id("ColdGas"); 
-    property_id_t hot_gas_id = get_cached_property_id("HotGas");
-    property_id_t bulge_mass_id = get_cached_property_id("BulgeMass");
-    
-    /* Sum properties across all galaxies using generic property accessors */
-    for (int i = 0; i < ngal; i++) {
-        if (stellar_mass_id != PROP_COUNT && has_property(&galaxies[i], stellar_mass_id)) {
-            diag->total_stellar_mass_initial += get_float_property(&galaxies[i], stellar_mass_id, 0.0f);
-        }
-        if (cold_gas_id != PROP_COUNT && has_property(&galaxies[i], cold_gas_id)) {
-            diag->total_cold_gas_initial += get_float_property(&galaxies[i], cold_gas_id, 0.0f);
-        }
-        if (hot_gas_id != PROP_COUNT && has_property(&galaxies[i], hot_gas_id)) {
-            diag->total_hot_gas_initial += get_float_property(&galaxies[i], hot_gas_id, 0.0f);
-        }
-        if (bulge_mass_id != PROP_COUNT && has_property(&galaxies[i], bulge_mass_id)) {
-            diag->total_bulge_mass_initial += get_float_property(&galaxies[i], bulge_mass_id, 0.0f);
-        }
-    }
-    
-    LOG_DEBUG("Recorded initial properties for %d galaxies in halo %d", ngal, diag->halo_nr);
-    
-    return 0;
-}
-
-/**
- * Record final galaxy property statistics
- */
-int evolution_diagnostics_record_final_properties(struct evolution_diagnostics *diag, struct GALAXY *galaxies, int ngal) {
-    if (diag == NULL || galaxies == NULL) {
-        LOG_ERROR("NULL pointer passed to evolution_diagnostics_record_final_properties");
-        return -1;
-    }
-    
-    /* Set final galaxy count */
-    diag->ngal_final = ngal;
-    
-    /* Reset property totals */
-    diag->total_stellar_mass_final = 0.0;
-    diag->total_cold_gas_final = 0.0;
-    diag->total_hot_gas_final = 0.0;
-    diag->total_bulge_mass_final = 0.0;
-    
-    /* Get property IDs for physics properties */
-    property_id_t stellar_mass_id = get_cached_property_id("StellarMass");
-    property_id_t cold_gas_id = get_cached_property_id("ColdGas"); 
-    property_id_t hot_gas_id = get_cached_property_id("HotGas");
-    property_id_t bulge_mass_id = get_cached_property_id("BulgeMass");
-    
-    /* Sum properties across all galaxies using generic property accessors */
-    for (int i = 0; i < ngal; i++) {
-        if (stellar_mass_id != PROP_COUNT && has_property(&galaxies[i], stellar_mass_id)) {
-            diag->total_stellar_mass_final += get_float_property(&galaxies[i], stellar_mass_id, 0.0f);
-        }
-        if (cold_gas_id != PROP_COUNT && has_property(&galaxies[i], cold_gas_id)) {
-            diag->total_cold_gas_final += get_float_property(&galaxies[i], cold_gas_id, 0.0f);
-        }
-        if (hot_gas_id != PROP_COUNT && has_property(&galaxies[i], hot_gas_id)) {
-            diag->total_hot_gas_final += get_float_property(&galaxies[i], hot_gas_id, 0.0f);
-        }
-        if (bulge_mass_id != PROP_COUNT && has_property(&galaxies[i], bulge_mass_id)) {
-            diag->total_bulge_mass_final += get_float_property(&galaxies[i], bulge_mass_id, 0.0f);
-        }
-    }
-    
-    LOG_DEBUG("Recorded final properties for %d galaxies in halo %d", ngal, diag->halo_nr);
-    
-    return 0;
-}
-
-/**
  * Finalize the diagnostics and compute derived metrics
  */
-int evolution_diagnostics_finalize(struct evolution_diagnostics *diag) {
+int core_evolution_diagnostics_finalize(struct core_evolution_diagnostics *diag) {
     if (diag == NULL) {
-        LOG_ERROR("NULL diagnostics pointer passed to evolution_diagnostics_finalize");
+        LOG_ERROR("NULL diagnostics pointer passed to core_evolution_diagnostics_finalize");
         return -1;
     }
     
@@ -320,24 +214,47 @@ int evolution_diagnostics_finalize(struct evolution_diagnostics *diag) {
         diag->galaxies_per_second = 0.0;
     }
     
-    LOG_DEBUG("Finalized diagnostics for halo %d, elapsed time: %.3f seconds", 
+    LOG_DEBUG("Finalized core diagnostics for halo %d, elapsed time: %.3f seconds", 
               diag->halo_nr, diag->elapsed_seconds);
     
     return 0;
 }
 
 /**
+ * Get the name of a core event type
+ * 
+ * Returns a string description of a core event type.
+ * 
+ * @param type Core event type to describe
+ * @return String description of the core event type
+ */
+static const char *core_event_type_name(core_event_type_t type) {
+    switch (type) {
+        case CORE_EVENT_PIPELINE_STARTED:    return "PIPELINE_STARTED";
+        case CORE_EVENT_PIPELINE_COMPLETED:  return "PIPELINE_COMPLETED";
+        case CORE_EVENT_PHASE_STARTED:       return "PHASE_STARTED";
+        case CORE_EVENT_PHASE_COMPLETED:     return "PHASE_COMPLETED";
+        case CORE_EVENT_GALAXY_CREATED:      return "GALAXY_CREATED";
+        case CORE_EVENT_GALAXY_COPIED:       return "GALAXY_COPIED";
+        case CORE_EVENT_GALAXY_MERGED:       return "GALAXY_MERGED";
+        case CORE_EVENT_MODULE_ACTIVATED:    return "MODULE_ACTIVATED";
+        case CORE_EVENT_MODULE_DEACTIVATED:  return "MODULE_DEACTIVATED";
+        default:                             return "UNKNOWN";
+    }
+}
+
+/**
  * Report diagnostics to log
  */
-int evolution_diagnostics_report(struct evolution_diagnostics *diag, log_level_t log_level) {
+int core_evolution_diagnostics_report(struct core_evolution_diagnostics *diag, log_level_t log_level) {
     if (diag == NULL) {
-        LOG_ERROR("NULL diagnostics pointer passed to evolution_diagnostics_report");
+        LOG_ERROR("NULL diagnostics pointer passed to core_evolution_diagnostics_report");
         return -1;
     }
     
     /* Log basic information */
     if (log_level == LOG_LEVEL_DEBUG) {
-        LOG_DEBUG("=== Evolution Diagnostics for Halo %d ===", diag->halo_nr);
+        LOG_DEBUG("=== Core Evolution Diagnostics for Halo %d ===", diag->halo_nr);
         LOG_DEBUG("Galaxies: Initial=%d, Final=%d", diag->ngal_initial, diag->ngal_final);
         LOG_DEBUG("Processing Time: %.3f seconds (%.1f galaxies/second)", 
                 diag->elapsed_seconds, diag->galaxies_per_second);
@@ -362,39 +279,26 @@ int evolution_diagnostics_report(struct evolution_diagnostics *diag, log_level_t
                 diag->mergers_detected, diag->mergers_processed,
                 diag->major_mergers, diag->minor_mergers);
         
-        /* Log galaxy property changes */
-        LOG_DEBUG("--- Galaxy Property Changes ---");
-        LOG_DEBUG("Stellar Mass: Initial=%.3e, Final=%.3e, Change=%.3e",
-                diag->total_stellar_mass_initial, diag->total_stellar_mass_final,
-                diag->total_stellar_mass_final - diag->total_stellar_mass_initial);
-        
-        LOG_DEBUG("Cold Gas: Initial=%.3e, Final=%.3e, Change=%.3e",
-                diag->total_cold_gas_initial, diag->total_cold_gas_final,
-                diag->total_cold_gas_final - diag->total_cold_gas_initial);
-        
-        LOG_DEBUG("Hot Gas: Initial=%.3e, Final=%.3e, Change=%.3e",
-                diag->total_hot_gas_initial, diag->total_hot_gas_final,
-                diag->total_hot_gas_final - diag->total_hot_gas_initial);
-        
-        LOG_DEBUG("Bulge Mass: Initial=%.3e, Final=%.3e, Change=%.3e",
-                diag->total_bulge_mass_initial, diag->total_bulge_mass_final,
-                diag->total_bulge_mass_final - diag->total_bulge_mass_initial);
-        
-        /* Log event statistics if there were any events */
-        int total_events = 0;
-        for (int i = 0; i < EVENT_TYPE_MAX; i++) {
-            total_events += diag->event_counts[i];
+        /* Log core event statistics if there were any events */
+        int total_core_events = 0;
+        for (int i = 0; i < CORE_EVENT_TYPE_MAX; i++) {
+            total_core_events += diag->core_event_counts[i];
         }
         
-        if (total_events > 0) {
-            LOG_DEBUG("--- Event Statistics ---");
-            for (int i = 0; i < EVENT_TYPE_MAX; i++) {
-                if (diag->event_counts[i] > 0) {
-                    LOG_DEBUG("Event %s: %d occurrences",
-                            event_type_name((event_type_t)i), diag->event_counts[i]);
+        if (total_core_events > 0) {
+            LOG_DEBUG("--- Core Event Statistics ---");
+            for (int i = 0; i < CORE_EVENT_TYPE_MAX; i++) {
+                if (diag->core_event_counts[i] > 0) {
+                    LOG_DEBUG("Core Event %s: %d occurrences",
+                            core_event_type_name((core_event_type_t)i), diag->core_event_counts[i]);
                 }
             }
         }
+        
+        /* Log pipeline statistics */
+        LOG_DEBUG("--- Pipeline Statistics ---");
+        LOG_DEBUG("Pipeline Steps Executed: %d", diag->pipeline_steps_executed);
+        LOG_DEBUG("Module Callbacks Executed: %d", diag->module_callbacks_executed);
         
         LOG_DEBUG("=====================================");
     }
@@ -403,7 +307,7 @@ int evolution_diagnostics_report(struct evolution_diagnostics *diag, log_level_t
         /* For detailed per-halo information, use DEBUG level instead */
     }
     else if (log_level == LOG_LEVEL_WARNING) {
-        LOG_WARNING("=== Evolution Diagnostics for Halo %d ===", diag->halo_nr);
+        LOG_WARNING("=== Core Evolution Diagnostics for Halo %d ===", diag->halo_nr);
         LOG_WARNING("Galaxies: Initial=%d, Final=%d", diag->ngal_initial, diag->ngal_final);
         LOG_WARNING("Processing Time: %.3f seconds", diag->elapsed_seconds);
         
@@ -415,7 +319,7 @@ int evolution_diagnostics_report(struct evolution_diagnostics *diag, log_level_t
     }
     else {
         /* Fall back to ERROR level with minimal output */
-        LOG_ERROR("Evolution Diagnostics for Halo %d: %d->%d galaxies, %.3f seconds",
+        LOG_ERROR("Core Evolution Diagnostics for Halo %d: %d->%d galaxies, %.3f seconds",
                 diag->halo_nr, diag->ngal_initial, diag->ngal_final, diag->elapsed_seconds);
     }
     

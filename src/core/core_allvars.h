@@ -158,7 +158,7 @@ struct evolution_context {
     void *callback_context;    /* Context data for module callbacks */
     
     /* Diagnostics (added for Phase 5.1.7) */
-    struct evolution_diagnostics *diagnostics; /* Evolution diagnostics data */
+    struct core_evolution_diagnostics *diagnostics; /* Core evolution diagnostics data */
 };
 
 

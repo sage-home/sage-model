@@ -190,17 +190,24 @@ The SAGE refactoring has achieved true runtime functional modularity through:
    - Physics-agnostic core with no knowledge of specific physics properties
    - Centralized property definition with type-safe access
    - Configuration-driven module activation
+   - **Evolution diagnostics system now fully compliant** (May 23, 2025)
 
 2. **Phase-Based Pipeline Execution:**
    - Clear execution phases for different calculation scopes
    - Modules declare phase participation
    - Event-based communication between modules
+   - **Separate event systems for core infrastructure and physics processes**
 
 3. **Runtime Configurable Components:**
    - JSON configuration defines active modules
    - Property system adapts to available physics components
    - Dynamic property discovery for I/O operations
 
-The most recent improvement—configuration-driven module activation—completes the core-physics separation by making module selection fully configurable at runtime without code changes. This enables users to define different combinations of physics modules simply by editing configuration files, enhancing SAGE's flexibility while maintaining scientific accuracy.
+4. **Diagnostics and Monitoring:**
+   - **Core diagnostics track only infrastructure metrics** (galaxy counts, phase timing, pipeline performance)
+   - **Physics modules can register custom diagnostic metrics independently**
+   - Comprehensive error handling and validation throughout
+
+The most recent improvement—evolution diagnostics core-physics separation—demonstrates the architectural maturity of the system. When architectural violations are discovered, they can be systematically resolved while maintaining full functionality and enabling enhanced modularity.
 
 Next steps focus on implementing physics modules as pure add-ons to the core, with comprehensive validation to ensure scientific consistency with the original SAGE implementation.

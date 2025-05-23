@@ -88,10 +88,8 @@
 - [x] Remove all synchronization infrastructure after verification
 - [x] Complete output transformers implementation and binary code removal
 - [x] Implement configuration-driven pipeline creation
-- [x] Complete core-physics separation infrastructure
 - [ ] Test Suite Review and Validation (via `docs/sage_unit_tests.md` - ⏳ ONGOING): Update failing tests that violate core-physics separation principles
-- [ ] Fix Evolution Diagnostics System (NEW): Remove hardcoded physics property knowledge from core diagnostics (discovered via unit testing)
-- [ ] Audit Event System (NEW): Separate core infrastructure events from physics-specific events
+- [x] Fix evolution diagnostics system; audit event system
 - [ ] Review Core Systems (NEW): Ensure all core components comply with core-physics separation principles
 - [ ] Comprehensive code cleanup
 - [ ] Documentation review and update
@@ -152,48 +150,34 @@ With the core now completely physics-agnostic and architecturally compliant, imp
 ## Critical Next Steps
 
 ### Immediate Actions Required (Before Phase 5.2.G):
-1. **Address Evolution Diagnostics Violations**: Redesign diagnostics system to be physics-agnostic
-2. **Audit Core Event System**: Separate core infrastructure events from physics events
-3. **Fix Failing Tests**: Update tests to comply with core-physics separation
-4. **Core System Review**: Verify all core components are truly physics-agnostic
+1. ✅ **Evolution Diagnostics System Fixed**: Completed comprehensive redesign to be physics-agnostic (May 23, 2025)
+2. ✅ **Core Event System Audit Complete**: Successfully separated core infrastructure events from physics events
+3. **Fix Remaining Failing Tests**: Update tests to comply with core-physics separation (test_evolve_integration.c needs API modernization)
+4. **Core System Review**: Continue verification that all core components are truly physics-agnostic
 
 ### Phase 5.2.G Readiness Criteria:
 - ✅ Core infrastructure completely physics-agnostic  
 - ✅ Empty pipeline runs successfully
-- ❌ All core systems comply with separation principles (diagnostics violations remain)
-- ❌ All tests pass with core-physics separation (some tests still fail)
+- ✅ **Core diagnostics comply with separation principles** (NEWLY COMPLETED)
+- ❌ All tests pass with core-physics separation (one integration test needs API update)
 - ✅ Property system ready for physics module development
 - ✅ Module infrastructure supports physics module registration
 
-**Status**: Phase 5.2.F is largely complete, but critical architectural violations must be resolved before proceeding to physics module implementation.
-## Recent Milestone: Configuration-Driven Pipeline Creation (May 2025) ✅ COMPLETED
+**Status**: Phase 5.2.F is **nearly complete** with major architectural violations resolved. One integration test requires API modernization before proceeding to physics module implementation.
+## Recent Milestone: Evolution Diagnostics Core-Physics Separation (May 23, 2025) ✅ COMPLETED
 
-The implementation of configuration-driven module activation in pipeline creation has been completed, representing the final infrastructure component for complete core-physics decoupling. The pipeline registry now reads the "modules.instances" array from JSON configuration to determine which modules to activate, with appropriate fallback to using all registered modules when no configuration is available.
+The evolution diagnostics system has been completely redesigned to achieve full core-physics separation compliance, resolving critical architectural violations that were blocking Phase 5.2.G readiness.
 
-**Key Benefits Achieved:**
-1. **True Runtime Modularity**: Users can define entirely different sets of active physics modules by changing the configuration file
-2. **Complete Core-Physics Decoupling**: Core pipeline creation logic has no compile-time or hardcoded knowledge of specific physics modules  
-3. **Enhanced Flexibility**: Facilitates easier experimentation with different combinations of physics modules
-4. **Clear Separation of Concerns**: Module self-registration makes modules available, while configuration selects and enables them
+**Key Achievements:**
+1. **Complete Architectural Redesign**: Removed all hardcoded physics property knowledge from core diagnostics structure
+2. **Event System Separation**: Created dedicated physics_events.h/c files, separating physics events from core infrastructure events  
+3. **API Modernization**: Updated all function names to core_evolution_diagnostics_* prefix and enhanced error handling
+4. **Test System Validation**: Completely rewrote test suite to validate only core infrastructure functionality
 
-This completes the core infrastructure requirements for Phase 5.2.F and enables the transition to Phase 5.2.G physics module implementation.
+**Technical Impact:**
+- Core diagnostics now tracks only infrastructure metrics (galaxy counts, phase timing, pipeline performance)
+- Physics modules can register their own diagnostic metrics independently
+- Demonstrates successful core-physics separation pattern for future system improvements
+- Enables true runtime functional modularity for diagnostics
 
-## Architecture Status Summary
-
-**Completed Infrastructure:**
-- ✅ Physics-agnostic core with empty pipeline capability
-- ✅ Property-based galaxy state management  
-- ✅ Configuration-driven module activation
-- ✅ HDF5-based property serialization with transformers
-- ✅ Module registration and lifecycle management
-
-**Remaining Architectural Issues:**
-- ❌ Evolution diagnostics system contains hardcoded physics property knowledge
-- ❌ Event system mixes core infrastructure and physics-specific events
-- ❌ Some tests violate core-physics separation principles
-
-**Ready for Physics Development:**
-- ✅ Property system supports all physics module needs
-- ✅ Module infrastructure enables physics module registration
-- ✅ Pipeline system supports physics module execution phases
-- ✅ Event and callback systems enable module communication
+This resolves a major architectural blocker and demonstrates the maturity of the core-physics separation implementation.
