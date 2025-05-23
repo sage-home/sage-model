@@ -308,7 +308,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_property_registration test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
+.PHONY: clean celan celna clena tests all test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_io_validation test_memory_map test_dynamic_library test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry
 
 all: $(SAGELIB) $(EXEC)
 
@@ -368,7 +368,7 @@ clean:
 CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration
 
 # Property system tests  
-PROPERTY_TESTS = test_property_serialization test_property_registration test_property_array_access test_galaxy_property_macros test_property_system_hdf5 test_property_validation
+PROPERTY_TESTS = test_property_serialization test_property_array_access test_galaxy_property_macros test_property_system_hdf5 test_property_validation
 
 # I/O system tests
 IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_validation test_memory_map test_io_buffer_manager
@@ -408,8 +408,7 @@ test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
 test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_serialization tests/test_property_serialization.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_property_registration: tests/test_property_registration.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_registration tests/test_property_registration.c -L. -l$(LIBNAME) $(LIBFLAGS)
+# Remove test_property_registration - outdated test (see docs/testing_architecture_guide.md)
 
 test_property_array_access: tests/test_property_array_access.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_array_access tests/test_property_array_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
