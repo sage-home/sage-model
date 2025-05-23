@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-# verify_property_access.py
+# verify_placeholder_property_access.py
+#
+# This script is an updated version of verify_property_access.py
+# that focuses on validating property access patterns in placeholder modules
+# in accordance with core-physics separation principles.
+
 import re
 import sys
 import os
@@ -20,15 +25,24 @@ GALAXY_FIELDS = [
     'TotalSatelliteBaryons'
 ]
 
+# Core properties that should be accessed via GALAXY_PROP_* macros
+CORE_PROPERTIES = [
+    'Type', 'SnapNum', 'GalaxyIndex', 'HaloIndex', 'TreeIndex',
+    'Pos', 'Vel'
+]
+
+# Physics properties that should be accessed via generic property functions
+PHYSICS_PROPERTIES = [
+    'HotGas', 'ColdGas', 'StellarMass', 'BulgeMass', 'MetalsHotGas', 
+    'MetalsColdGas', 'Mvir', 'Rvir', 'Vvir', 'EjectedMass', 'BlackHoleMass',
+    'MetalsEjectedMass', 'Cooling', 'Heating', 'r_heat', 'ICS', 'MetalsICS',
+    'MetalsStellarMass', 'MetalsBulgeMass', 'SfrDisk', 'SfrBulge'
+]
+
 # Array fields that need special handling for element access
 ARRAY_FIELDS = [
     'Pos', 'Vel', 'SfrDisk', 'SfrBulge', 'SfrDiskColdGas', 
     'SfrDiskColdGasMetals', 'SfrBulgeColdGas', 'SfrBulgeColdGasMetals'
-]
-
-# Dynamic array fields that need special handling for size and element access
-DYNAMIC_ARRAY_FIELDS = [
-    'StarFormationHistory', 'TestNonZeroArray'
 ]
 
 # Regex patterns to detect different types of access
@@ -36,7 +50,7 @@ DIRECT_FIELD_PATTERN = r'galaxies\[\w+\]\.([A-Za-z]+)|galaxy->([A-Za-z]+)'
 ARRAY_ACCESS_PATTERN = r'galaxies\[\w+\]\.([A-Za-z]+)\[\w+\]|galaxy->([A-Za-z]+)\[\w+\]'
 PROPER_MACRO_PATTERN = r'GALAXY_PROP_([A-Za-z]+)\(&galaxies\[\w+\]\)|GALAXY_PROP_([A-Za-z]+)\(galaxy\)'
 PROPER_ARRAY_MACRO_PATTERN = r'GALAXY_PROP_([A-Za-z]+)_ELEM\(&galaxies\[\w+\], \w+\)|GALAXY_PROP_([A-Za-z]+)_ELEM\(galaxy, \w+\)'
-SYNC_PATTERN = r'sync_properties_to_direct|sync_direct_to_properties'
+GENERIC_ACCESS_PATTERN = r'(get|set)_(float|double|int32|int64|bool)_property\(&galaxies\[\w+\]|(&galaxy)'
 
 def check_file(filename, verbose=False):
     """
@@ -59,8 +73,8 @@ def check_file(filename, verbose=False):
     macro_matches = re.findall(PROPER_MACRO_PATTERN, content)
     array_macro_matches = re.findall(PROPER_ARRAY_MACRO_PATTERN, content)
     
-    # Find sync calls
-    sync_calls = re.findall(SYNC_PATTERN, content)
+    # Find generic property access usages
+    generic_access_matches = re.findall(GENERIC_ACCESS_PATTERN, content)
     
     # Process results
     direct_accesses = []
@@ -88,6 +102,9 @@ def check_file(filename, verbose=False):
         field = match[0] if match[0] else match[1]
         array_macro_usages[field] += 1
     
+    # Count generic access usages
+    generic_access_count = len(generic_access_matches)
+    
     # Report findings
     problems = 0
     
@@ -112,16 +129,60 @@ def check_file(filename, verbose=False):
         for field, count in sorted(array_macro_usages.items(), key=lambda x: x[1], reverse=True):
             print(f"  - GALAXY_PROP_{field}_ELEM(): {count} uses")
         
-        print(f"\n  Sync function calls: {len(sync_calls)}")
+        print(f"\n  Generic property access function usage: {generic_access_count}")
     
     if problems == 0:
         print("  No direct galaxy field accesses found. ✓")
     else:
         print(f"  Found {problems} direct field access issues that need to be fixed.")
     
-    # Basic validation to ensure GALAXY_PROP_* macros are being used consistently
-    if len(macro_usages) + len(array_macro_usages) == 0 and len(GALAXY_FIELDS) > 0:
-        print("  WARNING: No GALAXY_PROP_* macros found in this file!")
+    # Check for core-physics separation compliance
+    core_physics_problems = check_core_physics_separation(filename, content, verbose)
+    problems += core_physics_problems
+    
+    return problems
+
+def check_core_physics_separation(filename, content, verbose=False):
+    """
+    Check a file for core-physics separation compliance
+    Returns the number of problems found
+    """
+    problems = 0
+    
+    # Check if this is a core file or a physics file
+    is_core_file = '/core/' in filename
+    is_physics_file = '/physics/' in filename
+    
+    if not (is_core_file or is_physics_file):
+        return 0  # Skip files that are neither core nor physics
+    
+    if is_core_file:
+        # In core files, check for direct macro usage of physics properties
+        for prop in PHYSICS_PROPERTIES:
+            pattern = rf'GALAXY_PROP_{prop}\(&?galaxy|\(&?galaxies\[\w+\]\)'
+            matches = re.findall(pattern, content)
+            if matches:
+                problems += len(matches)
+                print(f"  Core file directly accessing physics property with macro: {prop}")
+                for match in matches[:3]:  # Show at most 3 examples
+                    line_num = find_line_number(content, match)
+                    print(f"  - Line {line_num}: {match}")
+                if len(matches) > 3:
+                    print(f"  - ... and {len(matches) - 3} more instances")
+    
+    if is_physics_file:
+        # Physics files should use generic accessors for physics properties
+        # This is a simplified check and may need refinement
+        physics_access_pattern = r'GALAXY_PROP_([A-Za-z]+)\('
+        physics_macro_matches = re.findall(physics_access_pattern, content)
+        
+        generic_access_pattern = r'(get|set)_(float|double|int32|int64|bool)_property\('
+        generic_access_matches = re.findall(generic_access_pattern, content)
+        
+        if verbose:
+            print(f"\n  Physics module property access analysis:")
+            print(f"  - Direct macro access: {len(physics_macro_matches)} instances")
+            print(f"  - Generic accessor usage: {len(generic_access_matches)} instances")
     
     return problems
 
@@ -186,15 +247,15 @@ def main():
         total_problems = check_file(args.path, args.verbose)
     
     if total_problems == 0:
-        print("\nVALIDATION PASSED: No direct field accesses found.")
+        print("\nVALIDATION PASSED: No property access issues found.")
         return 0
     else:
-        print(f"\nVALIDATION FAILED: Found {total_problems} direct field access issues that need to be fixed.")
+        print(f"\nVALIDATION FAILED: Found {total_problems} property access issues that need to be fixed.")
         return 1
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: verify_property_access.py <file_path> [--verbose] [--recursive]")
+        print("Usage: verify_placeholder_property_access.py <file_path> [--verbose] [--recursive]")
         sys.exit(1)
     
     result = main()

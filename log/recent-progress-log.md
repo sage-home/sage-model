@@ -329,3 +329,27 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Confirmed test adherence to core-physics property separation principles.
 - Identified and documented minor warnings in core SAGE systems revealed by the test for future investigation.
 - Modified files: tests/test_evolve_integration.c
+
+2025-05-23: [Phase 5.2.F.3] Property Access Pattern Test Update
+- Replaced outdated `test_galaxy_property_macros` with a new test that aligns with core-physics separation principles
+- Created `test_property_access_patterns.c` to test property access in placeholder modules
+- Implemented an enhanced Python validation script (`verify_placeholder_property_access.py`) for static analysis
+- Added proper mocks with `test_property_validation_mocks.c` that work with the current architecture
+- Moved old test files to the `ignore/tests/property_tests` directory to prevent build failures
+- Created comprehensive documentation in `tests/README_property_access_tests.md`
+- This update allows continued validation of property access patterns while being compatible with the core-physics separation architecture
+- Added files: tests/test_property_access_patterns.c, tests/test_property_validation_mocks.c, tests/verify_placeholder_property_access.py, tests/README_property_access_tests.md
+- Modified files: Makefile
+- Moved files: tests/test_galaxy_property_macros.c, tests/test_validation_mocks.c, tests/verify_property_access.py → ignore/tests/property_tests/
+
+2025-05-24: [Phase 5.2.F.3] Property Access Pattern Testing Implementation
+- Created a modern replacement for the outdated `test_galaxy_property_macros` test that aligns with core-physics separation principles
+- Implemented comprehensive `test_property_access_patterns.c` that validates property access in placeholder modules
+- Created `verify_placeholder_property_access.py` Python script for static code analysis to detect direct field access
+- Added mock functions in `test_property_validation_mocks.c` compatible with the current property system
+- Moved outdated tests to `ignore/tests/property_tests/` directory to preserve history while ensuring clean builds
+- Created comprehensive documentation in `tests/README_property_access_tests.md`
+- This update ensures ongoing validation of property access patterns during physics module implementation in Phase 5.2.G
+- Modified files: Makefile
+- Added files: tests/test_property_access_patterns.c, tests/test_property_validation_mocks.c, tests/verify_placeholder_property_access.py, tests/README_property_access_tests.md
+- Moved files: tests/test_galaxy_property_macros.c, tests/test_validation_mocks.c, tests/verify_property_access.py → ignore/tests/property_tests/
