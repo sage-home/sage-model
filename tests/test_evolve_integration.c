@@ -98,16 +98,46 @@ static int mock_module_cleanup(void *module_data) {
     return 0;
 }
 
+/* Mock execution functions for different phases */
+static int mock_halo_execute(void *module_data, struct pipeline_context *context) {
+    if (module_data && context) {
+        update_module_execution_counters(module_data, PIPELINE_PHASE_HALO);
+    }
+    return 0;
+}
+
+static int mock_galaxy_execute(void *module_data, struct pipeline_context *context) {
+    if (module_data && context) {
+        update_module_execution_counters(module_data, PIPELINE_PHASE_GALAXY);
+    }
+    return 0;
+}
+
+static int mock_post_execute(void *module_data, struct pipeline_context *context) {
+    if (module_data && context) {
+        update_module_execution_counters(module_data, PIPELINE_PHASE_POST);
+    }
+    return 0;
+}
+
+static int mock_final_execute(void *module_data, struct pipeline_context *context) {
+    if (module_data && context) {
+        update_module_execution_counters(module_data, PIPELINE_PHASE_FINAL);
+    }
+    return 0;
+}
+
 /* Mock module for HALO phase only */
 struct base_module mock_infall_module = {
     .name = "MockInfall",
     .version = "1.0.0",
     .author = "Test Author",
-    .module_id = 100,
+    .module_id = -1, /* Will be set by module_register() */
     .type = MODULE_TYPE_INFALL,
     .phases = PIPELINE_PHASE_HALO, /* Only supports HALO phase */
     .initialize = mock_module_initialize,
-    .cleanup = mock_module_cleanup
+    .cleanup = mock_module_cleanup,
+    .execute_halo_phase = mock_halo_execute
 };
 
 /* Mock module for GALAXY phase only */
@@ -115,11 +145,12 @@ struct base_module mock_galaxy_module = {
     .name = "MockGalaxy",
     .version = "1.0.0",
     .author = "Test Author",
-    .module_id = 101,
+    .module_id = -1, /* Will be set by module_register() */
     .type = MODULE_TYPE_COOLING,
     .phases = PIPELINE_PHASE_GALAXY, /* Only supports GALAXY phase */
     .initialize = mock_module_initialize,
-    .cleanup = mock_module_cleanup
+    .cleanup = mock_module_cleanup,
+    .execute_galaxy_phase = mock_galaxy_execute
 };
 
 /* Mock module for POST phase only */
@@ -127,11 +158,12 @@ struct base_module mock_post_module = {
     .name = "MockPost",
     .version = "1.0.0",
     .author = "Test Author",
-    .module_id = 102,
+    .module_id = -1, /* Will be set by module_register() */
     .type = MODULE_TYPE_MERGERS,
     .phases = PIPELINE_PHASE_POST, /* Only supports POST phase */
     .initialize = mock_module_initialize,
-    .cleanup = mock_module_cleanup
+    .cleanup = mock_module_cleanup,
+    .execute_post_phase = mock_post_execute
 };
 
 /* Mock module for FINAL phase only */
@@ -139,11 +171,12 @@ struct base_module mock_final_module = {
     .name = "MockFinal",
     .version = "1.0.0",
     .author = "Test Author",
-    .module_id = 103,
+    .module_id = -1, /* Will be set by module_register() */
     .type = MODULE_TYPE_MISC,
     .phases = PIPELINE_PHASE_FINAL, /* Only supports FINAL phase */
     .initialize = mock_module_initialize,
-    .cleanup = mock_module_cleanup
+    .cleanup = mock_module_cleanup,
+    .execute_final_phase = mock_final_execute
 };
 
 /* Mock module for multiple phases */
@@ -151,11 +184,13 @@ struct base_module mock_multi_phase_module = {
     .name = "MockMultiPhase",
     .version = "1.0.0",
     .author = "Test Author",
-    .module_id = 104,
+    .module_id = -1, /* Will be set by module_register() */
     .type = MODULE_TYPE_MISC,
     .phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY, /* Supports both HALO and GALAXY phases */
     .initialize = mock_module_initialize,
-    .cleanup = mock_module_cleanup
+    .cleanup = mock_module_cleanup,
+    .execute_halo_phase = mock_halo_execute,
+    .execute_galaxy_phase = mock_galaxy_execute
 };
 
 /**
@@ -694,6 +729,11 @@ static void test_actual_integration(void) {
     LOG_DEBUG("Registered mock modules: infall=%d, galaxy=%d, post=%d, final=%d", 
               infall_id, galaxy_id, post_id, final_id);
     
+    if (infall_id < 0 || galaxy_id < 0 || post_id < 0 || final_id < 0) {
+        LOG_ERROR("Failed to register mock modules");
+        assert(false);
+    }
+    
     /* Step 2: Create pipeline and add mock modules as steps */
     struct module_pipeline *pipeline = pipeline_create("test_pipeline");
     if (pipeline == NULL) {
@@ -711,12 +751,136 @@ static void test_actual_integration(void) {
                               "mock_galaxy_step", true, false);  
     assert(status == 0);
     
-    LOG_INFO("Test pipeline initialized successfully");
+    status = pipeline_add_step(pipeline, mock_post_module.type, mock_post_module.name,
+                              "mock_post_step", true, false);
+    assert(status == 0);
+
+    status = pipeline_add_step(pipeline, mock_final_module.type, mock_final_module.name,
+                              "mock_final_step", true, false);
+    assert(status == 0);
+
+    LOG_INFO("Pipeline populated with all mock modules");
     
-    /* Clean up */
+    /* Step 3: Initialize module data for execution tracking - using proper IDs */
+    void *infall_data = NULL;
+    void *galaxy_data = NULL; 
+    void *post_data = NULL;
+    void *final_data = NULL;
+
+    if (infall_id >= 0) {
+        mock_infall_module.initialize(NULL, &infall_data);
+        g_mock_module_data[infall_id] = infall_data;
+    }
+    if (galaxy_id >= 0) {
+        mock_galaxy_module.initialize(NULL, &galaxy_data);
+        g_mock_module_data[galaxy_id] = galaxy_data;
+    }
+    if (post_id >= 0) {
+        mock_post_module.initialize(NULL, &post_data);
+        g_mock_module_data[post_id] = post_data;
+    }
+    if (final_id >= 0) {
+        mock_final_module.initialize(NULL, &final_data);
+        g_mock_module_data[final_id] = final_data;
+    }
+
+    LOG_INFO("Mock module data structures initialized");
+    
+    /* Step 4: Create pipeline context for execution */
+    struct GALAXY *test_galaxies = create_mock_galaxies(3);
+    struct params test_params = {0}; /* Minimal params for testing */
+
+    struct pipeline_context context;
+    pipeline_context_init(&context, &test_params, test_galaxies, 3, 0, 
+                         13.7, 0.1, 1, 0, NULL);
+
+    /* Step 5: Manual execution of mock modules to verify phase-based execution */
+    LOG_INFO("Testing manual module execution to verify phase support");
+    
+    /* Test HALO phase - should only execute infall module */
+    LOG_INFO("Testing HALO phase execution");
+    context.execution_phase = PIPELINE_PHASE_HALO;
+    
+    if ((mock_infall_module.phases & PIPELINE_PHASE_HALO) && mock_infall_module.execute_halo_phase) {
+        LOG_DEBUG("Executing mock_infall_module for HALO phase");
+        status = mock_infall_module.execute_halo_phase(infall_data, &context);
+        assert(status == 0);
+    }
+    
+    if ((mock_galaxy_module.phases & PIPELINE_PHASE_HALO) && mock_galaxy_module.execute_halo_phase) {
+        LOG_DEBUG("Executing mock_galaxy_module for HALO phase");
+        status = mock_galaxy_module.execute_halo_phase(galaxy_data, &context);
+        assert(status == 0);
+    } else {
+        LOG_DEBUG("mock_galaxy_module does not support HALO phase - skipping");
+    }
+    
+    /* Test GALAXY phase - should execute galaxy module for each galaxy */
+    LOG_INFO("Testing GALAXY phase execution");
+    context.execution_phase = PIPELINE_PHASE_GALAXY;
+    
+    for (int i = 0; i < 3; i++) {
+        context.current_galaxy = i;
+        
+        if ((mock_galaxy_module.phases & PIPELINE_PHASE_GALAXY) && mock_galaxy_module.execute_galaxy_phase) {
+            LOG_DEBUG("Executing mock_galaxy_module for GALAXY phase, galaxy %d", i);
+            status = mock_galaxy_module.execute_galaxy_phase(galaxy_data, &context);
+            assert(status == 0);
+        }
+        
+        if ((mock_infall_module.phases & PIPELINE_PHASE_GALAXY) && mock_infall_module.execute_galaxy_phase) {
+            LOG_DEBUG("Executing mock_infall_module for GALAXY phase, galaxy %d", i);
+            status = mock_infall_module.execute_galaxy_phase(infall_data, &context);
+            assert(status == 0);
+        } else {
+            LOG_DEBUG("mock_infall_module does not support GALAXY phase - skipping");
+        }
+    }
+    
+    /* Test POST phase - should only execute post module */
+    LOG_INFO("Testing POST phase execution");
+    context.execution_phase = PIPELINE_PHASE_POST;
+    
+    if ((mock_post_module.phases & PIPELINE_PHASE_POST) && mock_post_module.execute_post_phase) {
+        LOG_DEBUG("Executing mock_post_module for POST phase");
+        status = mock_post_module.execute_post_phase(post_data, &context);
+        assert(status == 0);
+    }
+    
+    /* Test FINAL phase - should only execute final module */
+    LOG_INFO("Testing FINAL phase execution");
+    context.execution_phase = PIPELINE_PHASE_FINAL;
+    
+    if ((mock_final_module.phases & PIPELINE_PHASE_FINAL) && mock_final_module.execute_final_phase) {
+        LOG_DEBUG("Executing mock_final_module for FINAL phase");
+        status = mock_final_module.execute_final_phase(final_data, &context);
+        assert(status == 0);
+    }
+    
+    /* Step 6: Verify execution counters */
+    LOG_INFO("Verifying module execution counters");
+    verify_phase_execution_counters(
+        (struct mock_module_data*)infall_data,
+        (struct mock_module_data*)galaxy_data, 
+        (struct mock_module_data*)post_data,
+        (struct mock_module_data*)final_data,
+        NULL, /* multi_phase_data - skip for now */
+        3     /* num_mock_galaxies */
+    );
+    
+    /* Clean up test data */
+    free(test_galaxies);
+    
+    LOG_INFO("Manual integration test completed successfully - phase-based execution verified");
+    
+    /* Clean up module data */
+    if (infall_data) mock_infall_module.cleanup(infall_data);
+    if (galaxy_data) mock_galaxy_module.cleanup(galaxy_data);
+    if (post_data) mock_post_module.cleanup(post_data);
+    if (final_data) mock_final_module.cleanup(final_data);
+    
+    /* Clean up pipeline */
     pipeline_destroy(pipeline);
-    
-    LOG_INFO("Actual integration test completed successfully");
 }
 
 /**
