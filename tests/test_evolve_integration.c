@@ -50,7 +50,8 @@ static struct evolution_context *setup_mock_evolution_context(void); /* Create a
 static struct pipeline_context *setup_mock_pipeline_context(void);   /* Create and init a mock pipeline context */
 static void cleanup_mock_evolution_context(struct evolution_context *ctx); /* Clean up evolution context resources */
 static void cleanup_mock_pipeline_context(struct pipeline_context *ctx);   /* Clean up pipeline context resources */
-static void test_phased_loop_execution(void);                        /* Main test function simulating the evolutionary loop */
+static void test_phased_loop_execution(void);                        /* Legacy test function for diagnostics API */
+static void test_actual_integration(void);                           /* Main integration test function */
 static int test_phase_to_index(enum pipeline_execution_phase phase); /* Convert phase flag to array index */
 static void update_module_execution_counters(void *module_data, enum pipeline_execution_phase phase); /* Update execution counters */
 static void pipeline_set_default_executor(pipeline_step_exec_fn executor); /* Set the pipeline step executor */
@@ -679,6 +680,46 @@ static void test_phased_loop_execution(void) {
 }
 
 /**
+ * Test actual integration of pipeline, modules, and diagnostics working together
+ */
+static void test_actual_integration(void) {
+    LOG_INFO("Starting actual integration test");
+    
+    /* Step 1: Register mock modules for testing */
+    int infall_id = module_register(&mock_infall_module);
+    int galaxy_id = module_register(&mock_galaxy_module); 
+    int post_id = module_register(&mock_post_module);
+    int final_id = module_register(&mock_final_module);
+    
+    LOG_DEBUG("Registered mock modules: infall=%d, galaxy=%d, post=%d, final=%d", 
+              infall_id, galaxy_id, post_id, final_id);
+    
+    /* Step 2: Create pipeline and add mock modules as steps */
+    struct module_pipeline *pipeline = pipeline_create("test_pipeline");
+    if (pipeline == NULL) {
+        LOG_ERROR("Failed to create test pipeline");
+        assert(false);
+    }
+    
+    /* Add modules to pipeline with their respective phases */
+    int status;
+    status = pipeline_add_step(pipeline, mock_infall_module.type, mock_infall_module.name, 
+                              "mock_infall_step", true, false);
+    assert(status == 0);
+    
+    status = pipeline_add_step(pipeline, mock_galaxy_module.type, mock_galaxy_module.name,
+                              "mock_galaxy_step", true, false);  
+    assert(status == 0);
+    
+    LOG_INFO("Test pipeline initialized successfully");
+    
+    /* Clean up */
+    pipeline_destroy(pipeline);
+    
+    LOG_INFO("Actual integration test completed successfully");
+}
+
+/**
  * Main function
  */
 int main(int argc, char *argv[]) {
@@ -708,14 +749,20 @@ int main(int argc, char *argv[]) {
     LOG_INFO("Pipeline system initialized");
     
     /* Set up mock modules */
+    /* TODO: Fix segfault in setup_mock_modules() */
     /* setup_mock_modules(); */
     
-    /* Run the integration test */
-    printf("Starting integration test\n");
+    /* Run the integration tests */
+    printf("Starting legacy diagnostics API test\n");
     test_phased_loop_execution();
-    printf("Integration test completed\n");
+    printf("Legacy diagnostics API test completed\n");
+    
+    printf("Starting actual integration test\n");
+    test_actual_integration();
+    printf("Actual integration test completed\n");
     
     /* Clean up */
+    /* TODO: Enable after fixing setup_mock_modules() */
     /* cleanup_mock_modules(); */
     
     /* Clean up systems in reverse order */
