@@ -504,6 +504,8 @@ static int custom_step_executor(
  * Setup and register all mock modules with the module system
  */
 static void setup_mock_modules(void) {
+    printf("DEBUG: Entering setup_mock_modules()\n");
+    
     /* Initialize module data for each mock module */
     void *infall_data = NULL;
     void *galaxy_data = NULL;
@@ -512,37 +514,77 @@ static void setup_mock_modules(void) {
     void *multi_phase_data = NULL;
     
     /* Register and activate all mock modules */
+    printf("DEBUG: Registering infall module\n");
     int infall_id = module_register(&mock_infall_module);
-    if (infall_id >= 0) {
-        mock_infall_module.initialize(NULL, &infall_data);
-        g_mock_module_data[infall_id] = infall_data;
+    printf("DEBUG: Infall module registered with ID: %d\n", infall_id);
+    if (infall_id >= 0 && infall_id < MAX_MODULES) {
+        mock_infall_module.module_id = infall_id;  // Set the module_id field
+        if (mock_infall_module.initialize(NULL, &infall_data) == 0) {
+            g_mock_module_data[infall_id] = infall_data;
+            printf("DEBUG: Infall module initialized successfully, data=%p\n", infall_data);
+            LOG_DEBUG("Registered infall module with ID %d", infall_id);
+        } else {
+            printf("DEBUG: Failed to initialize infall module\n");
+            LOG_ERROR("Failed to initialize infall module");
+        }
+    } else {
+        printf("DEBUG: Failed to register infall module, ID: %d\n", infall_id);
+        LOG_ERROR("Failed to register infall module, ID: %d", infall_id);
     }
     
     int galaxy_id = module_register(&mock_galaxy_module);
-    if (galaxy_id >= 0) {
-        mock_galaxy_module.initialize(NULL, &galaxy_data);
-        g_mock_module_data[galaxy_id] = galaxy_data;
+    if (galaxy_id >= 0 && galaxy_id < MAX_MODULES) {
+        if (mock_galaxy_module.initialize(NULL, &galaxy_data) == 0) {
+            g_mock_module_data[galaxy_id] = galaxy_data;
+            LOG_DEBUG("Registered galaxy module with ID %d", galaxy_id);
+        } else {
+            LOG_ERROR("Failed to initialize galaxy module");
+        }
+    } else {
+        LOG_ERROR("Failed to register galaxy module, ID: %d", galaxy_id);
     }
     
     int post_id = module_register(&mock_post_module);
-    if (post_id >= 0) {
-        mock_post_module.initialize(NULL, &post_data);
-        g_mock_module_data[post_id] = post_data;
+    if (post_id >= 0 && post_id < MAX_MODULES) {
+        if (mock_post_module.initialize(NULL, &post_data) == 0) {
+            g_mock_module_data[post_id] = post_data;
+            LOG_DEBUG("Registered post module with ID %d", post_id);
+        } else {
+            LOG_ERROR("Failed to initialize post module");
+        }
+    } else {
+        LOG_ERROR("Failed to register post module, ID: %d", post_id);
     }
     
     int final_id = module_register(&mock_final_module);
-    if (final_id >= 0) {
-        mock_final_module.initialize(NULL, &final_data);
-        g_mock_module_data[final_id] = final_data;
+    if (final_id >= 0 && final_id < MAX_MODULES) {
+        if (mock_final_module.initialize(NULL, &final_data) == 0) {
+            g_mock_module_data[final_id] = final_data;
+            LOG_DEBUG("Registered final module with ID %d", final_id);
+        } else {
+            LOG_ERROR("Failed to initialize final module");
+        }
+    } else {
+        LOG_ERROR("Failed to register final module, ID: %d", final_id);
     }
     
     int multi_id = module_register(&mock_multi_phase_module);
-    if (multi_id >= 0) {
-        mock_multi_phase_module.initialize(NULL, &multi_phase_data);
-        g_mock_module_data[multi_id] = multi_phase_data;
+    if (multi_id >= 0 && multi_id < MAX_MODULES) {
+        if (mock_multi_phase_module.initialize(NULL, &multi_phase_data) == 0) {
+            g_mock_module_data[multi_id] = multi_phase_data;
+            LOG_DEBUG("Registered multi-phase module with ID %d", multi_id);
+        } else {
+            LOG_ERROR("Failed to initialize multi-phase module");
+        }
+    } else {
+        LOG_ERROR("Failed to register multi-phase module, ID: %d", multi_id);
     }
     
     LOG_INFO("All mock modules registered and activated");
+    LOG_DEBUG("Final module IDs: infall=%d, galaxy=%d, post=%d, final=%d, multi=%d",
+              mock_infall_module.module_id, mock_galaxy_module.module_id,
+              mock_post_module.module_id, mock_final_module.module_id,
+              mock_multi_phase_module.module_id);
 }
 
 /**
@@ -747,17 +789,17 @@ static void test_phased_loop_execution(void) {
 static void test_actual_integration(void) {
     LOG_INFO("Starting actual integration test");
     
-    /* Step 1: Register mock modules for testing */
-    int infall_id = module_register(&mock_infall_module);
-    int galaxy_id = module_register(&mock_galaxy_module); 
-    int post_id = module_register(&mock_post_module);
-    int final_id = module_register(&mock_final_module);
+    /* Step 1: Get IDs of already registered mock modules */
+    int infall_id = mock_infall_module.module_id;
+    int galaxy_id = mock_galaxy_module.module_id; 
+    int post_id = mock_post_module.module_id;
+    int final_id = mock_final_module.module_id;
     
-    LOG_DEBUG("Registered mock modules: infall=%d, galaxy=%d, post=%d, final=%d", 
+    LOG_DEBUG("Using registered mock modules: infall=%d, galaxy=%d, post=%d, final=%d", 
               infall_id, galaxy_id, post_id, final_id);
     
     if (infall_id < 0 || galaxy_id < 0 || post_id < 0 || final_id < 0) {
-        LOG_ERROR("Failed to register mock modules");
+        LOG_ERROR("Mock modules not properly registered");
         assert(false);
     }
     
@@ -788,27 +830,23 @@ static void test_actual_integration(void) {
 
     LOG_INFO("Pipeline populated with all mock modules");
     
-    /* Step 3: Initialize module data for execution tracking - using proper IDs */
-    void *infall_data = NULL;
-    void *galaxy_data = NULL; 
-    void *post_data = NULL;
-    void *final_data = NULL;
+    /* Step 3: Get module data from global array (already initialized in setup_mock_modules) */
+    void *infall_data = g_mock_module_data[infall_id];
+    void *galaxy_data = g_mock_module_data[galaxy_id]; 
+    void *post_data = g_mock_module_data[post_id];
+    void *final_data = g_mock_module_data[final_id];
 
-    if (infall_id >= 0) {
-        mock_infall_module.initialize(NULL, &infall_data);
-        g_mock_module_data[infall_id] = infall_data;
-    }
-    if (galaxy_id >= 0) {
-        mock_galaxy_module.initialize(NULL, &galaxy_data);
-        g_mock_module_data[galaxy_id] = galaxy_data;
-    }
-    if (post_id >= 0) {
-        mock_post_module.initialize(NULL, &post_data);
-        g_mock_module_data[post_id] = post_data;
-    }
-    if (final_id >= 0) {
-        mock_final_module.initialize(NULL, &final_data);
-        g_mock_module_data[final_id] = final_data;
+    LOG_DEBUG("Module data pointers: infall=%p, galaxy=%p, post=%p, final=%p", 
+              infall_data, galaxy_data, post_data, final_data);
+
+    if (!infall_data || !galaxy_data || !post_data || !final_data) {
+        LOG_ERROR("Module data not properly initialized");
+        LOG_ERROR("Missing data for: infall=%s, galaxy=%s, post=%s, final=%s",
+                  infall_data ? "OK" : "NULL",
+                  galaxy_data ? "OK" : "NULL", 
+                  post_data ? "OK" : "NULL",
+                  final_data ? "OK" : "NULL");
+        assert(false);
     }
 
     LOG_INFO("Mock module data structures initialized");
@@ -928,12 +966,6 @@ static void test_actual_integration(void) {
     
     LOG_INFO("Manual integration test completed successfully - phase-based execution verified");
     
-    /* Clean up module data */
-    if (infall_data) mock_infall_module.cleanup(infall_data);
-    if (galaxy_data) mock_galaxy_module.cleanup(galaxy_data);
-    if (post_data) mock_post_module.cleanup(post_data);
-    if (final_data) mock_final_module.cleanup(final_data);
-    
     /* Clean up pipeline */
     pipeline_destroy(pipeline);
 }
@@ -968,8 +1000,9 @@ int main(int argc, char *argv[]) {
     LOG_INFO("Pipeline system initialized");
     
     /* Set up mock modules */
-    /* TODO: Fix segfault in setup_mock_modules() */
-    /* setup_mock_modules(); */
+    printf("Setting up mock modules\n");
+    setup_mock_modules();
+    printf("Mock modules setup completed\n");
     
     /* Run the integration tests */
     printf("Starting legacy diagnostics API test\n");
@@ -981,8 +1014,9 @@ int main(int argc, char *argv[]) {
     printf("Actual integration test completed\n");
     
     /* Clean up */
-    /* TODO: Enable after fixing setup_mock_modules() */
-    /* cleanup_mock_modules(); */
+    printf("Cleaning up mock modules\n");
+    cleanup_mock_modules();
+    printf("Mock modules cleanup completed\n");
     
     /* Clean up systems in reverse order */
     pipeline_system_cleanup();
