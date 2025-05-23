@@ -1,9 +1,27 @@
 #!/usr/bin/env python3
 # verify_placeholder_property_access.py
 #
+# Part of the PROPERTY_TESTS test suite in the SAGE model
+#
 # This script is an updated version of verify_property_access.py
 # that focuses on validating property access patterns in placeholder modules
 # in accordance with core-physics separation principles.
+#
+# Purpose:
+# - Perform static analysis of C source files to detect direct field access
+# - Identify violations of core-physics separation principles
+# - Verify proper use of GALAXY_PROP_* macros and generic property accessors
+#
+# Used by:
+# - test_property_access_patterns.c - Main test that runs this script
+#
+# Usage:
+# python verify_placeholder_property_access.py <file_path> [--verbose] [--recursive]
+#
+# See also:
+# - docs/core_physics_property_separation_principles.md - Documentation on separation principles
+#
+# Added in Phase 5.2.F.3 (May 2025) as part of the core-physics separation implementation
 
 import re
 import sys

@@ -18,10 +18,25 @@
  * @file test_property_access_patterns.c
  * @brief Test property access patterns to ensure core-physics separation
  * 
+ * Part of the PROPERTY_TESTS test suite in the SAGE model
+ * 
  * This test validates that:
  * 1. Properties are correctly accessed through the property system
  * 2. Core-physics separation principles are followed
  * 3. Static analysis can detect direct field access (when present)
+ * 
+ * This test replaces the outdated test_galaxy_property_macros.c which was designed for the
+ * transitional period when both direct fields and property-based access existed simultaneously.
+ * The new test focuses on validating the correct property access patterns according to the
+ * core-physics separation principles established in Phase 5.2.F.
+ * 
+ * @see test_property_validation_mocks.c - Contains mock functions for property access testing
+ * @see verify_placeholder_property_access.py - Python script for static analysis
+ * @see docs/core_physics_property_separation_principles.md - Documentation on separation principles
+ * 
+ * To run this test: make test_property_access_patterns
+ * 
+ * @note Added in Phase 5.2.F.3 (May 2025)
  */
 
 static void test_property_macros(void);

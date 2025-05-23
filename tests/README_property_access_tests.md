@@ -21,6 +21,10 @@ This test validates the property access patterns in accordance with the core-phy
 - **Physics Property Access Testing**: Verifies correct access patterns for physics properties using the generic property system.
 - **Static Analysis**: Runs the Python validation script on placeholder modules to check for any direct field access.
 
+The test depends on these supporting files:
+- **test_property_validation_mocks.c**: Provides mock implementations of the property system functions
+- **verify_placeholder_property_access.py**: Python script for static analysis of C source files
+
 ### verify_placeholder_property_access.py
 
 This Python script performs static analysis of the codebase to check for direct field access, which would violate the core-physics separation principles. It can be run manually on specific files or directories:
@@ -28,6 +32,11 @@ This Python script performs static analysis of the codebase to check for direct 
 ```bash
 python verify_placeholder_property_access.py path/to/file_or_directory [--verbose] [--recursive]
 ```
+
+The script looks for:
+- Direct access to galaxy fields (e.g., `galaxy->HotGas`)
+- Improper use of `GALAXY_PROP_*` macros for physics properties in core files
+- Missing use of generic property functions for physics properties
 
 ## Usage
 
@@ -39,9 +48,23 @@ cd tests
 ./test_property_access_patterns
 ```
 
+You can also run the property tests as a category:
+
+```bash
+make property_tests
+```
+
 ## When to Use This Test
 
 This test is particularly valuable during Phase 5.2.G (Physics Module Migration) to ensure that all new physics modules comply with the core-physics separation principles.
+
+## Test Category
+
+This test is part of the `PROPERTY_TESTS` test suite which focuses on validating the property system functionality:
+
+```
+make property_tests  # Runs all property system tests including this one
+```
 
 ## Replacement for test_galaxy_property_macros
 
@@ -52,3 +75,8 @@ This test replaces the outdated `test_galaxy_property_macros` which was designed
 3. Original physics modules that have been replaced with placeholder modules
 
 The new test achieves the same validation goals but works with the current architecture where complete core-physics separation has been implemented.
+
+## Core-Physics Separation Principles
+
+For a complete understanding of the core-physics separation principles that this test validates, see:
+- `docs/core_physics_property_separation_principles.md`

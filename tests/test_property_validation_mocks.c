@@ -8,6 +8,25 @@
 /**
  * @file test_property_validation_mocks.c
  * @brief Mock functions for property access validation tests
+ * 
+ * Part of the PROPERTY_TESTS test suite in the SAGE model
+ * 
+ * This file provides mock implementations of the property system functions
+ * for use in property access pattern tests. It simulates the behavior of
+ * the property system without requiring the full infrastructure to be initialized.
+ * 
+ * Used by:
+ * - test_property_access_patterns.c
+ * 
+ * These mocks implement simplified versions of:
+ * - Property allocation and management functions
+ * - Property access functions for different data types
+ * - Property ID lookup functions
+ * 
+ * @see test_property_access_patterns.c - The main test that uses these mocks
+ * @see docs/core_physics_property_separation_principles.md - Documentation on separation principles
+ * 
+ * @note Added in Phase 5.2.F.3 (May 2025) as part of the core-physics separation implementation
  */
 
 // Define property not found constant
