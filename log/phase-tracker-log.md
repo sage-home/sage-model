@@ -94,6 +94,10 @@
 - [ ] Comprehensive code cleanup
 - [ ] Documentation review and update
 
+##### HOLDING PEN (to review):
+
+- [ ] Review naming: `GALAXY_PROP_*` → `CORE_PROP_*` or `GALAXY_CORE_*` and `physics_pipeline_executor.*` → `core_pipeline_executor.*`
+
 ### Phase 5.2.G: Physics Module Migration ⏳ PENDING
 
 With the core now completely physics-agnostic and architecturally compliant, implement physics modules as pure add-ons.
