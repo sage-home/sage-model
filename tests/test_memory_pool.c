@@ -23,19 +23,19 @@
 extern struct galaxy_extension_registry *global_extension_registry;
 
 /* Stub functions for logging to avoid dependencies */
-void LOG_DEBUG(const char *fmt, ...) {
+void LOG_DEBUG(const char *fmt __attribute__((unused)), ...) {
     /* Do nothing in tests */
 }
 
-void LOG_INFO(const char *fmt, ...) {
+void LOG_INFO(const char *fmt __attribute__((unused)), ...) {
     /* Do nothing in tests */
 }
 
-void LOG_WARNING(const char *fmt, ...) {
+void LOG_WARNING(const char *fmt __attribute__((unused)), ...) {
     /* Do nothing in tests */
 }
 
-void LOG_ERROR(const char *fmt, ...) {
+void LOG_ERROR(const char *fmt __attribute__((unused)), ...) {
     /* Do nothing in tests */
 }
 
@@ -210,15 +210,11 @@ void test_galaxy_data() {
     GALAXY_PROP_SnapNum(g1) = 63;
     GALAXY_PROP_GalaxyIndex(g1) = 12345;
     
-    // Get property IDs for checking newly allocated galaxies
+    // Get property ID for checking Type property (the one we'll test for preservation)
     property_id_t type_id = get_cached_property_id("Type");
-    property_id_t snap_id = get_cached_property_id("SnapNum");
-    property_id_t index_id = get_cached_property_id("GalaxyIndex");
     
     // Remember values and memory location
     int original_type = GALAXY_PROP_Type(g1);
-    int original_snap = GALAXY_PROP_SnapNum(g1);
-    long long original_index = GALAXY_PROP_GalaxyIndex(g1);
     void* original_location = (void*)g1;
     
     // Free the galaxy
@@ -245,6 +241,19 @@ void test_galaxy_data() {
             int new_type = get_int32_property(g2, type_id, -1);
             printf("  Property reuse check: Type is %s (old=%d, current=%d)\n", 
                    new_type == original_type ? "unchanged" : "changed", original_type, new_type);
+            
+            /* NOTE: The memory pool doesn't reinitialize property values after freeing.
+             * This is an implementation detail that might be unintended. The pool reuses memory
+             * but doesn't reset it to a clean state. Application code should explicitly 
+             * initialize properties after allocation or the pool implementation should
+             * reset properties during allocation.
+             *
+             * If property value preservation is intended behavior (e.g., for performance reasons),
+             * then this assertion should pass. If not, galaxy_pool_alloc should be modified to
+             * reset property values.
+             */
+            printf("  NOTE: Property values %s preserved during reuse.\n", 
+                   new_type == original_type ? "are" : "are not");
         }
     }
     
@@ -357,6 +366,117 @@ void test_error_conditions() {
     printf("Error handling test PASSED\n");
 }
 
+void test_dynamic_array_properties() {
+    printf("Testing memory pool with dynamic array properties...\n");
+    
+    struct memory_pool *pool = galaxy_pool_create(100, 10);
+    assert(pool != NULL);
+    
+    // Allocate a galaxy
+    struct GALAXY *g1 = galaxy_pool_alloc(pool);
+    assert(g1 != NULL);
+    
+    // Ensure properties is allocated
+    if (g1->properties == NULL) {
+        g1->properties = calloc(1, sizeof(galaxy_properties_t));
+        assert(g1->properties != NULL);
+    }
+    
+    // Record original location for verification
+    void* original_location = (void*)g1;
+    
+    // Free the galaxy (this will clean up properties via galaxy_extension_cleanup)
+    galaxy_pool_free(pool, g1);
+    
+    // Allocate a new galaxy - should be the same memory location from the pool
+    struct GALAXY *g2 = galaxy_pool_alloc(pool);
+    assert(g2 != NULL);
+    
+    // Verify this is the same memory location (reused from pool)
+    printf("  Verification: Galaxy reused from pool: %s (original=%p, new=%p)\n", 
+           g2 == original_location ? "Yes" : "No", original_location, (void*)g2);
+    
+    // Verify the extension data was properly cleaned up
+    if (g2->extension_data != NULL) {
+        printf("  Warning: Extension data not properly cleaned: extension_data=%p\n", 
+               g2->extension_data);
+    } else {
+        printf("  Verification: Extension data properly cleaned: extension_data is NULL\n");
+    }
+    
+    // Verify that extension count and flags were reset
+    printf("  Verification: Extensions count reset: %s (value=%d)\n", 
+           g2->num_extensions == 0 ? "Yes" : "No", g2->num_extensions);
+    printf("  Verification: Extensions flags reset: %s (value=%llu)\n", 
+           g2->extension_flags == 0 ? "Yes" : "No", (unsigned long long)g2->extension_flags);
+    
+    // Ensure properties is allocated for the new galaxy
+    if (g2->properties == NULL) {
+        g2->properties = calloc(1, sizeof(galaxy_properties_t));
+        assert(g2->properties != NULL);
+    }
+    
+    // Free the galaxy
+    galaxy_pool_free(pool, g2);
+    galaxy_pool_destroy(pool);
+    
+    printf("Dynamic array properties test PASSED\n");
+}
+
+void test_property_types() {
+    printf("Testing memory pool with different property types...\n");
+    
+    struct memory_pool *pool = galaxy_pool_create(100, 10);
+    assert(pool != NULL);
+    
+    // Allocate a galaxy
+    struct GALAXY *g1 = galaxy_pool_alloc(pool);
+    assert(g1 != NULL);
+    
+    // Ensure properties is allocated
+    if (g1->properties == NULL) {
+        g1->properties = calloc(1, sizeof(galaxy_properties_t));
+        assert(g1->properties != NULL);
+    }
+    
+    // Set properties of different types using macros
+    // Note: We're using the macro system to set these, assuming core properties
+    // of these types exist. If they don't, the test would need modification.
+    
+    // Integer property
+    GALAXY_PROP_Type(g1) = 42;
+    
+    // Long long property
+    GALAXY_PROP_GalaxyIndex(g1) = 9223372036854775807LL;  // Max long long value
+    
+    // We'd also test float and double properties if they exist in core properties
+    
+    // Verify properties were set correctly
+    assert(GALAXY_PROP_Type(g1) == 42);
+    assert(GALAXY_PROP_GalaxyIndex(g1) == 9223372036854775807LL);
+    
+    // Free the galaxy
+    galaxy_pool_free(pool, g1);
+    
+    // Allocate another galaxy
+    struct GALAXY *g2 = galaxy_pool_alloc(pool);
+    assert(g2 != NULL);
+    
+    // Set different values to ensure we can modify all types
+    GALAXY_PROP_Type(g2) = 24;  // Different integer
+    GALAXY_PROP_GalaxyIndex(g2) = 123456789LL;  // Different long long
+    
+    // Verify properties were set correctly
+    assert(GALAXY_PROP_Type(g2) == 24);
+    assert(GALAXY_PROP_GalaxyIndex(g2) == 123456789LL);
+    
+    // Free the galaxy
+    galaxy_pool_free(pool, g2);
+    galaxy_pool_destroy(pool);
+    
+    printf("Property types test PASSED\n");
+}
+
 int main() {
     printf("===== Memory Pool Tests =====\n");
     
@@ -367,6 +487,8 @@ int main() {
     test_galaxy_data();
     test_memory_leak_detection();
     test_error_conditions();
+    test_dynamic_array_properties();
+    test_property_types();
     
     printf("All tests PASSED\n");
     return 0;

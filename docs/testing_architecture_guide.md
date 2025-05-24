@@ -48,7 +48,7 @@ These tests validate SAGE's input/output capabilities:
 - **I/O Interface**: Tests the abstraction layer for different formats
 - **Endianness**: Tests cross-platform compatibility
 - **Format Handlers**: Tests reading and writing in various formats (LHalo, HDF5, etc.)
-- **Buffering and Memory Mapping**: Tests performance optimizations for I/O
+- **Buffering and Memory Mapping**: Tests performance optimizations for I/O, including cross-platform memory mapping and file buffering
 
 I/O tests ensure that SAGE can correctly read merger trees and write galaxy catalogs in all supported formats.
 
