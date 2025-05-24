@@ -52,9 +52,17 @@ This separation enables:
 
 ## Testing Core-Physics Separation
 
-The `test_core_physics_separation.c` file provides a comprehensive test of the core-physics separation, verifying that:
+Core-physics separation is validated through multiple focused tests:
 
-1. The core can run with a minimal "placeholder" module that does nothing
+- `test_property_access_patterns` - Validates property access follows separation principles
+- `test_property_system_hdf5` - Tests property system integration with I/O separation  
+- `test_evolve_integration` - Tests core pipeline works independently of physics
+- `test_core_pipeline_registry` - Tests physics-agnostic pipeline registry
+- `test_empty_pipeline` (standalone) - Tests core can run with empty placeholder modules
+
+These tests collectively verify that:
+
+1. The core can run with minimal "placeholder" modules that do nothing
 2. The pipeline executes all phases correctly
 3. Galaxies are processed without any physics calculations
 4. No direct field synchronization is required
@@ -77,7 +85,12 @@ This will use the `input/empty_pipeline_parameters.par` parameter file, which sp
 
 To verify that the core is truly independent from physics:
 
-1. **Run the core separation test**: `make test_core_physics_separation`
+1. **Run the empty pipeline test**: `./tests/run_empty_pipeline_test.sh` (standalone test)
+2. **Run core infrastructure tests**: `make core_tests` 
+3. **Run property system tests**: `make property_tests`
+4. **Run module system tests**: `make module_tests`
+
+These tests collectively demonstrate that the core infrastructure operates independently of any physics implementation.
 2. **Run with empty pipeline**: `make -f tests/Makefile.empty_pipeline`
 3. **Check the output**: Verify that the model runs successfully without errors
 4. **Inspect memory usage**: The model should use significantly less memory than with full physics

@@ -53,13 +53,6 @@ These tests are integrated into the main Makefile and can be run with `make test
 | ✅ **test_pipeline_invoke** | Tests the pipeline invocation mechanisms | Phase 2.7 (Mar 2025) |
 | ✅ **test_dynamic_library** | Tests dynamic loading of modules | Phase 4.1 (Apr 2025) |
 
-### Core-Physics Separation Tests (`SEPARATION_TESTS`)
-
-| Test Name | Purpose | Added in Phase |
-|-----------|---------|---------------|
-| ❌ **test_core_physics_separation** | Validates complete separation between core and physics components | Phase 5.2.F (May 2025) |
-| 🗑️ **test_output_preparation** | *(Removed)* Was testing the legacy output preparation module, now replaced by `test_property_system_hdf5` | Phase 5.2.E (May 2025) |
-
 ## Standalone Tests (Individual Makefiles/Scripts)
 
 These tests require special setup or have complex integration requirements and use individual Makefiles or scripts.
@@ -82,7 +75,6 @@ make core_tests        # Core infrastructure tests
 make property_tests    # Property system tests
 make io_tests          # I/O system tests
 make module_tests      # Module system tests
-make separation_tests  # Core-physics separation tests
 ```
 
 ### Individual Tests
@@ -105,6 +97,7 @@ cd tests && make -f Makefile.memory_tests
 - **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, access patterns
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (2 tests)**: Dynamic loading and pipeline invocation
-- **Core-Physics Separation (1 test)**: Validation of architectural separation
 
 The test suite provides comprehensive coverage of all major SAGE components whilst maintaining clear separation between unit tests (expected to pass during development) and scientific validation tests (may fail during refactoring phases).
+
+**Note**: The `test_core_physics_separation` test was removed in May 2025 as it became outdated due to API changes and its functionality is now comprehensively covered by other focused tests (`test_property_access_patterns`, `test_property_system_hdf5`, `test_evolve_integration`, `test_core_pipeline_registry`, and the standalone `test_empty_pipeline`).

@@ -164,7 +164,6 @@ Tests can be run in several ways:
    make property_tests
    make io_tests
    make module_tests
-   make separation_tests
    ```
 
 3. **Individual Tests**: Run a specific test to focus on a particular component.

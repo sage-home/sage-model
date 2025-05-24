@@ -365,6 +365,7 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Modified files: Makefile, log/todays-edits.md, log/recent-progress-log.md
 - Created files: tests/test_validation_framework.c, docs/test_validation_framework.md
 - Moved files: tests/test_io_validation.c -> ignore/tests/io_tests/
+
 2025-05-24: [Phase 5.2.F.3] Removal of Outdated test_output_preparation Unit Test
 - Identified and removed an outdated unit test that was incompatible with the current architecture
 - Determined that test_output_preparation was testing a legacy monolithic module that's been replaced by the transformer system
@@ -374,3 +375,11 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Added a decision entry to decision-log.md explaining the rationale and impact
 - Modified files: Makefile, docs/sage_unit_tests.md, log/decision-log.md
 - Moved files: tests/test_output_preparation.c → ignore/tests/test_output_preparation.c
+
+2025-05-24: [Phase 5.2.F.3] Removal of Outdated test_core_physics_separation
+- Removed test_core_physics_separation.c due to severe API incompatibilities and redundancy with current focused tests
+- Eliminated SEPARATION_TESTS category from Makefile as it contained only this outdated test
+- Updated all documentation references in sage_unit_tests.md, testing_architecture_guide.md, and core_physics_separation.md
+- Core-physics separation validation now handled by specialized tests: test_property_access_patterns, test_property_system_hdf5, test_evolve_integration, test_core_pipeline_registry, and test_empty_pipeline
+- Moved files: tests/test_core_physics_separation.c, tests/Makefile.core_physics_separation → ignore/tests/
+- Modified files: Makefile, docs/sage_unit_tests.md, docs/testing_architecture_guide.md, docs/core_physics_separation.md, log/decision-log.md

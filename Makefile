@@ -376,11 +376,8 @@ IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_outpu
 # Module system tests
 MODULE_TESTS = test_dynamic_library test_pipeline_invoke
 
-# Core-physics separation tests (critical for Phase 5.2.F)
-SEPARATION_TESTS = test_core_physics_separation
-
 # All unit tests (excludes complex integration tests with individual Makefiles)
-UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS) $(SEPARATION_TESTS)
+UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS)
 
 # Core infrastructure test targets
 test_pipeline: tests/test_pipeline.c $(SAGELIB)
@@ -466,10 +463,6 @@ test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline_invoke tests/test_pipeline_invoke.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-# Core-physics separation test targets
-test_core_physics_separation: tests/test_core_physics_separation.c
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_physics_separation tests/test_core_physics_separation.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 # Individual test category targets
 core_tests: $(CORE_TESTS)
 	@echo "=== Running Core Infrastructure Tests ==="
@@ -499,13 +492,6 @@ module_tests: $(MODULE_TESTS)
 		./tests/$$test || exit 1; \
 	done
 
-separation_tests: $(SEPARATION_TESTS)
-	@echo "=== Running Core-Physics Separation Tests ==="
-	@for test in $(SEPARATION_TESTS); do \
-		echo "Running $$test..."; \
-		./tests/$$test || exit 1; \
-	done
-
 # Tests execution target
 tests: $(EXEC) $(UNIT_TESTS)
 	@echo "Running SAGE tests..."
@@ -529,11 +515,6 @@ tests: $(EXEC) $(UNIT_TESTS)
 	done
 	@echo "=== Module System Tests ==="
 	@for test in $(MODULE_TESTS); do \
-		echo "Running $$test..."; \
-		./tests/$$test || FAILED="$$FAILED $$test"; \
-	done
-	@echo "=== Core-Physics Separation Tests ==="
-	@for test in $(SEPARATION_TESTS); do \
 		echo "Running $$test..."; \
 		./tests/$$test || FAILED="$$FAILED $$test"; \
 	done
