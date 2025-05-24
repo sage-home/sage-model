@@ -470,9 +470,6 @@ test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 test_core_physics_separation: tests/test_core_physics_separation.c
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_physics_separation tests/test_core_physics_separation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_output_preparation: tests/test_output_preparation.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_output_preparation tests/test_output_preparation.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 # Individual test category targets
 core_tests: $(CORE_TESTS)
 	@echo "=== Running Core Infrastructure Tests ==="
