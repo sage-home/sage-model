@@ -383,3 +383,12 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Core-physics separation validation now handled by specialized tests: test_property_access_patterns, test_property_system_hdf5, test_evolve_integration, test_core_pipeline_registry, and test_empty_pipeline
 - Moved files: tests/test_core_physics_separation.c, tests/Makefile.core_physics_separation → ignore/tests/
 - Modified files: Makefile, docs/sage_unit_tests.md, docs/testing_architecture_guide.md, docs/core_physics_separation.md, log/decision-log.md
+
+2025-05-24: [Phase 5.2.F.3] Memory Tests Suite Integration
+- Reviewed the Memory Tests Suite to assess its relevance, effectiveness, and integration with the main build system
+- Fixed inconsistency in IO_TESTS list by renaming test_memory_map to test_io_memory_map to match source file name
+- Archived run_all_memory_tests.sh script to ignore/obsolete_test_scripts as its functionality is now covered by the main Makefile
+- Updated sage_unit_tests.md to reflect the integration of memory tests into the main test suite
+- Created a comprehensive improvement plan for enhancing memory tests to better validate memory management
+- Modified files: Makefile, docs/sage_unit_tests.md
+- Moved files: tests/run_all_memory_tests.sh → ignore/obsolete_test_scripts/

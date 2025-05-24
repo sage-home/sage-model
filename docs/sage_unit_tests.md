@@ -19,6 +19,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | ✅ **test_core_property**          | Tests the property system's core functionality with mock implementations      | Phase 5.2.B (May 2025)   |
 | ✅ **test_core_pipeline_registry** | Tests the pipeline registry for module registration and pipeline creation     | Phase 5.2.F (May 2025)   |
 | ✅ **test_dispatcher_access**      | Tests the type-safe dispatcher functions for property access                  | Phase 5.2.F.4 (May 2025) |
+| ✅ **test_memory_pool**            | Tests the memory pooling system for galaxies                                 | Phase 3.3 (Apr 2025)     |
 
 ### Property System Tests (`PROPERTY_TESTS`)
 
@@ -42,7 +43,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | ✅ **test_gadget4_hdf5** | Tests reading Gadget4 merger trees in HDF5 format | Phase 3.2 (Apr 2025) |
 | ✅ **test_genesis_hdf5** | Tests reading Genesis merger trees in HDF5 format | Phase 3.2 (Apr 2025) |
 | ✅ **test_consistent_trees_hdf5** | Tests reading ConsistentTrees in HDF5 format | Phase 3.2 (Apr 2025) |
-| ✅ **test_memory_map** | Tests memory mapping for I/O operations | Phase 3.3 (Apr 2025) |
+| ✅ **test_io_memory_map** | Tests memory mapping for I/O operations | Phase 3.3 (Apr 2025) |
 | ✅ **test_io_buffer_manager** | Tests the buffered I/O system | Phase 3.3 (Apr 2025) |
 | ✅ **test_validation_framework** | Tests validation framework | Phase 5.2.F.3 (May 2025) |
 
@@ -59,7 +60,6 @@ These tests require special setup or have complex integration requirements and u
 
 | Test Name | Purpose | Added in Phase | Implementation Method |
 |-----------|---------|---------------|----------------------|
-| ❌ **Memory Tests Suite** | Comprehensive memory allocation, pool management, and leak detection | Phase 3.3+ (Apr 2025) | `Makefile.memory_tests` + `run_all_memory_tests.sh` |
 | ❌ **test_empty_pipeline** | Verifies that the core can run with empty placeholder modules | Phase 5.2.F.2 (May 2025) | `run_empty_pipeline_test.sh` |
 
 ## Running Tests
@@ -81,23 +81,29 @@ make module_tests      # Module system tests
 ```bash
 make test_pipeline
 make test_property_serialization
+make test_memory_pool
+make test_io_memory_map
 # etc.
 ```
 
 ### Standalone Tests
 ```bash
 make test_extensions
-cd tests && make -f Makefile.memory_tests
 ./tests/run_empty_pipeline_test.sh
 ```
 
 ## Test Categories Overview
 
-- **Core Infrastructure (7 tests)**: Pipeline execution, property core functionality, array utilities, evolution diagnostics
+- **Core Infrastructure (8 tests)**: Pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling
 - **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, access patterns
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (2 tests)**: Dynamic loading and pipeline invocation
 
 The test suite provides comprehensive coverage of all major SAGE components whilst maintaining clear separation between unit tests (expected to pass during development) and scientific validation tests (may fail during refactoring phases).
+
+**Note**: Several tests have been removed or replaced as part of the architectural evolution:
+- `test_core_physics_separation` was removed in May 2025 as its functionality is now covered by more focused tests
+- `test_output_preparation` was replaced by `test_property_system_hdf5` which tests the transformer system
+- The standalone Memory Tests Suite was integrated into the main Makefile with `test_memory_pool` and `test_io_memory_map`
 
 **Note**: The `test_core_physics_separation` test was removed in May 2025 as it became outdated due to API changes and its functionality is now comprehensively covered by other focused tests (`test_property_access_patterns`, `test_property_system_hdf5`, `test_evolve_integration`, `test_core_pipeline_registry`, and the standalone `test_empty_pipeline`).

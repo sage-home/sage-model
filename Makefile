@@ -365,13 +365,13 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_patterns
 
 # I/O system tests
-IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_memory_map test_io_buffer_manager test_validation_framework
+IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_memory_map test_io_buffer_manager test_validation_framework
 
 # Module system tests
 MODULE_TESTS = test_dynamic_library test_pipeline_invoke
@@ -400,6 +400,9 @@ test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
 
 test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolve_integration tests/test_evolve_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_memory_pool: tests/test_memory_pool.c tests/stubs/galaxy_extension_stubs.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_memory_pool tests/test_memory_pool.c tests/stubs/galaxy_extension_stubs.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Property system test targets
 test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
@@ -447,7 +450,7 @@ test_genesis_hdf5: tests/test_genesis_hdf5.c $(SAGELIB)
 test_consistent_trees_hdf5: tests/test_consistent_trees_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_consistent_trees_hdf5 tests/test_consistent_trees_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_memory_map: tests/test_io_memory_map.c $(SAGELIB)
+test_io_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_memory_map tests/test_io_memory_map.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_io_buffer_manager: tests/test_io_buffer_manager.c $(SAGELIB)

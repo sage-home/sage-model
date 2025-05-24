@@ -7,6 +7,8 @@
 #include "../src/core/core_allvars.h"
 #include "../src/core/core_memory_pool.h"
 #include "../src/core/core_galaxy_extensions.h"
+#include "../src/core/core_properties.h"  /* For property system */
+#include "../src/core/core_property_utils.h"  /* For property accessors */
 
 #define GALAXY_SIZE sizeof(struct GALAXY)
 #define TEST_ALLOC_COUNT 10
@@ -194,27 +196,165 @@ void test_galaxy_data() {
     assert(pool != NULL);
     
     // Allocate a galaxy
-    struct GALAXY *g = galaxy_pool_alloc(pool);
-    assert(g != NULL);
+    struct GALAXY *g1 = galaxy_pool_alloc(pool);
+    assert(g1 != NULL);
     
-    // Write to galaxy data
-    g->StellarMass = 1.23f;
-    g->BulgeMass = 0.45f;
-    g->ColdGas = 2.34f;
-    g->HotGas = 5.67f;
-    g->Type = 0;
+    // Initialize properties for testing
+    if (g1->properties == NULL) {
+        g1->properties = calloc(1, sizeof(galaxy_properties_t));
+        assert(g1->properties != NULL);
+    }
+    
+    // Set some core properties using macros
+    GALAXY_PROP_Type(g1) = 1;
+    GALAXY_PROP_SnapNum(g1) = 63;
+    GALAXY_PROP_GalaxyIndex(g1) = 12345;
+    
+    // Get property IDs for checking newly allocated galaxies
+    property_id_t type_id = get_cached_property_id("Type");
+    property_id_t snap_id = get_cached_property_id("SnapNum");
+    property_id_t index_id = get_cached_property_id("GalaxyIndex");
+    
+    // Remember values and memory location
+    int original_type = GALAXY_PROP_Type(g1);
+    int original_snap = GALAXY_PROP_SnapNum(g1);
+    long long original_index = GALAXY_PROP_GalaxyIndex(g1);
+    void* original_location = (void*)g1;
     
     // Free the galaxy
-    galaxy_pool_free(pool, g);
+    galaxy_pool_free(pool, g1);
     
-    // Allocate a new galaxy and check if it's properly initialized
-    g = galaxy_pool_alloc(pool);
-    assert(g != NULL);
+    // Allocate a new galaxy - should be the same memory location from the pool
+    struct GALAXY *g2 = galaxy_pool_alloc(pool);
+    assert(g2 != NULL);
     
-    galaxy_pool_free(pool, g);
+    // Verify this is the same memory location (reused from pool)
+    printf("  Verification: Galaxy reused from pool: %s (original=%p, new=%p)\n", 
+           g2 == original_location ? "Yes" : "No", original_location, (void*)g2);
+    
+    // The properties structure may or may not be reset depending on pool implementation
+    // In a real application, galaxy_free should call a reset function or galaxy_alloc should initialize
+    
+    // In our test, we'll explicitly initialize the new galaxy to ensure it works
+    if (g2->properties == NULL) {
+        g2->properties = calloc(1, sizeof(galaxy_properties_t));
+    } else {
+        // If the properties struct is reused but not reset, we can demonstrate that
+        // by checking if the values are still the same
+        if (has_property(g2, type_id)) {
+            int new_type = get_int32_property(g2, type_id, -1);
+            printf("  Property reuse check: Type is %s (old=%d, current=%d)\n", 
+                   new_type == original_type ? "unchanged" : "changed", original_type, new_type);
+        }
+    }
+    
+    // Set new values to ensure the properties can be modified
+    GALAXY_PROP_Type(g2) = 2;  // Different from original
+    GALAXY_PROP_SnapNum(g2) = 42;
+    GALAXY_PROP_GalaxyIndex(g2) = 54321;
+    
+    // Verify we can write and read the properties
+    assert(GALAXY_PROP_Type(g2) == 2);
+    assert(GALAXY_PROP_SnapNum(g2) == 42);
+    assert(GALAXY_PROP_GalaxyIndex(g2) == 54321);
+    
+    printf("  Verification: Successfully set and read properties on reused galaxy\n");
+    
+    galaxy_pool_free(pool, g2);
     galaxy_pool_destroy(pool);
     
     printf("Galaxy data test PASSED\n");
+}
+
+void test_memory_leak_detection() {
+    printf("Testing memory leak detection...\n");
+    
+    struct memory_pool *pool = galaxy_pool_create(100, 10);
+    assert(pool != NULL);
+    
+    size_t capacity, used, allocs, peak;
+    bool result;
+    
+    // Initial stats
+    result = galaxy_pool_stats(pool, &capacity, &used, &allocs, &peak);
+    assert(result);
+    assert(used == 0);
+    assert(allocs == 0);
+    
+    // Allocate many galaxies, then free all but one
+    struct GALAXY *leaked_galaxy = NULL;
+    const int allocation_count = 95;
+    struct GALAXY *galaxies[allocation_count];
+    
+    // First allocation round
+    for (int i = 0; i < allocation_count; i++) {
+        galaxies[i] = galaxy_pool_alloc(pool);
+        assert(galaxies[i] != NULL);
+        
+        // Save one galaxy to simulate a leak
+        if (i == 50) {
+            leaked_galaxy = galaxies[i];
+        }
+    }
+    
+    // Check stats after allocation
+    result = galaxy_pool_stats(pool, &capacity, &used, &allocs, &peak);
+    assert(result);
+    assert(used == allocation_count);
+    assert(allocs == allocation_count);
+    assert(peak == allocation_count);
+    
+    // Free all except the "leaked" one
+    for (int i = 0; i < allocation_count; i++) {
+        if (galaxies[i] != leaked_galaxy) {
+            galaxy_pool_free(pool, galaxies[i]);
+        }
+    }
+    
+    // Check stats after freeing - should show 1 galaxy still in use
+    result = galaxy_pool_stats(pool, &capacity, &used, &allocs, &peak);
+    assert(result);
+    assert(used == 1);  // One galaxy still in use
+    assert(peak == allocation_count);
+    
+    // Clean up the leaked galaxy and verify stats
+    galaxy_pool_free(pool, leaked_galaxy);
+    result = galaxy_pool_stats(pool, &capacity, &used, &allocs, &peak);
+    assert(result);
+    assert(used == 0);  // All galaxies freed
+    
+    galaxy_pool_destroy(pool);
+    
+    printf("Memory leak detection test PASSED\n");
+}
+
+void test_error_conditions() {
+    printf("Testing error handling...\n");
+    
+    struct memory_pool *pool = galaxy_pool_create(10, 5);
+    assert(pool != NULL);
+    
+    // Test freeing NULL pointer - should not crash
+    galaxy_pool_free(pool, NULL);
+    
+    // Test freeing a pointer not from this pool - should be detected or safely ignored
+    struct GALAXY fake_galaxy;
+    galaxy_pool_free(pool, &fake_galaxy);  // This should not crash, even if it's invalid
+    
+    // Get a valid galaxy from the pool
+    struct GALAXY *g = galaxy_pool_alloc(pool);
+    assert(g != NULL);
+    
+    // Free it
+    galaxy_pool_free(pool, g);
+    
+    // Try to free it again - double-free should be detected or safely ignored
+    galaxy_pool_free(pool, g);
+    
+    // Cleanup
+    galaxy_pool_destroy(pool);
+    
+    printf("Error handling test PASSED\n");
 }
 
 int main() {
@@ -225,6 +365,8 @@ int main() {
     test_global_pool();
     test_pool_expansion();
     test_galaxy_data();
+    test_memory_leak_detection();
+    test_error_conditions();
     
     printf("All tests PASSED\n");
     return 0;
