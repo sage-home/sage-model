@@ -65,8 +65,8 @@ Module system tests ensure that physics components can be added, removed, or rep
 
 These tests specifically validate the separation between core infrastructure and physics implementations:
 
-- **Output Preparation**: Tests the transformation of properties for output
 - **Core-Physics Separation**: Tests that core code has no direct dependencies on physics properties
+- *(Removed)* **Output Preparation**: Previously tested the monolithic output preparation module, now replaced by Property System HDF5 test
 
 These tests are crucial for ensuring the architectural goal of runtime functional modularity.
 

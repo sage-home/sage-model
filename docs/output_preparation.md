@@ -9,6 +9,8 @@ The Output Preparation Module is responsible for transforming galaxy properties 
 3. Calculates derived properties
 4. Ensures consistent output values across different output formats
 
+> **Note:** This functionality is tested by `test_property_system_hdf5.c`, which provides comprehensive testing of the property transformer system.
+
 ## Features
 
 - Property-based approach using `GALAXY_PROP_*` macros

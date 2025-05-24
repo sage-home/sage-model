@@ -365,3 +365,12 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Modified files: Makefile, log/todays-edits.md, log/recent-progress-log.md
 - Created files: tests/test_validation_framework.c, docs/test_validation_framework.md
 - Moved files: tests/test_io_validation.c -> ignore/tests/io_tests/
+2025-05-24: [Phase 5.2.F.3] Removal of Outdated test_output_preparation Unit Test
+- Identified and removed an outdated unit test that was incompatible with the current architecture
+- Determined that test_output_preparation was testing a legacy monolithic module that's been replaced by the transformer system
+- Moved test_output_preparation.c to the ignore/tests directory to preserve historical context
+- Updated sage_unit_tests.md to document the removal and reason (functionality now covered by test_property_system_hdf5.c)
+- Updated Makefile to remove the test from the SEPARATION_TESTS category
+- Added a decision entry to decision-log.md explaining the rationale and impact
+- Modified files: Makefile, docs/sage_unit_tests.md, log/decision-log.md
+- Moved files: tests/test_output_preparation.c → ignore/tests/test_output_preparation.c

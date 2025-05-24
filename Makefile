@@ -377,7 +377,7 @@ IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_outpu
 MODULE_TESTS = test_dynamic_library test_pipeline_invoke
 
 # Core-physics separation tests (critical for Phase 5.2.F)
-SEPARATION_TESTS = test_core_physics_separation test_output_preparation
+SEPARATION_TESTS = test_core_physics_separation
 
 # All unit tests (excludes complex integration tests with individual Makefiles)
 UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS) $(SEPARATION_TESTS)

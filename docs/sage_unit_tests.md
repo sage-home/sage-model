@@ -57,8 +57,8 @@ These tests are integrated into the main Makefile and can be run with `make test
 
 | Test Name | Purpose | Added in Phase |
 |-----------|---------|---------------|
-| ❌ **test_output_preparation** | Tests the output preparation module with transformer functions | Phase 5.2.E (May 2025) |
 | ❌ **test_core_physics_separation** | Validates complete separation between core and physics components | Phase 5.2.F (May 2025) |
+| 🗑️ **test_output_preparation** | *(Removed)* Was testing the legacy output preparation module, now replaced by `test_property_system_hdf5` | Phase 5.2.E (May 2025) |
 
 ## Standalone Tests (Individual Makefiles/Scripts)
 
@@ -102,9 +102,9 @@ cd tests && make -f Makefile.memory_tests
 ## Test Categories Overview
 
 - **Core Infrastructure (7 tests)**: Pipeline execution, property core functionality, array utilities, evolution diagnostics
-- **Property System (7 tests)**: Property registration, serialization, validation, HDF5 integration, macro access
+- **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, access patterns
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (2 tests)**: Dynamic loading and pipeline invocation
-- **Core-Physics Separation (2 tests)**: Validation of architectural separation and output preparation
+- **Core-Physics Separation (1 test)**: Validation of architectural separation
 
 The test suite provides comprehensive coverage of all major SAGE components whilst maintaining clear separation between unit tests (expected to pass during development) and scientific validation tests (may fail during refactoring phases).
