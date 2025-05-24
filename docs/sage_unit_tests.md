@@ -60,7 +60,7 @@ These tests require special setup or have complex integration requirements and u
 
 | Test Name | Purpose | Added in Phase | Implementation Method |
 |-----------|---------|---------------|----------------------|
-| ❌ **test_empty_pipeline** | Verifies that the core can run with empty placeholder modules | Phase 5.2.F.2 (May 2025) | `run_empty_pipeline_test.sh` |
+| ✅ **test_empty_pipeline** | Verifies that the core can run with empty placeholder modules to validate core-physics separation | Phase 5.2.F.2 (May 2025) | Integrated in main Makefile + `run_empty_pipeline_test.sh` |
 
 ## Running Tests
 
@@ -83,14 +83,24 @@ make test_pipeline
 make test_property_serialization
 make test_memory_pool
 make test_io_memory_map
+make test_empty_pipeline  # Test core-physics separation with empty placeholder modules
 # etc.
 ```
 
-### Standalone Tests
+### Running the Empty Pipeline Test
+
+The empty pipeline test verifies that the SAGE core can run with no physics components:
+
 ```bash
-make test_extensions
+# Option 1: Using the test script (recommended)
 ./tests/run_empty_pipeline_test.sh
+
+# Option 2: Running directly (requires parameter file)
+make test_empty_pipeline
+./tests/test_empty_pipeline tests/test_data/test-mini-millennium.par
 ```
+
+The test uses a special parameter file (`tests/test_data/test-mini-millennium.par`) that references the empty pipeline configuration (`tests/test_data/empty_pipeline_config.json`) to set up placeholder modules.
 
 ## Test Categories Overview
 

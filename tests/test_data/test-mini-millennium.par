@@ -18,7 +18,7 @@ NumOutputs              8            % sets the desired number of galaxy outputs
 % List your output snapshots after the arrow, highest to lowest (ignored when NumOutputs=-1)
 -> 63 37 32 27 23 20 18 16
 
-OutputFormat            sage_binary     % sets the desired output format, either sage_binary or sage_hdf5
+OutputFormat            sage_hdf5     % sets the desired output format, only sage_hdf5 is supported
 
 
 %------------------------------------------
@@ -47,6 +47,8 @@ PartMass        0.0860657
 
 ModuleDir                 ./src/physics % directory to search for modules
 EnableModuleDiscovery     1             % enable automatic module discovery (0: disabled, 1: enabled)
+ModuleConfigFile          ./tests/test_data/empty_pipeline_config.json
+ModuleConfigFile          ./tests/test_data/empty_pipeline_config.json
 
 
 %------------------------------------------
@@ -58,8 +60,6 @@ AGNrecipeOn           2     % 0: switch off; 1: empirical model; 2: Bondi-Hoyle 
 SupernovaRecipeOn     1     % 0: switch off
 ReionizationOn        1     % 0: switch off
 DiskInstabilityOn     1     % 0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-
-
 %------------------------------------------
 %----- SAGE model parameters --------------
 %------------------------------------------
@@ -93,13 +93,6 @@ EtaSN                   5.0e-3  % supernova efficiency
 %----- Other code-related information -----
 %------------------------------------------
 
-%% The following two parameters determine how forests are distributed over MPI tasks
-%% The scheme determines the computing cost for processing each forest
-%% uniform_in_forests -> every forest has the same cost, regardless of the size of the forest
-%% linear_in_nhalos -> cost scales linearly with the forest size
-%% quadratic_in_nhalos -> cost scales quadratically with forest size
-%% exponent_in_nhalos -> cost scales to some (integer) power of forest size, exponent given by the (integral) value of ExponentForestDistributionScheme
-%% generic_power_in_nhalos -> cost is directly scaled by pow(forest size, ExponentForestDistributionScheme)
 ForestDistributionScheme                generic_power_in_nhalos     % options are uniform_in_forests, linear_in_nhalos
 ExponentForestDistributionScheme        0.7                         % only relevant for the last two schemes
 

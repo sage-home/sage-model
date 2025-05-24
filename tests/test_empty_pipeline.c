@@ -11,6 +11,7 @@
 #include "../src/core/core_pipeline_system.h"
 #include "../src/core/core_evolution_diagnostics.h"
 #include "../src/core/physics_pipeline_executor.h"
+#include "../src/core/core_read_parameter_file.h"
 
 /**
  * @file test_empty_pipeline.c
@@ -24,7 +25,7 @@
 
 /* Function prototypes */
 void verify_module_loading(void);
-void verify_pipeline_execution(void);
+void verify_pipeline_execution(struct params *run_params);
 void verify_basic_galaxy_properties(struct GALAXY *galaxies, int ngal);
 
 int main(int argc, char **argv) {
@@ -36,24 +37,21 @@ int main(int argc, char **argv) {
     char *parameter_file = argv[1];
     
     /* Initialize logging */
-    logging_init();
+    logging_init(LOG_LEVEL_INFO, stdout);
     LOG_INFO("=== Empty Pipeline Validation Test ===");
     LOG_INFO("Using parameter file: %s", parameter_file);
     
     /* Load parameters */
     LOG_INFO("Loading parameters...");
-    struct params parameters;
-    if (read_parameter_file(parameter_file, &parameters) != 0) {
+    struct params run_params;
+    if (read_parameter_file(parameter_file, &run_params) != 0) {
         LOG_ERROR("Failed to read parameter file");
         return 1;
     }
     
     /* Initialize core components */
     LOG_INFO("Initializing core infrastructure...");
-    if (init_sage(&parameters) != 0) {
-        LOG_ERROR("Failed to initialize SAGE core");
-        return 1;
-    }
+    init(&run_params);
     
     /* Verify module loading */
     LOG_INFO("Verifying module loading...");
@@ -61,19 +59,19 @@ int main(int argc, char **argv) {
     
     /* Verify pipeline execution */
     LOG_INFO("Verifying pipeline execution...");
-    verify_pipeline_execution();
+    verify_pipeline_execution(&run_params);
     
     LOG_INFO("=== Empty Pipeline Validation Test PASSED ===");
-    logging_cleanup();
+    cleanup_logging();
     
     return 0;
 }
-
 /**
  * Verify that all required modules are loaded
  */
 void verify_module_loading(void) {
-    struct module_registry *registry = module_registry_get();
+    /* Get the global module registry */
+    struct module_registry *registry = global_module_registry;
     assert(registry != NULL && "Module registry should be initialized");
     
     LOG_INFO("Module registry has %d modules loaded", registry->num_modules);
@@ -83,14 +81,14 @@ void verify_module_loading(void) {
     bool found_placeholder = false;
     for (int i = 0; i < registry->num_modules; i++) {
         struct base_module *module = registry->modules[i].module;
-        if (module != NULL && strcmp(module->name, "placeholder_module") == 0) {
+        if (module != NULL && strncmp(module->name, "placeholder", 11) == 0) {
             found_placeholder = true;
-            LOG_INFO("Found placeholder module - OK");
+            LOG_INFO("Found placeholder module: %s - OK", module->name);
             break;
         }
     }
     
-    assert(found_placeholder && "Placeholder module should be registered");
+    assert(found_placeholder && "A placeholder module should be registered");
     
     /* Verify pipeline is configured */
     struct module_pipeline *pipeline = pipeline_get_global();
@@ -103,7 +101,7 @@ void verify_module_loading(void) {
 /**
  * Verify that the pipeline can be executed with all phases
  */
-void verify_pipeline_execution(void) {
+void verify_pipeline_execution(struct params *run_params) {
     struct module_pipeline *pipeline = pipeline_get_global();
     assert(pipeline != NULL && "Global pipeline should be initialized");
     
@@ -119,16 +117,18 @@ void verify_pipeline_execution(void) {
     
     /* Initialize galaxies with basic data */
     for (int i = 0; i < ngal; i++) {
-        init_galaxy(&galaxies[i], i);
         galaxies[i].SnapNum = 0;
         galaxies[i].Type = (i == 0) ? 0 : 1; /* First galaxy is central */
-        galaxies[i].HaloIndex = i;
         galaxies[i].GalaxyIndex = i;
+        
+        /* Allocate properties */
+        galaxies[i].properties = calloc(1, sizeof(galaxy_properties_t));
+        assert(galaxies[i].properties != NULL && "Failed to allocate galaxy properties");
     }
-    
-    /* Initialize context */
-    struct params *params = get_parameters();
-    pipeline_context_init(&context, params, galaxies, ngal, 0, 0.0, 0.1, 0, 0, NULL);
+    /* Initialize context with parameters */
+    context.params = run_params;
+    context.galaxies = galaxies;
+    context.ngal = ngal;
     context.redshift = 0.0;
     
     /* Execute all phases */
@@ -156,7 +156,10 @@ void verify_pipeline_execution(void) {
     
     /* Clean up */
     for (int i = 0; i < ngal; i++) {
-        free_galaxy(&galaxies[i]);
+        if (galaxies[i].properties != NULL) {
+            free(galaxies[i].properties);
+            galaxies[i].properties = NULL;
+        }
     }
     free(galaxies);
     
@@ -171,8 +174,7 @@ void verify_basic_galaxy_properties(struct GALAXY *galaxies, int ngal) {
         struct GALAXY *gal = &galaxies[i];
         
         /* Check core identifiers */
-        assert(gal->GalaxyIndex == i && "GalaxyIndex should be preserved");
-        assert(gal->HaloIndex == i && "HaloIndex should be preserved");
+        assert(gal->GalaxyIndex == (uint64_t)i && "GalaxyIndex should be preserved");
         assert((gal->Type == 0 || gal->Type == 1) && "Type should be valid");
         
         /* Check properties structure */

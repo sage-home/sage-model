@@ -1,29 +1,52 @@
 #!/bin/bash
-# Script to run and validate the empty pipeline test
+# ========================================================================
+# SAGE Empty Pipeline Test Script
+# ========================================================================
+#
+# This script runs the empty pipeline test which validates that the SAGE
+# core infrastructure can operate independently of any physics components.
+# It uses placeholder modules that implement the module interface but perform
+# no actual physics calculations.
+#
+# Purpose:
+# - Validates core-physics separation principle
+# - Verifies that all pipeline phases execute correctly
+# - Tests memory management with minimal properties
+# - Ensures the core infrastructure is truly physics-agnostic
+#
+# Usage:
+#   ./run_empty_pipeline_test.sh
+#
+# Files used:
+# - tests/test_data/test-mini-millennium.par: Parameter file that references 
+#   the empty pipeline configuration
+# - tests/test_data/empty_pipeline_config.json: Configures the pipeline
+#   to use placeholder modules instead of real physics modules
+#
+# Note: This test is integrated into the main Makefile and can also be run with:
+#   make test_empty_pipeline
+#   ./tests/test_empty_pipeline tests/test_data/test-mini-millennium.par
+#
+# ========================================================================
 
 # Set paths
 TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$TEST_DIR")"
-INPUT_DIR="$ROOT_DIR/input"
-OUTPUT_DIR="$ROOT_DIR/output"
-PARAM_FILE="$INPUT_DIR/empty_pipeline_parameters.par"
+INPUT_DIR="$ROOT_DIR/tests/test_data"
+OUTPUT_DIR="$ROOT_DIR/tests/test_results"
+PARAM_FILE="$INPUT_DIR/test-mini-millennium.par"
 
 # Ensure output directory exists
 mkdir -p "$OUTPUT_DIR"
 
-# Ensure test data is properly linked
-echo "Setting up test data links..."
-ln -sf "$TEST_DIR/test_data/trees_063.0" "$INPUT_DIR/trees_063.0" 2>/dev/null
-ln -sf "$TEST_DIR/test_data/millennium.a_list" "$INPUT_DIR/millennium.a_list" 2>/dev/null
-
 # Clean up any previous output
 echo "Cleaning up previous test output..."
-rm -f "$OUTPUT_DIR/empty_pipeline_*.hdf5"
+rm -f "$OUTPUT_DIR/test-sage-output_*.hdf5"
 
 # Compile the test
 echo "Compiling empty pipeline test..."
-cd "$TEST_DIR" || exit 1
-make -f Makefile.empty_pipeline
+cd "$ROOT_DIR" || exit 1
+make test_empty_pipeline
 
 # Run the test
 echo "Running empty pipeline test..."

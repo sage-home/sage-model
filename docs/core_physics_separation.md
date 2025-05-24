@@ -58,7 +58,7 @@ Core-physics separation is validated through multiple focused tests:
 - `test_property_system_hdf5` - Tests property system integration with I/O separation  
 - `test_evolve_integration` - Tests core pipeline works independently of physics
 - `test_core_pipeline_registry` - Tests physics-agnostic pipeline registry
-- `test_empty_pipeline` (standalone) - Tests core can run with empty placeholder modules
+- `test_empty_pipeline` - Tests core can run with empty placeholder modules
 
 These tests collectively verify that:
 
@@ -72,28 +72,29 @@ These tests collectively verify that:
 To run SAGE with a minimal empty pipeline:
 
 ```bash
-cd tests
-make -f Makefile.empty_pipeline
+# Option 1: Using the test script (recommended)
+./tests/run_empty_pipeline_test.sh
+
+# Option 2: Running directly with the test parameter file
+make test_empty_pipeline
+./tests/test_empty_pipeline tests/test_data/test-mini-millennium.par
 ```
 
-This will use the `input/empty_pipeline_parameters.par` parameter file, which specifies:
+The test uses a special parameter file (`tests/test_data/test-mini-millennium.par`) that includes:
 
-1. `ModuleConfigFile` pointing to `input/config_empty_pipeline.json`
-2. The configuration file defines a single placeholder module that does nothing
+1. `ModuleConfigFile` pointing to `tests/test_data/empty_pipeline_config.json`
+2. The configuration file defines placeholder modules that implement the module interface but perform no physics calculations
 
 ## Verifying Core Independence
 
 To verify that the core is truly independent from physics:
 
-1. **Run the empty pipeline test**: `./tests/run_empty_pipeline_test.sh` (standalone test)
+1. **Run the empty pipeline test**: `make test_empty_pipeline` or `./tests/run_empty_pipeline_test.sh`
 2. **Run core infrastructure tests**: `make core_tests` 
 3. **Run property system tests**: `make property_tests`
 4. **Run module system tests**: `make module_tests`
 
 These tests collectively demonstrate that the core infrastructure operates independently of any physics implementation.
-2. **Run with empty pipeline**: `make -f tests/Makefile.empty_pipeline`
-3. **Check the output**: Verify that the model runs successfully without errors
-4. **Inspect memory usage**: The model should use significantly less memory than with full physics
 
 ## Benefits
 

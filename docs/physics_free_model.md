@@ -36,16 +36,17 @@ The Physics-Free Model includes these minimal components:
 
 The Physics-Free Model is validated through comprehensive testing:
 
-1. **Empty Pipeline Test**: Verifies the system runs end-to-end with no actual physics operations.
-   - Loads the empty pipeline configuration
+1. **Empty Pipeline Test** (`test_empty_pipeline`): Verifies the system runs end-to-end with no actual physics operations.
+   - Loads the empty pipeline configuration from `tests/test_data/empty_pipeline_config.json`
    - Initializes the core with minimal properties
    - Executes all pipeline phases with placeholder modules
    - Confirms successful completion without errors
 
-2. **Core-Physics Separation Test**: Verifies the core's independence from physics.
-   - Confirms GALAXY struct has no physics-specific fields
-   - Validates property system operation with only core properties
-   - Tests empty pipeline creation and validation
+2. **Core-Physics Separation Tests**: Verifies the core's independence from physics through multiple tests:
+   - `test_property_access_patterns`: Confirms proper property access patterns
+   - `test_property_system_hdf5`: Tests property-based I/O with separation
+   - `test_evolve_integration`: Tests pipeline integration with separation
+   - `test_core_pipeline_registry`: Tests configuration-driven pipeline creation
 
 3. **Integration Testing**: Ensures the Physics-Free Model integrates properly with I/O and memory management.
    - Validates property serialization with minimal properties
