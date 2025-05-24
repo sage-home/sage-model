@@ -787,9 +787,74 @@ if __name__ == '__main__':
 
     print('Plotting SFR density evolution for all galaxies')
 
+    def read_ecsv_data(filename):
+        """
+        Read the ECSV file and extract the SFR density data
+        """
+        data = []
+        with open(filename, 'r') as f:
+            lines = f.readlines()
+        
+        # Find where data starts (after header)
+        data_start = 0
+        for i, line in enumerate(lines):
+            if line.startswith('Redshift sfrd_50'):
+                data_start = i + 1
+                break
+        
+        # Parse data lines
+        for line in lines[data_start:]:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                values = line.split()
+                if len(values) == 4:
+                    try:
+                        redshift = float(values[0])
+                        sfrd_50 = float(values[1])  # median
+                        sfrd_16 = float(values[2])  # 16th percentile
+                        sfrd_84 = float(values[3])  # 84th percentile
+                        data.append([redshift, sfrd_50, sfrd_16, sfrd_84])
+                    except ValueError:
+                        continue
+        
+        return np.array(data)
+
+    print('Plotting SFR density evolution using ECSV data')
+
     plt.figure()  # New figure
     ax = plt.subplot(111)  # 1 plot on the figure
 
+    # Read the ECSV data
+    ecsv_data = read_ecsv_data('CSFRD_inferred_from_SMD.ecsv')
+
+    # Extract columns
+    ecsv_redshift = ecsv_data[:, 0]
+    ecsv_sfrd_median = ecsv_data[:, 1]
+    ecsv_sfrd_16 = ecsv_data[:, 2]
+    ecsv_sfrd_84 = ecsv_data[:, 3]
+
+    # Convert to log10 for plotting
+    log_sfrd_median = np.log10(ecsv_sfrd_median)
+    log_sfrd_16 = np.log10(ecsv_sfrd_16)
+    log_sfrd_84 = np.log10(ecsv_sfrd_84)
+
+    # Calculate error bars (differences from median in log space)
+    yerr_low = log_sfrd_median - log_sfrd_16
+    yerr_high = log_sfrd_84 - log_sfrd_median
+
+    # Plot the ECSV data with error bars
+    plt.errorbar(ecsv_redshift, log_sfrd_median, 
+                yerr=[yerr_low, yerr_high], 
+                color='orange', lw=1.0, alpha=0.2, 
+                marker='o', markersize=2, ls='none', 
+                label='COSMOS Web')
+
+    # Also plot just the median line for clarity
+    #plt.plot(ecsv_redshift, log_sfrd_median, 
+            #color='darkblue', lw=2.0, alpha=0.8,
+            #label='ECSV Data (median)')
+
+    # Original observational data (compilation used in Croton et al. 2006)
     ObsSFRdensity = np.array([
         [0, 0.0158489, 0, 0, 0.0251189, 0.01000000],
         [0.150000, 0.0173780, 0, 0.300000, 0.0181970, 0.0165959],
@@ -827,13 +892,15 @@ if __name__ == '__main__':
     ObsRedshift = ObsSFRdensity[:, 0]
     xErrLo = np.abs(ObsSFRdensity[:, 0]-ObsSFRdensity[:, 2])
     xErrHi = np.abs(ObsSFRdensity[:, 3]-ObsSFRdensity[:, 0])
-    
+
     ObsSFR = np.log10(ObsSFRdensity[:, 1])
     yErrLo = np.abs(np.log10(ObsSFRdensity[:, 1])-np.log10(ObsSFRdensity[:, 4]))
     yErrHi = np.abs(np.log10(ObsSFRdensity[:, 5])-np.log10(ObsSFRdensity[:, 1]))
 
     # plot observational data (compilation used in Croton et al. 2006)
-    plt.errorbar(ObsRedshift, ObsSFR, yerr=[yErrLo, yErrHi], xerr=[xErrLo, xErrHi], color='g', lw=1.0, alpha=0.3, marker='o', ls='none', label='Observations')
+    plt.errorbar(ObsRedshift, ObsSFR, yerr=[yErrLo, yErrHi], xerr=[xErrLo, xErrHi], 
+                color='g', lw=1.0, alpha=0.3, marker='o', ls='none', 
+                label='Observations')
     
     SFR_density = np.zeros((LastSnap+1-FirstSnap))       
     for snap in range(FirstSnap,LastSnap+1):
@@ -841,7 +908,20 @@ if __name__ == '__main__':
 
     z = np.array(redshifts)
     nonzero = np.where(SFR_density > 0.0)[0]
-    plt.plot(z[nonzero], np.log10(SFR_density[nonzero]), lw=3.0)
+    plt.plot(z[nonzero], np.log10(SFR_density[nonzero]), lw=3.0, label='Model galaxies')
+
+    def MD14_sfrd(z):
+        psi = 0.015 * (1+z)**2.7 / (1 + ((1+z)/2.9)**5.6) # Msol yr-1 Mpc-3
+        return psi
+
+    f_chab_to_salp = 1/0.63
+    f_salp_to_chab = 0.63
+    f_krup_to_chab = 0.67
+
+    z_values = np.linspace(0,8,200)
+    md14= np.log10(MD14_sfrd(z_values) * f_chab_to_salp)
+            
+    plt.plot(z_values, md14, color='gray', lw=1.5, alpha=0.7, label='Madau & Dickinson 2014')
 
     plt.ylabel(r'$\log_{10} \mathrm{SFR\ density}\ (M_{\odot}\ \mathrm{yr}^{-1}\ \mathrm{Mpc}^{-3})$')  # Set the y...
     plt.xlabel(r'$\mathrm{redshift}$')  # and the x-axis labels
@@ -850,7 +930,12 @@ if __name__ == '__main__':
     ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
 
-    plt.axis([0.0, 8.0, -3.0, -0.4])            
+    plt.axis([0.0, 8.0, -3.0, -0.4])   
+
+    leg = plt.legend(loc='lower left', numpoints=1, labelspacing=0.1)
+    leg.draw_frame(False)  # Don't want a box frame
+    for t in leg.get_texts():  # Reduce the size of the text
+        t.set_fontsize('small')         
 
     outputFile = OutputDir + 'B.History-SFR-density' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
@@ -928,7 +1013,50 @@ if __name__ == '__main__':
 
     z = np.array(redshifts)
     nonzero = np.where(smd > 0.0)[0]
-    plt.plot(z[nonzero], np.log10(smd[nonzero]), 'k-', lw=3.0)
+    plt.plot(z[nonzero], np.log10(smd[nonzero]), 'k-', lw=3.0, label='Model galaxies')
+
+    # Load and plot SMD data from the .ecsv file
+    def load_smd_data(filename):
+        """Load SMD data from ECSV file"""
+        with open(filename, 'r') as f:
+            lines = f.readlines()
+        
+        # Skip header lines (those starting with #)
+        data_lines = [line.strip() for line in lines if not line.startswith('#') and line.strip()]
+        
+        # Skip the column header line
+        data_lines = data_lines[1:]
+        
+        z_vals = []
+        rho_50_vals = []
+        rho_16_vals = []
+        rho_84_vals = []
+        
+        for line in data_lines:
+            parts = line.split()
+            z_vals.append(float(parts[0]))
+            rho_50_vals.append(float(parts[1]))
+            rho_16_vals.append(float(parts[2]))
+            rho_84_vals.append(float(parts[3]))
+        
+        return np.array(z_vals), np.array(rho_50_vals), np.array(rho_16_vals), np.array(rho_84_vals)
+
+    # Load the SMD data
+    smd_z, smd_rho_50, smd_rho_16, smd_rho_84 = load_smd_data('SMD.ecsv')
+
+    # Convert to log10 and plot with error bars
+    smd_log_rho_50 = np.log10(smd_rho_50)
+    smd_log_rho_16 = np.log10(smd_rho_16)
+    smd_log_rho_84 = np.log10(smd_rho_84)
+
+    # Calculate asymmetric error bars
+    smd_yerr_lower = smd_log_rho_50 - smd_log_rho_16
+    smd_yerr_upper = smd_log_rho_84 - smd_log_rho_50
+
+    # Plot SMD data as line with shaded error region
+    ax.plot(smd_z, smd_log_rho_50, color='red', linewidth=2, label='COSMOS Web')
+    ax.fill_between(smd_z, smd_log_rho_16, smd_log_rho_84, 
+                    color='red', alpha=0.3, interpolate=True)
 
     plt.ylabel(r'$\log_{10}\ \phi\ (M_{\odot}\ \mathrm{Mpc}^{-3})$')  # Set the y...
     plt.xlabel(r'$\mathrm{redshift}$')  # and the x-axis labels
@@ -937,7 +1065,12 @@ if __name__ == '__main__':
     ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
 
-    plt.axis([0.0, 4.2, 6.5, 9.0])   
+    plt.axis([0.0, 12.2, 3.5, 9.0])   
+
+    leg = plt.legend(loc='upper right', numpoints=1, labelspacing=0.1)
+    leg.draw_frame(False)  # Don't want a box frame
+    for t in leg.get_texts():  # Reduce the size of the text
+        t.set_fontsize('medium')
 
     outputFile = OutputDir + 'C.History-stellar-mass-density' + OutputFormat
     plt.savefig(outputFile)  # Save the figure

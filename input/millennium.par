@@ -142,7 +142,7 @@ ReincorporationRedshiftExp       -10.0
 
 CGMBuildOn     1           % Enable preventative feedback (0=off, 1=on)
 CGMBuildVcrit  40.0        % Critical velocity scale (km/s)
-CGMBuildAlpha  2.0         % Power-law slope
+CGMBuildAlpha  1.0         % Power-law slope
 CGMBuildZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
 
 LowMassHighzSuppressionOn       0        % Enable suppression (0=off, 1=on)
@@ -150,8 +150,8 @@ SuppressionMassThreshold        45.0      % In units of 10^10 Msun/h
 SuppressionMassExponent         1.0      % Power-law exponent for mass dependence 
 SuppressionRedshiftExp          0.5      % Redshift scaling factor
 
-VvirThreshold        60.0
-VvirEnhancementPower 0.9
+VvirThreshold                   32.5
+VvirEnhancementPower            0.42
 
 %------------------------------------------
 %----- Other code-related information -----

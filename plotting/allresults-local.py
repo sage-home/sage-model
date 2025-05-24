@@ -1457,6 +1457,7 @@ if __name__ == '__main__':
     vel_tf = 10**(0.27 * mass_tf - 0.55)  # Simple Tully-Fisher relation
     plt.plot(mass_tf, vel_tf, 'r--', lw=2, label='Tully-Fisher Relation')
     plt.legend(loc='upper left')
+    plt.xlim(6, 12)
 
     plt.tight_layout()
 

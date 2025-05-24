@@ -7,7 +7,7 @@ OUTPUT_PATH="/Users/mbradley/Documents/PhD/SAGE-SHARK/sage-model/output/millenni
 PARTICLES=14
 ITERATIONS=30
 TEST="student-t"
-CONSTRAINTS="SMF_z0,BHBM_z0"
+CONSTRAINTS="SMF_z0"
 AGE_ALIST_FILE_MINI_UCHUU='/fred/oz004/msinha/simulations/uchuu_suite/miniuchuu/mergertrees/u400_planck2016_50.a_list'
 AGE_ALIST_FILE_MINI_MILLENNIUM="/Users/mbradley/Documents/PhD/SAGE-SHARK/sage-model/input/millennium/trees/millennium.a_list"
 BOXSIZE=62.5
@@ -35,4 +35,6 @@ python3 ./main.py \
   --vol-frac "$VOL_FRAC" \
   --Omega0 "$OMEGA0" \
   --h0 "$H0" \
-  -S "$SPACEFILE" 
+  -S "$SPACEFILE" \
+  -H \
+  -C 4

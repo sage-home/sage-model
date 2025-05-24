@@ -114,7 +114,7 @@ class Constraint(object):
             hist_h2 = zeros9()
 
             seed(2222)
-            fields = ['StellarMass', 'BlackHoleMass', 'Len', 'SfrBulge', 'BulgeMass', 'Mvir', 'SfrDisk', 'H2_gas']
+            fields = ['StellarMass', 'BlackHoleMass', 'Len', 'SfrBulge', 'BulgeMass', 'Mvir', 'SfrDisk']
             Nage = 14
             snap_num = f'Snap_{snap}'
             sSFRcut = -11.0
