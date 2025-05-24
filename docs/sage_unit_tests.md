@@ -42,9 +42,9 @@ These tests are integrated into the main Makefile and can be run with `make test
 | ✅ **test_gadget4_hdf5** | Tests reading Gadget4 merger trees in HDF5 format | Phase 3.2 (Apr 2025) |
 | ✅ **test_genesis_hdf5** | Tests reading Genesis merger trees in HDF5 format | Phase 3.2 (Apr 2025) |
 | ✅ **test_consistent_trees_hdf5** | Tests reading ConsistentTrees in HDF5 format | Phase 3.2 (Apr 2025) |
-| ❌ **test_io_validation** | Tests validation of I/O operations | Phase 3.2 (Apr 2025) |
 | ✅ **test_memory_map** | Tests memory mapping for I/O operations | Phase 3.3 (Apr 2025) |
 | ✅ **test_io_buffer_manager** | Tests the buffered I/O system | Phase 3.3 (Apr 2025) |
+| ✅ **test_validation_framework** | Tests validation framework | Phase 5.2.F.3 (May 2025) |
 
 ### Module System Tests (`MODULE_TESTS`)
 

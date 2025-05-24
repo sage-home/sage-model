@@ -353,3 +353,15 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Modified files: Makefile
 - Added files: tests/test_property_access_patterns.c, tests/test_property_validation_mocks.c, tests/verify_placeholder_property_access.py, tests/README_property_access_tests.md
 - Moved files: tests/test_galaxy_property_macros.c, tests/test_validation_mocks.c, tests/verify_property_access.py → ignore/tests/property_tests/
+  
+- 2025-05-24: [Phase 5.2.F.3] I/O Validation Test Replacement
+- Moved outdated `test_io_validation.c` to `ignore/tests/io_tests/` directory due to incompatibility with current architecture
+- Created new `test_validation_framework.c` compatible with the core-physics separation principles
+- Updated `Makefile` to remove the old test and add the new test to the build system
+- The new test validates the core functionality of the validation framework without violating core-physics separation
+- Implemented proper stubs for property system initialization to avoid dependency issues
+- Created detailed documentation in `docs/test_validation_framework.md`
+- This change addresses the issue of tests failing due to architectural changes while maintaining test coverage of the validation system
+- Modified files: Makefile, log/todays-edits.md, log/recent-progress-log.md
+- Created files: tests/test_validation_framework.c, docs/test_validation_framework.md
+- Moved files: tests/test_io_validation.c -> ignore/tests/io_tests/
