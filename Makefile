@@ -365,7 +365,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_empty_pipeline test_merger_queue
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_empty_pipeline test_merger_queue test_config_system
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_patterns
@@ -472,6 +472,9 @@ test_empty_pipeline: tests/test_empty_pipeline.c $(SAGELIB)
 
 test_merger_queue: tests/test_merger_queue.o $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_merger_queue tests/test_merger_queue.o -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_config_system: tests/test_config_system.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_config_system tests/test_config_system.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
 core_tests: $(CORE_TESTS)
