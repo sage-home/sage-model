@@ -377,78 +377,42 @@ static void test_deferred_processing(void) {
     TEST_ASSERT(test_ctx.test_galaxies[2].Type == 3, "Satellite 2 should be marked as merged after processing");
 }
 
-// Use simple versions of these functions for testing
-// In the real code, these would be called directly by process_merger_events
+// Implementation of merger functions that will override the library versions
+// These must be non-static and have exact matching signatures for symbol resolution
 
-// Implementation of the merger functions to be called by our test
-// These need to be PROPERLY EXPORTED as non-static functions so they can be
-// properly resolved by the linker when the library calls them
-void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies) 
-{
-    printf("DEBUG: disrupt_satellite_to_ICS called with centralgal=%d, gal=%d\n", centralgal, gal);
+void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies) {
+    printf("\n!!! DEBUG: test stub disrupt_satellite_to_ICS called with centralgal=%d, gal=%d\n", centralgal, gal);
     
-    // Critical: Mark galaxy as disrupted
+    // Update galaxy state to match expected merger behavior
     if (gal >= 0 && galaxies != NULL) {
-        printf("DEBUG: Before disruption: galaxies[%d].Type = %d\n", gal, galaxies[gal].Type);
-        
-        // Simulate transfer of properties
-        if (centralgal >= 0) {
-            // This simulates basic property transfer from satellite to central
-            // Not critical for test but closer to real implementation
-        }
-        
-        // Mark as disrupted - this is what the test checks for
-        galaxies[gal].Type = 3; // Disrupted/merged
-        galaxies[gal].mergeType = 4; // disrupt to ICS
-        
-        printf("DEBUG: After disruption: galaxies[%d].Type = %d\n", gal, galaxies[gal].Type);
+        printf("!!! DEBUG: Before disruption: galaxies[%d].Type = %d\n", gal, galaxies[gal].Type);
+        galaxies[gal].Type = 3;  // Mark as merged/disrupted
+        galaxies[gal].mergeIntoID = centralgal;
+        printf("!!! DEBUG: After disruption: galaxies[%d].Type = %d, mergeIntoID = %d\n", 
+               gal, galaxies[gal].Type, galaxies[gal].mergeIntoID);
     } else {
-        printf("DEBUG: Invalid disruption parameters: gal=%d\n", gal);
+        printf("!!! ERROR: Invalid parameters in disrupt_satellite_to_ICS: gal=%d, galaxies=%p\n", 
+               gal, (void*)galaxies);
     }
 }
 
-// On GNU systems, the --wrap linker option redirects calls to an external symbol
-// to a wrapped version prefixed with __wrap_
-void __wrap_disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies) 
-{
-    // Just call our standard implementation
-    disrupt_satellite_to_ICS(centralgal, gal, galaxies);
-}
-
-void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, const double time,
-                           const double dt, const int halonr, const int step, struct GALAXY *galaxies, const struct params *run_params) 
-{
-    // Mark all unused parameters as intentionally unused
-    (void)time;
-    (void)dt;
-    (void)halonr;
-    (void)step;
-    (void)run_params;
-    
-    printf("DEBUG: deal_with_galaxy_merger called with p=%d, merger_centralgal=%d, centralgal=%d\n", 
+void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, 
+                           const double time, const double dt, const int halonr, const int step,
+                           struct GALAXY *galaxies, const struct params *run_params) {
+    printf("\n!!! DEBUG: test stub deal_with_galaxy_merger called with p=%d, merger_centralgal=%d, centralgal=%d\n", 
            p, merger_centralgal, centralgal);
     
-    // Mark galaxy as merged - minimal implementation for test to pass
+    // Update galaxy state to match expected merger behavior
     if (p >= 0 && galaxies != NULL) {
-        printf("DEBUG: Before merger: galaxies[%d].Type = %d\n", p, galaxies[p].Type);
-        
-        // Critical: Mark as merged - this is what the test checks for
-        galaxies[p].Type = 3; // Merged
-        galaxies[p].mergeType = (merger_centralgal == centralgal) ? 1 : 2; // 1=minor/major merger type
-        
-        printf("DEBUG: After merger: galaxies[%d].Type = %d\n", p, galaxies[p].Type);
+        printf("!!! DEBUG: Before merger: galaxies[%d].Type = %d\n", p, galaxies[p].Type);
+        galaxies[p].Type = 3;  // Mark as merged
+        galaxies[p].mergeIntoID = merger_centralgal;
+        printf("!!! DEBUG: After merger: galaxies[%d].Type = %d, mergeIntoID = %d\n", 
+               p, galaxies[p].Type, galaxies[p].mergeIntoID);
     } else {
-        printf("DEBUG: Invalid merger parameters: p=%d\n", p);
+        printf("!!! ERROR: Invalid parameters in deal_with_galaxy_merger: p=%d, galaxies=%p\n", 
+               p, (void*)galaxies);
     }
-}
-
-// On GNU systems, the --wrap linker option redirects calls to an external symbol
-// to a wrapped version prefixed with __wrap_
-void __wrap_deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, const double time,
-                                   const double dt, const int halonr, const int step, struct GALAXY *galaxies, const struct params *run_params) 
-{
-    // Just call our standard implementation
-    deal_with_galaxy_merger(p, merger_centralgal, centralgal, time, dt, halonr, step, galaxies, run_params);
 }
 
 int main(void) {
