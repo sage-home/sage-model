@@ -253,6 +253,7 @@ static struct config_object *json_parse_object(const char **json) {
         /* Add key-value pair to object */
         if (obj->count >= obj->capacity) {
             /* Expand capacity */
+            int old_capacity = obj->capacity;
             obj->capacity *= 2;
             obj->entries = realloc(obj->entries, obj->capacity * sizeof(*obj->entries));
             if (obj->entries == NULL) {
@@ -262,6 +263,10 @@ static struct config_object *json_parse_object(const char **json) {
                 config_object_free(obj);
                 return NULL;
             }
+            
+            /* Initialize newly allocated entries to zero */
+            memset(&obj->entries[old_capacity], 0, 
+                   (obj->capacity - old_capacity) * sizeof(*obj->entries));
         }
         
         obj->entries[obj->count].key = key;
@@ -378,6 +383,13 @@ static struct config_value json_parse_array(const char **json) {
         /* Check for comma, closing bracket, or end of input */
         if (*p == ',') {
             p++; /* Skip comma */
+            /* After comma, skip whitespace and ensure we don't have immediate closing bracket */
+            json_skip_whitespace(&p);
+            if (*p == ']') {
+                LOG_ERROR("Trailing comma in array at position %zu", (size_t)(p - *json));
+                config_value_free(&array);
+                return (struct config_value){.type = CONFIG_VALUE_NULL};
+            }
         } else if (*p == ']') {
             p++; /* Skip closing bracket */
             break;
@@ -1137,6 +1149,7 @@ static int config_set_value_internal(struct config_object *obj, const char *path
                 /* Add a new key-value pair */
                 if (current_obj->count >= current_obj->capacity) {
                     /* Expand capacity */
+                    int old_capacity = current_obj->capacity;
                     current_obj->capacity *= 2;
                     current_obj->entries = realloc(current_obj->entries, 
                                                  current_obj->capacity * sizeof(*current_obj->entries));
@@ -1146,6 +1159,10 @@ static int config_set_value_internal(struct config_object *obj, const char *path
                         config_value_free(&value);
                         return -1;
                     }
+                    
+                    /* Initialize newly allocated entries to zero */
+                    memset(&current_obj->entries[old_capacity], 0, 
+                           (current_obj->capacity - old_capacity) * sizeof(*current_obj->entries));
                 }
                 
                 /* Add the new entry */
@@ -1213,6 +1230,7 @@ static int config_set_value_internal(struct config_object *obj, const char *path
                 /* Create a new object */
                 if (current_obj->count >= current_obj->capacity) {
                     /* Expand capacity */
+                    int old_capacity = current_obj->capacity;
                     current_obj->capacity *= 2;
                     current_obj->entries = realloc(current_obj->entries, 
                                                  current_obj->capacity * sizeof(*current_obj->entries));
@@ -1222,6 +1240,10 @@ static int config_set_value_internal(struct config_object *obj, const char *path
                         config_value_free(&value);
                         return -1;
                     }
+                    
+                    /* Initialize newly allocated entries to zero */
+                    memset(&current_obj->entries[old_capacity], 0, 
+                           (current_obj->capacity - old_capacity) * sizeof(*current_obj->entries));
                 }
                 
                 /* Initialize the new entry */
@@ -1257,8 +1279,10 @@ static int config_set_value_internal(struct config_object *obj, const char *path
                     return -1;
                 }
                 
-                current_obj = current_obj->entries[current_obj->count].value.u.object;
-                current_obj->count++;
+                /* Move to the newly created object */
+                int parent_index = current_obj->count;
+                current_obj->count++;  /* Increment parent object's count first */
+                current_obj = current_obj->entries[parent_index].value.u.object;  /* Then point to child object */
             }
         }
         
