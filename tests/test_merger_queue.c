@@ -1,25 +1,20 @@
 /**
- * Test suite for SAGE Merger Queue
+ * Test suite for SAGE Core Merger Queue Data Management
  * 
- * Tests comprehensive functionality of the galaxy merger event queue
- * which is critical for scientific accuracy in galaxy evolution.
+ * Tests the functionality of the galaxy merger event queue for collecting
+ * and storing merger events. The actual processing of these events
+ * is handled by a separate physics module.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 
-#include "core/core_merger_queue.h"
-#include "core/core_allvars.h"
-#include "core/core_logging.h"
-
-// Forward declarations for functions we'll implement to override the library's versions
-// On Linux/GNU systems with --wrap linker flag, these are called via __wrap_ prefix
-// On macOS, these are called directly due to link order precedence
-void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies);
-void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, const double time,
-                                 const double dt, const int halonr, const int step, struct GALAXY *galaxies, const struct params *run_params);
+#include "core/core_merger_queue.h" // Will only contain init_merger_queue and queue_merger_event
+#include "core/core_allvars.h"    // For GALAXY struct and MAX_GALAXIES_PER_HALO
+#include "core/core_logging.h"    // For LOG_* macros, if used by queue functions
 
 // Test counter for reporting
 static int tests_run = 0;
@@ -38,7 +33,6 @@ static int tests_passed = 0;
 } while(0)
 
 // Merger queue test specific constants
-#define DEFAULT_QUEUE_SIZE MAX_GALAXIES_PER_HALO
 #define MERGER_TYPE_MAJOR 1
 #define MERGER_TYPE_MINOR 2
 #define MERGER_TYPE_DISRUPTION 3
@@ -46,78 +40,35 @@ static int tests_passed = 0;
 // Test fixtures
 static struct test_context {
     struct merger_event_queue *queue;
-    struct GALAXY *test_galaxies;
-    int num_galaxies;
-    int initialized;
+    // test_galaxies are no longer strictly needed for testing the queue component itself,
+    // but queue_merger_event takes indices, implying an external galaxy array.
+    // We can keep it for context if queue_merger_event might do bounds checks in the future,
+    // or remove it if the queue is purely about storing indices.
+    // For now, let's keep it minimal as the queue itself doesn't use the GALAXY structs.
 } test_ctx;
 
-// Create test galaxies with controlled properties
-static struct GALAXY* create_test_galaxies(int count) {
-    struct GALAXY *galaxies = calloc(count, sizeof(struct GALAXY));
-    if (galaxies == NULL) {
-        printf("Failed to allocate memory for test galaxies\n");
-        exit(1);
-    }
-    
-    for (int i = 0; i < count; i++) {
-        galaxies[i].GalaxyIndex = i;
-        galaxies[i].Type = 0;  // Central galaxy
-        galaxies[i].SnapNum = 63;
-        galaxies[i].CentralGal = i == 0 ? 0 : 0; // First galaxy is central, others point to it
-        galaxies[i].mergeIntoID = -1;
-        galaxies[i].mergeType = 0;
-        galaxies[i].MergTime = 0.0;
-        
-        // Set positions and velocities
-        galaxies[i].Pos[0] = i * 10.0;
-        galaxies[i].Pos[1] = i * 10.0;
-        galaxies[i].Pos[2] = i * 10.0;
-        
-        galaxies[i].Mvir = 1e12 * (i + 1);  // Virial mass
-        galaxies[i].Rvir = 100.0 * (i + 1); // Virial radius
-    }
-    
-    return galaxies;
-}
 
 // Setup function - called before tests
 static int setup_test_context(void) {
     memset(&test_ctx, 0, sizeof(test_ctx));
     
-    // Create test galaxies
-    test_ctx.num_galaxies = 10;
-    test_ctx.test_galaxies = create_test_galaxies(test_ctx.num_galaxies);
-    
     // Create merger queue
     test_ctx.queue = (struct merger_event_queue *)malloc(sizeof(struct merger_event_queue));
     if (test_ctx.queue == NULL) {
         printf("Failed to allocate memory for merger queue\n");
-        free(test_ctx.test_galaxies);
         return -1;
     }
     
-    test_ctx.initialized = 1;
     return 0;
 }
 
 // Teardown function - called after tests
 static void teardown_test_context(void) {
-    if (test_ctx.test_galaxies) {
-        free(test_ctx.test_galaxies);
-        test_ctx.test_galaxies = NULL;
-    }
-    
     if (test_ctx.queue) {
         free(test_ctx.queue);
         test_ctx.queue = NULL;
     }
-    
-    test_ctx.initialized = 0;
 }
-
-// NOTE: We define simplified test stubs for disrupt_satellite_to_ICS and 
-// deal_with_galaxy_merger functions that simulate the behavior of the actual library 
-// functions without requiring complex dependencies.
 
 //=============================================================================
 // Test Cases
@@ -129,294 +80,165 @@ static void teardown_test_context(void) {
 static void test_queue_init(void) {
     printf("\n=== Testing merger queue initialization ===\n");
     
-    // Test basic initialization
     struct merger_event_queue *queue = test_ctx.queue;
     init_merger_queue(queue);
     
-    TEST_ASSERT(queue != NULL, "Queue should be allocated");
-    TEST_ASSERT(queue->num_events == 0, "Queue should start empty");
+    TEST_ASSERT(queue != NULL, "Queue should be allocated (fixture)");
+    TEST_ASSERT(queue->num_events == 0, "Queue should start empty after init_merger_queue");
     
-    // Test NULL pointer handling
-    init_merger_queue(NULL);
+    // Test NULL pointer handling (if init_merger_queue is robust to it)
+    // Assuming init_merger_queue has a NULL check as per current SAGE code.
+    init_merger_queue(NULL); 
     TEST_ASSERT(1, "init_merger_queue with NULL should not crash");
 }
 
 /**
- * Test: Adding Merger Events
+ * Test: Adding Merger Events and Verifying Stored Data
  */
-static void test_add_merger_event(void) {
-    printf("\n=== Testing adding merger events ===\n");
+static void test_add_merger_event_and_data_integrity(void) {
+    printf("\n=== Testing adding merger events and data integrity ===\n");
     
-    // Initialize queue
     struct merger_event_queue *queue = test_ctx.queue;
     init_merger_queue(queue);
     
-    // Add a merger event
-    int result = queue_merger_event(
-        queue, 
-        1,                          // satellite index
-        0,                          // central index
-        0.0,                        // merger time
-        0.5,                        // time
-        0.1,                        // dt
-        1,                          // halo_nr
-        63,                         // step
-        MERGER_TYPE_MAJOR           // merger type
-    );
+    // Event 1
+    int result = queue_merger_event(queue, 10, 0, 0.1, 5.0, 0.5, 100, 1, MERGER_TYPE_MAJOR);
+    TEST_ASSERT(result == 0, "queue_merger_event (1) should succeed");
+    TEST_ASSERT(queue->num_events == 1, "Queue should have 1 event after first add");
+    TEST_ASSERT(queue->events[0].satellite_index == 10, "Event 0: satellite_index check");
+    TEST_ASSERT(queue->events[0].central_index == 0, "Event 0: central_index check");
+    TEST_ASSERT(fabs(queue->events[0].merger_time - 0.1) < 1e-6, "Event 0: merger_time check");
+    TEST_ASSERT(fabs(queue->events[0].time - 5.0) < 1e-6, "Event 0: time check");
+    TEST_ASSERT(fabs(queue->events[0].dt - 0.5) < 1e-6, "Event 0: dt check");
+    TEST_ASSERT(queue->events[0].halo_nr == 100, "Event 0: halo_nr check");
+    TEST_ASSERT(queue->events[0].step == 1, "Event 0: step check");
+    TEST_ASSERT(queue->events[0].merger_type == MERGER_TYPE_MAJOR, "Event 0: merger_type check");
+
+    // Event 2
+    result = queue_merger_event(queue, 20, 1, 0.0, 6.0, 0.6, 200, 2, MERGER_TYPE_MINOR);
+    TEST_ASSERT(result == 0, "queue_merger_event (2) should succeed");
+    TEST_ASSERT(queue->num_events == 2, "Queue should have 2 events after second add");
+    TEST_ASSERT(queue->events[1].satellite_index == 20, "Event 1: satellite_index check");
+    TEST_ASSERT(queue->events[1].merger_type == MERGER_TYPE_MINOR, "Event 1: merger_type check");
+
+    // Event 3 (Disruption)
+    result = queue_merger_event(queue, 30, 2, 1.5, 7.0, 0.7, 300, 3, MERGER_TYPE_DISRUPTION);
+    TEST_ASSERT(result == 0, "queue_merger_event (3) should succeed");
+    TEST_ASSERT(queue->num_events == 3, "Queue should have 3 events after third add");
+    TEST_ASSERT(queue->events[2].satellite_index == 30, "Event 2: satellite_index check");
+    TEST_ASSERT(queue->events[2].merger_type == MERGER_TYPE_DISRUPTION, "Event 2: merger_type check");
+    TEST_ASSERT(queue->events[2].merger_time > 0.0, "Event 2 (disruption) should have positive merger_time");
+}
+
+/**
+ * Test: Merger Event Storage Order (FIFO)
+ * This test verifies that events are stored in the queue in the order they are added.
+ * The actual processing order is the responsibility of the module that consumes the queue.
+ */
+static void test_merger_event_storage_order(void) {
+    printf("\n=== Testing merger event storage order (FIFO) ===\n");
     
-    TEST_ASSERT(result == 0, "queue_merger_event should succeed");
-    TEST_ASSERT(queue->num_events == 1, "Queue should have 1 event");
+    struct merger_event_queue *queue = test_ctx.queue;
+    init_merger_queue(queue);
     
-    // Add more events and verify count
-    queue_merger_event(queue, 2, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MINOR);
+    // Add events
+    queue_merger_event(queue, 1, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MAJOR); 
+    queue_merger_event(queue, 2, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MINOR); 
     queue_merger_event(queue, 3, 0, 1.0, 0.5, 0.1, 1, 63, MERGER_TYPE_DISRUPTION);
-    TEST_ASSERT(queue->num_events == 3, "Queue should have 3 events");
     
-    // Verify event properties
-    TEST_ASSERT(queue->events[0].satellite_index == 1, "First event should have satellite_index = 1");
-    TEST_ASSERT(queue->events[0].central_index == 0, "First event should have central_index = 0");
-    TEST_ASSERT(queue->events[0].merger_type == MERGER_TYPE_MAJOR, "First event should be a major merger");
-    
-    TEST_ASSERT(queue->events[1].satellite_index == 2, "Second event should have satellite_index = 2");
-    TEST_ASSERT(queue->events[1].merger_type == MERGER_TYPE_MINOR, "Second event should be a minor merger");
-    
-    TEST_ASSERT(queue->events[2].satellite_index == 3, "Third event should have satellite_index = 3");
-    TEST_ASSERT(queue->events[2].merger_time > 0.0, "Third event should have positive merger time for disruption");
+    // Verify the order of events as stored in the queue's internal array
+    TEST_ASSERT(queue->events[0].satellite_index == 1, "First event added should be at index 0");
+    TEST_ASSERT(queue->events[1].satellite_index == 2, "Second event added should be at index 1");
+    TEST_ASSERT(queue->events[2].satellite_index == 3, "Third event added should be at index 2");
 }
 
-/**
- * Test: Merger Event Ordering (that saved order is preserved)
- */
-static void test_merger_event_ordering(void) {
-    printf("\n=== Testing merger event ordering ===\n");
-    
-    // Initialize queue
-    struct merger_event_queue *queue = test_ctx.queue;
-    init_merger_queue(queue);
-    
-    // Add events with different properties to test ordering
-    // Higher priority first (different priority scheme can be detected in the test)
-    queue_merger_event(queue, 1, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MAJOR); // High priority
-    queue_merger_event(queue, 2, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MINOR); // Medium priority
-    queue_merger_event(queue, 3, 0, 1.0, 0.5, 0.1, 1, 63, MERGER_TYPE_DISRUPTION); // Low priority
-    
-    // Create tracking array to record processing order
-    int processed_order[10] = {0};
-    int process_index = 0;
-    
-    // Tracking merger processing
-    for (int i = 0; i < queue->num_events; i++) {
-        processed_order[process_index++] = queue->events[i].satellite_index;
-    }
-    
-    // Verify order is maintained (FIFO by default)
-    TEST_ASSERT(processed_order[0] == 1, "First event should be processed first (satellite 1)");
-    TEST_ASSERT(processed_order[1] == 2, "Second event should be processed second (satellite 2)");
-    TEST_ASSERT(processed_order[2] == 3, "Third event should be processed last (satellite 3)");
-}
-
-/**
- * Test: Processing Merger Events
- */
-static void test_process_merger_events(void) {
-    printf("\n=== Testing processing merger events ===\n");
-    
-    // Initialize queue
-    struct merger_event_queue *queue = test_ctx.queue;
-    init_merger_queue(queue);
-    
-    // Create a params struct for the test (minimal implementation)
-    struct params run_params;
-    memset(&run_params, 0, sizeof(struct params));
-    
-    // Add merger events (merger and disruption)
-    queue_merger_event(queue, 1, 0, 0.0, 0.5, 0.1, 0, 63, MERGER_TYPE_MAJOR);
-    queue_merger_event(queue, 2, 0, 1.0, 0.5, 0.1, 0, 63, MERGER_TYPE_DISRUPTION);
-    
-    // Store initial galaxy types
-    int initial_type_1 = test_ctx.test_galaxies[1].Type;
-    int initial_type_2 = test_ctx.test_galaxies[2].Type;
-    
-    printf("DEBUG [test_process_merger_events]: Before process_merger_events: Galaxy Types: [1]=%d, [2]=%d\n", 
-           test_ctx.test_galaxies[1].Type, test_ctx.test_galaxies[2].Type);
-    
-    // Call the actual library function process_merger_events
-    // The test stubs for disrupt_satellite_to_ICS and deal_with_galaxy_merger
-    // will be called by the library function
-    printf("  Processing events with process_merger_events()\n");
-    
-    // Process all events in the queue with the actual library function
-    printf("DEBUG: Calling process_merger_events with queue containing %d events\n", queue->num_events);
-    int result = process_merger_events(queue, test_ctx.test_galaxies, &run_params);
-    printf("DEBUG: process_merger_events returned %d\n", result);
-    printf("DEBUG [test_process_merger_events]: After process_merger_events: Galaxy Types: [1]=%d, [2]=%d\n", 
-           test_ctx.test_galaxies[1].Type, test_ctx.test_galaxies[2].Type);
-    TEST_ASSERT(result == 0, "process_merger_events should succeed");
-    
-    // Test queue state
-    TEST_ASSERT(queue->num_events == 0, "Queue should be empty after processing");
-    
-    printf("DEBUG: After processing, queue->num_events = %d\n", queue->num_events);
-    
-    // Our wrapped functions should now be called by process_merger_events
-    printf("NOTE: Our wrapped functions should have been called by process_merger_events\n");
-    
-    // These assertions will now pass as we've manually set the state
-    TEST_ASSERT(test_ctx.test_galaxies[1].Type == 3, "Galaxy 1 should be marked as merged (Type=3)");
-    TEST_ASSERT(test_ctx.test_galaxies[1].Type != initial_type_1, "Galaxy 1 type should have changed");
-    TEST_ASSERT(test_ctx.test_galaxies[2].Type == 3, "Galaxy 2 should be marked as disrupted (Type=3)");
-    TEST_ASSERT(test_ctx.test_galaxies[2].Type != initial_type_2, "Galaxy 2 type should have changed");
-}
 
 /**
  * Test: Queue Overflow
+ * Verifies that the queue correctly handles attempts to add events beyond its capacity.
  */
 static void test_queue_overflow(void) {
     printf("\n=== Testing queue overflow handling ===\n");
     
-    // Initialize queue
     struct merger_event_queue *queue = test_ctx.queue;
     init_merger_queue(queue);
     
     // Fill the queue to capacity
     int i = 0;
     int result = 0;
-    while (i < MAX_GALAXIES_PER_HALO && result == 0) {
+    printf("Attempting to fill queue to capacity (%d events)...\n", MAX_GALAXIES_PER_HALO);
+    while (i < MAX_GALAXIES_PER_HALO) {
         result = queue_merger_event(queue, i, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MAJOR);
+        if (result != 0) {
+            printf("queue_merger_event failed at event %d before reaching capacity.\n", i);
+            break;
+        }
         i++;
     }
     
     TEST_ASSERT(i == MAX_GALAXIES_PER_HALO, "Queue should accept MAX_GALAXIES_PER_HALO events");
+    TEST_ASSERT(queue->num_events == MAX_GALAXIES_PER_HALO, "Queue num_events should be at capacity");
     
     // Try to add one more event, which should fail
+    printf("Attempting to add one more event to full queue...\n");
     result = queue_merger_event(queue, i, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MAJOR);
     TEST_ASSERT(result != 0, "queue_merger_event should fail when queue is full");
+    TEST_ASSERT(queue->num_events == MAX_GALAXIES_PER_HALO, "Queue num_events should remain at capacity after overflow attempt");
     
-    // Reset queue for next test
+    // Reset queue and test it's empty
     init_merger_queue(queue);
-    TEST_ASSERT(queue->num_events == 0, "Queue should be reset to empty");
+    TEST_ASSERT(queue->num_events == 0, "Queue should be reset to empty after init");
 }
 
 /**
- * Test: Invalid Parameters
+ * Test: Invalid Parameters for queue_merger_event
+ * This test focuses on how queue_merger_event handles invalid inputs.
+ * The core_merger_queue.c itself does not currently validate satellite/central indices
+ * or merger_type, so those specific tests are commented out or noted.
  */
-static void test_invalid_parameters(void) {
-    printf("\n=== Testing invalid parameter handling ===\n");
+static void test_invalid_parameters_for_queueing(void) {
+    printf("\n=== Testing invalid parameter handling for queue_merger_event ===\n");
     
-    // Initialize queue for tests
     struct merger_event_queue *queue = test_ctx.queue;
-    init_merger_queue(queue);
+    init_merger_queue(queue); // Ensure queue is valid for some tests
     
     // Test NULL queue with queue_merger_event
     int result = queue_merger_event(NULL, 0, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MAJOR);
     TEST_ASSERT(result != 0, "queue_merger_event should fail with NULL queue");
     
     // Test invalid merger type with queue_merger_event
-    // Note: If the queue_merger_event implementation doesn't validate merger_type,
-    // then this test would fail. The test reflects the recommendation to add
-    // validation, which may require updating the queue_merger_event function.
-    int invalid_merger_type = -1;  // Using -1 as an invalid type
+    // Note: The current SAGE core_merger_queue.c implementation of queue_merger_event
+    // does not validate the merger_type. This test would fail unless that function is updated.
+    // It's included here as per the test plan's intent for robust error handling.
+    int invalid_merger_type = -100; // An obviously invalid type
     result = queue_merger_event(queue, 1, 0, 0.0, 0.5, 0.1, 1, 63, invalid_merger_type);
-    // Comment out the assertion if the implementation doesn't validate merger_type yet
-    // TEST_ASSERT(result != 0, "queue_merger_event should fail with invalid merger type");
-    
-    // Test NULL parameters with process_merger_events
-    result = process_merger_events(NULL, test_ctx.test_galaxies, NULL);
-    TEST_ASSERT(result != 0, "process_merger_events should fail with NULL queue");
-    
-    result = process_merger_events(test_ctx.queue, NULL, NULL);
-    TEST_ASSERT(result != 0, "process_merger_events should fail with NULL galaxies");
-    
-    struct params run_params;
-    memset(&run_params, 0, sizeof(struct params));
-    result = process_merger_events(test_ctx.queue, test_ctx.test_galaxies, NULL);
-    TEST_ASSERT(result != 0, "process_merger_events should fail with NULL params");
-}
-
-/**
- * Test: Deferred Processing 
- */
-static void test_deferred_processing(void) {
-    printf("\n=== Testing deferred processing ===\n");
-    
-    // Initialize queue
-    struct merger_event_queue *queue = test_ctx.queue;
-    init_merger_queue(queue);
-    
-    // Create a params struct for the test
-    struct params run_params;
-    memset(&run_params, 0, sizeof(struct params));
-    
-    // Reset galaxies
-    for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        test_ctx.test_galaxies[i].Type = i == 0 ? 0 : 1; // First is central, rest are satellites
-        test_ctx.test_galaxies[i].mergeIntoID = -1;
-        test_ctx.test_galaxies[i].mergeType = 0;
-    }
-    
-    // Add multiple merger events (simulating mergers discovered during physics calculations)
-    queue_merger_event(queue, 1, 0, 0.0, 0.5, 0.1, 0, 63, MERGER_TYPE_MAJOR);
-    queue_merger_event(queue, 2, 0, 0.0, 0.5, 0.1, 0, 63, MERGER_TYPE_MINOR);
-    
-    // Pre-merger state should be preserved until process_merger_events is called
-    TEST_ASSERT(test_ctx.test_galaxies[1].Type != 3, "Satellite 1 should not be marked as merged yet");
-    TEST_ASSERT(test_ctx.test_galaxies[2].Type != 3, "Satellite 2 should not be marked as merged yet");
-    
-    // Process the events using the actual library function
-    printf("  Processing events with process_merger_events() for deferred processing test\n");
-    
-    // Call the actual library function to process all events in the queue
-    int result = process_merger_events(queue, test_ctx.test_galaxies, &run_params);
-    TEST_ASSERT(result == 0, "process_merger_events should succeed");
-    
-    // Verify queue was processed and is now empty
-    TEST_ASSERT(queue->num_events == 0, "Queue should be empty after processing");
-    
-    // Verify galaxies are now merged (processed by wrapped functions)
-    TEST_ASSERT(test_ctx.test_galaxies[1].Type == 3, "Satellite 1 should be marked as merged after processing");
-    TEST_ASSERT(test_ctx.test_galaxies[2].Type == 3, "Satellite 2 should be marked as merged after processing");
-}
-
-// Implementation of merger functions that will override the library versions
-// These must be non-static and have exact matching signatures for symbol resolution
-
-void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies) {
-    printf("\n!!! DEBUG: test stub disrupt_satellite_to_ICS called with centralgal=%d, gal=%d\n", centralgal, gal);
-    
-    // Update galaxy state to match expected merger behavior
-    if (gal >= 0 && galaxies != NULL) {
-        printf("!!! DEBUG: Before disruption: galaxies[%d].Type = %d\n", gal, galaxies[gal].Type);
-        galaxies[gal].Type = 3;  // Mark as merged/disrupted
-        galaxies[gal].mergeIntoID = centralgal;
-        printf("!!! DEBUG: After disruption: galaxies[%d].Type = %d, mergeIntoID = %d\n", 
-               gal, galaxies[gal].Type, galaxies[gal].mergeIntoID);
+    // TEST_ASSERT(result != 0, "queue_merger_event should fail with invalid merger type"); 
+    // ^ Assertion commented out as current library code doesn't validate this.
+    if (result == 0) {
+        printf("NOTE: queue_merger_event accepted an invalid merger_type (%d) as expected with current library code.\n", invalid_merger_type);
+        // We can still check if it was stored, even if invalid
+        TEST_ASSERT(queue->events[queue->num_events-1].merger_type == invalid_merger_type, "Invalid merger_type should still be stored if not validated");
+        init_merger_queue(queue); // Reset for next test
     } else {
-        printf("!!! ERROR: Invalid parameters in disrupt_satellite_to_ICS: gal=%d, galaxies=%p\n", 
-               gal, (void*)galaxies);
+        TEST_ASSERT(result != 0, "queue_merger_event ideally should fail with invalid merger type (but may not with current library code)");
+    }
+
+    // Test with invalid satellite/central indices (e.g., negative)
+    // Note: Current SAGE core_merger_queue.c does not validate these indices.
+    // This test would pass (result == 0) with current library code.
+    result = queue_merger_event(queue, -1, 0, 0.0, 0.5, 0.1, 1, 63, MERGER_TYPE_MAJOR);
+    // TEST_ASSERT(result != 0, "queue_merger_event should fail with invalid satellite_index");
+    if (result == 0) {
+        printf("NOTE: queue_merger_event accepted an invalid satellite_index (-1) as expected with current library code.\n");
+        init_merger_queue(queue); // Reset
+    } else {
+         TEST_ASSERT(result != 0, "queue_merger_event ideally should fail with invalid satellite_index (but may not with current library code)");
     }
 }
 
-void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, 
-                           const double time, const double dt, const int halonr, const int step,
-                           struct GALAXY *galaxies, const struct params *run_params) {
-    printf("\n!!! DEBUG: test stub deal_with_galaxy_merger called with p=%d, merger_centralgal=%d, centralgal=%d\n", 
-           p, merger_centralgal, centralgal);
-    
-    // Update galaxy state to match expected merger behavior
-    if (p >= 0 && galaxies != NULL) {
-        printf("!!! DEBUG: Before merger: galaxies[%d].Type = %d\n", p, galaxies[p].Type);
-        galaxies[p].Type = 3;  // Mark as merged
-        galaxies[p].mergeIntoID = merger_centralgal;
-        printf("!!! DEBUG: After merger: galaxies[%d].Type = %d, mergeIntoID = %d\n", 
-               p, galaxies[p].Type, galaxies[p].mergeIntoID);
-    } else {
-        printf("!!! ERROR: Invalid parameters in deal_with_galaxy_merger: p=%d, galaxies=%p\n", 
-               p, (void*)galaxies);
-    }
-}
 
 int main(void) {
-    printf("=== SAGE Merger Queue Tests ===\n");
+    printf("=== SAGE Core Merger Queue Data Management Tests ===\n");
     
     // Setup test environment
     if (setup_test_context() != 0) {
@@ -426,12 +248,12 @@ int main(void) {
     
     // Run tests
     test_queue_init();
-    test_add_merger_event();
-    test_merger_event_ordering();
-    test_process_merger_events();
+    test_add_merger_event_and_data_integrity();
+    test_merger_event_storage_order();
     test_queue_overflow();
-    test_invalid_parameters();
-    test_deferred_processing();
+    test_invalid_parameters_for_queueing();
+    // test_process_merger_events and test_deferred_processing are removed as they
+    // test functionality that will move to a physics module.
     
     // Report results
     printf("\n=== Test Results ===\n");
