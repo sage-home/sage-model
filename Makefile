@@ -470,8 +470,17 @@ test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 test_empty_pipeline: tests/test_empty_pipeline.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_empty_pipeline tests/test_empty_pipeline.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_merger_queue: tests/test_merger_queue.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_merger_queue tests/test_merger_queue.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_merger_queue: tests/test_merger_queue.o $(SAGELIB)
+ifeq ($(UNAME), Darwin)
+	# macOS approach - use link order to override symbols
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_merger_queue tests/test_merger_queue.o -L. -l$(LIBNAME) $(LIBFLAGS)
+else
+	# Linux/GNU approach - use wrap option
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_merger_queue tests/test_merger_queue.o -L. -l$(LIBNAME) $(LIBFLAGS) -Wl,--wrap=disrupt_satellite_to_ICS -Wl,--wrap=deal_with_galaxy_merger
+endif
+
+tests/test_merger_queue.o: tests/test_merger_queue.c
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c tests/test_merger_queue.c -o tests/test_merger_queue.o
 
 # Individual test category targets
 core_tests: $(CORE_TESTS)

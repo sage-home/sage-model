@@ -14,11 +14,12 @@
 #include "core/core_allvars.h"
 #include "core/core_logging.h"
 
-// Forward declarations for functions we'll implement directly in the test
-// (these are normally provided by the SAGE library)
+// Forward declarations for functions we'll implement to override the library's versions
+// On Linux/GNU systems with --wrap linker flag, these are called via __wrap_ prefix
+// On macOS, these are called directly due to link order precedence
 void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies);
 void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, const double time,
-                           const double dt, const int halonr, const int step, struct GALAXY *galaxies, const struct params *run_params);
+                                 const double dt, const int halonr, const int step, struct GALAXY *galaxies, const struct params *run_params);
 
 // Test counter for reporting
 static int tests_run = 0;
@@ -236,43 +237,31 @@ static void test_process_merger_events(void) {
     int initial_type_1 = test_ctx.test_galaxies[1].Type;
     int initial_type_2 = test_ctx.test_galaxies[2].Type;
     
-    // Need to manually simulate the process_merger_events function
-    // We can't directly call the library's process_merger_events because it would
-    // try to call the library's disrupt_satellite_to_ICS and deal_with_galaxy_merger
-    // functions, not our test stubs
-    printf("  Processing %d events manually (simulating process_merger_events)\n", queue->num_events);
+    printf("DEBUG [test_process_merger_events]: Before process_merger_events: Galaxy Types: [1]=%d, [2]=%d\n", 
+           test_ctx.test_galaxies[1].Type, test_ctx.test_galaxies[2].Type);
     
-    // Process all events in the queue
-    for (int i = 0; i < queue->num_events; i++) {
-        int p = queue->events[i].satellite_index;
-        int merger_centralgal = queue->events[i].central_index;
-        
-        if (queue->events[i].merger_time > 0.0) {
-            // Disruption
-            disrupt_satellite_to_ICS(merger_centralgal, p, test_ctx.test_galaxies);
-        } else {
-            // Merger
-            deal_with_galaxy_merger(
-                p, 
-                merger_centralgal, 
-                merger_centralgal,
-                queue->events[i].time, 
-                queue->events[i].dt, 
-                queue->events[i].halo_nr, 
-                queue->events[i].step, 
-                test_ctx.test_galaxies, 
-                &run_params
-            );
-        }
-    }
+    // Call the actual library function process_merger_events
+    // The test stubs for disrupt_satellite_to_ICS and deal_with_galaxy_merger
+    // will be called by the library function
+    printf("  Processing events with process_merger_events()\n");
     
-    // Reset the queue (same as process_merger_events does)
-    queue->num_events = 0;
+    // Process all events in the queue with the actual library function
+    printf("DEBUG: Calling process_merger_events with queue containing %d events\n", queue->num_events);
+    int result = process_merger_events(queue, test_ctx.test_galaxies, &run_params);
+    printf("DEBUG: process_merger_events returned %d\n", result);
+    printf("DEBUG [test_process_merger_events]: After process_merger_events: Galaxy Types: [1]=%d, [2]=%d\n", 
+           test_ctx.test_galaxies[1].Type, test_ctx.test_galaxies[2].Type);
+    TEST_ASSERT(result == 0, "process_merger_events should succeed");
     
     // Test queue state
     TEST_ASSERT(queue->num_events == 0, "Queue should be empty after processing");
     
-    // Verify galaxies were processed as expected
+    printf("DEBUG: After processing, queue->num_events = %d\n", queue->num_events);
+    
+    // Our wrapped functions should now be called by process_merger_events
+    printf("NOTE: Our wrapped functions should have been called by process_merger_events\n");
+    
+    // These assertions will now pass as we've manually set the state
     TEST_ASSERT(test_ctx.test_galaxies[1].Type == 3, "Galaxy 1 should be marked as merged (Type=3)");
     TEST_ASSERT(test_ctx.test_galaxies[1].Type != initial_type_1, "Galaxy 1 type should have changed");
     TEST_ASSERT(test_ctx.test_galaxies[2].Type == 3, "Galaxy 2 should be marked as disrupted (Type=3)");
@@ -373,40 +362,17 @@ static void test_deferred_processing(void) {
     TEST_ASSERT(test_ctx.test_galaxies[1].Type != 3, "Satellite 1 should not be marked as merged yet");
     TEST_ASSERT(test_ctx.test_galaxies[2].Type != 3, "Satellite 2 should not be marked as merged yet");
     
-    // Process the events manually (simulating process_merger_events)
-    printf("  Processing %d events manually for deferred processing test\n", queue->num_events);
+    // Process the events using the actual library function
+    printf("  Processing events with process_merger_events() for deferred processing test\n");
     
-    // Process all events in the queue
-    for (int i = 0; i < queue->num_events; i++) {
-        int p = queue->events[i].satellite_index;
-        int merger_centralgal = queue->events[i].central_index;
-        
-        if (queue->events[i].merger_time > 0.0) {
-            // Disruption
-            disrupt_satellite_to_ICS(merger_centralgal, p, test_ctx.test_galaxies);
-        } else {
-            // Merger
-            deal_with_galaxy_merger(
-                p, 
-                merger_centralgal, 
-                merger_centralgal,
-                queue->events[i].time, 
-                queue->events[i].dt, 
-                queue->events[i].halo_nr, 
-                queue->events[i].step, 
-                test_ctx.test_galaxies, 
-                &run_params
-            );
-        }
-    }
-    
-    // Reset the queue (same as process_merger_events does)
-    queue->num_events = 0;
+    // Call the actual library function to process all events in the queue
+    int result = process_merger_events(queue, test_ctx.test_galaxies, &run_params);
+    TEST_ASSERT(result == 0, "process_merger_events should succeed");
     
     // Verify queue was processed and is now empty
     TEST_ASSERT(queue->num_events == 0, "Queue should be empty after processing");
     
-    // Verify galaxies are now merged
+    // Verify galaxies are now merged (processed by wrapped functions)
     TEST_ASSERT(test_ctx.test_galaxies[1].Type == 3, "Satellite 1 should be marked as merged after processing");
     TEST_ASSERT(test_ctx.test_galaxies[2].Type == 3, "Satellite 2 should be marked as merged after processing");
 }
@@ -414,17 +380,39 @@ static void test_deferred_processing(void) {
 // Use simple versions of these functions for testing
 // In the real code, these would be called directly by process_merger_events
 
-// Implementation of the merger functions to be called by our test 
-// (process_merger_events will call the real implementations from the library)
+// Implementation of the merger functions to be called by our test
+// These need to be PROPERLY EXPORTED as non-static functions so they can be
+// properly resolved by the linker when the library calls them
 void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies) 
 {
-    (void)centralgal;  // Mark as intentionally unused
+    printf("DEBUG: disrupt_satellite_to_ICS called with centralgal=%d, gal=%d\n", centralgal, gal);
     
-    // Mark galaxy as disrupted
+    // Critical: Mark galaxy as disrupted
     if (gal >= 0 && galaxies != NULL) {
+        printf("DEBUG: Before disruption: galaxies[%d].Type = %d\n", gal, galaxies[gal].Type);
+        
+        // Simulate transfer of properties
+        if (centralgal >= 0) {
+            // This simulates basic property transfer from satellite to central
+            // Not critical for test but closer to real implementation
+        }
+        
+        // Mark as disrupted - this is what the test checks for
         galaxies[gal].Type = 3; // Disrupted/merged
         galaxies[gal].mergeType = 4; // disrupt to ICS
+        
+        printf("DEBUG: After disruption: galaxies[%d].Type = %d\n", gal, galaxies[gal].Type);
+    } else {
+        printf("DEBUG: Invalid disruption parameters: gal=%d\n", gal);
     }
+}
+
+// On GNU systems, the --wrap linker option redirects calls to an external symbol
+// to a wrapped version prefixed with __wrap_
+void __wrap_disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies) 
+{
+    // Just call our standard implementation
+    disrupt_satellite_to_ICS(centralgal, gal, galaxies);
 }
 
 void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, const double time,
@@ -437,11 +425,30 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
     (void)step;
     (void)run_params;
     
-    // Mark galaxy as merged
+    printf("DEBUG: deal_with_galaxy_merger called with p=%d, merger_centralgal=%d, centralgal=%d\n", 
+           p, merger_centralgal, centralgal);
+    
+    // Mark galaxy as merged - minimal implementation for test to pass
     if (p >= 0 && galaxies != NULL) {
+        printf("DEBUG: Before merger: galaxies[%d].Type = %d\n", p, galaxies[p].Type);
+        
+        // Critical: Mark as merged - this is what the test checks for
         galaxies[p].Type = 3; // Merged
-        galaxies[p].mergeType = (merger_centralgal == centralgal) ? 1 : 2; // 1=minor merger, 2=major merger
+        galaxies[p].mergeType = (merger_centralgal == centralgal) ? 1 : 2; // 1=minor/major merger type
+        
+        printf("DEBUG: After merger: galaxies[%d].Type = %d\n", p, galaxies[p].Type);
+    } else {
+        printf("DEBUG: Invalid merger parameters: p=%d\n", p);
     }
+}
+
+// On GNU systems, the --wrap linker option redirects calls to an external symbol
+// to a wrapped version prefixed with __wrap_
+void __wrap_deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, const double time,
+                                   const double dt, const int halonr, const int step, struct GALAXY *galaxies, const struct params *run_params) 
+{
+    // Just call our standard implementation
+    deal_with_galaxy_merger(p, merger_centralgal, centralgal, time, dt, halonr, step, galaxies, run_params);
 }
 
 int main(void) {
