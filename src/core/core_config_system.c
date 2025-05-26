@@ -91,7 +91,7 @@ int config_system_cleanup(void) {
 static void json_skip_whitespace(const char **json) {
     const char *p = *json;
     
-    while (isspace(*p) || *p == '\n' || *p == '\r' || *p == '\t') {
+    while (*p && (isspace((unsigned char)*p) || *p == '\n' || *p == '\r' || *p == '\t')) {
         p++;
     }
     
@@ -210,7 +210,8 @@ static struct config_object *json_parse_object(const char **json) {
     
     /* Handle empty object */
     if (*p == '}') {
-        *json = p + 1;
+        p++; /* Skip closing brace */
+        *json = p;
         return obj;
     }
     
@@ -270,12 +271,17 @@ static struct config_object *json_parse_object(const char **json) {
         /* Skip whitespace */
         json_skip_whitespace(&p);
         
-        /* Check for comma or closing brace */
+        /* Check for comma, closing brace, or end of input */
         if (*p == ',') {
             p++; /* Skip comma */
         } else if (*p == '}') {
             p++; /* Skip closing brace */
             break;
+        } else if (*p == '\0') {
+            /* We've reached the end of input without a closing brace */
+            LOG_ERROR("Unexpected end of input, expected ',' or '}' at position %zu", (size_t)(p - *json));
+            config_object_free(obj);
+            return NULL;
         } else {
             LOG_ERROR("Expected ',' or '}' at position %zu", (size_t)(p - *json));
             config_object_free(obj);
@@ -324,7 +330,8 @@ static struct config_value json_parse_array(const char **json) {
     
     /* Handle empty array */
     if (*p == ']') {
-        *json = p + 1;
+        p++; /* Skip closing bracket */
+        *json = p;
         return array;
     }
     
@@ -368,12 +375,17 @@ static struct config_value json_parse_array(const char **json) {
         /* Skip whitespace */
         json_skip_whitespace(&p);
         
-        /* Check for comma or closing bracket */
+        /* Check for comma, closing bracket, or end of input */
         if (*p == ',') {
             p++; /* Skip comma */
         } else if (*p == ']') {
             p++; /* Skip closing bracket */
             break;
+        } else if (*p == '\0') {
+            /* We've reached the end of input without a closing bracket */
+            LOG_ERROR("Unexpected end of input, expected ',' or ']' at position %zu", (size_t)(p - *json));
+            config_value_free(&array);
+            return (struct config_value){.type = CONFIG_VALUE_NULL};
         } else {
             LOG_ERROR("Expected ',' or ']' at position %zu", (size_t)(p - *json));
             config_value_free(&array);
@@ -557,7 +569,9 @@ static struct config_value json_parse_value(const char **json) {
         }
     } else if (*p == '-' || isdigit(*p)) {
         /* Parse number */
-        return json_parse_number(&p);
+        struct config_value result = json_parse_number(&p);
+        *json = p;
+        return result;
     }
     
     LOG_ERROR("Invalid JSON value at position %zu", (size_t)(p - *json));
@@ -667,6 +681,14 @@ int config_load_file(const char *filename) {
     
     if (new_config == NULL) {
         LOG_ERROR("Failed to parse configuration file: %s", filename);
+        return -1;
+    }
+    
+    /* Check for trailing garbage after a successful parse */
+    json_skip_whitespace(&json);
+    if (*json != '\0') {
+        LOG_ERROR("Unexpected trailing characters after JSON object in %s: '%s'", filename, json);
+        config_object_free(new_config);
         return -1;
     }
     
