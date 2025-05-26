@@ -96,7 +96,7 @@
 
 ##### HOLDING PEN (to review):
 
-- [ ] Review naming: `GALAXY_PROP_*` → `CORE_PROP_*` or `GALAXY_CORE_*` and `physics_pipeline_executor.*` → `core_pipeline_executor.*`
+- [ ] Review naming: `GALAXY_PROP_*`→`CORE_PROP_*`; `physics_pipeline_executor.*`→`core_pipeline_executor.*`; `physics_pipeline_executor.c/.h`→`core_pipeline_executor.c/.h`
 
 ### Phase 5.2.G: Physics Module Migration ⏳ PENDING
 
