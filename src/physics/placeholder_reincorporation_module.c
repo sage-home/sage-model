@@ -17,7 +17,7 @@
 #include "../core/core_pipeline_system.h"
 #include "../core/core_logging.h"
 #include "../core/core_properties.h"
-#include "physics_modules.h"
+#include "placeholder_reincorporation_module.h"
 
 /* Module data structure */
 struct placeholder_reincorporation_data {
