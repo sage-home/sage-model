@@ -114,12 +114,8 @@ static void teardown_test_context(void) {
     test_ctx.initialized = 0;
 }
 
-// Test merger function for testing callbacks
-static int test_merger_function(struct GALAXY *primary, struct GALAXY *secondary, int merger_type) {
-    // Simple implementation that just marks the secondary as merged
-    secondary->Type = 3;  // Merged
-    return 0;
-}
+// NOTE: We don't need a test_merger_function because we're using the actual
+// disrupt_satellite_to_ICS and deal_with_galaxy_merger functions directly in our tests.
 
 //=============================================================================
 // Test Cases
@@ -405,6 +401,8 @@ static void test_deferred_processing(void) {
 // (process_merger_events will call the real implementations from the library)
 void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies) 
 {
+    (void)centralgal;  // Mark as intentionally unused
+    
     // Mark galaxy as disrupted
     if (gal >= 0 && galaxies != NULL) {
         galaxies[gal].Type = 3; // Disrupted/merged
@@ -415,6 +413,13 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
 void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal, const double time,
                            const double dt, const int halonr, const int step, struct GALAXY *galaxies, const struct params *run_params) 
 {
+    // Mark all unused parameters as intentionally unused
+    (void)time;
+    (void)dt;
+    (void)halonr;
+    (void)step;
+    (void)run_params;
+    
     // Mark galaxy as merged
     if (p >= 0 && galaxies != NULL) {
         galaxies[p].Type = 3; // Merged
