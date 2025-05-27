@@ -77,6 +77,7 @@ struct pipeline_context {
     const char *current_function;
     void *callback_context;
     void *prop_ctx;
+    struct merger_event_queue *merger_queue;  /* Merger event queue for deferred processing */
     struct pipeline_phase phases[MAX_PIPELINE_PHASES];
     int num_phases;
     bool initialized;

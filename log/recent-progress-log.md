@@ -424,3 +424,13 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Test suite now passes completely with only expected error messages for intentional malformed JSON test cases
 - Modified files: src/core/core_config_system.c, docs/config_system.md
 - Created files: tests/comprehensive config system validation tests (temporary, removed after verification)
+
+2025-05-27: [Phase 5.2.G] Physics-Agnostic Merger Event Handling Implementation
+- Implemented configurable merger event handling system with complete core-physics separation
+- Created core_merger_processor.c for physics-agnostic event dispatching via module_invoke
+- Enhanced placeholder_mergers_module.c with registered handler functions
+- Added runtime configuration parameters for merger/disruption handler selection
+- Moved physics_mergers.c/h to ignore directory as functionality moved to core processor
+- Added files: src/core/core_merger_processor.h, src/core/core_merger_processor.c, docs/physics_agnostic_merger_handling.md
+- Modified files: src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/core/core_build_model.c, src/physics/placeholder_mergers_module.c, docs/merger_queue.md, Makefile
+- Moved files: src/physics/physics_mergers.c/h → ignore/

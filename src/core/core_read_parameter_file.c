@@ -249,6 +249,12 @@ int read_parameter_file(const char *fname, struct params *run_params)
     run_params->runtime.EnableMemoryMapping = 0;  /* Memory mapping disabled by default */
     run_params->runtime.EnableGalaxyMemoryPool = 1;  /* Memory pooling enabled by default */
     
+    /* Merger handler defaults - point to placeholder module */
+    snprintf(run_params->runtime.MergerHandlerModuleName, MAX_STRING_LEN, "PlaceholderMergersModule");
+    snprintf(run_params->runtime.MergerHandlerFunctionName, MAX_STRING_LEN, "HandleMerger");
+    snprintf(run_params->runtime.DisruptionHandlerModuleName, MAX_STRING_LEN, "PlaceholderMergersModule");
+    snprintf(run_params->runtime.DisruptionHandlerFunctionName, MAX_STRING_LEN, "HandleDisruption");
+    
     /* Module system parameters - optional, if not specified use defaults */
     strncpy(ParamTag[NParam], "ModuleDir", MAXTAGLEN);
     ParamAddr[NParam] = run_params->runtime.ModuleDir;

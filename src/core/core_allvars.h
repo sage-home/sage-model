@@ -654,6 +654,12 @@ struct runtime_params
     int NumModulePaths;              /* Number of additional module paths */
     char ModulePaths[10][MAX_STRING_LEN]; /* Additional module search paths */
     int EnableModuleDiscovery;       /* Enable automatic module discovery */
+    
+    /* Merger processing configuration */
+    char MergerHandlerModuleName[MAX_STRING_LEN];     /* Module handling merger events */
+    char MergerHandlerFunctionName[MAX_STRING_LEN];   /* Function handling merger events */
+    char DisruptionHandlerModuleName[MAX_STRING_LEN]; /* Module handling disruption events */
+    char DisruptionHandlerFunctionName[MAX_STRING_LEN]; /* Function handling disruption events */
 };
 
 /*

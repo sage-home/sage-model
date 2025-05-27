@@ -19,6 +19,7 @@
 #include "core_module_system.h"
 #include "core_array_utils.h"
 #include "core_merger_queue.h"
+#include "core_merger_processor.h"
 #include "core_event_system.h"
 #include "core_evolution_diagnostics.h"
 #include "core_galaxy_accessors.h"  // For galaxy_get_* functions
@@ -451,6 +452,9 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     struct merger_event_queue merger_queue;
     init_merger_queue(&merger_queue);
     ctx.merger_queue = &merger_queue;
+    
+    // Set merger queue in pipeline context for physics modules
+    pipeline_ctx.merger_queue = &merger_queue;
 
     /*
      * The galaxy evolution pipeline executes in four distinct phases:
@@ -581,7 +585,16 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             }
         }
 
-        // Execute POST phase (physics agnostic)
+        // Phase 3: Process merger events using configurable physics handlers
+        status = core_process_merger_queue_agnostically(&pipeline_ctx);
+        if (status != 0) {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to process merger events for step %d", step);
+            core_evolution_diagnostics_finalize(&diag);
+            core_evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
+            return EXIT_FAILURE;
+        }
+
+        // Phase 4: POST phase (physics agnostic)
         status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
 
         core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_POST);
