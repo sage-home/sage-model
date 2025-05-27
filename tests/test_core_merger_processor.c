@@ -53,22 +53,34 @@ static struct test_context {
 } test_ctx;
 
 // Mock merger handler function
-static int mock_handle_merger(void *module_data, void *args_ptr) {
-    (void)module_data;
+static int mock_handle_merger(void *args_ptr, void *context) {
+    printf("DEBUG_MOCK: args_ptr=%p, context=%p\n", args_ptr, context);
     
-    merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
-    test_ctx.mock_merger_calls++;
-    test_ctx.last_merger_event = args->event;
-    
-    printf("Mock merger handler called: satellite=%d, central=%d\n", 
-           args->event.satellite_index, args->event.central_index);
+    // Let's examine what args_ptr actually contains
+    if (args_ptr != NULL) {
+        // Try to interpret as merger_handler_args_t
+        merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
+        printf("DEBUG_MOCK: Interpreted as merger_handler_args_t - satellite=%d, central=%d, merger_time=%g\n",
+               args->event.satellite_index, args->event.central_index, args->event.merger_time);
+        
+        // Let's also look at the raw bytes
+        unsigned char *bytes = (unsigned char *)args_ptr;
+        printf("DEBUG_MOCK: Raw bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+               bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]);
+               
+        test_ctx.mock_merger_calls++;
+        test_ctx.last_merger_event = args->event;
+        
+        printf("Mock merger handler called: satellite=%d, central=%d\n", 
+               args->event.satellite_index, args->event.central_index);
+    }
     
     return 0; // Success
 }
 
 // Mock disruption handler function
-static int mock_handle_disruption(void *module_data, void *args_ptr) {
-    (void)module_data;
+static int mock_handle_disruption(void *args_ptr, void *context) {
+    (void)context;
     
     merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
     test_ctx.mock_disruption_calls++;
