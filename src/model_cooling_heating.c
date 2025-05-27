@@ -69,36 +69,6 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 
 }
 
-
-
-double log_agn_accretion_details(const int gal, double AGNrate, struct GALAXY *galaxies, const struct params *run_params)
-{
-    static int agn_log_counter = 0;
-    agn_log_counter++;
-
-    if (agn_log_counter % 100000 == 0) {
-        FILE *log_file = fopen("agn_accretion_diagnostics.txt", "a");
-        if (log_file) {
-            fprintf(log_file, "AGN Accretion Diagnostics:\n");
-            fprintf(log_file, "Galaxy Index: %d\n", galaxies[gal].GalaxyNr);
-            fprintf(log_file, "Snapshot: %d\n", galaxies[gal].SnapNum);
-            fprintf(log_file, "Halo Mass (log10): %.2f\n", log10(galaxies[gal].Mvir));
-            fprintf(log_file, "Stellar Mass (log10): %.2f\n", log10(galaxies[gal].StellarMass));
-            fprintf(log_file, "Current BH Mass (log10): %.2f\n", log10(galaxies[gal].BlackHoleMass));
-            fprintf(log_file, "Hot Gas Mass: %e\n", galaxies[gal].HotGas);
-            fprintf(log_file, "AGN Accretion Rate: %e\n", AGNrate);
-            fprintf(log_file, "Eddington Rate: %e\n", 
-                   (1.3e38 * galaxies[gal].BlackHoleMass * 1e10 / run_params->Hubble_h) / 
-                   (run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s) / (0.1 * 9e10));
-            fprintf(log_file, "AGN Recipe Mode: %d\n", run_params->AGNrecipeOn);
-            fprintf(log_file, "-------------------\n\n");
-            fclose(log_file);
-        }
-    }
-
-    return AGNrate;
-}
-
 double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, struct GALAXY *galaxies, const struct params *run_params)
 {
     double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity;
@@ -187,9 +157,6 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
 
     return coolingGas;
 }
-
-
-
 
 void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies,
                 const struct params *run_params)

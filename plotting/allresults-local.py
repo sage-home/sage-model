@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_vanilla/'
+DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -713,6 +713,43 @@ if __name__ == '__main__':
     print('Saved to', outputFile, '\n')
     plt.close()
 
+    print('Plotting the SFR')
+
+    plt.figure()  # New figure
+    ax = plt.subplot(111)  # 1 plot on the figure
+
+    w2 = np.where(StellarMass > 0.01)[0]
+    if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
+    mass = np.log10(StellarMass[w2])
+    SFR =  (SfrDisk[w2] + SfrBulge[w2])
+    mask = ColdGas[w2] > 0
+    Z = np.full(len(w2), np.nan)  # Initialize with NaN
+    Z[mask] = np.log10((MetalsColdGas[w2][mask] / ColdGas[w2][mask]) / 0.02) + 9.0
+
+    # Create scatter plot with metallicity coloring
+    scatter = plt.scatter(mass, SFR, c=Z, marker='o', s=1, alpha=0.7, 
+                        cmap='jet', label='Model galaxies')
+
+    # Add colorbar
+    cbar = plt.colorbar(scatter)
+    cbar.set_label(r'$12 + \log_{10}(\mathrm{O/H})$', rotation=270, labelpad=15)
+
+    plt.ylabel(r'$\mathrm{SFR}\ (M_{\odot}\ \mathrm{yr^{-1}})$')  # Set the y...
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
+
+    # Set the x and y axis minor ticks
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+
+    plt.xlim(2.0, 12.0)
+    plt.ylim(1.0e-10, 1.0e2)  # Set y-axis limits for SFR
+    plt.yscale('log')
+
+    outputFile = OutputDir + '5.StarFormationRate' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved to', outputFile, '\n')
+    plt.close()
+
 # ---------------------------------------------------------
 
     print('Plotting the gas fractions')
@@ -997,7 +1034,6 @@ if __name__ == '__main__':
     print('Plotting the average baryon fraction vs halo mass')
 
     # Create a DataFrame from your numpy arrays
-    # Note: Create this once at the beginning to avoid repeated conversions
     galaxy_df = pd.DataFrame({
         'CentralGalaxyIndex': CentralGalaxyIndex,
         'HaloMass': np.log10(Mvir),  # Pre-compute log10 of mass
@@ -1045,12 +1081,15 @@ if __name__ == '__main__':
         centrals_in_bin = galaxy_df.loc[bin_mask, 'CentralGalaxyIndex'].unique()
         
         if len(centrals_in_bin) > 2:
+            # Get central galaxy properties (including their virial masses)
+            central_galaxies = galaxy_df[(galaxy_df['Type'] == 0) & 
+                                        (galaxy_df['CentralGalaxyIndex'].isin(centrals_in_bin))]
+            
             # Find all galaxies belonging to these centrals (both centrals and satellites)
             group_mask = galaxy_df['CentralGalaxyIndex'].isin(centrals_in_bin)
             group_galaxies = galaxy_df[group_mask]
             
             # Group by central galaxy and sum all baryonic components
-            # This is the key optimization - one groupby operation instead of multiple loops
             group_sums = group_galaxies.groupby('CentralGalaxyIndex').agg({
                 'Baryons': 'sum',
                 'StellarMass': 'sum',
@@ -1062,11 +1101,7 @@ if __name__ == '__main__':
                 'CGM': 'sum'
             })
             
-            # Get the halo masses for these centrals
-            central_galaxies = galaxy_df[(galaxy_df['Type'] == 0) & 
-                                        (galaxy_df['CentralGalaxyIndex'].isin(centrals_in_bin))]
-            
-            # Merge halo masses with group sums
+            # CORRECTED: Merge with central galaxy properties to get the correct halo masses
             group_data = pd.merge(
                 group_sums, 
                 central_galaxies[['CentralGalaxyIndex', 'Mvir', 'HaloMass']],
@@ -1074,7 +1109,7 @@ if __name__ == '__main__':
                 right_on='CentralGalaxyIndex'
             )
             
-            # Calculate baryon fractions
+            # CORRECTED: Calculate baryon fractions using the central galaxy's virial mass as total halo mass
             group_data['baryon_fraction'] = group_data['Baryons'] / group_data['Mvir']
             group_data['star_fraction'] = group_data['StellarMass'] / group_data['Mvir']
             group_data['cold_fraction'] = group_data['ColdGas'] / group_data['Mvir']
@@ -1087,6 +1122,13 @@ if __name__ == '__main__':
             # Filter out any rows with NaN or infinite values
             group_data = group_data.replace([np.inf, -np.inf], np.nan).dropna(subset=['baryon_fraction'])
             
+            # Additional check: filter out unrealistic baryon fractions
+            cosmic_baryon_fraction = 0.17  # Adjust this to your simulation's value
+            realistic_mask = group_data['baryon_fraction'] <= cosmic_baryon_fraction
+            if realistic_mask.sum() < len(group_data):
+                print(f"Warning: Filtered out {len(group_data) - realistic_mask.sum()} halos with baryon fraction > {cosmic_baryon_fraction}")
+            group_data = group_data[realistic_mask]
+            
             if len(group_data) > 0:
                 # Store mean halo mass (in log10)
                 MeanCentralHaloMass.append(group_data['HaloMass'].mean())
@@ -1096,8 +1138,8 @@ if __name__ == '__main__':
                 var_bf = group_data['baryon_fraction'].var() if len(group_data) > 1 else 0
                 
                 MeanBaryonFraction.append(mean_bf)
-                MeanBaryonFractionU.append(mean_bf + var_bf)
-                MeanBaryonFractionL.append(max(0, mean_bf - var_bf))
+                MeanBaryonFractionU.append(mean_bf + np.sqrt(var_bf))  # Using std dev instead of variance
+                MeanBaryonFractionL.append(max(0, mean_bf - np.sqrt(var_bf)))
                 
                 # Store component fractions
                 MeanStars.append(group_data['star_fraction'].mean())
@@ -1123,8 +1165,9 @@ if __name__ == '__main__':
     MeanBH = np.array(MeanBH)
     MeanCGM = np.array(MeanCGM)
 
-    # Cap upper bound to reasonable value
-    MeanBaryonFractionU = np.minimum(MeanBaryonFractionU, 0.2)
+    # Cap upper bound to cosmic baryon fraction
+    cosmic_baryon_fraction = 0.17
+    MeanBaryonFractionU = np.minimum(MeanBaryonFractionU, cosmic_baryon_fraction)
 
     # Ensure all arrays have valid values for plotting
     mask = np.isfinite(MeanCentralHaloMass) & np.isfinite(MeanBaryonFraction) & \
@@ -1142,12 +1185,9 @@ if __name__ == '__main__':
         ax = plt.subplot(111)
         
         # Plot total baryon fraction with uncertainty
-        plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='TOTAL')
-        try:
-            plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL,
-                            facecolor='purple', alpha=0.25)
-        except Exception as e:
-            print(f"Warning: Could not create fill_between for baryon fraction: {e}")
+        plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', lw=2, label='TOTAL')
+        plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionU, MeanBaryonFractionL,
+                        facecolor='purple', alpha=0.25)
 
         # Make a separate mask for component arrays
         comp_mask = np.isfinite(MeanStars) & np.isfinite(MeanCold) & np.isfinite(MeanHot) & \
@@ -1164,12 +1204,16 @@ if __name__ == '__main__':
             MeanCentralHaloMass_comp = MeanCentralHaloMass[comp_mask]
             
             # Plot components
-            plt.plot(MeanCentralHaloMass_comp, MeanStars_masked, 'k--', label='Stars')
-            plt.plot(MeanCentralHaloMass_comp, MeanCold_masked, label='Cold', color='blue')
-            plt.plot(MeanCentralHaloMass_comp, MeanHot_masked, label='Hot', color='red')
-            plt.plot(MeanCentralHaloMass_comp, MeanEjected_masked, label='Ejected', color='green')
-            plt.plot(MeanCentralHaloMass_comp, MeanICS_masked, label='ICS', color='yellow')
-            plt.plot(MeanCentralHaloMass_comp, MeanCGM_masked, label='CGM', color='magenta')
+            plt.plot(MeanCentralHaloMass_comp, MeanStars_masked, 'k--', lw=1.5, label='Stars')
+            plt.plot(MeanCentralHaloMass_comp, MeanCold_masked, 'b-', lw=1.5, label='Cold Gas')
+            plt.plot(MeanCentralHaloMass_comp, MeanHot_masked, 'r-', lw=1.5, label='Hot Gas')
+            plt.plot(MeanCentralHaloMass_comp, MeanEjected_masked, 'g-', lw=1.5, label='Ejected')
+            plt.plot(MeanCentralHaloMass_comp, MeanICS_masked, 'orange', lw=1.5, label='ICS')
+            plt.plot(MeanCentralHaloMass_comp, MeanCGM_masked, 'm-', lw=1.5, label='CGM')
+
+        # Add cosmic baryon fraction reference line
+        plt.axhline(y=cosmic_baryon_fraction, color='gray', linestyle=':', lw=2, 
+                    label=f'Cosmic Baryon Fraction ({cosmic_baryon_fraction})')
 
         # Set axis labels and limits
         plt.xlabel(r'$\mathrm{Central}\ \log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
@@ -1177,29 +1221,22 @@ if __name__ == '__main__':
         
         # Set axis ticks
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
-        ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+        ax.yaxis.set_minor_locator(plt.MultipleLocator(0.01))
         
         # Set axis limits
-        plt.axis([10.8, 15.0, 0.0, 0.2])
+        plt.xlim(11.0, 15.0)
+        plt.ylim(0.0, cosmic_baryon_fraction + 0.02)
         
         # Add legend
-        leg = plt.legend()
+        leg = plt.legend(loc='upper right', fontsize='small')
         leg.draw_frame(False)
-        for t in leg.get_texts():
-            t.set_fontsize('medium')
         
         # Save figure
         outputFile = OutputDir + '11.BaryonFraction' + OutputFormat
-        plt.savefig(outputFile)
+        plt.savefig(outputFile, dpi=150, bbox_inches='tight')
         print('Saved file to', outputFile)
         
-        # Print execution time
-        execution_time = time.time() - start_time
-        print(f'\nExecution time: {execution_time:.2f} seconds')
-        
         plt.close()
-    else:
-        print("Error: No valid data for plotting")
 
 # -------------------------------------------------------
 

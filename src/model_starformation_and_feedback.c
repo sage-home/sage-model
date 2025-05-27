@@ -46,16 +46,6 @@ double calculate_mass_dependent_sf_efficiency(const struct GALAXY *galaxy, const
     if (scaling_factor < 0.1) scaling_factor = 0.1;  // Lower limit
     if (scaling_factor > 3.0) scaling_factor = 3.0;  // Upper limit
     
-    // Optional: Add diagnostic logging
-#ifdef VERBOSE
-    static int counter = 0;
-    if (counter % 1000000 == 0) {
-        printf("Mass-dependent SF: Mvir=%.2e, base_eff=%.2f, scaling=%.2f, final_eff=%.2f\n",
-               mvir, base_efficiency, scaling_factor, base_efficiency * scaling_factor);
-    }
-    counter++;
-#endif
-    
     return base_efficiency * scaling_factor;
 }
 
@@ -85,17 +75,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             
             // Apply the enhancement
             sfr_eff *= v_enhancement;
-            
-    #ifdef VERBOSE
-            // Optional diagnostic logging
-            static int enhancement_counter = 0;
-            if (enhancement_counter % 1000000 == 0) {
-                printf("VVIR ENHANCEMENT: Galaxy=%d, Vvir=%.1f km/s, threshold=%.1f, power=%.2f, enhancement=%.2f\n",
-                    galaxies[p].GalaxyNr, galaxies[p].Vvir, run_params->VvirThreshold, 
-                    run_params->VvirEnhancementPower, v_enhancement);
-            }
-            enhancement_counter++;
-    #endif
         }
     }
     double fb_reheat = get_redshift_dependent_parameter(run_params->FeedbackReheatingEpsilon, 
@@ -434,17 +413,7 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     if (!isfinite(eta)) {
         return 0.0;  // Return zero if result is NaN or infinity
     }
-    
-    // Add diagnostic logging
-#ifdef VERBOSE
-    static int counter = 0;
-    if (counter % 500000 == 0) {
-        printf("MURATOV MASS LOADING: Galaxy=%d, z=%.2f, Vvir=%.1f km/s, eta=%.2f\n", 
-               galaxies[p].GalaxyNr, z, vc, eta);
-    }
-    counter++;
-#endif
-    
+
     return eta;
 }
 
@@ -480,17 +449,6 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
             
             // Apply the enhancement
             sfr_eff *= v_enhancement;
-            
-    #ifdef VERBOSE
-            // Optional diagnostic logging
-            static int enhancement_counter = 0;
-            if (enhancement_counter % 1000000 == 0) {
-                printf("VVIR ENHANCEMENT: Galaxy=%d, Vvir=%.1f km/s, threshold=%.1f, power=%.2f, enhancement=%.2f\n",
-                    galaxies[p].GalaxyNr, galaxies[p].Vvir, run_params->VvirThreshold, 
-                    run_params->VvirEnhancementPower, v_enhancement);
-            }
-            enhancement_counter++;
-    #endif
         }
     }
 
@@ -637,16 +595,6 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     // update the star formation rate
     galaxies[p].SfrDisk[step] += stars / dt;
 
-    // Log significant star formation events for debugging
-#ifdef VERBOSE
-    static int sf_event_counter = 0;
-    if (stars > 0.005 && (sf_event_counter % 100000 == 0)) {  // Only log larger star formation events and only 1 in 1000
-        printf("SF EVENT: Galaxy=%d, z=%.2f, Stars=%.3f, ColdGas before=%.3f, reheated=%.3f, ejected=%.3f, HotGas=%.3f\n", 
-               galaxies[p].GalaxyNr, z, stars, cold_gas_before, reheated_mass, ejected_mass, galaxies[centralgal].HotGas);
-    }
-    sf_event_counter++;
-#endif
-
     // update for star formation
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
     update_from_star_formation(p, stars, metallicity, galaxies, run_params);
@@ -709,16 +657,6 @@ double calculate_lagos_mass_loading(const int p, const double z, struct GALAXY *
         // Scale down even further for smallest galaxies
         eta *= 0.3 + 0.7 * (vcirc / 80.0);
     }
-    
-    // Add diagnostic logging
-#ifdef VERBOSE
-    static int counter = 0;
-    if (counter % 100000 == 0) {
-        printf("LAGOS MASS LOADING: Galaxy=%d, z=%.2f, Vvir=%.1f km/s, eta=%.2f\n", 
-               galaxies[p].GalaxyNr, z, vcirc, eta);
-    }
-    counter++;
-#endif
     
     return eta;
 }

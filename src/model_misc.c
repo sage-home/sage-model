@@ -185,11 +185,6 @@ double test_redshift_param(double param_z0, double alpha, double z) {
       //printf("TEST: param_z0=%f, alpha=%f, z=%f, result=%f\n", 
             // param_z0, alpha, z, result);
   //}
-
-  if (z == 0.0) {
-    printf("Z=0 CALC: param_z0=%f, alpha=%f, result=%f\n", 
-          param_z0, alpha, param_z0); // Should be exactly param_z0
-}
   param_calculation_counter++;
   
   return result;

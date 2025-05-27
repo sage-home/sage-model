@@ -300,24 +300,6 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
     // Ensure bounds
     if (f_suppress < 0.05) f_suppress = 0.05;
     if (f_suppress > 1.0) f_suppress = 1.0;
-
-#ifdef VERBOSE
-    static int counter = 0;
-    counter++;
-    if (counter % 500000 == 0) {
-        printf("CGM Building: Galaxy=%d, z=%.2f, Vvir=%.1f km/s, v_crit=%.1f, z_factor=%.2f\n", 
-               galaxies[gal].GalaxyNr, z, vvir, v_crit, z_factor);
-        printf("  Suppression: f_suppress=%.3f, min_floor=%.3f, CGMBuildAlpha=%.2f\n", 
-               f_suppress, min_floor, run_params->CGMBuildAlpha);
-        
-        // Log full galaxy properties for deeper understanding
-        if (counter % 500000 == 0) {
-            printf("  Galaxy details: Mvir=%.2e, StellarMass=%.2e, HotGas=%.2e\n",
-                   galaxies[gal].Mvir, galaxies[gal].StellarMass, galaxies[gal].HotGas);
-        }
-    }
-#endif
-
     
     double cgm_fraction = 1.0 - f_suppress;
     
@@ -405,31 +387,6 @@ double do_reionization_enhanced(const int gal, const double z, struct GALAXY *ga
     // Ensure safety bounds
     if (modifier < 0.01) modifier = 0.01; // Never completely suppress
     if (modifier > 1.0) modifier = 1.0;   // Never enhance
-
-#ifdef VERBOSE
-    static int counter = 0;
-    counter++;
-    if (counter % 500000 == 0) {
-        printf("REIONIZATION MODEL: Galaxy=%d, z=%.2f, Model=%d, Modifier=%.3f\n", 
-               galaxies[gal].GalaxyNr, z, run_params->ReionizationModel, modifier);
-        printf("  Halo properties: Mvir=%.2e, Vvir=%.2f\n", 
-               galaxies[gal].Mvir, galaxies[gal].Vvir);
-        
-        // More detailed information occasionally
-        if (counter % 500000 == 0) {
-            float Mfilter = calculate_filtering_mass(z, run_params);
-            float z_reion = run_params->Reionization_zr;
-            if (run_params->ReionizationModel == 3) {
-                z_reion = calculate_local_reionization_redshift(gal, galaxies, run_params);
-            }
-            
-            printf("  Filtering mass=%.2e, Reion_z=%.2f, UVBStrength=%.2f\n",
-                   Mfilter, z_reion, run_params->UVBackgroundStrength);
-            printf("  Pre-reionization UV effects: %s\n", 
-                   (run_params->UVBackgroundStrength > 0.0) ? "On" : "Off");
-        }
-    }
-#endif
     
     return modifier;
 }
