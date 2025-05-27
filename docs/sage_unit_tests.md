@@ -20,6 +20,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | ✅ **test_core_pipeline_registry** | Tests the pipeline registry for module registration and pipeline creation     | Phase 5.2.F (May 2025)   |
 | ✅ **test_dispatcher_access**      | Tests the type-safe dispatcher functions for property access                  | Phase 5.2.F.4 (May 2025) |
 | ✅ **test_memory_pool**            | Tests the memory pooling system for galaxies with support for various property types and dynamic arrays | Phase 3.3 (Apr 2025)     |
+| ✅ **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
 
 ### Property System Tests (`PROPERTY_TESTS`)
 
@@ -79,6 +80,7 @@ make module_tests      # Module system tests
 
 ### Individual Tests
 ```bash
+make test_config_system    # Configuration system (includes intentional error message testing)
 make test_pipeline
 make test_property_serialization
 make test_memory_pool
@@ -86,6 +88,22 @@ make test_io_memory_map
 make test_empty_pipeline  # Test core-physics separation with empty placeholder modules
 # etc.
 ```
+
+### Important Test Notes
+
+#### Configuration System Test (`test_config_system`)
+This test **intentionally produces ERROR messages** as part of its validation process. The test exercises malformed JSON detection and error handling by testing invalid configurations such as:
+- Unclosed objects: `{`
+- Missing values: `{"key": }`  
+- Trailing commas: `{"array": [1, 2, 3,]}`
+
+**Expected output includes error messages like**:
+```
+[ERROR] [src/core/core_config_system.c:390 json_parse_array] Trailing comma in array at position 9
+[ERROR] [src/core/core_config_system.c:696 config_load_file] Failed to parse configuration file: test_malformed_file.json
+```
+
+**A successful test run** exits with code 0 despite these error messages, which demonstrate correct validation of invalid JSON inputs.
 
 ### Running the Empty Pipeline Test
 
@@ -104,7 +122,7 @@ The test uses a special parameter file (`tests/test_data/test-mini-millennium.pa
 
 ## Test Categories Overview
 
-- **Core Infrastructure (8 tests)**: Pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling
+- **Core Infrastructure (9 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling
 - **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, access patterns
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (2 tests)**: Dynamic loading and pipeline invocation
