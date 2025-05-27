@@ -374,7 +374,7 @@ PROPERTY_TESTS = test_property_serialization test_property_array_access test_pro
 IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_memory_map test_io_buffer_manager test_validation_framework
 
 # Module system tests
-MODULE_TESTS = test_dynamic_library test_pipeline_invoke test_placeholder_mergers_module
+MODULE_TESTS = test_dynamic_library test_pipeline_invoke test_placeholder_mergers_module test_module_callback
 
 # All unit tests (excludes complex integration tests with individual Makefiles)
 UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS)
@@ -468,6 +468,9 @@ test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 
 test_placeholder_mergers_module: tests/test_placeholder_mergers_module.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_placeholder_mergers_module tests/test_placeholder_mergers_module.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_module_callback: tests/test_module_callback.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_callback tests/test_module_callback.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Empty pipeline test target
 test_empty_pipeline: tests/test_empty_pipeline.c $(SAGELIB)

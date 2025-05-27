@@ -454,3 +454,16 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - All tests demonstrate genuine validation of physics-agnostic merger event handling system with configurable runtime dispatching
 - Validated complete core-physics separation achieved with module_invoke system working correctly for merger event processing
 - No file modifications required - existing implementation and tests confirmed to be comprehensive and correct
+
+- No file modifications required - existing implementation and tests confirmed to be comprehensive and correct
+
+2025-05-28: [Phase 5.2.F.3] Module Callback Test Syntax Corruption Fix
+- Fixed critical syntax corruption in test_module_callback.c that was preventing proper test execution
+- Repaired incomplete function calls, missing string literals, and broken module_invoke statements throughout the test file
+- Corrected function name mismatch in error propagation test (function_a_error vs mock_function_error)
+- Fixed tautological assertion that was always true (result == 0 || result != 0)
+- Corrected module invocation calls that were looking for functions in wrong modules
+- Changed module_invoke calls to use system caller (-1) for proper test isolation instead of self-referencing module IDs
+- Test now compiles and runs without syntax errors, revealing genuine module callback system issues that require investigation
+- Identified potential bugs: "No active module found" errors, module system initialization problems, and segmentation faults
+- Modified files: tests/test_module_callback.c
