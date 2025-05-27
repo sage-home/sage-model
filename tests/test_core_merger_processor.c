@@ -54,25 +54,12 @@ static struct test_context {
 
 // Mock merger handler function
 static int mock_handle_merger(void *args_ptr, void *context) {
-    printf("DEBUG_MOCK: args_ptr=%p, context=%p\n", args_ptr, context);
+    (void)context;
     
-    // Let's examine what args_ptr actually contains
     if (args_ptr != NULL) {
-        // Try to interpret as merger_handler_args_t
         merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
-        printf("DEBUG_MOCK: Interpreted as merger_handler_args_t - satellite=%d, central=%d, merger_time=%g\n",
-               args->event.satellite_index, args->event.central_index, args->event.merger_time);
-        
-        // Let's also look at the raw bytes
-        unsigned char *bytes = (unsigned char *)args_ptr;
-        printf("DEBUG_MOCK: Raw bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
-               bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]);
-               
         test_ctx.mock_merger_calls++;
         test_ctx.last_merger_event = args->event;
-        
-        printf("Mock merger handler called: satellite=%d, central=%d\n", 
-               args->event.satellite_index, args->event.central_index);
     }
     
     return 0; // Success
@@ -85,9 +72,6 @@ static int mock_handle_disruption(void *args_ptr, void *context) {
     merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
     test_ctx.mock_disruption_calls++;
     test_ctx.last_disruption_event = args->event;
-    
-    printf("Mock disruption handler called: satellite=%d, central=%d\n", 
-           args->event.satellite_index, args->event.central_index);
     
     return 0; // Success
 }
@@ -164,13 +148,6 @@ static int setup_test_context(void) {
     // CRITICAL FIX: Disable module discovery to prevent initialization failure
     test_ctx.test_params.runtime.EnableModuleDiscovery = 0;
     
-    // Debug: Print the stored parameter values
-    printf("DEBUG_SETUP: MergerHandlerModuleName: '%s'\n", test_ctx.test_params.runtime.MergerHandlerModuleName);
-    printf("DEBUG_SETUP: MergerHandlerFunctionName: '%s'\n", test_ctx.test_params.runtime.MergerHandlerFunctionName);
-    printf("DEBUG_SETUP: DisruptionHandlerModuleName: '%s'\n", test_ctx.test_params.runtime.DisruptionHandlerModuleName);
-    printf("DEBUG_SETUP: DisruptionHandlerFunctionName: '%s'\n", test_ctx.test_params.runtime.DisruptionHandlerFunctionName);
-    printf("DEBUG_SETUP: EnableModuleDiscovery: %d\n", test_ctx.test_params.runtime.EnableModuleDiscovery);
-    
     return 0;
 }
 
@@ -183,13 +160,6 @@ static int complete_setup(void) {
     // Register mock modules
     module_register(&mock_merger_module);
     module_register(&mock_disruption_module);
-    
-    printf("DEBUG: Registered modules - merger_id=%d, disruption_id=%d\n", 
-           mock_merger_module.module_id, mock_disruption_module.module_id);
-    
-    // Debug: Verify module IDs before function registration
-    printf("DEBUG_FUNC_REG: About to register functions with merger_id=%d, disruption_id=%d\n",
-           mock_merger_module.module_id, mock_disruption_module.module_id);
     
     // Register mock handler functions using the assigned module IDs
     int status1 = module_register_function(
@@ -210,7 +180,10 @@ static int complete_setup(void) {
         "Mock disruption handler for testing"
     );
     
-    printf("DEBUG: Function registration status - merger=%d, disruption=%d\n", status1, status2);
+    if (status1 != MODULE_STATUS_SUCCESS || status2 != MODULE_STATUS_SUCCESS) {
+        printf("Failed to register mock handler functions\n");
+        return -1;
+    }
     
     return 0;
 }
