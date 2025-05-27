@@ -242,8 +242,9 @@ static struct config_object *json_parse_object(const char **json) {
         p++; /* Skip colon */
         
         /* Parse value */
+        const char *value_start = p;
         struct config_value value = json_parse_value(&p);
-        if (value.type == CONFIG_VALUE_NULL && *p == '\0') {
+        if (value.type == CONFIG_VALUE_NULL && p == value_start) {
             LOG_ERROR("Failed to parse value for key '%s'", key);
             free(key);
             config_object_free(obj);

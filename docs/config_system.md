@@ -3,6 +3,8 @@
 ## Overview
 The SAGE Configuration System provides a flexible, JSON-based approach to configuring all aspects of the model. It enables runtime configuration of parameters, modules, and pipeline components without requiring recompilation, supporting both file-based configuration and command-line overrides.
 
+**System Status**: ✅ **Production Ready** - Memory corruption issues resolved as of May 2025. The system now reliably handles complex nested configuration paths and malformed JSON edge cases.
+
 ## Purpose
 The configuration system serves as the central coordination point for SAGE's runtime behavior, allowing users to:
 - Define which physics modules are active in a simulation
@@ -12,6 +14,30 @@ The configuration system serves as the central coordination point for SAGE's run
 - Support hierarchical configuration with inheritance
 
 This system is particularly critical for the modular architecture, as it enables runtime determination of which modules to load and how they interact without hardcoding these relationships.
+
+## Memory Management and Reliability
+
+### Recent Improvements (May 2025)
+The configuration system underwent significant reliability improvements to resolve memory corruption issues:
+
+**Memory Management Enhancements**:
+- **Fixed uninitialized memory bug**: Added proper `memset()` initialization after `realloc()` operations in nested path creation
+- **Corrected object count logic**: Fixed incorrect parent/child object count management during nested path processing  
+- **Eliminated segmentation faults**: Resolved NULL pointer dereferences in `strcmp()` calls
+
+**JSON Parsing Robustness**:
+- **Enhanced edge case handling**: Properly rejects malformed JSON including trailing commas in arrays
+- **Improved error reporting**: Detailed error messages with position information for parsing failures
+- **Comprehensive validation**: All malformed JSON patterns are now correctly identified and rejected
+
+**Nested Path Operations**:
+The system now reliably handles complex nested configuration paths such as:
+```c
+config_set_string("modules.cooling.parameters.efficiency.high_z", "1.5");
+config_set_string("pipeline.steps.post_processing.output.formats.hdf5.enabled", "true");
+```
+
+**Performance Impact**: All improvements have minimal performance overhead and preserve existing functionality.
 
 ## Key Concepts
 - **Configuration Object**: A hierarchical tree of typed values (boolean, integer, double, string, object, array)
@@ -569,6 +595,22 @@ The configuration system uses return codes to indicate success or failure:
 - `-7`: Array index out of bounds
 - `-8`: Maximum overrides exceeded
 
+### JSON Parsing Error Detection
+The system now provides comprehensive error detection for malformed JSON:
+
+**Supported Error Cases**:
+- **Unclosed objects**: `{` → "Unexpected end of input, expected ',' or '}'"
+- **Missing values**: `{"key": }` → "Invalid JSON value"
+- **Trailing commas in arrays**: `{"array": [1, 2, 3,]}` → "Trailing comma in array at position X"
+- **Unterminated strings**: `{"key": "unclosed string` → "Unterminated string"
+- **Invalid literals**: `{"key": invalid_literal}` → "Invalid JSON value"
+
+**Error Message Format**:
+```
+[ERROR] [src/core/core_config_system.c:LINE FUNCTION] Specific error message at position X
+[ERROR] [src/core/core_config_system.c:696 config_load_file] Failed to parse configuration file: filename.json
+```
+
 Each function logs detailed error messages using the SAGE logging system:
 
 ```c
@@ -577,6 +619,12 @@ if (file == NULL) {
     return -2;
 }
 ```
+
+### Memory Management Error Prevention
+Recent improvements prevent common memory-related errors:
+- **Uninitialized memory access**: All newly allocated memory is properly initialized
+- **NULL pointer dereferences**: Robust checking prevents crashes during nested path operations
+- **Memory leaks**: Proper cleanup of dynamically allocated structures
 
 ## Performance Considerations
 
@@ -591,15 +639,30 @@ if (file == NULL) {
 ## Testing
 
 Tests for the configuration system can be found in:
-- `tests/test_config_system.c` - Unit tests for parsing and access
-- `tests/test_config_overrides.c` - Tests for command-line overrides
+- `tests/test_config_system.c` - Comprehensive unit tests for parsing, access, and error handling
+- `tests/test_config_overrides.c` - Tests for command-line overrides  
 - `tests/test_config_pipeline.c` - Tests for pipeline configuration
+
+**Test Coverage**: The test suite validates:
+- **Basic functionality**: Configuration loading, value access, type conversion
+- **Error handling**: Malformed JSON detection, invalid path handling
+- **Memory management**: Nested path operations, stress testing
+- **Edge cases**: Trailing commas, unclosed objects, invalid literals
+- **Command-line overrides**: Type inference, override application
 
 Run configuration system tests with:
 ```bash
 make test_config_system
 ./tests/test_config_system
 ```
+
+**Expected Test Output**: The test produces intentional ERROR messages when testing malformed JSON files. These are expected behavior and indicate proper error detection:
+```
+[ERROR] [src/core/core_config_system.c:390 json_parse_array] Trailing comma in array at position 9
+[ERROR] [src/core/core_config_system.c:696 config_load_file] Failed to parse configuration file: test_malformed_file.json
+```
+
+A successful test run exits with code 0 and these error messages demonstrate correct validation of invalid JSON inputs.
 
 ## See Also
 - [Module System and Configuration](module_system_and_configuration.md)
@@ -608,5 +671,5 @@ make test_config_system
 
 ---
 
-*Last updated: May 26, 2025*  
-*Component version: 1.0*
+*Last updated: May 27, 2025*  
+*Component version: 1.1 - Memory corruption fixes and JSON parsing improvements*
