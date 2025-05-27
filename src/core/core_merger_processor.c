@@ -49,6 +49,9 @@ int core_process_merger_queue_agnostically(struct pipeline_context *pipeline_ctx
         printf("DEBUG_PROCESSOR: Processing event %d/%d\n", i+1, queue->num_events);
         struct merger_event *event = &queue->events[i];
         
+        printf("DEBUG_EVENT: satellite=%d, central=%d, merger_time=%g\n", 
+               event->satellite_index, event->central_index, event->merger_time);
+        
         /* Validate galaxy indices */
         if (event->satellite_index < 0 || event->satellite_index >= pipeline_ctx->ngal ||
             event->central_index < 0 || event->central_index >= pipeline_ctx->ngal) {
@@ -61,6 +64,9 @@ int core_process_merger_queue_agnostically(struct pipeline_context *pipeline_ctx
         merger_handler_args_t handler_args;
         handler_args.event = *event;
         handler_args.pipeline_ctx = pipeline_ctx;
+        
+        printf("DEBUG_ARGS: Before invoke - satellite=%d, central=%d\n",
+               handler_args.event.satellite_index, handler_args.event.central_index);
         
         /* Determine handler module and function names based on event type */
         const char *handler_module_name;

@@ -53,9 +53,8 @@ static struct test_context {
 } test_ctx;
 
 // Mock merger handler function
-static int mock_handle_merger(void *module_data, void *args_ptr, struct pipeline_context *invoker_ctx) {
+static int mock_handle_merger(void *module_data, void *args_ptr) {
     (void)module_data;
-    (void)invoker_ctx;
     
     merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
     test_ctx.mock_merger_calls++;
@@ -68,9 +67,8 @@ static int mock_handle_merger(void *module_data, void *args_ptr, struct pipeline
 }
 
 // Mock disruption handler function
-static int mock_handle_disruption(void *module_data, void *args_ptr, struct pipeline_context *invoker_ctx) {
+static int mock_handle_disruption(void *module_data, void *args_ptr) {
     (void)module_data;
-    (void)invoker_ctx;
     
     merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
     test_ctx.mock_disruption_calls++;
@@ -187,7 +185,7 @@ static int complete_setup(void) {
         "HandleMerger",
         (void *)mock_handle_merger,
         FUNCTION_TYPE_INT,
-        "int (void*, merger_handler_args_t*, struct pipeline_context*)",
+        "int (void*, void*)",
         "Mock merger handler for testing"
     );
     
@@ -196,7 +194,7 @@ static int complete_setup(void) {
         "HandleDisruption", 
         (void *)mock_handle_disruption,
         FUNCTION_TYPE_INT,
-        "int (void*, merger_handler_args_t*, struct pipeline_context*)",
+        "int (void*, void*)",
         "Mock disruption handler for testing"
     );
     

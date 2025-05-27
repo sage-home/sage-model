@@ -896,13 +896,20 @@ int module_invoke(
         return MODULE_STATUS_INVALID_ARGS;
     }
     
-    /* Get the caller module for validation */
+    /* Get the caller module (only for regular module IDs, not system callers) */
     struct base_module *caller = NULL;
     void *caller_data = NULL;
-    int status = module_get(caller_id, &caller, &caller_data);
-    if (status != MODULE_STATUS_SUCCESS) {
-        LOG_ERROR("Failed to get caller module %d: %d", caller_id, status);
-        return status;
+    int status; // Declare status variable for use throughout function
+    
+    if (caller_id >= 0) {
+        int caller_status = module_get(caller_id, &caller, &caller_data);
+        if (caller_status != MODULE_STATUS_SUCCESS) {
+            LOG_ERROR("Failed to get caller module %d: %d", caller_id, caller_status);
+            return caller_status;
+        }
+    } else {
+        /* System-level caller, no module struct to fetch */
+        printf("DEBUG_INVOKE: System-level caller (ID: %d)\n", caller_id);
     }
     
     /* Find target module */
