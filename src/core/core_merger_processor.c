@@ -50,7 +50,7 @@ int core_process_merger_queue_agnostically(struct pipeline_context *pipeline_ctx
         /* Validate galaxy indices */
         if (event->satellite_index < 0 || event->satellite_index >= pipeline_ctx->ngal ||
             event->central_index < 0 || event->central_index >= pipeline_ctx->ngal) {
-            LOG_WARNING("Invalid galaxy indices in merger event: satellite=%d, central=%d (ngal=%d)", 
+            LOG_WARNING("Invalid galaxy indices in merger event: satellite=%d, central=%d (ngal=%d) - skipping event", 
                        event->satellite_index, event->central_index, pipeline_ctx->ngal);
             continue;
         }

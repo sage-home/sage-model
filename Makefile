@@ -365,7 +365,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_empty_pipeline test_merger_queue test_config_system
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_empty_pipeline test_merger_queue test_core_merger_processor test_config_system
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_patterns
@@ -374,7 +374,7 @@ PROPERTY_TESTS = test_property_serialization test_property_array_access test_pro
 IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_memory_map test_io_buffer_manager test_validation_framework
 
 # Module system tests
-MODULE_TESTS = test_dynamic_library test_pipeline_invoke
+MODULE_TESTS = test_dynamic_library test_pipeline_invoke test_placeholder_mergers_module
 
 # All unit tests (excludes complex integration tests with individual Makefiles)
 UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS)
@@ -466,12 +466,18 @@ test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline_invoke tests/test_pipeline_invoke.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
+test_placeholder_mergers_module: tests/test_placeholder_mergers_module.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_placeholder_mergers_module tests/test_placeholder_mergers_module.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
 # Empty pipeline test target
 test_empty_pipeline: tests/test_empty_pipeline.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_empty_pipeline tests/test_empty_pipeline.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_merger_queue: tests/test_merger_queue.o $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_merger_queue tests/test_merger_queue.o -L. -l$(LIBNAME) $(LIBFLAGS)
+test_merger_queue: tests/test_merger_queue.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_merger_queue tests/test_merger_queue.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_core_merger_processor: tests/test_core_merger_processor.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_merger_processor tests/test_core_merger_processor.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_config_system: tests/test_config_system.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_config_system tests/test_config_system.c -L. -l$(LIBNAME) $(LIBFLAGS)

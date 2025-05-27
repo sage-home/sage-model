@@ -53,6 +53,8 @@ tests/test_property_access_patterns
 tests/test_validation_framework
 tests/test_merger_queue
 tests/test_config_system
+tests/test_core_merger_processor
+tests/test_placeholder_mergers_module
 
 tests/test_output/
 .repomix/
