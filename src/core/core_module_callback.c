@@ -704,6 +704,12 @@ int module_declare_simple_dependency(
  * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
 int module_call_validate(int caller_id, int callee_id) {
+    /* Skip dependency validation for system calls (negative caller_ids) */
+    if (caller_id < 0) {
+        printf("DEBUG_INVOKE: Skipping dependency validation for system caller_id=%d\n", caller_id);
+        return MODULE_STATUS_SUCCESS;
+    }
+    
     /* Get the caller module */
     struct base_module *caller = NULL;
     void *caller_data = NULL;
@@ -875,6 +881,9 @@ int module_invoke(
     void *args,
     void *result
 ) {
+    printf("DEBUG_INVOKE_START: module_invoke called with caller_id=%d, module_name=%s, function_name=%s\n", 
+           caller_id, module_name ? module_name : "NULL", function_name ? function_name : "NULL");
+           
     /* Check arguments */
     if (function_name == NULL) {
         LOG_ERROR("Invalid arguments to module_invoke (function_name is NULL)");
@@ -935,28 +944,40 @@ int module_invoke(
     }
     
     /* Validate the call */
+    printf("DEBUG_INVOKE: About to validate call from caller_id=%d to target_id=%d\n", caller_id, target_id);
     status = module_call_validate(caller_id, target_id);
     if (status != MODULE_STATUS_SUCCESS) {
         /* module_call_validate already logs detailed error messages */
+        printf("DEBUG_INVOKE: Call validation failed with status %d\n", status);
         return status;
     }
+    printf("DEBUG_INVOKE: Call validation successful\n");
     
     /* Find the function in the target module */
     if (target->function_registry == NULL) {
+        printf("DEBUG_INVOKE: Target module '%s' has NULL function_registry!\n", target->name);
         LOG_ERROR("Target module '%s' has no function registry", target->name);
         return MODULE_STATUS_ERROR;
     }
     
+    printf("DEBUG_INVOKE: In module '%s' (ID %d), searching for function: ----%s----\n",
+           target->name, target_id, function_name);
+    
     /* Search for the function by name */
     module_function_t *func = NULL;
     for (int i = 0; i < target->function_registry->num_functions; i++) {
+        printf("DEBUG_INVOKE: Comparing with registered function: ----%s----\n",
+               target->function_registry->functions[i].name);
         if (strcmp(target->function_registry->functions[i].name, function_name) == 0) {
+            printf("DEBUG_INVOKE: Found match for function '%s'\n", function_name);
             func = &target->function_registry->functions[i];
             break;
         }
     }
     
     if (func == NULL) {
+        printf("DEBUG_INVOKE: Function '%s' NOT FOUND in module '%s' after checking %d functions.\n",
+               function_name, target->name, target->function_registry->num_functions);
         LOG_ERROR("Function '%s' not found in module '%s'", function_name, target->name);
         return MODULE_STATUS_ERROR;
     }

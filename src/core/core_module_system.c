@@ -781,14 +781,26 @@ int module_find_by_name(const char *name) {
         return -1;
     }
     
+    printf("DEBUG_FIND: Searching for module name: ----%s----\n", name);
+    
     /* Search for the module */
     for (int i = 0; i < global_module_registry->num_modules; i++) {
         if (global_module_registry->modules[i].module != NULL &&
-            strcmp(global_module_registry->modules[i].module->name, name) == 0) {
-            return i;
+            global_module_registry->modules[i].module->name != NULL) {
+            printf("DEBUG_FIND: Comparing with registered module: ----%s---- (ID %d, registry idx %d)\n",
+                   global_module_registry->modules[i].module->name,
+                   global_module_registry->modules[i].module->module_id, i);
+            if (strcmp(global_module_registry->modules[i].module->name, name) == 0) {
+                printf("DEBUG_FIND: Found match for '%s' at registry index %d, module ID %d\n",
+                       name, i, global_module_registry->modules[i].module->module_id);
+                return i;
+            }
+        } else {
+            printf("DEBUG_FIND: Skipping registry index %d (NULL module or name)\n", i);
         }
     }
     
+    printf("DEBUG_FIND: Module name '%s' NOT FOUND after checking %d modules.\n", name, global_module_registry->num_modules);
     return -1;  /* Not found */
 }
 
@@ -1790,16 +1802,23 @@ manifest->name, manifest->version_str, manifest->library_path);
  * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
 int module_register(struct base_module *module) {
+    printf("DEBUG_REG_START: Attempting to register module: %s\n", 
+           module ? (module->name ? module->name : "NULL name") : "NULL module");
+           
     if (global_module_registry == NULL) {
+        printf("DEBUG_REG_START: global_module_registry is NULL, initializing...\n");
         /* Auto-initialize if not done already */
         int status = module_system_initialize();
         if (status != MODULE_STATUS_SUCCESS) {
+            printf("DEBUG_REG_START: module_system_initialize failed with status %d\n", status);
             return status;
         }
     }
 
     /* Validate module */
     if (!module_validate(module)) {
+        printf("DEBUG_REG_START: Module validation failed for %s\n", 
+               module ? (module->name ? module->name : "NULL name") : "NULL module");
         LOG_ERROR("Invalid module interface provided");
         return MODULE_STATUS_INVALID_ARGS;
     }
@@ -1841,6 +1860,12 @@ int module_register(struct base_module *module) {
     
     /* Increment module count */
     global_module_registry->num_modules++;
+    
+    // DEBUG: Verify module name storage during registration
+    printf("DEBUG_REG: Storing module name '%s' for assigned ID %d. Registry ptr: %p\n",
+           module->name, module_id, (void*)global_module_registry->modules[module_id].module);
+    printf("DEBUG_REG: Name in registry now: '%s'\n",
+           global_module_registry->modules[module_id].module->name);
     
     LOG_INFO("Registered module '%s' (type %d) with ID %d", 
              module->name, module->type, module_id);

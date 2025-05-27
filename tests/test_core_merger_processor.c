@@ -81,14 +81,28 @@ static int mock_handle_disruption(void *module_data, void *args_ptr, struct pipe
     
     return 0; // Success
 }
+
+// Dummy initialize functions for validation
+static int mock_merger_initialize(struct params *run_params, void **module_data) {
+    (void)run_params;
+    (void)module_data;
+    return MODULE_STATUS_SUCCESS;
+}
+
+static int mock_disruption_initialize(struct params *run_params, void **module_data) {
+    (void)run_params;
+    (void)module_data;
+    return MODULE_STATUS_SUCCESS;
+}
+
 // Mock module definitions
 static struct base_module mock_merger_module = {
     .name = "MockMergerModule",
     .type = MODULE_TYPE_MERGERS,
     .version = "1.0.0",
     .author = "Test Suite",
-    .module_id = MOCK_MERGER_MODULE_ID,
-    .initialize = NULL,
+    .module_id = -1, // Let module_register() assign this dynamically
+    .initialize = mock_merger_initialize,
     .cleanup = NULL,
     .configure = NULL,
     .execute_post_phase = NULL,
@@ -100,8 +114,8 @@ static struct base_module mock_disruption_module = {
     .type = MODULE_TYPE_MERGERS,
     .version = "1.0.0",
     .author = "Test Suite",
-    .module_id = MOCK_DISRUPTION_MODULE_ID,
-    .initialize = NULL,
+    .module_id = -1, // Let module_register() assign this dynamically
+    .initialize = mock_disruption_initialize,
     .cleanup = NULL,
     .configure = NULL,
     .execute_post_phase = NULL,
@@ -129,17 +143,29 @@ static int setup_test_context(void) {
     
     // Setup runtime parameters for merger handling
     strncpy(test_ctx.test_params.runtime.MergerHandlerModuleName, "MockMergerModule", MAX_STRING_LEN-1);
+    test_ctx.test_params.runtime.MergerHandlerModuleName[MAX_STRING_LEN-1] = '\0'; // Ensure null termination
     strncpy(test_ctx.test_params.runtime.MergerHandlerFunctionName, "HandleMerger", MAX_STRING_LEN-1);
+    test_ctx.test_params.runtime.MergerHandlerFunctionName[MAX_STRING_LEN-1] = '\0'; // Ensure null termination
     strncpy(test_ctx.test_params.runtime.DisruptionHandlerModuleName, "MockDisruptionModule", MAX_STRING_LEN-1);
+    test_ctx.test_params.runtime.DisruptionHandlerModuleName[MAX_STRING_LEN-1] = '\0'; // Ensure null termination
     strncpy(test_ctx.test_params.runtime.DisruptionHandlerFunctionName, "HandleDisruption", MAX_STRING_LEN-1);
+    test_ctx.test_params.runtime.DisruptionHandlerFunctionName[MAX_STRING_LEN-1] = '\0'; // Ensure null termination
+    
+    // CRITICAL FIX: Disable module discovery to prevent initialization failure
+    test_ctx.test_params.runtime.EnableModuleDiscovery = 0;
+    
+    // Debug: Print the stored parameter values
+    printf("DEBUG_SETUP: MergerHandlerModuleName: '%s'\n", test_ctx.test_params.runtime.MergerHandlerModuleName);
+    printf("DEBUG_SETUP: MergerHandlerFunctionName: '%s'\n", test_ctx.test_params.runtime.MergerHandlerFunctionName);
+    printf("DEBUG_SETUP: DisruptionHandlerModuleName: '%s'\n", test_ctx.test_params.runtime.DisruptionHandlerModuleName);
+    printf("DEBUG_SETUP: DisruptionHandlerFunctionName: '%s'\n", test_ctx.test_params.runtime.DisruptionHandlerFunctionName);
+    printf("DEBUG_SETUP: EnableModuleDiscovery: %d\n", test_ctx.test_params.runtime.EnableModuleDiscovery);
     
     return 0;
 }
 
 static int complete_setup(void) {
-    // Initialize module system first
-    int init_status = initialize_module_system(&test_ctx.test_params);
-    printf("DEBUG: Module system initialization status = %d\n", init_status);
+    // Initialize just what we need for testing - skip full module system initialization
     
     // Initialize module callback system
     module_callback_system_initialize();
@@ -149,6 +175,10 @@ static int complete_setup(void) {
     module_register(&mock_disruption_module);
     
     printf("DEBUG: Registered modules - merger_id=%d, disruption_id=%d\n", 
+           mock_merger_module.module_id, mock_disruption_module.module_id);
+    
+    // Debug: Verify module IDs before function registration
+    printf("DEBUG_FUNC_REG: About to register functions with merger_id=%d, disruption_id=%d\n",
            mock_merger_module.module_id, mock_disruption_module.module_id);
     
     // Register mock handler functions using the assigned module IDs

@@ -42,9 +42,11 @@ int core_process_merger_queue_agnostically(struct pipeline_context *pipeline_ctx
     }
     
     LOG_DEBUG("Core merger processor handling %d events", queue->num_events);
+    printf("DEBUG_PROCESSOR: Processing %d events in merger queue\n", queue->num_events);
     
     /* Process all events in the queue */
     for (int i = 0; i < queue->num_events; i++) {
+        printf("DEBUG_PROCESSOR: Processing event %d/%d\n", i+1, queue->num_events);
         struct merger_event *event = &queue->events[i];
         
         /* Validate galaxy indices */
@@ -80,10 +82,12 @@ int core_process_merger_queue_agnostically(struct pipeline_context *pipeline_ctx
                      handler_module_name, handler_function_name);
         }
         
+        printf("DEBUG_PROCESSOR: About to invoke %s::%s\n", handler_module_name, handler_function_name);
+        
         /* Invoke the physics handler */
         int error_code = 0;
         int invoke_status = module_invoke(
-            MODULE_ID_CORE_MERGER_PROCESSOR,
+            MODULE_ID_CORE_MERGER_PROCESSOR, /* Use system-level caller_id */
             MODULE_TYPE_MERGERS,
             handler_module_name,
             handler_function_name,
