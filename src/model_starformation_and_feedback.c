@@ -73,7 +73,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         run_params->SFR_Alpha, z);
 
     double sfr_eff = base_sfr_eff;
-    if (galaxies[p].Vvir > 0.0) {
+    // NEW: Apply virial velocity enhancement if enabled
+    if (run_params->VvirEnhancementOn == 1 && galaxies[p].Vvir > 0.0) {
         if (galaxies[p].Vvir > run_params->VvirThreshold) {
             // Power-law scaling with virial velocity using configurable parameters
             double velocity_ratio = galaxies[p].Vvir / run_params->VvirThreshold;
@@ -466,7 +467,9 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         run_params->SFR_Alpha, z);
 
     double sfr_eff = base_sfr_eff;
-    if (galaxies[p].Vvir > 0.0) {
+
+    // NEW: Apply virial velocity enhancement if enabled
+    if (run_params->VvirEnhancementOn == 1 && galaxies[p].Vvir > 0.0) {
         if (galaxies[p].Vvir > run_params->VvirThreshold) {
             // Power-law scaling with virial velocity using configurable parameters
             double velocity_ratio = galaxies[p].Vvir / run_params->VvirThreshold;
@@ -637,7 +640,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     // Log significant star formation events for debugging
 #ifdef VERBOSE
     static int sf_event_counter = 0;
-    if (stars > 0.005 && (sf_event_counter % 1000000 == 0)) {  // Only log larger star formation events and only 1 in 1000
+    if (stars > 0.005 && (sf_event_counter % 100000 == 0)) {  // Only log larger star formation events and only 1 in 1000
         printf("SF EVENT: Galaxy=%d, z=%.2f, Stars=%.3f, ColdGas before=%.3f, reheated=%.3f, ejected=%.3f, HotGas=%.3f\n", 
                galaxies[p].GalaxyNr, z, stars, cold_gas_before, reheated_mass, ejected_mass, galaxies[centralgal].HotGas);
     }

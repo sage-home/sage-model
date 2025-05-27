@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-SAGE Stellar Mass Function Analysis - Redshift Binned SMF Grid
-============================================================
+SAGE Stellar Mass Function Analysis - Redshift Binned SMF Grid with Multiple Models
+==================================================================================
 
 This script uses your existing SAGE data reading approach and adds redshift binning
 for creating SMF grids, now with integrated observational data from the ECSV file
 and Baldry et al. 2008 data for the lowest redshift bin.
+
+MODIFIED: Now supports comparing multiple SAGE model runs/directories.
 
 Author: Analysis script for SAGE semi-analytic model
 """
@@ -20,7 +22,32 @@ import pandas as pd
 from random import seed
 
 # Configuration parameters - UPDATE THESE TO MATCH YOUR SETUP
-DirName = './output/millennium/'
+# Define multiple directories and their properties
+MODEL_CONFIGS = [
+    {
+        'name': 'SAGE 2.0',           # Display name for legend
+        'dir': './output/millennium/',  # Directory path
+        'color': 'red',              # Color for plotting
+        'linestyle': '-',            # Line style
+        'alpha': 0.8                 # Transparency
+    },
+    {
+        'name': 'Sage Vanilla',           # Display name for legend  
+        'dir': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/',  # Second directory path
+        'color': 'black',             # Different color
+        'linestyle': '--',           # Different line style
+        'alpha': 0.8                 # Transparency
+    }
+    # Add more models as needed:
+    # {
+    #     'name': 'Model 3',
+    #     'dir': './output/third_run/',
+    #     'color': 'green',
+    #     'linestyle': ':',
+    #     'alpha': 0.8
+    # }
+]
+
 FileName = 'model_0.hdf5'
 ObsDataFile = 'SMF_data_points.ecsv'  # Path to observational data file
 
@@ -228,10 +255,10 @@ def match_redshift_bin_to_obs(z_low, z_high, obs_data):
     return best_match
 
 
-def read_hdf(filename=None, snap_num=None, param=None):
-    """Read data from one or more SAGE model files - YOUR EXISTING FUNCTION"""
+def read_hdf(directory, filename=None, snap_num=None, param=None):
+    """Read data from one or more SAGE model files - MODIFIED to accept directory parameter"""
     # Get list of all model files in directory
-    model_files = [f for f in os.listdir(DirName) if f.startswith('model_') and f.endswith('.hdf5')]
+    model_files = [f for f in os.listdir(directory) if f.startswith('model_') and f.endswith('.hdf5')]
     model_files.sort()
     
     # Initialize empty array for combined data
@@ -240,7 +267,7 @@ def read_hdf(filename=None, snap_num=None, param=None):
     # Read and combine data from each model file
     for model_file in model_files:
         try:
-            with h5.File(DirName + model_file, 'r') as property_file:
+            with h5.File(os.path.join(directory, model_file), 'r') as property_file:
                 data = np.array(property_file[snap_num][param])
                 
                 if combined_data is None:
@@ -266,16 +293,16 @@ def get_redshift_from_snapshot(snap_num):
         raise ValueError(f"Snapshot {snap_num} out of range for redshift list")
 
 
-def get_available_snapshots():
-    """Get list of available snapshots from the data files"""
-    model_files = [f for f in os.listdir(DirName) if f.startswith('model_') and f.endswith('.hdf5')]
+def get_available_snapshots(directory):
+    """Get list of available snapshots from the data files - MODIFIED to accept directory parameter"""
+    model_files = [f for f in os.listdir(directory) if f.startswith('model_') and f.endswith('.hdf5')]
     
     if not model_files:
         return []
     
     # Check first file for available snapshots
     try:
-        with h5.File(DirName + model_files[0], 'r') as f:
+        with h5.File(os.path.join(directory, model_files[0]), 'r') as f:
             snap_keys = [key for key in f.keys() if 'snap' in key.lower()]
             
             # Extract snapshot numbers
@@ -293,7 +320,7 @@ def get_available_snapshots():
             return sorted(snapshots)
             
     except Exception as e:
-        print(f"Error reading snapshot list: {e}")
+        print(f"Error reading snapshot list from {directory}: {e}")
         return []
 
 
@@ -395,10 +422,9 @@ def is_lowest_redshift_bin(z_low, z_high):
 
 
 def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12), 
-                          save_path=None, show_observations=True, 
-                          sage_color='red', sage_label='SAGE'):
+                          save_path=None, show_observations=True):
     """
-    Create a grid plot of stellar mass functions for redshift bins
+    Create a grid plot of stellar mass functions for redshift bins - MODIFIED for multiple models
     """
     # Load observational data
     obs_data = {}
@@ -408,24 +434,35 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
             print("Warning: No observational data loaded. Proceeding without observations.")
             show_observations = False
     
-    # Get available snapshots
-    available_snapshots = get_available_snapshots()
+    # Check that all model directories exist and get available snapshots
+    model_snapshots = {}
+    for model_config in MODEL_CONFIGS:
+        directory = model_config['dir']
+        if not os.path.exists(directory):
+            print(f"Error: Directory {directory} does not exist!")
+            continue
+            
+        available_snapshots = get_available_snapshots(directory)
+        if not available_snapshots:
+            print(f"Warning: No snapshots found in {directory}")
+            continue
+            
+        model_snapshots[model_config['name']] = available_snapshots
+        print(f"Found {len(available_snapshots)} snapshots in {directory} for {model_config['name']}")
     
-    if not available_snapshots:
-        raise ValueError("No snapshots found in the data files")
+    if not model_snapshots:
+        raise ValueError("No valid model directories with snapshots found")
     
-    print(f"Found {len(available_snapshots)} available snapshots")
-    print(f"Snapshot range: {min(available_snapshots)} to {max(available_snapshots)}")
-    
-    # Create redshift bins
-    redshift_bins = create_redshift_bins(available_snapshots)
+    # Use snapshots from first valid model to create redshift bins
+    first_model_snapshots = list(model_snapshots.values())[0]
+    redshift_bins = create_redshift_bins(first_model_snapshots)
     
     if not redshift_bins:
         raise ValueError("No redshift bins with data found")
     
     print(f"Created {len(redshift_bins)} redshift bins with data")
     
-    # Set up the plot grid (5 columns x 3 rows to match typical SMF studies)
+    # Set up the plot grid (3 columns x 5 rows to match typical SMF studies)
     n_bins = len(redshift_bins)
     n_cols = 3
     n_rows = 5
@@ -438,7 +475,7 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
         axes = axes.reshape(1, -1)
     axes_flat = axes.flatten()
     
-    # Define mass bins and volume (same as standalone script)
+    # Define volume (same as standalone script)
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
     
     for i, (z_low, z_high, z_center, snapshots) in enumerate(redshift_bins):
@@ -454,146 +491,126 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
         if show_observations:
             obs_added = add_observational_data_with_baldry(ax, z_low, z_high, obs_data)
         
-        # Add single snapshot closest to bin center for comparison
-        try:
-            # For the lowest redshift bin, use z=0 snapshot for better Baldry comparison
-            if is_lowest_redshift_bin(z_low, z_high):
-                # Use Snap_63 (z=0) for the lowest bin to match Baldry data
-                closest_snap = 63
-                z_snap = 0.0
-            else:
-                # Find snapshot closest to redshift bin center for other bins
-                z_center_actual = (z_low + z_high) / 2
-                closest_snap = None
+        # Process each model
+        for model_idx, model_config in enumerate(MODEL_CONFIGS):
+            model_name = model_config['name']
+            directory = model_config['dir']
+            color = model_config['color']
+            linestyle = model_config['linestyle']
+            alpha = model_config['alpha']
+            
+            # Skip if this model doesn't have data
+            if model_name not in model_snapshots:
+                continue
+            
+            try:
+                # Find the best snapshot for this redshift bin from this model
+                available_snaps = model_snapshots[model_name]
+                target_z = z_low
+                best_snap = None
                 min_diff = float('inf')
                 
-                for snap in snapshots:
-                    z_snap_test = get_redshift_from_snapshot(snap)
-                    diff = abs(z_snap_test - z_center_actual)
-                    if diff < min_diff:
-                        min_diff = diff
-                        closest_snap = snap
+                # Find snapshots in this bin for this model
+                snapshots_in_bin = []
+                for snap in available_snaps:
+                    z_snap = get_redshift_from_snapshot(snap)
+                    if z_low <= z_snap < z_high:
+                        snapshots_in_bin.append(snap)
                 
-                z_snap = get_redshift_from_snapshot(closest_snap)
-            
-            if closest_snap is not None:
-                snap_str = f'Snap_{closest_snap}'
+                if not snapshots_in_bin:
+                    print(f"  No snapshots found for {model_name} in this redshift bin")
+                    continue
                 
-                # Read data for the closest snapshot
-                snap_stellar_mass = read_hdf(snap_num=snap_str, param='StellarMass')
-                snap_galaxy_type = read_hdf(snap_num=snap_str, param='Type')
+                # Use the same logic as original script to pick the best snapshot
+                if is_lowest_redshift_bin(z_low, z_high):
+                    # Use z=0 snapshot if available
+                    if 63 in snapshots_in_bin:
+                        best_snap = 63
+                    else:
+                        best_snap = snapshots_in_bin[0]  # Use first available
+                else:
+                    # Find snapshot with redshift just above the lower bound
+                    for snap in snapshots_in_bin:
+                        z_snap = get_redshift_from_snapshot(snap)
+                        if z_snap >= target_z:
+                            diff = z_snap - target_z
+                            if diff < min_diff:
+                                min_diff = diff
+                                best_snap = snap
+                    
+                    # If no snapshot found above target_z, use closest
+                    if best_snap is None:
+                        for snap in snapshots_in_bin:
+                            z_snap = get_redshift_from_snapshot(snap)
+                            diff = abs(z_snap - target_z)
+                            if diff < min_diff:
+                                min_diff = diff
+                                best_snap = snap
                 
-                if snap_stellar_mass is not None and snap_galaxy_type is not None:
-                    snap_stellar_mass = snap_stellar_mass * 1.0e10 / Hubble_h
-                    
-                    # Filter by galaxy type
-                    if galaxy_types == 'central':
-                        mask_type = (snap_galaxy_type == 0)
-                    elif galaxy_types == 'satellite':
-                        mask_type = (snap_galaxy_type == 1)
-                    elif galaxy_types == 'orphan':
-                        mask_type = (snap_galaxy_type == 2)
-                    else:  # 'all'
-                        mask_type = np.ones(len(snap_stellar_mass), dtype=bool)
-                    
-                    # Apply filters
-                    mask_combined = (snap_stellar_mass > 0) & mask_type
-                    snap_filtered_masses = snap_stellar_mass[mask_combined]
-                    
-                        
-        except Exception as e:
-            print(f"Warning: Could not add single snapshot comparison: {e}")
-        
-        # Find the snapshot with redshift just above the lower bound of this bin
-        # This gives us the most representative single snapshot for comparison
-        target_z = z_low  # Use the low end of the redshift range
-        best_snap = None
-        min_diff = float('inf')
-        
-        for snap in snapshots:
-            z_snap = get_redshift_from_snapshot(snap)
-            # Only consider snapshots with redshift >= target_z
-            if z_snap >= target_z:
-                diff = z_snap - target_z
-                if diff < min_diff:
-                    min_diff = diff
-                    best_snap = snap
-        
-        # If no snapshot found above target_z, use the one closest to target_z
-        if best_snap is None:
-            for snap in snapshots:
-                z_snap = get_redshift_from_snapshot(snap)
-                diff = abs(z_snap - target_z)
-                if diff < min_diff:
-                    min_diff = diff
-                    best_snap = snap
-        
-        if best_snap is not None:
-            try:
+                if best_snap is None:
+                    continue
+                
                 snap_str = f'Snap_{best_snap}'
                 z_best = get_redshift_from_snapshot(best_snap)
                 
                 # Read data for the selected snapshot
-                stellar_mass = read_hdf(snap_num=snap_str, param='StellarMass')
-                galaxy_type = read_hdf(snap_num=snap_str, param='Type')
+                stellar_mass = read_hdf(directory, snap_num=snap_str, param='StellarMass')
+                galaxy_type = read_hdf(directory, snap_num=snap_str, param='Type')
                 
-                if stellar_mass is not None and galaxy_type is not None:
-                    # Convert to solar masses
-                    stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                if stellar_mass is None or galaxy_type is None:
+                    print(f"  Could not read data for {model_name} Snap_{best_snap}")
+                    continue
+                
+                # Convert to solar masses
+                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                
+                # Apply galaxy type filter
+                if galaxy_types == 'central':
+                    mask = (galaxy_type == 0)
+                elif galaxy_types == 'satellite':
+                    mask = (galaxy_type == 1)
+                elif galaxy_types == 'orphan':
+                    mask = (galaxy_type == 2)
+                else:  # 'all'
+                    mask = np.ones(len(stellar_mass), dtype=bool)
+                
+                # Only keep galaxies with positive stellar mass and correct type
+                combined_mask = (stellar_mass > 0) & mask
+                filtered_masses = stellar_mass[combined_mask]
+                
+                print(f"  {model_name}: Using Snap_{best_snap} (z={z_best:.2f}): {len(filtered_masses)} galaxies")
+                
+                if len(filtered_masses) == 0:
+                    continue
+                
+                # Calculate SMF
+                xaxeshisto, phi, phi_err = calculate_smf(filtered_masses, volume=volume)
+                
+                # Plot SAGE data
+                mask_plot = phi > 0
+                if np.any(mask_plot):
+                    phi_log = np.log10(phi[mask_plot])
+                    phi_err_log = phi_err[mask_plot] / (phi[mask_plot] * np.log(10))
                     
-                    # Apply galaxy type filter
-                    if galaxy_types == 'central':
-                        mask = (galaxy_type == 0)
-                    elif galaxy_types == 'satellite':
-                        mask = (galaxy_type == 1)
-                    elif galaxy_types == 'orphan':
-                        mask = (galaxy_type == 2)
-                    else:  # 'all'
-                        mask = np.ones(len(stellar_mass), dtype=bool)
+                    # Create label with model name and snapshot redshift
+                    model_label = f'{model_name} (z={z_best:.2f})'
                     
-                    # Only keep galaxies with positive stellar mass and correct type
-                    combined_mask = (stellar_mass > 0) & mask
-                    filtered_masses = stellar_mass[combined_mask]
-                    
-                    print(f"  Using Snap_{best_snap} (z={z_best:.2f}) for z_target={target_z:.2f}: {len(filtered_masses)} galaxies")
-                else:
-                    filtered_masses = np.array([])
-                    
+                    ax.errorbar(xaxeshisto[mask_plot], phi_log, 
+                               yerr=phi_err_log,
+                               fmt='o-', color=color, linestyle=linestyle, 
+                               markersize=4, linewidth=2,
+                               label=model_label, alpha=alpha)
+                
+                # Add upper limits for zero counts
+                mask_upper = phi == 0
+                if np.any(mask_upper):
+                    phi_upper = np.log10(phi_err[mask_upper])
+                    ax.plot(xaxeshisto[mask_upper], phi_upper, 'v', 
+                           color=color, markersize=4, alpha=alpha*0.7)
+                
             except Exception as e:
-                print(f"Warning: Could not read Snap_{best_snap} data: {e}")
-                filtered_masses = np.array([])
-        else:
-            print(f"Warning: No suitable snapshot found for target z={target_z:.2f}")
-            filtered_masses = np.array([])
-        
-        if len(filtered_masses) == 0:
-            ax.text(0.5, 0.5, 'No data', transform=ax.transAxes, 
-                   ha='center', va='center')
-            continue
-        
-        # Calculate SMF using single snapshot (no normalization needed)
-        xaxeshisto, phi, phi_err = calculate_smf(filtered_masses, volume=volume)
-        
-        # Plot SAGE data with snapshot redshift in label
-        mask_plot = phi > 0
-        if np.any(mask_plot):
-            phi_log = np.log10(phi[mask_plot])
-            phi_err_log = phi_err[mask_plot] / (phi[mask_plot] * np.log(10))
-            
-            # Create label with snapshot redshift
-            sage_label_with_z = f'{sage_label} (z={z_best:.2f})'
-            
-            ax.errorbar(xaxeshisto[mask_plot], phi_log, 
-                       yerr=phi_err_log,
-                       fmt='o-', color=sage_color, markersize=4, linewidth=2,
-                       label=sage_label_with_z, alpha=0.8)
-        
-        # Add upper limits for zero counts
-        mask_upper = phi == 0
-        if np.any(mask_upper):
-            phi_upper = np.log10(phi_err[mask_upper])
-            ax.plot(xaxeshisto[mask_upper], phi_upper, 'v', 
-                   color=sage_color, markersize=4, alpha=0.6)
+                print(f"Warning: Could not process {model_name} for this redshift bin: {e}")
+                continue
         
         # Formatting
         ax.set_title(f'{z_low:.1f} < z < {z_high:.1f}', fontsize=12)
@@ -601,17 +618,72 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
         ax.set_xlim(mass_range)
         ax.set_ylim(-6, -1)
         
-        # Add legend: full legend to first panel, simple SAGE legend to all others
+        # Add legend: full legend to first panel, simple model legends to all others
         if i == 0:
             # First panel gets full legend with all available data
             ax.legend(fontsize=8, loc='lower left', frameon=False)
         else:
-            # All other panels get a simple legend showing just SAGE with redshift
-            # Create a custom legend with just the SAGE line
+            # All other panels get a simple legend showing just the models with their redshifts
             from matplotlib.lines import Line2D
-            custom_legend = [Line2D([0], [0], color=sage_color, linewidth=2, 
-                                  label=f'{sage_label} (z={z_best:.2f})')]
-            ax.legend(handles=custom_legend, fontsize=8, loc='lower left', frameon=False)
+            custom_legend = []
+            
+            # Add legend entries for each model that was plotted in this panel
+            for model_config in MODEL_CONFIGS:
+                model_name = model_config['name']
+                color = model_config['color']
+                linestyle = model_config['linestyle']
+                
+                # Find the redshift that was used for this model in this bin
+                if model_name in model_snapshots:
+                    try:
+                        # Use same logic as main plotting to find the snapshot that was used
+                        available_snaps = model_snapshots[model_name]
+                        snapshots_in_bin = []
+                        for snap in available_snaps:
+                            z_snap = get_redshift_from_snapshot(snap)
+                            if z_low <= z_snap < z_high:
+                                snapshots_in_bin.append(snap)
+                        
+                        if snapshots_in_bin:
+                            target_z = z_low
+                            best_snap = None
+                            min_diff = float('inf')
+                            
+                            if is_lowest_redshift_bin(z_low, z_high):
+                                if 63 in snapshots_in_bin:
+                                    best_snap = 63
+                                else:
+                                    best_snap = snapshots_in_bin[0]
+                            else:
+                                for snap in snapshots_in_bin:
+                                    z_snap = get_redshift_from_snapshot(snap)
+                                    if z_snap >= target_z:
+                                        diff = z_snap - target_z
+                                        if diff < min_diff:
+                                            min_diff = diff
+                                            best_snap = snap
+                                
+                                if best_snap is None:
+                                    for snap in snapshots_in_bin:
+                                        z_snap = get_redshift_from_snapshot(snap)
+                                        diff = abs(z_snap - target_z)
+                                        if diff < min_diff:
+                                            min_diff = diff
+                                            best_snap = snap
+                            
+                            if best_snap is not None:
+                                z_best = get_redshift_from_snapshot(best_snap)
+                                custom_legend.append(Line2D([0], [0], color=color, 
+                                                          linestyle=linestyle, linewidth=2, 
+                                                          label=f'{model_name} (z={z_best:.2f})'))
+                    except:
+                        # If we can't determine the redshift, just show the model name
+                        custom_legend.append(Line2D([0], [0], color=color, 
+                                                  linestyle=linestyle, linewidth=2, 
+                                                  label=model_name))
+            
+            if custom_legend:
+                ax.legend(handles=custom_legend, fontsize=8, loc='lower left', frameon=False)
     
     # Remove empty subplots
     for i in range(n_bins, len(axes_flat)):
@@ -639,8 +711,6 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"Saved plot to {save_path}")
-    
-    #plt.show()
     
     return fig, axes
 
@@ -721,53 +791,84 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data):
 
 def create_simple_smf_plot(snap_list=None):
     """
-    Create a simple SMF plot for one or more snapshots
+    Create a simple SMF plot for one or more snapshots - MODIFIED for multiple models
     """
-    available_snapshots = get_available_snapshots()
+    plt.figure(figsize=(12, 8))
     
-    if snap_list is None:
-        # Use a few representative snapshots
-        if len(available_snapshots) > 5:
-            step = len(available_snapshots) // 5
-            snap_list = available_snapshots[::step]
-        else:
-            snap_list = available_snapshots
-    
-    plt.figure(figsize=(10, 8))
-    
-    colors = plt.cm.viridis(np.linspace(0, 1, len(snap_list)))
-    
-    for i, snap in enumerate(snap_list):
-        snap_str = f'Snap_{snap}'
+    # Process each model
+    for model_idx, model_config in enumerate(MODEL_CONFIGS):
+        model_name = model_config['name']
+        directory = model_config['dir']
+        color = model_config['color']
+        linestyle = model_config['linestyle']
+        alpha = model_config['alpha']
         
-        try:
-            stellar_mass = read_hdf(snap_num=snap_str, param='StellarMass')
-            if stellar_mass is None:
-                continue
-                
-            # Convert to solar masses
-            stellar_mass = stellar_mass * 1.0e10 / Hubble_h
-            
-            # Only positive masses
-            stellar_mass = stellar_mass[stellar_mass > 0]
-            
-            z = get_redshift_from_snapshot(snap)
-            
-            # Calculate SMF
-            bin_centers, phi, phi_err = calculate_smf(stellar_mass)
-            
-            # Plot
-            mask = phi > 0
-            if np.any(mask):
-                plt.errorbar(np.log10(bin_centers[mask]), np.log10(phi[mask]),
-                            yerr=phi_err[mask]/(phi[mask]*np.log(10)),
-                            fmt='o-', color=colors[i], label=f'z={z:.1f}', alpha=0.8)
-                            
-        except Exception as e:
-            print(f"Warning: Could not process snapshot {snap}: {e}")
+        if not os.path.exists(directory):
+            print(f"Warning: Directory {directory} does not exist, skipping {model_name}")
             continue
+        
+        available_snapshots = get_available_snapshots(directory)
+        
+        if not available_snapshots:
+            print(f"Warning: No snapshots found in {directory}")
+            continue
+        
+        if snap_list is None:
+            # Use a few representative snapshots
+            if len(available_snapshots) > 5:
+                step = len(available_snapshots) // 5
+                model_snap_list = available_snapshots[::step]
+            else:
+                model_snap_list = available_snapshots
+        else:
+            # Use only snapshots that exist in this model
+            model_snap_list = [s for s in snap_list if s in available_snapshots]
+        
+        # Generate colors for different redshifts within this model
+        n_snaps = len(model_snap_list)
+        if n_snaps > 1:
+            alphas = np.linspace(0.4, 1.0, n_snaps)
+        else:
+            alphas = [alpha]
+        
+        for i, snap in enumerate(model_snap_list):
+            snap_str = f'Snap_{snap}'
+            
+            try:
+                stellar_mass = read_hdf(directory, snap_num=snap_str, param='StellarMass')
+                if stellar_mass is None:
+                    continue
+                    
+                # Convert to solar masses
+                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                
+                # Only positive masses
+                stellar_mass = stellar_mass[stellar_mass > 0]
+                
+                z = get_redshift_from_snapshot(snap)
+                
+                # Calculate SMF
+                bin_centers, phi, phi_err = calculate_smf(stellar_mass)
+                
+                # Plot
+                mask = phi > 0
+                if np.any(mask):
+                    # Create unique label for first snapshot of each model
+                    if i == 0:
+                        label = f'{model_name} (z={z:.1f})'
+                    else:
+                        label = f'z={z:.1f}'
+                    
+                    plt.errorbar(bin_centers[mask], np.log10(phi[mask]),
+                                yerr=phi_err[mask]/(phi[mask]*np.log(10)),
+                                fmt='o-', color=color, linestyle=linestyle,
+                                alpha=alphas[i], label=label, markersize=4)
+                                
+            except Exception as e:
+                print(f"Warning: Could not process {model_name} snapshot {snap}: {e}")
+                continue
     
-    plt.xlabel(r'$\log_{10}(M_*/M_{\odot})$')
+    plt.xlabel(r'$\log_{10}(M_*/M_{\odot})')
     plt.ylabel(r'$\log_{10}(\phi/\mathrm{Mpc}^{-3}\,\mathrm{dex}^{-1})$')
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -777,38 +878,48 @@ def create_simple_smf_plot(snap_list=None):
 
 # Example usage and main execution
 if __name__ == "__main__":
-    print("SAGE SMF Analysis with Redshift Bins and Observational Data")
-    print("=" * 60)
+    print("SAGE SMF Analysis with Multiple Models - Redshift Binned SMF Grid")
+    print("=" * 70)
     
-    # Check if data directory exists
-    if not os.path.exists(DirName):
-        print(f"Error: Directory {DirName} does not exist!")
-        print("Please update the DirName variable to point to your SAGE output directory.")
+    # Check if data directories exist
+    valid_models = []
+    for model_config in MODEL_CONFIGS:
+        directory = model_config['dir']
+        model_name = model_config['name']
+        
+        if not os.path.exists(directory):
+            print(f"Warning: Directory {directory} for {model_name} does not exist!")
+            continue
+        
+        # Check for model files
+        model_files = [f for f in os.listdir(directory) if f.startswith('model_') and f.endswith('.hdf5')]
+        
+        if not model_files:
+            print(f"Warning: No model files found in {directory} for {model_name}")
+            continue
+        
+        print(f"✓ Found {len(model_files)} model files in {directory} for {model_name}")
+        valid_models.append(model_config)
+    
+    if not valid_models:
+        print("Error: No valid model directories found!")
+        print("Please update the MODEL_CONFIGS variable to point to your SAGE output directories.")
         exit(1)
     
-    # Check for model files
-    model_files = [f for f in os.listdir(DirName) if f.startswith('model_') and f.endswith('.hdf5')]
-    
-    if not model_files:
-        print(f"Error: No model files found in {DirName}")
-        print("Please check that SAGE has run successfully and produced HDF5 output.")
-        exit(1)
-    
-    print(f"Found {len(model_files)} model files in {DirName}")
+    # Update the global MODEL_CONFIGS to only include valid models
+    MODEL_CONFIGS[:] = valid_models
     
     try:
         # First create a simple SMF plot to test
-        print("\nCreating simple SMF plot...")
+        print("\nCreating simple SMF comparison plot...")
         create_simple_smf_plot()
         
-        print("\nCreating SMF redshift grid with observational data...")
+        print("\nCreating SMF redshift grid with multiple models and observational data...")
         # Create the main SMF grid plot
         fig1, axes1 = plot_smf_redshift_grid(
             galaxy_types='all',
             mass_range=(8, 12),
-            save_path='sage_smf_redshift_grid_all' + OutputFormat,
-            sage_color='red',
-            sage_label='SAGE'
+            save_path='sage_smf_redshift_grid_all' + OutputFormat
         )
         
         # Create separate plots for central and satellite galaxies
@@ -816,25 +927,26 @@ if __name__ == "__main__":
         fig2, axes2 = plot_smf_redshift_grid(
             galaxy_types='central',
             mass_range=(8, 12),
-            save_path='sage_smf_redshift_grid_central' + OutputFormat,
-            sage_color='darkred',
-            sage_label='SAGE Central'
+            save_path='sage_smf_redshift_grid_central' + OutputFormat
         )
         
         print("Creating satellite galaxies SMF grid...")
         fig3, axes3 = plot_smf_redshift_grid(
             galaxy_types='satellite',
             mass_range=(8, 12),
-            save_path='sage_smf_redshift_grid_satellite' + OutputFormat,
-            sage_color='orange',
-            sage_label='SAGE Satellite'
+            save_path='sage_smf_redshift_grid_satellite' + OutputFormat
         )
         
-        print("SMF redshift grid analysis complete!")
+        print("Multi-model SMF redshift grid analysis complete!")
         print("Generated plots:")
-        print("1. sage_smf_redshift_grid_all.png - All galaxies vs observations (with Baldry 2008)")
-        print("2. sage_smf_redshift_grid_central.png - Central galaxies vs observations (with Baldry 2008)")
-        print("3. sage_smf_redshift_grid_satellite.png - Satellite galaxies vs observations (with Baldry 2008)")
+        print("1. sage_smf_redshift_grid_all.png - All galaxies vs observations (multiple models)")
+        print("2. sage_smf_redshift_grid_central.png - Central galaxies vs observations (multiple models)")
+        print("3. sage_smf_redshift_grid_satellite.png - Satellite galaxies vs observations (multiple models)")
+        
+        # Print model comparison summary
+        print("\nModel Configuration Summary:")
+        for i, model_config in enumerate(MODEL_CONFIGS):
+            print(f"  {i+1}. {model_config['name']}: {model_config['dir']} ({model_config['color']}, {model_config['linestyle']})")
         
     except Exception as e:
         print(f"Error during analysis: {e}")

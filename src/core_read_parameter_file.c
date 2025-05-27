@@ -383,6 +383,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->SFHighMassSlope);
     ParamID[NParam++] = DOUBLE;
 
+    strncpy(ParamTag[NParam], "VvirEnhancementOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->VvirEnhancementOn);
+    ParamID[NParam++] = INT;
+
     strncpy(ParamTag[NParam], "VvirThreshold", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->VvirThreshold);
     ParamID[NParam++] = DOUBLE;

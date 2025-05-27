@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/output/millennium_vanilla/
 
 FirstFile         0
 LastFile          7
@@ -50,16 +50,16 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription              3   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
+SFprescription              0   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
 AGNrecipeOn                 2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn           1   %0: switch off
 ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
+MassLoadingModel            0   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 
 ReionizationModel         0       % 0=Simple, 1=Gnedin, 2=Sobacchi-Mesinger, 3=Patchy
-FilteringMassNorm         10.0     % [10^10 Msun/h] Based on Okamoto et al. 2008
-UVBackgroundStrength      1.0     % Range 0-1, strength of early UV feedback
+FilteringMassNorm         15.0     % [10^10 Msun/h] Based on Okamoto et al. 2008
+UVBackgroundStrength      2.0     % Range 0-1, strength of early UV feedback
 PatchyReionWidth          0.5     % Width of reionization transition in dz
 LocalReionVariance        1.0     % Spatial variance in reionization timing
 PostReionSlope           -1.0    % Evolution of critical mass after reionization
@@ -114,8 +114,8 @@ IntegrationBins             15     %Number of radial bins to use for integration
 %------------------------------------------
 %----- MOLECULAR GAS MODEL PARAMETERS -----
 %------------------------------------------
-EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
-EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
+EnvironmentalEffectsOn        0       % Enable environmental effects on H2 gas (0=off, 1=on)
+EnvEffectStrength             0.5     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- MASS-DEPENDANT REINCORPORATION -----
@@ -140,18 +140,19 @@ ReincorporationRedshiftExp       -10.0
 %----- PREVENTATIVE FEEDBACK PARAMETERS -----
 %------------------------------------------
 
-CGMBuildOn     1           % Enable preventative feedback (0=off, 1=on)
-CGMBuildVcrit  40.0        % Critical velocity scale (km/s)
-CGMBuildAlpha  1.0         % Power-law slope
-CGMBuildZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
+CGMBuildOn     0           % Enable preventative feedback (0=off, 1=on)
+CGMBuildVcrit  35.0        % Critical velocity scale (km/s)
+CGMBuildAlpha  0.8         % Power-law slope
+CGMBuildZdep   0.7         % Redshift dependence (0.5-1.0 recommended)
 
 LowMassHighzSuppressionOn       0        % Enable suppression (0=off, 1=on)
 SuppressionMassThreshold        45.0      % In units of 10^10 Msun/h
 SuppressionMassExponent         1.0      % Power-law exponent for mass dependence 
 SuppressionRedshiftExp          0.5      % Redshift scaling factor
 
-VvirThreshold                   32.5
-VvirEnhancementPower            0.42
+VvirEnhancementOn           0      % Enable (1) or disable (0) virial velocity enhancement
+VvirThreshold               60.0   % Threshold velocity in km/s for enhancement
+VvirEnhancementPower        0.9    % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Other code-related information -----

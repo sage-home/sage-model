@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium/'
+DirName = './output/millennium_vanilla/'
 FileName = 'model_0.hdf5'
 
 # Simulation details
