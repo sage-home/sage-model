@@ -621,6 +621,27 @@ The module callback system provides several layers of error handling:
 - **Used By**: All physics modules that need to communicate with each other
 - **Events**: Does not emit events but may be used within event handlers
 - **Properties**: No direct interaction with the property system
+## Testing
+
+The module callback system is validated through the comprehensive test suite in `tests/test_module_callback.c`, which verifies all core functionality:
+
+1. **System Initialization**: Tests proper initialization of the callback system and global call stack
+2. **Function Registration**: Validates function registration, duplicate detection, and parameter validation
+3. **Call Stack Tracking**: Tests pushing, popping, and depth tracking of the call stack
+4. **Circular Dependency Detection**: Verifies detection of both simple (A→A) and complex (A→B→C→A) circular dependencies
+5. **Parameter Passing**: Tests that parameters and return values are correctly passed between modules
+6. **Error Propagation**: Verifies that errors are properly propagated through call chains
+7. **Dependency Management**: Tests dependency declaration and validation with version constraints
+8. **Call Stack Diagnostics**: Validates trace generation and error information reporting
+9. **Module Unregistration**: Tests proper cleanup when modules are unregistered
+
+The test creates mock modules with intercommunication patterns to thoroughly exercise the callback infrastructure. Run the test with:
+
+```bash
+make test_module_callback
+./tests/test_module_callback
+```
+
 ## See Also
 - [Module System and Configuration](module_system_and_configuration.md)
 - [Pipeline System](pipeline_phases.md)
@@ -628,5 +649,5 @@ The module callback system provides several layers of error handling:
 
 ---
 
-*Last updated: May 26, 2025*  
+*Last updated: May 28, 2025*  
 *Component version: 1.0*

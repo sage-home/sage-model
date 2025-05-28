@@ -54,6 +54,8 @@ These tests are integrated into the main Makefile and can be run with `make test
 |-----------|---------|---------------|
 | ✅ **test_pipeline_invoke** | Tests the pipeline invocation mechanisms | Phase 2.7 (Mar 2025) |
 | ✅ **test_dynamic_library** | Tests dynamic loading of modules | Phase 4.1 (Apr 2025) |
+| ✅ **test_module_callback** | Tests the inter-module communication infrastructure | Phase 5.2.F.5 (May 2025) |
+| ✅ **test_placeholder_mergers_module** | Tests the placeholder merger module implementations | Phase 4.3 (Apr 2025) |
 
 ## Standalone Tests (Individual Makefiles/Scripts)
 
@@ -125,7 +127,7 @@ The test uses a special parameter file (`tests/test_data/test-mini-millennium.pa
 - **Core Infrastructure (9 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling
 - **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, access patterns
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
-- **Module System (2 tests)**: Dynamic loading and pipeline invocation
+- **Module System (4 tests)**: Dynamic loading, pipeline invocation, module callback system, placeholder modules
 
 The test suite provides comprehensive coverage of all major SAGE components whilst maintaining clear separation between unit tests (expected to pass during development) and scientific validation tests (may fail during refactoring phases).
 
