@@ -319,10 +319,12 @@ static int setup_test_context(void) {
     
     // Set modules as active BEFORE declaring dependencies
     // This avoids the chicken-and-egg problem with dependency validation
+    // IMPORTANT: Activate modules with functions LAST so they become the active ones
     printf("Setting modules as active...\n");
-    result = module_set_active(test_ctx.module_a_id);
+    
+    result = module_set_active(test_ctx.module_temp_id);
     if (result != MODULE_STATUS_SUCCESS) {
-        printf("Warning: Failed to set module A as active: %d\n", result);
+        printf("Warning: Failed to set temporary module as active: %d\n", result);
     }
     
     result = module_set_active(test_ctx.module_b_id);
@@ -335,9 +337,10 @@ static int setup_test_context(void) {
         printf("Warning: Failed to set module C as active: %d\n", result);
     }
     
-    result = module_set_active(test_ctx.module_temp_id);
+    // Activate module_a LAST so it becomes the active MISC module (it has functions registered)
+    result = module_set_active(test_ctx.module_a_id);
     if (result != MODULE_STATUS_SUCCESS) {
-        printf("Warning: Failed to set temporary module as active: %d\n", result);
+        printf("Warning: Failed to set module A as active: %d\n", result);
     }
     
     printf("All modules set as active\n");
@@ -375,6 +378,12 @@ static int setup_test_context(void) {
     result = module_declare_simple_dependency(test_ctx.module_c_id, MODULE_TYPE_MISC, NULL, false);
     if (result != 0) {
         printf("Warning: Failed to declare dependency C->A: %d\n", result);
+    }
+    
+    // Module temp can call itself (required for temp_complex -> temp_simple)
+    result = module_declare_simple_dependency(test_ctx.module_temp_id, MODULE_TYPE_MISC, NULL, false);
+    if (result != 0) {
+        printf("Warning: Failed to declare self-dependency temp->temp: %d\n", result);
     }
     
     test_ctx.initialized = 1;

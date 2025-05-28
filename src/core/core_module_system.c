@@ -2139,23 +2139,64 @@ int module_get_active_by_type(enum module_type type, struct base_module **module
         return MODULE_STATUS_NOT_INITIALIZED;
     }
     
-    /* Find active module of the requested type */
+    printf("DEBUG_ACTIVE: Searching for active module of type %d\n", type);
+    
+    /* Find active module of the requested type, preferring modules with functions */
+    struct base_module *best_module = NULL;
+    void *best_module_data = NULL;
+    struct base_module *fallback_module = NULL;
+    void *fallback_module_data = NULL;
+    
     for (int i = 0; i < global_module_registry->num_active_types; i++) {
         if (global_module_registry->active_modules[i].type == type) {
             int module_index = global_module_registry->active_modules[i].module_index;
+            struct base_module *candidate = global_module_registry->modules[module_index].module;
+            void *candidate_data = global_module_registry->modules[module_index].module_data;
             
-            /* Set output pointers */
-            if (module != NULL) {
-                *module = global_module_registry->modules[module_index].module;
+            printf("DEBUG_ACTIVE: Checking candidate module '%s' (ID: %d)\n", 
+                   candidate->name, candidate->module_id);
+            printf("DEBUG_ACTIVE: Candidate function_registry: %p\n", (void*)candidate->function_registry);
+            if (candidate->function_registry != NULL) {
+                printf("DEBUG_ACTIVE: Candidate has %d functions\n", candidate->function_registry->num_functions);
             }
             
-            if (module_data != NULL) {
-                *module_data = global_module_registry->modules[module_index].module_data;
+            /* Prefer modules that have function registries with functions */
+            if (candidate->function_registry != NULL && candidate->function_registry->num_functions > 0) {
+                printf("DEBUG_ACTIVE: Selected '%s' as best module (has functions)\n", candidate->name);
+                best_module = candidate;
+                best_module_data = candidate_data;
+                break; /* Found a module with functions, use it */
+            } else if (fallback_module == NULL) {
+                printf("DEBUG_ACTIVE: Setting '%s' as fallback module\n", candidate->name);
+                /* Keep the first module as fallback if no modules have functions */
+                fallback_module = candidate;
+                fallback_module_data = candidate_data;
             }
-            
-            return MODULE_STATUS_SUCCESS;
         }
     }
+    
+    /* Use the best module (with functions) or fallback to first available */
+    struct base_module *selected_module = (best_module != NULL) ? best_module : fallback_module;
+    void *selected_data = (best_module != NULL) ? best_module_data : fallback_module_data;
+    
+    if (selected_module == NULL) {
+        printf("DEBUG_ACTIVE: No modules of type %d found\n", type);
+        return MODULE_STATUS_MODULE_NOT_FOUND; /* No modules of requested type found */
+    }
+    
+    printf("DEBUG_ACTIVE: Final selection: '%s' (ID: %d) with function_registry: %p\n",
+           selected_module->name, selected_module->module_id, (void*)selected_module->function_registry);
+    
+    /* Set output pointers */
+    if (module != NULL) {
+        *module = selected_module;
+    }
+    
+    if (module_data != NULL) {
+        *module_data = selected_data;
+    }
+    
+    return MODULE_STATUS_SUCCESS;
     
     /* During Phase 2.5-2.6 development, we're less verbose */
     static bool already_logged_type_errors[MODULE_TYPE_MAX] = {false};
