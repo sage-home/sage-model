@@ -36,11 +36,13 @@ static struct test_context {
     struct base_module module_a;
     struct base_module module_b;
     struct base_module module_c;
+    struct base_module module_temp;  // Temporary module for unregistration tests
     
     // Module IDs
     int module_a_id;
     int module_b_id;
     int module_c_id;
+    int module_temp_id;
     
     // State tracking
     int initialized;
@@ -163,6 +165,31 @@ static int mock_function_calls_error(void *args, void *context) {
 }
 
 /**
+ * Temporary module functions for unregistration testing
+ */
+static int mock_temp_function_simple(void *args, void *context __attribute__((unused))) {
+    // Simple function for temporary module
+    int *int_args = (int *)args;
+    return *int_args + 10;  // Add 10 to input
+}
+
+static int mock_temp_function_complex(void *args, void *context) {
+    // Function that calls another function in the same temp module
+    int *int_args = (int *)args;
+    int temp_result = 0;
+    
+    // Call the simple function in the same module
+    int status = module_invoke(test_ctx.module_temp_id, MODULE_TYPE_MISC, NULL,
+                             "temp_simple", context, int_args, &temp_result);
+    
+    if (status != 0) {
+        return status;  // Propagate error
+    }
+    
+    return temp_result + 5;  // Add 5 more to the result
+}
+
+/**
  * Setup test context and mock modules
  */
 static int setup_test_context(void) {
@@ -203,6 +230,13 @@ static int setup_test_context(void) {
     test_ctx.module_c.initialize = mock_module_initialize;
     test_ctx.module_c.cleanup = mock_module_cleanup;
     
+    strcpy(test_ctx.module_temp.name, "module_temp");
+    strcpy(test_ctx.module_temp.version, "1.0.0");
+    strcpy(test_ctx.module_temp.author, "Test Author");
+    test_ctx.module_temp.type = MODULE_TYPE_MISC;
+    test_ctx.module_temp.initialize = mock_module_initialize;
+    test_ctx.module_temp.cleanup = mock_module_cleanup;
+    
     // Register mock modules
     result = module_register(&test_ctx.module_a);
     if (result != MODULE_STATUS_SUCCESS) {
@@ -231,7 +265,16 @@ static int setup_test_context(void) {
     test_ctx.module_c_id = test_ctx.module_c.module_id;
     printf("Module C registered with ID: %d\n", test_ctx.module_c_id);
     
-    if (test_ctx.module_a_id < 0 || test_ctx.module_b_id < 0 || test_ctx.module_c_id < 0) {
+    result = module_register(&test_ctx.module_temp);
+    if (result != MODULE_STATUS_SUCCESS) {
+        printf("Failed to register temporary module, status: %d\n", result);
+        cleanup_module_system();
+        return -1;
+    }
+    test_ctx.module_temp_id = test_ctx.module_temp.module_id;
+    printf("Temporary module registered with ID: %d\n", test_ctx.module_temp_id);
+    
+    if (test_ctx.module_a_id < 0 || test_ctx.module_b_id < 0 || test_ctx.module_c_id < 0 || test_ctx.module_temp_id < 0) {
         printf("Failed to register mock modules\n");
         cleanup_module_system();
         return -1;
@@ -265,6 +308,15 @@ static int setup_test_context(void) {
     }
     printf("Module C initialized successfully\n");
     
+    printf("Initializing temporary module (ID: %d)...\n", test_ctx.module_temp_id);
+    result = module_initialize(test_ctx.module_temp_id, NULL);
+    if (result != MODULE_STATUS_SUCCESS) {
+        printf("Failed to initialize temporary module, status: %d\n", result);
+        cleanup_module_system();
+        return -1;
+    }
+    printf("Temporary module initialized successfully\n");
+    
     // Set modules as active BEFORE declaring dependencies
     // This avoids the chicken-and-egg problem with dependency validation
     printf("Setting modules as active...\n");
@@ -281,6 +333,11 @@ static int setup_test_context(void) {
     result = module_set_active(test_ctx.module_c_id);
     if (result != MODULE_STATUS_SUCCESS) {
         printf("Warning: Failed to set module C as active: %d\n", result);
+    }
+    
+    result = module_set_active(test_ctx.module_temp_id);
+    if (result != MODULE_STATUS_SUCCESS) {
+        printf("Warning: Failed to set temporary module as active: %d\n", result);
     }
     
     printf("All modules set as active\n");
@@ -621,6 +678,82 @@ static void test_call_stack_diagnostics(void) {
     printf("Call stack diagnostics test completed\n");
 }
 
+/**
+ * Test: Module Unregistration and Callback System Integration
+ */
+static void test_module_unregistration(void) {
+    printf("\n=== Testing module unregistration and callback system integration ===\n");
+    
+    // Register functions with the temporary module
+    int result = module_register_function(test_ctx.module_temp_id, "temp_simple", 
+                                        mock_temp_function_simple, FUNCTION_TYPE_INT,
+                                        "int (void*, void*)", "Simple temp function");
+    TEST_ASSERT(result == 0, "temp_simple function registration should succeed");
+    
+    result = module_register_function(test_ctx.module_temp_id, "temp_complex", 
+                                    mock_temp_function_complex, FUNCTION_TYPE_INT,
+                                    "int (void*, void*)", "Complex temp function");
+    TEST_ASSERT(result == 0, "temp_complex function registration should succeed");
+    
+    // Test that functions work before unregistration
+    int input = 5;
+    int output = 0;
+    void *context = NULL;
+    
+    // Test simple function (should return input + 10 = 15)
+    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "temp_simple", context, &input, &output);
+    TEST_ASSERT(result == 0, "temp_simple should be callable before module unregistration");
+    TEST_ASSERT(output == 15, "temp_simple should return correct result (5 + 10 = 15)");
+    
+    // Test complex function (should call temp_simple then add 5, so 5 + 10 + 5 = 20)
+    output = 0;
+    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "temp_complex", context, &input, &output);
+    TEST_ASSERT(result == 0, "temp_complex should be callable before module unregistration");
+    TEST_ASSERT(output == 20, "temp_complex should return correct result (5 + 10 + 5 = 20)");
+    
+    // Now unregister the entire temporary module
+    printf("Unregistering temporary module (ID: %d)...\n", test_ctx.module_temp_id);
+    result = module_unregister(test_ctx.module_temp_id);
+    TEST_ASSERT(result == 0, "Module unregistration should succeed");
+    
+    // Test that functions can no longer be called after module unregistration
+    output = 0;
+    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "temp_simple", context, &input, &output);
+    TEST_ASSERT(result != 0, "temp_simple should fail after module unregistration");
+    
+    output = 0;
+    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "temp_complex", context, &input, &output);
+    TEST_ASSERT(result != 0, "temp_complex should fail after module unregistration");
+    
+    // Test that trying to call with the specific module ID also fails
+    output = 0;
+    result = module_invoke(test_ctx.module_temp_id, MODULE_TYPE_MISC, NULL, "temp_simple", context, &input, &output);
+    TEST_ASSERT(result != 0, "Direct call with unregistered module ID should fail");
+    
+    // Verify that the call stack remains clean after failed invocations
+    int stack_depth = module_call_stack_get_depth();
+    TEST_ASSERT(stack_depth == 0, "Call stack should remain empty after failed calls to unregistered module");
+    
+    // Test that other modules are still functional (verify we didn't break anything)
+    module_register_function(test_ctx.module_a_id, "test_after_unregister", 
+                           mock_function_a, FUNCTION_TYPE_INT, NULL, NULL);
+    
+    output = 0;
+    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "test_after_unregister", context, &input, &output);
+    TEST_ASSERT(result == 0, "Other modules should still work after temp module unregistration");
+    TEST_ASSERT(output == 6, "Other modules should return correct results (5 + 1 = 6)");
+    
+    // Test edge case: try to unregister the same module again
+    result = module_unregister(test_ctx.module_temp_id);
+    TEST_ASSERT(result != 0, "Unregistering the same module twice should fail");
+    
+    // Test edge case: try to unregister invalid module ID
+    result = module_unregister(-999);
+    TEST_ASSERT(result != 0, "Unregistering invalid module ID should fail");
+    
+    printf("Module unregistration test completed\n");
+}
+
 //=============================================================================
 // Test Runner
 //=============================================================================
@@ -644,6 +777,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
     test_error_propagation();
     test_dependency_management();
     test_call_stack_diagnostics();
+    test_module_unregistration();  // Add the new test
     
     // Teardown
     teardown_test_context();
