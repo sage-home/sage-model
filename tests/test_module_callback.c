@@ -197,7 +197,7 @@ static int setup_test_context(void) {
     
     // Initialize logging system with stdout for testing
     // Create a minimal params structure to avoid NULL pointer issues
-    struct params test_params;
+    static struct params test_params;  // Make static to persist beyond function scope
     memset(&test_params, 0, sizeof(test_params));
     initialize_logging(&test_params);
     

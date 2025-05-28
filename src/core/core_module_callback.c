@@ -958,13 +958,15 @@ int module_invoke(
         target = NULL;
         target_data = NULL;
         
-        /* Search through all active modules (not just the primary active one) */
+        /* Search through ALL registered modules of the specified type to find one with the requested function */
         if (global_module_registry != NULL) {
-            for (int i = 0; i < global_module_registry->num_active_types; i++) {
-                if (global_module_registry->active_modules[i].type == (enum module_type)module_type) {
-                    int module_index = global_module_registry->active_modules[i].module_index;
-                    struct base_module *candidate = global_module_registry->modules[module_index].module;
-                    void *candidate_data = global_module_registry->modules[module_index].module_data;
+            for (int i = 0; i < global_module_registry->num_modules; i++) {
+                if (global_module_registry->modules[i].module != NULL &&
+                    global_module_registry->modules[i].initialized &&
+                    global_module_registry->modules[i].module->type == (enum module_type)module_type) {
+                    
+                    struct base_module *candidate = global_module_registry->modules[i].module;
+                    void *candidate_data = global_module_registry->modules[i].module_data;
                     
                     printf("DEBUG_INVOKE: Checking candidate module '%s' (ID: %d) for function '%s'\n",
                            candidate->name, candidate->module_id, function_name);
