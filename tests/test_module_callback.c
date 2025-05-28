@@ -69,85 +69,84 @@ static int mock_module_cleanup(void *module_data) {
 /**
  * Mock module A functions
  */
-static int mock_function_a(void *context __attribute__((unused)), void *args, void *result) {
-    // Simple implementation
+static int mock_function_a(void *args, void *context __attribute__((unused))) {
+    // Simple implementation - return success, store result via module_invoke's result parameter
     int *int_args = (int *)args;
-    int *int_result = (int *)result;
-    *int_result = *int_args + 1;
-    return 0;
+    // The result will be stored by module_invoke based on our return value
+    // We return the computed value, and module_invoke stores it in result
+    return *int_args + 1;  // Return computed value for storage by module_invoke
 }
 
-static int mock_function_a_calls_b(void *context, void *args, void *result) {
+static int mock_function_a_calls_b(void *args, void *context) {
     // Function that calls another module
     int *int_args = (int *)args;
-    int *int_result = (int *)result;
     
-    // Call function in module B
-    int temp_args = *int_args;
+    // Call function in module B (should call mock_function_b_calls_c for circular dependency test)
     int temp_result = 0;
     int status = module_invoke(test_ctx.module_a_id, MODULE_TYPE_COOLING, NULL, 
-                             "mock_function_b", context, &temp_args, &temp_result);
+                             "mock_function_b_calls_c", context, int_args, &temp_result);
     
-    *int_result = temp_result + 2;
-    return status;
+    if (status != 0) {
+        return status;  // Propagate error
+    }
+    
+    return temp_result + 2;  // Return the computed result
 }
 
 /**
  * Mock module B functions
  */
-static int mock_function_b(void *context __attribute__((unused)), void *args, void *result) {
+static int mock_function_b(void *args, void *context __attribute__((unused))) {
     // Simple implementation
     int *int_args = (int *)args;
-    int *int_result = (int *)result;
-    *int_result = *int_args * 2;
-    return 0;
+    return *int_args * 2;  // Return the result directly
 }
 
-static int mock_function_b_calls_c(void *context, void *args, void *result) {
+static int mock_function_b_calls_c(void *args, void *context) {
     // Function that calls another module
     int *int_args = (int *)args;
-    int *int_result = (int *)result;
     
-    // Call function in module C
-    int temp_args = *int_args;
+    // Call function in module C (should call mock_function_c_calls_a for circular dependency)
     int temp_result = 0;
     int status = module_invoke(test_ctx.module_b_id, MODULE_TYPE_INFALL, NULL,
-                             "mock_function_c", context, &temp_args, &temp_result);
+                             "mock_function_c_calls_a", context, int_args, &temp_result);
     
-    *int_result = temp_result + 3;
-    return status;
+    if (status != 0) {
+        return status;  // Propagate error
+    }
+    
+    return temp_result + 3;  // Return the computed result
 }
 
 /**
  * Mock module C functions
  */
-static int mock_function_c(void *context __attribute__((unused)), void *args, void *result) {
+static int mock_function_c(void *args, void *context __attribute__((unused))) {
     // Simple implementation
     int *int_args = (int *)args;
-    int *int_result = (int *)result;
-    *int_result = *int_args - 1;
-    return 0;
+    return *int_args - 1;  // Return the result directly
 }
 
-static int mock_function_c_calls_a(void *context, void *args, void *result) {
+static int mock_function_c_calls_a(void *args, void *context) {
     // Function that creates a circular dependency
     int *int_args = (int *)args;
-    int *int_result = (int *)result;
     
     // Call function in module A (creates A->B->C->A circular dependency)
-    int temp_args = *int_args;
     int temp_result = 0;
     int status = module_invoke(test_ctx.module_c_id, MODULE_TYPE_MISC, NULL,
-                             "mock_function_a", context, &temp_args, &temp_result);
+                             "mock_function_a", context, int_args, &temp_result);
     
-    *int_result = temp_result + 4;
-    return status;
+    if (status != 0) {
+        return status;  // Propagate error (including circular dependency errors)
+    }
+    
+    return temp_result + 4;  // Return the computed result
 }
 
 /**
  * Error-generating function for error propagation tests
  */
-static int mock_function_error(void *context __attribute__((unused)), void *args __attribute__((unused)), void *result __attribute__((unused))) {
+static int mock_function_error(void *args __attribute__((unused)), void *context __attribute__((unused))) {
     // Always returns error
     return -1;
 }
@@ -155,10 +154,12 @@ static int mock_function_error(void *context __attribute__((unused)), void *args
 /**
  * Function that calls error function to test error propagation
  */
-static int mock_function_calls_error(void *context, void *args, void *result) {
+static int mock_function_calls_error(void *args, void *context) {
     // Call error function and propagate its error
-    return module_invoke(test_ctx.module_a_id, MODULE_TYPE_MISC, NULL,
-                        "function_a_error", context, args, result);
+    int temp_result = 0;
+    int status = module_invoke(test_ctx.module_b_id, MODULE_TYPE_MISC, NULL,
+                        "function_a_error", context, args, &temp_result);
+    return status;  // Propagate the error status
 }
 
 /**
@@ -548,7 +549,7 @@ static void test_error_propagation(void) {
                            mock_function_calls_error, FUNCTION_TYPE_INT, NULL, NULL);
     
     // Declare dependencies for the error propagation test
-    module_declare_simple_dependency(test_ctx.module_b_id, MODULE_TYPE_COOLING, NULL, false);
+    module_declare_simple_dependency(test_ctx.module_b_id, MODULE_TYPE_MISC, NULL, false);
     
     // Set up parameters
     int input = 5;

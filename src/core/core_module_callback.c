@@ -1014,6 +1014,13 @@ int module_invoke(
             if (result != NULL) {
                 *((int *)result) = ret;
             }
+            
+            /* For int functions, propagate negative return values as errors */
+            /* Positive values are considered computed results, not errors */
+            if (ret < 0) {
+                module_call_stack_pop();
+                return ret;  /* Propagate function error */
+            }
             break;
         }
         

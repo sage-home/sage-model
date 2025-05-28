@@ -467,3 +467,12 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Test now compiles and runs without syntax errors, revealing genuine module callback system issues that require investigation
 - Identified potential bugs: "No active module found" errors, module system initialization problems, and segmentation faults
 - Modified files: tests/test_module_callback.c
+
+2025-05-28: [Phase 5.2.F.3] Module Callback System Debugging and Completion
+- Successfully debugged and fixed critical segmentation fault in module callback test system
+- Identified root cause as function signature mismatch: mock functions expected (context, args, result) but module_invoke called (args, context)
+- Fixed all mock function signatures to match module_invoke calling convention
+- Corrected circular dependency test chain: A→B→C→A by updating function call targets
+- Enhanced module_invoke error propagation to handle negative return values as errors while preserving positive computed results
+- All 32 tests now pass, validating comprehensive module callback functionality: function registration, call stack tracking, circular dependency detection, parameter passing, and error propagation
+- Modified files: tests/test_module_callback.c, src/core/core_module_callback.c
