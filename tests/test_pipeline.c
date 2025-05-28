@@ -1,13 +1,18 @@
-/* Test for pipeline phase system (HALO, GALAXY, POST, FINAL)
+/**
+ * Test suite for Pipeline Phase System
  * 
- * This simplified test doesn't need external dependencies as it
- * uses mock functions for core components.
+ * Tests cover:
+ * - Basic functionality (4-phase pipeline system: HALO, GALAXY, POST, FINAL)
+ * - Error handling (invalid parameters, module failures)
+ * - Edge cases (empty pipelines, invalid phase values)
+ * - Integration points (module phase support)
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <assert.h>
 
 /* Mock definitions to avoid external dependencies */
 #define MAX_MODULE_NAME 64
@@ -15,6 +20,21 @@
 #define LOG_INFO(fmt, ...) printf("[INFO] " fmt "\n", ##__VA_ARGS__)
 #define LOG_DEBUG(fmt, ...) printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
 #define LOG_ERROR(fmt, ...) printf("[ERROR] " fmt "\n", ##__VA_ARGS__)
+
+/* Test counter for reporting */
+static int tests_run = 0;
+static int tests_passed = 0;
+
+/* Helper macro for test assertions */
+#define TEST_ASSERT(condition, message) do { \
+    tests_run++; \
+    if (!(condition)) { \
+        printf("FAIL: %s\n", message); \
+        printf("  at %s:%d\n", __FILE__, __LINE__); \
+    } else { \
+        tests_passed++; \
+    } \
+} while(0)
 
 /* Module type identifiers */
 enum module_type {
@@ -87,6 +107,7 @@ struct module_pipeline {
 /* Simple test modules for phase tests */
 struct test_module_data {
     int counter;
+    bool should_fail;  /* For error testing */
 };
 
 /* Dummy modules for testing phases */
@@ -126,10 +147,10 @@ struct base_module misc_module = {
     .phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY | PIPELINE_PHASE_POST | PIPELINE_PHASE_FINAL
 };
 
-struct test_module_data infall_data = { 0 };
-struct test_module_data cooling_data = { 0 };
-struct test_module_data mergers_data = { 0 };
-struct test_module_data misc_data = { 0 };
+struct test_module_data infall_data = { 0, false };
+struct test_module_data cooling_data = { 0, false };
+struct test_module_data mergers_data = { 0, false };
+struct test_module_data misc_data = { 0, false };
 
 /* Mock function for module_type_name */
 const char *module_type_name(enum module_type type) {
@@ -247,17 +268,28 @@ static int test_execute_step(
         printf("Executing step: '%s' (type: %s) [No module]\n", 
                step->step_name, 
                module_type_name(step->type));
-    } else {
-        struct test_module_data *data = (struct test_module_data *)module_data;
-        data->counter++;
-        
-        printf("Executing step: '%s' (type: %s, module: '%s') [Phase: %d, Counter: %d]\n", 
+        return 0;  /* Success */
+    }
+    
+    struct test_module_data *data = (struct test_module_data *)module_data;
+    
+    /* Check if this module should fail (for error testing) */
+    if (data->should_fail) {
+        printf("SIMULATED FAILURE in step: '%s' (type: %s, module: '%s')\n", 
                step->step_name, 
                module_type_name(step->type),
-               module->name,
-               context->execution_phase,
-               data->counter);
+               module->name);
+        return -1;  /* Failure */
     }
+    
+    data->counter++;
+    
+    printf("Executing step: '%s' (type: %s, module: '%s') [Phase: %d, Counter: %d]\n", 
+           step->step_name, 
+           module_type_name(step->type),
+           module->name,
+           context->execution_phase,
+           data->counter);
     
     printf("  Context: time=%f, dt=%f, step=%d\n",
            context->time,
@@ -351,7 +383,17 @@ int pipeline_execute_custom(
         
         /* Execute the step */
         LOG_DEBUG("Executing step '%s'", step->step_name);
-        exec_fn(step, module, module_data, context);
+        int result = exec_fn(step, module, module_data, context);
+        
+        /* Handle step failure */
+        if (result != 0) {
+            if (step->optional) {
+                LOG_DEBUG("Optional step '%s' failed, continuing pipeline", step->step_name);
+            } else {
+                LOG_ERROR("Required step '%s' failed, stopping pipeline", step->step_name);
+                return result;
+            }
+        }
     }
     
     LOG_INFO("Pipeline '%s' completed successfully", pipeline->name);
@@ -403,22 +445,89 @@ int pipeline_execute_phase(
         
         /* Execute the step */
         LOG_DEBUG("Executing step '%s' for phase %d", step->step_name, phase);
-        test_execute_step(step, module, module_data, context);
+        int result = test_execute_step(step, module, module_data, context);
+        
+        /* Handle step failure */
+        if (result != 0) {
+            if (step->optional) {
+                LOG_DEBUG("Optional step '%s' failed in phase %d, continuing", step->step_name, phase);
+            } else {
+                LOG_ERROR("Required step '%s' failed in phase %d, stopping", step->step_name, phase);
+                return result;
+            }
+        }
     }
     
     LOG_INFO("Pipeline phase %d execution completed successfully", phase);
     return 0;
 }
 
-int main(void) {
-    printf("Pipeline phase system test starting\n");
+//=============================================================================
+// Test Cases
+//=============================================================================
+
+/**
+ * Test: Basic pipeline functionality
+ */
+static void test_basic_pipeline_functionality(void) {
+    printf("\n=== Testing basic pipeline functionality ===\n");
     
     /* Create a test pipeline */
     struct module_pipeline *pipeline = pipeline_create("test_pipeline");
-    if (pipeline == NULL) {
-        LOG_ERROR("Failed to create test pipeline");
-        return EXIT_FAILURE;
-    }
+    TEST_ASSERT(pipeline != NULL, "pipeline_create should succeed");
+    TEST_ASSERT(strcmp(pipeline->name, "test_pipeline") == 0, "pipeline should have correct name");
+    TEST_ASSERT(pipeline->initialized == true, "pipeline should be initialized");
+    TEST_ASSERT(pipeline->num_steps == 0, "new pipeline should have 0 steps");
+    
+    /* Add steps to the pipeline */
+    int result = pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall_step", true, false);
+    TEST_ASSERT(result == 0, "pipeline_add_step should succeed");
+    TEST_ASSERT(pipeline->num_steps == 1, "pipeline should have 1 step after adding");
+    
+    pipeline_add_step(pipeline, MODULE_TYPE_COOLING, NULL, "cooling_step", true, false);
+    pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers_step", true, false);
+    pipeline_add_step(pipeline, MODULE_TYPE_MISC, NULL, "misc_step", true, false);
+    
+    TEST_ASSERT(pipeline->num_steps == 4, "pipeline should have 4 steps");
+    
+    /* Create a test context */
+    struct pipeline_context context;
+    memset(&context, 0, sizeof(context));
+    
+    pipeline_context_init(&context, NULL, NULL, 0, -1, 100.0, 0.1, 0, 0, NULL);
+    
+    /* Reset module counters */
+    infall_data.counter = 0;
+    cooling_data.counter = 0;
+    mergers_data.counter = 0;
+    misc_data.counter = 0;
+    
+    infall_data.should_fail = false;
+    cooling_data.should_fail = false;
+    mergers_data.should_fail = false;
+    misc_data.should_fail = false;
+    
+    /* Test standard pipeline execution */
+    result = pipeline_execute_custom(pipeline, &context, test_execute_step);
+    TEST_ASSERT(result == 0, "pipeline_execute_custom should succeed");
+    
+    /* Verify all modules executed */
+    TEST_ASSERT(infall_data.counter == 1, "infall module should execute once");
+    TEST_ASSERT(cooling_data.counter == 1, "cooling module should execute once");
+    TEST_ASSERT(mergers_data.counter == 1, "mergers module should execute once");
+    TEST_ASSERT(misc_data.counter == 1, "misc module should execute once");
+    
+    pipeline_destroy(pipeline);
+}
+
+/**
+ * Test: Phase-based execution
+ */
+static void test_phase_based_execution(void) {
+    printf("\n=== Testing phase-based execution ===\n");
+    
+    struct module_pipeline *pipeline = pipeline_create("phase_test_pipeline");
+    TEST_ASSERT(pipeline != NULL, "pipeline_create should succeed");
     
     /* Add steps to the pipeline */
     pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall_step", true, false);
@@ -426,27 +535,8 @@ int main(void) {
     pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers_step", true, false);
     pipeline_add_step(pipeline, MODULE_TYPE_MISC, NULL, "misc_step", true, false);
     
-    LOG_INFO("Created pipeline with %d steps", pipeline->num_steps);
-    
-    /* Create a test context */
     struct pipeline_context context;
-    memset(&context, 0, sizeof(context));
-    
-    double test_time = 100.0;
-    double test_dt = 0.1;
-    
-    pipeline_context_init(
-        &context,
-        NULL,                   /* Parameters */
-        NULL,                   /* Galaxies (none for test) */
-        0,                      /* Number of galaxies */
-        -1,                     /* Central galaxy */
-        test_time,              /* Time */
-        test_dt,                /* Time step */
-        0,                      /* Halo number */
-        0,                      /* Step */
-        NULL                    /* User data */
-    );
+    pipeline_context_init(&context, NULL, NULL, 0, -1, 100.0, 0.1, 0, 0, NULL);
     
     /* Reset module counters */
     infall_data.counter = 0;
@@ -454,151 +544,203 @@ int main(void) {
     mergers_data.counter = 0;
     misc_data.counter = 0;
     
-    /* Test 1: Standard pipeline execution */
-    printf("\n=== Test 1: Standard Pipeline Execution ===\n");
-    pipeline_execute_custom(pipeline, &context, test_execute_step);
+    infall_data.should_fail = false;
+    cooling_data.should_fail = false;
+    mergers_data.should_fail = false;
+    misc_data.should_fail = false;
     
-    /* Reset module counters */
+    /* Test HALO phase - should execute infall and misc */
+    int result = pipeline_execute_phase(pipeline, &context, PIPELINE_PHASE_HALO);
+    TEST_ASSERT(result == 0, "HALO phase execution should succeed");
+    
+    /* Test GALAXY phase - should execute infall, cooling, and misc */
+    result = pipeline_execute_phase(pipeline, &context, PIPELINE_PHASE_GALAXY);
+    TEST_ASSERT(result == 0, "GALAXY phase execution should succeed");
+    
+    /* Test POST phase - should execute mergers and misc */
+    result = pipeline_execute_phase(pipeline, &context, PIPELINE_PHASE_POST);
+    TEST_ASSERT(result == 0, "POST phase execution should succeed");
+    
+    /* Test FINAL phase - should execute misc only */
+    result = pipeline_execute_phase(pipeline, &context, PIPELINE_PHASE_FINAL);
+    TEST_ASSERT(result == 0, "FINAL phase execution should succeed");
+    
+    /* Verify execution counts */
+    TEST_ASSERT(infall_data.counter == 2, "infall should execute in HALO + GALAXY phases (2 times)");
+    TEST_ASSERT(cooling_data.counter == 1, "cooling should execute in GALAXY phase only (1 time)");
+    TEST_ASSERT(mergers_data.counter == 1, "mergers should execute in POST phase only (1 time)");
+    TEST_ASSERT(misc_data.counter == 4, "misc should execute in all phases (4 times)");
+    
+    pipeline_destroy(pipeline);
+}
+
+/**
+ * Test: Error handling
+ */
+static void test_error_handling(void) {
+    printf("\n=== Testing error handling ===\n");
+    
+    /* Test NULL parameters */
+    int result = pipeline_execute_custom(NULL, NULL, NULL);
+    TEST_ASSERT(result != 0, "pipeline_execute_custom with NULL params should fail");
+    
+    struct module_pipeline *pipeline = pipeline_create("error_test_pipeline");
+    TEST_ASSERT(pipeline != NULL, "pipeline_create should succeed");
+    
+    /* Test adding too many steps (if we had that limitation) */
+    result = pipeline_add_step(NULL, MODULE_TYPE_INFALL, NULL, "test", true, false);
+    TEST_ASSERT(result != 0, "pipeline_add_step with NULL pipeline should fail");
+    
+    /* Add steps for module failure testing */
+    pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall_step", true, false);  /* required */
+    pipeline_add_step(pipeline, MODULE_TYPE_COOLING, NULL, "cooling_step", true, true); /* optional */
+    
+    struct pipeline_context context;
+    pipeline_context_init(&context, NULL, NULL, 0, -1, 100.0, 0.1, 0, 0, NULL);
+    
+    /* Reset counters */
+    infall_data.counter = 0;
+    cooling_data.counter = 0;
+    
+    /* Test required module failure */
+    infall_data.should_fail = true;
+    cooling_data.should_fail = false;
+    
+    result = pipeline_execute_custom(pipeline, &context, test_execute_step);
+    TEST_ASSERT(result != 0, "pipeline should fail when required module fails");
+    
+    /* Test optional module failure */
+    infall_data.should_fail = false;
+    cooling_data.should_fail = true;
+    
+    result = pipeline_execute_custom(pipeline, &context, test_execute_step);
+    TEST_ASSERT(result == 0, "pipeline should succeed when optional module fails");
+    
+    /* Reset failure flags */
+    infall_data.should_fail = false;
+    cooling_data.should_fail = false;
+    
+    pipeline_destroy(pipeline);
+}
+
+/**
+ * Test: Edge cases
+ */
+static void test_edge_cases(void) {
+    printf("\n=== Testing edge cases ===\n");
+    
+    /* Test empty pipeline */
+    struct module_pipeline *empty_pipeline = pipeline_create("empty_pipeline");
+    TEST_ASSERT(empty_pipeline != NULL, "empty pipeline creation should succeed");
+    TEST_ASSERT(empty_pipeline->num_steps == 0, "empty pipeline should have 0 steps");
+    
+    struct pipeline_context context;
+    pipeline_context_init(&context, NULL, NULL, 0, -1, 100.0, 0.1, 0, 0, NULL);
+    
+    int result = pipeline_execute_custom(empty_pipeline, &context, test_execute_step);
+    TEST_ASSERT(result == 0, "empty pipeline execution should succeed");
+    
+    result = pipeline_execute_phase(empty_pipeline, &context, PIPELINE_PHASE_HALO);
+    TEST_ASSERT(result == 0, "empty pipeline phase execution should succeed");
+    
+    pipeline_destroy(empty_pipeline);
+    
+    /* Test invalid phase values */
+    struct module_pipeline *test_pipeline = pipeline_create("invalid_phase_test");
+    pipeline_add_step(test_pipeline, MODULE_TYPE_MISC, NULL, "misc_step", true, false);
+    
+    /* Test with invalid phase (0) */
+    result = pipeline_execute_phase(test_pipeline, &context, 0);
+    TEST_ASSERT(result == 0, "pipeline should handle invalid phase gracefully");
+    
+    /* Test with very large phase value */
+    result = pipeline_execute_phase(test_pipeline, &context, 0xFFFFFFFF);
+    TEST_ASSERT(result == 0, "pipeline should handle large phase value gracefully");
+    
+    /* Test pipeline with NULL name */
+    struct module_pipeline *null_name_pipeline = pipeline_create(NULL);
+    TEST_ASSERT(null_name_pipeline != NULL, "pipeline with NULL name should still be created");
+    TEST_ASSERT(strcmp(null_name_pipeline->name, "unnamed_pipeline") == 0, 
+                "pipeline should have default name");
+    
+    pipeline_destroy(null_name_pipeline);
+    pipeline_destroy(test_pipeline);
+}
+
+/**
+ * Test: Integration with multiple phases
+ */
+static void test_integration_multiple_phases(void) {
+    printf("\n=== Testing integration with multiple phases ===\n");
+    
+    struct module_pipeline *pipeline = pipeline_create("integration_test");
+    pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall_step", true, false);
+    pipeline_add_step(pipeline, MODULE_TYPE_COOLING, NULL, "cooling_step", true, false);
+    pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers_step", true, false);
+    pipeline_add_step(pipeline, MODULE_TYPE_MISC, NULL, "misc_step", true, false);
+    
+    struct pipeline_context context;
+    pipeline_context_init(&context, NULL, NULL, 0, -1, 100.0, 0.1, 0, 0, NULL);
+    
+    /* Reset counters */
     infall_data.counter = 0;
     cooling_data.counter = 0;
     mergers_data.counter = 0;
     misc_data.counter = 0;
     
-    /* Test 2: Phase-based execution - HALO phase */
-    printf("\n=== Test 2: HALO Phase Execution ===\n");
-    pipeline_execute_phase(pipeline, &context, PIPELINE_PHASE_HALO);
+    infall_data.should_fail = false;
+    cooling_data.should_fail = false;
+    mergers_data.should_fail = false;
+    misc_data.should_fail = false;
     
-    /* Test 3: Phase-based execution - GALAXY phase */
-    printf("\n=== Test 3: GALAXY Phase Execution ===\n");
-    pipeline_execute_phase(pipeline, &context, PIPELINE_PHASE_GALAXY);
-    
-    /* Test 4: Phase-based execution - POST phase */
-    printf("\n=== Test 4: POST Phase Execution ===\n");
-    pipeline_execute_phase(pipeline, &context, PIPELINE_PHASE_POST);
-    
-    /* Test 5: Phase-based execution - FINAL phase */
-    printf("\n=== Test 5: FINAL Phase Execution ===\n");
-    pipeline_execute_phase(pipeline, &context, PIPELINE_PHASE_FINAL);
-    
-    /* Test 6: Edge case - Multiple phases simultaneously */
-    printf("\n=== Test 6: Multiple Phase Support Testing ===\n");
-    
-    /* Reset counters for multi-phase test */
-    infall_data.counter = 0;
-    cooling_data.counter = 0;
-    mergers_data.counter = 0;
-    misc_data.counter = 0;
-    
-    /* Set up a custom bitmask combining HALO and POST phases */
+    /* Test combined phase execution */
     enum pipeline_execution_phase combined_phase = PIPELINE_PHASE_HALO | PIPELINE_PHASE_POST;
     
-    /* Manually set up a context with this special phase for testing purposes */
-    pipeline_context_init(&context, NULL, NULL, 0, -1, test_time, test_dt, 0, 0, NULL);
-    context.execution_phase = combined_phase;
-    
-    /* Loop through all steps manually to test multi-phase support */
+    /* Manually test modules that support combined phases */
     for (int i = 0; i < pipeline->num_steps; i++) {
         struct pipeline_step *step = &pipeline->steps[i];
         struct base_module *module = NULL;
         void *module_data = NULL;
         
-        pipeline_get_step_module(step, &module, &module_data);
-        
-        if (module != NULL) {
-            /* A module should execute if it supports ANY of the phases in the bitmask */
+        int status = pipeline_get_step_module(step, &module, &module_data);
+        if (status == 0 && module != NULL) {
             if (module->phases & combined_phase) {
-                printf("Module '%s' supports at least one of the combined phases\n", module->name);
+                context.execution_phase = combined_phase;
                 test_execute_step(step, module, module_data, &context);
-            } else {
-                printf("Module '%s' doesn't support any of the combined phases\n", module->name);
             }
         }
     }
     
-    /* Clean up */
+    /* Verify expected execution counts */
+    TEST_ASSERT(infall_data.counter == 1, "infall should execute (supports HALO)");
+    TEST_ASSERT(cooling_data.counter == 0, "cooling should not execute (doesn't support HALO or POST)");
+    TEST_ASSERT(mergers_data.counter == 1, "mergers should execute (supports POST)");
+    TEST_ASSERT(misc_data.counter == 1, "misc should execute (supports both HALO and POST)");
+    
     pipeline_destroy(pipeline);
+}
+
+//=============================================================================
+// Test Runner
+//=============================================================================
+
+int main(void) {
+    printf("Starting Pipeline Phase System tests...\n");
     
-    /* Verify that only modules that support each phase were executed */
-    int success = 1;
+    /* Run tests */
+    test_basic_pipeline_functionality();
+    test_phase_based_execution();
+    test_error_handling();
+    test_edge_cases();
+    test_integration_multiple_phases();
     
-    /* Expected execution counts for the main tests */
-    if (infall_data.counter != 1) {  /* HALO supported in combined test */
-        printf("ERROR: Infall module should have executed 1 time (combined HALO+POST test), but executed %d times\n", 
-               infall_data.counter);
-        success = 0;
-    }
+    /* Report results */
+    printf("\n========================================\n");
+    printf("Test Results:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n");
     
-    if (cooling_data.counter != 0) {  /* Doesn't support HALO or POST */
-        printf("ERROR: Cooling module should not have executed in combined HALO+POST test, but executed %d times\n", 
-               cooling_data.counter);
-        success = 0;
-    }
-    
-    if (mergers_data.counter != 1) {  /* POST supported in combined test */
-        printf("ERROR: Mergers module should have executed 1 time (combined HALO+POST test), but executed %d times\n", 
-               mergers_data.counter);
-        success = 0;
-    }
-    
-    if (misc_data.counter != 1) {  /* Supports both HALO and POST */
-        printf("ERROR: Misc module should have executed 1 time (combined HALO+POST test), but executed %d times\n", 
-               misc_data.counter);
-        success = 0;
-    }
-    
-    /* Reset counters again */
-    infall_data.counter = 0;
-    cooling_data.counter = 0;
-    mergers_data.counter = 0;
-    misc_data.counter = 0;
-    
-    /* Run the standard tests again */
-    struct module_pipeline *test_pipeline = pipeline_create("reset_test_pipeline");
-    pipeline_add_step(test_pipeline, MODULE_TYPE_INFALL, NULL, "infall_step", true, false);
-    pipeline_add_step(test_pipeline, MODULE_TYPE_COOLING, NULL, "cooling_step", true, false);
-    pipeline_add_step(test_pipeline, MODULE_TYPE_MERGERS, NULL, "mergers_step", true, false);
-    pipeline_add_step(test_pipeline, MODULE_TYPE_MISC, NULL, "misc_step", true, false);
-    
-    pipeline_context_init(&context, NULL, NULL, 0, -1, test_time, test_dt, 0, 0, NULL);
-    
-    /* Run all standard phase tests again */
-    pipeline_execute_phase(test_pipeline, &context, PIPELINE_PHASE_HALO);
-    pipeline_execute_phase(test_pipeline, &context, PIPELINE_PHASE_GALAXY);
-    pipeline_execute_phase(test_pipeline, &context, PIPELINE_PHASE_POST);
-    pipeline_execute_phase(test_pipeline, &context, PIPELINE_PHASE_FINAL);
-    
-    pipeline_destroy(test_pipeline);
-    
-    /* Check standard test results */
-    if (infall_data.counter != 2) {  /* HALO + GALAXY */
-        printf("ERROR: Infall module should have executed 2 times (HALO + GALAXY), but executed %d times\n", 
-               infall_data.counter);
-        success = 0;
-    }
-    
-    if (cooling_data.counter != 1) {  /* GALAXY only */
-        printf("ERROR: Cooling module should have executed 1 time (GALAXY), but executed %d times\n", 
-               cooling_data.counter);
-        success = 0;
-    }
-    
-    if (mergers_data.counter != 1) {  /* POST only */
-        printf("ERROR: Mergers module should have executed 1 time (POST), but executed %d times\n", 
-               mergers_data.counter);
-        success = 0;
-    }
-    
-    if (misc_data.counter != 4) {  /* All phases */
-        printf("ERROR: Misc module should have executed 4 times (all phases), but executed %d times\n", 
-               misc_data.counter);
-        success = 0;
-    }
-    
-    if (success) {
-        printf("\nAll pipeline phase tests PASSED!\n");
-        return EXIT_SUCCESS;
-    } else {
-        printf("\nSome pipeline phase tests FAILED!\n");
-        return EXIT_FAILURE;
-    }
+    return (tests_run == tests_passed) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
