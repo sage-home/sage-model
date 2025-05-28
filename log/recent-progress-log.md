@@ -476,3 +476,14 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Enhanced module_invoke error propagation to handle negative return values as errors while preserving positive computed results
 - All 32 tests now pass, validating comprehensive module callback functionality: function registration, call stack tracking, circular dependency detection, parameter passing, and error propagation
 - Modified files: tests/test_module_callback.c, src/core/core_module_callback.c
+
+2025-05-29: [Phase 5.2.F.3] Module Callback System Comprehensive Fix
+- Fixed critical segmentation fault in module_unregister by properly freeing function registry before clearing module entry
+- Improved active module resolution to correctly search all modules of a given type for requested functions
+- Enhanced circular dependency detection with better logging and proper handling of self-dependencies
+- Fixed module lookup by name to handle unregistered modules safely
+- Updated module_invoke to better handle errors when accessing invalid modules
+- Improved teardown_test_context to safely clean up resources and prevent use-after-free issues
+- All 47 tests in the module callback test suite now pass with no memory errors
+- Modified files: src/core/core_module_callback.c, src/core/core_module_system.c, tests/test_module_callback.c
+

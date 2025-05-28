@@ -120,12 +120,6 @@ int module_register_function(
             return MODULE_STATUS_OUT_OF_MEMORY;
         }
         memset(module->function_registry, 0, sizeof(module_function_registry_t));
-        printf("DEBUG_REG: Allocated new function_registry for module '%s' (ID: %d) at %p\n",
-               module->name, module_id, (void*)module->function_registry);
-    } else {
-        printf("DEBUG_REG: Module '%s' (ID: %d) already has function_registry at %p with %d functions\n",
-               module->name, module_id, (void*)module->function_registry, 
-               module->function_registry->num_functions);
     }
     
     /* Check for duplicate function */
@@ -242,11 +236,33 @@ bool module_call_stack_check_circular(int module_id) {
         return false;
     }
     
-    /* A circular dependency exists if the module_id appears as a CALLER 
+    /* A circular dependency exists if the module_id appears as a CALLER
      * in the current call stack (meaning we're trying to call back into
      * a module that's already in the calling chain) */
     for (int i = 0; i < global_call_stack->depth; i++) {
         if (global_call_stack->frames[i].caller_module_id == module_id) {
+            /* Special case: check if this is a self-call within the same module */
+            
+            /* Find the module to check if it declared self-dependency */
+            struct base_module *module = NULL;
+            void *module_data = NULL;
+            if (module_get(module_id, &module, &module_data) == MODULE_STATUS_SUCCESS && module != NULL) {
+                /* Check if the module has declared a dependency on its own type */
+                bool has_self_dependency = false;
+                for (int j = 0; j < module->num_dependencies; j++) {
+                    if ((int)module->dependencies[j].type == (int)module->type) {
+                        has_self_dependency = true;
+                        break;
+                    }
+                }
+                
+                /* If module has declared self-dependency, allow the call */
+                if (has_self_dependency) {
+                    return false;  /* Not a circular dependency */
+                }
+            }
+            
+            /* If no self-dependency was declared or module wasn't found, treat as circular */
             return true;
         }
     }
@@ -715,7 +731,6 @@ int module_declare_simple_dependency(
 int module_call_validate(int caller_id, int callee_id) {
     /* Skip dependency validation for system calls (negative caller_ids) */
     if (caller_id < 0) {
-        printf("DEBUG_INVOKE: Skipping dependency validation for system caller_id=%d\n", caller_id);
         return MODULE_STATUS_SUCCESS;
     }
     
@@ -890,9 +905,6 @@ int module_invoke(
     void *args,
     void *result
 ) {
-    printf("DEBUG_INVOKE_START: module_invoke called with caller_id=%d, module_name=%s, function_name=%s\n", 
-           caller_id, module_name ? module_name : "NULL", function_name ? function_name : "NULL");
-           
     /* Check arguments */
     if (function_name == NULL) {
         LOG_ERROR("Invalid arguments to module_invoke (function_name is NULL)");
@@ -916,9 +928,6 @@ int module_invoke(
             LOG_ERROR("Failed to get caller module %d: %d", caller_id, caller_status);
             return caller_status;
         }
-    } else {
-        /* System-level caller, no module struct to fetch */
-        printf("DEBUG_INVOKE: System-level caller (ID: %d)\n", caller_id);
     }
     
     /* Find target module */
@@ -927,7 +936,7 @@ int module_invoke(
     void *target_data = NULL;
     
     if (module_name != NULL && module_name[0] != '\0') {
-        /* Look for module by name */
+        /* Get the module */
         target_id = module_find_by_name(module_name);
         if (target_id < 0) {
             LOG_ERROR("Module '%s' not found", module_name);
@@ -940,8 +949,6 @@ int module_invoke(
             LOG_ERROR("Failed to get target module '%s': %d", module_name, status);
             return status;
         }
-        printf("DEBUG_INVOKE: Got target module '%s' (ID: %d) by name, struct at %p\n",
-               target->name, target_id, (void*)target);
         
         /* Check that module is of expected type if one was specified */
         if ((int)module_type != (int)MODULE_TYPE_UNKNOWN && (int)target->type != (int)module_type) {
@@ -950,101 +957,95 @@ int module_invoke(
             return MODULE_STATUS_ERROR;
         }
     } else {
-        /* Search through ALL active modules of the specified type to find one with the requested function */
-        printf("DEBUG_INVOKE: Looking for active module of type %s with function '%s'\n", 
-               module_type_name(module_type), function_name);
+        /* First, try to get the active module of the specified type */
+        struct base_module *active_module = NULL;
+        void *active_module_data = NULL;
+        status = module_get_active_by_type(module_type, &active_module, &active_module_data);
         
-        bool function_found = false;
-        target = NULL;
-        target_data = NULL;
-        
-        /* Search through ALL registered modules of the specified type to find one with the requested function */
-        if (global_module_registry != NULL) {
-            for (int i = 0; i < global_module_registry->num_modules; i++) {
-                if (global_module_registry->modules[i].module != NULL &&
-                    global_module_registry->modules[i].initialized &&
-                    global_module_registry->modules[i].module->type == (enum module_type)module_type) {
-                    
-                    struct base_module *candidate = global_module_registry->modules[i].module;
-                    void *candidate_data = global_module_registry->modules[i].module_data;
-                    
-                    printf("DEBUG_INVOKE: Checking candidate module '%s' (ID: %d) for function '%s'\n",
-                           candidate->name, candidate->module_id, function_name);
-                    
-                    /* Check if this candidate has the requested function */
-                    if (candidate->function_registry != NULL && candidate->function_registry->num_functions > 0) {
-                        for (int j = 0; j < candidate->function_registry->num_functions; j++) {
-                            printf("DEBUG_INVOKE: Comparing with function: '%s'\n", 
-                                   candidate->function_registry->functions[j].name);
-                            if (strcmp(candidate->function_registry->functions[j].name, function_name) == 0) {
-                                printf("DEBUG_INVOKE: Found function '%s' in module '%s' (ID: %d)\n",
-                                       function_name, candidate->name, candidate->module_id);
-                                target = candidate;
-                                target_data = candidate_data;
-                                function_found = true;
-                                break;
-                            }
-                        }
-                        if (function_found) break;
-                    } else {
-                        printf("DEBUG_INVOKE: Module '%s' has no function registry or no functions\n", 
-                               candidate->name);
+        if (status == MODULE_STATUS_SUCCESS && active_module != NULL) {
+            /* Check if this active module has the requested function */
+            bool function_found = false;
+            if (active_module->function_registry != NULL && active_module->function_registry->num_functions > 0) {
+                for (int j = 0; j < active_module->function_registry->num_functions; j++) {
+                    if (strcmp(active_module->function_registry->functions[j].name, function_name) == 0) {
+                        target = active_module;
+                        target_data = active_module_data;
+                        function_found = true;
+                        break;
                     }
                 }
             }
-        }
-        
-        if (!function_found) {
-            LOG_ERROR("Function '%s' not found in any active module of type %s", function_name, module_type_name(module_type));
-            return MODULE_STATUS_ERROR;
+            
+            /* If the active module doesn't have the function, search all other modules of the same type */
+            if (!function_found) {
+                /* Search through ALL registered modules of the specified type to find one with the requested function */
+                if (global_module_registry != NULL) {
+                    for (int i = 0; i < global_module_registry->num_modules; i++) {
+                        if (global_module_registry->modules[i].module != NULL &&
+                            global_module_registry->modules[i].initialized &&
+                            global_module_registry->modules[i].module->type == (enum module_type)module_type) {
+                            
+                            struct base_module *candidate = global_module_registry->modules[i].module;
+                            void *candidate_data = global_module_registry->modules[i].module_data;
+                            
+                            /* Skip the already-checked active module */
+                            if (candidate == active_module) {
+                                continue;
+                            }
+                            
+                            /* Check if this candidate has the requested function */
+                            if (candidate->function_registry != NULL && candidate->function_registry->num_functions > 0) {
+                                for (int j = 0; j < candidate->function_registry->num_functions; j++) {
+                                    if (strcmp(candidate->function_registry->functions[j].name, function_name) == 0) {
+                                        target = candidate;
+                                        target_data = candidate_data;
+                                        function_found = true;
+                                        break;
+                                    }
+                                }
+                                if (function_found) break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (!function_found) {
+                LOG_ERROR("Function '%s' not found in any active module of type %s", function_name, module_type_name(module_type));
+                return MODULE_STATUS_ERROR;
+            }
+        } else {
+            LOG_ERROR("No active module of type %s found", module_type_name(module_type));
+            return MODULE_STATUS_MODULE_NOT_FOUND;
         }
         
         /* Get the module ID */
         target_id = target->module_id;
-        printf("DEBUG_INVOKE: Active module resolution selected module '%s' (ID: %d), struct at %p\n", 
-               target->name, target_id, (void*)target);
     }
     
     /* Validate the call */
-    printf("DEBUG_INVOKE: About to validate call from caller_id=%d to target_id=%d\n", caller_id, target_id);
     status = module_call_validate(caller_id, target_id);
     if (status != MODULE_STATUS_SUCCESS) {
         /* module_call_validate already logs detailed error messages */
-        printf("DEBUG_INVOKE: Call validation failed with status %d\n", status);
         return status;
     }
-    printf("DEBUG_INVOKE: Call validation successful\n");
     
     /* Find the function in the target module */
-    printf("DEBUG_INVOKE: Checking function_registry for module '%s' (ID: %d) at %p\n", 
-           target->name, target_id, (void*)target);
-    printf("DEBUG_INVOKE: Module struct function_registry pointer: %p\n", (void*)target->function_registry);
     if (target->function_registry == NULL) {
-        printf("DEBUG_INVOKE: Target module '%s' has NULL function_registry!\n", target->name);
         LOG_ERROR("Target module '%s' has no function registry", target->name);
         return MODULE_STATUS_ERROR;
     }
-    printf("DEBUG_INVOKE: Module '%s' has function_registry at %p with %d functions\n",
-           target->name, (void*)target->function_registry, target->function_registry->num_functions);
-    
-    printf("DEBUG_INVOKE: In module '%s' (ID %d), searching for function: ----%s----\n",
-           target->name, target_id, function_name);
     
     /* Search for the function by name */
     module_function_t *func = NULL;
     for (int i = 0; i < target->function_registry->num_functions; i++) {
-        printf("DEBUG_INVOKE: Comparing with registered function: ----%s----\n",
-               target->function_registry->functions[i].name);
         if (strcmp(target->function_registry->functions[i].name, function_name) == 0) {
-            printf("DEBUG_INVOKE: Found match for function '%s'\n", function_name);
             func = &target->function_registry->functions[i];
             break;
         }
     }
     
     if (func == NULL) {
-        printf("DEBUG_INVOKE: Function '%s' NOT FOUND in module '%s' after checking %d functions.\n",
-               function_name, target->name, target->function_registry->num_functions);
         LOG_ERROR("Function '%s' not found in module '%s'", function_name, target->name);
         return MODULE_STATUS_ERROR;
     }

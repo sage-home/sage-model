@@ -781,26 +781,15 @@ int module_find_by_name(const char *name) {
         return -1;
     }
     
-    printf("DEBUG_FIND: Searching for module name: ----%s----\n", name);
-    
     /* Search for the module */
     for (int i = 0; i < global_module_registry->num_modules; i++) {
-        if (global_module_registry->modules[i].module != NULL &&
-            global_module_registry->modules[i].module->name != NULL) {
-            printf("DEBUG_FIND: Comparing with registered module: ----%s---- (ID %d, registry idx %d)\n",
-                   global_module_registry->modules[i].module->name,
-                   global_module_registry->modules[i].module->module_id, i);
+        if (global_module_registry->modules[i].module != NULL) {
             if (strcmp(global_module_registry->modules[i].module->name, name) == 0) {
-                printf("DEBUG_FIND: Found match for '%s' at registry index %d, module ID %d\n",
-                       name, i, global_module_registry->modules[i].module->module_id);
                 return i;
             }
-        } else {
-            printf("DEBUG_FIND: Skipping registry index %d (NULL module or name)\n", i);
         }
     }
     
-    printf("DEBUG_FIND: Module name '%s' NOT FOUND after checking %d modules.\n", name, global_module_registry->num_modules);
     return -1;  /* Not found */
 }
 
@@ -1803,7 +1792,7 @@ manifest->name, manifest->version_str, manifest->library_path);
  */
 int module_register(struct base_module *module) {
     printf("DEBUG_REG_START: Attempting to register module: %s\n", 
-           module ? (module->name ? module->name : "NULL name") : "NULL module");
+           module ? module->name : "NULL module");
            
     if (global_module_registry == NULL) {
         printf("DEBUG_REG_START: global_module_registry is NULL, initializing...\n");
@@ -1818,7 +1807,7 @@ int module_register(struct base_module *module) {
     /* Validate module */
     if (!module_validate(module)) {
         printf("DEBUG_REG_START: Module validation failed for %s\n", 
-               module ? (module->name ? module->name : "NULL name") : "NULL module");
+               module ? module->name : "NULL module");
         LOG_ERROR("Invalid module interface provided");
         return MODULE_STATUS_INVALID_ARGS;
     }
@@ -1919,6 +1908,12 @@ int module_unregister(int module_id) {
     struct base_module *module = global_module_registry->modules[module_id].module;
     const char *module_name = module->name;
     enum module_type module_type = module->type;
+    
+    /* Free the function registry if it exists */
+    if (module->function_registry != NULL) {
+        free(module->function_registry);
+        module->function_registry = NULL;
+    }
     
     /* Clear the module entry */
     global_module_registry->modules[module_id].module = NULL;
@@ -2139,8 +2134,6 @@ int module_get_active_by_type(enum module_type type, struct base_module **module
         return MODULE_STATUS_NOT_INITIALIZED;
     }
     
-    printf("DEBUG_ACTIVE: Searching for active module of type %d\n", type);
-    
     /* Find active module of the requested type, preferring modules with functions */
     struct base_module *best_module = NULL;
     void *best_module_data = NULL;
@@ -2153,21 +2146,12 @@ int module_get_active_by_type(enum module_type type, struct base_module **module
             struct base_module *candidate = global_module_registry->modules[module_index].module;
             void *candidate_data = global_module_registry->modules[module_index].module_data;
             
-            printf("DEBUG_ACTIVE: Checking candidate module '%s' (ID: %d)\n", 
-                   candidate->name, candidate->module_id);
-            printf("DEBUG_ACTIVE: Candidate function_registry: %p\n", (void*)candidate->function_registry);
-            if (candidate->function_registry != NULL) {
-                printf("DEBUG_ACTIVE: Candidate has %d functions\n", candidate->function_registry->num_functions);
-            }
-            
             /* Prefer modules that have function registries with functions */
             if (candidate->function_registry != NULL && candidate->function_registry->num_functions > 0) {
-                printf("DEBUG_ACTIVE: Selected '%s' as best module (has functions)\n", candidate->name);
                 best_module = candidate;
                 best_module_data = candidate_data;
                 break; /* Found a module with functions, use it */
             } else if (fallback_module == NULL) {
-                printf("DEBUG_ACTIVE: Setting '%s' as fallback module\n", candidate->name);
                 /* Keep the first module as fallback if no modules have functions */
                 fallback_module = candidate;
                 fallback_module_data = candidate_data;
@@ -2180,12 +2164,8 @@ int module_get_active_by_type(enum module_type type, struct base_module **module
     void *selected_data = (best_module != NULL) ? best_module_data : fallback_module_data;
     
     if (selected_module == NULL) {
-        printf("DEBUG_ACTIVE: No modules of type %d found\n", type);
         return MODULE_STATUS_MODULE_NOT_FOUND; /* No modules of requested type found */
     }
-    
-    printf("DEBUG_ACTIVE: Final selection: '%s' (ID: %d) with function_registry: %p\n",
-           selected_module->name, selected_module->module_id, (void*)selected_module->function_registry);
     
     /* Set output pointers */
     if (module != NULL) {
