@@ -25,7 +25,7 @@
  */
 
 /**
- * Static physics event type names for debugging and logging
+ * Static physics event type names for debugging and logging (examples only - update when importing legacy physics)
  */
 static const char *physics_event_type_names[] = {
     [PHYSICS_EVENT_COOLING_COMPLETED] = "COOLING_COMPLETED",
