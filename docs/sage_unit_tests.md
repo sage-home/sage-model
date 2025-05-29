@@ -15,7 +15,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_pipeline**               | Tests the pipeline execution system with 4 phases (HALO, GALAXY, POST, FINAL) | Phase 2.5 (Mar 2025)     |
 | **test_array_utils**            | Tests the array utility functions for dynamic array manipulation              | Phase 3.3 (Apr 2025)     |
 | **test_evolution_diagnostics**  | Tests the diagnostics system for the galaxy evolution process                 | Phase 4.7 (Apr 2025)     |
-| ✅ **test_evolve_integration**     | Tests the refactored evolve_galaxies loop with phase-based execution          | Phase 5.1 (Apr 2025)     |
+| **test_evolve_integration**     | Tests the refactored evolve_galaxies loop with phase-based execution          | Phase 5.1 (Apr 2025)     |
 | ✅ **test_core_property**          | Tests the property system's core functionality with mock implementations      | Phase 5.2.B (May 2025)   |
 | ✅ **test_core_pipeline_registry** | Tests the pipeline registry for module registration and pipeline creation     | Phase 5.2.F (May 2025)   |
 | ✅ **test_dispatcher_access**      | Tests the type-safe dispatcher functions for property access                  | Phase 5.2.F.4 (May 2025) |
