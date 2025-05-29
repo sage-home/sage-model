@@ -725,7 +725,9 @@ static void test_integration_multiple_phases(void) {
 //=============================================================================
 
 int main(void) {
-    printf("Starting Pipeline Phase System tests...\n");
+    printf("========================================\n");
+    printf("Starting tests for test_pipeline\n");
+    printf("========================================\n");
     
     /* Run tests */
     test_basic_pipeline_functionality();
@@ -736,7 +738,7 @@ int main(void) {
     
     /* Report results */
     printf("\n========================================\n");
-    printf("Test Results:\n");
+    printf("Test results for test_pipeline:\n");
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
