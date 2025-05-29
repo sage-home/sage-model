@@ -1,0 +1,15 @@
+{
+    "modules": {
+        "instances": [
+            {
+                "name": "MockCooling",
+                "enabled": true,
+            },  // Invalid trailing comma
+            {
+                "name": "MockInfall"
+                // Missing comma and value for enabled
+            }
+        ]
+    },  // Invalid trailing comma
+    "invalid_json": "missing_quote
+}

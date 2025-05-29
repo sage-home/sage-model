@@ -21,9 +21,9 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_dispatcher_access**      | Tests the type-safe dispatcher functions for property access                  | Phase 5.2.F.4 (May 2025) |
 | **test_memory_pool**            | Tests the memory pooling system with support for various property types and dynamic arrays | Phase 3.3 (Apr 2025)     |
 | ✅ **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
-| **test_empty_pipeline**         | Validates core-physics separation by running core infrastructure with placeholder modules only | Phase 5.2.F.2 (May 2025) |
 | ✅ **test_merger_queue**           | Tests the merger event queue system for deferred merger processing            | Phase 5.1 (May 2025)     |
 | ✅ **test_core_merger_processor**  | Tests physics-agnostic merger event handling and dispatching                  | Phase 5.2.G (May 2025)   |
+| **test_empty_pipeline**         | Validates core-physics separation by running core infrastructure with placeholder modules only | Phase 5.2.F.2 (May 2025) |
 
 ### Property System Tests (`PROPERTY_TESTS`)
 
