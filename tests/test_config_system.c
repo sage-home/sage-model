@@ -1,8 +1,21 @@
 /**
  * Test suite for SAGE Config System
  * 
- * Tests comprehensive functionality of the JSON configuration system
- * used for module configuration and runtime modularity.
+ * Tests cover:
+ * - Configuration initialization and parsing
+ * - JSON validation and error handling
+ * - Value retrieval (boolean, integer, double, string)
+ * - Nested path access and complex structures
+ * - Array and object handling
+ * - Type conversion and mismatch handling
+ * - Module configuration extraction
+ * 
+ * This test validates the complete functionality of the JSON configuration system
+ * which is critical for module configuration and runtime modularity.
+ * 
+ * Note: This test intentionally generates error messages during malformed JSON
+ * tests to validate error handling. These error messages are expected and do not
+ * indicate test failure.
  */
 
 #include <stdio.h>
@@ -13,21 +26,24 @@
 #include <math.h>     /* For fabs in double comparison */
 
 #include "core/core_config_system.h"
-#include "core/core_logging.h"
+#include "core/core_logging.h" // Needed for core functionality, not for test output
 
 // Test counter for reporting
 static int tests_run = 0;
 static int tests_passed = 0;
 
-// Test assertion macro
-#define TEST_ASSERT(condition, message) do { \
+// Helper macro for test assertions with enhanced reporting
+#define TEST_ASSERT(condition, message, ...) do { \
     tests_run++; \
     if (!(condition)) { \
-        LOG_ERROR("FAIL: %s", message); \
-        LOG_ERROR("  at %s:%d", __FILE__, __LINE__); \
+        printf("FAIL: "); \
+        printf(message, ##__VA_ARGS__); \
+        printf("\n  at %s:%d\n", __FILE__, __LINE__); \
     } else { \
         tests_passed++; \
-        LOG_DEBUG("PASS: %s", message); \
+        printf("PASS: "); \
+        printf(message, ##__VA_ARGS__); \
+        printf("\n"); \
     } \
 } while(0)
 
@@ -40,6 +56,12 @@ static struct test_context {
 } test_ctx;
 
 // Setup/teardown functions
+/**
+ * Setup test environment
+ * 
+ * Creates test directories, initializes the configuration system,
+ * and prepares the test context.
+ */
 static void setup_test_fixtures() {
     // Create test directories if they don't exist
     system("mkdir -p tests/test_output");
@@ -47,31 +69,41 @@ static void setup_test_fixtures() {
     // Initialize the test context (though not strictly used with global_config)
     memset(&test_ctx, 0, sizeof(test_ctx));
     
-    // Initialize the logging system
-    // Using LOG_LEVEL_DEBUG to see PASS messages from TEST_ASSERT
-    logging_init(LOG_LEVEL_DEBUG, NULL); 
+    // Initialize the logging system (still needed by the config system)
+    logging_init(LOG_LEVEL_INFO, NULL); 
     
     // Initialize the configuration system
     int result = config_system_initialize();
     if (result != 0) {
-        LOG_ERROR("Failed to initialize configuration system in test setup");
+        printf("ERROR: Failed to initialize configuration system in test setup\n");
         // This is a fatal error for the test suite
         exit(EXIT_FAILURE); 
     } else {
         test_ctx.initialized = 1;
-        LOG_DEBUG("Configuration system initialized successfully for tests");
+        printf("Configuration system initialized successfully for tests\n");
     }
 }
 
+/**
+ * Teardown test environment
+ * 
+ * Cleans up the configuration system and releases resources.
+ */
 static void teardown_test_fixtures() {
     // Clean up the configuration system
     if (test_ctx.initialized) {
         config_system_cleanup();
-        LOG_DEBUG("Configuration system cleaned up after tests");
+        printf("Configuration system cleaned up after tests\n");
     }
 }
 
-// Write test JSON file - ensures proper file creation and checking
+/**
+ * Helper function to write test JSON content to files
+ *
+ * @param filename_suffix Suffix to append to the test filename
+ * @param json_content JSON content to write to the file
+ * @return 0 on success, -1 on failure
+ */
 static int write_test_json_file(const char *filename_suffix, const char *json_content) {
     char filename[256];
     snprintf(filename, sizeof(filename), "tests/test_output/test_config_%s.json", filename_suffix);
@@ -81,7 +113,7 @@ static int write_test_json_file(const char *filename_suffix, const char *json_co
 
     FILE *f = fopen(filename, "w");
     if (f == NULL) {
-        LOG_ERROR("Failed to open file for writing: %s", filename);
+        printf("ERROR: Failed to open file for writing: %s\n", filename);
         return -1;
     }
     
@@ -90,21 +122,27 @@ static int write_test_json_file(const char *filename_suffix, const char *json_co
     fclose(f);
     
     if (written != json_len) {
-        LOG_ERROR("Failed to write complete JSON to file '%s' (wrote %zu of %zu bytes)", 
-                 filename, written, json_len);
+        printf("ERROR: Failed to write complete JSON to file '%s' (wrote %zu of %zu bytes)\n", 
+               filename, written, json_len);
         return -1;
     }
     
-    LOG_DEBUG("JSON written successfully to %s (%zu bytes)", filename, written);
     return 0;
 }
 
 
 /**
  * Test: Config Initialization and Parsing
+ * 
+ * Validates the initialization of the configuration system and its ability
+ * to parse both valid and invalid JSON. Tests:
+ * - Configuration initialization state
+ * - Valid JSON parsing
+ * - Invalid JSON detection (unclosed objects, syntax errors)
+ * - Configuration saving and reloading
  */
 static void test_config_init_and_parse(void) {
-    LOG_INFO("\n=== Testing configuration initialization and parsing ===\n");
+    printf("\n=== Testing configuration initialization and parsing ===\n");
     
     TEST_ASSERT(global_config != NULL, "global_config should be initialized by setup");
     if (!global_config) return; // Stop test if global_config is NULL
@@ -115,30 +153,30 @@ static void test_config_init_and_parse(void) {
     TEST_ASSERT(write_res == 0, "write_test_json_file for valid JSON should succeed");
 
     int result = config_load_file("tests/test_output/test_config_init_parse_valid.json");
-    TEST_ASSERT(result == 0, "config_load_file should succeed with valid JSON");
+    TEST_ASSERT(result == 0, "config_load_file should succeed with valid JSON (result=%d, expected=0)", result);
     
     const char *invalid_json_content_unclosed_obj = "{\"name\": \"test\", \"unclosed_object\": {"; 
     write_res = write_test_json_file("init_parse_invalid_unclosed_obj", invalid_json_content_unclosed_obj);
     TEST_ASSERT(write_res == 0, "write_test_json_file for invalid JSON (unclosed obj) should succeed");
     
     result = config_load_file("tests/test_output/test_config_init_parse_invalid_unclosed_obj.json");
-    TEST_ASSERT(result != 0, "config_load_file should fail with invalid JSON (unclosed object)");
+    TEST_ASSERT(result != 0, "config_load_file should fail with invalid JSON (unclosed object) (result=%d, expected!=0)", result);
 
     const char *invalid_json_syntax_unquoted_key = "{name_no_quotes: test_val}";
     write_res = write_test_json_file("init_parse_invalid_syntax_unquoted_key", invalid_json_syntax_unquoted_key);
     TEST_ASSERT(write_res == 0, "write_test_json_file for invalid syntax JSON (unquoted key) should succeed");
     result = config_load_file("tests/test_output/test_config_init_parse_invalid_syntax_unquoted_key.json");
-    TEST_ASSERT(result != 0, "config_load_file should fail with invalid JSON (unquoted key)");
+    TEST_ASSERT(result != 0, "config_load_file should fail with invalid JSON (unquoted key) (result=%d, expected!=0)", result);
     
     // Test save and reload (after loading a valid config)
     write_res = write_test_json_file("init_parse_tosave", valid_json_content); // use the known valid one
     TEST_ASSERT(write_res == 0, "write_test_json_file for to_save JSON should succeed");
     result = config_load_file("tests/test_output/test_config_init_parse_tosave.json");
-    TEST_ASSERT(result == 0, "config_load_file before save should succeed");
+    TEST_ASSERT(result == 0, "config_load_file before save should succeed (result=%d, expected=0)", result);
 
     if (result == 0) { // Only proceed if load was successful
         result = config_save_file("tests/test_output/saved_config.json", true);
-        TEST_ASSERT(result == 0, "config_save_file should succeed");
+        TEST_ASSERT(result == 0, "config_save_file should succeed (result=%d, expected=0)", result);
         
         // It's better to re-initialize the config system or load into a fresh context
         // to ensure the loaded data is purely from the file.
@@ -147,21 +185,33 @@ static void test_config_init_and_parse(void) {
         config_system_initialize(); // Re-initialize to a fresh default state
 
         result = config_load_file("tests/test_output/saved_config.json");
-        TEST_ASSERT(result == 0, "config_load_file should succeed with saved JSON");
+        TEST_ASSERT(result == 0, "config_load_file should succeed with saved JSON (result=%d, expected=0)", result);
         if (result == 0) {
             const char *name_after_reload = config_get_string("name", "default");
-            TEST_ASSERT(name_after_reload != NULL && strcmp(name_after_reload, "test_init_parse") == 0, "Name should be 'test_init_parse' after reload");
+            TEST_ASSERT(name_after_reload != NULL && strcmp(name_after_reload, "test_init_parse") == 0, 
+                       "Name should be 'test_init_parse' after reload (got '%s')", 
+                       name_after_reload ? name_after_reload : "NULL");
+                       
             int value_after_reload = config_get_integer("value", -1);
-            TEST_ASSERT(value_after_reload == 42, "Value should be 42 after reload");
+            TEST_ASSERT(value_after_reload == 42, 
+                       "Value should be 42 after reload (got %d)", value_after_reload);
         }
     }
 }
 
 /**
  * Test: Basic Value Retrieval
+ * 
+ * Tests the basic config value retrieval functions for different data types:
+ * - String retrieval (config_get_string)
+ * - Integer retrieval (config_get_integer)
+ * - Double retrieval (config_get_double) 
+ * - Boolean retrieval (config_get_boolean)
+ * - Defaults when keys don't exist
+ * - Direct value access (config_get_value)
  */
 static void test_basic_value_retrieval(void) {
-    LOG_INFO("\n=== Testing basic value retrieval ===\n");
+    printf("\n=== Testing basic value retrieval ===\n");
     
     const char *json_content = "{"
            "\"string_value\": \"test string\","
@@ -179,54 +229,83 @@ static void test_basic_value_retrieval(void) {
     TEST_ASSERT(write_res == 0, "write_test_json_file for basic_retrieval should succeed");
     
     int result = config_load_file("tests/test_output/test_config_basic_retrieval.json");
-    TEST_ASSERT(result == 0, "config_load_file should succeed for retrieval test");
+    TEST_ASSERT(result == 0, "config_load_file should succeed for retrieval test (result=%d, expected=0)", result);
     if (result != 0) return; // Don't proceed if load failed
     
     const char *str_val = config_get_string("string_value", "default");
-    TEST_ASSERT(str_val != NULL && strcmp(str_val, "test string") == 0, "config_get_string should return the correct string");
+    TEST_ASSERT(str_val != NULL && strcmp(str_val, "test string") == 0, 
+               "config_get_string should return the correct string (got '%s', expected 'test string')", 
+               str_val ? str_val : "NULL");
     
     str_val = config_get_string("nonexistent_string", "default_str");
-    TEST_ASSERT(str_val != NULL && strcmp(str_val, "default_str") == 0, "config_get_string should return default for nonexistent key");
+    TEST_ASSERT(str_val != NULL && strcmp(str_val, "default_str") == 0, 
+               "config_get_string should return default for nonexistent key (got '%s', expected 'default_str')", 
+               str_val ? str_val : "NULL");
     
     int int_val = config_get_integer("int_value", -1);
-    TEST_ASSERT(int_val == 42, "config_get_integer should return the correct integer");
+    TEST_ASSERT(int_val == 42, "config_get_integer should return the correct integer (got %d, expected 42)", int_val);
     
     int_val = config_get_integer("nonexistent_int", -1);
-    TEST_ASSERT(int_val == -1, "config_get_integer should return default for nonexistent key");
+    TEST_ASSERT(int_val == -1, "config_get_integer should return default for nonexistent key (got %d, expected -1)", int_val);
     
     double double_val = config_get_double("double_value", -1.0);
-    TEST_ASSERT(fabs(double_val - 3.14159) < 1e-5, "config_get_double should return the correct double");
+    TEST_ASSERT(fabs(double_val - 3.14159) < 1e-5, 
+               "config_get_double should return the correct double (got %.6f, expected 3.14159, diff=%.6f)", 
+               double_val, fabs(double_val - 3.14159));
     
     double_val = config_get_double("nonexistent_double", -1.0);
-    TEST_ASSERT(fabs(double_val - (-1.0)) < 1e-9, "config_get_double should return default for nonexistent key");
+    TEST_ASSERT(fabs(double_val - (-1.0)) < 1e-9, 
+               "config_get_double should return default for nonexistent key (got %.6f, expected -1.0)", double_val);
     
     bool bool_val = config_get_boolean("bool_value", false);
-    TEST_ASSERT(bool_val == true, "config_get_boolean should return the correct boolean (true)");
+    TEST_ASSERT(bool_val == true, 
+               "config_get_boolean should return the correct boolean (got %s, expected true)", 
+               bool_val ? "true" : "false");
 
     bool_val = config_get_boolean("another_bool_false", true);
-    TEST_ASSERT(bool_val == false, "config_get_boolean should return the correct boolean (false)");
+    TEST_ASSERT(bool_val == false, 
+               "config_get_boolean should return the correct boolean (got %s, expected false)", 
+               bool_val ? "true" : "false");
     
     bool_val = config_get_boolean("nonexistent_bool", false);
-    TEST_ASSERT(bool_val == false, "config_get_boolean should return default for nonexistent key (false)");
+    TEST_ASSERT(bool_val == false, 
+               "config_get_boolean should return default for nonexistent key (got %s, expected false)", 
+               bool_val ? "true" : "false");
     
     bool_val = config_get_boolean("int_value", false); 
-    TEST_ASSERT(bool_val == true, "config_get_boolean should convert non-zero integer to true");
+    TEST_ASSERT(bool_val == true, 
+               "config_get_boolean should convert non-zero integer to true (got %s, expected true)", 
+               bool_val ? "true" : "false");
     
     const struct config_value *value = config_get_value("nested.key1");
     TEST_ASSERT(value != NULL, "config_get_value should return value for nested path");
     if (value) {
-        TEST_ASSERT(value->type == CONFIG_VALUE_STRING, "config_get_value should return correct type (string)");
+        TEST_ASSERT(value->type == CONFIG_VALUE_STRING, 
+                   "config_get_value should return correct type (got %d, expected %d [CONFIG_VALUE_STRING])", 
+                   value->type, CONFIG_VALUE_STRING);
+                   
         if(value->type == CONFIG_VALUE_STRING) { // Further guard for string access
-             TEST_ASSERT(value->u.string != NULL && strcmp(value->u.string, "value1") == 0, "config_get_value should return correct string value");
+             TEST_ASSERT(value->u.string != NULL && strcmp(value->u.string, "value1") == 0, 
+                        "config_get_value should return correct string value (got '%s', expected 'value1')", 
+                        value->u.string ? value->u.string : "NULL");
         }
     }
 }
 
 /**
  * Test: Nested Value Access with Paths
+ * 
+ * Tests access to configuration values using dot-notation paths:
+ * - Deep nested structure traversal
+ * - Array element access by index
+ * - Handling of missing nested paths
+ * - Access to objects within arrays
+ * 
+ * This test validates that the config system can correctly navigate
+ * complex nested hierarchies and provide intuitive access patterns.
  */
 static void test_nested_value_access(void) {
-    LOG_INFO("\n=== Testing nested value access with paths ===\n");
+    printf("\n=== Testing nested value access with paths ===\n");
     
     const char *json_content = "{"
            "\"level1\": {"
@@ -336,9 +415,21 @@ static void test_setting_values(void) {
 
 /**
  * Test: Malformed JSON Handling
+ * 
+ * Tests detection and rejection of various forms of malformed JSON:
+ * - Unclosed objects ('{')
+ * - Missing values after colon ('{"key": }')
+ * - Unclosed string values ('{"key": "unclosed string')
+ * - Extra commas in objects ('{"key": true,}')
+ * - Invalid JSON literals ('{"key": invalid_json_literal}')
+ * - Unclosed arrays ('[1, 2, 3')
+ * - Extra commas in arrays ('{"array": [1, 2, 3,]}')
+ *
+ * Note: This test intentionally generates error messages during parsing.
+ * These error messages are expected and validate the error handling functionality.
  */
 static void test_malformed_json(void) {
-    LOG_INFO("\n=== Testing malformed JSON handling ===\n");
+    printf("\n=== Testing malformed JSON handling ===\n");
     
     const char *test_cases[][2] = {
         {"unclosed_object", "{"}, // Test case 0
@@ -359,17 +450,32 @@ static void test_malformed_json(void) {
         char filename[256];
         snprintf(filename, sizeof(filename), "tests/test_output/test_config_%s.json", suffix);
         int result = config_load_file(filename);
-        char msg[256];
-        snprintf(msg, sizeof(msg), "config_load_file should fail with malformed JSON ('%s')", test_cases[i][1]);
-        TEST_ASSERT(result != 0, msg);
+        
+        // Enhanced error reporting for malformed JSON test cases
+        if (result == 0) {
+            printf("WARNING: Malformed JSON was accepted: '%s'\n", test_cases[i][1]);
+        }
+        
+        TEST_ASSERT(result != 0, "config_load_file should fail with malformed JSON '%s' (result=%d, expected!=0)", 
+                   test_cases[i][1], result);
     }
 }
 
 /**
  * Test: Missing Values and Default Handling
+ * 
+ * Tests handling of missing configuration values and default fallbacks:
+ * - Missing keys with string defaults
+ * - Missing keys with integer defaults
+ * - Missing keys with double defaults
+ * - Missing keys with boolean defaults
+ * - Missing nested keys with defaults
+ * 
+ * This ensures the config system gracefully handles attempts to access
+ * non-existent configuration values by returning appropriate defaults.
  */
 static void test_missing_values(void) {
-    LOG_INFO("\n=== Testing missing values and default handling ===\n");
+    printf("\n=== Testing missing values and default handling ===\n");
     
     const char *test_json = "{"
         "\"string_value\": \"test\","
@@ -407,9 +513,18 @@ static void test_missing_values(void) {
 
 /**
  * Test: Type Mismatches
+ * 
+ * Tests handling of type mismatches when retrieving configuration values:
+ * - Requesting string from non-string values
+ * - Requesting integer from non-integer values
+ * - Requesting boolean from non-boolean values
+ * - Requesting array properties from non-array values
+ * 
+ * This test ensures the config system gracefully handles type mismatches
+ * with appropriate conversion or default fallback behavior.
  */
 static void test_type_mismatches(void) {
-    LOG_INFO("\n=== Testing type mismatch handling ===\n");
+    printf("\n=== Testing type mismatch handling ===\n");
     
     const char *test_json = "{"
         "\"string_value\": \"test\","
@@ -645,9 +760,19 @@ static void test_array_handling(void) {
 
 /**
  * Test: Complex Nested Structures
+ * 
+ * Tests handling of complex nested hierarchical structures that mirror
+ * real-world SAGE configurations:
+ * - Deeply nested simulation parameters
+ * - Module configuration with parameters
+ * - Array and nested array handling
+ * - Multi-level path traversal
+ * 
+ * This test validates that the configuration system can handle the
+ * complex configurations required for SAGE's modular architecture.
  */
 static void test_complex_structures(void) {
-    LOG_INFO("\n=== Testing complex nested structures ===\n");
+    printf("\n=== Testing complex nested structures ===\n");
     
     const char *test_json = "{"
         "\"simulation\": {"
@@ -713,14 +838,22 @@ static void test_complex_structures(void) {
     }
 }
 
+//=============================================================================
+// Test Runner
+//=============================================================================
+
 /**
- * Run all tests
+ * Main test runner
+ * 
+ * Executes all test cases for the configuration system and reports results.
  */
 int main(int argc, char **argv) {
     (void)argc; // Avoid unused parameter warning
     (void)argv; // Avoid unused parameter warning
     
-    LOG_INFO("SAGE Config System Test Suite\n");
+    printf("\n========================================\n");
+    printf("Starting tests for test_config_system\n");
+    printf("========================================\n\n");
     
     // Setup test fixtures
     setup_test_fixtures();
@@ -741,10 +874,12 @@ int main(int argc, char **argv) {
     teardown_test_fixtures();
     
     // Report results
-    LOG_INFO("\n=== Test Results ===\n");
-    LOG_INFO("Tests run: %d", tests_run);
-    LOG_INFO("Tests passed: %d", tests_passed);
-    LOG_INFO("Success rate: %.2f%%", tests_run > 0 ? (float)tests_passed / tests_run * 100.0 : 0.0);
+    printf("\n========================================\n");
+    printf("Test results for test_config_system:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
     
-    return tests_passed == tests_run ? 0 : 1;
+    return (tests_passed == tests_run) ? 0 : 1;
 }
