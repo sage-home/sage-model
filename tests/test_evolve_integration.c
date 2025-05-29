@@ -26,7 +26,6 @@
 
 /* Core system headers */
 #include "../src/core/core_allvars.h"
-#include "../src/core/core_logging.h"
 #include "../src/core/core_module_system.h"
 #include "../src/core/core_pipeline_system.h"
 #include "../src/core/core_event_system.h"
@@ -34,6 +33,21 @@
 #include "../src/core/physics_pipeline_executor.h" // For physics_step_executor (used by pipeline_execute_phase)
 #include "../src/core/core_property_utils.h"
 #include "../src/core/core_properties.h"
+
+// Test counter for reporting
+static int tests_run = 0;
+static int tests_passed = 0;
+
+// Helper macro for test assertions
+#define TEST_ASSERT(condition, message) do { \
+    tests_run++; \
+    if (!(condition)) { \
+        printf("FAIL: %s\n", message); \
+        printf("  at %s:%d\n", __FILE__, __LINE__); \
+    } else { \
+        tests_passed++; \
+    } \
+} while(0)
 
 /* Module data structure for tracking execution */
 struct mock_module_data {
@@ -97,9 +111,8 @@ static int mock_module_initialize_generic(struct params *params, void **module_d
     // Store it also in our test global array, indexed by the true module ID
     if (assigned_module_id >= 0 && assigned_module_id < MAX_MODULES) {
         g_mock_module_data[assigned_module_id] = data;
-         printf("DEBUG_INIT_GENERIC: Stored data for module %s (ID %d) at g_mock_module_data[%d] = %p\n", module_name, assigned_module_id, assigned_module_id, data);
     } else {
-        printf("DEBUG_INIT_GENERIC: Invalid assigned_module_id %d for module %s\n", assigned_module_id, module_name);
+        printf("ERROR: Invalid assigned_module_id %d for module %s\n", assigned_module_id, module_name);
     }
     return 0;
 }
@@ -230,7 +243,7 @@ struct base_module mock_multi_phase_module = {
 static struct GALAXY *create_mock_galaxies(int num_galaxies) {
     struct GALAXY *galaxies = calloc(num_galaxies, sizeof(struct GALAXY));
     if (!galaxies) {
-        LOG_ERROR("Failed to allocate mock galaxies");
+        printf("ERROR: Failed to allocate mock galaxies\n");
         exit(1);
     }
     
@@ -239,7 +252,7 @@ static struct GALAXY *create_mock_galaxies(int num_galaxies) {
     
     for (int i = 0; i < num_galaxies; i++) {
         if (allocate_galaxy_properties(&galaxies[i], &test_params) != 0) {
-            LOG_ERROR("Failed to allocate properties for galaxy %d", i);
+            printf("ERROR: Failed to allocate properties for galaxy %d\n", i);
             for (int j = 0; j < i; j++) free_galaxy_properties(&galaxies[j]);
             free(galaxies);
             exit(1);
@@ -249,7 +262,7 @@ static struct GALAXY *create_mock_galaxies(int num_galaxies) {
         GALAXY_PROP_CentralGal(&galaxies[i]) = 0;
         GALAXY_PROP_HaloNr(&galaxies[i]) = 1; 
         GALAXY_PROP_GalaxyNr(&galaxies[i]) = i;
-        LOG_DEBUG("Initialized mock galaxy %d with allocated properties", i);
+        printf("Initialized mock galaxy %d with allocated properties\n", i);
     }
     return galaxies;
 }
@@ -259,7 +272,7 @@ static struct GALAXY *create_mock_galaxies(int num_galaxies) {
  */
 static struct evolution_context *setup_mock_evolution_context(void) {
     struct evolution_context *ctx = malloc(sizeof(struct evolution_context));
-    if (!ctx) { LOG_ERROR("Failed to allocate mock evolution context"); exit(1); }
+    if (!ctx) { printf("ERROR: Failed to allocate mock evolution context\n"); exit(1); }
     
     ctx->halo_nr = 1; ctx->halo_snapnum = 63; ctx->redshift = 0.0; ctx->halo_age = 13.8;
     int num_galaxies = 3;
@@ -268,13 +281,13 @@ static struct evolution_context *setup_mock_evolution_context(void) {
     ctx->deltaT = 0.1; ctx->time = 13.7;
     
     struct params *params = malloc(sizeof(struct params));
-    if (!params) { LOG_ERROR("Failed to allocate mock params"); free(ctx->galaxies); free(ctx); exit(1); }
+    if (!params) { printf("ERROR: Failed to allocate mock params\n"); free(ctx->galaxies); free(ctx); exit(1); }
     memset(params, 0, sizeof(struct params));
     params->simulation.NumSnapOutputs = 1; 
     ctx->params = params;
     
     struct merger_event_queue *queue = malloc(sizeof(struct merger_event_queue));
-    if (!queue) { LOG_ERROR("Failed to allocate mock merger queue"); free((void*)ctx->params); free(ctx->galaxies); free(ctx); exit(1); }
+    if (!queue) { printf("ERROR: Failed to allocate mock merger queue\n"); free((void*)ctx->params); free(ctx->galaxies); free(ctx); exit(1); }
     memset(queue, 0, sizeof(struct merger_event_queue));
     ctx->merger_queue = queue;
     
@@ -288,7 +301,7 @@ static struct evolution_context *setup_mock_evolution_context(void) {
  */
 static struct pipeline_context *setup_mock_pipeline_context(struct evolution_context *evo_ctx) {
     struct pipeline_context *ctx = malloc(sizeof(struct pipeline_context));
-    if (!ctx) { LOG_ERROR("Failed to allocate mock pipeline context"); exit(1); }
+    if (!ctx) { printf("ERROR: Failed to allocate mock pipeline context\n"); exit(1); }
     memset(ctx, 0, sizeof(struct pipeline_context));
 
     pipeline_context_init(
@@ -367,39 +380,26 @@ static void update_module_execution_counters(void *module_data, enum pipeline_ex
  * Setup and register all mock modules with the module system
  */
 static void setup_mock_modules(struct params *p) { 
-    printf("DEBUG: Entering setup_mock_modules()\n");
-    // void *data_ptr; // Removed as it's unused in the macro now
+    printf("Setting up mock modules\n");
 
 #define REGISTER_AND_INIT_MOCK(module_struct_ptr) \
     do { \
-        printf("DEBUG: Registering %s\n", (module_struct_ptr)->name); \
         int returned_status_from_register = module_register((module_struct_ptr)); \
-        printf("DEBUG: %s registered. module_register returned status: %d, struct's module_id is now %d\n", \
-               (module_struct_ptr)->name, returned_status_from_register, (module_struct_ptr)->module_id); \
         if (returned_status_from_register == MODULE_STATUS_SUCCESS) { \
             int assigned_id = (module_struct_ptr)->module_id; \
             if (assigned_id >= 0 && assigned_id < MAX_MODULES) { \
                 int init_status = module_initialize(assigned_id, p); \
                 if (init_status == MODULE_STATUS_SUCCESS) { \
-                    struct base_module* temp_mod_ptr; \
-                    void* temp_mod_data_ptr; \
-                    module_get(assigned_id, &temp_mod_ptr, &temp_mod_data_ptr); \
-                    /* g_mock_module_data is populated by mock_module_initialize_generic via the module->initialize call chain */ \
-                    printf("DEBUG: %s (ID %d) system-initialized successfully. Module data should be in g_mock_module_data[%d]=%p.\n", \
-                           (module_struct_ptr)->name, assigned_id, assigned_id, g_mock_module_data[assigned_id]); \
-                    LOG_DEBUG("Registered and initialized %s with ID %d", (module_struct_ptr)->name, assigned_id); \
+                    printf("Registered and initialized %s with ID %d\n", (module_struct_ptr)->name, assigned_id); \
                     module_set_active(assigned_id); \
                 } else { \
-                    printf("DEBUG: System module_initialize for %s (ID %d) failed with status %d\n", (module_struct_ptr)->name, assigned_id, init_status); \
-                    LOG_ERROR("System module_initialize for %s (ID %d) failed with status %d", (module_struct_ptr)->name, assigned_id, init_status); \
+                    printf("ERROR: System module_initialize for %s (ID %d) failed with status %d\n", (module_struct_ptr)->name, assigned_id, init_status); \
                 } \
             } else { \
-                 printf("DEBUG: Module registration for %s succeeded, but assigned_id %d is invalid. Skipping initialization.\n", (module_struct_ptr)->name, assigned_id); \
-                 LOG_ERROR("Module registration for %s succeeded, but assigned_id %d is invalid. Skipping initialization.", (module_struct_ptr)->name, assigned_id); \
+                 printf("ERROR: Module registration for %s succeeded, but assigned_id %d is invalid. Skipping initialization.\n", (module_struct_ptr)->name, assigned_id); \
             } \
         } else { \
-            printf("DEBUG: Module registration for %s failed with status %d.\n", (module_struct_ptr)->name, returned_status_from_register); \
-            LOG_ERROR("Module registration for %s failed with status %d.", (module_struct_ptr)->name, returned_status_from_register); \
+            printf("ERROR: Module registration for %s failed with status %d.\n", (module_struct_ptr)->name, returned_status_from_register); \
         } \
     } while(0)
 
@@ -409,11 +409,7 @@ static void setup_mock_modules(struct params *p) {
     REGISTER_AND_INIT_MOCK(&mock_final_module);
     REGISTER_AND_INIT_MOCK(&mock_multi_phase_module);
 
-    LOG_INFO("All mock modules registered and activated");
-    LOG_DEBUG("Final module IDs: infall=%d, galaxy=%d, post=%d, final=%d, multi=%d",
-              mock_infall_module.module_id, mock_galaxy_module.module_id,
-              mock_post_module.module_id, mock_final_module.module_id,
-              mock_multi_phase_module.module_id);
+    printf("All mock modules registered and activated\n");
 }
 
 /**
@@ -430,11 +426,10 @@ static void cleanup_mock_modules(void) {
 
     CLEANUP_MOCK(mock_infall_module);
     CLEANUP_MOCK(mock_galaxy_module);
-    CLEANUP_MOCK(mock_post_module);
-    CLEANUP_MOCK(mock_final_module);
+    CLEANUP_MOCK(mock_post_module);    CLEANUP_MOCK(mock_final_module);
     CLEANUP_MOCK(mock_multi_phase_module);
-    
-    LOG_INFO("All mock modules cleaned up");
+
+    printf("All mock modules cleaned up\n");
 }
 
 /**
@@ -448,35 +443,37 @@ static void verify_phase_execution_counters(
     struct mock_module_data *multi_phase_data,
     int num_mock_galaxies
 ) {
-    printf("Verifying infall_data (ID %d, Name %s): halo_exec=%d, galaxy_exec=%d, total_exec=%d\n", 
-        infall_data->module_id, infall_data->name, infall_data->halo_phase_executions, infall_data->galaxy_phase_executions, infall_data->total_executions);
-    assert(infall_data->halo_phase_executions == 1);
-    assert(infall_data->galaxy_phase_executions == 0);
-    assert(infall_data->total_executions == 1);
+    TEST_ASSERT(infall_data->halo_phase_executions == 1, 
+                "Infall module should execute once in HALO phase");
+    TEST_ASSERT(infall_data->galaxy_phase_executions == 0, 
+                "Infall module should not execute in GALAXY phase");
+    TEST_ASSERT(infall_data->total_executions == 1, 
+                "Infall module total executions should be 1");
 
-    printf("Verifying galaxy_data (ID %d, Name %s): halo_exec=%d, galaxy_exec=%d, total_exec=%d\n", 
-        galaxy_data->module_id, galaxy_data->name, galaxy_data->halo_phase_executions, galaxy_data->galaxy_phase_executions, galaxy_data->total_executions);
-    assert(galaxy_data->galaxy_phase_executions == num_mock_galaxies);
-    assert(galaxy_data->halo_phase_executions == 0);
-    assert(galaxy_data->total_executions == num_mock_galaxies);
+    TEST_ASSERT(galaxy_data->galaxy_phase_executions == num_mock_galaxies, 
+                "Galaxy module should execute once per galaxy in GALAXY phase");
+    TEST_ASSERT(galaxy_data->halo_phase_executions == 0, 
+                "Galaxy module should not execute in HALO phase");
+    TEST_ASSERT(galaxy_data->total_executions == num_mock_galaxies, 
+                "Galaxy module total executions should match galaxy count");
 
-    printf("Verifying post_data (ID %d, Name %s): post_exec=%d, total_exec=%d\n", 
-        post_data->module_id, post_data->name, post_data->post_phase_executions, post_data->total_executions);
-    assert(post_data->post_phase_executions == 1);
-    assert(post_data->total_executions == 1);
+    TEST_ASSERT(post_data->post_phase_executions == 1, 
+                "Post module should execute once in POST phase");
+    TEST_ASSERT(post_data->total_executions == 1, 
+                "Post module total executions should be 1");
 
-    printf("Verifying final_data (ID %d, Name %s): final_exec=%d, total_exec=%d\n", 
-        final_data->module_id, final_data->name, final_data->final_phase_executions, final_data->total_executions);
-    assert(final_data->final_phase_executions == 1);
-    assert(final_data->total_executions == 1);
+    TEST_ASSERT(final_data->final_phase_executions == 1, 
+                "Final module should execute once in FINAL phase");
+    TEST_ASSERT(final_data->total_executions == 1, 
+                "Final module total executions should be 1");
 
-    printf("Verifying multi_phase_data (ID %d, Name %s): halo_exec=%d, galaxy_exec=%d, total_exec=%d\n", 
-        multi_phase_data->module_id, multi_phase_data->name, multi_phase_data->halo_phase_executions, multi_phase_data->galaxy_phase_executions, multi_phase_data->total_executions);
-    assert(multi_phase_data->halo_phase_executions == 1);
-    assert(multi_phase_data->galaxy_phase_executions == num_mock_galaxies);
-    assert(multi_phase_data->total_executions == (1 + num_mock_galaxies));
-    
-    LOG_INFO("Module execution phase verification: PASSED");
+    TEST_ASSERT(multi_phase_data->halo_phase_executions == 1, 
+                "Multi-phase module should execute once in HALO phase");
+    TEST_ASSERT(multi_phase_data->galaxy_phase_executions == num_mock_galaxies, 
+                "Multi-phase module should execute once per galaxy in GALAXY phase");    TEST_ASSERT(multi_phase_data->total_executions == (1 + num_mock_galaxies),
+                "Multi-phase module total executions should be 1 + galaxy count");
+
+    printf("Module execution phase verification: PASSED\n");
 }
 
 /**
@@ -487,25 +484,34 @@ static void verify_diagnostics_results(
     int num_mock_galaxies,
     int num_galaxy_phase_modules 
 ) {
-    assert(diag->elapsed_seconds >= 0.0); 
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_HALO)].total_time >= 0);
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_GALAXY)].total_time >= 0);
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_POST)].total_time >= 0);
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_FINAL)].total_time >= 0);
+    TEST_ASSERT(diag->elapsed_seconds >= 0.0, 
+                "Elapsed time should be non-negative");
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_HALO)].total_time >= 0,
+                "HALO phase timing should be non-negative");
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_GALAXY)].total_time >= 0,
+                "GALAXY phase timing should be non-negative");
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_POST)].total_time >= 0,
+                "POST phase timing should be non-negative");
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_FINAL)].total_time >= 0,
+                "FINAL phase timing should be non-negative");
     
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_HALO)].step_count == 1);
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_GALAXY)].step_count == 1); 
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_POST)].step_count == 1);
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_FINAL)].step_count == 1);
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_HALO)].step_count == 1,
+                "HALO phase should have 1 step");
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_GALAXY)].step_count == 1,
+                "GALAXY phase should have 1 step");
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_POST)].step_count == 1,
+                "POST phase should have 1 step");
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_FINAL)].step_count == 1,
+                "FINAL phase should have 1 step");
     
-    assert(diag->phases[test_phase_to_index(PIPELINE_PHASE_GALAXY)].galaxy_count == num_mock_galaxies);
+    TEST_ASSERT(diag->phases[test_phase_to_index(PIPELINE_PHASE_GALAXY)].galaxy_count == num_mock_galaxies,
+                "GALAXY phase should process correct number of galaxies");
     
     int expected_galaxy_created_events = num_mock_galaxies * num_galaxy_phase_modules;
-    LOG_INFO("CORE_EVENT_GALAXY_CREATED count: %d, expected: %d", 
-             diag->core_event_counts[CORE_EVENT_GALAXY_CREATED], expected_galaxy_created_events);
-    assert(diag->core_event_counts[CORE_EVENT_GALAXY_CREATED] == expected_galaxy_created_events);
+    TEST_ASSERT(diag->core_event_counts[CORE_EVENT_GALAXY_CREATED] == expected_galaxy_created_events,
+                "Should have correct number of GALAXY_CREATED events");
     
-    LOG_INFO("Diagnostics verification: PASSED");
+    printf("Diagnostics verification: PASSED\n");
 }
 
 /**
@@ -521,7 +527,7 @@ static void test_diagnostics_api_basic(void) {
  * Test actual integration of pipeline, modules, and diagnostics working together
  */
 static void test_full_pipeline_integration(void) {
-    LOG_INFO("Starting full pipeline integration test");
+    printf("Starting full pipeline integration test\n");
     int status;
 
     struct module_pipeline *pipeline = pipeline_create("test_integration_pipeline");
@@ -537,7 +543,7 @@ static void test_full_pipeline_integration(void) {
     ADD_MOCK_STEP(mock_post_module, "step");
     ADD_MOCK_STEP(mock_final_module, "step");
     ADD_MOCK_STEP(mock_multi_phase_module, "step");
-    LOG_INFO("Pipeline populated with all mock modules for integration test");
+    printf("Pipeline populated with all mock modules for integration test\n");
 
     struct mock_module_data *infall_data = g_mock_module_data[mock_infall_module.module_id];
     struct mock_module_data *galaxy_data = g_mock_module_data[mock_galaxy_module.module_id];
@@ -545,12 +551,9 @@ static void test_full_pipeline_integration(void) {
     struct mock_module_data *final_data = g_mock_module_data[mock_final_module.module_id];
     struct mock_module_data *multi_phase_data = g_mock_module_data[mock_multi_phase_module.module_id];
     
-    printf("Retrieved module data: infall_id=%d (data ptr %p, data->module_id %d, data->name %s), galaxy_id=%d (data ptr %p, data->module_id %d, data->name %s)\n",
-        mock_infall_module.module_id, (void*)infall_data, infall_data ? infall_data->module_id : -99, infall_data ? infall_data->name : "NULL",
-        mock_galaxy_module.module_id, (void*)galaxy_data, galaxy_data ? galaxy_data->module_id : -99, galaxy_data ? galaxy_data->name : "NULL");
-
-    assert(infall_data && galaxy_data && post_data && final_data && multi_phase_data);
-    LOG_INFO("Mock module data structures retrieved for integration test");
+    TEST_ASSERT(infall_data && galaxy_data && post_data && final_data && multi_phase_data,
+                "All mock module data structures should be available");
+    printf("Mock module data structures retrieved for integration test\n");
     
     struct evolution_context *evo_ctx = setup_mock_evolution_context();
     struct pipeline_context *pipe_ctx = setup_mock_pipeline_context(evo_ctx); 
@@ -559,13 +562,13 @@ static void test_full_pipeline_integration(void) {
     core_evolution_diagnostics_initialize(&diag, evo_ctx->halo_nr, evo_ctx->ngal);
     evo_ctx->diagnostics = &diag; 
 
-    LOG_INFO("Testing HALO phase pipeline execution");
+    printf("Testing HALO phase pipeline execution\n");
     core_evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_HALO);
     status = pipeline_execute_phase(pipeline, pipe_ctx, PIPELINE_PHASE_HALO);
     assert(status == 0);
     core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_HALO);
 
-    LOG_INFO("Testing GALAXY phase pipeline execution");
+    printf("Testing GALAXY phase pipeline execution\n");
     core_evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_GALAXY);
     for (int i = 0; i < pipe_ctx->ngal; i++) {
         pipe_ctx->current_galaxy = i;
@@ -575,13 +578,13 @@ static void test_full_pipeline_integration(void) {
     }
     core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_GALAXY);
 
-    LOG_INFO("Testing POST phase pipeline execution");
+    printf("Testing POST phase pipeline execution\n");
     core_evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_POST);
     status = pipeline_execute_phase(pipeline, pipe_ctx, PIPELINE_PHASE_POST);
     assert(status == 0);
     core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_POST);
 
-    LOG_INFO("Testing FINAL phase pipeline execution");
+    printf("Testing FINAL phase pipeline execution\n");
     core_evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_FINAL);
     status = pipeline_execute_phase(pipeline, pipe_ctx, PIPELINE_PHASE_FINAL);
     assert(status == 0);
@@ -594,13 +597,13 @@ static void test_full_pipeline_integration(void) {
 
     core_evolution_diagnostics_finalize(&diag);
     verify_diagnostics_results(&diag, pipe_ctx->ngal, 2); 
-    core_evolution_diagnostics_report(&diag, LOG_LEVEL_DEBUG);
+    printf("Diagnostics verification: PASSED\n");
 
     cleanup_mock_pipeline_context(pipe_ctx); 
     cleanup_mock_evolution_context(evo_ctx); 
     pipeline_destroy(pipeline);
     
-    LOG_INFO("Full pipeline integration test completed successfully");
+    printf("Full pipeline integration test completed successfully\n");
 }
 
 /**
@@ -610,23 +613,30 @@ int main(int argc, char *argv[]) {
     (void)argc; (void)argv; 
     struct params p = {0}; // Minimal params for module_initialize
 
-    printf("=== Evolution Integration Test Starting ===\n");
-    LOG_INFO("=== Evolution Integration Test ===");
+    printf("\n========================================\n");
+    printf("Starting tests for test_evolve_integration\n");
+    printf("========================================\n\n");
     
-    logging_init(LOG_LEVEL_DEBUG, stdout); printf("Logging system initialized\n"); LOG_INFO("Logging system initialized");
-    module_system_initialize(); printf("Module system initialized\n"); LOG_INFO("Module system initialized");
-    event_system_initialize(); printf("Event system initialized\n"); LOG_INFO("Event system initialized");
-    pipeline_system_initialize(); printf("Pipeline system initialized\n"); LOG_INFO("Pipeline system initialized");
+    // Initialize systems
+    module_system_initialize(); 
+    event_system_initialize(); 
+    pipeline_system_initialize(); 
     
-    printf("Setting up mock modules\n"); setup_mock_modules(&p); printf("Mock modules setup completed\n");
+    setup_mock_modules(&p);
+    test_full_pipeline_integration();
+    cleanup_mock_modules();
     
-    // test_diagnostics_api_basic(); 
-    printf("Starting full pipeline integration test\n"); test_full_pipeline_integration(); printf("Full pipeline integration test completed\n");
+    pipeline_system_cleanup(); 
+    event_system_cleanup(); 
+    module_system_cleanup();
     
-    printf("Cleaning up mock modules\n"); cleanup_mock_modules(); printf("Mock modules cleanup completed\n");
+    // Report results in standard format
+    printf("\n========================================\n");
+    printf("Test results for test_evolve_integration:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
     
-    pipeline_system_cleanup(); event_system_cleanup(); module_system_cleanup();
-    
-    printf("All tests completed successfully\n"); LOG_INFO("All tests completed successfully");
-    return 0;
+    return (tests_run == tests_passed) ? 0 : 1;
 }

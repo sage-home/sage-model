@@ -146,7 +146,7 @@ static void test_integration(void) {
 int main(int argc, char *argv[]) {
     printf("\n========================================\n");
     printf("Starting tests for [test_component_name]\n");
-    printf("========================================\n");
+    printf("========================================\n\n");
     
     // Setup
     if (setup_test_context() != 0) {
@@ -188,6 +188,7 @@ int main(int argc, char *argv[]) {
 4. **Assertions**: Use clear assertion messages that explain what failed
 5. **Setup/Teardown**: Use these to ensure consistent test environment
 6. **Mocking**: Create mock objects when testing components in isolation
+7. **Output**: Use simple `printf()` statements, not the logging system; keep output clean, direct but descriptive, well formatted
 
 ## Makefile Integration
 
