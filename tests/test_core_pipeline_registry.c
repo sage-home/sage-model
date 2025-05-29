@@ -230,7 +230,7 @@ static int test_module_registration_and_pipeline_creation_with_config(void) {
     }
 
     // Load test configuration file
-    if (config_load_file("tests/test_config.json") != 0) {
+    if (config_load_file("tests/test_core_pipeline_registry_config.json") != 0) {
         printf("ERROR: Failed to load test configuration file\n");
         config_system_cleanup();
         return 1;

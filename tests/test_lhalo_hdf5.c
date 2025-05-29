@@ -16,7 +16,7 @@ void test_format_detection() {
     printf("Testing LHalo HDF5 format detection...\n");
     
     // Test a file with HDF5 extension - will be detected by our basic stub
-    const char *valid_file = "tests/test_lhalo_hdf5.c.hdf5";
+    const char *valid_file = "tests/test_lhalo_hdf5.hdf5";
     
     // If the test file exists, run the detection test
     FILE *test_file = fopen(valid_file, "r");

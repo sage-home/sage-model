@@ -412,7 +412,7 @@ static void test_edge_cases(void) {
 //=============================================================================
 
 int main(void) {
-    printf("========================================\n");
+    printf("\n========================================\n");
     printf("Starting tests for test_array_utils\n");
     printf("========================================\n");
 
@@ -439,7 +439,7 @@ int main(void) {
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
-    printf("========================================\n");
+    printf("========================================\n\n");
     
     return (tests_run == tests_passed) ? 0 : 1;
 }

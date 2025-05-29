@@ -144,7 +144,7 @@ static void test_integration(void) {
 //=============================================================================
 
 int main(int argc, char *argv[]) {
-    printf("========================================\n");
+    printf("\n========================================\n");
     printf("Starting tests for [test_component_name]\n");
     printf("========================================\n");
     
@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
-    printf("========================================\n");
+    printf("========================================\n\n");
     
     return (tests_run == tests_passed) ? 0 : 1;
 }

@@ -725,7 +725,7 @@ static void test_integration_multiple_phases(void) {
 //=============================================================================
 
 int main(void) {
-    printf("========================================\n");
+    printf("\n========================================\n");
     printf("Starting tests for test_pipeline\n");
     printf("========================================\n");
     
@@ -742,7 +742,7 @@ int main(void) {
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
-    printf("========================================\n");
+    printf("========================================\n\n");
     
     return (tests_run == tests_passed) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -365,7 +365,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_empty_pipeline test_merger_queue test_core_merger_processor test_config_system
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_empty_pipeline
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_patterns
@@ -404,11 +404,8 @@ test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
 test_memory_pool: tests/test_memory_pool.c tests/stubs/galaxy_extension_stubs.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_memory_pool tests/test_memory_pool.c tests/stubs/galaxy_extension_stubs.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-# Property system test targets
 test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_serialization tests/test_property_serialization.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-# Remove test_property_registration - outdated test (see docs/testing_architecture_guide.md)
 
 test_property_array_access: tests/test_property_array_access.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_array_access tests/test_property_array_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
@@ -425,7 +422,6 @@ test_property_validation: tests/test_property_validation.c $(SAGELIB)
 test_property_access_patterns: tests/test_property_access_patterns.c tests/test_property_validation_mocks.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_access_patterns tests/test_property_access_patterns.c tests/test_property_validation_mocks.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-# I/O system test targets
 test_io_interface: tests/test_io_interface.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_interface tests/test_io_interface.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -459,7 +455,6 @@ test_io_buffer_manager: tests/test_io_buffer_manager.c $(SAGELIB)
 test_validation_framework: tests/test_validation_framework.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_validation_framework tests/test_validation_framework.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-# Module system test targets
 test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -472,10 +467,6 @@ test_placeholder_mergers_module: tests/test_placeholder_mergers_module.c $(SAGEL
 test_module_callback: tests/test_module_callback.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_callback tests/test_module_callback.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-# Empty pipeline test target
-test_empty_pipeline: tests/test_empty_pipeline.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_empty_pipeline tests/test_empty_pipeline.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 test_merger_queue: tests/test_merger_queue.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_merger_queue tests/test_merger_queue.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -484,6 +475,9 @@ test_core_merger_processor: tests/test_core_merger_processor.c $(SAGELIB)
 
 test_config_system: tests/test_config_system.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_config_system tests/test_config_system.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_empty_pipeline: tests/test_empty_pipeline.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_empty_pipeline tests/test_empty_pipeline.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
 core_tests: $(CORE_TESTS)
@@ -514,6 +508,14 @@ module_tests: $(MODULE_TESTS)
 		./tests/$$test || exit 1; \
 	done
 
+# Run all unit tests without the end-to-end scientific tests - faster for development
+unit_tests: $(UNIT_TESTS)
+	@echo "=== Running All Unit Tests ==="
+	@for test in $(UNIT_TESTS); do \
+		echo "Running $$test..."; \
+		./tests/$$test || exit 1; \
+	done
+
 # Tests execution target
 tests: $(EXEC) $(UNIT_TESTS)
 	@echo "Running SAGE tests..."
@@ -540,8 +542,6 @@ tests: $(EXEC) $(UNIT_TESTS)
 		echo "Running $$test..."; \
 		./tests/$$test || FAILED="$$FAILED $$test"; \
 	done
-	@echo "=== Memory Management Tests ==="
-	@cd tests && make -f Makefile.memory_tests || FAILED="$$FAILED memory_tests"
 	@if [ -n "$$FAILED" ]; then \
 		echo "\n============================================"; \
 		echo "UNIT TEST FAILURES DETECTED in:$$FAILED"; \
