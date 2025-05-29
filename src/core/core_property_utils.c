@@ -200,7 +200,7 @@ property_id_t get_cached_property_id(const char *name) {
     }
 
     LOG_ERROR("Property with name '%s' not found in property metadata.", name);
-    return -1; // Or some defined INVALID_PROPERTY_ID
+    return PROP_COUNT; // Consistent with get_property_id() and rest of system
 }
 
 bool is_core_property(property_id_t prop_id) {

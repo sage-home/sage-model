@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     TEST_ASSERT(cached_mvir_id == PROP_Mvir, "get_cached_property_id should return correct ID for Mvir");
     
     property_id_t cached_invalid_id = get_cached_property_id("NonExistentProperty");
-    TEST_ASSERT(cached_invalid_id == -1, "get_cached_property_id should return -1 for invalid property");
+    TEST_ASSERT(cached_invalid_id == PROP_COUNT, "get_cached_property_id should return PROP_COUNT for invalid property");
     
     // Test 5: GALAXY_PROP_* macro availability
     printf("=== Testing GALAXY_PROP_* macro availability ===\n");
