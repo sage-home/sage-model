@@ -121,6 +121,15 @@ extern void logging_init(log_level_t min_level, FILE *output);
 extern void logging_set_level(log_level_t level);
 
 /**
+ * @brief Get current global log level
+ * 
+ * Returns the current minimum log level.
+ * 
+ * @return Current minimum log level
+ */
+extern log_level_t logging_get_level(void);
+
+/**
  * @brief Initialize the logging system with parameters
  * 
  * Sets up the logging system with the provided configuration.

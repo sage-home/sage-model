@@ -229,7 +229,7 @@ static int test_module_registration_and_pipeline_creation_with_config(void) {
     }
 
     // Load test configuration file
-    if (config_load_file("tests/test_core_pipeline_registry_config.json") != 0) {
+    if (config_load_file("tests/test_data/test_core_pipeline_registry_config.json") != 0) {
         printf("ERROR: Failed to load test configuration file\n");
         config_system_cleanup();
         return 1;
@@ -413,7 +413,9 @@ int run_all_pipeline_registry_tests(void) {
 
 // Main function
 int main(void) {
-    printf("\n========== CORE PIPELINE REGISTRY TEST ==========\n");
+    printf("\n========================================\n");
+    printf("Starting tests for test_core_pipeline_registry\n");
+    printf("========================================\n\n");
     
     // Initialize logging but each test will handle its own module and pipeline systems
     struct params run_params = {0};
@@ -424,12 +426,11 @@ int main(void) {
     
     int failures = run_all_pipeline_registry_tests();
     
-    if (failures == 0) {
-        printf("\nFINAL RESULT: All pipeline registry tests PASSED\n");
-    } else {
-        printf("\nFINAL RESULT: %d pipeline registry test(s) FAILED\n", failures);
-    }
+    // Calculate results for template format
+    int total_tests = 2;  // We have 2 main test functions
+    int passed_tests = total_tests - failures;
     
+    // Cleanup
     printf("Cleaning up pipeline system...\n");
     cleanup_pipeline_system();
     printf("Cleaning up module system...\n");
@@ -437,7 +438,15 @@ int main(void) {
     printf("Cleaning up logging...\n");
     cleanup_logging();
     
-    printf("========== TEST COMPLETE ==========\n\n");
+    // Report results in template format
+    printf("\n========================================\n");
+    printf("Test results for test_core_pipeline_registry:\n");
+    printf("  Total tests: %d\n", total_tests);
+    printf("  Passed: %d\n", passed_tests);
+    printf("  Failed: %d\n", failures);
+    printf("========================================\n\n");
+    
+    return failures;
     
     return failures;
 }

@@ -237,6 +237,17 @@ void logging_set_level(log_level_t level) {
 }
 
 /**
+ * Get current global log level
+ */
+log_level_t logging_get_level(void) {
+    if (!global_logging_state.initialized) {
+        return LOG_LEVEL_INFO;  // Return default level if not initialized
+    }
+    
+    return global_logging_state.config.min_level;
+}
+
+/**
  * Initialize the logging system with parameters
  */
 int initialize_logging(const struct params *params) {
