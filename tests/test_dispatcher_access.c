@@ -178,11 +178,26 @@ int get_property_array_size(const struct GALAXY *galaxy, property_id_t prop_id) 
     return get_generated_array_size(galaxy->properties, prop_id);
 }
 
+// Test counter for reporting
+static int tests_run = 0;
+static int tests_passed = 0;
+
+// Helper macro for test assertions
+#define TEST_ASSERT(condition, message) do { \
+    tests_run++; \
+    if (!(condition)) { \
+        printf("FAIL: %s\n", message); \
+        printf("  at %s:%d\n", __FILE__, __LINE__); \
+    } else { \
+        tests_passed++; \
+    } \
+} while(0)
+
 // Test function
 void test_property_access() {
     struct GALAXY galaxy = {0};
     
-    printf("Initializing test galaxy...\n");
+    printf("\n=== Testing property access mechanisms ===\n");
     
     // Manually allocate properties
     galaxy.properties = calloc(1, sizeof(galaxy_properties_t));
@@ -209,12 +224,12 @@ void test_property_access() {
     float mvir_direct = GALAXY_PROP_Mvir(&galaxy);
     float mvir_by_fn = get_float_property(&galaxy, PROP_Mvir, 0.0f);
     printf("  Mvir direct: %g, Mvir by function: %g\n", mvir_direct, mvir_by_fn);
-    assert(mvir_direct == mvir_by_fn);
+    TEST_ASSERT(mvir_direct == mvir_by_fn, "Float property access equivalence");
     
     int type_direct = GALAXY_PROP_Type(&galaxy);
     int type_by_fn = get_int32_property(&galaxy, PROP_Type, 0);
     printf("  Type direct: %d, Type by function: %d\n", type_direct, type_by_fn);
-    assert(type_direct == type_by_fn);
+    TEST_ASSERT(type_direct == type_by_fn, "Integer property access equivalence");
     
     // Test 2: Array property access
     printf("\nTest 2: Testing array property access...\n");
@@ -222,14 +237,14 @@ void test_property_access() {
         float sfr_direct = GALAXY_PROP_SfrDisk_ELEM(&galaxy, i);
         float sfr_by_fn = get_float_array_element_property(&galaxy, PROP_SfrDisk, i, 0.0f);
         printf("  SfrDisk[%d] direct: %g, by function: %g\n", i, sfr_direct, sfr_by_fn);
-        assert(sfr_direct == sfr_by_fn);
+        TEST_ASSERT(sfr_direct == sfr_by_fn, "Array element access equivalence");
     }
     
     // Test 3: Array size retrieval
     printf("\nTest 3: Testing array size retrieval...\n");
     int array_size = get_property_array_size(&galaxy, PROP_SfrDisk);
     printf("  SfrDisk array size: %d (should be %d)\n", array_size, STEPS);
-    assert(array_size == STEPS);
+    TEST_ASSERT(array_size == STEPS, "Array size retrieval accuracy");
     
     printf("\nAll property access tests passed!\n");
     printf("The implementation correctly follows existing codebase patterns and maintains core-physics separation.\n");
@@ -239,12 +254,23 @@ void test_property_access() {
 }
 
 int main() {
-    printf("=== SAGE Property System Access Test ===\n");
+    printf("\n========================================\n");
+    printf("Starting tests for test_dispatcher_access\n");
+    printf("========================================\n\n");
     printf("This test verifies that:\n");
     printf("1. The property accessor functions correctly access properties\n");
     printf("2. The auto-generated dispatcher implementation works correctly\n");
-    printf("3. Direct macro access and generic function access return the same values\n\n");
+    printf("3. Direct macro access and generic function access return the same values\n");
     
     test_property_access();
-    return 0;
+    
+    // Report results
+    printf("\n========================================\n");
+    printf("Test results for test_dispatcher_access:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
+    
+    return (tests_run == tests_passed) ? 0 : 1;
 }
