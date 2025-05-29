@@ -793,7 +793,9 @@ static void test_module_unregistration(void) {
 //=============================================================================
 
 int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
-    printf("Starting Module Callback System tests...\n");
+    printf("\n========================================\n");
+    printf("Starting tests for test_module_callback\n");
+    printf("========================================\n");
     
     // Setup
     if (setup_test_context() != 0) {
@@ -818,11 +820,11 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
     
     // Report results
     printf("\n========================================\n");
-    printf("Module Callback System Test Results:\n");
+    printf("Test results for test_module_callback:\n");
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
-    printf("========================================\n");
+    printf("========================================\n\n");
     
     return (tests_run == tests_passed) ? 0 : 1;
 }

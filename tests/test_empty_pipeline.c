@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     (void)argv;
 
     printf("\n========================================\n");
-    printf("Starting tests for Empty Pipeline Validation\n");
+    printf("Starting tests for test_empty_pipeline\n");
     printf("========================================\n");
     
     /* Initialize logging */
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
     
     /* Report results following test_template.c format */
     printf("\n========================================\n");
-    printf("Test results for Empty Pipeline Validation:\n");
+    printf("Test results for test_empty_pipeline:\n");
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
@@ -104,10 +104,10 @@ int main(int argc, char **argv) {
         printf("- Core infrastructure operates independently: ✅ YES\n");
         printf("- All pipeline phases executed successfully: ✅ YES\n");
         printf("- Memory management with minimal properties: ✅ OK\n");
-        printf("- Module system handles placeholder modules: ✅ YES\n");
+        printf("- Module system handles placeholder modules: ✅ YES\n\n");
         return 0;
     } else {
-        printf("❌ Empty Pipeline Validation Test FAILED\n");
+        printf("❌ Empty Pipeline Validation Test FAILED\n\n");
         return 1;
     }
 }

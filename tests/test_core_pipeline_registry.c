@@ -12,7 +12,6 @@
 #include "../src/core/core_init.h"
 #include "../src/core/core_logging.h"
 #include "../src/core/core_config_system.h"
-#include "test_core_pipeline_registry.h"
 
 // --- Mock Module Functions ---
 static int mock_initialize(struct params *params __attribute__((unused)), void **data_ptr) {
