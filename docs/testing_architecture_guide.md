@@ -61,6 +61,17 @@ These tests validate the module system that enables SAGE's pluggable architectur
 
 Module system tests ensure that physics components can be added, removed, or replaced without breaking the core functionality.
 
+### End-to-End Scientific Tests
+
+These tests validate the scientific accuracy of SAGE by comparing outputs to reference results:
+
+- **Binary Output Tests**: Verify that SAGE produces correct results in binary format
+- **HDF5 Output Tests**: Verify that SAGE produces correct results in HDF5 format
+- **Cross-Format Validation**: Ensures consistency between different output formats
+- **Galaxy Property Verification**: Checks all galaxy properties against reference values
+
+End-to-end tests provide holistic validation of SAGE's scientific calculations, ensuring that architectural changes don't affect the correctness of the galaxy formation model.
+
 ### Core-Physics Separation Tests
 
 These tests specifically validate the separation between core infrastructure and physics implementations:
@@ -171,6 +182,41 @@ Tests can be run in several ways:
    make test_pipeline
    make test_property_array_access
    ```
+
+4. **End-to-End Scientific Tests**: Run scientific validation against reference outputs.
+   ```bash
+   ./test_sage.sh                   # Basic run
+   ./test_sage.sh --verbose         # Detailed comparison output
+   ./test_sage.sh --compile         # Compile SAGE before testing
+   ```
+
+## End-to-End Scientific Tests
+
+The `test_sage.sh` script provides comprehensive validation of SAGE's scientific accuracy by comparing outputs to reference results:
+
+### Test Components
+
+1. **Input Data**: Uses a subset of the Millennium Simulation merger trees, which are downloaded automatically if not present
+
+2. **Execution Process**:
+   - Sets up a Python environment with dependencies (numpy, h5py)
+   - Runs SAGE with both binary and HDF5 output formats
+   - Compares generated outputs to reference galaxy catalogs
+
+3. **Comparison Mechanism**:
+   - The `sagediff.py` script performs detailed comparisons between outputs
+   - All galaxy properties (positions, masses, rates, etc.) are verified
+   - Both binary-to-binary and binary-to-HDF5 comparisons are performed
+   - Appropriate tolerances are applied for floating-point comparisons
+
+4. **Output Analysis**:
+   - Provides summary statistics of property differences
+   - Identifies specific properties with discrepancies
+   - Reports galaxy-by-galaxy differences when run with `--verbose`
+
+### Integration with Main Testing Framework
+
+The end-to-end scientific tests are automatically run as part of `make tests`, alongside the unit tests for individual components. This provides a holistic validation approach that ensures both architectural integrity and scientific accuracy.
 
 ## Conclusion
 
