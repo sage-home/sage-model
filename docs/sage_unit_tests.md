@@ -21,6 +21,9 @@ These tests are integrated into the main Makefile and can be run with `make test
 | ✅ **test_dispatcher_access**      | Tests the type-safe dispatcher functions for property access                  | Phase 5.2.F.4 (May 2025) |
 | ✅ **test_memory_pool**            | Tests the memory pooling system with support for various property types and dynamic arrays | Phase 3.3 (Apr 2025)     |
 | ✅ **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
+| **test_empty_pipeline**         | Validates core-physics separation by running core infrastructure with placeholder modules only | Phase 5.2.F.2 (May 2025) |
+| ✅ **test_merger_queue**           | Tests the merger event queue system for deferred merger processing            | Phase 5.1 (May 2025)     |
+| ✅ **test_core_merger_processor**  | Tests physics-agnostic merger event handling and dispatching                  | Phase 5.2.G (May 2025)   |
 
 ### Property System Tests (`PROPERTY_TESTS`)
 
@@ -57,14 +60,6 @@ These tests are integrated into the main Makefile and can be run with `make test
 | ✅ **test_module_callback** | Tests the inter-module communication infrastructure | Phase 5.2.F.5 (May 2025) |
 | ✅ **test_placeholder_mergers_module** | Tests the placeholder merger module implementations | Phase 4.3 (Apr 2025) |
 
-## Standalone Tests (Individual Makefiles/Scripts)
-
-These tests require special setup or have complex integration requirements and use individual Makefiles or scripts.
-
-| Test Name | Purpose | Added in Phase | Implementation Method |
-|-----------|---------|---------------|----------------------|
-| ✅ **test_empty_pipeline** | Verifies that the core can run with empty placeholder modules to validate core-physics separation | Phase 5.2.F.2 (May 2025) | Integrated in main Makefile + `run_empty_pipeline_test.sh` |
-
 ## Running Tests
 
 ### All Tests
@@ -87,7 +82,7 @@ make test_pipeline
 make test_property_serialization
 make test_memory_pool
 make test_io_memory_map
-make test_empty_pipeline  # Test core-physics separation with empty placeholder modules
+make test_empty_pipeline  # Test core-physics separation with placeholder modules
 # etc.
 ```
 
@@ -107,24 +102,9 @@ This test **intentionally produces ERROR messages** as part of its validation pr
 
 **A successful test run** exits with code 0 despite these error messages, which demonstrate correct validation of invalid JSON inputs.
 
-### Running the Empty Pipeline Test
-
-The empty pipeline test verifies that the SAGE core can run with no physics components:
-
-```bash
-# Option 1: Using the test script (recommended)
-./tests/run_empty_pipeline_test.sh
-
-# Option 2: Running directly (requires parameter file)
-make test_empty_pipeline
-./tests/test_empty_pipeline tests/test_data/test-mini-millennium.par
-```
-
-The test uses a special parameter file (`tests/test_data/test-mini-millennium.par`) that references the empty pipeline configuration (`tests/test_data/empty_pipeline_config.json`) to set up placeholder modules.
-
 ## Test Categories Overview
 
-- **Core Infrastructure (9 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling
+- **Core Infrastructure (12 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, core-physics separation validation, merger queue system
 - **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, access patterns
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (4 tests)**: Dynamic loading, pipeline invocation, module callback system, placeholder modules

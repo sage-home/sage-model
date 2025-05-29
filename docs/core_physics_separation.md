@@ -72,24 +72,21 @@ These tests collectively verify that:
 To run SAGE with a minimal empty pipeline:
 
 ```bash
-# Option 1: Using the test script (recommended)
-./tests/run_empty_pipeline_test.sh
-
-# Option 2: Running directly with the test parameter file
+# Run the empty pipeline test (integrated into main Makefile)
 make test_empty_pipeline
-./tests/test_empty_pipeline tests/test_data/test-mini-millennium.par
+./tests/test_empty_pipeline
+
+# Or run as part of core infrastructure tests
+make core_tests
 ```
 
-The test uses a special parameter file (`tests/test_data/test-mini-millennium.par`) that includes:
-
-1. `ModuleConfigFile` pointing to `tests/test_data/empty_pipeline_config.json`
-2. The configuration file defines placeholder modules that implement the module interface but perform no physics calculations
+The test validates core-physics separation by running the SAGE core infrastructure with placeholder modules that perform no physics calculations.
 
 ## Verifying Core Independence
 
 To verify that the core is truly independent from physics:
 
-1. **Run the empty pipeline test**: `make test_empty_pipeline` or `./tests/run_empty_pipeline_test.sh`
+1. **Run the empty pipeline test**: `make test_empty_pipeline && ./tests/test_empty_pipeline`
 2. **Run core infrastructure tests**: `make core_tests` 
 3. **Run property system tests**: `make property_tests`
 4. **Run module system tests**: `make module_tests`
