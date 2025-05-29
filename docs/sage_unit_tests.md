@@ -113,7 +113,7 @@ The test suite provides comprehensive coverage of all major SAGE components whil
 
 **Note**: Several tests have been removed or replaced as part of the architectural evolution:
 - `test_core_physics_separation` was removed in May 2025 as its functionality is now covered by more focused tests
-- `test_output_preparation` was replaced by `test_property_system_hdf5` which tests the transformer system
+- `test_output_preparation` was replaced by `test_property_system_hdf5` which tests the physics output transformers system (see `physics_output_transformers_guide.md`)
 - The standalone Memory Tests Suite was integrated into the main Makefile with `test_memory_pool` and `test_io_memory_map`
 
 **Note**: The `test_core_physics_separation` test was removed in May 2025 as it became outdated due to API changes and its functionality is now comprehensively covered by other focused tests (`test_property_access_patterns`, `test_property_system_hdf5`, `test_evolve_integration`, `test_core_pipeline_registry`, and the standalone `test_empty_pipeline`).

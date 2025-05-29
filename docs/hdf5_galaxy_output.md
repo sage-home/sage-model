@@ -608,8 +608,7 @@ The HDF5 output system uses a layered approach to error handling:
 ## See Also
 - [HDF5 Output Handler Guide](io_hdf5_output_guide.md) - User guide for the I/O interface
 - [IO Interface System](io_interface.md) - Overview of the I/O interface architecture
-- [Output Preparation](output_preparation.md) - Galaxy preparation for output
-- [Output Transformers System](output_transformers_system.md) - Property transformation system
+- [Physics Output Transformers Guide](physics_output_transformers_guide.md) - Comprehensive guide for physics module developers on customizing output transformations
 - [Property System](property_system.md) - Unified property system documentation
 
 ---
