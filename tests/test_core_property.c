@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     (void)argc; (void)argv;
     
     printf("\n========================================\n");
-    printf("Starting comprehensive SAGE Core Property System tests\n");
+    printf("Starting tests for test_core_property\n");
     printf("========================================\n\n");
     
     // Test 1: Property enumeration and constants
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     
     // Report results
     printf("\n========================================\n");
-    printf("Test results for SAGE Core Property System:\n");
+    printf("Test results for test_core_property:\n");
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
