@@ -1,3 +1,27 @@
+/**
+ * @file test_dispatcher_access.c
+ * @brief Test suite for the type-safe property dispatcher system
+ * 
+ * This test validates the core property access mechanism that underlies all SAGE
+ * property operations. The dispatcher system ensures type-safe access to galaxy
+ * properties whilst maintaining core-physics separation principles.
+ * 
+ * Key components tested:
+ * - Auto-generated dispatcher functions for different property types
+ * - Equivalence between direct macro access and generic function access
+ * - Error handling for invalid property IDs and boundary conditions
+ * - Array property access including size retrieval and bounds checking
+ * 
+ * The dispatcher system is critical because it:
+ * 1. Replaces the flawed GALAXY_PROP_BY_ID macro that had type safety issues
+ * 2. Provides the foundation for core-physics separation by enabling generic access
+ * 3. Ensures consistent property access patterns across the entire codebase
+ * 4. Enables runtime property validation and error handling
+ * 
+ * This test is part of the CORE_TESTS suite and must pass for the property
+ * system to function correctly.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -193,7 +217,85 @@ static int tests_passed = 0;
     } \
 } while(0)
 
-// Test function
+/**
+ * Test error handling for invalid property access
+ */
+void test_error_conditions() {
+    printf("\n=== Testing error handling ===\n");
+    
+    struct GALAXY galaxy = {0};
+    galaxy.properties = calloc(1, sizeof(galaxy_properties_t));
+    galaxy.GalaxyIndex = 99999;
+    
+    // Test 1: Invalid property ID for scalar access
+    printf("Testing invalid property ID handling...\n");
+    float invalid_float = get_float_property(&galaxy, (property_id_t)-1, 999.0f);
+    TEST_ASSERT(invalid_float == 999.0f, "Invalid property ID returns default value for float");
+    
+    int invalid_int = get_int32_property(&galaxy, (property_id_t)MAX_GALAXY_PROPERTIES, 888);
+    TEST_ASSERT(invalid_int == 888, "Invalid property ID returns default value for int");
+    
+    // Test 2: Non-array property accessed as array
+    printf("Testing non-array property accessed as array...\n");
+    float scalar_as_array = get_float_array_element_property(&galaxy, PROP_Mvir, 0, -1.0f);
+    TEST_ASSERT(scalar_as_array == -1.0f, "Non-array property access returns default value");
+    
+    int scalar_array_size = get_property_array_size(&galaxy, PROP_Type);
+    TEST_ASSERT(scalar_array_size == 0, "Non-array property size query returns 0");
+    
+    // Test 3: Out-of-bounds array access
+    printf("Testing out-of-bounds array access...\n");
+    float oob_negative = get_float_array_element_property(&galaxy, PROP_SfrDisk, -1, -999.0f);
+    TEST_ASSERT(oob_negative == -999.0f, "Negative array index returns default value");
+    
+    float oob_positive = get_float_array_element_property(&galaxy, PROP_SfrDisk, STEPS + 10, -888.0f);
+    TEST_ASSERT(oob_positive == -888.0f, "Out-of-bounds array index returns default value");
+    
+    printf("Error handling tests completed.\n");
+    free(galaxy.properties);
+}
+
+/**
+ * Test boundary conditions and edge cases
+ */
+void test_boundary_conditions() {
+    printf("\n=== Testing boundary conditions ===\n");
+    
+    struct GALAXY galaxy = {0};
+    galaxy.properties = calloc(1, sizeof(galaxy_properties_t));
+    galaxy.GalaxyIndex = 11111;
+    
+    // Initialize array with test pattern
+    for (int i = 0; i < STEPS; i++) {
+        GALAXY_PROP_SfrDisk_ELEM(&galaxy, i) = (float)(i * 10);
+    }
+    
+    // Test 1: Boundary array indices
+    printf("Testing boundary array indices...\n");
+    float first_element = get_float_array_element_property(&galaxy, PROP_SfrDisk, 0, -1.0f);
+    TEST_ASSERT(first_element == 0.0f, "First array element access works correctly");
+    
+    float last_element = get_float_array_element_property(&galaxy, PROP_SfrDisk, STEPS - 1, -1.0f);
+    TEST_ASSERT(last_element == (float)((STEPS - 1) * 10), "Last array element access works correctly");
+    
+    // Test 2: Zero values
+    printf("Testing zero values...\n");
+    GALAXY_PROP_Mvir(&galaxy) = 0.0f;
+    GALAXY_PROP_Type(&galaxy) = 0;
+    
+    float zero_mvir = get_float_property(&galaxy, PROP_Mvir, 999.0f);
+    TEST_ASSERT(zero_mvir == 0.0f, "Zero float property access works correctly");
+    
+    int zero_type = get_int32_property(&galaxy, PROP_Type, 999);
+    TEST_ASSERT(zero_type == 0, "Zero integer property access works correctly");
+    
+    printf("Boundary condition tests completed.\n");
+    free(galaxy.properties);
+}
+
+/**
+ * Test comprehensive property access mechanisms
+ */
 void test_property_access() {
     struct GALAXY galaxy = {0};
     
@@ -261,8 +363,13 @@ int main() {
     printf("1. The property accessor functions correctly access properties\n");
     printf("2. The auto-generated dispatcher implementation works correctly\n");
     printf("3. Direct macro access and generic function access return the same values\n");
+    printf("4. Error conditions are handled properly\n");
+    printf("5. Boundary conditions work as expected\n");
     
+    // Run all test suites
     test_property_access();
+    test_error_conditions();
+    test_boundary_conditions();
     
     // Report results
     printf("\n========================================\n");
