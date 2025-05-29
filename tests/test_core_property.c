@@ -1,186 +1,139 @@
+/**
+ * Comprehensive Core Property System Test
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <assert.h>
-#include <string.h>
+#include <math.h>
 
-// Simple property ID type
-typedef int property_id_t;
+#include "core_allvars.h"
+#include "core_properties.h"
+#include "core_property_utils.h"
+#include "core_mymalloc.h"
 
-// Mock property_meta_t struct
-typedef struct {
-    char name[64];
-    char type[32];
-    char description[256];
-} property_meta_t;
+static int tests_run = 0;
+static int tests_passed = 0;
 
-// Mock GALAXY struct
-struct GALAXY {
-    int64_t GalaxyIndex;
-    void *properties;
-};
+#define TEST_ASSERT(condition, message) do { \
+    tests_run++; \
+    if (!(condition)) { \
+        printf("FAIL: %s\n", message); \
+        printf("  at %s:%d\n", __FILE__, __LINE__); \
+    } else { \
+        tests_passed++; \
+    } \
+} while(0)
 
-// Mock PROPERTY_META
-property_meta_t PROPERTY_META[10] = {
-    {"Type", "int32", "Galaxy type"},
-    {"Mvir", "float", "Virial mass"},
-    {"Rvir", "float", "Virial radius"},
-    {"Pos", "float[3]", "Position"}
-};
-
-// Mock constant for core property count
-const int32_t CORE_PROP_COUNT = 4;
-const int32_t TotGalaxyProperties = 10;
-
-// Mock galaxy_property_info
-typedef struct {
-    char name[64];
-} GalaxyPropertyInfo;
-
-const GalaxyPropertyInfo galaxy_property_info[10] = {
-    {"Type"},
-    {"Mvir"},
-    {"Rvir"},
-    {"Pos"},
-    {"ColdGas"},
-    {"HotGas"},
-    {"StellarMass"},
-    {"BulgeMass"},
-    {"BlackHoleMass"},
-    {"Metals"}
-};
-
-// Mock macros and functions from core framework
-#define sage_assert(cond, msg) if (!(cond)) { fprintf(stderr, "Assertion failed: %s\n", msg); exit(1); }
-#define LOG_ERROR(...) fprintf(stderr, "ERROR: " __VA_ARGS__)
-#define LOG_WARN(...) fprintf(stderr, "WARNING: " __VA_ARGS__)
-#define MAX_STRING_LEN 256
-#define MAX_GALAXY_PROPERTIES 100
-
-// Implement the new functions from core_property_utils.c
-
-// Cache for property IDs
-#define MAX_CACHED_PROPERTIES 64
-typedef struct {
-    char name[MAX_STRING_LEN];
-    property_id_t id;
-} CachedProperty;
-
-static CachedProperty property_cache[MAX_CACHED_PROPERTIES];
-static int32_t num_cached_properties = 0;
-static bool property_cache_initialized = false;
-
-// Initialize the cache
-static void init_property_cache_if_needed(void) {
-    if (!property_cache_initialized) {
-        for (int i = 0; i < MAX_CACHED_PROPERTIES; ++i) {
-            property_cache[i].name[0] = '\0';
-            property_cache[i].id = -1;
-        }
-        num_cached_properties = 0;
-        property_cache_initialized = true;
-    }
-}
-
-// Implementations of our functions
-bool is_core_property(property_id_t prop_id) {
-    return prop_id >= 0 && prop_id < CORE_PROP_COUNT;
-}
-
-const property_meta_t* get_property_meta(property_id_t prop_id) {
-    if (prop_id >= 0 && prop_id < TotGalaxyProperties) {
-        return &PROPERTY_META[prop_id];
-    }
-    return NULL;
-}
-
-property_id_t get_cached_property_id(const char *name) {
-    sage_assert(name != NULL && name[0] != '\0', "Property name cannot be NULL or empty");
-
-    init_property_cache_if_needed();
-
-    // Check cache first
-    for (int32_t i = 0; i < num_cached_properties; ++i) {
-        if (strcmp(property_cache[i].name, name) == 0) {
-            return property_cache[i].id;
-        }
-    }
-
-    // If not in cache, find in the global property registry
-    for (int32_t i = 0; i < TotGalaxyProperties; ++i) {
-        if (strcmp(galaxy_property_info[i].name, name) == 0) {
-            // Use array index as property ID
-            property_id_t found_id = i;
-            
-            // Add to cache if there's space
-            if (num_cached_properties < MAX_CACHED_PROPERTIES) {
-                strncpy(property_cache[num_cached_properties].name, name, MAX_STRING_LEN - 1);
-                property_cache[num_cached_properties].name[MAX_STRING_LEN - 1] = '\0';
-                property_cache[num_cached_properties].id = found_id;
-                num_cached_properties++;
-            } else {
-                LOG_WARN("Property ID cache is full. Consider increasing MAX_CACHED_PROPERTIES.");
-            }
-            return found_id;
-        }
-    }
-
-    LOG_ERROR("Property with name '%s' not found in global property registry.", name);
-    return -1;
-}
-
-// Simple tests
-int main() {
-    printf("Testing is_core_property function...\n");
-
-    // Test core properties
-    assert(is_core_property(0) == true);  // Type is a core property
-    assert(is_core_property(1) == true);  // Mvir is a core property
-    assert(is_core_property(3) == true);  // Pos is a core property
+int main(int argc, char *argv[]) {
+    (void)argc; (void)argv;
     
-    // Test physics properties
-    assert(is_core_property(4) == false); // ColdGas is not a core property
-    assert(is_core_property(7) == false); // BulgeMass is not a core property
+    printf("\n========================================\n");
+    printf("Starting comprehensive SAGE Core Property System tests\n");
+    printf("========================================\n\n");
     
-    // Test invalid properties
-    assert(is_core_property(-1) == false);
-    assert(is_core_property(100) == false);
+    // Test 1: Property enumeration and constants
+    printf("=== Testing property enumeration ===\n");
+    TEST_ASSERT(PROP_COUNT > 0, "PROP_COUNT should be positive");
+    TEST_ASSERT(PROP_COUNT < 1000, "PROP_COUNT should be reasonable");
+    TEST_ASSERT(PROP_SnapNum >= 0, "PROP_SnapNum should be valid");
+    TEST_ASSERT(PROP_Mvir >= 0, "PROP_Mvir should be valid");
+    TEST_ASSERT(PROP_COUNT > PROP_Mvir, "PROP_Mvir should be less than PROP_COUNT");
     
-    printf("Test for is_core_property passed!\n");
+    // Test 2: Property name access
+    printf("=== Testing property name access ===\n");
+    const char *name = get_property_name(PROP_Mvir);
+    TEST_ASSERT(name != NULL, "get_property_name should return non-NULL for valid property");
+    TEST_ASSERT(strcmp(name, "Mvir") == 0, "get_property_name should return correct name");
     
-    printf("Testing get_property_meta function...\n");
+    const char *invalid_name = get_property_name(PROP_COUNT);
+    TEST_ASSERT(invalid_name == NULL, "get_property_name should return NULL for invalid ID");
     
-    // Test valid properties
-    const property_meta_t *type_meta = get_property_meta(0);
-    assert(type_meta != NULL);
-    assert(strcmp(type_meta->name, "Type") == 0);
+    // Test 3: Property ID lookup
+    printf("=== Testing property ID lookup ===\n");
+    property_id_t mvir_id = get_property_id("Mvir");
+    TEST_ASSERT(mvir_id == PROP_Mvir, "get_property_id should return correct ID for Mvir");
     
-    const property_meta_t *mvir_meta = get_property_meta(1);
-    assert(mvir_meta != NULL);
-    assert(strcmp(mvir_meta->name, "Mvir") == 0);
+    property_id_t invalid_id = get_property_id("NonExistentProperty");
+    TEST_ASSERT(invalid_id == PROP_COUNT, "get_property_id should return PROP_COUNT for invalid property");
     
-    // Test invalid properties
-    assert(get_property_meta(-1) == NULL);
-    assert(get_property_meta(100) == NULL);
+    // Test 4: Cached property ID lookup
+    printf("=== Testing cached property ID lookup ===\n");
+    property_id_t cached_mvir_id = get_cached_property_id("Mvir");
+    TEST_ASSERT(cached_mvir_id == PROP_Mvir, "get_cached_property_id should return correct ID for Mvir");
     
-    printf("Test for get_property_meta passed!\n");
+    property_id_t cached_invalid_id = get_cached_property_id("NonExistentProperty");
+    TEST_ASSERT(cached_invalid_id == -1, "get_cached_property_id should return -1 for invalid property");
     
-    printf("Testing get_cached_property_id function...\n");
+    // Test 5: GALAXY_PROP_* macro availability
+    printf("=== Testing GALAXY_PROP_* macro availability ===\n");
+    struct GALAXY test_galaxy;
+    galaxy_properties_t test_properties;
     
-    // Test valid property names
-    assert(get_cached_property_id("Type") == 0);
-    assert(get_cached_property_id("Mvir") == 1);
-    assert(get_cached_property_id("ColdGas") == 4);
+    // Initialize the galaxy to point to our test properties
+    memset(&test_galaxy, 0, sizeof(test_galaxy));
+    memset(&test_properties, 0, sizeof(test_properties));
+    test_galaxy.properties = &test_properties;
     
-    // Test caching
-    assert(num_cached_properties > 0);
+    // Test that GALAXY_PROP_* macros compile and work
+    GALAXY_PROP_SnapNum(&test_galaxy) = 42;
+    TEST_ASSERT(GALAXY_PROP_SnapNum(&test_galaxy) == 42, "GALAXY_PROP_SnapNum macro should work");
     
-    // Test invalid property name
-    assert(get_cached_property_id("NonExistentProperty") == -1);
+    GALAXY_PROP_Type(&test_galaxy) = 1;
+    TEST_ASSERT(GALAXY_PROP_Type(&test_galaxy) == 1, "GALAXY_PROP_Type macro should work");
     
-    printf("Test for get_cached_property_id passed!\n");
+    GALAXY_PROP_Mvir(&test_galaxy) = 1.5e12f;
+    TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&test_galaxy) - 1.5e12f) < 1e6f, "GALAXY_PROP_Mvir macro should work");
     
-    printf("All tests passed successfully!\n");
-    return 0;
+    // Test array properties
+    GALAXY_PROP_Pos_ELEM(&test_galaxy, 0) = 100.0f;
+    GALAXY_PROP_Pos_ELEM(&test_galaxy, 1) = 200.0f;
+    TEST_ASSERT(fabs(GALAXY_PROP_Pos_ELEM(&test_galaxy, 0) - 100.0f) < 1e-6f, "GALAXY_PROP_Pos_ELEM should work");
+    TEST_ASSERT(fabs(GALAXY_PROP_Pos_ELEM(&test_galaxy, 1) - 200.0f) < 1e-6f, "GALAXY_PROP_Pos_ELEM should work");
+    
+    // Test 6: Core-physics separation compliance
+    printf("=== Testing core-physics separation compliance ===\n");
+    TEST_ASSERT(PROP_SnapNum < PROP_COUNT, "Core property SnapNum should be defined");
+    TEST_ASSERT(PROP_Type < PROP_COUNT, "Core property Type should be defined");
+    TEST_ASSERT(PROP_GalaxyNr < PROP_COUNT, "Core property GalaxyNr should be defined");
+    TEST_ASSERT(PROP_HaloNr < PROP_COUNT, "Core property HaloNr should be defined");
+    TEST_ASSERT(PROP_Mvir < PROP_COUNT, "Halo property Mvir should be defined");
+    TEST_ASSERT(PROP_Rvir < PROP_COUNT, "Halo property Rvir should be defined");
+    TEST_ASSERT(PROP_Vvir < PROP_COUNT, "Halo property Vvir should be defined");
+    
+    // Test that we can get names for these properties without physics dependencies
+    const char *snapnum_name = get_property_name(PROP_SnapNum);
+    const char *mvir_name = get_property_name(PROP_Mvir);
+    TEST_ASSERT(snapnum_name != NULL, "Core property names should be accessible");
+    TEST_ASSERT(mvir_name != NULL, "Halo property names should be accessible");
+    
+    // Test 7: Property system type definitions
+    printf("=== Testing property type definitions ===\n");
+    property_id_t test_id = PROP_SnapNum;
+    TEST_ASSERT(test_id >= 0, "property_id_t should be usable");
+    
+    // Test that galaxy_properties_t is defined and can be used
+    galaxy_properties_t test_props;
+    memset(&test_props, 0, sizeof(test_props));
+    test_props.SnapNum = 10;
+    TEST_ASSERT(test_props.SnapNum == 10, "galaxy_properties_t should be usable");
+    
+    // Test that GALAXY structure is compatible with properties
+    struct GALAXY test_galaxy2;
+    memset(&test_galaxy2, 0, sizeof(test_galaxy2));
+    test_galaxy2.properties = &test_props;
+    TEST_ASSERT(test_galaxy2.properties != NULL, "GALAXY should have properties pointer");
+    TEST_ASSERT(test_galaxy2.properties->SnapNum == 10, "GALAXY should access properties correctly");
+    
+    // Report results
+    printf("\n========================================\n");
+    printf("Test results for SAGE Core Property System:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
+    
+    return (tests_run == tests_passed) ? 0 : 1;
 }
