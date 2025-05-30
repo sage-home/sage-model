@@ -89,27 +89,27 @@ int main(int argc, char **argv) {
     /* Cleanup */
     cleanup_logging();
     
-    /* Report results following test_template.c format */
+    /* Report results */
+    if (tests_run == tests_passed) {
+        printf("\n✅ Empty Pipeline Validation Test PASSED\n");
+        printf("This validates that the core can run without actual physics modules.\n");
+        printf("\n=== Core-Physics Separation Summary ===\n");
+        printf("- Core infrastructure operates independently: ✅ YES\n");
+        printf("- All pipeline phases executed successfully: ✅ YES\n");
+        printf("- Memory management with minimal properties: ✅ OK\n");
+        printf("- Module system handles placeholder modules: ✅ YES\n");
+    } else {
+        printf("❌ Empty Pipeline Validation Test FAILED\n");
+    }
+    
     printf("\n========================================\n");
     printf("Test results for test_empty_pipeline:\n");
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
     printf("========================================\n\n");
-    
-    if (tests_run == tests_passed) {
-        printf("✅ Empty Pipeline Validation Test PASSED\n");
-        printf("This validates that the core can run without actual physics modules.\n");
-        printf("\n=== Core-Physics Separation Summary ===\n");
-        printf("- Core infrastructure operates independently: ✅ YES\n");
-        printf("- All pipeline phases executed successfully: ✅ YES\n");
-        printf("- Memory management with minimal properties: ✅ OK\n");
-        printf("- Module system handles placeholder modules: ✅ YES\n\n");
-        return 0;
-    } else {
-        printf("❌ Empty Pipeline Validation Test FAILED\n\n");
-        return 1;
-    }
+    return (tests_run == tests_passed) ? 0 : 1;
+
 }
 
 /**

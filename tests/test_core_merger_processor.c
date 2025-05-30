@@ -273,7 +273,7 @@ static void teardown_test_context(void) {
  * Test: Empty Queue Processing
  */
 static void test_empty_queue_processing(void) {
-    printf("\n=== Testing empty queue processing ===\n");
+    printf("=== Testing empty queue processing ===\n");
     
     // Ensure queue is empty
     init_merger_queue(&test_ctx.merger_queue);
