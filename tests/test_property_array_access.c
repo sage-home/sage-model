@@ -9,6 +9,12 @@
  * - Integration with galaxy lifecycle
  * - Property registration and metadata
  * - Memory management validation
+ * - Core-physics property separation compliance
+ * 
+ * ARCHITECTURAL COMPLIANCE:
+ * - Core properties (is_core: true): Use direct GALAXY_PROP_* macros
+ * - Physics properties (is_core: false): Use generic accessor functions only
+ * - Tests demonstrate proper separation principles as documented
  */
 
 #include <stdio.h>
@@ -129,19 +135,32 @@ static void test_scalar_property_access(void) {
     printf("\n=== Testing scalar property access ===\n");
     
     // Test float properties
+    // Use GALAXY_PROP_ macro for core properties (Mvir is core)
     GALAXY_PROP_Mvir(test_ctx.test_galaxy) = 1.5e12f;
-    GALAXY_PROP_ColdGas(test_ctx.test_galaxy) = 2.3e10f;
     
     float mvir_direct = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
     float mvir_by_fn = get_float_property(test_ctx.test_galaxy, PROP_Mvir, 0.0f);
-    float coldgas_direct = GALAXY_PROP_ColdGas(test_ctx.test_galaxy);
-    float coldgas_by_fn = get_float_property(test_ctx.test_galaxy, PROP_ColdGas, 0.0f);
     
     TEST_ASSERT(mvir_direct == mvir_by_fn, "Float property: direct and function access should match");
-    TEST_ASSERT(coldgas_direct == coldgas_by_fn, "Float property: ColdGas access should match");
     TEST_ASSERT(fabsf(mvir_direct - 1.5e12f) < 1e6f, "Float property: Mvir value should be correct");
     
-    printf("  Float properties: Mvir=%g, ColdGas=%g\n", mvir_direct, coldgas_direct);
+    // Test physics properties using generic accessors (architectural compliance)
+    // ColdGas - physics property, must use generic accessors
+    set_float_property(test_ctx.test_galaxy, PROP_ColdGas, 2.5e10f);
+    float coldgas_value = get_float_property(test_ctx.test_galaxy, PROP_ColdGas, 0.0f);
+    TEST_ASSERT(fabsf(coldgas_value - 2.5e10f) < 1e6f, "Physics property ColdGas should be accessible via generic functions");
+    
+    // Test additional physics baryonic properties
+    set_float_property(test_ctx.test_galaxy, PROP_StellarMass, 1.2e11f);
+    float stellar_mass = get_float_property(test_ctx.test_galaxy, PROP_StellarMass, 0.0f);
+    TEST_ASSERT(fabsf(stellar_mass - 1.2e11f) < 1e6f, "Physics property StellarMass should work correctly");
+    
+    set_float_property(test_ctx.test_galaxy, PROP_HotGas, 3.4e10f);
+    float hot_gas = get_float_property(test_ctx.test_galaxy, PROP_HotGas, 0.0f);
+    TEST_ASSERT(fabsf(hot_gas - 3.4e10f) < 1e6f, "Physics property HotGas should work correctly");
+    
+    printf("  Float properties: Mvir=%g (core), ColdGas=%g, StellarMass=%g, HotGas=%g (all physics)\n", 
+           mvir_direct, coldgas_value, stellar_mass, hot_gas);
     
     // Test int32 properties
     GALAXY_PROP_Type(test_ctx.test_galaxy) = 2;
@@ -158,20 +177,17 @@ static void test_scalar_property_access(void) {
     
     printf("  Int32 properties: Type=%d, SnapNum=%d\n", type_direct, snap_direct);
     
-    // Test double properties
-    GALAXY_PROP_Cooling(test_ctx.test_galaxy) = 1.23e-15;
-    GALAXY_PROP_Heating(test_ctx.test_galaxy) = 4.56e-16;
+    // Test double properties (physics properties - use generic accessors)
+    set_double_property(test_ctx.test_galaxy, PROP_Cooling, 1.23e-15);
+    set_double_property(test_ctx.test_galaxy, PROP_Heating, 4.56e-16);
     
-    double cooling_direct = GALAXY_PROP_Cooling(test_ctx.test_galaxy);
-    double cooling_by_fn = get_double_property(test_ctx.test_galaxy, PROP_Cooling, 0.0);
-    double heating_direct = GALAXY_PROP_Heating(test_ctx.test_galaxy);
-    double heating_by_fn = get_double_property(test_ctx.test_galaxy, PROP_Heating, 0.0);
+    double cooling_value = get_double_property(test_ctx.test_galaxy, PROP_Cooling, 0.0);
+    double heating_value = get_double_property(test_ctx.test_galaxy, PROP_Heating, 0.0);
     
-    TEST_ASSERT(cooling_direct == cooling_by_fn, "Double property: direct and function access should match");
-    TEST_ASSERT(heating_direct == heating_by_fn, "Double property: Heating access should match");
-    TEST_ASSERT(fabs(cooling_direct - 1.23e-15) < 1e-20, "Double property: Cooling value should be correct");
+    TEST_ASSERT(fabs(cooling_value - 1.23e-15) < 1e-20, "Physics property Cooling should work correctly via generic accessor");
+    TEST_ASSERT(fabs(heating_value - 4.56e-16) < 1e-20, "Physics property Heating should work correctly via generic accessor");
     
-    printf("  Double properties: Cooling=%g, Heating=%g\n", cooling_direct, heating_direct);
+    printf("  Double properties: Cooling=%g, Heating=%g (both physics)\n", cooling_value, heating_value);
     
     // Test int64 properties (using GalaxyIndex as example)
     // Set GalaxyIndex using the property system
@@ -192,21 +208,19 @@ static void test_scalar_property_access(void) {
 static void test_fixed_array_access(void) {
     printf("\n=== Testing fixed array property access ===\n");
     
-    // Test SfrDisk (fixed array with STEPS elements)
+    // Test SfrDisk (fixed array with STEPS elements) - physics property, use generic accessors
     for (int i = 0; i < STEPS; i++) {
-        GALAXY_PROP_SfrDisk_ELEM(test_ctx.test_galaxy, i) = 10.5f + i * 0.1f;
+        set_float_array_element_property(test_ctx.test_galaxy, PROP_SfrDisk, i, 10.5f + i * 0.1f);
     }
     
-    // Verify access patterns
+    // Verify access patterns using generic accessors only
     for (int i = 0; i < 5; i++) {  // Test first 5 elements
-        float direct = GALAXY_PROP_SfrDisk_ELEM(test_ctx.test_galaxy, i);
-        float by_fn = get_float_array_element_property(test_ctx.test_galaxy, PROP_SfrDisk, i, -999.0f);
+        float value = get_float_array_element_property(test_ctx.test_galaxy, PROP_SfrDisk, i, -999.0f);
         float expected = 10.5f + i * 0.1f;
         
-        TEST_ASSERT(direct == by_fn, "Fixed array: direct and function access should match");
-        TEST_ASSERT(fabsf(direct - expected) < 1e-6f, "Fixed array: element value should be correct");
+        TEST_ASSERT(fabsf(value - expected) < 1e-6f, "Fixed array SfrDisk: element value should be correct via generic accessor");
         
-        printf("  SfrDisk[%d]: direct=%g, function=%g, expected=%g\n", i, direct, by_fn, expected);
+        printf("  SfrDisk[%d]: value=%g, expected=%g (physics property)\n", i, value, expected);
     }
     
     // Test array size retrieval
@@ -222,25 +236,23 @@ static void test_fixed_array_access(void) {
 static void test_dynamic_array_access(void) {
     printf("\n=== Testing dynamic array property access ===\n");
     
-    // Test StarFormationHistory (dynamic array)
+    // Test StarFormationHistory (dynamic array) - physics property, use generic accessors
     int expected_size = test_ctx.test_params.simulation.NumSnapOutputs;
     
-    // Set values in the dynamic array
+    // Set values in the dynamic array using generic accessors
     for (int i = 0; i < expected_size; i++) {
-        GALAXY_PROP_StarFormationHistory_ELEM(test_ctx.test_galaxy, i) = 100.0f + i * 5.0f;
+        set_float_array_element_property(test_ctx.test_galaxy, PROP_StarFormationHistory, i, 100.0f + i * 5.0f);
     }
     
-    // Verify access patterns
+    // Verify access patterns using generic accessors only
     for (int i = 0; i < expected_size; i++) {
-        float direct = GALAXY_PROP_StarFormationHistory_ELEM(test_ctx.test_galaxy, i);
-        float by_fn = get_float_array_element_property(test_ctx.test_galaxy, PROP_StarFormationHistory, i, -999.0f);
+        float value = get_float_array_element_property(test_ctx.test_galaxy, PROP_StarFormationHistory, i, -999.0f);
         float expected = 100.0f + i * 5.0f;
         
-        TEST_ASSERT(direct == by_fn, "Dynamic array: direct and function access should match");
-        TEST_ASSERT(fabsf(direct - expected) < 1e-6f, "Dynamic array: element value should be correct");
+        TEST_ASSERT(fabsf(value - expected) < 1e-6f, "Dynamic array StarFormationHistory: element value should be correct via generic accessor");
         
         if (i < 3) {  // Only print first few for brevity
-            printf("  StarFormationHistory[%d]: direct=%g, function=%g, expected=%g\n", i, direct, by_fn, expected);
+            printf("  StarFormationHistory[%d]: value=%g, expected=%g (physics property)\n", i, value, expected);
         }
     }
     
@@ -250,7 +262,7 @@ static void test_dynamic_array_access(void) {
     
     printf("  StarFormationHistory array size: %d (expected=%d)\n", array_size, expected_size);
     
-    // Test TestNonZeroArray (dynamic array with non-zero initial values)
+    // Test TestNonZeroArray (dynamic array with non-zero initial values) - already using generic accessors correctly
     int test_array_size = get_property_array_size(test_ctx.test_galaxy, PROP_TestNonZeroArray);
     TEST_ASSERT(test_array_size == expected_size, "TestNonZeroArray: size should match NumSnapOutputs");
     
@@ -258,7 +270,7 @@ static void test_dynamic_array_access(void) {
     float first_element = get_float_array_element_property(test_ctx.test_galaxy, PROP_TestNonZeroArray, 0, -999.0f);
     TEST_ASSERT(fabsf(first_element - 1.0f) < 1e-6f, "TestNonZeroArray: initial value should be 1.0");
     
-    printf("  TestNonZeroArray size: %d, first element: %g\n", test_array_size, first_element);
+    printf("  TestNonZeroArray size: %d, first element: %g (physics property)\n", test_array_size, first_element);
 }
 
 /**
@@ -271,7 +283,6 @@ static void test_error_handling(void) {
     printf("  Expected error messages for NULL pointer validation:\n");
     
     // Test NULL galaxy pointer
-    // TODO: Issue 2: [segfault at next line] sage_assert logs errors but doesn't return, so the function continues and crashes on NULL access.
     float result_float = get_float_property(NULL, PROP_Mvir, -999.0f);
     TEST_ASSERT(result_float == -999.0f, "NULL galaxy should return default value");
     
@@ -319,18 +330,18 @@ static void test_edge_cases(void) {
     float neg_dt = get_float_property(test_ctx.test_galaxy, PROP_dT, 999.0f);
     TEST_ASSERT(neg_dt == -0.5f, "Negative dT should be preserved");
     
-    // Test boundary array indices
+    // Test boundary array indices for physics properties (use generic accessors)
     int array_size = get_property_array_size(test_ctx.test_galaxy, PROP_SfrDisk);
     if (array_size > 0) {
-        // Test last valid index
-        GALAXY_PROP_SfrDisk_ELEM(test_ctx.test_galaxy, array_size - 1) = 42.0f;
+        // Test last valid index using generic accessors
+        set_float_array_element_property(test_ctx.test_galaxy, PROP_SfrDisk, array_size - 1, 42.0f);
         float last_elem = get_float_array_element_property(test_ctx.test_galaxy, PROP_SfrDisk, array_size - 1, -1.0f);
-        TEST_ASSERT(last_elem == 42.0f, "Last array element should be accessible");
+        TEST_ASSERT(last_elem == 42.0f, "Last array element should be accessible via generic accessor");
         
-        // Test first element
-        GALAXY_PROP_SfrDisk_ELEM(test_ctx.test_galaxy, 0) = 24.0f;
+        // Test first element using generic accessors
+        set_float_array_element_property(test_ctx.test_galaxy, PROP_SfrDisk, 0, 24.0f);
         float first_elem = get_float_array_element_property(test_ctx.test_galaxy, PROP_SfrDisk, 0, -1.0f);
-        TEST_ASSERT(first_elem == 24.0f, "First array element should be accessible");
+        TEST_ASSERT(first_elem == 24.0f, "First array element should be accessible via generic accessor");
     }
     
     printf("  Edge cases: zero=%g, large=%g, negative=%g\n", zero_mvir, large_mvir, neg_dt);
@@ -382,17 +393,17 @@ static void test_memory_management(void) {
         return;
     }
     
-    // Set some values in original
-    GALAXY_PROP_Mvir(test_ctx.test_galaxy) = 1.23e12f;
-    GALAXY_PROP_Type(test_ctx.test_galaxy) = 5;
-    GALAXY_PROP_SfrDisk_ELEM(test_ctx.test_galaxy, 0) = 7.89f;
+    // Set some values in original (using appropriate access patterns)
+    GALAXY_PROP_Mvir(test_ctx.test_galaxy) = 1.23e12f;  // Core property - direct access OK
+    GALAXY_PROP_Type(test_ctx.test_galaxy) = 5;          // Core property - direct access OK
+    set_float_array_element_property(test_ctx.test_galaxy, PROP_SfrDisk, 0, 7.89f);  // Physics property - generic accessor
     
     // Copy properties
     if (copy_galaxy_properties(&copy_galaxy, test_ctx.test_galaxy, &test_ctx.test_params) == 0) {
-        // Verify copy worked
-        float copy_mvir = GALAXY_PROP_Mvir(&copy_galaxy);
-        int32_t copy_type = GALAXY_PROP_Type(&copy_galaxy);
-        float copy_sfr = GALAXY_PROP_SfrDisk_ELEM(&copy_galaxy, 0);
+        // Verify copy worked (using appropriate access patterns)
+        float copy_mvir = GALAXY_PROP_Mvir(&copy_galaxy);  // Core property - direct access OK
+        int32_t copy_type = GALAXY_PROP_Type(&copy_galaxy); // Core property - direct access OK
+        float copy_sfr = get_float_array_element_property(&copy_galaxy, PROP_SfrDisk, 0, -999.0f); // Physics property - generic accessor
         
         TEST_ASSERT(fabsf(copy_mvir - 1.23e12f) < 1e6f, "Copied Mvir should match original");
         TEST_ASSERT(copy_type == 5, "Copied Type should match original");
@@ -432,11 +443,13 @@ int main(int argc, char *argv[]) {
     
     printf("This test verifies that:\n");
     printf("  1. Property accessor functions correctly access all property types\n");
-    printf("  2. Direct macro access and generic function access return identical values\n");
-    printf("  3. Fixed and dynamic arrays work correctly\n");
-    printf("  4. Error handling works for invalid inputs\n");
-    printf("  5. Property system lifecycle functions work correctly\n");
-    printf("  6. Memory management is handled properly\n\n");
+    printf("  2. Core properties use direct macro access (GALAXY_PROP_*)\n");
+    printf("  3. Physics properties use only generic accessor functions\n");
+    printf("  4. Fixed and dynamic arrays work correctly\n");
+    printf("  5. Error handling works for invalid inputs\n");
+    printf("  6. Property system lifecycle functions work correctly\n");
+    printf("  7. Memory management is handled properly\n");
+    printf("  8. Core-physics separation principles are properly demonstrated\n\n");
 
     // Setup
     if (setup_test_context() != 0) {

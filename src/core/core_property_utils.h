@@ -27,6 +27,9 @@ float get_float_array_element_property(const struct GALAXY *galaxy, property_id_
 int32_t get_int32_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, int32_t default_value);
 double get_double_array_element_property(const struct GALAXY *galaxy, property_id_t prop_id, int array_idx, double default_value);
 
+/* Set array element property by ID with error checking */
+int set_float_array_element_property(struct GALAXY *galaxy, property_id_t prop_id, int array_idx, float value);
+
 /* Check if property exists */
 // Assuming property_id_t is an enum or integral type that can be checked against a known range
 // or a special "NOT_FOUND" value. The current GALAXY_PROP_BY_ID macro handles out-of-bounds access
