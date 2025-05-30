@@ -107,37 +107,6 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
                               const char **property_names, int num_properties);
 static void cleanup_test_resources(struct GALAXY *galaxies, 
                                  int num_galaxies, struct hdf5_save_info *save_info);
-static int set_float_array_element_property(struct GALAXY *galaxy, property_id_t prop_id, int array_idx, float value);
-
-/**
- * Sets a float array element property for a galaxy.
- * This is a helper function to facilitate setting array elements through the property system.
- * 
- * @param galaxy Pointer to the galaxy structure
- * @param prop_id Property ID of the array property
- * @param array_idx Index into the array
- * @param value Float value to set
- * @return 0 on success
- */
-static int set_float_array_element_property(struct GALAXY *galaxy, property_id_t prop_id, int array_idx, float value) {
-    // Use the property system API to set array element properties
-    if (!galaxy || !galaxy->properties) return -1;
-    
-    // For known array properties, use set_float_array_element directly
-    if (is_float_array_property(prop_id)) {
-        // Set the array element in the property system
-        if (array_idx >= 0 && array_idx < STEPS) {
-            // Use standard property system API
-            float* arr = get_float_array_property_ptr(galaxy, prop_id);
-            if (arr != NULL) {
-                arr[array_idx] = value;
-                return 0;
-            }
-        }
-    }
-    
-    return -1; // Failed to set property
-}
 
 // Forward declarations of test functions
 static int test_basic_transformations(void);
