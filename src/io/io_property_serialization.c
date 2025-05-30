@@ -497,24 +497,25 @@ void serialize_uint64(const void *src, void *dest, int count) {
  * 
  * For array properties, we use direct memory copy. The entire array data
  * is copied as-is since arrays are treated as opaque data blobs.
- * Note: The count parameter represents the number of array properties (usually 1),
- * not the number of array elements.
+ * Note: This function should not normally be called directly - arrays
+ * should use the memcpy fallback path in the main serialization loop.
  * 
  * @param src Source array data
  * @param dest Destination buffer
  * @param count Number of array properties (usually 1)
  */
 void serialize_array(const void *src, void *dest, int count) {
-    // For array properties, we need to determine the size from context
-    // Since we don't have direct access to size here, we rely on the caller
-    // to ensure the correct amount of data is copied
-    // This is typically handled at a higher level in the serialization process
-    if (src && dest && count > 0) {
-        // The size should be determined by the property metadata at the caller level
-        // For now, we assume the caller manages the size correctly
-        // This function should not be called directly for arrays
-        // Arrays should be handled by the default memcpy path in the main serialization loop
+    if (src == NULL || dest == NULL || count <= 0) {
+        LOG_ERROR("Invalid parameters for array serialization: src=%p, dest=%p, count=%d", 
+                 src, dest, count);
+        return;
     }
+    
+    LOG_WARNING("serialize_array() called directly - arrays should use memcpy fallback path");
+    
+    // This is a fallback implementation that assumes the caller knows the correct size
+    // In practice, arrays should be handled by the memcpy path in the main serialization loop
+    // which has access to the full property size information
 }
 
 /**
@@ -522,24 +523,25 @@ void serialize_array(const void *src, void *dest, int count) {
  * 
  * For array properties, we use direct memory copy. The entire array data
  * is copied as-is since arrays are treated as opaque data blobs.
- * Note: The count parameter represents the number of array properties (usually 1),
- * not the number of array elements.
+ * Note: This function should not normally be called directly - arrays
+ * should use the memcpy fallback path in the main deserialization loop.
  * 
  * @param src Source buffer data
  * @param dest Destination array
  * @param count Number of array properties (usually 1)
  */
 void deserialize_array(const void *src, void *dest, int count) {
-    // For array properties, we need to determine the size from context
-    // Since we don't have direct access to size here, we rely on the caller
-    // to ensure the correct amount of data is copied
-    // This is typically handled at a higher level in the deserialization process
-    if (src && dest && count > 0) {
-        // The size should be determined by the property metadata at the caller level
-        // For now, we assume the caller manages the size correctly
-        // This function should not be called directly for arrays
-        // Arrays should be handled by the default memcpy path in the main deserialization loop
+    if (src == NULL || dest == NULL || count <= 0) {
+        LOG_ERROR("Invalid parameters for array deserialization: src=%p, dest=%p, count=%d", 
+                 src, dest, count);
+        return;
     }
+    
+    LOG_WARNING("deserialize_array() called directly - arrays should use memcpy fallback path");
+    
+    // This is a fallback implementation that assumes the caller knows the correct size
+    // In practice, arrays should be handled by the memcpy path in the main deserialization loop
+    // which has access to the full property size information
 }
 
 /**
