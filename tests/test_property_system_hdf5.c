@@ -1,3 +1,13 @@
+/**
+ * Test suite for HDF5 Property System Integration
+ * 
+ * Tests cover:
+ * - Basic property transformations (unit conversions, log scaling)
+ * - Array derivations (array-to-scalar aggregations, metallicity calculations)
+ * - Edge cases (extreme values, numerical stability)
+ * - Error handling (minimal initialization, resource cleanup)
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,91 +15,16 @@
 #include <math.h>
 #include <stdbool.h>
 #include <float.h> // For FLT_MAX
+#include <limits.h> // For SHRT_MIN, SHRT_MAX
 
+// HDF5 is already defined by the Makefile (-DHDF5), no need to redefine
+
+#include <hdf5.h>
 #include "../src/core/core_allvars.h"
 #include "../src/core/core_property_utils.h"
 #include "../src/core/core_logging.h"
 #include "../src/io/save_gals_hdf5.h"
 #include "../src/io/prepare_galaxy_for_hdf5_output.c"
-
-// Helper functions needed to access array properties
-bool is_float_array_property(property_id_t prop_id) {
-    // This is a simple implementation for testing purposes
-    // In a full implementation, this would check the property registry
-    return (prop_id == PROP_SfrDisk || 
-            prop_id == PROP_SfrBulge ||
-            prop_id == PROP_SfrDiskColdGas ||
-            prop_id == PROP_SfrDiskColdGasMetals ||
-            prop_id == PROP_SfrBulgeColdGas ||
-            prop_id == PROP_SfrBulgeColdGasMetals);
-}
-
-float* get_float_array_property_ptr(struct GALAXY *galaxy, property_id_t prop_id) {
-    // This is a simple implementation for testing purposes
-    // In a full implementation, this would use the property registry
-    if (!galaxy || !galaxy->properties) return NULL;
-    
-    switch (prop_id) {
-        case PROP_SfrDisk:
-            return galaxy->properties->SfrDisk;
-        case PROP_SfrBulge:
-            return galaxy->properties->SfrBulge;
-        case PROP_SfrDiskColdGas:
-            return galaxy->properties->SfrDiskColdGas;
-        case PROP_SfrDiskColdGasMetals:
-            return galaxy->properties->SfrDiskColdGasMetals;
-        case PROP_SfrBulgeColdGas:
-            return galaxy->properties->SfrBulgeColdGas;
-        case PROP_SfrBulgeColdGasMetals:
-            return galaxy->properties->SfrBulgeColdGasMetals;
-        default:
-            return NULL;
-    }
-}
-
-// Stub implementation for missing set_generated_float_array_element function
-// This is needed because the function is used in core_property_utils.c but isn't
-// declared in the header files
-void set_generated_float_array_element(galaxy_properties_t *properties, property_id_t prop_id, int array_idx, float value) {
-    // For testing purposes, we provide a minimal implementation
-    // This just handles the specific array properties we use in the tests
-    switch (prop_id) {
-        case PROP_SfrDisk:
-            if (array_idx >= 0 && array_idx < STEPS) {
-                properties->SfrDisk[array_idx] = value;
-            }
-            break;
-        case PROP_SfrBulge:
-            if (array_idx >= 0 && array_idx < STEPS) {
-                properties->SfrBulge[array_idx] = value;
-            }
-            break;
-        case PROP_SfrDiskColdGas:
-            if (array_idx >= 0 && array_idx < STEPS) {
-                properties->SfrDiskColdGas[array_idx] = value;
-            }
-            break;
-        case PROP_SfrDiskColdGasMetals:
-            if (array_idx >= 0 && array_idx < STEPS) {
-                properties->SfrDiskColdGasMetals[array_idx] = value;
-            }
-            break;
-        case PROP_SfrBulgeColdGas:
-            if (array_idx >= 0 && array_idx < STEPS) {
-                properties->SfrBulgeColdGas[array_idx] = value;
-            }
-            break;
-        case PROP_SfrBulgeColdGasMetals:
-            if (array_idx >= 0 && array_idx < STEPS) {
-                properties->SfrBulgeColdGasMetals[array_idx] = value;
-            }
-            break;
-        default:
-            // For other array properties, just log an error
-            fprintf(stderr, "set_generated_float_array_element: Unhandled property ID %d\n", prop_id);
-            break;
-    }
-}
 
 #define INVALID_PROPERTY_ID (-1)
 #define TOLERANCE_NORMAL 1e-5f
@@ -100,51 +35,196 @@ void set_generated_float_array_element(galaxy_properties_t *properties, property
 
 #define STEPS 10 // Define STEPS for SFH array processing, common value in SAGE examples
 
-// Helper function prototypes
+// Test counter for reporting
+static int tests_run = 0;
+static int tests_passed = 0;
+
+// Helper function prototypes - using forward declarations with proper static designation
 static void init_test_params(struct params *run_params);
 static int init_test_galaxies(struct GALAXY *galaxies, int num_galaxies, const struct params *run_params);
 static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxies, 
                               const char **property_names, int num_properties);
 static void cleanup_test_resources(struct GALAXY *galaxies, 
                                  int num_galaxies, struct hdf5_save_info *save_info);
+static int setup_test_context(void);
+static void teardown_test_context(void);
 
 // Forward declarations of test functions
-static int test_basic_transformations(void);
-static int test_array_derivations(void);
-static int test_edge_cases(void);
-static int test_error_handling(void);
-static int run_all_transformer_tests(void);
+static void test_basic_transformations(void);
+static void test_array_derivations(void);
+static void test_edge_cases(void);
+static void test_error_handling(void);
+
+// Helper macro for test assertions
+#define TEST_ASSERT(condition, message) do { \
+    tests_run++; \
+    if (!(condition)) { \
+        printf("FAIL: %s\n", message); \
+        printf("  at %s:%d\n", __FILE__, __LINE__); \
+    } else { \
+        tests_passed++; \
+    } \
+} while(0)
+
+// Test fixtures
+static struct test_context {
+    struct params run_params;
+    struct GALAXY *test_galaxies;
+    int num_galaxies;
+    bool property_system_initialized;
+    struct hdf5_save_info save_info;
+    struct halo_data *halos;
+    bool is_setup_complete;
+} test_ctx;
+
+// Setup function - called before tests
+static int setup_test_context(void) {
+    memset(&test_ctx, 0, sizeof(test_ctx));
+    
+    // Initialize test parameters
+    init_test_params(&test_ctx.run_params);
+    
+    // Initialize property system
+    printf("Initializing property system for testing...\n");
+    if (initialize_property_system(&test_ctx.run_params) != 0) {
+        printf("ERROR: Failed to initialize property system\n");
+        return -1;
+    }
+    test_ctx.property_system_initialized = true;
+    
+    // Initialize test galaxies
+    test_ctx.num_galaxies = 2; // One galaxy for normal case, one for edge cases
+    test_ctx.test_galaxies = malloc(test_ctx.num_galaxies * sizeof(struct GALAXY));
+    if (test_ctx.test_galaxies == NULL) {
+        printf("ERROR: Failed to allocate test galaxies\n");
+        cleanup_property_system();
+        return -1;
+    }
+    
+    if (init_test_galaxies(test_ctx.test_galaxies, test_ctx.num_galaxies, &test_ctx.run_params) != 0) {
+        printf("ERROR: Failed to initialize test galaxy properties\n");
+        free(test_ctx.test_galaxies);
+        cleanup_property_system();
+        return -1;
+    }
+    
+    // Initialize test halos
+    test_ctx.halos = calloc(test_ctx.num_galaxies, sizeof(struct halo_data));
+    if (test_ctx.halos == NULL) {
+        printf("ERROR: Failed to allocate test halos\n");
+        for (int i = 0; i < test_ctx.num_galaxies; i++) {
+            free_galaxy_properties(&test_ctx.test_galaxies[i]);
+        }
+        free(test_ctx.test_galaxies);
+        cleanup_property_system();
+        return -1;
+    }
+    
+    // Initialize minimal halos fields that might be accessed
+    for (int i = 0; i < test_ctx.num_galaxies; i++) {
+        test_ctx.halos[i].MostBoundID = 1000 + i;
+        test_ctx.halos[i].Len = 100;
+        test_ctx.halos[i].Vmax = 250.0; // km/s
+        test_ctx.halos[i].Spin[0] = test_ctx.halos[i].Spin[1] = test_ctx.halos[i].Spin[2] = 0.1;
+        test_ctx.halos[i].Mvir = 10.0; // 10 * 1e10 Msun/h
+    }
+    
+    test_ctx.is_setup_complete = true;
+    return 0;
+}
+
+// Teardown function - called after tests
+static void teardown_test_context(void) {
+    printf("Cleaning up test resources...\n");
+    
+    // Free halos
+    if (test_ctx.halos) {
+        free(test_ctx.halos);
+        test_ctx.halos = NULL;
+    }
+    
+    // Free galaxy properties
+    if (test_ctx.test_galaxies) {
+        for (int i = 0; i < test_ctx.num_galaxies; i++) {
+            free_galaxy_properties(&test_ctx.test_galaxies[i]);
+        }
+        free(test_ctx.test_galaxies);
+        test_ctx.test_galaxies = NULL;
+    }
+    
+    // Clean up save_info resources if needed
+    if (test_ctx.save_info.num_gals_in_buffer) {
+        free(test_ctx.save_info.num_gals_in_buffer);
+        test_ctx.save_info.num_gals_in_buffer = NULL;
+    }
+    
+    if (test_ctx.save_info.tot_ngals) {
+        free(test_ctx.save_info.tot_ngals);
+        test_ctx.save_info.tot_ngals = NULL;
+    }
+    
+    if (test_ctx.save_info.property_buffers && test_ctx.save_info.property_buffers[0]) {
+        for (int i = 0; i < test_ctx.save_info.num_properties; i++) {
+            struct property_buffer_info *buffer = &test_ctx.save_info.property_buffers[0][i];
+            if (buffer->name) free(buffer->name);
+            if (buffer->description) free(buffer->description);
+            if (buffer->units) free(buffer->units);
+            if (buffer->data) free(buffer->data);
+        }
+        free(test_ctx.save_info.property_buffers[0]);
+        free(test_ctx.save_info.property_buffers);
+        test_ctx.save_info.property_buffers = NULL;
+    }
+    
+    // Clean up property system
+    if (test_ctx.property_system_initialized) {
+        cleanup_property_system();
+        test_ctx.property_system_initialized = false;
+    }
+    
+    test_ctx.is_setup_complete = false;
+}
+
+// Forward declarations are defined at the top of the file
 
 /**
  * Main function for output transformer testing
  */
 int main(void) {
-    printf("\n========== OUTPUT TRANSFORMERS TEST ==========\n");
+    printf("\n========================================\n");
+    printf("Starting tests for test_property_system_hdf5\n");
+    printf("========================================\n\n");
     
-    // Initialize systems
-    struct params run_params = {0};
-    init_test_params(&run_params);
-    initialize_logging(&run_params);
-    logging_set_level(LOG_LEVEL_DEBUG);
+    printf("This test verifies that the HDF5 output transformation system:\n");
+    printf("  1. Correctly transforms basic properties (unit conversions, log scaling)\n");
+    printf("  2. Properly derives properties from array data\n");
+    printf("  3. Handles edge cases gracefully (zeros, negative values, extreme inputs)\n");
+    printf("  4. Manages error conditions without crashing\n\n");
     
-    printf("Starting output transformer tests...\n");
-    
-    int failures = run_all_transformer_tests();
-    
-    if (failures == 0) {
-        printf("\nFINAL RESULT: All output transformer tests PASSED\n");
-    } else {
-        printf("\nFINAL RESULT: %d output transformer test(s) FAILED\n", failures);
+    // Setup
+    if (setup_test_context() != 0) {
+        printf("ERROR: Failed to set up test context\n");
+        return 1;
     }
     
-    // Clean up systems
-    printf("Cleaning up remaining systems...\n");
-    cleanup_property_system();
-    cleanup_logging();
+    // Run tests
+    test_basic_transformations();
+    test_array_derivations();
+    test_edge_cases();
+    test_error_handling();
     
-    printf("========== TEST COMPLETE ==========\n\n");
+    // Teardown
+    teardown_test_context();
     
-    return failures;
+    // Report results
+    printf("\n========================================\n");
+    printf("Test results for test_property_system_hdf5:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
+    
+    return (tests_run == tests_passed) ? 0 : 1;
 }
 
 /**
@@ -155,29 +235,24 @@ int main(void) {
  * - TimeOfLastMajorMerger and TimeOfLastMinorMerger time unit conversions
  * - OutflowRate unit conversions
  */
-static int test_basic_transformations(void) {
-    LOG_DEBUG("\n===== Starting test_basic_transformations... =====");
-    int status = 0;
-
+static void test_basic_transformations(void) {
+    printf("\n=== Testing basic property transformations ===\n");
+    printf("    (logarithmic transforms, time and mass unit conversions)\n");
+    
     // Initialize test parameters
     struct params run_params;
     init_test_params(&run_params);
 
     // Initialize property system for this test
-    LOG_DEBUG("Initializing property system for test_basic_transformations...");
-    if (initialize_property_system(&run_params) != 0) {
-        LOG_ERROR("Failed to initialize property system for test_basic_transformations");
-        return -1;
-    }
+    printf("Initializing property system for basic transformations test...\n");
+    TEST_ASSERT(initialize_property_system(&run_params) == 0, 
+               "Property system initialization should succeed");
 
     // Create test galaxies
     const int NUM_GALAXIES = 2; // Galaxy 0: Normal, Galaxy 1: Edge cases for basic transforms
     struct GALAXY test_galaxies[NUM_GALAXIES];
-    if (init_test_galaxies(test_galaxies, NUM_GALAXIES, &run_params) != 0) {
-        LOG_ERROR("Failed to initialize test galaxies for test_basic_transformations");
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(init_test_galaxies(test_galaxies, NUM_GALAXIES, &run_params) == 0,
+               "Test galaxy initialization should succeed");
 
     // Set up output buffers - only test basic transformation properties
     const int NUM_PROPERTIES = 5;
@@ -187,18 +262,11 @@ static int test_basic_transformations(void) {
     };
 
     struct hdf5_save_info save_info;
-    if (init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) != 0) {
-        LOG_ERROR("Failed to initialize output buffers for test_basic_transformations");
-        // Need to free galaxy properties if init_test_galaxies succeeded
-        for (int i = 0; i < NUM_GALAXIES; i++) {
-            free_galaxy_properties(&test_galaxies[i]);
-        }
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) == 0,
+               "Output buffers initialization should succeed");
 
     // Process test galaxies through transformers
-    LOG_DEBUG("Processing galaxies through transformers for test_basic_transformations...");
+    printf("Processing galaxies through transformers...\n");
 
     struct save_info save_info_base; // Minimal base struct for the HDF5 preparation function
     memset(&save_info_base, 0, sizeof(save_info_base));
@@ -207,12 +275,7 @@ static int test_basic_transformations(void) {
     // The prepare_galaxy_for_hdf5_output function expects a halos array.
     // Create a minimal dummy one.
     struct halo_data *halos = calloc(NUM_GALAXIES, sizeof(struct halo_data)); // Allocate for each galaxy, zeroed
-    if (halos == NULL) {
-        LOG_ERROR("Failed to allocate dummy halo_data for test_basic_transformations");
-        cleanup_test_resources(test_galaxies, NUM_GALAXIES, &save_info); // save_info owns buffers
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(halos != NULL, "Allocating dummy halo_data should succeed");
     
     // Initialize minimal halos fields that might be accessed
     for (int i = 0; i < NUM_GALAXIES; i++) {
@@ -232,18 +295,14 @@ static int test_basic_transformations(void) {
     property_id_t outflow_id = get_cached_property_id("OutflowRate");
     
     // Check that all required properties were found
-    if (cooling_id == PROP_COUNT || heating_id == PROP_COUNT || 
-        major_merger_id == PROP_COUNT || minor_merger_id == PROP_COUNT || 
-        outflow_id == PROP_COUNT) {
-        LOG_ERROR("Required properties not found in property system");
-        free(halos);
-        cleanup_test_resources(test_galaxies, NUM_GALAXIES, &save_info);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(cooling_id != PROP_COUNT, "Cooling property should be registered");
+    TEST_ASSERT(heating_id != PROP_COUNT, "Heating property should be registered");
+    TEST_ASSERT(major_merger_id != PROP_COUNT, "TimeOfLastMajorMerger property should be registered");
+    TEST_ASSERT(minor_merger_id != PROP_COUNT, "TimeOfLastMinorMerger property should be registered");
+    TEST_ASSERT(outflow_id != PROP_COUNT, "OutflowRate property should be registered");
 
     for (int i = 0; i < NUM_GALAXIES; i++) {
-        LOG_DEBUG("Processing galaxy %d for test_basic_transformations...", i);
+        printf("Processing galaxy %d...\n", i);
         save_info.num_gals_in_buffer[0] = i; // Set current galaxy index for buffer filling
 
         int result = prepare_galaxy_for_hdf5_output(
@@ -256,21 +315,18 @@ static int test_basic_transformations(void) {
             &run_params
         );
 
-        if (result != EXIT_SUCCESS) {
-            LOG_ERROR("prepare_galaxy_for_hdf5_output failed for galaxy %d with status %d", i, result);
-            status = -1;
-            // No break, try to process all, report aggregate status
-        }
+        TEST_ASSERT(result == EXIT_SUCCESS, 
+                    "prepare_galaxy_for_hdf5_output should succeed for every galaxy");
     }
 
-    // Validate results if all processing was okay so far (or even if not, to see partial results)
-    LOG_DEBUG("Validating transformation results for test_basic_transformations...");
+    // Validate results
+    printf("Validating transformation results...\n");
 
     for (int prop_idx = 0; prop_idx < save_info.num_properties; prop_idx++) {
         struct property_buffer_info *buffer = &save_info.property_buffers[0][prop_idx];
         float *values = (float*)buffer->data;
 
-        LOG_DEBUG("Property: %s", buffer->name);
+        printf("Verifying property: %s\n", buffer->name);
 
         // Galaxy 0: Normal case validations
         if (strcmp(buffer->name, "Cooling") == 0) {
@@ -284,29 +340,22 @@ static int test_basic_transformations(void) {
                               run_params.units.UnitTime_in_s));
             }
             
-            LOG_DEBUG("  Galaxy 0 (Cooling): Input=%.6e, UnitFactor=%.6e, Log10Result=%.6f, Actual=%.6f",
-                    cooling_value, run_params.units.UnitEnergy_in_cgs/run_params.units.UnitTime_in_s, expected, values[0]);
-            
             // If our expected calculation results in inf or nan but the actual value is finite, 
             // this is acceptable as the core code likely has better handling
             if ((isinf(expected) || isnan(expected)) && isfinite(values[0])) {
-                LOG_DEBUG("  Accepting finite value %.6f for expected inf/nan in Cooling transformation", values[0]);
-            } else if (fabsf(values[0] - expected) > TOLERANCE_LOOSE) {
-                LOG_ERROR("  Incorrect Cooling transformation for galaxy 0. Expected %.6f, Got %.6f", expected, values[0]);
-                status = -1;
+                printf("  Accepting finite value %.6f for expected inf/nan in Cooling transformation\n", values[0]);
+                TEST_ASSERT(isfinite(values[0]), "Value should be finite when conversion produces inf/nan");
+            } else {
+                TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_LOOSE,
+                           "Cooling transformation should be correct for galaxy 0");
             }
             
             // Galaxy 1: Edge case (log of 0) - SAGE returns 0.0f
             cooling_value = get_double_property(&test_galaxies[1], cooling_id, 0.0);
             float expected_g1 = 0.0f; // Expected behavior for log(0) from transform function
             
-            LOG_DEBUG("  Galaxy 1 (Cooling): Input=%.6e, Expected=%.6f, Actual=%.6f", 
-                     cooling_value, expected_g1, values[1]);
-            if (fabsf(values[1] - expected_g1) > TOLERANCE_FLT_ZERO) { 
-                LOG_ERROR("  Incorrect Cooling transformation for galaxy 1 (log of 0). Expected %.6f, Got %.6f", 
-                         expected_g1, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - expected_g1) <= TOLERANCE_FLT_ZERO,
+                      "Cooling transformation should handle log(0) correctly for galaxy 1");
         } 
         else if (strcmp(buffer->name, "Heating") == 0) {
             double heating_value = get_double_property(&test_galaxies[0], heating_id, 0.0);
@@ -319,29 +368,22 @@ static int test_basic_transformations(void) {
                                run_params.units.UnitTime_in_s));
             }
             
-            LOG_DEBUG("  Galaxy 0 (Heating): Input=%.6e, UnitFactor=%.6e, Log10Result=%.6f, Actual=%.6f",
-                    heating_value, run_params.units.UnitEnergy_in_cgs/run_params.units.UnitTime_in_s, expected, values[0]);
-            
             // If our expected calculation results in inf or nan but the actual value is finite, 
             // this is acceptable as the core code likely has better handling
             if ((isinf(expected) || isnan(expected)) && isfinite(values[0])) {
-                LOG_DEBUG("  Accepting finite value %.6f for expected inf/nan in Heating transformation", values[0]);
-            } else if (fabsf(values[0] - expected) > TOLERANCE_LOOSE) {
-                LOG_ERROR("  Incorrect Heating transformation for galaxy 0. Expected %.6f, Got %.6f", expected, values[0]);
-                status = -1;
+                printf("  Accepting finite value %.6f for expected inf/nan in Heating transformation\n", values[0]);
+                TEST_ASSERT(isfinite(values[0]), "Value should be finite when conversion produces inf/nan");
+            } else {
+                TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_LOOSE,
+                           "Heating transformation should be correct for galaxy 0");
             }
             
             // Galaxy 1: Edge case (log of negative, SAGE returns 0.0f for zero or negative values)
             heating_value = get_double_property(&test_galaxies[1], heating_id, 0.0);
             float expected_g1 = 0.0f; // Expected behavior for log of negative from transform function
             
-            LOG_DEBUG("  Galaxy 1 (Heating): Input=%.6e, Expected=%.6f, Actual=%.6f", 
-                     heating_value, expected_g1, values[1]);
-            if (fabsf(values[1] - expected_g1) > TOLERANCE_FLT_ZERO) { 
-                LOG_ERROR("  Incorrect Heating transformation for galaxy 1 (log of negative). Expected %.6f, Got %.6f", 
-                         expected_g1, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - expected_g1) <= TOLERANCE_FLT_ZERO,
+                      "Heating transformation should handle log of negative correctly for galaxy 1");
         } 
         else if (strcmp(buffer->name, "TimeOfLastMajorMerger") == 0) {
             float merger_time = get_float_property(&test_galaxies[0], major_merger_id, 0.0f);
@@ -349,25 +391,15 @@ static int test_basic_transformations(void) {
             // The exact transformer calculation from physics_output_transformers.c
             float expected = merger_time * run_params.units.UnitTime_in_Megayears;
             
-            LOG_DEBUG("  Galaxy 0 (TimeOfLastMajorMerger): Input=%.6f, TimeConversion=%.6f, Expected=%.6f, Actual=%.6f",
-                    merger_time, run_params.units.UnitTime_in_Megayears, expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_NORMAL) { 
-                LOG_ERROR("  Incorrect TimeOfLastMajorMerger transformation for galaxy 0. Expected %.6f, Got %.6f", 
-                         expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_NORMAL,
+                      "TimeOfLastMajorMerger transformation should be correct for galaxy 0");
             
             // Galaxy 1: Edge case (0.0 time)
             merger_time = get_float_property(&test_galaxies[1], major_merger_id, 0.0f);
             float expected_g1 = merger_time * run_params.units.UnitTime_in_Megayears; // Should be zero
             
-            LOG_DEBUG("  Galaxy 1 (TimeOfLastMajorMerger): Input=%.6f, Expected=%.6f, Actual=%.6f", 
-                     merger_time, expected_g1, values[1]);
-            if (fabsf(values[1] - expected_g1) > TOLERANCE_NORMAL) {
-                LOG_ERROR("  Incorrect TimeOfLastMajorMerger transformation for galaxy 1. Expected %.6f, Got %.6f", 
-                         expected_g1, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - expected_g1) <= TOLERANCE_NORMAL,
+                      "TimeOfLastMajorMerger transformation should handle zero correctly for galaxy 1");
         } 
         else if (strcmp(buffer->name, "TimeOfLastMinorMerger") == 0) {
             float merger_time = get_float_property(&test_galaxies[0], minor_merger_id, 0.0f);
@@ -375,25 +407,15 @@ static int test_basic_transformations(void) {
             // The exact transformer calculation from physics_output_transformers.c
             float expected = merger_time * run_params.units.UnitTime_in_Megayears;
             
-            LOG_DEBUG("  Galaxy 0 (TimeOfLastMinorMerger): Input=%.6f, TimeConversion=%.6f, Expected=%.6f, Actual=%.6f",
-                    merger_time, run_params.units.UnitTime_in_Megayears, expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_NORMAL) {
-                LOG_ERROR("  Incorrect TimeOfLastMinorMerger transformation for galaxy 0. Expected %.6f, Got %.6f", 
-                         expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_NORMAL,
+                      "TimeOfLastMinorMerger transformation should be correct for galaxy 0");
             
             // Galaxy 1: Edge case (-1.0 time, transformer just applies conversion even for negative)
             merger_time = get_float_property(&test_galaxies[1], minor_merger_id, 0.0f);
             float expected_g1 = merger_time * run_params.units.UnitTime_in_Megayears; // Should be negative
             
-            LOG_DEBUG("  Galaxy 1 (TimeOfLastMinorMerger): Input=%.6f, Expected=%.6f, Actual=%.6f", 
-                     merger_time, expected_g1, values[1]);
-            if (fabsf(values[1] - expected_g1) > TOLERANCE_NORMAL) {
-                LOG_ERROR("  Incorrect TimeOfLastMinorMerger transformation for galaxy 1. Expected %.6f, Got %.6f", 
-                         expected_g1, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - expected_g1) <= TOLERANCE_NORMAL,
+                      "TimeOfLastMinorMerger transformation should handle negative time correctly");
         } 
         else if (strcmp(buffer->name, "OutflowRate") == 0) {
             float outflow_rate = get_float_property(&test_galaxies[0], outflow_id, 0.0f);
@@ -402,44 +424,24 @@ static int test_basic_transformations(void) {
             float expected = outflow_rate * run_params.units.UnitMass_in_g /
                            run_params.units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS;
             
-            LOG_DEBUG("  Galaxy 0 (OutflowRate): Input=%.6f, Conversion=%.6e, Expected=%.6f, Actual=%.6f",
-                    outflow_rate, run_params.units.UnitMass_in_g/run_params.units.UnitTime_in_s*SEC_PER_YEAR/SOLAR_MASS, 
-                    expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_LOOSE) {
-                LOG_ERROR("  Incorrect OutflowRate transformation for galaxy 0. Expected %.6f, Got %.6f", 
-                         expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_LOOSE,
+                      "OutflowRate transformation should be correct for galaxy 0");
             
             // Galaxy 1: Edge case (0.0 outflow rate)
             outflow_rate = get_float_property(&test_galaxies[1], outflow_id, 0.0f);
             float expected_g1 = outflow_rate * run_params.units.UnitMass_in_g /
                               run_params.units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS; // Should be zero
             
-            LOG_DEBUG("  Galaxy 1 (OutflowRate): Input=%.6f, Expected=%.6f, Actual=%.6f", 
-                     outflow_rate, expected_g1, values[1]);
-            if (fabsf(values[1] - expected_g1) > TOLERANCE_LOOSE) {
-                LOG_ERROR("  Incorrect OutflowRate transformation for galaxy 1. Expected %.6f, Got %.6f", 
-                         expected_g1, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - expected_g1) <= TOLERANCE_LOOSE,
+                      "OutflowRate transformation should handle zero rate correctly");
         }
     }
 
     // Cleanup
-    LOG_DEBUG("Cleaning up resources for test_basic_transformations...");
+    printf("Cleaning up resources...\n");
     free(halos);
     cleanup_test_resources(test_galaxies, NUM_GALAXIES, &save_info); // Frees galaxy props and save_info buffers
     cleanup_property_system(); // Cleanup property system for this test
-
-    if (status == 0) {
-        LOG_INFO("test_basic_transformations PASSED");
-    } else {
-        LOG_ERROR("test_basic_transformations FAILED");
-    }
-    LOG_DEBUG("===== test_basic_transformations complete =====\n");
-
-    return status;
 }
 
 /**
@@ -449,26 +451,21 @@ static int test_basic_transformations(void) {
  * - SfrDisk and SfrBulge derived from their array forms
  * - SfrDiskZ and SfrBulgeZ metallicity calculations
  */
-static int test_array_derivations(void) {
-    LOG_DEBUG("\n===== Starting test_array_derivations... =====");
-    int status = 0;
+static void test_array_derivations(void) {
+    printf("\n=== Testing array property derivations ===\n");
+    printf("    (array-to-scalar derivations, metallicity calculations)\n");
 
     struct params run_params;
     init_test_params(&run_params);
 
-    LOG_DEBUG("Initializing property system for test_array_derivations...");
-    if (initialize_property_system(&run_params) != 0) {
-        LOG_ERROR("Failed to initialize property system for test_array_derivations");
-        return -1;
-    }
+    printf("Initializing property system for array derivations test...\n");
+    TEST_ASSERT(initialize_property_system(&run_params) == 0, 
+               "Property system initialization should succeed");
 
     const int NUM_GALAXIES = 2; // Galaxy 0: Normal, Galaxy 1: Edge cases
     struct GALAXY test_galaxies[NUM_GALAXIES];
-    if (init_test_galaxies(test_galaxies, NUM_GALAXIES, &run_params) != 0) {
-        LOG_ERROR("Failed to initialize test galaxies for test_array_derivations");
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(init_test_galaxies(test_galaxies, NUM_GALAXIES, &run_params) == 0,
+               "Test galaxy initialization should succeed");
 
     const int NUM_PROPERTIES = 4;
     const char *property_names[NUM_PROPERTIES] = {
@@ -476,27 +473,16 @@ static int test_array_derivations(void) {
     };
 
     struct hdf5_save_info save_info;
-    if (init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) != 0) {
-        LOG_ERROR("Failed to initialize output buffers for test_array_derivations");
-        for (int i = 0; i < NUM_GALAXIES; i++) {
-            free_galaxy_properties(&test_galaxies[i]);
-        }
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) == 0,
+               "Output buffers initialization should succeed");
 
-    LOG_DEBUG("Processing galaxies through transformers for test_array_derivations...");
+    printf("Processing galaxies through transformers...\n");
     struct save_info save_info_base;
     memset(&save_info_base, 0, sizeof(save_info_base));
     save_info_base.io_handler.format_data = &save_info;
 
     struct halo_data *halos = calloc(NUM_GALAXIES, sizeof(struct halo_data));
-    if (halos == NULL) {
-        LOG_ERROR("Failed to allocate dummy halo_data for test_array_derivations");
-        cleanup_test_resources(test_galaxies, NUM_GALAXIES, &save_info);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(halos != NULL, "Allocating dummy halo_data should succeed");
 
     // Initialize halos with minimal data needed
     for (int i = 0; i < NUM_GALAXIES; i++) {
@@ -513,62 +499,51 @@ static int test_array_derivations(void) {
     property_id_t sfr_bulge_cold_gas_metals_id = get_cached_property_id("SfrBulgeColdGasMetals");
     
     // Check that all required properties were found
-    if (sfr_disk_id == PROP_COUNT || sfr_bulge_id == PROP_COUNT || 
-        sfr_disk_cold_gas_id == PROP_COUNT || sfr_disk_cold_gas_metals_id == PROP_COUNT ||
-        sfr_bulge_cold_gas_id == PROP_COUNT || sfr_bulge_cold_gas_metals_id == PROP_COUNT) {
-        LOG_ERROR("Required array properties not found in property system");
-        free(halos);
-        cleanup_test_resources(test_galaxies, NUM_GALAXIES, &save_info);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(sfr_disk_id != PROP_COUNT, "SfrDisk property should be registered");
+    TEST_ASSERT(sfr_bulge_id != PROP_COUNT, "SfrBulge property should be registered");
+    TEST_ASSERT(sfr_disk_cold_gas_id != PROP_COUNT, "SfrDiskColdGas property should be registered");
+    TEST_ASSERT(sfr_disk_cold_gas_metals_id != PROP_COUNT, "SfrDiskColdGasMetals property should be registered");
+    TEST_ASSERT(sfr_bulge_cold_gas_id != PROP_COUNT, "SfrBulgeColdGas property should be registered");
+    TEST_ASSERT(sfr_bulge_cold_gas_metals_id != PROP_COUNT, "SfrBulgeColdGasMetals property should be registered");
 
     for (int i = 0; i < NUM_GALAXIES; i++) {
-        LOG_DEBUG("Processing galaxy %d for test_array_derivations...", i);
+        printf("Processing galaxy %d...\n", i);
         save_info.num_gals_in_buffer[0] = i;
         
-        // Log the SfrDisk array values for debugging
-        LOG_DEBUG("Galaxy %d SfrDisk array values:", i);
-        for (int step = 0; step < STEPS; step++) {
-            float val = get_float_array_element_property(&test_galaxies[i], sfr_disk_id, step, 0.0f);
-            LOG_DEBUG("  Step %d: %.6f", step, val);
-        }
+        // Show the first few SfrDisk array values for debugging
+        printf("  Galaxy %d SfrDisk array sample: [%.2f, %.2f, %.2f, ...]\n", i,
+               get_float_array_element_property(&test_galaxies[i], sfr_disk_id, 0, 0.0f),
+               get_float_array_element_property(&test_galaxies[i], sfr_disk_id, 1, 0.0f),
+               get_float_array_element_property(&test_galaxies[i], sfr_disk_id, 2, 0.0f));
         
         int result = prepare_galaxy_for_hdf5_output(
             &test_galaxies[i], &save_info_base, 0, halos, 0, 0, &run_params);
             
-        if (result != EXIT_SUCCESS) {
-            LOG_ERROR("prepare_galaxy_for_hdf5_output failed for galaxy %d with status %d", i, result);
-            status = -1;
-        }
+        TEST_ASSERT(result == EXIT_SUCCESS, 
+                    "prepare_galaxy_for_hdf5_output should succeed for every galaxy");
     }
 
-    LOG_DEBUG("Validating array derivation results...");
+    printf("Validating array derivation results...\n");
     for (int prop_idx = 0; prop_idx < save_info.num_properties; prop_idx++) {
         struct property_buffer_info *buffer = &save_info.property_buffers[0][prop_idx];
         float *values = (float*)buffer->data;
-        LOG_DEBUG("Property: %s", buffer->name);
+        printf("Verifying property: %s\n", buffer->name);
 
         // Galaxy 0: Normal cases
         if (strcmp(buffer->name, "SfrDisk") == 0) {
             // Replicate the exact calculation from derive_output_SfrDisk in physics_output_transformers.c
             float tmp_SfrDisk = 0.0f;
             
-            LOG_DEBUG("Calculating SfrDisk expected value with proper unit conversion...");
             for (int step = 0; step < STEPS; step++) {
                 float sfr_disk_val = get_float_array_element_property(&test_galaxies[0], sfr_disk_id, step, 0.0f);
-                LOG_DEBUG("  Step %d: Raw=%.6f", step, sfr_disk_val);
                 
                 // Apply unit conversion for each step and divide by STEPS (average)
                 tmp_SfrDisk += sfr_disk_val * run_params.units.UnitMass_in_g / 
                              run_params.units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
             }
             
-            LOG_DEBUG("  Galaxy 0 (SfrDisk): Expected=%.6f, Actual=%.6f", tmp_SfrDisk, values[0]);
-            if (fabsf(values[0] - tmp_SfrDisk) > TOLERANCE_LOOSE) {
-                LOG_ERROR("  Incorrect SfrDisk derivation for galaxy 0. Expected %.6f, Got %.6f", tmp_SfrDisk, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - tmp_SfrDisk) <= TOLERANCE_LOOSE,
+                      "SfrDisk derivation should be correct for galaxy 0");
 
             // Galaxy 1: Edge case (alternating zero/non-zero)
             tmp_SfrDisk = 0.0f;
@@ -578,11 +553,8 @@ static int test_array_derivations(void) {
                              run_params.units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
             }
             
-            LOG_DEBUG("  Galaxy 1 (SfrDisk): Expected=%.6f, Actual=%.6f", tmp_SfrDisk, values[1]);
-            if (fabsf(values[1] - tmp_SfrDisk) > TOLERANCE_LOOSE) {
-                LOG_ERROR("  Incorrect SfrDisk derivation for galaxy 1. Expected %.6f, Got %.6f", tmp_SfrDisk, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - tmp_SfrDisk) <= TOLERANCE_LOOSE,
+                      "SfrDisk derivation should handle alternating zeros correctly");
         } 
         else if (strcmp(buffer->name, "SfrBulge") == 0) {
             // Replicate the exact calculation from derive_output_SfrBulge
@@ -594,11 +566,8 @@ static int test_array_derivations(void) {
                               run_params.units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
             }
             
-            LOG_DEBUG("  Galaxy 0 (SfrBulge): Expected=%.6f, Actual=%.6f", tmp_SfrBulge, values[0]);
-            if (fabsf(values[0] - tmp_SfrBulge) > TOLERANCE_LOOSE) {
-                LOG_ERROR("  Incorrect SfrBulge derivation for galaxy 0. Expected %.6f, Got %.6f", tmp_SfrBulge, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - tmp_SfrBulge) <= TOLERANCE_LOOSE,
+                      "SfrBulge derivation should be correct for galaxy 0");
 
             // Galaxy 1: Edge case (alternating zero/non-zero)
             tmp_SfrBulge = 0.0f;
@@ -608,11 +577,8 @@ static int test_array_derivations(void) {
                               run_params.units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
             }
             
-            LOG_DEBUG("  Galaxy 1 (SfrBulge): Expected=%.6f, Actual=%.6f", tmp_SfrBulge, values[1]);
-            if (fabsf(values[1] - tmp_SfrBulge) > TOLERANCE_LOOSE) {
-                LOG_ERROR("  Incorrect SfrBulge derivation for galaxy 1. Expected %.6f, Got %.6f", tmp_SfrBulge, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - tmp_SfrBulge) <= TOLERANCE_LOOSE,
+                      "SfrBulge derivation should handle alternating zeros correctly");
         } 
         else if (strcmp(buffer->name, "SfrDiskZ") == 0) {
             // Replicate the exact calculation from derive_output_SfrDiskZ
@@ -627,20 +593,14 @@ static int test_array_derivations(void) {
                 if (gas_in_step > 0.0f) {
                     tmp_SfrDiskZ += metals_in_step / gas_in_step;
                     valid_steps++;
-                    LOG_DEBUG("  Step %d: Gas=%.6e, Metals=%.6e, Z=%.6f", 
-                             step, gas_in_step, metals_in_step, metals_in_step/gas_in_step);
                 }
             }
             
             // Average the metallicity values from valid steps
             float expected = (valid_steps > 0) ? tmp_SfrDiskZ / valid_steps : 0.0f;
             
-            LOG_DEBUG("  Galaxy 0 (SfrDiskZ): ValidSteps=%d, Expected=%.6f, Actual=%.6f", 
-                     valid_steps, expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_NORMAL) {
-                LOG_ERROR("  Incorrect SfrDiskZ derivation for galaxy 0. Expected %.6f, Got %.6f", expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_NORMAL,
+                      "SfrDiskZ derivation should be correct for galaxy 0");
 
             // Galaxy 1: Edge case (some zero gas bins)
             tmp_SfrDiskZ = 0.0f;
@@ -658,17 +618,13 @@ static int test_array_derivations(void) {
             
             expected = (valid_steps > 0) ? tmp_SfrDiskZ / valid_steps : 0.0f;
             
-            LOG_DEBUG("  Galaxy 1 (SfrDiskZ): ValidSteps=%d, Expected=%.6f, Actual=%.6f", 
-                     valid_steps, expected, values[1]);
-            if (fabsf(values[1] - expected) > TOLERANCE_NORMAL) {
-                LOG_ERROR("  Incorrect SfrDiskZ derivation for galaxy 1. Expected %.6f, Got %.6f", expected, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - expected) <= TOLERANCE_NORMAL,
+                      "SfrDiskZ derivation should handle partial zero gas bins correctly");
             
             // Check for NaN or infinity with zero gas
-            if (valid_steps == 0 && (isinf(values[1]) || isnan(values[1]))) {
-                LOG_ERROR("  SfrDiskZ for galaxy 1 is inf/nan with zero gas. Actual=%.6f", values[1]);
-                status = -1;
+            if (valid_steps == 0) {
+                TEST_ASSERT(isfinite(values[1]), 
+                          "SfrDiskZ should not be NaN or infinity with zero valid gas bins");
             }
         } 
         else if (strcmp(buffer->name, "SfrBulgeZ") == 0) {
@@ -688,12 +644,8 @@ static int test_array_derivations(void) {
             
             float expected = (valid_steps > 0) ? tmp_SfrBulgeZ / valid_steps : 0.0f;
             
-            LOG_DEBUG("  Galaxy 0 (SfrBulgeZ): ValidSteps=%d, Expected=%.6f, Actual=%.6f", 
-                     valid_steps, expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_NORMAL) {
-                LOG_ERROR("  Incorrect SfrBulgeZ derivation for galaxy 0. Expected %.6f, Got %.6f", expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_NORMAL,
+                      "SfrBulgeZ derivation should be correct for galaxy 0");
 
             // Galaxy 1: Edge case (mostly zero gas)
             tmp_SfrBulgeZ = 0.0f;
@@ -711,33 +663,20 @@ static int test_array_derivations(void) {
             
             expected = (valid_steps > 0) ? tmp_SfrBulgeZ / valid_steps : 0.0f;
             
-            LOG_DEBUG("  Galaxy 1 (SfrBulgeZ): ValidSteps=%d, Expected=%.6f, Actual=%.6f", 
-                     valid_steps, expected, values[1]);
-            if (fabsf(values[1] - expected) > TOLERANCE_NORMAL) {
-                LOG_ERROR("  Incorrect SfrBulgeZ derivation for galaxy 1. Expected %.6f, Got %.6f", expected, values[1]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[1] - expected) <= TOLERANCE_NORMAL,
+                      "SfrBulgeZ derivation should handle mostly zero gas bins correctly");
             
-            if (valid_steps == 0 && (isinf(values[1]) || isnan(values[1]))) {
-                LOG_ERROR("  SfrBulgeZ for galaxy 1 is inf/nan with zero gas. Actual=%.6f", values[1]);
-                status = -1;
+            if (valid_steps == 0) {
+                TEST_ASSERT(isfinite(values[1]), 
+                          "SfrBulgeZ should not be NaN or infinity with zero valid gas bins");
             }
         }
     }
 
-    LOG_DEBUG("Cleaning up resources for test_array_derivations...");
+    printf("Cleaning up resources...\n");
     free(halos);
     cleanup_test_resources(test_galaxies, NUM_GALAXIES, &save_info);
     cleanup_property_system();
-
-    if (status == 0) {
-        LOG_INFO("test_array_derivations PASSED");
-    } else {
-        LOG_ERROR("test_array_derivations FAILED");
-    }
-    LOG_DEBUG("===== test_array_derivations complete =====\n");
-
-    return status;
 }
 
 /**
@@ -748,29 +687,24 @@ static int test_array_derivations(void) {
  * - Handling of negative values
  * - Edge cases in array derivations
  */
-static int test_edge_cases(void) {
-    LOG_DEBUG("\n===== Starting test_edge_cases... =====");
-    int status = 0;
+static void test_edge_cases(void) {
+    printf("\n=== Testing edge case handling ===\n");
+    printf("    (zeros, negative values, extreme inputs)\n");
     
     // Initialize test parameters
     struct params run_params;
     init_test_params(&run_params);
     
     // Initialize property system
-    LOG_DEBUG("Initializing property system for test_edge_cases...");
-    if (initialize_property_system(&run_params) != 0) {
-        LOG_ERROR("Failed to initialize property system for test_edge_cases");
-        return -1;
-    }
+    printf("Initializing property system for edge cases test...\n");
+    TEST_ASSERT(initialize_property_system(&run_params) == 0,
+               "Property system initialization should succeed");
     
     // Create test galaxies - focus on edge cases
     const int NUM_GALAXIES = 1;  // Just the edge case galaxy
     struct GALAXY test_galaxies[NUM_GALAXIES];
-    if (init_test_galaxies(test_galaxies, NUM_GALAXIES, &run_params) != 0) {
-        LOG_ERROR("Failed to initialize test galaxies for test_edge_cases");
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(init_test_galaxies(test_galaxies, NUM_GALAXIES, &run_params) == 0,
+               "Test galaxy initialization should succeed");
     
     // Get property IDs for setting extreme edge case values
     property_id_t cooling_id = get_cached_property_id("Cooling");
@@ -785,18 +719,19 @@ static int test_edge_cases(void) {
     property_id_t sfr_bulge_cold_gas_metals_id = get_cached_property_id("SfrBulgeColdGasMetals");
     
     // Check that required properties were found
-    if (cooling_id == PROP_COUNT || heating_id == PROP_COUNT || major_merger_id == PROP_COUNT || 
-        outflow_id == PROP_COUNT || sfr_disk_id == PROP_COUNT || sfr_bulge_id == PROP_COUNT ||
-        sfr_disk_cold_gas_id == PROP_COUNT || sfr_disk_cold_gas_metals_id == PROP_COUNT ||
-        sfr_bulge_cold_gas_id == PROP_COUNT || sfr_bulge_cold_gas_metals_id == PROP_COUNT) {
-        LOG_ERROR("Required properties not found in property system for test_edge_cases");
-        cleanup_test_resources(test_galaxies, NUM_GALAXIES, NULL);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(cooling_id != PROP_COUNT, "Cooling property should be registered");
+    TEST_ASSERT(heating_id != PROP_COUNT, "Heating property should be registered");
+    TEST_ASSERT(major_merger_id != PROP_COUNT, "TimeOfLastMajorMerger property should be registered");
+    TEST_ASSERT(outflow_id != PROP_COUNT, "OutflowRate property should be registered");
+    TEST_ASSERT(sfr_disk_id != PROP_COUNT, "SfrDisk property should be registered");
+    TEST_ASSERT(sfr_bulge_id != PROP_COUNT, "SfrBulge property should be registered");
+    TEST_ASSERT(sfr_disk_cold_gas_id != PROP_COUNT, "SfrDiskColdGas property should be registered");
+    TEST_ASSERT(sfr_disk_cold_gas_metals_id != PROP_COUNT, "SfrDiskColdGasMetals property should be registered");
+    TEST_ASSERT(sfr_bulge_cold_gas_id != PROP_COUNT, "SfrBulgeColdGas property should be registered");
+    TEST_ASSERT(sfr_bulge_cold_gas_metals_id != PROP_COUNT, "SfrBulgeColdGasMetals property should be registered");
     
     // Explicitly set extreme edge case values
-    LOG_DEBUG("Setting extreme edge case values for galaxy properties...");
+    printf("Setting extreme edge case values for galaxy properties...\n");
     
     // Special cases for log transformations
     set_double_property(&test_galaxies[0], cooling_id, 0.0);           // Zero value for log transform
@@ -841,31 +776,21 @@ static int test_edge_cases(void) {
     };
     
     struct hdf5_save_info save_info;
-    if (init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) != 0) {
-        LOG_ERROR("Failed to initialize output buffers for test_edge_cases");
-        cleanup_test_resources(test_galaxies, NUM_GALAXIES, NULL);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) == 0,
+               "Output buffers initialization should succeed");
     
     // Process test galaxies through transformers
-    LOG_DEBUG("Processing galaxy with edge case values...");
+    printf("Processing galaxy with edge case values...\n");
     
     // Create minimal save_info_base
     struct save_info save_info_base;
     memset(&save_info_base, 0, sizeof(save_info_base));
     save_info_base.io_handler.format_data = &save_info;
-    
-    // Create minimal halo_data array
+
     struct halo_data *halos = calloc(NUM_GALAXIES, sizeof(struct halo_data));
-    if (halos == NULL) {
-        LOG_ERROR("Failed to allocate halo data for test_edge_cases");
-        cleanup_test_resources(test_galaxies, NUM_GALAXIES, &save_info);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(halos != NULL, "Allocating dummy halo_data should succeed");
     
-    // Initialize halos with minimal required fields
+    // Initialize halo fields that might be accessed
     halos[0].MostBoundID = 1000;
     halos[0].Len = 100;
     
@@ -873,6 +798,7 @@ static int test_edge_cases(void) {
     save_info.num_gals_in_buffer[0] = 0;
     
     // Call the transformation function
+    printf("Running transformation with extreme edge case values...\n");
     int result = prepare_galaxy_for_hdf5_output(
         &test_galaxies[0], 
         &save_info_base, 
@@ -883,59 +809,41 @@ static int test_edge_cases(void) {
         &run_params
     );
     
-    if (result != EXIT_SUCCESS) {
-        LOG_ERROR("prepare_galaxy_for_hdf5_output failed with status %d", result);
-        status = -1;
-    }
+    TEST_ASSERT(result == EXIT_SUCCESS, 
+               "prepare_galaxy_for_hdf5_output should succeed even with extreme values");
     
     // Validate results
-    LOG_DEBUG("Validating edge case handling...");
+    printf("Validating edge case handling...\n");
     
     // Check each property
     for (int prop_idx = 0; prop_idx < save_info.num_properties; prop_idx++) {
         struct property_buffer_info *buffer = &save_info.property_buffers[0][prop_idx];
         float *values = (float*)buffer->data;
         
-        LOG_DEBUG("Property: %s, Value: %.6f", buffer->name, values[0]);
+        printf("Checking property %s = %.6f...\n", buffer->name, values[0]);
         
         // Validate that values are valid (not NaN or infinity)
-        if (isnan(values[0]) || isinf(values[0])) {
-            LOG_ERROR("Invalid value (NaN or Inf) detected for property %s", buffer->name);
-            status = -1;
-            continue; // Skip the rest of the checks for this property
-        }
+        TEST_ASSERT(isfinite(values[0]), 
+                  "Edge case values should not produce NaN or infinity");
         
         // Check specific edge case behaviors based on the transformer implementations
         if (strcmp(buffer->name, "Cooling") == 0) {
             // Expected: Safe handling of log(0.0) - transformer returns 0.0 for log(0)
             float expected = 0.0f;
-            LOG_DEBUG("Cooling (log of 0.0): Expected=%.6f, Actual=%.6f", expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_FLT_ZERO) {
-                LOG_ERROR("Incorrect handling of log(0.0) for Cooling. Expected %.6f, Got %.6f", 
-                         expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_FLT_ZERO,
+                      "Cooling transformer should handle log(0.0) correctly");
         }
         else if (strcmp(buffer->name, "Heating") == 0) {
             // Expected: Safe handling of log(-1.0) - transformer returns 0.0 for log of negative
             float expected = 0.0f;
-            LOG_DEBUG("Heating (log of -1.0): Expected=%.6f, Actual=%.6f", expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_FLT_ZERO) {
-                LOG_ERROR("Incorrect handling of log(-1.0) for Heating. Expected %.6f, Got %.6f", 
-                         expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_FLT_ZERO,
+                      "Heating transformer should handle log(-1.0) correctly");
         }
         else if (strcmp(buffer->name, "TimeOfLastMajorMerger") == 0) {
             // The actual implementation in physics_output_transformers.c just applies conversion for negative time
             float expected = -5.0f * run_params.units.UnitTime_in_Megayears;
-            LOG_DEBUG("TimeOfLastMajorMerger (negative time): Expected=%.6f, Actual=%.6f", 
-                     expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_NORMAL) {
-                LOG_ERROR("Incorrect handling of negative time for TimeOfLastMajorMerger. Expected %.6f, Got %.6f", 
-                         expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_NORMAL,
+                      "TimeOfLastMajorMerger transformer should handle negative time correctly");
         }
         else if (strcmp(buffer->name, "SfrDisk") == 0 || strcmp(buffer->name, "SfrBulge") == 0) {
             // Check that extreme values don't lead to overflow
@@ -949,12 +857,8 @@ static int test_edge_cases(void) {
                      run_params.units.UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS / STEPS;
             }
             
-            LOG_DEBUG("%s (extreme array values): Expected=%.6f, Actual=%.6f", buffer->name, sum, values[0]);
-            if (fabsf(values[0] - sum) > TOLERANCE_LOOSE) {
-                LOG_ERROR("Incorrect handling of extreme values for %s. Expected %.6f, Got %.6f", 
-                         buffer->name, sum, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - sum) <= TOLERANCE_LOOSE,
+                      "SFR transformer should handle extreme array values correctly");
         }
         else if (strcmp(buffer->name, "SfrDiskZ") == 0) {
             // For metallicity, the transformer uses only bins with gas > 0
@@ -963,29 +867,16 @@ static int test_edge_cases(void) {
             float metals = get_float_array_element_property(&test_galaxies[0], sfr_disk_cold_gas_metals_id, 0, 0.0f);
             float expected = metals / gas;
             
-            LOG_DEBUG("SfrDiskZ (only first bin has gas): Expected=%.6f, Actual=%.6f", expected, values[0]);
-            if (fabsf(values[0] - expected) > TOLERANCE_NORMAL) {
-                LOG_ERROR("Incorrect handling of sparse gas bins for SfrDiskZ. Expected %.6f, Got %.6f", 
-                         expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_NORMAL,
+                      "SfrDiskZ transformer should handle sparse gas bins correctly");
         }
     }
     
     // Cleanup
-    LOG_DEBUG("Cleaning up resources for test_edge_cases...");
+    printf("Cleaning up resources...\n");
     free(halos);
     cleanup_test_resources(test_galaxies, NUM_GALAXIES, &save_info);
     cleanup_property_system();
-    
-    if (status == 0) {
-        LOG_INFO("test_edge_cases PASSED");
-    } else {
-        LOG_ERROR("test_edge_cases FAILED");
-    }
-    LOG_DEBUG("===== test_edge_cases complete =====\n");
-    
-    return status;
 }
 
 /**
@@ -995,20 +886,18 @@ static int test_edge_cases(void) {
  * - Handling of minimally initialized galaxies
  * - Handling of edge cases that might cause division by zero
  */
-static int test_error_handling(void) {
-    LOG_DEBUG("\n===== Starting test_error_handling... =====");
-    int status = 0;
+static void test_error_handling(void) {
+    printf("\n=== Testing error handling ===\n");
+    printf("    (minimal initialization, division by zero protection)\n");
     
     // Initialize test parameters
     struct params run_params;
     init_test_params(&run_params);
     
     // Initialize property system
-    LOG_DEBUG("Initializing property system for test_error_handling...");
-    if (initialize_property_system(&run_params) != 0) {
-        LOG_ERROR("Failed to initialize property system for test_error_handling");
-        return -1;
-    }
+    printf("Initializing property system for error handling test...\n");
+    TEST_ASSERT(initialize_property_system(&run_params) == 0,
+               "Property system initialization should succeed");
     
     // Instead of testing with NULL properties (which would trigger assertions),
     // we'll test with a minimally initialized galaxy where properties are set to defaults
@@ -1027,12 +916,9 @@ static int test_error_handling(void) {
     test_galaxy.GalaxyIndex = 0;  // First galaxy
     
     // Allocate properties with defaults (zero values)
-    LOG_DEBUG("Allocating minimal properties for test galaxy...");
-    if (allocate_galaxy_properties(&test_galaxy, &run_params) != 0) {
-        LOG_ERROR("Failed to allocate properties for test galaxy");
-        cleanup_property_system();
-        return -1;
-    }
+    printf("Allocating minimal properties for test galaxy...\n");
+    TEST_ASSERT(allocate_galaxy_properties(&test_galaxy, &run_params) == 0,
+               "Property allocation should succeed even for minimal galaxy");
     
     // Set up output buffers for properties that we expect to be transformed
     const int NUM_PROPERTIES = 4;
@@ -1041,30 +927,20 @@ static int test_error_handling(void) {
     };
     
     struct hdf5_save_info save_info;
-    if (init_output_buffers(&save_info, 1, property_names, NUM_PROPERTIES) != 0) {
-        LOG_ERROR("Failed to initialize output buffers for test_error_handling");
-        free_galaxy_properties(&test_galaxy);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(init_output_buffers(&save_info, 1, property_names, NUM_PROPERTIES) == 0,
+               "Output buffer initialization should succeed");
     
     // Process test galaxy through transformers
-    LOG_DEBUG("Processing minimally initialized galaxy...");
+    printf("Processing minimally initialized galaxy...\n");
     
     // Create minimal save_info_base
     struct save_info save_info_base;
     memset(&save_info_base, 0, sizeof(save_info_base));
     save_info_base.io_handler.format_data = &save_info;
     
-    // Create minimal halo_data array with required fields initialized
+    // Create minimal halo_data array
     struct halo_data *halos = calloc(1, sizeof(struct halo_data));
-    if (halos == NULL) {
-        LOG_ERROR("Failed to allocate halo data for test_error_handling");
-        free_galaxy_properties(&test_galaxy);
-        cleanup_test_resources(NULL, 0, &save_info);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(halos != NULL, "Allocating dummy halo_data should succeed");
     
     // Initialize halo fields that might be accessed
     halos[0].MostBoundID = 1000;
@@ -1074,7 +950,7 @@ static int test_error_handling(void) {
     save_info.num_gals_in_buffer[0] = 0;
     
     // Call the transformation function - should handle minimal initialization
-    LOG_DEBUG("Calling prepare_galaxy_for_hdf5_output with minimal galaxy...");
+    printf("Testing minimal galaxy transformation...\n");
     int result = prepare_galaxy_for_hdf5_output(
         &test_galaxy, 
         &save_info_base, 
@@ -1085,18 +961,11 @@ static int test_error_handling(void) {
         &run_params
     );
     
-    LOG_DEBUG("prepare_galaxy_for_hdf5_output returned: %d", result);
-    
-    // Check if transformation completed successfully
-    if (result != EXIT_SUCCESS) {
-        LOG_ERROR("Error handling test failed - transformation function returned %d", result);
-        status = -1;
-    } else {
-        LOG_DEBUG("Transformation function completed successfully with minimal galaxy");
-    }
+    TEST_ASSERT(result == EXIT_SUCCESS, 
+               "Transformation should succeed with minimally initialized galaxy");
     
     // Validate results for minimally initialized galaxy
-    LOG_DEBUG("Validating error handling for minimal galaxy...");
+    printf("Validating error handling for minimal galaxy...\n");
     
     // Pre-cache property IDs for validation
     property_id_t cooling_id = get_cached_property_id("Cooling");
@@ -1105,48 +974,34 @@ static int test_error_handling(void) {
     property_id_t sfr_bulge_id = get_cached_property_id("SfrBulge");
     
     // Check that all required properties were found
-    if (cooling_id == PROP_COUNT || heating_id == PROP_COUNT || 
-        sfr_disk_id == PROP_COUNT || sfr_bulge_id == PROP_COUNT) {
-        LOG_ERROR("Required properties not found in property system for test_error_handling");
-        free(halos);
-        free_galaxy_properties(&test_galaxy);
-        cleanup_test_resources(NULL, 0, &save_info);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(cooling_id != PROP_COUNT, "Cooling property should be registered");
+    TEST_ASSERT(heating_id != PROP_COUNT, "Heating property should be registered");
+    TEST_ASSERT(sfr_disk_id != PROP_COUNT, "SfrDisk property should be registered"); 
+    TEST_ASSERT(sfr_bulge_id != PROP_COUNT, "SfrBulge property should be registered");
     
     // Check for valid output values (not NaN or Inf)
     for (int prop_idx = 0; prop_idx < save_info.num_properties; prop_idx++) {
         struct property_buffer_info *buffer = &save_info.property_buffers[0][prop_idx];
         float *values = (float*)buffer->data;
         
-        LOG_DEBUG("Property: %s, Value: %.6f", buffer->name, values[0]);
+        printf("Property %s = %.6f\n", buffer->name, values[0]);
         
         // Validate that values are valid (not NaN or infinity) even for minimal initialization
-        if (isnan(values[0]) || isinf(values[0])) {
-            LOG_ERROR("Invalid value (NaN or Inf) detected for property %s with minimal galaxy",
-                    buffer->name);
-            status = -1;
-        }
+        TEST_ASSERT(isfinite(values[0]), 
+                  "Transformation should not produce NaN or Inf with minimal galaxy");
         
         // Verify expected behavior for default zero values
         if (strcmp(buffer->name, "Cooling") == 0 || strcmp(buffer->name, "Heating") == 0) {
             // Log of 0.0 or negative should be 0.0
             float expected = 0.0f;
-            if (fabsf(values[0] - expected) > TOLERANCE_FLT_ZERO) {
-                LOG_ERROR("Incorrect default value for %s. Expected %.6f, Got %.6f", 
-                         buffer->name, expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_FLT_ZERO,
+                      "Default value for log transforms should be handled correctly");
         }
         else if (strcmp(buffer->name, "SfrDisk") == 0 || strcmp(buffer->name, "SfrBulge") == 0) {
             // Empty SFR arrays should result in 0.0
             float expected = 0.0f;
-            if (fabsf(values[0] - expected) > TOLERANCE_FLT_ZERO) {
-                LOG_ERROR("Incorrect default value for %s. Expected %.6f, Got %.6f", 
-                         buffer->name, expected, values[0]);
-                status = -1;
-            }
+            TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_FLT_ZERO,
+                      "Default value for SFR arrays should be handled correctly");
         }
     }
     
@@ -1156,7 +1011,7 @@ static int test_error_handling(void) {
     
     // Now test with a galaxy that has some intentionally problematic values
     // that might trigger internal error handling in the transformers
-    LOG_DEBUG("Testing with values that might trigger internal error handling...");
+    printf("\nTesting with extreme values that might trigger error handling...\n");
     
     struct GALAXY edge_galaxy;
     memset(&edge_galaxy, 0, sizeof(struct GALAXY));
@@ -1171,15 +1026,11 @@ static int test_error_handling(void) {
     edge_galaxy.GalaxyIndex = 0;
     
     // Allocate and initialize properties to test error handling
-    if (allocate_galaxy_properties(&edge_galaxy, &run_params) != 0) {
-        LOG_ERROR("Failed to allocate properties for edge case galaxy");
-        cleanup_test_resources(NULL, 0, &save_info);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(allocate_galaxy_properties(&edge_galaxy, &run_params) == 0,
+               "Property allocation should succeed for edge case galaxy");
     
     // Set specific properties to extreme values that might trigger internal error handling
-    LOG_DEBUG("Setting extreme values for edge case galaxy...");
+    printf("Setting extreme values for edge case galaxy...\n");
     
     // Values that could cause numerical issues
     set_double_property(&edge_galaxy, cooling_id, -FLT_MAX); // Way out of range negative
@@ -1246,22 +1097,12 @@ static int test_error_handling(void) {
     }
     
     // Initialize new buffers
-    if (init_output_buffers(&save_info, 1, property_names_2, NUM_PROPS_2) != 0) {
-        LOG_ERROR("Failed to initialize output buffers for edge case test");
-        free_galaxy_properties(&edge_galaxy);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(init_output_buffers(&save_info, 1, property_names_2, NUM_PROPS_2) == 0,
+               "Output buffer initialization should succeed for edge case test");
     
     // Process edge case galaxy
     halos = calloc(1, sizeof(struct halo_data));
-    if (halos == NULL) {
-        LOG_ERROR("Failed to allocate halo data for edge case test");
-        free_galaxy_properties(&edge_galaxy);
-        cleanup_test_resources(NULL, 0, &save_info);
-        cleanup_property_system();
-        return -1;
-    }
+    TEST_ASSERT(halos != NULL, "Allocating dummy halo_data should succeed");
     
     // Initialize halo fields that might be accessed
     halos[0].MostBoundID = 1000;
@@ -1270,7 +1111,7 @@ static int test_error_handling(void) {
     save_info.num_gals_in_buffer[0] = 0;
     
     // Call the transformation function with the edge case galaxy
-    LOG_DEBUG("Calling prepare_galaxy_for_hdf5_output with edge case galaxy...");
+    printf("Testing transformation with extreme values...\n");
     result = prepare_galaxy_for_hdf5_output(
         &edge_galaxy, 
         &save_info_base, 
@@ -1281,36 +1122,32 @@ static int test_error_handling(void) {
         &run_params
     );
     
-    LOG_DEBUG("prepare_galaxy_for_hdf5_output returned for edge case: %d", result);
-    
-    // Check if transformation completed successfully with extreme values
-    if (result != EXIT_SUCCESS) {
-        LOG_ERROR("Error handling test failed for extreme values - transformation returned %d", result);
-        status = -1;
-    } else {
-        LOG_DEBUG("Transformation function completed successfully with extreme values");
-    }
+    TEST_ASSERT(result == EXIT_SUCCESS,
+              "Transformation should succeed even with extreme values");
     
     // Validate results for edge case galaxy
-    LOG_DEBUG("Validating error handling for edge case galaxy...");
+    printf("Validating error handling with extreme values...\n");
     
     // Check output buffer values - should all be safe, finite values
     for (int prop_idx = 0; prop_idx < save_info.num_properties; prop_idx++) {
         struct property_buffer_info *buffer = &save_info.property_buffers[0][prop_idx];
         float *values = (float*)buffer->data;
         
-        LOG_DEBUG("Property: %s, Value: %.6f", buffer->name, values[0]);
+        printf("Property %s = %.6f\n", buffer->name, values[0]);
         
         // Validate that values are valid (not NaN or infinity) even with extreme inputs
-        if (isnan(values[0]) || isinf(values[0])) {
-            LOG_ERROR("Invalid value (NaN or Inf) detected for property %s with extreme values",
-                    buffer->name);
-            status = -1;
+        TEST_ASSERT(isfinite(values[0]),
+                  "Transformation should not produce NaN or Inf with extreme values");
+        
+        // For division by zero cases (specifically metallicity with zero gas)
+        if (strcmp(buffer->name, "SfrDiskZ") == 0 || strcmp(buffer->name, "SfrBulgeZ") == 0) {
+            TEST_ASSERT(isfinite(values[0]),
+                      "Metallicity calculation should safely handle division by zero");
         }
     }
     
     // Cleanup
-    LOG_DEBUG("Cleaning up resources for test_error_handling...");
+    printf("Cleaning up resources...\n");
     free(halos);
     free_galaxy_properties(&edge_galaxy);
     
@@ -1334,65 +1171,14 @@ static int test_error_handling(void) {
     }
     
     cleanup_property_system();
-    
-    if (status == 0) {
-        LOG_INFO("test_error_handling PASSED");
-    } else {
-        LOG_ERROR("test_error_handling FAILED");
-    }
-    LOG_DEBUG("===== test_error_handling complete =====\n");
-    
-    return status;
 }
 
-/**
- * Run all tests and return the number of failures
- */
-int run_all_transformer_tests(void) {
-    int failures = 0;
-    int test_status = 0;
-
-    LOG_DEBUG("Running all output transformer tests...");
-
-    // Test 1: Basic Transformations
-    test_status = test_basic_transformations();
-    if (test_status != 0) {
-        LOG_ERROR("test_basic_transformations FAILED with status %d", test_status);
-        failures++;
-    } else {
-        LOG_INFO("test_basic_transformations PASSED");
-    }
-
-    // Test 2: Array Derivations
-    test_status = test_array_derivations();
-    if (test_status != 0) {
-        LOG_ERROR("test_array_derivations FAILED with status %d", test_status);
-        failures++;
-    } else {
-        LOG_INFO("test_array_derivations PASSED");
-    }
-
-    // Test 3: Edge Cases
-    test_status = test_edge_cases();
-    if (test_status != 0) {
-        LOG_ERROR("test_edge_cases FAILED with status %d", test_status);
-        failures++;
-    } else {
-        LOG_INFO("test_edge_cases PASSED");
-    }
-
-    // Test 4: Error Handling
-    test_status = test_error_handling();
-    if (test_status != 0) {
-        LOG_ERROR("test_error_handling FAILED with status %d", test_status);
-        failures++;
-    } else {
-        LOG_INFO("test_error_handling PASSED");
-    }
-
-    LOG_DEBUG("All tests complete. Total failures: %d", failures);
-    return failures;
-}
+// Function declarations have changed from returning int to void
+// Forward declarations of test functions
+static void test_basic_transformations(void);
+static void test_array_derivations(void);
+static void test_edge_cases(void);
+static void test_error_handling(void);
 
 // Helper functions for test setup
 static void init_test_params(struct params *run_params) {
@@ -1418,10 +1204,9 @@ static void init_test_params(struct params *run_params) {
     run_params->units.UnitTime_in_Megayears = run_params->units.UnitTime_in_s / SEC_PER_MEGAYEAR;
     run_params->units.UnitEnergy_in_cgs = run_params->units.UnitMass_in_g * 
                                        pow(run_params->units.UnitVelocity_in_cm_per_s, 2);
-    
-    LOG_DEBUG("Unit conversions: UnitTime_in_s=%.6e, UnitTime_in_Megayears=%.6f, UnitEnergy_in_cgs=%.6e",
-              run_params->units.UnitTime_in_s, run_params->units.UnitTime_in_Megayears, 
-              run_params->units.UnitEnergy_in_cgs);
+     printf("Unit conversions: UnitTime_in_s=%.6e, UnitTime_in_Megayears=%.6f, UnitEnergy_in_cgs=%.6e\n",
+               run_params->units.UnitTime_in_s, run_params->units.UnitTime_in_Megayears,
+               run_params->units.UnitEnergy_in_cgs);
     
     // Physics parameters (needed for property system)
     run_params->physics.SfrEfficiency = 0.05f;
@@ -1443,7 +1228,7 @@ static void init_test_params(struct params *run_params) {
 }
 
 static int init_test_galaxies(struct GALAXY *galaxies, int count, const struct params *run_params) {
-    LOG_DEBUG("Initializing %d test galaxies", count);
+    printf("Initializing %d test galaxies\n", count);
     
     for (int i = 0; i < count; ++i) {
         // Initialize basic structure for each galaxy
@@ -1458,9 +1243,9 @@ static int init_test_galaxies(struct GALAXY *galaxies, int count, const struct p
         galaxies[i].MostBoundID = 1000 + i; // Arbitrary but unique
         
         // Allocate properties using property system
-        LOG_DEBUG("Allocating properties for galaxy %d", i);
+        printf("  Allocating properties for galaxy %d\n", i);
         if (allocate_galaxy_properties(&galaxies[i], run_params) != 0) {
-            LOG_ERROR("Failed to allocate properties for galaxy %d", i);
+            printf("ERROR: Failed to allocate properties for galaxy %d\n", i);
             return -1; // Return error code instead of void return
         }
         
@@ -1523,7 +1308,7 @@ static int init_test_galaxies(struct GALAXY *galaxies, int count, const struct p
         property_id_t sfr_bulge_cold_gas_metals_id = get_cached_property_id("SfrBulgeColdGasMetals");
         
         // Log the property IDs to help with debugging
-        LOG_DEBUG("Property IDs for galaxy %d: Cooling=%d, Heating=%d, SfrDisk=%d", 
+        printf("  Property IDs for galaxy %d: Cooling=%d, Heating=%d, SfrDisk=%d\n", 
                  i, cooling_id, heating_id, sfr_disk_id);
         
         for (int step = 0; step < STEPS; step++) {
@@ -1569,11 +1354,11 @@ static int init_test_galaxies(struct GALAXY *galaxies, int count, const struct p
  */
 static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxies, 
                               const char **property_names, int num_properties) {
-    LOG_DEBUG("Initializing output buffers for %d galaxies, %d properties", 
+    printf("Initializing output buffers for %d galaxies, %d properties\n", 
              num_galaxies, num_properties);
     
     if (!save_info || !property_names || num_galaxies <= 0 || num_properties <= 0) {
-        LOG_ERROR("Invalid parameters to init_output_buffers");
+        printf("ERROR: Invalid parameters to init_output_buffers\n");
         return -1;
     }
     
@@ -1585,7 +1370,7 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
     save_info->num_gals_in_buffer = calloc(1, sizeof(int32_t));
     save_info->tot_ngals = calloc(1, sizeof(int64_t));
     if (!save_info->num_gals_in_buffer || !save_info->tot_ngals) {
-        LOG_ERROR("Failed to allocate buffer tracking arrays");
+        printf("ERROR: Failed to allocate buffer tracking arrays\n");
         if (save_info->num_gals_in_buffer) free(save_info->num_gals_in_buffer);
         if (save_info->tot_ngals) free(save_info->tot_ngals);
         return -1;
@@ -1595,7 +1380,7 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
     save_info->num_properties = num_properties;
     save_info->property_buffers = calloc(1, sizeof(struct property_buffer_info*));
     if (!save_info->property_buffers) {
-        LOG_ERROR("Failed to allocate property buffers array");
+        printf("ERROR: Failed to allocate property buffers array\n");
         free(save_info->num_gals_in_buffer);
         free(save_info->tot_ngals);
         return -1;
@@ -1603,7 +1388,7 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
     
     save_info->property_buffers[0] = calloc(num_properties, sizeof(struct property_buffer_info));
     if (!save_info->property_buffers[0]) {
-        LOG_ERROR("Failed to allocate property buffers for snapshot");
+        printf("ERROR: Failed to allocate property buffers for snapshot\n");
         free(save_info->property_buffers);
         free(save_info->num_gals_in_buffer);
         free(save_info->tot_ngals);
@@ -1618,7 +1403,7 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
         buffer->units = strdup("Test units");
         
         if (!buffer->name || !buffer->description || !buffer->units) {
-            LOG_ERROR("Failed to allocate property buffer strings for property %s", property_names[i]);
+            printf("ERROR: Failed to allocate property buffer strings for property %s\n", property_names[i]);
             // Clean up already allocated buffers
             for (int j = 0; j <= i; j++) {
                 struct property_buffer_info *b = &save_info->property_buffers[0][j];
@@ -1639,7 +1424,7 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
         // Find property ID by name
         property_id_t prop_id = get_cached_property_id(property_names[i]);
         if (prop_id == PROP_COUNT) {
-            LOG_ERROR("Unknown property name: %s", property_names[i]);
+            printf("ERROR: Unknown property name: %s\n", property_names[i]);
             // Clean up already allocated buffers
             for (int j = 0; j <= i; j++) {
                 struct property_buffer_info *b = &save_info->property_buffers[0][j];
@@ -1662,7 +1447,7 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
         // Allocate data buffer
         buffer->data = calloc(num_galaxies, sizeof(float));
         if (!buffer->data) {
-            LOG_ERROR("Failed to allocate data buffer for property %s", property_names[i]);
+            printf("ERROR: Failed to allocate data buffer for property %s\n", property_names[i]);
             // Clean up already allocated buffers
             for (int j = 0; j <= i; j++) {
                 struct property_buffer_info *b = &save_info->property_buffers[0][j];
@@ -1678,7 +1463,7 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
             return -1;
         }
         
-        LOG_DEBUG("  Initialized buffer for property %s (ID: %d, Core: %d)", 
+        printf("  Initialized buffer for property %s (ID: %d, Core: %d)\n", 
                  property_names[i], buffer->prop_id, buffer->is_core_prop);
     }
     
@@ -1694,19 +1479,19 @@ static int init_output_buffers(struct hdf5_save_info *save_info, int num_galaxie
  */
 static void cleanup_test_resources(struct GALAXY *galaxies, 
                                  int num_galaxies, struct hdf5_save_info *save_info) {
-    LOG_DEBUG("Cleaning up test resources...");
+    printf("Cleaning up test resources...\n");
 
     // Free galaxy properties
     if (galaxies != NULL && num_galaxies > 0) {
         for (int i = 0; i < num_galaxies; i++) {
-            LOG_DEBUG("Freeing properties for galaxy %d...", i);
+            printf("  Freeing properties for galaxy %d...\n", i);
             free_galaxy_properties(&galaxies[i]);
         }
     }
 
     // Free output buffers in save_info
     if (save_info != NULL) {
-        LOG_DEBUG("Freeing output buffers...");
+        printf("  Freeing output buffers...\n");
         
         // Free buffer tracking arrays
         if (save_info->num_gals_in_buffer) {
@@ -1759,5 +1544,5 @@ static void cleanup_test_resources(struct GALAXY *galaxies,
         save_info->buffer_size = 0;
     }
     
-    LOG_DEBUG("Test resources cleaned up.");
+    printf("Test resources cleaned up.\n");
 }
