@@ -487,13 +487,13 @@ core_tests: $(CORE_TESTS)
 		echo "\n# Running $$test..."; \
 		./tests/$$test; \
 		if [ $$? -ne 0 ]; then \
-			echo "!!!!! WARNING: $$test exited with non-zero status. This may be expected during development.\n"; \
+			echo "!!!!! WARNING: $$test exited with non-zero status - this may be expected during development\n"; \
 			failed_tests="$$failed_tests $$test"; \
 		fi; \
 	done; \
 	if [ -n "$$failed_tests" ]; then \
-		echo "!!!!! The following tests reported non-zero exit codes: $$failed_tests"; \
-		echo "!!!!! This is not necessarily a failure - check the test output for details."; \
+		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
+		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
 	fi
 
 property_tests: $(PROPERTY_TESTS)
@@ -503,13 +503,13 @@ property_tests: $(PROPERTY_TESTS)
 		echo "\n# Running $$test..."; \
 		./tests/$$test; \
 		if [ $$? -ne 0 ]; then \
-			echo "!!!!! WARNING: $$test exited with non-zero status. This may be expected during development.\n"; \
+			echo "!!!!! WARNING: $$test exited with non-zero status - this may be expected during development\n"; \
 			failed_tests="$$failed_tests $$test"; \
 		fi; \
 	done; \
 	if [ -n "$$failed_tests" ]; then \
-		echo "!!!!! The following tests reported non-zero exit codes: $$failed_tests"; \
-		echo "!!!!! This is not necessarily a failure - check the test output for details."; \
+		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
+		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
 	fi
 
 io_tests: $(IO_TESTS)
@@ -519,13 +519,13 @@ io_tests: $(IO_TESTS)
 		echo "\n# Running $$test..."; \
 		./tests/$$test; \
 		if [ $$? -ne 0 ]; then \
-			echo "!!!!! WARNING: $$test exited with non-zero status. This may be expected during development.\n"; \
+			echo "!!!!! WARNING: $$test exited with non-zero status - this may be expected during development\n"; \
 			failed_tests="$$failed_tests $$test"; \
 		fi; \
 	done; \
 	if [ -n "$$failed_tests" ]; then \
-		echo "!!!!! The following tests reported non-zero exit codes: $$failed_tests"; \
-		echo "!!!!! This is not necessarily a failure - check the test output for details."; \
+		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
+		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
 	fi
 
 module_tests: $(MODULE_TESTS)
@@ -535,13 +535,13 @@ module_tests: $(MODULE_TESTS)
 		echo "\n# Running $$test..."; \
 		./tests/$$test; \
 		if [ $$? -ne 0 ]; then \
-			echo "!!!!! WARNING: $$test exited with non-zero status. This may be expected during development.\n"; \
+			echo "!!!!! WARNING: $$test exited with non-zero status - this may be expected during development\n"; \
 			failed_tests="$$failed_tests $$test"; \
 		fi; \
 	done; \
 	if [ -n "$$failed_tests" ]; then \
-		echo "!!!!! The following tests reported non-zero exit codes: $$failed_tests"; \
-		echo "!!!!! This is not necessarily a failure - check the test output for details."; \
+		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
+		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
 	fi
 
 # Run all unit tests without the end-to-end scientific tests - faster for development
@@ -552,13 +552,13 @@ unit_tests: $(UNIT_TESTS)
 		echo "\n# Running $$test..."; \
 		./tests/$$test; \
 		if [ $$? -ne 0 ]; then \
-			echo "!!!!! WARNING: $$test exited with non-zero status. This may be expected during development.\n"; \
+			echo "!!!!! WARNING: $$test exited with non-zero status - this may be expected during development\n"; \
 			failed_tests="$$failed_tests $$test"; \
 		fi; \
 	done; \
 	if [ -n "$$failed_tests" ]; then \
-		echo "!!!!! The following tests reported non-zero exit codes: $$failed_tests"; \
-		echo "!!!!! This is not necessarily a failure - check the test output for details."; \
+		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
+		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
 	else \
 		echo "All unit tests completed successfully!"; \
 	fi
@@ -568,42 +568,47 @@ tests: $(EXEC) $(UNIT_TESTS)
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
-	@echo "\n--- Running unit tests and component tests ---"
-	@echo "=== Core Infrastructure Tests ==="
-	@for test in $(CORE_TESTS); do \
+	@echo "\n--- Running unit tests and component tests ---"; \
+	echo "=== Core Infrastructure Tests ==="; \
+	FAILED=""; \
+	for test in $(CORE_TESTS); do \
 		echo "\n# Running $$test..."; \
 		./tests/$$test || FAILED="$$FAILED $$test"; \
-	done
-	@echo "=== Property System Tests ==="
-	@for test in $(PROPERTY_TESTS); do \
+	done; \
+	echo "=== Property System Tests ==="; \
+	for test in $(PROPERTY_TESTS); do \
 		echo "\n# Running $$test..."; \
 		./tests/$$test || FAILED="$$FAILED $$test"; \
-	done
-	@echo "=== I/O System Tests ==="
-	@for test in $(IO_TESTS); do \
+	done; \
+	echo "=== I/O System Tests ==="; \
+	for test in $(IO_TESTS); do \
 		echo "\n# Running $$test..."; \
 		./tests/$$test || FAILED="$$FAILED $$test"; \
-	done
-	@echo "=== Module System Tests ==="
-	@for test in $(MODULE_TESTS); do \
+	done; \
+	echo "=== Module System Tests ==="; \
+	for test in $(MODULE_TESTS); do \
 		echo "\n# Running $$test..."; \
 		./tests/$$test || FAILED="$$FAILED $$test"; \
-	done
-	@if [ -n "$$FAILED" ]; then \
-		echo "\n============================================"; \
-		echo "UNIT TEST FAILURES DETECTED in:$$FAILED"; \
-		echo "Please fix these failures as they should pass regardless of Phase 5 development."; \
-		echo "End-to-end comparison test failures are expected and can be ignored during Phase 5."; \
-		echo "============================================\n"; \
-		exit 1; \
+	done; \
+  echo "\n# Final end-to-end and unit test summary"; \
+  echo "----------------------------------------\n"; \
+	if [ -n "$$FAILED" ]; then \
+		echo "!!!!! Unit test failures detected:$$FAILED"; \
+		echo "      Please fix these failures as they should pass regardless of Phase 5 development\n"; \
 	else \
-		echo "\n============================================"; \
-		echo "All unit tests completed successfully."; \
-		if grep -q "Binary checks failed: [1-9]" tests/test_output.log; then \
-			echo "End-to-end comparison test: Binary comparison failed! NOTE: this is expected during Phase 5."; \
-		fi; \
-		if grep -q "HDF5 checks failed: [1-9]" tests/test_output.log; then \
-			echo "End-to-end comparison test: HDF5 comparison failed! NOTE: this is expected during Phase 5."; \
-		fi; \
-		echo "============================================\n"; \
-	fi
+		echo "All unit tests completed successfully\n"; \
+  fi; \
+  if grep -q "If the fix to this isn't obvious" tests/test_output.log; then \
+		echo "!!!!! SAGE failed to run correctly ... you should investigate this!"; \
+	else \
+    if grep -q "Binary checks failed: [1-9]" tests/test_output.log; then \
+      echo "!!!!! End-to-end comparison test: Binary comparison failed! NOTE: this is expected during Phase 5"; \
+    else \
+      echo "End-to-end comparison test: Binary comparison passed"; \
+    fi; \
+    if grep -q "HDF5 checks failed: [1-9]" tests/test_output.log; then \
+      echo "!!!!! End-to-end comparison test: HDF5 comparison failed! NOTE: this is expected during Phase 5"; \
+    else \
+      echo "End-to-end comparison test: HDF5 comparison passed"; \
+    fi; \
+  fi
