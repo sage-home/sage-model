@@ -174,6 +174,7 @@ static void test_scalar_property_access(void) {
     printf("  Double properties: Cooling=%g, Heating=%g\n", cooling_direct, heating_direct);
     
     // Test int64 properties (using GalaxyIndex as example)
+    // TODO: Issue 1: [FAIL] GalaxyIndex is a direct struct field, not a property system property. The get_int64_property function tries to access it as a property, which fails.
     test_ctx.test_galaxy->GalaxyIndex = 9876543210LL;
     
     int64_t index_direct = test_ctx.test_galaxy->GalaxyIndex;
@@ -270,6 +271,7 @@ static void test_error_handling(void) {
     printf("  Expected error messages for NULL pointer validation:\n");
     
     // Test NULL galaxy pointer
+    // TODO: Issue 2: [segfault at next line] sage_assert logs errors but doesn't return, so the function continues and crashes on NULL access.
     float result_float = get_float_property(NULL, PROP_Mvir, -999.0f);
     TEST_ASSERT(result_float == -999.0f, "NULL galaxy should return default value");
     
