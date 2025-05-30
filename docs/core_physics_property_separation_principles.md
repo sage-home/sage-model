@@ -20,6 +20,20 @@ The complete separation between core infrastructure and physics has been impleme
     *   **All code (core and physics modules) SHOULD use the generic property accessors (e.g., `get_float_property()`, `get_cached_property_id()`) when dealing with properties that are not strictly part of the `properties.yaml` with `is_core: true` definition.** This ensures that the code can adapt to different sets of available physics properties at runtime.
     *   Physics modules can use `GALAXY_PROP_*` macros for core properties if needed, as these are considered part of the stable infrastructure interface.
 
+## Implementation Example
+
+See `tests/test_property_array_access.c` for working examples of proper separation:
+
+```c
+// Core properties - direct macro access allowed
+GALAXY_PROP_Mvir(galaxy) = 1.5e12f;
+int64_t index = GALAXY_PROP_GalaxyIndex(galaxy);
+
+// Physics properties - generic accessors only
+set_float_property(galaxy, PROP_ColdGas, 2.5e10f);
+float coldgas = get_float_property(galaxy, PROP_ColdGas, 0.0f);
+```
+
 ## Benefits:
 
 *   **Modularity**: Physics modules can be developed, added, or removed without requiring changes to the core SAGE infrastructure.
