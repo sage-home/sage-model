@@ -76,6 +76,29 @@ static int mock_handle_disruption(void *args_ptr, void *context) {
     return 0; // Success
 }
 
+// Mock handlers that return errors for testing error propagation
+static int mock_handle_merger_with_error(void *args_ptr, void *context) {
+    (void)context;
+    
+    if (args_ptr != NULL) {
+        merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
+        test_ctx.mock_merger_calls++;
+        test_ctx.last_merger_event = args->event;
+    }
+    
+    return -1; // Simulate error
+}
+
+static int mock_handle_disruption_with_error(void *args_ptr, void *context) {
+    (void)context;
+    
+    merger_handler_args_t *args = (merger_handler_args_t *)args_ptr;
+    test_ctx.mock_disruption_calls++;
+    test_ctx.last_disruption_event = args->event;
+    
+    return -2; // Simulate error
+}
+
 // Dummy initialize functions for validation
 static int mock_merger_initialize(struct params *run_params, void **module_data) {
     (void)run_params;
@@ -105,6 +128,33 @@ static struct base_module mock_merger_module = {
 
 static struct base_module mock_disruption_module = {
     .name = "MockDisruptionModule", 
+    .type = MODULE_TYPE_MERGERS,
+    .version = "1.0.0",
+    .author = "Test Suite",
+    .module_id = -1, // Let module_register() assign this dynamically
+    .initialize = mock_disruption_initialize,
+    .cleanup = NULL,
+    .configure = NULL,
+    .execute_post_phase = NULL,
+    .phases = 0
+};
+
+// Additional mock modules for error testing
+static struct base_module mock_error_merger_module = {
+    .name = "MockErrorMergerModule",
+    .type = MODULE_TYPE_MERGERS,
+    .version = "1.0.0",
+    .author = "Test Suite",
+    .module_id = -1, // Let module_register() assign this dynamically
+    .initialize = mock_merger_initialize,
+    .cleanup = NULL,
+    .configure = NULL,
+    .execute_post_phase = NULL,
+    .phases = 0
+};
+
+static struct base_module mock_error_disruption_module = {
+    .name = "MockErrorDisruptionModule", 
     .type = MODULE_TYPE_MERGERS,
     .version = "1.0.0",
     .author = "Test Suite",
@@ -160,8 +210,10 @@ static int complete_setup(void) {
     // Register mock modules
     module_register(&mock_merger_module);
     module_register(&mock_disruption_module);
+    module_register(&mock_error_merger_module);
+    module_register(&mock_error_disruption_module);
     
-    // Register mock handler functions using the assigned module IDs
+    // Register normal mock handler functions using the assigned module IDs
     int status1 = module_register_function(
         mock_merger_module.module_id,  // Use assigned ID, not predefined constant
         "HandleMerger",
@@ -180,7 +232,27 @@ static int complete_setup(void) {
         "Mock disruption handler for testing"
     );
     
-    if (status1 != MODULE_STATUS_SUCCESS || status2 != MODULE_STATUS_SUCCESS) {
+    // Register error-generating mock handler functions
+    int status3 = module_register_function(
+        mock_error_merger_module.module_id,
+        "HandleMerger",
+        (void *)mock_handle_merger_with_error,
+        FUNCTION_TYPE_INT,
+        "int (void*, void*)",
+        "Mock merger handler that returns errors"
+    );
+    
+    int status4 = module_register_function(
+        mock_error_disruption_module.module_id,
+        "HandleDisruption", 
+        (void *)mock_handle_disruption_with_error,
+        FUNCTION_TYPE_INT,
+        "int (void*, void*)",
+        "Mock disruption handler that returns errors"
+    );
+    
+    if (status1 != MODULE_STATUS_SUCCESS || status2 != MODULE_STATUS_SUCCESS ||
+        status3 != MODULE_STATUS_SUCCESS || status4 != MODULE_STATUS_SUCCESS) {
         printf("Failed to register mock handler functions\n");
         return -1;
     }
@@ -342,8 +414,109 @@ static void test_null_pipeline_context(void) {
     TEST_ASSERT(result == -1, "Should return error for null pipeline context");
 }
 
+/**
+ * Test: Configuration Error Handling
+ */
+static void test_configuration_errors(void) {
+    printf("\n=== Testing configuration error handling ===\n");
+    
+    // Initialize queue with a merger event
+    init_merger_queue(&test_ctx.merger_queue);
+    queue_merger_event(&test_ctx.merger_queue, 1, 0, 0.0, 5.0, 0.1, 100, 10, 1);
+    
+    // Test with missing handler module name
+    struct params backup_params;
+    memcpy(&backup_params, &test_ctx.test_params, sizeof(struct params));
+    
+    // Clear handler module name
+    test_ctx.test_params.runtime.MergerHandlerModuleName[0] = '\0';
+    
+    // Reset counters
+    test_ctx.mock_merger_calls = 0;
+    test_ctx.mock_disruption_calls = 0;
+    
+    // Process queue - should handle missing configuration gracefully
+    int result = core_process_merger_queue_agnostically(&test_ctx.pipeline_ctx);
+    
+    TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Should handle missing module name gracefully");
+    TEST_ASSERT(test_ctx.mock_merger_calls == 0, "No handlers should be called with invalid config");
+    
+    // Restore configuration
+    memcpy(&test_ctx.test_params, &backup_params, sizeof(struct params));
+}
+
+/**
+ * Test: Error Propagation from Physics Handlers
+ */
+static void test_error_propagation(void) {
+    printf("\n=== Testing error propagation from physics handlers ===\n");
+    
+    // Configure to use error-generating handlers
+    struct params backup_params;
+    memcpy(&backup_params, &test_ctx.test_params, sizeof(struct params));
+    
+    strncpy(test_ctx.test_params.runtime.MergerHandlerModuleName, "MockErrorMergerModule", MAX_STRING_LEN-1);
+    strncpy(test_ctx.test_params.runtime.DisruptionHandlerModuleName, "MockErrorDisruptionModule", MAX_STRING_LEN-1);
+    
+    // Initialize queue with mixed events
+    init_merger_queue(&test_ctx.merger_queue);
+    queue_merger_event(&test_ctx.merger_queue, 1, 0, 0.0, 5.0, 0.1, 100, 10, 1); // Merger
+    queue_merger_event(&test_ctx.merger_queue, 2, 0, 1.5, 5.0, 0.1, 100, 10, 3); // Disruption
+    
+    // Reset counters
+    test_ctx.mock_merger_calls = 0;
+    test_ctx.mock_disruption_calls = 0;
+    
+    // Process queue - should continue despite handler errors
+    int result = core_process_merger_queue_agnostically(&test_ctx.pipeline_ctx);
+    
+    TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Should succeed despite handler errors");
+    TEST_ASSERT(test_ctx.mock_merger_calls == 1, "Error handler should still be called once");
+    TEST_ASSERT(test_ctx.mock_disruption_calls == 1, "Error handler should still be called once");
+    TEST_ASSERT(test_ctx.merger_queue.num_events == 0, "Queue should be cleared even with handler errors");
+    
+    // Restore configuration
+    memcpy(&test_ctx.test_params, &backup_params, sizeof(struct params));
+}
+
+/**
+ * Test: Different Handler Configurations
+ */
+static void test_different_configurations(void) {
+    printf("\n=== Testing different handler configurations ===\n");
+    
+    struct params backup_params;
+    memcpy(&backup_params, &test_ctx.test_params, sizeof(struct params));
+    
+    // Test configuration 1: Same module for both merger and disruption
+    strncpy(test_ctx.test_params.runtime.MergerHandlerModuleName, "MockMergerModule", MAX_STRING_LEN-1);
+    strncpy(test_ctx.test_params.runtime.DisruptionHandlerModuleName, "MockMergerModule", MAX_STRING_LEN-1);
+    strncpy(test_ctx.test_params.runtime.DisruptionHandlerFunctionName, "HandleMerger", MAX_STRING_LEN-1);
+    
+    // Initialize queue with both types of events
+    init_merger_queue(&test_ctx.merger_queue);
+    queue_merger_event(&test_ctx.merger_queue, 1, 0, 0.0, 5.0, 0.1, 100, 10, 1); // Merger
+    queue_merger_event(&test_ctx.merger_queue, 2, 0, 1.5, 5.0, 0.1, 100, 10, 3); // Disruption
+    
+    // Reset counters
+    test_ctx.mock_merger_calls = 0;
+    test_ctx.mock_disruption_calls = 0;
+    
+    // Process queue
+    int result = core_process_merger_queue_agnostically(&test_ctx.pipeline_ctx);
+    
+    TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Should handle unified handler configuration");
+    TEST_ASSERT(test_ctx.mock_merger_calls == 2, "Same handler should be called for both event types");
+    TEST_ASSERT(test_ctx.mock_disruption_calls == 0, "Disruption handler should not be called");
+    
+    // Restore configuration
+    memcpy(&test_ctx.test_params, &backup_params, sizeof(struct params));
+}
+
 int main(void) {
-    printf("=== SAGE Core Merger Processor Tests ===\n");
+    printf("\n========================================\n");
+    printf("Starting tests for test_core_merger_processor\n");
+    printf("========================================\n\n");
     
     // Setup test environment
     if (setup_test_context() != 0) {
@@ -363,14 +536,20 @@ int main(void) {
     test_multiple_mixed_events();
     test_invalid_galaxy_indices();
     test_null_pipeline_context();
-    
-    // Report results
-    printf("\n=== Test Results ===\n");
-    printf("Tests run: %d\n", tests_run);
-    printf("Tests passed: %d\n", tests_passed);
+    test_configuration_errors();
+    test_error_propagation();
+    test_different_configurations();
     
     // Cleanup
     teardown_test_context();
+    
+    // Report results
+    printf("\n========================================\n");
+    printf("Test results for test_core_merger_processor:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
     
     // Return success if all tests passed
     return (tests_run == tests_passed) ? 0 : 1;
