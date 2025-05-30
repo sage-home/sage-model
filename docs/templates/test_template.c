@@ -72,7 +72,7 @@ static void teardown_test_context(void) {
  * Test: Component initialization
  */
 static void test_component_init(void) {
-    printf("\n=== Testing component initialization ===\n");
+    printf("=== Testing component initialization ===\n");
     
     struct component *comp = NULL;
     int result = component_init(&comp);

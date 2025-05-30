@@ -78,7 +78,7 @@ static void teardown_test_context(void) {
  * Test: Merger Queue Initialization
  */
 static void test_queue_init(void) {
-    printf("\n=== Testing merger queue initialization ===\n");
+    printf("=== Testing merger queue initialization ===\n");
     
     struct merger_event_queue *queue = test_ctx.queue;
     init_merger_queue(queue);
@@ -238,7 +238,9 @@ static void test_invalid_parameters_for_queueing(void) {
 
 
 int main(void) {
-    printf("=== SAGE Core Merger Queue Data Management Tests ===\n");
+    printf("\n========================================\n");
+    printf("Starting tests for test_merger_queue\n");
+    printf("========================================\n\n");
     
     // Setup test environment
     if (setup_test_context() != 0) {
@@ -256,9 +258,12 @@ int main(void) {
     // test functionality that will move to a physics module.
     
     // Report results
-    printf("\n=== Test Results ===\n");
-    printf("Tests run: %d\n", tests_run);
-    printf("Tests passed: %d\n", tests_passed);
+    printf("\n========================================\n");
+    printf("Test results for [test_component_name]:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
     
     // Cleanup
     teardown_test_context();
