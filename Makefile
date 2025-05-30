@@ -494,6 +494,8 @@ core_tests: $(CORE_TESTS)
 	if [ -n "$$failed_tests" ]; then \
 		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
 		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
+	else \
+		echo "\nAll core tests completed successfully!"; \
 	fi
 
 property_tests: $(PROPERTY_TESTS)
@@ -510,6 +512,8 @@ property_tests: $(PROPERTY_TESTS)
 	if [ -n "$$failed_tests" ]; then \
 		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
 		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
+	else \
+		echo "\nAll property tests completed successfully!"; \
 	fi
 
 io_tests: $(IO_TESTS)
@@ -526,6 +530,8 @@ io_tests: $(IO_TESTS)
 	if [ -n "$$failed_tests" ]; then \
 		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
 		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
+	else \
+		echo "\nAll io tests completed successfully!"; \
 	fi
 
 module_tests: $(MODULE_TESTS)
@@ -542,6 +548,8 @@ module_tests: $(MODULE_TESTS)
 	if [ -n "$$failed_tests" ]; then \
 		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
 		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
+	else \
+		echo "\nAll module tests completed successfully!"; \
 	fi
 
 # Run all unit tests without the end-to-end scientific tests - faster for development
@@ -560,7 +568,7 @@ unit_tests: $(UNIT_TESTS)
 		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
 		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
 	else \
-		echo "All unit tests completed successfully!"; \
+		echo "\nAll unit tests completed successfully!"; \
 	fi
 
 # Tests execution target
