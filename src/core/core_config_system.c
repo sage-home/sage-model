@@ -215,6 +215,13 @@ static struct config_object *json_parse_object(const char **json) {
         return obj;
     }
     
+    /* Check for unexpected end of input before parsing content */
+    if (*p == '\0') {
+        LOG_ERROR("Unexpected end of input, expected object content or '}' at position %zu", (size_t)(p - *json));
+        config_object_free(obj);
+        return NULL;
+    }
+    
     /* Parse key-value pairs */
     while (*p) {
         /* Skip whitespace */
