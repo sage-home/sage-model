@@ -148,6 +148,10 @@ int main(int argc, char *argv[]) {
     printf("Starting tests for [test_component_name]\n");
     printf("========================================\n\n");
     
+    printf("This test verifies that (the purpose of this test):\n");
+    printf("  1. description of test 1\n");
+    printf("  2. description of test 2 etc...\n\n");
+
     // Setup
     if (setup_test_context() != 0) {
         printf("ERROR: Failed to set up test context\n");
