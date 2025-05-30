@@ -29,8 +29,8 @@ These tests are integrated into the main Makefile and can be run with `make test
 
 | Test Name | Purpose | Added in Phase |
 |-----------|---------|---------------|
-| ✅ **test_property_serialization** | Tests property serialization for I/O operations | Phase 3.2 (Apr 2025) |
-| ✅ **test_property_validation** | Tests validation of property definitions | Phase 3.2 (Apr 2025) |
+| **test_property_serialization** | Tests property serialization for I/O operations | Phase 3.2 (Apr 2025) |
+| **test_property_validation** | Tests validation of property definitions | Phase 3.2 (Apr 2025) |
 | ✅ **test_property_array_access** | Tests access to array properties | Phase 5.2.B (May 2025) |
 | ✅ **test_property_access_patterns** | Tests property access patterns for core-physics separation compliance | Phase 5.2.F.3 (May 2025) |
 | ✅ **test_property_system_hdf5** | Tests integration between the property system and HDF5 output with transformer functions | Phase 5.2.F.3 (May 2025) |
