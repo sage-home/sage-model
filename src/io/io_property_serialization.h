@@ -21,6 +21,22 @@ extern "C" {
  */
 #define PROPERTY_SERIALIZATION_VERSION 1
 
+/**
+ * @brief Enhanced error codes for property serialization
+ */
+enum property_serialization_error {
+    PROPERTY_SERIALIZATION_SUCCESS = 0,
+    PROPERTY_SERIALIZATION_ERROR_NULL_PARAMETER = -1,
+    PROPERTY_SERIALIZATION_ERROR_INVALID_CONTEXT = -2,
+    PROPERTY_SERIALIZATION_ERROR_PROPERTY_NOT_FOUND = -3,
+    PROPERTY_SERIALIZATION_ERROR_SERIALIZER_NOT_FOUND = -4,
+    PROPERTY_SERIALIZATION_ERROR_BUFFER_TOO_SMALL = -5,
+    PROPERTY_SERIALIZATION_ERROR_MEMORY_ALLOCATION = -6,
+    PROPERTY_SERIALIZATION_ERROR_INVALID_PROPERTY_TYPE = -7,
+    PROPERTY_SERIALIZATION_ERROR_ARRAY_SIZE_MISMATCH = -8,
+    PROPERTY_SERIALIZATION_ERROR_DATA_VALIDATION_FAILED = -9
+};
+
 
 
 /**
@@ -188,6 +204,24 @@ void serialize_uint32(const void *src, void *dest, int count);
 void serialize_uint64(const void *src, void *dest, int count);
 
 /**
+ * @brief Generic array serializer using memcpy
+ * 
+ * @param src Source array data
+ * @param dest Destination buffer
+ * @param count Number of bytes (not elements)
+ */
+void serialize_array(const void *src, void *dest, int count);
+
+/**
+ * @brief Generic array deserializer using memcpy
+ * 
+ * @param src Source buffer data
+ * @param dest Destination array
+ * @param count Number of bytes (not elements)
+ */
+void deserialize_array(const void *src, void *dest, int count);
+
+/**
  * @brief Type-specific serializer for float values
  * 
  * @param src Source data
@@ -292,6 +326,84 @@ void (*property_serialization_get_default_serializer(enum galaxy_property_type t
  * @return Deserializer function pointer, or NULL if not available
  */
 void (*property_serialization_get_default_deserializer(enum galaxy_property_type type))(const void *, void *, int);
+
+/**
+ * @brief Get human-readable error message for error code
+ * 
+ * @param error_code Error code from property serialization operations
+ * @return Human-readable error string
+ */
+const char *property_serialization_error_string(enum property_serialization_error error_code);
+
+/**
+ * @brief Enhanced galaxy property serialization with buffer size validation
+ * 
+ * @param ctx Serialization context
+ * @param galaxy Source galaxy
+ * @param output_buffer Output buffer for serialized data
+ * @param buffer_size Size of output buffer in bytes
+ * @return 0 on success, negative error code on failure
+ */
+int property_serialize_galaxy_safe(struct property_serialization_context *ctx,
+                                  const struct GALAXY *galaxy,
+                                  void *output_buffer,
+                                  size_t buffer_size);
+
+/**
+ * @brief Enhanced galaxy property deserialization with buffer size validation
+ * 
+ * @param ctx Serialization context
+ * @param galaxy Destination galaxy
+ * @param input_buffer Input buffer containing serialized data
+ * @param buffer_size Size of input buffer in bytes
+ * @return 0 on success, negative error code on failure
+ */
+int property_deserialize_galaxy_safe(struct property_serialization_context *ctx,
+                                    struct GALAXY *galaxy,
+                                    const void *input_buffer,
+                                    size_t buffer_size);
+
+/**
+ * @brief Validate array property data
+ * 
+ * @param data Pointer to array data
+ * @param expected_element_size Expected size of each array element
+ * @param expected_count Expected number of array elements
+ * @param property_name Property name for error reporting
+ * @return 0 on success, negative error code on failure
+ */
+int validate_array_property_data(const void *data, size_t expected_element_size, 
+                                size_t expected_count, const char *property_name);
+
+/**
+ * @brief Serialize array property with size validation
+ * 
+ * @param src_array Source array data
+ * @param element_size Size of each array element
+ * @param count Number of array elements
+ * @param dest_buffer Destination buffer
+ * @param dest_buffer_size Size of destination buffer
+ * @param element_serializer Serializer function for individual elements
+ * @return 0 on success, negative error code on failure
+ */
+int serialize_array_property(const void *src_array, size_t element_size, size_t count,
+                           void *dest_buffer, size_t dest_buffer_size,
+                           void (*element_serializer)(const void *, void *, int));
+
+/**
+ * @brief Deserialize array property with size validation
+ * 
+ * @param src_buffer Source buffer containing serialized array
+ * @param src_buffer_size Size of source buffer
+ * @param dest_array Destination array data
+ * @param element_size Size of each array element
+ * @param expected_count Expected number of array elements
+ * @param element_deserializer Deserializer function for individual elements
+ * @return 0 on success, negative error code on failure
+ */
+int deserialize_array_property(const void *src_buffer, size_t src_buffer_size,
+                             void *dest_array, size_t element_size, size_t expected_count,
+                             void (*element_deserializer)(const void *, void *, int));
 
 #ifdef __cplusplus
 }
