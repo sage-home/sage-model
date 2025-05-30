@@ -174,10 +174,10 @@ static void test_scalar_property_access(void) {
     printf("  Double properties: Cooling=%g, Heating=%g\n", cooling_direct, heating_direct);
     
     // Test int64 properties (using GalaxyIndex as example)
-    // TODO: Issue 1: [FAIL] GalaxyIndex is a direct struct field, not a property system property. The get_int64_property function tries to access it as a property, which fails.
-    test_ctx.test_galaxy->GalaxyIndex = 9876543210LL;
+    // Set GalaxyIndex using the property system
+    GALAXY_PROP_GalaxyIndex(test_ctx.test_galaxy) = 9876543210LL;
     
-    int64_t index_direct = test_ctx.test_galaxy->GalaxyIndex;
+    int64_t index_direct = GALAXY_PROP_GalaxyIndex(test_ctx.test_galaxy);
     int64_t index_by_fn = get_int64_property(test_ctx.test_galaxy, PROP_GalaxyIndex, 0LL);
     
     TEST_ASSERT(index_direct == index_by_fn, "Int64 property: direct and function access should match");
