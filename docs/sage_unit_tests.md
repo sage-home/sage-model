@@ -41,9 +41,9 @@ These tests are integrated into the main Makefile and can be run with `make test
 |-----------|---------|---------------|
 | **test_io_interface** | Tests the I/O interface abstraction | Phase 3.1 (Apr 2025) |
 | **test_endian_utils** | Tests cross-platform endianness handling | Phase 3.2 (Apr 2025) |
-| ✅ **test_lhalo_binary** | Tests reading LHalo format merger trees | Phase 3.2 (Apr 2025) |
-| ✅ **test_hdf5_output** | Tests the HDF5 output handler | Phase 3.2 (Apr 2025) |
+| **test_lhalo_binary** | Tests reading LHalo format merger trees | Phase 3.2 (Apr 2025) |
 | ✅ **test_lhalo_hdf5** | Tests reading LHalo format trees in HDF5 format | Phase 3.2 (Apr 2025) |
+| ✅ **test_hdf5_output** | Tests the HDF5 output handler | Phase 3.2 (Apr 2025) |
 | ✅ **test_gadget4_hdf5** | Tests reading Gadget4 merger trees in HDF5 format | Phase 3.2 (Apr 2025) |
 | ✅ **test_genesis_hdf5** | Tests reading Genesis merger trees in HDF5 format | Phase 3.2 (Apr 2025) |
 | ✅ **test_consistent_trees_hdf5** | Tests reading ConsistentTrees in HDF5 format | Phase 3.2 (Apr 2025) |
