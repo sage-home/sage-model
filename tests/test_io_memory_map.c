@@ -116,6 +116,7 @@ static int create_test_file(const char* filename, size_t size, char pattern) {
  */
 static void test_mmap_availability(void) {
     printf("=== Testing memory mapping availability ===\n");
+    printf("Checking if memory mapping is supported on this platform...\n");
     
     bool available = mmap_is_available();
     printf("Memory mapping availability: %s\n", available ? "Yes" : "No");
@@ -128,6 +129,7 @@ static void test_mmap_availability(void) {
  */
 static void test_default_options(void) {
     printf("\n=== Testing default options creation ===\n");
+    printf("Verifying that default mapping options are correctly initialised...\n");
     
     struct mmap_options options = mmap_default_options();
     
@@ -141,6 +143,7 @@ static void test_default_options(void) {
  */
 static void test_basic_mapping(void) {
     printf("\n=== Testing basic memory mapping functionality ===\n");
+    printf("Creating test file and mapping it into memory via filename...\n");
     
     // Create test file
     int result = create_test_file(TEST_FILE, TEST_SIZE, TEST_PATTERN);
@@ -197,6 +200,7 @@ static void test_basic_mapping(void) {
  */
 static void test_fd_mapping(void) {
     printf("\n=== Testing file descriptor mapping ===\n");
+    printf("Testing memory mapping using an open file descriptor instead of filename...\n");
     
     // Create test file
     int result = create_test_file(TEST_FILE, TEST_SIZE, TEST_PATTERN);
@@ -262,6 +266,7 @@ static void test_fd_mapping(void) {
  */
 static void test_error_handling(void) {
     printf("\n=== Testing error handling ===\n");
+    printf("Testing error conditions with invalid inputs and verifying proper error reporting...\n");
     
     struct mmap_options options = mmap_default_options();
     
@@ -296,6 +301,7 @@ static void test_error_handling(void) {
  */
 static void test_partial_mapping(void) {
     printf("\n=== Testing partial mapping with offset ===\n");
+    printf("Testing mapping of a portion of a file with specific offset and size limits...\n");
     
     // Create larger test file
     int result = create_test_file(TEST_LARGE_FILE, TEST_LARGE_SIZE, 0);
@@ -380,6 +386,7 @@ static void test_partial_mapping(void) {
  */
 static void test_invalid_fd(void) {
     printf("\n=== Testing invalid file descriptor handling ===\n");
+    printf("Verifying graceful failure when attempting to map with invalid file descriptors...\n");
     
     struct mmap_options options = mmap_default_options();
     
@@ -398,6 +405,7 @@ static void test_invalid_fd(void) {
  */
 static void test_zero_size_file(void) {
     printf("\n=== Testing zero-size file handling ===\n");
+    printf("Testing behaviour when attempting to map empty files...\n");
     
     // Create zero-size file
     int result = create_test_file(TEST_ZERO_FILE, 0, 0);
@@ -427,6 +435,7 @@ static void test_zero_size_file(void) {
  */
 static void test_large_mapping_request(void) {
     printf("\n=== Testing large mapping request handling ===\n");
+    printf("Testing system response to unreasonably large mapping size requests...\n");
     
     // Create small test file
     int result = create_test_file(TEST_FILE, TEST_SIZE, TEST_PATTERN);
