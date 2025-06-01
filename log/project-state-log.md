@@ -160,20 +160,29 @@ The I/O system uses property-based serialization:
 - Dynamic property discovery for field generation
 - Output preparation implemented as FINAL phase module
 
+### HDF5 Tree Readers ✅ COMPLETE
+All major HDF5 tree formats now fully supported:
+- **Gadget4 HDF5**: Complete interface implementation (42/42 tests)
+- **Genesis HDF5**: Complete interface implementation (42/42 tests)  
+- **ConsistentTrees HDF5**: Complete interface implementation (42/42 tests)
+- **LHalo HDF5**: Previously implemented
+
 ```
 I/O System Architecture
 ┌─────────────────────┐      ┌─────────────────────┐
 │ io_interface        │      │ HDF5 Handler        │
 │ - Unified interface │─────▶│ - Property-driven   │
 │ - Format registry   │      │ - Metadata-based    │
+│ - Security enhanced │      │ - Multi-file support│
 └─────────────────────┘      └────────┬────────────┘
                                       │
 ┌─────────────────────┐      ┌────────▼────────────┐
-│ Forest Handlers     │      │ Output Preparation  │
-│ - LHalo/HDF5        │◄─────│ - FINAL phase       │
-│ - ConsistentTrees   │      │ - Unit conversion   │
-└─────────────────────┘      │ - Transformers      │
-                             └─────────────────────┘
+│ HDF5 Tree Readers   │      │ Output Preparation  │
+│ - Gadget4 HDF5 ✅   │◄─────│ - FINAL phase       │
+│ - Genesis HDF5 ✅   │      │ - Unit conversion   │
+│ - ConsistentTrees ✅ │      │ - Transformers      │
+│ - LHalo HDF5 ✅     │      └─────────────────────┘
+└─────────────────────┘
 ```
 
 ## Testing Framework

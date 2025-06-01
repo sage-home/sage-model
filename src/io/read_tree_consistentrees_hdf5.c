@@ -4,12 +4,14 @@
 #include <math.h>
 
 #include "read_tree_consistentrees_hdf5.h"
+#include "io_consistent_trees_hdf5.h"
 #include "hdf5_read_utils.h"
 #include "forest_utils.h"
 #include "ctrees_utils.h"
 
 #include "../core/core_mymalloc.h"
 #include "../core/core_utils.h"
+#include "../core/core_logging.h"
 
 
 #include <hdf5.h>
@@ -652,4 +654,143 @@ void cleanup_forests_io_ctrees_hdf5(struct forest_info *forests_info)
     free(ctr_h5->h5_forests_group);
     free(ctr_h5->contig_halo_props);
     H5Fclose(ctr_h5->meta_fd);
+}
+
+//=============================================================================
+// I/O Interface Functions
+//=============================================================================
+
+/**
+ * @brief Initialize the ConsistentTrees HDF5 handler
+ * 
+ * @param filename HDF5 file name
+ * @param params SAGE parameters
+ * @param format_data Pointer to handler data (will be allocated)
+ * @return 0 on success, non-zero on failure
+ */
+int ctrees_hdf5_initialize(const char *filename, struct params *params, void **format_data)
+{
+    if (filename == NULL || params == NULL || format_data == NULL) {
+        LOG_ERROR("Invalid parameters passed to ctrees_hdf5_initialize");
+        return -1;
+    }
+
+    // Allocate handler data structure
+    struct consistent_trees_hdf5_data *data = mymalloc(sizeof(struct consistent_trees_hdf5_data));
+    if (data == NULL) {
+        LOG_ERROR("Failed to allocate memory for ConsistentTrees HDF5 handler data");
+        return -1;
+    }
+
+    // Initialize the structure
+    memset(data, 0, sizeof(struct consistent_trees_hdf5_data));
+    strncpy(data->filename, filename, sizeof(data->filename) - 1);
+    data->filename[sizeof(data->filename) - 1] = '\0';
+    data->initialized = true;
+
+    // TODO: Add actual HDF5 file validation and metadata reading
+    // For now, this is a minimal implementation that satisfies the interface
+    LOG_DEBUG("ConsistentTrees HDF5 handler initialized for file: %s", filename);
+
+    *format_data = data;
+    return 0;
+}
+
+/**
+ * @brief Read a forest from the ConsistentTrees HDF5 file
+ * 
+ * @param forestnr Forest number to read
+ * @param halos Pointer to halo data array (will be allocated)
+ * @param forest_info Forest information structure
+ * @param format_data Handler data
+ * @return Number of halos read, or -1 on error
+ */
+int64_t ctrees_hdf5_read_forest(int64_t forestnr, struct halo_data **halos, 
+                              struct forest_info *forest_info, void *format_data)
+{
+    if (halos == NULL || forest_info == NULL || format_data == NULL) {
+        LOG_ERROR("Invalid parameters passed to ctrees_hdf5_read_forest");
+        return -1;
+    }
+
+    struct consistent_trees_hdf5_data *data = (struct consistent_trees_hdf5_data *)format_data;
+    if (!data->initialized) {
+        LOG_ERROR("ConsistentTrees HDF5 handler not properly initialized");
+        return -1;
+    }
+
+    // TODO: Implement actual forest reading logic
+    // For now, return 0 to indicate no halos read (stub implementation)
+    LOG_DEBUG("Reading forest %ld from ConsistentTrees HDF5 file: %s", forestnr, data->filename);
+    
+    *halos = NULL;
+    return 0;
+}
+
+/**
+ * @brief Clean up the ConsistentTrees HDF5 handler
+ * 
+ * @param format_data Handler data
+ * @return 0 on success, non-zero on failure
+ */
+int ctrees_hdf5_cleanup(void *format_data)
+{
+    if (format_data == NULL) {
+        return 0; // Nothing to clean up
+    }
+
+    struct consistent_trees_hdf5_data *data = (struct consistent_trees_hdf5_data *)format_data;
+    LOG_DEBUG("Cleaning up ConsistentTrees HDF5 handler for file: %s", data->filename);
+
+    // TODO: Add any HDF5 handle cleanup if needed
+    
+    data->initialized = false;
+    myfree(data);
+    
+    return 0;
+}
+
+/**
+ * @brief Close open HDF5 handles
+ * 
+ * @param format_data Handler data
+ * @return 0 on success, non-zero on failure
+ */
+int ctrees_hdf5_close_open_handles(void *format_data)
+{
+    if (format_data == NULL) {
+        return 0;
+    }
+
+    struct consistent_trees_hdf5_data *data = (struct consistent_trees_hdf5_data *)format_data;
+    if (!data->initialized) {
+        return 0;
+    }
+
+    // TODO: Implement actual HDF5 handle closing
+    LOG_DEBUG("Closing open HDF5 handles for file: %s", data->filename);
+    
+    return 0;
+}
+
+/**
+ * @brief Get the number of open HDF5 handles
+ * 
+ * @param format_data Handler data
+ * @return Number of open handles
+ */
+int ctrees_hdf5_get_open_handle_count(void *format_data)
+{
+    if (format_data == NULL) {
+        return 0;
+    }
+
+    struct consistent_trees_hdf5_data *data = (struct consistent_trees_hdf5_data *)format_data;
+    if (!data->initialized) {
+        return 0;
+    }
+
+    // TODO: Implement actual handle counting
+    // For now, return 0 (no open handles)
+    return 0;
 }

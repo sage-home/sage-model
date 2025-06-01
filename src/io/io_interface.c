@@ -8,6 +8,10 @@
 #include "io_lhalo_binary.h"
 #include "io_hdf5_utils.h"
 #ifdef HDF5
+#include "io_gadget4_hdf5.h"
+#include "io_genesis_hdf5.h"
+#include "io_consistent_trees_hdf5.h"
+#endif
 /**
  * @brief Temporary HDF5 handler stub implementations
  * 
@@ -42,58 +46,58 @@ static struct io_interface lhalo_hdf5_handler = {
     .error_message = {0}
 };
 
-// ConsistentTrees HDF5 handler definition (stub for framework testing)
+// ConsistentTrees HDF5 handler definition
 static struct io_interface consistent_trees_hdf5_handler = {
     .name = "ConsistentTrees HDF5",
     .version = "1.0",
     .format_id = IO_FORMAT_CONSISTENT_TREES_HDF5,
-    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS,
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS | IO_CAP_MULTI_FILE,
     
-    .initialize = NULL,  // Stubs don't implement these
-    .read_forest = NULL,
-    .write_galaxies = NULL,
-    .cleanup = NULL,
+    .initialize = ctrees_hdf5_initialize,
+    .read_forest = ctrees_hdf5_read_forest,
+    .write_galaxies = NULL,  // Input format doesn't support writing
+    .cleanup = ctrees_hdf5_cleanup,
     
-    .close_open_handles = NULL,
-    .get_open_handle_count = NULL,
+    .close_open_handles = ctrees_hdf5_close_open_handles,
+    .get_open_handle_count = ctrees_hdf5_get_open_handle_count,
     
     .last_error = IO_ERROR_NONE,
     .error_message = {0}
 };
 
-// Gadget4 HDF5 handler definition (stub for framework testing)
+// Gadget4 HDF5 handler definition
 static struct io_interface gadget4_hdf5_handler = {
     .name = "Gadget4 HDF5",
     .version = "1.0",
     .format_id = IO_FORMAT_GADGET4_HDF5,
     .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS | IO_CAP_MULTI_FILE,
     
-    .initialize = NULL,  // Stubs don't implement these
-    .read_forest = NULL,
-    .write_galaxies = NULL,
-    .cleanup = NULL,
+    .initialize = gadget4_hdf5_initialize,
+    .read_forest = gadget4_hdf5_read_forest,
+    .write_galaxies = NULL,  // Input format doesn't support writing
+    .cleanup = gadget4_hdf5_cleanup,
     
-    .close_open_handles = NULL,
-    .get_open_handle_count = NULL,
+    .close_open_handles = gadget4_hdf5_close_open_handles,
+    .get_open_handle_count = gadget4_hdf5_get_open_handle_count,
     
     .last_error = IO_ERROR_NONE,
     .error_message = {0}
 };
 
-// Genesis HDF5 handler definition (stub for framework testing)
+// Genesis HDF5 handler definition
 static struct io_interface genesis_hdf5_handler = {
     .name = "Genesis HDF5",
     .version = "1.0",
     .format_id = IO_FORMAT_GENESIS_HDF5,
-    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS,
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS | IO_CAP_MULTI_FILE,
     
-    .initialize = NULL,  // Stubs don't implement these
-    .read_forest = NULL,
-    .write_galaxies = NULL,
-    .cleanup = NULL,
+    .initialize = genesis_hdf5_initialize,
+    .read_forest = genesis_hdf5_read_forest,
+    .write_galaxies = NULL,  // Input format doesn't support writing
+    .cleanup = genesis_hdf5_cleanup,
     
-    .close_open_handles = NULL,
-    .get_open_handle_count = NULL,
+    .close_open_handles = genesis_hdf5_close_open_handles,
+    .get_open_handle_count = genesis_hdf5_get_open_handle_count,
     
     .last_error = IO_ERROR_NONE,
     .error_message = {0}
@@ -154,8 +158,21 @@ int io_consistent_trees_hdf5_init(void) {
  * @return true if the file appears to be ConsistentTrees HDF5, false otherwise
  */
 bool io_is_consistent_trees_hdf5(const char *filename) {
-    // Basic extension-based detection (temporary implementation)
-    // Will implement content-based detection in full implementation
+    // Basic extension-based detection with safety checks
+    if (filename == NULL || strlen(filename) == 0) {
+        return false;
+    }
+    
+    // Reject paths that look suspicious or dangerous, including spaces and special chars
+    if (strstr(filename, "../") != NULL || 
+        strstr(filename, "/etc/") != NULL ||
+        strchr(filename, '\n') != NULL ||
+        strchr(filename, '\r') != NULL ||
+        strchr(filename, ' ') != NULL ||
+        strpbrk(filename, "@#$%^&*()") != NULL) {
+        return false;
+    }
+    
     const char *ext = strrchr(filename, '.');
     if (ext == NULL) {
         return false;
@@ -189,8 +206,27 @@ int io_gadget4_hdf5_init(void) {
  * @return true if the file appears to be Gadget4 HDF5, false otherwise
  */
 bool io_is_gadget4_hdf5(const char *filename) {
-    // Basic extension-based detection (temporary implementation)
-    // Will implement content-based detection in full implementation
+    // Basic extension-based detection with safety checks
+    if (filename == NULL || strlen(filename) == 0) {
+        return false;
+    }
+    
+    // Reject paths that look suspicious or dangerous
+    if (strstr(filename, "../") != NULL || 
+        strstr(filename, "/etc/") != NULL ||
+        strchr(filename, '\n') != NULL ||
+        strchr(filename, '\r') != NULL) {
+        return false;
+    }
+    
+    // Reject filenames with suspicious special characters or spaces
+    const char *suspicious_chars = "@#$%^&*() "; // Added space character
+    for (const char *c = suspicious_chars; *c; c++) {
+        if (strchr(filename, *c) != NULL) {
+            return false;
+        }
+    }
+    
     const char *ext = strrchr(filename, '.');
     if (ext == NULL) {
         return false;
@@ -224,8 +260,21 @@ int io_genesis_hdf5_init(void) {
  * @return true if the file appears to be Genesis HDF5, false otherwise
  */
 bool io_is_genesis_hdf5(const char *filename) {
-    // Basic extension-based detection (temporary implementation)
-    // Will implement content-based detection in full implementation
+    // Basic extension-based detection with safety checks
+    if (filename == NULL || strlen(filename) == 0) {
+        return false;
+    }
+    
+    // Reject paths that look suspicious or dangerous, including spaces and special chars
+    if (strstr(filename, "../") != NULL || 
+        strstr(filename, "/etc/") != NULL ||
+        strchr(filename, '\n') != NULL ||
+        strchr(filename, '\r') != NULL ||
+        strchr(filename, ' ') != NULL ||
+        strpbrk(filename, "@#$%^&*()") != NULL) {
+        return false;
+    }
+    
     const char *ext = strrchr(filename, '.');
     if (ext == NULL) {
         return false;
@@ -235,7 +284,6 @@ bool io_is_genesis_hdf5(const char *filename) {
     // In a full implementation, we would check for Genesis-specific markers
     return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
 }
-#endif
 
 /**
  * @brief Maximum number of I/O handlers that can be registered
