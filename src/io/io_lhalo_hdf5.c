@@ -68,8 +68,7 @@ static void get_forests_filename_lhalo_hdf5(char *filename, const size_t len, co
 // Stub functions to satisfy the linker
 // Real implementation needs to wait until Makefile is updated
 int io_lhalo_hdf5_init(void) {
-    // Temporary stub - will be properly implemented later
-    return 0; // Success
+    return io_register_handler(&lhalo_hdf5_handler);
 }
 
 /**
@@ -90,7 +89,16 @@ struct io_interface *io_get_lhalo_hdf5_handler(void) {
  * @return true if the file is in LHalo HDF5 format, false otherwise
  */
 bool io_is_lhalo_hdf5(const char *filename) {
-    // Temporary stub - will be properly implemented later
+    // Check for NULL or empty filename
+    if (filename == NULL || strlen(filename) == 0) {
+        return false;
+    }
+    
+    // Security check: reject suspicious paths
+    if (strstr(filename, "..") != NULL || strchr(filename, '\n') != NULL) {
+        return false;
+    }
+    
     // Just check for HDF5 extension for now
     const char *ext = strrchr(filename, '.');
     if (ext == NULL) {

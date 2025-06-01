@@ -11,6 +11,7 @@
 #include "io_gadget4_hdf5.h"
 #include "io_genesis_hdf5.h"
 #include "io_consistent_trees_hdf5.h"
+#include "io_lhalo_hdf5.h"
 #endif
 /**
  * @brief Temporary HDF5 handler stub implementations
@@ -26,25 +27,8 @@
  * Makefile is updated to include the complete implementations.
  */
 
-// HDF5 stubs implemented here until Makefile is updated
 // HDF5 handler stub definitions - These will be replaced by full implementations
-static struct io_interface lhalo_hdf5_handler = {
-    .name = "LHalo HDF5",
-    .version = "1.0",
-    .format_id = IO_FORMAT_LHALO_HDF5,
-    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_MULTI_FILE | IO_CAP_METADATA_QUERY | IO_CAP_METADATA_ATTRS,
-    
-    .initialize = NULL,  // Stubs don't implement these
-    .read_forest = NULL,
-    .write_galaxies = NULL,
-    .cleanup = NULL,
-    
-    .close_open_handles = NULL,
-    .get_open_handle_count = NULL,
-    
-    .last_error = IO_ERROR_NONE,
-    .error_message = {0}
-};
+// Note: LHalo HDF5 handler now implemented in src/io/io_lhalo_hdf5.c
 
 // ConsistentTrees HDF5 handler definition
 static struct io_interface consistent_trees_hdf5_handler = {
@@ -103,37 +87,7 @@ static struct io_interface genesis_hdf5_handler = {
     .error_message = {0}
 };
 
-/**
- * @brief Initialize the LHalo HDF5 handler stub
- * 
- * Registers the stub handler with the I/O interface system.
- * This will be replaced by a full implementation in a separate file.
- * 
- * @return 0 on success, non-zero on failure
- */
-int io_lhalo_hdf5_init(void) {
-    // Register the stub handler for framework testing
-    return io_register_handler(&lhalo_hdf5_handler);
-}
-
-/**
- * @brief Detect if a file is in LHalo HDF5 format
- * 
- * Currently uses a basic extension check, will be enhanced with
- * content-based detection in the full implementation.
- * 
- * @param filename File to check
- * @return true if the file appears to be LHalo HDF5, false otherwise
- */
-bool io_is_lhalo_hdf5(const char *filename) {
-    // Basic extension-based detection (temporary implementation)
-    const char *ext = strrchr(filename, '.');
-    if (ext == NULL) {
-        return false;
-    }
-    
-    return (strcmp(ext, ".hdf5") == 0 || strcmp(ext, ".h5") == 0);
-}
+// Note: io_lhalo_hdf5_init() and io_is_lhalo_hdf5() now implemented in src/io/io_lhalo_hdf5.c
 
 /**
  * @brief Initialize the ConsistentTrees HDF5 handler stub
