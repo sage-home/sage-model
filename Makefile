@@ -308,7 +308,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_dynamic_library test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework
+.PHONY: clean celan celna clena tests all test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_dynamic_library test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation
 
 all: $(SAGELIB) $(EXEC)
 
@@ -365,7 +365,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_empty_pipeline
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_empty_pipeline test_parameter_validation
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_patterns
@@ -475,6 +475,9 @@ test_core_merger_processor: tests/test_core_merger_processor.c $(SAGELIB)
 
 test_config_system: tests/test_config_system.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_config_system tests/test_config_system.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_parameter_validation: tests/test_parameter_validation.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_parameter_validation tests/test_parameter_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_empty_pipeline: tests/test_empty_pipeline.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_empty_pipeline tests/test_empty_pipeline.c -L. -l$(LIBNAME) $(LIBFLAGS)
