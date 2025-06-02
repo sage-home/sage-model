@@ -150,6 +150,32 @@ static void test_module_cleanup_lifecycle(void) {
 }
 
 /**
+ * Test: Module Error Condition Handling
+ * Tests defensive programming aspects and input validation
+ */
+static void test_module_error_conditions(void) {
+    printf("\n=== Testing module error condition handling ===\n");
+    
+    // Test 1: NULL data_ptr should be handled gracefully (defensive programming)
+    int result_null_data = placeholder_mergers_module.initialize(&test_ctx.test_params, NULL);
+    TEST_ASSERT(result_null_data == MODULE_STATUS_INVALID_ARGS, 
+                "Initialization with NULL data_ptr should return MODULE_STATUS_INVALID_ARGS");
+    
+    // Test 2: NULL params should be handled gracefully (module ignores params) 
+    void *test_data_ptr = NULL;
+    int result_null_params = placeholder_mergers_module.initialize(NULL, &test_data_ptr);
+    TEST_ASSERT(result_null_params == MODULE_STATUS_SUCCESS, "Initialization should handle NULL params gracefully");
+    TEST_ASSERT(test_data_ptr != NULL, "Module data should be allocated even with NULL params");
+    
+    // Clean up allocated test data
+    if (test_data_ptr && placeholder_mergers_module.cleanup) {
+        placeholder_mergers_module.cleanup(test_data_ptr);
+    }
+    
+    printf("  Error condition testing completed - defensive programming validated\n");
+}
+
+/**
  * Test: HandleMerger Function via module_invoke
  */
 static void test_handle_merger_function(void) {
@@ -283,6 +309,7 @@ int main(void) {
     test_module_registration();
     test_module_initialization();
     test_module_cleanup_lifecycle();
+    test_module_error_conditions();
     test_handle_merger_function();
     test_handle_disruption_function();
     test_invalid_function_handling();

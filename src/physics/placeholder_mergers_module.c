@@ -35,6 +35,12 @@ static int handle_disruption_event_stub(void *module_data, void *args_ptr, struc
  * @brief Initialize the placeholder mergers module
  */
 static int placeholder_mergers_init(struct params *params, void **data_ptr) {
+    /* Validate input parameters */
+    if (data_ptr == NULL) {
+        LOG_ERROR("Invalid NULL data pointer passed to placeholder mergers module initialization");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
     /* Mark unused parameter */
     (void)params;
     
