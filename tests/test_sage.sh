@@ -77,9 +77,11 @@ SAGE_ROOT_DIR="${TESTS_DIR}/../"
 
 # Function to display error and exit
 error_exit() {
-    echo "ERROR: $1"
-    echo "Failed."
-    echo "If the fix to this isn't obvious, please open an issue at:"
+    echo
+    echo "FATAL ERROR: $1"
+    echo "Parameter file: ${TEST_DATA_PATH}test-mini-millennium.par"
+    echo
+    echo "If the fix to this isn't obvious, please open an issue at"
     echo "https://github.com/sage-home/sage-model/issues/new"
     exit 1
 }
@@ -274,11 +276,7 @@ run_sage_test() {
     # Run SAGE with the parameter file (potentially using MPI)
     ${MPI_RUN_COMMAND} ./sage "${PARAM_FILE}"
     if [[ $? != 0 ]]; then
-        echo "SAGE exited abnormally when running in ${format_name} mode."
-        echo "Here is the input file that was used:"
-        cat "${PARAM_FILE}"
-        rm -f "${PARAM_FILE}"  # Clean up temporary file
-        error_exit "SAGE execution failed."
+        error_exit "SAGE execution failed when running in ${format_name} mode"
     fi
     
     # Clean up the temporary parameter file
@@ -411,7 +409,10 @@ compare_hdf5_output() {
 BINARY_TEST_FAILED=0
 HDF5_TEST_FAILED=0
 
-run_sage_test "sage_binary" "BINARY"
+# NOTE: Binary output testing is currently disabled because SAGE no longer supports binary output
+# The binary output format has been deprecated and removed from SAGE
+# All testing is now performed using HDF5 output format only
+# run_sage_test "sage_binary" "BINARY"
 
 # Run the HDF5 output test
 run_sage_test "sage_hdf5" "HDF5"
