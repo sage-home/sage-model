@@ -49,7 +49,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_hdf5_output** | Tests the HDF5 output handler | Phase 3.2 (Apr 2025) |
 | **test_io_memory_map** | Tests memory mapping for I/O operations with comprehensive edge case coverage, template-compliant formatting, and robust error handling (38 tests) | Phase 3.3 (Apr 2025), Enhanced (Jun 2025) |
 | **test_io_buffer_manager** | Tests the buffered I/O system | Phase 3.3 (Apr 2025) |
-| ✅ **test_validation_framework** | Tests validation framework | Phase 5.2.F.3 (May 2025) |
+| **test_validation_framework** | Tests validation framework | Phase 5.2.F.3 (May 2025) |
 
 ### Module System Tests (`MODULE_TESTS`)
 
