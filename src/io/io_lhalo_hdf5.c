@@ -44,19 +44,7 @@ static struct io_interface lhalo_hdf5_handler = {
     .error_message = {0}
 };
 
-/**
- * @brief Get filename for a specific forest file
- *
- * @param filename Buffer to store the filename
- * @param len Length of the buffer
- * @param filenr File number
- * @param run_params Runtime parameters
- */
-static void get_forests_filename_lhalo_hdf5(char *filename, const size_t len, const int filenr, const struct params *run_params)
-{
-    snprintf(filename, len - 1, "%s/%s.%d%s", run_params->io.SimulationDir, 
-             run_params->io.TreeName, filenr, run_params->io.TreeExtension);
-}
+
 
 /**
  * @brief Initialize the LHalo HDF5 I/O handler
