@@ -126,14 +126,9 @@ int module_register_function(
     module_function_registry_t *registry = module->function_registry;
     for (int i = 0; i < registry->num_functions; i++) {
         if (strcmp(registry->functions[i].name, name) == 0) {
-            /* Function already exists - update it instead of failing */
-            LOG_DEBUG("Function '%s' already registered with module %d, updating registration", name, module_id);
-            module_function_t *func = &registry->functions[i];
-            func->function_ptr = function_ptr;
-            func->return_type = return_type;
-            func->signature = signature;
-            func->description = description;
-            return MODULE_STATUS_SUCCESS;
+            /* Function already exists - this is an error */
+            LOG_ERROR("Function '%s' already registered with module %d (duplicate registration not allowed)", name, module_id);
+            return MODULE_STATUS_ERROR;
         }
     }
     

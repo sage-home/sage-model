@@ -491,6 +491,96 @@ If a module factory is failing to create a module:
 
 ## Module Development Guidelines
 
+### Duplicate Registration Prevention Policy
+
+**SAGE enforces strict duplicate registration prevention** as part of its "fail fast" philosophy. This policy ensures clean architectural boundaries and helps detect development errors early.
+
+#### Function Registration
+- **No Duplicate Function Names**: Attempting to register a function with a name that already exists in the same module will result in `MODULE_STATUS_ERROR`
+- **Explicit Error Handling**: The system will not silently update existing registrations - duplicates are always an error condition
+- **Clear Error Messages**: Duplicate registration attempts will generate clear error messages indicating the specific function name and module
+
+Example:
+```c
+// First registration - succeeds
+int result1 = module_register_function(module_id, "calculate_cooling_rate", func_ptr, ...);
+// result1 == MODULE_STATUS_SUCCESS
+
+// Duplicate registration - fails
+int result2 = module_register_function(module_id, "calculate_cooling_rate", func_ptr2, ...);
+// result2 == MODULE_STATUS_ERROR
+// Error message: "Function 'calculate_cooling_rate' already registered with module X"
+```
+
+#### Module Registration  
+- **No Duplicate Module Registration**: The module system tracks initialization state and prevents re-initialization
+- **Proper State Tracking**: Attempting to initialize an already-initialized module returns `MODULE_STATUS_ALREADY_INITIALIZED`
+- **System API Usage**: Always use `module_initialize()` rather than calling module functions directly
+
+### API Usage Guidelines
+
+**Critical: Always use module system APIs rather than bypassing built-in protections.**
+
+#### Correct Module Lifecycle Management
+```c
+// CORRECT: Use system APIs with built-in protections
+int module_id;
+int register_result = module_register(&my_module);       // Register module structure
+module_id = my_module.module_id;                         // Get assigned ID
+int init_result = module_initialize(module_id, params);  // Initialize via system API
+
+// Handle re-initialization appropriately
+if (init_result == MODULE_STATUS_ALREADY_INITIALIZED) {
+    // This is expected and handled gracefully
+    LOG_DEBUG("Module already initialized");
+}
+```
+
+#### Incorrect Approaches (DO NOT USE)
+```c
+// INCORRECT: Bypasses system protections
+my_module.initialize(params, &data);  // Wrong! Bypasses initialization tracking
+
+// INCORRECT: Ignores duplicate registration
+module_register_function(module_id, "same_name", func1, ...);
+module_register_function(module_id, "same_name", func2, ...);  // Wrong! Should fail
+```
+
+#### Testing Best Practices
+When writing tests for modules:
+
+1. **Use System APIs**: Call `module_initialize()`, not module functions directly
+2. **Handle Expected Errors**: Test that duplicate registration properly fails
+3. **Verify State Tracking**: Ensure re-initialization returns `MODULE_STATUS_ALREADY_INITIALIZED`
+4. **Test Lifecycle Completely**: Include registration, initialization, execution, and cleanup
+
+Example test pattern:
+```c
+static void test_module_lifecycle(void) {
+    // Register module
+    int register_result = module_register(&test_module);
+    TEST_ASSERT(register_result == MODULE_STATUS_SUCCESS, "Registration should succeed");
+    
+    // Initialize using system API
+    int module_id = test_module.module_id;
+    int init_result = module_initialize(module_id, &params);
+    TEST_ASSERT(init_result == MODULE_STATUS_SUCCESS, "Initialization should succeed");
+    
+    // Test that re-initialization fails appropriately (fail fast behavior)
+    int reinit_result = module_initialize(module_id, &params);
+    TEST_ASSERT(reinit_result == MODULE_STATUS_ALREADY_INITIALIZED, 
+                "Re-initialization should return ALREADY_INITIALIZED");
+}
+```
+
+#### Rationale for Strict Policy
+
+This policy ensures:
+- **Clean Architecture**: Prevents modules from accidentally overwriting each other's functions
+- **Early Bug Detection**: Duplicate registrations usually indicate coding errors or misunderstood interfaces  
+- **Predictable Behavior**: System behavior is deterministic and explicit rather than depending on registration order
+- **Debugging Clarity**: Error messages clearly indicate what went wrong and where
+
 ### Essential Module Components
 
 Every module must have:

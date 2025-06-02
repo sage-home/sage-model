@@ -143,3 +143,8 @@ This separation ensures that core infrastructure has zero compile-time or direct
 - **Rationale**: Enables runtime configuration of merger physics, better testability, and cleaner separation of event triggering from physics implementation
 - **Impact**: Merger physics now fully configurable via parameters; core completely agnostic to merger implementation details; enables multiple merger physics modules simultaneously
 - **Alternative Rejected**: Direct POST phase execution by physics modules would have coupled event processing to specific module implementations
+
+2025-06-02: [Phase 5.2.G] Strict Duplicate Registration Prevention Policy
+- Rationale: Investigation revealed that the module system was incorrectly allowing duplicate function registrations by silently updating existing registrations instead of failing. This "silent recovery" approach hides bugs and violates the "fail fast" principle essential for robust software design. Both module registration and function registration should explicitly prevent duplicates.
+- Impact: Changed `module_register_function()` to return `MODULE_STATUS_ERROR` for duplicate function names instead of updating existing registrations. This ensures clean architectural boundaries, helps detect development errors early, and aligns with the modular architecture goal of explicit, controlled interactions. Tests updated to use proper system APIs (`module_initialize()`) rather than bypassing built-in protections.
+
