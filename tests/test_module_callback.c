@@ -417,7 +417,7 @@ static void teardown_test_context(void) {
  * Test: System Initialization and Cleanup
  */
 static void test_system_initialization(void) {
-    printf("\n=== Testing system initialization and cleanup ===\n");
+    printf("=== Testing system initialization and cleanup ===\n");
     
     // Test initialization (should already be initialized by setup)
     TEST_ASSERT(global_call_stack != NULL, "Global call stack should be initialized");
@@ -795,7 +795,18 @@ static void test_module_unregistration(void) {
 int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
     printf("\n========================================\n");
     printf("Starting tests for test_module_callback\n");
-    printf("========================================\n");
+    printf("========================================\n\n");
+    
+    printf("This test verifies that the module callback system provides controlled inter-module communication:\n");
+    printf("  1. System initialization creates proper callback infrastructure\n");
+    printf("  2. Function registration allows modules to expose callable functions\n");
+    printf("  3. Call stack tracking monitors execution flow and detects circular dependencies\n");
+    printf("  4. Parameter passing and return values work correctly between modules\n");
+    printf("  5. Error propagation flows properly through inter-module call chains\n");
+    printf("  6. Dependency management validates module relationships\n");
+    printf("  7. Call stack diagnostics provide debugging information\n");
+    printf("  8. Module unregistration properly cleans up function registrations\n");
+    printf("  9. System remains stable after error conditions and module lifecycle operations\n\n");
     
     // Setup
     if (setup_test_context() != 0) {
