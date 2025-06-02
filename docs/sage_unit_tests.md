@@ -19,11 +19,12 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_core_property**          | Tests the property system's core functionality with mock implementations      | Phase 5.2.B (May 2025)   |
 | **test_core_pipeline_registry** | Tests the pipeline registry for module registration and pipeline creation     | Phase 5.2.F (May 2025)   |
 | **test_dispatcher_access**      | Tests the type-safe dispatcher functions for property access                  | Phase 5.2.F.4 (May 2025) |
-| **test_memory_pool**            | Tests the memory pooling system with support for various property types and dynamic arrays | Phase 3.3 (Apr 2025)     |
+| **test_memory_pool**            | Tests the memory pooling system with support for various property types and dynamic arrays | Phase 3.3 (Apr 2025) |
 | **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
 | **test_merger_queue**           | Tests the merger event queue system for deferred merger processing            | Phase 5.1 (May 2025)     |
 | **test_core_merger_processor**  | Tests physics-agnostic merger event handling and dispatching                  | Phase 5.2.G (May 2025)   |
 | **test_empty_pipeline**         | Validates core-physics separation by running core infrastructure with placeholder modules only | Phase 5.2.F.2 (May 2025) |
+| **test_parameter_validation**   | Tests parameter file parsing, module discovery, and configuration errors      | Phase 5.2.F.3 (Jun 2025) |
 
 ### Property System Tests (`PROPERTY_TESTS`)
 
@@ -104,7 +105,7 @@ This test **intentionally produces ERROR messages** as part of its validation pr
 
 ## Test Categories Overview
 
-- **Core Infrastructure (12 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, core-physics separation validation, merger queue system
+- **Core Infrastructure (13 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, core-physics separation validation, merger queue system, parameter validation
 - **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, access patterns
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (4 tests)**: Dynamic loading, pipeline invocation, module callback system, placeholder modules
