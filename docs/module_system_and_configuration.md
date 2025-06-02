@@ -564,6 +564,149 @@ Every module must have:
    }
    ```
 
+### Input Validation Best Practices
+
+**All modules must implement robust input validation** to ensure system stability and provide clear error feedback. This is critical defensive programming that prevents crashes and aids debugging.
+
+#### Required Validation Patterns
+
+1. **Module Initialization Functions** must validate the `data_ptr` parameter:
+   ```c
+   static int my_module_init(struct params *params, void **data_ptr) {
+       /* Validate critical input parameters */
+       if (data_ptr == NULL) {
+           LOG_ERROR("Invalid NULL data pointer passed to %s initialization", MODULE_NAME);
+           return MODULE_STATUS_INVALID_ARGS;
+       }
+       
+       /* Note: params can be NULL if the module doesn't require parameters */
+       (void)params;  // Mark as intentionally unused if not needed
+       
+       /* Allocate and initialize module data */
+       struct my_module_data *data = calloc(1, sizeof(struct my_module_data));
+       if (data == NULL) {
+           LOG_ERROR("Failed to allocate memory for %s module data", MODULE_NAME);
+           return MODULE_STATUS_OUT_OF_MEMORY;
+       }
+       
+       /* Initialize module state */
+       data->initialized = true;
+       *data_ptr = data;
+       
+       return MODULE_STATUS_SUCCESS;
+   }
+   ```
+
+2. **Phase Execution Functions** must validate context and data:
+   ```c
+   static int my_module_execute_galaxy(void *data, struct pipeline_context *context) {
+       /* Validate module data */
+       if (data == NULL) {
+           LOG_ERROR("%s: NULL module data in galaxy phase execution", MODULE_NAME);
+           return MODULE_STATUS_INVALID_ARGS;
+       }
+       
+       /* Validate pipeline context */
+       if (context == NULL) {
+           LOG_ERROR("%s: NULL pipeline context in galaxy phase execution", MODULE_NAME);
+           return MODULE_STATUS_INVALID_ARGS;
+       }
+       
+       /* Validate galaxy array */
+       if (context->galaxies == NULL && context->ngal > 0) {
+           LOG_ERROR("%s: NULL galaxy array with ngal=%d", MODULE_NAME, context->ngal);
+           return MODULE_STATUS_INVALID_ARGS;
+       }
+       
+       struct my_module_data *module_data = (struct my_module_data *)data;
+       
+       /* Process galaxies with additional validation */
+       for (int i = 0; i < context->ngal; i++) {
+           struct GALAXY *galaxy = &context->galaxies[i];
+           if (galaxy == NULL) {
+               LOG_ERROR("%s: NULL galaxy at index %d", MODULE_NAME, i);
+               continue;  // Skip this galaxy but continue processing
+           }
+           
+           /* Perform module-specific galaxy processing */
+           // ...
+       }
+       
+       return MODULE_STATUS_SUCCESS;
+   }
+   ```
+
+3. **Cleanup Functions** must handle NULL data gracefully:
+   ```c
+   static int my_module_cleanup(void *data) {
+       /* Cleanup must handle NULL data gracefully */
+       if (data == NULL) {
+           LOG_DEBUG("%s: Cleanup called with NULL data (acceptable)", MODULE_NAME);
+           return MODULE_STATUS_SUCCESS;
+       }
+       
+       struct my_module_data *module_data = (struct my_module_data *)data;
+       
+       /* Perform any necessary cleanup of module state */
+       // Free any allocated resources...
+       
+       /* Free the module data structure */
+       free(module_data);
+       
+       return MODULE_STATUS_SUCCESS;
+   }
+   ```
+
+#### Validation Macros
+
+Consider defining validation macros for consistency:
+```c
+#define VALIDATE_NOT_NULL(param, name) \
+    do { \
+        if ((param) == NULL) { \
+            LOG_ERROR("%s: " name " parameter is NULL", MODULE_NAME); \
+            return MODULE_STATUS_INVALID_ARGS; \
+        } \
+    } while(0)
+
+#define VALIDATE_POSITIVE(param, name) \
+    do { \
+        if ((param) <= 0) { \
+            LOG_ERROR("%s: " name " parameter must be positive, got %d", MODULE_NAME, (param)); \
+            return MODULE_STATUS_INVALID_ARGS; \
+        } \
+    } while(0)
+```
+
+#### Callback Function Validation
+
+For modules that register callback functions:
+```c
+static int my_callback_function(void *module_data, void *args_ptr, struct pipeline_context *context) {
+    /* Validate all callback parameters */
+    VALIDATE_NOT_NULL(module_data, "module_data");
+    VALIDATE_NOT_NULL(args_ptr, "args_ptr");
+    VALIDATE_NOT_NULL(context, "pipeline_context");
+    
+    /* Cast and validate specific argument types */
+    my_args_t *args = (my_args_t *)args_ptr;
+    VALIDATE_NOT_NULL(args->event, "event");
+    
+    /* Perform callback logic */
+    return MODULE_STATUS_SUCCESS;
+}
+```
+
+#### Best Practices Summary
+
+- **Always validate NULL pointers** before dereferencing
+- **Use descriptive error messages** that include the module name and parameter name
+- **Return appropriate MODULE_STATUS_* codes** for different error conditions
+- **Handle edge cases gracefully** (e.g., empty galaxy arrays, zero counts)
+- **Log errors at appropriate levels** (ERROR for serious issues, DEBUG for acceptable edge cases)
+- **Continue processing when possible** rather than failing entire operations for single item errors
+- **Document validation assumptions** in function comments
+
 ### Property Access Guidelines
 
 Modules should follow these property access patterns:

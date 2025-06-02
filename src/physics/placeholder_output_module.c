@@ -32,6 +32,12 @@ static int placeholder_output_execute_final_phase(void *data, struct pipeline_co
  * @brief Initialize the placeholder output module
  */
 static int placeholder_output_init(struct params *params, void **data_ptr) {
+    /* Validate input parameters */
+    if (data_ptr == NULL) {
+        LOG_ERROR("Invalid NULL data pointer passed to placeholder output module initialization");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
     /* Mark unused parameter */
     (void)params;
     

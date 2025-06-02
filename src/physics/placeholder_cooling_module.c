@@ -39,6 +39,12 @@ struct base_module *placeholder_cooling_module_factory(void) {
  * @brief Initialize the placeholder cooling module
  */
 static int placeholder_cooling_init(struct params *params, void **data_ptr) {
+    /* Validate input parameters */
+    if (data_ptr == NULL) {
+        LOG_ERROR("Invalid NULL data pointer passed to placeholder cooling module initialization");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
     /* Mark unused parameter */
     (void)params;
     

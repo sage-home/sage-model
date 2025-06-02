@@ -33,6 +33,12 @@ static int placeholder_reincorporation_execute_galaxy_phase(void *data, struct p
  * @brief Initialize the placeholder reincorporation module
  */
 static int placeholder_reincorporation_init(struct params *params, void **data_ptr) {
+    /* Validate input parameters */
+    if (data_ptr == NULL) {
+        LOG_ERROR("Invalid NULL data pointer passed to placeholder reincorporation module initialization");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
     /* Mark unused parameter */
     (void)params;
     

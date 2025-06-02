@@ -33,6 +33,12 @@ static int placeholder_starformation_execute_galaxy_phase(void *data, struct pip
  * @brief Initialize the placeholder starformation module
  */
 static int placeholder_starformation_init(struct params *params, void **data_ptr) {
+    /* Validate input parameters */
+    if (data_ptr == NULL) {
+        LOG_ERROR("Invalid NULL data pointer passed to placeholder starformation module initialization");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
     /* Mark unused parameter */
     (void)params;
     

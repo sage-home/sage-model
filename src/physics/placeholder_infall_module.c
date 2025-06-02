@@ -44,6 +44,12 @@ struct base_module *placeholder_infall_module_factory(void) {
  * @brief Initialize the placeholder infall module
  */
 static int placeholder_infall_init(struct params *params, void **data_ptr) {
+    /* Validate input parameters */
+    if (data_ptr == NULL) {
+        LOG_ERROR("Invalid NULL data pointer passed to placeholder infall module initialization");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
     /* Mark unused parameter */
     (void)params;
     

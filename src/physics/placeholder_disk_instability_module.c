@@ -33,6 +33,12 @@ static int placeholder_disk_instability_execute_galaxy_phase(void *data, struct 
  * @brief Initialize the placeholder disk instability module
  */
 static int placeholder_disk_instability_init(struct params *params, void **data_ptr) {
+    /* Validate input parameters */
+    if (data_ptr == NULL) {
+        LOG_ERROR("Invalid NULL data pointer passed to placeholder disk instability module initialization");
+        return MODULE_STATUS_INVALID_ARGS;
+    }
+    
     /* Mark unused parameter */
     (void)params;
     
