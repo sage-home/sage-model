@@ -220,6 +220,7 @@ static int setup_test_context(void) {
     test_ctx.test_module_a.execute_halo_phase = mock_module_execute_halo;
     test_ctx.test_module_a.execute_galaxy_phase = mock_module_execute_galaxy;
     test_ctx.test_module_a.phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY;
+    test_ctx.test_module_a.module_id = -1;  // Initialize to unregistered state
     
     // Setup mock module B
     strcpy(test_ctx.test_module_b.name, "test_module_b");
@@ -230,12 +231,14 @@ static int setup_test_context(void) {
     test_ctx.test_module_b.cleanup = mock_module_cleanup;
     test_ctx.test_module_b.execute_galaxy_phase = mock_module_execute_galaxy;
     test_ctx.test_module_b.phases = PIPELINE_PHASE_GALAXY;
+    test_ctx.test_module_b.module_id = -1;  // Initialize to unregistered state
     
     // Setup invalid module for error testing
     strcpy(test_ctx.test_module_invalid.name, "");  // Invalid empty name
     test_ctx.test_module_invalid.type = MODULE_TYPE_MISC;
     test_ctx.test_module_invalid.initialize = mock_module_init_fail;
     test_ctx.test_module_invalid.cleanup = mock_module_cleanup;
+    test_ctx.test_module_invalid.module_id = -1;  // Initialize to unregistered state
     
     // Setup temporary module for registration/unregistration tests
     strcpy(test_ctx.test_module_temp.name, "test_module_temp");
@@ -245,6 +248,7 @@ static int setup_test_context(void) {
     test_ctx.test_module_temp.initialize = mock_module_init;
     test_ctx.test_module_temp.cleanup = mock_module_cleanup;
     test_ctx.test_module_temp.phases = PIPELINE_PHASE_FINAL;
+    test_ctx.test_module_temp.module_id = -1;  // Initialize to unregistered state
     
     printf("Test context setup completed successfully\n");
     return 0;
@@ -616,6 +620,7 @@ static void test_error_memory_pressure(void) {
     memory_test_module.type = MODULE_TYPE_MISC;
     memory_test_module.initialize = mock_module_init_fail;  // This will fail
     memory_test_module.cleanup = mock_module_cleanup;
+    memory_test_module.module_id = -1;  // Initialize to unregistered state
     
     int result = module_register(&memory_test_module);
     TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Module registration should succeed");
@@ -649,6 +654,7 @@ static void test_error_partial_failures(void) {
         strcpy(test_modules[i].author, "Test Suite");
         test_modules[i].type = MODULE_TYPE_MISC;
         test_modules[i].cleanup = mock_module_cleanup;
+        test_modules[i].module_id = -1;  // Initialize to unregistered state
         
         if (i == 1) {
             // Make middle module fail initialization

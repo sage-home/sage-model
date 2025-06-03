@@ -778,6 +778,9 @@ int module_system_cleanup(void) {
                 module->dependencies = NULL;
                 module->num_dependencies = 0;
             }
+            
+            /* Reset module ID to indicate it's no longer registered */
+            module->module_id = -1;
         }
         
         /* If this is a dynamically loaded module, unload it */
