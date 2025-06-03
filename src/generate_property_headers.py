@@ -760,45 +760,16 @@ def generate_allocate_arrays_code(properties):
     # Find properties with dynamic arrays
     dynamic_arrays = [p for p in properties if parse_type(p['type'])[3]]
     if dynamic_arrays:
-        # Add physics-free mode detection - check config system directly
-        code_lines.extend([
-            "    /* Check if we're in physics-free mode by examining config system directly */",
-            "    bool physics_free_mode = false;",
-            "    ",
-            "    /* Physics-free mode: no config OR no modules.instances array */",
-            "    if (global_config == NULL || global_config->root == NULL) {",
-            "        physics_free_mode = true;",
-            "    } else {",
-            "        const struct config_value *modules_instances = config_get_value(\"modules.instances\");",
-            "        if (modules_instances == NULL || ",
-            "            modules_instances->type != CONFIG_VALUE_ARRAY ||",
-            "            modules_instances->u.array.count == 0) {",
-            "            physics_free_mode = true;",
-            "        }",
-            "    }",
-            "    ",
-            "    if (physics_free_mode) {",
-            "        LOG_DEBUG(\"Physics-free mode detected - only allocating core properties\");",
-            "    }",
-            ""
-        ])
         
         for prop in dynamic_arrays:
             base_type = parse_type(prop['type'])[0]
             is_core = prop.get('is_core', True)  # Default to true for safety
             
-            if not is_core:
-                # Physics property - only allocate if modules are loaded
-                code_lines.extend([
-                    f"    /* {prop['name']} - physics property, skip in physics-free mode */",
-                    f"    if (!physics_free_mode) {{"
-                ])
-            else:
-                # Core property - always allocate
-                code_lines.append(f"    /* {prop['name']} - core property, always allocate */")
-            
+            prop_type_comment = "core" if is_core else "physics"
+            code_lines.append(f"    /* {prop['name']} - {prop_type_comment} dynamic array, always allocate if present in build */")
+                        
             # Standard allocation logic (indented for physics properties)
-            indent = "        " if not is_core else "    "
+            indent = "        "
             code_lines.extend([
                 f"{indent}if (PROPERTY_META[PROP_{prop['name']}].size_parameter != NULL) {{",
                 f"{indent}    // Get size from parameters",
@@ -818,10 +789,6 @@ def generate_allocate_arrays_code(properties):
                 f"{indent}    LOG_DEBUG(\"Allocated dynamic array '{prop['name']}' with size %d\", resolved_size);",
                 f"{indent}}}"
             ])
-            
-            if not is_core:
-                # Close the physics property conditional block
-                code_lines.append("    }")
     
     return "\n".join(code_lines)
 
@@ -1354,6 +1321,12 @@ def generate_helper_functions(properties):
             f"        LOG_ERROR(\"Cannot set negative size for {prop['name']} array\");",
             f"        return -1;",
             f"    }}",
+            f"    if (size < 0) {{",
+            f"        LOG_ERROR(\"Cannot set negative size for {prop['name']} array. Requested size: %d\", size);",
+            f"        g->properties->{prop['name']}_size = 0; /* Ensure size is non-negative on error */",
+            f"        if (g->properties->{prop['name']} != NULL) {{ free(g->properties->{prop['name']}); g->properties->{prop['name']} = NULL; }} /* Free if already allocated */",
+            f"        return -1; /* Indicate error */",
+            f"    }}",            
             f"    ",
             f"    /* Free existing array if present */",
             f"    if (g->properties->{prop['name']} != NULL) {{",
