@@ -1477,9 +1477,7 @@ int config_configure_modules(struct params *params) {
         return -1;
     }
     
-    /* Module system now uses self-registering modules via C constructor attributes */
-    /* No need for search paths or discovery - modules register themselves during library loading */
-    LOG_INFO("Module configuration: using self-registering modules (no discovery needed)");
+    LOG_INFO("Configuring module system");
     
     /* Configure individual modules */
     const struct config_value *modules = config_get_value("modules.instances");

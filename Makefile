@@ -305,7 +305,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_dynamic_library test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation
+.PHONY: clean celan celna clena tests all test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation
 
 all: $(SAGELIB) $(EXEC)
 
@@ -371,7 +371,7 @@ PROPERTY_TESTS = test_property_serialization test_property_array_access test_pro
 IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_memory_map test_io_buffer_manager test_validation_framework
 
 # Module system tests
-MODULE_TESTS = test_dynamic_library test_pipeline_invoke test_module_callback
+MODULE_TESTS = test_pipeline_invoke test_module_callback
 
 # All unit tests (excludes complex integration tests with individual Makefiles)
 UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS)
@@ -451,9 +451,6 @@ test_io_buffer_manager: tests/test_io_buffer_manager.c $(SAGELIB)
 
 test_validation_framework: tests/test_validation_framework.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_validation_framework tests/test_validation_framework.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
-test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_library tests/test_dynamic_library.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline_invoke tests/test_pipeline_invoke.c -L. -l$(LIBNAME) $(LIBFLAGS)

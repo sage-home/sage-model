@@ -170,11 +170,6 @@ struct module_registry {
         int module_index;
     } active_modules[MODULE_TYPE_MAX];
     int num_active_types;
-    
-    // Search paths configuration
-    char module_paths[MAX_MODULE_PATHS][MAX_MODULE_PATH];
-    int num_module_paths;
-    bool discovery_enabled;
 };
 ```
 
@@ -258,8 +253,7 @@ struct base_module {
     int last_error;
     char error_message[MAX_ERROR_MESSAGE];
     
-    // Module manifest and function registry
-    struct module_manifest *manifest;
+    // Function registry
     module_function_registry_t *function_registry;
     
     // Dependencies and phases
@@ -327,10 +321,6 @@ SAGE uses JSON configuration files (typically in `input/config.json`) to determi
 ```json
 {
     "modules": {
-        "discovery_enabled": true,
-        "search_paths": [
-            "./src/physics"
-        ],
         "instances": [
             {
                 "name": "cooling_module",  // Must match factory registration name

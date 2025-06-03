@@ -45,9 +45,6 @@ PartMass        0.0860657
 %----- Module system configuration ---------
 %------------------------------------------
 
-ModuleDir                 ./src/physics % directory to search for modules
-EnableModuleDiscovery     1             % enable automatic module discovery (0: disabled, 1: enabled)
-ModuleConfigFile          ./tests/test_data/empty_pipeline_config.json
 ModuleConfigFile          ./tests/test_data/empty_pipeline_config.json
 
 

@@ -476,3 +476,13 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Created files: src/physics/physics_essential_functions.c/.h, tests/test_physics_free_mode.c
 - Modified files: src/core/core_read_parameter_file.c, src/core/core_pipeline_registry.c, Makefile, docs/module_system_and_configuration.md, docs/core_physics_separation.md, docs/physics_free_model.md
 - Archived files: All placeholder modules, tests, and configuration files to ignore/placeholder_modules_20250603/
+
+2025-06-03: [Phase 5.2.H] Complete Manifest & Discovery System Removal ✅ COMPLETED  
+- Implemented complete removal of legacy manifest parsing and module discovery infrastructure as per enhanced refactoring plan
+- Removed module_manifest struct, discovery functions, search paths, and all related constants from core module system
+- Cleaned module system initialization, configuration, and pipeline validation to use self-registering architecture exclusively
+- Updated parameter files removing ModuleDir/EnableModuleDiscovery references, documentation removing discovery/manifest refs
+- Fixed compiler warnings, updated unit test documentation removing test_dynamic_library references  
+- System now operates purely on self-registering modules with JSON configuration controlling activation
+- Modified files: src/core/core_module_system.h/.c, src/core/core_config_system.c, src/core/sage.c, src/core/core_init.c, src/core/core_pipeline_system.c, tests/test_data/*.par, docs/module_system_and_configuration.md, docs/config_system.md, docs/sage_unit_tests.md, Makefile
+- Archived files: tests/test_dynamic_library.c to ignore/tests/

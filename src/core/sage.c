@@ -49,9 +49,6 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     run_params->runtime.ThisTask = ThisTask;
     run_params->runtime.NTasks = NTasks;
     
-    /* Module system now uses self-registering modules via C constructor attributes */
-    /* No initialization needed for module discovery/paths */
-    
     *params = run_params;
 
     int32_t status = read_parameter_file(param_file, run_params);

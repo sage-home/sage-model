@@ -127,9 +127,7 @@ int initialize_module_system(struct params *run_params)
         /* Continue anyway - configure handles NULL params with defaults */
     }
     
-    /* Module system is now self-registering via C constructor attributes */
-    /* No discovery needed - modules register themselves during library loading */
-    LOG_INFO("Module system initialized - modules self-register via constructor attributes");
+    LOG_INFO("Module system initialized");
     
     return MODULE_STATUS_SUCCESS;
 }

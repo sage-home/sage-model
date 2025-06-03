@@ -36,7 +36,6 @@ tests/test_lhalo_binary_mmap
 tests/test_memory_map
 tests/test_memory_mapping_param
 tests/test_memory_pool
-tests/test_dynamic_library
 tests/test_error_integration
 tests/test_evolution_diagnostics
 tests/test_evolve_integration

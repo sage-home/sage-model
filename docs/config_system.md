@@ -491,11 +491,6 @@ The SAGE configuration follows this general structure. **Note**: This is an exam
 ```json
 {
     "modules": {
-        "discovery_enabled": true,
-        "search_paths": [
-            "./src/physics",
-            "./modules"
-        ],
         "instances": [
             {
                 "name": "cooling_module",
@@ -547,9 +542,8 @@ The SAGE configuration follows this general structure. **Note**: This is an exam
 
 ### Module System Integration
 The configuration system directly feeds the module system by:
-1. Providing module discovery settings (`modules.discovery_enabled`, `modules.search_paths`)
-2. Determining which modules to activate (`modules.instances[].enabled`)
-3. Providing module-specific parameters (`modules.instances[].parameters`)
+1. Determining which modules to activate (`modules.instances[].enabled`)
+2. Providing module-specific parameters (`modules.instances[].parameters`)
 
 ### Pipeline Integration
 The pipeline configuration determines execution order and activated modules:

@@ -570,12 +570,8 @@ bool pipeline_validate(struct module_pipeline *pipeline) {
             continue;
         }
 
-        /* Module validation is simplified since modules self-register */
-        /* Extension validation is handled during module registration */
         LOG_DEBUG("Step '%s' validated with module type %s", step->step_name, module_type_name(step->type));
     }
-
-    /* We've already validated extensions in the loop above, no need to check again */
 
     return true;
 }

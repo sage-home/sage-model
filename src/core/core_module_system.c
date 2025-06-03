@@ -275,6 +275,8 @@ int module_system_initialize(void) {
  * @return MODULE_STATUS_SUCCESS on success, error code on failure
  */
 int module_system_configure(struct params *params) {
+    (void)params; /* Parameter preserved for API compatibility */
+    
     if (global_module_registry == NULL) {
         LOG_ERROR("Module system not initialized");
         return MODULE_STATUS_NOT_INITIALIZED;

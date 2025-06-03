@@ -45,9 +45,6 @@ PartMass        0.0860657
 %----- Module system configuration ---------
 %------------------------------------------
 
-ModuleDir                 ./modules     % directory to search for modules
-EnableModuleDiscovery     1             % enable automatic module discovery (0: disabled, 1: enabled)
-
 
 %------------------------------------------
 %----- SAGE recipe options ----------------
