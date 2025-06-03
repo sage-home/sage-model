@@ -613,7 +613,7 @@ static void test_error_memory_pressure(void) {
     
     // This is a simulation - in a real scenario you'd exhaust memory
     // For testing purposes, we'll use modules with failing initialization
-    struct base_module memory_test_module;
+    static struct base_module memory_test_module;
     strcpy(memory_test_module.name, "memory_test_unique");
     strcpy(memory_test_module.version, "1.0.0");
     strcpy(memory_test_module.author, "Test Suite");
@@ -647,7 +647,7 @@ static void test_error_partial_failures(void) {
     unique_counter++;
     
     // Test that system remains consistent after initialization failures
-    struct base_module test_modules[3];
+    static struct base_module test_modules[3];
     for (int i = 0; i < 3; i++) {
         snprintf(test_modules[i].name, MAX_MODULE_NAME, "partial_test_%d_%d", unique_counter, i);
         strcpy(test_modules[i].version, "1.0.0");
@@ -721,7 +721,7 @@ static void test_integration_pipeline(void) {
     pipeline_counter++;
     
     // Register fresh modules for pipeline testing
-    struct base_module pipeline_module;
+    static struct base_module pipeline_module;
     snprintf(pipeline_module.name, MAX_MODULE_NAME, "pipeline_test_%d", pipeline_counter);
     strcpy(pipeline_module.version, "1.0.0");
     strcpy(pipeline_module.author, "Test Suite");
@@ -767,7 +767,7 @@ static void test_integration_complete_lifecycle(void) {
     lifecycle_counter++;
     
     // Test complete lifecycle from registration to cleanup
-    struct base_module lifecycle_module;
+    static struct base_module lifecycle_module;
     snprintf(lifecycle_module.name, MAX_MODULE_NAME, "lifecycle_test_%d", lifecycle_counter);
     strcpy(lifecycle_module.version, "1.0.0");
     strcpy(lifecycle_module.author, "Test Suite");
