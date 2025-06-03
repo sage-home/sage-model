@@ -228,28 +228,6 @@ int dispatch_property_transformer(const struct GALAXY *galaxy,
     
     // Auto-generated if/else if chain based on property name
 {dispatcher_if_chain}
-    {{
-        // Default identity transformation for properties without a transformer
-        if (galaxy->properties == NULL) {{
-            LOG_ERROR("Galaxy properties is NULL for property '%s'", output_prop_name);
-            return -1;
-        }}
-        
-        // This uses the output_prop_id to fetch the raw value
-        if (h5_dtype == H5T_NATIVE_FLOAT) {{
-            *((float*)output_buffer_element_ptr) = get_float_property(galaxy, output_prop_id, 0.0f);
-        }} else if (h5_dtype == H5T_NATIVE_DOUBLE) {{
-            *((double*)output_buffer_element_ptr) = get_double_property(galaxy, output_prop_id, 0.0);
-        }} else if (h5_dtype == H5T_NATIVE_INT) {{
-            *((int32_t*)output_buffer_element_ptr) = get_int32_property(galaxy, output_prop_id, 0);
-        }} else if (h5_dtype == H5T_NATIVE_LLONG) {{
-            // Assuming int64_t for H5T_NATIVE_LLONG output
-            *((int64_t*)output_buffer_element_ptr) = get_int64_property(galaxy, output_prop_id, 0LL);
-        }} else {{
-            LOG_ERROR("Unsupported HDF5 type for default identity transform of property '%s'", output_prop_name);
-            status = -1;
-        }}
-    }}
     
     return status;
 }}
@@ -678,10 +656,52 @@ def generate_transformer_dispatch_chain(properties):
     if chains:
         for i in range(1, len(chains)):
             chains[i] = "else " + chains[i]
+        # Add the default else clause when there are transformers
+        chains.append("""    else {
+        // Default identity transformation for properties without a transformer
+        if (galaxy->properties == NULL) {
+            LOG_ERROR("Galaxy properties is NULL for property '%s'", output_prop_name);
+            return -1;
+        }
+        
+        // This uses the output_prop_id to fetch the raw value
+        if (h5_dtype == H5T_NATIVE_FLOAT) {
+            *((float*)output_buffer_element_ptr) = get_float_property(galaxy, output_prop_id, 0.0f);
+        } else if (h5_dtype == H5T_NATIVE_DOUBLE) {
+            *((double*)output_buffer_element_ptr) = get_double_property(galaxy, output_prop_id, 0.0);
+        } else if (h5_dtype == H5T_NATIVE_INT) {
+            *((int32_t*)output_buffer_element_ptr) = get_int32_property(galaxy, output_prop_id, 0);
+        } else if (h5_dtype == H5T_NATIVE_LLONG) {
+            // Assuming int64_t for H5T_NATIVE_LLONG output
+            *((int64_t*)output_buffer_element_ptr) = get_int64_property(galaxy, output_prop_id, 0LL);
+        } else {
+            LOG_ERROR("Unsupported HDF5 type for default identity transform of property '%s'", output_prop_name);
+            status = -1;
+        }
+    }""")
         return "\n".join(chains)
     else:
-        # No transformers available - return empty chain
-        return "    /* No transformers available for current property set */"
+        # No transformers available - provide default identity transformation only
+        return """    // Default identity transformation (no custom transformers available)
+    if (galaxy->properties == NULL) {
+        LOG_ERROR("Galaxy properties is NULL for property '%s'", output_prop_name);
+        return -1;
+    }
+    
+    // This uses the output_prop_id to fetch the raw value
+    if (h5_dtype == H5T_NATIVE_FLOAT) {
+        *((float*)output_buffer_element_ptr) = get_float_property(galaxy, output_prop_id, 0.0f);
+    } else if (h5_dtype == H5T_NATIVE_DOUBLE) {
+        *((double*)output_buffer_element_ptr) = get_double_property(galaxy, output_prop_id, 0.0);
+    } else if (h5_dtype == H5T_NATIVE_INT) {
+        *((int32_t*)output_buffer_element_ptr) = get_int32_property(galaxy, output_prop_id, 0);
+    } else if (h5_dtype == H5T_NATIVE_LLONG) {
+        // Assuming int64_t for H5T_NATIVE_LLONG output
+        *((int64_t*)output_buffer_element_ptr) = get_int64_property(galaxy, output_prop_id, 0LL);
+    } else {
+        LOG_ERROR("Unsupported HDF5 type for default identity transform of property '%s'", output_prop_name);
+        status = -1;
+    }"""
 
 def generate_transformers_file(properties, output_dir=""):
     """Generate the output transformers file"""
