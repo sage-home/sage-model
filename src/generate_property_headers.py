@@ -1638,9 +1638,28 @@ def main():
             active_modules = get_active_modules_from_config(args.config)
             print(f"Generating properties for modules from config: {', '.join(active_modules)}")
         else:
-            print("No module configuration specified - generating all properties")
-            # Generate all properties (backward compatibility)
-            active_modules = None
+            # Check for default config file to determine behavior
+            default_config_paths = [
+                os.path.join(script_dir, "..", "input", "default_config.json"),
+                os.path.join(script_dir, "..", "input", "config.json")
+            ]
+            
+            default_config = None
+            for config_path in default_config_paths:
+                if os.path.exists(config_path):
+                    default_config = config_path
+                    break
+            
+            if default_config:
+                active_modules = get_active_modules_from_config(default_config)
+                if not active_modules:
+                    print(f"Found default config with no modules: {default_config} - generating core-only properties")
+                else:
+                    print(f"Found default config: {default_config} - generating properties for modules: {', '.join(active_modules)}")
+            else:
+                print("No configuration found - generating all properties (backward compatibility)")
+                # Generate all properties (backward compatibility)
+                active_modules = None
         
         # Filter properties based on active modules
         if active_modules is not None:

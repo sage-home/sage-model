@@ -333,7 +333,7 @@ $(shell mkdir -p $(ROOT_DIR)/.stamps)
 .SECONDARY: $(GENERATED_FILES)
 $(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
 	@echo "Generating property headers from $(PROPERTIES_FILE)..."
-	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --core-only
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE))
 	@mkdir -p $(dir $@)
 	@touch $@
 
