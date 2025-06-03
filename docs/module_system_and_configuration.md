@@ -4,6 +4,26 @@
 
 The SAGE module system provides a flexible, extensible framework for implementing, registering, and executing physics modules. The system maintains strict separation between core infrastructure and physics implementations, allowing for runtime configuration of active modules without recompiling. This document provides both high-level architecture and detailed implementation specifics to aid debugging and development.
 
+## Property Build System
+
+SAGE uses an **explicit property build system** that controls which galaxy properties are compiled into the code at build-time. This optimises memory usage and execution performance by including only needed properties.
+
+### Build Targets
+
+- **`make physics-free`** - Core properties only (fastest, minimal memory)
+- **`make full-physics`** - All properties (maximum compatibility) 
+- **`make custom-physics CONFIG=file.json`** - Properties for specific modules
+
+### Usage
+```bash
+make clean
+make physics-free          # For core-only development
+make full-physics          # For full science runs
+make custom-physics CONFIG=input/myconfig.json  # Optimised builds
+```
+
+**📖 See [`docs/property_build_system.md`](property_build_system.md) for complete documentation and examples.**
+
 ## Module System Architecture in Detail
 
 ### Key Components and Their Interactions

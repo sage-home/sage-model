@@ -305,9 +305,34 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation
+.PHONY: clean celan celna clena tests all physics-free full-physics custom-physics help test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation
 
 all: $(SAGELIB) $(EXEC)
+
+help:
+	@echo "SAGE Build System"
+	@echo "================="
+	@echo ""
+	@echo "Standard targets:"
+	@echo "  all           - Build SAGE with default property configuration"
+	@echo "  clean         - Remove all build artifacts"
+	@echo "  tests         - Run full test suite"
+	@echo ""
+	@echo "Explicit Property Build Targets:"
+	@echo "  physics-free  - Build SAGE with core properties only (no physics modules)"
+	@echo "                  Fastest execution, minimal memory usage"
+	@echo "  full-physics  - Build SAGE with all available properties"
+	@echo "                  Maximum compatibility, higher memory usage"
+	@echo "  custom-physics- Build SAGE with properties for specific modules"
+	@echo "                  Usage: make custom-physics CONFIG=path/to/config.json"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make physics-free                              # Core-only build"
+	@echo "  make full-physics                              # All properties"
+	@echo "  make custom-physics CONFIG=input/myconfig.json # Custom build"
+	@echo ""
+	@echo "Note: Different property configurations require recompilation."
+	@echo "Use 'make clean' before switching between configurations."
 
 $(EXEC): $(OBJS)
 	$(CC) $^ $(LIBFLAGS) -o $@
@@ -329,7 +354,7 @@ pyext: lib$(LIBNAME).so
 # Create a stamp file directory if needed
 $(shell mkdir -p $(ROOT_DIR)/.stamps)
 
-# Rule to generate property headers
+# Rule to generate property headers (default: all properties)
 .SECONDARY: $(GENERATED_FILES)
 $(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
 	@echo "Generating property headers from $(PROPERTIES_FILE)..."
@@ -337,8 +362,48 @@ $(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) 
 	@mkdir -p $(dir $@)
 	@touch $@
 
-# Make the generated files depend on the stamp file
-$(SRC_PREFIX)/core/core_properties.h $(SRC_PREFIX)/core/core_properties.c $(SRC_PREFIX)/core/generated_output_transformers.c: $(ROOT_DIR)/.stamps/generate_properties.stamp
+# Explicit Property Build Targets
+# These targets allow users to control which properties are generated at build-time
+
+physics-free: $(ROOT_DIR)/.stamps/generate_properties_core.stamp $(EXEC)
+	@echo "SAGE built in physics-free mode (core properties only)"
+
+full-physics: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(EXEC)
+	@echo "SAGE built with full physics (all properties)"
+
+custom-physics:
+	@if [ -z "$(CONFIG)" ]; then \
+		echo "ERROR: CONFIG variable must be specified. Usage: make custom-physics CONFIG=path/to/config.json"; \
+		exit 1; \
+	fi
+	@$(MAKE) $(ROOT_DIR)/.stamps/generate_properties_custom.stamp CONFIG=$(CONFIG)
+	@$(MAKE) $(EXEC)
+	@echo "SAGE built with custom physics configuration: $(CONFIG)"
+
+# Property generation rules for different modes
+$(ROOT_DIR)/.stamps/generate_properties_core.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
+	@echo "Generating core-only property headers (physics-free mode)..."
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --core-only
+	@mkdir -p $(dir $@)
+	@rm -f $(ROOT_DIR)/.stamps/generate_properties*.stamp  # Clear other stamps
+	@touch $@
+
+$(ROOT_DIR)/.stamps/generate_properties_full.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
+	@echo "Generating full property headers (all properties)..."
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE))
+	@mkdir -p $(dir $@)
+	@rm -f $(ROOT_DIR)/.stamps/generate_properties*.stamp  # Clear other stamps
+	@touch $@
+
+$(ROOT_DIR)/.stamps/generate_properties_custom.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
+	@echo "Generating custom property headers with config: $(CONFIG)..."
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --config ../$(CONFIG)
+	@mkdir -p $(dir $@)
+	@rm -f $(ROOT_DIR)/.stamps/generate_properties*.stamp  # Clear other stamps
+	@touch $@
+
+# Make the generated files depend on any property stamp file
+$(SRC_PREFIX)/core/core_properties.h $(SRC_PREFIX)/core/core_properties.c $(SRC_PREFIX)/core/generated_output_transformers.c: $(shell find $(ROOT_DIR)/.stamps -name "generate_properties*.stamp" 2>/dev/null | head -1)
 
 # Mark as order-only prerequisites to prevent duplicate generation
 $(OBJS): | $(GENERATED_FILES)
@@ -358,7 +423,7 @@ $(OBJS): | $(GENERATED_FILES)
 # Clean targets with common typo aliases
 celan celna clena: clean
 clean:
-	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co] $(GENERATED_FILES) $(ROOT_DIR)/.stamps/generate_properties.stamp
+	rm -f $(OBJS) $(EXEC) $(SAGELIB) _$(LIBNAME)_cffi*.so _$(LIBNAME)_cffi.[co] $(GENERATED_FILES) $(ROOT_DIR)/.stamps/generate_properties*.stamp
 
 # Test Categories
 # Core infrastructure tests

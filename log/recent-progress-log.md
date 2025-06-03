@@ -486,3 +486,12 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - System now operates purely on self-registering modules with JSON configuration controlling activation
 - Modified files: src/core/core_module_system.h/.c, src/core/core_config_system.c, src/core/sage.c, src/core/core_init.c, src/core/core_pipeline_system.c, tests/test_data/*.par, docs/module_system_and_configuration.md, docs/config_system.md, docs/sage_unit_tests.md, Makefile
 - Archived files: tests/test_dynamic_library.c to ignore/tests/
+
+2025-06-03: [Phase 5.2.G] Explicit Property Build System Implementation
+- Implemented explicit build targets for property generation control: physics-free, full-physics, and custom-physics
+- Added stamp-based build system to track different property configurations and prevent conflicts
+- Created comprehensive documentation explaining build-time vs runtime decisions and usage patterns
+- Integrated help system with clear examples and troubleshooting guidance
+- Property filtering now works correctly: physics-free mode generates 25 core properties from 57 total
+- Modified files: Makefile, docs/module_system_and_configuration.md
+- Created files: docs/property_build_system.md
