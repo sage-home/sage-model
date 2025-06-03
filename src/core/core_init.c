@@ -127,51 +127,11 @@ int initialize_module_system(struct params *run_params)
         /* Continue anyway - configure handles NULL params with defaults */
     }
     
-    /* Set up default module search paths */
-    status = module_add_search_path("src/physics");
-    if (status != MODULE_STATUS_SUCCESS) {
-        LOG_WARNING("Failed to add default module search path, status = %d", status);
-    }
+    /* Module system is now self-registering via C constructor attributes */
+    /* No discovery needed - modules register themselves during library loading */
+    LOG_INFO("Module system initialized - modules self-register via constructor attributes");
     
-    /* Discover modules if registry is initialized */
-    if (global_module_registry != NULL && global_module_registry->discovery_enabled) {
-        LOG_INFO("Starting module discovery");
-        
-        int modules_found = module_discover(run_params);
-        
-        if (modules_found > 0) {
-            LOG_INFO("Discovered %d modules", modules_found);
-            
-            /* Attempt to find and activate default modules for each physics type */
-            for (int type = MODULE_TYPE_COOLING; type < (int)MODULE_TYPE_MAX; type++) {
-                /* Look for module of this type */
-                for (int i = 0; i < global_module_registry->num_modules; i++) {
-                    if (global_module_registry->modules[i].module->type == (enum module_type)type) {
-                        /* Found a module of this type, activate it */
-                        status = module_set_active(global_module_registry->modules[i].module->module_id);
-                        if (status == MODULE_STATUS_SUCCESS) {
-                            LOG_INFO("Activated %s module: %s", 
-                                    module_type_name(type), 
-                                    global_module_registry->modules[i].module->name);
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            return MODULE_STATUS_SUCCESS;
-        } else if (modules_found < 0) {
-            LOG_ERROR("Module discovery failed with error code %d", modules_found);
-            LOG_ERROR("SAGE requires at least one physics module to run");
-            return MODULE_STATUS_ERROR;
-        } else {
-            LOG_INFO("No modules available - running in physics-free mode");
-            return MODULE_STATUS_SUCCESS;  // Allow empty pipeline execution
-        }
-    } else {
-        LOG_INFO("Module system disabled - running in physics-free mode");
-        return MODULE_STATUS_SUCCESS;  // Allow empty pipeline execution
-    }
+    return MODULE_STATUS_SUCCESS;
 }
 
 /*

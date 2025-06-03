@@ -650,10 +650,7 @@ struct runtime_params
     int EnableGalaxyMemoryPool; /* Enable memory pooling for galaxy allocations */
     
     /* Module system configuration */
-    char ModuleDir[MAX_STRING_LEN];  /* Directory for module search */
-    int NumModulePaths;              /* Number of additional module paths */
-    char ModulePaths[10][MAX_STRING_LEN]; /* Additional module search paths */
-    int EnableModuleDiscovery;       /* Enable automatic module discovery */
+    /* Note: Modules now self-register via C constructor attributes */
     
     /* Merger processing configuration */
     char MergerHandlerModuleName[MAX_STRING_LEN];     /* Module handling merger events */

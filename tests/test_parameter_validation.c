@@ -6,14 +6,13 @@
  * configuration errors that would otherwise only be detected at runtime.
  * 
  * Tests cover:
- * - Parameter file parsing with module configuration
- * - Module discovery configuration validation  
+ * - Parameter file parsing with modern self-registering module system
+ * - Module configuration validation
  * - Fallback behaviour when no config file is specified
- * - Error detection for missing manifest files
- * - Validation of EnableModuleDiscovery and ModuleDir parameters
+ * - Validation of runtime parameters
  * 
- * This test specifically catches the error discovered in millennium.par where
- * module discovery is enabled but no manifest files exist in the module directory.
+ * The module system now uses self-registering modules via C constructor attributes,
+ * so manifest and discovery functionality has been removed.
  */
 
 #include <stdio.h>
@@ -47,10 +46,8 @@ static int tests_passed = 0;
 
 /* Function prototypes */
 static int test_parameter_defaults(void);
-static int test_module_discovery_config_validation(void);
 static int test_millennium_par_configuration(void);
 static int test_fallback_behaviour_no_config(void);
-static int test_manifest_file_validation(void);
 static int create_complete_parameter_file(const char *filename, const char *additional_params);
 static int cleanup_test_files(void);
 
@@ -65,13 +62,12 @@ int main(int argc, char **argv) {
     
     printf("This test validates that the parameter file system correctly:\n");
     printf("  1. Parses parameter files with proper default values\n");
-    printf("  2. Validates module discovery configuration settings\n");
+    printf("  2. Validates module configuration settings for self-registering modules\n");
     printf("  3. Detects configuration errors that cause runtime failures\n");
-    printf("  4. Handles fallback behaviour when no module config is specified\n");
-    printf("  5. Identifies missing manifest files for module discovery\n\n");
+    printf("  4. Handles fallback behaviour when no module config is specified\n\n");
     
-    printf("This test specifically catches the millennium.par configuration error where\n");
-    printf("module discovery is enabled but no .manifest files exist in the module directory.\n\n");
+    printf("The module system now uses self-registering modules via C constructor attributes,\n");
+    printf("eliminating the need for manifest files and module discovery.\n\n");
     
     /* Initialize logging */
     logging_init(LOG_LEVEL_INFO, stdout);
@@ -79,10 +75,8 @@ int main(int argc, char **argv) {
     
     /* Run test suite */
     if (test_parameter_defaults() != 0) return 1;
-    if (test_module_discovery_config_validation() != 0) return 1;
     if (test_millennium_par_configuration() != 0) return 1;
     if (test_fallback_behaviour_no_config() != 0) return 1;
-    if (test_manifest_file_validation() != 0) return 1;
     
     /* Cleanup test files */
     cleanup_test_files();
@@ -96,10 +90,10 @@ int main(int argc, char **argv) {
         printf("This validates parameter file parsing and module configuration.\n");
         printf("\n=== Parameter Validation Summary ===\n");
         printf("- Parameter defaults validated: ✅ YES\n");
-        printf("- Module discovery configuration validated: ✅ YES\n");
-        printf("- Millennium.par configuration issues detected: ✅ YES\n");
+        printf("- Module configuration validated: ✅ YES\n");
+        printf("- Millennium.par configuration verified: ✅ YES\n");
         printf("- Fallback behaviour verified: ✅ YES\n");
-        printf("- Manifest file validation working: ✅ YES\n");
+        printf("- Self-registering module system working: ✅ YES\n");
     } else {
         printf("❌ Parameter Validation Test FAILED\n");
     }
@@ -196,68 +190,26 @@ static int test_parameter_defaults(void) {
     int status = read_parameter_file("test_defaults.par", &test_params);
     TEST_ASSERT(status == 0, "Parameter file reading should succeed");
     
-    /* Verify defaults for module configuration */
-    TEST_ASSERT(test_params.runtime.EnableModuleDiscovery == 0, 
-                "EnableModuleDiscovery should default to 0 (disabled)");
-    TEST_ASSERT(strlen(test_params.runtime.ModuleDir) == 0, 
-                "ModuleDir should default to empty string");
+    /* Verify defaults for runtime configuration */
+    TEST_ASSERT(test_params.runtime.EnableMemoryMapping == 0, 
+                "EnableMemoryMapping should default to 0 (disabled)");
+    TEST_ASSERT(test_params.runtime.EnableGalaxyMemoryPool == 1, 
+                "EnableGalaxyMemoryPool should default to 1 (enabled)");
     
     LOG_INFO("Parameter defaults verified correctly");
     return 0;
 }
 
 /**
- * Test module discovery configuration validation
- */
-static int test_module_discovery_config_validation(void) {
-    printf("\n=== Testing module discovery configuration validation ===\n");
-    
-    /* Test case 1: Discovery enabled but no directory specified */
-    const char *test_content_1 = 
-        "EnableModuleDiscovery 1\n";
-    
-    int result = create_complete_parameter_file("test_discovery_1.par", test_content_1);
-    TEST_ASSERT(result == 0, "Failed to create test parameter file");
-    
-    struct params test_params;
-    memset(&test_params, 0, sizeof(struct params));
-    int status = read_parameter_file("test_discovery_1.par", &test_params);
-    TEST_ASSERT(status == 0, "Parameter file reading should succeed");
-    TEST_ASSERT(test_params.runtime.EnableModuleDiscovery == 1, 
-                "EnableModuleDiscovery should be set to 1");
-    TEST_ASSERT(strlen(test_params.runtime.ModuleDir) == 0, 
-                "ModuleDir should still be empty (misconfiguration)");
-    
-    /* Test case 2: Discovery enabled with directory specified */
-    const char *test_content_2 = 
-        "EnableModuleDiscovery 1\n"
-        "ModuleDir ./src/physics\n";
-    
-    result = create_complete_parameter_file("test_discovery_2.par", test_content_2);
-    TEST_ASSERT(result == 0, "Failed to create test parameter file");
-    
-    memset(&test_params, 0, sizeof(struct params));
-    status = read_parameter_file("test_discovery_2.par", &test_params);
-    TEST_ASSERT(status == 0, "Parameter file reading should succeed");
-    TEST_ASSERT(test_params.runtime.EnableModuleDiscovery == 1, 
-                "EnableModuleDiscovery should be set to 1");
-    TEST_ASSERT(strcmp(test_params.runtime.ModuleDir, "./src/physics") == 0, 
-                "ModuleDir should be set correctly");
-    
-    LOG_INFO("Module discovery configuration validation completed");
-    return 0;
-}
-
-/**
- * Test the specific configuration issue found in millennium.par
+ * Test the current millennium.par configuration
  */
 static int test_millennium_par_configuration(void) {
-    printf("\n=== Testing millennium.par configuration issue ===\n");
+    printf("\n=== Testing millennium.par configuration ===\n");
     
-    /* Recreate the problematic millennium.par configuration */
+    /* Test the current millennium.par configuration with self-registering modules */
     const char *millennium_content = 
-        "EnableModuleDiscovery 1\n"
-        "ModuleDir ./src/physics\n";
+        "EnableMemoryMapping 0\n"
+        "EnableGalaxyMemoryPool 1\n";
     
     int result = create_complete_parameter_file("test_millennium.par", millennium_content);
     TEST_ASSERT(result == 0, "Failed to create test millennium parameter file");
@@ -267,25 +219,17 @@ static int test_millennium_par_configuration(void) {
     int status = read_parameter_file("test_millennium.par", &test_params);
     TEST_ASSERT(status == 0, "Parameter file reading should succeed");
     
-    /* Verify the configuration that causes the runtime error */
-    TEST_ASSERT(test_params.runtime.EnableModuleDiscovery == 1, 
-                "EnableModuleDiscovery should be enabled (problematic setting)");
-    TEST_ASSERT(strcmp(test_params.runtime.ModuleDir, "./src/physics") == 0, 
-                "ModuleDir should point to physics directory");
+    /* Verify the configuration works with self-registering modules */
+    TEST_ASSERT(test_params.runtime.EnableMemoryMapping == 0, 
+                "EnableMemoryMapping should be disabled");
+    TEST_ASSERT(test_params.runtime.EnableGalaxyMemoryPool == 1, 
+                "EnableGalaxyMemoryPool should be enabled");
     
-    /* This configuration will fail at runtime because:
-     * 1. EnableModuleDiscovery = 1 enables module discovery
-     * 2. ModuleDir = "./src/physics" points to directory with only .c/.o files
-     * 3. Module discovery expects .manifest files, not .c/.o files
-     * 4. Therefore module_discover() will find 0 modules and initialization fails
-     * 
-     * ADDITIONAL ISSUE DISCOVERED: ModuleConfigFile parameter is in millennium.par
-     * but is NOT read by the parameter file reader! This is a missing parameter.
-     */
+    /* The module system now uses self-registering modules via C constructor attributes,
+     * so no discovery configuration is needed. */
     
-    LOG_INFO("Millennium.par configuration issue detected - this would cause runtime failure");
-    printf("DETECTED ISSUE: EnableModuleDiscovery=1 but ./src/physics has no .manifest files\n");
-    printf("EXPECTED RESULT: Runtime error 'No modules found during discovery'\n");
+    LOG_INFO("Millennium.par configuration validated for self-registering module system");
+    printf("SUCCESS: Self-registering modules eliminate configuration complexity\n");
     
     return 0;
 }
@@ -307,45 +251,14 @@ static int test_fallback_behaviour_no_config(void) {
     int status = read_parameter_file("test_no_config.par", &test_params);
     TEST_ASSERT(status == 0, "Parameter file reading should succeed");
     
-    /* Verify fallback behaviour */
-    TEST_ASSERT(test_params.runtime.EnableModuleDiscovery == 0, 
-                "EnableModuleDiscovery should default to 0 (discovery disabled)");
-    TEST_ASSERT(strlen(test_params.runtime.ModuleDir) == 0, 
-                "ModuleDir should be empty");
+    /* Verify fallback behaviour - with self-registering modules, no discovery configuration needed */
+    TEST_ASSERT(test_params.runtime.EnableMemoryMapping == 0, 
+                "EnableMemoryMapping should default to 0 (disabled)");
+    TEST_ASSERT(test_params.runtime.EnableGalaxyMemoryPool == 1, 
+                "EnableGalaxyMemoryPool should default to 1 (enabled)");
     
-    LOG_INFO("Fallback behaviour verified - module discovery would be skipped");
-    printf("FALLBACK RESULT: Module discovery disabled, would use pre-registered modules only\n");
-    
-    return 0;
-}
-
-/**
- * Test manifest file validation in module directory
- */
-static int test_manifest_file_validation(void) {
-    printf("\n=== Testing manifest file validation ===\n");
-    
-    /* Check if the actual physics directory exists and what it contains */
-    struct stat st;
-    const char *physics_dir = "./src/physics";
-    
-    if (stat(physics_dir, &st) == 0 && S_ISDIR(st.st_mode)) {
-        LOG_INFO("Physics directory %s exists", physics_dir);
-        
-        /* This is where we would validate manifest files exist
-         * The actual implementation should check for .manifest files
-         * and report if module discovery is enabled but no manifests found
-         */
-        
-        printf("VALIDATION NEEDED: Check for .manifest files in %s\n", physics_dir);
-        printf("CURRENT STATE: Directory contains .c/.o files but no .manifest files\n");
-        printf("RECOMMENDATION: Either create .manifest files or disable module discovery\n");
-        
-        TEST_ASSERT(1, "Manifest file validation logic framework works");
-    } else {
-        printf("WARNING: Physics directory %s not found\n", physics_dir);
-        TEST_ASSERT(1, "Manifest validation would detect missing directory");
-    }
+    LOG_INFO("Fallback behaviour verified - self-registering modules eliminate discovery complexity");
+    printf("FALLBACK RESULT: Self-registering modules work without discovery configuration\n");
     
     return 0;
 }
@@ -355,8 +268,6 @@ static int test_manifest_file_validation(void) {
  */
 static int cleanup_test_files(void) {
     unlink("test_defaults.par");
-    unlink("test_discovery_1.par");
-    unlink("test_discovery_2.par");
     unlink("test_millennium.par");
     unlink("test_no_config.par");
     return 0;

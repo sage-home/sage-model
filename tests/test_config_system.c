@@ -573,10 +573,10 @@ static void test_type_mismatches(void) {
 static void test_module_configuration(void) {
     LOG_INFO("\n=== Testing module configuration extraction ===\n");
     
+    int array_size;
+    
     const char *test_json = "{"
         "\"modules\": {"
-            "\"discovery_enabled\": true,"
-            "\"search_paths\": [\"./src/physics\"],"
             "\"instances\": ["
                 "{"
                     "\"name\": \"cooling_module\","
@@ -612,20 +612,6 @@ static void test_module_configuration(void) {
     int result = config_load_file("tests/test_output/test_config_module_config.json");
     TEST_ASSERT(result == 0, "config_load_file should succeed for modules test");
     if (result != 0) return;
-    
-    bool discovery_enabled = config_get_boolean("modules.discovery_enabled", false);
-    TEST_ASSERT(discovery_enabled == true, "Should retrieve modules.discovery_enabled correctly");
-    
-    int array_size = config_get_array_size("modules.search_paths");
-    TEST_ASSERT(array_size == 1, "Should get correct modules.search_paths array size");
-    
-    const struct config_value *array_element = config_get_array_element("modules.search_paths", 0);
-    TEST_ASSERT(array_element != NULL, "Should retrieve search path element");
-    if (array_element) {
-        TEST_ASSERT(array_element->type == CONFIG_VALUE_STRING, "Search path element should be string");
-        if(array_element->type == CONFIG_VALUE_STRING && array_element->u.string != NULL)
-            TEST_ASSERT(strcmp(array_element->u.string, "./src/physics") == 0, "Search path should match expected value");
-    }
     
     array_size = config_get_array_size("modules.instances");
     TEST_ASSERT(array_size == 2, "Should get correct modules.instances array size");
@@ -788,8 +774,6 @@ static void test_complex_structures(void) {
             "}"
         "},"
         "\"modules\": {"
-            "\"discovery_enabled\": true,"
-            "\"search_paths\": [\"./src/physics\"],"
             "\"instances\": ["
                 "{"
                     "\"name\": \"cooling_module\","

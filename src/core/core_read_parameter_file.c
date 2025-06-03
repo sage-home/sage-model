@@ -243,9 +243,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     }
     
     /* Initialize runtime parameters with default values */
-    run_params->runtime.ModuleDir[0] = '\0';  /* Empty string - will use default directory */
-    run_params->runtime.EnableModuleDiscovery = 0;  /* Disabled by default */
-    run_params->runtime.NumModulePaths = 0;
     run_params->runtime.EnableMemoryMapping = 0;  /* Memory mapping disabled by default */
     run_params->runtime.EnableGalaxyMemoryPool = 1;  /* Memory pooling enabled by default */
     
@@ -255,16 +252,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
     run_params->runtime.DisruptionHandlerModuleName[0] = '\0';  // Empty string
     snprintf(run_params->runtime.DisruptionHandlerFunctionName, MAX_STRING_LEN, "HandleDisruption");
     
-    /* Module system parameters - optional, if not specified use defaults */
-    strncpy(ParamTag[NParam], "ModuleDir", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->runtime.ModuleDir;
-    ParamID[NParam++] = STRING;
-    used_tag[NParam-1] = 0;  /* Mark as optional */
-    
-    strncpy(ParamTag[NParam], "EnableModuleDiscovery", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->runtime.EnableModuleDiscovery);
-    ParamID[NParam++] = INT;
-    used_tag[NParam-1] = 0;  /* Mark as optional */
+    /* Module system now uses self-registering modules - no parameters needed */
     
     strncpy(ParamTag[NParam], "EnableMemoryMapping", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->runtime.EnableMemoryMapping);

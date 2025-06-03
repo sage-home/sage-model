@@ -1477,23 +1477,9 @@ int config_configure_modules(struct params *params) {
         return -1;
     }
     
-    /* Configure module search paths */
-    const struct config_value *search_paths = config_get_value("modules.search_paths");
-    if (search_paths != NULL && search_paths->type == CONFIG_VALUE_ARRAY) {
-        for (int i = 0; i < search_paths->u.array.count; i++) {
-            const struct config_value *path = search_paths->u.array.items[i];
-            
-            if (path->type == CONFIG_VALUE_STRING) {
-                module_add_search_path(path->u.string);
-            }
-        }
-    }
-    
-    /* Configure module discovery */
-    bool discovery_enabled = config_get_boolean("modules.discovery_enabled", true);
-    if (discovery_enabled) {
-        module_discover(params);
-    }
+    /* Module system now uses self-registering modules via C constructor attributes */
+    /* No need for search paths or discovery - modules register themselves during library loading */
+    LOG_INFO("Module configuration: using self-registering modules (no discovery needed)");
     
     /* Configure individual modules */
     const struct config_value *modules = config_get_value("modules.instances");
@@ -1822,29 +1808,12 @@ struct config_object *config_generate_default(void) {
             return NULL;
         }
         
-        /* Add discovery_enabled */
-        value.u.object->entries[value.u.object->count].key = strdup("discovery_enabled");
-        value.u.object->entries[value.u.object->count].value.type = CONFIG_VALUE_BOOLEAN;
-        value.u.object->entries[value.u.object->count].value.u.boolean = true;
-        value.u.object->count++;
-        
-        /* Add search_paths array */
-        value.u.object->entries[value.u.object->count].key = strdup("search_paths");
+        /* Add instances array (placeholder for module configuration) */
+        value.u.object->entries[value.u.object->count].key = strdup("instances");
         value.u.object->entries[value.u.object->count].value.type = CONFIG_VALUE_ARRAY;
-        value.u.object->entries[value.u.object->count].value.u.array.capacity = 4;
-        value.u.object->entries[value.u.object->count].value.u.array.items = 
-            calloc(value.u.object->entries[value.u.object->count].value.u.array.capacity, 
-                   sizeof(struct config_value *));
-        
-        /* Add default search path */
-        value.u.object->entries[value.u.object->count].value.u.array.items[0] = 
-            calloc(1, sizeof(struct config_value));
-        value.u.object->entries[value.u.object->count].value.u.array.items[0]->type = 
-            CONFIG_VALUE_STRING;
-        value.u.object->entries[value.u.object->count].value.u.array.items[0]->u.string = 
-            strdup("modules");
-        value.u.object->entries[value.u.object->count].value.u.array.count = 1;
-        
+        value.u.object->entries[value.u.object->count].value.u.array.capacity = 0;
+        value.u.object->entries[value.u.object->count].value.u.array.items = NULL;
+        value.u.object->entries[value.u.object->count].value.u.array.count = 0;
         value.u.object->count++;
         
         /* Add modules section to root */

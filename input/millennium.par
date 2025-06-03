@@ -43,8 +43,7 @@ PartMass        0.0860657
 %----- Module system configuration ---------
 %------------------------------------------
 
-ModuleDir                 ./src/physics % directory to search for modules
-EnableModuleDiscovery     0             % enable automatic module discovery (0: disabled, 1: enabled)
+% Module system now uses self-registering modules via C constructor attributes
 % ModuleConfigFile          ./input/empty_pipeline_config.json
 
 

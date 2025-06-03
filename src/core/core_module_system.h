@@ -26,9 +26,6 @@ extern "C" {
 #define MAX_MODULES 64
 #define MAX_DEPENDENCIES 16
 #define MAX_MODULE_PATH 256
-#define MAX_MODULE_PATHS 10
-#define MAX_MANIFEST_FILE_SIZE 8192
-#define DEFAULT_MODULE_DIR "modules"
 
 /* API version information */
 #define CORE_API_VERSION 1       /* Current core API version */
@@ -39,8 +36,6 @@ extern "C" {
 #define MODULE_FLAG_STATELESS           (1UL << 1)  /* Module is stateless */
 #define MODULE_FLAG_REENTRANT           (1UL << 2)  /* Module is reentrant */
 #define MODULE_FLAG_SUPPORTS_STREAMING  (1UL << 3)  /* Module supports streaming mode */
-#define MODULE_FLAG_HAS_EXTENSIONS      (1UL << 4)  /* Module uses galaxy extensions */
-#define MODULE_FLAG_REQUIRES_SERIALIZATION (1UL << 5)  /* Module requires property serialization */
 
 /**
  * Module status codes
@@ -60,37 +55,9 @@ enum module_status {
     MODULE_STATUS_MODULE_NOT_FOUND = -9,
     MODULE_STATUS_DEPENDENCY_NOT_FOUND = -10,
     MODULE_STATUS_DEPENDENCY_CONFLICT = -11,
-    MODULE_STATUS_INVALID_MANIFEST = -12,
     MODULE_STATUS_MODULE_LOADING_FAILED = -13
 };
 
-
-/**
- * Module manifest structure
- * 
- * Contains metadata about a module from its manifest file
- */
-struct module_manifest {
-    char name[MAX_MODULE_NAME];           /* Module name */
-    char version_str[MAX_MODULE_VERSION]; /* Version as a string */
-    struct module_version version;        /* Parsed semantic version */
-    char author[MAX_MODULE_AUTHOR];       /* Module author(s) */
-    char description[MAX_MODULE_DESCRIPTION]; /* Module description */
-    enum module_type type;                /* Type of physics module */
-    char library_path[MAX_MODULE_PATH];   /* Path to the module library */
-    
-    /* Dependencies */
-    struct module_dependency dependencies[MAX_DEPENDENCIES];
-    int num_dependencies;
-    
-    /* Capabilities and API version */
-    int api_version;                      /* Module API version */
-    uint32_t capabilities;                /* Bitmap of module capabilities */
-    
-    /* Configuration */
-    bool auto_initialize;                 /* Whether to auto-initialize on load */
-    bool auto_activate;                   /* Whether to auto-activate on load */
-};
 
 /**
  * Base module interface
@@ -132,9 +99,6 @@ struct base_module {
     int last_error;                       /* Last error code (for backward compat) */
     char error_message[MAX_ERROR_MESSAGE]; /* Last error message (for backward compat) */
     struct module_error_context *error_context; /* Enhanced error tracking */
-    
-    /* Module manifest */
-    struct module_manifest *manifest;     /* Pointer to module manifest (if available) */
     
     /* Function registry (for callback system) */
     module_function_registry_t *function_registry; /* Functions available for calling by other modules */
@@ -183,13 +147,6 @@ struct module_registry {
         int module_index;                 /* Index into modules array */
     } active_modules[MODULE_TYPE_MAX];
     int num_active_types;                 /* Number of active module types */
-    
-    /* Module path configuration */
-    char module_paths[MAX_MODULE_PATHS][MAX_MODULE_PATH]; /* Module search paths */
-    int num_module_paths;                 /* Number of search paths */
-    
-    /* Configuration */
-    bool discovery_enabled;               /* Whether module discovery is enabled */
 };
 
 /* Global module registry */
@@ -371,27 +328,6 @@ bool module_check_version_compatibility(
     bool exact_match);
 
 /**
- * Load a module manifest from a file
- * 
- * Reads and parses a module manifest file.
- * 
- * @param filename Path to the manifest file
- * @param manifest Output manifest structure
- * @return MODULE_STATUS_SUCCESS on success, error code on failure
- */
-int module_load_manifest(const char *filename, struct module_manifest *manifest);
-
-/**
- * Validate a module manifest
- * 
- * Checks that a manifest structure is valid and correctly formed.
- * 
- * @param manifest Manifest to validate
- * @return true if valid, false otherwise
- */
-bool module_validate_manifest(const struct module_manifest *manifest);
-
-/**
  * Configure the module system
  * 
  * Sets up the module system with the given parameters.
@@ -402,26 +338,6 @@ bool module_validate_manifest(const struct module_manifest *manifest);
 int module_system_configure(struct params *params);
 
 /**
- * Add a module search path
- * 
- * Adds a directory to the list of places to search for modules.
- * 
- * @param path Directory path to add
- * @return MODULE_STATUS_SUCCESS on success, error code on failure
- */
-int module_add_search_path(const char *path);
-
-/**
- * Discover modules in search paths
- * 
- * Searches the configured paths for module manifests and loads them.
- * 
- * @param params Pointer to the global parameters structure
- * @return Number of modules discovered, or negative error code on failure
- */
-int module_discover(struct params *params);
-
-/**
  * Find a module by name
  * 
  * Searches the registry for a module with the given name.
@@ -430,27 +346,6 @@ int module_discover(struct params *params);
  * @return Module index if found, -1 if not found
  */
 int module_find_by_name(const char *name);
-
-/**
- * Load a module from a manifest
- * 
- * Loads a module based on its manifest information.
- * 
- * @param manifest Manifest describing the module
- * @param params Pointer to the global parameters structure
- * @return Module ID if successful, negative error code on failure
- */
-int module_load_from_manifest(const struct module_manifest *manifest, struct params *params);
-
-/**
- * Check and resolve module dependencies
- * 
- * Validates that all dependencies of a module are satisfied.
- * 
- * @param manifest Manifest containing the dependencies
- * @return MODULE_STATUS_SUCCESS if all dependencies are met, error code otherwise
- */
-int module_check_dependencies(const struct module_manifest *manifest);
 
 /**
  * Get module type name

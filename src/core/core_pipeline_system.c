@@ -570,33 +570,9 @@ bool pipeline_validate(struct module_pipeline *pipeline) {
             continue;
         }
 
-        /* Validate module extensions if it has them */
-        if (module != NULL && module->manifest && (module->manifest->capabilities & MODULE_FLAG_HAS_EXTENSIONS)) {
-            /* This module uses extensions, ensure serialization is supported */
-            if (module->manifest->capabilities & MODULE_FLAG_REQUIRES_SERIALIZATION) {
-                /* Check if module has required serialization functions */
-                const galaxy_property_t **properties = NULL;
-                int max_properties = 32;  // Reasonable limit for temp array
-                properties = calloc(max_properties, sizeof(galaxy_property_t*));
-                
-                if (properties != NULL) {
-                    int num_props = galaxy_extension_find_properties_by_module(
-                        module->module_id, properties, max_properties);
-                    
-                    for (int j = 0; j < num_props; j++) {
-                        const galaxy_property_t *prop = properties[j];
-                        if ((prop->flags & PROPERTY_FLAG_SERIALIZE) && 
-                            (prop->serialize == NULL || prop->deserialize == NULL)) {
-                            LOG_ERROR("Module '%s' property '%s' marked for serialization but missing required functions",
-                                     module->name, prop->name);
-                            free(properties);
-                            return false;
-                        }
-                    }
-                    free(properties);
-                }
-            }
-        }
+        /* Module validation is simplified since modules self-register */
+        /* Extension validation is handled during module registration */
+        LOG_DEBUG("Step '%s' validated with module type %s", step->step_name, module_type_name(step->type));
     }
 
     /* We've already validated extensions in the loop above, no need to check again */

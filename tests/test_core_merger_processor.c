@@ -195,8 +195,7 @@ static int setup_test_context(void) {
     strncpy(test_ctx.test_params.runtime.DisruptionHandlerFunctionName, "HandleDisruption", MAX_STRING_LEN-1);
     test_ctx.test_params.runtime.DisruptionHandlerFunctionName[MAX_STRING_LEN-1] = '\0'; // Ensure null termination
     
-    // CRITICAL FIX: Disable module discovery to prevent initialization failure
-    test_ctx.test_params.runtime.EnableModuleDiscovery = 0;
+    // Note: Module discovery system has been removed - modules now self-register
     
     return 0;
 }
