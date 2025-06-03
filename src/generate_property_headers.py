@@ -264,6 +264,7 @@ IMPLEMENTATION_TEMPLATE = """/**
 #include "core_properties.h"
 #include "core_logging.h"
 #include "core_pipeline_system.h"
+#include "core_config_system.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -675,12 +676,22 @@ def generate_allocate_arrays_code(properties):
     # Find properties with dynamic arrays
     dynamic_arrays = [p for p in properties if parse_type(p['type'])[3]]
     if dynamic_arrays:
-        # Add physics-free mode detection
+        # Add physics-free mode detection - check config system directly
         code_lines.extend([
-            "    /* Check if we're in physics-free mode (no modules loaded) */",
-            "    extern struct module_pipeline* pipeline_get_global(void);",
-            "    struct module_pipeline* current_pipeline = pipeline_get_global();",
-            "    bool physics_free_mode = (current_pipeline == NULL || current_pipeline->num_steps == 0);",
+            "    /* Check if we're in physics-free mode by examining config system directly */",
+            "    bool physics_free_mode = false;",
+            "    ",
+            "    /* Physics-free mode: no config OR no modules.instances array */",
+            "    if (global_config == NULL || global_config->root == NULL) {",
+            "        physics_free_mode = true;",
+            "    } else {",
+            "        const struct config_value *modules_instances = config_get_value(\"modules.instances\");",
+            "        if (modules_instances == NULL || ",
+            "            modules_instances->type != CONFIG_VALUE_ARRAY ||",
+            "            modules_instances->u.array.count == 0) {",
+            "            physics_free_mode = true;",
+            "        }",
+            "    }",
             "    ",
             "    if (physics_free_mode) {",
             "        LOG_DEBUG(\"Physics-free mode detected - only allocating core properties\");",
