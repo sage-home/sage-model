@@ -79,14 +79,11 @@ Tests for the modular plugin architecture:
 
 These tests validate key architectural principles:
 
-- **test_empty_pipeline** - Verifies that the core can run with no physics modules
+- **test_physics_free_mode** - Verifies that the core can run without physics modules
   ```bash
-  # Run via test script
-  ./tests/run_empty_pipeline_test.sh
-  
-  # Or directly
-  make test_empty_pipeline
-  ./tests/test_empty_pipeline tests/test_data/test-mini-millennium.par
+  # Run directly
+  make test_physics_free_mode
+  ./tests/test_physics_free_mode
   ```
 
 ## End-to-End Scientific Tests

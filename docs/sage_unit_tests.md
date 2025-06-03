@@ -23,7 +23,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
 | **test_merger_queue**           | Tests the merger event queue system for deferred merger processing            | Phase 5.1 (May 2025)     |
 | **test_core_merger_processor**  | Tests physics-agnostic merger event handling and dispatching                  | Phase 5.2.G (May 2025)   |
-| **test_empty_pipeline**         | Validates core-physics separation by running core infrastructure with placeholder modules only | Phase 5.2.F.2 (May 2025) |
+| **test_physics_free_mode**      | Validates core-physics separation by running core infrastructure without physics modules | Phase 5.2.F.2 (May 2025) |
 | **test_parameter_validation**   | Tests parameter file parsing, module discovery, and configuration errors      | Phase 5.2.F.3 (Jun 2025) |
 
 ### Property System Tests (`PROPERTY_TESTS`)
@@ -33,8 +33,8 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_property_serialization** | Tests property serialization for I/O operations | Phase 3.2 (Apr 2025) |
 | **test_property_validation** | Tests validation of property definitions | Phase 3.2 (Apr 2025) |
 | **test_property_array_access** | Tests access to array properties | Phase 5.2.B (May 2025) |
-| **test_property_access_patterns** | Tests property access patterns for core-physics separation compliance | Phase 5.2.F.3 (May 2025) |
 | **test_property_system_hdf5** | Tests integration between the property system and HDF5 output with transformer functions | Phase 5.2.F.3 (May 2025) |
+| **test_galaxy_property_macros** | Tests galaxy property macro generation and validation with mock implementations | Phase 5.2.B (May 2025) |
 
 ### I/O System Tests (`IO_TESTS`)
 
@@ -104,9 +104,9 @@ This test **intentionally produces ERROR messages** as part of its validation pr
 ## Test Categories Overview
 
 - **Core Infrastructure (13 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, core-physics separation validation, merger queue system, parameter validation
-- **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, access patterns
+- **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, property macro generation
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
-- **Module System (4 tests)**: Dynamic loading, pipeline invocation, module callback system, placeholder modules
+- **Module System (2 tests)**: Pipeline invocation, module callback system
 
 The test suite provides comprehensive coverage of all major SAGE components whilst maintaining clear separation between unit tests (expected to pass during development) and scientific validation tests (may fail during refactoring phases).
 
@@ -114,5 +114,4 @@ The test suite provides comprehensive coverage of all major SAGE components whil
 - `test_core_physics_separation` was removed in May 2025 as its functionality is now covered by more focused tests
 - `test_output_preparation` was replaced by `test_property_system_hdf5` which tests the physics output transformers system (see `physics_output_transformers_guide.md`)
 - The standalone Memory Tests Suite was integrated into the main Makefile with `test_memory_pool` and `test_io_memory_map`
-
-**Note**: The `test_core_physics_separation` test was removed in May 2025 as it became outdated due to API changes and its functionality is now comprehensively covered by other focused tests (`test_property_access_patterns`, `test_property_system_hdf5`, `test_evolve_integration`, `test_core_pipeline_registry`, and the standalone `test_empty_pipeline`).
+- `test_empty_pipeline` was renamed to `test_physics_free_mode` to better reflect its purpose of validating core-physics separation

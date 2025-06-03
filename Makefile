@@ -472,9 +472,6 @@ test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
 test_property_array_access: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_array_access.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_array_access tests/test_property_array_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_galaxy_property_macros: tests/test_galaxy_property_macros.c tests/test_validation_mocks.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_property_macros tests/test_galaxy_property_macros.c tests/test_validation_mocks.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 test_property_system_hdf5: tests/test_property_system_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system_hdf5 tests/test_property_system_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
