@@ -218,6 +218,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    required_modules: ["cooling", "starformation", "infall"]
     
   - name: StellarMass
     type: float
@@ -227,6 +228,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    required_modules: ["starformation"]
     
   - name: BulgeMass
     type: float
@@ -395,6 +397,7 @@ properties:
     output: true
     read_only: false
     is_core: false
+    required_modules: ["starformation"]
     
   # Test property with non-zero initial value
   - name: TestNonZeroArray

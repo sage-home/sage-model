@@ -4,6 +4,11 @@
 # This script reads properties.yaml and generates C header files containing
 # macros and functions to access galaxy properties, as well as output transformer
 # dispatch code.
+#
+# Module-aware property generation:
+# - Only generates properties needed by active modules
+# - Core properties (is_core: true) always included
+# - Physics properties only included if their modules are active
 
 import os
 import sys
@@ -223,7 +228,7 @@ int dispatch_property_transformer(const struct GALAXY *galaxy,
     
     // Auto-generated if/else if chain based on property name
 {dispatcher_if_chain}
-    else {{
+    {{
         // Default identity transformation for properties without a transformer
         if (galaxy->properties == NULL) {{
             LOG_ERROR("Galaxy properties is NULL for property '%s'", output_prop_name);
@@ -434,7 +439,62 @@ C_TYPE_MAP = {
     "char": "char",
 }
 
+def filter_properties_by_modules(properties, active_modules=None):
+    """Filter properties based on active modules"""
+    if active_modules is None:
+        active_modules = []
+    
+    # Always include core properties
+    filtered_properties = []
+    
+    for prop in properties:
+        # Always include core properties
+        if prop.get('is_core', False):
+            filtered_properties.append(prop)
+            continue
+            
+        # For physics properties, check if any required module is active
+        required_modules = prop.get('required_modules', [])
+        if not required_modules:
+            # Property has no module requirements - include only if modules are active
+            if active_modules:
+                filtered_properties.append(prop)
+        else:
+            # Property has module requirements - include if any required module is active
+            if any(module in active_modules for module in required_modules):
+                filtered_properties.append(prop)
+    
+    return filtered_properties
+
 def sanitize_include_guard(filename):
+    """Convert a filename to a valid C include guard name"""
+    base = os.path.basename(filename)
+    base = os.path.splitext(base)[0].upper()
+    return f"{base}_H"
+
+def get_active_modules_from_config(config_file=None):
+    """Extract active modules from configuration file"""
+    if not config_file or not os.path.exists(config_file):
+        return []
+    
+    try:
+        with open(config_file, 'r') as f:
+            import json
+            config = json.load(f)
+            
+        modules_instances = config.get('modules', {}).get('instances', [])
+        active_modules = []
+        
+        for instance in modules_instances:
+            if instance.get('enabled', True):
+                module_name = instance.get('name', '')
+                if module_name:
+                    active_modules.append(module_name)
+        
+        return active_modules
+    except Exception as e:
+        print(f"Warning: Failed to parse config file {config_file}: {e}")
+        return []
     """Convert a filename to a valid C include guard name"""
     base = os.path.basename(filename)
     base = os.path.splitext(base)[0].upper()
@@ -618,8 +678,10 @@ def generate_transformer_dispatch_chain(properties):
     if chains:
         for i in range(1, len(chains)):
             chains[i] = "else " + chains[i]
-    
-    return "\n".join(chains)
+        return "\n".join(chains)
+    else:
+        # No transformers available - return empty chain
+        return "    /* No transformers available for current property set */"
 
 def generate_transformers_file(properties, output_dir=""):
     """Generate the output transformers file"""
@@ -1515,10 +1577,13 @@ int fetch_NumSnapOutputs(void) {
 
 def main():
     """Main entry point for the script"""
-    # Parse command line arguments for input file
+    # Parse command line arguments
     import argparse
-    parser = argparse.ArgumentParser(description='Generate property headers from YAML definition')
+    parser = argparse.ArgumentParser(description='Generate property headers from YAML definition with module-aware filtering')
     parser.add_argument('--input', default='properties.yaml', help='Input YAML file (default: properties.yaml)')
+    parser.add_argument('--config', help='JSON configuration file to determine active modules')
+    parser.add_argument('--modules', help='Comma-separated list of active modules (alternative to --config)')
+    parser.add_argument('--core-only', action='store_true', help='Generate only core properties (physics-free mode)')
     args = parser.parse_args()
     
     # Determine file paths
@@ -1540,6 +1605,28 @@ def main():
         if not properties:
             print(f"Error: No properties found in {args.input}")
             sys.exit(1)
+        
+        # Determine active modules
+        active_modules = []
+        if args.core_only:
+            print("Generating core-only properties (physics-free mode)")
+            active_modules = []
+        elif args.modules:
+            active_modules = [m.strip() for m in args.modules.split(',')]
+            print(f"Generating properties for modules: {', '.join(active_modules)}")
+        elif args.config:
+            active_modules = get_active_modules_from_config(args.config)
+            print(f"Generating properties for modules from config: {', '.join(active_modules)}")
+        else:
+            print("No module configuration specified - generating all properties")
+            # Generate all properties (backward compatibility)
+            active_modules = None
+        
+        # Filter properties based on active modules
+        if active_modules is not None:
+            filtered_properties = filter_properties_by_modules(properties, active_modules)
+            print(f"Filtered {len(properties)} properties to {len(filtered_properties)} (core + module-specific)")
+            properties = filtered_properties
         
         # Generate the header and implementation files
         generate_header_file(properties, core_dir)
