@@ -56,6 +56,7 @@ tests/test_core_merger_processor
 tests/test_placeholder_mergers_module
 tests/test_parameter_validation
 tests/test_physics_free_mode
+tests/test_module_lifecycle
 
 tests/test_output/
 .repomix/
