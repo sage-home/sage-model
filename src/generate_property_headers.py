@@ -1617,6 +1617,7 @@ def main():
     parser.add_argument('--config', help='JSON configuration file to determine active modules')
     parser.add_argument('--modules', help='Comma-separated list of active modules (alternative to --config)')
     parser.add_argument('--core-only', action='store_true', help='Generate only core properties (physics-free mode)')
+    parser.add_argument('--all-properties', action='store_true', help='Generate all properties (ignore any config files)')
     args = parser.parse_args()
     
     # Determine file paths
@@ -1644,10 +1645,17 @@ def main():
         if args.core_only:
             print("Generating core-only properties (physics-free mode)")
             active_modules = []
+        elif args.all_properties:
+            print("Generating all properties (full-physics mode)")
+            active_modules = None  # None means include all properties
         elif args.modules:
             active_modules = [m.strip() for m in args.modules.split(',')]
             print(f"Generating properties for modules: {', '.join(active_modules)}")
         elif args.config:
+            # Validate config file exists before processing
+            if not os.path.exists(args.config):
+                print(f"Error: Configuration file '{args.config}' not found")
+                sys.exit(1)
             active_modules = get_active_modules_from_config(args.config)
             print(f"Generating properties for modules from config: {', '.join(active_modules)}")
         else:

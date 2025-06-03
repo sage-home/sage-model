@@ -307,7 +307,7 @@ endif
 # Main Targets
 .PHONY: clean celan celna clena tests all physics-free full-physics custom-physics help test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation
 
-all: $(SAGELIB) $(EXEC)
+all: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(SAGELIB) $(EXEC)
 
 help:
 	@echo "SAGE Build System"
@@ -390,7 +390,7 @@ $(ROOT_DIR)/.stamps/generate_properties_core.stamp: $(SRC_PREFIX)/$(PROPERTIES_F
 
 $(ROOT_DIR)/.stamps/generate_properties_full.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
 	@echo "Generating full property headers (all properties)..."
-	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE))
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --all-properties
 	@mkdir -p $(dir $@)
 	@rm -f $(ROOT_DIR)/.stamps/generate_properties*.stamp  # Clear other stamps
 	@touch $@

@@ -44,6 +44,16 @@ To create the ``SAGE`` executable, simply run the following command:
 
     $ make
 
+This builds SAGE with all properties included (full-physics mode). For optimised builds:
+
+.. code::
+
+    $ make physics-free     # Core properties only (fastest, minimal memory)
+    $ make full-physics     # All properties (default, maximum compatibility)
+    $ make custom-physics CONFIG=input/config.json  # Properties for specific modules
+
+Use ``make help`` for detailed build target information. Different property configurations require recompilation.
+
 ``SAGE`` is MPI compatible which can be enabled setting ``USE-MPI = yes`` in
 the ``Makefile``.  To run in parallel, ensure that you have a installed an MPI distribution (OpenMPI, MPICH, Intel MPI etc).
 When compiling with MPI support, the ``Makefile`` expects that the MPI compiler is called ``mpicc`` and is configured appropriately.

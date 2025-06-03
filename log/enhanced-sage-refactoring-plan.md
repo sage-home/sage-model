@@ -6,7 +6,12 @@
 2. **Optimized Merger Tree Processing**: Enhance merger tree handling efficiency via improved memory layout, unified I/O abstraction, and caching, preserving existing formats.
 
 **Overall Timeline**: ~22-28 months total project duration
-**Current Status**: Phase 5 (Core Module Migration)
+**Current Status**: Phase 5.2.G (Physics Module Migration)
+
+**⚠️ ARCHITECTURAL UPDATE (June 2025):**
+- **Placeholder modules removed**: All placeholder modules deleted except `placeholder_empty_module.c/.h` (kept as template)
+- **Manifest/discovery systems removed**: Simplified to self-registering modules only, removed ~1000+ lines of unused infrastructure
+- **Explicit property build system implemented**: `make physics-free`, `make full-physics`, `make custom-physics CONFIG=file.json` for build-time property control
 
 ## Current Architecture Assessment
 
@@ -279,7 +284,7 @@ A unified I/O interface allows support for multiple formats without duplicating 
 *   **4.1 Dynamic Library Loading**: Implement cross-platform loading (`dlopen`/`LoadLibrary`), symbol lookup, and unloading with specific error handling.
 *   **4.2 Module Development Framework**: Provide module template generation, a validation framework, and debugging utilities.
 *   **4.3 Parameter Tuning System**: Implement parameter registration/validation within modules, runtime modification capabilities, and parameter file import/export. Add bounds checking.
-*   **4.4 Module Discovery and Loading**: Implement directory scanning, manifest parsing, dependency resolution, and validation. Define API versioning strategy.
+*   **4.4 Module Discovery and Loading**: Implement directory scanning, dependency resolution, and validation. Define API versioning strategy. **NOTE**: Manifest parsing removed (June 2025) - simplified to self-registering modules only.
 *   **4.5 Error Handling**: Implement comprehensive module error reporting, call stack tracing, and standardized logging per module.
 
 #### Example Implementation
@@ -317,47 +322,8 @@ void unload_module(module_handle_t handle) {
 #endif
 }
 
-// Module manifest parsing
-struct module_manifest {
-    char name[64];
-    char version[32];
-    enum module_type type;
-    char author[64];
-    char description[256];
-    char library_path[PATH_MAX];
-    uint32_t capabilities;
-    bool auto_initialize;
-    bool auto_activate;
-    module_dependency_t dependencies[MAX_DEPENDENCIES];
-    int num_dependencies;
-};
-
-// Parse module manifest from JSON
-int module_parse_manifest(const char* filename, struct module_manifest* manifest) {
-    // Open and parse JSON file
-    FILE* file = fopen(filename, "r");
-    if (!file) return -1;
-
-    // Read file content
-    char* buffer = read_file_to_string(file);
-    fclose(file);
-
-    // Parse JSON
-    cJSON* root = cJSON_Parse(buffer);
-    free(buffer);
-
-    if (!root) return -2;
-
-    // Extract manifest data
-    cJSON* name = cJSON_GetObjectItem(root, "name");
-    if (cJSON_IsString(name) && name->valuestring) {
-        strncpy(manifest->name, name->valuestring, sizeof(manifest->name) - 1);
-    }
-
-    // Extract other fields...
-
-    cJSON_Delete(root);
-    return 0;
+// **NOTE**: Module manifest system removed (June 2025) - simplified to self-registering modules only
+// Future dynamic loading would use simplified module structures without manifest parsing
 }
 
 // Parameter tuning system

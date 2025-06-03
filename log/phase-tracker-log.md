@@ -94,6 +94,11 @@
 - [ ] Comprehensive code cleanup
 - [ ] Documentation review and update
 
+**⚠️ ARCHITECTURAL UPDATE (June 2025):**
+- **Placeholder modules removed**: All placeholder modules deleted except template (`placeholder_empty_module.c/.h`)
+- **Manifest/discovery systems removed**: Simplified to self-registering modules only (~1000+ lines removed)
+- **Explicit property build system implemented**: `make physics-free`, `make full-physics`, `make custom-physics CONFIG=file.json`
+
 ##### HOLDING PEN (to review):
 
 - [ ] Review naming: `GALAXY_PROP_*`→`CORE_PROP_*`; `physics_pipeline_executor.*`→`core_pipeline_executor.*`; `physics_pipeline_executor.c/.h`→`core_pipeline_executor.c/.h`

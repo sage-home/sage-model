@@ -13,8 +13,8 @@
 sage-model/
 ├── src/
 │   ├── core/                # Core infrastructure components
-│   ├── physics/             # Physics modules 
-│   │   └── legacy/          # Legacy modules for future migration
+│   ├── physics/             # Essential physics functions and events only
+│   │   └── placeholder_empty_module.c/.h  # Template for future physics modules
 │   ├── io/                  # Input/output handlers
 │   └── auxdata/             # Auxiliary data files
 ├── tests/                   # Testing framework
@@ -72,21 +72,21 @@ The pipeline registry uses JSON configuration to determine module activation:
 ┌─────────▼───────────┐      ┌─────────────────────┐
 │ pipeline_create_    │      │ Module Selection    │
 │ with_standard_      │◄─────│ - Config filtering  │
-│ modules()           │      │ - Fallback system   │
+│ modules()           │      │ - Physics-free mode │
 └─────────┬───────────┘      └─────────────────────┘
           │
           ▼
 ┌─────────────────────┐
 │ Pipeline System     │
 │ - Phase execution   │
-│ - Module activation │
+│ - Empty pipeline OK │
 └─────────────────────┘
 ```
 
 Key benefits:
 1. **Runtime Modularity**: Module combinations definable through configuration
 2. **Core-Physics Decoupling**: Core has no knowledge of physics implementations
-3. **Robust Fallback**: Uses all registered modules if no configuration is available
+3. **Physics-Free Execution**: Empty pipeline provides core-only functionality when no config specified
 
 ### Module System
 The module system enables plugin-based physics:
@@ -111,25 +111,33 @@ Module System Architecture
 ```
 
 ### Properties Module Architecture
-The Properties Module enables complete core-physics decoupling:
+The Properties Module enables complete core-physics decoupling with explicit build-time property control:
 - `properties.yaml`: Central definition of all galaxy properties
+- **Explicit Build Targets**: `make physics-free`, `make full-physics`, `make custom-physics CONFIG=file.json`
 - Typed accessors for property access with core-physics separation
 - Support for dynamic array properties with runtime-determined sizes
 
 ```
 Properties Module Architecture
 ┌─────────────────────┐      ┌─────────────────────┐
-│ properties.yaml     │      │ core_properties.h/c │
-│ (Source of Truth)   │─────▶│ (Auto-generated)    │
-└─────────────────────┘      └────────┬────────────┘
+│ properties.yaml     │      │ Build Targets       │
+│ (Source of Truth)   │─────▶│ - physics-free      │
+└─────────────────────┘      │ - full-physics      │
+                             │ - custom-physics    │
+                             └────────┬────────────┘
                                       │
 ┌─────────────────────┐      ┌────────▼────────────┐
-│ Physics Modules     │      │ Property Accessors  │
-│ - Use GALAXY_PROP_* │◄─────│ - Type-safe access  │
-│ - Generic accessors │      │ - Core/physics      │
-└─────────────────────┘      │   separation        │
+│ Physics Modules     │      │ core_properties.h/c │
+│ - Use GALAXY_PROP_* │◄─────│ (Auto-generated)    │
+│ - Generic accessors │      │ - Optimised memory  │
+└─────────────────────┘      │ - Type-safe access  │
                              └─────────────────────┘
 ```
+
+**Build Target Benefits:**
+- **physics-free**: Core properties only (25/57), minimal memory, fastest execution
+- **full-physics**: All properties, maximum compatibility
+- **custom-physics**: Module-specific properties, optimised for production
 
 ### Core Galaxy Structure
 The GALAXY struct contains only essential infrastructure fields:
@@ -160,12 +168,6 @@ The I/O system uses property-based serialization:
 - Dynamic property discovery for field generation
 - Output preparation implemented as FINAL phase module
 
-### HDF5 Tree Readers ✅ COMPLETE
-All major HDF5 tree formats now fully supported:
-- **Gadget4 HDF5**: Complete interface implementation (42/42 tests)
-- **Genesis HDF5**: Complete interface implementation (42/42 tests)  
-- **ConsistentTrees HDF5**: Complete interface implementation (42/42 tests)
-- **LHalo HDF5**: Previously implemented
 
 ```
 I/O System Architecture
@@ -178,10 +180,10 @@ I/O System Architecture
                                       │
 ┌─────────────────────┐      ┌────────▼────────────┐
 │ HDF5 Tree Readers   │      │ Output Preparation  │
-│ - Gadget4 HDF5 ✅   │◄─────│ - FINAL phase       │
-│ - Genesis HDF5 ✅   │      │ - Unit conversion   │
-│ - ConsistentTrees ✅ │      │ - Transformers      │
-│ - LHalo HDF5 ✅     │      └─────────────────────┘
+│ - Gadget4 HDF5      │◄─────│ - FINAL phase       │
+│ - Genesis HDF5      │      │ - Unit conversion   │
+│ - ConsistentTrees   │      │ - Transformers      │
+│ - LHalo HDF5        │      └─────────────────────┘
 └─────────────────────┘
 ```
 
@@ -198,25 +200,34 @@ The SAGE refactoring has achieved true runtime functional modularity through:
 1. **Complete Core-Physics Separation:**
    - Physics-agnostic core with no knowledge of specific physics properties
    - Centralized property definition with type-safe access
-   - Configuration-driven module activation
+   - Configuration-driven module activation with physics-free fallback
+   - **All placeholder modules removed** - only template remains (June 2025)
+   - **Manifest/discovery systems removed** - simplified self-registering architecture (June 2025)
    - **Evolution diagnostics system now fully compliant** (May 23, 2025)
    - **Property system robustly handles all data types including uint64_t** (May 30, 2025)
 
-2. **Phase-Based Pipeline Execution:**
+2. **Explicit Property Build System:**
+   - **Build-time property control**: `make physics-free`, `make full-physics`, `make custom-physics`
+   - **Memory optimisation**: Include only needed properties (25 core vs 57 total)
+   - **Performance benefits**: Faster execution and reduced memory usage in physics-free mode
+   - **Configuration validation**: Clear errors for missing config files
+
+3. **Phase-Based Pipeline Execution:**
    - Clear execution phases for different calculation scopes
    - Modules declare phase participation
    - Event-based communication between modules
+   - **Empty pipeline execution**: Graceful handling of zero physics modules
    - **Separate event systems for core infrastructure and physics processes**
 
-3. **Runtime Configurable Components:**
+4. **Runtime Configurable Components:**
    - JSON configuration defines active modules
    - Property system adapts to available physics components
    - Dynamic property discovery for I/O operations
    - **Property accessors with robust NULL handling and error recovery** (May 30, 2025)
 
-4. **Diagnostics and Monitoring:**
+5. **Diagnostics and Monitoring:**
    - **Core diagnostics track only infrastructure metrics** (galaxy counts, phase timing, pipeline performance)
    - **Physics modules can register custom diagnostic metrics independently**
    - Comprehensive error handling and validation throughout
 
-Next steps focus on implementing physics modules as pure add-ons to the core, with comprehensive validation to ensure scientific consistency with the original SAGE implementation.
+Architecture is now ready for implementing physics modules as pure add-ons to the core, with comprehensive validation to ensure scientific consistency with the original SAGE implementation.
