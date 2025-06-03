@@ -263,6 +263,7 @@ IMPLEMENTATION_TEMPLATE = """/**
 #include "core_allvars.h"
 #include "core_properties.h"
 #include "core_logging.h"
+#include "core_pipeline_system.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -674,28 +675,58 @@ def generate_allocate_arrays_code(properties):
     # Find properties with dynamic arrays
     dynamic_arrays = [p for p in properties if parse_type(p['type'])[3]]
     if dynamic_arrays:
+        # Add physics-free mode detection
+        code_lines.extend([
+            "    /* Check if we're in physics-free mode (no modules loaded) */",
+            "    extern struct module_pipeline* pipeline_get_global(void);",
+            "    struct module_pipeline* current_pipeline = pipeline_get_global();",
+            "    bool physics_free_mode = (current_pipeline == NULL || current_pipeline->num_steps == 0);",
+            "    ",
+            "    if (physics_free_mode) {",
+            "        LOG_DEBUG(\"Physics-free mode detected - only allocating core properties\");",
+            "    }",
+            ""
+        ])
+        
         for prop in dynamic_arrays:
             base_type = parse_type(prop['type'])[0]
+            is_core = prop.get('is_core', True)  # Default to true for safety
+            
+            if not is_core:
+                # Physics property - only allocate if modules are loaded
+                code_lines.extend([
+                    f"    /* {prop['name']} - physics property, skip in physics-free mode */",
+                    f"    if (!physics_free_mode) {{"
+                ])
+            else:
+                # Core property - always allocate
+                code_lines.append(f"    /* {prop['name']} - core property, always allocate */")
+            
+            # Standard allocation logic (indented for physics properties)
+            indent = "        " if not is_core else "    "
             code_lines.extend([
-                f"    /* Allocate {prop['name']} array */",
-                f"    if (PROPERTY_META[PROP_{prop['name']}].size_parameter != NULL) {{",
-                f"        // Get size from parameters",
-                f"        int resolved_size = resolve_parameter_value(PROPERTY_META[PROP_{prop['name']}].size_parameter, params);",
-                f"        if (resolved_size < 0) {{",
-                f"            LOG_ERROR(\"Failed to resolve size for dynamic array '{prop['name']}' during allocation\");",
-                f"            free_galaxy_properties(g); // Cleanup partially allocated",
-                f"            return -1;",
-                f"        }}",
-                f"        // Call the specific generated size setter",
-                f"        int status = galaxy_set_{prop['name']}_size(g, resolved_size);",
-                f"        if (status != 0) {{",
-                f"            LOG_ERROR(\"Failed to set size and allocate for dynamic array '{prop['name']}'\");",
-                f"            free_galaxy_properties(g); // Cleanup partially allocated",
-                f"            return -1;",
-                f"        }}",
-                f"        LOG_DEBUG(\"Allocated dynamic array '{prop['name']}' with size %d\", resolved_size);",
-                f"    }}"
+                f"{indent}if (PROPERTY_META[PROP_{prop['name']}].size_parameter != NULL) {{",
+                f"{indent}    // Get size from parameters",
+                f"{indent}    int resolved_size = resolve_parameter_value(PROPERTY_META[PROP_{prop['name']}].size_parameter, params);",
+                f"{indent}    if (resolved_size < 0) {{",
+                f"{indent}        LOG_ERROR(\"Failed to resolve size for dynamic array '{prop['name']}' during allocation\");",
+                f"{indent}        free_galaxy_properties(g); // Cleanup partially allocated",
+                f"{indent}        return -1;",
+                f"{indent}    }}",
+                f"{indent}    // Call the specific generated size setter",
+                f"{indent}    int status = galaxy_set_{prop['name']}_size(g, resolved_size);",
+                f"{indent}    if (status != 0) {{",
+                f"{indent}        LOG_ERROR(\"Failed to set size and allocate for dynamic array '{prop['name']}'\");",
+                f"{indent}        free_galaxy_properties(g); // Cleanup partially allocated",
+                f"{indent}        return -1;",
+                f"{indent}    }}",
+                f"{indent}    LOG_DEBUG(\"Allocated dynamic array '{prop['name']}' with size %d\", resolved_size);",
+                f"{indent}}}"
             ])
+            
+            if not is_core:
+                # Close the physics property conditional block
+                code_lines.append("    }")
     
     return "\n".join(code_lines)
 
