@@ -58,16 +58,16 @@ Core-physics separation is validated through multiple focused tests:
 - `test_property_system_hdf5` - Tests property system integration with I/O separation  
 - `test_evolve_integration` - Tests core pipeline works independently of physics
 - `test_core_pipeline_registry` - Tests physics-agnostic pipeline registry
-- `test_empty_pipeline` - Tests core can run with empty placeholder modules
+- `test_physics_free_mode` - Tests core runs with empty pipelines (zero modules)
 
 These tests collectively verify that:
 
-1. The core can run with minimal "placeholder" modules that do nothing
-2. The pipeline executes all phases correctly
-3. Galaxies are processed without any physics calculations
-4. No direct field synchronization is required
+1. The core can run with completely empty pipelines
+2. The pipeline executes all phases correctly with zero modules
+3. Properties pass from input to output without physics
+4. Essential physics functions provide minimal implementations
 
-## Running with the Empty Pipeline
+## Running in Physics-Free Mode
 
 To run SAGE with a minimal empty pipeline:
 

@@ -80,64 +80,7 @@ static const char *get_string_from_object(const struct config_object *obj, const
     return default_value;
 }
 
-/* Function to add modules to the pipeline from registered factories */
-static void add_all_registered_modules_to_pipeline(struct module_pipeline *pipeline) {
-    // Track modules we've already processed to avoid duplicates
-    int processed_module_ids[MAX_MODULES] = {0};
-    int num_processed = 0;
-
-    if (num_factories <= 0) {
-        LOG_ERROR("No module factories registered. Pipeline creation failed.");
-        fprintf(stderr, "ERROR: No module factories registered. SAGE requires at least one physics module to run.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    LOG_INFO("Creating pipeline with all %d registered factories", num_factories);
-
-    // For each registered module factory, create and add the module
-    for (int i = 0; i < num_factories; i++) {
-        LOG_DEBUG("Processing factory for module: %s (type %d)", module_factories[i].name, module_factories[i].type);
-        struct base_module *module = module_factories[i].factory();
-        if (module) {
-            LOG_DEBUG("Module %s (type %d, ID %d) created successfully by factory.", module->name, module->type, module->module_id);
-            
-            // Check if we've already processed this module
-            bool already_processed = false;
-            for (int j = 0; j < num_processed; j++) {
-                if (processed_module_ids[j] == module->module_id) {
-                    LOG_DEBUG("Module ID %d already processed, skipping duplicate", module->module_id);
-                    already_processed = true;
-                    break;
-                }
-            }
-            if (already_processed) {
-                continue;
-            }
-            
-            // Track this module as processed
-            if (num_processed < MAX_MODULES) {
-                processed_module_ids[num_processed++] = module->module_id;
-            } else {
-                LOG_WARNING("Exceeded capacity to track processed modules for deduplication (%d).", MAX_MODULES);
-            }
-            
-            // Add the module to the pipeline
-            int result = pipeline_add_step(pipeline, module->type, module->name, module->name, true, false);
-            
-            // pipeline_add_step returns 0 on success.
-            if (result == 0) { 
-                LOG_DEBUG("Module %s (ID: %d) added to pipeline as step '%s' successfully.", module->name, module->module_id, module->name);
-                module_set_active(module->module_id);
-            } else {
-                LOG_ERROR("Failed to add module %s (ID: %d) to pipeline as step. Error code: %d", module->name, module->module_id, result);
-            }
-        } else {
-            LOG_ERROR("Factory for module %s failed to create module instance.", module_factories[i].name);
-        }
-    }
-
-    LOG_DEBUG("Finished processing module factories for pipeline creation.");
-}
+/* Pipeline creation with standard modules based on configuration */
 
 struct module_pipeline *pipeline_create_with_standard_modules(void) {
     LOG_DEBUG("Creating pipeline based on configuration and registered factories...");
@@ -153,16 +96,16 @@ struct module_pipeline *pipeline_create_with_standard_modules(void) {
 
     // Check if configuration system is initialized
     if (global_config == NULL || global_config->root == NULL) {
-        LOG_WARNING("No global JSON configuration loaded. Using all registered modules.");
-        add_all_registered_modules_to_pipeline(pipeline);
+        LOG_INFO("No configuration file specified. Running in physics-free mode with empty pipeline.");
+        // Return empty pipeline for core-only execution
         return pipeline;
     }
 
     // Get the modules.instances array from configuration
     const struct config_value *modules_instances_val = config_get_value("modules.instances");
     if (modules_instances_val == NULL || modules_instances_val->type != CONFIG_VALUE_ARRAY) {
-        LOG_WARNING("'modules.instances' array not found or not an array in JSON config. Using all registered modules.");
-        add_all_registered_modules_to_pipeline(pipeline);
+        LOG_INFO("'modules.instances' array not found in JSON config. Running in physics-free mode with empty pipeline.");
+        // Return empty pipeline for core-only execution
         return pipeline;
     }
 

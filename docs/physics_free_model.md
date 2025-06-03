@@ -2,93 +2,53 @@
 
 ## Overview
 
-The Physics-Free SAGE Model represents a significant architectural milestone in the SAGE refactoring project. It demonstrates complete core-physics separation, where the core infrastructure operates independently from any physics implementation. This document describes the Physics-Free baseline, its architecture, testing methodology, and implications for future development.
+The Physics-Free SAGE Model demonstrates complete core-physics separation where the core infrastructure operates with empty pipelines - no modules whatsoever. This validates true physics-agnostic execution where properties pass directly from input to output.
 
 ## Architecture
 
 ### Core-Physics Separation
 
-The key architectural principle is that the core infrastructure is completely physics-agnostic:
+The core infrastructure is completely physics-agnostic:
 
-1. **GALAXY Struct**: The core GALAXY struct contains only essential infrastructure fields (identifiers, tree navigation, extension pointers). All physics-specific fields have been removed.
+1. **GALAXY Struct**: Contains only essential infrastructure fields (identifiers, tree navigation, extension pointers). All physics fields removed.
 
-2. **Properties System**: All persistent physical state is managed through the `galaxy_properties_t` struct, which is dynamically generated from `core_properties.yaml`. The core version includes only essential infrastructure properties.
+2. **Properties System**: All physical state managed through dynamically generated `galaxy_properties_t` struct from `properties.yaml`.
 
-3. **Pipeline System**: The pipeline executor no longer has direct physics knowledge or calls. It orchestrates execution phases without knowing what modules do.
+3. **Pipeline System**: Pipeline executor has no physics knowledge. Executes phases without requiring modules.
 
-4. **Module System**: Physics modules register themselves with the core at runtime. The core doesn't depend on any specific module implementations.
+4. **Essential Physics Functions**: Minimal implementations in `physics_essential_functions.c` provide core-required functions (`init_galaxy`, virial calculations, merger stubs) enabling physics-free operation.
 
-### Empty Pipeline Components
+### Empty Pipeline Execution
 
-The Physics-Free Model includes these minimal components:
-
-1. **Core Properties**: Defined in `core_properties.yaml`, these include only the properties needed for infrastructure operation (identifiers, merger tracking, tree navigation, etc.).
-
-2. **Placeholder Modules**: Empty implementations that register with the pipeline but perform no actual physics:
-   - `placeholder_empty_module.c`: Generic placeholder supporting all phases
-   - `placeholder_cooling_module.c`: GALAXY phase placeholder
-   - `placeholder_infall_module.c`: HALO phase placeholder
-   - `placeholder_output_module.c`: FINAL phase placeholder
-
-3. **Empty Pipeline Configuration**: `config_empty_pipeline.json` configures the pipeline to use only placeholder modules.
+When no configuration file is provided:
+- Empty pipeline created with zero modules
+- Core properties pass from input to output unchanged
+- Physics properties output at initial values (typically 0.0)
+- All pipeline phases execute gracefully
 
 ## Testing Methodology
 
-The Physics-Free Model is validated through comprehensive testing:
+### Physics-Free Mode Validation
 
-1. **Empty Pipeline Test** (`test_empty_pipeline`): Verifies the system runs end-to-end with no actual physics operations.
-   - Loads the empty pipeline configuration from `tests/test_data/empty_pipeline_config.json`
-   - Initializes the core with minimal properties
-   - Executes all pipeline phases with placeholder modules
-   - Confirms successful completion without errors
+1. **Physics-Free Mode Test** (`test_physics_free_mode`): Validates empty pipeline execution with zero modules.
+2. **Core-Physics Separation Tests**: Multiple tests verify core independence from physics.
+3. **Property System Tests**: Validate property pass-through without physics operations.
 
-2. **Core-Physics Separation Tests**: Verifies the core's independence from physics through multiple tests:
-   - `test_property_access_patterns`: Confirms proper property access patterns
-   - `test_property_system_hdf5`: Tests property-based I/O with separation
-   - `test_evolve_integration`: Tests pipeline integration with separation
-   - `test_core_pipeline_registry`: Tests configuration-driven pipeline creation
+### Example Execution
 
-3. **Integration Testing**: Ensures the Physics-Free Model integrates properly with I/O and memory management.
-   - Validates property serialization with minimal properties
-   - Tests merger tree navigation with no physics operations
-   - Confirms proper memory management (allocation/deallocation)
+```bash
+./sage millennium.par  # No config file = empty pipeline
+```
 
-## Memory Management Optimizations
+This runs SAGE in physics-free mode, demonstrating core infrastructure independence.
 
-The Physics-Free Model includes several memory management optimizations:
+## Benefits
 
-1. **Reduced Memory Footprint**: With physics fields removed from the GALAXY struct and minimal properties, memory usage per galaxy is significantly reduced.
+1. **True Separation**: Core never depends on specific physics implementations
+2. **Runtime Modularity**: Physics modules are pure add-ons
+3. **Testing Foundation**: Validates core infrastructure independently
+4. **Development Framework**: Clean foundation for physics module development
 
-2. **Dynamic Array Support**: The property system fully supports dynamic arrays with runtime size determination and proper lifecycle management.
+## Future Development
 
-3. **Allocation Limits**: Default allocation limits have been increased to support more efficient memory usage patterns.
-
-4. **Property Lifecycle Management**: Comprehensive allocation, copy, and cleanup functions ensure proper memory management throughout the galaxy lifecycle.
-
-## Validation Results
-
-The Physics-Free Model validation demonstrates:
-
-1. **Complete Independence**: The core runs correctly without any physics calculations.
-2. **Stability**: All test cases pass with the empty pipeline.
-3. **Memory Efficiency**: No memory leaks detected during testing.
-4. **Extension Support**: The extension system works correctly with minimal properties.
-5. **Pipeline Completeness**: All pipeline phases execute successfully.
-
-## Implications for Development
-
-The Physics-Free Model establishes a solid foundation for:
-
-1. **Modular Physics Development**: Physics modules can be developed, tested, and deployed independently from the core.
-2. **Runtime Configurability**: Different physics modules can be enabled/disabled at runtime without recompilation.
-3. **Alternative Physics Implementations**: Multiple implementations of the same physics process can coexist.
-4. **Incremental Migration**: Remaining physics components can be migrated one by one without destabilizing the core.
-5. **Optimized Memory Layout**: The separation enables future optimization of memory layout without impacting physics calculations.
-
-## Conclusion
-
-The Physics-Free SAGE Model represents a critical milestone in achieving true Runtime Functional Modularity. By completely separating the core infrastructure from physics implementations, we've created a flexible, extensible foundation that enables independent development of physics components while maintaining scientific accuracy.
-
-This architecture addresses the key challenges identified in the original codebase, providing a clean separation of concerns, standardized interfaces for physics implementation, and a runtime-configurable pipeline that can adapt to different scientific models.
-
-The successful validation of the Physics-Free Model confirms that the core-physics separation is complete and stable, allowing us to proceed with migrating the remaining physics components as pure add-ons to this solid foundation.
+Physics modules will be implemented as pure add-ons that register with the core at runtime, maintaining complete separation while enabling full scientific functionality.

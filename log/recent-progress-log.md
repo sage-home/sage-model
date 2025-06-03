@@ -462,3 +462,17 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Achieved 100% test coverage with 42/42 tests passing for each handler (126 total tests passing)
 - Fixed compilation errors and memory management issues
 - Modified files: src/io/read_tree_gadget4_hdf5.c, src/io/read_tree_genesis_hdf5.c, src/io/read_tree_consistentrees_hdf5.c, src/io/io_interface.c
+
+2025-06-03: [Phase 5.2.G] Enhanced Placeholder Module Removal Implementation ✅ COMPLETED
+- Implemented complete Enhanced Placeholder Module Removal Plan enabling true physics-free execution with empty pipelines
+- Fixed critical merger handler parameter defaults to prevent runtime failures when no config file provided
+- Archived all placeholder modules to ignore/placeholder_modules_20250603/ (35+ files including tests and configs)
+- Updated pipeline registry fallback behavior: no config → empty pipeline with physics-free mode logging instead of loading all modules
+- Removed vestigial add_all_registered_modules_to_pipeline() function completely from pipeline registry
+- Created physics_essential_functions.c/h providing minimal core-required functions (init_galaxy, virial calculations, merger stubs)
+- Updated test_empty_pipeline.c → test_physics_free_mode.c with documentation reflecting empty pipeline execution
+- Updated documentation removing placeholder references and documenting physics-free mode execution
+- System now compiles successfully and supports empty pipeline execution where core properties pass directly to output
+- Created files: src/physics/physics_essential_functions.c/.h, tests/test_physics_free_mode.c
+- Modified files: src/core/core_read_parameter_file.c, src/core/core_pipeline_registry.c, Makefile, docs/module_system_and_configuration.md, docs/core_physics_separation.md, docs/physics_free_model.md
+- Archived files: All placeholder modules, tests, and configuration files to ignore/placeholder_modules_20250603/

@@ -1,20 +1,21 @@
 /**
- * @file test_empty_pipeline.c
- * @brief Test suite for physics-agnostic core infrastructure validation
+ * @file test_physics_free_mode.c
+ * @brief Test suite for physics-free mode execution with empty pipelines
  * 
  * This test validates that the SAGE core infrastructure can run 
- * with no physics components at all, using just placeholder modules
- * in a completely empty pipeline. It executes all pipeline phases
- * with no physics operations to validate the core-physics separation.
+ * in physics-free mode with completely empty pipelines - no modules
+ * whatsoever. It verifies core-physics separation by testing property
+ * pass-through from input to output with zero physics operations.
  * 
  * Tests cover:
- * - Core-physics separation principle validation
- * - Module system functionality with placeholder modules
- * - Pipeline execution across all phases (HALO, GALAXY, POST, FINAL)
- * - Memory management with minimal properties
+ * - Empty pipeline creation and execution
+ * - Core property pass-through without physics
+ * - Property system initialization with minimal physics properties
+ * - Pipeline phase execution with zero modules
+ * - Memory management in physics-free mode
  * 
- * The test is self-contained and doesn't require external scripts,
- * making it consistent with other SAGE unit tests.
+ * This validates the enhanced placeholder removal implementation where
+ * no placeholder modules are loaded in physics-free mode.
  */
 
 #include <stdio.h>

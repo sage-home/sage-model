@@ -400,19 +400,21 @@ for (int k = 0; k < num_processed; k++) {
 
 This is important when multiple configuration entries could create the same module.
 
-## Placeholder Module Implementation
+## Physics-Free Mode Execution
 
-The placeholder modules are minimal implementations that fulfill the module interface requirements. They're used in the physics-free model for testing the core infrastructure. Example:
+SAGE supports physics-free mode where the core infrastructure runs with completely empty pipelines - no modules whatsoever. This demonstrates true core-physics separation where:
 
-```c
-struct base_module placeholder_output_module = {
-    .name = "placeholder_output_module",
-    .type = MODULE_TYPE_MISC,
-    .version = "1.0",
-    .author = "SAGE Team",
-    .initialize = placeholder_output_init,
-    .cleanup = placeholder_output_cleanup,
-    .execute_final_phase = placeholder_output_execute_final_phase,
+- No configuration file results in an empty pipeline
+- Core properties pass from input to output unchanged  
+- Physics properties output at initial values (typically 0.0)
+- All pipeline phases execute gracefully with zero modules
+
+Example physics-free execution:
+```bash
+./sage millennium.par  # No config file = empty pipeline
+```
+
+The essential physics functions in `physics_essential_functions.c` provide minimal implementations for core-required functions like `init_galaxy()` and virial calculations, enabling physics-free operation.
     .phases = PIPELINE_PHASE_FINAL
 };
 ```

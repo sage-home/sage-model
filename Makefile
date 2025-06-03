@@ -56,15 +56,12 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/generated_output_transformers.c
 
 # Physics model source files
-PHYSICS_SRC := physics/placeholder_empty_module.c \
-        physics/placeholder_cooling_module.c physics/placeholder_infall_module.c \
-        physics/placeholder_output_module.c \
-        physics/placeholder_starformation_module.c \
-        physics/placeholder_disk_instability_module.c \
-        physics/placeholder_reincorporation_module.c \
-        physics/placeholder_mergers_module.c \
-        physics/placeholder_model_misc.c physics/placeholder_validation.c \
-        physics/placeholder_hdf5_save.c physics/physics_output_transformers.c
+PHYSICS_SRC := physics/physics_output_transformers.c \
+               physics/physics_events.c \
+               physics/physics_essential_functions.c
+
+# NOTE: placeholder_empty_module.c/.h files remain as template for future physics migration
+# but are not compiled or linked
 
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
@@ -365,7 +362,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_empty_pipeline test_parameter_validation
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_patterns
@@ -374,7 +371,7 @@ PROPERTY_TESTS = test_property_serialization test_property_array_access test_pro
 IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_memory_map test_io_buffer_manager test_validation_framework
 
 # Module system tests
-MODULE_TESTS = test_dynamic_library test_pipeline_invoke test_placeholder_mergers_module test_module_callback
+MODULE_TESTS = test_dynamic_library test_pipeline_invoke test_module_callback
 
 # All unit tests (excludes complex integration tests with individual Makefiles)
 UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS)
@@ -461,9 +458,6 @@ test_dynamic_library: tests/test_dynamic_library.c $(SAGELIB)
 test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline_invoke tests/test_pipeline_invoke.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_placeholder_mergers_module: tests/test_placeholder_mergers_module.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_placeholder_mergers_module tests/test_placeholder_mergers_module.c -L. -l$(LIBNAME) $(LIBFLAGS)
-
 test_module_callback: tests/test_module_callback.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_callback tests/test_module_callback.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
@@ -479,8 +473,8 @@ test_config_system: tests/test_config_system.c $(SAGELIB)
 test_parameter_validation: tests/test_parameter_validation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_parameter_validation tests/test_parameter_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_empty_pipeline: tests/test_empty_pipeline.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_empty_pipeline tests/test_empty_pipeline.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_physics_free_mode: tests/test_physics_free_mode.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_physics_free_mode tests/test_physics_free_mode.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
 core_tests: $(CORE_TESTS)
