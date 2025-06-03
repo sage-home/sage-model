@@ -73,9 +73,7 @@ Tests for reading merger trees and writing galaxy catalogs:
 Tests for the modular plugin architecture:
 
 - **test_pipeline_invoke** - Tests inter-module communication
-- **test_dynamic_library** - Tests dynamic loading of modules
 - **test_module_callback** - Tests module callback system
-- **test_placeholder_mergers_module** - Tests placeholder implementations
 
 ### Specialized Tests
 
