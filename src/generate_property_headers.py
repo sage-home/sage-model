@@ -683,6 +683,8 @@ def generate_transformer_dispatch_chain(properties):
     else:
         # No transformers available - provide default identity transformation only
         return """    // Default identity transformation (no custom transformers available)
+    (void)run_params; /* No custom transformers use run_params */
+    
     if (galaxy->properties == NULL) {
         LOG_ERROR("Galaxy properties is NULL for property '%s'", output_prop_name);
         return -1;
@@ -1130,6 +1132,17 @@ def generate_double_setter(properties):
     c_code.append(" */")
     c_code.append("void set_generated_double(galaxy_properties_t *props, property_id_t prop_id, double value) {")
     c_code.append("    if (!props) return;")
+    
+    # Check if there are any double properties
+    has_double_properties = any(
+        not parse_type(prop['type'])[1] and parse_type(prop['type'])[0] == 'double' 
+        for prop in properties
+    )
+    
+    if not has_double_properties:
+        c_code.append("    (void)prop_id; /* No double properties available */")
+        c_code.append("    (void)value;   /* No double properties available */")
+    
     c_code.append("    switch (prop_id) {")
     
     # Add case for each double property
