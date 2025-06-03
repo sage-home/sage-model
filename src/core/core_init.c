@@ -165,14 +165,12 @@ int initialize_module_system(struct params *run_params)
             LOG_ERROR("SAGE requires at least one physics module to run");
             return MODULE_STATUS_ERROR;
         } else {
-            LOG_ERROR("No modules found during discovery");
-            LOG_ERROR("SAGE requires at least one physics module to run");
-            return MODULE_STATUS_ERROR;
+            LOG_INFO("No modules available - running in physics-free mode");
+            return MODULE_STATUS_SUCCESS;  // Allow empty pipeline execution
         }
     } else {
-        LOG_ERROR("Module discovery not enabled or registry not initialized");
-        LOG_ERROR("SAGE requires at least one physics module to run");
-        return MODULE_STATUS_ERROR;
+        LOG_INFO("Module system disabled - running in physics-free mode");
+        return MODULE_STATUS_SUCCESS;  // Allow empty pipeline execution
     }
 }
 
