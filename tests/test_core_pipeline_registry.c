@@ -1,5 +1,14 @@
 /**
  * Test suite for Core Pipeline Registry
+ * 
+ * ARCHITECTURAL NOTE (June 2025):
+ * Following Enhanced Placeholder Module Removal, the pipeline registry now defaults
+ * to physics-free mode (empty pipelines) when no configuration is provided.
+ * This reflects the core-physics separation principle where:
+ * - No config file = empty pipeline (0 modules)  
+ * - With config file = only explicitly enabled modules
+ * 
+ * Tests validate both modes and ensure core infrastructure operates independently.
  */
 
 #include <stdio.h>
@@ -162,10 +171,15 @@ static int register_and_initialize_modules(bool include_disabled) {
 }
 
 // Helper to validate pipeline modules
-static void validate_pipeline_modules(struct module_pipeline *pipeline, bool should_include_disabled) {
+static void validate_pipeline_modules(struct module_pipeline *pipeline, bool should_include_disabled, bool expect_empty) {
     TEST_ASSERT(pipeline != NULL, "Pipeline should not be NULL");
     
-    int expected_steps = should_include_disabled ? 3 : 2;
+    int expected_steps;
+    if (expect_empty) {
+        expected_steps = 0;  // Physics-free mode: empty pipeline without config
+    } else {
+        expected_steps = should_include_disabled ? 3 : 2;
+    }
     TEST_ASSERT(pipeline->num_steps == expected_steps, "Pipeline should have expected number of steps");
     
     bool found_infall = false, found_cooling = false, found_disabled = false;
@@ -187,13 +201,21 @@ static void validate_pipeline_modules(struct module_pipeline *pipeline, bool sho
         }
     }
     
-    TEST_ASSERT(found_infall, "Pipeline should contain MockInfall module");
-    TEST_ASSERT(found_cooling, "Pipeline should contain MockCooling module");
-    
-    if (should_include_disabled) {
-        TEST_ASSERT(found_disabled, "Pipeline should contain MockDisabled module when enabled");
+    if (expect_empty) {
+        // Physics-free mode: empty pipeline should contain no modules
+        TEST_ASSERT(!found_infall, "Empty pipeline should not contain MockInfall module");
+        TEST_ASSERT(!found_cooling, "Empty pipeline should not contain MockCooling module");
+        TEST_ASSERT(!found_disabled, "Empty pipeline should not contain MockDisabled module");
     } else {
-        TEST_ASSERT(!found_disabled, "Pipeline should not contain MockDisabled module when disabled");
+        // Configuration-driven mode: validate expected modules
+        TEST_ASSERT(found_infall, "Pipeline should contain MockInfall module");
+        TEST_ASSERT(found_cooling, "Pipeline should contain MockCooling module");
+        
+        if (should_include_disabled) {
+            TEST_ASSERT(found_disabled, "Pipeline should contain MockDisabled module when enabled");
+        } else {
+            TEST_ASSERT(!found_disabled, "Pipeline should not contain MockDisabled module when disabled");
+        }
     }
 }
 
@@ -202,15 +224,39 @@ static void validate_pipeline_modules(struct module_pipeline *pipeline, bool sho
 //=============================================================================
 
 // Test: Basic module registration and pipeline creation
+// NOTE: Without configuration, SAGE defaults to physics-free mode (empty pipeline)
+// This reflects the Enhanced Placeholder Module Removal (June 2025) architectural change
 static void test_basic_module_registration_and_pipeline_creation(void) {
     printf("\n=== Testing basic module registration and pipeline creation ===\n");
     
     TEST_ASSERT(setup_test_systems(false, NULL) == 0, "Test system setup should succeed");
     register_and_initialize_modules(false);
     
-    printf("Creating pipeline with registered modules...\n");
+    printf("Creating pipeline with registered modules (physics-free mode)...\n");
     struct module_pipeline *pipeline = pipeline_create_with_standard_modules();
-    validate_pipeline_modules(pipeline, false);
+    validate_pipeline_modules(pipeline, false, true);  // expect_empty=true for physics-free mode
+    
+    if (pipeline) pipeline_destroy(pipeline);
+    teardown_test_systems();
+}
+
+// Test: Physics-free mode validation  
+// Validates that empty pipelines execute without errors (core-physics separation)
+static void test_physics_free_mode_validation(void) {
+    printf("\n=== Testing physics-free mode (empty pipeline execution) ===\n");
+    
+    TEST_ASSERT(setup_test_systems(false, NULL) == 0, "Test system setup should succeed");
+    
+    // No modules registered - this should create an empty pipeline
+    printf("Creating empty pipeline for physics-free mode...\n");
+    struct module_pipeline *pipeline = pipeline_create_with_standard_modules();
+    
+    TEST_ASSERT(pipeline != NULL, "Empty pipeline should be created successfully");
+    TEST_ASSERT(pipeline->num_steps == 0, "Physics-free pipeline should have zero steps");
+    TEST_ASSERT(pipeline->initialized == true, "Empty pipeline should be properly initialized");
+    
+    printf("Empty pipeline created successfully with %d steps\n", pipeline->num_steps);
+    printf("This demonstrates core-physics separation: core runs independently\n");
     
     if (pipeline) pipeline_destroy(pipeline);
     teardown_test_systems();
@@ -226,7 +272,7 @@ static void test_configuration_driven_module_selection(void) {
     
     printf("Creating pipeline with configuration-driven selection...\n");
     struct module_pipeline *pipeline = pipeline_create_with_standard_modules();
-    validate_pipeline_modules(pipeline, false);  // Should NOT include disabled module
+    validate_pipeline_modules(pipeline, false, false);  // expect_empty=false with configuration
     
     if (pipeline) pipeline_destroy(pipeline);
     teardown_test_systems();
@@ -303,6 +349,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
     
     // Run all test cases
     test_basic_module_registration_and_pipeline_creation();
+    test_physics_free_mode_validation();
     test_configuration_driven_module_selection();
     test_invalid_configuration_handling();
     test_no_modules_registered();
