@@ -723,7 +723,7 @@ static void test_property_metadata(void) {
     
     // Test invalid property name lookup
     property_id_t invalid_id = get_cached_property_id("NonexistentProperty");
-    TEST_ASSERT(invalid_id == (property_id_t)-1, "Invalid property name should return -1");
+    TEST_ASSERT(invalid_id == PROP_COUNT, "Invalid property name should return PROP_COUNT");
 }
 
 /**
