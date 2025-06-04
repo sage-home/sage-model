@@ -337,8 +337,12 @@ static void test_galaxy_memory_lifecycle(void) {
     struct GALAXY* galaxy = mymalloc(sizeof(struct GALAXY));
     TEST_ASSERT(galaxy != NULL, "Galaxy allocation with mymalloc");
     
-    // Initialize galaxy properties (requires params, use NULL for test)
-    int status = allocate_galaxy_properties(galaxy, NULL);
+    // Create minimal valid params for property allocation
+    struct params test_params = {0};
+    test_params.simulation.NumSnapOutputs = 10;  // Minimal valid value for dynamic arrays
+    
+    // Initialize galaxy properties with valid params
+    int status = allocate_galaxy_properties(galaxy, &test_params);
     TEST_ASSERT(status == 0, "Galaxy properties allocation");
     
     // Test property access
@@ -670,6 +674,59 @@ static void test_resource_limit_handling(void) {
 }
 
 // =============================================================================
+// 7. Integration Testing
+// =============================================================================
+
+/**
+ * Test integration between different resource management systems
+ */
+static void test_integrated_resource_lifecycle(void) {
+    printf("\n=== Testing Integrated Resource Lifecycle ===\n");
+    
+    struct resource_baseline baseline = get_resource_baseline();
+    
+    // Test galaxy properties + HDF5 + memory pool integration
+    struct params test_params = {0};
+    test_params.simulation.NumSnapOutputs = 5;
+    
+    // Allocate galaxy with properties
+    struct GALAXY* galaxy = mymalloc(sizeof(struct GALAXY));
+    TEST_ASSERT(galaxy != NULL, "Galaxy allocation for integration test");
+    
+    int status = allocate_galaxy_properties(galaxy, &test_params);
+    TEST_ASSERT(status == 0, "Galaxy properties allocation for integration test");
+    
+#ifdef HDF5
+    // Create HDF5 file and write galaxy properties
+    hid_t file_id = H5Fcreate("/tmp/test_integration.h5", H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if (file_id >= 0) {
+        HDF5_TRACK_FILE(file_id);
+        
+        // Test that galaxy properties can be used with HDF5 operations
+        hid_t group_id = H5Gcreate2(file_id, "/test_data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        if (group_id >= 0) {
+            HDF5_TRACK_GROUP(group_id);
+            
+            TEST_ASSERT(1, "Integrated galaxy properties and HDF5 operations");
+            
+            hdf5_check_and_close_group(&group_id);
+        }
+        
+        hdf5_check_and_close_file(&file_id);
+        unlink("/tmp/test_integration.h5");
+    }
+#endif
+    
+    // Cleanup galaxy properties
+    free_galaxy_properties(galaxy);
+    myfree(galaxy);
+    
+    // Check for resource leaks across all systems
+    TEST_ASSERT(check_resource_cleanup(baseline, "Integrated resource lifecycle"),
+                "No resource leaks in integrated lifecycle test");
+}
+
+// =============================================================================
 // Main test runner
 // =============================================================================
 
@@ -681,8 +738,10 @@ int main(void) {
     printf("Starting tests for test_resource_management\n");
     printf("========================================\n\n");
     
-    // Initialize SAGE logging system (minimal)
-    // Note: Some tests may require basic SAGE initialization
+#ifdef HDF5
+    // Initialize HDF5 tracking globally to prevent warnings
+    hdf5_tracking_init();
+#endif
     
     // Memory Management Tests
     test_galaxy_memory_lifecycle();
@@ -700,7 +759,7 @@ int main(void) {
     test_hdf5_concurrent_operations();
 #else
     printf("\nHDF5 tests skipped (HDF5 not enabled in build)\n");
-    tests_run += 3;  // Account for skipped tests in total
+    tests_run += 3;  // Account for skipped HDF5 tests
 #endif
     
     // Module Resource Management Tests
@@ -713,6 +772,9 @@ int main(void) {
     test_resource_stress_conditions();
     test_resource_limit_handling();
     
+    // Integration Testing
+    test_integrated_resource_lifecycle();
+    
     // Report results
     printf("\n========================================\n");
     printf("Test results for test_resource_management:\n");
@@ -720,6 +782,11 @@ int main(void) {
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
     printf("========================================\n\n");
+    
+#ifdef HDF5
+    // Cleanup HDF5 tracking
+    hdf5_tracking_cleanup();
+#endif
     
     return (tests_run == tests_passed) ? 0 : 1;
 }

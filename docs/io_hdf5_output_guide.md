@@ -12,7 +12,7 @@ The HDF5 Output Handler is an implementation of the I/O interface for writing ga
 - **Property-Based Output**: Uses the centralized property system to determine output fields dynamically
 - **Output Transformers**: Supports custom transformation functions for unit conversion and derived values
 - **Metadata-Rich**: Uses HDF5's attribute system to store comprehensive metadata about each property
-- **Resource Management**: Implements robust handle tracking to prevent resource leaks
+- **Resource Management**: Implements robust handle tracking to prevent resource leaks (validated by `test_resource_management`)
 - **Cross-Platform Compatibility**: Works consistently across different operating systems and architectures
 - **Performance Optimized**: Uses buffered writing and chunking for better performance with large datasets
 
