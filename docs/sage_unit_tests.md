@@ -34,7 +34,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_property_validation** | Tests validation of property definitions | Phase 3.2 (Apr 2025) |
 | **test_property_array_access** | Tests access to array properties | Phase 5.2.B (May 2025) |
 | **test_property_system_hdf5** | Tests integration between the property system and HDF5 output with transformer functions | Phase 5.2.F.3 (May 2025) |
-| **test_galaxy_property_macros** | Tests galaxy property macro generation and validation with mock implementations | Phase 5.2.B (May 2025) |
+| **test_property_access_comprehensive** | Comprehensive validation of property system for core-physics separation | Phase 5.3 (Jun 2025) |
 
 ### I/O System Tests (`IO_TESTS`)
 
@@ -58,6 +58,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 |-----------|---------|---------------|
 | **test_pipeline_invoke** | Tests the pipeline invocation mechanisms | Phase 2.7 (Mar 2025) |
 | **test_module_callback** | Tests the inter-module communication infrastructure | Phase 5.2.F.5 (May 2025) |
+| **test_module_lifecycle** | Validates complete lifecycle of physics modules within SAGE architecture | Phase 5.3 (Jun 2025) |
 
 ## Running Tests
 
@@ -104,9 +105,9 @@ This test **intentionally produces ERROR messages** as part of its validation pr
 ## Test Categories Overview
 
 - **Core Infrastructure (13 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, core-physics separation validation, merger queue system, parameter validation
-- **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, property macro generation
+- **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, comprehensive property system validation  
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
-- **Module System (2 tests)**: Pipeline invocation, module callback system
+- **Module System (3 tests)**: Pipeline invocation, module callback system, module lifecycle management
 
 The test suite provides comprehensive coverage of all major SAGE components whilst maintaining clear separation between unit tests (expected to pass during development) and scientific validation tests (may fail during refactoring phases).
 

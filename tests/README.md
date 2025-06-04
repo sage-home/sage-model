@@ -56,7 +56,7 @@ Tests focused on the property system that enables core-physics separation:
 - **test_property_array_access** - Tests access to array properties
 - **test_property_system_hdf5** - Tests HDF5 output with the property system
 - **test_property_validation** - Tests validation of property definitions
-- **test_property_access_patterns** - Tests compliance with core-physics separation
+- **test_property_access_comprehensive** - Comprehensive validation of property system for core-physics separation
 
 ### I/O System Tests (`IO_TESTS`)
 
@@ -74,6 +74,7 @@ Tests for the modular plugin architecture:
 
 - **test_pipeline_invoke** - Tests inter-module communication
 - **test_module_callback** - Tests module callback system
+- **test_module_lifecycle** - Tests complete module lifecycle management and validation
 
 ### Specialized Tests
 

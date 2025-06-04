@@ -38,6 +38,7 @@ These tests focus on the property system, which is central to SAGE's modular arc
 - **Property Registration**: Tests registration of properties with the extension system
 - **Property Access**: Tests access to properties via macros and generic functions
 - **Property HDF5 Integration**: Tests integration between properties and HDF5 output
+- **Comprehensive Property Access**: Tests all property access patterns and core-physics separation compliance
 
 The property system tests validate both the correctness of property handling and the core-physics separation principle.
 
@@ -58,6 +59,7 @@ These tests validate the module system that enables SAGE's pluggable architectur
 
 - **Dynamic Library Loading**: Tests loading modules at runtime
 - **Pipeline Invocation**: Tests interaction between modules in the pipeline
+- **Module Lifecycle**: Tests complete module registration, initialization, and cleanup lifecycle
 
 Module system tests ensure that physics components can be added, removed, or replaced without breaking the core functionality.
 
