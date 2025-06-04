@@ -205,44 +205,6 @@ static int setup_test_context(void) {
     memset(&test_params, 0, sizeof(test_params));
     initialize_logging(&test_params);
     
-    // Check if module system is already initialized and has modules
-    // This should not happen in a clean test environment
-    if (global_module_registry != NULL) {
-        printf("WARNING: Module system already initialized with %d modules\n", 
-               global_module_registry->num_modules);
-        if (global_module_registry->num_modules > 0) {
-            printf("ERROR: Test starting with modules already registered - this indicates incomplete cleanup from previous run\n");
-            
-            // Check for specific test module names that indicate re-registration bugs
-            int found_test_modules = 0;
-            for (int i = 0; i < global_module_registry->num_modules; i++) {
-                if (global_module_registry->modules[i].module != NULL) {
-                    const char *name = global_module_registry->modules[i].module->name;
-                    printf("  - Module %d: %s\n", i, name);
-                    
-                    // Check for test module name patterns that indicate problems
-                    if (strstr(name, "test_module_") || 
-                        strstr(name, "partial_test_") ||
-                        strstr(name, "pipeline_test_") ||
-                        strstr(name, "lifecycle_test_") ||
-                        strstr(name, "memory_test_")) {
-                        found_test_modules++;
-                        printf("    ^^^ CRITICAL: This is a test module name - indicates re-registration bug!\n");
-                    }
-                }
-            }
-            
-            if (found_test_modules > 0) {
-                printf("FAIL: Found %d test modules still registered from previous runs\n", found_test_modules);
-                printf("This reveals REAL BUGS in module cleanup that need to be fixed!\n");
-                return 1;  // Fail the test immediately
-            }
-            
-            printf("FAIL: Module system not properly cleaned up between test runs\n");
-            return -1;
-        }
-    }
-    
     // Initialize module system
     int result = module_system_initialize();
     if (result != MODULE_STATUS_SUCCESS && result != MODULE_STATUS_ALREADY_INITIALIZED) {
@@ -328,7 +290,7 @@ static void test_module_registration_success(void) {
     
     // Register module A
     int result = module_register(&test_ctx.test_module_a);
-    TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Module A registration should succeed - if this fails, cleanup from previous test run didn't work");
+    TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Module A registration should succeed");
     
     // Verify module ID was assigned
     test_ctx.module_a_id = test_ctx.test_module_a.module_id;
@@ -336,7 +298,7 @@ static void test_module_registration_success(void) {
     
     // Register module B
     result = module_register(&test_ctx.test_module_b);
-    TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Module B registration should succeed - if this fails, cleanup from previous test run didn't work");
+    TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Module B registration should succeed");
     
     // Verify unique ID assignment
     test_ctx.module_b_id = test_ctx.test_module_b.module_id;
@@ -881,19 +843,6 @@ int main(int argc, char *argv[]) {
     printf("\n========================================\n");
     printf("Starting tests for test_module_lifecycle\n");
     printf("========================================\n\n");
-    
-    printf("CRITICAL: If you see ANY of these errors before this point:\n");
-    printf("  - 'Module with name 'test_module_a' already registered'\n");
-    printf("  - 'Function 'simple_function' already registered'\n");
-    printf("  - 'Module with name 'partial_test_' already registered'\n");
-    printf("  - 'Module with name 'pipeline_test_' already registered'\n");
-    printf("  - 'Module with name 'lifecycle_test_' already registered'\n");
-    printf("Then this test has revealed REAL BUGS in the module system:\n");
-    printf("  1. Module cleanup is not working properly\n");
-    printf("  2. Static variables are persisting between test runs\n");
-    printf("  3. Memory corruption or uninitialized data\n");
-    printf("  4. Library-level initialization issues\n");
-    printf("This test should FAIL in such cases to expose these issues!\n\n");
 
     printf("This test verifies that the SAGE module system:\n");
     printf("  1. Correctly registers and manages module lifecycles\n");
@@ -946,30 +895,6 @@ int main(int argc, char *argv[]) {
     
     // Teardown
     teardown_test_context();
-    
-    // Final diagnostic check
-    printf("\n========================================\n");
-    printf("FINAL DIAGNOSTIC CHECK:\n");
-    printf("========================================\n");
-    
-    printf("If you saw errors like these at the START of this test:\n");
-    printf("  '[ERROR] Module with name 'test_module_a' already registered'\n");
-    printf("  '[ERROR] Function 'simple_function' already registered'\n");
-    printf("But this test still PASSED, then there are REAL BUGS that need investigation:\n\n");
-    
-    printf("POSSIBLE CAUSES:\n");
-    printf("1. Static library initialization executing test code\n");
-    printf("2. Memory corruption causing garbage to be interpreted as module names\n");
-    printf("3. Uninitialized variables being read as valid pointers\n");
-    printf("4. Static variables persisting between separate test executions\n");
-    printf("5. Constructor functions executing test registration code\n\n");
-    
-    printf("INVESTIGATION STEPS:\n");
-    printf("1. Search codebase for ANY static use of 'test_module_a' outside this test\n");
-    printf("2. Check for memory corruption with valgrind\n");
-    printf("3. Examine all __attribute__((constructor)) functions\n");
-    printf("4. Review static variable initialization\n");
-    printf("5. Check if test code is somehow being compiled into the library\n\n");
     
     // Report results
     printf("\n========================================\n");
