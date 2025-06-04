@@ -323,7 +323,7 @@ bool has_property(const struct GALAXY *galaxy, property_id_t prop_id) {
 property_id_t get_cached_property_id(const char *name) {
     if (name == NULL || name[0] == '\0') {
          LOG_ERROR("Property name cannot be NULL or empty in get_cached_property_id.");
-         return (property_id_t)-1; // Return -1 for invalid input, aligning with test expectation
+         return PROP_COUNT; // Return PROP_COUNT for invalid input, consistent with get_property_id()
     }
 
     init_property_cache_if_needed();
@@ -355,7 +355,7 @@ property_id_t get_cached_property_id(const char *name) {
     }
 
     LOG_ERROR("Property with name '%s' not found in property metadata.", name);
-    return (property_id_t)-1; // Changed to return -1 for "not found" to align with test
+    return PROP_COUNT; // Return PROP_COUNT for "not found" to align with get_property_id()
 }
 
 bool is_core_property(property_id_t prop_id) {
