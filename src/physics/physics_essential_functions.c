@@ -27,11 +27,13 @@
 #include "core_logging.h"
 #include "physics_essential_functions.h"
 
-void init_galaxy(int p, int halonr, const struct halo_data *halos, 
+void init_galaxy(int p, int halonr, int *galaxycounter, const struct halo_data *halos, 
                  struct GALAXY *galaxies, const struct params *run_params) {
     // Initialize core properties only
     galaxies[p].SnapNum = -1;
     galaxies[p].Type = -1;
+    galaxies[p].GalaxyNr = *galaxycounter;
+    (*galaxycounter)++;
     galaxies[p].GalaxyIndex = (uint64_t)p;
     galaxies[p].CentralGalaxyIndex = (uint64_t)p;
     galaxies[p].MostBoundID = 0;
