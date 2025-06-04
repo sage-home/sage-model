@@ -46,42 +46,8 @@
 7. Run tests via `/terminal make tests`.
 8. When reporting progress, include EVERY FILE that was changed and created.
 9.  Write documentation to `docs/` when relevant.
-10. Commit with descriptive messages (`Phase #X Task #Y – short summary`).
-11. Assume no persistent memory — rely on logs for all continuity.
-
-# desktop-commander MCP Instructions - ONLY USE WHEN EXPLICITLY INSTRUCTED
-
-**File Navigation**
-When exploring the SAGE codebase, use these tools in this order:
-1. list_directory - For initial directory structure exploration
-2. search_files - To locate specific files by name
-3. search_code - For finding specific patterns, classes, or functions in code
-
-**Code Search Optimization**
-When using search_code:
-- For large searches, use "filePattern": "*.py" (or relevant extension)
-- Include "contextLines": 3 to provide context for matches
-- Use "maxResults": 100 to limit result volume 
-- For complex searches, use "timeoutMs": 120000 (2 minutes)
-
-**Editing Workflow**
-For code modifications:
-- Small, targeted changes: Use edit_block
-- Large refactoring (>20% of file): Use write_file
-- Always confirm changes after editing with read_file
-
-**Performance Guidelines**
-When working with SAGE:
-- Prefer specific paths over broad searches
-- Stay within maxSearchDepth of 10
-- Use zsh for commands requiring advanced shell features
-- For long-running operations, use the PID to check status with read_output
-
-**Security Boundary Notes**
-Important limitations:
-- File operations restricted to `/Users/dcroton/Documents/Science/projects/sage-repos/sage-model`
-- Terminal commands aren't fully sandboxed and can access other directories
-- Always make configuration changes in a separate chat
+10. Assume no persistent memory — rely on logs for all continuity.
+11. Prefer lldb over gdb for debugging.
 
 # Critical Rules - DO NOT VIOLATE
 
