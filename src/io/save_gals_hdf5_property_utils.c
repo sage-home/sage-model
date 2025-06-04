@@ -1,5 +1,20 @@
 #include "save_gals_hdf5_internal.h"
 
+// Helper function to extract base type from array syntax like "float[3]" -> "float"
+static const char* extract_base_type(const char* type_str) {
+    static char base_type_buffer[64];
+    const char* bracket = strchr(type_str, '[');
+    if (bracket) {
+        size_t len = bracket - type_str;
+        if (len < sizeof(base_type_buffer)) {
+            strncpy(base_type_buffer, type_str, len);
+            base_type_buffer[len] = '\0';
+            return base_type_buffer;
+        }
+    }
+    return type_str; // Return original if no brackets or too long
+}
+
 // Function to discover properties for output based on their metadata
 int discover_output_properties(struct hdf5_save_info *save_info) {
     // Ensure TotGalaxyProperties is properly linked from core_properties.c
@@ -45,17 +60,17 @@ int discover_output_properties(struct hdf5_save_info *save_info) {
             save_info->prop_descriptions[idx] = strdup(meta->description);
             save_info->is_core_prop[idx] = is_core_property(id);
             
-            // Determine HDF5 datatype
-            if (strcmp(meta->type, "float") == 0 || strcmp(meta->type, "float[]") == 0) {
+            // Determine HDF5 datatype - extract base type from array syntax
+            const char* base_type = extract_base_type(meta->type);
+            if (strcmp(base_type, "float") == 0) {
                 save_info->prop_h5types[idx] = H5T_NATIVE_FLOAT;
-            } else if (strcmp(meta->type, "double") == 0 || strcmp(meta->type, "double[]") == 0) {
+            } else if (strcmp(base_type, "double") == 0) {
                 save_info->prop_h5types[idx] = H5T_NATIVE_DOUBLE;
-            } else if (strcmp(meta->type, "int32_t") == 0 || strcmp(meta->type, "int32_t[]") == 0 || 
-                       strcmp(meta->type, "int") == 0) {
+            } else if (strcmp(base_type, "int32_t") == 0 || strcmp(base_type, "int") == 0) {
                 save_info->prop_h5types[idx] = H5T_NATIVE_INT;
-            } else if (strcmp(meta->type, "uint64_t") == 0 || strcmp(meta->type, "uint64_t[]") == 0) {
+            } else if (strcmp(base_type, "uint64_t") == 0) {
                 save_info->prop_h5types[idx] = H5T_NATIVE_LLONG;
-            } else if (strcmp(meta->type, "long long") == 0) {
+            } else if (strcmp(base_type, "long long") == 0) {
                 save_info->prop_h5types[idx] = H5T_NATIVE_LLONG;
             } else {
                 // Default to float for unknown types
