@@ -23,6 +23,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
 | **test_merger_queue**           | Tests the merger event queue system for deferred merger processing            | Phase 5.1 (May 2025)     |
 | **test_core_merger_processor**  | Tests physics-agnostic merger event handling and dispatching                  | Phase 5.2.G (May 2025)   |
+| **test_error_recovery**         | Tests system resilience and recovery from failures                            | Phase 5.2.G (June 2025)  |
 | **test_physics_free_mode**      | Validates core-physics separation by running core infrastructure without physics modules | Phase 5.2.F.2 (May 2025) |
 | **test_parameter_validation**   | Tests parameter file parsing, module discovery, and configuration errors      | Phase 5.2.F.3 (Jun 2025) |
 | **test_resource_management**    | Comprehensive resource lifecycle validation                                   | Phase 5.2.F.5 (Jun 2025) |

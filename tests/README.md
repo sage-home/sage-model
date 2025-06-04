@@ -46,6 +46,7 @@ Tests that validate the fundamental components of SAGE:
 - **test_config_system** - Tests configuration loading and parsing
 - **test_memory_pool** - Tests memory allocation/management
 - **test_merger_queue** - Tests the merger event queue system
+- **test_error_recovery** - Tests system resilience and recovery from various failure scenarios
 - **test_integration_workflows** - Tests multi-system integration workflows and cross-system state management
 - **test_resource_management** - Comprehensive resource lifecycle validation (memory, HDF5 handles, file descriptors)
 - And more...
