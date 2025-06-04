@@ -44,6 +44,7 @@ int main(int argc, char **argv)
         /* The core_init.c initialize_config_system function will have been called with NULL,
            now we call it directly with the actual config file */
         LOG_INFO("Loading configuration file: %s", config_file);
+        printf("Loading configuration file: %s", config_file);
         initialize_config_system(config_file);
         
         /* Apply configuration to params */

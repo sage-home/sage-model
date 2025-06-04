@@ -376,14 +376,7 @@ void initialize_pipeline_system(void)
         return;
     }
     
-    /* Register pipeline events if event system is available */
-    if (event_system_is_initialized()) {
-        status = pipeline_register_events();
-        if (status != 0) {
-            LOG_WARNING("Failed to register pipeline events, status = %d", status);
-            /* Continue anyway - failing to register events is not fatal */
-        }
-    }
+    /* Pipeline events are already registered by pipeline_system_initialize() */
     
     /* Create the default pipeline */
     struct module_pipeline *default_pipeline = pipeline_create_default();
