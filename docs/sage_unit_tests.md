@@ -25,7 +25,8 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_core_merger_processor**  | Tests physics-agnostic merger event handling and dispatching                  | Phase 5.2.G (May 2025)   |
 | **test_physics_free_mode**      | Validates core-physics separation by running core infrastructure without physics modules | Phase 5.2.F.2 (May 2025) |
 | **test_parameter_validation**   | Tests parameter file parsing, module discovery, and configuration errors      | Phase 5.2.F.3 (Jun 2025) |
-| **test_resource_management**    | Comprehensive resource lifecycle validation (memory, HDF5 handles, file descriptors, module resources) | Phase 5.2.F.5 (Jun 2025) |
+| **test_resource_management**    | Comprehensive resource lifecycle validation                                   | Phase 5.2.F.5 (Jun 2025) |
+| **test_integration_workflows**  | Comprehensive integration workflow validation                                 | Phase 5.2.G (Jun 2025)   |
 
 ### Property System Tests (`PROPERTY_TESTS`)
 
@@ -78,12 +79,13 @@ make module_tests      # Module system tests
 
 ### Individual Tests
 ```bash
-make test_config_system    # Configuration system (includes intentional error message testing)
+make test_config_system          # Configuration system (includes intentional error message testing)
 make test_pipeline
 make test_property_serialization
 make test_memory_pool
 make test_io_memory_map
-make test_empty_pipeline  # Test core-physics separation with placeholder modules
+make test_integration_workflows  # Multi-system integration validation
+make test_empty_pipeline         # Test core-physics separation with placeholder modules
 # etc.
 ```
 
@@ -105,7 +107,7 @@ This test **intentionally produces ERROR messages** as part of its validation pr
 
 ## Test Categories Overview
 
-- **Core Infrastructure (14 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, core-physics separation validation, merger queue system, parameter validation, resource management
+- **Core Infrastructure (15 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, core-physics separation validation, merger queue system, parameter validation, resource management, integration workflows
 - **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, comprehensive property system validation  
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (3 tests)**: Pipeline invocation, module callback system, module lifecycle management

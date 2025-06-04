@@ -574,7 +574,15 @@ static void test_complete_workflow_integration(void) {
         printf("  Phase 3: Galaxy processing\n");
         reset_galaxy_properties(workflow_galaxy);
         
+        // Initialize galaxy with realistic starting values for evolution
+        workflow_galaxy->Type = 0;  // Central galaxy
+        workflow_galaxy->Mvir = 1e11;  // 10^11 solar masses
+        workflow_galaxy->Rvir = 200.0;  // 200 kpc
+        workflow_galaxy->CentralMvir = workflow_galaxy->Mvir;
+        workflow_galaxy->SnapNum = 0;
+        
         // Simulate evolution across snapshots
+        int snapshots_processed = 0;
         for (int snap = 0; snap < workflow_params.simulation.NumSnapOutputs; snap++) {
             workflow_galaxy->SnapNum = snap;
             workflow_galaxy->Mvir *= 1.05; // Growth
@@ -582,11 +590,14 @@ static void test_complete_workflow_integration(void) {
             
             // Validate galaxy state at each snapshot
             if (workflow_galaxy->Mvir <= 0 || workflow_galaxy->Rvir <= 0) {
+                printf("    ERROR: Galaxy state became invalid at snapshot %d: Mvir=%e, Rvir=%e\n", 
+                       snap, workflow_galaxy->Mvir, workflow_galaxy->Rvir);
                 break;
             }
+            snapshots_processed++;
         }
         
-        TEST_ASSERT(workflow_galaxy->SnapNum == workflow_params.simulation.NumSnapOutputs - 1,
+        TEST_ASSERT(snapshots_processed == workflow_params.simulation.NumSnapOutputs,
                     "Workflow processing completed all snapshots");
         TEST_ASSERT(workflow_galaxy->Mvir > 0 && workflow_galaxy->Rvir > 0,
                     "Workflow galaxy state valid after processing");
@@ -835,17 +846,22 @@ static void test_concurrent_state_access(void) {
     double mvir_values[5];
     double rvir_values[5];
     
-    // Multiple "accesses" to the same galaxy
-    for (int access = 0; access < 5; access++) {
-        mvir_values[access] = test_ctx.test_galaxy->Mvir;
-        rvir_values[access] = test_ctx.test_galaxy->Rvir;
-        
+    // Store initial values
+    mvir_values[0] = test_ctx.test_galaxy->Mvir;
+    rvir_values[0] = test_ctx.test_galaxy->Rvir;
+    
+    // Multiple "accesses" to the same galaxy with modifications
+    for (int access = 1; access < 5; access++) {
         // Simulate small modifications from different "systems"
         test_ctx.test_galaxy->Mvir *= (1.0 + access * 0.001);
         test_ctx.test_galaxy->Rvir *= (1.0 + access * 0.0005);
+        
+        // Store values after modification
+        mvir_values[access] = test_ctx.test_galaxy->Mvir;
+        rvir_values[access] = test_ctx.test_galaxy->Rvir;
     }
     
-    // Verify that all accesses were consistent
+    // Verify that values increase as expected (showing consistent access patterns)
     int access_consistent = 1;
     for (int i = 1; i < 5; i++) {
         if (mvir_values[i] <= mvir_values[i-1]) {
