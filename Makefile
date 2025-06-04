@@ -517,7 +517,7 @@ test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
 test_module_callback: tests/test_module_callback.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_callback tests/test_module_callback.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_module_lifecycle: tests/test_module_lifecycle.c $(SAGELIB)
+test_module_lifecycle: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_module_lifecycle.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_lifecycle tests/test_module_lifecycle.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_merger_queue: tests/test_merger_queue.c $(SAGELIB)
