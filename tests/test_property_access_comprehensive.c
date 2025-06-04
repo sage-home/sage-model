@@ -61,6 +61,10 @@ static struct test_context {
     int initialized;
 } test_ctx;
 
+// Forward declarations for property management functions
+int allocate_galaxy_properties(struct GALAXY *g, const struct params *params);
+void free_galaxy_properties(struct GALAXY *g);
+
 //=============================================================================
 // Test Setup and Teardown
 //=============================================================================
@@ -70,6 +74,9 @@ static struct test_context {
  */
 static int setup_test_context(void) {
     memset(&test_ctx, 0, sizeof(test_ctx));
+    
+    // Initialize logging system first
+    logging_init(LOG_LEVEL_DEBUG, stdout);
     
     // Initialize test parameters with realistic values
     test_ctx.test_params.simulation.NumSnapOutputs = 15;  // For dynamic arrays
@@ -110,6 +117,28 @@ static void teardown_test_context(void) {
     }
     
     test_ctx.initialized = 0;
+}
+
+//=============================================================================
+// Test Category 0: Property System Initialization Test
+//=============================================================================
+
+/**
+ * Test property system initialization and basic functionality
+ */
+static void test_property_system_initialization(void) {
+    printf("=== Testing property system initialization ===\n");
+    
+    struct GALAXY *g = test_ctx.test_galaxy;
+    
+    // Test that galaxy structure is allocated
+    TEST_ASSERT(g != NULL, "Test galaxy should be allocated");
+    
+    // Test basic property access (some properties might work without explicit allocation)
+    GALAXY_PROP_SnapNum(g) = 42;
+    TEST_ASSERT(GALAXY_PROP_SnapNum(g) == 42, "Basic property access should work");
+    
+    printf("Property system initialization: BASIC FUNCTIONALITY VERIFIED\n");
 }
 
 //=============================================================================
@@ -651,7 +680,7 @@ static void test_property_metadata(void) {
 
 int main(int argc, char *argv[]) {
     printf("\n========================================\n");
-    printf("Starting Comprehensive Property Access Tests\n");
+    printf("Starting tests for test_property_access_comprehensive\n");
     printf("========================================\n\n");
     
     printf("This test comprehensively validates the SAGE property system:\n");
@@ -666,8 +695,18 @@ int main(int argc, char *argv[]) {
     // Setup
     if (setup_test_context() != 0) {
         printf("ERROR: Failed to set up test context\n");
+        printf("\n========================================\n");
+        printf("Test results for Property Access Comprehensive:\n");
+        printf("  Setup failed - tests cannot run\n");
+        printf("  Total tests: 0\n");
+        printf("  Passed: 0\n");
+        printf("  Failed: 1\n");
+        printf("========================================\n\n");
         return 1;
     }
+    
+    // Test property system initialization first
+    test_property_system_initialization();
     
     // Run test categories
     test_macro_property_access();
@@ -699,7 +738,7 @@ int main(int argc, char *argv[]) {
     
     // Report results
     printf("\n========================================\n");
-    printf("Test results for Property Access Comprehensive:\n");
+    printf("Test results for test_property_access_comprehensive:\n");
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
