@@ -430,7 +430,7 @@ clean:
 CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation
 
 # Property system tests  
-PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation
+PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_comprehensive test_property_access_basic
 
 # I/O system tests
 IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_memory_map test_io_buffer_manager test_validation_framework
@@ -477,6 +477,12 @@ test_property_system_hdf5: tests/test_property_system_hdf5.c $(SAGELIB)
 
 test_property_validation: tests/test_property_validation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_validation tests/test_property_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_property_access_comprehensive: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_access_comprehensive.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_access_comprehensive tests/test_property_access_comprehensive.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_property_access_basic: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_access_basic.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_access_basic tests/test_property_access_basic.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_io_interface: tests/test_io_interface.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_interface tests/test_io_interface.c -L. -l$(LIBNAME) $(LIBFLAGS)
