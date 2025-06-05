@@ -43,6 +43,15 @@ int core_process_merger_queue_agnostically(struct pipeline_context *pipeline_ctx
     
     LOG_DEBUG("Core merger processor handling %d events", queue->num_events);
     
+    /* Check if merger handlers are configured - if not, we're in physics-free mode */
+    if (queue->num_events > 0 && 
+        (strlen(run_params->runtime.MergerHandlerModuleName) == 0 || 
+         strlen(run_params->runtime.DisruptionHandlerModuleName) == 0)) {
+        LOG_DEBUG("No merger handler modules configured - operating in physics-free mode. Skipping %d merger events.", 
+                 queue->num_events);
+        return 0;  /* Success - no processing needed in physics-free mode */
+    }
+    
     /* Process all events in the queue */
     for (int i = 0; i < queue->num_events; i++) {
         struct merger_event *event = &queue->events[i];
