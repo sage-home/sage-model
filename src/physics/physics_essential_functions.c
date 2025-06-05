@@ -30,13 +30,23 @@
 void init_galaxy(int p, int halonr, int *galaxycounter, const struct halo_data *halos, 
                  struct GALAXY *galaxies, const struct params *run_params) {
     // Initialize core properties only
-    galaxies[p].SnapNum = -1;
-    galaxies[p].Type = -1;
+    galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
+    
+    // Set galaxy type: central (0) if this is the first halo in FOF group, satellite (1) otherwise
+    if (halonr == halos[halonr].FirstHaloInFOFgroup) {
+        galaxies[p].Type = 0;  // Central galaxy
+    } else {
+        galaxies[p].Type = 1;  // Satellite galaxy
+    }
+
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;
-    galaxies[p].GalaxyIndex = (uint64_t)p;
-    galaxies[p].CentralGalaxyIndex = (uint64_t)p;
-    galaxies[p].MostBoundID = 0;
+
+    galaxies[p].HaloNr = halonr;
+    galaxies[p].MostBoundID = halos[halonr].MostBoundID;
+
+    galaxies[p].GalaxyIndex = (uint64_t)p;  // TODO: not core, and calculate at output
+    galaxies[p].CentralGalaxyIndex = (uint64_t)p;  // TODO: not core, and calculate at output
     
     // Initialize from halo data
     for (int j = 0; j < 3; j++) {
@@ -45,23 +55,31 @@ void init_galaxy(int p, int halonr, int *galaxycounter, const struct halo_data *
     }
     
     galaxies[p].Len = halos[halonr].Len;
-    galaxies[p].Mvir = halos[halonr].Mvir;
-    galaxies[p].deltaMvir = 0.0;
-    galaxies[p].Rvir = get_virial_radius(halonr, halos, run_params);
-    galaxies[p].Vvir = get_virial_velocity(halonr, halos, run_params);
     galaxies[p].Vmax = halos[halonr].Vmax;
+    galaxies[p].Rvir = get_virial_radius(halonr, halos, run_params);
+    galaxies[p].Mvir = get_virial_mass(halonr, halos, run_params);;
+    galaxies[p].Vvir = get_virial_velocity(halonr, halos, run_params);
+
+    galaxies[p].deltaMvir = 0.0;
     
+    // infall properties
+    galaxies[p].infallMvir = -1.0;
+    galaxies[p].infallVvir = -1.0;
+    galaxies[p].infallVmax = -1.0;
+
     if (allocate_galaxy_properties(&galaxies[p], run_params) != 0) {
         LOG_ERROR("Failed to allocate galaxy properties for galaxy %d", p);
     }
 }
 
 double get_virial_mass(const int halonr, const struct halo_data *halos, const struct params *run_params) {
+    // TODO: update with legacy code equivalent
     (void)run_params;
     return halos[halonr].Mvir;
 }
 
 double get_virial_radius(const int halonr, const struct halo_data *halos, const struct params *run_params) {
+    // TODO: update with legacy code equivalent
     const double Mvir = halos[halonr].Mvir;
     const double Hubble_h = run_params->cosmology.Hubble_h;
     const double a = 1.0; // Use a=1 since Redshift field unavailable
@@ -74,6 +92,7 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
 }
 
 double get_virial_velocity(const int halonr, const struct halo_data *halos, const struct params *run_params) {
+    // TODO: update with legacy code equivalent
     const double Mvir = halos[halonr].Mvir;
     const double Rvir = get_virial_radius(halonr, halos, run_params);
     const double G = 43.0071;
@@ -83,13 +102,14 @@ double get_virial_velocity(const int halonr, const struct halo_data *halos, cons
 
 double estimate_merging_time(const int halonr, const int mother_halo, const struct halo_data *halos,
                             const double time, const struct params *run_params) {
+    // TODO: update with legacy code equivalent
     (void)halonr; (void)mother_halo; (void)halos; (void)run_params;
     return time + 1.0; // Arbitrary future time
 }
 
 void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, double time,
                             int ngal, struct GALAXY *galaxy, struct params *run_params) {
+    // TODO: update with legacy code equivalent
     (void)p; (void)merger_centralgal; (void)centralgal; (void)time;
     (void)ngal; (void)galaxy; (void)run_params;
-    // No-op for physics-free mode
 }
