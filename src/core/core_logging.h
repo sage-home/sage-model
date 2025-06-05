@@ -35,8 +35,7 @@ typedef enum log_level {
  * User-friendly log level settings for command line and configuration.
  */
 typedef enum runtime_log_mode {
-    RUNTIME_LOG_QUIET,   /**< ERROR only */
-    RUNTIME_LOG_NORMAL,  /**< INFO, WARNING, ERROR (default) */
+    RUNTIME_LOG_NORMAL,  /**< WARNING, ERROR (default) */
     RUNTIME_LOG_VERBOSE  /**< DEBUG, INFO, WARNING, ERROR */
 } runtime_log_mode_t;
 
@@ -147,14 +146,13 @@ extern void logging_set_runtime_mode(runtime_log_mode_t mode);
 extern log_level_t logging_get_level(void);
 
 /**
- * @brief Parse log level from string
+ * @brief Set verbose logging mode
  * 
- * Converts string representation to runtime log mode.
+ * Enables or disables verbose logging.
  * 
- * @param level_str String representation ("quiet", "normal", "verbose")
- * @return Runtime log mode, or RUNTIME_LOG_NORMAL if invalid
+ * @param verbose true for verbose mode, false for normal mode
  */
-extern runtime_log_mode_t logging_parse_level_string(const char *level_str);
+extern void logging_set_verbose(bool verbose);
 
 /**
  * @brief Initialize the logging system with parameters

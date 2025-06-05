@@ -19,7 +19,7 @@
 /* Static global logging state with default normal log level */
 static struct logging_state global_logging_state = {
     .config = {
-        .min_level = LOG_LEVEL_INFO,  /* Default to normal mode (INFO, WARNING, ERROR) */
+        .min_level = LOG_LEVEL_WARNING,  /* Default to normal mode (WARNING, ERROR) */
         .prefix_style = LOG_PREFIX_DETAILED,
         .destinations = LOG_DEST_STDERR,
         .include_mpi_rank = false,
@@ -225,10 +225,8 @@ static const char *get_current_runtime_mode_name(void) {
     }
     
     log_level_t level = global_logging_state.config.min_level;
-    if (level == LOG_LEVEL_ERROR) {
-        return "quiet";
-    } else if (level == LOG_LEVEL_INFO) {
-        return "normal";  
+    if (level == LOG_LEVEL_WARNING) {
+        return "normal";
     } else if (level == LOG_LEVEL_DEBUG) {
         return "verbose";
     } else {
@@ -471,17 +469,14 @@ void logging_set_runtime_mode(runtime_log_mode_t mode) {
     log_level_t min_level;
     
     switch (mode) {
-        case RUNTIME_LOG_QUIET:
-            min_level = LOG_LEVEL_ERROR;
-            break;
         case RUNTIME_LOG_NORMAL:
-            min_level = LOG_LEVEL_INFO;
+            min_level = LOG_LEVEL_WARNING;
             break;
         case RUNTIME_LOG_VERBOSE:
             min_level = LOG_LEVEL_DEBUG;
             break;
         default:
-            min_level = LOG_LEVEL_INFO; /* Default to normal */
+            min_level = LOG_LEVEL_WARNING; /* Default to normal */
             break;
     }
     
@@ -489,22 +484,13 @@ void logging_set_runtime_mode(runtime_log_mode_t mode) {
 }
 
 /**
- * Parse log level from string
+ * Set verbose logging mode
  */
-runtime_log_mode_t logging_parse_level_string(const char *level_str) {
-    if (level_str == NULL) {
-        return RUNTIME_LOG_NORMAL;
-    }
-    
-    if (strcasecmp(level_str, "quiet") == 0) {
-        return RUNTIME_LOG_QUIET;
-    } else if (strcasecmp(level_str, "normal") == 0) {
-        return RUNTIME_LOG_NORMAL;
-    } else if (strcasecmp(level_str, "verbose") == 0) {
-        return RUNTIME_LOG_VERBOSE;
+void logging_set_verbose(bool verbose) {
+    if (verbose) {
+        logging_set_runtime_mode(RUNTIME_LOG_VERBOSE);
     } else {
-        /* Invalid string, return default */
-        return RUNTIME_LOG_NORMAL;
+        logging_set_runtime_mode(RUNTIME_LOG_NORMAL);
     }
 }
 

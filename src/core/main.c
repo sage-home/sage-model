@@ -15,22 +15,21 @@
 static void print_usage(const char *program_name) {
     fprintf(stderr, "\nUsage: %s [OPTIONS] <parameterfile> [configfile]\n", program_name);
     fprintf(stderr, "\nOptions:\n");
-    fprintf(stderr, "  --log-level LEVEL    Set logging level: quiet, normal, verbose (default: normal)\n");
+    fprintf(stderr, "  -v, --verbose       Enable verbose logging (show all messages)\n");
     fprintf(stderr, "  -h, --help          Show this help message\n");
     fprintf(stderr, "\nArguments:\n");
     fprintf(stderr, "  parameterfile       SAGE parameter file (required)\n");
     fprintf(stderr, "  configfile          Optional JSON configuration file\n");
-    fprintf(stderr, "\nLog Levels:\n");
-    fprintf(stderr, "  quiet               Show ERROR messages only\n");
-    fprintf(stderr, "  normal              Show INFO, WARNING, ERROR messages (default)\n");
-    fprintf(stderr, "  verbose             Show DEBUG, INFO, WARNING, ERROR messages\n\n");
+    fprintf(stderr, "\nLogging Modes:\n");
+    fprintf(stderr, "  normal (default)    Show WARNING and ERROR messages\n");
+    fprintf(stderr, "  verbose (-v)        Show DEBUG, INFO, WARNING, and ERROR messages\n\n");
 }
 
 int main(int argc, char **argv)
 {
     int ThisTask = 0;
     int NTasks = 1;
-    runtime_log_mode_t log_mode = RUNTIME_LOG_NORMAL; /* Default log level */
+    bool verbose_mode = false; /* Default to normal mode */
     char *param_file = NULL;
     char *config_file = NULL;
 
@@ -42,21 +41,18 @@ int main(int argc, char **argv)
 
     /* Parse command line arguments */
     static struct option long_options[] = {
-        {"log-level", required_argument, 0, 'l'},
-        {"help",      no_argument,       0, 'h'},
+        {"verbose", no_argument, 0, 'v'},
+        {"help",    no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
     
     int c;
     int option_index = 0;
     
-    while ((c = getopt_long(argc, argv, "l:h", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vh", long_options, &option_index)) != -1) {
         switch (c) {
-            case 'l':
-                log_mode = logging_parse_level_string(optarg);
-                if (log_mode == RUNTIME_LOG_NORMAL && strcasecmp(optarg, "normal") != 0) {
-                    fprintf(stderr, "Warning: Invalid log level '%s', using 'normal'\n", optarg);
-                }
+            case 'v':
+                verbose_mode = true;
                 break;
             case 'h':
                 print_usage(argv[0]);
@@ -111,8 +107,8 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
     
-    /* Initialize logging with the specified level */
-    logging_set_runtime_mode(log_mode);
+    /* Initialize logging with the specified mode */
+    logging_set_verbose(verbose_mode);
 
     /* initialize sage (read parameter file, setup units, read cooling tables etc) */
     void *run_params;
