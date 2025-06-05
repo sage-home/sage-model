@@ -18,19 +18,27 @@
 /**
  * @brief Log severity levels
  * 
- * Define the different severity levels for log messages.
+ * Simplified 3-level logging system with runtime configurability.
  * Each level is more severe than the previous one.
  */
 typedef enum log_level {
-    LOG_LEVEL_TRACE,    /**< Detailed flow (only in debug builds) */
-    LOG_LEVEL_DEBUG,    /**< Information useful for debugging */
+    LOG_LEVEL_DEBUG,    /**< Debug information (verbose mode only) */
     LOG_LEVEL_INFO,     /**< General information about execution flow */
-    LOG_LEVEL_NOTICE,   /**< Important but normal events */
     LOG_LEVEL_WARNING,  /**< Concerning but non-fatal issues */
     LOG_LEVEL_ERROR,    /**< Errors that prevent specific operations */
-    LOG_LEVEL_CRITICAL, /**< Errors that prevent further execution */
     LOG_LEVEL_OFF       /**< No logging */
 } log_level_t;
+
+/**
+ * @brief Runtime log level modes
+ * 
+ * User-friendly log level settings for command line and configuration.
+ */
+typedef enum runtime_log_mode {
+    RUNTIME_LOG_QUIET,   /**< ERROR only */
+    RUNTIME_LOG_NORMAL,  /**< INFO, WARNING, ERROR (default) */
+    RUNTIME_LOG_VERBOSE  /**< DEBUG, INFO, WARNING, ERROR */
+} runtime_log_mode_t;
 
 /**
  * @brief Log message prefix style
@@ -121,6 +129,15 @@ extern void logging_init(log_level_t min_level, FILE *output);
 extern void logging_set_level(log_level_t level);
 
 /**
+ * @brief Set runtime log mode
+ * 
+ * Sets the log level using user-friendly mode names.
+ * 
+ * @param mode Runtime log mode (quiet, normal, verbose)
+ */
+extern void logging_set_runtime_mode(runtime_log_mode_t mode);
+
+/**
  * @brief Get current global log level
  * 
  * Returns the current minimum log level.
@@ -128,6 +145,16 @@ extern void logging_set_level(log_level_t level);
  * @return Current minimum log level
  */
 extern log_level_t logging_get_level(void);
+
+/**
+ * @brief Parse log level from string
+ * 
+ * Converts string representation to runtime log mode.
+ * 
+ * @param level_str String representation ("quiet", "normal", "verbose")
+ * @return Runtime log mode, or RUNTIME_LOG_NORMAL if invalid
+ */
+extern runtime_log_mode_t logging_parse_level_string(const char *level_str);
 
 /**
  * @brief Initialize the logging system with parameters
@@ -271,16 +298,7 @@ extern struct logging_state *get_logging_state(void);
 /* Convenience macros for logging */
 
 /**
- * @brief Log a trace message
- * 
- * @param format The printf-style format string
- * @param ... Additional arguments for the format string
- */
-#define LOG_TRACE(...) \
-    log_message(LOG_LEVEL_TRACE, __FILE__, __LINE__, __func__, __VA_ARGS__)
-
-/**
- * @brief Log a debug message
+ * @brief Log a debug message (verbose mode only)
  * 
  * @param format The printf-style format string
  * @param ... Additional arguments for the format string
@@ -296,15 +314,6 @@ extern struct logging_state *get_logging_state(void);
  */
 #define LOG_INFO(...) \
     log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
-
-/**
- * @brief Log a notice message
- * 
- * @param format The printf-style format string
- * @param ... Additional arguments for the format string
- */
-#define LOG_NOTICE(...) \
-    log_message(LOG_LEVEL_NOTICE, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 /**
  * @brief Log a warning message
@@ -324,14 +333,10 @@ extern struct logging_state *get_logging_state(void);
 #define LOG_ERROR(...) \
     log_message(LOG_LEVEL_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
-/**
- * @brief Log a critical error message
- * 
- * @param format The printf-style format string
- * @param ... Additional arguments for the format string
- */
-#define LOG_CRITICAL(...) \
-    log_message(LOG_LEVEL_CRITICAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
+/* Legacy macros for backward compatibility - map to appropriate levels */
+#define LOG_TRACE(...) LOG_DEBUG(__VA_ARGS__)
+#define LOG_NOTICE(...) LOG_INFO(__VA_ARGS__)
+#define LOG_CRITICAL(...) LOG_ERROR(__VA_ARGS__)
 
 /**
  * @brief Log a module-specific message

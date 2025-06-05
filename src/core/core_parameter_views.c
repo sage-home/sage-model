@@ -536,7 +536,7 @@ bool validate_logging_params_view(const struct logging_params_view *view)
     }
     
     /* Check that log level is in valid range */
-    if (view->min_level < LOG_LEVEL_DEBUG || view->min_level > LOG_LEVEL_CRITICAL) {
+    if (view->min_level < LOG_LEVEL_DEBUG || view->min_level > LOG_LEVEL_ERROR) {
         fprintf(stderr, "Error: Invalid minimum log level: %d\n", view->min_level);
         return false;
     }

@@ -16,36 +16,51 @@
 #include "core_allvars.h"
 #include "core_mymalloc.h"
 
-/* Static global logging state */
+/* Static global logging state with default normal log level */
 static struct logging_state global_logging_state = {
+    .config = {
+        .min_level = LOG_LEVEL_INFO,  /* Default to normal mode (INFO, WARNING, ERROR) */
+        .prefix_style = LOG_PREFIX_DETAILED,
+        .destinations = LOG_DEST_STDERR,
+        .include_mpi_rank = false,
+        .disable_assertions = false,
+        .include_extra_context = true,
+        .full_params = NULL
+    },
     .log_file = NULL,
     .initialized = false
 };
 
 /* String representations of log levels */
 static const char *log_level_names[] = {
-    "TRACE",
     "DEBUG",
-    "INFO",
-    "NOTICE",
+    "INFO", 
     "WARNING",
-    "ERROR",
-    "CRITICAL"
+    "ERROR"
 };
 
 /* ANSI color codes for different log levels (if terminal supports it) */
 static const char *log_level_colors[] = {
-    "\033[90m",  /* Gray for TRACE */
     "\033[36m",  /* Cyan for DEBUG */
     "\033[32m",  /* Green for INFO */
-    "\033[34m",  /* Blue for NOTICE */
     "\033[33m",  /* Yellow for WARNING */
-    "\033[31m",  /* Red for ERROR */
-    "\033[1;31m" /* Bold Red for CRITICAL */
+    "\033[31m"   /* Red for ERROR */
 };
+
+/* Runtime mode names for user interface - commented out until needed */
+/*
+static const char *runtime_mode_names[] = {
+    "quiet",
+    "normal", 
+    "verbose"
+};
+*/
 
 /* Reset ANSI color code */
 static const char *color_reset = "\033[0m";
+
+/* Forward declarations for static functions */
+static const char *get_current_runtime_mode_name(void);
 
 /**
  * Check if stdout is a terminal to determine if we should use colors
@@ -58,7 +73,7 @@ static bool is_terminal(FILE *stream) {
  * Get string representation of a log level
  */
 static const char *get_log_level_name(log_level_t level) {
-    if (level < LOG_LEVEL_TRACE || level > LOG_LEVEL_CRITICAL) {
+    if (level < LOG_LEVEL_DEBUG || level > LOG_LEVEL_ERROR) {
         return "UNKNOWN";
     }
     return log_level_names[level];
@@ -157,14 +172,6 @@ static void write_log(log_level_t level, const char *file, int line,
         return;
     }
     
-    /* Always show ERROR and CRITICAL logs regardless of verbosity */
-    if (level >= LOG_LEVEL_ERROR) {
-        write_log_to_destination(stderr, config, level, file, line, func, message, ctx);
-        return;
-    }
-    
-#ifdef VERBOSE
-    /* In verbose mode, show all logs */
     /* Write to stdout if configured */
     if (config->destinations & LOG_DEST_STDOUT) {
         write_log_to_destination(stdout, config, level, file, line, func, message, ctx);
@@ -179,14 +186,6 @@ static void write_log(log_level_t level, const char *file, int line,
     if ((config->destinations & LOG_DEST_FILE) && global_logging_state.log_file != NULL) {
         write_log_to_destination(global_logging_state.log_file, config, level, file, line, func, message, ctx);
     }
-#else
-    /* In non-verbose mode, show only WARNING and above */
-    if (level >= LOG_LEVEL_WARNING) {
-        if (config->destinations & LOG_DEST_STDERR) {
-            write_log_to_destination(stderr, config, level, file, line, func, message, ctx);
-        }
-    }
-#endif
 }
 
 /**
@@ -213,8 +212,28 @@ void logging_init(log_level_t min_level, FILE *output) {
     
     /* Log a message to show successful initialization */
     log_message(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, 
-              "Logging system initialized (min level: %s)", 
-              get_log_level_name(min_level));
+              "Logging system initialized (mode: %s)", 
+              get_current_runtime_mode_name());
+}
+
+/**
+ * Get current runtime mode name for logging
+ */
+static const char *get_current_runtime_mode_name(void) {
+    if (!global_logging_state.initialized) {
+        return "uninitialized";
+    }
+    
+    log_level_t level = global_logging_state.config.min_level;
+    if (level == LOG_LEVEL_ERROR) {
+        return "quiet";
+    } else if (level == LOG_LEVEL_INFO) {
+        return "normal";  
+    } else if (level == LOG_LEVEL_DEBUG) {
+        return "verbose";
+    } else {
+        return "unknown";
+    }
 }
 
 /**
@@ -318,18 +337,8 @@ void log_message(log_level_t level, const char *file, int line, const char *func
     /* Write to all configured destinations */
     write_log(level, file, line, func, message, NULL);
     
-    /* For fatal errors, abort the program */
-    if (level == LOG_LEVEL_CRITICAL) {
-        /* Ensure all logs are flushed */
-        if (global_logging_state.log_file != NULL) {
-            fflush(global_logging_state.log_file);
-        }
-        fflush(stdout);
-        fflush(stderr);
-        
-        /* Abort the program */
-        abort();
-    }
+    /* No longer abort on critical errors - treat as regular errors */
+    /* Critical errors are now mapped to ERROR level */
 }
 
 /**
@@ -355,18 +364,8 @@ void log_module_message(const char *module, log_level_t level, const char *file,
     /* Write to all configured destinations */
     write_log(level, file, line, func, full_message, NULL);
     
-    /* For fatal errors, abort the program */
-    if (level == LOG_LEVEL_CRITICAL) {
-        /* Ensure all logs are flushed */
-        if (global_logging_state.log_file != NULL) {
-            fflush(global_logging_state.log_file);
-        }
-        fflush(stdout);
-        fflush(stderr);
-        
-        /* Abort the program */
-        abort();
-    }
+    /* No longer abort on critical errors - treat as regular errors */
+    /* Critical errors are now mapped to ERROR level */
 }
 
 /**
@@ -390,18 +389,8 @@ void context_log_message(const struct evolution_context *ctx, log_level_t level,
     /* Write to all configured destinations */
     write_log(level, file, line, func, message, ctx);
     
-    /* For fatal errors, abort the program */
-    if (level == LOG_LEVEL_CRITICAL) {
-        /* Ensure all logs are flushed */
-        if (global_logging_state.log_file != NULL) {
-            fflush(global_logging_state.log_file);
-        }
-        fflush(stdout);
-        fflush(stderr);
-        
-        /* Abort the program */
-        abort();
-    }
+    /* No longer abort on critical errors - treat as regular errors */
+    /* Critical errors are now mapped to ERROR level */
 }
 
 /**
@@ -473,6 +462,50 @@ bool validate_param(bool condition, const char *file, int line, const char *func
  */
 bool is_log_level_enabled(log_level_t level) {
     return global_logging_state.initialized && level >= global_logging_state.config.min_level;
+}
+
+/**
+ * Set runtime log mode
+ */
+void logging_set_runtime_mode(runtime_log_mode_t mode) {
+    log_level_t min_level;
+    
+    switch (mode) {
+        case RUNTIME_LOG_QUIET:
+            min_level = LOG_LEVEL_ERROR;
+            break;
+        case RUNTIME_LOG_NORMAL:
+            min_level = LOG_LEVEL_INFO;
+            break;
+        case RUNTIME_LOG_VERBOSE:
+            min_level = LOG_LEVEL_DEBUG;
+            break;
+        default:
+            min_level = LOG_LEVEL_INFO; /* Default to normal */
+            break;
+    }
+    
+    logging_set_level(min_level);
+}
+
+/**
+ * Parse log level from string
+ */
+runtime_log_mode_t logging_parse_level_string(const char *level_str) {
+    if (level_str == NULL) {
+        return RUNTIME_LOG_NORMAL;
+    }
+    
+    if (strcasecmp(level_str, "quiet") == 0) {
+        return RUNTIME_LOG_QUIET;
+    } else if (strcasecmp(level_str, "normal") == 0) {
+        return RUNTIME_LOG_NORMAL;
+    } else if (strcasecmp(level_str, "verbose") == 0) {
+        return RUNTIME_LOG_VERBOSE;
+    } else {
+        /* Invalid string, return default */
+        return RUNTIME_LOG_NORMAL;
+    }
 }
 
 /**
