@@ -39,25 +39,24 @@ int main(int argc, char **argv)
     void *run_params;
     int status = run_sage(ThisTask, NTasks, argv[1], &run_params);
     
-    /* If we have a configuration file, load it after initialization */
+    /* Initialize configuration system with the provided config file (or NULL for defaults) */
     if (config_file != NULL) {
-        /* The core_init.c initialize_config_system function will have been called with NULL,
-           now we call it directly with the actual config file */
         LOG_INFO("Loading configuration file: %s", config_file);
-        printf("Loading configuration file: %s", config_file);
-        initialize_config_system(config_file);
-        
-        /* Apply configuration to params */
-        if (global_config != NULL) {
+        printf("Loading configuration file: %s\n", config_file);
+    }
+    
+    initialize_config_system(config_file);
+    
+    /* Apply configuration to params and modules if config was loaded successfully */
+    if (global_config != NULL) {
+        if (config_file != NULL) {
             LOG_INFO("Applying configuration to parameters and modules");
             config_configure_params((struct params *)run_params);
             config_configure_modules((struct params *)run_params);
             config_configure_pipeline();
-        } else {
-            LOG_ERROR("Failed to load configuration file: %s", config_file);
         }
-    } else {
-        LOG_INFO("No configuration file specified, using defaults");
+    } else if (config_file != NULL) {
+        LOG_ERROR("Failed to load configuration file: %s", config_file);
     }
     if(status != EXIT_SUCCESS) {
         /* Use fprintf directly here since we might be in an error state before logging is fully initialized */

@@ -77,9 +77,7 @@ void init(struct params *run_params)
     initialize_pipeline_system();
     LOG_DEBUG("Pipeline system initialized");
     
-    /* Initialize configuration system */
-    initialize_config_system(NULL); /* Use default configuration */
-    LOG_DEBUG("Configuration system initialized");
+    /* Configuration system will be initialized later in main.c with actual config file */
     
     /* Initialize memory pool system if enabled */
     if (run_params->runtime.EnableGalaxyMemoryPool) {
