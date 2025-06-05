@@ -72,7 +72,7 @@ static struct test_context {
     struct GALAXY *test_galaxies;
     int num_galaxies;
     bool property_system_initialized;
-    struct hdf5_save_info save_info;
+    struct hdf5_save_info save_info; // hdf5_save_info for test buffer management
     struct halo_data *halos;
     bool is_setup_complete;
 } test_ctx;
@@ -265,10 +265,26 @@ static void test_basic_transformations(void) {
     TEST_ASSERT(init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) == 0,
                "Output buffers initialization should succeed");
 
-    // Process test galaxies through transformers
+    // Process test galaxies through transformers by directly calling dispatch_property_transformer
     printf("Processing galaxies through transformers...\n");
+    for (int gal_idx = 0; gal_idx < NUM_GALAXIES; gal_idx++) {
+        for (int prop_idx_loop = 0; prop_idx_loop < save_info.num_properties; prop_idx_loop++) {
+            struct property_buffer_info *buffer_info = &save_info.property_buffers[0][prop_idx_loop];
+            
+            // Determine element size for pointer arithmetic. All test properties are float.
+            size_t elem_size = sizeof(float); 
 
-    // Note: The new system doesn't use save_info.io_handler anymore
+            void *output_buffer_element_ptr = (char*)buffer_info->data + gal_idx * elem_size;
+
+            dispatch_property_transformer(&test_galaxies[gal_idx], 
+                                          buffer_info->prop_id, 
+                                          buffer_info->name, 
+                                          output_buffer_element_ptr, 
+                                          &run_params, 
+                                          buffer_info->h5_dtype);
+        }
+    }
+
     // We'll simulate the transformation process by checking property values directly
     // since the output transformers are now part of the HDF5 output system
 
@@ -472,7 +488,24 @@ static void test_array_derivations(void) {
     TEST_ASSERT(init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) == 0,
                "Output buffers initialization should succeed");
 
+    // Process test galaxies through transformers by directly calling dispatch_property_transformer
     printf("Testing array property derivations directly...\n");
+    for (int gal_idx = 0; gal_idx < NUM_GALAXIES; gal_idx++) {
+        for (int prop_idx_loop = 0; prop_idx_loop < save_info.num_properties; prop_idx_loop++) {
+            struct property_buffer_info *buffer_info = &save_info.property_buffers[0][prop_idx_loop];
+            
+            size_t elem_size = sizeof(float);
+
+            void *output_buffer_element_ptr = (char*)buffer_info->data + gal_idx * elem_size;
+
+            dispatch_property_transformer(&test_galaxies[gal_idx], 
+                                          buffer_info->prop_id, 
+                                          buffer_info->name, 
+                                          output_buffer_element_ptr, 
+                                          &run_params, 
+                                          buffer_info->h5_dtype);
+        }
+    }
     
     // Pre-cache property IDs for later validation
     property_id_t sfr_disk_id = get_cached_property_id("SfrDisk");
@@ -761,8 +794,25 @@ static void test_edge_cases(void) {
     TEST_ASSERT(init_output_buffers(&save_info, NUM_GALAXIES, property_names, NUM_PROPERTIES) == 0,
                "Output buffers initialization should succeed");
     
-    // Test edge cases with property values directly
+    // Process test galaxies through transformers by directly calling dispatch_property_transformer
     printf("Testing galaxy with edge case values...\n");
+    for (int gal_idx = 0; gal_idx < NUM_GALAXIES; gal_idx++) {
+        for (int prop_idx_loop = 0; prop_idx_loop < save_info.num_properties; prop_idx_loop++) {
+            struct property_buffer_info *buffer_info = &save_info.property_buffers[0][prop_idx_loop];
+            
+            size_t elem_size = sizeof(float);
+
+            void *output_buffer_element_ptr = (char*)buffer_info->data + gal_idx * elem_size;
+
+            dispatch_property_transformer(&test_galaxies[gal_idx], 
+                                          buffer_info->prop_id, 
+                                          buffer_info->name, 
+                                          output_buffer_element_ptr, 
+                                          &run_params, 
+                                          buffer_info->h5_dtype);
+        }
+    }
+
     
     // Test the edge case property values we set up
     printf("Validating edge case property handling...\n");
@@ -834,7 +884,7 @@ static void test_edge_cases(void) {
             // In our case, only the first bin has gas, so result should be metals/gas from that bin
             float gas = get_float_array_element_property(&test_galaxies[0], sfr_disk_cold_gas_id, 0, 0.0f);
             float metals = get_float_array_element_property(&test_galaxies[0], sfr_disk_cold_gas_metals_id, 0, 0.0f);
-            float expected = metals / gas;
+            float expected = (gas > 0.0f) ? metals / gas : 0.0f; // Avoid division by zero
             
             TEST_ASSERT(fabsf(values[0] - expected) <= TOLERANCE_NORMAL,
                       "SfrDiskZ transformer should handle sparse gas bins correctly");
@@ -894,17 +944,19 @@ static void test_error_handling(void) {
         "Cooling", "Heating", "SfrDisk", "SfrBulge"
     };
     
-    struct hdf5_save_info save_info;
-    TEST_ASSERT(init_output_buffers(&save_info, 1, property_names, NUM_PROPERTIES) == 0,
+    struct hdf5_save_info hdf5_save_info_for_test; // Use hdf5_save_info for buffer management
+    TEST_ASSERT(init_output_buffers(&hdf5_save_info_for_test, 1, property_names, NUM_PROPERTIES) == 0,
                "Output buffer initialization should succeed");
     
     // Process test galaxy through transformers
     printf("Processing minimally initialized galaxy...\n");
     
-    // Create minimal save_info_base
-    struct save_info save_info_base;
-    memset(&save_info_base, 0, sizeof(save_info_base));
-    save_info_base.io_handler.format_data = &save_info;
+    // Create a generic save_info for the function call, as prepare_galaxy_for_hdf5_output is a stub
+    // and doesn't need the HDF5-specific fields.
+    struct save_info generic_save_info_for_func_call;
+    memset(&generic_save_info_for_func_call, 0, sizeof(struct save_info));
+    // No need to populate generic_save_info_for_func_call.io_handler or other HDF5 specific fields
+    // as prepare_galaxy_for_hdf5_output is a stub.
     
     // Create minimal halo_data array
     struct halo_data *halos = calloc(1, sizeof(struct halo_data));
@@ -914,14 +966,14 @@ static void test_error_handling(void) {
     halos[0].MostBoundID = 1000;
     halos[0].Len = 100;
     
-    // Set buffer position for this galaxy
-    save_info.num_gals_in_buffer[0] = 0;
+    // Set buffer position for this galaxy (using the hdf5_save_info for test's buffer tracking)
+    hdf5_save_info_for_test.num_gals_in_buffer[0] = 0;
     
     // Call the transformation function - should handle minimal initialization
     printf("Testing minimal galaxy transformation...\n");
     int result = prepare_galaxy_for_hdf5_output(
         &test_galaxy, 
-        &save_info_base, 
+        &generic_save_info_for_func_call, // Pass the generic save_info
         0,  // output_snap_idx 
         halos, 
         0,  // task_forestnr
@@ -947,9 +999,24 @@ static void test_error_handling(void) {
     TEST_ASSERT(sfr_disk_id != PROP_COUNT, "SfrDisk property should be registered"); 
     TEST_ASSERT(sfr_bulge_id != PROP_COUNT, "SfrBulge property should be registered");
     
+    // Since prepare_galaxy_for_hdf5_output is a stub, buffers won't be filled by it.
+    // We need to call dispatch_property_transformer to test the transformers.
+    for (int prop_idx_loop = 0; prop_idx_loop < hdf5_save_info_for_test.num_properties; prop_idx_loop++) {
+        struct property_buffer_info *buffer_info = &hdf5_save_info_for_test.property_buffers[0][prop_idx_loop];
+        // size_t elem_size = sizeof(float); // Unused variable
+        void *output_buffer_element_ptr = (char*)buffer_info->data; // Only one galaxy
+
+        dispatch_property_transformer(&test_galaxy, 
+                                      buffer_info->prop_id, 
+                                      buffer_info->name, 
+                                      output_buffer_element_ptr, 
+                                      &run_params, 
+                                      buffer_info->h5_dtype);
+    }
+
     // Check for valid output values (not NaN or Inf)
-    for (int prop_idx = 0; prop_idx < save_info.num_properties; prop_idx++) {
-        struct property_buffer_info *buffer = &save_info.property_buffers[0][prop_idx];
+    for (int prop_idx = 0; prop_idx < hdf5_save_info_for_test.num_properties; prop_idx++) {
+        struct property_buffer_info *buffer = &hdf5_save_info_for_test.property_buffers[0][prop_idx];
         float *values = (float*)buffer->data;
         
         printf("Property %s = %.6f\n", buffer->name, values[0]);
@@ -976,7 +1043,9 @@ static void test_error_handling(void) {
     // Cleanup this test phase
     free(halos);
     free_galaxy_properties(&test_galaxy);
-    
+    // Free the hdf5_save_info_for_test buffers
+    cleanup_test_resources(NULL, 0, &hdf5_save_info_for_test);
+
     // Now test with a galaxy that has some intentionally problematic values
     // that might trigger internal error handling in the transformers
     printf("\nTesting with extreme values that might trigger error handling...\n");
@@ -1042,31 +1111,23 @@ static void test_error_handling(void) {
         "Cooling", "Heating", "SfrDisk", "SfrBulge", "SfrDiskZ", "SfrBulgeZ"
     };
     
-    // Clean up previous buffers
-    if (save_info.num_gals_in_buffer) {
-        free(save_info.num_gals_in_buffer);
-        save_info.num_gals_in_buffer = NULL;
-    }
-    if (save_info.tot_ngals) {
-        free(save_info.tot_ngals);
-        save_info.tot_ngals = NULL;
-    }
-    if (save_info.property_buffers && save_info.property_buffers[0]) {
-        for (int i = 0; i < save_info.num_properties; i++) {
-            struct property_buffer_info *buffer = &save_info.property_buffers[0][i];
-            if (buffer->name) free(buffer->name);
-            if (buffer->description) free(buffer->description);
-            if (buffer->units) free(buffer->units);
-            if (buffer->data) free(buffer->data);
-        }
-        free(save_info.property_buffers[0]);
-        free(save_info.property_buffers);
-        save_info.property_buffers = NULL;
-    }
-    
-    // Initialize new buffers
-    TEST_ASSERT(init_output_buffers(&save_info, 1, property_names_2, NUM_PROPS_2) == 0,
+    // Initialize new buffers (using the same save_info variable, it will be cleaned up by init_output_buffers)
+    TEST_ASSERT(init_output_buffers(&hdf5_save_info_for_test, 1, property_names_2, NUM_PROPS_2) == 0,
                "Output buffer initialization should succeed for edge case test");
+    
+    // Process the edge galaxy using dispatch_property_transformer directly
+    for (int prop_idx_loop = 0; prop_idx_loop < hdf5_save_info_for_test.num_properties; prop_idx_loop++) {
+        struct property_buffer_info *buffer_info = &hdf5_save_info_for_test.property_buffers[0][prop_idx_loop];
+        // size_t elem_size = sizeof(float); // Unused variable
+        void *output_buffer_element_ptr = (char*)buffer_info->data; // Only one galaxy
+
+        dispatch_property_transformer(&edge_galaxy, 
+                                      buffer_info->prop_id, 
+                                      buffer_info->name, 
+                                      output_buffer_element_ptr, 
+                                      &run_params, 
+                                      buffer_info->h5_dtype);
+    }
     
     // Test the edge case galaxy with extreme property values
     printf("Testing edge case galaxy with extreme values...\n");
@@ -1087,8 +1148,8 @@ static void test_error_handling(void) {
     printf("Validating error handling with extreme values...\n");
     
     // Check output buffer values - should all be safe, finite values
-    for (int prop_idx = 0; prop_idx < save_info.num_properties; prop_idx++) {
-        struct property_buffer_info *buffer = &save_info.property_buffers[0][prop_idx];
+    for (int prop_idx = 0; prop_idx < hdf5_save_info_for_test.num_properties; prop_idx++) {
+        struct property_buffer_info *buffer = &hdf5_save_info_for_test.property_buffers[0][prop_idx];
         float *values = (float*)buffer->data;
         
         printf("Property %s = %.6f\n", buffer->name, values[0]);
@@ -1109,33 +1170,17 @@ static void test_error_handling(void) {
     free_galaxy_properties(&edge_galaxy);
     
     // Clean up save_info resources
-    if (save_info.num_gals_in_buffer) {
-        free(save_info.num_gals_in_buffer);
-    }
-    if (save_info.tot_ngals) {
-        free(save_info.tot_ngals);
-    }
-    if (save_info.property_buffers && save_info.property_buffers[0]) {
-        for (int i = 0; i < save_info.num_properties; i++) {
-            struct property_buffer_info *buffer = &save_info.property_buffers[0][i];
-            if (buffer->name) free(buffer->name);
-            if (buffer->description) free(buffer->description);
-            if (buffer->units) free(buffer->units);
-            if (buffer->data) free(buffer->data);
-        }
-        free(save_info.property_buffers[0]);
-        free(save_info.property_buffers);
-    }
+    cleanup_test_resources(NULL, 0, &hdf5_save_info_for_test);
     
     cleanup_property_system();
 }
 
 // Function declarations have changed from returning int to void
 // Forward declarations of test functions
-static void test_basic_transformations(void);
-static void test_array_derivations(void);
-static void test_edge_cases(void);
-static void test_error_handling(void);
+// static void test_basic_transformations(void); // Already declared
+// static void test_array_derivations(void); // Already declared
+// static void test_edge_cases(void); // Already declared
+// static void test_error_handling(void); // Already declared
 
 // Helper functions for test setup
 static void init_test_params(struct params *run_params) {
