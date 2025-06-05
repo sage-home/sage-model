@@ -16,9 +16,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     // Initialize all pointers to NULL for proper cleanup on error
     memset(save_info, 0, sizeof(struct hdf5_save_info));
     
-    // Store in the base save_info
-    // Note: io_handler field removed as part of unified I/O interface cleanup
-    // HDF5 data is now managed directly in save_info_base
+    // Store HDF5-specific data in save_info_base for later access
+    // We'll use the buffer_output_gals field to store our hdf5_save_info pointer
+    save_info_base->buffer_output_gals = (struct HDF5_GALAXY_OUTPUT *)save_info;
     
     // Create the file
     snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->io.OutputDir, run_params->io.FileNameGalaxies, filenr);

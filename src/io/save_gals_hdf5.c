@@ -2,6 +2,97 @@
 
 // Function prototypes for the components were moved to the internal header
 
+// Process galaxy data into property buffers for HDF5 output
+static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_save_info *save_info,
+                                        const int32_t snap_idx, const struct halo_data *halos,
+                                        const int64_t task_forestnr, const int64_t original_treenr,
+                                        const struct params *run_params)
+{
+    // Ensure buffers are allocated for this snapshot
+    if (save_info->property_buffers[snap_idx] == NULL) {
+        int status = allocate_all_output_properties(save_info, snap_idx);
+        if (status != 0) {
+            return EXIT_FAILURE;
+        }
+    }
+    
+    int64_t gals_in_buffer = save_info->num_gals_in_buffer[snap_idx];
+    
+    // Process each property
+    for (int i = 0; i < save_info->num_properties; i++) {
+        struct property_buffer_info *buffer = &save_info->property_buffers[snap_idx][i];
+        property_id_t prop_id = buffer->prop_id;
+        
+        // Handle core properties directly (using original logic)
+        if (buffer->is_core_prop) {
+            // Direct core property access using macros - essential core properties
+            if (strcmp(buffer->name, "SnapNum") == 0) {
+                ((int32_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_SnapNum(g);
+            }
+            else if (strcmp(buffer->name, "Type") == 0) {
+                ((int32_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Type(g);
+            }
+            else if (strcmp(buffer->name, "GalaxyIndex") == 0) {
+                ((uint64_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_GalaxyIndex(g);
+            }
+            else if (strcmp(buffer->name, "CentralGalaxyIndex") == 0) {
+                ((uint64_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_CentralGalaxyIndex(g);
+            }
+            else if (strcmp(buffer->name, "SAGEHaloIndex") == 0) {
+                ((int32_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_HaloNr(g);
+            }
+            else if (strcmp(buffer->name, "SAGETreeIndex") == 0) {
+                ((int32_t*)buffer->data)[gals_in_buffer] = original_treenr;
+            }
+            else if (strcmp(buffer->name, "SimulationHaloIndex") == 0) {
+                ((int64_t*)buffer->data)[gals_in_buffer] = llabs(halos[GALAXY_PROP_HaloNr(g)].MostBoundID);
+            }
+            else if (strcmp(buffer->name, "TaskForestNr") == 0) {
+                ((int64_t*)buffer->data)[gals_in_buffer] = task_forestnr;
+            }
+            // Position components
+            else if (strcmp(buffer->name, "Posx") == 0) {
+                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Pos_ELEM(g, 0);
+            }
+            else if (strcmp(buffer->name, "Posy") == 0) {
+                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Pos_ELEM(g, 1);
+            }
+            else if (strcmp(buffer->name, "Posz") == 0) {
+                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Pos_ELEM(g, 2);
+            }
+            // Add more core properties as needed...
+        } 
+        // Handle physics properties via the dispatch_property_transformer
+        else {
+            // Determine the element size for pointer arithmetic
+            size_t element_size = 0;
+            if (buffer->h5_dtype == H5T_NATIVE_FLOAT) {
+                element_size = sizeof(float);
+            }
+            else if (buffer->h5_dtype == H5T_NATIVE_DOUBLE) {
+                element_size = sizeof(double);
+            }
+            else if (buffer->h5_dtype == H5T_NATIVE_INT) {
+                element_size = sizeof(int32_t);
+            }
+            else if (buffer->h5_dtype == H5T_NATIVE_LLONG) {
+                element_size = sizeof(int64_t);
+            }
+            
+            if (element_size > 0) {
+                // Get the pointer to the output buffer element for this galaxy's property
+                void *output_buffer_element_ptr = ((char*)buffer->data) + (gals_in_buffer * element_size);
+                
+                // Call the dispatcher to transform the property value for output
+                dispatch_property_transformer(g, prop_id, buffer->name, output_buffer_element_ptr, 
+                                            run_params, buffer->h5_dtype);
+            }
+        }
+    }
+    
+    return EXIT_SUCCESS;
+}
+
 // Main function to save galaxies to HDF5 format
 int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, struct forest_info *forest_info,
                           struct halo_data *halos, struct halo_aux_data *haloaux, struct GALAXY *halogal,
@@ -19,7 +110,19 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
 
         // Add galaxy to buffer
         int32_t snap_idx = haloaux[gal_idx].output_snap_n;
-        // Galaxy data preparation is now handled directly by HDF5 output functions
+        
+        // Get HDF5-specific save info from the buffer_output_gals field
+        struct hdf5_save_info *hdf5_save_info = (struct hdf5_save_info *)save_info_base->buffer_output_gals;
+        if (hdf5_save_info != NULL) {
+            // Process galaxy data into property buffers
+            status = process_galaxy_for_output(&halogal[gal_idx], hdf5_save_info, snap_idx, 
+                                               halos, task_forestnr, forest_info->original_treenr[task_forestnr], 
+                                               run_params);
+            if (status != EXIT_SUCCESS) {
+                return status;
+            }
+        }
+        
         save_info->num_gals_in_buffer[snap_idx]++;
 
         // Increment forest_ngals counter for this snapshot and forest
