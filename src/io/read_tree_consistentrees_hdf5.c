@@ -713,18 +713,11 @@ int64_t ctrees_hdf5_read_forest(int64_t forestnr, struct halo_data **halos,
         return -1;
     }
 
-    struct consistent_trees_hdf5_data *data = (struct consistent_trees_hdf5_data *)format_data;
-    if (!data->initialized) {
-        LOG_ERROR("ConsistentTrees HDF5 handler not properly initialized");
-        return -1;
-    }
-
-    // TODO: Implement actual forest reading logic
-    // For now, return 0 to indicate no halos read (stub implementation)
-    LOG_DEBUG("Reading forest %ld from ConsistentTrees HDF5 file: %s", forestnr, data->filename);
+    // format_data is actually run_params passed from the I/O interface
+    struct params *run_params = (struct params *)format_data;
     
-    *halos = NULL;
-    return 0;
+    // Call the actual legacy implementation - this bridges to the working code
+    return load_forest_ctrees_hdf5(forestnr, halos, forest_info, run_params);
 }
 
 /**

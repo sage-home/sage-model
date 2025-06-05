@@ -828,23 +828,17 @@ int gadget4_hdf5_initialize(const char *filename, struct params *params, void **
 int64_t gadget4_hdf5_read_forest(int64_t forestnr, struct halo_data **halos, 
                                  struct forest_info *forest_info, void *format_data)
 {
-    if (halos == NULL || forest_info == NULL || format_data == NULL) {
+    if (halos == NULL || forest_info == NULL) {
         LOG_ERROR("Invalid parameters passed to gadget4_hdf5_read_forest");
         return -1;
     }
 
-    struct gadget4_hdf5_data *data = (struct gadget4_hdf5_data *)format_data;
-    if (!data->initialized) {
-        LOG_ERROR("Gadget4 HDF5 handler not properly initialized");
-        return -1;
-    }
-
-    // TODO: Implement actual forest reading logic
-    // For now, return 0 to indicate no halos read (stub implementation)
-    LOG_DEBUG("Reading forest %ld from Gadget4 HDF5 file: %s", forestnr, data->filename);
+    // Note: Gadget4 legacy function doesn't need run_params parameter
+    // format_data would contain run_params but not needed for this format
+    (void)format_data; // Suppress unused parameter warning
     
-    *halos = NULL;
-    return 0;
+    // Call the actual legacy implementation - this bridges to the working code
+    return load_forest_gadget4_hdf5(forestnr, halos, forest_info);
 }
 
 /**

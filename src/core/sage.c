@@ -18,6 +18,7 @@
 #include "core_read_parameter_file.h"
 #include "core_io_tree.h"
 #include "core_mymalloc.h"
+#include "../io/io_interface.h"
 #include "core_build_model.h"
 #include "core_save.h"
 #include "core_utils.h"
@@ -73,6 +74,13 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
     forest_info.totnhalos = 0;
     forest_info.nforests_this_task = 0;
     forest_info.nhalos_this_task = 0;
+
+    /* Initialize the I/O interface system for Phase 5 migration */
+    status = io_init();
+    if(status != EXIT_SUCCESS) {
+        fprintf(stderr, "Failed to initialize I/O interface system\n");
+        return status;
+    }
 
     /* setup the forests reading, and then distribute the forests over the Ntasks */
     status = setup_forests_io(run_params, &forest_info, ThisTask, NTasks);

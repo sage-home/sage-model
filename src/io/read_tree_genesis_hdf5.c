@@ -1186,18 +1186,11 @@ int64_t genesis_hdf5_read_forest(int64_t forestnr, struct halo_data **halos,
         return -1;
     }
 
-    struct genesis_hdf5_data *data = (struct genesis_hdf5_data *)format_data;
-    if (!data->initialized) {
-        LOG_ERROR("Genesis HDF5 handler not properly initialized");
-        return -1;
-    }
-
-    // TODO: Implement actual forest reading logic
-    // For now, return 0 to indicate no halos read (stub implementation)
-    LOG_DEBUG("Reading forest %ld from Genesis HDF5 file: %s", forestnr, data->filename);
+    // format_data is actually run_params passed from the I/O interface
+    struct params *run_params = (struct params *)format_data;
     
-    *halos = NULL;
-    return 0;
+    // Call the actual legacy implementation - this bridges to the working code
+    return load_forest_genesis_hdf5(forestnr, halos, forest_info, run_params);
 }
 
 /**

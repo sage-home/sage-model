@@ -12,6 +12,10 @@
 #include "core_mymalloc.h"
 #include "core_io_tree.h"
 
+// Use unified I/O interface instead of direct legacy includes
+#include "../io/io_interface.h"
+
+// Legacy includes needed for setup/cleanup functions (Phase 5 migration incomplete)
 #include "../io/read_tree_lhalo_binary.h"
 #include "../io/read_tree_consistentrees_ascii.h"
 
@@ -152,44 +156,31 @@ void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *fores
 
 int64_t load_forest(struct params *run_params, const int64_t forestnr, struct halo_data **halos, struct forest_info *forests_info)
 {
-
-    int64_t nhalos;
     const enum Valid_TreeTypes TreeType = run_params->io.TreeType;
-
-    switch (TreeType) {
-
-#ifdef HDF5
-    case lhalo_hdf5:
-        nhalos = load_forest_lht_hdf5(forestnr, halos, forests_info);
-        break;
-
-    case gadget4_hdf5:
-        nhalos = load_forest_gadget4_hdf5(forestnr, halos, forests_info);
-        break;
-
-    case genesis_hdf5:
-        nhalos = load_forest_genesis_hdf5(forestnr, halos, forests_info, run_params);
-        break;
-
-    case consistent_trees_hdf5:
-        nhalos = load_forest_ctrees_hdf5(forestnr, halos, forests_info, run_params);
-        break;
-
-#endif
-
-    case lhalo_binary:
-        nhalos = load_forest_lht_binary(forestnr, halos, forests_info);
-        break;
-
-    case consistent_trees_ascii:
-        nhalos = load_forest_ctrees(forestnr, halos, forests_info, run_params);
-        break;
-
-    default:
-        fprintf(stderr, "Tree type %d not included in the switch statement for function %s in file %s\n", 
+    
+    // Handle legacy ASCII format that hasn't been migrated to interface yet
+    if (TreeType == consistent_trees_ascii) {
+        return load_forest_ctrees(forestnr, halos, forests_info, run_params);
+    }
+    
+    // Use unified I/O interface for all other formats
+    int format_id = io_map_tree_type_to_format_id((int)TreeType);
+    if (format_id == -1) {
+        fprintf(stderr, "Tree type %d not supported by I/O interface in function %s in file %s\n", 
                 TreeType, __FUNCTION__, __FILE__);
         return -EXIT_FAILURE;
     }
-
+    
+    struct io_interface *handler = io_get_handler_by_id(format_id);
+    if (handler == NULL) {
+        fprintf(stderr, "No handler found for tree type %d (format_id: %d) in function %s in file %s\n", 
+                TreeType, format_id, __FUNCTION__, __FILE__);
+        return -EXIT_FAILURE;
+    }
+    
+    // Call the handler through the unified interface
+    // Pass run_params as format_data since the interface functions need access to it
+    int64_t nhalos = handler->read_forest(forestnr, halos, forests_info, run_params);
+    
     return nhalos;
 }
