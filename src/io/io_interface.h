@@ -91,6 +91,10 @@ struct io_interface {
                          struct save_info *save_info, void *format_data);
     int (*cleanup)(void *format_data);
     
+    // Global forest operations
+    int (*setup_forests)(struct forest_info *forests_info, int ThisTask, int NTasks, struct params *run_params);
+    int (*cleanup_forests)(struct forest_info *forests_info);
+    
     // Resource management
     int (*close_open_handles)(void *format_data);
     int (*get_open_handle_count)(void *format_data);

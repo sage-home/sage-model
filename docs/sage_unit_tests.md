@@ -86,7 +86,7 @@ make test_property_serialization
 make test_memory_pool
 make test_io_memory_map
 make test_integration_workflows  # Multi-system integration validation
-make test_empty_pipeline         # Test core-physics separation with placeholder modules
+make test_physics_free_mode      # Test core-physics separation with empty pipelines
 # etc.
 ```
 

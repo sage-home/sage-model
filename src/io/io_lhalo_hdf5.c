@@ -10,6 +10,7 @@
 #include "forest_utils.h"
 #include "../core/core_mymalloc.h"
 #include "../core/core_utils.h"
+#include "read_tree_lhalo_hdf5.h"
 
 #ifdef HDF5
 
@@ -18,6 +19,8 @@ static int io_lhalo_hdf5_initialize(const char *filename, struct params *params,
 static int64_t io_lhalo_hdf5_read_forest(int64_t forestnr, struct halo_data **halos, 
                                        struct forest_info *forest_info, void *format_data);
 static int io_lhalo_hdf5_cleanup(void *format_data);
+static int io_lhalo_hdf5_setup_forests(struct forest_info *forests_info, int ThisTask, int NTasks, struct params *run_params);
+static int io_lhalo_hdf5_cleanup_forests(struct forest_info *forests_info);
 static int io_lhalo_hdf5_close_handles(void *format_data);
 static int io_lhalo_hdf5_get_handle_count(void *format_data);
 
@@ -36,6 +39,9 @@ static struct io_interface lhalo_hdf5_handler = {
     .read_forest = io_lhalo_hdf5_read_forest,
     .write_galaxies = NULL, /* LHalo HDF5 format is input-only */
     .cleanup = io_lhalo_hdf5_cleanup,
+    
+    .setup_forests = io_lhalo_hdf5_setup_forests,
+    .cleanup_forests = io_lhalo_hdf5_cleanup_forests,
     
     .close_open_handles = io_lhalo_hdf5_close_handles,
     .get_open_handle_count = io_lhalo_hdf5_get_handle_count,
@@ -373,6 +379,38 @@ static int io_lhalo_hdf5_get_handle_count(void *format_data) {
     
     struct lhalo_hdf5_data *data = (struct lhalo_hdf5_data *)format_data;
     return data->num_open_files;
+}
+
+/**
+ * @brief Setup forests for LHalo HDF5 format
+ *
+ * Initializes the forest information for reading from LHalo HDF5 files.
+ * This migrates the functionality from setup_forests_io_lht_hdf5.
+ *
+ * @param forests_info Forest information structure to initialize
+ * @param ThisTask Current MPI task number
+ * @param NTasks Total number of MPI tasks
+ * @param run_params Run parameters
+ * @return 0 on success, non-zero on failure
+ */
+static int io_lhalo_hdf5_setup_forests(struct forest_info *forests_info, int ThisTask, int NTasks, struct params *run_params) {
+    /* Call the legacy function for now to ensure proper setup */
+    return setup_forests_io_lht_hdf5(forests_info, ThisTask, NTasks, run_params);
+}
+
+/**
+ * @brief Cleanup forests for LHalo HDF5 format
+ *
+ * Cleans up resources used for forest processing.
+ * This migrates the functionality from cleanup_forests_io_lht_hdf5.
+ *
+ * @param forests_info Forest information structure to cleanup
+ * @return 0 on success, non-zero on failure
+ */
+static int io_lhalo_hdf5_cleanup_forests(struct forest_info *forests_info) {
+    /* Call the legacy function for now to ensure proper cleanup */
+    cleanup_forests_io_lht_hdf5(forests_info);
+    return 0;
 }
 
 #endif /* HDF5 */

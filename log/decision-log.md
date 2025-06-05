@@ -148,3 +148,8 @@ This separation ensures that core infrastructure has zero compile-time or direct
 - Rationale: Investigation revealed that the module system was incorrectly allowing duplicate function registrations by silently updating existing registrations instead of failing. This "silent recovery" approach hides bugs and violates the "fail fast" principle essential for robust software design. Both module registration and function registration should explicitly prevent duplicates.
 - Impact: Changed `module_register_function()` to return `MODULE_STATUS_ERROR` for duplicate function names instead of updating existing registrations. This ensures clean architectural boundaries, helps detect development errors early, and aligns with the modular architecture goal of explicit, controlled interactions. Tests updated to use proper system APIs (`module_initialize()`) rather than bypassing built-in protections.
 
+
+2025-06-05: [Phase 5.3] I/O Interface Migration Strategy
+- Rationale: Chose incremental migration approach with graceful fallback to legacy functions rather than big-bang replacement of all tree reading infrastructure. This allows validation of each format individually while maintaining scientific accuracy and system stability during the transition.
+- Impact: LHalo HDF5 format successfully migrated to I/O interface with legacy header dependencies eliminated. Core system (core_io_tree.c) tries I/O interface first, gracefully falls back to legacy functions for non-migrated formats. Enables format-agnostic development while preserving backward compatibility.
+

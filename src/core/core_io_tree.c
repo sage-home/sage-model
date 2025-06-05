@@ -15,12 +15,11 @@
 // Use unified I/O interface instead of direct legacy includes
 #include "../io/io_interface.h"
 
-// Legacy includes needed for setup/cleanup functions (Phase 5 migration incomplete)
+// Legacy includes needed for formats without I/O interface implementation
 #include "../io/read_tree_lhalo_binary.h"
 #include "../io/read_tree_consistentrees_ascii.h"
 
 #ifdef HDF5
-#include "../io/read_tree_lhalo_hdf5.h"
 #include "../io/read_tree_genesis_hdf5.h"
 #include "../io/read_tree_consistentrees_hdf5.h"
 #include "../io/read_tree_gadget4_hdf5.h"
@@ -41,15 +40,18 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
     run_params->runtime.ForestNr_Mulfac = -1;
     forests_info->frac_volume_processed = -1.0;
 
-    switch (TreeType)
+    // Try to use I/O interface for setup if available
+    int format_id = io_map_tree_type_to_format_id((int)TreeType);
+    struct io_interface *handler = io_get_handler_by_id(format_id);
+    
+    if (handler != NULL && handler->setup_forests != NULL) {
+        // Use I/O interface for setup
+        status = handler->setup_forests(forests_info, ThisTask, NTasks, run_params);
+    } else {
+        // Fall back to legacy setup functions for formats without I/O interface
+        switch (TreeType)
         {
 #ifdef HDF5
-        case lhalo_hdf5:
-            //MS: 22/07/2021 - Why is firstfile, lastfile still passed even though those could be constructef
-            //from run_params (like done within this __FUNCTION__)
-            status = setup_forests_io_lht_hdf5(forests_info, ThisTask, NTasks, run_params);
-            break;
-
         case gadget4_hdf5:
             status = setup_forests_io_gadget4_hdf5(forests_info, ThisTask, NTasks, run_params);
             break;
@@ -76,6 +78,7 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
                     TreeType, __FUNCTION__, __FILE__);
             return INVALID_OPTION_IN_PARAMS;
         }
+    }
 
     if(status != EXIT_SUCCESS) {
         return status;
@@ -108,43 +111,46 @@ int setup_forests_io(struct params *run_params, struct forest_info *forests_info
 void cleanup_forests_io(enum Valid_TreeTypes TreeType, struct forest_info *forests_info)
 {
     /* Don't forget to free the open file handle */
-    switch (TreeType) {
+    // Try to use I/O interface for cleanup if available
+    int format_id = io_map_tree_type_to_format_id((int)TreeType);
+    struct io_interface *handler = io_get_handler_by_id(format_id);
+    
+    if (handler != NULL && handler->cleanup_forests != NULL) {
+        // Use I/O interface for cleanup
+        handler->cleanup_forests(forests_info);
+    } else {
+        // Fall back to legacy cleanup functions for formats without I/O interface
+        switch (TreeType) {
 #ifdef HDF5
-    case lhalo_hdf5:
-        cleanup_forests_io_lht_hdf5(forests_info);
-        break;
+        case gadget4_hdf5:
+            cleanup_forests_io_gadget4_hdf5(forests_info);
+            break;
 
-    case gadget4_hdf5:
-        cleanup_forests_io_gadget4_hdf5(forests_info);
-        break;
+        case genesis_hdf5:
+            cleanup_forests_io_genesis_hdf5(forests_info);
+            break;
 
-    case genesis_hdf5:
-        cleanup_forests_io_genesis_hdf5(forests_info);
-        break;
-
-    case consistent_trees_hdf5:
-        cleanup_forests_io_ctrees_hdf5(forests_info);
-        break;
-
+        case consistent_trees_hdf5:
+            cleanup_forests_io_ctrees_hdf5(forests_info);
+            break;
 #endif
 
-    case lhalo_binary:
-        cleanup_forests_io_lht_binary(forests_info);
-        break;
+        case lhalo_binary:
+            cleanup_forests_io_lht_binary(forests_info);
+            break;
 
-    case consistent_trees_ascii:
+        case consistent_trees_ascii:
+            /* because consistent trees can only be cleaned up after *ALL* forests
+               have been processed (and not on a `per file` basis)
+             */
+            cleanup_forests_io_ctrees(forests_info);
+            break;
 
-        /* because consistent trees can only be cleaned up after *ALL* forests
-           have been processed (and not on a `per file` basis)
-         */
-        cleanup_forests_io_ctrees(forests_info);
-        break;
-
-    default:
-        fprintf(stderr, "Tree type %d not included in the switch statement for function %s in file %s\n", 
-                TreeType, __FUNCTION__, __FILE__);
-        ABORT(EXIT_FAILURE);
-
+        default:
+            fprintf(stderr, "Tree type %d not included in the switch statement for function %s in file %s\n", 
+                    TreeType, __FUNCTION__, __FILE__);
+            ABORT(EXIT_FAILURE);
+        }
     }
 
     // Finally, things that are common across forest types.

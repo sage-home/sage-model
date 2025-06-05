@@ -35,11 +35,11 @@ make unit_tests        # Run only unit tests (faster for development)
 ```
 
 **Test Categories:**
-- **Core Tests**: Pipeline system, memory management, array utilities
+- **Core Tests**: Pipeline system, memory management, array utilities, physics-free mode
 - **Property Tests**: Property serialization, validation, HDF5 integration  
-- **I/O Tests**: Multiple tree formats (LHalo, HDF5, Gadget4, Genesis)
-- **Module Tests**: Dynamic loading, lifecycle, callbacks
-- **End-to-End Tests**: Binary/HDF5 output validation against reference data
+- **I/O Tests**: Multiple tree formats (LHalo Binary/HDF5, Gadget4, Genesis, ConsistentTrees), I/O interface abstraction
+- **Module Tests**: Dynamic loading, lifecycle, callbacks, inter-module communication
+- **End-to-End Tests**: HDF5 output validation, integration workflows, property system validation
 
 ## Architecture Overview
 
@@ -76,10 +76,11 @@ Core Infrastructure (Memory, I/O, Events, Module System, Configuration)
    - Phase-specific module callbacks
 
 4. **I/O Abstraction** (`src/io/`)
-   - Multiple merger tree formats supported
-   - Unified galaxy output system with HDF5 support
-   - Memory-mapped I/O and buffered operations
-   - Cross-platform endianness handling
+   - **Unified I/O Interface**: Format-agnostic tree reading and galaxy output (`src/io/io_interface.*`)
+   - **Multiple Tree Formats**: LHalo Binary/HDF5, Gadget4 HDF5, Genesis HDF5, ConsistentTrees ASCII/HDF5
+   - **Migration Status**: LHalo HDF5 fully migrated to I/O interface (Phase 5.3), others use legacy fallback
+   - **Property-Based Output**: HDF5 galaxy output driven by property system with transformers
+   - **Resource Management**: Built-in handle tracking and memory management
 
 ## Key Files & Patterns
 
@@ -89,6 +90,7 @@ Core Infrastructure (Memory, I/O, Events, Module System, Configuration)
 - `src/properties.yaml`: Property definitions driving code generation
 - `src/core/core_module_system.*`: Module registration and lifecycle
 - `src/core/core_pipeline_system.*`: Pipeline execution engine
+- `src/io/io_interface.*`: Unified I/O interface for tree reading and galaxy output
 
 **Configuration:**
 - `input/default_config.json`: Runtime module configuration
@@ -124,3 +126,6 @@ python3 allresults-history.py     # Plot higher redshift results
 - Error handling uses comprehensive context tracking (`src/core/core_module_error.*`)
 - Memory management uses custom allocators (`src/core/core_mymalloc.*`)
 - Physics-free mode validates core infrastructure independence
+- I/O interface migration: LHalo HDF5 fully migrated, others use graceful fallback to legacy functions
+- Tree reading operations use `core_io_tree.c` which tries I/O interface first, then legacy functions
+- See `docs/io_interface_migration_guide.md` for I/O development guidelines
