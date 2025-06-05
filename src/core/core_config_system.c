@@ -1477,11 +1477,17 @@ int config_configure_modules(struct params *params) {
         return -1;
     }
     
-    LOG_INFO("Configuring module system");
-    
     /* Configure individual modules */
     const struct config_value *modules = config_get_value("modules.instances");
     if (modules != NULL && modules->type == CONFIG_VALUE_ARRAY) {
+        if (modules->u.array.count == 0) {
+            LOG_INFO("No modules specified in configuration - running in physics-free mode");
+            LOG_INFO("To enable physics modules, add module entries to 'modules.instances' in your configuration file");
+            return 0;
+        }
+        
+        LOG_INFO("Configuring %d module(s) from configuration", modules->u.array.count);
+        
         for (int i = 0; i < modules->u.array.count; i++) {
             const struct config_value *module = modules->u.array.items[i];
             
@@ -1580,6 +1586,11 @@ int config_configure_modules(struct params *params) {
                 module_set_active(module_id);
             }
         }
+        
+        LOG_INFO("Successfully configured %d module(s)", modules->u.array.count);
+    } else {
+        LOG_INFO("No 'modules.instances' array found in configuration - running in physics-free mode");
+        LOG_INFO("To enable physics modules, add a 'modules.instances' array to your configuration file");
     }
     
     return 0;

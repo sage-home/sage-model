@@ -440,15 +440,8 @@ void initialize_config_system(const char *config_file)
         } else {
             LOG_INFO("Loaded configuration from '%s'", config_file);
             
-            /* Apply configuration to module system if available */
-            if (global_module_registry != NULL) {
-                status = config_configure_modules(NULL);
-                if (status != 0) {
-                    LOG_WARNING("Failed to configure modules from configuration, status = %d", status);
-                } else {
-                    LOG_INFO("Modules configured from configuration file");
-                }
-            }
+            /* Module configuration will be handled later in main.c with proper parameters */
+            LOG_INFO("Configuration loaded successfully - modules will be configured with runtime parameters");
             
             /* Configure pipeline from configuration */
             status = config_configure_pipeline();
