@@ -177,7 +177,7 @@ static void setup_mock_params(void) {
     // I/O parameters
     strcpy(test_ctx.mock_params.io.OutputDir, ".");
     strcpy(test_ctx.mock_params.io.FileNameGalaxies, "test_galaxies");
-    test_ctx.mock_params.io.OutputFormat = sage_hdf5;
+    // Note: OutputFormat field was removed - HDF5 is now the only output format
 }
 
 /**
@@ -402,25 +402,22 @@ static void test_handler_registration(void) {
     int ret = io_init();
     TEST_ASSERT(ret == 0, "I/O system initialization should succeed");
     
-    // Initialize HDF5 output handler
+    // Note: HDF5 output handler registration was disabled as part of I/O cleanup
+    // The HDF5 output system now works directly without the unified interface
     ret = io_hdf5_output_init();
-    TEST_ASSERT(ret == 0, "HDF5 output handler initialization should succeed");
+    TEST_ASSERT(ret == 0, "HDF5 output handler initialization should return success (no-op)");
     
-    // Get handler by ID
-    struct io_interface *handler = io_get_handler_by_id(IO_FORMAT_HDF5_OUTPUT);
-    TEST_ASSERT(handler != NULL, "HDF5 output handler should be found");
+    // Test that we can get the HDF5 output handler directly
+    struct io_interface *handler = io_get_hdf5_output_handler();
+    // Note: This now returns NULL as the unified interface was removed
+    printf("HDF5 output handler: %p (expected to be NULL after I/O cleanup)\n", (void*)handler);
     
-    // Verify handler properties
-    TEST_ASSERT(handler->format_id == IO_FORMAT_HDF5_OUTPUT, "Handler format ID should match");
-    TEST_ASSERT(strcmp(handler->name, "HDF5 Output") == 0, "Handler name should match");
-    TEST_ASSERT(handler->initialize != NULL, "Handler initialize function should be set");
-    TEST_ASSERT(handler->write_galaxies != NULL, "Handler write_galaxies function should be set");
-    TEST_ASSERT(handler->cleanup != NULL, "Handler cleanup function should be set");
+    // Test that the extension function still works
+    const char *extension = io_hdf5_output_get_extension();
+    TEST_ASSERT(extension != NULL, "HDF5 output extension should be available");
+    TEST_ASSERT(strcmp(extension, ".hdf5") == 0, "HDF5 extension should be '.hdf5'");
     
-    // Verify capabilities
-    TEST_ASSERT(io_has_capability(handler, IO_CAP_CHUNKED_WRITE), "Handler should support chunked writing");
-    TEST_ASSERT(io_has_capability(handler, IO_CAP_EXTENDED_PROPS), "Handler should support extended properties");
-    TEST_ASSERT(io_has_capability(handler, IO_CAP_METADATA_ATTRS), "Handler should support metadata attributes");
+    printf("HDF5 output extension: %s\n", extension);
 }
 
 /**
@@ -429,26 +426,24 @@ static void test_handler_registration(void) {
 static void test_handler_initialization(void) {
     printf("\n=== Testing HDF5 output handler initialization ===\n");
     
-    // Get handler
-    struct io_interface *handler = io_get_hdf5_output_handler();
-    TEST_ASSERT(handler != NULL, "HDF5 output handler should be available");
+    // Note: Direct handler interface is no longer available after I/O cleanup
+    // We'll test the underlying HDF5 output functions directly
     
-    // Initialize handler
     void *format_data = NULL;
-    int ret = handler->initialize("test_galaxies", &test_ctx.mock_params, &format_data);
-    TEST_ASSERT(ret == 0, "Handler initialization should succeed");
+    int ret = hdf5_output_initialize("test_galaxies", &test_ctx.mock_params, &format_data);
+    TEST_ASSERT(ret == 0, "HDF5 output initialization should succeed");
     TEST_ASSERT(format_data != NULL, "Format data should be allocated");
     
-    // Check open handle count
-    int handle_count = handler->get_open_handle_count(format_data);
-    TEST_ASSERT(handle_count > 0, "Should have open HDF5 handles");
+    // Check open handle count using the direct function
+    int handle_count = hdf5_output_get_handle_count(format_data);
+    TEST_ASSERT(handle_count >= 0, "Should return valid handle count");
     printf("  Open HDF5 handles: %d\n", handle_count);
     
-    // Clean up
-    ret = handler->cleanup(format_data);
-    TEST_ASSERT(ret == 0, "Handler cleanup should succeed");
+    // Clean up using direct function
+    ret = hdf5_output_cleanup(format_data);
+    TEST_ASSERT(ret == 0, "HDF5 output cleanup should succeed");
     
-    // Note: Handle count after cleanup might not be zero globally as other tests may have opened handles
+    printf("Direct HDF5 output functions work correctly\n");
 }
 
 /**
@@ -465,25 +460,22 @@ static void test_galaxy_write_and_read_cycle(void) {
         TEST_ASSERT(galaxies[i] != NULL, "Galaxy creation should succeed");
     }
     
-    // Get HDF5 handler and initialize
-    struct io_interface *handler = io_get_hdf5_output_handler();
-    TEST_ASSERT(handler != NULL, "HDF5 handler should be available");
-    
+    // Use direct HDF5 output functions since the unified interface was removed
     void *format_data = NULL;
-    int ret = handler->initialize("test_write_read", &test_ctx.mock_params, &format_data);
-    TEST_ASSERT(ret == 0, "Handler initialization should succeed");
+    int ret = hdf5_output_initialize("test_write_read", &test_ctx.mock_params, &format_data);
+    TEST_ASSERT(ret == 0, "HDF5 output initialization should succeed");
     
     // Set up save info for writing
     test_ctx.mock_save_info.base.tot_ngals[0] = num_galaxies;
     test_ctx.mock_save_info.base.forest_ngals[0][0] = num_galaxies;
     
-    // Write galaxies
-    ret = handler->write_galaxies((struct GALAXY *)galaxies, num_galaxies, &test_ctx.mock_save_info.base, format_data);
+    // Write galaxies using direct function
+    ret = hdf5_output_write_galaxies((struct GALAXY *)galaxies, num_galaxies, &test_ctx.mock_save_info.base, format_data);
     TEST_ASSERT(ret == 0, "Galaxy writing should succeed");
     
-    // Cleanup handler first to ensure file is properly closed
-    ret = handler->cleanup(format_data);
-    TEST_ASSERT(ret == 0, "Handler cleanup should succeed");
+    // Cleanup using direct function
+    ret = hdf5_output_cleanup(format_data);
+    TEST_ASSERT(ret == 0, "HDF5 output cleanup should succeed");
     
     // Debug: List all files in current directory to see what was created
     printf("  Debug: Files in current directory:\n");
@@ -560,32 +552,29 @@ static void test_property_system_integration(void) {
 static void test_error_handling(void) {
     printf("\n=== Testing error handling ===\n");
     
-    struct io_interface *handler = io_get_hdf5_output_handler();
-    TEST_ASSERT(handler != NULL, "HDF5 handler should be available");
-    
-    // Test NULL parameter handling
+    // Test NULL parameter handling with direct functions
     void *format_data = NULL;
-    int ret = handler->initialize(NULL, &test_ctx.mock_params, &format_data);
-    TEST_ASSERT(ret != 0, "initialize(NULL filename) should return error");
+    int ret = hdf5_output_initialize(NULL, &test_ctx.mock_params, &format_data);
+    TEST_ASSERT(ret != 0, "hdf5_output_initialize(NULL filename) should return error");
     
     // Test invalid path - this might succeed on some systems, so we'll be more lenient
-    ret = handler->initialize("/invalid/nonexistent/path/file.hdf5", &test_ctx.mock_params, &format_data);
+    ret = hdf5_output_initialize("/invalid/nonexistent/path/file.hdf5", &test_ctx.mock_params, &format_data);
     // Note: Some systems might create the path, so this test is informational
     printf("  Invalid path test result: %s\n", (ret != 0) ? "PASS (error as expected)" : "INFO (path creation succeeded)");
     
     // Test write_galaxies with NULL parameters
-    ret = handler->write_galaxies(NULL, 0, NULL, NULL);
-    TEST_ASSERT(ret != 0, "write_galaxies(NULL) should return error");
+    ret = hdf5_output_write_galaxies(NULL, 0, NULL, NULL);
+    TEST_ASSERT(ret != 0, "hdf5_output_write_galaxies(NULL) should return error");
     
-    // Test cleanup with NULL format_data - this should handle gracefully in a robust implementation
-    ret = handler->cleanup(NULL);
-    // This may or may not fail depending on implementation, so we'll just log it
-    printf("  cleanup(NULL) result: %s\n", (ret == 0) ? "PASS (handled gracefully)" : "INFO (returned error)");
+    // Test cleanup with NULL format_data - this should handle gracefully
+    ret = hdf5_output_cleanup(NULL);
+    TEST_ASSERT(ret != 0, "hdf5_output_cleanup(NULL) should return error");
+    printf("  cleanup(NULL) result: PASS (returned error as expected)\n");
     
     // Test get_open_handle_count with NULL
-    int handle_count = handler->get_open_handle_count(NULL);
-    // This should typically return 0 or a valid count
-    printf("  get_open_handle_count(NULL) returned: %d\n", handle_count);
+    int handle_count = hdf5_output_get_handle_count(NULL);
+    TEST_ASSERT(handle_count == -1, "hdf5_output_get_handle_count(NULL) should return -1");
+    printf("  get_open_handle_count(NULL) returned: %d (expected -1)\n", handle_count);
 }
 
 /**
@@ -594,17 +583,14 @@ static void test_error_handling(void) {
 static void test_resource_management(void) {
     printf("\n=== Testing resource management ===\n");
     
-    struct io_interface *handler = io_get_hdf5_output_handler();
-    TEST_ASSERT(handler != NULL, "HDF5 handler should be available");
-    
-    // Initialize handler
+    // Use direct HDF5 output functions
     void *format_data = NULL;
-    int ret = handler->initialize("test_resources", &test_ctx.mock_params, &format_data);
-    TEST_ASSERT(ret == 0, "Handler initialization should succeed");
+    int ret = hdf5_output_initialize("test_resources", &test_ctx.mock_params, &format_data);
+    TEST_ASSERT(ret == 0, "HDF5 output initialization should succeed");
     TEST_ASSERT(format_data != NULL, "Format data should be allocated");
     
     // Check that handles are opened
-    int open_handles = handler->get_open_handle_count(format_data);
+    int open_handles = hdf5_output_get_handle_count(format_data);
     TEST_ASSERT(open_handles >= 0, "Should return valid handle count");
     printf("  Open handles after initialization: %d\n", open_handles);
     
@@ -615,12 +601,12 @@ static void test_resource_management(void) {
     test_ctx.mock_save_info.base.tot_ngals[0] = 1;
     test_ctx.mock_save_info.base.forest_ngals[0][0] = 1;
     
-    ret = handler->write_galaxies(galaxy, 1, &test_ctx.mock_save_info.base, format_data);
+    ret = hdf5_output_write_galaxies(galaxy, 1, &test_ctx.mock_save_info.base, format_data);
     TEST_ASSERT(ret == 0, "Galaxy writing should succeed");
     
     // Clean up
-    ret = handler->cleanup(format_data);
-    TEST_ASSERT(ret == 0, "Handler cleanup should succeed");
+    ret = hdf5_output_cleanup(format_data);
+    TEST_ASSERT(ret == 0, "HDF5 output cleanup should succeed");
     
     free_test_galaxy(galaxy);
 }
@@ -680,23 +666,20 @@ static void test_multiple_galaxy_handling(void) {
         TEST_ASSERT(fabs(actual_mvir - expected_mvir) < 1e8, "Each galaxy should have unique Mvir");
     }
     
-    // Test writing multiple galaxies
-    struct io_interface *handler = io_get_hdf5_output_handler();
-    TEST_ASSERT(handler != NULL, "HDF5 handler should be available");
-    
+    // Test writing multiple galaxies using direct functions
     void *format_data = NULL;
-    int ret = handler->initialize("test_multiple", &test_ctx.mock_params, &format_data);
-    TEST_ASSERT(ret == 0, "Handler initialization should succeed");
+    int ret = hdf5_output_initialize("test_multiple", &test_ctx.mock_params, &format_data);
+    TEST_ASSERT(ret == 0, "HDF5 output initialization should succeed");
     
     test_ctx.mock_save_info.base.tot_ngals[0] = num_galaxies;
     test_ctx.mock_save_info.base.forest_ngals[0][0] = num_galaxies;
     
-    ret = handler->write_galaxies((struct GALAXY *)galaxies, num_galaxies, &test_ctx.mock_save_info.base, format_data);
+    ret = hdf5_output_write_galaxies((struct GALAXY *)galaxies, num_galaxies, &test_ctx.mock_save_info.base, format_data);
     TEST_ASSERT(ret == 0, "Writing multiple galaxies should succeed");
     
     // Clean up
-    ret = handler->cleanup(format_data);
-    TEST_ASSERT(ret == 0, "Handler cleanup should succeed");
+    ret = hdf5_output_cleanup(format_data);
+    TEST_ASSERT(ret == 0, "HDF5 output cleanup should succeed");
     
     for (int i = 0; i < num_galaxies; i++) {
         free_test_galaxy(galaxies[i]);

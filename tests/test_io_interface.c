@@ -185,10 +185,17 @@ static void test_format_mapping() {
     TEST_ASSERT(format_id == IO_FORMAT_LHALO_BINARY, 
                 "LHalo binary tree type should map to correct format ID");
     
-    // Test output format mapping - HDF5 is the supported output format
-    format_id = io_map_output_format_to_format_id(sage_hdf5);
-    TEST_ASSERT(format_id == IO_FORMAT_HDF5_OUTPUT, 
-                "HDF5 output format should map to correct format ID");
+    // Test additional tree type mappings
+    format_id = io_map_tree_type_to_format_id(lhalo_hdf5);
+    TEST_ASSERT(format_id == IO_FORMAT_LHALO_HDF5, 
+                "LHalo HDF5 tree type should map to correct format ID");
+                
+    format_id = io_map_tree_type_to_format_id(gadget4_hdf5);
+    TEST_ASSERT(format_id == IO_FORMAT_GADGET4_HDF5, 
+                "Gadget4 HDF5 tree type should map to correct format ID");
+    
+    // Note: Output format mapping was removed as part of I/O cleanup.
+    // HDF5 output is now handled directly without the unified interface.
     
     printf("Format mapping tests completed\n");
 }

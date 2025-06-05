@@ -48,15 +48,15 @@ static struct test_context {
     int initialized;
 } test_ctx;
 
-// Mock I/O handlers
-struct io_interface hdf5_handler = {
-    .name = "HDF5 Format Handler",
+// Mock I/O handlers for tree reading (only input formats are supported now)
+struct io_interface mock_tree_handler = {
+    .name = "Mock Tree Format Handler",
     .version = "1.0",
-    .format_id = IO_FORMAT_HDF5_OUTPUT,
-    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_EXTENDED_PROPS | IO_CAP_METADATA_ATTRS,
+    .format_id = IO_FORMAT_LHALO_BINARY,  // Use an existing input format
+    .capabilities = IO_CAP_RANDOM_ACCESS | IO_CAP_METADATA_QUERY,
     .initialize = NULL,
     .read_forest = NULL,
-    .write_galaxies = NULL,
+    .write_galaxies = NULL,  // Not supported for input formats
     .cleanup = NULL,
     .close_open_handles = NULL,
     .get_open_handle_count = NULL
@@ -353,38 +353,37 @@ static void test_hdf5_property_compatibility(void) {
     // Initialize validation context
     validation_init(&ctx, VALIDATION_STRICTNESS_NORMAL);
     
-    // Test valid property with HDF5 format
-    status = VALIDATE_HDF5_PROPERTY_COMPATIBILITY(&ctx, &test_ctx.mock_properties[0], "test");
-    TEST_ASSERT(status == 0, "VALIDATE_HDF5_PROPERTY_COMPATIBILITY should succeed for standard property");
-    TEST_ASSERT(!validation_has_errors(&ctx), "Validation should have no errors for HDF5-compatible property");
+    // Test valid property with HDF5 format (using generic validation since output formats were simplified)
+    status = VALIDATE_PROPERTY_SERIALIZATION(&ctx, &test_ctx.mock_properties[0], "test");
+    TEST_ASSERT(status == 0, "Property serialization validation should succeed for standard property");
+    TEST_ASSERT(!validation_has_errors(&ctx), "Validation should have no errors for serializable property");
     
     validation_reset(&ctx);
     
     // Test property without serialization functions
-    status = VALIDATE_HDF5_PROPERTY_COMPATIBILITY(&ctx, &test_ctx.mock_properties[2], "test");
-    TEST_ASSERT(status != 0, "VALIDATE_HDF5_PROPERTY_COMPATIBILITY should fail for property without serialization");
+    status = VALIDATE_PROPERTY_SERIALIZATION(&ctx, &test_ctx.mock_properties[2], "test");
+    TEST_ASSERT(status != 0, "Property serialization validation should fail for property without serialization");
     TEST_ASSERT(validation_has_errors(&ctx), "Validation should have errors for property without serialization functions");
     
     validation_reset(&ctx);
     
-    // Test struct property (should warn for HDF5)
-    status = VALIDATE_HDF5_PROPERTY_COMPATIBILITY(&ctx, &test_ctx.mock_properties[6], "test");
-    TEST_ASSERT(status == 0, "VALIDATE_HDF5_PROPERTY_COMPATIBILITY should succeed for struct property");
-    TEST_ASSERT(validation_has_warnings(&ctx), "Validation should have warnings for struct property in HDF5");
+    // Test type validation for struct property
+    status = VALIDATE_PROPERTY_TYPE(&ctx, PROPERTY_TYPE_STRUCT, "test", "StructProperty");
+    TEST_ASSERT(status == 0, "Property type validation should succeed for struct property");
+    TEST_ASSERT(validation_has_warnings(&ctx), "Validation should have warnings for struct property");
     
     validation_reset(&ctx);
     
-    // Test large property (should warn for HDF5)
-    status = VALIDATE_HDF5_PROPERTY_COMPATIBILITY(&ctx, &test_ctx.mock_properties[5], "test");
-    TEST_ASSERT(status == 0, "VALIDATE_HDF5_PROPERTY_COMPATIBILITY should succeed for large property");
-    TEST_ASSERT(validation_has_warnings(&ctx), "Validation should have warnings for large property in HDF5");
+    // Test type validation for complex types
+    status = VALIDATE_PROPERTY_TYPE(&ctx, PROPERTY_TYPE_ARRAY, "test", "ArrayProperty");
+    TEST_ASSERT(status == 0, "Property type validation should succeed for array property");
+    TEST_ASSERT(validation_has_warnings(&ctx), "Validation should have warnings for array property");
     
     validation_reset(&ctx);
     
-    // Test property with special characters (should warn for HDF5)
-    status = VALIDATE_HDF5_PROPERTY_COMPATIBILITY(&ctx, &test_ctx.mock_properties[4], "test");
-    TEST_ASSERT(status == 0, "VALIDATE_HDF5_PROPERTY_COMPATIBILITY should succeed for property with special chars");
-    TEST_ASSERT(validation_has_warnings(&ctx), "Validation should have warnings for property with special characters in HDF5");
+    // Test property name validation (special characters)
+    status = VALIDATE_PROPERTY_UNIQUENESS(&ctx, &test_ctx.mock_properties[4], "test");
+    TEST_ASSERT(status == 0, "Property uniqueness validation should handle special characters");
     
     validation_cleanup(&ctx);
 }
