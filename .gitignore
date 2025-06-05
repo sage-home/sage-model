@@ -101,3 +101,6 @@ docs/make.bat
 
 # Build artifacts
 .stamps/
+
+# Claude Code settings
+.claude/
