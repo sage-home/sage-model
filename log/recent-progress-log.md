@@ -523,3 +523,11 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Created files: Enhanced I/O interface structure in io_interface.h, setup/cleanup functions in io_lhalo_hdf5.c
 - Modified files: src/core/core_io_tree.c, src/io/io_interface.h, src/io/io_lhalo_hdf5.c
 
+2025-06-05: [I/O System] LHalo Binary Segfault Fix ✅ COMPLETED
+- Identified and resolved segmentation fault in LHalo Binary tree reading caused by incomplete I/O interface migration
+- Root cause: io_lhalo_binary_read_forest() expected lhalo_binary_data* but received run_params due to missing handler->initialize() call
+- Fixed by routing LHalo Binary format through legacy load_forest_lht_binary() function instead of incomplete I/O interface
+- Successfully eliminated segfault - SAGE now runs in physics-free mode without crashing
+- Technical details: Memory corruption at data->mapped_files[file_index] access in io_lhalo_binary.c:246
+- Modified files: src/core/core_io_tree.c
+

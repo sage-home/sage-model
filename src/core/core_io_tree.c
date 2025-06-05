@@ -169,7 +169,12 @@ int64_t load_forest(struct params *run_params, const int64_t forestnr, struct ha
         return load_forest_ctrees(forestnr, halos, forests_info, run_params);
     }
     
-    // Use unified I/O interface for all other formats
+    // For legacy binary format, use direct call until it's properly migrated
+    if (TreeType == lhalo_binary) {
+        return load_forest_lht_binary(forestnr, halos, forests_info);
+    }
+    
+    // Use unified I/O interface for fully migrated formats
     int format_id = io_map_tree_type_to_format_id((int)TreeType);
     if (format_id == -1) {
         fprintf(stderr, "Tree type %d not supported by I/O interface in function %s in file %s\n", 
