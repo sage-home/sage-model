@@ -18,8 +18,6 @@ NumOutputs              8            % sets the desired number of galaxy outputs
 % List your output snapshots after the arrow, highest to lowest (ignored when NumOutputs=-1)
 -> 63 37 32 27 23 20 18 16
 
-OutputFormat            sage_hdf5     % sets the desired output format, only sage_hdf5 is supported
-
 
 %------------------------------------------
 %----- Simulation information  ------------
