@@ -9,7 +9,8 @@
 #include "core_logging.h"
 
 // Increased from 8192 to provide more memory blocks for galaxy properties
-#define MAXBLOCKS 20000
+// Temporarily increased to 50000 to debug memory allocation in physics-free mode
+#define MAXBLOCKS 50000
 
 static long Nblocks = 0;
 static void *Table[MAXBLOCKS];
@@ -32,8 +33,8 @@ void *mymalloc_full(size_t n, const char *desc)
     }
 
     if(Nblocks >= MAXBLOCKS) {
-        fprintf(stderr, "ERROR: Nblocks = %ld. No blocks left in mymalloc().\n", Nblocks);
-        fprintf(stderr, "Total memory allocated: %.2f MB\n", TotMem / (1024.0 * 1024.0));
+        LOG_ERROR("Nblocks = %ld. No blocks left in mymalloc().", Nblocks);
+        LOG_ERROR("Total memory allocated: %.2f MB", TotMem / (1024.0 * 1024.0));
         ABORT(OUT_OF_MEMBLOCKS);
     }
 
@@ -44,7 +45,7 @@ void *mymalloc_full(size_t n, const char *desc)
 
     Table[Nblocks] = malloc(n);
     if(Table[Nblocks] == NULL) {
-        fprintf(stderr, "Failed to allocate memory for %g MB\n", n / (1024.0 * 1024.0));
+        LOG_ERROR("Failed to allocate memory for %.2f MB", n / (1024.0 * 1024.0));
         ABORT(MALLOC_FAILURE);
     }
     
@@ -91,16 +92,16 @@ void *myrealloc(void *p, size_t n)
 
     long iblock = find_block(p);
     if(iblock < 0) {
-        fprintf(stderr,"Error: Could not locate ptr address = %p within the allocated blocks\n", p);
+        LOG_ERROR("Could not locate ptr address = %p within the allocated blocks", p);
         // MEMORY DEBUG CODE - commented out for now but should revisit later in Phase 5.2.G or 5.3
         // for(int i=0;i<Nblocks;i++) {
-        //     fprintf(stderr,"Address = %p size = %zu bytes\n", Table[i], SizeTable[i]);
+        //     LOG_DEBUG("Address = %p size = %zu bytes", Table[i], SizeTable[i]);
         // }
         ABORT(INVALID_PTR_REALLOC_REQ);
     }
     void *newp = realloc(Table[iblock], n);
     if(newp == NULL) {
-        fprintf(stderr, "Error: Failed to re-allocate memory for %g MB (old size = %g MB)\n",  n / (1024.0 * 1024.0), SizeTable[Nblocks-1]/ (1024.0 * 1024.0) );
+        LOG_ERROR("Failed to re-allocate memory for %.2f MB (old size = %.2f MB)", n / (1024.0 * 1024.0), SizeTable[iblock] / (1024.0 * 1024.0));
         ABORT(MALLOC_FAILURE);
     }
     Table[iblock] = newp;
@@ -123,10 +124,10 @@ void myfree(void *p)
 
     long iblock = find_block(p);
     if(iblock < 0) {
-        fprintf(stderr,"Error: Could not locate ptr address = %p within the allocated blocks\n", p);
+        LOG_ERROR("Could not locate ptr address = %p within the allocated blocks", p);
         // MEMORY DEBUG CODE - commented out for now but should revisit later in Phase 5.2.G or 5.3
         // for(int i=0;i<Nblocks;i++) {
-        //     fprintf(stderr,"Address = %p size = %zu bytes\n", Table[i], SizeTable[i]);
+        //     LOG_DEBUG("Address = %p size = %zu bytes", Table[i], SizeTable[i]);
         // }
         ABORT(INVALID_PTR_REALLOC_REQ);
     }
@@ -181,7 +182,7 @@ void set_and_print_highwater_mark(void)
     if(TotMem > HighMarkMem) {
         HighMarkMem = TotMem;
         if(HighMarkMem > OldPrintedHighMark + 10 * 1024.0 * 1024.0) {
-            fprintf(stderr, "\nMEMORY HIGHWATER: %.2f MB with %ld blocks\n", 
+            LOG_INFO("MEMORY HIGHWATER: %.2f MB with %ld blocks", 
                    HighMarkMem / (1024.0 * 1024.0), Nblocks);
             OldPrintedHighMark = HighMarkMem;
         }

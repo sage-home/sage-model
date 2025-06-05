@@ -255,24 +255,6 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
                     }
                     galaxies[ngal].Mvir = get_virial_mass(halonr, halos, run_params);
 
-                    // Replace direct field access with accessors
-                    // Set physics-related properties through generic property system
-                    property_id_t cooling_id = get_cached_property_id("Cooling");
-                    if (cooling_id >= 0) {
-                        set_double_property(&galaxies[ngal], cooling_id, 0.0);
-                    }
-                    
-                    property_id_t heating_id = get_cached_property_id("Heating");
-                    if (heating_id >= 0) {
-                        set_double_property(&galaxies[ngal], heating_id, 0.0);
-                    }
-                    
-                    property_id_t outflow_id = get_cached_property_id("OutflowRate");
-                    if (outflow_id >= 0) {
-                        set_float_property(&galaxies[ngal], outflow_id, 0.0);
-                    }
-                    
-                    // SFR history arrays now handled in physics modules as needed
 
                     if(halonr == halos[halonr].FirstHaloInFOFgroup) {
                         // a central galaxy
@@ -648,14 +630,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     core_evolution_diagnostics_report(&diag, LOG_LEVEL_INFO);
 
     // Extra miscellaneous stuff before finishing this halo
-    // Set TotalSatelliteBaryons to 0.0 - this would normally be calculated based on physics components
-    // Set total satellite baryons through generic property system
-    property_id_t satellite_baryons_id = get_cached_property_id("TotalSatelliteBaryons");
-    if (satellite_baryons_id >= 0) {
-        // Use generic property system rather than direct accessor
-        float value = 0.0f;
-        set_float_property(&ctx.galaxies[ctx.centralgal], satellite_baryons_id, value);
-    }
     
     const double time_diff = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
     const double inv_deltaT = (time_diff > 1e-10) ? 1.0 / time_diff : 0.0; // Avoid division by zero or very small numbers
