@@ -17,7 +17,8 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     memset(save_info, 0, sizeof(struct hdf5_save_info));
     
     // Store in the base save_info
-    save_info_base->io_handler.format_data = save_info;
+    // Note: io_handler field removed as part of unified I/O interface cleanup
+    // HDF5 data is now managed directly in save_info_base
     
     // Create the file
     snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->io.OutputDir, run_params->io.FileNameGalaxies, filenr);
@@ -33,7 +34,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         fprintf(stderr, "Failed to discover output properties\n");
         H5Fclose(file_id);
         free(save_info);
-        save_info_base->io_handler.format_data = NULL;
+        // Note: io_handler field removed as part of unified I/O interface cleanup
         return status;
     }
     
@@ -44,7 +45,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         H5Fclose(file_id);
         free_property_discovery(save_info);
         free(save_info);
-        save_info_base->io_handler.format_data = NULL;
+        // Note: io_handler field removed as part of unified I/O interface cleanup
         return status;
     }
     
@@ -167,7 +168,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
             free(save_info->group_ids);
             free_property_discovery(save_info);
             free(save_info);
-            save_info_base->io_handler.format_data = NULL;
+            // Note: io_handler field removed as part of unified I/O interface cleanup
             return status;
         }
     }

@@ -8,7 +8,8 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
                           struct save_info *save_info_base, const struct params *run_params)
 {
     int32_t status = EXIT_FAILURE;
-    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->io_handler.format_data;
+    // Work directly with save_info_base since we eliminated the unified I/O interface
+    struct save_info *save_info = save_info_base;
 
     for (int32_t gal_idx = 0; gal_idx < num_gals; gal_idx++) {
         // Only processing galaxies at selected snapshots
@@ -26,12 +27,12 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         save_info->num_gals_in_buffer[snap_idx]++;
 
         // Increment forest_ngals counter for this snapshot and forest
-        save_info_base->forest_ngals[snap_idx][task_forestnr]++;
+        save_info->forest_ngals[snap_idx][task_forestnr]++;
 
         // Check if buffer is full and we need to write
         if (save_info->num_gals_in_buffer[snap_idx] == save_info->buffer_size) {
             status = trigger_buffer_write(snap_idx, save_info->buffer_size, save_info->tot_ngals[snap_idx], 
-                                        save_info_base, run_params);
+                                        save_info, run_params);
             if (status != EXIT_SUCCESS) {
                 return status;
             }

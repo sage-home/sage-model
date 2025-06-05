@@ -1753,7 +1753,6 @@ int config_configure_params(struct params *params) {
     }
     
     params->io.NumSimulationTreeFiles = config_get_integer("output.num_files", params->io.NumSimulationTreeFiles);
-    params->io.OutputFormat = config_get_integer("output.format", params->io.OutputFormat);
     
     /* Configure physics parameters */
     params->physics.RecycleFraction = config_get_double("physics.recycle_fraction", params->physics.RecycleFraction);

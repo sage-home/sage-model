@@ -51,13 +51,6 @@ struct HDF5_METADATA_NAMES
 };
 
 
-/* Output formats enum - only HDF5 is supported */
-enum Valid_OutputFormats
-{
-    /* The number of output formats supported by sage */
-    sage_hdf5 = 0, /* HDF5 is the standard output format */
-    num_output_format_types
-};
 
 enum Valid_Forest_Distribution_Schemes
 {
@@ -230,18 +223,6 @@ struct galaxy_extension_registry;
 struct io_interface;
 struct property_serialization_context;
 
-/**
- * @brief I/O interface handler data
- * 
- * Used for the unified I/O interface approach in galaxy output.
- * Manages the handler and format-specific data.
- */
-struct io_handler_data {
-    struct io_interface *handler;                         /**< I/O handler for the selected format */
-    void *format_data;                                    /**< Format-specific data managed by the handler */
-    int using_io_interface;                               /**< Flag to indicate if using the new I/O interface */
-    struct property_serialization_context *property_ctx;  /**< Property serialization context */
-};
 
 
 struct lhalotree_info {
@@ -462,8 +443,6 @@ struct save_info {
     struct HDF5_GALAXY_OUTPUT *buffer_output_gals;
 #endif
 
-    /* I/O interface support */
-    struct io_handler_data io_handler;  /**< Handler for the I/O interface */
 };
 
 
@@ -563,7 +542,6 @@ struct io_params
     
     /* File formats */
     enum Valid_TreeTypes TreeType;           /* Type of input merger trees */
-    enum Valid_OutputFormats OutputFormat;   /* Format for galaxy output */
 };
 
 /*

@@ -4,7 +4,8 @@
 int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info_base,
                                  const struct params *run_params)
 {
-    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->io_handler.format_data;
+    // Work directly with save_info_base since we eliminated the unified I/O interface
+    struct save_info *save_info = save_info_base;
     hid_t group_id;
     herr_t h5_status;
     
@@ -142,22 +143,22 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
     // Free allocated resources
     free(save_info->group_ids);
     
-    // Free property resources
-    free_property_discovery(save_info);
+    // Simplified cleanup for basic HDF5 system
+    // The complex property-based cleanup has been disabled as part of
+    // the unified I/O interface cleanup
     
-    // Free property buffers
-    for (int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
-        free_all_output_properties(save_info, snap_idx);
+    // Free the basic HDF5 arrays (these are still needed)
+    if (save_info->num_gals_in_buffer) {
+        free(save_info->num_gals_in_buffer);
+        save_info->num_gals_in_buffer = NULL;
+    }
+    if (save_info->tot_ngals) {
+        free(save_info->tot_ngals);
+        save_info->tot_ngals = NULL;
     }
     
-    // Free arrays
-    free(save_info->property_buffers);
-    free(save_info->num_gals_in_buffer);
-    free(save_info->tot_ngals);
-    
-    // Free the save_info struct itself
-    free(save_info);
-    save_info_base->io_handler.format_data = NULL;
+    // Note: save_info itself is not freed here as it's managed elsewhere
+    // Note: io_handler field removed as part of unified I/O interface cleanup
 
     return EXIT_SUCCESS;
 }

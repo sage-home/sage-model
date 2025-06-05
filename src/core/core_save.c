@@ -16,9 +16,6 @@
 #include "core_galaxy_extensions.h"
 
 // Binary output format has been removed
-#include "../io/io_interface.h"
-#include "../io/io_validation.h"
-#include "../io/io_property_serialization.h"
 
 #ifdef HDF5
 #include "../io/save_gals_hdf5.h"
@@ -103,8 +100,6 @@ int32_t generate_galaxy_indices(const struct halo_data *halos, const struct halo
 
 // Externally Visible Functions //
 
-// Global flag to track I/O system initialization
-static int io_system_initialized = 0;
 
 // Open up all the required output files and remember their file handles.  These are placed into
 // `save_info` for access later.
@@ -123,167 +118,6 @@ int32_t initialize_galaxy_files(const int rank, struct save_info *save_info, con
         log_io_error("initialize_galaxy_files", IO_ERROR_RESOURCE_LIMIT);
         return map_io_error_to_sage_error(IO_ERROR_RESOURCE_LIMIT);
     }
-
-#if USE_IO_INTERFACE
-    // Initialize validation context
-    struct validation_context val_ctx;
-    validation_init(&val_ctx, VALIDATION_STRICTNESS_NORMAL);
-    
-    // Initialize I/O system if needed
-    if (!io_system_initialized) {
-        status = io_init();
-        if (status != 0) {
-            log_io_error("initialize_galaxy_files", io_get_last_error());
-            return map_io_error_to_sage_error(io_get_last_error());
-        }
-        io_system_initialized = 1;
-    }
-    
-    // Initialize io_handler_data
-    save_info->io_handler.using_io_interface = 0;
-    save_info->io_handler.handler = NULL;
-    save_info->io_handler.format_data = NULL;
-    save_info->io_handler.property_ctx = NULL;
-    
-    // Get handler for the specified format
-    int format_id = io_map_output_format_to_format_id(run_params->io.OutputFormat);
-    if (format_id >= 0) {
-        save_info->io_handler.handler = io_get_handler_by_id(format_id);
-        
-        // Validate handler
-        if (save_info->io_handler.handler != NULL) {
-            // Validate required capabilities for initialization
-            enum io_capabilities required_caps[] = {
-                IO_CAP_CHUNKED_WRITE,
-                IO_CAP_EXTENDED_PROPS
-            };
-            VALIDATE_FORMAT_CAPABILITIES(&val_ctx, save_info->io_handler.handler, required_caps, 
-                                       sizeof(required_caps)/sizeof(required_caps[0]),
-                                       "initialize_galaxy_files", "galaxy file initialization");
-            
-            // Check for extended property support
-            if (global_extension_registry != NULL && global_extension_registry->num_extensions > 0) {
-                // Check if handler supports extended properties
-                if (!io_has_capability(save_info->io_handler.handler, IO_CAP_EXTENDED_PROPS)) {
-                    VALIDATION_WARN(&val_ctx, VALIDATION_ERROR_FORMAT_INCOMPATIBLE, 
-                                 VALIDATION_CHECK_FORMAT_CAPS, "initialize_galaxy_files",
-                                 "Handler does not support extended properties, extensions will be ignored");
-                } else {
-                    // Allocate property serialization context
-                    save_info->io_handler.property_ctx = malloc(sizeof(struct property_serialization_context));
-                    if (save_info->io_handler.property_ctx == NULL) {
-                        VALIDATION_ERROR(&val_ctx, VALIDATION_ERROR_RESOURCE_LIMIT,
-                                      VALIDATION_CHECK_RESOURCE, "initialize_galaxy_files",
-                                      "Failed to allocate memory for property serialization context");
-                    } else {
-                        // Initialize property serialization context
-                        if (property_serialization_init(save_info->io_handler.property_ctx, SERIALIZE_EXPLICIT) != 0) {
-                            VALIDATION_ERROR(&val_ctx, VALIDATION_ERROR_INTERNAL,
-                                          VALIDATION_CHECK_PROPERTY_COMPAT, "initialize_galaxy_files",
-                                          "Failed to initialize property serialization context");
-                            free(save_info->io_handler.property_ctx);
-                            save_info->io_handler.property_ctx = NULL;
-                        } else {
-                            // Add properties to context
-                            if (property_serialization_add_properties(save_info->io_handler.property_ctx) != 0) {
-                                VALIDATION_ERROR(&val_ctx, VALIDATION_ERROR_INTERNAL,
-                                              VALIDATION_CHECK_PROPERTY_COMPAT, "initialize_galaxy_files",
-                                              "Failed to add properties to serialization context");
-                                property_serialization_cleanup(save_info->io_handler.property_ctx);
-                                free(save_info->io_handler.property_ctx);
-                                save_info->io_handler.property_ctx = NULL;
-                            } else {
-                                // Validate property serialization context
-                                VALIDATE_SERIALIZATION_CONTEXT(&val_ctx, save_info->io_handler.property_ctx, 
-                                                           "initialize_galaxy_files");
-                                
-                                // Validate properties against the format
-                                for (int i = 0; i < save_info->io_handler.property_ctx->num_properties; i++) {
-                                    int ext_id = save_info->io_handler.property_ctx->property_id_map[i];
-                                    const galaxy_property_t *property = 
-                                        galaxy_extension_find_property_by_id(ext_id);
-                                    
-                                    if (property != NULL) {
-                                        // Validate property serialization
-                                        VALIDATE_PROPERTY_SERIALIZATION(&val_ctx, property, "initialize_galaxy_files");
-                                        
-                                        // Validate property uniqueness
-                                        VALIDATE_PROPERTY_UNIQUENESS(&val_ctx, property, "initialize_galaxy_files");
-                                        
-                                        // Validate property type
-                                        VALIDATE_PROPERTY_TYPE(&val_ctx, property->type, 
-                                                           "initialize_galaxy_files", property->name);
-                                        
-                                        // Validate format-specific compatibility
-                                        if (save_info->io_handler.handler->format_id == IO_FORMAT_HDF5_OUTPUT) {
-                                            VALIDATE_HDF5_PROPERTY_COMPATIBILITY(&val_ctx, property, 
-                                                                             "initialize_galaxy_files");
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Report validation results
-            if (validation_has_errors(&val_ctx)) {
-                validation_report(&val_ctx);
-                validation_cleanup(&val_ctx);
-                
-                // Clean up property context if it was created
-                if (save_info->io_handler.property_ctx != NULL) {
-                    property_serialization_cleanup(save_info->io_handler.property_ctx);
-                    free(save_info->io_handler.property_ctx);
-                    save_info->io_handler.property_ctx = NULL;
-                }
-                
-                return map_io_error_to_sage_error(IO_ERROR_VALIDATION_FAILED);
-            }
-            
-            // Construct output filename
-            char filename[MAX_STRING_LEN];
-            snprintf(filename, MAX_STRING_LEN, "%s/%s", 
-                    run_params->io.OutputDir, run_params->io.FileNameGalaxies);
-            
-            // Initialize the handler
-            status = save_info->io_handler.handler->initialize(filename, (struct params *)run_params, 
-                                                            &save_info->io_handler.format_data);
-            if (status == 0) {
-                save_info->io_handler.using_io_interface = 1;
-                validation_cleanup(&val_ctx);
-                return EXIT_SUCCESS;
-            } else {
-                // Handle initialization error
-                log_io_error("initialize_galaxy_files", io_get_last_error());
-                save_info->io_handler.using_io_interface = 0;
-                
-                // Clean up property context if it was created
-                if (save_info->io_handler.property_ctx != NULL) {
-                    property_serialization_cleanup(save_info->io_handler.property_ctx);
-                    free(save_info->io_handler.property_ctx);
-                    save_info->io_handler.property_ctx = NULL;
-                }
-                
-                // Fall through to traditional approach
-            }
-        } else {
-            // Handler not found, fall through to traditional approach
-            char error_buffer[256];
-            snprintf(error_buffer, sizeof(error_buffer),
-                    "No I/O handler found for format %d, falling back to traditional approach (code %d)", 
-                    format_id, run_params->io.OutputFormat);
-            io_set_error(IO_ERROR_FORMAT_ERROR, error_buffer);
-            
-            // Log as warning instead of error to avoid crashing
-            LOG_WARNING("No I/O handler found for format %d, falling back to traditional approach (code %d)", 
-                      format_id, run_params->io.OutputFormat);
-        }
-    }
-    
-    validation_cleanup(&val_ctx);
-#endif
 
     // Use HDF5 as the only supported output format
 #ifdef HDF5
@@ -382,65 +216,6 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
         return EXIT_FAILURE;
     }
 
-#if USE_IO_INTERFACE
-    // Initialize validation context
-    struct validation_context val_ctx;
-    validation_init(&val_ctx, VALIDATION_STRICTNESS_NORMAL);
-    
-    // Check if using I/O interface
-    if (save_info->io_handler.using_io_interface && save_info->io_handler.handler != NULL) {
-        // Validate galaxies before saving
-        for (int i = 0; i < numgals; i++) {
-            // Only validate galaxies that will be written (those with output_snap_n >= 0)
-            if (haloaux[i].output_snap_n >= 0) {
-                // Validate galaxy data
-                status = validation_check_galaxies(&val_ctx, &halogal[i], 1, 
-                                               "save_galaxies", VALIDATION_CHECK_GALAXY_DATA);
-                
-                // Don't check every galaxy if there's an error to avoid too many messages
-                if (status != 0) {
-                    break;
-                }
-            }
-        }
-        
-        // Check if validation failed
-        if (validation_has_errors(&val_ctx)) {
-            validation_report(&val_ctx);
-            validation_cleanup(&val_ctx);
-            myfree(OutputGalOrder);
-            return map_io_error_to_sage_error(IO_ERROR_VALIDATION_FAILED);
-        }
-        
-        // If the handler supports write_galaxies, use it
-        if (save_info->io_handler.handler->write_galaxies != NULL) {
-            // Count galaxies per snapshot for output
-            int ngals_per_snap[run_params->simulation.NumSnapOutputs];
-            for (int32_t i = 0; i < run_params->simulation.NumSnapOutputs; i++) {
-                ngals_per_snap[i] = OutputGalCount[i];
-            }
-            
-            // Call handler's write_galaxies function
-            status = save_info->io_handler.handler->write_galaxies(halogal, numgals, 
-                                                                save_info, 
-                                                                save_info->io_handler.format_data);
-            
-            if (status != 0) {
-                log_io_error("save_galaxies", io_get_last_error());
-                // Do not fall through to traditional approach; if the handler failed, there's likely an issue
-                validation_cleanup(&val_ctx);
-            } else {
-                // If successful, we're done
-                validation_cleanup(&val_ctx);
-                myfree(OutputGalOrder);
-                return EXIT_SUCCESS;
-            }
-        }
-    }
-    
-    validation_cleanup(&val_ctx);
-#endif
-
     // HDF5 is the only supported output format
 #ifdef HDF5
     status = save_hdf5_galaxies(task_forestnr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
@@ -461,59 +236,6 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 int32_t finalize_galaxy_files(const struct forest_info *forest_info, struct save_info *save_info, const struct params *run_params)
 {
     int32_t status = EXIT_FAILURE;
-
-#if USE_IO_INTERFACE
-    // Initialize validation context
-    struct validation_context val_ctx;
-    validation_init(&val_ctx, VALIDATION_STRICTNESS_NORMAL);
-    
-    // Check if using I/O interface
-    if (save_info->io_handler.using_io_interface && save_info->io_handler.handler != NULL) {
-        // If the handler supports cleanup, use it
-        if (save_info->io_handler.handler->cleanup != NULL) {
-            // Validate format supports required capabilities
-            enum io_capabilities required_caps[] = {
-                IO_CAP_CHUNKED_WRITE  // Must support writing galaxies to finalize
-            };
-            VALIDATE_FORMAT_CAPABILITIES(&val_ctx, save_info->io_handler.handler, required_caps, 
-                                       sizeof(required_caps)/sizeof(required_caps[0]),
-                                       "finalize_galaxy_files", "galaxy file finalization");
-            
-            // Check for validation errors
-            if (validation_has_errors(&val_ctx)) {
-                validation_report(&val_ctx);
-                validation_cleanup(&val_ctx);
-                return map_io_error_to_sage_error(IO_ERROR_VALIDATION_FAILED);
-            }
-            
-            // Call handler's cleanup function
-            status = save_info->io_handler.handler->cleanup(save_info->io_handler.format_data);
-            
-            if (status != 0) {
-                log_io_error("finalize_galaxy_files", io_get_last_error());
-                validation_cleanup(&val_ctx);
-                // Fall through to traditional approach as a last resort
-            } else {
-                // If successful, clean up the handler data
-                save_info->io_handler.handler = NULL;
-                save_info->io_handler.format_data = NULL;
-                
-                // Clean up property context if it exists
-                if (save_info->io_handler.property_ctx != NULL) {
-                    property_serialization_cleanup(save_info->io_handler.property_ctx);
-                    free(save_info->io_handler.property_ctx);
-                    save_info->io_handler.property_ctx = NULL;
-                }
-                
-                save_info->io_handler.using_io_interface = 0;
-                validation_cleanup(&val_ctx);
-                return EXIT_SUCCESS;
-            }
-        }
-    }
-    
-    validation_cleanup(&val_ctx);
-#endif
 
     // HDF5 is the only supported output format
 #ifdef HDF5

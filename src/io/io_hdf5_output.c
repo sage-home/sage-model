@@ -41,24 +41,24 @@ int hdf5_output_cleanup(void *format_data);
 int hdf5_output_close_handles(void *format_data);
 int hdf5_output_get_handle_count(void *format_data);
 
-// Static handler definition
-static struct io_interface hdf5_output_handler = {
-    .name = "HDF5 Output",
-    .version = "1.0",
-    .format_id = IO_FORMAT_HDF5_OUTPUT,
-    .capabilities = IO_CAP_CHUNKED_WRITE | IO_CAP_EXTENDED_PROPS | IO_CAP_METADATA_ATTRS,
-    
-    .initialize = hdf5_output_initialize,
-    .read_forest = NULL,  // Output format doesn't support reading forests
-    .write_galaxies = hdf5_output_write_galaxies,
-    .cleanup = hdf5_output_cleanup,
-    
-    .close_open_handles = hdf5_output_close_handles,
-    .get_open_handle_count = hdf5_output_get_handle_count,
-    
-    .last_error = IO_ERROR_NONE,
-    .error_message = {0}
-};
+// Static handler definition - NOTE: This is now disabled as part of unified I/O interface cleanup
+// static struct io_interface hdf5_output_handler = {
+//     .name = "HDF5 Output",
+//     .version = "1.0",
+//     .format_id = 6,  // Previous IO_FORMAT_HDF5_OUTPUT value
+//     .capabilities = IO_CAP_CHUNKED_WRITE | IO_CAP_EXTENDED_PROPS | IO_CAP_METADATA_ATTRS,
+//     
+//     .initialize = hdf5_output_initialize,
+//     .read_forest = NULL,  // Output format doesn't support reading forests
+//     .write_galaxies = hdf5_output_write_galaxies,
+//     .cleanup = hdf5_output_cleanup,
+//     
+//     .close_open_handles = hdf5_output_close_handles,
+//     .get_open_handle_count = hdf5_output_get_handle_count,
+//     
+//     .last_error = IO_ERROR_NONE,
+//     .error_message = {0}
+// };
 
 /**
  * @brief Format-specific utility functions
@@ -75,21 +75,23 @@ static int flush_galaxy_buffer(struct hdf5_output_data *format_data, int snap_id
 static int close_all_groups(struct hdf5_output_data *format_data);
 
 /**
- * @brief Initialize the HDF5 output handler
+ * @brief Initialize the HDF5 output handler - DISABLED as part of unified I/O interface cleanup
  *
  * @return 0 on success, non-zero on failure
  */
 int io_hdf5_output_init(void) {
-    return io_register_handler(&hdf5_output_handler);
+    // return io_register_handler(&hdf5_output_handler);
+    return 0; // No-op, unified I/O interface disabled for output
 }
 
 /**
- * @brief Get the HDF5 output handler
+ * @brief Get the HDF5 output handler - DISABLED as part of unified I/O interface cleanup
  *
  * @return Pointer to the handler, or NULL if not registered
  */
 struct io_interface *io_get_hdf5_output_handler(void) {
-    return io_get_handler_by_id(IO_FORMAT_HDF5_OUTPUT);
+    // return io_get_handler_by_id(IO_FORMAT_HDF5_OUTPUT);
+    return NULL; // No-op, unified I/O interface disabled for output
 }
 
 /**

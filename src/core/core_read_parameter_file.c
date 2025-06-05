@@ -506,9 +506,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ABORT(EXIT_FAILURE);
 #endif
 
-    /* Set output format to HDF5 - no need to check parameter file value */
-    /* But keeping open the option for different output formats in the future */
-    run_params->io.OutputFormat = sage_hdf5;
 
     /* Check that the way forests are distributed over (MPI) tasks is valid */
     const char scheme_names[][MAXTAGLEN] = {"uniform_in_forests", "linear_in_nhalos", "quadratic_in_nhalos", "exponent_in_nhalos", "generic_power_in_nhalos"};

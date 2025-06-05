@@ -64,8 +64,7 @@ enum io_format_types {
     IO_FORMAT_CONSISTENT_TREES_ASCII = 2,  /**< ConsistentTrees ASCII format */
     IO_FORMAT_CONSISTENT_TREES_HDF5  = 3,  /**< ConsistentTrees HDF5 format */
     IO_FORMAT_GADGET4_HDF5         = 4,  /**< Gadget4 HDF5 format */
-    IO_FORMAT_GENESIS_HDF5         = 5,  /**< Genesis HDF5 format */
-    IO_FORMAT_HDF5_OUTPUT          = 6   /**< HDF5 galaxy output format */
+    IO_FORMAT_GENESIS_HDF5         = 5   /**< Genesis HDF5 format */
 };
 
 // Forward declarations
@@ -141,13 +140,6 @@ extern struct io_interface *io_get_handler_by_id(int format_id);
  */
 extern int io_map_tree_type_to_format_id(int tree_type);
 
-/**
- * @brief Map an OutputFormat enum to a format ID
- * 
- * @param output_format OutputFormat from core_allvars.h as integer
- * @return Corresponding format ID
- */
-extern int io_map_output_format_to_format_id(int output_format);
 
 /**
  * @brief Detect format from file
