@@ -104,6 +104,15 @@ static int pipeline_execute_phase_with_executor(
 /**
  * Validate phase transition to ensure execution occurs in the correct scientific order
  * 
+ * Valid transitions:
+ * - NONE -> any phase (initial execution)
+ * - HALO -> GALAXY (start processing galaxies)
+ * - GALAXY -> GALAXY (multiple galaxies in loop - normal behavior)
+ * - GALAXY -> POST (finished processing all galaxies in step)
+ * - POST -> GALAXY (start new integration step) 
+ * - POST -> FINAL (finished all integration steps)
+ * - FINAL -> HALO (start new halo - new cycle)
+ * 
  * @param prev_phase Previous execution phase
  * @param new_phase New execution phase being transitioned to
  * @return true if transition is valid, false if unexpected order
@@ -119,10 +128,11 @@ bool validate_phase_transition(enum pipeline_execution_phase prev_phase, enum pi
     }
     
     // Expected phase order: HALO -> GALAXY -> POST -> FINAL
+    // Note: GALAXY phase can repeat for multiple galaxies (GALAXY -> GALAXY is normal)
     if (prev_phase == PIPELINE_PHASE_HALO) {
         return new_phase == PIPELINE_PHASE_GALAXY;
     } else if (prev_phase == PIPELINE_PHASE_GALAXY) {
-        return new_phase == PIPELINE_PHASE_POST;
+        return new_phase == PIPELINE_PHASE_POST || new_phase == PIPELINE_PHASE_GALAXY;
     } else if (prev_phase == PIPELINE_PHASE_POST) {
         return new_phase == PIPELINE_PHASE_FINAL || new_phase == PIPELINE_PHASE_GALAXY;
     } else if (prev_phase == PIPELINE_PHASE_FINAL) {
