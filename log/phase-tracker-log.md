@@ -90,18 +90,16 @@
 - [x] Implement configuration-driven pipeline creation
 - [x] Test Suite Review and Validation (via `docs/sage_unit_tests.md`)
 - [x] Fix evolution diagnostics system; audit event system
-- [ ] Review Core Systems (NEW): Ensure all core components comply with core-physics separation principles
-- [ ] Comprehensive code cleanup
-- [ ] Documentation review and update
+- [x] Review Core Systems; ensure all core components comply with core-physics separation principles
+- [x] Documentation review and update
+- [ ] Successfully run sage end-to-end in physics free mode
+- [ ] Final legacy code removal (see `docs/io_interface_migration_guide.md`)
+- [ ] Review naming: `GALAXY_PROP_*`→`CORE_PROP_*`; `physics_pipeline_executor.*`→`core_pipeline_executor.*`; `physics_pipeline_executor.c/.h`→`core_pipeline_executor.c/.h`
 
 **⚠️ ARCHITECTURAL UPDATE (June 2025):**
 - **Placeholder modules removed**: All placeholder modules deleted except template (`placeholder_empty_module.c/.h`)
 - **Manifest/discovery systems removed**: Simplified to self-registering modules only (~1000+ lines removed)
 - **Explicit property build system implemented**: `make physics-free`, `make full-physics`, `make custom-physics CONFIG=file.json`
-
-##### HOLDING PEN (to review):
-
-- [ ] Review naming: `GALAXY_PROP_*`→`CORE_PROP_*`; `physics_pipeline_executor.*`→`core_pipeline_executor.*`; `physics_pipeline_executor.c/.h`→`core_pipeline_executor.c/.h`
 
 ### Phase 5.2.G: Physics Module Migration ⏳ PENDING
 
