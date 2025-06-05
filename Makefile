@@ -10,7 +10,6 @@ USE-HDF5 := yes       # Enable HDF5 tree reading support
 # MEM-CHECK := yes    # Enable memory/pointer sanitization (~2x slower, gcc only)
 USE-BUFFERED-WRITE := yes  # Enable chunked output for better performance
 MAKE-SHARED-LIB := yes     # Build shared library instead of static
-# MAKE-VERBOSE := yes      # Enable verbose information messages
 
 # Property definition file can be changed
 ifndef PROPERTIES_FILE
@@ -106,9 +105,6 @@ else
   SAGELIB := lib$(LIBNAME).a
 endif
 
-ifdef MAKE-VERBOSE
-  OPTS += -DVERBOSE
-endif
 
 EXEC := $(LIBNAME)
 
