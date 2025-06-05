@@ -495,3 +495,20 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Property filtering now works correctly: physics-free mode generates 25 core properties from 57 total
 - Modified files: Makefile, docs/module_system_and_configuration.md
 - Created files: docs/property_build_system.md
+
+2025-06-05: [Phase 5.2.F] Logging System Finalization and Simplification
+- Completed comprehensive logging system with simplified two-level runtime control (normal/verbose modes)
+- Removed compile-time MAKE-VERBOSE flag from Makefile, eliminating inconsistency between compile-time and runtime logging
+- Implemented --verbose/-v command-line flags replacing complex --log-level system
+- Normal mode shows WARNING/ERROR messages, verbose mode shows DEBUG/INFO/WARNING/ERROR messages, removed other modes
+- Completely rewrote logging guidelines documentation with usage examples and best practices for physics module development
+- Modified files: Makefile, src/io/io_validation.c, src/core/main.c, src/core/core_parameter_views.c, src/core/core_module_error.c, src/core/core_logging.h
+- Created files: docs/logging_guidelines.md
+  
+2025-06-05: [Phase 5.2.F.3] Legacy I/O Infrastructure Cleanup Implementation ✅ COMPLETED
+- Successfully implemented complete Legacy I/O Infrastructure Cleanup Plan, removing leftover binary/HDF5 output choice system infrastructure
+- Eliminated ~200 lines of unused unified I/O interface code from galaxy output functions (initialize_galaxy_files, save_galaxies, finalize_galaxy_files)
+- Removed output format mapping function and enum, cleaned up struct definitions, and fixed compilation errors across 12 files
+- System now goes directly to working HDF5 functions instead of "try unified interface → fail → fallback" pattern
+- Testing confirms no warnings, same HDF5 functionality, and improved performance through elimination of unnecessary interface attempts
+- Modified files: src/core/core_save.c, src/io/io_interface.c/.h, src/core/core_allvars.h, src/core/core_read_parameter_file.c, src/core/core_config_system.c, src/io/save_gals_hdf5.c, src/io/prepare_galaxy_for_hdf5_output.c, src/io/trigger_buffer_write.c, src/io/initialize_hdf5_galaxy_files.c, src/io/finalize_hdf5_galaxy_files.c, src/io/io_hdf5_output.c
