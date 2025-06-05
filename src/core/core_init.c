@@ -459,7 +459,9 @@ void initialize_config_system(const char *config_file)
             }
         }
     } else {
-        LOG_WARNING("Using default configuration (no file specified)");
+        LOG_WARNING("No configuration file specified - running in physics-free mode");
+        LOG_INFO("Physics-free mode: Core infrastructure only, no physics modules loaded");
+        LOG_INFO("To enable physics modules, provide a configuration file as the second argument");
     }
 }
 
