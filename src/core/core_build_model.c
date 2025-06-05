@@ -719,7 +719,10 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
 
             // Copy galaxy including extensions to the permanent list
-            // First initialize the destination galaxy's properties and extensions
+            // First zero-initialize the destination galaxy structure to avoid garbage data
+            memset(&halogal[*numgals], 0, sizeof(struct GALAXY));
+            
+            // Then initialize the destination galaxy's properties and extensions
             galaxy_extension_initialize(&halogal[*numgals]);
 
             // Then, perform a shallow copy of the base struct GALAXY fields
