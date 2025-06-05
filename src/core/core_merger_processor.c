@@ -89,11 +89,11 @@ int core_process_merger_queue_agnostically(struct pipeline_context *pipeline_ctx
                      handler_module_name, handler_function_name);
         }
         
-        /* Invoke the physics handler */
+        /* Invoke the physics handler (module type agnostic) */
         int error_code = 0;
         int invoke_status = module_invoke(
             MODULE_ID_CORE_MERGER_PROCESSOR, /* Use system-level caller_id */
-            MODULE_TYPE_MERGERS,
+            MODULE_TYPE_UNKNOWN,             /* Core doesn't need to know specific physics module types */
             handler_module_name,
             handler_function_name,
             &error_code,

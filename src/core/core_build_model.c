@@ -412,9 +412,9 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Get the global physics pipeline
     struct module_pipeline *physics_pipeline = pipeline_get_global();
     
-    // Validate pipeline is available
-    if (physics_pipeline == NULL || physics_pipeline->num_steps == 0) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "No physics pipeline available. The core infrastructure requires at least an empty pipeline.");
+    // Validate pipeline is available (empty pipelines are valid in physics-free mode)
+    if (physics_pipeline == NULL) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "No physics pipeline available. Unable to initialize pipeline system.");
         core_evolution_diagnostics_finalize(&diag);
         core_evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
         return EXIT_FAILURE;

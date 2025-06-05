@@ -27,22 +27,14 @@ extern "C" {
 /**
  * Module type identifiers
  * 
- * Each physics module has a unique type identifier that determines what
- * interface it implements and where it fits in the physics pipeline.
+ * Core-agnostic module type system. The core only needs to know about
+ * the concept of module types, not specific physics implementations.
+ * Physics modules register themselves with their own type identifiers.
  */
 enum module_type {
     MODULE_TYPE_UNKNOWN = 0,
-    MODULE_TYPE_COOLING = 1,
-    MODULE_TYPE_STAR_FORMATION = 2,
-    MODULE_TYPE_FEEDBACK = 3,
-    MODULE_TYPE_AGN = 4,
-    MODULE_TYPE_MERGERS = 5,
-    MODULE_TYPE_DISK_INSTABILITY = 6,
-    MODULE_TYPE_REINCORPORATION = 7,
-    MODULE_TYPE_INFALL = 8,
-    MODULE_TYPE_MISC = 9,
-    /* Add other types as needed */
-    MODULE_TYPE_MAX
+    /* Physics modules define their own types at registration time */
+    MODULE_TYPE_MAX = 1000  /* Reserve space for physics module types */
 };
 
 /**

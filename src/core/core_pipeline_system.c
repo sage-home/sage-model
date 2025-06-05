@@ -904,7 +904,11 @@ int pipeline_execute_custom(
 }
 
 /**
- * Create a default physics pipeline
+ * Create an empty default pipeline
+ * 
+ * In physics-free mode, this creates an empty pipeline that can run
+ * without any physics modules. Physics modules can register themselves
+ * and populate pipelines through configuration files.
  */
 struct module_pipeline *pipeline_create_default(void) {
     struct module_pipeline *pipeline = pipeline_create("default");
@@ -912,18 +916,7 @@ struct module_pipeline *pipeline_create_default(void) {
         return NULL;
     }
 
-    /* Add standard physics steps in the canonical order */
-    pipeline_add_step(pipeline, MODULE_TYPE_INFALL, NULL, "infall", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_REINCORPORATION, NULL, "reincorporation", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_COOLING, NULL, "cooling", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_STAR_FORMATION, NULL, "star_formation", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_FEEDBACK, NULL, "feedback", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_AGN, NULL, "agn", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_DISK_INSTABILITY, NULL, "disk_instability", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_MERGERS, NULL, "mergers", true, true);
-    pipeline_add_step(pipeline, MODULE_TYPE_MISC, NULL, "misc", true, true);
-
-    LOG_DEBUG("Created default physics pipeline with %d steps", pipeline->num_steps);
+    LOG_DEBUG("Created empty default pipeline for physics-free mode");
 
     return pipeline;
 }

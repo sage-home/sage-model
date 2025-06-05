@@ -145,26 +145,9 @@ const char *module_type_name(enum module_type type) {
     switch (type) {
         case MODULE_TYPE_UNKNOWN:
             return "unknown";
-        case MODULE_TYPE_COOLING:
-            return "cooling";
-        case MODULE_TYPE_STAR_FORMATION:
-            return "star_formation";
-        case MODULE_TYPE_FEEDBACK:
-            return "feedback";
-        case MODULE_TYPE_AGN:
-            return "agn";
-        case MODULE_TYPE_MERGERS:
-            return "mergers";
-        case MODULE_TYPE_DISK_INSTABILITY:
-            return "disk_instability";
-        case MODULE_TYPE_REINCORPORATION:
-            return "reincorporation";
-        case MODULE_TYPE_INFALL:
-            return "infall";
-        case MODULE_TYPE_MISC:
-            return "misc";
         default:
-            return "invalid";
+            /* For physics module types, return a generic name */
+            return "physics_module";
     }
 }
 
@@ -195,29 +178,13 @@ enum module_type module_type_from_string(const char *type_name) {
     }
     type_lower[i] = '\0';
     
-    /* Compare with known type names */
-    if (strcmp(type_lower, "cooling") == 0) {
-        return MODULE_TYPE_COOLING;
-    } else if (strcmp(type_lower, "star_formation") == 0 || 
-               strcmp(type_lower, "starformation") == 0) {
-        return MODULE_TYPE_STAR_FORMATION;
-    } else if (strcmp(type_lower, "feedback") == 0) {
-        return MODULE_TYPE_FEEDBACK;
-    } else if (strcmp(type_lower, "agn") == 0) {
-        return MODULE_TYPE_AGN;
-    } else if (strcmp(type_lower, "mergers") == 0) {
-        return MODULE_TYPE_MERGERS;
-    } else if (strcmp(type_lower, "disk_instability") == 0 || 
-               strcmp(type_lower, "diskinstability") == 0) {
-        return MODULE_TYPE_DISK_INSTABILITY;
-    } else if (strcmp(type_lower, "reincorporation") == 0) {
-        return MODULE_TYPE_REINCORPORATION;
-    } else if (strcmp(type_lower, "infall") == 0) {
-        return MODULE_TYPE_INFALL;
-    } else if (strcmp(type_lower, "misc") == 0) {
-        return MODULE_TYPE_MISC;
+    /* In physics-free mode, only recognize 'unknown' */
+    if (strcmp(type_lower, "unknown") == 0) {
+        return MODULE_TYPE_UNKNOWN;
     }
     
+    /* All other types are treated as physics module types */
+    /* Physics modules register their own types dynamically */
     return MODULE_TYPE_UNKNOWN;
 }
 
