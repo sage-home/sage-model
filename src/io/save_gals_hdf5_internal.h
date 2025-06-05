@@ -139,10 +139,6 @@ extern const int32_t TotGalaxyProperties;
 int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params);
 int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write, const int64_t num_already_written,
                            struct save_info *save_info, const struct params *run_params);
-int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info *save_info,
-                                     const int32_t output_snap_idx, const struct halo_data *halos,
-                                     const int64_t task_forestnr, const int64_t original_treenr,
-                                     const struct params *run_params);
 void free_property_discovery(struct hdf5_save_info *save_info);
 int32_t generate_field_metadata(struct hdf5_save_info *save_info);
 int discover_output_properties(struct hdf5_save_info *save_info);

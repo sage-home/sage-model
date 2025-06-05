@@ -19,11 +19,7 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
 
         // Add galaxy to buffer
         int32_t snap_idx = haloaux[gal_idx].output_snap_n;
-        status = prepare_galaxy_for_hdf5_output(&halogal[gal_idx], save_info_base, snap_idx, halos, task_forestnr,
-                                              forest_info->original_treenr[task_forestnr], run_params);
-        if (status != EXIT_SUCCESS) {
-            return status;
-        }
+        // Galaxy data preparation is now handled directly by HDF5 output functions
         save_info->num_gals_in_buffer[snap_idx]++;
 
         // Increment forest_ngals counter for this snapshot and forest

@@ -139,7 +139,7 @@ endif
 H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf5.c \
           io/hdf5_read_utils.c io/read_tree_consistentrees_hdf5.c \
           io/read_tree_gadget4_hdf5.c io/io_hdf5_utils.c io/io_lhalo_hdf5.c \
-          io/prepare_galaxy_for_hdf5_output.c io/trigger_buffer_write.c \
+          io/trigger_buffer_write.c \
           io/generate_field_metadata.c io/initialize_hdf5_galaxy_files.c \
           io/finalize_hdf5_galaxy_files.c io/save_gals_hdf5_property_utils.c
 

@@ -130,7 +130,7 @@ Types of transformers include:
 
 The HDF5 output handler respects the core-physics separation principles:
 
-1. **Core Properties**: Accessed directly via `GALAXY_PROP_*` macros in `prepare_galaxy_for_hdf5_output()`
+1. **Core Properties**: Accessed directly via `GALAXY_PROP_*` macros in HDF5 output functions
 2. **Physics Properties**: Accessed via the generic property system (`get_float_property()`, etc.)
 3. **Property Dispatch**: Uses the property dispatcher to transform properties according to their types
 

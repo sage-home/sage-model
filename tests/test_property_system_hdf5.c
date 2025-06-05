@@ -24,7 +24,7 @@
 #include "../src/core/core_property_utils.h"
 #include "../src/core/core_logging.h"
 #include "../src/io/save_gals_hdf5.h"
-#include "../src/io/prepare_galaxy_for_hdf5_output.c"
+// prepare_galaxy_for_hdf5_output.c was removed as it became an obsolete stub
 
 #define INVALID_PROPERTY_ID (-1)
 #define TOLERANCE_NORMAL 1e-5f
@@ -951,41 +951,8 @@ static void test_error_handling(void) {
     // Process test galaxy through transformers
     printf("Processing minimally initialized galaxy...\n");
     
-    // Create a generic save_info for the function call, as prepare_galaxy_for_hdf5_output is a stub
-    // and doesn't need the HDF5-specific fields.
-    struct save_info generic_save_info_for_func_call;
-    memset(&generic_save_info_for_func_call, 0, sizeof(struct save_info));
-    // No need to populate generic_save_info_for_func_call.io_handler or other HDF5 specific fields
-    // as prepare_galaxy_for_hdf5_output is a stub.
-    
-    // Create minimal halo_data array
-    struct halo_data *halos = calloc(1, sizeof(struct halo_data));
-    TEST_ASSERT(halos != NULL, "Allocating dummy halo_data should succeed");
-    
-    // Initialize halo fields that might be accessed
-    halos[0].MostBoundID = 1000;
-    halos[0].Len = 100;
-    
-    // Set buffer position for this galaxy (using the hdf5_save_info for test's buffer tracking)
-    hdf5_save_info_for_test.num_gals_in_buffer[0] = 0;
-    
-    // Call the transformation function - should handle minimal initialization
-    printf("Testing minimal galaxy transformation...\n");
-    int result = prepare_galaxy_for_hdf5_output(
-        &test_galaxy, 
-        &generic_save_info_for_func_call, // Pass the generic save_info
-        0,  // output_snap_idx 
-        halos, 
-        0,  // task_forestnr
-        0,  // original_treenr
-        &run_params
-    );
-    
-    TEST_ASSERT(result == EXIT_SUCCESS, 
-               "Transformation should succeed with minimally initialized galaxy");
-    
-    // Validate results for minimally initialized galaxy
-    printf("Validating error handling for minimal galaxy...\n");
+    // Test property transformers directly (prepare_galaxy_for_hdf5_output was removed as obsolete)
+    printf("Testing property transformers with minimal galaxy...\n");
     
     // Pre-cache property IDs for validation
     property_id_t cooling_id = get_cached_property_id("Cooling");
@@ -999,8 +966,7 @@ static void test_error_handling(void) {
     TEST_ASSERT(sfr_disk_id != PROP_COUNT, "SfrDisk property should be registered"); 
     TEST_ASSERT(sfr_bulge_id != PROP_COUNT, "SfrBulge property should be registered");
     
-    // Since prepare_galaxy_for_hdf5_output is a stub, buffers won't be filled by it.
-    // We need to call dispatch_property_transformer to test the transformers.
+    // Test property transformers directly by calling dispatch_property_transformer
     for (int prop_idx_loop = 0; prop_idx_loop < hdf5_save_info_for_test.num_properties; prop_idx_loop++) {
         struct property_buffer_info *buffer_info = &hdf5_save_info_for_test.property_buffers[0][prop_idx_loop];
         // size_t elem_size = sizeof(float); // Unused variable
@@ -1041,7 +1007,6 @@ static void test_error_handling(void) {
     }
     
     // Cleanup this test phase
-    free(halos);
     free_galaxy_properties(&test_galaxy);
     // Free the hdf5_save_info_for_test buffers
     cleanup_test_resources(NULL, 0, &hdf5_save_info_for_test);

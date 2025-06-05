@@ -221,36 +221,20 @@ int32_t create_hdf5_master_file(const struct params *run_params);
 **Notes**: Only used in MPI mode with multiple files.
 ### Helper Functions
 
-#### `prepare_galaxy_for_hdf5_output()`
-```c
-int prepare_galaxy_for_hdf5_output(
-    const struct GALAXY *galaxy,
-    struct property_buffer_info *property_buffer,
-    int galaxy_idx,
-    const struct params *run_params
-);
-```
-**Purpose**: Prepares a galaxy for HDF5 output by converting properties to output format.  
-**Parameters**:
-- `galaxy`: Galaxy to prepare for output
-- `property_buffer`: Buffer information for properties
-- `galaxy_idx`: Index in the output buffer
-- `run_params`: Global parameters structure
+#### HDF5 Galaxy Processing
 
-**Returns**: 0 on success, non-zero on failure.  
+Galaxy data is now processed directly by the HDF5 output functions, eliminating the need for a separate preparation step. The property transformation system handles any necessary conversions automatically through the `dispatch_property_transformer()` function.
+
 **Implementation Details**:
-- Processes properties using a two-stage approach:
-  - **Core properties** (e.g., `SnapNum`, `Type`, `Pos`, `Vel`): Accessed directly using `GALAXY_PROP_*` macros with specific handling logic for each property
-  - **Physics properties**: Processed via `dispatch_property_transformer` which routes each property to its registered transformation function
-- For each property, gets the appropriate buffer element pointer and either:
-  - Applies direct core property access with unit conversions where needed
-  - Calls the transformer dispatcher for physics properties with custom output transformations
-- Writes the transformed property value to the correct position in the output buffer
-- Handles both core and physics properties according to core-physics separation principles
+- Properties are processed in the main HDF5 output loop
+- **Core properties**: Accessed directly using `GALAXY_PROP_*` macros 
+- **Physics properties**: Processed via `dispatch_property_transformer()` 
+- Transformations include unit conversions, logarithmic scaling, and derived calculations
+- All processing respects core-physics separation principles
 
 **Example**:
 ```c
-// In save_hdf5_galaxies()
+// In save_hdf5_galaxies() - simplified processing
 for (int i = 0; i < num_gals; i++) {
     struct GALAXY *galaxy = &halogal[i];
     int snap_idx = get_output_snap_idx(galaxy->SnapNum, forest_info);
@@ -258,15 +242,8 @@ for (int i = 0; i < num_gals; i++) {
     // Skip galaxies that don't belong to any output snapshot
     if (snap_idx < 0) continue;
     
-    // Get buffers for this snapshot
-    struct property_buffer_info *buffers = hdf5_info->property_buffers[snap_idx];
-    int buffer_idx = hdf5_info->num_gals_in_buffer[snap_idx];
-    
-    // Prepare galaxy for output
-    prepare_galaxy_for_hdf5_output(galaxy, buffers, buffer_idx, run_params);
-    
-    // Update buffer count
-    hdf5_info->num_gals_in_buffer[snap_idx]++;
+    // Galaxy data processing is handled directly by HDF5 output functions
+    // Property transformations applied automatically during buffer writes
     
     // Write buffer if full
     if (buffer_idx >= hdf5_info->buffer_size - 1) {

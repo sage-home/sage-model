@@ -60,7 +60,7 @@ int transform_output_MyCustomProperty(const struct GALAXY *galaxy,
 ### 3. **Auto-Generated Dispatch** (`src/core/generated_output_transformers.c`)
 The build system automatically generates the dispatcher that routes properties to their transformers.
 
-### 4. **Core I/O Integration** (`src/io/prepare_galaxy_for_hdf5_output.c`)
+### 4. **Core I/O Integration** (HDF5 Output System)
 The core I/O system calls the dispatcher for each property, remaining completely physics-agnostic.
 
 This architecture ensures that:
