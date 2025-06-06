@@ -43,7 +43,7 @@
 4. EVERY group of edits to a SINGLE function/header/new file should be recorded in `log/todays-edits.md` before moving on.
 5. BEFORE starting a new group of edits, check `log/todays-edits.md` to avoid duplication.
 6. Code output should prefer `LOG_DEBUG`, `LOG_ERROR` etc over `printf`.
-7. Run tests via `/terminal make tests`.
+7. Run tests via `/terminal make clean && make tests`.
 8. When reporting progress, include EVERY FILE that was changed and created.
 9.  Write documentation to `docs/` when relevant.
 10. Assume no persistent memory — rely on logs for all continuity.
