@@ -1,24 +1,26 @@
 /**
  * @file physics_essential_functions.c
- * @brief Essential physics functions required for core-physics separation
+ * @brief Essential functions required for core-physics separation
  *
- * This file provides minimal implementations of physics functions that are required
- * by the core SAGE infrastructure but should remain physics-agnostic. These functions
- * enable the core to operate in "physics-free mode" with empty pipelines while
- * maintaining the essential function signatures that core components depend on.
+ * This file provides implementations of functions that are required by the core SAGE 
+ * infrastructure but should remain physics-agnostic. These functions enable the core 
+ * to operate in "physics-free mode" with empty pipelines while maintaining the 
+ * essential function signatures that core components depend on.
  *
  * The functions in this file:
  * - Initialize galaxies with core properties only (physics handled by property system)
- * - Provide basic virial calculations using standard formulae
- * - Return sensible defaults for merger timing (no complex physics)
+ * - Provide halo/tree property calculations (virial mass/radius/velocity from merger trees)
+ * - Return sensible defaults for merger timing (no complex galaxy formation physics)
  * - Implement no-op merger handling for physics-free mode
  *
- * This maintains core-physics separation by ensuring the core never directly
- * calls complex physics implementations, while still satisfying compilation
- * and basic runtime requirements.
+ * IMPORTANT DISTINCTION:
+ * - Halo/tree property calculations (virial properties) are CORE functionality - these 
+ *   are fundamental properties from input merger trees, not galaxy formation physics
+ * - Galaxy formation physics (cooling, star formation, feedback) belongs in physics modules
+ * - This separation allows core infrastructure to process merger trees independently 
+ *   of galaxy formation models
  *
- * @note These are NOT full physics implementations - they are minimal stubs
- *       that enable core infrastructure to function independently.
+ * @note Merger functions are minimal stubs - full merger physics belongs in physics modules
  */
 
 #include <math.h>
@@ -45,8 +47,7 @@ void init_galaxy(int p, int halonr, int *galaxycounter, const struct halo_data *
     galaxies[p].HaloNr = halonr;
     galaxies[p].MostBoundID = halos[halonr].MostBoundID;
 
-    galaxies[p].GalaxyIndex = (uint64_t)p;  // TODO: not core, and calculate at output
-    galaxies[p].CentralGalaxyIndex = (uint64_t)p;  // TODO: not core, and calculate at output
+    // GalaxyIndex and CentralGalaxyIndex will be calculated at output time by transformers
     
     // Initialize from halo data
     for (int j = 0; j < 3; j++) {
@@ -73,43 +74,51 @@ void init_galaxy(int p, int halonr, int *galaxycounter, const struct halo_data *
 }
 
 double get_virial_mass(const int halonr, const struct halo_data *halos, const struct params *run_params) {
-    // TODO: update with legacy code equivalent
-    (void)run_params;
-    return halos[halonr].Mvir;
+    if (halonr == halos[halonr].FirstHaloInFOFgroup && halos[halonr].Mvir >= 0.0)
+        return halos[halonr].Mvir; /* take spherical overdensity mass estimate */
+    else
+        return halos[halonr].Len * run_params->cosmology.PartMass;
 }
 
 double get_virial_radius(const int halonr, const struct halo_data *halos, const struct params *run_params) {
-    // TODO: update with legacy code equivalent
-    const double Mvir = halos[halonr].Mvir;
-    const double Hubble_h = run_params->cosmology.Hubble_h;
-    const double a = 1.0; // Use a=1 since Redshift field unavailable
+    // return halos[halonr].Rvir;  // Used for Bolshoi
     
-    const double rho_crit = 2.775e11 * Hubble_h * Hubble_h;
-    const double Delta_c = 200.0;
-    const double rho_vir = Delta_c * rho_crit;
+    double zplus1, hubble_of_z_sq, rhocrit, fac;
     
-    return pow(3.0 * Mvir / (4.0 * M_PI * rho_vir), 1.0/3.0) * a;
+    zplus1 = 1 + run_params->simulation.ZZ[halos[halonr].SnapNum];
+    hubble_of_z_sq = 
+        run_params->cosmology.Hubble_h * run_params->cosmology.Hubble_h *
+        (run_params->cosmology.Omega * zplus1 * zplus1 * zplus1 +
+         (1 - run_params->cosmology.Omega - run_params->cosmology.OmegaLambda) * zplus1 * zplus1 +
+         run_params->cosmology.OmegaLambda);
+    
+    rhocrit = 3 * hubble_of_z_sq / (8 * M_PI * GRAVITY);
+    fac = 1 / (200 * 4 * M_PI / 3.0 * rhocrit);
+    
+    return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
 }
 
 double get_virial_velocity(const int halonr, const struct halo_data *halos, const struct params *run_params) {
-    // TODO: update with legacy code equivalent
-    const double Mvir = halos[halonr].Mvir;
-    const double Rvir = get_virial_radius(halonr, halos, run_params);
-    const double G = 43.0071;
+    double Rvir;
     
-    return (Rvir > 0.0) ? sqrt(G * Mvir / Rvir) : 0.0;
+    Rvir = get_virial_radius(halonr, halos, run_params);
+    
+    if (Rvir > 0.0)
+        return sqrt(GRAVITY * get_virial_mass(halonr, halos, run_params) / Rvir);
+    else
+        return 0.0;
 }
 
 double estimate_merging_time(const int halonr, const int mother_halo, const struct halo_data *halos,
                             const double time, const struct params *run_params) {
-    // TODO: update with legacy code equivalent
+    // Physics-free mode: return immediate merge time (no physics calculation)
     (void)halonr; (void)mother_halo; (void)halos; (void)run_params;
     return time + 1.0; // Arbitrary future time
 }
 
 void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, double time,
                             int ngal, struct GALAXY *galaxy, struct params *run_params) {
-    // TODO: update with legacy code equivalent
+    // Physics-free mode: no-op merger handling (physics will be handled by merger modules)
     (void)p; (void)merger_centralgal; (void)centralgal; (void)time;
     (void)ngal; (void)galaxy; (void)run_params;
 }
