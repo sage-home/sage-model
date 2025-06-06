@@ -21,42 +21,42 @@ static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_sav
         struct property_buffer_info *buffer = &save_info->property_buffers[snap_idx][i];
         property_id_t prop_id = buffer->prop_id;
         
-        // Handle core properties directly (using original logic)
+        // Handle core properties with direct field access (physics-free compatible)
         if (buffer->is_core_prop) {
-            // Direct core property access using macros - essential core properties
+            // Direct core property access using struct fields - essential core properties
             if (strcmp(buffer->name, "SnapNum") == 0) {
-                ((int32_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_SnapNum(g);
+                ((int32_t*)buffer->data)[gals_in_buffer] = g->SnapNum;
             }
             else if (strcmp(buffer->name, "Type") == 0) {
-                ((int32_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Type(g);
+                ((int32_t*)buffer->data)[gals_in_buffer] = g->Type;
             }
             else if (strcmp(buffer->name, "GalaxyIndex") == 0) {
-                ((uint64_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_GalaxyIndex(g);
+                ((uint64_t*)buffer->data)[gals_in_buffer] = g->GalaxyIndex;
             }
             else if (strcmp(buffer->name, "CentralGalaxyIndex") == 0) {
-                ((uint64_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_CentralGalaxyIndex(g);
+                ((uint64_t*)buffer->data)[gals_in_buffer] = g->CentralGalaxyIndex;
             }
             else if (strcmp(buffer->name, "SAGEHaloIndex") == 0) {
-                ((int32_t*)buffer->data)[gals_in_buffer] = GALAXY_PROP_HaloNr(g);
+                ((int32_t*)buffer->data)[gals_in_buffer] = g->HaloNr;
             }
             else if (strcmp(buffer->name, "SAGETreeIndex") == 0) {
                 ((int32_t*)buffer->data)[gals_in_buffer] = original_treenr;
             }
             else if (strcmp(buffer->name, "SimulationHaloIndex") == 0) {
-                ((int64_t*)buffer->data)[gals_in_buffer] = llabs(halos[GALAXY_PROP_HaloNr(g)].MostBoundID);
+                ((int64_t*)buffer->data)[gals_in_buffer] = llabs(halos[g->HaloNr].MostBoundID);
             }
             else if (strcmp(buffer->name, "TaskForestNr") == 0) {
                 ((int64_t*)buffer->data)[gals_in_buffer] = task_forestnr;
             }
             // Position components
             else if (strcmp(buffer->name, "Posx") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Pos_ELEM(g, 0);
+                ((float*)buffer->data)[gals_in_buffer] = g->Pos[0];
             }
             else if (strcmp(buffer->name, "Posy") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Pos_ELEM(g, 1);
+                ((float*)buffer->data)[gals_in_buffer] = g->Pos[1];
             }
             else if (strcmp(buffer->name, "Posz") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = GALAXY_PROP_Pos_ELEM(g, 2);
+                ((float*)buffer->data)[gals_in_buffer] = g->Pos[2];
             }
             // Add more core properties as needed...
         } 
@@ -114,6 +114,19 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         // Add galaxy to buffer
         int32_t snap_idx = haloaux[gal_idx].output_snap_n;
         
+        // Validate snap_idx bounds 
+        if (snap_idx < 0 || snap_idx >= run_params->simulation.NumSnapOutputs) {
+            fprintf(stderr, "ERROR: Invalid snap_idx %d (valid range: 0-%d)\n", 
+                    snap_idx, run_params->simulation.NumSnapOutputs - 1);
+            return EXIT_FAILURE;
+        }
+        
+        // Validate that property buffers are allocated for this snapshot
+        if (save_info->property_buffers[snap_idx] == NULL) {
+            fprintf(stderr, "ERROR: property_buffers[%d] is NULL!\n", snap_idx);
+            return EXIT_FAILURE;
+        }
+        
         // Process galaxy data into property buffers using the HDF5 structure
         status = process_galaxy_for_output(&halogal[gal_idx], save_info, snap_idx, 
                                            halos, task_forestnr, forest_info->original_treenr[task_forestnr], 
@@ -125,6 +138,13 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         save_info->num_gals_in_buffer[snap_idx]++;
 
         // Increment forest_ngals counter for this snapshot and forest
+        // Validate task_forestnr bounds (forest_ngals allocated with fixed size)
+        const int32_t max_forests = 100000; // Should match initialization value
+        if (task_forestnr >= max_forests) {
+            fprintf(stderr, "ERROR: task_forestnr %"PRId64" exceeds max_forests %d\n", 
+                    task_forestnr, max_forests);
+            return EXIT_FAILURE;
+        }
         save_info->forest_ngals[snap_idx][task_forestnr]++;
 
         // Check if buffer is full and we need to write

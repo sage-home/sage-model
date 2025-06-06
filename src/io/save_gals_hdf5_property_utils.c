@@ -96,14 +96,10 @@ int allocate_output_property(struct hdf5_save_info *save_info, int snap_idx,
         return -1;
     }
     
-    // Create property buffer info if not exists
+    // Ensure property_buffers array is allocated (should be done by allocate_all_output_properties)
     if (save_info->property_buffers[snap_idx] == NULL) {
-        save_info->property_buffers[snap_idx] = calloc(save_info->num_properties, 
-                                                      sizeof(struct property_buffer_info));
-        if (save_info->property_buffers[snap_idx] == NULL) {
-            fprintf(stderr, "Failed to allocate property buffers for snapshot %d\n", snap_idx);
-            return -1;
-        }
+        fprintf(stderr, "ERROR: property_buffers[%d] not allocated before calling allocate_output_property\n", snap_idx);
+        return -1;
     }
     
     // Set property buffer metadata
