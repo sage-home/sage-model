@@ -410,7 +410,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion test_data_integrity_physics_free
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_comprehensive
@@ -532,6 +532,9 @@ test_physics_free_mode: tests/test_physics_free_mode.c $(SAGELIB)
 
 test_dynamic_memory_expansion: tests/test_dynamic_memory_expansion.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_memory_expansion tests/test_dynamic_memory_expansion.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_data_integrity_physics_free: tests/test_data_integrity_physics_free.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_data_integrity_physics_free tests/test_data_integrity_physics_free.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
 core_tests: $(CORE_TESTS)
