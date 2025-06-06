@@ -393,8 +393,8 @@ $(ROOT_DIR)/.stamps/generate_properties_custom.stamp: $(SRC_PREFIX)/$(PROPERTIES
 	@rm -f $(ROOT_DIR)/.stamps/generate_properties*.stamp  # Clear other stamps
 	@touch $@
 
-# Make the generated files depend on any property stamp file
-$(SRC_PREFIX)/core/core_properties.h $(SRC_PREFIX)/core/core_properties.c $(SRC_PREFIX)/core/generated_output_transformers.c: $(shell find $(ROOT_DIR)/.stamps -name "generate_properties*.stamp" 2>/dev/null | head -1)
+# Make the generated files depend on any property stamp file, but ensure they exist
+$(SRC_PREFIX)/core/core_properties.h $(SRC_PREFIX)/core/core_properties.c $(SRC_PREFIX)/core/generated_output_transformers.c: $(shell find $(ROOT_DIR)/.stamps -name "generate_properties*.stamp" 2>/dev/null | head -1 || echo "$(ROOT_DIR)/.stamps/generate_properties_full.stamp")
 
 # Mark as order-only prerequisites to prevent duplicate generation
 $(OBJS): | $(GENERATED_FILES)
@@ -431,7 +431,7 @@ test_pipeline: tests/test_pipeline.c $(SAGELIB)
 test_array_utils: tests/test_array_utils.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_array_utils tests/test_array_utils.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_core_property: tests/test_core_property.c $(SAGELIB)
+test_core_property: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_core_property.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_property tests/test_core_property.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_core_pipeline_registry: tests/test_core_pipeline_registry.c $(SAGELIB)
@@ -443,28 +443,28 @@ test_dispatcher_access: tests/test_dispatcher_access.c $(SAGELIB)
 test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolution_diagnostics tests/test_evolution_diagnostics.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_evolve_integration: tests/test_evolve_integration.c $(SAGELIB)
+test_evolve_integration: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_evolve_integration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolve_integration tests/test_evolve_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_memory_pool: tests/test_memory_pool.c tests/stubs/galaxy_extension_stubs.c $(SAGELIB)
+test_memory_pool: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_memory_pool.c tests/stubs/galaxy_extension_stubs.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_memory_pool tests/test_memory_pool.c tests/stubs/galaxy_extension_stubs.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_property_serialization: tests/test_property_serialization.c $(SAGELIB)
+test_property_serialization: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_serialization.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_serialization tests/test_property_serialization.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_property_array_access: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_array_access.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_array_access tests/test_property_array_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_property_system_hdf5: tests/test_property_system_hdf5.c $(SAGELIB)
+test_property_system_hdf5: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_system_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_system_hdf5 tests/test_property_system_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_property_validation: tests/test_property_validation.c $(SAGELIB)
+test_property_validation: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_validation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_validation tests/test_property_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_property_access_comprehensive: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_access_comprehensive.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_access_comprehensive tests/test_property_access_comprehensive.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_io_interface: tests/test_io_interface.c $(SAGELIB)
+test_io_interface: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_io_interface.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_interface tests/test_io_interface.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_endian_utils: tests/test_endian_utils.c $(SAGELIB)
@@ -473,7 +473,7 @@ test_endian_utils: tests/test_endian_utils.c $(SAGELIB)
 test_lhalo_binary: tests/test_lhalo_binary.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_lhalo_binary tests/test_lhalo_binary.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_hdf5_output: tests/test_hdf5_output.c $(SAGELIB)
+test_hdf5_output: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_hdf5_output.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_hdf5_output tests/test_hdf5_output.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_lhalo_hdf5: tests/test_lhalo_hdf5.c $(SAGELIB)
@@ -494,7 +494,7 @@ test_io_memory_map: tests/test_io_memory_map.c $(SAGELIB)
 test_io_buffer_manager: tests/test_io_buffer_manager.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_buffer_manager tests/test_io_buffer_manager.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_validation_framework: tests/test_validation_framework.c $(SAGELIB)
+test_validation_framework: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_validation_framework.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_validation_framework tests/test_validation_framework.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
@@ -518,26 +518,26 @@ test_config_system: tests/test_config_system.c $(SAGELIB)
 test_parameter_validation: tests/test_parameter_validation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_parameter_validation tests/test_parameter_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_resource_management: tests/test_resource_management.c $(SAGELIB)
+test_resource_management: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_resource_management.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_resource_management tests/test_resource_management.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_integration_workflows: tests/test_integration_workflows.c $(SAGELIB)
+test_integration_workflows: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_integration_workflows.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_integration_workflows tests/test_integration_workflows.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_error_recovery: tests/test_error_recovery.c $(SAGELIB)
+test_error_recovery: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_error_recovery.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_error_recovery tests/test_error_recovery.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_physics_free_mode: tests/test_physics_free_mode.c $(SAGELIB)
+test_physics_free_mode: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_physics_free_mode.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_physics_free_mode tests/test_physics_free_mode.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_dynamic_memory_expansion: tests/test_dynamic_memory_expansion.c $(SAGELIB)
+test_dynamic_memory_expansion: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_dynamic_memory_expansion.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_memory_expansion tests/test_dynamic_memory_expansion.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_data_integrity_physics_free: tests/test_data_integrity_physics_free.c $(SAGELIB)
+test_data_integrity_physics_free: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_data_integrity_physics_free.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_data_integrity_physics_free tests/test_data_integrity_physics_free.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
-core_tests: $(CORE_TESTS)
+core_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(CORE_TESTS)
 	@echo "=== Running Core Infrastructure Tests ==="; \
 	failed_tests=""; \
 	for test in $(CORE_TESTS); do \
@@ -555,7 +555,7 @@ core_tests: $(CORE_TESTS)
 		echo "\nAll core tests completed successfully!"; \
 	fi
 
-property_tests: $(PROPERTY_TESTS)
+property_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(PROPERTY_TESTS)
 	@echo "=== Running Property System Tests ==="; \
 	failed_tests=""; \
 	for test in $(PROPERTY_TESTS); do \
@@ -573,7 +573,7 @@ property_tests: $(PROPERTY_TESTS)
 		echo "\nAll property tests completed successfully!"; \
 	fi
 
-io_tests: $(IO_TESTS)
+io_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(IO_TESTS)
 	@echo "=== Running I/O System Tests ==="; \
 	failed_tests=""; \
 	for test in $(IO_TESTS); do \
@@ -591,7 +591,7 @@ io_tests: $(IO_TESTS)
 		echo "\nAll io tests completed successfully!"; \
 	fi
 
-module_tests: $(MODULE_TESTS)
+module_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(MODULE_TESTS)
 	@echo "=== Running Module System Tests ==="; \
 	failed_tests=""; \
 	for test in $(MODULE_TESTS); do \
@@ -610,7 +610,7 @@ module_tests: $(MODULE_TESTS)
 	fi
 
 # Run all unit tests without the end-to-end scientific tests - faster for development
-unit_tests: $(UNIT_TESTS)
+unit_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(UNIT_TESTS)
 	@echo "=== Running All Unit Tests ==="; \
 	failed_tests=""; \
 	for test in $(UNIT_TESTS); do \
