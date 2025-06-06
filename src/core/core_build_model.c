@@ -583,9 +583,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         return EXIT_FAILURE;
     }
 
-    // Calculate the timestep for this snapshot
-    ctx.deltaT = run_params->simulation.Age[halos[halonr].SnapNum] - ctx.halo_age;
-    ctx.time = run_params->simulation.Age[halos[halonr].SnapNum];
 
     // Set up pipeline context
     struct pipeline_context pipeline_ctx;
@@ -595,8 +592,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         ctx.galaxies,
         ctx.ngal,
         ctx.centralgal,
-        ctx.time,           // Use calculated time
-        ctx.deltaT,         // Use calculated deltaT
+        0.0,                // time (will be updated per galaxy)
+        0.0,                // deltaT (will be updated per galaxy)
         ctx.halo_nr,        // halonr
         0,                  // step (will be updated in loop)
         &ctx                // user_data (set to evolution context)
@@ -700,9 +697,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Main integration steps
     for (int step = 0; step < STEPS; step++) {
         pipeline_ctx.step = step;
-        // In physics-free mode, dt calculations are not needed
-        (void)(ctx.deltaT); // Mark as used to avoid unused variable warning
-        pipeline_ctx.dt = ctx.deltaT; // Pass the full deltaT to context, modules should use STEPS
 
         // Reset merger queue for this timestep
         init_merger_queue(&merger_queue);
@@ -712,6 +706,13 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
 
         for (int p = 0; p < ctx.ngal; p++) {
+            // Calculate the timestep for this galaxy (should be per-galaxy)
+            ctx.deltaT = run_params->simulation.Age[galaxies[p].SnapNum] - run_params->simulation.Age[halos[halonr].SnapNum];
+            ctx.time = run_params->simulation.Age[galaxies[p].SnapNum] - (step + 0.5) * (ctx.deltaT / STEPS);
+            
+            // Update pipeline context with current galaxy-specific time values
+            pipeline_ctx.dt = ctx.deltaT / STEPS; // Per-step time interval
+            pipeline_ctx.time = ctx.time;
 
             // Update context for current galaxy
             pipeline_ctx.current_galaxy = p;
