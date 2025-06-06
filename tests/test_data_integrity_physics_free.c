@@ -962,7 +962,7 @@ int main(int argc, char *argv[]) {
     (void)argc; /* Suppress unused parameter warning */
     (void)argv; /* Suppress unused parameter warning */
     printf("\n==============================================\n");
-    printf("Starting CRITICAL data integrity tests\n");
+    printf("Starting tests for test_data_integrity_physics_free\n");
     printf("==============================================\n\n");
     
     printf("This test verifies data integrity through the SAGE pipeline:\n");
@@ -993,18 +993,10 @@ int main(int argc, char *argv[]) {
     
     // Report results
     printf("\n==============================================\n");
-    printf("Data integrity test results:\n");
+    printf("Test results for test_data_integrity_physics_free:\n");
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
-    
-    if (tests_run == tests_passed) {
-        printf("\n✅ ALL TESTS PASSED - Data integrity verified!\n");
-        printf("Core SAGE infrastructure maintains data integrity.\n");
-    } else {
-        printf("\n❌ TESTS FAILED - Data corruption detected!\n");
-        printf("Critical issues found in core infrastructure.\n");
-    }
     printf("==============================================\n\n");
     
     return (tests_run == tests_passed) ? 0 : 1;
