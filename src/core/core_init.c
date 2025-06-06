@@ -705,8 +705,8 @@ void read_snap_list(struct params *run_params)
     snprintf(fname, MAX_STRING_LEN, "%s", run_params->io.FileWithSnapList);
     FILE *fd = fopen(fname, "r");
     if(fd == NULL) {
-        fprintf(stderr, "can't read output list in file '%s'\n", fname);
-        ABORT(0);
+        LOG_ERROR("Can't read output list in file '%s'", fname);
+        exit(EXIT_FAILURE);
     }
 
     run_params->simulation.Snaplistlen = 0;
@@ -721,7 +721,7 @@ void read_snap_list(struct params *run_params)
 
 #ifdef VERBOSE
     if(ThisTask == 0) {
-        fprintf(stdout, "found %d defined times in snaplist\n", run_params->simulation.Snaplistlen);
+        LOG_INFO("Found %d defined times in snaplist", run_params->simulation.Snaplistlen);
     }
 #endif
 }
