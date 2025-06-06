@@ -1,4 +1,5 @@
 #include "save_gals_hdf5_internal.h"
+#include "../core/core_logging.h"
 
 // Updated initialization function for HDF5 files using property system
 int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_info_base, const struct params *run_params)
@@ -9,7 +10,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     // Create and initialize the format-specific data
     save_info = malloc(sizeof(struct hdf5_save_info));
     if (save_info == NULL) {
-        fprintf(stderr, "Failed to allocate memory for HDF5 save info\n");
+        LOG_ERROR("Failed to allocate memory for HDF5 save info");
         return MALLOC_FAILURE;
     }
     
@@ -31,7 +32,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     // Discover output properties based on metadata
     int status = discover_output_properties(save_info);
     if (status != EXIT_SUCCESS) {
-        fprintf(stderr, "Failed to discover output properties\n");
+        LOG_ERROR("Failed to discover output properties");
         H5Fclose(file_id);
         free(save_info);
         // Note: io_handler field removed as part of unified I/O interface cleanup
@@ -41,7 +42,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     // Generate field metadata from properties
     status = generate_field_metadata(save_info);
     if (status != EXIT_SUCCESS) {
-        fprintf(stderr, "Failed to generate field metadata\n");
+        LOG_ERROR("Failed to generate field metadata");
         H5Fclose(file_id);
         free_property_discovery(save_info);
         free(save_info);
@@ -173,7 +174,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     for (int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
         status = allocate_all_output_properties(save_info, snap_idx);
         if (status != EXIT_SUCCESS) {
-            fprintf(stderr, "Failed to allocate property buffers for snapshot %d\n", snap_idx);
+            LOG_ERROR("Failed to allocate property buffers for snapshot %d", snap_idx);
             // Clean up previously allocated buffers
             for (int32_t i = 0; i < snap_idx; i++) {
                 free_all_output_properties(save_info, i);

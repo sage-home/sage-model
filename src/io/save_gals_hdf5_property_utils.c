@@ -1,4 +1,5 @@
 #include "save_gals_hdf5_internal.h"
+#include "../core/core_logging.h"
 
 // Helper function to extract base type from array syntax like "float[3]" -> "float"
 static const char* extract_base_type(const char* type_str) {
@@ -43,7 +44,7 @@ int discover_output_properties(struct hdf5_save_info *save_info) {
     
     if (!save_info->prop_ids || !save_info->prop_names || !save_info->prop_units || 
         !save_info->prop_descriptions || !save_info->prop_h5types || !save_info->is_core_prop) {
-        fprintf(stderr, "Failed to allocate memory for property discovery\n");
+        LOG_ERROR("Failed to allocate memory for property discovery");
         return -1;
     }
     
@@ -74,8 +75,8 @@ int discover_output_properties(struct hdf5_save_info *save_info) {
                 save_info->prop_h5types[idx] = H5T_NATIVE_LLONG;
             } else {
                 // Default to float for unknown types
-                fprintf(stderr, "Warning: Unknown property type '%s' for property '%s'. Defaulting to float.\n",
-                        meta->type, meta->name);
+                LOG_WARNING("Unknown property type '%s' for property '%s'. Defaulting to float",
+                           meta->type, meta->name);
                 save_info->prop_h5types[idx] = H5T_NATIVE_FLOAT;
             }
             
@@ -92,13 +93,13 @@ int allocate_output_property(struct hdf5_save_info *save_info, int snap_idx,
     property_id_t prop_id = save_info->prop_ids[prop_idx];
     const property_meta_t *meta = get_property_meta(prop_id);
     if (meta == NULL) {
-        fprintf(stderr, "Failed to get metadata for property ID %d\n", prop_id);
+        LOG_ERROR("Failed to get metadata for property ID %d", prop_id);
         return -1;
     }
     
     // Ensure property_buffers array is allocated (should be done by allocate_all_output_properties)
     if (save_info->property_buffers[snap_idx] == NULL) {
-        fprintf(stderr, "ERROR: property_buffers[%d] not allocated before calling allocate_output_property\n", snap_idx);
+        LOG_ERROR("property_buffers[%d] not allocated before calling allocate_output_property", snap_idx);
         return -1;
     }
     
@@ -123,15 +124,15 @@ int allocate_output_property(struct hdf5_save_info *save_info, int snap_idx,
     } else if (buffer->h5_dtype == H5T_NATIVE_LLONG) {
         elem_size = sizeof(int64_t);
     } else {
-        fprintf(stderr, "Unknown HDF5 datatype for property %s\n", buffer->name);
+        LOG_ERROR("Unknown HDF5 datatype for property %s", buffer->name);
         return -1;
     }
     
     // Allocate buffer
     buffer->data = malloc(buffer_size * elem_size);
     if (buffer->data == NULL) {
-        fprintf(stderr, "Failed to allocate %d elements for property %s\n", 
-                buffer_size, buffer->name);
+        LOG_ERROR("Failed to allocate %d elements for property %s", 
+                 buffer_size, buffer->name);
         return -1;
     }
     
@@ -176,7 +177,7 @@ int allocate_all_output_properties(struct hdf5_save_info *save_info, int snap_id
     // First allocate the array of property_buffer_info structs for this snapshot
     save_info->property_buffers[snap_idx] = calloc(save_info->num_properties, sizeof(struct property_buffer_info));
     if (save_info->property_buffers[snap_idx] == NULL) {
-        fprintf(stderr, "Failed to allocate property_buffer_info array for snapshot %d\n", snap_idx);
+        LOG_ERROR("Failed to allocate property_buffer_info array for snapshot %d", snap_idx);
         return -1;
     }
     
@@ -184,7 +185,7 @@ int allocate_all_output_properties(struct hdf5_save_info *save_info, int snap_id
     for (int i = 0; i < save_info->num_properties; i++) {
         int status = allocate_output_property(save_info, snap_idx, i, save_info->buffer_size);
         if (status != 0) {
-            fprintf(stderr, "Failed to allocate buffer for property index %d\n", i);
+            LOG_ERROR("Failed to allocate buffer for property index %d", i);
             return status;
         }
     }

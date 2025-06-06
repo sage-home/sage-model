@@ -6,6 +6,7 @@
 
 #include "core_allvars.h"
 #include "core_mymalloc.h"
+#include "core_logging.h"
 
 enum datatypes {
     DOUBLE = 1,
@@ -266,7 +267,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     FILE *fd = fopen(fname, "r");
     if (fd == NULL) {
-        fprintf(stderr,"Parameter file '%s' not found.\n", fname);
+        LOG_ERROR("Parameter file '%s' not found", fname);
         return FILE_NOT_FOUND;
     }
 
@@ -346,7 +347,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     for(int i = 0; i < NParam; i++) {
         if(used_tag[i]) {
-            fprintf(stderr, "Error. I miss a value for tag '%s' in parameter file '%s'.\n", ParamTag[i], fname);
+            LOG_ERROR("Missing value for tag '%s' in parameter file '%s'", ParamTag[i], fname);
             errorFlag = 1;
         }
     }
@@ -359,13 +360,13 @@ int read_parameter_file(const char *fname, struct params *run_params)
 #endif
 
     if( ! (run_params->simulation.LastSnapshotNr+1 > 0 && run_params->simulation.LastSnapshotNr+1 < ABSOLUTEMAXSNAPS) ) {
-        fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->simulation.LastSnapshotNr, ABSOLUTEMAXSNAPS);
+        LOG_ERROR("LastSnapshotNr = %d should be in [0, %d)", run_params->simulation.LastSnapshotNr, ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
     run_params->simulation.SimMaxSnaps = run_params->simulation.LastSnapshotNr + 1;
 
     if(!(run_params->simulation.NumSnapOutputs == -1 || (run_params->simulation.NumSnapOutputs > 0 && run_params->simulation.NumSnapOutputs <= ABSOLUTEMAXSNAPS))) {
-        fprintf(stderr,"NumOutputs must be -1 or between 1 and %i\n", ABSOLUTEMAXSNAPS);
+        LOG_ERROR("NumOutputs must be -1 or between 1 and %i", ABSOLUTEMAXSNAPS);
         ABORT(1);
     }
 
@@ -414,7 +415,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
         fclose(fd);
         if(! done ) {
-            fprintf(stderr,"Error: Could not properly parse output snapshots\n");
+            LOG_ERROR("Could not properly parse output snapshots");
             ABORT(2);
         }
 #ifdef VERBOSE
@@ -440,14 +441,14 @@ int read_parameter_file(const char *fname, struct params *run_params)
     for(int ii=1;ii<run_params->simulation.NumSnapOutputs;ii++) {
         const int dsnap = run_params->simulation.ListOutputSnaps[ii-1] - run_params->simulation.ListOutputSnaps[ii];
         if(dsnap == 0) {
-            fprintf(stderr,"Error: Found duplicate snapshots in the list of desired output snapshots\n");
+            LOG_ERROR("Found duplicate snapshots in the list of desired output snapshots");
             fprintf(stderr,"Duplicate value = %d in position = %d (out of %d total output snapshots requested)\n",
                             run_params->simulation.ListOutputSnaps[ii], ii, run_params->simulation.NumSnapOutputs);
             num_dup_snaps++;
         }
     }
     if(num_dup_snaps != 0) {
-        fprintf(stderr,"Error: Found %d duplicate snapshots - please remove them from the parameter file and then re-run sage\n\n", num_dup_snaps);
+        LOG_ERROR("Found %d duplicate snapshots - please remove them from the parameter file and then re-run sage", num_dup_snaps);
         ABORT(EXIT_FAILURE);
     }
 
@@ -462,8 +463,8 @@ int read_parameter_file(const char *fname, struct params *run_params)
         strncmp(my_treetype, "gadget4_hdf5", 511) == 0
         ) {
 #ifndef HDF5
-        fprintf(stderr, "You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled.\n");
-        fprintf(stderr, "Please check your file type and compiler options.\n");
+        LOG_ERROR("You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled");
+        LOG_ERROR("Please check your file type and compiler options");
         ABORT(EXIT_FAILURE);
 #endif
         // strncmp returns 0 if the two strings are equal.
@@ -502,7 +503,7 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     /* HDF5 is the only supported output format */
 #ifndef HDF5
-    fprintf(stderr, "SAGE requires HDF5 support. Please compile with the HDF5 option enabled.\n");
+    LOG_ERROR("SAGE requires HDF5 support. Please compile with the HDF5 option enabled");
     ABORT(EXIT_FAILURE);
 #endif
 

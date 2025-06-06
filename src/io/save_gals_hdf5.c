@@ -1,4 +1,5 @@
 #include "save_gals_hdf5_internal.h"
+#include "../core/core_logging.h"
 
 // Function prototypes for the components were moved to the internal header
 
@@ -10,7 +11,7 @@ static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_sav
 {
     // Validate property buffers are allocated
     if (save_info->property_buffers[snap_idx] == NULL) {
-        fprintf(stderr, "ERROR: Property buffers not allocated for snapshot %d\n", snap_idx);
+        LOG_ERROR("Property buffers not allocated for snapshot %d", snap_idx);
         return EXIT_FAILURE;
     }
     
@@ -101,7 +102,7 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
     struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->buffer_output_gals;
     
     if (save_info == NULL) {
-        fprintf(stderr, "ERROR: HDF5 save info not properly initialized\n");
+        LOG_ERROR("HDF5 save info not properly initialized");
         return EXIT_FAILURE;
     }
 
@@ -116,14 +117,14 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         
         // Validate snap_idx bounds 
         if (snap_idx < 0 || snap_idx >= run_params->simulation.NumSnapOutputs) {
-            fprintf(stderr, "ERROR: Invalid snap_idx %d (valid range: 0-%d)\n", 
-                    snap_idx, run_params->simulation.NumSnapOutputs - 1);
+            LOG_ERROR("Invalid snap_idx %d (valid range: 0-%d)", 
+                     snap_idx, run_params->simulation.NumSnapOutputs - 1);
             return EXIT_FAILURE;
         }
         
         // Validate that property buffers are allocated for this snapshot
         if (save_info->property_buffers[snap_idx] == NULL) {
-            fprintf(stderr, "ERROR: property_buffers[%d] is NULL!\n", snap_idx);
+            LOG_ERROR("property_buffers[%d] is NULL", snap_idx);
             return EXIT_FAILURE;
         }
         
@@ -141,8 +142,8 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         // Validate task_forestnr bounds (forest_ngals allocated with fixed size)
         const int32_t max_forests = 100000; // Should match initialization value
         if (task_forestnr >= max_forests) {
-            fprintf(stderr, "ERROR: task_forestnr %"PRId64" exceeds max_forests %d\n", 
-                    task_forestnr, max_forests);
+            LOG_ERROR("task_forestnr %"PRId64" exceeds max_forests %d", 
+                     task_forestnr, max_forests);
             return EXIT_FAILURE;
         }
         save_info->forest_ngals[snap_idx][task_forestnr]++;
