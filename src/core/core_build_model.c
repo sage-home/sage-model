@@ -25,18 +25,10 @@
 #include "core_galaxy_accessors.h"  // For galaxy_get_* functions
 #include "core_property_utils.h"    // For get_cached_property_id, set_float_property
 
-/* Legacy function forward declarations */
-double estimate_merging_time(const int halonr, const int mostmassive, const int p, struct halo_data *halos, struct GALAXY *galaxies, struct params *run_params);
+/* Core function forward declarations (halo/tree properties and essential functions) */
 double get_virial_mass(const int halonr, struct halo_data *halos, struct params *run_params);
 double get_virial_radius(const int halonr, struct halo_data *halos, struct params *run_params);
 double get_virial_velocity(const int halonr, struct halo_data *halos, struct params *run_params);
-double get_disk_radius(const int halonr, const int p, struct halo_data *halos, struct GALAXY *galaxies);
-
-
-/* Forward declarations for legacy compatibility functions */
-double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
-void check_disk_instability(const int p, const int centralgal, const int halonr, const double time, const double dt, const int step,
-                            struct GALAXY *galaxies, struct params *run_params);
 
 /* Forward declaration for init_galaxy function */
 void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_data *halos,
@@ -47,7 +39,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                            struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
 static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, int *maxgals, struct halo_data *halos,
                                         struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
-
 
 
 /* the only externally visible function */

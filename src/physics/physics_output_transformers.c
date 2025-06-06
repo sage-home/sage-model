@@ -305,7 +305,7 @@ int derive_output_SfrBulgeZ(const struct GALAXY *galaxy, property_id_t output_pr
  * TODO: REVIEW NEEDED - This needs proper implementation for galaxy indexing
  * Currently returns placeholder value - needs to be calculated based on galaxy position in tree
  */
-int derive_output_GalaxyIndex(const struct GALAXY *galaxy, property_id_t output_prop_id __attribute__((unused)), 
+int derive_output_GalaxyIndex(const struct GALAXY *galaxy __attribute__((unused)), property_id_t output_prop_id __attribute__((unused)), 
                             void *output_buffer_element_ptr, const struct params *run_params __attribute__((unused))) {
     // TODO: Implement proper galaxy indexing logic
     // For now, using placeholder - this should be calculated based on galaxy's position in the merger tree
@@ -321,7 +321,7 @@ int derive_output_GalaxyIndex(const struct GALAXY *galaxy, property_id_t output_
  * TODO: REVIEW NEEDED - This needs proper implementation for central galaxy indexing
  * Currently returns placeholder value - needs to find the central galaxy for satellites
  */
-int derive_output_CentralGalaxyIndex(const struct GALAXY *galaxy, property_id_t output_prop_id __attribute__((unused)), 
+int derive_output_CentralGalaxyIndex(const struct GALAXY *galaxy __attribute__((unused)), property_id_t output_prop_id __attribute__((unused)), 
                                    void *output_buffer_element_ptr, const struct params *run_params __attribute__((unused))) {
     // TODO: Implement proper central galaxy indexing logic
     // For satellites, this should point to their central galaxy
