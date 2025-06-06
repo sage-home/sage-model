@@ -145,6 +145,13 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
                                      run_params->simulation.NumSnapOutputs,
                                      sizeof(save_info->tot_ngals[0]));
     
+    // Allocate forest_ngals array
+    save_info->forest_ngals = calloc(run_params->simulation.NumSnapOutputs, sizeof(save_info->forest_ngals[0]));
+    CHECK_POINTER_AND_RETURN_ON_NULL(save_info->forest_ngals,
+                                     "Failed to allocate %d elements of size %zu for save_info->forest_ngals", 
+                                     run_params->simulation.NumSnapOutputs,
+                                     sizeof(save_info->forest_ngals[0]));
+    
     // Allocate property buffers array
     save_info->property_buffers = calloc(run_params->simulation.NumSnapOutputs, 
                                         sizeof(save_info->property_buffers[0]));
@@ -152,6 +159,15 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
                                      "Failed to allocate %d elements of size %zu for save_info->property_buffers", 
                                      run_params->simulation.NumSnapOutputs,
                                      sizeof(save_info->property_buffers[0]));
+    
+    // Allocate forest_ngals arrays for each snapshot
+    const int32_t max_forests = 100000; // Reasonable default
+    for (int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
+        save_info->forest_ngals[snap_idx] = calloc(max_forests, sizeof(save_info->forest_ngals[0][0]));
+        CHECK_POINTER_AND_RETURN_ON_NULL(save_info->forest_ngals[snap_idx],
+                                         "Failed to allocate %d elements for forest_ngals[%d]", 
+                                         max_forests, snap_idx);
+    }
     
     // Allocate property buffers for each snapshot
     for (int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {

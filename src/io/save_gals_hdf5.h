@@ -38,6 +38,7 @@ struct hdf5_save_info {
     int32_t buffer_size;            // Number of galaxies per buffer
     int32_t *num_gals_in_buffer;    // Current number of galaxies in buffer
     int64_t *tot_ngals;             // Total galaxies written per snapshot
+    int32_t **forest_ngals;         // Number of galaxies per snapshot per tree
     
     /* Dynamic property information */
     struct property_buffer_info **property_buffers; // [snap_idx][prop_idx]

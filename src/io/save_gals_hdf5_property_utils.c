@@ -177,7 +177,14 @@ int free_output_property(struct hdf5_save_info *save_info, int snap_idx, int pro
 
 // Allocate all property buffers for a snapshot
 int allocate_all_output_properties(struct hdf5_save_info *save_info, int snap_idx) {
-    // Allocate memory for all properties
+    // First allocate the array of property_buffer_info structs for this snapshot
+    save_info->property_buffers[snap_idx] = calloc(save_info->num_properties, sizeof(struct property_buffer_info));
+    if (save_info->property_buffers[snap_idx] == NULL) {
+        fprintf(stderr, "Failed to allocate property_buffer_info array for snapshot %d\n", snap_idx);
+        return -1;
+    }
+    
+    // Allocate data buffers - metadata will be initialized when needed
     for (int i = 0; i < save_info->num_properties; i++) {
         int status = allocate_output_property(save_info, snap_idx, i, save_info->buffer_size);
         if (status != 0) {

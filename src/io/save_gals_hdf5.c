@@ -8,12 +8,10 @@ static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_sav
                                         const int64_t task_forestnr, const int64_t original_treenr,
                                         const struct params *run_params)
 {
-    // Ensure buffers are allocated for this snapshot
+    // Validate property buffers are allocated
     if (save_info->property_buffers[snap_idx] == NULL) {
-        int status = allocate_all_output_properties(save_info, snap_idx);
-        if (status != 0) {
-            return EXIT_FAILURE;
-        }
+        fprintf(stderr, "ERROR: Property buffers not allocated for snapshot %d\n", snap_idx);
+        return EXIT_FAILURE;
     }
     
     int64_t gals_in_buffer = save_info->num_gals_in_buffer[snap_idx];
@@ -99,8 +97,13 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
                           struct save_info *save_info_base, const struct params *run_params)
 {
     int32_t status = EXIT_FAILURE;
-    // Work directly with save_info_base since we eliminated the unified I/O interface
-    struct save_info *save_info = save_info_base;
+    // Extract the HDF5-specific structure from the base structure
+    struct hdf5_save_info *save_info = (struct hdf5_save_info *)save_info_base->buffer_output_gals;
+    
+    if (save_info == NULL) {
+        fprintf(stderr, "ERROR: HDF5 save info not properly initialized\n");
+        return EXIT_FAILURE;
+    }
 
     for (int32_t gal_idx = 0; gal_idx < num_gals; gal_idx++) {
         // Only processing galaxies at selected snapshots
@@ -111,16 +114,12 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         // Add galaxy to buffer
         int32_t snap_idx = haloaux[gal_idx].output_snap_n;
         
-        // Get HDF5-specific save info from the buffer_output_gals field
-        struct hdf5_save_info *hdf5_save_info = (struct hdf5_save_info *)save_info_base->buffer_output_gals;
-        if (hdf5_save_info != NULL) {
-            // Process galaxy data into property buffers
-            status = process_galaxy_for_output(&halogal[gal_idx], hdf5_save_info, snap_idx, 
-                                               halos, task_forestnr, forest_info->original_treenr[task_forestnr], 
-                                               run_params);
-            if (status != EXIT_SUCCESS) {
-                return status;
-            }
+        // Process galaxy data into property buffers using the HDF5 structure
+        status = process_galaxy_for_output(&halogal[gal_idx], save_info, snap_idx, 
+                                           halos, task_forestnr, forest_info->original_treenr[task_forestnr], 
+                                           run_params);
+        if (status != EXIT_SUCCESS) {
+            return status;
         }
         
         save_info->num_gals_in_buffer[snap_idx]++;
@@ -131,7 +130,7 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         // Check if buffer is full and we need to write
         if (save_info->num_gals_in_buffer[snap_idx] == save_info->buffer_size) {
             status = trigger_buffer_write(snap_idx, save_info->buffer_size, save_info->tot_ngals[snap_idx], 
-                                        save_info, run_params);
+                                        save_info_base, run_params);
             if (status != EXIT_SUCCESS) {
                 return status;
             }
