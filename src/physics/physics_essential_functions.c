@@ -32,22 +32,20 @@
 void init_galaxy(int p, int halonr, int *galaxycounter, const struct halo_data *halos, 
                  struct GALAXY *galaxies, const struct params *run_params) {
     // Initialize core properties only
-    galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
-    
-    // Set galaxy type: central (0) if this is the first halo in FOF group, satellite (1) otherwise
-    if (halonr == halos[halonr].FirstHaloInFOFgroup) {
-        galaxies[p].Type = 0;  // Central galaxy
-    } else {
-        galaxies[p].Type = 1;  // Satellite galaxy
+
+    if (halonr != halos[halonr].FirstHaloInFOFgroup) {
+        LOG_ERROR("Halo validation failed: halonr=%d should equal FirstHaloInFOFgroup=%d", 
+                halonr, halos[halonr].FirstHaloInFOFgroup);
     }
 
+    galaxies[p].Type = 0;  // New galaxies start as a central galaxy
+    
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;
-
+    
     galaxies[p].HaloNr = halonr;
     galaxies[p].MostBoundID = halos[halonr].MostBoundID;
-
-    // GalaxyIndex and CentralGalaxyIndex will be calculated at output time by transformers
+    galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
     
     // Initialize from halo data
     for (int j = 0; j < 3; j++) {
@@ -80,6 +78,17 @@ double get_virial_mass(const int halonr, const struct halo_data *halos, const st
         return halos[halonr].Len * run_params->cosmology.PartMass;
 }
 
+double get_virial_velocity(const int halonr, const struct halo_data *halos, const struct params *run_params) {
+    double Rvir;
+    
+    Rvir = get_virial_radius(halonr, halos, run_params);
+    
+    if (Rvir > 0.0)
+        return sqrt(GRAVITY * get_virial_mass(halonr, halos, run_params) / Rvir);
+    else
+        return 0.0;
+}
+
 double get_virial_radius(const int halonr, const struct halo_data *halos, const struct params *run_params) {
     // return halos[halonr].Rvir;  // Used for Bolshoi
     
@@ -96,17 +105,6 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
     fac = 1 / (200 * 4 * M_PI / 3.0 * rhocrit);
     
     return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
-}
-
-double get_virial_velocity(const int halonr, const struct halo_data *halos, const struct params *run_params) {
-    double Rvir;
-    
-    Rvir = get_virial_radius(halonr, halos, run_params);
-    
-    if (Rvir > 0.0)
-        return sqrt(GRAVITY * get_virial_mass(halonr, halos, run_params) / Rvir);
-    else
-        return 0.0;
 }
 
 double estimate_merging_time(const int halonr, const int mother_halo, const struct halo_data *halos,
