@@ -236,7 +236,6 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
 
                     if (halonr == halos[halonr].FirstHaloInFOFgroup) {
                         /* A central galaxy */
-                        /* DiskScaleRadius now handled in physics modules */
                         galaxies[ngal].Type = 0;
                     } else {
                         /* A satellite with subhalo */
@@ -268,14 +267,10 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
 
     /* If we have no progenitors with galaxies, create a new galaxy if this is the main subhalo */
     if (ngal == ngalstart) {
-        /* We have no progenitors with galaxies. This means we create a new galaxy.
-         * init_galaxy requires halonr to be the main subhalo */
         if (halonr == halos[halonr].FirstHaloInFOFgroup) {
             init_galaxy(ngal, halonr, galaxycounter, halos, galaxies, run_params);
             ngal++;
         }
-        /* If not the main subhalo, we don't create a galaxy - this seems to be
-         * the behavior of the original code based on the assertion in init_galaxy */
     }
 
     return ngal;
