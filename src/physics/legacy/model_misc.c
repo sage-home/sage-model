@@ -10,7 +10,7 @@
 
 #include "model_misc.h"
 
-void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct halo_data *halos,
+void init_galaxy(const int p, const int halonr, int32_t *galaxycounter, const struct halo_data *halos,
                  struct GALAXY *galaxies, const struct params *run_params)
 {
     XASSERT(halonr == halos[halonr].FirstHaloInFOFgroup, -1,

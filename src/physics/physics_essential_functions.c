@@ -29,7 +29,7 @@
 #include "core_logging.h"
 #include "physics_essential_functions.h"
 
-void init_galaxy(int p, int halonr, int *galaxycounter, const struct halo_data *halos, 
+void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_data *halos, 
                  struct GALAXY *galaxies, const struct params *run_params) {
     // Initialize core properties only
 

@@ -268,13 +268,13 @@ int generate_unique_galaxy_indices(const struct halo_data *halos,
         struct GALAXY *this_gal = &halogal[gal_idx];
         
         // Get galaxy number and central galaxy number
-        uint32_t GalaxyNr = this_gal->GalaxyNr;
-        uint32_t CentralGalaxyNr = halogal[haloaux[halos[this_gal->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr;
+        int32_t GalaxyNr = this_gal->GalaxyNr;
+        int32_t CentralGalaxyNr = halogal[haloaux[halos[this_gal->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr;
         
         // Check that the mechanism would produce unique galaxy index within this run
         if (GalaxyNr > forestnr_mulfac || (filenr_mulfac > 0 && forestnr*forestnr_mulfac > filenr_mulfac)) {
             fprintf(stderr, "When determining a unique Galaxy Number, we assume two things:\n"
-                    "1. Current galaxy number = %u is less than multiplication factor for trees (=%"PRId64")\n"
+                    "1. Current galaxy number = %d is less than multiplication factor for trees (=%"PRId64")\n"
                     "2. That (the total number of trees * tree multiplication factor = %"PRId64") is less than the file "
                     "multiplication factor = %"PRId64" (only relevant if file multiplication factor is non-zero).\n"
                     "At least one of these two assumptions have been broken.\n"
@@ -315,10 +315,10 @@ int generate_unique_galaxy_indices(const struct halo_data *halos,
         const uint64_t id_from_forest_and_file = id_from_forestnr + id_from_filenr;
         
         // Check for overflow when adding galaxy number
-        if ((GalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file)) ||
-            (CentralGalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file))) {
+        if (((uint64_t)GalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file)) ||
+            ((uint64_t)CentralGalaxyNr > (0xFFFFFFFFFFFFFFFFULL - id_from_forest_and_file))) {
             fprintf(stderr, "Error: While generating an unique Galaxy Index. The addition required to generate the ID will overflow 64-bits\n");
-            fprintf(stderr, "id_from_forest_and_file = %"PRIu64" GalaxyNr = %u CentralGalaxyNr = %u\n", 
+            fprintf(stderr, "id_from_forest_and_file = %"PRIu64" GalaxyNr = %d CentralGalaxyNr = %d\n", 
                     id_from_forest_and_file, GalaxyNr, CentralGalaxyNr);
             return EXIT_FAILURE;
         }

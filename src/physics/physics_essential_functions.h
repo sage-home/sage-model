@@ -13,7 +13,7 @@
 
 /* Essential physics function declarations for physics-free mode */
 
-void init_galaxy(int p, int halonr, int *galaxycounter, const struct halo_data *halos, 
+void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_data *halos, 
                  struct GALAXY *galaxies, const struct params *run_params);
 
 double get_virial_mass(const int halonr, const struct halo_data *halos, const struct params *run_params);
