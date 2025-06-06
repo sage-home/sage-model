@@ -1,3 +1,34 @@
+/**
+ * @file    core_build_model.c
+ * @brief   Core functions for building and evolving the galaxy formation model
+ *
+ * This file contains the core algorithms for constructing galaxies from merger
+ * trees and evolving them through time. It implements the main semi-analytic
+ * modeling framework including the construction of galaxies from their
+ * progenitors, the application of physical processes (cooling, star formation,
+ * feedback), handling of mergers, and the time integration scheme.
+ *
+ * Key functions:
+ * - construct_galaxies(): Recursive function to build galaxies through merger trees
+ * - join_galaxies_of_progenitors(): Integrates galaxies from progenitor halos
+ * - evolve_galaxies(): Main time integration function for galaxy evolution
+ * - find_most_massive_progenitor(): Identifies main progenitor branch
+ * - copy_galaxies_from_progenitors(): Transfers galaxy properties through time
+ * - set_galaxy_centrals(): Establishes central-satellite relationships
+ *
+ * Architecture:
+ * This implementation maintains core-physics separation, where the core infrastructure
+ * handles galaxy construction, memory management, and time integration, while physics
+ * modules are applied through a configurable pipeline system. This allows the core
+ * to operate independently of specific physics implementations.
+ *
+ * References:
+ * - Croton et al. (2006) - Main semi-analytic model framework
+ * - White & Frenk (1991) - Cooling model foundation
+ * - Kauffmann et al. (1999) - Star formation implementation
+ * - Somerville et al. (2001) - Merger model foundation
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,13 +65,296 @@ double get_virial_velocity(const int halonr, struct halo_data *halos, struct par
 void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_data *halos,
                 struct GALAXY *galaxies, struct params *run_params);
 
+/**
+ * @brief   Finds the most massive progenitor halo that contains a galaxy
+ *
+ * @param   halonr    Index of the current halo in the halo array
+ * @param   halos     Array of halo data structures
+ * @param   haloaux   Array of halo auxiliary data structures
+ * @return  Index of the most massive progenitor with a galaxy
+ *
+ * This function scans all progenitors of a halo to find the most massive one
+ * that actually contains a galaxy. This is important because not all dark
+ * matter halos necessarily host galaxies, and we need to identify the main
+ * branch for inheriting galaxy properties.
+ *
+ * Two criteria are tracked:
+ * 1. The most massive progenitor overall (by particle count)
+ * 2. The most massive progenitor that contains a galaxy
+ *
+ * The function returns the index of the most massive progenitor containing a
+ * galaxy, which is used to determine which galaxy should become the central
+ * galaxy of the descendant halo.
+ */
+static int find_most_massive_progenitor(const int halonr, struct halo_data *halos, 
+                                       struct halo_aux_data *haloaux)
+{
+    int prog, first_occupied, lenmax, lenoccmax;
+
+    lenmax = 0;
+    lenoccmax = 0;
+    first_occupied = halos[halonr].FirstProgenitor;
+    prog = halos[halonr].FirstProgenitor;
+
+    if (prog >= 0) {
+        if (haloaux[prog].NGalaxies > 0) {
+            lenoccmax = -1;
+        }
+    }
+
+    /* Find most massive progenitor that contains an actual galaxy
+     * Maybe FirstProgenitor never was FirstHaloInFOFGroup and thus has no galaxy */
+    while (prog >= 0) {
+        if (halos[prog].Len > lenmax) {
+            lenmax = halos[prog].Len;
+            /* mother_halo = prog; */
+        }
+        if (lenoccmax != -1 && halos[prog].Len > lenoccmax && haloaux[prog].NGalaxies > 0) {
+            lenoccmax = halos[prog].Len;
+            first_occupied = prog;
+        }
+        prog = halos[prog].NextProgenitor;
+    }
+
+    return first_occupied;
+}
+
+/**
+ * @brief   Copies and updates galaxies from progenitor halos to the current snapshot
+ *
+ * @param   halonr          Index of the current halo in the halo array
+ * @param   ngalstart       Starting index for galaxies in the galaxy array
+ * @param   first_occupied  Index of the most massive progenitor with galaxies
+ * @param   galaxycounter   Galaxy counter for ID assignment
+ * @param   maxgals        Pointer to maximum galaxy array size
+ * @param   halos          Array of halo data structures
+ * @param   haloaux        Array of halo auxiliary data structures
+ * @param   ptr_to_galaxies Pointer to galaxy array pointer
+ * @param   ptr_to_halogal  Pointer to permanent galaxy array pointer
+ * @param   run_params     Simulation parameters
+ * @return  Updated number of galaxies after copying
+ *
+ * This function transfers galaxies from progenitor halos to the current
+ * snapshot, updating their properties based on the new halo structure. It
+ * handles:
+ *
+ * 1. Copying galaxies from all progenitors to the temporary galaxy array
+ * 2. Updating galaxy properties based on their new host halo
+ * 3. Handling type transitions (central → satellite → orphan)
+ * 4. Setting appropriate merger times for satellites
+ * 5. Creating new galaxies when a halo has no progenitor galaxies
+ *
+ * The function maintains the continuity of galaxy evolution by preserving
+ * their properties while updating their status based on the evolving
+ * dark matter structures.
+ */
+static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart, const int first_occupied,
+                                         int *galaxycounter, int *maxgals, struct halo_data *halos,
+                                         struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies,
+                                         struct GALAXY **ptr_to_halogal, struct params *run_params)
+{
+    int ngal, prog;
+    struct GALAXY *galaxies = *ptr_to_galaxies;
+    struct GALAXY *halogal = *ptr_to_halogal;
+
+    ngal = ngalstart;
+    prog = halos[halonr].FirstProgenitor;
+
+    while (prog >= 0) {
+        for (int i = 0; i < haloaux[prog].NGalaxies; i++) {
+            if (ngal >= (*maxgals - 1)) {
+                /* Expand arrays with geometric growth rather than fixed increment */
+                if (galaxy_array_expand(ptr_to_galaxies, maxgals, ngal + 1) != 0) {
+                    LOG_ERROR("Failed to expand galaxies array in copy_galaxies_from_progenitors");
+                    return -1;
+                }
+                
+                if (galaxy_array_expand(ptr_to_halogal, maxgals, ngal + 1) != 0) {
+                    LOG_ERROR("Failed to expand halogal array in copy_galaxies_from_progenitors");
+                    return -1;
+                }
+                
+                galaxies = *ptr_to_galaxies;
+                halogal = *ptr_to_halogal;
+            }
+
+            XRETURN(ngal < *maxgals, -1,
+                    "Error: ngal = %d exceeds the number of galaxies allocated = %d\n"
+                    "This would result in invalid memory access...exiting\n",
+                    ngal, *maxgals);
+
+            /* This is the crucial line in which the properties of the progenitor galaxies
+             * are copied over (as a whole) to the (temporary) galaxies galaxies[xxx] in the current snapshot
+             * After updating their properties and evolving them
+             * they are copied to the end of the list of permanent galaxies halogal[xxx] */
+
+            /* First initialize the extension data (to maintain binary compatibility) */
+            galaxy_extension_initialize(&galaxies[ngal]);
+            
+            /* Then copy the basic GALAXY structure */
+            galaxies[ngal] = halogal[haloaux[prog].FirstGalaxy + i];
+            galaxies[ngal].HaloNr = halonr;
+            galaxies[ngal].dT = -1.0;
+            
+            /* Copy extension data (this will just copy flags since the data is accessed on demand) */
+            galaxy_extension_copy(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i]);
+            
+            /* Perform a deep copy of the properties struct content, including dynamic arrays */
+            int copy_status = copy_galaxy_properties(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i], run_params);
+            if (copy_status != 0) {
+                LOG_ERROR("Failed to copy properties for galaxy %d (prog %d, halo %d)", ngal, prog, halonr);
+                return -1;
+            }
+
+            /* This deals with the central galaxies of (sub)halos */
+            if (galaxies[ngal].Type == 0 || galaxies[ngal].Type == 1) {
+
+                /* Remember properties from the last snapshot */
+                const float previousMvir = galaxies[ngal].Mvir;
+                const float previousVvir = galaxies[ngal].Vvir;
+                const float previousVmax = galaxies[ngal].Vmax;
+
+                if (prog == first_occupied) {
+                    /* Update properties of this galaxy with physical properties of halo */
+                    galaxies[ngal].MostBoundID = halos[halonr].MostBoundID;
+
+                    for (int j = 0; j < 3; j++) {
+                        galaxies[ngal].Pos[j] = halos[halonr].Pos[j];
+                        galaxies[ngal].Vel[j] = halos[halonr].Vel[j];
+                    }
+
+                    galaxies[ngal].Len = halos[halonr].Len;
+                    galaxies[ngal].Vmax = halos[halonr].Vmax;
+
+                    galaxies[ngal].deltaMvir = get_virial_mass(halonr, halos, run_params) - galaxies[ngal].Mvir;
+
+                    if (get_virial_mass(halonr, halos, run_params) > galaxies[ngal].Mvir) {
+                        galaxies[ngal].Rvir = get_virial_radius(halonr, halos, run_params);  /* use the maximum Rvir in model */
+                        galaxies[ngal].Vvir = get_virial_velocity(halonr, halos, run_params);  /* use the maximum Vvir in model */
+                    }
+                    galaxies[ngal].Mvir = get_virial_mass(halonr, halos, run_params);
+
+                    if (halonr == halos[halonr].FirstHaloInFOFgroup) {
+                        /* A central galaxy */
+                        /* DiskScaleRadius now handled in physics modules */
+                        galaxies[ngal].Type = 0;
+                    } else {
+                        /* A satellite with subhalo */
+                        if (galaxies[ngal].Type == 0) {  /* remember the infall properties before becoming a subhalo */
+                            galaxies[ngal].infallMvir = previousMvir;
+                            galaxies[ngal].infallVvir = previousVvir;
+                            galaxies[ngal].infallVmax = previousVmax;
+                        }
+                        galaxies[ngal].Type = 1;
+                    }
+                } else {
+                    /* An orphan satellite galaxy - in physics-free mode, just update properties */
+                    galaxies[ngal].deltaMvir = -1.0 * galaxies[ngal].Mvir;
+                    galaxies[ngal].Mvir = 0.0;
+                    
+                    galaxies[ngal].infallMvir = previousMvir;
+                    galaxies[ngal].infallVvir = previousVvir;
+                    galaxies[ngal].infallVmax = previousVmax;
+                    
+                    galaxies[ngal].Type = 2;
+                }
+            }
+
+            ngal++;
+        }
+
+        prog = halos[prog].NextProgenitor;
+    }
+
+    /* If we have no progenitors with galaxies, create a new galaxy if this is the main subhalo */
+    if (ngal == ngalstart) {
+        /* We have no progenitors with galaxies. This means we create a new galaxy.
+         * init_galaxy requires halonr to be the main subhalo */
+        if (halonr == halos[halonr].FirstHaloInFOFgroup) {
+            init_galaxy(ngal, halonr, galaxycounter, halos, galaxies, run_params);
+            ngal++;
+        }
+        /* If not the main subhalo, we don't create a galaxy - this seems to be
+         * the behavior of the original code based on the assertion in init_galaxy */
+    }
+
+    return ngal;
+}
+
+/**
+ * @brief   Sets the central galaxy reference for all galaxies in a halo
+ *
+ * @param   ngalstart    Starting index of galaxies for this halo
+ * @param   ngal         Ending index (exclusive) of galaxies for this halo
+ * @param   galaxies     Array of galaxy structures
+ *
+ * This function identifies the central galaxy (Type 0 or 1) for a halo
+ * and sets all galaxies in the halo to reference this central galaxy.
+ * Each halo can have only one Type 0 or 1 galaxy, with all others
+ * being Type 2 (orphan) galaxies.
+ */
+static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAXY *galaxies)
+{
+    int i, centralgal;
+
+    /* Per Halo there can be only one Type 0 or 1 galaxy, all others are Type 2 (orphan)
+     * Find the central galaxy for this halo */
+    for (i = ngalstart, centralgal = -1; i < ngal; i++) {
+        if (galaxies[i].Type == 0 || galaxies[i].Type == 1) {
+            if (centralgal != -1) {
+                LOG_ERROR("Expected to find centralgal=-1, instead centralgal=%d", centralgal);
+                return -1;
+            }
+            centralgal = i;
+        }
+    }
+
+    /* Set all galaxies to point to the central galaxy */
+    for (i = ngalstart; i < ngal; i++) {
+        galaxies[i].CentralGal = centralgal;
+    }
+    
+    return 0;
+}
+
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
                            struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
 static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, int *maxgals, struct halo_data *halos,
                                         struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
 
-
+/**
+ * @brief   Recursively constructs galaxies by traversing the merger tree
+ *
+ * @param   halonr    Index of the current halo in the halo array
+ * @param   numgals   Pointer to total number of galaxies created
+ * @param   galaxycounter Galaxy counter for unique ID assignment
+ * @param   maxgals   Pointer to maximum galaxy array size (can be expanded)
+ * @param   halos     Array of halo data structures
+ * @param   haloaux   Array of halo auxiliary data structures
+ * @param   ptr_to_galaxies Pointer to temporary galaxy array pointer
+ * @param   ptr_to_halogal  Pointer to permanent galaxy array pointer
+ * @param   run_params Simulation parameters and configuration
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE on error
+ *
+ * This function traverses the merger tree in a depth-first manner to ensure
+ * that galaxies are constructed from their progenitors before being evolved.
+ * It follows these steps:
+ *
+ * 1. First processes all progenitors of the current halo recursively
+ * 2. Then processes all halos in the same FOF group
+ * 3. Finally, joins progenitor galaxies and evolves them forward in time
+ *
+ * The recursive approach ensures that galaxies are built in the correct
+ * chronological order, preserving the flow of mass and properties from
+ * high redshift to low redshift. The function maintains core-physics separation
+ * by delegating physical processes to the configurable pipeline system.
+ *
+ * Error handling:
+ * - Returns EXIT_FAILURE if any recursive call fails
+ * - Logs detailed error messages for debugging
+ * - Preserves system state for cleanup on failure
+ */
 /* the only externally visible function */
 int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *maxgals, struct halo_data *halos,
                        struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
@@ -50,6 +364,7 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
 
   haloaux[halonr].DoneFlag = 1;
 
+  /* First, recursively process all progenitors of the current halo */
   prog = halos[halonr].FirstProgenitor;
   while(prog >= 0) {
       if(haloaux[prog].DoneFlag == 0) {
@@ -63,6 +378,7 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
       prog = halos[prog].NextProgenitor;
   }
 
+  /* Second, process all progenitors of other halos in the same FOF group */
   fofhalo = halos[halonr].FirstHaloInFOFgroup;
   if(haloaux[fofhalo].HaloFlag == 0) {
       haloaux[fofhalo].HaloFlag = 1;
@@ -83,11 +399,11 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
       }
   }
 
-  // At this point, the galaxies for all progenitors of this halo have been
-  // properly constructed. Also, the galaxies of the progenitors of all other
-  // halos in the same FOF group have been constructed as well. We can hence go
-  // ahead and construct all galaxies for the subhalos in this FOF halo, and
-  // evolve them in time.
+  /* At this point, the galaxies for all progenitors of this halo have been
+   * properly constructed. Also, the galaxies of the progenitors of all other
+   * halos in the same FOF group have been constructed as well. We can hence go
+   * ahead and construct all galaxies for the subhalos in this FOF halo, and
+   * evolve them in time. */
 
   fofhalo = halos[halonr].FirstHaloInFOFgroup;
 #ifdef USE_SAGE_IN_MCMC_MODE
@@ -97,8 +413,7 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
      would be the case if *all* snapshots were processed. This will lead to different SEDs compared to the
      fiducial runs -> however, for MCMC cases, presumably we are not interested in SED. This extra flag
      improves runtime *significantly* if only processing up to high-z (say for targeting JWST-like observations).
-     - MS, DC: 25th Oct, 2023
-  */
+     - MS, DC: 25th Oct, 2023 */
   if(haloaux[fofhalo].HaloFlag == 1 && halos[fofhalo].SnapNum <= run_params->ListOutputSnaps[0]) {
 #else
   if(haloaux[fofhalo].HaloFlag == 1 ) {
@@ -106,6 +421,7 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
       int ngal = 0;
       haloaux[fofhalo].HaloFlag = 2;
 
+      /* Third, join galaxies from all progenitors within the FOF group */
       while(fofhalo >= 0) {
           ngal = join_galaxies_of_progenitors(fofhalo, ngal, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
           if(ngal < 0) {
@@ -115,6 +431,7 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
           fofhalo = halos[fofhalo].NextHaloInFOFgroup;
       }
 
+      /* Finally, evolve all galaxies in the FOF group through time */
       LOG_DEBUG("Evolving %d galaxies in halo %d", ngal, halonr);
       int status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ngal, numgals, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
 
@@ -124,189 +441,114 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, int *
       }
   }
 
-
   return EXIT_SUCCESS;
 }
 /* end of construct_galaxies*/
 
 
+/**
+ * @brief   Main function to join galaxies from progenitor halos
+ *
+ * @param   halonr       Index of the current halo in the halo array
+ * @param   ngalstart    Starting index for galaxies in the galaxy array
+ * @param   galaxycounter Galaxy counter for ID assignment
+ * @param   maxgals     Pointer to maximum galaxy array size
+ * @param   halos       Array of halo data structures
+ * @param   haloaux     Array of halo auxiliary data structures
+ * @param   ptr_to_galaxies Pointer to galaxy array pointer
+ * @param   ptr_to_halogal  Pointer to permanent galaxy array pointer
+ * @param   run_params  Simulation parameters
+ * @return  Updated number of galaxies after joining
+ *
+ * This function coordinates the process of integrating galaxies from
+ * progenitor halos into the current halo. It performs three main steps:
+ *
+ * 1. Identifies the most massive progenitor with galaxies
+ * 2. Copies and updates galaxies from all progenitors
+ * 3. Establishes relationships between galaxies (central/satellite)
+ *
+ * The function ensures proper inheritance of galaxy properties while
+ * maintaining the hierarchy of central and satellite galaxies.
+ */
 static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, int *maxgals, struct halo_data *halos,
                                        struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params)
 {
-    int ngal, prog,  first_occupied, lenmax, lenoccmax;
+    int ngal, first_occupied;
     struct GALAXY *galaxies = *ptr_to_galaxies;
-    struct GALAXY *halogal = *ptr_to_halogal;
 
-    lenmax = 0;
-    lenoccmax = 0;
-    first_occupied = halos[halonr].FirstProgenitor;
-    prog = halos[halonr].FirstProgenitor;
+    /* Find the most massive progenitor with galaxies */
+    first_occupied = find_most_massive_progenitor(halonr, halos, haloaux);
 
-    if(prog >=0) {
-        if(haloaux[prog].NGalaxies > 0) {
-            lenoccmax = -1;
-        }
+    /* Copy galaxies from progenitors to the current snapshot */
+    ngal = copy_galaxies_from_progenitors(halonr, ngalstart, first_occupied, galaxycounter, maxgals, 
+                                         halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+    if (ngal < 0) {
+        LOG_ERROR("Failed to copy galaxies from progenitors for halo %d", halonr);
+        return -1;
     }
 
-    // Find most massive progenitor that contains an actual galaxy
-    // Maybe FirstProgenitor never was FirstHaloInFOFGroup and thus has no galaxy
+    /* Update local pointer after potential reallocation */
+    galaxies = *ptr_to_galaxies;
 
-    while(prog >= 0) {
-        if(halos[prog].Len > lenmax) {
-            lenmax = halos[prog].Len;
-        }
-
-        if(lenoccmax != -1 && halos[prog].Len > lenoccmax && haloaux[prog].NGalaxies > 0) {
-            lenoccmax = halos[prog].Len;
-            first_occupied = prog;
-        }
-        prog = halos[prog].NextProgenitor;
-    }
-
-    ngal = ngalstart;
-    prog = halos[halonr].FirstProgenitor;
-
-    while(prog >= 0) {
-        for(int i = 0; i < haloaux[prog].NGalaxies; i++) {
-            if(ngal >= (*maxgals - 1)) {
-                // Expand arrays with geometric growth rather than fixed increment
-                if (galaxy_array_expand(ptr_to_galaxies, maxgals, ngal + 1) != 0) {
-                    LOG_ERROR("Failed to expand galaxies array in join_galaxies_of_progenitors");
-                    return -1;
-                }
-                
-                if (galaxy_array_expand(ptr_to_halogal, maxgals, ngal + 1) != 0) {
-                    LOG_ERROR("Failed to expand halogal array in join_galaxies_of_progenitors");
-                    return -1;
-                }
-                
-                galaxies = *ptr_to_galaxies;
-                halogal = *ptr_to_halogal;
-            }
-
-            XRETURN(ngal < *maxgals, -1,
-                    "Error: ngal = %d exceeds the number of galaxies allocated = %d\n"
-                    "This would result in invalid memory access...exiting\n",
-                    ngal, *maxgals);
-
-            // This is the crucial line in which the properties of the progenitor galaxies
-            // are copied over (as a whole) to the (temporary) galaxies galaxies[xxx] in the current snapshot
-            // After updating their properties and evolving them
-            // they are copied to the end of the list of permanent galaxies halogal[xxx]
-
-            // First initialize the extension data (to maintain binary compatibility)
-            galaxy_extension_initialize(&galaxies[ngal]);
-            
-            // Then copy the basic GALAXY structure
-            galaxies[ngal] = halogal[haloaux[prog].FirstGalaxy + i];
-            galaxies[ngal].HaloNr = halonr;
-            galaxies[ngal].dT = -1.0;
-            
-            // Copy extension data (this will just copy flags since the data is accessed on demand)
-            galaxy_extension_copy(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i]);
-            
-            // Perform a deep copy of the properties struct content, including dynamic arrays
-            int copy_status = copy_galaxy_properties(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i], run_params);
-            if (copy_status != 0) {
-                LOG_ERROR("Failed to copy properties for galaxy %d (prog %d, halo %d)", ngal, prog, halonr);
-                return -1;
-            }
-
-            // this deals with the central galaxies of (sub)halos
-            if(galaxies[ngal].Type == 0 || galaxies[ngal].Type == 1) {
-
-                // remember properties from the last snapshot
-                const float previousMvir = galaxies[ngal].Mvir;
-                const float previousVvir = galaxies[ngal].Vvir;
-                const float previousVmax = galaxies[ngal].Vmax;
-
-                if(prog == first_occupied) {
-                    // update properties of this galaxy with physical properties of halo
-                    galaxies[ngal].MostBoundID = halos[halonr].MostBoundID;
-
-                    for(int j = 0; j < 3; j++) {
-                        galaxies[ngal].Pos[j] = halos[halonr].Pos[j];
-                        galaxies[ngal].Vel[j] = halos[halonr].Vel[j];
-                    }
-
-                    galaxies[ngal].Len = halos[halonr].Len;
-                    galaxies[ngal].Vmax = halos[halonr].Vmax;
-
-                    galaxies[ngal].deltaMvir = get_virial_mass(halonr, halos, run_params) - galaxies[ngal].Mvir;
-
-                    if(get_virial_mass(halonr, halos, run_params) > galaxies[ngal].Mvir) {
-                        galaxies[ngal].Rvir = get_virial_radius(halonr, halos, run_params);  // use the maximum Rvir in model
-                        galaxies[ngal].Vvir = get_virial_velocity(halonr, halos, run_params);  // use the maximum Vvir in model
-                    }
-                    galaxies[ngal].Mvir = get_virial_mass(halonr, halos, run_params);
-
-
-                    if(halonr == halos[halonr].FirstHaloInFOFgroup) {
-                        // a central galaxy
-                        // DiskScaleRadius now handled in physics modules
-                        galaxies[ngal].Type = 0;
-                    } else {
-                        // a satellite with subhalo
-                        if(galaxies[ngal].Type == 0) {  // remember the infall properties before becoming a subhalo
-                            galaxies[ngal].infallMvir = previousMvir;
-                            galaxies[ngal].infallVvir = previousVvir;
-                            galaxies[ngal].infallVmax = previousVmax;
-                        }
-                        galaxies[ngal].Type = 1;
-                    }
-                } else {
-                    // an orphan satellite galaxy - in physics-free mode, just update properties
-                    galaxies[ngal].deltaMvir = -1.0*galaxies[ngal].Mvir;
-                    galaxies[ngal].Mvir = 0.0;
-                    
-                    galaxies[ngal].infallMvir = previousMvir;
-                    galaxies[ngal].infallVvir = previousVvir;
-                    galaxies[ngal].infallVmax = previousVmax;
-                    
-                    galaxies[ngal].Type = 2;
-                }
-            }
-
-            ngal++;
-        }
-
-        prog = halos[prog].NextProgenitor;
-    }
-
-    if(ngal == 0) {
-        // We have no progenitors with galaxies. This means we create a new galaxy.
-        init_galaxy(ngal, halonr, galaxycounter, halos, galaxies, run_params);
-        ngal++;
-    }
-
-    // Per Halo there can be only one Type 0 or 1 galaxy, all others are Type 2  (orphan)
-    // In fact, this galaxy is very likely to be the first galaxy in the halo if
-    // first_occupied==FirstProgenitor and the Type0/1 galaxy in FirstProgenitor was also the first one
-    // This cannot be guaranteed though for the pathological first_occupied!=FirstProgenitor case
-
-    int centralgal = -1;
-    for(int i = ngalstart; i < ngal; i++) {
-        if(galaxies[i].Type == 0 || galaxies[i].Type == 1) {
-            if(centralgal != -1) {
-                LOG_ERROR("Expected to find centralgal=-1, instead centralgal=%d", centralgal);
-                return -1;
-            }
-
-            centralgal = i;
-        }
-    }
-
-    for(int i = ngalstart; i < ngal; i++) {
-        galaxies[i].CentralGal = centralgal;
+    /* Set up central galaxy relationships */
+    if (set_galaxy_centrals(ngalstart, ngal, galaxies) != 0) {
+        LOG_ERROR("Failed to set central galaxy relationships for halo %d", halonr);
+        return -1;
     }
     
     LOG_DEBUG("Joined progenitor galaxies for halo %d: ngal=%d", halonr, ngal);
 
     return ngal;
-
 }
 /* end of join_galaxies_of_progenitors */
 
+/**
+ * @brief   Main function to evolve galaxies through time using a configurable pipeline
+ *
+ * @param   halonr    Index of the FOF-background subhalo (main halo)
+ * @param   ngal      Total number of galaxies to evolve
+ * @param   numgals   Pointer to total galaxy count (updated as galaxies are finalized)
+ * @param   maxgals   Pointer to maximum galaxy array size (can be expanded)
+ * @param   halos     Array of halo data structures
+ * @param   haloaux   Array of halo auxiliary data structures
+ * @param   ptr_to_galaxies Pointer to temporary galaxy array pointer
+ * @param   ptr_to_halogal  Pointer to permanent galaxy array pointer
+ * @param   run_params Simulation parameters and configuration
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE on error
+ *
+ * This function implements the time integration of galaxy properties between
+ * two consecutive snapshots using a modular pipeline architecture. It:
+ *
+ * 1. Initializes the evolution context and diagnostics
+ * 2. Sets up the physics pipeline from configuration
+ * 3. Executes the evolution pipeline in four distinct phases:
+ *    a. HALO phase: Processes calculations at the halo level
+ *    b. GALAXY phase: Processes each galaxy individually through time steps
+ *    c. POST phase: Handles inter-galaxy interactions and mergers
+ *    d. FINAL phase: Finalizes properties and prepares output
+ * 4. Manages memory allocation and property copying
+ * 5. Updates final galaxy properties and attaches them to halos
+ *
+ * Pipeline Architecture:
+ * The function uses a configurable pipeline system that maintains core-physics
+ * separation. Physics modules are loaded at runtime and execute through 
+ * standardized phase interfaces. This allows for:
+ * - Runtime configurability of physics modules
+ * - Complete physics-free operation for testing
+ * - Modular physics development and testing
+ * - Preservation of the original SAGE algorithm flow
+ *
+ * Time Integration:
+ * The evolution uses the traditional STEPS-based time integration where each
+ * snapshot interval is divided into STEPS substeps. Physics modules receive
+ * the time step information and handle their own integration schemes.
+ *
+ * Error Handling:
+ * - Comprehensive validation of evolution context
+ * - Graceful degradation on pipeline failures
+ * - Detailed diagnostic reporting
+ * - Memory cleanup on error conditions
+ */
 /*
  * This function evolves galaxies and applies all physics modules.
  *

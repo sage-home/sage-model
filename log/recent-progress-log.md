@@ -543,3 +543,11 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Created files: src/core/core_mymalloc.h (enhanced), tests/test_dynamic_memory_expansion.c, docs/dynamic_memory_expansion_proposal.md
 - Modified files: src/core/core_mymalloc.c (major rewrite), src/core/macros.h, src/core/sage.c, Makefile
 
+2025-06-06: [Phase 5.2.F.3] Core Build Model Refactoring & Bug Fix
+- Fixed critical logic error in `join_galaxies_of_progenitors()` where galaxy creation condition used `ngal == 0` instead of `ngal == ngalstart`
+- Extracted helper functions following legacy template: `find_most_massive_progenitor()`, `copy_galaxies_from_progenitors()`, `set_galaxy_centrals()`
+- Added comprehensive file header and function documentation matching legacy style
+- Enhanced error handling and code organization while preserving exact scientific algorithms
+- Validated functionality: 36/36 physics-free mode tests pass, core-physics separation maintained
+- Modified files: src/core/core_build_model.c
+
