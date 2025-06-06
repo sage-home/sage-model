@@ -136,7 +136,7 @@ python3 allresults-history.py     # Plot higher redshift results
 - Never delete files, always archive into the `ignore` directory
 - Assume no persistent memory — rely on logs for all continuity
 - When reporting progress in `log/recent-progress-log.md` include EVERY FILE that was changed and created
-- Prefer lldb over gdb for debugging
+- Prefer lldb for debugging (feed it a text file with commands for best results)
 - NEVER create mock data or simplified components unless explicitly told to do so
 - NEVER replace existing complex components with simplified versions - always fix the actual problem
 - ALWAYS find and fix the root cause of issues instead of creating workarounds
