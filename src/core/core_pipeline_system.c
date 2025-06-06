@@ -87,14 +87,15 @@ static int pipeline_execute_phase_with_executor(
 /**
  * Validate phase transition to ensure execution occurs in the correct scientific order
  * 
- * Valid transitions:
- * - NONE -> any phase (initial execution)
- * - HALO -> GALAXY (start processing galaxies)
- * - GALAXY -> GALAXY (multiple galaxies in loop - normal behavior)
- * - GALAXY -> POST (finished processing all galaxies in step)
- * - POST -> GALAXY (start new integration step) 
- * - POST -> FINAL (finished all integration steps)
- * - FINAL -> HALO (start new halo - new cycle)
+ * Valid transitions within SAGE pipeline execution:
+ * 1. HALO -> HALO/GALAXY/POST/FINAL (multiple halo modules, normal progression, or skipping phases)
+ * 2. GALAXY -> GALAXY/POST/FINAL (multiple galaxies, normal progression, or skip to end)
+ * 3. POST -> GALAXY/POST/FINAL (back to galaxy loop in steps, multiple post modules, or normal progression)
+ * 4. FINAL -> FINAL (multiple final modules)
+ * 5. Any phase -> HALO (start processing new halo)
+ * 
+ * The POST->GALAXY transition occurs because POST is inside the integration STEPS loop.
+ * Any phase can transition to HALO when starting a new halo's evolution cycle.
  * 
  * @param prev_phase Previous execution phase
  * @param new_phase New execution phase being transitioned to
@@ -110,16 +111,31 @@ bool validate_phase_transition(enum pipeline_execution_phase prev_phase, enum pi
                new_phase == PIPELINE_PHASE_FINAL;
     }
     
-    // Expected phase order: HALO -> GALAXY -> POST -> FINAL
-    // Note: GALAXY phase can repeat for multiple galaxies (GALAXY -> GALAXY is normal)
+    // Any phase can transition to HALO when starting a new halo
+    if (new_phase == PIPELINE_PHASE_HALO) {
+        return true;
+    }
+    
+    // Phase transitions within a halo evolution cycle
     if (prev_phase == PIPELINE_PHASE_HALO) {
-        return new_phase == PIPELINE_PHASE_GALAXY;
+        // HALO can go to: HALO (multiple halo modules), GALAXY, POST (skip GALAXY), FINAL (skip to end)
+        return new_phase == PIPELINE_PHASE_HALO ||
+               new_phase == PIPELINE_PHASE_GALAXY ||
+               new_phase == PIPELINE_PHASE_POST ||
+               new_phase == PIPELINE_PHASE_FINAL;
     } else if (prev_phase == PIPELINE_PHASE_GALAXY) {
-        return new_phase == PIPELINE_PHASE_POST || new_phase == PIPELINE_PHASE_GALAXY;
+        // GALAXY can go to: GALAXY (multiple galaxies), POST (normal progression), FINAL (skip to end)
+        return new_phase == PIPELINE_PHASE_GALAXY ||
+               new_phase == PIPELINE_PHASE_POST || 
+               new_phase == PIPELINE_PHASE_FINAL;
     } else if (prev_phase == PIPELINE_PHASE_POST) {
-        return new_phase == PIPELINE_PHASE_FINAL || new_phase == PIPELINE_PHASE_GALAXY;
+        // POST can go to: GALAXY (back to galaxy loop in steps), POST (multiple post modules), FINAL (normal progression)
+        return new_phase == PIPELINE_PHASE_GALAXY ||
+               new_phase == PIPELINE_PHASE_POST ||
+               new_phase == PIPELINE_PHASE_FINAL;
     } else if (prev_phase == PIPELINE_PHASE_FINAL) {
-        return new_phase == PIPELINE_PHASE_HALO; // Start of a new cycle
+        // FINAL can go to: FINAL (multiple final modules)
+        return new_phase == PIPELINE_PHASE_FINAL;
     }
     
     return false;
