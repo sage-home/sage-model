@@ -90,7 +90,7 @@ properties:
     read_only: "after_first_set"
     is_core: true
     
-  # Merger Properties
+  # Merger Properties - Physics Module Properties
   - name: mergeType
     type: int32_t
     initial_value: 0
@@ -98,7 +98,8 @@ properties:
     description: "Merger type (0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS)"
     output: true
     read_only: false
-    is_core: true
+    is_core: false
+    required_modules: ["mergers"]
 
   - name: mergeIntoID
     type: int32_t
@@ -107,7 +108,8 @@ properties:
     description: "Galaxy ID that this galaxy merges into"
     output: true
     read_only: false
-    is_core: true
+    is_core: false
+    required_modules: ["mergers"]
     
   - name: mergeIntoSnapNum
     type: int32_t
@@ -116,7 +118,8 @@ properties:
     description: "Snapshot number when the merger occurs"
     output: true
     read_only: false
-    is_core: true
+    is_core: false
+    required_modules: ["mergers"]
     
   - name: dT
     type: float

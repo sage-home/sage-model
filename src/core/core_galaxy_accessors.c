@@ -54,17 +54,6 @@ uint64_t galaxy_get_galaxy_index(const struct GALAXY *galaxy) {
     return GALAXY_PROP_GalaxyIndex(galaxy);
 }
 
-int32_t galaxy_get_merge_type(const struct GALAXY *galaxy) {
-    return GALAXY_PROP_mergeType(galaxy);
-}
-
-int32_t galaxy_get_merge_into_id(const struct GALAXY *galaxy) {
-    return GALAXY_PROP_mergeIntoID(galaxy);
-}
-
-float galaxy_get_merge_time(const struct GALAXY *galaxy) {
-    return GALAXY_PROP_MergTime(galaxy);
-}
 
 /* Core halo properties */
 float galaxy_get_mvir(const struct GALAXY *galaxy) {
@@ -116,10 +105,3 @@ void galaxy_set_type(struct GALAXY *galaxy, int32_t value) {
     GALAXY_PROP_Type(galaxy) = value;
 }
 
-void galaxy_set_merge_type(struct GALAXY *galaxy, int32_t value) {
-    GALAXY_PROP_mergeType(galaxy) = value;
-}
-
-void galaxy_set_merge_time(struct GALAXY *galaxy, float value) {
-    GALAXY_PROP_MergTime(galaxy) = value;
-}

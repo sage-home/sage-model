@@ -223,11 +223,6 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
 
             // this deals with the central galaxies of (sub)halos
             if(galaxies[ngal].Type == 0 || galaxies[ngal].Type == 1) {
-                // this halo shouldn't hold a galaxy that has already merged; remove it from future processing
-                if(galaxies[ngal].mergeType != 0) {
-                    galaxies[ngal].Type = 3;
-                    continue;
-                }
 
                 // remember properties from the last snapshot
                 const float previousMvir = galaxies[ngal].Mvir;
@@ -257,45 +252,26 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
 
                     if(halonr == halos[halonr].FirstHaloInFOFgroup) {
                         // a central galaxy
-                        galaxies[ngal].mergeType = 0;
-                        galaxies[ngal].mergeIntoID = -1;
-                        galaxies[ngal].MergTime = 999.9f;
-
                         // DiskScaleRadius now handled in physics modules
-
                         galaxies[ngal].Type = 0;
                     } else {
                         // a satellite with subhalo
-                        galaxies[ngal].mergeType = 0;
-                        galaxies[ngal].mergeIntoID = -1;
-
                         if(galaxies[ngal].Type == 0) {  // remember the infall properties before becoming a subhalo
                             galaxies[ngal].infallMvir = previousMvir;
                             galaxies[ngal].infallVvir = previousVvir;
                             galaxies[ngal].infallVmax = previousVmax;
                         }
-
-                        if(galaxies[ngal].Type == 0 || galaxies[ngal].MergTime > 999.0f) {
-                            // here the galaxy has gone from type 1 to type 2 or otherwise doesn't have a merging time.
-                            galaxies[ngal].MergTime = estimate_merging_time(halonr, halos[halonr].FirstHaloInFOFgroup, ngal, halos, galaxies, run_params);
-                        }
-
                         galaxies[ngal].Type = 1;
                     }
                 } else {
-                    // an orphan satellite galaxy - these will merge or disrupt within the current timestep
+                    // an orphan satellite galaxy - in physics-free mode, just update properties
                     galaxies[ngal].deltaMvir = -1.0*galaxies[ngal].Mvir;
                     galaxies[ngal].Mvir = 0.0;
-
-                    if(galaxies[ngal].MergTime > 999.0 || galaxies[ngal].Type == 0) {
-                        // here the galaxy has gone from type 0 to type 2 - merge it!
-                        galaxies[ngal].MergTime = 0.0;
-
-                        galaxies[ngal].infallMvir = previousMvir;
-                        galaxies[ngal].infallVvir = previousVvir;
-                        galaxies[ngal].infallVmax = previousVmax;
-                    }
-
+                    
+                    galaxies[ngal].infallMvir = previousMvir;
+                    galaxies[ngal].infallVvir = previousVvir;
+                    galaxies[ngal].infallVmax = previousVmax;
+                    
                     galaxies[ngal].Type = 2;
                 }
             }
@@ -496,7 +472,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
     // Main integration steps
     for (int step = 0; step < STEPS; step++) {
         pipeline_ctx.step = step;
-        double dt = ctx.deltaT / STEPS; // Timestep for this sub-step
+        // In physics-free mode, dt calculations are not needed
+        (void)(ctx.deltaT); // Mark as used to avoid unused variable warning
         pipeline_ctx.dt = ctx.deltaT; // Pass the full deltaT to context, modules should use STEPS
 
         // Reset merger queue for this timestep
@@ -507,10 +484,6 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
 
         for (int p = 0; p < ctx.ngal; p++) {
-            // Skip already merged galaxies
-            if (ctx.galaxies[p].mergeType > 0) {
-                continue;
-            }
 
             // Update context for current galaxy
             pipeline_ctx.current_galaxy = p;
@@ -533,24 +506,7 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 return EXIT_FAILURE;
             }
 
-            // Queue potential mergers - with diagnostic tracking
-            if ((ctx.galaxies[p].Type == 1 || ctx.galaxies[p].Type == 2) &&
-                ctx.galaxies[p].mergeType == 0 && ctx.galaxies[p].MergTime < 999.0) {
-
-                // Calculate merger time decrement
-                double mergtime = ctx.galaxies[p].MergTime - dt;
-
-                // Check if merger occurs in this step
-                if (mergtime <= 0.0) {
-                    core_evolution_diagnostics_add_merger_detection(&diag, ctx.galaxies[p].mergeType);
-                    queue_merger_event(&merger_queue, p, ctx.galaxies[p].CentralGal,
-                                     mergtime, ctx.time, dt,
-                                     ctx.centralgal, step, ctx.galaxies[p].mergeType);
-                } else {
-                    // Update remaining merger time if no merger this step
-                    ctx.galaxies[p].MergTime = mergtime;
-                }
-            }
+            // In physics-free mode, no merger processing is performed
         } // End loop over galaxies p
 
         core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_GALAXY);
@@ -642,50 +598,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             haloaux[currenthalo].NGalaxies = 0;
         }
 
-        // Merged galaxies won't be output. So go back through its history and find it
-        // in the previous timestep. Then copy the current merger info there.
-        int offset = 0;
-        int i = p-1;
-        while(i >= 0) {
-            if(ctx.galaxies[i].mergeType > 0) {
-                // Original logic might be flawed if mergeIntoID isn't sequential
-                // Let's assume mergeIntoID refers to the *final* index in the output list
-                // This part might need careful review depending on how mergeIntoID is assigned
-                 if(ctx.galaxies[p].mergeIntoID > ctx.galaxies[i].mergeIntoID && ctx.galaxies[i].mergeIntoID != -1) {
-                     offset++;
-                 }
-            }
-            i--;
-        }
-
-        i = -1;
-        if(ctx.galaxies[p].mergeType > 0) {
-            i = haloaux[currenthalo].FirstGalaxy - 1; // Start searching from the end of the previous halo's galaxies
-            while(i >= 0) {
-                // Compare GalaxyNr as the persistent identifier across snapshots
-                if(halogal[i].GalaxyNr == ctx.galaxies[p].GalaxyNr && halogal[i].SnapNum == ctx.galaxies[p].SnapNum - 1) {
-                    break; // Found the progenitor in the previous snapshot's output list
-                }
-                i--;
-            }
-
-            if(i < 0) {
-                // This case might happen if the progenitor wasn't saved in the previous output snapshot
-                // Or if GalaxyNr isn't reliably unique across snapshots in this context
-                CONTEXT_LOG(&ctx, LOG_LEVEL_WARNING, "Failed to find progenitor galaxy %d in halogal array for merged galaxy %d (HaloNr %d)",
-                            ctx.galaxies[p].GalaxyNr, p, currenthalo);
-                // Continue without updating merger info for the progenitor if not found
-            } else {
-                // Found the progenitor, update its merger info
-                halogal[i].mergeType = ctx.galaxies[p].mergeType;
-                // Adjust mergeIntoID based on the offset calculated
-                // This assumes mergeIntoID refers to the index within the *current* snapshot's output list
-                halogal[i].mergeIntoID = ctx.galaxies[p].mergeIntoID - offset;
-                halogal[i].mergeIntoSnapNum = halos[currenthalo].SnapNum;
-            }
-        }
-
-        if(ctx.galaxies[p].mergeType == 0) { // Only save galaxies that haven't merged
+        // In physics-free mode, save all galaxies without merger processing
+        {
             /* realloc if needed */
             if(*numgals >= (*maxgals - 1)) {
                 // Expand arrays with geometric growth rather than fixed increment

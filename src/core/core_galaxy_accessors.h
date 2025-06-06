@@ -34,9 +34,6 @@ extern int32_t galaxy_get_halo_nr(const struct GALAXY *galaxy);
 extern int32_t galaxy_get_central_gal(const struct GALAXY *galaxy);
 extern long long galaxy_get_most_bound_id(const struct GALAXY *galaxy);
 extern uint64_t galaxy_get_galaxy_index(const struct GALAXY *galaxy);
-extern int32_t galaxy_get_merge_type(const struct GALAXY *galaxy);
-extern int32_t galaxy_get_merge_into_id(const struct GALAXY *galaxy);
-extern float galaxy_get_merge_time(const struct GALAXY *galaxy);
 
 /* Core halo properties */
 extern float galaxy_get_mvir(const struct GALAXY *galaxy);
@@ -55,8 +52,6 @@ extern void galaxy_set_vel_z(struct GALAXY *galaxy, float value);
 
 extern void galaxy_set_snapshot_number(struct GALAXY *galaxy, int32_t value);
 extern void galaxy_set_type(struct GALAXY *galaxy, int32_t value);
-extern void galaxy_set_merge_type(struct GALAXY *galaxy, int32_t value);
-extern void galaxy_set_merge_time(struct GALAXY *galaxy, float value);
 
 #ifdef __cplusplus
 }
