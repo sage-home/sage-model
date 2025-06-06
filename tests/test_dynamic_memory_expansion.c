@@ -149,18 +149,69 @@ static int setup_test_context(void) {
 static void teardown_test_context(void) {
     printf("Starting test cleanup...\n");
     
-    // Minimal cleanup to avoid issues
+    // Clean up test galaxies and their properties
     if (test_ctx.test_galaxies) {
+        // Free any allocated galaxy properties if they were allocated
+        if (test_ctx.property_system_initialized && test_ctx.num_test_galaxies > 0) {
+            printf("Freeing galaxy properties for %d galaxies...\n", test_ctx.num_test_galaxies);
+            for (int i = 0; i < test_ctx.num_test_galaxies; i++) {
+                // NOTE FOR DEVELOPER: If this crashes, check property allocation/deallocation logic
+                free_galaxy_properties(&test_ctx.test_galaxies[i]);
+            }
+        }
+        printf("Freeing test galaxies array...\n");
         free(test_ctx.test_galaxies);
         test_ctx.test_galaxies = NULL;
     }
     
-    // Reset flags without calling cleanup functions that might cause issues
-    test_ctx.property_system_initialized = false;
-    test_ctx.module_system_initialized = false;
-    test_ctx.memory_system_initialized = false;
+    // Clean up module system
+    #ifdef MODULE_SYSTEM_AVAILABLE
+    if (test_ctx.module_system_initialized) {
+        printf("Cleaning up module system...\n");
+        fflush(stdout);  // Force output before potential crash
+        // NOTE FOR DEVELOPER: If the program hangs here, the issue is in module system cleanup
+        // This might be related to module callback or registration cleanup
+        cleanup_module_system();
+        printf("Module system cleanup completed.\n");
+        test_ctx.module_system_initialized = false;
+    }
+    #endif
     
-    printf("Test cleanup completed.\n");
+    // Clean up property system
+    if (test_ctx.property_system_initialized) {
+        printf("Cleaning up property system...\n");
+        fflush(stdout);  // Force output before potential crash
+        // NOTE FOR DEVELOPER: If this hangs/crashes, check property system initialization/cleanup
+        cleanup_property_system();
+        printf("Property system cleanup completed.\n");
+        test_ctx.property_system_initialized = false;
+    }
+    
+    // Clean up memory system - THIS IS WHERE CRASHES ARE LIKELY OCCURRING
+    if (test_ctx.memory_system_initialized) {
+        printf("Cleaning up memory system...\n");
+        fflush(stdout);  // Force output before potential crash
+        // NOTE FOR DEVELOPER: This is where the cleanup failure is happening
+        // Potential causes:
+        // 1. Memory corruption in the block table expansion
+        // 2. Double-free of memory blocks
+        // 3. Use-after-free in memory tracking structures
+        // 4. Incomplete memory bookkeeping during dynamic expansion
+        // 5. Tree-scoped memory cleanup interfering with global cleanup
+        //
+        // Debug with: gdb ./tests/test_dynamic_memory_expansion
+        // Or: valgrind --tool=memcheck ./tests/test_dynamic_memory_expansion
+        //
+        // Check core_mymalloc.c for issues in:
+        // - expand_block_table()
+        // - begin_tree_memory_scope() / end_tree_memory_scope()
+        // - memory_system_cleanup()
+        memory_system_cleanup();
+        printf("Memory system cleanup completed.\n");
+        test_ctx.memory_system_initialized = false;
+    }
+    
+    printf("Test cleanup completed successfully.\n");
 }
 
 //=============================================================================
@@ -650,6 +701,51 @@ static void test_memory_fragmentation_patterns(void) {
 }
 
 /**
+ * Test: Memory system cleanup after heavy usage
+ * This test specifically validates that cleanup works after intensive memory operations
+ */
+static void test_memory_system_cleanup_validation(void) {
+    printf("\n=== Testing memory system cleanup validation ===\n");
+    
+    // Perform intensive memory operations that stress the cleanup system
+    const int num_allocs = 1000;
+    void **ptrs = malloc(num_allocs * sizeof(void*));
+    TEST_ASSERT(ptrs != NULL, "Test array allocation should succeed");
+    
+    // Mix of different allocation sizes
+    for (int i = 0; i < num_allocs; i++) {
+        size_t size = 64 + (i % 1000) * 16; // Variable sizes
+        ptrs[i] = mymalloc(size);
+        TEST_ASSERT(ptrs[i] != NULL, "Memory allocation should succeed");
+    }
+    
+    // Test tree scoping with heavy usage
+    begin_tree_memory_scope();
+    
+    // More allocations within scope
+    void *scope_allocs[100];
+    for (int i = 0; i < 100; i++) {
+        scope_allocs[i] = mymalloc(1024 * (i + 1));
+    }
+    
+    // End scope (this should free scope_allocs automatically)
+    end_tree_memory_scope();
+    
+    // Free regular allocations
+    for (int i = 0; i < num_allocs; i++) {
+        myfree(ptrs[i]);
+    }
+    free(ptrs);
+    
+    // Force memory pressure handling
+    check_memory_pressure_and_expand();
+    
+    printf("Memory system cleanup validation test completed\n");
+    // NOTE FOR DEVELOPER: The actual cleanup test happens in teardown_test_context()
+    // If the test passes but crashes during cleanup, that's where the bug is
+}
+
+/**
  * Test: Memory statistics and monitoring
  */
 static void test_memory_statistics_monitoring(void) {
@@ -714,7 +810,12 @@ int main(int argc, char *argv[]) {
     printf("  9. Scales to large allocation scenarios\n");
     printf(" 10. Handles error conditions and edge cases gracefully\n");
     printf(" 11. Manages memory fragmentation effectively\n");
-    printf(" 12. Provides accurate memory statistics and monitoring\n\n");
+    printf(" 12. Provides accurate memory statistics and monitoring\n");
+    printf(" 13. Properly cleans up after intensive memory operations\n\n");
+    
+    printf("NOTE FOR DEVELOPER: If this test crashes during cleanup at the end,\n");
+    printf("there is a bug in the dynamic memory expansion system cleanup code.\n");
+    printf("See teardown_test_context() for debugging hints and potential causes.\n\n");
 
     // Setup
     if (setup_test_context() != 0) {
@@ -738,7 +839,12 @@ int main(int argc, char *argv[]) {
     test_large_allocation_scenarios();
     test_error_handling_edge_cases();
     test_memory_fragmentation_patterns();
-    test_memory_statistics_monitoring();
+    test_memory_system_cleanup_validation();  // New test for cleanup validation
+    test_memory_statistics_monitoring();      // Restored memory statistics test
+    
+    // NOTE FOR DEVELOPER: If the program crashes AFTER this point,
+    // the issue is in the cleanup code in teardown_test_context()
+    // This is likely a bug in the dynamic memory expansion system
     
     // Teardown
     teardown_test_context();
