@@ -32,6 +32,7 @@
 #include "../src/core/core_property_utils.h"
 #include "../src/core/core_logging.h"
 #include "../src/core/core_mymalloc.h"
+#include "../src/core/core_init.h"
 #include "../src/io/io_galaxy_output.h"
 
 // Test counter for reporting
@@ -171,6 +172,13 @@ static int setup_test_context(void) {
     test_ctx.run_params.runtime.FileNr_Mulfac = 1000000;
     test_ctx.run_params.runtime.ForestNr_Mulfac = 1000000;
     
+    // Allocate memory for Age array (it's a pointer, not a static array)
+    test_ctx.run_params.simulation.Age = malloc(test_ctx.run_params.simulation.SimMaxSnaps * sizeof(double));
+    if (!test_ctx.run_params.simulation.Age) {
+        printf("ERROR: Failed to allocate memory for Age array\n");
+        return -1;
+    }
+    
     // Initialize simulation time arrays to prevent crashes
     for (int snap = 0; snap < test_ctx.run_params.simulation.SimMaxSnaps; snap++) {
         test_ctx.run_params.simulation.ZZ[snap] = 0.0; // z=0 for simplicity
@@ -181,11 +189,44 @@ static int setup_test_context(void) {
     // I/O parameters
     test_ctx.run_params.io.TreeType = lhalo_binary; // Set a specific tree type
     
+    // Initialize core systems that construct_galaxies requires
+    printf("Initializing core systems...\n");
+    
+    // Initialize memory management system
+    initialize_dynamic_memory_system();
+    
+    // Initialize basic units and constants
+    initialize_units(&test_ctx.run_params);
+    
+    // Initialize module system (required for pipeline)
+    if (initialize_module_system(&test_ctx.run_params) != 0) {
+        printf("ERROR: Failed to initialize module system\n");
+        return -1;
+    }
+    
+    // Initialize module callback system
+    initialize_module_callback_system();
+    
+    // Initialize galaxy extension system
+    initialize_galaxy_extension_system();
+    
     // Initialize property system
     if (initialize_property_system(&test_ctx.run_params) != 0) {
         printf("ERROR: Failed to initialize property system\n");
+        cleanup_module_system();
         return -1;
     }
+    
+    // Initialize standard properties
+    initialize_standard_properties(&test_ctx.run_params);
+    
+    // Initialize event system
+    initialize_event_system();
+    
+    // Initialize pipeline system (required for evolve_galaxies)
+    initialize_pipeline_system();
+    
+    printf("Core systems initialized successfully.\n");
     
     // Set up test data sizes
     test_ctx.num_halos = 5;
@@ -274,7 +315,19 @@ static void teardown_test_context(void) {
     
     free_output_arrays(&test_ctx.output_ctx);
     
+    // Free allocated Age array
+    if (test_ctx.run_params.simulation.Age) {
+        free(test_ctx.run_params.simulation.Age);
+        test_ctx.run_params.simulation.Age = NULL;
+    }
+    
     if (test_ctx.setup_complete) {
+        // Cleanup systems in reverse order of initialization
+        cleanup_pipeline_system();
+        cleanup_event_system();
+        cleanup_galaxy_extension_system();
+        cleanup_module_callback_system();
+        cleanup_module_system();
         cleanup_property_system();
         test_ctx.setup_complete = false;
     }
@@ -464,7 +517,7 @@ static void capture_galaxy_snapshots(void) {
         snapshot->original_galaxy_index = galaxy->GalaxyIndex;
         snapshot->original_central_galaxy_index = galaxy->CentralGalaxyIndex;
         
-        printf("  Galaxy %d snapshot: GalaxyNr=%d, Type=%d, Mvir=%.1f, GalaxyIndex=%lu\n",
+        printf("  Galaxy %d snapshot: GalaxyNr=%d, Type=%d, Mvir=%.1f, GalaxyIndex=%" PRIu64 "\n",
                i, snapshot->original_galaxynr, snapshot->original_type, 
                snapshot->original_mvir, snapshot->original_galaxy_index);
     }
@@ -547,7 +600,7 @@ static bool verify_galaxy_integrity(int gal_idx) {
     
     // Check GalaxyIndex for corruption (this was affected by the garbage GalaxyNr issue)
     if (galaxy->GalaxyIndex != snapshot->original_galaxy_index) {
-        printf("ERROR: Galaxy %d GalaxyIndex corrupted: expected %lu, got %lu\n",
+        printf("ERROR: Galaxy %d GalaxyIndex corrupted: expected %" PRIu64 ", got %" PRIu64 "\n",
                gal_idx, snapshot->original_galaxy_index, galaxy->GalaxyIndex);
         integrity_ok = false;
     }
@@ -752,10 +805,10 @@ static void test_galaxy_pipeline_integrity(void) {
         
         // Check GalaxyIndex assignment
         TEST_ASSERT(galaxy->GalaxyIndex > 0,
-                   "Galaxy %d should have positive GalaxyIndex: %lu", i, galaxy->GalaxyIndex);
+                   "Galaxy %d should have positive GalaxyIndex: %" PRIu64, i, galaxy->GalaxyIndex);
         
         TEST_ASSERT(galaxy->CentralGalaxyIndex > 0,
-                   "Galaxy %d should have positive CentralGalaxyIndex: %lu", 
+                   "Galaxy %d should have positive CentralGalaxyIndex: %" PRIu64, 
                    i, galaxy->CentralGalaxyIndex);
     }
     
@@ -791,18 +844,18 @@ static void test_output_serialization_accuracy(void) {
         
         // Test that GalaxyIndex is within reasonable bounds
         TEST_ASSERT(galaxy->GalaxyIndex > 0 && galaxy->GalaxyIndex < UINT64_MAX,
-                   "Galaxy %d should have valid GalaxyIndex: %lu", i, galaxy->GalaxyIndex);
+                   "Galaxy %d should have valid GalaxyIndex: %" PRIu64, i, galaxy->GalaxyIndex);
         
         // Test that CentralGalaxyIndex is valid
         TEST_ASSERT(galaxy->CentralGalaxyIndex > 0 && galaxy->CentralGalaxyIndex < UINT64_MAX,
-                   "Galaxy %d should have valid CentralGalaxyIndex: %lu", i, galaxy->CentralGalaxyIndex);
+                   "Galaxy %d should have valid CentralGalaxyIndex: %" PRIu64, i, galaxy->CentralGalaxyIndex);
         
         // In our test case, all galaxies are central, so indices should be equal
         TEST_ASSERT(galaxy->GalaxyIndex == galaxy->CentralGalaxyIndex,
-                   "Galaxy %d: central galaxy indices should match: %lu != %lu",
+                   "Galaxy %d: central galaxy indices should match: %" PRIu64 " != %" PRIu64,
                    i, galaxy->GalaxyIndex, galaxy->CentralGalaxyIndex);
         
-        printf("  Galaxy %d: GalaxyIndex=%lu, CentralGalaxyIndex=%lu\n",
+        printf("  Galaxy %d: GalaxyIndex=%" PRIu64 ", CentralGalaxyIndex=%" PRIu64 "\n",
                i, galaxy->GalaxyIndex, galaxy->CentralGalaxyIndex);
     }
     
@@ -810,7 +863,7 @@ static void test_output_serialization_accuracy(void) {
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
         for (int j = i + 1; j < test_ctx.num_galaxies; j++) {
             TEST_ASSERT(test_ctx.test_halogal[i].GalaxyIndex != test_ctx.test_halogal[j].GalaxyIndex,
-                       "Galaxies %d and %d should have unique GalaxyIndex: %lu", 
+                       "Galaxies %d and %d should have unique GalaxyIndex: %" PRIu64, 
                        i, j, test_ctx.test_halogal[i].GalaxyIndex);
         }
     }
@@ -859,7 +912,7 @@ static void test_memory_corruption_detection(void) {
         // Check for unreasonable GalaxyIndex values
         if (galaxy->GalaxyIndex == MEMORY_POISON_VALUE_64 ||
             galaxy->GalaxyIndex == 0) {
-            printf("ERROR: Detected corruption in galaxy %d: GalaxyIndex = %lu\n", 
+            printf("ERROR: Detected corruption in galaxy %d: GalaxyIndex = %" PRIu64 "\n", 
                    i, galaxy->GalaxyIndex);
             all_galaxies_clean = false;
         }
