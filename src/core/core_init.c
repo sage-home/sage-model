@@ -575,7 +575,8 @@ bool validate_evolution_context(const struct evolution_context *ctx)
         LOG_ERROR("Invalid central galaxy index: centralgal=%d, ngal=%d", ctx->centralgal, ctx->ngal);
         return false;
     }
-    
+
+
     /* Validate the central galaxy type */
     if (ctx->galaxies[ctx->centralgal].Type != 0) {
         LOG_WARNING("Central galaxy has unexpected type: %d (should be 0)", ctx->galaxies[ctx->centralgal].Type);

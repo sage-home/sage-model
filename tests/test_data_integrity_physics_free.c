@@ -180,10 +180,14 @@ static int setup_test_context(void) {
     }
     
     // Initialize simulation time arrays to prevent crashes
+    // Set up a realistic snapshot list for z=0 (snapshot 63)
+    test_ctx.run_params.simulation.Snaplistlen = 64;  // 64 snapshots total
     for (int snap = 0; snap < test_ctx.run_params.simulation.SimMaxSnaps; snap++) {
-        test_ctx.run_params.simulation.ZZ[snap] = 0.0; // z=0 for simplicity
-        test_ctx.run_params.simulation.Age[snap] = 13.8; // ~13.8 Gyr for z=0
-        test_ctx.run_params.simulation.AA[snap] = 1.0; // Scale factor a=1 for z=0
+        // Create a simple redshift sequence from z=20 (snap 0) to z=0 (snap 63)
+        double redshift = (snap == 63) ? 0.0 : 20.0 - (snap * 20.0 / 62.0);
+        test_ctx.run_params.simulation.ZZ[snap] = redshift;
+        test_ctx.run_params.simulation.AA[snap] = 1.0 / (1.0 + redshift);
+        test_ctx.run_params.simulation.Age[snap] = 13.8 * (snap + 1.0) / 64.0; // Simple age progression
     }
     
     // I/O parameters
@@ -192,8 +196,14 @@ static int setup_test_context(void) {
     // Initialize core systems that construct_galaxies requires
     printf("Initializing core systems...\n");
     
-    // Initialize memory management system
-    initialize_dynamic_memory_system();
+    // Initialize logging system FIRST (required for CONTEXT_LOG macro)
+    if (initialize_logging(&test_ctx.run_params) != 0) {
+        printf("ERROR: Failed to initialize logging system\n");
+        return -1;
+    }
+    
+    // Initialize memory management system (remove if not needed - mymalloc will auto-init)
+    // initialize_dynamic_memory_system();
     
     // Initialize basic units and constants
     initialize_units(&test_ctx.run_params);
@@ -329,6 +339,7 @@ static void teardown_test_context(void) {
         cleanup_module_callback_system();
         cleanup_module_system();
         cleanup_property_system();
+        cleanup_logging();
         test_ctx.setup_complete = false;
     }
     
@@ -434,6 +445,15 @@ static int create_test_galaxies(void) {
         
         if (result != 0) {
             printf("ERROR: construct_galaxies failed for halo %d with result %d\n", halo_idx, result);
+            printf("       This indicates a core infrastructure problem\n");
+            printf("       Check pipeline system initialization and galaxy validation\n");
+            
+            // Add specific debugging for common failure points
+            printf("       Common causes:\n");
+            printf("         - XASSERT failure in init_galaxy (halo FOF group mismatch)\n");
+            printf("         - Central galaxy validation failure in evolve_galaxies\n");
+            printf("         - Pipeline system not properly initialized\n");
+            printf("         - Property allocation failure\n");
             return -1;
         }
         
