@@ -163,7 +163,7 @@ static struct base_module *placeholder_module_factory(void) {
 static void __attribute__((constructor)) register_module_and_factory(void) {
     module_register(&placeholder_module);
     
-    // Register factory with the pipeline registry
+    /* Register factory with the pipeline registry */
     pipeline_register_module_factory(MODULE_TYPE_MISC, 
                                    "placeholder_empty_module", 
                                    placeholder_module_factory);

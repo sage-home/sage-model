@@ -29,7 +29,7 @@ int transform_output_Cooling(const struct GALAXY *galaxy, property_id_t output_p
                             void *output_buffer_element_ptr, const struct params *run_params) {
     
     if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
-        // Property not found, set default
+        /* Property not found, set default */
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
@@ -59,7 +59,7 @@ int transform_output_Heating(const struct GALAXY *galaxy, property_id_t output_p
                            void *output_buffer_element_ptr, const struct params *run_params) {
     
     if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
-        // Property not found, set default
+        /* Property not found, set default */
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
@@ -89,7 +89,7 @@ int transform_output_TimeOfLastMajorMerger(const struct GALAXY *galaxy, property
                                          void *output_buffer_element_ptr, const struct params *run_params) {
     
     if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
-        // Property not found, set default
+        /* Property not found, set default */
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
@@ -113,7 +113,7 @@ int transform_output_TimeOfLastMinorMerger(const struct GALAXY *galaxy, property
                                          void *output_buffer_element_ptr, const struct params *run_params) {
     
     if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
-        // Property not found, set default
+        /* Property not found, set default */
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
@@ -137,7 +137,7 @@ int transform_output_OutflowRate(const struct GALAXY *galaxy, property_id_t outp
                                void *output_buffer_element_ptr, const struct params *run_params) {
     
     if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
-        // Property not found, set default
+        /* Property not found, set default */
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
@@ -162,7 +162,7 @@ int derive_output_SfrDisk(const struct GALAXY *galaxy, property_id_t output_prop
                         void *output_buffer_element_ptr, const struct params *run_params) {
     
     if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
-        // Property not found, set default
+        /* Property not found, set default */
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }
@@ -192,7 +192,7 @@ int derive_output_SfrBulge(const struct GALAXY *galaxy, property_id_t output_pro
                          void *output_buffer_element_ptr, const struct params *run_params) {
     
     if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
-        // Property not found, set default
+        /* Property not found, set default */
         *((float*)output_buffer_element_ptr) = 0.0f;
         return 0;
     }

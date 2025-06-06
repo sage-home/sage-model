@@ -25,7 +25,7 @@ ROOT_DIR := $(if $(ROOT_DIR),$(ROOT_DIR),.)
 LIBFLAGS := -lm
 OPTS := -DROOT_DIR=\'\"${ROOT_DIR}\"\'
 SRC_PREFIX := src
-INCLUDE_DIRS := -I$(ROOT_DIR)/src -I$(ROOT_DIR)/src/core -I$(ROOT_DIR)/tests # Added
+INCLUDE_DIRS := -I$(ROOT_DIR)/src -I$(ROOT_DIR)/src/core -I$(ROOT_DIR)/tests
 
 # -------------- Library Configuration ---------------------
 LIBNAME := sage
@@ -59,8 +59,6 @@ PHYSICS_SRC := physics/physics_output_transformers.c \
                physics/physics_events.c \
                physics/physics_essential_functions.c
 
-# NOTE: placeholder_empty_module.c/.h files remain as template for future physics migration
-# but are not compiled or linked
 
 # I/O source files
 IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
@@ -73,10 +71,8 @@ IO_SRC := io/read_tree_lhalo_binary.c io/read_tree_consistentrees_ascii.c \
 # Combine all library sources
 LIBSRC := $(CORE_SRC) $(PHYSICS_SRC) $(IO_SRC)
 
-# Files in LIBSRC that should NOT have implicit .h dependencies created for LIBINCL
-# because their interfaces are handled by other headers (e.g., core_properties.h for generated_output_transformers.c)
+# Files without corresponding .h headers (interfaces defined elsewhere)
 LIBINCL_FILTER_OUT_IMPLICIT_H := core/generated_output_transformers.c
-# Add other .c files here if they also don't have a corresponding .h and their interface is elsewhere
 
 # Filter these out before applying the pattern to derive .h files
 LIBINCL_FILTERED_SRC_FOR_PATTERN := $(filter-out $(LIBINCL_FILTER_OUT_IMPLICIT_H), $(LIBSRC))
@@ -143,7 +139,6 @@ H5_SRC := io/read_tree_lhalo_hdf5.c io/save_gals_hdf5.c io/read_tree_genesis_hdf
           io/generate_field_metadata.c io/initialize_hdf5_galaxy_files.c \
           io/finalize_hdf5_galaxy_files.c io/save_gals_hdf5_property_utils.c
 
-# H5_INCL := $(H5_SRC:.c=.h)
 H5_INCL := io/read_tree_lhalo_hdf5.h \
            io/save_gals_hdf5.h \
            io/read_tree_genesis_hdf5.h \
@@ -284,7 +279,7 @@ ifeq ($(DO_CHECKS), 1)
 
   # Common compiler flags
   CCFLAGS += -DGNU_SOURCE -std=gnu99 -fPIC -g -Wextra -Wshadow -Wall -Wno-unused-local-typedefs
-  CCFLAGS += $(INCLUDE_DIRS) # Added
+  CCFLAGS += $(INCLUDE_DIRS)
   
   # Platform-specific dynamic library linker flags
   ifeq ($(UNAME), Linux)
@@ -404,14 +399,6 @@ $(SRC_PREFIX)/core/core_properties.h $(SRC_PREFIX)/core/core_properties.c $(SRC_
 # Mark as order-only prerequisites to prevent duplicate generation
 $(OBJS): | $(GENERATED_FILES)
 
-# ---- START DIAGNOSTIC ---- FOR TESTING COMPILE ISSUES
-# $(info --- DIAGNOSTIC ---)
-# $(info Current INCL before prefix: $(INCL)) # INCL is already prefixed here from earlier in the Makefile
-# TEMP_INCL_PREFIXED := $(addprefix $(SRC_PREFIX)/, $(INCL)) # This is the double prefixing
-# $(info Current INCL after prefix: $(TEMP_INCL_PREFIXED))
-# $(foreach H_FILE,$(TEMP_INCL_PREFIXED),$(if $(wildcard $(H_FILE)),,$(warning Missing INCL prerequisite: $(H_FILE))))
-# $(info --- END DIAGNOSTIC ---)
-# ---- END DIAGNOSTIC ----
 
 %.o: %.c $(INCL) Makefile
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -c $< -o $@

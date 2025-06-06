@@ -8,8 +8,6 @@
 #include "core_mymalloc.h"
 #include "core_logging.h"
 
-// Increased from 8192 to provide more memory blocks for galaxy properties
-// Temporarily increased to 50000 to debug memory allocation in physics-free mode
 #define MAXBLOCKS 50000
 
 static long Nblocks = 0;

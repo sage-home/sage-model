@@ -25,8 +25,7 @@
 #include "core_galaxy_accessors.h"  // For galaxy_get_* functions
 #include "core_property_utils.h"    // For get_cached_property_id, set_float_property
 
-// Legacy function forward declarations for temporary compatibility
-// These will be replaced by pipeline modules in the physics-agnostic core
+/* Legacy function forward declarations */
 double estimate_merging_time(const int halonr, const int mostmassive, const int p, struct halo_data *halos, struct GALAXY *galaxies, struct params *run_params);
 double get_virial_mass(const int halonr, struct halo_data *halos, struct params *run_params);
 double get_virial_radius(const int halonr, struct halo_data *halos, struct params *run_params);
@@ -34,12 +33,12 @@ double get_virial_velocity(const int halonr, struct halo_data *halos, struct par
 double get_disk_radius(const int halonr, const int p, struct halo_data *halos, struct GALAXY *galaxies);
 
 
-// Forward declarations for legacy compatibility functions called in fallbacks
+/* Forward declarations for legacy compatibility functions */
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
 void check_disk_instability(const int p, const int centralgal, const int halonr, const double time, const double dt, const int step,
                             struct GALAXY *galaxies, struct params *run_params);
 
-// Forward declaration for init_galaxy function
+/* Forward declaration for init_galaxy function */
 void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_data *halos,
                 struct GALAXY *galaxies, struct params *run_params);
 

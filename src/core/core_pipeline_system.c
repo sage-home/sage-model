@@ -11,25 +11,12 @@
 #include "core_module_callback.h"
 #include "../io/io_property_serialization.h"
 
-/* Macro to suppress unused function warnings for functions needed by external modules */
-#define USED_BY_EXTERNAL_MODULE __attribute__((used))
 
-/* Forward declarations */
-int pipeline_execute_with_callback(
-    struct pipeline_context *context,
-    int caller_id,
-    int callee_id,
-    const char *function_name,
-    void *module_data,
-    int (*func)(void *, struct pipeline_context *)
-);
 
 /**
  * @file core_pipeline_system.c
  * @brief Implementation of the module pipeline system
  */
-
-/* Forward declarations */
 
 /**
  * Execute a pipeline for a specific phase using the provided executor function
@@ -96,10 +83,6 @@ static int pipeline_execute_phase_with_executor(
     return 0;
 }
 
-/* Pipeline event constants (should match definitions in core_event_system.h) */
-#define EVENT_PIPELINE_STEP_STARTED  100
-#define EVENT_PIPELINE_STEP_COMPLETED 101
-#define EVENT_PIPELINE_STEP_ERROR    102
 
 /**
  * Validate phase transition to ensure execution occurs in the correct scientific order
@@ -167,25 +150,13 @@ static const char *pipeline_event_type_names[] = {
 /* Event ID for pipeline events */
 static int pipeline_event_id = -1;
 
-/* Phase name lookup for logging - used for debug outputs */
-#if defined(PIPELINE_DEBUG_LOGGING)
-static const char* phase_names[] = {
-    "HALO",
-    "GALAXY",
-    "POST",
-    "FINAL"
-};
-#endif
-
 /* Static flags to prevent flooding logs with the same message across multiple calls */
-static bool s_logged_missing_module_warning = false;        // Renamed from already_logged_missing_modules
-static bool s_logged_migration_fallback_warning = false;    // Renamed from first_warning
+static bool s_logged_missing_module_warning = false;
+static bool s_logged_migration_fallback_warning = false;
 
 /* Global call stack reference for checking depth */
 extern module_call_stack_t *global_call_stack;
 
-#if defined(PIPELINE_DEBUG_LOGGING)
-#endif
 
 /**
  * Initialize the pipeline system
@@ -837,18 +808,16 @@ int pipeline_execute_custom(
 
         int status = pipeline_get_step_module(step, &module, &module_data);
         if (status != 0) {
-            // TEMPORARY MIGRATION CODE: Fall back to original physics implementation
             if (!s_logged_migration_fallback_warning) {
-                LOG_WARNING("Migration: Using original implementation for step '%s' (module missing)",
+                LOG_WARNING("Module missing for step '%s', using fallback implementation",
                            step->step_name);
-                s_logged_migration_fallback_warning = true; // Log only once globally
+                s_logged_migration_fallback_warning = true;
             } else {
-                LOG_DEBUG("Migration: Using original implementation for step '%s' (module missing)",
+                LOG_DEBUG("Module missing for step '%s', using fallback implementation",
                          step->step_name);
             }
             module = NULL;
             module_data = NULL;
-            /* Continue execution with NULL module - executor must handle this */
         }
 
         LOG_DEBUG("Executing step '%s' with module '%s'",
@@ -1085,9 +1054,6 @@ void pipeline_context_cleanup(struct pipeline_context *context) {
     LOG_DEBUG("Pipeline context cleaned up");
 }
 
-/* Note: The implementation of pipeline_execute_with_callback is now in 
- * physics_pipeline_executor.c to avoid function signature conflicts.
- */
 int pipeline_context_set_data(struct pipeline_context *context, const char *key, double value) {
     if (!context || !key) {
         LOG_ERROR("pipeline_context_set_data: NULL context or key");
