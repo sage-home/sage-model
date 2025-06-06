@@ -16,6 +16,11 @@
 #include <assert.h>
 #include <unistd.h>
 
+/* Mock module types for testing (compatible with core-physics separation) */
+#define MOCK_TYPE_COOLING   601
+#define MOCK_TYPE_INFALL    602
+#define MOCK_TYPE_MISC      603
+
 #include "../src/core/core_module_system.h"
 #include "../src/core/core_module_callback.h"
 #include "../src/core/core_pipeline_system.h"
@@ -217,7 +222,7 @@ static int setup_test_context(void) {
     strcpy(test_ctx.test_module_a.name, "test_module_a");
     strcpy(test_ctx.test_module_a.version, "1.0.0");
     strcpy(test_ctx.test_module_a.author, "Test Suite");
-    test_ctx.test_module_a.type = MODULE_TYPE_COOLING;
+    test_ctx.test_module_a.type = MOCK_TYPE_COOLING;
     test_ctx.test_module_a.initialize = mock_module_init;
     test_ctx.test_module_a.cleanup = mock_module_cleanup;
     test_ctx.test_module_a.execute_halo_phase = mock_module_execute_halo;
@@ -229,7 +234,7 @@ static int setup_test_context(void) {
     strcpy(test_ctx.test_module_b.name, "test_module_b");
     strcpy(test_ctx.test_module_b.version, "2.1.0");
     strcpy(test_ctx.test_module_b.author, "Test Suite");
-    test_ctx.test_module_b.type = MODULE_TYPE_INFALL;
+    test_ctx.test_module_b.type = MOCK_TYPE_INFALL;
     test_ctx.test_module_b.initialize = mock_module_init;
     test_ctx.test_module_b.cleanup = mock_module_cleanup;
     test_ctx.test_module_b.execute_galaxy_phase = mock_module_execute_galaxy;
@@ -238,7 +243,7 @@ static int setup_test_context(void) {
     
     // Setup invalid module for error testing
     strcpy(test_ctx.test_module_invalid.name, "");  // Invalid empty name
-    test_ctx.test_module_invalid.type = MODULE_TYPE_MISC;
+    test_ctx.test_module_invalid.type = MOCK_TYPE_MISC;
     test_ctx.test_module_invalid.initialize = mock_module_init_fail;
     test_ctx.test_module_invalid.cleanup = mock_module_cleanup;
     test_ctx.test_module_invalid.module_id = -1;  // Initialize to unregistered state
@@ -247,7 +252,7 @@ static int setup_test_context(void) {
     strcpy(test_ctx.test_module_temp.name, "test_module_temp");
     strcpy(test_ctx.test_module_temp.version, "1.0.0");
     strcpy(test_ctx.test_module_temp.author, "Test Suite");
-    test_ctx.test_module_temp.type = MODULE_TYPE_MISC;
+    test_ctx.test_module_temp.type = MOCK_TYPE_MISC;
     test_ctx.test_module_temp.initialize = mock_module_init;
     test_ctx.test_module_temp.cleanup = mock_module_cleanup;
     test_ctx.test_module_temp.phases = PIPELINE_PHASE_FINAL;
@@ -504,7 +509,7 @@ static void test_module_invocation_success(void) {
     int result_value = 0;
     void *dummy_context = NULL;
     
-    int status = module_invoke(test_ctx.module_a_id, MODULE_TYPE_COOLING, NULL,
+    int status = module_invoke(test_ctx.module_a_id, MOCK_TYPE_COOLING, NULL,
                              "simple_function", dummy_context, &input_value, &result_value);
     
     // Note: The current module system may not support function invocation without active pipeline
@@ -526,12 +531,12 @@ static void test_module_invocation_invalid(void) {
     void *dummy_context = NULL;
     
     // Test with invalid module ID
-    int status = module_invoke(999, MODULE_TYPE_COOLING, NULL,
+    int status = module_invoke(999, MOCK_TYPE_COOLING, NULL,
                              "simple_function", dummy_context, &input_value, &result_value);
     TEST_ASSERT(status != MODULE_STATUS_SUCCESS, "Invalid module ID should fail");
     
     // Test with invalid function name
-    status = module_invoke(test_ctx.module_a_id, MODULE_TYPE_COOLING, NULL,
+    status = module_invoke(test_ctx.module_a_id, MOCK_TYPE_COOLING, NULL,
                          "nonexistent_function", dummy_context, &input_value, &result_value);
     TEST_ASSERT(status != MODULE_STATUS_SUCCESS, "Invalid function name should fail");
     
@@ -549,7 +554,7 @@ static void test_module_invocation_error_propagation(void) {
     void *dummy_context = NULL;
     
     // Invoke function that always returns error
-    int status = module_invoke(test_ctx.module_b_id, MODULE_TYPE_INFALL, NULL,
+    int status = module_invoke(test_ctx.module_b_id, MOCK_TYPE_INFALL, NULL,
                              "error_function", dummy_context, &input_value, &result_value);
     
     // Test that error conditions are handled (may not propagate due to system state)
@@ -620,7 +625,7 @@ static void test_error_memory_pressure(void) {
     strcpy(memory_test_module.name, "memory_test_unique");
     strcpy(memory_test_module.version, "1.0.0");
     strcpy(memory_test_module.author, "Test Suite");
-    memory_test_module.type = MODULE_TYPE_MISC;
+    memory_test_module.type = MOCK_TYPE_MISC;
     memory_test_module.initialize = mock_module_init_fail;  // This will fail
     memory_test_module.cleanup = mock_module_cleanup;
     memory_test_module.module_id = -1;  // Initialize to unregistered state
@@ -655,7 +660,7 @@ static void test_error_partial_failures(void) {
         snprintf(test_modules[i].name, MAX_MODULE_NAME, "partial_test_%d_%d", unique_counter, i);
         strcpy(test_modules[i].version, "1.0.0");
         strcpy(test_modules[i].author, "Test Suite");
-        test_modules[i].type = MODULE_TYPE_MISC;
+        test_modules[i].type = MOCK_TYPE_MISC;
         test_modules[i].cleanup = mock_module_cleanup;
         test_modules[i].module_id = -1;  // Initialize to unregistered state
         
@@ -734,7 +739,7 @@ static void test_integration_pipeline(void) {
     snprintf(pipeline_module.name, MAX_MODULE_NAME, "pipeline_test_%d", pipeline_counter);
     strcpy(pipeline_module.version, "1.0.0");
     strcpy(pipeline_module.author, "Test Suite");
-    pipeline_module.type = MODULE_TYPE_MISC;
+    pipeline_module.type = MOCK_TYPE_MISC;
     pipeline_module.initialize = mock_module_init;
     pipeline_module.cleanup = mock_module_cleanup;
     pipeline_module.execute_halo_phase = mock_module_execute_halo;
@@ -752,7 +757,7 @@ static void test_integration_pipeline(void) {
         TEST_ASSERT(result == MODULE_STATUS_SUCCESS, "Pipeline module initialization should succeed");
         
         // Add module to pipeline
-        result = pipeline_add_step(test_ctx.test_pipeline, MODULE_TYPE_MISC, 
+        result = pipeline_add_step(test_ctx.test_pipeline, MOCK_TYPE_MISC, 
                                  pipeline_module.name, pipeline_module.name, true, false);
         TEST_ASSERT(result == 0, "Adding module to pipeline should succeed");
         
@@ -784,7 +789,7 @@ static void test_integration_complete_lifecycle(void) {
     snprintf(lifecycle_module.name, MAX_MODULE_NAME, "lifecycle_test_%d", lifecycle_counter);
     strcpy(lifecycle_module.version, "1.0.0");
     strcpy(lifecycle_module.author, "Test Suite");
-    lifecycle_module.type = MODULE_TYPE_MISC;
+    lifecycle_module.type = MOCK_TYPE_MISC;
     lifecycle_module.initialize = mock_module_init;
     lifecycle_module.cleanup = mock_module_cleanup;
     lifecycle_module.phases = PIPELINE_PHASE_GALAXY;
@@ -810,7 +815,7 @@ static void test_integration_complete_lifecycle(void) {
         int input_value = 10;
         int result_value = 0;
         void *dummy_context = NULL;
-        result = module_invoke(lifecycle_module.module_id, MODULE_TYPE_MISC, NULL,
+        result = module_invoke(lifecycle_module.module_id, MOCK_TYPE_MISC, NULL,
                              "lifecycle_function", dummy_context, &input_value, &result_value);
         
         // Note: Function invocation may not work without active pipeline, but test should not crash

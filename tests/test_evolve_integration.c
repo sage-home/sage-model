@@ -24,6 +24,12 @@
 #include <assert.h>
 #include <stdbool.h>
 
+/* Mock module types for testing (compatible with core-physics separation) */
+#define MOCK_TYPE_INFALL    201
+#define MOCK_TYPE_COOLING   202  
+#define MOCK_TYPE_MERGERS   203
+#define MOCK_TYPE_MISC      204
+
 /* Core system headers */
 #include "../src/core/core_allvars.h"
 #include "../src/core/core_module_system.h"
@@ -195,7 +201,7 @@ static int mock_multi_phase_module_init_actual(struct params *p, void **md) {
 /* Mock module for HALO phase only */
 struct base_module mock_infall_module = {
     .name = "MockInfall", .version = "1.0.0", .author = "Test Author", .module_id = -1,
-    .type = MODULE_TYPE_INFALL, .phases = PIPELINE_PHASE_HALO,
+    .type = MOCK_TYPE_INFALL, .phases = PIPELINE_PHASE_HALO,
     .initialize = mock_infall_module_init_actual, 
     .cleanup = mock_module_cleanup,
     .execute_halo_phase = mock_halo_execute
@@ -204,7 +210,7 @@ struct base_module mock_infall_module = {
 /* Mock module for GALAXY phase only */
 struct base_module mock_galaxy_module = {
     .name = "MockGalaxy", .version = "1.0.0", .author = "Test Author", .module_id = -1,
-    .type = MODULE_TYPE_COOLING, .phases = PIPELINE_PHASE_GALAXY,
+    .type = MOCK_TYPE_COOLING, .phases = PIPELINE_PHASE_GALAXY,
     .initialize = mock_galaxy_module_init_actual, 
     .cleanup = mock_module_cleanup,
     .execute_galaxy_phase = mock_galaxy_execute
@@ -213,7 +219,7 @@ struct base_module mock_galaxy_module = {
 /* Mock module for POST phase only */
 struct base_module mock_post_module = {
     .name = "MockPost", .version = "1.0.0", .author = "Test Author", .module_id = -1,
-    .type = MODULE_TYPE_MERGERS, .phases = PIPELINE_PHASE_POST,
+    .type = MOCK_TYPE_MERGERS, .phases = PIPELINE_PHASE_POST,
     .initialize = mock_post_module_init_actual, 
     .cleanup = mock_module_cleanup,
     .execute_post_phase = mock_post_execute
@@ -222,7 +228,7 @@ struct base_module mock_post_module = {
 /* Mock module for FINAL phase only */
 struct base_module mock_final_module = {
     .name = "MockFinal", .version = "1.0.0", .author = "Test Author", .module_id = -1,
-    .type = MODULE_TYPE_MISC, .phases = PIPELINE_PHASE_FINAL,
+    .type = MOCK_TYPE_MISC, .phases = PIPELINE_PHASE_FINAL,
     .initialize = mock_final_module_init_actual, 
     .cleanup = mock_module_cleanup,
     .execute_final_phase = mock_final_execute
@@ -231,7 +237,7 @@ struct base_module mock_final_module = {
 /* Mock module for multiple phases */
 struct base_module mock_multi_phase_module = {
     .name = "MockMultiPhase", .version = "1.0.0", .author = "Test Author", .module_id = -1,
-    .type = MODULE_TYPE_MISC, .phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY,
+    .type = MOCK_TYPE_MISC, .phases = PIPELINE_PHASE_HALO | PIPELINE_PHASE_GALAXY,
     .initialize = mock_multi_phase_module_init_actual, 
     .cleanup = mock_module_cleanup,
     .execute_halo_phase = mock_halo_execute, .execute_galaxy_phase = mock_galaxy_execute

@@ -14,6 +14,11 @@
 #include <string.h>
 #include <assert.h>
 
+/* Mock module types for testing (compatible with core-physics separation) */
+#define MOCK_TYPE_COOLING   401
+#define MOCK_TYPE_INFALL    402  
+#define MOCK_TYPE_MISC      403
+
 #include "../src/core/core_logging.h"
 #include "../src/core/core_event_system.h"
 #include "../src/core/core_pipeline_system.h"
@@ -140,7 +145,7 @@ static struct base_module test_cooling_module = {
     .name = "TestCooling",
     .version = "1.0.0",
     .author = "Test Suite",
-    .type = MODULE_TYPE_COOLING,
+    .type = MOCK_TYPE_COOLING,
     .initialize = cooling_module_init,
     .cleanup = cooling_module_cleanup,
     .execute_halo_phase = cooling_execute_halo,
@@ -152,7 +157,7 @@ static struct base_module test_infall_module = {
     .name = "TestInfall",
     .version = "1.0.0",
     .author = "Test Suite",
-    .type = MODULE_TYPE_INFALL,
+    .type = MOCK_TYPE_INFALL,
     .initialize = infall_module_init,
     .cleanup = infall_module_cleanup,
     .execute_galaxy_phase = infall_execute_galaxy,
@@ -164,7 +169,7 @@ static struct base_module test_output_module = {
     .name = "TestOutput",
     .version = "1.0.0",
     .author = "Test Suite",
-    .type = MODULE_TYPE_MISC,
+    .type = MOCK_TYPE_MISC,
     .initialize = output_module_init,
     .cleanup = output_module_cleanup,
     .execute_final_phase = output_execute_final,
@@ -322,13 +327,13 @@ static void test_pipeline_creation(void) {
     TEST_ASSERT(test_ctx.pipeline != NULL, "Pipeline should be created successfully");
     
     // Add modules to pipeline
-    int status = pipeline_add_step(test_ctx.pipeline, MODULE_TYPE_COOLING, NULL, "cooling_step", true, false);
+    int status = pipeline_add_step(test_ctx.pipeline, MOCK_TYPE_COOLING, NULL, "cooling_step", true, false);
     TEST_ASSERT(status == 0, "Adding cooling step should succeed");
     
-    status = pipeline_add_step(test_ctx.pipeline, MODULE_TYPE_INFALL, NULL, "infall_step", true, false);
+    status = pipeline_add_step(test_ctx.pipeline, MOCK_TYPE_INFALL, NULL, "infall_step", true, false);
     TEST_ASSERT(status == 0, "Adding infall step should succeed");
     
-    status = pipeline_add_step(test_ctx.pipeline, MODULE_TYPE_MISC, NULL, "output_step", true, false);
+    status = pipeline_add_step(test_ctx.pipeline, MOCK_TYPE_MISC, NULL, "output_step", true, false);
     TEST_ASSERT(status == 0, "Adding output step should succeed");
     
     // Verify pipeline configuration
@@ -338,7 +343,7 @@ static void test_pipeline_creation(void) {
     pipeline_set_global(test_ctx.pipeline);
     
     // Test invalid pipeline step addition
-    status = pipeline_add_step(NULL, MODULE_TYPE_COOLING, NULL, "invalid_step", true, false);
+    status = pipeline_add_step(NULL, MOCK_TYPE_COOLING, NULL, "invalid_step", true, false);
     TEST_ASSERT(status != 0, "Adding step to NULL pipeline should fail");
 }
 static void test_dependency_system(void) {
@@ -347,7 +352,7 @@ static void test_dependency_system(void) {
     // Declare dependencies
     int status = module_declare_simple_dependency(
         0, // Test harness as caller
-        MODULE_TYPE_COOLING,
+        MOCK_TYPE_COOLING,
         NULL, // Any cooling module
         true  // Required dependency
     );
@@ -355,7 +360,7 @@ static void test_dependency_system(void) {
     
     status = module_declare_simple_dependency(
         0, // Test harness as caller
-        MODULE_TYPE_INFALL,
+        MOCK_TYPE_INFALL,
         NULL, // Any infall module
         false // Optional dependency
     );
@@ -445,7 +450,7 @@ static void test_module_callback_invocation(void) {
     double cooling_result = 0.0;
     int status = module_invoke(
         0, // Caller ID
-        MODULE_TYPE_COOLING,
+        MOCK_TYPE_COOLING,
         NULL, // Use active module
         "calculate_cooling",
         &test_ctx.context,
@@ -460,7 +465,7 @@ static void test_module_callback_invocation(void) {
     double infall_result = 0.0;
     status = module_invoke(
         0, // Caller ID
-        MODULE_TYPE_INFALL,
+        MOCK_TYPE_INFALL,
         NULL, // Use active module
         "calculate_infall",
         &test_ctx.context,
@@ -474,7 +479,7 @@ static void test_module_callback_invocation(void) {
     // Test invalid function invocation
     status = module_invoke(
         0,
-        MODULE_TYPE_COOLING,
+        MOCK_TYPE_COOLING,
         NULL,
         "non_existent_function",
         &test_ctx.context,

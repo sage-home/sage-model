@@ -12,6 +12,9 @@
 #include <assert.h>
 #include <math.h>
 
+/* Mock module types for testing (compatible with core-physics separation) */
+#define MOCK_TYPE_MERGERS   301
+
 #include "core/core_merger_processor.h"
 #include "core/core_merger_queue.h"
 #include "core/core_allvars.h"
@@ -115,7 +118,7 @@ static int mock_disruption_initialize(struct params *run_params, void **module_d
 // Mock module definitions
 static struct base_module mock_merger_module = {
     .name = "MockMergerModule",
-    .type = MODULE_TYPE_MERGERS,
+    .type = MOCK_TYPE_MERGERS,
     .version = "1.0.0",
     .author = "Test Suite",
     .module_id = -1, // Let module_register() assign this dynamically
@@ -128,7 +131,7 @@ static struct base_module mock_merger_module = {
 
 static struct base_module mock_disruption_module = {
     .name = "MockDisruptionModule", 
-    .type = MODULE_TYPE_MERGERS,
+    .type = MOCK_TYPE_MERGERS,
     .version = "1.0.0",
     .author = "Test Suite",
     .module_id = -1, // Let module_register() assign this dynamically
@@ -142,7 +145,7 @@ static struct base_module mock_disruption_module = {
 // Additional mock modules for error testing
 static struct base_module mock_error_merger_module = {
     .name = "MockErrorMergerModule",
-    .type = MODULE_TYPE_MERGERS,
+    .type = MOCK_TYPE_MERGERS,
     .version = "1.0.0",
     .author = "Test Suite",
     .module_id = -1, // Let module_register() assign this dynamically
@@ -155,7 +158,7 @@ static struct base_module mock_error_merger_module = {
 
 static struct base_module mock_error_disruption_module = {
     .name = "MockErrorDisruptionModule", 
-    .type = MODULE_TYPE_MERGERS,
+    .type = MOCK_TYPE_MERGERS,
     .version = "1.0.0",
     .author = "Test Suite",
     .module_id = -1, // Let module_register() assign this dynamically

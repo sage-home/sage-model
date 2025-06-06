@@ -11,6 +11,11 @@
 #include <string.h>
 #include <assert.h>
 
+/* Mock module types for testing (compatible with core-physics separation) */
+#define MOCK_TYPE_MISC      501
+#define MOCK_TYPE_COOLING   502
+#define MOCK_TYPE_INFALL    503
+
 #include "../src/core/core_module_callback.h"
 #include "../src/core/core_module_system.h"
 #include "../src/core/core_logging.h"
@@ -85,7 +90,7 @@ static int mock_function_a_calls_b(void *args, void *context) {
     
     // Call function in module B (should call mock_function_b_calls_c for circular dependency test)
     int temp_result = 0;
-    int status = module_invoke(test_ctx.module_a_id, MODULE_TYPE_COOLING, NULL, 
+    int status = module_invoke(test_ctx.module_a_id, MOCK_TYPE_COOLING, NULL, 
                              "mock_function_b_calls_c", context, int_args, &temp_result);
     
     if (status != 0) {
@@ -110,7 +115,7 @@ static int mock_function_b_calls_c(void *args, void *context) {
     
     // Call function in module C (should call mock_function_c_calls_a for circular dependency)
     int temp_result = 0;
-    int status = module_invoke(test_ctx.module_b_id, MODULE_TYPE_INFALL, NULL,
+    int status = module_invoke(test_ctx.module_b_id, MOCK_TYPE_INFALL, NULL,
                              "mock_function_c_calls_a", context, int_args, &temp_result);
     
     if (status != 0) {
@@ -135,7 +140,7 @@ static int mock_function_c_calls_a(void *args, void *context) {
     
     // Call function in module A (creates A->B->C->A circular dependency)
     int temp_result = 0;
-    int status = module_invoke(test_ctx.module_c_id, MODULE_TYPE_MISC, NULL,
+    int status = module_invoke(test_ctx.module_c_id, MOCK_TYPE_MISC, NULL,
                              "mock_function_a", context, int_args, &temp_result);
     
     if (status != 0) {
@@ -159,7 +164,7 @@ static int mock_function_error(void *args __attribute__((unused)), void *context
 static int mock_function_calls_error(void *args, void *context) {
     // Call error function and propagate its error
     int temp_result = 0;
-    int status = module_invoke(test_ctx.module_b_id, MODULE_TYPE_MISC, NULL,
+    int status = module_invoke(test_ctx.module_b_id, MOCK_TYPE_MISC, NULL,
                         "function_a_error", context, args, &temp_result);
     return status;  // Propagate the error status
 }
@@ -180,7 +185,7 @@ static int mock_temp_function_complex(void *args, void *context) {
     
     // Call the simple function in the same module
     // Important: Use system caller (-1) instead of module_temp_id for safer cleanup
-    int status = module_invoke(-1, MODULE_TYPE_MISC, "module_temp", 
+    int status = module_invoke(-1, MOCK_TYPE_MISC, "module_temp", 
                              "temp_simple", context, int_args, &temp_result);
     
     if (status != 0) {
@@ -213,28 +218,28 @@ static int setup_test_context(void) {
     strcpy(test_ctx.module_a.name, "module_a");
     strcpy(test_ctx.module_a.version, "1.0.0");
     strcpy(test_ctx.module_a.author, "Test Author");
-    test_ctx.module_a.type = MODULE_TYPE_MISC;
+    test_ctx.module_a.type = MOCK_TYPE_MISC;
     test_ctx.module_a.initialize = mock_module_initialize;
     test_ctx.module_a.cleanup = mock_module_cleanup;
     
     strcpy(test_ctx.module_b.name, "module_b");
     strcpy(test_ctx.module_b.version, "1.0.0");
     strcpy(test_ctx.module_b.author, "Test Author");
-    test_ctx.module_b.type = MODULE_TYPE_COOLING;
+    test_ctx.module_b.type = MOCK_TYPE_COOLING;
     test_ctx.module_b.initialize = mock_module_initialize;
     test_ctx.module_b.cleanup = mock_module_cleanup;
     
     strcpy(test_ctx.module_c.name, "module_c");
     strcpy(test_ctx.module_c.version, "1.0.0");
     strcpy(test_ctx.module_c.author, "Test Author");
-    test_ctx.module_c.type = MODULE_TYPE_INFALL;
+    test_ctx.module_c.type = MOCK_TYPE_INFALL;
     test_ctx.module_c.initialize = mock_module_initialize;
     test_ctx.module_c.cleanup = mock_module_cleanup;
     
     strcpy(test_ctx.module_temp.name, "module_temp");
     strcpy(test_ctx.module_temp.version, "1.0.0");
     strcpy(test_ctx.module_temp.author, "Test Author");
-    test_ctx.module_temp.type = MODULE_TYPE_MISC;
+    test_ctx.module_temp.type = MOCK_TYPE_MISC;
     test_ctx.module_temp.initialize = mock_module_initialize;
     test_ctx.module_temp.cleanup = mock_module_cleanup;
     
@@ -352,37 +357,37 @@ static int setup_test_context(void) {
     printf("Declaring dependencies...\n");
     
     // Module A depends on Module B for cooling calls (optional for testing)
-    result = module_declare_simple_dependency(test_ctx.module_a_id, MODULE_TYPE_COOLING, NULL, false);
+    result = module_declare_simple_dependency(test_ctx.module_a_id, MOCK_TYPE_COOLING, NULL, false);
     if (result != 0) {
         printf("Warning: Failed to declare dependency A->B: %d\n", result);
     }
     
     // Module A can call itself (optional for testing)
-    result = module_declare_simple_dependency(test_ctx.module_a_id, MODULE_TYPE_MISC, NULL, false);
+    result = module_declare_simple_dependency(test_ctx.module_a_id, MOCK_TYPE_MISC, NULL, false);
     if (result != 0) {
         printf("Warning: Failed to declare self-dependency A->A: %d\n", result);
     }
     
     // Module B depends on Module C for infall calls (optional for testing)
-    result = module_declare_simple_dependency(test_ctx.module_b_id, MODULE_TYPE_INFALL, NULL, false);
+    result = module_declare_simple_dependency(test_ctx.module_b_id, MOCK_TYPE_INFALL, NULL, false);
     if (result != 0) {
         printf("Warning: Failed to declare dependency B->C: %d\n", result);
     }
     
     // Module B can call itself (optional for testing)
-    result = module_declare_simple_dependency(test_ctx.module_b_id, MODULE_TYPE_COOLING, NULL, false);
+    result = module_declare_simple_dependency(test_ctx.module_b_id, MOCK_TYPE_COOLING, NULL, false);
     if (result != 0) {
         printf("Warning: Failed to declare self-dependency B->B: %d\n", result);
     }
     
     // Module C depends on Module A for misc calls (optional for testing)
-    result = module_declare_simple_dependency(test_ctx.module_c_id, MODULE_TYPE_MISC, NULL, false);
+    result = module_declare_simple_dependency(test_ctx.module_c_id, MOCK_TYPE_MISC, NULL, false);
     if (result != 0) {
         printf("Warning: Failed to declare dependency C->A: %d\n", result);
     }
     
     // Module temp can call itself (required for temp_complex -> temp_simple)
-    result = module_declare_simple_dependency(test_ctx.module_temp_id, MODULE_TYPE_MISC, NULL, false);
+    result = module_declare_simple_dependency(test_ctx.module_temp_id, MOCK_TYPE_MISC, NULL, false);
     if (result != 0) {
         printf("Warning: Failed to declare self-dependency temp->temp: %d\n", result);
     }
@@ -562,7 +567,7 @@ static void test_complex_circular_dependency(void) {
     
     // This should detect the circular dependency
     // Call from external context to module A's function, which will call B, then C, then back to A
-    int result = module_invoke(-1, MODULE_TYPE_MISC, NULL,
+    int result = module_invoke(-1, MOCK_TYPE_MISC, NULL,
                              "mock_function_a_calls_b", context, &arg, &result_val);
     
     // The implementation no longer detects this as a circular dependency because we allow self-calls
@@ -592,7 +597,7 @@ static void test_parameter_passing(void) {
                            FUNCTION_TYPE_INT, NULL, NULL);
     
     // Declare self-dependency for module A
-    module_declare_simple_dependency(test_ctx.module_a_id, MODULE_TYPE_MISC, NULL, false);
+    module_declare_simple_dependency(test_ctx.module_a_id, MOCK_TYPE_MISC, NULL, false);
     
     // Create test parameters
     int input = 5;
@@ -600,7 +605,7 @@ static void test_parameter_passing(void) {
     void *context = NULL;
     
     // Call the function
-    int result = module_invoke(-1, MODULE_TYPE_MISC, NULL,
+    int result = module_invoke(-1, MOCK_TYPE_MISC, NULL,
                              "calculation", context, &input, &output);
     TEST_ASSERT(result == 0, "module_invoke should succeed with valid parameters");
     
@@ -609,7 +614,7 @@ static void test_parameter_passing(void) {
     
     // Test with NULL parameters - this is allowed but depends on function implementation
     int output2 = 0;
-    result = module_invoke(-1, MODULE_TYPE_MISC, NULL,
+    result = module_invoke(-1, MOCK_TYPE_MISC, NULL,
                          "calculation", context, &input, &output2);
     TEST_ASSERT(result == 0, "module_invoke should succeed with valid parameters");
     
@@ -630,7 +635,7 @@ static void test_error_propagation(void) {
                            mock_function_calls_error, FUNCTION_TYPE_INT, NULL, NULL);
     
     // Declare dependencies for the error propagation test
-    module_declare_simple_dependency(test_ctx.module_b_id, MODULE_TYPE_MISC, NULL, false);
+    module_declare_simple_dependency(test_ctx.module_b_id, MOCK_TYPE_MISC, NULL, false);
     
     // Set up parameters
     int input = 5;
@@ -638,7 +643,7 @@ static void test_error_propagation(void) {
     void *context = NULL;
     
     // Call function_b_calls_a which should propagate error from function_a_error
-    int result = module_invoke(-1, MODULE_TYPE_COOLING, NULL,
+    int result = module_invoke(-1, MOCK_TYPE_COOLING, NULL,
                              "function_b_calls_a", context, &input, &output);
     TEST_ASSERT(result != 0, "Error should be propagated through the call chain");
     
@@ -661,11 +666,11 @@ static void test_dependency_management(void) {
     printf("\n=== Testing dependency declaration and validation ===\n");
     
     // Declare a simple dependency
-    int result = module_declare_simple_dependency(test_ctx.module_a_id, MODULE_TYPE_COOLING, NULL, true);
+    int result = module_declare_simple_dependency(test_ctx.module_a_id, MOCK_TYPE_COOLING, NULL, true);
     TEST_ASSERT(result == 0, "module_declare_simple_dependency should succeed");
     
     // Declare dependency with version constraints
-    result = module_declare_dependency(test_ctx.module_b_id, MODULE_TYPE_INFALL, NULL, true, 
+    result = module_declare_dependency(test_ctx.module_b_id, MOCK_TYPE_INFALL, NULL, true, 
                                      "1.0.0", "2.0.0", false);
     TEST_ASSERT(result == 0, "module_declare_dependency should succeed with version constraints");
     
@@ -730,13 +735,13 @@ static void test_module_unregistration(void) {
     void *context = NULL;
     
     // Test simple function (should return input + 10 = 15)
-    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "temp_simple", context, &input, &output);
+    result = module_invoke(-1, MOCK_TYPE_MISC, NULL, "temp_simple", context, &input, &output);
     TEST_ASSERT(result == 0, "temp_simple should be callable before module unregistration");
     TEST_ASSERT(output == 15, "temp_simple should return correct result (5 + 10 = 15)");
     
     // Test complex function (should call temp_simple then add 5, so 5 + 10 + 5 = 20)
     output = 0;
-    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "temp_complex", context, &input, &output);
+    result = module_invoke(-1, MOCK_TYPE_MISC, NULL, "temp_complex", context, &input, &output);
     TEST_ASSERT(result == 0, "temp_complex should be callable before module unregistration");
     TEST_ASSERT(output == 20, "temp_complex should return correct result (5 + 10 + 5 = 20)");
     
@@ -747,11 +752,11 @@ static void test_module_unregistration(void) {
     
     // Test that functions can no longer be called after module unregistration
     output = 0;
-    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "temp_simple", context, &input, &output);
+    result = module_invoke(-1, MOCK_TYPE_MISC, NULL, "temp_simple", context, &input, &output);
     TEST_ASSERT(result != 0, "temp_simple should fail after module unregistration");
     
     output = 0;
-    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "temp_complex", context, &input, &output);
+    result = module_invoke(-1, MOCK_TYPE_MISC, NULL, "temp_complex", context, &input, &output);
     TEST_ASSERT(result != 0, "temp_complex should fail after module unregistration");
     
     // Test that trying to call with the specific module ID also fails
@@ -769,7 +774,7 @@ static void test_module_unregistration(void) {
     TEST_ASSERT(module_ptr == NULL, "Module pointer should be NULL for unregistered module");
     
     // Now use a safe system call (-1) but specify the name that should not exist
-    result = module_invoke(-1, MODULE_TYPE_MISC, "module_temp", "temp_simple", context, &input, &output);
+    result = module_invoke(-1, MOCK_TYPE_MISC, "module_temp", "temp_simple", context, &input, &output);
     TEST_ASSERT(result != 0, "Call with unregistered module name should fail");
     
     // Verify that the call stack remains clean after failed invocations
@@ -781,7 +786,7 @@ static void test_module_unregistration(void) {
                            mock_function_a, FUNCTION_TYPE_INT, NULL, NULL);
     
     output = 0;
-    result = module_invoke(-1, MODULE_TYPE_MISC, NULL, "test_after_unregister", context, &input, &output);
+    result = module_invoke(-1, MOCK_TYPE_MISC, NULL, "test_after_unregister", context, &input, &output);
     TEST_ASSERT(result == 0, "Other modules should still work after temp module unregistration");
     TEST_ASSERT(output == 6, "Other modules should return correct results (5 + 1 = 6)");
     

@@ -33,6 +33,11 @@
 #define MOCK_DISABLED_ID    (MOCK_MODULE_ID_BASE + 3)
 #define CLEANUP_DELAY_NS    100000000
 
+// Mock module types for testing (compatible with core-physics separation)
+#define MOCK_TYPE_A         101
+#define MOCK_TYPE_B         102  
+#define MOCK_TYPE_C         103
+
 // Test counters
 static int tests_run = 0;
 static int tests_passed = 0;
@@ -65,19 +70,19 @@ static int mock_cleanup(void *data) {
 // Mock module definitions
 static struct base_module mock_infall_module = {
     .name = "MockInfall", .version = "1.0", .author = "Test",
-    .module_id = MOCK_INFALL_ID, .type = MODULE_TYPE_INFALL,
+    .module_id = MOCK_INFALL_ID, .type = MOCK_TYPE_A,
     .initialize = mock_initialize, .cleanup = mock_cleanup
 };
 
 static struct base_module mock_cooling_module = {
     .name = "MockCooling", .version = "1.0", .author = "Test", 
-    .module_id = MOCK_COOLING_ID, .type = MODULE_TYPE_COOLING,
+    .module_id = MOCK_COOLING_ID, .type = MOCK_TYPE_B,
     .initialize = mock_initialize, .cleanup = mock_cleanup
 };
 
 static struct base_module mock_disabled_module = {
     .name = "MockDisabled", .version = "1.0", .author = "Test",
-    .module_id = MOCK_DISABLED_ID, .type = MODULE_TYPE_MISC,
+    .module_id = MOCK_DISABLED_ID, .type = MOCK_TYPE_C,
     .initialize = mock_initialize, .cleanup = mock_cleanup
 };
 
@@ -141,12 +146,12 @@ static void teardown_test_systems(void) {
 
 // Helper to register and initialize modules
 static int register_and_initialize_modules(bool include_disabled) {
-    TEST_ASSERT(pipeline_register_module_factory(MODULE_TYPE_COOLING, "MockCooling", mock_cooling_factory) >= 0,
+    TEST_ASSERT(pipeline_register_module_factory(MOCK_TYPE_B, "MockCooling", mock_cooling_factory) >= 0,
                 "MockCooling factory registration should succeed");
-    TEST_ASSERT(pipeline_register_module_factory(MODULE_TYPE_INFALL, "MockInfall", mock_infall_factory) >= 0,
+    TEST_ASSERT(pipeline_register_module_factory(MOCK_TYPE_A, "MockInfall", mock_infall_factory) >= 0,
                 "MockInfall factory registration should succeed");
     if (include_disabled) {
-        TEST_ASSERT(pipeline_register_module_factory(MODULE_TYPE_MISC, "MockDisabled", mock_disabled_factory) >= 0,
+        TEST_ASSERT(pipeline_register_module_factory(MOCK_TYPE_C, "MockDisabled", mock_disabled_factory) >= 0,
                     "MockDisabled factory registration should succeed");
     }
     
@@ -187,15 +192,15 @@ static void validate_pipeline_modules(struct module_pipeline *pipeline, bool sho
     for (int i = 0; i < pipeline->num_steps; i++) {
         printf("Step %d: type=%d, name=%s\n", i, pipeline->steps[i].type, pipeline->steps[i].module_name);
         
-        if (pipeline->steps[i].type == MODULE_TYPE_INFALL && 
+        if (pipeline->steps[i].type == MOCK_TYPE_A && 
             strcmp(pipeline->steps[i].module_name, "MockInfall") == 0) {
             found_infall = true;
         }
-        if (pipeline->steps[i].type == MODULE_TYPE_COOLING && 
+        if (pipeline->steps[i].type == MOCK_TYPE_B && 
             strcmp(pipeline->steps[i].module_name, "MockCooling") == 0) {
             found_cooling = true;
         }
-        if (pipeline->steps[i].type == MODULE_TYPE_MISC && 
+        if (pipeline->steps[i].type == MOCK_TYPE_C && 
             strcmp(pipeline->steps[i].module_name, "MockDisabled") == 0) {
             found_disabled = true;
         }
@@ -322,13 +327,13 @@ static void test_no_modules_registered(void) {
 static void test_module_type_validation(void) {
     printf("\n=== Testing module type validation ===\n");
     
-    TEST_ASSERT(MODULE_TYPE_INFALL == 8, "MODULE_TYPE_INFALL should have expected value");
-    TEST_ASSERT(MODULE_TYPE_COOLING == 1, "MODULE_TYPE_COOLING should have expected value");
-    TEST_ASSERT(MODULE_TYPE_MISC == 9, "MODULE_TYPE_MISC should have expected value");
+    TEST_ASSERT(MOCK_TYPE_A == 101, "MOCK_TYPE_A should have expected value");
+    TEST_ASSERT(MOCK_TYPE_B == 102, "MOCK_TYPE_B should have expected value");
+    TEST_ASSERT(MOCK_TYPE_C == 103, "MOCK_TYPE_C should have expected value");
     
-    TEST_ASSERT(mock_infall_module.type == MODULE_TYPE_INFALL, "Mock infall module should have correct type");
-    TEST_ASSERT(mock_cooling_module.type == MODULE_TYPE_COOLING, "Mock cooling module should have correct type");
-    TEST_ASSERT(mock_disabled_module.type == MODULE_TYPE_MISC, "Mock disabled module should have correct type");
+    TEST_ASSERT(mock_infall_module.type == MOCK_TYPE_A, "Mock infall module should have correct type");
+    TEST_ASSERT(mock_cooling_module.type == MOCK_TYPE_B, "Mock cooling module should have correct type");
+    TEST_ASSERT(mock_disabled_module.type == MOCK_TYPE_C, "Mock disabled module should have correct type");
 }
 
 //=============================================================================

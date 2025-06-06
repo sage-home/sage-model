@@ -193,8 +193,9 @@ static int verify_module_system_physics_free(void) {
         struct base_module *module = registry->modules[i].module;
         if (module == NULL) continue;
         
-        /* Check if this is a physics module */
-        if (module->type >= MODULE_TYPE_COOLING && module->type <= MODULE_TYPE_MERGERS) {
+        /* Check if this is a physics module by checking if it's not a core module type */
+        /* In the current architecture, physics modules use types above MODULE_TYPE_UNKNOWN */
+        if (module->type > MODULE_TYPE_UNKNOWN && module->type < MODULE_TYPE_MAX) {
             /* Distinguish between actual physics modules and placeholders */
             if (strncmp(module->name, "placeholder", 11) == 0 || 
                 strncmp(module->name, "Placeholder", 11) == 0 ||
@@ -243,7 +244,7 @@ static int verify_core_physics_separation(void) {
     bool found_physics_module = false;
     for (int i = 0; i < registry->num_modules; i++) {
         struct base_module *module = registry->modules[i].module;
-        if (module->type >= MODULE_TYPE_COOLING && module->type <= MODULE_TYPE_MERGERS) {
+        if (module->type > MODULE_TYPE_UNKNOWN && module->type < MODULE_TYPE_MAX) {
             // Check if this is actually a physics module vs placeholder
             // Handle both "placeholder_" and "Placeholder" naming conventions
             if (strncmp(module->name, "placeholder", 11) != 0 && 
