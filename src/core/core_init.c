@@ -52,7 +52,7 @@ void init(struct params *run_params)
     int status = initialize_module_system(run_params);
     if (status != MODULE_STATUS_SUCCESS) {
         LOG_ERROR("Module system initialization failed with status = %d", status);
-        fprintf(stderr, "ERROR: Failed to initialize module system. SAGE requires at least one physics module to run.\n");
+        fprintf(stderr, "ERROR: Failed to initialize module system.\n");
         exit(EXIT_FAILURE);
     }
     LOG_DEBUG("Module system initialized");

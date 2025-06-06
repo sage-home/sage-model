@@ -529,8 +529,8 @@ bool pipeline_validate(struct module_pipeline *pipeline) {
     }
 
     if (pipeline->num_steps == 0) {
-        LOG_WARNING("Pipeline '%s' has no steps", pipeline->name);
-        /* Empty pipeline is technically valid, just not useful */
+        LOG_INFO("Pipeline '%s' has no steps (physics-free mode)", pipeline->name);
+        /* Empty pipeline is valid for physics-free mode execution */
         return true;
     }
 

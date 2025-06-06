@@ -208,7 +208,7 @@ void set_and_print_highwater_mark(void)
 int memory_system_init(void)
 {
     if (memory_system_initialized) {
-        LOG_WARNING("Memory system already initialized");
+        LOG_DEBUG("Memory system already initialized (redundant call)");
         return 0;
     }
     
