@@ -129,3 +129,13 @@ python3 allresults-history.py     # Plot higher redshift results
 - I/O interface migration: LHalo HDF5 fully migrated, others use graceful fallback to legacy functions
 - Tree reading operations use `core_io_tree.c` which tries I/O interface first, then legacy functions
 - See `docs/io_interface_migration_guide.md` for I/O development guidelines
+## Instructions for Claude
+
+- Never commit to git unless explicitly asked
+- Never delete files, always archive into the `ignore` directory
+- Assume no persistent memory — rely on logs for all continuity
+- When reporting progress in the logs, include EVERY FILE that was changed and created
+- Prefer lldb over gdb for debugging
+- NEVER create mock data or simplified components unless explicitly told to do so
+- NEVER replace existing complex components with simplified versions - always fix the actual problem
+- ALWAYS find and fix the root cause of issues instead of creating workarounds
