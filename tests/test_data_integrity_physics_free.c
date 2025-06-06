@@ -958,6 +958,8 @@ static void test_memory_corruption_detection(void) {
 //=============================================================================
 
 int main(int argc, char *argv[]) {
+    (void)argc; /* Suppress unused parameter warning */
+    (void)argv; /* Suppress unused parameter warning */
     printf("\n==============================================\n");
     printf("Starting CRITICAL data integrity tests\n");
     printf("==============================================\n\n");
