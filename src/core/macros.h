@@ -5,7 +5,7 @@
 
 #define  NDIM             3
 #define  STEPS            10         /* Number of integration intervals between two snapshots */
-#define  MAXGALFAC        1
+#define  MAXGALFAC        5  /* Conservative estimate: 5 galaxies per halo for better initial sizing */
 #define  ABSOLUTEMAXSNAPS 1000  /* The largest number of snapshots for any simulation */
 
 #define  GRAVITY     6.672e-8

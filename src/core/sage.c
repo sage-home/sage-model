@@ -64,6 +64,13 @@ int run_sage(const int ThisTask, const int NTasks, const char *param_file, void 
         /* Continue execution even if logging initialization fails */
     }
 
+    /* Initialize the dynamic memory system */
+    status = memory_system_init();
+    if(status != EXIT_SUCCESS) {
+        fprintf(stderr, "Error: Failed to initialize memory system\n");
+        return status;
+    }
+
     /* Now start the model */
     struct timeval tstart;
     gettimeofday(&tstart, NULL);
@@ -201,6 +208,9 @@ cleanup:
     /* Call comprehensive cleanup function */
     cleanup(run_params);
     
+    /* Cleanup the memory system */
+    memory_system_cleanup();
+    
     /* Cleanup the logging system */
     cleanup_logging();
 
@@ -260,6 +270,9 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
 {
     int32_t status = EXIT_FAILURE;
 
+    /* Begin tree memory scope for efficient cleanup */
+    begin_tree_memory_scope();
+
     /*  galaxy data  */
     struct GALAXY  *Gal = NULL, *HaloGal = NULL;
 
@@ -273,6 +286,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
     if(nhalos < 0) {
         fprintf(stderr,"Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
+        end_tree_memory_scope();
         return nhalos;
     }
 
@@ -343,6 +357,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     /* First run construct_galaxies outside for loop -> takes care of the main tree */
     status = construct_galaxies(0, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
     if(status != EXIT_SUCCESS) {
+        end_tree_memory_scope();
         return status;
     }
 
@@ -351,6 +366,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         if(HaloAux[halonr].DoneFlag == 0) {
             status = construct_galaxies(halonr, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
             if(status != EXIT_SUCCESS) {
+                end_tree_memory_scope();
                 return status;
             }
         }
@@ -360,6 +376,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
 
     status = save_galaxies(forestnr, numgals, Halo, forest_info, HaloAux, HaloGal, save_info, run_params);
     if(status != EXIT_SUCCESS) {
+        end_tree_memory_scope();
         return status;
     }
 
@@ -368,6 +385,9 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     myfree(HaloGal);
     myfree(HaloAux);
     myfree(Halo);
+
+    /* End tree memory scope - automatically frees all allocations since scope start */
+    end_tree_memory_scope();
 
     return EXIT_SUCCESS;
 }

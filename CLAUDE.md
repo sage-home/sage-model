@@ -142,3 +142,4 @@ python3 allresults-history.py     # Plot higher redshift results
 - ALWAYS find and fix the root cause of issues instead of creating workarounds
 - When asked to run sage, use `./sage ./input/millennium.par` unless prompted differently
 - When you think you've finished your work, stop and ask if we should run `make unit_tests` to validate it
+- All new unit tests should obey `docs/templates/test_template.c`

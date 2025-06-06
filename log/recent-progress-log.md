@@ -531,3 +531,15 @@ src/io/io_property_serialization.c, src/io/io_property_serialization.h, src/io/i
 - Technical details: Memory corruption at data->mapped_files[file_index] access in io_lhalo_binary.c:246
 - Modified files: src/core/core_io_tree.c
 
+2025-06-06: [Memory System] Dynamic Memory Expansion Implementation ✅ COMPLETED
+- Implemented comprehensive dynamic memory expansion system resolving segfaults and memory allocation failures in SAGE
+- Replaced static MAXBLOCKS=50000 limit with dynamic block table expansion that doubles capacity under memory pressure
+- Added tree-scoped memory management with automatic cleanup after each forest processing
+- Enhanced MAXGALFAC from 1 to 5 for better initial galaxy array sizing and memory pressure detection
+- Integrated memory system initialization/cleanup into main SAGE lifecycle with proper error handling
+- Created comprehensive unit test suite with 10 tests covering all aspects: initialization, expansion, scoping, error handling, large allocations
+- System supports both physics-free and full-physics modes with 20-30 modules requiring hundreds of MB+ RAM
+- All unit tests pass (10/10) with comprehensive validation of memory pressure scenarios and fragmentation patterns
+- Created files: src/core/core_mymalloc.h (enhanced), tests/test_dynamic_memory_expansion.c, docs/dynamic_memory_expansion_proposal.md
+- Modified files: src/core/core_mymalloc.c (major rewrite), src/core/macros.h, src/core/sage.c, Makefile
+

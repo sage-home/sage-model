@@ -20,6 +20,7 @@ These tests are integrated into the main Makefile and can be run with `make test
 | **test_core_pipeline_registry** | Tests the pipeline registry for module registration and pipeline creation     | Phase 5.2.F (May 2025)   |
 | **test_dispatcher_access**      | Tests the type-safe dispatcher functions for property access                  | Phase 5.2.F.4 (May 2025) |
 | **test_memory_pool**            | Tests the memory pooling system with support for various property types and dynamic arrays | Phase 3.3 (Apr 2025) |
+| **test_dynamic_memory_expansion** | Tests the dynamic memory expansion system for resolving segfaults and scaling to large simulations | Phase 5.3 (Jun 2025) |
 | **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
 | **test_merger_queue**           | Tests the merger event queue system for deferred merger processing            | Phase 5.1 (May 2025)     |
 | **test_core_merger_processor**  | Tests physics-agnostic merger event handling and dispatching                  | Phase 5.2.G (May 2025)   |
@@ -108,7 +109,7 @@ This test **intentionally produces ERROR messages** as part of its validation pr
 
 ## Test Categories Overview
 
-- **Core Infrastructure (15 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, core-physics separation validation, merger queue system, parameter validation, resource management, integration workflows
+- **Core Infrastructure (16 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, dynamic memory expansion, core-physics separation validation, merger queue system, parameter validation, resource management, integration workflows
 - **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, comprehensive property system validation  
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (3 tests)**: Pipeline invocation, module callback system, module lifecycle management
@@ -118,5 +119,5 @@ The test suite provides comprehensive coverage of all major SAGE components whil
 **Note**: Several tests have been removed or replaced as part of the architectural evolution:
 - `test_core_physics_separation` was removed in May 2025 as its functionality is now covered by more focused tests
 - `test_output_preparation` was replaced by `test_property_system_hdf5` which tests the physics output transformers system (see `physics_output_transformers_guide.md`)
-- The standalone Memory Tests Suite was integrated into the main Makefile with `test_memory_pool` and `test_io_memory_map`
+- The standalone Memory Tests Suite was integrated into the main Makefile with `test_memory_pool`, `test_io_memory_map`, and `test_dynamic_memory_expansion`
 - `test_empty_pipeline` was renamed to `test_physics_free_mode` to better reflect its purpose of validating core-physics separation

@@ -8,21 +8,37 @@
 #include "core_mymalloc.h"
 #include "core_logging.h"
 
-#define MAXBLOCKS 50000
+#define INITIAL_MAXBLOCKS 10000
+#define EXPANSION_SAFETY_MARGIN 1000
 
 static long Nblocks = 0;
-static void *Table[MAXBLOCKS];
-static size_t SizeTable[MAXBLOCKS];
+static long MaxBlocks = 0;  /* Current capacity of block tables */
+static void **Table = NULL;  /* Dynamically allocated block table */
+static size_t *SizeTable = NULL;  /* Dynamically allocated size table */
 static size_t TotMem = 0, HighMarkMem = 0, OldPrintedHighMark = 0;
+static long TreeScopeStart = 0;  /* Start of current tree memory scope */
+static int memory_system_initialized = 0;
 
 /* file-local function */
 long find_block(const void *p);
 size_t get_aligned_memsize(size_t n);
 void set_and_print_highwater_mark(void);
+int expand_block_table_internal(void);
 
 void *mymalloc_full(size_t n, const char *desc)
 {
     n = get_aligned_memsize(n);
+    
+    /* Initialize memory system if not already done */
+    if (!memory_system_initialized) {
+        if (memory_system_init() != 0) {
+            LOG_ERROR("Failed to initialize memory system");
+            ABORT(MALLOC_FAILURE);
+        }
+    }
+    
+    /* Check memory pressure and expand if needed */
+    check_memory_pressure_and_expand();
     
     /* Log large allocations for debugging */
     if (n > 1024*1024) { // Allocations larger than 1MB
@@ -30,8 +46,9 @@ void *mymalloc_full(size_t n, const char *desc)
                  n / (1024.0 * 1024.0), desc ? desc : "unknown");
     }
 
-    if(Nblocks >= MAXBLOCKS) {
-        LOG_ERROR("Nblocks = %ld. No blocks left in mymalloc().", Nblocks);
+    /* Check if we still have capacity after potential expansion */
+    if(Nblocks >= MaxBlocks) {
+        LOG_ERROR("Nblocks = %ld. No blocks left in mymalloc() even after expansion.", Nblocks);
         LOG_ERROR("Total memory allocated: %.2f MB", TotMem / (1024.0 * 1024.0));
         ABORT(OUT_OF_MEMBLOCKS);
     }
@@ -186,4 +203,193 @@ void set_and_print_highwater_mark(void)
         }
     }
     return;
+}
+
+/* Memory system initialization */
+int memory_system_init(void)
+{
+    if (memory_system_initialized) {
+        LOG_WARNING("Memory system already initialized");
+        return 0;
+    }
+    
+    MaxBlocks = INITIAL_MAXBLOCKS;
+    
+    /* Allocate initial block tables */
+    Table = (void **) malloc(MaxBlocks * sizeof(void *));
+    if (Table == NULL) {
+        LOG_ERROR("Failed to allocate initial block table");
+        return -1;
+    }
+    
+    SizeTable = (size_t *) malloc(MaxBlocks * sizeof(size_t));
+    if (SizeTable == NULL) {
+        LOG_ERROR("Failed to allocate initial size table");
+        free(Table);
+        Table = NULL;
+        return -1;
+    }
+    
+    /* Initialize state */
+    Nblocks = 0;
+    TotMem = 0;
+    HighMarkMem = 0;
+    OldPrintedHighMark = 0;
+    TreeScopeStart = 0;
+    memory_system_initialized = 1;
+    
+    LOG_INFO("Memory system initialized with %ld initial block capacity", MaxBlocks);
+    return 0;
+}
+
+/* Memory system cleanup */
+void memory_system_cleanup(void)
+{
+    if (!memory_system_initialized) {
+        return;
+    }
+    
+    /* Log final memory statistics */
+    LOG_INFO("Memory system cleanup: %ld blocks still allocated, %.2f MB total", 
+            Nblocks, TotMem / (1024.0 * 1024.0));
+    
+    /* Free any remaining allocated blocks */
+    for (long i = 0; i < Nblocks; i++) {
+        if (Table[i] != NULL) {
+            LOG_WARNING("Freeing unfreed block %ld of size %.2f MB", 
+                       i, SizeTable[i] / (1024.0 * 1024.0));
+            free(Table[i]);
+        }
+    }
+    
+    /* Free the tables themselves */
+    if (Table != NULL) {
+        free(Table);
+        Table = NULL;
+    }
+    
+    if (SizeTable != NULL) {
+        free(SizeTable);
+        SizeTable = NULL;
+    }
+    
+    /* Reset state */
+    Nblocks = 0;
+    MaxBlocks = 0;
+    TotMem = 0;
+    memory_system_initialized = 0;
+    
+    LOG_INFO("Memory system cleanup complete");
+}
+
+/* Internal function to expand block table capacity */
+int expand_block_table_internal(void)
+{
+    long new_max_blocks = MaxBlocks * 2;  /* Double the capacity */
+    
+    LOG_DEBUG("Expanding block table from %ld to %ld blocks", MaxBlocks, new_max_blocks);
+    
+    /* Expand Table array */
+    void **new_table = (void **) realloc(Table, new_max_blocks * sizeof(void *));
+    if (new_table == NULL) {
+        LOG_ERROR("Failed to expand block table from %ld to %ld blocks", MaxBlocks, new_max_blocks);
+        return -1;
+    }
+    Table = new_table;
+    
+    /* Expand SizeTable array */
+    size_t *new_size_table = (size_t *) realloc(SizeTable, new_max_blocks * sizeof(size_t));
+    if (new_size_table == NULL) {
+        LOG_ERROR("Failed to expand size table from %ld to %ld blocks", MaxBlocks, new_max_blocks);
+        return -1;
+    }
+    SizeTable = new_size_table;
+    
+    MaxBlocks = new_max_blocks;
+    
+    LOG_INFO("Block table expanded to %ld blocks capacity", MaxBlocks);
+    return 0;
+}
+
+/* Public function to expand block table */
+int expand_block_table(void)
+{
+    if (!memory_system_initialized) {
+        LOG_ERROR("Memory system not initialized");
+        return -1;
+    }
+    
+    return expand_block_table_internal();
+}
+
+/* Check memory pressure and expand if needed */
+void check_memory_pressure_and_expand(void)
+{
+    if (!memory_system_initialized) {
+        return;
+    }
+    
+    /* Check if we're approaching the block table limit */
+    if (Nblocks >= MaxBlocks - EXPANSION_SAFETY_MARGIN) {
+        LOG_DEBUG("Memory pressure detected: %ld blocks used, %ld capacity", Nblocks, MaxBlocks);
+        
+        if (expand_block_table_internal() != 0) {
+            LOG_ERROR("Failed to expand block table under memory pressure");
+        }
+    }
+}
+
+/* Tree-scoped memory management */
+void begin_tree_memory_scope(void)
+{
+    if (!memory_system_initialized) {
+        LOG_WARNING("Memory system not initialized for tree scope");
+        return;
+    }
+    
+    TreeScopeStart = Nblocks;
+    LOG_DEBUG("Starting tree memory scope at block %ld", TreeScopeStart);
+}
+
+void end_tree_memory_scope(void)
+{
+    if (!memory_system_initialized) {
+        LOG_WARNING("Memory system not initialized for tree scope cleanup");
+        return;
+    }
+    
+    long blocks_to_free = Nblocks - TreeScopeStart;
+    size_t memory_to_free = 0;
+    
+    /* Calculate memory being freed */
+    for (long i = TreeScopeStart; i < Nblocks; i++) {
+        memory_to_free += SizeTable[i];
+    }
+    
+    /* Free all blocks allocated since scope start (in reverse order) */
+    while (Nblocks > TreeScopeStart) {
+        if (Table[Nblocks - 1] != NULL) {
+            free(Table[Nblocks - 1]);
+            Table[Nblocks - 1] = NULL;
+            TotMem -= SizeTable[Nblocks - 1];
+            SizeTable[Nblocks - 1] = 0;
+        }
+        Nblocks--;
+    }
+    
+    LOG_DEBUG("Freed %ld blocks (%.2f MB) in tree scope cleanup", 
+             blocks_to_free, memory_to_free / (1024.0 * 1024.0));
+}
+
+/* Enhanced memory statistics */
+void print_memory_stats(void)
+{
+    if (!memory_system_initialized) {
+        LOG_INFO("Memory system not initialized");
+        return;
+    }
+    
+    LOG_INFO("MEMORY STATS: %.2f MB allocated in %ld blocks (%.2f MB peak, %ld/%ld table capacity)", 
+            TotMem / (1024.0 * 1024.0), Nblocks, 
+            HighMarkMem / (1024.0 * 1024.0), Nblocks, MaxBlocks);
 }

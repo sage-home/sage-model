@@ -296,7 +296,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all physics-free full-physics custom-physics help test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation
+.PHONY: clean celan celna clena tests all physics-free full-physics custom-physics help test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation test_dynamic_memory_expansion
 
 all: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(SAGELIB) $(EXEC)
 
@@ -410,7 +410,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery
+CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_comprehensive
@@ -529,6 +529,9 @@ test_error_recovery: tests/test_error_recovery.c $(SAGELIB)
 
 test_physics_free_mode: tests/test_physics_free_mode.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_physics_free_mode tests/test_physics_free_mode.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_dynamic_memory_expansion: tests/test_dynamic_memory_expansion.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dynamic_memory_expansion tests/test_dynamic_memory_expansion.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
 core_tests: $(CORE_TESTS)
