@@ -150,7 +150,7 @@ properties:
     is_core: true
     
   - name: Len
-    type: int
+    type: int32_t
     initial_value: 0
     units: "dimensionless"
     description: "Number of particles in the halo"

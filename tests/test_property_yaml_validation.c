@@ -238,9 +238,14 @@ static bool extract_yaml_value(const char *line, const char *field, char *value,
             }
         }
     } else {
-        // Handle unquoted values
+        // Handle unquoted values (including multi-word types like "long long")
         char *value_end = value_start;
-        while (*value_end && !isspace(*value_end) && *value_end != '\n') value_end++;
+        
+        // Find end of value (stop at newline or end of string)
+        while (*value_end && *value_end != '\n') value_end++;
+        
+        // Remove trailing whitespace
+        while (value_end > value_start && isspace(*(value_end - 1))) value_end--;
         
         size_t len = value_end - value_start;
         if (len < max_len && len > 0) {
@@ -302,15 +307,33 @@ static bool is_valid_property_type(const char *type) {
  * @brief Check if property type is appropriate for core properties
  */
 static bool is_core_property_type(const char *type) {
-    // Core properties should use simple, fundamental types
+    // Core properties should use fundamental types or small fixed-size arrays
     const char *core_types[] = {
         "int32_t", "uint32_t", "int64_t", "uint64_t", 
         "long long", "float", "double",
         NULL
     };
     
+    // Check scalar types
     for (int i = 0; core_types[i]; i++) {
         if (strcmp(type, core_types[i]) == 0) return true;
+    }
+    
+    // Check fixed-size arrays of core types (e.g., "float[3]" for position/velocity)
+    if (strchr(type, '[') && strchr(type, ']')) {
+        char base_type[MAX_TYPE_NAME_LENGTH];
+        char *bracket = strchr(type, '[');
+        size_t base_len = bracket - type;
+        
+        if (base_len < sizeof(base_type)) {
+            strncpy(base_type, type, base_len);
+            base_type[base_len] = '\0';
+            
+            // Check if base type is a core type
+            for (int i = 0; core_types[i]; i++) {
+                if (strcmp(base_type, core_types[i]) == 0) return true;
+            }
+        }
     }
     
     return false;
@@ -691,6 +714,70 @@ static void test_dynamic_array_validation(void) {
 }
 
 /**
+ * Test: YAML indentation and structure validation
+ */
+static void test_yaml_indentation_structure(void) {
+    printf("\n=== Testing YAML indentation and structure ===\n");
+    
+    char *content_copy = strdup(test_ctx.file_content);
+    char *line = strtok(content_copy, "\n");
+    bool in_properties_section = false;
+    int property_count = 0;
+    int malformed_indents = 0;
+    
+    while (line) {
+        // Skip comments and empty lines
+        char *trimmed = line;
+        while (*trimmed && isspace(*trimmed)) trimmed++;
+        if (*trimmed == '#' || *trimmed == '\0') {
+            line = strtok(NULL, "\n");
+            continue;
+        }
+        
+        // Check for properties section start
+        if (strstr(trimmed, "properties:")) {
+            in_properties_section = true;
+            TEST_ASSERT(count_yaml_indentation(line) == 0, "Top-level 'properties:' should have no indentation");
+        } else if (in_properties_section && line_contains_property_definition(line)) {
+            // Property definitions should be indented by 2 spaces (under properties:)
+            int indent = count_yaml_indentation(line);
+            TEST_ASSERT(indent == 2, "Property definitions should be indented by 2 spaces");
+            if (indent != 2) {
+                malformed_indents++;
+                printf("  WARNING: Property definition has incorrect indentation: %d (expected 2)\n", indent);
+            }
+            property_count++;
+        } else if (in_properties_section && (strstr(trimmed, "name:") || 
+                                           strstr(trimmed, "type:") || 
+                                           strstr(trimmed, "units:") ||
+                                           strstr(trimmed, "description:") ||
+                                           strstr(trimmed, "initial_value:") ||
+                                           strstr(trimmed, "output:") ||
+                                           strstr(trimmed, "read_only:") ||
+                                           strstr(trimmed, "is_core:"))) {
+            // Property fields should be indented by 4 spaces (under property name)
+            int indent = count_yaml_indentation(line);
+            TEST_ASSERT(indent == 4, "Property fields should be indented by 4 spaces");
+            if (indent != 4) {
+                malformed_indents++;
+                printf("  WARNING: Property field has incorrect indentation: %d (expected 4)\n", indent);
+            }
+        }
+        
+        line = strtok(NULL, "\n");
+    }
+    
+    TEST_ASSERT(in_properties_section, "Should find 'properties:' section");
+    TEST_ASSERT(property_count > 0, "Should find property definitions with correct indentation");
+    TEST_ASSERT(malformed_indents == 0, "All indentation should be correct");
+    
+    printf("  Properties with correct indentation: %d\n", property_count);
+    printf("  Malformed indentations: %d\n", malformed_indents);
+    
+    free(content_copy);
+}
+
+/**
  * Test: Integration with auto-generated property system
  */
 static void test_integration_with_generated_system(void) {
@@ -779,8 +866,9 @@ int main(int argc, char *argv[]) {
     printf("  4. Property type validation and system compatibility\n");
     printf("  5. Core vs physics property separation compliance\n");
     printf("  6. Dynamic array configuration validation\n");
-    printf("  7. Integration with auto-generated property system\n");
-    printf("  8. Error boundary conditions and robustness\n\n");
+    printf("  7. YAML indentation and structure validation\n");
+    printf("  8. Integration with auto-generated property system\n");
+    printf("  9. Error boundary conditions and robustness\n\n");
     
     // Setup test context
     if (setup_test_context() != 0) {
@@ -795,6 +883,7 @@ int main(int argc, char *argv[]) {
     test_property_type_validation();
     test_core_physics_separation();
     test_dynamic_array_validation();
+    test_yaml_indentation_structure();
     test_integration_with_generated_system();
     test_error_boundary_conditions();
     

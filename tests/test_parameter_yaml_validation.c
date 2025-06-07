@@ -91,7 +91,6 @@ static bool validate_default_value_type(const char *default_value, const char *p
 static bool extract_yaml_value(const char *line, const char *field, char *value, size_t max_len);
 static bool extract_yaml_array_values(const char *line, char values[][MAX_PARAMETER_NAME_LENGTH], int max_values);
 static bool line_contains_parameter_definition(const char *line);
-static bool line_contains_required_field(const char *line, const char *field);
 static int count_yaml_indentation(const char *line);
 static bool is_category_start(const char *line, char *category_name);
 static bool is_subcategory_start(const char *line, char *subcategory_name);
@@ -412,14 +411,6 @@ static bool line_contains_parameter_definition(const char *line) {
     return result;
 }
 
-/**
- * @brief Check if line contains a required field (same as property test)
- */
-static bool line_contains_required_field(const char *line, const char *field) {
-    char pattern[64];
-    snprintf(pattern, sizeof(pattern), "%s:", field);
-    return strstr(line, pattern) != NULL;
-}
 
 /**
  * @brief Count YAML indentation level (same as property test)
@@ -1006,6 +997,91 @@ static void test_struct_field_mapping_validation(void) {
 }
 
 /**
+ * Test: Default value validation and type consistency  
+ */
+static void test_default_value_validation(void) {
+    printf("\n=== Testing default value validation ===\n");
+    
+    char *content_copy = strdup(test_ctx.file_content);
+    char *line = strtok(content_copy, "\n");
+    char current_parameter[MAX_PARAMETER_NAME_LENGTH] = {0};
+    char parameter_buffer[2048] = {0};
+    bool in_parameter = false;
+    int validated_defaults = 0;
+    int total_defaults = 0;
+    
+    while (line) {
+        if (line_contains_parameter_definition(line)) {
+            // Process previous parameter
+            if (in_parameter && strlen(current_parameter) > 0 && strlen(parameter_buffer) > 0) {
+                char type_value[MAX_TYPE_NAME_LENGTH];
+                char default_value[MAX_PARAMETER_NAME_LENGTH];
+                char *type_line = strstr(parameter_buffer, "type:");
+                char *default_line = strstr(parameter_buffer, "default:");
+                
+                if (type_line && extract_yaml_value(type_line, "type", type_value, sizeof(type_value))) {
+                    if (default_line && extract_yaml_value(default_line, "default", default_value, sizeof(default_value))) {
+                        total_defaults++;
+                        bool is_valid = validate_default_value_type(default_value, type_value);
+                        TEST_ASSERT(is_valid, "Default value should match parameter type");
+                        if (is_valid) {
+                            validated_defaults++;
+                            printf("  Parameter '%s' has valid default value '%s' for type '%s'\n", 
+                                   current_parameter, default_value, type_value);
+                        } else {
+                            printf("  ERROR: Parameter '%s' has invalid default value '%s' for type '%s'\n", 
+                                   current_parameter, default_value, type_value);
+                        }
+                    }
+                }
+            }
+            
+            // Start new parameter
+            char name_value[MAX_PARAMETER_NAME_LENGTH];
+            if (extract_yaml_value(line, "name", name_value, sizeof(name_value))) {
+                strcpy(current_parameter, name_value);
+                strcpy(parameter_buffer, line);
+                strcat(parameter_buffer, "\n");
+                in_parameter = true;
+            }
+        } else if (in_parameter) {
+            if (strlen(parameter_buffer) + strlen(line) + 1 < sizeof(parameter_buffer)) {
+                strcat(parameter_buffer, line);
+                strcat(parameter_buffer, "\n");
+            }
+        }
+        
+        line = strtok(NULL, "\n");
+    }
+    
+    // Process last parameter
+    if (in_parameter && strlen(current_parameter) > 0 && strlen(parameter_buffer) > 0) {
+        char type_value[MAX_TYPE_NAME_LENGTH];
+        char default_value[MAX_PARAMETER_NAME_LENGTH];
+        char *type_line = strstr(parameter_buffer, "type:");
+        char *default_line = strstr(parameter_buffer, "default:");
+        
+        if (type_line && extract_yaml_value(type_line, "type", type_value, sizeof(type_value))) {
+            if (default_line && extract_yaml_value(default_line, "default", default_value, sizeof(default_value))) {
+                total_defaults++;
+                bool is_valid = validate_default_value_type(default_value, type_value);
+                TEST_ASSERT(is_valid, "Last parameter default value should match type");
+                if (is_valid) {
+                    validated_defaults++;
+                }
+            }
+        }
+    }
+    
+    printf("  Default values validated: %d/%d\n", validated_defaults, total_defaults);
+    if (total_defaults > 0) {
+        TEST_ASSERT(validated_defaults == total_defaults, "All default values should be valid for their types");
+    }
+    
+    free(content_copy);
+}
+
+/**
  * Test: Integration with auto-generated parameter system
  */
 static void test_integration_with_generated_system(void) {
@@ -1107,8 +1183,9 @@ int main(int argc, char *argv[]) {
     printf("  5. Bounds validation for numeric parameters\n");
     printf("  6. Enum parameter validation and value checking\n");
     printf("  7. Struct field mapping validation\n");
-    printf("  8. Integration with auto-generated parameter system\n");
-    printf("  9. Error boundary conditions and robustness\n\n");
+    printf("  8. Default value validation and type consistency\n");
+    printf("  9. Integration with auto-generated parameter system\n");
+    printf("  10. Error boundary conditions and robustness\n\n");
     
     // Setup test context
     if (setup_test_context() != 0) {
@@ -1124,6 +1201,7 @@ int main(int argc, char *argv[]) {
     test_bounds_validation();
     test_enum_parameter_validation();
     test_struct_field_mapping_validation();
+    test_default_value_validation();
     test_integration_with_generated_system();
     test_error_boundary_conditions();
     
