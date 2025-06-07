@@ -54,7 +54,7 @@ parameters:
         bounds: [-1, 999]
         struct_field: "simulation.NumSnapOutputs"
         
-      - name: "OutputSnapList"
+      - name: "ListOutputSnaps"
         type: int[]
         description: "List of output snapshot numbers"
         category: core
