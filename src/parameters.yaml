@@ -30,36 +30,6 @@ parameters:
         required: true
         struct_field: "io.OutputDir"
         
-      - name: "TreeType"
-        type: string
-        description: "Type of merger tree format"
-        category: core
-        required: true
-        struct_field: "io.TreeType"
-        enum_type: true
-        enum_values: ["lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii", "consistent_trees_hdf5", "gadget4_hdf5"]
-        
-      - name: "TreeName"
-        type: string
-        description: "Base name for tree files"
-        category: core
-        required: true
-        struct_field: "io.TreeName"
-        
-      - name: "SimulationDir"
-        type: string
-        description: "Directory containing simulation tree files"
-        category: core
-        required: true
-        struct_field: "io.SimulationDir"
-        
-      - name: "FileWithSnapList"
-        type: string
-        description: "File containing snapshot scale factors"
-        category: core
-        required: true
-        struct_field: "io.FileWithSnapList"
-        
       - name: "FirstFile"
         type: int
         description: "First tree file number to process"
@@ -75,7 +45,62 @@ parameters:
         required: true
         bounds: [0, 99999]
         struct_field: "io.LastFile"
+           
+      - name: "NumOutputs"
+        type: int
+        description: "Number of snapshot outputs (-1 for all)"
+        category: core
+        required: true
+        bounds: [-1, 999]
+        struct_field: "simulation.NumSnapOutputs"
         
+      - name: "OutputSnapList"
+        type: int[]
+        description: "List of output snapshot numbers"
+        category: core
+        required: true
+        bounds: [0, 999]
+        struct_field: "simulation.ListOutputSnaps"
+        
+    simulation:
+      - name: "TreeName"
+        type: string
+        description: "Base name for tree files"
+        category: core
+        required: true
+        struct_field: "io.TreeName"
+     
+      - name: "TreeType"
+        type: string
+        description: "Type of merger tree format"
+        category: core
+        required: true
+        struct_field: "io.TreeType"
+        enum_type: true
+        enum_values: ["lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii", "consistent_trees_hdf5", "gadget4_hdf5"]
+        
+      - name: "SimulationDir"
+        type: string
+        description: "Directory containing simulation tree files"
+        category: core
+        required: true
+        struct_field: "io.SimulationDir"
+        
+      - name: "FileWithSnapList"
+        type: string
+        description: "File containing snapshot scale factors"
+        category: core
+        required: true
+        struct_field: "io.FileWithSnapList"
+
+      - name: "LastSnapshotNr"
+        type: int
+        description: "Last snapshot number to process"
+        category: core
+        required: true
+        bounds: [0, 999]
+        struct_field: "simulation.LastSnapshotNr"
+
       - name: "NumSimulationTreeFiles"
         type: int
         description: "Total number of tree files in simulation"
@@ -84,32 +109,16 @@ parameters:
         bounds: [1, 99999]
         struct_field: "io.NumSimulationTreeFiles"
 
-    simulation:
-      - name: "LastSnapshotNr"
-        type: int
-        description: "Last snapshot number to process"
+      - name: "BoxSize"
+        type: double
+        description: "Simulation box size"
         category: core
         required: true
-        bounds: [0, 999]
-        struct_field: "simulation.LastSnapshotNr"
-        
-      - name: "NumOutputs"
-        type: int
-        description: "Number of snapshot outputs (-1 for all)"
-        category: core
-        required: true
-        bounds: [-1, 999]
-        struct_field: "simulation.NumSnapOutputs"
+        bounds: [1.0, 10000.0]
+        units: "Mpc/h"
+        struct_field: "cosmology.BoxSize"
 
     cosmology:
-      - name: "Hubble_h"
-        type: double
-        description: "Dimensionless Hubble parameter"
-        category: core
-        required: true
-        bounds: [0.1, 1.0]
-        struct_field: "cosmology.Hubble_h"
-        
       - name: "Omega"
         type: double
         description: "Matter density parameter"
@@ -125,7 +134,24 @@ parameters:
         required: true
         bounds: [0.0, 1.0]
         struct_field: "cosmology.OmegaLambda"
-        
+
+      - name: "BaryonFrac"
+        type: double
+        description: "Cosmic baryon fraction"
+        category: physics
+        required: true
+        bounds: [0.0, 1.0]
+        default_value: 0.17
+        struct_field: "physics.BaryonFrac"
+
+      - name: "Hubble_h"
+        type: double
+        description: "Dimensionless Hubble parameter"
+        category: core
+        required: true
+        bounds: [0.1, 1.0]
+        struct_field: "cosmology.Hubble_h"
+
       - name: "PartMass"
         type: double
         description: "Dark matter particle mass"
@@ -134,25 +160,8 @@ parameters:
         bounds: [0.0, 1000.0]
         units: "10^10 Msun/h"
         struct_field: "cosmology.PartMass"
-        
-      - name: "BoxSize"
-        type: double
-        description: "Simulation box size"
-        category: core
-        required: true
-        bounds: [1.0, 10000.0]
-        units: "Mpc/h"
-        struct_field: "cosmology.BoxSize"
 
     units:
-      - name: "UnitVelocity_in_cm_per_s"
-        type: double
-        description: "Unit velocity in cm/s"
-        category: core
-        required: true
-        bounds: [1.0, 1e10]
-        struct_field: "units.UnitVelocity_in_cm_per_s"
-        
       - name: "UnitLength_in_cm"
         type: double
         description: "Unit length in cm"
@@ -169,6 +178,14 @@ parameters:
         bounds: [1.0, 1e50]
         struct_field: "units.UnitMass_in_g"
 
+      - name: "UnitVelocity_in_cm_per_s"
+        type: double
+        description: "Unit velocity in cm/s"
+        category: core
+        required: true
+        bounds: [1.0, 1e10]
+        struct_field: "units.UnitVelocity_in_cm_per_s"
+        
     runtime:
       - name: "ForestDistributionScheme"
         type: string
@@ -222,7 +239,7 @@ parameters:
         description: "AGN feedback recipe flag"
         category: physics
         required: false
-        bounds: [0, 5]
+        bounds: [0, 10]
         default_value: 2
         struct_field: "physics.AGNrecipeOn"
         
@@ -231,7 +248,7 @@ parameters:
         description: "Supernova feedback flag"
         category: physics
         required: false
-        bounds: [0, 1]
+        bounds: [0, 10]
         default_value: 1
         struct_field: "physics.SupernovaRecipeOn"
         
@@ -240,7 +257,7 @@ parameters:
         description: "Reionization flag"
         category: physics
         required: false
-        bounds: [0, 1]
+        bounds: [0, 10]
         default_value: 1
         struct_field: "physics.ReionizationOn"
         
@@ -249,46 +266,94 @@ parameters:
         description: "Disk instability flag"
         category: physics
         required: false
-        bounds: [0, 1]
+        bounds: [0, 10]
         default_value: 1
         struct_field: "physics.DiskInstabilityOn"
 
-    general:
-      - name: "BaryonFrac"
+    star_formation:
+      - name: "SfrEfficiency"
         type: double
-        description: "Cosmic baryon fraction"
+        description: "Star formation efficiency"
         category: physics
         required: false
         bounds: [0.0, 1.0]
-        default_value: 0.17
-        struct_field: "physics.BaryonFrac"
+        default_value: 0.05
+        struct_field: "physics.SfrEfficiency"
+
+    supernovae:
+      - name: "FeedbackReheatingEpsilon"
+        type: double
+        description: "Supernova reheating efficiency"
+        category: physics
+        required: false
+        bounds: [0.0, 10.0]
+        default_value: 3.0
+        struct_field: "physics.FeedbackReheatingEpsilon"
         
-      - name: "RecycleFraction"
+      - name: "FeedbackEjectionEfficiency"
         type: double
-        description: "Fraction of stellar mass recycled"
+        description: "Supernova ejection efficiency"
         category: physics
         required: false
         bounds: [0.0, 1.0]
-        default_value: 0.43
-        struct_field: "physics.RecycleFraction"
+        default_value: 0.3
+        struct_field: "physics.FeedbackEjectionEfficiency"
+
+      - name: "ReIncorporationFactor"
+        type: double
+        description: "Gas reincorporation efficiency"
+        category: physics
+        required: false
+        bounds: [0.0, 10.0]
+        default_value: 0.15
+        struct_field: "physics.ReIncorporationFactor"
+
+      - name: "EnergySN"
+        type: double
+        description: "Energy per supernova"
+        category: physics
+        required: false
+        bounds: [1e48, 1e54]
+        default_value: 1.0e51
+        units: "ergs"
+        struct_field: "physics.EnergySN"
         
-      - name: "Yield"
+      - name: "EtaSN"
         type: double
-        description: "Chemical yield from stars"
+        description: "Supernova efficiency"
         category: physics
         required: false
         bounds: [0.0, 1.0]
-        default_value: 0.025
-        struct_field: "physics.Yield"
+        default_value: 5.0e-3
+        struct_field: "physics.EtaSN"
+
+    agn:
+      - name: "RadioModeEfficiency"
+        type: double
+        description: "Radio mode feedback efficiency"
+        category: physics
+        required: false
+        bounds: [0.0, 1.0]
+        default_value: 0.08
+        struct_field: "physics.RadioModeEfficiency"
         
-      - name: "FracZleaveDisk"
+      - name: "QuasarModeEfficiency"
         type: double
-        description: "Fraction of metals ejected from disk"
+        description: "Quasar mode feedback efficiency"
         category: physics
         required: false
         bounds: [0.0, 1.0]
-        default_value: 0.0
-        struct_field: "physics.FracZleaveDisk"
+        default_value: 0.005
+        struct_field: "physics.QuasarModeEfficiency"
+        
+      - name: "BlackHoleGrowthRate"
+        type: double
+        description: "Black hole growth rate parameter"
+        category: physics
+        required: false
+        bounds: [0.0, 1.0]
+        default_value: 0.015
+        struct_field: "physics.BlackHoleGrowthRate"
 
     mergers:
       - name: "ThreshMajorMerger"
@@ -309,72 +374,33 @@ parameters:
         default_value: 1.0
         struct_field: "physics.ThresholdSatDisruption"
 
-    gas_physics:
-      - name: "ReIncorporationFactor"
+    metals:
+      - name: "Yield"
         type: double
-        description: "Gas reincorporation efficiency"
-        category: physics
-        required: false
-        bounds: [0.0, 10.0]
-        default_value: 0.15
-        struct_field: "physics.ReIncorporationFactor"
-
-    star_formation:
-      - name: "SfrEfficiency"
-        type: double
-        description: "Star formation efficiency"
+        description: "Chemical yield from stars"
         category: physics
         required: false
         bounds: [0.0, 1.0]
-        default_value: 0.05
-        struct_field: "physics.SfrEfficiency"
-
-    feedback:
-      - name: "FeedbackReheatingEpsilon"
-        type: double
-        description: "Supernova reheating efficiency"
-        category: physics
-        required: false
-        bounds: [0.0, 10.0]
-        default_value: 3.0
-        struct_field: "physics.FeedbackReheatingEpsilon"
+        default_value: 0.025
+        struct_field: "physics.Yield"
         
-      - name: "FeedbackEjectionEfficiency"
+      - name: "RecycleFraction"
         type: double
-        description: "Supernova ejection efficiency"
+        description: "Fraction of stellar mass recycled"
         category: physics
         required: false
         bounds: [0.0, 1.0]
-        default_value: 0.3
-        struct_field: "physics.FeedbackEjectionEfficiency"
-
-    black_holes:
-      - name: "BlackHoleGrowthRate"
-        type: double
-        description: "Black hole growth rate parameter"
-        category: physics
-        required: false
-        bounds: [0.0, 1.0]
-        default_value: 0.015
-        struct_field: "physics.BlackHoleGrowthRate"
+        default_value: 0.43
+        struct_field: "physics.RecycleFraction"
         
-      - name: "RadioModeEfficiency"
+      - name: "FracZleaveDisk"
         type: double
-        description: "Radio mode feedback efficiency"
+        description: "Fraction of metals ejected from disk"
         category: physics
         required: false
         bounds: [0.0, 1.0]
-        default_value: 0.08
-        struct_field: "physics.RadioModeEfficiency"
-        
-      - name: "QuasarModeEfficiency"
-        type: double
-        description: "Quasar mode feedback efficiency"
-        category: physics
-        required: false
-        bounds: [0.0, 1.0]
-        default_value: 0.005
-        struct_field: "physics.QuasarModeEfficiency"
+        default_value: 0.0
+        struct_field: "physics.FracZleaveDisk"
 
     reionization:
       - name: "Reionization_z0"
@@ -394,23 +420,3 @@ parameters:
         bounds: [0.0, 20.0]
         default_value: 7.0
         struct_field: "physics.Reionization_zr"
-
-    supernovae:
-      - name: "EnergySN"
-        type: double
-        description: "Energy per supernova"
-        category: physics
-        required: false
-        bounds: [1e48, 1e54]
-        default_value: 1.0e51
-        units: "ergs"
-        struct_field: "physics.EnergySN"
-        
-      - name: "EtaSN"
-        type: double
-        description: "Supernova efficiency"
-        category: physics
-        required: false
-        bounds: [0.0, 1.0]
-        default_value: 5.0e-3
-        struct_field: "physics.EtaSN"
