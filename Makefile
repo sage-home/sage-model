@@ -413,7 +413,7 @@ clean:
 CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion test_data_integrity_physics_free test_hdf5_output_validation
 
 # Property system tests  
-PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_comprehensive
+PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_comprehensive test_property_yaml_validation test_parameter_yaml_validation
 
 # I/O system tests
 IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_output test_lhalo_hdf5 test_gadget4_hdf5 test_genesis_hdf5 test_consistent_trees_hdf5 test_io_memory_map test_io_buffer_manager test_validation_framework
@@ -463,6 +463,12 @@ test_property_validation: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tes
 
 test_property_access_comprehensive: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_access_comprehensive.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_access_comprehensive tests/test_property_access_comprehensive.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_property_yaml_validation: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_property_yaml_validation.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_yaml_validation tests/test_property_yaml_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_parameter_yaml_validation: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_parameter_yaml_validation.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_parameter_yaml_validation tests/test_parameter_yaml_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_io_interface: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_io_interface.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_interface tests/test_io_interface.c -L. -l$(LIBNAME) $(LIBFLAGS)

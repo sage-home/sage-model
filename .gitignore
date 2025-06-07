@@ -66,6 +66,8 @@ tests/test_error_recovery
 tests/test_dynamic_memory_expansion
 tests/test_data_integrity_physics_free
 tests/test_hdf5_output_validation
+tests/test_property_yaml_validation
+tests/test_parameter_yaml_validation
 
 tests/test_output/
 .repomix/
