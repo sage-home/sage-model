@@ -31,6 +31,7 @@
 #include "../src/core/core_logging.h"
 #include "../src/core/core_properties.h"
 #include "../src/core/core_property_utils.h"
+#include "../src/core/core_mymalloc.h"
 #include "../src/io/save_gals_hdf5.h"
 
 // Test counter for reporting
@@ -96,17 +97,39 @@ static int setup_test_context(void) {
     test_ctx.run_params.simulation.ListOutputSnaps[0] = 63;
     test_ctx.run_params.simulation.SimMaxSnaps = 64;
     
+    // Initialize required string parameters
     strcpy(test_ctx.run_params.io.OutputDir, "/tmp/");
     strcpy(test_ctx.run_params.io.FileNameGalaxies, "sage_hdf5_test_output");
+    strcpy(test_ctx.run_params.io.FileWithSnapList, "");  // Create empty, we'll set snaplist manually
     test_ctx.run_params.io.TreeType = lhalo_binary;
     
-    // Initialize core systems
+    // Set up simulation times manually instead of reading from file
+    test_ctx.run_params.simulation.Snaplistlen = 1;
+    test_ctx.run_params.simulation.AA[0] = 1.0;  // z=0, a=1.0
+    
+    // Initialize core systems in proper order
     if (initialize_logging(&test_ctx.run_params) != 0) {
         printf("ERROR: Failed to initialize logging system\n");
         return -1;
     }
     
     initialize_units(&test_ctx.run_params);
+    
+    // Skip initialize_simulation_times and manually set required parameters
+    test_ctx.run_params.simulation.Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(double));
+    test_ctx.run_params.simulation.Snaplistlen = 1;
+    test_ctx.run_params.simulation.AA[0] = 1.0;  // z=0, a=1.0
+    test_ctx.run_params.simulation.Age[0] = 13.7; // Age of universe at z=0 in Gyr
+    
+    // Initialize property system (required for GALAXY_PROP_* macros to work)
+    initialize_standard_properties(&test_ctx.run_params);
+    
+    // NOTE: Skip module system initialization for now to avoid dependency issues
+    // The basic HDF5 tests should work without full module system
+    // initialize_galaxy_extension_system();
+    // initialize_event_system();
+    // initialize_pipeline_system();
+    // initialize_module_callback_system();
     
     test_ctx.setup_complete = true;
     printf("Test context setup complete.\n");
@@ -117,7 +140,18 @@ static void teardown_test_context(void) {
     printf("Cleaning up test context...\n");
     
     if (test_ctx.setup_complete) {
+        // Cleanup only the systems we initialized
+        cleanup_property_system();
+        
+        // Free manually allocated Age array
+        if (test_ctx.run_params.simulation.Age) {
+            myfree(test_ctx.run_params.simulation.Age);
+            test_ctx.run_params.simulation.Age = NULL;
+        }
+        
+        cleanup_units(&test_ctx.run_params);
         cleanup_logging();
+        
         test_ctx.setup_complete = false;
     }
     
@@ -189,7 +223,7 @@ int main(int argc, char *argv[]) {
     (void)argv; /* Suppress unused parameter warning */
     
     printf("\n==============================================\n");
-    printf("Starting HDF5 Output Validation Tests\n");
+    printf("Starting tests for test_hdf5_output_validation\n");
     printf("==============================================\n\n");
     
     printf("This test validates the complete SAGE HDF5 output pipeline:\n");
@@ -230,7 +264,7 @@ int main(int argc, char *argv[]) {
     
     // Report results
     printf("\n==============================================\n");
-    printf("Test results for HDF5 Output Validation:\n");
+    printf("Test results for test_hdf5_output_validation:\n");
     printf("  Total tests: %d\n", tests_run);
     printf("  Passed: %d\n", tests_passed);
     printf("  Failed: %d\n", tests_run - tests_passed);
@@ -497,49 +531,71 @@ static int create_realistic_galaxy_data(struct GALAXY **galaxies, int *ngals) {
         struct GALAXY *gal = &((*galaxies)[i]);
         memset(gal, 0, sizeof(struct GALAXY));
         
-        // Set core infrastructure properties
-        gal->SnapNum = 63;
-        gal->GalaxyIndex = 1000000ULL + i;  // Large unique IDs
-        gal->CentralGalaxyIndex = (i == 0) ? gal->GalaxyIndex : 1000000ULL;  // First is central
-        // Set SAGE-specific indices (these would come from HaloNr and original_treenr in real output)
-        // For testing, we'll set them directly since these don't exist in core GALAXY struct
-        // In real SAGE code, these are set in prepare_galaxy_for_output function
-        // gal->SAGEHaloIndex = 500000 + i;  // Would be set to g->HaloNr in output prep
-        // gal->SAGETreeIndex = 100 + i / 2;  // Would be set to original_treenr in output prep
-        gal->Type = (i == 0) ? 0 : 1;  // Central vs satellite
+        // CRITICAL: Initialize property system for each galaxy
+        int status = allocate_galaxy_properties(gal, &test_ctx.run_params);
+        if (status != 0) {
+            printf("ERROR: Failed to allocate galaxy properties for galaxy %d\n", i);
+            // Cleanup previously allocated galaxies
+            for (int j = 0; j < i; j++) {
+                free_galaxy_properties(&((*galaxies)[j]));
+            }
+            free(*galaxies);
+            *galaxies = NULL;
+            return -1;
+        }
         
-        // Set realistic physical properties (in SAGE internal units)
-        // float base_mass = 10.0f + i * 2.0f;  // Varying stellar masses - would need real galaxy structure calculation
+        // Reset to default values
+        reset_galaxy_properties(gal);
         
-        // Would use property system when available
-        // For now, set direct fields for basic testing
-        // These should eventually be set via GALAXY_PROP_* macros
-        gal->Len = 100 + i * 50;
+        // Set core infrastructure properties using GALAXY_PROP_* macros
+        GALAXY_PROP_SnapNum(gal) = 63;
+        GALAXY_PROP_GalaxyIndex(gal) = 1000000ULL + i;  // Large unique IDs
+        GALAXY_PROP_CentralGalaxyIndex(gal) = (i == 0) ? GALAXY_PROP_GalaxyIndex(gal) : 1000000ULL;  // First is central
+        GALAXY_PROP_Type(gal) = (i == 0) ? 0 : 1;  // Central vs satellite
         
-        // Position and velocity (in simulation units)
-        gal->Pos[0] = 25.0f + i * 10.0f;  // Mpc/h
-        gal->Pos[1] = 30.0f + i * 5.0f;
-        gal->Pos[2] = 35.0f + i * 3.0f;
+        // Set realistic physical properties using core macros
+        GALAXY_PROP_Len(gal) = 100 + i * 50;
         
-        gal->Vel[0] = 100.0f + i * 20.0f;  // km/s
-        gal->Vel[1] = 150.0f + i * 15.0f;
-        gal->Vel[2] = 200.0f + i * 10.0f;
+        // Position and velocity (in simulation units) using core macros
+        GALAXY_PROP_Pos_ELEM(gal, 0) = 25.0f + i * 10.0f;  // Mpc/h
+        GALAXY_PROP_Pos_ELEM(gal, 1) = 30.0f + i * 5.0f;
+        GALAXY_PROP_Pos_ELEM(gal, 2) = 35.0f + i * 3.0f;
         
-        // Spin comes from halo_data, not GALAXY
-        // gal->Spin[0] = 0.1f + i * 0.02f;
-        // gal->Spin[1] = 0.15f + i * 0.01f;
-        // gal->Spin[2] = 0.2f + i * 0.03f;
+        GALAXY_PROP_Vel_ELEM(gal, 0) = 100.0f + i * 20.0f;  // km/s
+        GALAXY_PROP_Vel_ELEM(gal, 1) = 150.0f + i * 15.0f;
+        GALAXY_PROP_Vel_ELEM(gal, 2) = 200.0f + i * 10.0f;
         
-        // Halo properties
-        gal->Mvir = powf(10.0f, 11.5f + i * 0.5f);  // 10^11.5 to 10^12.5 Msun/h
-        gal->Rvir = 150.0f + i * 50.0f;  // kpc/h
-        gal->Vvir = sqrtf(43.0f * gal->Mvir / gal->Rvir);  // km/s (G*M/R)^0.5
-        gal->Vmax = gal->Vvir * 1.2f;  // Slightly higher than Vvir
-        // VelDisp comes from halo_data, not GALAXY
-        // gal->VelDisp = gal->Vvir / 3.0f;  // Would be halos[g->HaloNr].VelDisp in output
+        // Halo properties using core macros
+        GALAXY_PROP_Mvir(gal) = powf(10.0f, 11.5f + i * 0.5f);  // 10^11.5 to 10^12.5 Msun/h
+        GALAXY_PROP_Rvir(gal) = 150.0f + i * 50.0f;  // kpc/h
+        GALAXY_PROP_Vvir(gal) = sqrtf(43.0f * GALAXY_PROP_Mvir(gal) / GALAXY_PROP_Rvir(gal));  // km/s (G*M/R)^0.5
+        GALAXY_PROP_Vmax(gal) = GALAXY_PROP_Vvir(gal) * 1.2f;  // Slightly higher than Vvir
+        
+        // Set physics properties using property utility functions
+        set_float_property(gal, PROP_ColdGas, 2.5e10f + i * 0.5e10f);  // Cold gas mass
+        set_float_property(gal, PROP_StellarMass, 5.0e10f + i * 1.0e10f);  // Stellar mass
+        set_float_property(gal, PROP_BulgeMass, 1.5e10f + i * 0.3e10f);  // Bulge mass
+        set_float_property(gal, PROP_HotGas, 8.0e11f + i * 1.0e11f);  // Hot gas mass
+        set_float_property(gal, PROP_EjectedMass, 1.0e10f + i * 0.2e10f);  // Ejected mass
+        set_double_property(gal, PROP_BlackHoleMass, 1.0e8 + i * 2.0e7);  // Black hole mass
+        set_float_property(gal, PROP_ICS, 0.0f);  // Intracluster stars
+        
+        // Set metallicity properties using proper property system
+        float coldgas_value = get_float_property(gal, PROP_ColdGas, 0.0f);
+        float stellar_value = get_float_property(gal, PROP_StellarMass, 0.0f);
+        float bulge_value = get_float_property(gal, PROP_BulgeMass, 0.0f);
+        float hotgas_value = get_float_property(gal, PROP_HotGas, 0.0f);
+        float ejected_value = get_float_property(gal, PROP_EjectedMass, 0.0f);
+        
+        set_float_property(gal, PROP_MetalsColdGas, coldgas_value * 0.02f);  // 2% metals
+        set_float_property(gal, PROP_MetalsStellarMass, stellar_value * 0.02f);
+        set_float_property(gal, PROP_MetalsBulgeMass, bulge_value * 0.02f);
+        set_float_property(gal, PROP_MetalsHotGas, hotgas_value * 0.01f);  // 1% metals
+        set_float_property(gal, PROP_MetalsEjectedMass, ejected_value * 0.02f);
+        set_float_property(gal, PROP_MetalsICS, 0.0f);
     }
     
-    printf("Created %d realistic test galaxies\n", test_ngals);
+    printf("Created %d realistic test galaxies with initialized property systems\n", test_ngals);
     return 0;
 }
 
@@ -760,8 +816,13 @@ static void test_sage_pipeline_integration(void) {
         unlink(output_path);
     }
     
-    // Clean up allocated memory
-    if (test_galaxies) free(test_galaxies);
+    // Clean up allocated memory with proper property cleanup
+    if (test_galaxies) {
+        for (int i = 0; i < ngals; i++) {
+            free_galaxy_properties(&test_galaxies[i]);
+        }
+        free(test_galaxies);
+    }
     if (halos) free(halos);
     if (haloaux) free(haloaux);
     
@@ -827,6 +888,14 @@ static void test_property_system_hdf5_integration(void) {
     // Create a test galaxy to validate property access
     struct GALAXY test_galaxy;
     memset(&test_galaxy, 0, sizeof(test_galaxy));
+    
+    // CRITICAL: Initialize property system for test galaxy
+    int prop_status = allocate_galaxy_properties(&test_galaxy, &test_ctx.run_params);
+    TEST_ASSERT(prop_status == 0, "Should be able to allocate galaxy properties for test");
+    TEST_ASSERT(test_galaxy.properties != NULL, "Galaxy properties should be allocated");
+    
+    // Reset to default values
+    reset_galaxy_properties(&test_galaxy);
     
     // Set some test values using proper property system patterns
     GALAXY_PROP_SnapNum(&test_galaxy) = 63;
@@ -897,6 +966,10 @@ static void test_property_system_hdf5_integration(void) {
     TEST_ASSERT(fabsf(mvir_prop - 1.5e12f) < 1e6f, "Float property precision should be maintained");
     
     printf("Property metadata discovery and transformer system tests completed.\n");
+    
+    // Cleanup test galaxy properties
+    free_galaxy_properties(&test_galaxy);
+    
     printf("Property system HDF5 integration test completed.\n");
 }
 
@@ -950,27 +1023,34 @@ static void test_comprehensive_galaxy_properties(void) {
     struct GALAXY test_galaxy;
     memset(&test_galaxy, 0, sizeof(test_galaxy));
     
-    // Test core properties
-    test_galaxy.SnapNum = 63;
-    test_galaxy.GalaxyIndex = 9876543210ULL;  // Large uint64_t value
-    test_galaxy.CentralGalaxyIndex = 1234567890ULL;
-    // Note: SAGEHaloIndex and SAGETreeIndex don't exist in core GALAXY struct
-    // They are set during output preparation in prepare_galaxy_for_output()
-    test_galaxy.Type = 0;  // Central galaxy
+    // CRITICAL: Initialize property system
+    int prop_status = allocate_galaxy_properties(&test_galaxy, &test_ctx.run_params);
+    TEST_ASSERT(prop_status == 0, "Should be able to allocate galaxy properties for comprehensive test");
+    TEST_ASSERT(test_galaxy.properties != NULL, "Galaxy properties should be allocated");
     
-    // Test position and velocity
-    test_galaxy.Pos[0] = 50.0f;
-    test_galaxy.Pos[1] = 75.0f;
-    test_galaxy.Pos[2] = 100.0f;
-    test_galaxy.Vel[0] = 120.0f;
-    test_galaxy.Vel[1] = 180.0f;
-    test_galaxy.Vel[2] = 240.0f;
-     // Test halo properties (should be positive)
-    test_galaxy.Mvir = 1.5e12f;       // Halo mass
-    test_galaxy.Rvir = 200.0f;        // Virial radius  
-    test_galaxy.Vvir = 150.0f;        // Virial velocity
-    test_galaxy.Vmax = 180.0f;        // Maximum velocity
-    test_galaxy.Len = 1000;           // Number of particles
+    // Reset to default values
+    reset_galaxy_properties(&test_galaxy);
+    
+    // Test core properties using GALAXY_PROP_* macros
+    GALAXY_PROP_SnapNum(&test_galaxy) = 63;
+    GALAXY_PROP_GalaxyIndex(&test_galaxy) = 9876543210ULL;  // Large uint64_t value
+    GALAXY_PROP_CentralGalaxyIndex(&test_galaxy) = 1234567890ULL;
+    GALAXY_PROP_Type(&test_galaxy) = 0;  // Central galaxy
+    
+    // Test position and velocity using core macros
+    GALAXY_PROP_Pos_ELEM(&test_galaxy, 0) = 50.0f;
+    GALAXY_PROP_Pos_ELEM(&test_galaxy, 1) = 75.0f;
+    GALAXY_PROP_Pos_ELEM(&test_galaxy, 2) = 100.0f;
+    GALAXY_PROP_Vel_ELEM(&test_galaxy, 0) = 120.0f;
+    GALAXY_PROP_Vel_ELEM(&test_galaxy, 1) = 180.0f;
+    GALAXY_PROP_Vel_ELEM(&test_galaxy, 2) = 240.0f;
+    
+    // Test halo properties using core macros (should be positive)
+    GALAXY_PROP_Mvir(&test_galaxy) = 1.5e12f;       // Halo mass
+    GALAXY_PROP_Rvir(&test_galaxy) = 200.0f;        // Virial radius  
+    GALAXY_PROP_Vvir(&test_galaxy) = 150.0f;        // Virial velocity
+    GALAXY_PROP_Vmax(&test_galaxy) = 180.0f;        // Maximum velocity
+    GALAXY_PROP_Len(&test_galaxy) = 1000;           // Number of particles
 
     // Note: VelDisp and Spin come from halo_data, not GALAXY structure
     // They are copied to GALAXY_OUTPUT during output preparation
@@ -1009,16 +1089,16 @@ static void test_comprehensive_galaxy_properties(void) {
     set_double_property(&test_galaxy, PROP_Cooling, 1.0e10);               // Cooling rate
     set_double_property(&test_galaxy, PROP_Heating, 0.5e10);               // Heating rate
     set_float_property(&test_galaxy, PROP_QuasarModeBHaccretionMass, 0.1f); // BH accretion mass
-     // Validate data types and ranges
-    TEST_ASSERT(test_galaxy.SnapNum >= 0, "SnapNum should be non-negative");
-    TEST_ASSERT(test_galaxy.GalaxyIndex > 0, "GalaxyIndex should be positive");
-    TEST_ASSERT(test_galaxy.Type >= 0 && test_galaxy.Type <= 2, "Type should be valid galaxy type");
+     // Validate data types and ranges using proper property access
+    TEST_ASSERT(GALAXY_PROP_SnapNum(&test_galaxy) >= 0, "SnapNum should be non-negative");
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(&test_galaxy) > 0, "GalaxyIndex should be positive");
+    TEST_ASSERT(GALAXY_PROP_Type(&test_galaxy) >= 0 && GALAXY_PROP_Type(&test_galaxy) <= 2, "Type should be valid galaxy type");
 
     // Validate physical constraints - halo properties (core properties)
-    TEST_ASSERT(test_galaxy.Mvir > 0, "Mvir should be positive");
-    TEST_ASSERT(test_galaxy.Rvir > 0, "Rvir should be positive");
-    TEST_ASSERT(test_galaxy.Vvir > 0, "Vvir should be positive");
-    TEST_ASSERT(test_galaxy.Len > 0, "Len should be positive");
+    TEST_ASSERT(GALAXY_PROP_Mvir(&test_galaxy) > 0, "Mvir should be positive");
+    TEST_ASSERT(GALAXY_PROP_Rvir(&test_galaxy) > 0, "Rvir should be positive");
+    TEST_ASSERT(GALAXY_PROP_Vvir(&test_galaxy) > 0, "Vvir should be positive");
+    TEST_ASSERT(GALAXY_PROP_Len(&test_galaxy) > 0, "Len should be positive");
 
     // Validate baryonic mass constraints using property system
     float coldgas_test = get_float_property(&test_galaxy, PROP_ColdGas, -1.0f);
@@ -1054,15 +1134,15 @@ static void test_comprehensive_galaxy_properties(void) {
     float disk_radius = get_float_property(&test_galaxy, PROP_DiskScaleRadius, -1.0f);
     TEST_ASSERT(disk_radius > 0, "DiskScaleRadius should be positive");
 
-    // Test array properties
+    // Test array properties using proper property access
     for (int i = 0; i < 3; i++) {
-        TEST_ASSERT(isfinite(test_galaxy.Pos[i]), "Position components should be finite");
-        TEST_ASSERT(isfinite(test_galaxy.Vel[i]), "Velocity components should be finite");
+        TEST_ASSERT(isfinite(GALAXY_PROP_Pos_ELEM(&test_galaxy, i)), "Position components should be finite");
+        TEST_ASSERT(isfinite(GALAXY_PROP_Vel_ELEM(&test_galaxy, i)), "Velocity components should be finite");
     }
 
     // Test derived relationships (basic physics consistency)
-    float expected_vvir = sqrtf(43.0f * test_galaxy.Mvir / test_galaxy.Rvir);  // Approximate
-    float vvir_ratio = test_galaxy.Vvir / expected_vvir;
+    float expected_vvir = sqrtf(43.0f * GALAXY_PROP_Mvir(&test_galaxy) / GALAXY_PROP_Rvir(&test_galaxy));  // Approximate
+    float vvir_ratio = GALAXY_PROP_Vvir(&test_galaxy) / expected_vvir;
     TEST_ASSERT(vvir_ratio > 0.5f && vvir_ratio < 2.0f, "Vvir should be physically reasonable relative to Mvir/Rvir");
 
     // Test that bulge mass is subset of stellar mass
@@ -1081,8 +1161,6 @@ static void test_comprehensive_galaxy_properties(void) {
     
     // Test merger properties using property system
     set_int32_property(&test_galaxy, PROP_mergeType, 0);           // No recent merger
-    // Note: Using int64 for uint64 ID since no uint64 property function exists
-    // set_int64_property(&test_galaxy, PROP_mergeIntoID, 0LL);   // Not merging - commented out if property doesn't exist
     set_int32_property(&test_galaxy, PROP_mergeIntoSnapNum, -1);   // No merge target
     set_float_property(&test_galaxy, PROP_dT, 0.1f);             // Time step
     
@@ -1139,12 +1217,10 @@ static void test_comprehensive_galaxy_properties(void) {
     
     // Validate merger properties
     int32_t merge_type = get_int32_property(&test_galaxy, PROP_mergeType, -999);
-    // uint64_t merge_into_id = get_int64_property(&test_galaxy, PROP_mergeIntoID, 999LL); // Commented out if property doesn't exist
     int32_t merge_snap = get_int32_property(&test_galaxy, PROP_mergeIntoSnapNum, -999);
     float dt = get_float_property(&test_galaxy, PROP_dT, -999.0f);
     
     TEST_ASSERT(merge_type == 0, "mergeType should be accessible");
-    // TEST_ASSERT(merge_into_id == 0ULL, "mergeIntoID should be accessible"); // Commented out if property doesn't exist
     TEST_ASSERT(merge_snap == -1, "mergeIntoSnapNum should be accessible");
     TEST_ASSERT(fabsf(dt - 0.1f) < TOLERANCE_FLOAT, "dT should be accessible");
     
@@ -1199,6 +1275,9 @@ static void test_comprehensive_galaxy_properties(void) {
     
     printf("Tested ~60+ galaxy properties including all core, physics, and array properties.\n");
     printf("All properties from properties.yaml are covered and validated.\n");
+    
+    // Cleanup test galaxy properties
+    free_galaxy_properties(&test_galaxy);
     
     printf("Comprehensive galaxy properties test completed.\n");
 }
@@ -1362,10 +1441,18 @@ static void test_property_transformer_system(void) {
     struct GALAXY test_galaxy;
     memset(&test_galaxy, 0, sizeof(test_galaxy));
     
-    // Set up test values in SAGE internal units
-    test_galaxy.Mvir = 1.0e12f;        // Internal mass units
-    test_galaxy.Rvir = 200.0f;         // Internal length units
-    test_galaxy.Vvir = 150.0f;         // Internal velocity units
+    // CRITICAL: Initialize property system
+    int prop_status = allocate_galaxy_properties(&test_galaxy, &test_ctx.run_params);
+    TEST_ASSERT(prop_status == 0, "Should be able to allocate galaxy properties for transformer test");
+    TEST_ASSERT(test_galaxy.properties != NULL, "Galaxy properties should be allocated");
+    
+    // Reset to default values
+    reset_galaxy_properties(&test_galaxy);
+    
+    // Set up test values in SAGE internal units using proper property access
+    GALAXY_PROP_Mvir(&test_galaxy) = 1.0e12f;        // Internal mass units
+    GALAXY_PROP_Rvir(&test_galaxy) = 200.0f;         // Internal length units
+    GALAXY_PROP_Vvir(&test_galaxy) = 150.0f;         // Internal velocity units
     
     set_float_property(&test_galaxy, PROP_StellarMass, 5.0e10f);   // Internal mass units
     set_float_property(&test_galaxy, PROP_ColdGas, 2.0e10f);       // Internal mass units
@@ -1385,13 +1472,13 @@ static void test_property_transformer_system(void) {
     
     // Test length unit conversions
     // Internal units → kpc/h (typical SAGE output units)
-    float rvir_internal = test_galaxy.Rvir;
+    float rvir_internal = GALAXY_PROP_Rvir(&test_galaxy);
     float expected_output_rvir = rvir_internal * test_ctx.run_params.units.UnitLength_in_cm / 3.085678e21f; // Convert to kpc/h
     TEST_ASSERT(expected_output_rvir > 0, "Transformed Rvir should be positive");
     
     // Test velocity unit conversions
     // Internal units → km/s (typical SAGE output units)
-    float vvir_internal = test_galaxy.Vvir;
+    float vvir_internal = GALAXY_PROP_Vvir(&test_galaxy);
     float expected_output_vvir = vvir_internal * test_ctx.run_params.units.UnitVelocity_in_cm_per_s / 1.0e5f; // Convert to km/s
     TEST_ASSERT(expected_output_vvir > 0, "Transformed Vvir should be positive");
     
@@ -1402,8 +1489,8 @@ static void test_property_transformer_system(void) {
     
     // Test derived virial properties (consistency checks)
     // Vvir should be consistent with Mvir and Rvir: Vvir = sqrt(G*Mvir/Rvir)
-    float derived_vvir = sqrtf(43.0f * test_galaxy.Mvir / test_galaxy.Rvir);  // G ≈ 43 in SAGE units
-    float vvir_ratio = test_galaxy.Vvir / derived_vvir;
+    float derived_vvir = sqrtf(43.0f * GALAXY_PROP_Mvir(&test_galaxy) / GALAXY_PROP_Rvir(&test_galaxy));  // G ≈ 43 in SAGE units
+    float vvir_ratio = GALAXY_PROP_Vvir(&test_galaxy) / derived_vvir;
     TEST_ASSERT(vvir_ratio > 0.8f && vvir_ratio < 1.2f, "Derived Vvir should be consistent with input Mvir/Rvir");
     
     // Test metallicity fraction transformers
@@ -1420,13 +1507,13 @@ static void test_property_transformer_system(void) {
     printf("Testing conditional transformers...\n");
     
     // Test galaxy type-specific transformers
-    test_galaxy.Type = 0;  // Central galaxy
+    GALAXY_PROP_Type(&test_galaxy) = 0;  // Central galaxy
     // Central galaxies might have specific transformations that satellites don't
-    TEST_ASSERT(test_galaxy.Type == 0, "Galaxy type should affect conditional transformers");
+    TEST_ASSERT(GALAXY_PROP_Type(&test_galaxy) == 0, "Galaxy type should affect conditional transformers");
     
-    test_galaxy.Type = 1;  // Satellite galaxy
+    GALAXY_PROP_Type(&test_galaxy) = 1;  // Satellite galaxy
     // Satellite galaxies might have different transformation rules
-    TEST_ASSERT(test_galaxy.Type == 1, "Satellite galaxy type should be handled by conditional transformers");
+    TEST_ASSERT(GALAXY_PROP_Type(&test_galaxy) == 1, "Satellite galaxy type should be handled by conditional transformers");
     
     printf("Conditional transformer logic validated.\n");
     
@@ -1434,7 +1521,7 @@ static void test_property_transformer_system(void) {
     printf("Testing transformer precision and performance...\n");
     
     // Test that transformations don't introduce significant precision loss
-    float original_mvir = test_galaxy.Mvir;
+    float original_mvir = GALAXY_PROP_Mvir(&test_galaxy);
     // Simulate round-trip transformation (internal → output → internal)
     double output_mvir = original_mvir * test_ctx.run_params.units.UnitMass_in_g / 1.989e43;
     double roundtrip_mvir = output_mvir * 1.989e43 / test_ctx.run_params.units.UnitMass_in_g;
@@ -1442,6 +1529,10 @@ static void test_property_transformer_system(void) {
     TEST_ASSERT(precision_loss < 1e-6, "Round-trip transformations should not introduce significant precision loss");
     
     printf("Transformer precision validated.\n");
+    
+    // Cleanup test galaxy properties
+    free_galaxy_properties(&test_galaxy);
+    
     printf("Property transformer system test completed.\n");
 }
 
@@ -1492,6 +1583,14 @@ static void test_property_metadata_discovery(void) {
     // Test specific property existence by attempting to access them
     struct GALAXY test_galaxy;
     memset(&test_galaxy, 0, sizeof(test_galaxy));
+    
+    // CRITICAL: Initialize property system
+    int prop_status = allocate_galaxy_properties(&test_galaxy, &test_ctx.run_params);
+    TEST_ASSERT(prop_status == 0, "Should be able to allocate galaxy properties for metadata test");
+    TEST_ASSERT(test_galaxy.properties != NULL, "Galaxy properties should be allocated");
+    
+    // Reset to default values
+    reset_galaxy_properties(&test_galaxy);
     
     // Test core properties (should be accessible via direct macros)
     printf("Testing core property discovery...\n");
@@ -1557,6 +1656,9 @@ static void test_property_metadata_discovery(void) {
     TEST_ASSERT(sizeof(test_galaxy.SnapNum) == 4, "SnapNum should be 32-bit integer");
     TEST_ASSERT(sizeof(test_galaxy.GalaxyIndex) == 8, "GalaxyIndex should be 64-bit integer");
     TEST_ASSERT(sizeof(test_galaxy.Mvir) == 4, "Mvir should be 32-bit float");
+    
+    // Cleanup test galaxy properties
+    free_galaxy_properties(&test_galaxy);
     
     printf("Property metadata discovery test completed.\n");
 }
@@ -1661,19 +1763,29 @@ static void test_error_handling_edge_cases(void) {
     // Test boundary conditions
     printf("Testing boundary conditions...\n");
     
+    struct GALAXY boundary_test_galaxy;
+    memset(&boundary_test_galaxy, 0, sizeof(boundary_test_galaxy));
+    
+    // CRITICAL: Initialize property system for boundary testing
+    int prop_status = allocate_galaxy_properties(&boundary_test_galaxy, &test_ctx.run_params);
+    TEST_ASSERT(prop_status == 0, "Should be able to allocate galaxy properties for boundary test");
+    
+    // Reset to default values
+    reset_galaxy_properties(&boundary_test_galaxy);
+    
     // Test with extremely large galaxy indices (boundary of uint64_t)
-    test_galaxy.GalaxyIndex = UINT64_MAX - 1;
-    TEST_ASSERT(test_galaxy.GalaxyIndex > 0, "Large galaxy indices should be handled correctly");
+    GALAXY_PROP_GalaxyIndex(&boundary_test_galaxy) = UINT64_MAX - 1;
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(&boundary_test_galaxy) > 0, "Large galaxy indices should be handled correctly");
     
     // Test with zero and negative values where appropriate
-    set_float_property(&test_galaxy, PROP_StellarMass, 0.0f);  // Zero stellar mass (valid)
-    float zero_stellar = get_float_property(&test_galaxy, PROP_StellarMass, -1.0f);
+    set_float_property(&boundary_test_galaxy, PROP_StellarMass, 0.0f);  // Zero stellar mass (valid)
+    float zero_stellar = get_float_property(&boundary_test_galaxy, PROP_StellarMass, -1.0f);
     TEST_ASSERT(zero_stellar == 0.0f, "Zero stellar mass should be handled correctly");
     
     // Test with very small values (near floating-point precision limits)
-    set_float_property(&test_galaxy, PROP_BlackHoleMass, 1e-10f);
-    float tiny_bh = get_float_property(&test_galaxy, PROP_BlackHoleMass, -1.0f);
-    TEST_ASSERT(tiny_bh > 0.0f, "Very small black hole masses should be handled correctly");
+    set_double_property(&boundary_test_galaxy, PROP_BlackHoleMass, 1e-10);
+    double tiny_bh = get_double_property(&boundary_test_galaxy, PROP_BlackHoleMass, -1.0);
+    TEST_ASSERT(tiny_bh > 0.0, "Very small black hole masses should be handled correctly");
     
     printf("Boundary conditions validated.\n");
     
@@ -1681,12 +1793,15 @@ static void test_error_handling_edge_cases(void) {
     printf("Testing data consistency under edge cases...\n");
     
     // Test that property system maintains consistency with extreme values
-    test_galaxy.Mvir = 1e15f;  // Very massive halo
-    test_galaxy.Rvir = 1000.0f;  // Large radius
-    float extreme_vvir = sqrtf(43.0f * test_galaxy.Mvir / test_galaxy.Rvir);
+    GALAXY_PROP_Mvir(&boundary_test_galaxy) = 1e15f;  // Very massive halo
+    GALAXY_PROP_Rvir(&boundary_test_galaxy) = 1000.0f;  // Large radius
+    float extreme_vvir = sqrtf(43.0f * GALAXY_PROP_Mvir(&boundary_test_galaxy) / GALAXY_PROP_Rvir(&boundary_test_galaxy));
     TEST_ASSERT(isfinite(extreme_vvir), "Extreme value calculations should remain finite");
     
     printf("Data consistency under edge cases validated.\n");
+    
+    // Cleanup test galaxy properties
+    free_galaxy_properties(&test_galaxy);
     
     printf("Error handling and edge case test completed.\n");
 }
