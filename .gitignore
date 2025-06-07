@@ -65,6 +65,7 @@ tests/test_integration_workflows
 tests/test_error_recovery
 tests/test_dynamic_memory_expansion
 tests/test_data_integrity_physics_free
+tests/test_hdf5_output_validation
 
 tests/test_output/
 .repomix/
