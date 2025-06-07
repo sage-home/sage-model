@@ -94,5 +94,12 @@ int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write,
     save_info_base->num_gals_in_buffer[snap_idx] = 0;
     save_info_base->tot_ngals[snap_idx] += num_to_write;
     
+    // Force flush of data to disk after writing
+    herr_t flush_status = H5Fflush(save_info->file_id, H5F_SCOPE_GLOBAL);
+    if (flush_status < 0) {
+        fprintf(stderr, "Warning: H5Fflush failed with status %d after buffer write\n", (int)flush_status);
+        // Continue execution - don't return error as the write itself succeeded
+    }
+    
     return EXIT_SUCCESS;
 }

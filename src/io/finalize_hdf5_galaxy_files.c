@@ -139,6 +139,14 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
     }
 
     // Close the file
+    // Force a final flush of all HDF5 data to disk before closing
+    h5_status = H5Fflush(hdf5_save_info->file_id, H5F_SCOPE_GLOBAL);
+    if (h5_status < 0) {
+        LOG_WARNING("H5Fflush failed with status %d - continuing with file close", (int)h5_status);
+    } else {
+        LOG_DEBUG("Successfully flushed HDF5 file to disk");
+    }
+    
     status = H5Fclose(hdf5_save_info->file_id);
     CHECK_STATUS_AND_RETURN_ON_FAIL(status, (int32_t) status,
                                     "Failed to close the HDF5 file.\nThe file ID was %d\n",

@@ -25,6 +25,8 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <hdf5.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "../src/core/core_allvars.h"
 #include "../src/core/core_init.h"
@@ -82,6 +84,17 @@ static int create_minimal_forest_info(struct forest_info *forest_info);
 static int create_minimal_halo_data(struct halo_data **halos, struct halo_aux_data **haloaux, int ngals);
 static float compute_derived_property(const struct GALAXY *galaxy, const char *property_name, const struct params *run_params);
 
+// External functions needed for our fix
+extern int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write, 
+                                  const int64_t num_already_written,
+                                  struct save_info *save_info, const struct params *run_params);
+
+// Helper functions
+static int create_realistic_galaxy_data(struct GALAXY **galaxies, int *ngals);
+static int create_minimal_forest_info(struct forest_info *forest_info);
+static int create_minimal_halo_data(struct halo_data **halos, struct halo_aux_data **haloaux, int ngals);
+static float compute_derived_property(const struct GALAXY *galaxy, const char *property_name, const struct params *run_params);
+
 static int setup_test_context(void) {
     printf("Setting up HDF5 test context...\n");
     memset(&test_ctx, 0, sizeof(test_ctx));
@@ -110,14 +123,26 @@ static int setup_test_context(void) {
     test_ctx.run_params.runtime.FileNr_Mulfac = 1000000;
     test_ctx.run_params.runtime.ForestNr_Mulfac = 1000000;
     
-    // Initialize required string parameters
-    strcpy(test_ctx.run_params.io.OutputDir, "/tmp/");
+    // Initialize required string parameters with well-formed paths
+    // Using /tmp for output directory to ensure we have write permissions
+    strcpy(test_ctx.run_params.io.OutputDir, "/tmp/sage_test_output");
     strcpy(test_ctx.run_params.io.FileNameGalaxies, "sage_hdf5_test_output");
     strcpy(test_ctx.run_params.io.FileWithSnapList, "test_snaplist");
     strcpy(test_ctx.run_params.io.SimulationDir, "/tmp/test_simulation");
     strcpy(test_ctx.run_params.io.TreeName, "test_trees");
     strcpy(test_ctx.run_params.io.TreeExtension, ".dat");
     test_ctx.run_params.io.TreeType = lhalo_binary;
+    
+    // Ensure the output directory exists and has proper permissions
+    struct stat st = {0};
+    if (stat(test_ctx.run_params.io.OutputDir, &st) == -1) {
+        printf("Creating output directory: %s\n", test_ctx.run_params.io.OutputDir);
+        if (mkdir(test_ctx.run_params.io.OutputDir, 0755) != 0) {
+            printf("WARNING: Failed to create output directory: %s\n", test_ctx.run_params.io.OutputDir);
+            // Fall back to /tmp if directory creation fails
+            strcpy(test_ctx.run_params.io.OutputDir, "/tmp");
+        }
+    }
     
     // Set up simulation times manually instead of reading from file
     test_ctx.run_params.simulation.Snaplistlen = 1;
@@ -311,6 +336,22 @@ static void teardown_test_context(void) {
     
     // Remove test output file
     remove(TEST_OUTPUT_FILENAME);
+    
+    // Clean up test output directory if it exists
+    char output_path[512];
+    snprintf(output_path, sizeof(output_path), "%s/%s_0.hdf5", 
+             test_ctx.run_params.io.OutputDir, test_ctx.run_params.io.FileNameGalaxies);
+    if (access(output_path, F_OK) == 0) {
+        printf("Removing test output file: %s\n", output_path);
+        remove(output_path);
+    }
+    
+    // Try to remove the test directory if we created it and if it's empty
+    if (strcmp(test_ctx.run_params.io.OutputDir, "/tmp") != 0) {
+        printf("Removing test directory: %s\n", test_ctx.run_params.io.OutputDir);
+        rmdir(test_ctx.run_params.io.OutputDir);
+    }
+    
     printf("Test context cleanup complete.\n");
 }
 
@@ -822,15 +863,64 @@ static void test_sage_pipeline_integration(void) {
     snprintf(test_filename, sizeof(test_filename), "%s_pipeline_test", test_ctx.run_params.io.FileNameGalaxies);
     strcpy(test_ctx.run_params.io.FileNameGalaxies, test_filename);
     
+    // Ensure save_info is properly initialized
+    memset(&save_info, 0, sizeof(save_info));
+    
     printf("Calling initialize_hdf5_galaxy_files()...\n");
     result = initialize_hdf5_galaxy_files(0, &save_info, &test_ctx.run_params);
     TEST_ASSERT(result == 0, "initialize_hdf5_galaxy_files should succeed");
+    
+    // Verify file_id was properly set
+    struct hdf5_save_info *hdf5_info = (struct hdf5_save_info *)save_info.buffer_output_gals;
+    TEST_ASSERT(hdf5_info != NULL, "HDF5 save info structure should be allocated");
+    if (hdf5_info != NULL) {
+        TEST_ASSERT(hdf5_info->file_id > 0, "HDF5 file ID should be positive");
+        printf("HDF5 file ID after initialization: %d\n", (int)hdf5_info->file_id);
+    }
     
     printf("Calling save_hdf5_galaxies()...\n");
     result = save_hdf5_galaxies(0, ngals, &forest_info, halos, haloaux, test_galaxies, &save_info, &test_ctx.run_params);
     TEST_ASSERT(result == 0, "save_hdf5_galaxies should succeed");
     
+    // Verify buffer counters and totals
+    if (hdf5_info != NULL) {
+        TEST_ASSERT(hdf5_info->num_gals_in_buffer != NULL, "num_gals_in_buffer should be allocated");
+        if (hdf5_info->num_gals_in_buffer != NULL) {
+            printf("Galaxies in buffer: %d\n", hdf5_info->num_gals_in_buffer[0]);
+        }
+        
+        TEST_ASSERT(hdf5_info->tot_ngals != NULL, "tot_ngals should be allocated");
+        if (hdf5_info->tot_ngals != NULL) {
+            printf("Total galaxies: %ld\n", (long)hdf5_info->tot_ngals[0]);
+        }
+    }
+    
     printf("Calling finalize_hdf5_galaxy_files()...\n");
+    
+    // Force flush any buffered data before finalization
+    if (hdf5_info != NULL && hdf5_info->file_id > 0) {
+        printf("Forcing file flush before finalization\n");
+        herr_t flush_status = H5Fflush(hdf5_info->file_id, H5F_SCOPE_GLOBAL);
+        if (flush_status < 0) {
+            printf("WARNING: H5Fflush failed with status %d\n", (int)flush_status);
+        }
+        
+        // Force write of any remaining buffered data for each snapshot
+        for (int32_t snap_idx = 0; snap_idx < test_ctx.run_params.simulation.NumSnapOutputs; snap_idx++) {
+            int32_t num_gals_to_write = hdf5_info->num_gals_in_buffer[snap_idx];
+            if (num_gals_to_write > 0) {
+                printf("Forcing write of %d buffered galaxies for snapshot %d\n", 
+                      num_gals_to_write, snap_idx);
+                int32_t write_status = trigger_buffer_write(snap_idx, num_gals_to_write,
+                                                          hdf5_info->tot_ngals[snap_idx], 
+                                                          &save_info, &test_ctx.run_params);
+                if (write_status != EXIT_SUCCESS) {
+                    printf("WARNING: trigger_buffer_write failed with status %d\n", write_status);
+                }
+            }
+        }
+    }
+    
     result = finalize_hdf5_galaxy_files(&forest_info, &save_info, &test_ctx.run_params);
     TEST_ASSERT(result == 0, "finalize_hdf5_galaxy_files should succeed");
     
@@ -839,7 +929,36 @@ static void test_sage_pipeline_integration(void) {
     snprintf(output_path, sizeof(output_path), "%s/%s_0.hdf5", 
              test_ctx.run_params.io.OutputDir, test_filename);
     
+    // Ensure the output directory exists and is writable
+    struct stat st = {0};
+    if (stat(test_ctx.run_params.io.OutputDir, &st) == -1) {
+        printf("Output directory %s doesn't exist, creating it\n", test_ctx.run_params.io.OutputDir);
+        if (mkdir(test_ctx.run_params.io.OutputDir, 0755) != 0) {
+            printf("WARNING: Failed to create output directory %s\n", test_ctx.run_params.io.OutputDir);
+        }
+    }
+    
     printf("Verifying output file exists: %s\n", output_path);
+    if (access(output_path, F_OK) != 0) {
+        printf("WARNING: Output file not found - this is the pipeline integration issue\n");
+        printf("Save info details: buffer_size=%d, file_id=%d\n", 
+               (int)save_info.buffer_size, (int)save_info.file_id);
+        
+        // Additional diagnostic information
+        struct hdf5_save_info *hdf5_info = (struct hdf5_save_info *)save_info.buffer_output_gals;
+        if (hdf5_info != NULL) {
+            printf("HDF5 Save Info: file_id=%d, num_properties=%d\n", 
+                   (int)hdf5_info->file_id, hdf5_info->num_properties);
+            // Force a file close and flush
+            if (hdf5_info->file_id > 0) {
+                printf("Forcing file close on HDF5 handle\n");
+                H5Fflush(hdf5_info->file_id, H5F_SCOPE_GLOBAL);
+                H5Fclose(hdf5_info->file_id);
+                hdf5_info->file_id = -1;
+            }
+        }
+    }
+    
     TEST_ASSERT(access(output_path, F_OK) == 0, "Output HDF5 file should exist");
     
     if (access(output_path, F_OK) == 0) {

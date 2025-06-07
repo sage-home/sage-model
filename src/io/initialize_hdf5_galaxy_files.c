@@ -1,5 +1,7 @@
 #include "save_gals_hdf5_internal.h"
 #include "../core/core_logging.h"
+#include <sys/stat.h>
+#include <sys/types.h>
 
 // Updated initialization function for HDF5 files using property system
 int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_info_base, const struct params *run_params)
@@ -23,6 +25,19 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     
     // Create the file
     snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->io.OutputDir, run_params->io.FileNameGalaxies, filenr);
+    
+    // Ensure the output directory exists
+    struct stat st = {0};
+    if (stat(run_params->io.OutputDir, &st) == -1) {
+        LOG_WARNING("Output directory %s doesn't exist, attempting to create it", run_params->io.OutputDir);
+        if (mkdir(run_params->io.OutputDir, 0755) != 0) {
+            LOG_ERROR("Failed to create output directory %s", run_params->io.OutputDir);
+            free(save_info);
+            return FILE_NOT_FOUND;
+        } else {
+            LOG_INFO("Successfully created output directory %s", run_params->io.OutputDir);
+        }
+    }
     
     hid_t file_id = H5Fcreate(buffer, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     
