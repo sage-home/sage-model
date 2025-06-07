@@ -1,12 +1,13 @@
 #include "save_gals_hdf5_internal.h"
 #include "../core/core_logging.h"
+#include "../core/core_module_system.h"
 
 // Function prototypes for the components were moved to the internal header
 
 // Process galaxy data into property buffers for HDF5 output
 static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_save_info *save_info,
-                                        const int32_t snap_idx, const struct halo_data *halos,
-                                        const int64_t task_forestnr, const int64_t original_treenr,
+                                        const int32_t snap_idx, const struct halo_data *halos __attribute__((unused)),
+                                        const int64_t task_forestnr __attribute__((unused)), const int64_t original_treenr __attribute__((unused)),
                                         const struct params *run_params)
 {
     // Validate property buffers are allocated
@@ -22,70 +23,33 @@ static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_sav
         struct property_buffer_info *buffer = &save_info->property_buffers[snap_idx][i];
         property_id_t prop_id = buffer->prop_id;
         
-        // Handle core properties with direct field access (physics-free compatible)
-        if (buffer->is_core_prop) {
-            // Direct core property access using struct fields - essential core properties
-            if (strcmp(buffer->name, "SnapNum") == 0) {
-                ((int32_t*)buffer->data)[gals_in_buffer] = g->SnapNum;
-            }
-            else if (strcmp(buffer->name, "Type") == 0) {
-                ((int32_t*)buffer->data)[gals_in_buffer] = g->Type;
-            }
-            else if (strcmp(buffer->name, "GalaxyIndex") == 0) {
-                ((uint64_t*)buffer->data)[gals_in_buffer] = g->GalaxyIndex;
-            }
-            else if (strcmp(buffer->name, "CentralGalaxyIndex") == 0) {
-                ((uint64_t*)buffer->data)[gals_in_buffer] = g->CentralGalaxyIndex;
-            }
-            else if (strcmp(buffer->name, "SAGEHaloIndex") == 0) {
-                ((int32_t*)buffer->data)[gals_in_buffer] = g->HaloNr;
-            }
-            else if (strcmp(buffer->name, "SAGETreeIndex") == 0) {
-                ((int32_t*)buffer->data)[gals_in_buffer] = original_treenr;
-            }
-            else if (strcmp(buffer->name, "SimulationHaloIndex") == 0) {
-                ((int64_t*)buffer->data)[gals_in_buffer] = llabs(halos[g->HaloNr].MostBoundID);
-            }
-            else if (strcmp(buffer->name, "TaskForestNr") == 0) {
-                ((int64_t*)buffer->data)[gals_in_buffer] = task_forestnr;
-            }
-            // Position components
-            else if (strcmp(buffer->name, "Posx") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = g->Pos[0];
-            }
-            else if (strcmp(buffer->name, "Posy") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = g->Pos[1];
-            }
-            else if (strcmp(buffer->name, "Posz") == 0) {
-                ((float*)buffer->data)[gals_in_buffer] = g->Pos[2];
-            }
-            // Add more core properties as needed...
-        } 
-        // Handle physics properties via the dispatch_property_transformer
-        else {
-            // Determine the element size for pointer arithmetic
-            size_t element_size = 0;
-            if (buffer->h5_dtype == H5T_NATIVE_FLOAT) {
-                element_size = sizeof(float);
-            }
-            else if (buffer->h5_dtype == H5T_NATIVE_DOUBLE) {
-                element_size = sizeof(double);
-            }
-            else if (buffer->h5_dtype == H5T_NATIVE_INT) {
-                element_size = sizeof(int32_t);
-            }
-            else if (buffer->h5_dtype == H5T_NATIVE_LLONG) {
-                element_size = sizeof(int64_t);
-            }
+        // Use dispatch_property_transformer for all properties (core and physics)
+        // This ensures consistency and automatically captures all core properties marked for output
+        // Determine the element size for pointer arithmetic
+        size_t element_size = 0;
+        if (buffer->h5_dtype == H5T_NATIVE_FLOAT) {
+            element_size = sizeof(float);
+        }
+        else if (buffer->h5_dtype == H5T_NATIVE_DOUBLE) {
+            element_size = sizeof(double);
+        }
+        else if (buffer->h5_dtype == H5T_NATIVE_INT) {
+            element_size = sizeof(int32_t);
+        }
+        else if (buffer->h5_dtype == H5T_NATIVE_LLONG) {
+            element_size = sizeof(int64_t);
+        }
+        else if (buffer->h5_dtype == H5T_NATIVE_UINT64) {
+            element_size = sizeof(uint64_t);
+        }
+        
+        if (element_size > 0) {
+            // Get the pointer to the output buffer element for this galaxy's property
+            void *output_buffer_element_ptr = ((char*)buffer->data) + (gals_in_buffer * element_size);
             
-            if (element_size > 0) {
-                // Get the pointer to the output buffer element for this galaxy's property
-                void *output_buffer_element_ptr = ((char*)buffer->data) + (gals_in_buffer * element_size);
-                
-                // Call the dispatcher to transform the property value for output
-                dispatch_property_transformer(g, prop_id, buffer->name, output_buffer_element_ptr, 
-                                            run_params, buffer->h5_dtype);
-            }
+            // Call the dispatcher to transform the property value for output
+            dispatch_property_transformer(g, prop_id, buffer->name, output_buffer_element_ptr, 
+                                        run_params, buffer->h5_dtype);
         }
     }
     
@@ -161,6 +125,66 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
     return EXIT_SUCCESS;
 }
 
+// Write all parameters dynamically using the module parameter registries
+static int32_t write_physics_parameters_to_hdf5(hid_t runtime_group_id, const struct physics_params *physics __attribute__((unused))) {
+    // Use the module system's parameter registries to write all registered parameters
+    // This eliminates hardcoded parameter names and maintains core-physics separation
+    extern struct module_registry *global_module_registry;
+    
+    if (global_module_registry == NULL) {
+        LOG_DEBUG("No global module registry available, skipping parameter writing");
+        return EXIT_SUCCESS;
+    }
+    
+    // Iterate through all registered modules and write their parameters
+    for (int i = 0; i < global_module_registry->num_modules; i++) {
+        if (!global_module_registry->modules[i].active || 
+            global_module_registry->modules[i].parameter_registry == NULL) {
+            continue;
+        }
+        
+        module_parameter_registry_t *registry = global_module_registry->modules[i].parameter_registry;
+        
+        // Write all parameters from this module's registry
+        for (int j = 0; j < registry->num_parameters; j++) {
+            module_parameter_t *param = &registry->parameters[j];
+            
+            // Create HDF5 attribute based on parameter type
+            switch (param->type) {
+                case MODULE_PARAM_TYPE_INT:
+                    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, param->name, param->value.int_val, H5T_NATIVE_INT);
+                    break;
+                    
+                case MODULE_PARAM_TYPE_FLOAT:
+                    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, param->name, param->value.float_val, H5T_NATIVE_FLOAT);
+                    break;
+                    
+                case MODULE_PARAM_TYPE_DOUBLE:
+                    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, param->name, param->value.double_val, H5T_NATIVE_DOUBLE);
+                    break;
+                    
+                case MODULE_PARAM_TYPE_BOOL: {
+                    // Write booleans as integers (0 or 1)
+                    int32_t bool_as_int = (int32_t)param->value.bool_val;
+                    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, param->name, bool_as_int, H5T_NATIVE_INT);
+                    break;
+                }
+                    
+                case MODULE_PARAM_TYPE_STRING:
+                    CREATE_STRING_ATTRIBUTE(runtime_group_id, param->name, param->value.string_val, strlen(param->value.string_val));
+                    break;
+                    
+                default:
+                    LOG_WARNING("Unsupported parameter type %d for parameter '%s', skipping", 
+                               param->type, param->name);
+                    break;
+            }
+        }
+    }
+    
+    return EXIT_SUCCESS;
+}
+
 // Write header information to HDF5 file
 int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const struct params *run_params) {
     // Create header subgroups
@@ -216,30 +240,8 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FirstFile", run_params->io.FirstFile, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "LastFile", run_params->io.LastFile, H5T_NATIVE_INT);
 
-    // Recipe flags
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SFprescription", run_params->physics.SFprescription, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "AGNrecipeOn", run_params->physics.AGNrecipeOn, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SupernovaRecipeOn", run_params->physics.SupernovaRecipeOn, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReionizationOn", run_params->physics.ReionizationOn, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "DiskInstabilityOn", run_params->physics.DiskInstabilityOn, H5T_NATIVE_INT);
-
-    // Model parameters
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", run_params->physics.SfrEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackReheatingEpsilon", run_params->physics.FeedbackReheatingEpsilon, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackEjectionEfficiency", run_params->physics.FeedbackEjectionEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReIncorporationFactor", run_params->physics.ReIncorporationFactor, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RadioModeEfficiency", run_params->physics.RadioModeEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "QuasarModeEfficiency", run_params->physics.QuasarModeEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "BlackHoleGrowthRate", run_params->physics.BlackHoleGrowthRate, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ThreshMajorMerger", run_params->physics.ThreshMajorMerger, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ThresholdSatDisruption", run_params->physics.ThresholdSatDisruption, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Yield", run_params->physics.Yield, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RecycleFraction", run_params->physics.RecycleFraction, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FracZleaveDisk", run_params->physics.FracZleaveDisk, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Reionization_z0", run_params->physics.Reionization_z0, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "Reionization_zr", run_params->physics.Reionization_zr, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EnergySN", run_params->physics.EnergySN, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "EtaSN", run_params->physics.EtaSN, H5T_NATIVE_DOUBLE);
+    // Dynamic physics parameters - uses existing parameter system to write all available physics parameters
+    write_physics_parameters_to_hdf5(runtime_group_id, &run_params->physics);
 
     // Misc runtime Parameters
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitLength_in_cm", run_params->units.UnitLength_in_cm, H5T_NATIVE_DOUBLE);
