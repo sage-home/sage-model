@@ -66,6 +66,8 @@ These tests are integrated into the main Makefile and can be run with `make test
 
 ## Running Tests
 
+Important: If a test or test catagory fails to compile, run `make clean` first to properly update the required auto-generate property files.
+
 ### All Tests
 ```bash
 make tests
