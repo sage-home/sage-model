@@ -203,9 +203,15 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
                                     "Failed to create the Header/Miscgroup.\nThe file ID was %d\n",
                                     (int32_t) file_id);
 
-    // Simulation information
-    CREATE_STRING_ATTRIBUTE(sim_group_id, "SimulationDir", &run_params->io.SimulationDir, strlen(run_params->io.SimulationDir));
-    CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->io.FileWithSnapList, strlen(run_params->io.FileWithSnapList));
+    // Simulation information  
+    // Handle empty strings by using a minimum length of 1
+    size_t sim_dir_len = strlen(run_params->io.SimulationDir);
+    if (sim_dir_len == 0) sim_dir_len = 1;
+    CREATE_STRING_ATTRIBUTE(sim_group_id, "SimulationDir", &run_params->io.SimulationDir, sim_dir_len);
+    
+    size_t snap_list_len = strlen(run_params->io.FileWithSnapList);
+    if (snap_list_len == 0) snap_list_len = 1;
+    CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->io.FileWithSnapList, snap_list_len);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapshotNr", run_params->simulation.LastSnapshotNr, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "SimMaxSnaps", run_params->simulation.SimMaxSnaps, H5T_NATIVE_INT);
 

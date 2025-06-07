@@ -41,6 +41,7 @@ static int tests_passed = 0;
 // Constants for validation
 #define TOLERANCE_FLOAT 1e-5
 #define TEST_OUTPUT_FILENAME "/tmp/sage_hdf5_test_output.h5"
+#define STEPS 64  // Maximum number of timesteps for StarFormationHistory
 
 // Helper macro for test assertions
 #define TEST_ASSERT(condition, message, ...) do { \
@@ -96,16 +97,31 @@ static int setup_test_context(void) {
     test_ctx.run_params.simulation.NumSnapOutputs = 1;
     test_ctx.run_params.simulation.ListOutputSnaps[0] = 63;
     test_ctx.run_params.simulation.SimMaxSnaps = 64;
+    test_ctx.run_params.simulation.LastSnapshotNr = 63;
+    
+    test_ctx.run_params.cosmology.PartMass = 1.0e10;
+    test_ctx.run_params.cosmology.BoxSize = 62.5;
+    
+    test_ctx.run_params.io.FirstFile = 0;
+    test_ctx.run_params.io.LastFile = 0;
+    test_ctx.run_params.io.NumSimulationTreeFiles = 1;
+    
+    test_ctx.run_params.runtime.FileNr_Mulfac = 1000000;
+    test_ctx.run_params.runtime.ForestNr_Mulfac = 1000000;
     
     // Initialize required string parameters
     strcpy(test_ctx.run_params.io.OutputDir, "/tmp/");
     strcpy(test_ctx.run_params.io.FileNameGalaxies, "sage_hdf5_test_output");
-    strcpy(test_ctx.run_params.io.FileWithSnapList, "");  // Create empty, we'll set snaplist manually
+    strcpy(test_ctx.run_params.io.FileWithSnapList, "test_snaplist");
+    strcpy(test_ctx.run_params.io.SimulationDir, "/tmp/test_simulation");
+    strcpy(test_ctx.run_params.io.TreeName, "test_trees");
+    strcpy(test_ctx.run_params.io.TreeExtension, ".dat");
     test_ctx.run_params.io.TreeType = lhalo_binary;
     
     // Set up simulation times manually instead of reading from file
     test_ctx.run_params.simulation.Snaplistlen = 1;
     test_ctx.run_params.simulation.AA[0] = 1.0;  // z=0, a=1.0
+    test_ctx.run_params.simulation.ZZ[63] = 0.0;  // Set redshift for snapshot 63
     
     // Initialize core systems in proper order
     if (initialize_logging(&test_ctx.run_params) != 0) {
@@ -769,8 +785,10 @@ static void test_sage_pipeline_integration(void) {
                 H5Gclose(header_group);
             }
             
-            // Validate Galaxy data group exists
-            hid_t galaxy_group = H5Gopen2(file_id, "/Galaxy", H5P_DEFAULT);
+            // Validate Snap data group exists (new structure uses /Snap_N instead of /Galaxy)
+            char snap_group_name[64];
+            snprintf(snap_group_name, sizeof(snap_group_name), "/Snap_%d", test_ctx.run_params.simulation.ListOutputSnaps[0]);
+            hid_t galaxy_group = H5Gopen2(file_id, snap_group_name, H5P_DEFAULT);
             TEST_ASSERT(galaxy_group >= 0, "Galaxy group should exist in output file");
             
             if (galaxy_group >= 0) {
@@ -1186,8 +1204,8 @@ static void test_comprehensive_galaxy_properties(void) {
     set_float_property(&test_galaxy, PROP_r_heat, 10.0f);         // Heating radius
     
     // Test metallicity star formation properties using array access
-    set_float_array_element_property(&test_galaxy, PROP_SfrDiskZ, 0, 0.02f);    // Disk SFR metallicity
-    set_float_array_element_property(&test_galaxy, PROP_SfrBulgeZ, 0, 0.02f);   // Bulge SFR metallicity
+    set_float_property(&test_galaxy, PROP_SfrDiskZ, 0.02f);    // Disk SFR metallicity
+    set_float_property(&test_galaxy, PROP_SfrBulgeZ, 0.02f);   // Bulge SFR metallicity
     
     // Test cold gas star formation properties using array access
     set_float_array_element_property(&test_galaxy, PROP_SfrDiskColdGas, 0, 1.0e9f);        // Disk cold gas SFR
@@ -1255,8 +1273,8 @@ static void test_comprehensive_galaxy_properties(void) {
     TEST_ASSERT(fabsf(r_heat - 10.0f) < TOLERANCE_FLOAT, "r_heat should be accessible");
     
     // Validate array properties
-    float sfr_disk_z = get_float_array_element_property(&test_galaxy, PROP_SfrDiskZ, 0, -999.0f);
-    float sfr_bulge_z = get_float_array_element_property(&test_galaxy, PROP_SfrBulgeZ, 0, -999.0f);
+    float sfr_disk_z = get_float_property(&test_galaxy, PROP_SfrDiskZ, -999.0f);
+    float sfr_bulge_z = get_float_property(&test_galaxy, PROP_SfrBulgeZ, -999.0f);
     TEST_ASSERT(fabsf(sfr_disk_z - 0.02f) < TOLERANCE_FLOAT, "SfrDiskZ should be accessible");
     TEST_ASSERT(fabsf(sfr_bulge_z - 0.02f) < TOLERANCE_FLOAT, "SfrBulgeZ should be accessible");
     

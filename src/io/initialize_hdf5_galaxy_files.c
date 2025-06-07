@@ -25,6 +25,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
     snprintf(buffer, 3*MAX_STRING_LEN-1, "%s/%s_%d.hdf5", run_params->io.OutputDir, run_params->io.FileNameGalaxies, filenr);
     
     hid_t file_id = H5Fcreate(buffer, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    
+    // Also populate the save_info_base structure with key fields for compatibility
+    save_info_base->file_id = file_id;
     CHECK_STATUS_AND_RETURN_ON_FAIL(file_id, FILE_NOT_FOUND,
                                     "Can't open file %s for initialization.\n", buffer);
     save_info->file_id = file_id;
@@ -57,6 +60,9 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
                                      "Failed to allocate %d elements of size %zu for save_info->group_ids", 
                                      run_params->simulation.NumSnapOutputs,
                                      sizeof(*(save_info->group_ids)));
+    
+    // Also set the group_ids in save_info_base for compatibility
+    save_info_base->group_ids = save_info->group_ids;
     
     // Create groups and datasets for each snapshot
     for (int32_t snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
@@ -139,6 +145,10 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
                                      run_params->simulation.NumSnapOutputs,
                                      sizeof(save_info->num_gals_in_buffer[0]));
     
+    // Also set buffer fields in save_info_base for compatibility
+    save_info_base->buffer_size = save_info->buffer_size;
+    save_info_base->num_gals_in_buffer = save_info->num_gals_in_buffer;
+    
     // Initialize total galaxies counter
     save_info->tot_ngals = calloc(run_params->simulation.NumSnapOutputs, sizeof(save_info->tot_ngals[0]));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->tot_ngals,
@@ -146,12 +156,18 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
                                      run_params->simulation.NumSnapOutputs,
                                      sizeof(save_info->tot_ngals[0]));
     
+    // Also set tot_ngals in save_info_base for compatibility
+    save_info_base->tot_ngals = save_info->tot_ngals;
+    
     // Allocate forest_ngals array
     save_info->forest_ngals = calloc(run_params->simulation.NumSnapOutputs, sizeof(save_info->forest_ngals[0]));
     CHECK_POINTER_AND_RETURN_ON_NULL(save_info->forest_ngals,
                                      "Failed to allocate %d elements of size %zu for save_info->forest_ngals", 
                                      run_params->simulation.NumSnapOutputs,
                                      sizeof(save_info->forest_ngals[0]));
+    
+    // Also set forest_ngals in save_info_base for compatibility  
+    save_info_base->forest_ngals = save_info->forest_ngals;
     
     // Allocate property buffers array
     save_info->property_buffers = calloc(run_params->simulation.NumSnapOutputs, 
