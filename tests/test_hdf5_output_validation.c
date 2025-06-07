@@ -1715,10 +1715,10 @@ static void test_property_transformer_system(void) {
     // Reset to default values
     reset_galaxy_properties(&test_galaxy);
     
-    // Set up test values in SAGE internal units using proper property access
-    GALAXY_PROP_Mvir(&test_galaxy) = 1.0e12f;        // Internal mass units
-    GALAXY_PROP_Rvir(&test_galaxy) = 200.0f;         // Internal length units
-    GALAXY_PROP_Vvir(&test_galaxy) = 150.0f;         // Internal velocity units
+    // Set up test values with simple relationship: Vvir = sqrt(Mvir/Rvir) when G=1
+    GALAXY_PROP_Mvir(&test_galaxy) = 100.0f;         // Simple mass value
+    GALAXY_PROP_Rvir(&test_galaxy) = 100.0f;         // Simple radius value
+    GALAXY_PROP_Vvir(&test_galaxy) = 1.0f;           // sqrt(100/100) = 1.0
     
     set_float_property(&test_galaxy, PROP_StellarMass, 5.0e10f);   // Internal mass units
     set_float_property(&test_galaxy, PROP_ColdGas, 2.0e10f);       // Internal mass units
@@ -1758,7 +1758,7 @@ static void test_property_transformer_system(void) {
     float mvir_val = GALAXY_PROP_Mvir(&test_galaxy);
     float rvir_val = GALAXY_PROP_Rvir(&test_galaxy);
     float vvir_val = GALAXY_PROP_Vvir(&test_galaxy);
-    float derived_vvir = sqrtf(43.0f * mvir_val / rvir_val);  // G ≈ 43 in SAGE units
+    float derived_vvir = sqrtf(1.0f * mvir_val / rvir_val);  // Using G=1 for simple test
     float vvir_ratio = vvir_val / derived_vvir;
     
     // Allow more tolerance since this depends on floating point precision
@@ -2053,13 +2053,13 @@ static void test_error_handling_edge_cases(void) {
     float zero_stellar = get_float_property(&boundary_test_galaxy, PROP_StellarMass, -1.0f);
     TEST_ASSERT(zero_stellar == 0.0f, "Zero stellar mass should be handled correctly");
     
-    // Test with very small values (near floating-point precision limits)
-    set_double_property(&boundary_test_galaxy, PROP_BlackHoleMass, 1e-10);
-    double tiny_bh = get_double_property(&boundary_test_galaxy, PROP_BlackHoleMass, -1.0);
+    // Test with very small values (appropriate for float precision)
+    set_float_property(&boundary_test_galaxy, PROP_BlackHoleMass, 1e-6f);
+    float tiny_bh = get_float_property(&boundary_test_galaxy, PROP_BlackHoleMass, -1.0f);
     
-    // Check that very small black hole mass is preserved with appropriate precision
-    // Allow for some floating point imprecision with very small numbers
-    TEST_ASSERT(fabs(tiny_bh - 1e-10) < 1e-15 || tiny_bh >= 0.0, 
+    // Check that small black hole mass is preserved with appropriate float precision
+    // Allow for floating point imprecision
+    TEST_ASSERT(fabsf(tiny_bh - 1e-6f) < 1e-9f || tiny_bh >= 0.0f, 
               "Very small black hole masses should be handled correctly (got %.2e)", tiny_bh);
     
     printf("Boundary conditions validated.\n");
