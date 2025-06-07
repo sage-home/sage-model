@@ -14,31 +14,35 @@ These tests are integrated into the main Makefile and can be run with `make test
 | ------------------------------- | ----------------------------------------------------------------------------- | ------------------------ |
 | **test_pipeline**               | Tests the pipeline execution system with 4 phases (HALO, GALAXY, POST, FINAL) | Phase 2.5 (Mar 2025)     |
 | **test_array_utils**            | Tests the array utility functions for dynamic array manipulation              | Phase 3.3 (Apr 2025)     |
-| **test_evolution_diagnostics**  | Tests the diagnostics system for the galaxy evolution process                 | Phase 4.7 (Apr 2025)     |
-| **test_evolve_integration**     | Tests the refactored evolve_galaxies loop with phase-based execution          | Phase 5.1 (Apr 2025)     |
 | **test_core_property**          | Tests the property system's core functionality with mock implementations      | Phase 5.2.B (May 2025)   |
 | **test_core_pipeline_registry** | Tests the pipeline registry for module registration and pipeline creation     | Phase 5.2.F (May 2025)   |
 | **test_dispatcher_access**      | Tests the type-safe dispatcher functions for property access                  | Phase 5.2.F.4 (May 2025) |
+| **test_evolution_diagnostics**  | Tests the diagnostics system for the galaxy evolution process                 | Phase 4.7 (Apr 2025)     |
+| **test_evolve_integration**     | Tests the refactored evolve_galaxies loop with phase-based execution          | Phase 5.1 (Apr 2025)     |
 | **test_memory_pool**            | Tests the memory pooling system with support for various property types and dynamic arrays | Phase 3.3 (Apr 2025) |
-| **test_dynamic_memory_expansion** | Tests the dynamic memory expansion system for resolving segfaults and scaling to large simulations | Phase 5.3 (Jun 2025) |
-| **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
 | **test_merger_queue**           | Tests the merger event queue system for deferred merger processing            | Phase 5.1 (May 2025)     |
 | **test_core_merger_processor**  | Tests physics-agnostic merger event handling and dispatching                  | Phase 5.2.G (May 2025)   |
-| **test_error_recovery**         | Tests system resilience and recovery from failures                            | Phase 5.2.G (June 2025)  |
+| **test_config_system**          | Tests JSON configuration loading, parsing, nested paths, and error handling   | Phase 5.2.F.3 (May 2025) |
 | **test_physics_free_mode**      | Validates core-physics separation by running core infrastructure without physics modules | Phase 5.2.F.2 (May 2025) |
 | **test_parameter_validation**   | Tests parameter file parsing, module discovery, and configuration errors      | Phase 5.2.F.3 (Jun 2025) |
 | **test_resource_management**    | Comprehensive resource lifecycle validation                                   | Phase 5.2.F.5 (Jun 2025) |
 | **test_integration_workflows**  | Comprehensive integration workflow validation                                 | Phase 5.2.G (Jun 2025)   |
+| **test_error_recovery**         | Tests system resilience and recovery from failures                            | Phase 5.2.G (June 2025)  |
+| **test_dynamic_memory_expansion** | Tests the dynamic memory expansion system for scaling to large simulations  | Phase 5.3 (Jun 2025)     |
+| **test_data_integrity_physics_free** | Tests data integrity in physics-free mode with core properties only      | Phase 5.3 (Jun 2025)     |
+| **test_hdf5_output_validation** | Validates HDF5 output format and property serialization                       | Phase 5.3 (Jun 2025)     |
 
 ### Property System Tests (`PROPERTY_TESTS`)
 
 | Test Name | Purpose | Added in Phase |
 |-----------|---------|---------------|
 | **test_property_serialization** | Tests property serialization for I/O operations | Phase 3.2 (Apr 2025) |
-| **test_property_validation** | Tests validation of property definitions | Phase 3.2 (Apr 2025) |
 | **test_property_array_access** | Tests access to array properties | Phase 5.2.B (May 2025) |
 | **test_property_system_hdf5** | Tests integration between the property system and HDF5 output with transformer functions | Phase 5.2.F.3 (May 2025) |
+| **test_property_validation** | Tests validation of property definitions | Phase 3.2 (Apr 2025) |
 | **test_property_access_comprehensive** | Comprehensive validation of property system for core-physics separation | Phase 5.3 (Jun 2025) |
+| **test_property_yaml_validation** | Tests YAML property definition validation and parsing | Phase 5.3 (Jun 2025) |
+| **test_parameter_yaml_validation** | Tests YAML parameter definition validation and parsing | Phase 5.3 (Jun 2025) |
 
 ### I/O System Tests (`IO_TESTS`)
 
@@ -111,12 +115,12 @@ This test **intentionally produces ERROR messages** as part of its validation pr
 
 ## Test Categories Overview
 
-- **Core Infrastructure (16 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, dynamic memory expansion, core-physics separation validation, merger queue system, parameter validation, resource management, integration workflows
-- **Property System (5 tests)**: Property serialization, validation, HDF5 integration, array access, comprehensive property system validation  
+- **Core Infrastructure (19 tests)**: Configuration system, pipeline execution, property core functionality, array utilities, evolution diagnostics, memory pooling, dynamic memory expansion, core-physics separation validation, merger queue system, parameter validation, resource management, integration workflows, error recovery, data integrity validation, HDF5 output validation
+- **Property System (7 tests)**: Property serialization, validation, HDF5 integration, array access, comprehensive property system validation, YAML property validation, YAML parameter validation  
 - **I/O System (11 tests)**: All supported tree formats, endianness, validation, buffering, memory mapping
 - **Module System (3 tests)**: Pipeline invocation, module callback system, module lifecycle management
 
-The test suite provides comprehensive coverage of all major SAGE components whilst maintaining clear separation between unit tests (expected to pass during development) and scientific validation tests (may fail during refactoring phases).
+The test suite provides comprehensive coverage of all major SAGE components with **40 individual unit tests** organised into 4 categories, whilst maintaining clear separation between unit tests (expected to pass during development) and scientific validation tests (may fail during refactoring phases).
 
 **Note**: Several tests have been removed or replaced as part of the architectural evolution:
 - `test_core_physics_separation` was removed in May 2025 as its functionality is now covered by more focused tests

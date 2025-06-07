@@ -35,23 +35,33 @@ make test_property_system_hdf5
 
 ## Test Categories and Components
 
-### Core Infrastructure Tests (`CORE_TESTS`)
+The SAGE test suite contains **40 individual unit tests** organized into 4 main categories:
+
+### Core Infrastructure Tests (`CORE_TESTS`) - 19 tests
 
 Tests that validate the fundamental components of SAGE:
 
 - **test_pipeline** - Tests the execution phases (HALO, GALAXY, POST, FINAL)
 - **test_array_utils** - Tests dynamic array utilities with geometric growth
-- **test_evolution_diagnostics** - Tests the collection of evolution metrics
+- **test_core_property** - Tests the property system's core functionality
 - **test_core_pipeline_registry** - Tests module registration and pipeline creation
-- **test_config_system** - Tests configuration loading and parsing
+- **test_dispatcher_access** - Tests type-safe dispatcher functions for property access
+- **test_evolution_diagnostics** - Tests the collection of evolution metrics
+- **test_evolve_integration** - Tests the refactored evolve_galaxies loop
 - **test_memory_pool** - Tests memory allocation/management
 - **test_merger_queue** - Tests the merger event queue system
-- **test_error_recovery** - Tests system resilience and recovery from various failure scenarios
-- **test_integration_workflows** - Tests multi-system integration workflows and cross-system state management
-- **test_resource_management** - Comprehensive resource lifecycle validation (memory, HDF5 handles, file descriptors)
-- And more...
+- **test_core_merger_processor** - Tests physics-agnostic merger event handling
+- **test_config_system** - Tests configuration loading and parsing
+- **test_physics_free_mode** - Tests core-physics separation
+- **test_parameter_validation** - Tests parameter file parsing and validation
+- **test_resource_management** - Comprehensive resource lifecycle validation
+- **test_integration_workflows** - Tests multi-system integration workflows
+- **test_error_recovery** - Tests system resilience and recovery
+- **test_dynamic_memory_expansion** - Tests dynamic memory expansion system
+- **test_data_integrity_physics_free** - Tests data integrity in physics-free mode
+- **test_hdf5_output_validation** - Tests HDF5 output validation
 
-### Property System Tests (`PROPERTY_TESTS`)
+### Property System Tests (`PROPERTY_TESTS`) - 7 tests
 
 Tests focused on the property system that enables core-physics separation:
 
@@ -59,25 +69,33 @@ Tests focused on the property system that enables core-physics separation:
 - **test_property_array_access** - Tests access to array properties
 - **test_property_system_hdf5** - Tests HDF5 output with the property system
 - **test_property_validation** - Tests validation of property definitions
-- **test_property_access_comprehensive** - Comprehensive validation of property system for core-physics separation
+- **test_property_access_comprehensive** - Comprehensive validation of property system
+- **test_property_yaml_validation** - Tests YAML property definition validation
+- **test_parameter_yaml_validation** - Tests YAML parameter definition validation
 
-### I/O System Tests (`IO_TESTS`)
+### I/O System Tests (`IO_TESTS`) - 11 tests
 
 Tests for reading merger trees and writing galaxy catalogs:
 
 - **test_io_interface** - Tests the I/O abstraction layer
 - **test_endian_utils** - Tests cross-platform endianness handling
-- **test_lhalo_binary**, **test_lhalo_hdf5**, etc. - Tests various tree formats
+- **test_lhalo_binary** - Tests LHalo binary format reading
+- **test_hdf5_output** - Tests HDF5 output handler
+- **test_lhalo_hdf5** - Tests LHalo HDF5 format reading
+- **test_gadget4_hdf5** - Tests Gadget4 HDF5 format reading
+- **test_genesis_hdf5** - Tests Genesis HDF5 format reading
+- **test_consistent_trees_hdf5** - Tests ConsistentTrees HDF5 format reading
 - **test_io_memory_map** - Tests memory mapping for I/O optimization
 - **test_io_buffer_manager** - Tests buffered I/O operations
+- **test_validation_framework** - Tests I/O validation mechanisms
 
-### Module System Tests (`MODULE_TESTS`)
+### Module System Tests (`MODULE_TESTS`) - 3 tests
 
 Tests for the modular plugin architecture:
 
 - **test_pipeline_invoke** - Tests inter-module communication
 - **test_module_callback** - Tests module callback system
-- **test_module_lifecycle** - Tests complete module lifecycle management and validation
+- **test_module_lifecycle** - Tests complete module lifecycle management
 
 ### Specialized Tests
 
@@ -176,6 +194,16 @@ Tests may fail for several reasons:
 3. **Expected Failure** - Some tests (especially end-to-end) may fail during Phase 5 refactoring
 
 During Phase 5 (Core Module Migration), unit tests should pass, but end-to-end scientific comparisons may fail due to architectural changes.
+
+## Test Suite Statistics
+
+- **Total unit tests**: 40 individual test executables
+- **Core Infrastructure**: 19 tests (pipeline, properties, memory, configuration, etc.)
+- **Property System**: 7 tests (serialization, validation, YAML parsing, etc.)
+- **I/O System**: 11 tests (multiple tree formats, endianness, buffering, etc.)
+- **Module System**: 3 tests (lifecycle, callbacks, invocation)
+- **Test categories**: 4 main categories with specialized make targets
+- **Scientific validation**: End-to-end testing via `test_sage.sh`
 
 ## Comprehensive Documentation
 

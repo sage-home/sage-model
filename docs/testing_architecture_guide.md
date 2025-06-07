@@ -18,7 +18,7 @@ The SAGE testing framework is built around three key principles:
 
 SAGE tests are organized into several categories, each with a specific focus:
 
-### Core Infrastructure Tests
+### Core Infrastructure Tests (19 tests)
 
 These tests validate the fundamental infrastructure components of SAGE:
 
@@ -26,39 +26,50 @@ These tests validate the fundamental infrastructure components of SAGE:
 - **Array Utilities**: Tests dynamic array manipulation functions
 - **Diagnostics**: Tests the collection and reporting of evolution metrics
 - **Evolution Integration**: Tests the refactored evolution loop with phase-based execution
+- **Memory Management**: Tests memory pooling and dynamic expansion systems
+- **Configuration**: Tests JSON configuration loading and parameter validation
+- **Merger Processing**: Tests merger queue and processor systems
+- **Core-Physics Separation**: Tests physics-free mode operation
+- **Resource Management**: Tests comprehensive resource lifecycle validation
+- **Error Recovery**: Tests system resilience and recovery mechanisms
+- **Data Integrity**: Tests data integrity in physics-free mode
+- **HDF5 Output**: Tests HDF5 output validation
 
 Core infrastructure tests should always pass, as they validate the stability of the foundation on which everything else is built.
 
-### Property System Tests
+### Property System Tests (7 tests)
 
 These tests focus on the property system, which is central to SAGE's modular architecture:
 
 - **Property Serialization**: Tests conversion of properties for I/O operations
 - **Property Validation**: Tests validation of property definitions
-- **Property Registration**: Tests registration of properties with the extension system
-- **Property Access**: Tests access to properties via macros and generic functions
+- **Property Array Access**: Tests access to array properties
 - **Property HDF5 Integration**: Tests integration between properties and HDF5 output
 - **Comprehensive Property Access**: Tests all property access patterns and core-physics separation compliance
+- **YAML Property Validation**: Tests YAML property definition validation and parsing
+- **YAML Parameter Validation**: Tests YAML parameter definition validation and parsing
 
 The property system tests validate both the correctness of property handling and the core-physics separation principle.
 
-### I/O System Tests
+### I/O System Tests (11 tests)
 
 These tests validate SAGE's input/output capabilities:
 
 - **I/O Interface**: Tests the abstraction layer for different formats
 - **Endianness**: Tests cross-platform compatibility
-- **Format Handlers**: Tests reading and writing in various formats (LHalo, HDF5, etc.)
+- **Format Handlers**: Tests reading and writing in various formats (LHalo Binary/HDF5, Gadget4 HDF5, Genesis HDF5, ConsistentTrees HDF5)
+- **HDF5 Output**: Tests HDF5 galaxy output functionality
 - **Buffering and Memory Mapping**: Tests performance optimizations for I/O, including cross-platform memory mapping and file buffering
+- **Validation Framework**: Tests I/O validation mechanisms
 
 I/O tests ensure that SAGE can correctly read merger trees and write galaxy catalogs in all supported formats.
 
-### Module System Tests
+### Module System Tests (3 tests)
 
 These tests validate the module system that enables SAGE's pluggable architecture:
 
-- **Dynamic Library Loading**: Tests loading modules at runtime
 - **Pipeline Invocation**: Tests interaction between modules in the pipeline
+- **Module Callback**: Tests inter-module communication infrastructure
 - **Module Lifecycle**: Tests complete module registration, initialization, and cleanup lifecycle
 
 Module system tests ensure that physics components can be added, removed, or replaced without breaking the core functionality.
@@ -219,6 +230,17 @@ The `test_sage.sh` script provides comprehensive validation of SAGE's scientific
 ### Integration with Main Testing Framework
 
 The end-to-end scientific tests are automatically run as part of `make tests`, alongside the unit tests for individual components. This provides a holistic validation approach that ensures both architectural integrity and scientific accuracy.
+
+## Current Test Suite Statistics
+
+The SAGE test suite contains:
+- **Total tests**: 40 individual unit tests
+- **Core Infrastructure**: 19 tests
+- **Property System**: 7 tests  
+- **I/O System**: 11 tests
+- **Module System**: 3 tests
+- **Test categories**: 4 main categories with specialized make targets
+- **End-to-end tests**: Scientific validation via `test_sage.sh`
 
 ## Conclusion
 
