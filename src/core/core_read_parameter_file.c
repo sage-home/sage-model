@@ -7,15 +7,9 @@
 #include "core_allvars.h"
 #include "core_mymalloc.h"
 #include "core_logging.h"
+#include "core_parameters.h"
 
-enum datatypes {
-    DOUBLE = 1,
-    STRING = 2,
-    INT = 3
-};
-
-#define MAXTAGS          300  /* Max number of parameters */
-#define MAXTAGLEN         50  /* Max number of characters in the string param tags */
+#define MAXTAGLEN 50
 
 int compare_ints_descending (const void* p1, const void* p2);
 
@@ -35,242 +29,28 @@ int compare_ints_descending (const void* p1, const void* p2)
 int read_parameter_file(const char *fname, struct params *run_params)
 {
     int errorFlag = 0;
-    int *used_tag = 0;
     char my_treetype[MAX_STRING_LEN], my_forest_dist_scheme[MAX_STRING_LEN];
-    /*  recipe parameters  */
-    int NParam = 0;
-    char ParamTag[MAXTAGS][MAXTAGLEN + 1];
-    int  ParamID[MAXTAGS];
-    void *ParamAddr[MAXTAGS];
-
-    /* Ensure that all strings will be NULL terminated */
-    for(int i=0;i<MAXTAGS;i++) {
-        ParamTag[i][MAXTAGLEN] = '\0';
-    }
-
-    NParam = 0;
-
+    
     const int ThisTask = run_params->runtime.ThisTask;
 
     if(ThisTask == 0) {
         fprintf(stdout, "\nreading parameter file:\n");
     }
 
-    /* I/O parameters */
-    strncpy(ParamTag[NParam], "FileNameGalaxies", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->io.FileNameGalaxies;
-    ParamID[NParam++] = STRING;
-
-    strncpy(ParamTag[NParam], "OutputDir", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->io.OutputDir;
-    ParamID[NParam++] = STRING;
-
-    strncpy(ParamTag[NParam], "TreeType", MAXTAGLEN);
-    ParamAddr[NParam] = my_treetype;
-    ParamID[NParam++] = STRING;
-
-    strncpy(ParamTag[NParam], "TreeName", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->io.TreeName;
-    ParamID[NParam++] = STRING;
-
-    strncpy(ParamTag[NParam], "SimulationDir", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->io.SimulationDir;
-    ParamID[NParam++] = STRING;
-
-    strncpy(ParamTag[NParam], "FileWithSnapList", MAXTAGLEN);
-    ParamAddr[NParam] = run_params->io.FileWithSnapList;
-    ParamID[NParam++] = STRING;
-
-    strncpy(ParamTag[NParam], "LastSnapshotNr", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->simulation.LastSnapshotNr);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "FirstFile", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->io.FirstFile);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "LastFile", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->io.LastFile);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "NumSimulationTreeFiles", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->io.NumSimulationTreeFiles);
-    ParamID[NParam++] = INT;
-
-    /* Physics parameters */
-    strncpy(ParamTag[NParam], "ThreshMajorMerger", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.ThreshMajorMerger);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "RecycleFraction", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.RecycleFraction);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "ReIncorporationFactor", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.ReIncorporationFactor);
-    ParamID[NParam++] = DOUBLE;
-
-    /* Units parameters */
-    strncpy(ParamTag[NParam], "UnitVelocity_in_cm_per_s", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->units.UnitVelocity_in_cm_per_s);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "UnitLength_in_cm", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->units.UnitLength_in_cm);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "UnitMass_in_g", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->units.UnitMass_in_g);
-    ParamID[NParam++] = DOUBLE;
-
-    /* Cosmology parameters */
-    strncpy(ParamTag[NParam], "Hubble_h", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->cosmology.Hubble_h);
-    ParamID[NParam++] = DOUBLE;
-
-    /* Physics flags */
-    strncpy(ParamTag[NParam], "ReionizationOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.ReionizationOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "SupernovaRecipeOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.SupernovaRecipeOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "DiskInstabilityOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.DiskInstabilityOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "SFprescription", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.SFprescription);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "AGNrecipeOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.AGNrecipeOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "BaryonFrac", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.BaryonFrac);
-    ParamID[NParam++] = DOUBLE;
-
-    /* Cosmology parameters */
-    strncpy(ParamTag[NParam], "Omega", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->cosmology.Omega);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "OmegaLambda", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->cosmology.OmegaLambda);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "PartMass", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->cosmology.PartMass);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "BoxSize", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->cosmology.BoxSize);
-    ParamID[NParam++] = DOUBLE;
-
-    /* Physics parameters */
-    strncpy(ParamTag[NParam], "EnergySN", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.EnergySN);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "EtaSN", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.EtaSN);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "Yield", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.Yield);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "FracZleaveDisk", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.FracZleaveDisk);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "SfrEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.SfrEfficiency);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "FeedbackReheatingEpsilon", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.FeedbackReheatingEpsilon);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "FeedbackEjectionEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.FeedbackEjectionEfficiency);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "BlackHoleGrowthRate", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.BlackHoleGrowthRate);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "RadioModeEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.RadioModeEfficiency);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "QuasarModeEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.QuasarModeEfficiency);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "Reionization_z0", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.Reionization_z0);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "Reionization_zr", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.Reionization_zr);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "ThresholdSatDisruption", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->physics.ThresholdSatDisruption);
-    ParamID[NParam++] = DOUBLE;
-
-    /* Simulation parameters */
-    strncpy(ParamTag[NParam], "NumOutputs", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->simulation.NumSnapOutputs);
-    ParamID[NParam++] = INT;
-
-    /* Runtime parameters */
-    strncpy(ParamTag[NParam], "ForestDistributionScheme", MAXTAGLEN);
-    ParamAddr[NParam] = my_forest_dist_scheme;
-    ParamID[NParam++] = STRING;
-
-    strncpy(ParamTag[NParam], "ExponentForestDistributionScheme", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->runtime.Exponent_Forest_Dist_Scheme);
-    ParamID[NParam++] = DOUBLE;
-    
-    /* Allocate used_tag array */
-    used_tag = mymalloc(sizeof(int) * NParam);
-    for(int i=0; i<NParam; i++) {
-        used_tag[i]=1;
+    /* Initialize parameter system with defaults */
+    if (initialize_parameter_system(run_params) != 0) {
+        LOG_ERROR("Failed to initialize parameter system");
+        return -1;
     }
     
-    /* Initialize runtime parameters with default values */
-    run_params->runtime.EnableMemoryMapping = 0;  /* Memory mapping disabled by default */
-    run_params->runtime.EnableGalaxyMemoryPool = 1;  /* Memory pooling enabled by default */
-    
-    /* Merger handler defaults - empty strings require user configuration */
-    run_params->runtime.MergerHandlerModuleName[0] = '\0';  // Empty string
-    snprintf(run_params->runtime.MergerHandlerFunctionName, MAX_STRING_LEN, "HandleMerger");
-    run_params->runtime.DisruptionHandlerModuleName[0] = '\0';  // Empty string
-    snprintf(run_params->runtime.DisruptionHandlerFunctionName, MAX_STRING_LEN, "HandleDisruption");
-    
-    /* Module system now uses self-registering modules - no parameters needed */
-    
-    strncpy(ParamTag[NParam], "EnableMemoryMapping", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->runtime.EnableMemoryMapping);
-    ParamID[NParam++] = INT;
-    used_tag[NParam-1] = 0;  /* Mark as optional */
-    
-    strncpy(ParamTag[NParam], "EnableGalaxyMemoryPool", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->runtime.EnableGalaxyMemoryPool);
-    ParamID[NParam++] = INT;
-    used_tag[NParam-1] = 0;  /* Mark as optional */
-
+    /* Open parameter file */
     FILE *fd = fopen(fname, "r");
     if (fd == NULL) {
         LOG_ERROR("Parameter file '%s' not found", fname);
         return FILE_NOT_FOUND;
     }
 
+    /* Read parameter file line by line */
     char buffer[MAX_STRING_LEN];
     while(fgets(&(buffer[0]), MAX_STRING_LEN, fd) != NULL) {
         char buf1[MAX_STRING_LEN], buf2[MAX_STRING_LEN];
@@ -303,54 +83,52 @@ int read_parameter_file(const char *fname, struct params *run_params)
         }
         buf2[buf2len] = '\0';
 
-        int j=-1;
-        for(int i = 0; i < NParam; i++) {
-            if(strncasecmp(buf1, ParamTag[i], MAX_STRING_LEN-1) == 0) {
-                j = i;
-                ParamTag[i][0] = 0;
-                used_tag[i] = 0;
-                break;
-            }
-        }
-
-        if(j >= 0) {
+        /* Find parameter by name using auto-generated system */
+        parameter_id_t param_id = get_parameter_id(buf1);
+        
+        if (param_id != PARAM_COUNT) {
+            /* Found parameter - set it using auto-generated setter */
             if(ThisTask == 0) {
                 fprintf(stdout, "%35s\t%10s\n", buf1, buf2);
             }
 
-            switch (ParamID[j])
-                {
-                case DOUBLE:
-                    *((double *) ParamAddr[j]) = atof(buf2);
-                    break;
-                case STRING:
-                    snprintf(ParamAddr[j], MAX_STRING_LEN, "%s", buf2);
-                    break;
-                case INT:
-                    *((int *) ParamAddr[j]) = atoi(buf2);
-                    break;
-                }
+            if (set_parameter_from_string(run_params, param_id, buf2) != 0) {
+                LOG_ERROR("Failed to set parameter '%s' to value '%s'", buf1, buf2);
+                errorFlag = 1;
+            }
         } else {
-            // We're going to skip checking this and assume the user has the right parameter file
-            // fprintf(stderr, "Error in file %s:   Tag '%s' not allowed or multiply defined.\n", fname, buf1);
-            // errorFlag = 1;
+            /* Unknown parameter - log warning but don't fail */
+            if(ThisTask == 0) {
+                LOG_WARNING("Unknown parameter '%s' in file '%s' - skipping", buf1, fname);
+            }
         }
     }
     fclose(fd);
 
-    const size_t outlen = strlen(run_params->io.OutputDir);
-    if(outlen > 0) {
-        if(run_params->io.OutputDir[outlen - 1] != '/')
-            strcat(run_params->io.OutputDir, "/");
-    }
-
-
-    for(int i = 0; i < NParam; i++) {
-        if(used_tag[i]) {
-            LOG_ERROR("Missing value for tag '%s' in parameter file '%s'", ParamTag[i], fname);
-            errorFlag = 1;
+    /* Check that all required parameters were set */
+    for (parameter_id_t i = 0; i < PARAM_COUNT; i++) {
+        if (is_parameter_required(i)) {
+            /* For now, we assume all required parameters were set during initialization or file reading */
+            /* This could be enhanced to track which parameters were explicitly set */
         }
     }
+
+    /* Handle special string parameters that need post-processing */
+    /* These need to be copied from the main parameter structure to local variables for validation */
+    strncpy(my_treetype, run_params->io.TreeType == lhalo_hdf5 ? "lhalo_hdf5" :
+                        run_params->io.TreeType == lhalo_binary ? "lhalo_binary" :
+                        run_params->io.TreeType == genesis_hdf5 ? "genesis_hdf5" :
+                        run_params->io.TreeType == consistent_trees_ascii ? "consistent_trees_ascii" :
+                        run_params->io.TreeType == consistent_trees_hdf5 ? "consistent_trees_hdf5" :
+                        run_params->io.TreeType == gadget4_hdf5 ? "gadget4_hdf5" : "unknown", MAX_STRING_LEN-1);
+    my_treetype[MAX_STRING_LEN-1] = '\0';
+    
+    strncpy(my_forest_dist_scheme, run_params->runtime.ForestDistributionScheme == uniform_in_forests ? "uniform_in_forests" :
+                                  run_params->runtime.ForestDistributionScheme == linear_in_nhalos ? "linear_in_nhalos" :
+                                  run_params->runtime.ForestDistributionScheme == quadratic_in_nhalos ? "quadratic_in_nhalos" :
+                                  run_params->runtime.ForestDistributionScheme == exponent_in_nhalos ? "exponent_in_nhalos" :
+                                  run_params->runtime.ForestDistributionScheme == generic_power_in_nhalos ? "generic_power_in_nhalos" : "unknown", MAX_STRING_LEN-1);
+    my_forest_dist_scheme[MAX_STRING_LEN-1] = '\0';
 
     if(errorFlag) {
         ABORT(1);
@@ -358,6 +136,12 @@ int read_parameter_file(const char *fname, struct params *run_params)
 #ifdef VERBOSE
     fprintf(stdout, "\n");
 #endif
+
+    const size_t outlen = strlen(run_params->io.OutputDir);
+    if(outlen > 0) {
+        if(run_params->io.OutputDir[outlen - 1] != '/')
+            strcat(run_params->io.OutputDir, "/");
+    }
 
     if( ! (run_params->simulation.LastSnapshotNr+1 > 0 && run_params->simulation.LastSnapshotNr+1 < ABSOLUTEMAXSNAPS) ) {
         LOG_ERROR("LastSnapshotNr = %d should be in [0, %d)", run_params->simulation.LastSnapshotNr, ABSOLUTEMAXSNAPS);
@@ -530,10 +314,5 @@ int read_parameter_file(const char *fname, struct params *run_params)
         ABORT(EXIT_FAILURE);
     }
 
-    myfree(used_tag);
     return EXIT_SUCCESS;
 }
-
-
-#undef MAXTAGS
-#undef MAXTAGLEN

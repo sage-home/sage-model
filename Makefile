@@ -31,10 +31,10 @@ INCLUDE_DIRS := -I$(ROOT_DIR)/src -I$(ROOT_DIR)/src/core -I$(ROOT_DIR)/tests
 LIBNAME := sage
 
 # Generated source files
-GENERATED_C_FILES := core/core_properties.c core/generated_output_transformers.c
-GENERATED_H_FILES := core/core_properties.h
+GENERATED_C_FILES := core/core_properties.c core/generated_output_transformers.c core/core_parameters.c
+GENERATED_H_FILES := core/core_properties.h core/core_parameters.h
 GENERATED_FILES := $(addprefix $(SRC_PREFIX)/, $(GENERATED_H_FILES)) $(addprefix $(SRC_PREFIX)/, $(GENERATED_C_FILES))
-GENERATED_DEPS := properties.yaml generate_property_headers.py
+GENERATED_DEPS := properties.yaml parameters.yaml generate_property_headers.py
 
 # Core source files
 CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
@@ -50,7 +50,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_module_error.c \
         core/core_merger_queue.c core/core_merger_processor.c core/cJSON.c core/core_evolution_diagnostics.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c \
-        core/core_properties.c core/standard_properties.c \
+        core/core_properties.c core/core_parameters.c core/standard_properties.c \
         core/physics_pipeline_executor.c core/core_property_utils.c \
         core/generated_output_transformers.c
 
@@ -86,7 +86,7 @@ SRC := $(addprefix $(SRC_PREFIX)/, $(SRC))
 OBJS := $(SRC:.c=.o)
 
 # Include files
-INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL) core/core_properties.h
+INCL := core/core_allvars.h core/macros.h core/core_simulation.h core/core_event_system.h $(LIBINCL) core/core_properties.h core/core_parameters.h
 INCL := $(addprefix $(SRC_PREFIX)/, $(INCL))
 
 # Library objects and includes
@@ -347,9 +347,9 @@ $(shell mkdir -p $(ROOT_DIR)/.stamps)
 
 # Rule to generate property headers (default: all properties)
 .SECONDARY: $(GENERATED_FILES)
-$(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
-	@echo "Generating property headers from $(PROPERTIES_FILE)..."
-	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE))
+$(ROOT_DIR)/.stamps/generate_properties.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/parameters.yaml $(SRC_PREFIX)/generate_property_headers.py
+	@echo "Generating property headers from $(PROPERTIES_FILE) and parameters.yaml..."
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --generate-parameters
 	@mkdir -p $(dir $@)
 	@touch $@
 
@@ -372,29 +372,29 @@ custom-physics:
 	@echo "SAGE built with custom physics configuration: $(CONFIG)"
 
 # Property generation rules for different modes
-$(ROOT_DIR)/.stamps/generate_properties_core.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
+$(ROOT_DIR)/.stamps/generate_properties_core.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/parameters.yaml $(SRC_PREFIX)/generate_property_headers.py
 	@echo "Generating core-only property headers (physics-free mode)..."
-	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --core-only
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --core-only --generate-parameters
 	@mkdir -p $(dir $@)
 	@rm -f $(ROOT_DIR)/.stamps/generate_properties*.stamp  # Clear other stamps
 	@touch $@
 
-$(ROOT_DIR)/.stamps/generate_properties_full.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
+$(ROOT_DIR)/.stamps/generate_properties_full.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/parameters.yaml $(SRC_PREFIX)/generate_property_headers.py
 	@echo "Generating full property headers (all properties)..."
-	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --all-properties
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --all-properties --generate-parameters
 	@mkdir -p $(dir $@)
 	@rm -f $(ROOT_DIR)/.stamps/generate_properties*.stamp  # Clear other stamps
 	@touch $@
 
-$(ROOT_DIR)/.stamps/generate_properties_custom.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/generate_property_headers.py
+$(ROOT_DIR)/.stamps/generate_properties_custom.stamp: $(SRC_PREFIX)/$(PROPERTIES_FILE) $(SRC_PREFIX)/parameters.yaml $(SRC_PREFIX)/generate_property_headers.py
 	@echo "Generating custom property headers with config: $(CONFIG)..."
-	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --config ../$(CONFIG)
+	cd $(SRC_PREFIX) && python3 generate_property_headers.py --input $(notdir $(PROPERTIES_FILE)) --config ../$(CONFIG) --generate-parameters
 	@mkdir -p $(dir $@)
 	@rm -f $(ROOT_DIR)/.stamps/generate_properties*.stamp  # Clear other stamps
 	@touch $@
 
 # Make the generated files depend on any property stamp file, but ensure they exist
-$(SRC_PREFIX)/core/core_properties.h $(SRC_PREFIX)/core/core_properties.c $(SRC_PREFIX)/core/generated_output_transformers.c: $(shell find $(ROOT_DIR)/.stamps -name "generate_properties*.stamp" 2>/dev/null | head -1 || echo "$(ROOT_DIR)/.stamps/generate_properties_full.stamp")
+$(SRC_PREFIX)/core/core_properties.h $(SRC_PREFIX)/core/core_properties.c $(SRC_PREFIX)/core/generated_output_transformers.c $(SRC_PREFIX)/core/core_parameters.h $(SRC_PREFIX)/core/core_parameters.c: $(shell find $(ROOT_DIR)/.stamps -name "generate_properties*.stamp" 2>/dev/null | head -1 || echo "$(ROOT_DIR)/.stamps/generate_properties_full.stamp")
 
 # Mark as order-only prerequisites to prevent duplicate generation
 $(OBJS): | $(GENERATED_FILES)
