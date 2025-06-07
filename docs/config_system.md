@@ -46,6 +46,7 @@ config_set_string("pipeline.steps.post_processing.output.formats.hdf5.enabled", 
 - **Configuration Overrides**: Command-line options can override file-based configuration
 - **Default Values**: Functions provide default values when configuration entries are missing
 - **Module Configuration**: Specialized handling for module-specific settings
+- **Parameter System Integration**: Seamless integration with the metadata-driven parameter system (`parameters.yaml`)
 
 ## Data Structures
 
@@ -552,10 +553,35 @@ The pipeline configuration determines execution order and activated modules:
 3. Step-specific settings (`pipeline.steps[].enabled`)
 
 ### Parameter System Integration
-The configuration overrides parameters from the parameter file:
-1. Runtime parameter updates (`simulation.*`)
-2. Cosmology settings (`simulation.cosmology.*`)
-3. Output configuration (`simulation.output_*`)
+The configuration system integrates seamlessly with the metadata-driven parameter system (`src/parameters.yaml`):
+
+**Two-Layer Parameter Architecture**:
+1. **Base Parameters**: Loaded from `.par` files using the auto-generated parameter system
+2. **Configuration Overrides**: JSON configuration can override or extend these parameters
+
+**Integration Points**:
+- Runtime parameter updates through `config_configure_params()`
+- Module-specific parameter configuration via JSON
+- Command-line overrides for any parameter defined in `parameters.yaml`
+
+**Example Usage**:
+```json
+{
+  "simulation": {
+    "LastSnapshotNr": 63,
+    "cosmology": {
+      "Hubble_h": 0.7,
+      "Omega": 0.3
+    }
+  },
+  "physics": {
+    "SfrEfficiency": 0.02,
+    "BaryonFrac": 0.17
+  }
+}
+```
+
+This enables runtime modification of any parameter without editing `.par` files while maintaining full backward compatibility.
 
 ### Command-Line Integration
 The override system enables command-line arguments to modify configuration:

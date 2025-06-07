@@ -91,15 +91,17 @@
 - [x] Test Suite Review and Validation (via `docs/sage_unit_tests.md`)
 - [x] Fix evolution diagnostics system; audit event system
 - [x] Review Core Systems; ensure all core components comply with core-physics separation principles
-- [x] Documentation review and update
-- [ ] Successfully run sage end-to-end in physics free mode
-- [ ] Final legacy code removal (see `docs/io_interface_migration_guide.md`)
-- [ ] Review naming: `GALAXY_PROP_*`→`CORE_PROP_*`; `physics_pipeline_executor.*`→`core_pipeline_executor.*`; `physics_pipeline_executor.c/.h`→`core_pipeline_executor.c/.h`
 
 **⚠️ ARCHITECTURAL UPDATE (June 2025):**
 - **Placeholder modules removed**: All placeholder modules deleted except template (`placeholder_empty_module.c/.h`)
 - **Manifest/discovery systems removed**: Simplified to self-registering modules only (~1000+ lines removed)
 - **Explicit property build system implemented**: `make physics-free`, `make full-physics`, `make custom-physics CONFIG=file.json`
+
+- [x] Documentation review and update
+- [x] **Parameters.yaml metadata-driven system implementation** - Eliminates hardcoded physics parameters in core infrastructure
+- [ ] Successfully run sage end-to-end in physics free mode
+- [ ] Final legacy code removal (see `docs/io_interface_migration_guide.md`)
+- [ ] Review naming: `GALAXY_PROP_*`→`CORE_PROP_*`; `physics_pipeline_executor.*`→`core_pipeline_executor.*`; `physics_pipeline_executor.c/.h`→`core_pipeline_executor.c/.h`
 
 ### Phase 5.2.G: Physics Module Migration ⏳ PENDING
 
@@ -159,8 +161,7 @@ With the core now completely physics-agnostic and architecturally compliant, imp
 ### Immediate Actions Required (Before Phase 5.2.G):
 1. ✅ **Evolution Diagnostics System Fixed**: Completed comprehensive redesign to be physics-agnostic (May 23, 2025)
 2. ✅ **Core Event System Audit Complete**: Successfully separated core infrastructure events from physics events
-3. **Fix Remaining Failing Tests**: Update tests to comply with core-physics separation (test_evolve_integration.c needs API modernization)
-4. **Core System Review**: Continue verification that all core components are truly physics-agnostic
+3. **Core System Review**: Continue verification that all core components are truly physics-agnostic
 
 ### Phase 5.2.G Readiness Criteria:
 - ✅ Core infrastructure completely physics-agnostic  
@@ -169,8 +170,6 @@ With the core now completely physics-agnostic and architecturally compliant, imp
 - ✅ All tests pass with core-physics separation (one integration test needs API update)
 - ✅ Property system ready for physics module development
 - ✅ Module infrastructure supports physics module registration
-
-**Status**: Phase 5.2.F is **nearly complete** with major architectural violations resolved. One integration test requires API modernization before proceeding to physics module implementation.
 
 ## Recent Milestone: Property System Critical Fixes (May 30, 2025) ✅ COMPLETED
 
@@ -189,6 +188,25 @@ The property system has undergone critical robustness improvements, addressing f
 - Enhanced system reliability enables confident physics module development in Phase 5.2.G
 
 This addresses critical infrastructure reliability requirements and ensures the property system foundation is robust for physics module implementation.
+
+## Recent Milestone: Parameters.yaml Metadata-Driven System (June 7, 2025) ✅ COMPLETED
+
+The parameters.yaml metadata-driven system has been successfully implemented, completing the final major architectural component needed for full core-physics separation compliance.
+
+**Key Achievements:**
+1. **Comprehensive Parameter Catalog**: Created parameters.yaml with 45 parameters (22 core, 23 physics) following properties.yaml architectural pattern
+2. **Metadata-Driven Code Generation**: Extended generate_property_headers.py to auto-generate type-safe parameter accessors with validation and bounds checking  
+3. **Core Infrastructure Refactoring**: Eliminated 200+ lines of hardcoded parameter arrays from core_read_parameter_file.c using generic accessor functions
+4. **Build System Integration**: Updated Makefile to auto-generate parameter files, added proper .gitignore entries, ensured all generated files have proper headers
+
+**Technical Impact:**
+- Core infrastructure now has zero hardcoded physics parameter knowledge
+- Maintains existing *.par file format compatibility for users
+- Provides type-safe parameter access with enum-based validation for TreeType and ForestDistributionScheme
+- Auto-generated parameter system files integrate seamlessly with build process
+- Completes core-physics separation architecture enabling true runtime functional modularity
+
+This milestone represents the final piece of core infrastructure needed for Phase 5.2.G physics module implementation, ensuring modules can access parameters through a consistent, physics-agnostic interface.
 
 ## Recent Milestone: Evolution Diagnostics Core-Physics Separation (May 23, 2025) ✅ COMPLETED
 

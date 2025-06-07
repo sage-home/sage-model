@@ -153,3 +153,7 @@ This separation ensures that core infrastructure has zero compile-time or direct
 - Rationale: Chose incremental migration approach with graceful fallback to legacy functions rather than big-bang replacement of all tree reading infrastructure. This allows validation of each format individually while maintaining scientific accuracy and system stability during the transition.
 - Impact: LHalo HDF5 format successfully migrated to I/O interface with legacy header dependencies eliminated. Core system (core_io_tree.c) tries I/O interface first, gracefully falls back to legacy functions for non-migrated formats. Enables format-agnostic development while preserving backward compatibility.
 
+2025-06-07: [Architecture] Parameters.yaml Metadata-Driven System Implementation
+- Rationale: Following the same architectural pattern as properties.yaml, implemented parameters.yaml to eliminate core-physics separation violations in core_read_parameter_file.c where hardcoded physics parameter names violated SAGE's modular design principles. Modules shouldn't own parameters - like properties.yaml, we need a master parameter list from which modules can draw, ensuring future-proof extensibility.
+- Impact: Eliminates 200+ lines of hardcoded parameter arrays, provides type-safe parameter accessors with validation, maintains existing *.par file format compatibility, and uses metadata-driven code generation. Auto-generates parameter system files during build process, enabling runtime-configurable physics with full core-physics separation compliance.
+

@@ -8,13 +8,14 @@ This document describes the architecture that achieves complete independence bet
 
 The core infrastructure is now completely physics-agnostic:
 
-1. **Minimal properties.yaml**: Only contains core infrastructure properties
-2. **Clean GALAXY struct**: Removed physics-dependent fields, keeping only core infrastructure fields
-3. **Pipeline Execution**: Uses a purely abstract execution model with phases (HALO, GALAXY, POST, FINAL)
-4. **Module System**: Allows physics modules to register themselves at runtime
-5. **No direct field synchronization**: Removed synchronization between direct fields and properties
-6. **Configuration-based**: Physics modules and pipeline steps are defined in configuration files
-7. **Separated Event Systems**: Core infrastructure events and physics events are completely separated
+1. **Metadata-Driven Properties**: properties.yaml defines all galaxy properties with core/physics separation
+2. **Metadata-Driven Parameters**: parameters.yaml defines all runtime parameters with physics-agnostic core
+3. **Clean GALAXY struct**: Removed physics-dependent fields, keeping only core infrastructure fields
+4. **Pipeline Execution**: Uses a purely abstract execution model with phases (HALO, GALAXY, POST, FINAL)
+5. **Module System**: Allows physics modules to register themselves at runtime
+6. **No direct field synchronization**: Removed synchronization between direct fields and properties
+7. **Configuration-based**: Physics modules and pipeline steps are defined in configuration files
+8. **Separated Event Systems**: Core infrastructure events and physics events are completely separated
 
 ### Physics Modules
 
@@ -48,6 +49,62 @@ Physics Event System (src/physics/physics_events.h)
 This separation enables:
 - **Core Infrastructure Monitoring**: Track pipeline performance and system health
 - **Physics Module Communication**: Enable inter-module physics interactions
+
+## Parameter System Architecture
+
+The parameter system achieves complete core-physics separation through metadata-driven design:
+
+### Core Parameter Infrastructure
+
+The core parameter reading system (`src/core/core_read_parameter_file.c`) is completely physics-agnostic:
+
+```c
+/* Physics-agnostic parameter processing */
+parameter_id_t param_id = get_parameter_id(parameter_name);
+if (param_id != PARAM_COUNT) {
+    if (set_parameter_from_string(run_params, param_id, value) != 0) {
+        LOG_ERROR("Failed to set parameter '%s' to value '%s'", parameter_name, value);
+    }
+}
+```
+
+Key architectural features:
+- **No Hardcoded Physics Knowledge**: Core code uses generic parameter accessors
+- **Type-Safe Parameter Setting**: Auto-generated validation for all parameter types
+- **Enum Validation**: Special handling for TreeType and ForestDistributionScheme
+- **Backward Compatibility**: Maintains existing `.par` file format
+
+### Parameter Categories
+
+Parameters are organized into clear categories in `src/parameters.yaml`:
+
+```yaml
+parameters:
+  core:                    # Always available to core infrastructure
+    io: [FileNameGalaxies, OutputDir, TreeType, ...]
+    simulation: [LastSnapshotNr, NumSnapOutputs, ...]
+    cosmology: [Hubble_h, Omega, OmegaLambda, ...]
+    units: [UnitVelocity_in_cm_per_s, ...]
+    runtime: [ForestDistributionScheme, ...]
+    
+  physics:                 # Only used by physics modules
+    general: [ThreshMajorMerger, RecycleFraction, ...]
+    mergers: [DisruptionHandlerModuleName, ...]
+    gas_physics: [BaryonFrac, ...]
+    # ... additional physics categories
+```
+
+### Auto-Generated Parameter System
+
+The parameter system files are auto-generated from `parameters.yaml`:
+
+- **`core_parameters.h`**: Parameter ID enumeration and accessor function declarations
+- **`core_parameters.c`**: Parameter metadata and type-safe setter implementations
+
+This ensures:
+- **Compile-Time Safety**: Parameter IDs are validated at compile time
+- **Runtime Validation**: Parameter values are validated with bounds checking
+- **Extensibility**: New parameters can be added without modifying core code
 - **Runtime Adaptability**: Support any combination of physics modules
 
 ## Testing Core-Physics Separation
