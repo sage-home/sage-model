@@ -59,7 +59,6 @@ parameters:
         description: "List of output snapshot numbers"
         category: core
         required: true
-        bounds: [0, 999]
         struct_field: "simulation.ListOutputSnaps"
         
     simulation:

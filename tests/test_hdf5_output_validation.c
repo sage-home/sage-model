@@ -1526,8 +1526,9 @@ static void test_comprehensive_galaxy_properties(void) {
     TEST_ASSERT(fabsf(disk_metals - 2.0e7f) < 1e3f, "SfrDiskColdGasMetals should be accessible");
     TEST_ASSERT(fabsf(bulge_metals - 4.0e6f) < 1e2f, "SfrBulgeColdGasMetals should be accessible");
     
-    // Validate star formation history array
-    for (int step = 0; step < 5 && step < TEST_STEPS; step++) {
+    // Validate star formation history array (dynamic array sized by NumSnapOutputs)
+    int max_snap_history = test_ctx.run_params.simulation.NumSnapOutputs;
+    for (int step = 0; step < max_snap_history; step++) {
         float expected_sfr = 1.0f + step * 0.1f;
         float actual_sfr = get_float_array_element_property(&test_galaxy, PROP_StarFormationHistory, step, -999.0f);
         TEST_ASSERT(fabsf(actual_sfr - expected_sfr) < TOLERANCE_FLOAT, "StarFormationHistory array should be accessible");

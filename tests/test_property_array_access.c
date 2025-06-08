@@ -223,11 +223,11 @@ static void test_fixed_array_access(void) {
         printf("  SfrDisk[%d]: value=%g, expected=%g (physics property)\n", i, value, expected);
     }
     
-    // Test array size retrieval
+    // Test array size retrieval (SfrDisk is now a dynamic array sized by NumSnapOutputs)
     int array_size = get_property_array_size(test_ctx.test_galaxy, PROP_SfrDisk);
-    TEST_ASSERT(array_size == STEPS, "Fixed array: size should match STEPS constant");
+    TEST_ASSERT(array_size == test_ctx.test_params.simulation.NumSnapOutputs, "SfrDisk array: size should match NumSnapOutputs");
     
-    printf("  SfrDisk array size: %d (STEPS=%d)\n", array_size, STEPS);
+    printf("  SfrDisk array size: %d (NumSnapOutputs=%d)\n", array_size, test_ctx.test_params.simulation.NumSnapOutputs);
 }
 
 /**
@@ -369,7 +369,7 @@ static void test_property_metadata(void) {
     int sfr_size = get_property_array_size(test_ctx.test_galaxy, PROP_SfrDisk);
     int sfh_size = get_property_array_size(test_ctx.test_galaxy, PROP_StarFormationHistory);
     
-    TEST_ASSERT(sfr_size == STEPS, "SfrDisk size should match STEPS");
+    TEST_ASSERT(sfr_size == test_ctx.test_params.simulation.NumSnapOutputs, "SfrDisk size should match NumSnapOutputs");
     TEST_ASSERT(sfh_size == test_ctx.test_params.simulation.NumSnapOutputs, "StarFormationHistory size should match NumSnapOutputs");
     
     printf("  Property validation: has_mvir=%s, has_invalid=%s\n", 

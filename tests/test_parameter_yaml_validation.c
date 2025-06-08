@@ -188,7 +188,7 @@ static int load_parameters_yaml_content(void) {
 static bool is_valid_parameter_type(const char *type) {
     if (!type || strlen(type) == 0) return false;
     
-    const char *valid_types[] = {"string", "int", "double", "bool", NULL};
+    const char *valid_types[] = {"string", "int", "double", "bool", "int[]", NULL};
     
     for (int i = 0; valid_types[i]; i++) {
         if (strcmp(type, valid_types[i]) == 0) return true;
