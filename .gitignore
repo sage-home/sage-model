@@ -21,14 +21,14 @@ codecov
 *.ipynb_checkpoints
 *.dSYM
 sage_analysis/plots/
-
+*.txt
 *.log
 *.out
 *.DS_Store
 xx*
 yy*
 *.hdf5
-
+*.csv
 
 # sage_analysis Package Stuff #
 *.egg-info
