@@ -263,8 +263,9 @@ static struct GALAXY *create_test_galaxy(int snap_num, int halo_nr) {
     prop_id = get_property_id("HotGas");
     set_float_property(galaxy, prop_id, 5e11 + halo_nr * 1e10);
     
-    // Set array properties
-    for (int step = 0; step < STEPS; step++) {
+    // Set array properties (use NumSnapOutputs since arrays are now dynamic)
+    int num_snaps = test_ctx.mock_params.simulation.NumSnapOutputs;
+    for (int step = 0; step < num_snaps; step++) {
         GALAXY_PROP_SfrDisk_ELEM(galaxy, step) = 10.0 + halo_nr * 1.0 + step * 0.1;
         GALAXY_PROP_SfrBulge_ELEM(galaxy, step) = 5.0 + halo_nr * 0.5 + step * 0.05;
     }
