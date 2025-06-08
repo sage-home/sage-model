@@ -276,15 +276,6 @@ parameters:
         bounds: [0, 1]
         default_value: 1
         struct_field: "runtime.EnableGalaxyMemoryPool"
-        
-      - name: "OverwriteOutputFiles"
-        type: int
-        description: "Flag to overwrite existing output files"
-        category: core
-        required: false
-        bounds: [0, 1]
-        default_value: 0
-        struct_field: "runtime.OverwriteOutputFiles"
 
   # Physics parameters - available for physics modules to use
   physics:
