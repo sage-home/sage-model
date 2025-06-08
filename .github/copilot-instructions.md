@@ -31,10 +31,10 @@
 
 **Planning Context (review these before any task)**
 1. `docs/enhanced-sage-refactoring-plan.md` – master plan
-2. `log/phase-tracker-log.md` – current phase/task
-3. `log/recent-progress-log.md` – recently completed milestones
-4. `log/project-state-log.md` – architecture overview
-5. `log/decision-log.md` – design choices and reasoning
+2. `log/phase.md` – current phase/task
+3. `log/progress.md` – recently completed milestones
+4. `log/architecture.md` – architecture overview
+5. `log/decisions.md` – design choices and reasoning
 
 **Workflow**
 1. Begin each task by reviewing the plan and all logs.

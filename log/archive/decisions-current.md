@@ -1,16 +1,6 @@
-<!-- Purpose: Record critical technical decisions -->
-<!-- Update Rules:
-- Append new entries to the EOF (use `cat << EOF >> ...etc`)!
-- Focus on KEY decisions that impact current and upcoming development
-- Only include decisions that are NOT covered in project-state-log.md
-- 100-word limit per entry! 
-- Include:
-  • Today's date and phase identifier
-  • Rationale
-  • Impact assessment
--->
+# Archived Decisions from Current Session
 
-# Critical Architectural Decisions
+*Historical decisions from current development session - moved to keep current decisions.md lightweight*
 
 ## Module System Design
 
@@ -122,6 +112,7 @@ This separation ensures that core infrastructure has zero compile-time or direct
 2025-05-24: [Phase 5.2.F.3] Removal of test_property_system.c
 - Rationale: After analysis of the test suite, determined that test_property_system.c was outdated, didn't compile with current architecture, and its functionality was fully covered by more focused tests (test_core_property, test_dispatcher_access, test_property_array_access, test_property_system_hdf5). The test contained direct memory manipulation and APIs incompatible with the current property system architecture.
 - Impact: Streamlines the test suite by removing redundancy, focuses future test maintenance on the more targeted tests, and aligns the test suite with the current architecture. This allows developers to concentrate on completing the two identified incomplete tests (test_property_registration.c and test_galaxy_property_macros.c).
+
 2025-05-24: [Phase 5.2.F.3] Removal of test_output_preparation
 - Rationale: After analysis of the test suite, determined that test_output_preparation was outdated and incompatible with the current architecture. The test was attempting to test a monolithic output preparation module that no longer exists, having been replaced by a property-based transformer system. Its functionality is now comprehensively covered by test_property_system_hdf5.c (transformer functionality) and test_evolve_integration.c (pipeline integration).
 - Impact: Removes an outdated test that was failing to build, simplifies test maintenance, and better aligns the test suite with the current architecture based on core-physics separation principles. The test has been moved to the ignore directory to preserve historical context while preventing build errors.
@@ -137,23 +128,3 @@ This separation ensures that core infrastructure has zero compile-time or direct
 2025-05-26: [Phase 5.2.F.3] Removal of physics_modules.h Transitional Component
 - Rationale: The physics_modules.h file was documented as a transitional component for Phase 5.2.F (Core-Physics Separation) that was "scheduled for removal/replacement after the completion of Phase 5.2.G (Physics Module Migration)". Analysis showed that its functions (init_physics_modules, cleanup_physics_modules, register_physics_modules) were empty stubs that just logged messages and returned 0, with the actual module registration happening via constructor functions in individual placeholder modules. No core files called these functions, making the header redundant.
 - Impact: Completes the transition away from centralized physics module management to individual module self-registration. Removes the last piece of transitional architecture from Phase 5.2.F, clearing the path for proper physics module implementation in Phase 5.2.G. All placeholder modules now include their own headers directly and register themselves via constructor functions, demonstrating the mature modular architecture is ready for real physics modules. Build and test suite confirmed successful removal with no functionality loss.
-
-2025-05-27: [Phase 5.2.G] Physics-Agnostic Merger Architecture Decision
-- **Decision**: Implemented merger event handling using core processor + configurable physics handlers via module_invoke, rather than direct physics module pipeline execution
-- **Rationale**: Enables runtime configuration of merger physics, better testability, and cleaner separation of event triggering from physics implementation
-- **Impact**: Merger physics now fully configurable via parameters; core completely agnostic to merger implementation details; enables multiple merger physics modules simultaneously
-- **Alternative Rejected**: Direct POST phase execution by physics modules would have coupled event processing to specific module implementations
-
-2025-06-02: [Phase 5.2.G] Strict Duplicate Registration Prevention Policy
-- Rationale: Investigation revealed that the module system was incorrectly allowing duplicate function registrations by silently updating existing registrations instead of failing. This "silent recovery" approach hides bugs and violates the "fail fast" principle essential for robust software design. Both module registration and function registration should explicitly prevent duplicates.
-- Impact: Changed `module_register_function()` to return `MODULE_STATUS_ERROR` for duplicate function names instead of updating existing registrations. This ensures clean architectural boundaries, helps detect development errors early, and aligns with the modular architecture goal of explicit, controlled interactions. Tests updated to use proper system APIs (`module_initialize()`) rather than bypassing built-in protections.
-
-
-2025-06-05: [Phase 5.3] I/O Interface Migration Strategy
-- Rationale: Chose incremental migration approach with graceful fallback to legacy functions rather than big-bang replacement of all tree reading infrastructure. This allows validation of each format individually while maintaining scientific accuracy and system stability during the transition.
-- Impact: LHalo HDF5 format successfully migrated to I/O interface with legacy header dependencies eliminated. Core system (core_io_tree.c) tries I/O interface first, gracefully falls back to legacy functions for non-migrated formats. Enables format-agnostic development while preserving backward compatibility.
-
-2025-06-07: [Architecture] Parameters.yaml Metadata-Driven System Implementation
-- Rationale: Following the same architectural pattern as properties.yaml, implemented parameters.yaml to eliminate core-physics separation violations in core_read_parameter_file.c where hardcoded physics parameter names violated SAGE's modular design principles. Modules shouldn't own parameters - like properties.yaml, we need a master parameter list from which modules can draw, ensuring future-proof extensibility.
-- Impact: Eliminates 200+ lines of hardcoded parameter arrays, provides type-safe parameter accessors with validation, maintains existing *.par file format compatibility, and uses metadata-driven code generation. Auto-generates parameter system files during build process, enabling runtime-configurable physics with full core-physics separation compliance.
-

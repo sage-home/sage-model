@@ -4,8 +4,8 @@
 
 ## How to Use This Archive
 
-- **Looking for a past decision?** → Search the Decision Timeline below
-- **Need to see what changed in a milestone?** → Check Recent Changes Archive
+- **Looking for a past decision?** → Search the Decision Timeline below or `archive/decisions-*` files
+- **Need to see what changed in a milestone?** → Check Recent Changes Archive or `archive/progress-*` files
 - **Understanding phase progression?** → Review Phase Summary
 - **Want current state?** → Read the 4 main log files in parent directory
 

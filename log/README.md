@@ -6,15 +6,18 @@
 
 **Read these at the start of each coding session** for current project context:
 
-- **`decision-log.md`** - Recent architectural decisions with rationale (append new decisions here)
-- **`phase-tracker-log.md`** - Current phase objectives and progress checklist  
-- **`project-state-log.md`** - Current codebase architecture snapshot and UML-like diagrams
-- **`recent-progress-log.md`** - Recent completed milestones with file changes (append new progress here)
+- **`decisions.md`** - Recent architectural decisions with rationale (append new decisions here)
+- **`phase.md`** - Current phase objectives and progress checklist  
+- **`architecture.md`** - Current codebase architecture snapshot and UML-like diagrams
+- **`progress.md`** - Recent completed milestones with file changes (append new progress here)
 
 ## Historical Reference
 
 - **`HISTORICAL_ARCHIVE.md`** - Consolidated past decisions, changes, and phase progression for lookup
-- **`completed/`** - Archived logs from completed phases (decision-log.md and recent-progress-log.md only)
+- **`archive/`** - Individual archived log files:
+  - `decisions-phase1.md` through `decisions-phase5.md` - Phase-specific archived decisions
+  - `progress-phase1.md` through `progress-phase5.md` - Phase-specific archived progress
+  - `decisions-current.md` and `progress-current.md` - Archived from current session
 
 ## Workflow for Developers
 
@@ -24,12 +27,12 @@
 3. Update `todays-edits.md` with planned work to avoid duplication
 
 ### **During Development**
-- Update `recent-progress-log.md` when completing milestones (append, 100-word limit per entry)
-- Update `decision-log.md` when making architectural decisions (append, 100-word limit per entry)
+- Update `progress.md` when completing milestones (append, 100-word limit per entry)
+- Update `decisions.md` when making architectural decisions (append, 100-word limit per entry)
 
 ### **At Phase Completion**
-- Archive valuable logs (decision and recent-progress) to `completed/` directory
-- Reset `phase-tracker-log.md` and `project-state-log.md` for new phase
+- Archive valuable logs (decisions and progress) to `archive/` directory with phase naming
+- Reset `phase.md` and `architecture.md` for new phase
 - Update `HISTORICAL_ARCHIVE.md` with consolidated information from completed phase
 
 ## Log File Rules
@@ -47,10 +50,10 @@
 ## Information Flow
 
 ```
-Daily Work → Current Logs → Phase Completion → Historical Archive
+Daily Work → Current Logs → Session Archive → Historical Archive
      ↓           ↓              ↓                    ↓
-todays-edits → decisions → completed/ archive → HISTORICAL_ARCHIVE.md
-             → progress
+todays-edits → decisions.md → archive/decisions-* → HISTORICAL_ARCHIVE.md
+             → progress.md → archive/progress-*
 ```
 
 ## Benefits of This System
