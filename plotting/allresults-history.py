@@ -115,7 +115,7 @@ if __name__ == '__main__':
         HaloMassFull[snap] = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
         cgmFull[snap] = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
 
-    Wright = pd.read_csv('./optim/Wright_2018_z1_z2.csv', delimiter='\t', header=None)
+    Wright = pd.read_csv('./optim/data/Wright_2018_z1_z2.csv', delimiter='\t', header=None)
 
     z1_x = Wright.iloc[:, 0]   # First column
     z1_y = Wright.iloc[:, 1]   # Second column  
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     z2_x = Wright.iloc[:, 2]   # First column
     z2_y = Wright.iloc[:, 3]   # Second column
 
-    Shuntov = pd.read_csv('./optim/shuntov_2024_all.csv', delimiter='\t', header=None)
+    Shuntov = pd.read_csv('./optim/data/shuntov_2024_all.csv', delimiter='\t', header=None)
 
     z3_x = Shuntov.iloc[:, 14]   # First column
     z3_y = Shuntov.iloc[:, 15]   # Second column

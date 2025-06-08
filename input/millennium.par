@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium/
 
 FirstFile         0
 LastFile          7
@@ -31,12 +31,12 @@ NumSimulationTreeFiles 8 % Number of files the trees are split over. This can be
 %SimulationDir   /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/
 %SimulationDir   /fred/oz004/mbradley/sage-model/input/millennium/trees/
 
-SimulationDir   /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/input/millennium/trees/
+SimulationDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium/trees/
 
 %FileWithSnapList /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/millennium.a_list
 %FileWithSnapList /fred/oz004/mbradley/sage-model/input/millennium/trees/millennium.a_list
 
-FileWithSnapList /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/input/millennium/trees/millennium.a_list
+FileWithSnapList /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium/trees/millennium.a_list
 
 LastSnapShotNr        63
 
@@ -57,7 +57,7 @@ ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects on H2 gas
-CGMBuildOn                  0   %0: switch off; 1: enable CGM building
+CGMBuildOn                  1   %0: switch off; 1: enable CGM building
 VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
 MassReincorporationOn       0   %0: switch off; 1: enable mass-dependent reincorporation
