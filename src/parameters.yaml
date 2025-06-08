@@ -78,6 +78,14 @@ parameters:
         enum_type: true
         enum_values: ["lhalo_hdf5", "lhalo_binary", "genesis_hdf5", "consistent_trees_ascii", "consistent_trees_hdf5", "gadget4_hdf5"]
         
+      - name: "TreeExtension"
+        type: string
+        description: "File extension for tree files"
+        category: core
+        required: false
+        default_value: ""
+        struct_field: "io.TreeExtension"
+        
       - name: "SimulationDir"
         type: string
         description: "Directory containing simulation tree files"
@@ -185,6 +193,54 @@ parameters:
         bounds: [1.0, 1e10]
         struct_field: "units.UnitVelocity_in_cm_per_s"
         
+      - name: "UnitTime_in_s"
+        type: double
+        description: "Unit time in seconds"
+        category: core
+        required: true
+        bounds: [1.0, 1e30]
+        struct_field: "units.UnitTime_in_s"
+        
+      - name: "UnitTime_in_Megayears"
+        type: double
+        description: "Unit time in megayears"
+        category: core
+        required: true
+        bounds: [1.0, 1e10]
+        struct_field: "units.UnitTime_in_Megayears"
+        
+      - name: "UnitPressure_in_cgs"
+        type: double
+        description: "Unit pressure in CGS units"
+        category: core
+        required: true
+        bounds: [1.0, 1e50]
+        struct_field: "units.UnitPressure_in_cgs"
+        
+      - name: "UnitDensity_in_cgs"
+        type: double
+        description: "Unit density in CGS units"
+        category: core
+        required: true
+        bounds: [1.0, 1e50]
+        struct_field: "units.UnitDensity_in_cgs"
+        
+      - name: "UnitCoolingRate_in_cgs"
+        type: double
+        description: "Unit cooling rate in CGS units"
+        category: core
+        required: true
+        bounds: [1.0, 1e50]
+        struct_field: "units.UnitCoolingRate_in_cgs"
+        
+      - name: "UnitEnergy_in_cgs"
+        type: double
+        description: "Unit energy in CGS units"
+        category: core
+        required: true
+        bounds: [1.0, 1e50]
+        struct_field: "units.UnitEnergy_in_cgs"
+        
     runtime:
       - name: "ForestDistributionScheme"
         type: string
@@ -220,6 +276,15 @@ parameters:
         bounds: [0, 1]
         default_value: 1
         struct_field: "runtime.EnableGalaxyMemoryPool"
+        
+      - name: "OverwriteOutputFiles"
+        type: int
+        description: "Flag to overwrite existing output files"
+        category: core
+        required: false
+        bounds: [0, 1]
+        default_value: 0
+        struct_field: "runtime.OverwriteOutputFiles"
 
   # Physics parameters - available for physics modules to use
   physics:
