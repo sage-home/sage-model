@@ -680,7 +680,7 @@ def main():
             important_params = [
                 "OutputDir",
                 "FileNameGalaxies",
-                "LastSnapShotNr",
+                "LastSnapshotNr",
                 "FirstFile",
                 "LastFile",
                 "Hubble_h",
@@ -831,10 +831,10 @@ def main():
             
         # Get output model path and snapshot number
         model_path = params["OutputDir"]
-        snapshot = args.snapshot or params.get("LastSnapShotNr")
+        snapshot = args.snapshot or params.get("LastSnapshotNr")
         
         if not snapshot:
-            print("Error: LastSnapShotNr not found in parameter file and no snapshot specified.")
+            print("Error: LastSnapshotNr not found in parameter file and no snapshot specified.")
             sys.exit(1)
         
         # Clean up the path
@@ -1166,11 +1166,11 @@ def read_galaxies_hdf5(model_path, first_file, last_file, params=None, snapshot_
         sys.exit(1)
     
     # Determine which snapshot to use
-    # Priority: 1. Provided snapshot_number, 2. LastSnapShotNr from params
+    # Priority: 1. Provided snapshot_number, 2. LastSnapshotNr from params
     if snapshot_number is not None:
         snapshot = snapshot_number
-    elif "LastSnapShotNr" in params:
-        snapshot = params["LastSnapShotNr"]
+    elif "LastSnapshotNr" in params:
+        snapshot = params["LastSnapshotNr"]
     else:
         print("Warning: No snapshot number provided or found in parameters. Using default snapshot 63.")
         snapshot = 63  # Default to snapshot 63 (typically z=0)

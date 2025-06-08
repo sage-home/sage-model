@@ -128,7 +128,7 @@ static int create_complete_parameter_file(const char *filename, const char *addi
         "TreeType lhalo_binary\n"
         "SimulationDir ./input/\n"
         "FileWithSnapList ./input/snap_list\n"
-        "LastSnapShotNr 63\n"
+        "LastSnapshotNr 63\n"
         "NumSimulationTreeFiles 1\n"
         "BoxSize 62.5\n"
         "Omega 0.25\n"

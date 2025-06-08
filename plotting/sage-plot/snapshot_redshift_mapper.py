@@ -82,14 +82,14 @@ class SnapshotRedshiftMapper:
             return False
 
         # Check if required parameters exist
-        required_params = ["FileWithSnapList", "LastSnapShotNr"]
+        required_params = ["FileWithSnapList", "LastSnapshotNr"]
         missing_params = [p for p in required_params if p not in self.params]
         if missing_params:
             print(f"Error: Required parameters missing from parameter file: {', '.join(missing_params)}")
             return False
             
         a_list_file = self.params["FileWithSnapList"]
-        last_snapshot_nr = self.params["LastSnapShotNr"]
+        last_snapshot_nr = self.params["LastSnapshotNr"]
 
         # Clean up the file path - remove quotes and trailing slashes if present
         a_list_file = a_list_file.strip().strip("'").strip('"')
@@ -153,7 +153,7 @@ class SnapshotRedshiftMapper:
                 return False
 
             # Create the mapping - need to match snapshot numbers to redshifts
-            # Typically, the last expansion factor (largest) corresponds to the LastSnapShotNr
+            # Typically, the last expansion factor (largest) corresponds to the LastSnapshotNr
             # The first expansion factor (smallest) corresponds to snapshot 0
             num_snapshots = len(expansion_factors)
             
@@ -162,11 +162,11 @@ class SnapshotRedshiftMapper:
                 self.snapshots = [last_snapshot_nr]
             else:
                 # Handle case where we have multiple snapshots
-                # In typical format, snapshots run from 0 to LastSnapShotNr
+                # In typical format, snapshots run from 0 to LastSnapshotNr
                 snapshot_step = last_snapshot_nr / (num_snapshots - 1)
                 self.snapshots = [round(i * snapshot_step) for i in range(num_snapshots)]
                 
-                # Ensure last snapshot is exactly LastSnapShotNr
+                # Ensure last snapshot is exactly LastSnapshotNr
                 if self.snapshots[-1] != last_snapshot_nr:
                     self.snapshots[-1] = last_snapshot_nr
                     

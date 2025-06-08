@@ -28,7 +28,7 @@ TreeType                lhalo_binary  % either genesis_lhalo_hdf5 or lhalo_binar
 
 SimulationDir           /Volumes/Internal/data/millennium/
 FileWithSnapList        /Volumes/Internal/data/millennium/millennium.a_list
-LastSnapShotNr          63
+LastSnapshotNr          63
 NumSimulationTreeFiles  8             % Number of files the trees are split over
 BoxSize                 62.5          % in Mpc/h
 

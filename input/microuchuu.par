@@ -30,7 +30,7 @@ TreeType                consistent_trees_hdf5           % one of genesis_lhalo_h
 
 SimulationDir           /Volumes/Internal/data/uchuu/microuchuu/mergertrees
 FileWithSnapList        /Volumes/Internal/data/uchuu/microuchuu/Uchuu100_scalefactor.txt
-LastSnapShotNr          49
+LastSnapshotNr          49
 NumSimulationTreeFiles  1             % Number of files the trees are split over
 BoxSize                 100.0         % in Mpc/h
 
