@@ -35,7 +35,7 @@ properties:
     output: true
     read_only: false
     is_core: true
-    
+
   - name: GalaxyNr
     type: int32_t
     initial_value: 0
@@ -89,7 +89,34 @@ properties:
     output: true
     read_only: "after_first_set"
     is_core: true
+
+  - name: SAGEHaloIndex
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "SAGE-specific halo identifier"
+    output: true
+    read_only: false
+    is_core: true
     
+  - name: SAGETreeIndex
+    type: int32_t
+    initial_value: -1
+    units: "dimensionless"
+    description: "SAGE-specific tree identifier"
+    output: true
+    read_only: false
+    is_core: true
+    
+  - name: SimulationHaloIndex
+    type: long long
+    initial_value: -1
+    units: "dimensionless"
+    description: "Original simulation halo index"
+    output: true
+    read_only: false
+    is_core: true
+
   # Merger Properties - Physics Module Properties
   - name: mergeType
     type: int32_t
@@ -145,6 +172,15 @@ properties:
     initial_value: [0.0, 0.0, 0.0]
     units: "km/s"
     description: "Velocity components (vx,vy,vz)"
+    output: true
+    read_only: false
+    is_core: true
+
+  - name: Spin
+    type: float[3]
+    initial_value: [0.0, 0.0, 0.0]
+    units: "dimensionless"
+    description: "Angular momentum vector (Jx,Jy,Jz)"
     output: true
     read_only: false
     is_core: true
@@ -212,6 +248,15 @@ properties:
     read_only: false
     is_core: true
     
+  - name: VelDisp
+    type: float
+    initial_value: 0.0
+    units: "km/s"
+    description: "Velocity dispersion"
+    output: true
+    read_only: false
+    is_core: true
+
   # Baryonic Components
   - name: ColdGas
     type: float
@@ -333,65 +378,59 @@ properties:
     read_only: false
     is_core: false
     
-  # Star Formation History - Dynamic Arrays
+  # Star Formation History - Fixed Arrays
   - name: SfrDisk
-    type: float[]
-    size_parameter: "simulation.NumSnapOutputs"
+    type: float[STEPS]
     initial_value: 0.0
     units: "Msun/yr"
-    description: "Star formation rate in disk for each output snapshot"
+    description: "Star formation rate in disk for each timestep"
     output: true
     read_only: false
     is_core: false
     output_transformer_function: "derive_output_SfrDisk"
     
   - name: SfrBulge
-    type: float[]
-    size_parameter: "simulation.NumSnapOutputs"
+    type: float[STEPS]
     initial_value: 0.0
     units: "Msun/yr"
-    description: "Star formation rate in bulge for each output snapshot"
+    description: "Star formation rate in bulge for each timestep"
     output: true
     read_only: false
     is_core: false
     output_transformer_function: "derive_output_SfrBulge"
     
   - name: SfrDiskColdGas
-    type: float[]
-    size_parameter: "simulation.NumSnapOutputs"
+    type: float[STEPS]
     initial_value: 0.0
     units: "1e10 Msun/h"
-    description: "Cold gas mass during disk star formation for each output snapshot"
+    description: "Cold gas mass during disk star formation for each timestep"
     output: true
     read_only: false
     is_core: false
     
   - name: SfrDiskColdGasMetals
-    type: float[]
-    size_parameter: "simulation.NumSnapOutputs"
+    type: float[STEPS]
     initial_value: 0.0
     units: "1e10 Msun/h"
-    description: "Cold gas metals during disk star formation for each output snapshot"
+    description: "Cold gas metals during disk star formation for each timestep"
     output: true
     read_only: false
     is_core: false
     
   - name: SfrBulgeColdGas
-    type: float[]
-    size_parameter: "simulation.NumSnapOutputs"
+    type: float[STEPS]
     initial_value: 0.0
     units: "1e10 Msun/h"
-    description: "Cold gas mass during bulge star formation for each output snapshot"
+    description: "Cold gas mass during bulge star formation for each timestep"
     output: true
     read_only: false
     is_core: false
     
   - name: SfrBulgeColdGasMetals
-    type: float[]
-    size_parameter: "simulation.NumSnapOutputs"
+    type: float[STEPS]
     initial_value: 0.0
     units: "1e10 Msun/h"
-    description: "Cold gas metals during bulge star formation for each output snapshot"
+    description: "Cold gas metals during bulge star formation for each timestep"
     output: true
     read_only: false
     is_core: false
