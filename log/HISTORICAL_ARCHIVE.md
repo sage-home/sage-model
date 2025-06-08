@@ -78,8 +78,8 @@
 | **Phase 2** | Module & Pipeline Systems | ✅ Complete | Constructor registration, 4-phase execution |
 | **Phase 3** | I/O & Memory Management | ✅ Complete | Unified I/O interface, dynamic memory expansion |
 | **Phase 4** | Property & Event Systems | ✅ Complete | Type-safe property access, event separation |
-| **Phase 5** | HDF5 Migration & Validation | ✅ Complete | LHalo HDF5 migration, enhanced testing |
-| **Phase 6** | Remaining I/O Formats | 🚧 Current | Gadget4, Genesis, ConsistentTrees migration |
+| **Phase 5** | HDF5 Migration & Validation | 🚧 Current | LHalo HDF5 migration, enhanced testing |
+| **Phase 6** | Remaining I/O Formats | ⏳ Pending | Gadget4, Genesis, ConsistentTrees migration |
 
 ---
 
