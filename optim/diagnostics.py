@@ -265,57 +265,57 @@ def create_iteration_plot(filename, num_particles, num_iterations, obs_data, sag
 
     # Add SHARK data if available
     if plot_type == 'SMF' and 'SMF_z0_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_SMF.csv', cols=[0,1])
+        mass, phi = load_observation('/data/SHARK_SMF.csv', cols=[0,1])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'SMF' and 'SMF_z05_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_SMF.csv', cols=[2,3])
+        mass, phi = load_observation('/data/SHARK_SMF.csv', cols=[2,3])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'SMF' and 'SMF_z10_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_SMF.csv', cols=[4,5])
+        mass, phi = load_observation('/data/SHARK_SMF.csv', cols=[4,5])
         #print(mass, transform_y(phi))
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'SMF' and 'SMF_z20_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_SMF.csv', cols=[6,7])
+        mass, phi = load_observation('/data/SHARK_SMF.csv', cols=[6,7])
         #print(mass, transform_y(phi))
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'SMF' and 'SMF_z31_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_SMF.csv', cols=[8,9])
+        mass, phi = load_observation('/data/SHARK_SMF.csv', cols=[8,9])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'SMF' and 'SMF_z46_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_SMF.csv', cols=[10,11])
+        mass, phi = load_observation('/data/SHARK_SMF.csv', cols=[10,11])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'BHBM' and 'BHBM_z0_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_BHBM_z0.csv', cols=[0,1])
+        mass, phi = load_observation('/data/SHARK_BHBM_z0.csv', cols=[0,1])
         ax.plot(mass, phi, 'g--', label='SHARK')
 
     elif plot_type == 'HSMR' and 'HSMR_z0_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_HSMR.csv', cols=[0,1])
+        mass, phi = load_observation('/data/SHARK_HSMR.csv', cols=[0,1])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'HSMR' and 'HSMR_z05_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_HSMR.csv', cols=[2,3])
+        mass, phi = load_observation('/data/SHARK_HSMR.csv', cols=[2,3])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'HSMR' and 'HSMR_z10_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_HSMR.csv', cols=[4,5])
+        mass, phi = load_observation('/data/SHARK_HSMR.csv', cols=[4,5])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'HSMR' and 'HSMR_z20_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_HSMR.csv', cols=[6,7])
+        mass, phi = load_observation('/data/SHARK_HSMR.csv', cols=[6,7])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'HSMR' and 'HSMR_z30_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_HSMR.csv', cols=[8,9])
+        mass, phi = load_observation('/data/SHARK_HSMR.csv', cols=[8,9])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
 
     elif plot_type == 'HSMR' and 'HSMR_z40_dump.txt' in filename:
-        mass, phi = load_observation('SHARK_HSMR.csv', cols=[10,11])
+        mass, phi = load_observation('/data/SHARK_HSMR.csv', cols=[10,11])
         ax.plot(mass, transform_y(phi), 'g--', label='SHARK')
         
 
@@ -474,11 +474,11 @@ def create_combined_constraint_grids(output_dir='parameter_plots', png_dir=None)
 def load_sage_data():
     """Load SMF data from SAGE-miniUchuu"""
     # Load main SAGE data
-    sage_data = load_observation('sage_smf_all_redshifts.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
+    sage_data = load_observation('/data/sage_smf_all_redshifts.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
                                                               15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31])
     
     # Load z=1.0 data from the separate file
-    sage_z1_data = load_observation('sage_smf_extra_redshifts.csv', cols=[4,5])
+    sage_z1_data = load_observation('/data/sage_smf_extra_redshifts.csv', cols=[4,5])
     
     # Dictionary to store data for each redshift
     data_by_z = {}
@@ -509,7 +509,7 @@ def load_sage_data():
 
 def load_sage_data_forBHMF():
     """Load BHMF data from SAGE-miniUchuu"""
-    sage_data = load_observation('sage_bhmf_all_redshifts.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
+    sage_data = load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
                                                               15,16,17,18,19])
     # Dictionary to store data for each redshift
     data_by_z = {}
@@ -530,7 +530,7 @@ def load_sage_data_forBHMF():
 
 def load_sage_data_forHSMR():
     """Load HSMR data from SAGE-miniUchuu"""
-    sage_data = load_observation('sage_halostellar_all_redshifts.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
+    sage_data = load_observation('/data/sage_halostellar_all_redshifts.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
                                                               15,16,17,18,19,20,21])
     # Dictionary to store data for each redshift
     data_by_z = {}
@@ -551,13 +551,13 @@ def load_sage_data_forHSMR():
 def load_bhbm_data():
     """Load BHBM data from SAGE-miniUchuu and observations"""
     # Load observational data from Haring & Rix 2004
-    blackholemass, bulgemass = load_observation('Haring_Rix_2004_line.csv', cols=[2,3])
-    bulgemass_z2, blackholemass_z2 = load_observation('Zhang_BHBM_z2.csv', cols=[0,1])
+    blackholemass, bulgemass = load_observation('/data/Haring_Rix_2004_line.csv', cols=[2,3])
+    bulgemass_z2, blackholemass_z2 = load_observation('/data/Zhang_BHBM_z2.csv', cols=[0,1])
     log_blackholemass = blackholemass
     log_bulgemass = bulgemass
     
     # Load SAGE data
-    sage_bhbm_data = load_observation('sage_bhbm_all_redshifts.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13])
+    sage_bhbm_data = load_observation('/data/sage_bhbm_all_redshifts.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13])
     
     # Dictionary to store data for each redshift
     data_by_z = {}
@@ -589,7 +589,7 @@ def load_bhbm_data():
 
 def load_hsmr_data():
     """Load HSMR data"""
-    new_data = load_observation('Moster_2013.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11])
+    new_data = load_observation('/data/Moster_2013.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11])
     data_by_z = {}
     
     redshifts = [0.0, 0.5, 1.0, 2.0, 3.0, 4.0] # Add relevant redshifts
@@ -605,7 +605,7 @@ def load_hsmr_data():
 
 def load_shuntov_data():
     """Load SMF data from Shuntov et al. 2024"""
-    shuntov_data = load_observation('shuntov_2024_all.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
+    shuntov_data = load_observation('/data/shuntov_2024_all.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
                                                               15,16,17,18,19,20,21,22,23,24,25,26,27,28,29])
     # Dictionary to store data for each redshift
     data_by_z = {}
@@ -626,7 +626,7 @@ def load_shuntov_data():
 
 def load_zhang_data():
     """Load SMF data from Zhang et al. 2024"""
-    zhang_data = load_observation('zhang_data.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
+    zhang_data = load_observation('/data/zhang_data.csv', cols=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
                                                               15,16,17,18,19])
     # Dictionary to store data for each redshift
     data_by_z = {}
@@ -648,7 +648,7 @@ def load_zhang_data():
 def load_gama_data(config_opts):
     """Load GAMA data for z=0"""
     import routines as r
-    logm, logphi, dlogphi = load_observation('GAMA_SMF_highres.csv', cols=[0,1,2])
+    logm, logphi, dlogphi = load_observation('/data/GAMA_SMF_highres.csv', cols=[0,1,2])
     
     # Use passed parameters
     cosmology_correction_median = np.log10(r.comoving_distance(0.079, 100*config_opts.h0, 0, config_opts.Omega0, 1.0-config_opts.Omega0) / 
@@ -664,7 +664,7 @@ def load_gama_data(config_opts):
 def load_ilbert_data(config_opts):
     """Load GAMA data for z=0"""
     import routines as r
-    logm, logphi = load_observation('Ilbert_2010_z1.csv', cols=[0,1])
+    logm, logphi = load_observation('/data/Ilbert_2010_z1.csv', cols=[0,1])
     
     x_obs = logm
     y_obs = logphi
@@ -674,7 +674,7 @@ def load_ilbert_data(config_opts):
 def load_wright_z1_data(config_opts):
     """Load GAMA data for z=0"""
     import routines as r
-    logm, logphi = load_observation('Wright_2018_z1_z2.csv', cols=[0,1])
+    logm, logphi = load_observation('/data/Wright_2018_z1_z2.csv', cols=[0,1])
     
     x_obs = logm
     y_obs = logphi
@@ -684,7 +684,7 @@ def load_wright_z1_data(config_opts):
 def load_wright_z2_data(config_opts):
     """Load GAMA data for z=0"""
     import routines as r
-    logm, logphi = load_observation('Wright_2018_z1_z2.csv', cols=[2,3])
+    logm, logphi = load_observation('/data/Wright_2018_z1_z2.csv', cols=[2,3])
     
     x_obs = logm
     y_obs = logphi

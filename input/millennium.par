@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/output/millennium_reion3/
+OutputDir   /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/output/millennium/
 
 FirstFile         0
 LastFile          7
@@ -50,12 +50,20 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription              3   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: SHARK - Gnedin & Draine
+SFprescription              3   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: Gnedin & Draine
 AGNrecipeOn                 2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn           1   %0: switch off
 ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
+EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects on H2 gas
+CGMBuildOn                  0   %0: switch off; 1: enable CGM building
+VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
+ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
+MassReincorporationOn       0   %0: switch off; 1: enable mass-dependent reincorporation
+MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
+RedshiftReincorporationOn   0   %0: switch off; 1: enable redshift-scaled reioncorporation
+LowMassHighzSuppressionOn   0   %0: switch off; 1: enable low-mass and high-z suppression
 
 %------------------------------------------
 %----- SAGE model parameters --------------
@@ -100,16 +108,15 @@ MetallicityExponent         0.7    %Exponent for metallicity dependence in GD14 
 IntegrationBins             15     %Number of radial bins to use for integration (higher = more accurate but slower)
 
 %------------------------------------------
-%----- MOLECULAR GAS MODEL PARAMETERS -----
+%----- ENVIRONMENT PARAMETERS -----
 %------------------------------------------
-EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
+
 EnvEffectStrength             0.5     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- CGM Building -----------------------
 %------------------------------------------
 
-CGMBuildOn     0           % Enable preventative feedback (0=off, 1=on)
 CGMBuildVcrit  35.0        % Critical velocity scale (km/s)
 CGMBuildAlpha  0.8         % Power-law slope
 CGMBuildZdep   0.7         % Redshift dependence (0.5-1.0 recommended)
@@ -118,7 +125,6 @@ CGMBuildZdep   0.7         % Redshift dependence (0.5-1.0 recommended)
 %----- SF Enhancement ---------------------
 %------------------------------------------
 
-VvirEnhancementOn           1      % Enable (1) or disable (0) virial velocity enhancement
 VvirThreshold               60.0   % Threshold velocity in km/s for enhancement
 VvirEnhancementPower        0.9    % Power-law exponent for velocity scaling
 
@@ -126,7 +132,6 @@ VvirEnhancementPower        0.9    % Power-law exponent for velocity scaling
 %----- Reionization Models ----------------
 %------------------------------------------
 
-ReionizationModel         0       % 0=Simple, 1=Gnedin, 2=Sobacchi-Mesinger, 3=Patchy
 FilteringMassNorm         0.5     % [10^10 Msun/h] Based on Okamoto et al. 2008
 UVBackgroundStrength      1.0     % Range 0-1, strength of early UV feedback
 PatchyReionWidth          1.0     % Width of reionization transition in dz
@@ -137,7 +142,6 @@ PostReionSlope           -1.0    % Evolution of critical mass after reionization
 %----- MASS-DEPENDANT REINCORPORATION -----
 %------------------------------------------
 
-MassReincorporationOn       0        % enable mass-dependent reincorporation
 CriticalReincMass           1.0      % critical mass in 10^10 Msun/h
 ReincorporationMassExp      2.0      % linear scaling with halo mass
 MinReincorporationFactor    0.003    % minimum 10% of standard rate
@@ -149,19 +153,16 @@ MinReincorporationFactor    0.003    % minimum 10% of standard rate
 SFR_Alpha                 0.0   %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
 Reheating_Alpha           0.0   % Redshift evolution exponent for FeedbackReheatingEpsilon (only used if MuratovMassLoading=0)
 Ejection_Alpha            0.0   %controls redshift dependence of ejection
-RedshiftReincorporationOn        0
 ReincorporationRedshiftExp       -10.0
 
 %------------------------------------------
 %----- Mass Dependent SF ------------------
 %------------------------------------------
 
-MassDependentSFEnabled     0       % 0 = off, 1 = on
 SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
 SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
 SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
 
-LowMassHighzSuppressionOn       0        % Enable suppression (0=off, 1=on)
 SuppressionMassThreshold        45.0      % In units of 10^10 Msun/h
 SuppressionMassExponent         1.0      % Power-law exponent for mass dependence 
 SuppressionRedshiftExp          0.5      % Redshift scaling factor
