@@ -7,6 +7,12 @@ import plotly.graph_objects as go
 import plotly.express as px
 from random import sample, seed
 import warnings
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from plotly.subplots import make_subplots
+import plotly.io as pio
+
 warnings.filterwarnings("ignore")
 
 # ========================== USER OPTIONS ==========================
@@ -349,12 +355,6 @@ if __name__ == '__main__':
     # Show plot (uncomment if running locally)
     # fig.show()
 
-    from mpl_toolkits.mplot3d import Axes3D
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from random import sample
-    import matplotlib.cm as cm
-
     # Create a figure with 3D subplots
     fig = plt.figure(figsize=(18, 6))
 
@@ -469,13 +469,6 @@ if __name__ == '__main__':
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
-
-    import numpy as np
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-    import plotly.io as pio
-    from random import sample
-    import os
 
     def create_interactive_3d_density_plots(Posx, Posy, Posz, Mvir, StellarMass, H1Gas, H2Gas, 
                                             BoxSize, dilute, OutputDir):

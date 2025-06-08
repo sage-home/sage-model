@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/Phd/SAGE-SHARK/sage-model/output/millennium_reion3/
 
 FirstFile         0
 LastFile          7
@@ -57,18 +57,6 @@ ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 
-ReionizationModel         3       % 0=Simple, 1=Gnedin, 2=Sobacchi-Mesinger, 3=Patchy
-FilteringMassNorm         15.0     % [10^10 Msun/h] Based on Okamoto et al. 2008
-UVBackgroundStrength      2.0     % Range 0-1, strength of early UV feedback
-PatchyReionWidth          0.5     % Width of reionization transition in dz
-LocalReionVariance        1.0     % Spatial variance in reionization timing
-PostReionSlope           -1.0    % Evolution of critical mass after reionization
-
-MassDependentSFEnabled     0       % 0 = off, 1 = on
-SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
-SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
-SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
-
 %------------------------------------------
 %----- SAGE model parameters --------------
 %------------------------------------------
@@ -101,8 +89,8 @@ EtaSN                   5.0e-3  %supernova efficiency
 %----- H2 formation parameters ------------
 %------------------------------------------
 
-H2FractionFactor            1.0    %Controls the normalisation of the H2/HI calculation for Blitz & Rosolowsky
-H2FractionExponent          0.92   %Controls the H2/HI ratio calculation for Blitz & Rosolowsky
+H2FractionFactor            0.5    %Controls the normalisation of the H2/HI calculation for Blitz & Rosolowsky
+H2FractionExponent          0.05   %Controls the H2/HI ratio calculation for Blitz & Rosolowsky
 
 ClumpFactor                 5.0    %Clumping factor for Krumholz & Dekel H2
 ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz & Dekel H2
@@ -116,6 +104,34 @@ IntegrationBins             15     %Number of radial bins to use for integration
 %------------------------------------------
 EnvironmentalEffectsOn        1       % Enable environmental effects on H2 gas (0=off, 1=on)
 EnvEffectStrength             0.5     % Strength of environmental effects (0.0-2.0)
+
+%------------------------------------------
+%----- CGM Building -----------------------
+%------------------------------------------
+
+CGMBuildOn     0           % Enable preventative feedback (0=off, 1=on)
+CGMBuildVcrit  35.0        % Critical velocity scale (km/s)
+CGMBuildAlpha  0.8         % Power-law slope
+CGMBuildZdep   0.7         % Redshift dependence (0.5-1.0 recommended)
+
+%------------------------------------------
+%----- SF Enhancement ---------------------
+%------------------------------------------
+
+VvirEnhancementOn           1      % Enable (1) or disable (0) virial velocity enhancement
+VvirThreshold               60.0   % Threshold velocity in km/s for enhancement
+VvirEnhancementPower        0.9    % Power-law exponent for velocity scaling
+
+%------------------------------------------
+%----- Reionization Models ----------------
+%------------------------------------------
+
+ReionizationModel         0       % 0=Simple, 1=Gnedin, 2=Sobacchi-Mesinger, 3=Patchy
+FilteringMassNorm         0.5     % [10^10 Msun/h] Based on Okamoto et al. 2008
+UVBackgroundStrength      1.0     % Range 0-1, strength of early UV feedback
+PatchyReionWidth          1.0     % Width of reionization transition in dz
+LocalReionVariance        1.0     % Spatial variance in reionization timing
+PostReionSlope           -1.0    % Evolution of critical mass after reionization
 
 %------------------------------------------
 %----- MASS-DEPENDANT REINCORPORATION -----
@@ -137,22 +153,18 @@ RedshiftReincorporationOn        0
 ReincorporationRedshiftExp       -10.0
 
 %------------------------------------------
-%----- PREVENTATIVE FEEDBACK PARAMETERS -----
+%----- Mass Dependent SF ------------------
 %------------------------------------------
 
-CGMBuildOn     1           % Enable preventative feedback (0=off, 1=on)
-CGMBuildVcrit  35.0        % Critical velocity scale (km/s)
-CGMBuildAlpha  0.8         % Power-law slope
-CGMBuildZdep   0.7         % Redshift dependence (0.5-1.0 recommended)
+MassDependentSFEnabled     0       % 0 = off, 1 = on
+SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
+SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
+SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
 
 LowMassHighzSuppressionOn       0        % Enable suppression (0=off, 1=on)
 SuppressionMassThreshold        45.0      % In units of 10^10 Msun/h
 SuppressionMassExponent         1.0      % Power-law exponent for mass dependence 
 SuppressionRedshiftExp          0.5      % Redshift scaling factor
-
-VvirEnhancementOn           1      % Enable (1) or disable (0) virial velocity enhancement
-VvirThreshold               60.0   % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        0.9    % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Other code-related information -----

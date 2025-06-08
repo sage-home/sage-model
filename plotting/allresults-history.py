@@ -260,7 +260,7 @@ if __name__ == '__main__':
     for t in leg.get_texts():  # Reduce the size of the text
         t.set_fontsize('medium')
 
-    outputFile = OutputDir + 'A.HaloStellarMass_z' + OutputFormat
+    outputFile = OutputDir + 'B.HaloStellarMass_z' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
@@ -591,7 +591,7 @@ if __name__ == '__main__':
     for t in leg.get_texts():  # Reduce the size of the text
         t.set_fontsize('medium')
 
-    outputFile = OutputDir + 'A.StellarMassFunction_z' + OutputFormat
+    outputFile = OutputDir + 'C.StellarMassFunction_z' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
@@ -825,7 +825,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     # Read the ECSV data
-    ecsv_data = read_ecsv_data('CSFRD_inferred_from_SMD.ecsv')
+    ecsv_data = read_ecsv_data('./data/CSFRD_inferred_from_SMD.ecsv')
 
     # Extract columns
     ecsv_redshift = ecsv_data[:, 0]
@@ -937,7 +937,7 @@ if __name__ == '__main__':
     for t in leg.get_texts():  # Reduce the size of the text
         t.set_fontsize('small')         
 
-    outputFile = OutputDir + 'B.History-SFR-density' + OutputFormat
+    outputFile = OutputDir + 'D.History-SFR-density' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
@@ -1032,7 +1032,7 @@ if __name__ == '__main__':
         rho_16_vals = []
         rho_84_vals = []
         
-        for line in data_lines:
+        for line in data_lines: 
             parts = line.split()
             z_vals.append(float(parts[0]))
             rho_50_vals.append(float(parts[1]))
@@ -1042,7 +1042,7 @@ if __name__ == '__main__':
         return np.array(z_vals), np.array(rho_50_vals), np.array(rho_16_vals), np.array(rho_84_vals)
 
     # Load the SMD data
-    smd_z, smd_rho_50, smd_rho_16, smd_rho_84 = load_smd_data('SMD.ecsv')
+    smd_z, smd_rho_50, smd_rho_16, smd_rho_84 = load_smd_data('./data/SMD.ecsv')
 
     # Convert to log10 and plot with error bars
     smd_log_rho_50 = np.log10(smd_rho_50)
@@ -1072,7 +1072,7 @@ if __name__ == '__main__':
     for t in leg.get_texts():  # Reduce the size of the text
         t.set_fontsize('medium')
 
-    outputFile = OutputDir + 'C.History-stellar-mass-density' + OutputFormat
+    outputFile = OutputDir + 'E.History-stellar-mass-density' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
@@ -1228,7 +1228,7 @@ if __name__ == '__main__':
     for t in leg.get_texts():  # Reduce the size of the text
         t.set_fontsize('medium')
 
-    outputFile = OutputDir + 'A.StellarMassFunction_Filtered_z' + OutputFormat
+    outputFile = OutputDir + 'C.StellarMassFunction_Filtered_z' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
@@ -1338,7 +1338,7 @@ if __name__ == '__main__':
     for t in leg.get_texts():  # Reduce the size of the text
         t.set_fontsize('medium')
 
-    outputFile = OutputDir + 'D.CGMMassFunction_z' + OutputFormat
+    outputFile = OutputDir + 'F.CGMMassFunction_z' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()

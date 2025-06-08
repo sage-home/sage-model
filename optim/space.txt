@@ -1,0 +1,5 @@
+CGMBuildVcrit,CGMvir,0,20,100
+CGMBuildAlpha,CGMalpha,0,0.01,5.0
+CGMBuildZdep,CGMzdep,0,0.01,5.0
+VvirThreshold,vThresh,0,20,100
+VvirEnhancementPower,vPower,0,0.1,5.0

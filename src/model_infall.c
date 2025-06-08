@@ -43,7 +43,7 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
 
     // include reionization if necessary
     if(run_params->ReionizationOn) {
-        reionization_modifier = do_reionization(centralgal, Zcurr, galaxies, run_params);
+        reionization_modifier = do_reionization_enhanced(centralgal, Zcurr, galaxies, run_params);
     } else {
         reionization_modifier = 1.0;
     }

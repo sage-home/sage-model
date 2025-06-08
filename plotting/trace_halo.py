@@ -456,7 +456,7 @@ def plot_halo_evolution(tracked_data, output_dir="./plots", Hubble_h=0.73):
         row = [str(data[key][i]) for key in data.keys()]
         rows.append(','.join(row))
     
-    with open(f"{output_dir}/galaxy_evolution_data.csv", 'w') as f:
+    with open(f"./galaxy_evolution_data.csv", 'w') as f:
         f.write(header + '\n')
         f.write('\n'.join(rows))
     
@@ -501,9 +501,6 @@ def plot_redshift_mvir_vvir(tracked_data, output_dir="./plots", normalize=True):
     normalize : bool
         Whether to normalize the scales
     """
-    import os
-    import numpy as np
-    import matplotlib.pyplot as plt
     
     # Make sure output directory exists
     os.makedirs(output_dir, exist_ok=True)

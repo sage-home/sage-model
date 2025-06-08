@@ -465,14 +465,26 @@ if __name__ == '__main__':
   
     # calculate BMF
     w = np.where(StellarMass + ColdGas > 0.0)[0]
-    mass = np.log10( (StellarMass[w] + ColdGas[w]) )
+    mass = np.log10( (StellarMass[w] + 1.4*H1Gas[w]) )
 
     mi = np.floor(min(mass)) - 2
     ma = np.floor(max(mass)) + 2
     NB = int((ma - mi) / binwidth)
     (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
     xaxeshisto = binedges[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
-   
+
+    # additionally calculate satellites
+    w_sat = np.where((StellarMass + ColdGas > 0.0) & (Type == 1))[0]
+    mass_sat = np.log10( (StellarMass[w_sat] + 1.4*H1Gas[w_sat]) )
+    (counts_sat, binedges_sat) = np.histogram(mass_sat, range=(mi, ma), bins=NB)
+    xaxeshisto_sat = binedges_sat[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
+
+    # additionally calculate centrals
+    w_cent = np.where((StellarMass > 0.0) & (Type == 0))[0]
+    mass_cent = np.log10( (StellarMass[w_cent] + 1.4*H1Gas[w_cent]) )
+    (counts_cent, binedges_cent) = np.histogram(mass_cent, range=(mi, ma), bins=NB)
+    xaxeshisto_cent = binedges_cent[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
+
     # Bell et al. 2003 BMF (h=1.0 converted to h=0.73)
     M = np.arange(7.0, 13.0, 0.01)
     Mstar = np.log10(5.3*1.0e10 /Hubble_h/Hubble_h)
@@ -489,13 +501,15 @@ if __name__ == '__main__':
         plt.plot(np.log10(10.0**M /0.7 /1.8), yval, 'g--', lw=1.5, label='Bell et al. 2003')  # Plot the SMF
 
     # Overplot the model histograms
-    plt.plot(xaxeshisto, counts / volume / binwidth, 'k-', label='Model')
+    plt.plot(xaxeshisto, np.log10(counts / volume / binwidth), 'k-', label='Model')
+    plt.plot(xaxeshisto_sat, np.log10(counts_sat / volume / binwidth), 'r--', lw=2, label='Model - Satellites')
+    plt.plot(xaxeshisto_cent, np.log10(counts_cent / volume / binwidth), 'b--', lw=2, label='Model - Centrals')
 
-    plt.yscale('log')
-    plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
+
+    plt.axis([9.0, 12.2, -6, -1])
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
 
-    plt.ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')  # Set the y...
+    plt.ylabel(r'$\log_{10}\ \phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')  # Set the y...
     plt.xlabel(r'$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$')  # and the x-axis labels
 
     leg = plt.legend(loc='lower left', numpoints=1, labelspacing=0.1)
@@ -727,23 +741,17 @@ if __name__ == '__main__':
     Z[mask] = np.log10((MetalsColdGas[w2][mask] / ColdGas[w2][mask]) / 0.02) + 9.0
 
     # Create scatter plot with metallicity coloring
-    scatter = plt.scatter(mass, SFR, c=Z, marker='o', s=1, alpha=0.7, 
-                        cmap='jet', label='Model galaxies')
+    plt.scatter(mass, np.log10(SFR), c='b', marker='o', s=1, alpha=0.7, label='Model galaxies')
 
-    # Add colorbar
-    cbar = plt.colorbar(scatter)
-    cbar.set_label(r'$12 + \log_{10}(\mathrm{O/H})$', rotation=270, labelpad=15)
-
-    plt.ylabel(r'$\mathrm{SFR}\ (M_{\odot}\ \mathrm{yr^{-1}})$')  # Set the y...
+    plt.ylabel(r'$\log_{10} \mathrm{SFR}\ (M_{\odot}\ \mathrm{yr^{-1}})$')  # Set the y...
     plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
 
     # Set the x and y axis minor ticks
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
-    plt.xlim(2.0, 12.0)
-    plt.ylim(1.0e-10, 1.0e2)  # Set y-axis limits for SFR
-    plt.yscale('log')
+    plt.xlim(8.0, 12.5)
+    plt.ylim(-3, 3)  # Set y-axis limits for SFR
 
     outputFile = OutputDir + '5.StarFormationRate' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
