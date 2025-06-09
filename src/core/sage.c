@@ -28,6 +28,7 @@
 #include "core_event_system.h"
 #include "core_pipeline_system.h"
 #include "core_config_system.h"
+#include "galaxy_array.h"
 
 #ifdef HDF5
 #include "../io/save_gals_hdf5.h"
@@ -273,8 +274,9 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     /* Begin tree memory scope for efficient cleanup */
     begin_tree_memory_scope();
 
-    /*  galaxy data  */
-    struct GALAXY  *Gal = NULL, *HaloGal = NULL;
+    /* New: Use safe GalaxyArray instead of raw pointers */
+    GalaxyArray *Gal = galaxy_array_new();
+    GalaxyArray *HaloGal = galaxy_array_new();
 
     /* simulation merger-tree data */
     struct halo_data *Halo = NULL;
@@ -282,10 +284,21 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     /*  auxiliary halo data  */
     struct halo_aux_data  *HaloAux = NULL;
 
+    /* Check galaxy arrays were created successfully */
+    if (!Gal || !HaloGal) {
+        fprintf(stderr, "Error: Failed to create galaxy arrays for forest %"PRId64"...exiting\n", forestnr);
+        if (Gal) galaxy_array_free(Gal);
+        if (HaloGal) galaxy_array_free(HaloGal);
+        end_tree_memory_scope();
+        return -1;
+    }
+
     /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
     const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
     if(nhalos < 0) {
         fprintf(stderr,"Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
+        galaxy_array_free(Gal);
+        galaxy_array_free(HaloGal);
         end_tree_memory_scope();
         return nhalos;
     }
@@ -301,12 +314,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     }
 #endif
 
-    int maxgals = (int)(MAXGALFAC * nhalos);
-    if(maxgals < 10000) maxgals = 10000;
-
     HaloAux = mymalloc(nhalos * sizeof(HaloAux[0]));
-    HaloGal = mycalloc(maxgals, sizeof(HaloGal[0]));
-    Gal = mycalloc(maxgals, sizeof(Gal[0]));/* used to be fof_maxgals instead of maxgals*/
 
     for(int i = 0; i < nhalos; i++) {
         HaloAux[i].HaloFlag = 0;
@@ -354,18 +362,23 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     /* Now start the processing */
     int32_t galaxycounter = 0;
 
+    // Pass the new GalaxyArray pointers to construct_galaxies
     /* First run construct_galaxies outside for loop -> takes care of the main tree */
-    status = construct_galaxies(0, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
+    int status = construct_galaxies(0, &numgals, &galaxycounter, Halo, HaloAux, Gal, HaloGal, run_params);
     if(status != EXIT_SUCCESS) {
+        galaxy_array_free(Gal);
+        galaxy_array_free(HaloGal);
         end_tree_memory_scope();
         return status;
     }
 
     /* But there are sub-trees within one forest file that are not reachable via the recursive routine -> do those as well */
     for(int halonr = 0; halonr < nhalos; halonr++) {
-        if(HaloAux[halonr].DoneFlag == 0) {
-            status = construct_galaxies(halonr, &numgals, &galaxycounter, &maxgals, Halo, HaloAux, &Gal, &HaloGal, run_params);
+        if(HaloAux[halonr].DoneFlag == 0) { // Note: numgals is reset to 0 inside the loop
+            status = construct_galaxies(halonr, &numgals, &galaxycounter, Halo, HaloAux, Gal, HaloGal, run_params);
             if(status != EXIT_SUCCESS) {
+                galaxy_array_free(Gal);
+                galaxy_array_free(HaloGal);
                 end_tree_memory_scope();
                 return status;
             }
@@ -373,16 +386,21 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     }
 
 #endif /* PROCESS_LHVT_STYLE */
-
-    status = save_galaxies(forestnr, numgals, Halo, forest_info, HaloAux, HaloGal, save_info, run_params);
+    
+    // Get the final count and raw data pointer for saving
+    int final_ngals = galaxy_array_get_count(HaloGal);
+    struct GALAXY *final_gals = galaxy_array_get_raw_data(HaloGal);
+    status = save_galaxies(forestnr, final_ngals, Halo, forest_info, HaloAux, final_gals, save_info, run_params);
     if(status != EXIT_SUCCESS) {
+        galaxy_array_free(Gal);
+        galaxy_array_free(HaloGal);
         end_tree_memory_scope();
         return status;
     }
 
     /* free galaxies and the forest */
-    myfree(Gal);
-    myfree(HaloGal);
+    galaxy_array_free(Gal);
+    galaxy_array_free(HaloGal);
     myfree(HaloAux);
     myfree(Halo);
 

@@ -55,6 +55,7 @@
 #include "core_evolution_diagnostics.h"
 #include "core_galaxy_accessors.h"  // For galaxy_get_* functions
 #include "core_property_utils.h"    // For get_cached_property_id, set_float_property
+#include "galaxy_array.h"           // For GalaxyArray API
 
 /* Core function forward declarations (halo/tree properties and essential functions) */
 double get_virial_mass(const int halonr, struct halo_data *halos, struct params *run_params);
@@ -425,8 +426,8 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
  * - Preserves system state for cleanup on failure
  */
 /* the only externally visible function */
-int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, int *maxgals, struct halo_data *halos,
-                       struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
+int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, struct halo_data *halos,
+                       struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr,
                        struct params *run_params)
 {
   int prog, fofhalo;

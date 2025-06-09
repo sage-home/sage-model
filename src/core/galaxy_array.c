@@ -89,33 +89,46 @@ static int galaxy_array_expand(GalaxyArray* arr) {
     int new_capacity = arr->capacity == 0 ? GALAXY_ARRAY_INITIAL_CAPACITY : arr->capacity * 2;
     LOG_DEBUG("Expanding galaxy array from %d to %d capacity.", arr->capacity, new_capacity);
 
-    // 1. Before realloc, save all valid `properties` pointers.
-    galaxy_properties_t** temp_props = mymalloc(arr->count * sizeof(galaxy_properties_t*));
-    if (!temp_props) {
-        LOG_ERROR("Failed to allocate temporary properties pointer array for expansion.");
-        return -1;
-    }
-    for (int i = 0; i < arr->count; ++i) {
-        temp_props[i] = arr->galaxies[i].properties;
+    // 1. Before realloc, save all valid `properties` pointers (only if we have existing galaxies).
+    galaxy_properties_t** temp_props = NULL;
+    if (arr->count > 0) {
+        temp_props = mymalloc(arr->count * sizeof(galaxy_properties_t*));
+        if (!temp_props) {
+            LOG_ERROR("Failed to allocate temporary properties pointer array for expansion.");
+            return -1;
+        }
+        for (int i = 0; i < arr->count; ++i) {
+            temp_props[i] = arr->galaxies[i].properties;
+        }
     }
 
-    // 2. Perform the reallocation.
-    struct GALAXY* new_array = myrealloc(arr->galaxies, new_capacity * sizeof(struct GALAXY));
+    // 2. Perform the allocation/reallocation.
+    struct GALAXY* new_array;
+    if (arr->galaxies == NULL) {
+        // First allocation
+        new_array = mymalloc(new_capacity * sizeof(struct GALAXY));
+    } else {
+        // Reallocation of existing array
+        new_array = myrealloc(arr->galaxies, new_capacity * sizeof(struct GALAXY));
+    }
+    
     if (!new_array) {
-        myfree(temp_props);
-        LOG_ERROR("Failed to reallocate galaxy array to new capacity %d.", new_capacity);
+        if (temp_props) myfree(temp_props);
+        LOG_ERROR("Failed to allocate/reallocate galaxy array to new capacity %d.", new_capacity);
         return -1;
     }
 
     arr->galaxies = new_array;
     arr->capacity = new_capacity;
 
-    // 3. Restore the `properties` pointers to their new locations.
-    for (int i = 0; i < arr->count; ++i) {
-        arr->galaxies[i].properties = temp_props[i];
+    // 3. Restore the `properties` pointers to their new locations (only if we had existing galaxies).
+    if (temp_props) {
+        for (int i = 0; i < arr->count; ++i) {
+            arr->galaxies[i].properties = temp_props[i];
+        }
+        myfree(temp_props);
     }
 
-    myfree(temp_props);
     return 0; // Success
 }
 
