@@ -198,11 +198,10 @@ static int find_most_massive_progenitor(const int halonr, struct halo_data *halo
  * @param   ngalstart       Starting index for galaxies in the galaxy array
  * @param   first_occupied  Index of the most massive progenitor with galaxies
  * @param   galaxycounter   Galaxy counter for ID assignment
- * @param   maxgals        Pointer to maximum galaxy array size
  * @param   halos          Array of halo data structures
  * @param   haloaux        Array of halo auxiliary data structures
- * @param   ptr_to_galaxies Pointer to galaxy array pointer
- * @param   ptr_to_halogal  Pointer to permanent galaxy array pointer
+ * @param   galaxies_arr   Safe dynamic array for temporary galaxies
+ * @param   halogal_arr    Safe dynamic array for permanent galaxies
  * @param   run_params     Simulation parameters
  * @return  Updated number of galaxies after copying
  *
@@ -221,134 +220,124 @@ static int find_most_massive_progenitor(const int halonr, struct halo_data *halo
  * dark matter structures.
  */
 static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart, const int first_occupied,
-                                         int *galaxycounter, int *maxgals, struct halo_data *halos,
-                                         struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies,
-                                         struct GALAXY **ptr_to_halogal, struct params *run_params)
+                                         int *galaxycounter, struct halo_data *halos,
+                                         struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr,
+                                         GalaxyArray *halogal_arr, struct params *run_params)
 {
-    int ngal, prog;
-    struct GALAXY *galaxies = *ptr_to_galaxies;
-    struct GALAXY *halogal = *ptr_to_halogal;
+    int prog;
+    struct GALAXY *halogal_raw = galaxy_array_get_raw_data(halogal_arr);
 
-    ngal = ngalstart;
     prog = halos[halonr].FirstProgenitor;
 
     while (prog >= 0) {
         for (int i = 0; i < haloaux[prog].NGalaxies; i++) {
-            if (ngal >= (*maxgals - 1)) {
-                /* Expand arrays with safe reallocation that preserves properties pointers */
-                printf("SEGFAULT-FIX: Expanding galaxy arrays safely in copy_galaxies_from_progenitors: capacity %d → %d, valid galaxies %d\n", 
-                       *maxgals, ngal + 2, ngal);  // TODO: Remove after segfault resolved
-                LOG_DEBUG("Expanding galaxy arrays safely: current capacity %d, needed %d, valid galaxies %d", 
-                         *maxgals, ngal + 2, ngal);
-                
-                if (galaxy_array_expand_safe(ptr_to_galaxies, maxgals, ngal + 2, ngal) != 0) {
-                    LOG_ERROR("Failed to safely expand galaxies array in copy_galaxies_from_progenitors");
-                    return -1;
-                }
-                
-                if (galaxy_array_expand_safe(ptr_to_halogal, maxgals, ngal + 2, ngal) != 0) {
-                    LOG_ERROR("Failed to safely expand halogal array in copy_galaxies_from_progenitors");
-                    return -1;
-                }
-                
-                // Update local pointers after safe reallocation
-                galaxies = *ptr_to_galaxies;
-                halogal = *ptr_to_halogal;
-                
-                LOG_DEBUG("Safe galaxy array expansion completed successfully");
-            }
+            // Get the source galaxy using the old index from the permanent array
+            const struct GALAXY* source_gal = &halogal_raw[haloaux[prog].FirstGalaxy + i];
 
-            XRETURN(ngal < *maxgals, -1,
-                    "Error: ngal = %d exceeds the number of galaxies allocated = %d\n"
-                    "This would result in invalid memory access...exiting\n",
-                    ngal, *maxgals);
+            // Create temporary galaxy for updates
+            struct GALAXY temp_galaxy;
+            memset(&temp_galaxy, 0, sizeof(struct GALAXY));
+            galaxy_extension_initialize(&temp_galaxy);
+            deep_copy_galaxy(&temp_galaxy, source_gal, run_params);
 
-            /* This is the crucial line in which the properties of the progenitor galaxies
-             * are copied over (as a whole) to the (temporary) galaxies galaxies[xxx] in the current snapshot
-             * After updating their properties and evolving them
-             * they are copied to the end of the list of permanent galaxies halogal[xxx] */
-
-            /* First initialize the extension data (to maintain binary compatibility) */
-            galaxy_extension_initialize(&galaxies[ngal]);
-            
-            /* Perform a safe deep copy of the GALAXY structure and properties */
-            deep_copy_galaxy(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i], run_params);
-            
-            /* Update halo-specific properties after copying */
-            galaxies[ngal].HaloNr = halonr;
-            galaxies[ngal].dT = -1.0;
+            // Update galaxy properties
+            temp_galaxy.HaloNr = halonr;
+            temp_galaxy.dT = -1.0;
             
             /* Copy extension data (this will just copy flags since the data is accessed on demand) */
-            galaxy_extension_copy(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i]);
+            galaxy_extension_copy(&temp_galaxy, source_gal);
 
             /* This deals with the central galaxies of (sub)halos */
-            if (galaxies[ngal].Type == 0 || galaxies[ngal].Type == 1) {
+            if (temp_galaxy.Type == 0 || temp_galaxy.Type == 1) {
 
                 /* Remember properties from the last snapshot */
-                const float previousMvir = galaxies[ngal].Mvir;
-                const float previousVvir = galaxies[ngal].Vvir;
-                const float previousVmax = galaxies[ngal].Vmax;
+                const float previousMvir = temp_galaxy.Mvir;
+                const float previousVvir = temp_galaxy.Vvir;
+                const float previousVmax = temp_galaxy.Vmax;
 
                 if (prog == first_occupied) {
                     /* Update properties of this galaxy with physical properties of halo */
-                    galaxies[ngal].MostBoundID = halos[halonr].MostBoundID;
+                    temp_galaxy.MostBoundID = halos[halonr].MostBoundID;
 
                     for (int j = 0; j < 3; j++) {
-                        galaxies[ngal].Pos[j] = halos[halonr].Pos[j];
-                        galaxies[ngal].Vel[j] = halos[halonr].Vel[j];
+                        temp_galaxy.Pos[j] = halos[halonr].Pos[j];
+                        temp_galaxy.Vel[j] = halos[halonr].Vel[j];
                     }
 
-                    galaxies[ngal].Len = halos[halonr].Len;
-                    galaxies[ngal].Vmax = halos[halonr].Vmax;
+                    temp_galaxy.Len = halos[halonr].Len;
+                    temp_galaxy.Vmax = halos[halonr].Vmax;
 
-                    galaxies[ngal].deltaMvir = get_virial_mass(halonr, halos, run_params) - galaxies[ngal].Mvir;
+                    temp_galaxy.deltaMvir = get_virial_mass(halonr, halos, run_params) - temp_galaxy.Mvir;
 
-                    if (get_virial_mass(halonr, halos, run_params) > galaxies[ngal].Mvir) {
-                        galaxies[ngal].Rvir = get_virial_radius(halonr, halos, run_params);  /* use the maximum Rvir in model */
-                        galaxies[ngal].Vvir = get_virial_velocity(halonr, halos, run_params);  /* use the maximum Vvir in model */
+                    if (get_virial_mass(halonr, halos, run_params) > temp_galaxy.Mvir) {
+                        temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);  /* use the maximum Rvir in model */
+                        temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);  /* use the maximum Vvir in model */
                     }
-                    galaxies[ngal].Mvir = get_virial_mass(halonr, halos, run_params);
+                    temp_galaxy.Mvir = get_virial_mass(halonr, halos, run_params);
 
                     if (halonr == halos[halonr].FirstHaloInFOFgroup) {
                         /* A central galaxy */
-                        galaxies[ngal].Type = 0;
+                        temp_galaxy.Type = 0;
                     } else {
                         /* A satellite with subhalo */
-                        if (galaxies[ngal].Type == 0) {  /* remember the infall properties before becoming a subhalo */
-                            galaxies[ngal].infallMvir = previousMvir;
-                            galaxies[ngal].infallVvir = previousVvir;
-                            galaxies[ngal].infallVmax = previousVmax;
+                        if (temp_galaxy.Type == 0) {  /* remember the infall properties before becoming a subhalo */
+                            temp_galaxy.infallMvir = previousMvir;
+                            temp_galaxy.infallVvir = previousVvir;
+                            temp_galaxy.infallVmax = previousVmax;
                         }
-                        galaxies[ngal].Type = 1;
+                        temp_galaxy.Type = 1;
                     }
                 } else {
                     /* An orphan satellite galaxy - in physics-free mode, just update properties */
-                    galaxies[ngal].deltaMvir = -1.0 * galaxies[ngal].Mvir;
-                    galaxies[ngal].Mvir = 0.0;
+                    temp_galaxy.deltaMvir = -1.0 * temp_galaxy.Mvir;
+                    temp_galaxy.Mvir = 0.0;
                     
-                    galaxies[ngal].infallMvir = previousMvir;
-                    galaxies[ngal].infallVvir = previousVvir;
-                    galaxies[ngal].infallVmax = previousVmax;
+                    temp_galaxy.infallMvir = previousMvir;
+                    temp_galaxy.infallVvir = previousVvir;
+                    temp_galaxy.infallVmax = previousVmax;
                     
-                    galaxies[ngal].Type = 2;
+                    temp_galaxy.Type = 2;
                 }
             }
 
-            ngal++;
+            // Append the fully updated temporary galaxy to the safe array
+            if (galaxy_array_append(galaxies_arr, &temp_galaxy, run_params) < 0) {
+                LOG_ERROR("Failed to append galaxy in copy_galaxies_from_progenitors.");
+                free_galaxy_properties(&temp_galaxy); // Clean up temp
+                return -1;
+            }
+
+            // The temporary galaxy is no longer needed
+            free_galaxy_properties(&temp_galaxy);
         }
 
         prog = halos[prog].NextProgenitor;
     }
 
     /* If we have no progenitors with galaxies, create a new galaxy if this is the main subhalo */
-    if (ngal == ngalstart) {
+    if (galaxy_array_get_count(galaxies_arr) == ngalstart) {
         if (halonr == halos[halonr].FirstHaloInFOFgroup) {
-            init_galaxy(ngal, halonr, galaxycounter, halos, galaxies, run_params);
-            ngal++;
+            // Create temporary galaxy for new initialization
+            struct GALAXY temp_new_galaxy;
+            memset(&temp_new_galaxy, 0, sizeof(struct GALAXY));
+            galaxy_extension_initialize(&temp_new_galaxy);
+            
+            // Initialize the new galaxy using existing function
+            init_galaxy(0, halonr, galaxycounter, halos, &temp_new_galaxy, run_params);
+            
+            // Append to safe array
+            if (galaxy_array_append(galaxies_arr, &temp_new_galaxy, run_params) < 0) {
+                LOG_ERROR("Failed to append new galaxy in copy_galaxies_from_progenitors.");
+                free_galaxy_properties(&temp_new_galaxy);
+                return -1;
+            }
+            
+            // Clean up temporary galaxy
+            free_galaxy_properties(&temp_new_galaxy);
         }
     }
 
-    return ngal;
+    return galaxy_array_get_count(galaxies_arr);
 }
 
 /**
@@ -399,11 +388,10 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
  * @param   halonr    Index of the current halo in the halo array
  * @param   numgals   Pointer to total number of galaxies created
  * @param   galaxycounter Galaxy counter for unique ID assignment
- * @param   maxgals   Pointer to maximum galaxy array size (can be expanded)
  * @param   halos     Array of halo data structures
  * @param   haloaux   Array of halo auxiliary data structures
- * @param   ptr_to_galaxies Pointer to temporary galaxy array pointer
- * @param   ptr_to_halogal  Pointer to permanent galaxy array pointer
+ * @param   galaxies_arr Safe dynamic array for temporary galaxies
+ * @param   halogal_arr  Safe dynamic array for permanent galaxies
  * @param   run_params Simulation parameters and configuration
  * @return  EXIT_SUCCESS on success, EXIT_FAILURE on error
  *
@@ -438,7 +426,7 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
   prog = halos[halonr].FirstProgenitor;
   while(prog >= 0) {
       if(haloaux[prog].DoneFlag == 0) {
-          int status = construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+          int status = construct_galaxies(prog, numgals, galaxycounter, halos, haloaux, galaxies_arr, halogal_arr, run_params);
 
           if(status != EXIT_SUCCESS) {
               LOG_ERROR("Failed to construct galaxies for progenitor %d", prog);
@@ -456,7 +444,7 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
           prog = halos[fofhalo].FirstProgenitor;
           while(prog >= 0) {
               if(haloaux[prog].DoneFlag == 0) {
-                  int status = construct_galaxies(prog, numgals, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+                  int status = construct_galaxies(prog, numgals, galaxycounter, halos, haloaux, galaxies_arr, halogal_arr, run_params);
 
                   if(status != EXIT_SUCCESS) {
                       LOG_ERROR("Failed to construct galaxies for FOF group progenitor %d", prog);
@@ -493,7 +481,7 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
 
       /* Third, join galaxies from all progenitors within the FOF group */
       while(fofhalo >= 0) {
-          ngal = join_galaxies_of_progenitors(fofhalo, ngal, galaxycounter, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+          ngal = join_galaxies_of_progenitors(fofhalo, ngal, galaxycounter, halos, haloaux, galaxies_arr, halogal_arr, run_params);
           if(ngal < 0) {
               LOG_ERROR("Failed to join galaxies of progenitors for FOF halo %d", fofhalo);
               return EXIT_FAILURE;
@@ -503,7 +491,7 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
 
       /* Finally, evolve all galaxies in the FOF group through time */
       LOG_DEBUG("Evolving %d galaxies in halo %d", ngal, halonr);
-      int status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ngal, numgals, maxgals, halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+      int status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ngal, numgals, halos, haloaux, galaxies_arr, halogal_arr, run_params);
 
       if(status != EXIT_SUCCESS) {
           LOG_ERROR("Failed to evolve galaxies in FOF group %d", halos[halonr].FirstHaloInFOFgroup);
@@ -522,11 +510,10 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
  * @param   halonr       Index of the current halo in the halo array
  * @param   ngalstart    Starting index for galaxies in the galaxy array
  * @param   galaxycounter Galaxy counter for ID assignment
- * @param   maxgals     Pointer to maximum galaxy array size
  * @param   halos       Array of halo data structures
  * @param   haloaux     Array of halo auxiliary data structures
- * @param   ptr_to_galaxies Pointer to galaxy array pointer
- * @param   ptr_to_halogal  Pointer to permanent galaxy array pointer
+ * @param   galaxies_arr Safe dynamic array for temporary galaxies
+ * @param   halogal_arr Safe dynamic array for permanent galaxies
  * @param   run_params  Simulation parameters
  * @return  Updated number of galaxies after joining
  *
@@ -540,28 +527,25 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
  * The function ensures proper inheritance of galaxy properties while
  * maintaining the hierarchy of central and satellite galaxies.
  */
-static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, int *maxgals, struct halo_data *halos,
-                                       struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params)
+static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, struct halo_data *halos,
+                                       struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr, struct params *run_params)
 {
     int ngal, first_occupied;
-    struct GALAXY *galaxies = *ptr_to_galaxies;
 
     /* Find the most massive progenitor with galaxies */
     first_occupied = find_most_massive_progenitor(halonr, halos, haloaux);
 
     /* Copy galaxies from progenitors to the current snapshot */
-    ngal = copy_galaxies_from_progenitors(halonr, ngalstart, first_occupied, galaxycounter, maxgals, 
-                                         halos, haloaux, ptr_to_galaxies, ptr_to_halogal, run_params);
+    ngal = copy_galaxies_from_progenitors(halonr, ngalstart, first_occupied, galaxycounter, 
+                                         halos, haloaux, galaxies_arr, halogal_arr, run_params);
     if (ngal < 0) {
         LOG_ERROR("Failed to copy galaxies from progenitors for halo %d", halonr);
         return -1;
     }
 
-    /* Update local pointer after potential reallocation */
-    galaxies = *ptr_to_galaxies;
-
     /* Set up central galaxy relationships */
-    if (set_galaxy_centrals(ngalstart, ngal, galaxies) != 0) {
+    struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(galaxies_arr);
+    if (set_galaxy_centrals(ngalstart, ngal, galaxies_raw) != 0) {
         LOG_ERROR("Failed to set central galaxy relationships for halo %d", halonr);
         return -1;
     }
@@ -578,11 +562,10 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
  * @param   halonr    Index of the FOF-background subhalo (main halo)
  * @param   ngal      Total number of galaxies to evolve
  * @param   numgals   Pointer to total galaxy count (updated as galaxies are finalized)
- * @param   maxgals   Pointer to maximum galaxy array size (can be expanded)
  * @param   halos     Array of halo data structures
  * @param   haloaux   Array of halo auxiliary data structures
- * @param   ptr_to_galaxies Pointer to temporary galaxy array pointer
- * @param   ptr_to_halogal  Pointer to permanent galaxy array pointer
+ * @param   galaxies_arr Safe dynamic array for temporary galaxies
+ * @param   halogal_arr  Safe dynamic array for permanent galaxies
  * @param   run_params Simulation parameters and configuration
  * @return  EXIT_SUCCESS on success, EXIT_FAILURE on error
  *
@@ -626,12 +609,12 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
  * allowing modules to be replaced, reordered, or removed at runtime.
  * Synchronization calls are placed around phase executions.
  */
-static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
-                          struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal,
+static int evolve_galaxies(const int halonr, const int ngal, int *numgals, struct halo_data *halos,
+                          struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr,
                           struct params *run_params)
 {
-    struct GALAXY *galaxies = *ptr_to_galaxies;
-    struct GALAXY *halogal = *ptr_to_halogal;
+    struct GALAXY *galaxies = galaxy_array_get_raw_data(galaxies_arr);
+    struct GALAXY *halogal_raw = galaxy_array_get_raw_data(halogal_arr);
 
     // Initialize galaxy evolution context
     struct evolution_context ctx;
@@ -904,51 +887,21 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
 
         // In physics-free mode, save all galaxies without merger processing
         {
-            /* realloc if needed */
-            if(*numgals >= (*maxgals - 1)) {
-                // Expand arrays with safe reallocation that preserves properties pointers
-                printf("SEGFAULT-FIX: Expanding galaxy arrays safely in evolve_galaxies: capacity %d → %d, valid galaxies %d\n", 
-                       *maxgals, *numgals + 2, *numgals);  // TODO: Remove after segfault resolved
-                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Expanding galaxy arrays safely: current capacity %d, needed %d, valid galaxies %d", 
-                           *maxgals, *numgals + 2, *numgals);
-                
-                if (galaxy_array_expand_safe(ptr_to_galaxies, maxgals, *numgals + 2, *numgals) != 0) {
-                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to safely expand galaxies array in evolve_galaxies");
-                    return EXIT_FAILURE;
-                }
-
-                if (galaxy_array_expand_safe(ptr_to_halogal, maxgals, *numgals + 2, *numgals) != 0) {
-                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to safely expand halogal array in evolve_galaxies");
-                    return EXIT_FAILURE;
-                }
-
-                // Update local pointers after safe reallocation
-                galaxies = *ptr_to_galaxies;
-                halogal = *ptr_to_halogal;
-                ctx.galaxies = galaxies; // Update context pointer
-                
-                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Safe galaxy array expansion completed successfully");
-            }
-
-            if(*numgals >= *maxgals) {
-                CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR,
-                            "Memory error: numgals = %d exceeds the number of galaxies allocated = %d",
-                            *numgals, *maxgals);
-                return INVALID_MEMORY_ACCESS_REQUESTED;
-            }
-
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
 
-            // Copy galaxy including extensions to the permanent list
-            // First zero-initialize the destination galaxy structure to avoid garbage data
-            memset(&halogal[*numgals], 0, sizeof(struct GALAXY));
-            
-            // Then initialize the destination galaxy's properties and extensions
-            galaxy_extension_initialize(&halogal[*numgals]);
+            // Copy galaxy to the permanent list using the new API
+            struct GALAXY temp_galaxy;
+            memset(&temp_galaxy, 0, sizeof(struct GALAXY));
+            galaxy_extension_initialize(&temp_galaxy);
+            deep_copy_galaxy(&temp_galaxy, &ctx.galaxies[p], run_params);
+            temp_galaxy.SnapNum = halos[currenthalo].SnapNum;
 
-            // Perform a safe deep copy of the GALAXY structure and properties
-            deep_copy_galaxy(&halogal[*numgals], &ctx.galaxies[p], run_params);
-
+            if (galaxy_array_append(halogal_arr, &temp_galaxy, run_params) < 0) {
+                LOG_ERROR("Failed to append galaxy to final array");
+                free_galaxy_properties(&temp_galaxy);
+                return EXIT_FAILURE;
+            }
+            free_galaxy_properties(&temp_galaxy);
             (*numgals)++;
             haloaux[currenthalo].NGalaxies++;
         }
