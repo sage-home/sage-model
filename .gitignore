@@ -68,6 +68,7 @@ tests/test_data_integrity_physics_free
 tests/test_hdf5_output_validation
 tests/test_property_yaml_validation
 tests/test_parameter_yaml_validation
+tests/test_halo_progenitor_integrity
 
 tests/test_output/
 .repomix/

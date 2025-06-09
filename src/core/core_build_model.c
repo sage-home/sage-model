@@ -86,6 +86,77 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_
  * galaxy, which is used to determine which galaxy should become the central
  * galaxy of the descendant halo.
  */
+
+/**
+ * @brief   Performs a safe deep copy of a GALAXY structure
+ *
+ * @param   dest        Destination galaxy structure (must be initialized)
+ * @param   src         Source galaxy structure to copy from
+ * @param   run_params  Runtime parameters needed for property copying
+ *
+ * This function performs a proper deep copy of a GALAXY structure, correctly
+ * handling the properties pointer to avoid memory corruption. It replaces
+ * direct structure assignment (=) which only performs shallow copying and
+ * creates dangerous pointer aliasing.
+ */
+static inline void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params)
+{
+    // CRITICAL FIX: Avoid shallow copy that creates shared properties pointers
+    // Instead, manually copy each field to prevent dangerous pointer aliasing
+    
+    // Core galaxy identification
+    dest->SnapNum = src->SnapNum;
+    dest->Type = src->Type;
+    dest->GalaxyNr = src->GalaxyNr;
+    dest->CentralGal = src->CentralGal;
+    dest->HaloNr = src->HaloNr;
+    dest->MostBoundID = src->MostBoundID;
+    dest->GalaxyIndex = src->GalaxyIndex;
+    dest->CentralGalaxyIndex = src->CentralGalaxyIndex;
+    
+    // Merger properties
+    dest->mergeType = src->mergeType;
+    dest->mergeIntoID = src->mergeIntoID;
+    dest->mergeIntoSnapNum = src->mergeIntoSnapNum;
+    dest->dT = src->dT;
+    
+    // Core halo properties
+    for (int i = 0; i < 3; i++) {
+        dest->Pos[i] = src->Pos[i];
+        dest->Vel[i] = src->Vel[i];
+    }
+    dest->Len = src->Len;
+    dest->Mvir = src->Mvir;
+    dest->deltaMvir = src->deltaMvir;
+    dest->CentralMvir = src->CentralMvir;
+    dest->Rvir = src->Rvir;
+    dest->Vvir = src->Vvir;
+    dest->Vmax = src->Vmax;
+    
+    // Core merger tracking
+    dest->MergTime = src->MergTime;
+    
+    // Core infall properties
+    dest->infallMvir = src->infallMvir;
+    dest->infallVvir = src->infallVvir;
+    dest->infallVmax = src->infallVmax;
+    
+    // Extension mechanism
+    dest->extension_data = src->extension_data;
+    dest->num_extensions = src->num_extensions;
+    dest->extension_flags = src->extension_flags;
+    
+    // CRITICAL: Initialize properties pointer to NULL before allocating
+    dest->properties = NULL;
+    
+    // Deep copy the properties using the property system
+    if (copy_galaxy_properties(dest, src, run_params) != 0) {
+        LOG_ERROR("A failure occurred during the deep copy of galaxy properties. Source GalaxyIndex: %llu\n", src->GalaxyIndex);
+        // In a production environment, you might want to add more robust error handling here,
+        // such as returning an error code to the caller.
+    }
+}
+
 static int find_most_massive_progenitor(const int halonr, struct halo_data *halos, 
                                        struct halo_aux_data *haloaux)
 {
@@ -164,18 +235,64 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
         for (int i = 0; i < haloaux[prog].NGalaxies; i++) {
             if (ngal >= (*maxgals - 1)) {
                 /* Expand arrays with geometric growth rather than fixed increment */
-                if (galaxy_array_expand(ptr_to_galaxies, maxgals, ngal + 1) != 0) {
+                // Store old arrays before reallocation
+                struct GALAXY *old_galaxies = *ptr_to_galaxies;
+                struct GALAXY *old_halogal = *ptr_to_halogal;
+                
+                if (galaxy_array_expand(ptr_to_galaxies, maxgals, ngal + 2) != 0) { // Use ngal+2 for safety
                     LOG_ERROR("Failed to expand galaxies array in copy_galaxies_from_progenitors");
                     return -1;
                 }
                 
-                if (galaxy_array_expand(ptr_to_halogal, maxgals, ngal + 1) != 0) {
+                if (galaxy_array_expand(ptr_to_halogal, maxgals, ngal + 2) != 0) { // Use ngal+2 for safety
                     LOG_ERROR("Failed to expand halogal array in copy_galaxies_from_progenitors");
                     return -1;
                 }
                 
                 galaxies = *ptr_to_galaxies;
                 halogal = *ptr_to_halogal;
+                
+                // CRITICAL FIX: After array reallocation, properties pointers are invalid.
+                // Re-allocate them for all existing galaxies.
+                if (old_galaxies != galaxies || old_halogal != halogal) {
+                    LOG_WARNING("Galaxy arrays reallocated - checking and restoring properties pointers");
+                    
+                    // AGGRESSIVE DEBUGGING: Check memory integrity first
+                    MEMORY_INTEGRITY_CHECK(galaxies, old_galaxies, "copy_galaxies_from_progenitors galaxies");
+                    MEMORY_INTEGRITY_CHECK(halogal, old_halogal, "copy_galaxies_from_progenitors halogal");
+                    
+                    // Re-allocate properties for galaxies array
+                    if (old_galaxies != galaxies) {
+                        for (int j = 0; j < ngal; j++) {
+                            if (galaxies[j].properties == NULL) {
+                                LOG_DEBUG("Re-allocating properties for galaxy %d", j);
+                                if (allocate_galaxy_properties(&galaxies[j], run_params) != 0) {
+                                    LOG_ERROR("Failed to re-allocate properties after array reallocation");
+                                    return -1;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Re-allocate properties for halogal array
+                    if (old_halogal != halogal) {
+                        for (int j = 0; j < ngal; j++) {
+                            if (halogal[j].properties == NULL) {
+                                LOG_DEBUG("Re-allocating properties for halogal %d", j);
+                                if (allocate_galaxy_properties(&halogal[j], run_params) != 0) {
+                                    LOG_ERROR("Failed to re-allocate properties after array reallocation");
+                                    return -1;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // AGGRESSIVE DEBUGGING: Validate entire arrays after reallocation
+                    LOG_DEBUG("Post-reallocation validation - galaxies array");
+                    VALIDATE_GALAXY_ARRAY(galaxies, ngal, "post-realloc galaxies array");
+                    LOG_DEBUG("Post-reallocation validation - halogal array");  
+                    VALIDATE_GALAXY_ARRAY(halogal, ngal, "post-realloc halogal array");
+                }
             }
 
             XRETURN(ngal < *maxgals, -1,
@@ -191,20 +308,15 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
             /* First initialize the extension data (to maintain binary compatibility) */
             galaxy_extension_initialize(&galaxies[ngal]);
             
-            /* Then copy the basic GALAXY structure */
-            galaxies[ngal] = halogal[haloaux[prog].FirstGalaxy + i];
+            /* Perform a safe deep copy of the GALAXY structure and properties */
+            deep_copy_galaxy(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i], run_params);
+            
+            /* Update halo-specific properties after copying */
             galaxies[ngal].HaloNr = halonr;
             galaxies[ngal].dT = -1.0;
             
             /* Copy extension data (this will just copy flags since the data is accessed on demand) */
             galaxy_extension_copy(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i]);
-            
-            /* Perform a deep copy of the properties struct content, including dynamic arrays */
-            int copy_status = copy_galaxy_properties(&galaxies[ngal], &halogal[haloaux[prog].FirstGalaxy + i], run_params);
-            if (copy_status != 0) {
-                LOG_ERROR("Failed to copy properties for galaxy %d (prog %d, halo %d)", ngal, prog, halonr);
-                return -1;
-            }
 
             /* This deals with the central galaxies of (sub)halos */
             if (galaxies[ngal].Type == 0 || galaxies[ngal].Type == 1) {
@@ -831,13 +943,17 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         {
             /* realloc if needed */
             if(*numgals >= (*maxgals - 1)) {
+                // Store old arrays before reallocation
+                struct GALAXY *old_galaxies = *ptr_to_galaxies;
+                struct GALAXY *old_halogal = *ptr_to_halogal;
+                
                 // Expand arrays with geometric growth rather than fixed increment
-                if (galaxy_array_expand(ptr_to_galaxies, maxgals, *numgals + 1) != 0) {
+                if (galaxy_array_expand(ptr_to_galaxies, maxgals, *numgals + 2) != 0) {
                     CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to expand galaxies array in evolve_galaxies");
                     return EXIT_FAILURE;
                 }
 
-                if (galaxy_array_expand(ptr_to_halogal, maxgals, *numgals + 1) != 0) {
+                if (galaxy_array_expand(ptr_to_halogal, maxgals, *numgals + 2) != 0) {
                     CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to expand halogal array in evolve_galaxies");
                     return EXIT_FAILURE;
                 }
@@ -849,6 +965,42 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
                 galaxies = *ptr_to_galaxies;
                 halogal = *ptr_to_halogal;
                 ctx.galaxies = galaxies; // Update context pointer
+                
+                // CRITICAL FIX: After array reallocation, properties pointers are invalid.
+                // Re-allocate them for all existing galaxies.
+                if (old_galaxies != galaxies || old_halogal != halogal) {
+                    LOG_WARNING("Galaxy arrays reallocated in evolve_galaxies - checking and restoring properties pointers");
+                    
+                    // AGGRESSIVE DEBUGGING: Check memory integrity first
+                    MEMORY_INTEGRITY_CHECK(galaxies, old_galaxies, "evolve_galaxies galaxies");
+                    MEMORY_INTEGRITY_CHECK(halogal, old_halogal, "evolve_galaxies halogal");
+                    
+                    // Re-allocate properties for halogal array
+                    if (old_halogal != halogal) {
+                        for (int j = 0; j < *numgals; j++) {
+                            if (halogal[j].properties == NULL) {
+                                LOG_DEBUG("Re-allocating properties for halogal %d", j);
+                                if (allocate_galaxy_properties(&halogal[j], run_params) != 0) {
+                                    LOG_ERROR("Failed to re-allocate properties after array reallocation");
+                                    return EXIT_FAILURE;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Re-allocate properties for temporary galaxies array
+                    if (old_galaxies != galaxies) {
+                        for (int j = 0; j < ctx.ngal; j++) {
+                            if (ctx.galaxies[j].properties == NULL) {
+                                LOG_DEBUG("Re-allocating properties for ctx.galaxies %d", j);
+                                if (allocate_galaxy_properties(&ctx.galaxies[j], run_params) != 0) {
+                                    LOG_ERROR("Failed to re-allocate properties after array reallocation");
+                                    return EXIT_FAILURE;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             if(*numgals >= *maxgals) {
@@ -867,19 +1019,8 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
             // Then initialize the destination galaxy's properties and extensions
             galaxy_extension_initialize(&halogal[*numgals]);
 
-            // Then, perform a shallow copy of the base struct GALAXY fields
-            halogal[*numgals] = ctx.galaxies[p];
-            
-            // Reset the properties pointer to avoid double free issues
-            halogal[*numgals].properties = NULL;
-            
-            // Then, perform a deep copy of the properties struct
-            int copy_status = copy_galaxy_properties(&halogal[*numgals], &ctx.galaxies[p], run_params);
-            if (copy_status != 0) {
-                 CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to copy properties for galaxy %d", p);
-                 // Need to decide how to handle this error - potentially free allocated properties?
-                 return EXIT_FAILURE;
-            }
+            // Perform a safe deep copy of the GALAXY structure and properties
+            deep_copy_galaxy(&halogal[*numgals], &ctx.galaxies[p], run_params);
 
             (*numgals)++;
             haloaux[currenthalo].NGalaxies++;

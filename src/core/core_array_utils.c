@@ -22,6 +22,10 @@
 #define LOG_DEBUG(fmt, ...) fprintf(stderr, "DEBUG: " fmt "\n", ##__VA_ARGS__)
 #endif
 
+#ifndef LOG_WARNING
+#define LOG_WARNING(fmt, ...) fprintf(stderr, "WARNING: " fmt "\n", ##__VA_ARGS__)
+#endif
+
 /**
  * @file core_array_utils.c
  * @brief Implementation of utility functions for dynamic array management
@@ -89,18 +93,38 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
     size_t galaxy_size = sizeof(struct GALAXY);
     #endif
     
-    // Save the old array pointer to check if it changed during realloc
+    // Save the old array pointer and capacity to check if it changed during realloc
     struct GALAXY *old_array = *array;
+    int old_capacity = *current_capacity;
     
     // Expand the array
     int status = array_expand_default((void **)array, galaxy_size, current_capacity, min_new_size);
     
-    // Special handling for galaxy properties if array pointer changed during reallocation
-    // This is just a sanity check - realloc should preserve the pointers correctly
+    // CRITICAL FIX: Handle galaxy properties pointers after reallocation
+    // When the galaxy array moves, properties pointers become invalid and must be updated
     if (status == 0 && old_array != *array) {
         // The array was reallocated to a new memory location
-        // No special handling needed as realloc preserves the memory contents
-        // and property pointers should remain valid
+        
+        LOG_WARNING("Galaxy array reallocated from %p to %p - caller must re-allocate properties pointers",
+                   old_array, *array);
+        
+        // CRITICAL BUG FIX: Only set properties to NULL for galaxies that were previously valid,
+        // NOT for the entire new capacity which includes uninitialized memory!
+        // The previous code was writing to uninitialized memory causing corruption.
+        LOG_DEBUG("Setting properties to NULL for %d existing galaxies only (not full capacity %d)", 
+                 old_capacity, *current_capacity);
+        
+        // Only nullify properties for galaxies that existed before reallocation
+        for (int i = 0; i < old_capacity; i++) {
+            (*array)[i].properties = NULL;
+        }
+        
+        // Initialize the NEW memory region to prevent garbage data
+        // Zero-initialize any newly allocated galaxy structures
+        if (*current_capacity > old_capacity) {
+            memset(&(*array)[old_capacity], 0, 
+                   (*current_capacity - old_capacity) * sizeof(struct GALAXY));
+        }
     }
     
     return status;

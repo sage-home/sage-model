@@ -117,3 +117,12 @@
 - Maintains existing *.par file format compatibility while achieving full core-physics separation compliance
 - Created files: src/parameters.yaml, src/core/core_parameters.h/.c (auto-generated)
 - Modified files: src/core/core_read_parameter_file.c, src/generate_property_headers.py, Makefile, .gitignore
+
+2025-06-09: [Memory Debugging Infrastructure] Comprehensive Memory Corruption Detection Implementation ✅ COMPLETED
+- **PHASE 1 - Critical Fixes**: Fixed galaxy_array_expand() memory corruption bug (writing to uninitialized memory), implemented safe deep_copy_galaxy() function to replace dangerous shallow copying, converted to mycalloc() for safe memory allocation patterns
+- **PHASE 2 - Defensive Programming**: Added comprehensive pointer corruption detection macros (IS_POINTER_CORRUPTED, VALIDATE_PROPERTIES_POINTER, etc.), implemented fail-hard corruption protection preserving scientific data integrity, enhanced property allocation in physics_essential_functions.c with comprehensive initialization
+- **PHASE 3 - Infrastructure**: Created test_halo_progenitor_integrity.c comprehensive test suite for merger tree validation, updated array reallocation safety checks with aggressive debugging and memory integrity validation throughout core_build_model.c  
+- **PHASE 4 - Scientific Data Protection**: Reverted initial dangerous "graceful degradation" approach that masked corruption with NULL/default values, ensuring system fails hard when corruption detected to preserve scientific accuracy
+- Provides comprehensive memory corruption detection infrastructure, fixes array expansion bugs, implements robust debugging foundation for ongoing segfault investigation, and validates systematic debugging methodology for complex memory management issues
+- Created files: tests/test_halo_progenitor_integrity.c, enhanced validation macros in core_utils.h
+- Modified files: src/core/core_array_utils.c (critical fix), src/core/core_build_model.c (safe deep copy + reallocation safety), src/core/sage.c (safe allocation), src/io/save_gals_hdf5.c (fail-hard protection), src/physics/physics_essential_functions.c (comprehensive initialization), Makefile, .gitignore, log/decisions.md

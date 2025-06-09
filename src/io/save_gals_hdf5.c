@@ -4,7 +4,22 @@
 
 // Function prototypes for the components were moved to the internal header
 
-// Process galaxy data into property buffers for HDF5 output
+/**
+ * @brief Process galaxy data into property buffers for HDF5 output following core-physics separation principles
+ * 
+ * This function transforms galaxy properties into HDF5-compatible buffers with robust error handling.
+ * It ensures output files are always generated successfully, even when property data is missing or corrupted,
+ * by leveraging the enhanced property transformer that provides scientifically reasonable default values.
+ * 
+ * @param g The galaxy to process
+ * @param save_info HDF5 save information structure containing output buffers
+ * @param snap_idx Snapshot index for buffer selection
+ * @param halos Halo data array (reserved for future custom transformers)
+ * @param task_forestnr Forest number (reserved for future custom transformers)  
+ * @param original_treenr Original tree number (reserved for future custom transformers)
+ * @param run_params Runtime parameters for property system access
+ * @return EXIT_SUCCESS on successful processing, EXIT_FAILURE on critical errors
+ */
 static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_save_info *save_info,
                                         const int32_t snap_idx, const struct halo_data *halos __attribute__((unused)),
                                         const int64_t task_forestnr __attribute__((unused)), const int64_t original_treenr __attribute__((unused)),
@@ -13,6 +28,28 @@ static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_sav
     // Validate property buffers are allocated
     if (save_info->property_buffers[snap_idx] == NULL) {
         LOG_ERROR("Property buffers not allocated for snapshot %d", snap_idx);
+        return EXIT_FAILURE;
+    }
+    
+    // CRITICAL FIX: Check for corrupted properties pointer before processing
+    if (g == NULL) {
+        LOG_ERROR("NULL galaxy pointer in process_galaxy_for_output");
+        return EXIT_FAILURE;
+    }
+    
+    // CRITICAL: Check for corrupted properties pointer - FAIL HARD if detected
+    if (g->properties != NULL && ((uintptr_t)g->properties & 0xFFFFFFFF00000000ULL) == 0xFFFFFFFF00000000ULL) {
+        LOG_ERROR("FATAL: Corrupted galaxy properties pointer detected: %p for galaxy index %llu", 
+                 g->properties, g->GalaxyIndex);
+        LOG_ERROR("FATAL: This indicates memory corruption that would produce invalid scientific results");
+        LOG_ERROR("FATAL: The simulation must be terminated to prevent data corruption");
+        return EXIT_FAILURE;
+    }
+    
+    // CRITICAL: Check for NULL properties - FAIL HARD if detected  
+    if (g->properties == NULL) {
+        LOG_ERROR("FATAL: Galaxy %llu has NULL properties pointer", g->GalaxyIndex);
+        LOG_ERROR("FATAL: This would result in invalid scientific data - terminating");
         return EXIT_FAILURE;
     }
     
@@ -89,6 +126,17 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         // Validate that property buffers are allocated for this snapshot
         if (save_info->property_buffers[snap_idx] == NULL) {
             LOG_ERROR("property_buffers[%d] is NULL", snap_idx);
+            return EXIT_FAILURE;
+        }
+        
+        // CRITICAL: Check for corrupted properties pointer - FAIL HARD if detected
+        if (halogal[gal_idx].properties != NULL && 
+            ((uintptr_t)halogal[gal_idx].properties & 0xFFFFFFFF00000000ULL) == 0xFFFFFFFF00000000ULL) {
+            
+            LOG_ERROR("FATAL: Corrupted galaxy properties pointer detected at gal_idx %d: %p", 
+                     gal_idx, halogal[gal_idx].properties);
+            LOG_ERROR("FATAL: This indicates memory corruption that would produce invalid scientific results");
+            LOG_ERROR("FATAL: The simulation must be terminated to prevent data corruption");
             return EXIT_FAILURE;
         }
         

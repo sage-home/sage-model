@@ -305,12 +305,8 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     if(maxgals < 10000) maxgals = 10000;
 
     HaloAux = mymalloc(nhalos * sizeof(HaloAux[0]));
-    HaloGal = mymalloc(maxgals * sizeof(HaloGal[0]));
-    Gal = mymalloc(maxgals * sizeof(Gal[0]));/* used to be fof_maxgals instead of maxgals*/
-
-    /* Initialize galaxy arrays to zero to prevent garbage values */
-    memset(HaloGal, 0, maxgals * sizeof(HaloGal[0]));
-    memset(Gal, 0, maxgals * sizeof(Gal[0]));
+    HaloGal = mycalloc(maxgals, sizeof(HaloGal[0]));
+    Gal = mycalloc(maxgals, sizeof(Gal[0]));/* used to be fof_maxgals instead of maxgals*/
 
     for(int i = 0; i < nhalos; i++) {
         HaloAux[i].HaloFlag = 0;
