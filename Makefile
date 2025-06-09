@@ -45,7 +45,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_galaxy_extensions.c core/core_event_system.c \
         core/core_pipeline_system.c core/core_config_system.c \
         core/core_module_callback.c core/core_array_utils.c \
-        core/core_memory_pool.c core/core_dynamic_library.c \
+        core/galaxy_array.c core/core_memory_pool.c core/core_dynamic_library.c \
         core/core_module_parameter.c \
         core/core_module_error.c \
         core/core_merger_queue.c core/core_merger_processor.c core/cJSON.c core/core_evolution_diagnostics.c \
@@ -296,7 +296,7 @@ endif
 # -------------- Build Targets ----------------------------
 
 # Main Targets
-.PHONY: clean celan celna clena tests all physics-free full-physics custom-physics help test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation test_dynamic_memory_expansion
+.PHONY: clean celan celna clena tests all physics-free full-physics custom-physics help test_io_interface test_endian_utils test_lhalo_binary test_property_serialization test_hdf5_output test_memory_map test_core_physics_separation test_property_system_hdf5 test_property_array_access test_core_pipeline_registry test_validation_framework test_parameter_validation test_dynamic_memory_expansion test_galaxy_array
 
 all: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(SAGELIB) $(EXEC)
 
@@ -410,7 +410,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion test_data_integrity_physics_free test_hdf5_output_validation test_halo_progenitor_integrity
+CORE_TESTS = test_pipeline test_array_utils test_galaxy_array test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion test_data_integrity_physics_free test_hdf5_output_validation test_halo_progenitor_integrity
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_comprehensive test_property_yaml_validation test_parameter_yaml_validation
@@ -430,6 +430,9 @@ test_pipeline: tests/test_pipeline.c $(SAGELIB)
 
 test_array_utils: tests/test_array_utils.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_array_utils tests/test_array_utils.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_galaxy_array: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_galaxy_array.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_array tests/test_galaxy_array.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_core_property: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_core_property.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_property tests/test_core_property.c -L. -l$(LIBNAME) $(LIBFLAGS)

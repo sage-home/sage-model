@@ -234,65 +234,27 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
     while (prog >= 0) {
         for (int i = 0; i < haloaux[prog].NGalaxies; i++) {
             if (ngal >= (*maxgals - 1)) {
-                /* Expand arrays with geometric growth rather than fixed increment */
-                // Store old arrays before reallocation
-                struct GALAXY *old_galaxies = *ptr_to_galaxies;
-                struct GALAXY *old_halogal = *ptr_to_halogal;
+                /* Expand arrays with safe reallocation that preserves properties pointers */
+                printf("SEGFAULT-FIX: Expanding galaxy arrays safely in copy_galaxies_from_progenitors: capacity %d → %d, valid galaxies %d\n", 
+                       *maxgals, ngal + 2, ngal);  // TODO: Remove after segfault resolved
+                LOG_DEBUG("Expanding galaxy arrays safely: current capacity %d, needed %d, valid galaxies %d", 
+                         *maxgals, ngal + 2, ngal);
                 
-                if (galaxy_array_expand(ptr_to_galaxies, maxgals, ngal + 2) != 0) { // Use ngal+2 for safety
-                    LOG_ERROR("Failed to expand galaxies array in copy_galaxies_from_progenitors");
+                if (galaxy_array_expand_safe(ptr_to_galaxies, maxgals, ngal + 2, ngal) != 0) {
+                    LOG_ERROR("Failed to safely expand galaxies array in copy_galaxies_from_progenitors");
                     return -1;
                 }
                 
-                if (galaxy_array_expand(ptr_to_halogal, maxgals, ngal + 2) != 0) { // Use ngal+2 for safety
-                    LOG_ERROR("Failed to expand halogal array in copy_galaxies_from_progenitors");
+                if (galaxy_array_expand_safe(ptr_to_halogal, maxgals, ngal + 2, ngal) != 0) {
+                    LOG_ERROR("Failed to safely expand halogal array in copy_galaxies_from_progenitors");
                     return -1;
                 }
                 
+                // Update local pointers after safe reallocation
                 galaxies = *ptr_to_galaxies;
                 halogal = *ptr_to_halogal;
                 
-                // CRITICAL FIX: After array reallocation, properties pointers are invalid.
-                // Re-allocate them for all existing galaxies.
-                if (old_galaxies != galaxies || old_halogal != halogal) {
-                    LOG_WARNING("Galaxy arrays reallocated - checking and restoring properties pointers");
-                    
-                    // AGGRESSIVE DEBUGGING: Check memory integrity first
-                    MEMORY_INTEGRITY_CHECK(galaxies, old_galaxies, "copy_galaxies_from_progenitors galaxies");
-                    MEMORY_INTEGRITY_CHECK(halogal, old_halogal, "copy_galaxies_from_progenitors halogal");
-                    
-                    // Re-allocate properties for galaxies array
-                    if (old_galaxies != galaxies) {
-                        for (int j = 0; j < ngal; j++) {
-                            if (galaxies[j].properties == NULL) {
-                                LOG_DEBUG("Re-allocating properties for galaxy %d", j);
-                                if (allocate_galaxy_properties(&galaxies[j], run_params) != 0) {
-                                    LOG_ERROR("Failed to re-allocate properties after array reallocation");
-                                    return -1;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Re-allocate properties for halogal array
-                    if (old_halogal != halogal) {
-                        for (int j = 0; j < ngal; j++) {
-                            if (halogal[j].properties == NULL) {
-                                LOG_DEBUG("Re-allocating properties for halogal %d", j);
-                                if (allocate_galaxy_properties(&halogal[j], run_params) != 0) {
-                                    LOG_ERROR("Failed to re-allocate properties after array reallocation");
-                                    return -1;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // AGGRESSIVE DEBUGGING: Validate entire arrays after reallocation
-                    LOG_DEBUG("Post-reallocation validation - galaxies array");
-                    VALIDATE_GALAXY_ARRAY(galaxies, ngal, "post-realloc galaxies array");
-                    LOG_DEBUG("Post-reallocation validation - halogal array");  
-                    VALIDATE_GALAXY_ARRAY(halogal, ngal, "post-realloc halogal array");
-                }
+                LOG_DEBUG("Safe galaxy array expansion completed successfully");
             }
 
             XRETURN(ngal < *maxgals, -1,
@@ -943,64 +905,28 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *
         {
             /* realloc if needed */
             if(*numgals >= (*maxgals - 1)) {
-                // Store old arrays before reallocation
-                struct GALAXY *old_galaxies = *ptr_to_galaxies;
-                struct GALAXY *old_halogal = *ptr_to_halogal;
+                // Expand arrays with safe reallocation that preserves properties pointers
+                printf("SEGFAULT-FIX: Expanding galaxy arrays safely in evolve_galaxies: capacity %d → %d, valid galaxies %d\n", 
+                       *maxgals, *numgals + 2, *numgals);  // TODO: Remove after segfault resolved
+                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Expanding galaxy arrays safely: current capacity %d, needed %d, valid galaxies %d", 
+                           *maxgals, *numgals + 2, *numgals);
                 
-                // Expand arrays with geometric growth rather than fixed increment
-                if (galaxy_array_expand(ptr_to_galaxies, maxgals, *numgals + 2) != 0) {
-                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to expand galaxies array in evolve_galaxies");
+                if (galaxy_array_expand_safe(ptr_to_galaxies, maxgals, *numgals + 2, *numgals) != 0) {
+                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to safely expand galaxies array in evolve_galaxies");
                     return EXIT_FAILURE;
                 }
 
-                if (galaxy_array_expand(ptr_to_halogal, maxgals, *numgals + 2) != 0) {
-                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to expand halogal array in evolve_galaxies");
+                if (galaxy_array_expand_safe(ptr_to_halogal, maxgals, *numgals + 2, *numgals) != 0) {
+                    CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to safely expand halogal array in evolve_galaxies");
                     return EXIT_FAILURE;
                 }
 
-                // Update local pointers after realloc
-                // Note: ctx.galaxies points to the same memory as *ptr_to_galaxies initially,
-                // but if ptr_to_galaxies is reallocated, ctx.galaxies becomes dangling.
-                // We need to update ctx.galaxies as well.
+                // Update local pointers after safe reallocation
                 galaxies = *ptr_to_galaxies;
                 halogal = *ptr_to_halogal;
                 ctx.galaxies = galaxies; // Update context pointer
                 
-                // CRITICAL FIX: After array reallocation, properties pointers are invalid.
-                // Re-allocate them for all existing galaxies.
-                if (old_galaxies != galaxies || old_halogal != halogal) {
-                    LOG_WARNING("Galaxy arrays reallocated in evolve_galaxies - checking and restoring properties pointers");
-                    
-                    // AGGRESSIVE DEBUGGING: Check memory integrity first
-                    MEMORY_INTEGRITY_CHECK(galaxies, old_galaxies, "evolve_galaxies galaxies");
-                    MEMORY_INTEGRITY_CHECK(halogal, old_halogal, "evolve_galaxies halogal");
-                    
-                    // Re-allocate properties for halogal array
-                    if (old_halogal != halogal) {
-                        for (int j = 0; j < *numgals; j++) {
-                            if (halogal[j].properties == NULL) {
-                                LOG_DEBUG("Re-allocating properties for halogal %d", j);
-                                if (allocate_galaxy_properties(&halogal[j], run_params) != 0) {
-                                    LOG_ERROR("Failed to re-allocate properties after array reallocation");
-                                    return EXIT_FAILURE;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Re-allocate properties for temporary galaxies array
-                    if (old_galaxies != galaxies) {
-                        for (int j = 0; j < ctx.ngal; j++) {
-                            if (ctx.galaxies[j].properties == NULL) {
-                                LOG_DEBUG("Re-allocating properties for ctx.galaxies %d", j);
-                                if (allocate_galaxy_properties(&ctx.galaxies[j], run_params) != 0) {
-                                    LOG_ERROR("Failed to re-allocate properties after array reallocation");
-                                    return EXIT_FAILURE;
-                                }
-                            }
-                        }
-                    }
-                }
+                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Safe galaxy array expansion completed successfully");
             }
 
             if(*numgals >= *maxgals) {

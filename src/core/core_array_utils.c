@@ -83,6 +83,78 @@ int array_expand_default(void **array, size_t element_size, int *current_capacit
     return array_expand(array, element_size, current_capacity, min_new_size, ARRAY_DEFAULT_GROWTH_FACTOR);
 }
 
+/**
+ * @brief Safe galaxy array expansion that preserves properties pointers
+ * @param array Pointer to galaxy array pointer
+ * @param current_capacity Pointer to current capacity
+ * @param min_new_size Minimum new size needed
+ * @param num_valid_galaxies Number of galaxies with valid data (for properties preservation)
+ * @return 0 on success, negative on error
+ */
+int galaxy_array_expand_safe(struct GALAXY **array, int *current_capacity, int min_new_size, int num_valid_galaxies) {
+    #ifdef TESTING_STANDALONE
+    size_t galaxy_size = 1024;  // Reasonable size estimate for testing
+    #else
+    size_t galaxy_size = sizeof(struct GALAXY);
+    #endif
+    
+    // If the current capacity is already sufficient, no need to resize
+    if (*current_capacity >= min_new_size) {
+        return 0;
+    }
+    
+    // Save the old array pointer to detect reallocation
+    struct GALAXY *old_array = *array;
+    
+    // Step 1: Save all valid properties pointers BEFORE reallocation
+    galaxy_properties_t **temp_props = NULL;
+    if (num_valid_galaxies > 0) {
+        temp_props = mymalloc(num_valid_galaxies * sizeof(galaxy_properties_t*));
+        if (!temp_props) {
+            LOG_ERROR("Failed to allocate temporary properties pointer array");
+            return -1;
+        }
+        for (int i = 0; i < num_valid_galaxies; i++) {
+            temp_props[i] = (*array)[i].properties;
+        }
+        printf("SEGFAULT-FIX: Saved %d properties pointers before galaxy array reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved
+        LOG_DEBUG("Saved %d properties pointers before reallocation", num_valid_galaxies);
+    }
+    
+    // Step 2: Perform the reallocation
+    int status = array_expand_default((void **)array, galaxy_size, current_capacity, min_new_size);
+    
+    // Step 3: Restore properties pointers if the array was moved
+    if (status == 0 && old_array != *array && num_valid_galaxies > 0) {
+        printf("SEGFAULT-FIX: Galaxy array reallocated from %p to %p - restoring %d properties pointers\n", 
+               (void*)old_array, (void*)*array, num_valid_galaxies);  // TODO: Remove after segfault resolved
+        LOG_DEBUG("Galaxy array reallocated from %p to %p - restoring %d properties pointers", 
+                 old_array, *array, num_valid_galaxies);
+        
+        // Restore the properties pointers to their new locations
+        for (int i = 0; i < num_valid_galaxies; i++) {
+            (*array)[i].properties = temp_props[i];
+        }
+        
+        printf("SEGFAULT-FIX: Successfully restored %d properties pointers after reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved
+        LOG_DEBUG("Successfully restored %d properties pointers after reallocation", num_valid_galaxies);
+    }
+    
+    // Clean up temporary array
+    if (temp_props) {
+        myfree(temp_props);
+    }
+    
+    // Initialize any new memory region
+    if (status == 0 && *current_capacity > num_valid_galaxies) {
+        int new_elements = *current_capacity - num_valid_galaxies;
+        memset(&(*array)[num_valid_galaxies], 0, new_elements * sizeof(struct GALAXY));
+        LOG_DEBUG("Zero-initialized %d new galaxy slots", new_elements);
+    }
+    
+    return status;
+}
+
 int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_new_size) {
     // This function needs to be used only after including core_allvars.h
     // Since core_allvars.h is included in all core_*.c files that use GALAXY structs,
@@ -101,18 +173,29 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
     int status = array_expand_default((void **)array, galaxy_size, current_capacity, min_new_size);
     
     // CRITICAL FIX: Handle galaxy properties pointers after reallocation
-    // When the galaxy array moves, properties pointers become invalid and must be updated
+    // When the galaxy array moves, properties pointers become invalid and must be preserved
     if (status == 0 && old_array != *array) {
-        // The array was reallocated to a new memory location
+        // The array was reallocated to a new memory location - this is the critical bug!
         
-        LOG_WARNING("Galaxy array reallocated from %p to %p - caller must re-allocate properties pointers",
+        printf("SEGFAULT-BUG-DETECTED: Galaxy array reallocated from %p to %p - properties pointers are now DANGLING!\n",
+               (void*)old_array, (void*)*array);  // TODO: Remove after segfault resolved
+        printf("SEGFAULT-BUG-DETECTED: This is the root cause of segmentation faults. Properties pointers\n");  // TODO: Remove after segfault resolved
+        printf("SEGFAULT-BUG-DETECTED: in copied galaxy structs point to OLD memory location (now freed).\n");  // TODO: Remove after segfault resolved
+        LOG_ERROR("Galaxy array reallocated from %p to %p - properties pointers are now DANGLING!",
                    old_array, *array);
+        LOG_ERROR("This is the root cause of segmentation faults. The properties pointers");
+        LOG_ERROR("in the copied galaxy structs still point to the OLD memory location");
+        LOG_ERROR("which has been freed by realloc. This causes segfaults when accessed later.");
         
-        // CRITICAL BUG FIX: Only set properties to NULL for galaxies that were previously valid,
-        // NOT for the entire new capacity which includes uninitialized memory!
-        // The previous code was writing to uninitialized memory causing corruption.
-        LOG_DEBUG("Setting properties to NULL for %d existing galaxies only (not full capacity %d)", 
-                 old_capacity, *current_capacity);
+        // ARCHITECTURAL SOLUTION NEEDED: The save-realloc-restore pattern
+        // This function should save all properties pointers BEFORE calling realloc,
+        // then restore them AFTER realloc. However, this requires significant changes
+        // to the calling code that would need to pass in the number of valid galaxies.
+        
+        // For now, we set properties to NULL to prevent using dangling pointers
+        // but this will cause other failures. The proper fix is architectural.
+        LOG_WARNING("Setting properties to NULL to prevent dangling pointer segfaults");
+        LOG_WARNING("Caller must re-initialize properties for all galaxies");
         
         // Only nullify properties for galaxies that existed before reallocation
         for (int i = 0; i < old_capacity; i++) {
@@ -125,6 +208,11 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
             memset(&(*array)[old_capacity], 0, 
                    (*current_capacity - old_capacity) * sizeof(struct GALAXY));
         }
+        
+        // Return error to indicate that properties pointers were invalidated
+        // This forces the caller to handle the reallocation properly
+        LOG_ERROR("Returning error status to force caller to handle properties invalidation");
+        return -2; // Special error code indicating properties invalidation
     }
     
     return status;
