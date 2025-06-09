@@ -125,8 +125,9 @@ int64_t get_int64_property(const struct GALAXY *galaxy, property_id_t prop_id, i
     } else if (meta && (strcmp(meta->type, "int64_t") == 0 || strcmp(meta->type, "long long") == 0)) {
         // If an actual int64_t property (not uint64_t)
         // This would ideally use a get_generated_int64 if it existed.
-        // For now, MostBoundID is the only one like this.
+        // For now, handle known long long properties explicitly
         if (prop_id == PROP_MostBoundID) return (int64_t)GALAXY_PROP_MostBoundID(galaxy);
+        if (prop_id == PROP_SimulationHaloIndex) return (int64_t)GALAXY_PROP_SimulationHaloIndex(galaxy);
 
         LOG_WARNING("get_int64_property called for int64_t property ID %d ('%s') not explicitly handled. Returning default.", prop_id, meta->name);
         return default_value;
