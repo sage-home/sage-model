@@ -224,17 +224,15 @@ static int copy_galaxies_from_progenitors(const int halonr, GalaxyArray *galaxie
                                          struct halo_aux_data *haloaux, const GalaxyArray *galaxies_prev_snap,
                                          struct params *run_params)
 {
-    int prog;
     struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)galaxies_prev_snap);
-
     int first_occupied = find_most_massive_progenitor(halonr, halos, haloaux);
-    float previousMvir, previousVvir, previousVmax;
 
-    prog = halos[halonr].FirstProgenitor;
+    int prog = halos[halonr].FirstProgenitor;
     while (prog >= 0) {
         for (int i = 0; i < haloaux[prog].NGalaxies; i++) {
             const struct GALAXY* source_gal = &galaxies_prev_raw[haloaux[prog].FirstGalaxy + i];
 
+            // Create a temporary, deep copy of the progenitor galaxy to work with.
             struct GALAXY temp_galaxy;
             memset(&temp_galaxy, 0, sizeof(struct GALAXY));
             galaxy_extension_initialize(&temp_galaxy);
@@ -243,84 +241,80 @@ static int copy_galaxies_from_progenitors(const int halonr, GalaxyArray *galaxie
             temp_galaxy.HaloNr = halonr;
             temp_galaxy.dT = -1.0;
             
-            /* Copy extension data (this will just copy flags since the data is accessed on demand) */
+            // This is a shallow copy of extension flags/pointers, which is fine as they are managed on demand.
             galaxy_extension_copy(&temp_galaxy, source_gal);
 
-            if (temp_galaxy.Type == 0 || temp_galaxy.Type == 1) {
-                if (prog == first_occupied) {
-                    // This galaxy is the descendant of the most massive progenitor.
-                    // It becomes the new central (Type 0) or satellite (Type 1).
-                    previousMvir = temp_galaxy.Mvir;
-                    previousVvir = temp_galaxy.Vvir;
-                    previousVmax = temp_galaxy.Vmax;
+            if (prog == first_occupied) {
+                // This galaxy is from the most massive progenitor.
+                if (temp_galaxy.Type == 0) {
+                    // This is the central of the main progenitor. It becomes the new central/main satellite.
+                    const float previousMvir = temp_galaxy.Mvir;
+                    const float previousVvir = temp_galaxy.Vvir;
+                    const float previousVmax = temp_galaxy.Vmax;
 
+                    // Update its properties to match the new host halo.
                     temp_galaxy.MostBoundID = halos[halonr].MostBoundID;
                     for(int j = 0; j < 3; j++) {
                         temp_galaxy.Pos[j] = halos[halonr].Pos[j];
                         temp_galaxy.Vel[j] = halos[halonr].Vel[j];
                     }
-
                     temp_galaxy.Len = halos[halonr].Len;
                     temp_galaxy.Vmax = halos[halonr].Vmax;
                     temp_galaxy.deltaMvir = get_virial_mass(halonr, halos, run_params) - temp_galaxy.Mvir;
-
-                    if (get_virial_mass(halonr, halos, run_params) > temp_galaxy.Mvir) {
-                        temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);
-                        temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);
-                    }
-
                     temp_galaxy.Mvir = get_virial_mass(halonr, halos, run_params);
+                    temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);
+                    temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);
 
                     if (halonr == halos[halonr].FirstHaloInFOFgroup) {
-                        /* Central galaxy of the main FOF halo */
+                        // It remains a central galaxy (Type 0) of the main FOF.
                         temp_galaxy.MergTime = 999.9;
                         temp_galaxy.Type = 0;
                     } else {
-                        if (temp_galaxy.Type == 0) { // It was a central, now it's a satellite.
-                            temp_galaxy.infallMvir = previousMvir;
-                            temp_galaxy.infallVvir = previousVvir;
-                            temp_galaxy.infallVmax = previousVmax;
+                        // It was a central but is now a satellite (Type 1).
+                        // Record its properties at the point of infall.
+                        temp_galaxy.infallMvir = previousMvir;
+                        temp_galaxy.infallVvir = previousVvir;
+                        temp_galaxy.infallVmax = previousVmax;
+                        
+                        // Estimate a new merger time.
+                        double coulomb = log1p(halos[halos[halonr].FirstHaloInFOFgroup].Len / ((double) halos[halonr].Len));
+                        if (coulomb > 0) {
+                            double sat_mass = get_virial_mass(halonr, halos, run_params);
+                            if(sat_mass > 0) {
+                                temp_galaxy.MergTime = 2.0 * 1.17 * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_velocity(halos[halonr].FirstHaloInFOFgroup, halos, run_params) / (coulomb * run_params->cosmology.G * sat_mass);
+                            } else {
+                                temp_galaxy.MergTime = 999.9;
+                            }
+                        } else {
+                            temp_galaxy.MergTime = 999.9;
                         }
-
-                        // This logic matches the legacy code's merger time calculation.
-                        if (temp_galaxy.Type == 0 || temp_galaxy.MergTime > 999.0) {
-                             double coulomb = log1p(halos[halos[halonr].FirstHaloInFOFgroup].Len / ((double) halos[halonr].Len) );
-                             if (coulomb > 0) {
-                                 double sat_mass = get_virial_mass(halonr, halos, run_params);
-                                 if(sat_mass > 0) {
-                                     temp_galaxy.MergTime = 2.0 * 1.17 * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_velocity(halos[halonr].FirstHaloInFOFgroup, halos, run_params) / (coulomb * run_params->cosmology.G * sat_mass);
-                                 } else {
-                                     temp_galaxy.MergTime = 999.9;
-                                 }
-                             } else {
-                                 temp_galaxy.MergTime = 999.9;
-                             }
-                        }
-
-                        temp_galaxy.Type = 1; // Satellite galaxy of a subhalo.
+                        temp_galaxy.Type = 1;
                     }
                 } else {
-                    /* This galaxy is NOT from the most massive progenitor, so it must become an orphan */
-                    temp_galaxy.deltaMvir = -1.0 * temp_galaxy.Mvir;
-                    temp_galaxy.Mvir = 0.0;
-
-                    if (temp_galaxy.MergTime > 999.0 || temp_galaxy.Type == 0) {
-                            temp_galaxy.MergTime = 0.0;
-        
-                            temp_galaxy.infallMvir = previousMvir;
-                            temp_galaxy.infallVvir = previousVvir;
-                            temp_galaxy.infallVmax = previousVmax;
-                        }
-
+                    // This was a satellite of the main progenitor. It becomes an orphan.
                     temp_galaxy.Type = 2;
+                    temp_galaxy.MergTime = 0.0;
                 }
+            } else {
+                // This galaxy is from a less massive progenitor. It must become an orphan.
+                if (temp_galaxy.Type == 0) {
+                    // If it was a central, we must record its properties at infall.
+                    temp_galaxy.infallMvir = temp_galaxy.Mvir;
+                    temp_galaxy.infallVvir = temp_galaxy.Vvir;
+                    temp_galaxy.infallVmax = temp_galaxy.Vmax;
+                }
+                temp_galaxy.Type = 2;
+                temp_galaxy.MergTime = 0.0;
             }
             
+            // Append the processed galaxy to the array for this halo.
             if (galaxy_array_append(galaxies_for_halo, &temp_galaxy, run_params) < 0) {
                 LOG_ERROR("Failed to append galaxy.");
                 free_galaxy_properties(&temp_galaxy);
                 return EXIT_FAILURE;
             }
+
+            // Free the temporary working copy.
             free_galaxy_properties(&temp_galaxy);
         }
         prog = halos[prog].NextProgenitor;
@@ -333,6 +327,7 @@ static int copy_galaxies_from_progenitors(const int halonr, GalaxyArray *galaxie
             memset(&temp_new_galaxy, 0, sizeof(struct GALAXY));
             galaxy_extension_initialize(&temp_new_galaxy);
             init_galaxy(0, halonr, galaxycounter, halos, &temp_new_galaxy, run_params);
+
             if (galaxy_array_append(galaxies_for_halo, &temp_new_galaxy, run_params) < 0) {
                 LOG_ERROR("Failed to append new galaxy.");
                 free_galaxy_properties(&temp_new_galaxy);
