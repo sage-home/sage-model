@@ -7,6 +7,7 @@
 // Include core_allvars.h when not in standalone testing mode
 #ifndef TESTING_STANDALONE
 #include "core_allvars.h"
+#include "core_properties.h"  // For GALAXY_PROP_* macros
 #endif
 
 #include "core_mymalloc.h"
@@ -161,6 +162,20 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
             memcpy(&(*array)[i], &temp_galaxies[i], sizeof(struct GALAXY));
             // Fix the properties pointer to the correct saved address
             (*array)[i].properties = saved_properties[i];
+            
+            // HEISENBUG FIX: Sync clean property values to potentially corrupted direct fields
+            // Properties struct content is preserved across reallocation, direct fields may be corrupted
+            if ((*array)[i].properties != NULL) {
+                (*array)[i].Type = GALAXY_PROP_Type(&(*array)[i]);
+                (*array)[i].SnapNum = GALAXY_PROP_SnapNum(&(*array)[i]);
+                (*array)[i].Mvir = GALAXY_PROP_Mvir(&(*array)[i]);
+                (*array)[i].Vmax = GALAXY_PROP_Vmax(&(*array)[i]);
+                (*array)[i].Rvir = GALAXY_PROP_Rvir(&(*array)[i]);
+                (*array)[i].GalaxyIndex = GALAXY_PROP_GalaxyIndex(&(*array)[i]);
+                for (int j = 0; j < 3; j++) {
+                    (*array)[i].Pos[j] = GALAXY_PROP_Pos_ELEM(&(*array)[i], j);
+                }
+            }
         }
         
         printf("SEGFAULT-FIX: Successfully restored %d complete galaxies after reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved

@@ -160,12 +160,15 @@ static void test_safe_galaxy_array_expansion() {
             // Check mass preservation - this is where the heisenbug manifests
             float expected_mass = (1.0f + i * 0.01f) * 1e10f;
             float actual_mass = galaxies[i].Mvir;
+            float prop_mass = GALAXY_PROP_Mvir(&galaxies[i]);
             float diff = fabsf(actual_mass - expected_mass);
             
             // Report any significant mass corruption
             if (diff > 1e-6f) {
-                printf("WARNING: Galaxy %d mass corruption detected! Expected=%.9e, Actual=%.9e, Diff=%.9e\n", 
-                       i, expected_mass, actual_mass, diff);
+                printf("HEISENBUG DEBUG: Galaxy %d mass corruption!\n", i);
+                printf("  Expected=%.15e\n", expected_mass);
+                printf("  Direct field=%.15e (diff=%.15e)\n", actual_mass, fabsf(actual_mass - expected_mass));
+                printf("  Property field=%.15e (diff=%.15e)\n", prop_mass, fabsf(prop_mass - expected_mass));
             }
             
             // HEISENBUG DOCUMENTATION:
