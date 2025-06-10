@@ -287,8 +287,8 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     /* Check galaxy arrays were created successfully */
     if (!Gal || !HaloGal) {
         fprintf(stderr, "Error: Failed to create galaxy arrays for forest %"PRId64"...exiting\n", forestnr);
-        if (Gal) galaxy_array_free(Gal);
-        if (HaloGal) galaxy_array_free(HaloGal);
+        if (Gal) galaxy_array_free(&Gal);
+        if (HaloGal) galaxy_array_free(&HaloGal);
         end_tree_memory_scope();
         return -1;
     }
@@ -297,8 +297,8 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
     if(nhalos < 0) {
         fprintf(stderr,"Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
-        galaxy_array_free(Gal);
-        galaxy_array_free(HaloGal);
+        galaxy_array_free(&Gal);
+        galaxy_array_free(&HaloGal);
         end_tree_memory_scope();
         return nhalos;
     }
@@ -364,10 +364,10 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
 
     // Pass the new GalaxyArray pointers to construct_galaxies
     /* First run construct_galaxies outside for loop -> takes care of the main tree */
-    int status = construct_galaxies(0, &numgals, &galaxycounter, Halo, HaloAux, Gal, HaloGal, run_params);
+    status = construct_galaxies(0, &numgals, &galaxycounter, Halo, HaloAux, Gal, HaloGal, run_params);
     if(status != EXIT_SUCCESS) {
-        galaxy_array_free(Gal);
-        galaxy_array_free(HaloGal);
+        galaxy_array_free(&Gal);
+        galaxy_array_free(&HaloGal);
         end_tree_memory_scope();
         return status;
     }
@@ -377,8 +377,8 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         if(HaloAux[halonr].DoneFlag == 0) { // Note: numgals is reset to 0 inside the loop
             status = construct_galaxies(halonr, &numgals, &galaxycounter, Halo, HaloAux, Gal, HaloGal, run_params);
             if(status != EXIT_SUCCESS) {
-                galaxy_array_free(Gal);
-                galaxy_array_free(HaloGal);
+                galaxy_array_free(&Gal);
+                galaxy_array_free(&HaloGal);
                 end_tree_memory_scope();
                 return status;
             }
@@ -392,15 +392,15 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     struct GALAXY *final_gals = galaxy_array_get_raw_data(HaloGal);
     status = save_galaxies(forestnr, final_ngals, Halo, forest_info, HaloAux, final_gals, save_info, run_params);
     if(status != EXIT_SUCCESS) {
-        galaxy_array_free(Gal);
-        galaxy_array_free(HaloGal);
+        galaxy_array_free(&Gal);
+        galaxy_array_free(&HaloGal);
         end_tree_memory_scope();
         return status;
     }
 
     /* free galaxies and the forest */
-    galaxy_array_free(Gal);
-    galaxy_array_free(HaloGal);
+    galaxy_array_free(&Gal);
+    galaxy_array_free(&HaloGal);
     myfree(HaloAux);
     myfree(Halo);
 

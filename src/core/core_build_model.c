@@ -377,10 +377,10 @@ static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAX
 }
 
 
-static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
-                           struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
-static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, int *maxgals, struct halo_data *halos,
-                                        struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
+static int evolve_galaxies(const int halonr, const int ngal, int *numgals, struct halo_data *halos,
+                           struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr, struct params *run_params);
+static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, struct halo_data *halos,
+                                        struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr, struct params *run_params);
 
 /**
  * @brief   Recursively constructs galaxies by traversing the merger tree

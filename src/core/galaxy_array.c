@@ -26,59 +26,27 @@ struct GalaxyArray {
 // Safe deep copy function that only copies fields that actually exist in GALAXY struct
 static inline void safe_deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params)
 {
-    // CRITICAL FIX: Avoid shallow copy that creates shared properties pointers
-    // Instead, manually copy each field to prevent dangerous pointer aliasing
-    
-    // Core galaxy identification
-    dest->SnapNum = src->SnapNum;
-    dest->Type = src->Type;
-    dest->GalaxyNr = src->GalaxyNr;
-    dest->CentralGal = src->CentralGal;
-    dest->HaloNr = src->HaloNr;
-    dest->MostBoundID = src->MostBoundID;
-    dest->GalaxyIndex = src->GalaxyIndex;
-    dest->CentralGalaxyIndex = src->CentralGalaxyIndex;
-    dest->mergeType = src->mergeType;
-    dest->mergeIntoID = src->mergeIntoID;
-    dest->mergeIntoSnapNum = src->mergeIntoSnapNum;
-    dest->dT = src->dT;
-    
-    // Spatial coordinates and arrays
-    for (int i = 0; i < 3; i++) {
-        dest->Pos[i] = src->Pos[i];
-        dest->Vel[i] = src->Vel[i];
-    }
-    
-    // Core halo properties
-    dest->Len = src->Len;
-    dest->Mvir = src->Mvir;
-    dest->deltaMvir = src->deltaMvir;
-    dest->CentralMvir = src->CentralMvir;
-    dest->Rvir = src->Rvir;
-    dest->Vvir = src->Vvir;
-    dest->Vmax = src->Vmax;
-    
-    // Core merger tracking
-    dest->MergTime = src->MergTime;
-    
-    // Core infall properties
-    dest->infallMvir = src->infallMvir;
-    dest->infallVvir = src->infallVvir;
-    dest->infallVmax = src->infallVmax;
-    
-    // Extension mechanism - copy extension metadata but not data pointers
-    dest->extension_data = NULL;  // Will be reallocated if needed
-    dest->num_extensions = 0;
-    dest->extension_flags = 0;
-    
-    // CRITICAL: Initialize properties to NULL before deep copy
+    // CRITICAL FIX: Initialize properties to NULL before any copying to prevent
+    // use-after-free bugs from copy_galaxy_properties
     dest->properties = NULL;
     
+    // Perform a bitwise copy for all non-pointer fields FIRST.
+    memcpy(dest, src, sizeof(struct GALAXY));
+
+    // CRITICAL FIX: After the memcpy, dest->properties now aliases src->properties.
+    // We MUST break this alias BEFORE calling copy_galaxy_properties, which
+    // would otherwise free the source galaxy's properties.
+    dest->properties = NULL;
+
     // Deep copy the dynamic properties structure
     if (copy_galaxy_properties(dest, src, run_params) != 0) {
         LOG_ERROR("Failed to deep copy galaxy properties during safe copy operation");
-        // Don't return error here as we want to continue with partial copy
     }
+    
+    // Extension mechanism - reset extension data pointers after memcpy to avoid aliasing
+    dest->extension_data = NULL;  // Will be reallocated if needed
+    dest->num_extensions = 0;
+    dest->extension_flags = 0;
     
     // Copy extension data (this will just copy flags since the data is accessed on demand)
     galaxy_extension_copy(dest, src);
@@ -145,8 +113,10 @@ GalaxyArray* galaxy_array_new(void) {
     return arr;
 }
 
-void galaxy_array_free(GalaxyArray* arr) {
-    if (!arr) return;
+void galaxy_array_free(GalaxyArray** arr_ptr) {
+    if (!arr_ptr || !*arr_ptr) return;
+    GalaxyArray* arr = *arr_ptr;
+    
     for (int i = 0; i < arr->count; ++i) {
         free_galaxy_properties(&arr->galaxies[i]);
     }
@@ -154,6 +124,7 @@ void galaxy_array_free(GalaxyArray* arr) {
         myfree(arr->galaxies);
     }
     myfree(arr);
+    *arr_ptr = NULL;
 }
 
 int galaxy_array_append(GalaxyArray* arr, const struct GALAXY* galaxy, const struct params* p) {

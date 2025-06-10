@@ -24,9 +24,9 @@ GalaxyArray* galaxy_array_new(void);
 /**
  * @brief Frees the galaxy array and all the GALAXY structs it contains.
  * This function safely handles freeing the properties of each galaxy.
- * @param arr The GalaxyArray to free.
+ * @param arr_ptr Pointer to the GalaxyArray pointer to free (set to NULL after freeing).
  */
-void galaxy_array_free(GalaxyArray* arr);
+void galaxy_array_free(GalaxyArray** arr_ptr);
 
 /**
  * @brief Appends a copy of a galaxy to the array.

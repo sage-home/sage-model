@@ -5,9 +5,7 @@ extern "C" {
 #endif
 
 #include "core_allvars.h"
-
-// Forward declaration for GalaxyArray
-typedef struct GalaxyArray GalaxyArray;
+#include "galaxy_array.h"
 
     /* functions in core_build_model.c */
     extern int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, struct halo_data *halos,

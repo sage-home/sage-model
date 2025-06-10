@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 #include "../src/core/core_allvars.h"
 #include "../src/core/galaxy_array.h"
 #include "../src/core/core_properties.h"
@@ -56,8 +57,16 @@ static int create_simple_test_galaxy(struct GALAXY* gal, int galaxy_id) {
     gal->Pos[1] = galaxy_id * 20.0;
     gal->Pos[2] = galaxy_id * 30.0;
     
-    // Initialize properties to NULL initially
-    gal->properties = NULL;
+    // CRITICAL FIX: The test MUST allocate properties to be valid.
+    if (allocate_galaxy_properties(gal, &test_params) != 0) {
+        printf("ERROR: Test setup failed - could not allocate properties for galaxy %d\n", galaxy_id);
+        return -1;
+    }
+    
+    // Add some data to the properties to verify it's preserved.
+    if (gal->properties) {
+        GALAXY_PROP_Mvir(gal) = (float)galaxy_id * 1.5f;
+    }
     
     return 0;
 }
@@ -81,7 +90,7 @@ static void test_galaxy_array_basic_operations() {
     TEST_ASSERT(galaxy_array_get(arr, -1) == NULL, "Get with negative index should return NULL");
     
     // Test destruction
-    galaxy_array_free(arr);
+    galaxy_array_free(&arr);
     printf("GalaxyArray properly freed\n");
 }
 
@@ -136,7 +145,7 @@ static void test_galaxy_array_append() {
     TEST_ASSERT(raw_data[1].GalaxyNr == 2, "Raw data second element should match");
     TEST_ASSERT(raw_data[2].GalaxyNr == 3, "Raw data third element should match");
     
-    galaxy_array_free(arr);
+    galaxy_array_free(&arr);
 }
 
 /**
@@ -172,6 +181,11 @@ static void test_galaxy_array_expansion() {
     for (int i = 0; i < STRESS_COUNT; i++) {
         struct GALAXY* gal = galaxy_array_get(arr, i);
         TEST_ASSERT(gal != NULL, "Galaxy should be accessible");
+
+        // CRITICAL VERIFICATION: Check that the properties pointer is valid and data is intact.
+        TEST_ASSERT(gal->properties != NULL, "Properties pointer must not be NULL after expansion");
+        TEST_ASSERT(fabs(GALAXY_PROP_Mvir(gal) - (i * 1.5f)) < 1e-5, "Properties data must be preserved");
+
         TEST_ASSERT(gal->GalaxyNr == i, "Galaxy number should be preserved");
         TEST_ASSERT(gal->GalaxyIndex == (uint64_t)(1000 + i), "Galaxy index should be preserved");
         
@@ -181,7 +195,7 @@ static void test_galaxy_array_expansion() {
     }
     
     printf("Stress test completed successfully!\n");
-    galaxy_array_free(arr);
+    galaxy_array_free(&arr);
 }
 
 /**
@@ -218,7 +232,17 @@ static void test_galaxy_array_error_handling() {
     int result3 = galaxy_array_append(NULL, &test_gal, &test_params);
     TEST_ASSERT(result3 == -1, "Append to NULL array should fail");
     
-    galaxy_array_free(arr);
+    galaxy_array_free(&arr);
+}
+
+int setup_tests() {
+    // Initialize basic parameters needed for property system
+    test_params.cosmology.Omega = 0.3;
+    test_params.cosmology.OmegaLambda = 0.7;
+    test_params.cosmology.Hubble_h = 0.7;
+    test_params.simulation.NumSnapOutputs = 64;  // Required for dynamic arrays
+    
+    return initialize_property_system(&test_params);
 }
 
 int main(void) {
@@ -228,6 +252,12 @@ int main(void) {
     printf("Testing the new GalaxyArray implementation\n");
     printf("that provides safe dynamic galaxy arrays.\n");
     printf("========================================\n");
+
+    // Initialize systems required for the test
+    if (setup_tests() != 0) {
+        printf("CRITICAL FAIL: Could not initialize property system for tests.\n");
+        return 1;
+    }
 
     // Run tests
     test_galaxy_array_basic_operations();
