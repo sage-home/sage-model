@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-SAGE Stellar Mass Function Analysis - Redshift Binned SMF Grid with Multiple Models
-==================================================================================
+SAGE Stellar Mass Function Analysis - Split Redshift Binned SMF Grid with Multiple Models
+========================================================================================
 
 This script uses your existing SAGE data reading approach and adds redshift binning
-for creating SMF grids, now with integrated observational data from the ECSV file
-and Baldry et al. 2008 data for the lowest redshift bin.
+for creating SMF grids, now split into two separate figures:
+1. Low-z figure (z=0-3.5): 2x4 grid
+2. High-z figure (z=3.5-10): 2x3 grid
 
+MODIFIED: Split redshift range into two separate figures
 MODIFIED: Now supports comparing multiple SAGE model runs/directories with different box sizes.
 FIXED: Resolved duplicate SHARK entries and missing z=1.17 data issues.
 FIXED: Legend now only appears when new data is plotted for the first time.
@@ -30,7 +32,7 @@ MODEL_CONFIGS = [
     {
         'name': 'SAGE 2.0',           # Display name for legend
         'dir': './output/millennium/',  # Directory path
-        'color': 'red',              # Color for plotting
+        'color': 'black',            # Color for plotting
         'linestyle': '-',            # Line style
         'linewidth': 3,              # Thick line for SAGE 2.0
         'alpha': 0.8,                # Transparency
@@ -38,10 +40,10 @@ MODEL_CONFIGS = [
         'volume_fraction': 1.0       # Fraction of the full volume output by the model
     },
     {
-        'name': 'Sage Vanilla',           # Display name for legend
+        'name': 'SAGE (C16)',           # Display name for legend
         'dir': './output/millennium_vanilla/',  # Second directory path
-        'color': 'black',             # Different color
-        'linestyle': '-',            # Thin solid line style
+        'color': 'black',             # Color for plotting
+        'linestyle': '--',           # Dashed line style
         'linewidth': 2,              # Thin line for Vanilla SAGE
         'alpha': 0.8,                # Transparency
         'boxsize': 62.5,             # Box size in h^-1 Mpc for this model
@@ -81,11 +83,8 @@ MuzzinDataFile = './data/SMF_Muzzin2013.dat'  # Path to Muzzin 2013 data file
 SantiniDataFile = './data/SMF_Santini2012.dat'  # Path to Santini 2012 data file
 WrightDataFile = './data/Wright18_CombinedSMF.dat'  # Path to Wright 2018 data file
 
-
 # Simulation details
 Hubble_h = 0.73        # Hubble parameter
-# BoxSize removed - now model-specific
-# VolumeFraction removed - now model-specific
 
 # IMF setting - set to 1 if using Chabrier IMF, 0 otherwise
 whichimf = 1  # Add this variable to control IMF correction
@@ -99,8 +98,8 @@ redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14
 
 OutputFormat = '.png'
 plt.rcParams["figure.figsize"] = (15, 12)
-plt.rcParams["figure.dpi"] = 96
-plt.rcParams["font.size"] = 12
+plt.rcParams["figure.dpi"] = 300
+plt.rcParams["font.size"] = 16
 
 
 def get_model_volume(model_config):
@@ -884,17 +883,23 @@ def get_available_snapshots(directory):
         return []
 
 
-def create_redshift_bins(available_snapshots):
+def create_redshift_bins(available_snapshots, z_range=None):
     """
     Create redshift bins matching observational studies
+    
+    Parameters:
+    -----------
+    available_snapshots : list
+        List of available snapshots
+    z_range : tuple or None
+        (z_min, z_max) to filter bins. If None, return all bins.
     
     Returns:
     --------
     list : List of (z_low, z_high, z_center, snapshots_in_bin) tuples
     """
     # Define redshift bin edges to match observational figure
-    # Combine first two bins and make them cover a reasonable range
-    redshift_bins = [
+    all_redshift_bins = [
         (0.0, 0.5),    # z ~ 0.25 (combined low-z bin for Baldry data)
         (0.5, 0.8),    # z ~ 0.65  
         (0.8, 1.1),    # z ~ 0.95
@@ -911,6 +916,18 @@ def create_redshift_bins(available_snapshots):
         (8.5, 10.0),   # z ~ 9.25
         (10.0, 12.0),  # z ~ 11.0
     ]
+    
+    # Filter bins by redshift range if specified
+    if z_range is not None:
+        z_min, z_max = z_range
+        filtered_bins = []
+        for z_low, z_high in all_redshift_bins:
+            z_center = (z_low + z_high) / 2
+            if z_min <= z_center <= z_max:
+                filtered_bins.append((z_low, z_high))
+        redshift_bins = filtered_bins
+    else:
+        redshift_bins = all_redshift_bins
     
     bins_with_data = []
     
@@ -969,13 +986,12 @@ def calculate_smf(stellar_masses, volume):
     # Return bin centers in log space (for plotting) and phi values
     return xaxeshisto, phi, phi_err
 
-def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data, santini_data, wright_data, obs_datasets_in_legend):
+def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data, santini_data, wright_data, obs_datasets_in_legend, sim_datasets_in_legend):
     """
     Add observational data to the plot, including Baldry 2008 data for lowest redshift bin
     and Muzzin 2013 data for appropriate redshift bins
     
-    MODIFIED: Only add labels for dataset TYPES that haven't appeared in any previous legend
-    Each dataset type (COSMOS Web, SHARK, Muzzin+2013, etc.) only gets labeled once in the entire figure
+    MODIFIED: Separate tracking for observational vs simulation data for dual legends
     
     Parameters:
     -----------
@@ -992,12 +1008,17 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
     wright_data : dict
         Wright 2018 data dictionary
     obs_datasets_in_legend : dict
-        Tracking dictionary for which dataset TYPES have been added to legends globally
+        Tracking dictionary for observational dataset TYPES
+    sim_datasets_in_legend : dict
+        Tracking dictionary for simulation dataset TYPES
         
     Returns:
     --------
-    dict : Dictionary containing information about what observational data was added
+    tuple : (obs_legend_items, sim_legend_items) - lists of legend handles and labels for each legend
     """
+    obs_legend_items = []  # For observations legend (lower left)
+    sim_legend_items = []  # For simulations legend (upper right)
+    
     obs_added_info = {
         'baldry': False,
         'muzzin': None,
@@ -1005,8 +1026,8 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
         'shark': None,
         'cosmos': None,
         'wright': None,
-        'smfvals': None,  # Add this line
-        'farmer': None    # Add this line
+        'smfvals': None,
+        'farmer': None
     }
     
     # Add Baldry 2008 data for the lowest redshift bin
@@ -1023,7 +1044,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
             baldry_label = 'Baldry et al. 2008 (z~0.1)' if not obs_datasets_in_legend['baldry'] else None
             
             # Plot filled region
-            ax.fill_between(Baldry_xval, log_phi_upper, log_phi_lower, 
+            filled_plot = ax.fill_between(Baldry_xval, log_phi_upper, log_phi_lower, 
                            facecolor='purple', alpha=0.25, label=baldry_label)
             
             # Plot center line for legend
@@ -1032,6 +1053,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
             obs_added_info['baldry'] = True
             if baldry_label is not None:
                 obs_datasets_in_legend['baldry'] = True
+                obs_legend_items.append((filled_plot, baldry_label))
             print(f"  Added Baldry 2008 data to combined low-z bin {z_low:.1f} < z < {z_high:.1f}")
             
         except Exception as e:
@@ -1059,13 +1081,14 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                 muzzin_label = 'Muzzin+2013' if not obs_datasets_in_legend['muzzin'] else None
                 
                 # Plot Muzzin 2013 data - POINTS ONLY, NO LINES
-                ax.plot(muzzin_masses_plot, muzzin_logphi_plot, 
+                muzzin_plot = ax.plot(muzzin_masses_plot, muzzin_logphi_plot, 
                        's', color='grey', markersize=6, 
                        label=muzzin_label, alpha=0.8)
                 
                 obs_added_info['muzzin'] = muzzin_bin
                 if muzzin_label is not None:
                     obs_datasets_in_legend['muzzin'] = True
+                    obs_legend_items.append((muzzin_plot[0], muzzin_label))
                 print(f"  ✓ Added Muzzin 2013 data for bin {muzzin_bin}")
                 print(f"    -> {np.sum(mask)} data points plotted")
                 
@@ -1102,7 +1125,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                 santini_label = 'Santini+2012' if not obs_datasets_in_legend['santini'] else None
                 
                 # Plot Santini 2012 data - POINTS WITH ERROR BARS, NO LINES
-                ax.errorbar(santini_masses_plot, santini_logphi_plot, 
+                santini_plot = ax.errorbar(santini_masses_plot, santini_logphi_plot, 
                            yerr=[santini_error_lo_plot, santini_error_hi_plot],
                            fmt='^', color='grey', markersize=5, 
                            label=santini_label, alpha=0.8, capsize=2)
@@ -1110,6 +1133,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                 obs_added_info['santini'] = santini_bin
                 if santini_label is not None:
                     obs_datasets_in_legend['santini'] = True
+                    obs_legend_items.append((santini_plot, santini_label))
                 print(f"  ✓ Added Santini 2012 data for bin {santini_bin}")
                 print(f"    -> {np.sum(mask)} data points plotted")
                 
@@ -1158,17 +1182,18 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
             print(f"      -> Plotting ALL {len(obs_masses)} points (no filtering, no log conversion)")
             
             # Only add label if SHARK dataset type hasn't been labeled anywhere in the figure yet
-            shark_label = f"{obs_info['label']}" if not obs_datasets_in_legend['shark'] else None
+            shark_label = f"{obs_info['label']}" if not sim_datasets_in_legend['shark'] else None
             
             # Plot observational data - SHARK as DASHED LINES ONLY
-            ax.plot(obs_masses, obs_phi, 
+            shark_plot = ax.plot(obs_masses, obs_phi, 
                    linestyle=obs_info.get('linestyle', '--'), color=obs_info['color'], 
                    linewidth=obs_info.get('linewidth', 2),
                    label=shark_label, alpha=0.8)
             
             obs_added_info['shark'] = best_shark_z
             if shark_label is not None:
-                obs_datasets_in_legend['shark'] = True
+                sim_datasets_in_legend['shark'] = True
+                sim_legend_items.append((shark_plot[0], shark_label))
             print(f"  ✓ Successfully added {obs_info['label']} (z={best_shark_z}) to bin {z_low:.1f} < z < {z_high:.1f}")
                 
         except Exception as e:
@@ -1236,13 +1261,16 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                     marker_size = obs_info.get('markersize', 6)
                     
                     # Plot with VERTICAL error bars (yerr parameter) - SYMBOLS ONLY, NO LINES
-                    ax.errorbar(obs_masses_plot, obs_phi_log, 
+                    smfvals_plot = ax.errorbar(obs_masses_plot, obs_phi_log, 
                                yerr=[yerr_lower, yerr_upper],  # VERTICAL error bars for phi uncertainty
                                xerr=None,  # NO horizontal error bars
                                fmt=marker_style, color=obs_info['color'], markersize=marker_size,
                                label=smfvals_label, alpha=0.8, capsize=3, linewidth=0,
                                elinewidth=1.5)  # Make error bar lines a bit thicker
                     
+                    if smfvals_label is not None:
+                        obs_datasets_in_legend['smfvals'] = True
+                        obs_legend_items.append((smfvals_plot, smfvals_label))
                     print(f"  ✓ Successfully plotted {obs_info['label']} with error bars (z={best_smfvals_z})")
             else:
                 # No error bounds, plot as simple symbols
@@ -1259,15 +1287,16 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                     marker_size = obs_info.get('markersize', 6)
                     
                     # Plot as symbols only - NO LINES
-                    ax.plot(obs_masses_plot, obs_phi_log, 
+                    smfvals_plot = ax.plot(obs_masses_plot, obs_phi_log, 
                            marker_style, color=obs_info['color'], 
                            label=smfvals_label, alpha=0.8, markersize=marker_size)
                     
+                    if smfvals_label is not None:
+                        obs_datasets_in_legend['smfvals'] = True
+                        obs_legend_items.append((smfvals_plot[0], smfvals_label))
                     print(f"  ✓ Successfully plotted {obs_info['label']} (z={best_smfvals_z})")
             
             obs_added_info['smfvals'] = best_smfvals_z
-            if smfvals_label is not None:
-                obs_datasets_in_legend['smfvals'] = True
                 
         except Exception as e:
             print(f"Warning: Could not add {obs_info['label']} data: {e}")
@@ -1334,13 +1363,16 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                     marker_size = obs_info.get('markersize', 5)
                     
                     # Plot with VERTICAL error bars (yerr parameter) - SYMBOLS ONLY, NO LINES
-                    ax.errorbar(obs_masses_plot, obs_phi_log, 
+                    farmer_plot = ax.errorbar(obs_masses_plot, obs_phi_log, 
                                yerr=[yerr_lower, yerr_upper],  # VERTICAL error bars for phi uncertainty
                                xerr=None,  # NO horizontal error bars
                                fmt=marker_style, color=obs_info['color'], markersize=marker_size,
                                label=farmer_label, alpha=0.8, capsize=3, linewidth=0,
                                elinewidth=1.5)  # Make error bar lines a bit thicker
                     
+                    if farmer_label is not None:
+                        obs_datasets_in_legend['farmer'] = True
+                        obs_legend_items.append((farmer_plot, farmer_label))
                     print(f"  ✓ Successfully plotted {obs_info['label']} with error bars (z={best_farmer_z})")
             else:
                 # No error bounds, plot as simple symbols
@@ -1357,10 +1389,115 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                     marker_size = obs_info.get('markersize', 5)
                     
                     # Plot as symbols only - NO LINES
-                    ax.plot(obs_masses_plot, obs_phi_log, 
+                    farmer_plot = ax.plot(obs_masses_plot, obs_phi_log, 
                            marker_style, color=obs_info['color'], 
                            label=farmer_label, alpha=0.8, markersize=marker_size)
                     
+                    if farmer_label is not None:
+                        obs_datasets_in_legend['farmer'] = True
+                        obs_legend_items.append((farmer_plot[0], farmer_label))
+                    print(f"  ✓ Successfully plotted {obs_info['label']} (z={best_farmer_z})")
+            
+            obs_added_info['farmer'] = best_farmer_z
+                
+        except Exception as e:
+            print(f"Warning: Could not add {obs_info['label']} data: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"    No SMFvals data matches bin {z_low:.1f} < z < {z_high:.1f}")
+
+    # Add Farmer data - find best matching redshift
+    print(f"  Checking Farmer data for bin {z_low:.1f} < z < {z_high:.1f}")
+    
+    # Find the best matching Farmer redshift for this bin
+    z_center = (z_low + z_high) / 2
+    best_farmer_z = None
+    best_distance = float('inf')
+    
+    # Look for Farmer data
+    farmer_data = {z: data for z, data in obs_data_by_z.items() if data.get('type') == 'farmer'}
+    
+    for obs_z in farmer_data.keys():
+        if find_closest_redshift_in_range(obs_z, z_low, z_high):
+            distance = abs(obs_z - z_center)
+            if distance < best_distance:
+                best_distance = distance
+                best_farmer_z = obs_z
+    
+    # Plot Farmer data if found
+    if best_farmer_z is not None:
+        obs_info = obs_data_by_z[best_farmer_z]
+        print(f"    Selected best match: Farmer z={best_farmer_z} (distance to center: {best_distance:.3f})")
+        
+        try:
+            obs_masses = obs_info['x']
+            obs_phi = obs_info['y']
+            
+            # Check if we have error bounds
+            if 'y_lower' in obs_info and 'y_upper' in obs_info:
+                obs_phi_lower = obs_info['y_lower']
+                obs_phi_upper = obs_info['y_upper']
+                
+                # Convert to log space for plotting
+                mask = (obs_phi > 0) & (obs_phi_lower > 0) & (obs_phi_upper > 0)
+                if np.any(mask):
+                    obs_masses_plot = obs_masses[mask]
+                    obs_phi_log = np.log10(obs_phi[mask])
+                    obs_phi_lower_log = np.log10(obs_phi_lower[mask])
+                    obs_phi_upper_log = np.log10(obs_phi_upper[mask])
+                    
+                    # Calculate VERTICAL error bars in log space
+                    # Farmer phi_lower and phi_upper are absolute bounds, not percentiles
+                    yerr_lower = obs_phi_log - obs_phi_lower_log  # Lower error bar length
+                    yerr_upper = obs_phi_upper_log - obs_phi_log  # Upper error bar length
+                    
+                    print(f"      -> Plotting with VERTICAL error bars")
+                    print(f"      -> Central phi: {np.mean(obs_phi_log):.3f}")
+                    print(f"      -> Average lower error: {np.mean(yerr_lower):.3f}")
+                    print(f"      -> Average upper error: {np.mean(yerr_upper):.3f}")
+                    
+                    # Only add label if Farmer dataset type hasn't been labeled anywhere in the figure yet
+                    farmer_label = f"{obs_info['label']}" if not obs_datasets_in_legend['farmer'] else None
+                    
+                    # Get marker style from config
+                    marker_style = obs_info.get('marker', 'D')  # default to diamonds
+                    marker_size = obs_info.get('markersize', 5)
+                    
+                    # Plot with VERTICAL error bars (yerr parameter) - SYMBOLS ONLY, NO LINES
+                    farmer_plot = ax.errorbar(obs_masses_plot, obs_phi_log, 
+                               yerr=[yerr_lower, yerr_upper],  # VERTICAL error bars for phi uncertainty
+                               xerr=None,  # NO horizontal error bars
+                               fmt=marker_style, color=obs_info['color'], markersize=marker_size,
+                               label=farmer_label, alpha=0.8, capsize=3, linewidth=0,
+                               elinewidth=1.5)  # Make error bar lines a bit thicker
+                    
+                    if farmer_label is not None:
+                        obs_datasets_in_legend['farmer'] = True
+                        obs_legend_items.append((farmer_plot, farmer_label))
+                    print(f"  ✓ Successfully plotted {obs_info['label']} with error bars (z={best_farmer_z})")
+            else:
+                # No error bounds, plot as simple symbols
+                mask = obs_phi > 0
+                if np.any(mask):
+                    obs_masses_plot = obs_masses[mask]
+                    obs_phi_log = np.log10(obs_phi[mask])
+                    
+                    # Only add label if Farmer dataset type hasn't been labeled anywhere in the figure yet
+                    farmer_label = f"{obs_info['label']}" if not obs_datasets_in_legend['farmer'] else None
+                    
+                    # Get marker style from config
+                    marker_style = obs_info.get('marker', 'D')  # default to diamonds
+                    marker_size = obs_info.get('markersize', 5)
+                    
+                    # Plot as symbols only - NO LINES
+                    farmer_plot = ax.plot(obs_masses_plot, obs_phi_log, 
+                           marker_style, color=obs_info['color'], 
+                           label=farmer_label, alpha=0.8, markersize=marker_size)
+                    
+                    if farmer_label is not None:
+                        obs_datasets_in_legend['farmer'] = True
+                        obs_legend_items.append((farmer_plot[0], farmer_label))
                     print(f"  ✓ Successfully plotted {obs_info['label']} (z={best_farmer_z})")
             
             obs_added_info['farmer'] = best_farmer_z
@@ -1399,7 +1536,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
             cosmos_label = 'COSMOS Web' if not obs_datasets_in_legend['cosmos'] else None
             
             # Plot observational data - POINTS ONLY, NO LINES
-            ax.errorbar(obs_masses_plot, log_phi, 
+            cosmos_plot = ax.errorbar(obs_masses_plot, log_phi, 
                        yerr=log_phi_err,
                        fmt='o', color='grey', markersize=4,
                        label=cosmos_label, alpha=0.8, capsize=2)
@@ -1407,6 +1544,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
             obs_added_info['cosmos'] = obs_bin
             if cosmos_label is not None:
                 obs_datasets_in_legend['cosmos'] = True
+                obs_legend_items.append((cosmos_plot, cosmos_label))
             print(f"  Added COSMOS Web data for bin {obs_bin}")
     
     # Add Wright 2018 data - find best matching redshift
@@ -1456,7 +1594,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                 wright_label = 'Wright+2018' if not obs_datasets_in_legend['wright'] else None
                 
                 # Plot Wright 2018 data - DIAMONDS WITH ERROR BARS
-                ax.errorbar(wright_masses_plot, wright_logphi_plot, 
+                wright_plot = ax.errorbar(wright_masses_plot, wright_logphi_plot, 
                            yerr=[wright_error_lo_plot, wright_error_hi_plot],
                            fmt='D', color='grey', markersize=4, 
                            label=wright_label, alpha=0.8, capsize=2)
@@ -1464,6 +1602,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
                 obs_added_info['wright'] = best_wright_z
                 if wright_label is not None:
                     obs_datasets_in_legend['wright'] = True
+                    obs_legend_items.append((wright_plot, wright_label))
                 print(f"  ✓ Added Wright 2018 data for z={best_wright_z}")
                 print(f"    -> {np.sum(mask)} data points plotted")
                 
@@ -1474,7 +1613,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
     else:
         print(f"    No Wright 2018 data matches bin {z_low:.1f} < z < {z_high:.1f}")
     
-    return obs_added_info
+    return obs_legend_items, sim_legend_items
 
 
 def is_lowest_redshift_bin(z_low, z_high):
@@ -1494,10 +1633,17 @@ def is_lowest_redshift_bin(z_low, z_high):
 
 
 def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12), 
-                          save_path=None, show_observations=True):
+                          save_path=None, show_observations=True, z_range=None, figure_title=""):
     """
     Create a grid plot of stellar mass functions for redshift bins - ENHANCED with all observational datasets
     and FIXED legend handling to only show new data
+    
+    Parameters:
+    -----------
+    z_range : tuple or None
+        (z_min, z_max) to filter redshift bins for this figure
+    figure_title : str
+        Additional title text for the figure
     """
     # Load observational data
     obs_data = {}
@@ -1505,17 +1651,20 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
     santini_data = {}
     wright_data = {}
     
-    # Track which observational dataset TYPES have appeared in legends globally
-    # MODIFIED: Simple boolean tracking - each dataset type only gets labeled once in entire figure
+    # Track which dataset TYPES have appeared in legends globally
     obs_datasets_in_legend = {
         'baldry': False,
         'muzzin': False,
         'santini': False,
-        'shark': False,
         'cosmos': False,
         'wright': False,
-        'smfvals': False,  # Add this new dataset type
-        'farmer': False   # Add this new dataset type
+        'smfvals': False,
+        'farmer': False
+    }
+    
+    # Track which simulation models have appeared in legends globally
+    sim_datasets_in_legend = {
+        'shark': False
     }
     
     # Track which models have appeared in legends globally
@@ -1564,19 +1713,26 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
     
     # Use snapshots from first valid model to create redshift bins
     first_model_snapshots = list(model_snapshots.values())[0]
-    redshift_bins = create_redshift_bins(first_model_snapshots)
+    redshift_bins = create_redshift_bins(first_model_snapshots, z_range=z_range)
     
     if not redshift_bins:
-        raise ValueError("No redshift bins with data found")
+        raise ValueError("No redshift bins with data found for the specified range")
     
-    print(f"Created {len(redshift_bins)} redshift bins with data")
+    print(f"Created {len(redshift_bins)} redshift bins with data for range {z_range}")
     
-    # Set up the plot grid (3 columns x 5 rows to match typical SMF studies)
+    # Determine grid layout based on redshift range and number of bins
     n_bins = len(redshift_bins)
-    n_cols = 3
-    n_rows = 5
     
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 32), 
+    if z_range and z_range[1] <= 3.5:  # Low-z figure (z=0-3.5)
+        n_rows = 2
+        n_cols = 4
+        figsize = (24, 12)
+    else:  # High-z figure (z=3.5-10)
+        n_rows = 2  
+        n_cols = 3
+        figsize = (18, 12)
+    
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, 
                            sharex=True, sharey=True)
     
     # Flatten axes for easier indexing
@@ -1592,12 +1748,15 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
         
         print(f"Processing redshift bin {z_low:.1f} < z < {z_high:.1f} with {len(snapshots)} snapshots")
         
-        # Track what observational data gets plotted in this panel
-        obs_added_info = {'baldry': False, 'muzzin': None, 'santini': None, 'shark': None, 'cosmos': None, 'wright': None, 'smfvals': None, 'farmer': None}
+        # Track what gets plotted in this panel for legends
+        panel_sim_legend_items = []  # For simulations legend (upper right)
+        panel_obs_legend_items = []  # For observations legend (lower left)
         
         # Add observational data first (so it appears behind SAGE data)
         if show_observations:
-            obs_added_info = add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data, santini_data, wright_data, obs_datasets_in_legend)
+            obs_legend_items, sim_legend_items = add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data, santini_data, wright_data, obs_datasets_in_legend, sim_datasets_in_legend)
+            panel_obs_legend_items.extend(obs_legend_items)
+            panel_sim_legend_items.extend(sim_legend_items)
         
         # Process each model
         model_redshifts_used = {}  # Track which redshift each model used in this panel
@@ -1714,9 +1873,13 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
                         models_in_legend.add(model_name)
                     
                     # SAGE models: LINES ONLY, NO POINTS
-                    ax.plot(xaxeshisto[mask_plot], phi_log, 
+                    sage_plot = ax.plot(xaxeshisto[mask_plot], phi_log, 
                            color=color, linestyle=linestyle, linewidth=linewidth,
                            label=model_label, alpha=alpha)
+                    
+                    # Add to simulation legend if labeled
+                    if model_label is not None:
+                        panel_sim_legend_items.append((sage_plot[0], model_label))
                 
                 # Add upper limits for zero counts
                 mask_upper = phi == 0
@@ -1734,26 +1897,32 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
         ax.set_xlim(mass_range)
         ax.set_ylim(-6, -1)
         
-        # MODIFIED LEGEND HANDLING: Only show legend if there are new items to show
-        legend_handles, legend_labels = ax.get_legend_handles_labels()
+        # MODIFIED LEGEND HANDLING: Create two separate legends
+        # Clear any automatic labels to avoid conflicts
+        ax.legend().set_visible(False) if ax.get_legend() else None
         
-        if legend_handles:  # Only add legend if there are items with labels
-            # Choose legend location based on panel position
-            row = i // n_cols
-            is_last_row = (row == n_rows - 1) or (i >= n_bins - n_cols)
-            legend_location = 'upper right' if is_last_row else 'lower left'
-            
-            ax.legend(fontsize=12, loc=legend_location, frameon=False)
-            print(f"  Panel {i}: Added legend with {len(legend_handles)} items")
-        else:
-            print(f"  Panel {i}: No legend items - skipping legend")
+        # Create simulations legend (upper right) - SAGE models + SHARK
+        if panel_sim_legend_items:
+            sim_handles, sim_labels = zip(*panel_sim_legend_items)
+            sim_legend = ax.legend(sim_handles, sim_labels, fontsize=12, loc='upper right', 
+                                 frameon=False)
+            # Add the legend to the plot
+            ax.add_artist(sim_legend)
+            print(f"  Panel {i}: Added simulation legend with {len(sim_handles)} items")
+        
+        # Create observations legend (lower left) - All observational data
+        if panel_obs_legend_items:
+            obs_handles, obs_labels = zip(*panel_obs_legend_items)
+            obs_legend = ax.legend(obs_handles, obs_labels, fontsize=12, loc='lower left', 
+                                 frameon=False)
+            print(f"  Panel {i}: Added observation legend with {len(obs_handles)} items")
     
     # Remove empty subplots
     for i in range(n_bins, len(axes_flat)):
         fig.delaxes(axes_flat[i])
     
     # Set common labels
-    for i in range(n_bins):
+    for i in range(min(n_bins, len(axes_flat))):
         row = i // n_cols
         col = i % n_cols
         
@@ -1766,10 +1935,6 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
             axes_flat[i].set_ylabel(r'$\log_{10}(\phi/\mathrm{Mpc}^{-3}\,\mathrm{dex}^{-1})$', fontsize=16)
     
     plt.tight_layout()
-    
-    # Add overall title
-    galaxy_type_str = galaxy_types if isinstance(galaxy_types, str) else 'selected'
-    obs_str = " vs Observations (Baldry+2008, Muzzin+2013, Santini+2012, Wright+2018, SMFvals, Farmer v2.1)" if show_observations else ""
     
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -1870,8 +2035,9 @@ def create_simple_smf_plot(snap_list=None):
 
 # Example usage and main execution
 if __name__ == "__main__":
-    print("SAGE SMF Analysis with Multiple Models and Different Box Sizes - Redshift Binned SMF Grid")
-    print("=" * 80)
+    print("SAGE SMF Analysis with Split Redshift Figures")
+    print("Low-z: 0 < z < 3.5 (2x4 grid) | High-z: 3.5 < z < 10 (2x3 grid)")
+    print("=" * 70)
     
     # Check if data directories exist
     valid_models = []
@@ -1914,35 +2080,72 @@ if __name__ == "__main__":
         print("\nCreating simple SMF comparison plot...")
         create_simple_smf_plot()
         
-        print("\nCreating SMF redshift grid with multiple models and observational data...")
-        # Create the main SMF grid plot
+        print("\nCreating LOW-Z SMF grid (z=0-3.5)...")
+        # Create the main SMF grid plot for low redshifts
         fig1, axes1 = plot_smf_redshift_grid(
             galaxy_types='all',
             mass_range=(8, 12),
-            save_path=OutputDir +'sage_smf_redshift_grid_all' + OutputFormat
+            z_range=(0, 3.5),
+            save_path=OutputDir + 'sage_smf_redshift_grid_low_z_all' + OutputFormat,
+            figure_title="(z = 0-3.5)"
         )
         
-        # Create separate plots for central and satellite galaxies
-        print("Creating central galaxies SMF grid...")
+        print("\nCreating HIGH-Z SMF grid (z=3.5-10)...")
+        # Create the main SMF grid plot for high redshifts
         fig2, axes2 = plot_smf_redshift_grid(
+            galaxy_types='all',
+            mass_range=(8, 12),
+            z_range=(3.5, 10),
+            save_path=OutputDir + 'sage_smf_redshift_grid_high_z_all' + OutputFormat,
+            figure_title="(z = 3.5-10)"
+        )
+        
+        # Create separate plots for central galaxies
+        print("\nCreating central galaxies LOW-Z SMF grid...")
+        fig3, axes3 = plot_smf_redshift_grid(
             galaxy_types='central',
             mass_range=(8, 12),
-            save_path=OutputDir +'sage_smf_redshift_grid_central' + OutputFormat
+            z_range=(0, 3.5),
+            save_path=OutputDir + 'sage_smf_redshift_grid_low_z_central' + OutputFormat,
+            figure_title="Central Galaxies (z = 0-3.5)"
         )
         
-        print("Creating satellite galaxies SMF grid...")
-        fig3, axes3 = plot_smf_redshift_grid(
+        print("\nCreating central galaxies HIGH-Z SMF grid...")
+        fig4, axes4 = plot_smf_redshift_grid(
+            galaxy_types='central',
+            mass_range=(8, 12),
+            z_range=(3.5, 10),
+            save_path=OutputDir + 'sage_smf_redshift_grid_high_z_central' + OutputFormat,
+            figure_title="Central Galaxies (z = 3.5-10)"
+        )
+        
+        # Create separate plots for satellite galaxies
+        print("\nCreating satellite galaxies LOW-Z SMF grid...")
+        fig5, axes5 = plot_smf_redshift_grid(
             galaxy_types='satellite',
             mass_range=(8, 12),
-            save_path=OutputDir +'sage_smf_redshift_grid_satellite' + OutputFormat
+            z_range=(0, 3.5),
+            save_path=OutputDir + 'sage_smf_redshift_grid_low_z_satellite' + OutputFormat,
+            figure_title="Satellite Galaxies (z = 0-3.5)"
         )
         
-        print("Multi-model SMF redshift grid analysis complete!")
+        print("\nCreating satellite galaxies HIGH-Z SMF grid...")
+        fig6, axes6 = plot_smf_redshift_grid(
+            galaxy_types='satellite',
+            mass_range=(8, 12),
+            z_range=(3.5, 10),
+            save_path=OutputDir + 'sage_smf_redshift_grid_high_z_satellite' + OutputFormat,
+            figure_title="Satellite Galaxies (z = 3.5-10)"
+        )
+        
+        print("\nSplit redshift SMF analysis complete!")
         print("Generated plots:")
-        print("1. test_observational_data.png - Test plot of all observational data")
-        print("2. sage_smf_redshift_grid_all.png - All galaxies vs observations (multiple models)")
-        print("3. sage_smf_redshift_grid_central.png - Central galaxies vs observations (multiple models)")
-        print("4. sage_smf_redshift_grid_satellite.png - Satellite galaxies vs observations (multiple models)")
+        print("1. sage_smf_redshift_grid_low_z_all.png - All galaxies (z=0-4) - 3x3 grid")
+        print("2. sage_smf_redshift_grid_high_z_all.png - All galaxies (z=4-10) - 2x3 grid")
+        print("3. sage_smf_redshift_grid_low_z_central.png - Central galaxies (z=0-4) - 3x3 grid")
+        print("4. sage_smf_redshift_grid_high_z_central.png - Central galaxies (z=4-10) - 2x3 grid")
+        print("5. sage_smf_redshift_grid_low_z_satellite.png - Satellite galaxies (z=0-4) - 3x3 grid")
+        print("6. sage_smf_redshift_grid_high_z_satellite.png - Satellite galaxies (z=4-10) - 2x3 grid")
         print("\nObservational datasets included:")
         print("- Baldry et al. 2008 (z~0.1)")
         print("- Muzzin et al. 2013 (various redshift bins)")
@@ -1950,8 +2153,8 @@ if __name__ == "__main__":
         print("- Wright et al. 2018 (z=0.5, 1.0, 2.0, 3.0, 4.0)")
         print("- SHARK model comparisons")
         print("- COSMOS Web data")
-        print("- SMFvals data (plotted as dark magenta squares with error bars)")
-        print("- Farmer v2.1 data (plotted as dark red diamonds with error bars)")
+        print("- SMFvals data (Thorne+21 - plotted as squares with error bars)")
+        print("- Farmer v2.1 data (Weaver+23 - plotted as diamonds with error bars)")
         
         # Print model comparison summary
         print("\nModel Configuration Summary:")
@@ -1961,6 +2164,16 @@ if __name__ == "__main__":
             print(f"     Color: {model_config['color']}, Style: {model_config['linestyle']}")
             print(f"     Box size: {model_config['boxsize']} h^-1 Mpc, Volume: {volume:.2e} (Mpc/h)^3")
         
+        # Print redshift bin distribution
+        print("\nRedshift Bin Distribution:")
+        print("LOW-Z FIGURE (z=0-4): 3×3 grid")
+        print("  Bins: z=0.0-0.5, z=0.5-0.8, z=0.8-1.1")
+        print("        z=1.1-1.5, z=1.5-2.0, z=2.0-2.5")
+        print("        z=2.5-3.0, z=3.0-3.5, z=3.5-4.5")
+        print("\nHIGH-Z FIGURE (z=4-10): 2×3 grid")
+        print("  Bins: z=4.5-5.5, z=5.5-6.5, z=6.5-7.5")
+        print("        z=7.5-8.5, z=8.5-10.0, z=10.0-12.0")
+        
         print("\nDebugging observational data:")
         print("Available dataset redshifts and corresponding bins:")
         for obs_z in obs_data_by_z.keys():
@@ -1968,10 +2181,12 @@ if __name__ == "__main__":
             label = obs_data_by_z[obs_z].get('label', 'unknown')
             print(f"  {label} ({data_type}) z={obs_z}")
             # Check which bin this would fall into
-            redshift_bins = create_redshift_bins(get_available_snapshots(MODEL_CONFIGS[0]['dir']))
-            for z_low, z_high, z_center, _ in redshift_bins:
+            redshift_bins_low = create_redshift_bins(get_available_snapshots(MODEL_CONFIGS[0]['dir']), z_range=(0, 3.5))
+            redshift_bins_high = create_redshift_bins(get_available_snapshots(MODEL_CONFIGS[0]['dir']), z_range=(3.5, 10))
+            for z_low, z_high, z_center, _ in redshift_bins_low + redshift_bins_high:
                 if find_closest_redshift_in_range(obs_z, z_low, z_high):
-                    print(f"    -> Matches bin {z_low:.1f} < z < {z_high:.1f}")
+                    figure_type = "LOW-Z" if z_center <= 3.5 else "HIGH-Z"
+                    print(f"    -> Matches {figure_type} bin {z_low:.1f} < z < {z_high:.1f}")
         
     except Exception as e:
         print(f"Error during analysis: {e}")

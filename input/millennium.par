@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_nocgm_reion2/
 
 FirstFile         0
 LastFile          7
@@ -57,9 +57,9 @@ ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects on H2 gas
-CGMBuildOn                  1   %0: switch off; 1: enable CGM building
+CGMBuildOn                  0   %0: switch off; 1: enable CGM building
 VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
-ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
+ReionizationModel           2   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
 MassReincorporationOn       0   %0: switch off; 1: enable mass-dependent reincorporation
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
 RedshiftReincorporationOn   0   %0: switch off; 1: enable redshift-scaled reioncorporation

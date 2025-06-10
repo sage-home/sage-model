@@ -29,8 +29,8 @@ def setup_paper_style():
     plt.style.use('default')
     
     # Figure settings
-    plt.rcParams['figure.figsize'] = (10, 8)
-    plt.rcParams['figure.dpi'] = 150
+    plt.rcParams['figure.figsize'] = (5, 5)
+    plt.rcParams['figure.dpi'] = 300
     plt.rcParams['savefig.dpi'] = 300
     plt.rcParams['savefig.bbox'] = 'tight'
     plt.rcParams['savefig.transparent'] = False
@@ -38,7 +38,7 @@ def setup_paper_style():
     # Font settings
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman', 'DejaVu Serif', 'Computer Modern Roman']
-    plt.rcParams['font.size'] = 14
+    plt.rcParams['font.size'] = 16
     
     # Axis label settings
     plt.rcParams['axes.labelsize'] = 16
@@ -46,8 +46,8 @@ def setup_paper_style():
     plt.rcParams['axes.labelpad'] = 8
     
     # Tick settings
-    plt.rcParams['xtick.labelsize'] = 14
-    plt.rcParams['ytick.labelsize'] = 14
+    plt.rcParams['xtick.labelsize'] = 16
+    plt.rcParams['ytick.labelsize'] = 16    
     plt.rcParams['xtick.major.size'] = 6
     plt.rcParams['ytick.major.size'] = 6
     plt.rcParams['xtick.minor.size'] = 3
@@ -181,7 +181,7 @@ SFR_SimDirs = [
     },
     {
         'path': './output/millennium_vanilla/', 
-        'label': 'C16 Millennium', 
+        'label': ' SAGE (C16) Millennium', 
         'color': 'black', 
         'linestyle': ':',
         'BoxSize': 62.5,  # h-1 Mpc  (example - adjust to your actual values)
@@ -213,17 +213,17 @@ SMF_SimConfigs = [
     },
     {
         'path': './output/miniuchuu_full/', 
-        'label': 'SAGE 2.0 miniUchuu', 
-        'color': PLOT_COLORS['miniuchuu'], 
+        'label': 'miniUchuu ', 
+        'color': 'darkred', 
         'linestyle': '-',  # solid line
-        'BoxSize': 400,  # h-1 Mpc
-        'Hubble_h': 0.677,
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
         'VolumeFraction': 1.0
     },
     # Vanilla SAGE simulation (dashed lines)
     {
         'path': './output/millennium_vanilla/', 
-        'label': 'Vanilla SAGE', 
+        'label': 'SAGE (C16)', 
         'color': PLOT_COLORS['c16_millennium'], 
         'linestyle': '--',  # dashed line
         'BoxSize': 62.5,  # h-1 Mpc
@@ -236,7 +236,7 @@ GAS_SimConfigs = [
     # Main simulation (your current one)
     {
         'path': './output/millennium/', 
-        'label': 'SAGE 2.0 Gnedin & Draine', 
+        'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',
         'BoxSize': 62.5,
