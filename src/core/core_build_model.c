@@ -228,6 +228,7 @@ static int copy_galaxies_from_progenitors(const int halonr, GalaxyArray *galaxie
     struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)galaxies_prev_snap);
 
     int first_occupied = find_most_massive_progenitor(halonr, halos, haloaux);
+    float previousMvir, previousVvir, previousVmax;
 
     prog = halos[halonr].FirstProgenitor;
     while (prog >= 0) {
@@ -249,15 +250,16 @@ static int copy_galaxies_from_progenitors(const int halonr, GalaxyArray *galaxie
                 if (prog == first_occupied) {
                     // This galaxy is the descendant of the most massive progenitor.
                     // It becomes the new central (Type 0) or satellite (Type 1).
-                    const float previousMvir = temp_galaxy.Mvir;
-                    const float previousVvir = temp_galaxy.Vvir;
-                    const float previousVmax = temp_galaxy.Vmax;
+                    previousMvir = temp_galaxy.Mvir;
+                    previousVvir = temp_galaxy.Vvir;
+                    previousVmax = temp_galaxy.Vmax;
 
                     temp_galaxy.MostBoundID = halos[halonr].MostBoundID;
                     for(int j = 0; j < 3; j++) {
                         temp_galaxy.Pos[j] = halos[halonr].Pos[j];
                         temp_galaxy.Vel[j] = halos[halonr].Vel[j];
                     }
+
                     temp_galaxy.Len = halos[halonr].Len;
                     temp_galaxy.Vmax = halos[halonr].Vmax;
                     temp_galaxy.deltaMvir = get_virial_mass(halonr, halos, run_params) - temp_galaxy.Mvir;
@@ -266,17 +268,20 @@ static int copy_galaxies_from_progenitors(const int halonr, GalaxyArray *galaxie
                         temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);
                         temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);
                     }
+
                     temp_galaxy.Mvir = get_virial_mass(halonr, halos, run_params);
 
                     if (halonr == halos[halonr].FirstHaloInFOFgroup) {
+                        /* Central galaxy of the main FOF halo */
                         temp_galaxy.MergTime = 999.9;
-                        temp_galaxy.Type = 0; // Central galaxy of the main FOF halo.
+                        temp_galaxy.Type = 0;
                     } else {
                         if (temp_galaxy.Type == 0) { // It was a central, now it's a satellite.
                             temp_galaxy.infallMvir = previousMvir;
                             temp_galaxy.infallVvir = previousVvir;
                             temp_galaxy.infallVmax = previousVmax;
                         }
+
                         // This logic matches the legacy code's merger time calculation.
                         if (temp_galaxy.Type == 0 || temp_galaxy.MergTime > 999.0) {
                              double coulomb = log1p(halos[halos[halonr].FirstHaloInFOFgroup].Len / ((double) halos[halonr].Len) );
@@ -291,12 +296,23 @@ static int copy_galaxies_from_progenitors(const int halonr, GalaxyArray *galaxie
                                  temp_galaxy.MergTime = 999.9;
                              }
                         }
+
                         temp_galaxy.Type = 1; // Satellite galaxy of a subhalo.
                     }
                 } else {
-                    // This galaxy is NOT from the most massive progenitor, so it must become an orphan.
+                    /* This galaxy is NOT from the most massive progenitor, so it must become an orphan */
+                    temp_galaxy.deltaMvir = -1.0 * temp_galaxy.Mvir;
+                    temp_galaxy.Mvir = 0.0;
+
+                    if (temp_galaxy.MergTime > 999.0 || temp_galaxy.Type == 0) {
+                            temp_galaxy.MergTime = 0.0;
+        
+                            temp_galaxy.infallMvir = previousMvir;
+                            temp_galaxy.infallVvir = previousVvir;
+                            temp_galaxy.infallVmax = previousVmax;
+                        }
+
                     temp_galaxy.Type = 2;
-                    temp_galaxy.MergTime = 0.0;
                 }
             }
             
