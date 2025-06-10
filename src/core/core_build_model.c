@@ -221,18 +221,18 @@ static int find_most_massive_progenitor(const int halonr, struct halo_data *halo
  */
 static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart, const int first_occupied,
                                          int *galaxycounter, struct halo_data *halos,
-                                         struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr,
-                                         GalaxyArray *halogal_arr, struct params *run_params)
+                                         struct halo_aux_data *haloaux, GalaxyArray *temp_fof_galaxies,
+                                         const GalaxyArray *galaxies_prev_snap, struct params *run_params)
 {
     int prog;
-    struct GALAXY *halogal_raw = galaxy_array_get_raw_data(halogal_arr);
+    struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)galaxies_prev_snap);
 
     prog = halos[halonr].FirstProgenitor;
 
     while (prog >= 0) {
         for (int i = 0; i < haloaux[prog].NGalaxies; i++) {
             // Get the source galaxy using the old index from the permanent array
-            const struct GALAXY* source_gal = &halogal_raw[haloaux[prog].FirstGalaxy + i];
+            const struct GALAXY* source_gal = &galaxies_prev_raw[haloaux[prog].FirstGalaxy + i];
 
             // Create temporary galaxy for updates
             struct GALAXY temp_galaxy;
@@ -300,11 +300,11 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
                 }
             }
 
-            // Append the fully updated temporary galaxy to the safe array
-            if (galaxy_array_append(galaxies_arr, &temp_galaxy, run_params) < 0) {
+            // Append the fully updated temporary galaxy to the temporary FOF array
+            if (galaxy_array_append(temp_fof_galaxies, &temp_galaxy, run_params) < 0) {
                 LOG_ERROR("Failed to append galaxy in copy_galaxies_from_progenitors.");
                 free_galaxy_properties(&temp_galaxy); // Clean up temp
-                return -1;
+                return EXIT_FAILURE;
             }
 
             // The temporary galaxy is no longer needed
@@ -315,7 +315,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
     }
 
     /* If we have no progenitors with galaxies, create a new galaxy if this is the main subhalo */
-    if (galaxy_array_get_count(galaxies_arr) == ngalstart) {
+    if (galaxy_array_get_count(temp_fof_galaxies) == ngalstart) {
         if (halonr == halos[halonr].FirstHaloInFOFgroup) {
             // Create temporary galaxy for new initialization
             struct GALAXY temp_new_galaxy;
@@ -325,11 +325,11 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
             // Initialize the new galaxy using existing function
             init_galaxy(0, halonr, galaxycounter, halos, &temp_new_galaxy, run_params);
             
-            // Append to safe array
-            if (galaxy_array_append(galaxies_arr, &temp_new_galaxy, run_params) < 0) {
+            // Append to temporary FOF array
+            if (galaxy_array_append(temp_fof_galaxies, &temp_new_galaxy, run_params) < 0) {
                 LOG_ERROR("Failed to append new galaxy in copy_galaxies_from_progenitors.");
                 free_galaxy_properties(&temp_new_galaxy);
-                return -1;
+                return EXIT_FAILURE;
             }
             
             // Clean up temporary galaxy
@@ -337,7 +337,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
         }
     }
 
-    return galaxy_array_get_count(galaxies_arr);
+    return EXIT_SUCCESS;
 }
 
 /**
@@ -377,10 +377,11 @@ static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAX
 }
 
 
-static int evolve_galaxies(const int halonr, const int ngal, int *numgals, struct halo_data *halos,
-                           struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr, struct params *run_params);
-static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, struct halo_data *halos,
-                                        struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr, struct params *run_params);
+static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int *numgals, struct halo_data *halos,
+                           struct halo_aux_data *haloaux, GalaxyArray *galaxies_this_snap, struct params *run_params);
+static int join_galaxies_of_progenitors(const int halonr, GalaxyArray* temp_fof_galaxies, int *galaxycounter, 
+                                        struct halo_data *halos, struct halo_aux_data *haloaux,
+                                        const GalaxyArray* galaxies_prev_snap, struct params *run_params);
 
 /**
  * @brief   Recursively constructs galaxies by traversing the merger tree
@@ -415,8 +416,8 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
  */
 /* the only externally visible function */
 int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, struct halo_data *halos,
-                       struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr,
-                       struct params *run_params)
+                       struct halo_aux_data *haloaux, GalaxyArray *galaxies_this_snap,
+                       GalaxyArray *galaxies_prev_snap, struct params *run_params)
 {
   int prog, fofhalo;
 
@@ -426,7 +427,7 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
   prog = halos[halonr].FirstProgenitor;
   while(prog >= 0) {
       if(haloaux[prog].DoneFlag == 0) {
-          int status = construct_galaxies(prog, numgals, galaxycounter, halos, haloaux, galaxies_arr, halogal_arr, run_params);
+          int status = construct_galaxies(prog, numgals, galaxycounter, halos, haloaux, galaxies_this_snap, galaxies_prev_snap, run_params);
 
           if(status != EXIT_SUCCESS) {
               LOG_ERROR("Failed to construct galaxies for progenitor %d", prog);
@@ -444,7 +445,7 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
           prog = halos[fofhalo].FirstProgenitor;
           while(prog >= 0) {
               if(haloaux[prog].DoneFlag == 0) {
-                  int status = construct_galaxies(prog, numgals, galaxycounter, halos, haloaux, galaxies_arr, halogal_arr, run_params);
+                  int status = construct_galaxies(prog, numgals, galaxycounter, halos, haloaux, galaxies_this_snap, galaxies_prev_snap, run_params);
 
                   if(status != EXIT_SUCCESS) {
                       LOG_ERROR("Failed to construct galaxies for FOF group progenitor %d", prog);
@@ -476,27 +477,39 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
 #else
   if(haloaux[fofhalo].HaloFlag == 1 ) {
 #endif
-      int ngal = 0;
       haloaux[fofhalo].HaloFlag = 2;
+
+      /* Create temporary GalaxyArray for this FOF group */
+      GalaxyArray *temp_fof_galaxies = galaxy_array_new();
+      if (!temp_fof_galaxies) {
+          LOG_ERROR("Failed to create temporary galaxy array for FOF group %d", fofhalo);
+          return EXIT_FAILURE;
+      }
 
       /* Third, join galaxies from all progenitors within the FOF group */
       while(fofhalo >= 0) {
-          ngal = join_galaxies_of_progenitors(fofhalo, ngal, galaxycounter, halos, haloaux, galaxies_arr, halogal_arr, run_params);
-          if(ngal < 0) {
+          int status = join_galaxies_of_progenitors(fofhalo, temp_fof_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params);
+          if(status != EXIT_SUCCESS) {
               LOG_ERROR("Failed to join galaxies of progenitors for FOF halo %d", fofhalo);
+              galaxy_array_free(&temp_fof_galaxies);
               return EXIT_FAILURE;
           }
           fofhalo = halos[fofhalo].NextHaloInFOFgroup;
       }
 
       /* Finally, evolve all galaxies in the FOF group through time */
+      int ngal = galaxy_array_get_count(temp_fof_galaxies);
       LOG_DEBUG("Evolving %d galaxies in halo %d", ngal, halonr);
-      int status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ngal, numgals, halos, haloaux, galaxies_arr, halogal_arr, run_params);
+      int status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, temp_fof_galaxies, numgals, halos, haloaux, galaxies_this_snap, run_params);
 
       if(status != EXIT_SUCCESS) {
           LOG_ERROR("Failed to evolve galaxies in FOF group %d", halos[halonr].FirstHaloInFOFgroup);
+          galaxy_array_free(&temp_fof_galaxies);
           return status;
       }
+
+      /* Clean up temporary array */
+      galaxy_array_free(&temp_fof_galaxies);
   }
 
   return EXIT_SUCCESS;
@@ -527,32 +540,37 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
  * The function ensures proper inheritance of galaxy properties while
  * maintaining the hierarchy of central and satellite galaxies.
  */
-static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *galaxycounter, struct halo_data *halos,
-                                       struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr, struct params *run_params)
+static int join_galaxies_of_progenitors(const int halonr, GalaxyArray* temp_fof_galaxies, int *galaxycounter, 
+                                        struct halo_data *halos, struct halo_aux_data *haloaux,
+                                        const GalaxyArray* galaxies_prev_snap, struct params *run_params)
 {
-    int ngal, first_occupied;
+    int first_occupied;
 
     /* Find the most massive progenitor with galaxies */
     first_occupied = find_most_massive_progenitor(halonr, halos, haloaux);
 
-    /* Copy galaxies from progenitors to the current snapshot */
-    ngal = copy_galaxies_from_progenitors(halonr, ngalstart, first_occupied, galaxycounter, 
-                                         halos, haloaux, galaxies_arr, halogal_arr, run_params);
-    if (ngal < 0) {
+    /* Record starting galaxy count for this halo */
+    int ngalstart = galaxy_array_get_count(temp_fof_galaxies);
+
+    /* Copy galaxies from progenitors to the temporary FOF array */
+    int status = copy_galaxies_from_progenitors(halonr, ngalstart, first_occupied, galaxycounter, 
+                                               halos, haloaux, temp_fof_galaxies, galaxies_prev_snap, run_params);
+    if (status != EXIT_SUCCESS) {
         LOG_ERROR("Failed to copy galaxies from progenitors for halo %d", halonr);
-        return -1;
+        return EXIT_FAILURE;
     }
 
     /* Set up central galaxy relationships */
-    struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(galaxies_arr);
-    if (set_galaxy_centrals(ngalstart, ngal, galaxies_raw) != 0) {
+    struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(temp_fof_galaxies);
+    int ngal_end = galaxy_array_get_count(temp_fof_galaxies);
+    if (set_galaxy_centrals(ngalstart, ngal_end, galaxies_raw) != 0) {
         LOG_ERROR("Failed to set central galaxy relationships for halo %d", halonr);
-        return -1;
+        return EXIT_FAILURE;
     }
     
-    LOG_DEBUG("Joined progenitor galaxies for halo %d: ngal=%d", halonr, ngal);
+    LOG_DEBUG("Joined progenitor galaxies for halo %d: ngal=%d", halonr, ngal_end);
 
-    return ngal;
+    return EXIT_SUCCESS;
 }
 /* end of join_galaxies_of_progenitors */
 
@@ -609,12 +627,11 @@ static int join_galaxies_of_progenitors(const int halonr, const int ngalstart, i
  * allowing modules to be replaced, reordered, or removed at runtime.
  * Synchronization calls are placed around phase executions.
  */
-static int evolve_galaxies(const int halonr, const int ngal, int *numgals, struct halo_data *halos,
-                          struct halo_aux_data *haloaux, GalaxyArray *galaxies_arr, GalaxyArray *halogal_arr,
-                          struct params *run_params)
+static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int *numgals, struct halo_data *halos,
+                          struct halo_aux_data *haloaux, GalaxyArray *galaxies_this_snap, struct params *run_params)
 {
-    struct GALAXY *galaxies = galaxy_array_get_raw_data(galaxies_arr);
-    struct GALAXY *halogal_raw = galaxy_array_get_raw_data(halogal_arr);
+    int ngal = galaxy_array_get_count(temp_fof_galaxies);
+    struct GALAXY *galaxies = galaxy_array_get_raw_data(temp_fof_galaxies);
 
     // Initialize galaxy evolution context
     struct evolution_context ctx;
@@ -885,19 +902,19 @@ static int evolve_galaxies(const int halonr, const int ngal, int *numgals, struc
             haloaux[currenthalo].NGalaxies = 0;
         }
 
-        // In physics-free mode, save all galaxies without merger processing
-        {
+        // After evolution, append survivors to the main array for this snapshot
+        if (ctx.galaxies[p].mergeType == 0) { // If it hasn't been merged
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
 
-            // Copy galaxy to the permanent list using the new API
+            // Copy galaxy to the snapshot array using the new API
             struct GALAXY temp_galaxy;
             memset(&temp_galaxy, 0, sizeof(struct GALAXY));
             galaxy_extension_initialize(&temp_galaxy);
             deep_copy_galaxy(&temp_galaxy, &ctx.galaxies[p], run_params);
             temp_galaxy.SnapNum = halos[currenthalo].SnapNum;
 
-            if (galaxy_array_append(halogal_arr, &temp_galaxy, run_params) < 0) {
-                LOG_ERROR("Failed to append galaxy to final array");
+            if (galaxy_array_append(galaxies_this_snap, &temp_galaxy, run_params) < 0) {
+                LOG_ERROR("Failed to append galaxy to snapshot array");
                 free_galaxy_properties(&temp_galaxy);
                 return EXIT_FAILURE;
             }

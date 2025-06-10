@@ -91,7 +91,7 @@ int array_expand_default(void **array, size_t element_size, int *current_capacit
  * @param num_valid_galaxies Number of galaxies with valid data (for properties preservation)
  * @return 0 on success, negative on error
  */
-int galaxy_array_expand_safe(struct GALAXY **array, int *current_capacity, int min_new_size, int num_valid_galaxies) {
+int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_new_size, int num_valid_galaxies) {
     #ifdef TESTING_STANDALONE
     size_t galaxy_size = 1024;  // Reasonable size estimate for testing
     #else
@@ -155,65 +155,4 @@ int galaxy_array_expand_safe(struct GALAXY **array, int *current_capacity, int m
     return status;
 }
 
-int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_new_size) {
-    // This function needs to be used only after including core_allvars.h
-    // Since core_allvars.h is included in all core_*.c files that use GALAXY structs,
-    // this should be safe in practice, even though we forward declare in the header.
-    #ifdef TESTING_STANDALONE
-    size_t galaxy_size = 1024;  // Reasonable size estimate for testing
-    #else
-    size_t galaxy_size = sizeof(struct GALAXY);
-    #endif
-    
-    // Save the old array pointer and capacity to check if it changed during realloc
-    struct GALAXY *old_array = *array;
-    int old_capacity = *current_capacity;
-    
-    // Expand the array
-    int status = array_expand_default((void **)array, galaxy_size, current_capacity, min_new_size);
-    
-    // CRITICAL FIX: Handle galaxy properties pointers after reallocation
-    // When the galaxy array moves, properties pointers become invalid and must be preserved
-    if (status == 0 && old_array != *array) {
-        // The array was reallocated to a new memory location - this is the critical bug!
-        
-        printf("SEGFAULT-BUG-DETECTED: Galaxy array reallocated from %p to %p - properties pointers are now DANGLING!\n",
-               (void*)old_array, (void*)*array);  // TODO: Remove after segfault resolved
-        printf("SEGFAULT-BUG-DETECTED: This is the root cause of segmentation faults. Properties pointers\n");  // TODO: Remove after segfault resolved
-        printf("SEGFAULT-BUG-DETECTED: in copied galaxy structs point to OLD memory location (now freed).\n");  // TODO: Remove after segfault resolved
-        LOG_ERROR("Galaxy array reallocated from %p to %p - properties pointers are now DANGLING!",
-                   old_array, *array);
-        LOG_ERROR("This is the root cause of segmentation faults. The properties pointers");
-        LOG_ERROR("in the copied galaxy structs still point to the OLD memory location");
-        LOG_ERROR("which has been freed by realloc. This causes segfaults when accessed later.");
-        
-        // ARCHITECTURAL SOLUTION NEEDED: The save-realloc-restore pattern
-        // This function should save all properties pointers BEFORE calling realloc,
-        // then restore them AFTER realloc. However, this requires significant changes
-        // to the calling code that would need to pass in the number of valid galaxies.
-        
-        // For now, we set properties to NULL to prevent using dangling pointers
-        // but this will cause other failures. The proper fix is architectural.
-        LOG_WARNING("Setting properties to NULL to prevent dangling pointer segfaults");
-        LOG_WARNING("Caller must re-initialize properties for all galaxies");
-        
-        // Only nullify properties for galaxies that existed before reallocation
-        for (int i = 0; i < old_capacity; i++) {
-            (*array)[i].properties = NULL;
-        }
-        
-        // Initialize the NEW memory region to prevent garbage data
-        // Zero-initialize any newly allocated galaxy structures
-        if (*current_capacity > old_capacity) {
-            memset(&(*array)[old_capacity], 0, 
-                   (*current_capacity - old_capacity) * sizeof(struct GALAXY));
-        }
-        
-        // Return error to indicate that properties pointers were invalidated
-        // This forces the caller to handle the reallocation properly
-        LOG_ERROR("Returning error status to force caller to handle properties invalidation");
-        return -2; // Special error code indicating properties invalidation
-    }
-    
-    return status;
-}
+/* Old unsafe galaxy_array_expand function has been removed */

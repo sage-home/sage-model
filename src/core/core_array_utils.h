@@ -74,21 +74,9 @@ extern int array_expand_default(void **array, size_t element_size, int *current_
  * @param num_valid_galaxies Number of galaxies with valid data (for properties preservation)
  * @return 0 on success, negative on error
  */
-extern int galaxy_array_expand_safe(struct GALAXY **array, int *current_capacity, int min_new_size, int num_valid_galaxies);
+extern int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_new_size, int num_valid_galaxies);
 
-/**
- * @brief Expand a galaxy array using geometric growth (UNSAFE - properties pointers may become invalid)
- *
- * Convenience function for resizing GALAXY arrays with the default growth factor.
- * WARNING: This function may invalidate properties pointers when the array is reallocated.
- * Use galaxy_array_expand_safe() instead for safer operation.
- *
- * @param array Pointer to the GALAXY array pointer (will be updated if reallocated)
- * @param current_capacity Pointer to the current array capacity (will be updated)
- * @param min_new_size Minimum number of galaxies needed
- * @return 0 on success, -2 if properties pointers were invalidated, other negative on error
- */
-extern int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_new_size);
+/* Old unsafe galaxy_array_expand function has been removed - now only the safe version exists */
 
 #ifdef __cplusplus
 }

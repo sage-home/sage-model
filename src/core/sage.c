@@ -274,9 +274,7 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     /* Begin tree memory scope for efficient cleanup */
     begin_tree_memory_scope();
 
-    /* New: Use safe GalaxyArray instead of raw pointers */
-    GalaxyArray *Gal = galaxy_array_new();
-    GalaxyArray *HaloGal = galaxy_array_new();
+    /* Variables removed - now using double-buffer approach */
 
     /* simulation merger-tree data */
     struct halo_data *Halo = NULL;
@@ -284,21 +282,12 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
     /*  auxiliary halo data  */
     struct halo_aux_data  *HaloAux = NULL;
 
-    /* Check galaxy arrays were created successfully */
-    if (!Gal || !HaloGal) {
-        fprintf(stderr, "Error: Failed to create galaxy arrays for forest %"PRId64"...exiting\n", forestnr);
-        if (Gal) galaxy_array_free(&Gal);
-        if (HaloGal) galaxy_array_free(&HaloGal);
-        end_tree_memory_scope();
-        return -1;
-    }
+    /* Galaxy arrays are now created on demand within the snapshot loop */
 
     /* nhalos is meaning-less for consistent-trees until *AFTER* the forest has been loaded */
     const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
     if(nhalos < 0) {
         fprintf(stderr,"Error during loading forestnum =  %"PRId64"...exiting\n", forestnr);
-        galaxy_array_free(&Gal);
-        galaxy_array_free(&HaloGal);
         end_tree_memory_scope();
         return nhalos;
     }
@@ -316,91 +305,47 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
 
     HaloAux = mymalloc(nhalos * sizeof(HaloAux[0]));
 
-    for(int i = 0; i < nhalos; i++) {
-        HaloAux[i].HaloFlag = 0;
-        HaloAux[i].NGalaxies = 0;
-        HaloAux[i].DoneFlag = 0;
-#ifdef PROCESS_LHVT_STYLE
-        HaloAux[i].orig_index = file_ordering_of_halos[i];
-#endif
-    }
-
-    /* MS: numgals is shared by both LHVT and the standard processing */
-    int numgals = 0;
-
-#ifdef PROCESS_LHVT_STYLE
-    free(file_ordering_of_halos);
-    /* done with re-ordering the halos into a locally horizontal vertical tree format */
-
-    int nfofs_all_snaps[ABSOLUTEMAXSNAPS] = {0};
-    /* getting the number of FOF halos at each snapshot */
-    status = get_nfofs_all_snaps(Halo, nhalos, nfofs_all_snaps, ABSOLUTEMAXSNAPS);
-    if(status != EXIT_SUCCESS) {
-        return status;
-    }
-
-#if 0
-    for(int halonr = 0; halonr < nhalos; halonr++) {
-        fprintf(stderr,"halonr = %d snap = %03d mvir = %14.6e firstfofhalo = %8d nexthalo = %8d\n",
-                halonr, Halo[halonr].SnapNum, Halo[halonr].Mvir, Halo[halonr].FirstHaloInFOFgroup, Halo[halonr].NextHaloInFOFgroup);
-    }
-#endif
-
-    /* this will be the new processing style --> one snapshot at a time */
-    uint32_t ngal = 0;
-    for(int snapshot=min_snapshot;snapshot <= max_snapshot; snapshot++) {
-        uint32_t nfofs_this_snap = get_nfofs_at_snap(forestnr, snapshot);
-        for(int ifof=0;ifof<nfofs_this_snap;ifof++) {
-            ngal = process_fof_at_snap(ifof, snapshot, ngal);
-        }
-    }
-
-#else /* PROCESS_LHVT_STYLE */
-
-    /*MS: This is the normal SAGE processing on a tree-by-tree (vertical) basis */
-
-    /* Now start the processing */
+    // NEW: Double-buffer implementation.
+    GalaxyArray* galaxies_prev_snap = galaxy_array_new();
+    GalaxyArray* galaxies_this_snap = NULL;
     int32_t galaxycounter = 0;
 
-    // Pass the new GalaxyArray pointers to construct_galaxies
-    /* First run construct_galaxies outside for loop -> takes care of the main tree */
-    status = construct_galaxies(0, &numgals, &galaxycounter, Halo, HaloAux, Gal, HaloGal, run_params);
-    if(status != EXIT_SUCCESS) {
-        galaxy_array_free(&Gal);
-        galaxy_array_free(&HaloGal);
-        end_tree_memory_scope();
-        return status;
-    }
+    for (int snapshot = 0; snapshot < run_params->simulation.SimMaxSnaps; ++snapshot) {
+        galaxies_this_snap = galaxy_array_new();
 
-    /* But there are sub-trees within one forest file that are not reachable via the recursive routine -> do those as well */
-    for(int halonr = 0; halonr < nhalos; halonr++) {
-        if(HaloAux[halonr].DoneFlag == 0) { // Note: numgals is reset to 0 inside the loop
-            status = construct_galaxies(halonr, &numgals, &galaxycounter, Halo, HaloAux, Gal, HaloGal, run_params);
-            if(status != EXIT_SUCCESS) {
-                galaxy_array_free(&Gal);
-                galaxy_array_free(&HaloGal);
-                end_tree_memory_scope();
-                return status;
+        // Reset auxiliary halo data for this snapshot's processing.
+        for(int i = 0; i < nhalos; i++) {
+            HaloAux[i].HaloFlag = 0;
+            HaloAux[i].DoneFlag = 0;
+            HaloAux[i].NGalaxies = 0; // Reset this for the new snapshot.
+        }
+
+        for (int halonr = 0; halonr < nhalos; ++halonr) {
+            if (Halo[halonr].SnapNum == snapshot && HaloAux[halonr].DoneFlag == 0) {
+                int numgals_in_fof_group = 0;
+                status = construct_galaxies(halonr, &numgals_in_fof_group, &galaxycounter, Halo, HaloAux,
+                                            galaxies_this_snap, galaxies_prev_snap, run_params);
+                if (status != EXIT_SUCCESS) {
+                    galaxy_array_free(&galaxies_prev_snap);
+                    galaxy_array_free(&galaxies_this_snap);
+                    end_tree_memory_scope();
+                    return status;
+                }
             }
         }
-    }
 
-#endif /* PROCESS_LHVT_STYLE */
-    
-    // Get the final count and raw data pointer for saving
-    int final_ngals = galaxy_array_get_count(HaloGal);
-    struct GALAXY *final_gals = galaxy_array_get_raw_data(HaloGal);
-    status = save_galaxies(forestnr, final_ngals, Halo, forest_info, HaloAux, final_gals, save_info, run_params);
-    if(status != EXIT_SUCCESS) {
-        galaxy_array_free(&Gal);
-        galaxy_array_free(&HaloGal);
-        end_tree_memory_scope();
-        return status;
+        // Save galaxies at the end of the snapshot processing.
+        int final_ngal = galaxy_array_get_count(galaxies_this_snap);
+        struct GALAXY *final_gals = galaxy_array_get_raw_data(galaxies_this_snap);
+        status = save_galaxies(forestnr, final_ngal, Halo, forest_info, HaloAux, final_gals, save_info, run_params);
+
+        // SWAP BUFFERS: The results of this snapshot become the input for the next.
+        galaxy_array_free(&galaxies_prev_snap);
+        galaxies_prev_snap = galaxies_this_snap;
     }
 
     /* free galaxies and the forest */
-    galaxy_array_free(&Gal);
-    galaxy_array_free(&HaloGal);
+    galaxy_array_free(&galaxies_prev_snap); // This frees the final snapshot's data.
     myfree(HaloAux);
     myfree(Halo);
 
