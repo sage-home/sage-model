@@ -6,14 +6,19 @@
  * while preserving the integrity of properties pointers, preventing the
  * segmentation faults caused by dangling pointers after realloc operations.
  * 
- * This is a CRITICAL test for memory safety - it must verify that the
+ * This is a CRITICAL test for memory safety - it verifies that the
  * save-realloc-restore pattern works correctly under realistic conditions.
+ * 
+ * NOTE: This test suite has been updated to reflect the current architecture
+ * where only the safe galaxy_array_expand function exists. The dangerous
+ * unsafe version has been removed from the codebase (which is a good thing!).
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 #include "../src/core/core_allvars.h"
 #include "../src/core/core_array_utils.h"
 #include "../src/core/core_properties.h"
@@ -23,7 +28,7 @@
 static int tests_run = 0;
 static int tests_passed = 0;
 
-// Helper macro for test assertions
+// Helper macro for test assertions - only shows failures
 #define TEST_ASSERT(condition, message) do { \
     tests_run++; \
     if (!(condition)) { \
@@ -32,7 +37,6 @@ static int tests_passed = 0;
         return; \
     } else { \
         tests_passed++; \
-        printf("PASS: %s\n", message); \
     } \
 } while(0)
 
@@ -57,7 +61,7 @@ static int create_test_galaxy(struct GALAXY* gal, int galaxy_id) {
     gal->GalaxyNr = galaxy_id;
     gal->Type = galaxy_id % 3;  // Mix of central (0), satellite (1), orphan (2)
     gal->SnapNum = 63;
-    gal->Mvir = 1e10 + galaxy_id * 1e8;  // Varying virial mass
+    gal->Mvir = (1.0f + galaxy_id * 0.01f) * 1e10f;  // Varying virial mass with precise float arithmetic
     gal->Vmax = 200.0 + galaxy_id * 10.0;  // Varying Vmax
     gal->Rvir = 100.0 + galaxy_id * 5.0;  // Varying virial radius
     gal->GalaxyIndex = (uint64_t)(1000 + galaxy_id);  // Unique identifier
@@ -80,24 +84,40 @@ static int create_test_galaxy(struct GALAXY* gal, int galaxy_id) {
         return -1;
     }
     
+    // CRITICAL FIX: Sync direct fields to property fields for consistency
+    // This ensures both the legacy direct fields and new property system have the same values
+    GALAXY_PROP_Type(gal) = gal->Type;
+    GALAXY_PROP_SnapNum(gal) = gal->SnapNum;
+    GALAXY_PROP_Mvir(gal) = gal->Mvir;  // Sync the mass field!
+    GALAXY_PROP_Vmax(gal) = gal->Vmax;
+    GALAXY_PROP_Rvir(gal) = gal->Rvir;
+    GALAXY_PROP_GalaxyIndex(gal) = gal->GalaxyIndex;
+    
+    // Set position arrays
+    for (int j = 0; j < 3; j++) {
+        GALAXY_PROP_Pos_ELEM(gal, j) = gal->Pos[j];
+    }
+    
     return 0;
 }
 
 /**
- * @brief Test safe galaxy array expansion vs unsafe expansion
+ * @brief Test safe galaxy array expansion
  * This is the CRITICAL test that verifies the fix for the segmentation fault.
+ * NOTE: Only the safe version exists now - the unsafe version was removed.
  */
-static void test_safe_vs_unsafe_expansion() {
-    printf("\n=== Testing safe vs unsafe galaxy array expansion ===\n");
+static void test_safe_galaxy_array_expansion() {
+    printf("\n=== Testing safe galaxy array expansion ===\n");
     
     const int INITIAL_CAPACITY = 5;
     const int NUM_GALAXIES = 3;  // Start with fewer than capacity
-    const int EXPAND_TO = 10;    // Force reallocation
+    const int EXPAND_TO = 20;    // Force reallocation
     
     // Create galaxy array
     struct GALAXY* galaxies = mymalloc(INITIAL_CAPACITY * sizeof(struct GALAXY));
     int capacity = INITIAL_CAPACITY;
     
+    printf("Testing initial array allocation...\n");
     TEST_ASSERT(galaxies != NULL, "Initial galaxy array allocation should succeed");
     
     // Create galaxies with real properties
@@ -107,7 +127,6 @@ static void test_safe_vs_unsafe_expansion() {
             printf("FAIL: Failed to create test galaxy %d\n", i);
             return;
         }
-        printf("  Galaxy %d: properties at %p\n", i, (void*)galaxies[i].properties);
     }
     
     // Store original properties pointers for verification
@@ -116,64 +135,61 @@ static void test_safe_vs_unsafe_expansion() {
         original_props[i] = galaxies[i].properties;
     }
     
-    // Test UNSAFE expansion (should detect corruption)
-    printf("\nTesting UNSAFE galaxy_array_expand...\n");
-    struct GALAXY* old_array = galaxies;
-    int result_unsafe = galaxy_array_expand(&galaxies, &capacity, EXPAND_TO, NUM_GALAXIES);
-    
-    if (old_array != galaxies) {
-        printf("Array was reallocated from %p to %p\n", (void*)old_array, (void*)galaxies);
-        TEST_ASSERT(result_unsafe == -2, "Unsafe expansion should return -2 when properties are invalidated");
-        
-        // Verify that properties pointers are now NULL (unsafe function sets them to NULL)
-        for (int i = 0; i < NUM_GALAXIES; i++) {
-            if (galaxies[i].properties != NULL) {
-                printf("WARNING: Galaxy %d properties not nullified by unsafe function: %p\n", 
-                      i, (void*)galaxies[i].properties);
-            }
-        }
-    } else {
-        printf("Array was not reallocated - test needs larger expansion\n");
-    }
-    
-    // Restore properties pointers for safe test
-    printf("\nRestoring properties for safe test...\n");
-    for (int i = 0; i < NUM_GALAXIES; i++) {
-        galaxies[i].properties = original_props[i];
-        printf("  Galaxy %d: restored properties to %p\n", i, (void*)galaxies[i].properties);
-    }
-    
-    // Reset capacity for safe test
-    capacity = INITIAL_CAPACITY;
-    
     // Test SAFE expansion
-    printf("\nTesting SAFE galaxy_array_expand_safe...\n");
-    old_array = galaxies;
-    int result_safe = galaxy_array_expand(&galaxies, &capacity, EXPAND_TO * 2, NUM_GALAXIES);
+    printf("Testing safe array expansion...\n");
+    struct GALAXY* old_array = galaxies;
+    int result = galaxy_array_expand(&galaxies, &capacity, EXPAND_TO, NUM_GALAXIES);
     
-    TEST_ASSERT(result_safe == 0, "Safe expansion should return 0 on success");
-    TEST_ASSERT(capacity >= EXPAND_TO * 2, "Capacity should be expanded to requested size");
+    TEST_ASSERT(result == 0, "Safe expansion should return 0 on success");
+    TEST_ASSERT(capacity >= EXPAND_TO, "Capacity should be expanded to requested size");
     
     if (old_array != galaxies) {
-        printf("Array was safely reallocated from %p to %p\n", (void*)old_array, (void*)galaxies);
-        
+        printf("Array reallocated - verifying properties preservation...\n");
         // CRITICAL: Verify properties pointers are preserved and valid
         for (int i = 0; i < NUM_GALAXIES; i++) {
             TEST_ASSERT(galaxies[i].properties != NULL, "Properties pointer should not be NULL after safe expansion");
             TEST_ASSERT(galaxies[i].properties == original_props[i], "Properties pointer should be preserved after safe expansion");
-            printf("  Galaxy %d: properties preserved at %p\n", i, (void*)galaxies[i].properties);
         }
         
         // Verify galaxy data integrity
+        printf("Verifying galaxy data integrity after reallocation...\n");
         for (int i = 0; i < NUM_GALAXIES; i++) {
             TEST_ASSERT(galaxies[i].GalaxyNr == i, "Galaxy number should be preserved");
             TEST_ASSERT(galaxies[i].Type == i % 3, "Galaxy type should be preserved");
-            TEST_ASSERT(galaxies[i].Mvir == 1e10 + i * 1e8, "Galaxy mass should be preserved");
+            
+            // Check mass preservation - this is where the heisenbug manifests
+            float expected_mass = (1.0f + i * 0.01f) * 1e10f;
+            float actual_mass = galaxies[i].Mvir;
+            float diff = fabsf(actual_mass - expected_mass);
+            
+            // Report any significant mass corruption
+            if (diff > 1e-6f) {
+                printf("WARNING: Galaxy %d mass corruption detected! Expected=%.9e, Actual=%.9e, Diff=%.9e\n", 
+                       i, expected_mass, actual_mass, diff);
+            }
+            
+            // HEISENBUG DOCUMENTATION:
+            // The next line is commented out because it MASKS a heisenbug in the memory corruption.
+            // When this debug output is active, the test passes. When removed, Galaxy 1 fails with ~160.6 byte corruption.
+            // This suggests a timing/memory layout issue related to:
+            // - Memory alignment between GALAXY struct (168 bytes) and corruption value (~160.6)
+            // - Dual field synchronization between galaxies[i].Mvir and galaxies[i].properties->Mvir
+            // TODO: Investigate root cause - likely in galaxy_array_expand memcpy operations or property allocation
+            // HEISENBUG FIX LINE (uncomment to make test pass):
+            // printf("DEBUG: Galaxy %d - expected=%.15e, actual=%.15e, diff=%.15e\n", i, expected_mass, actual_mass, diff);
+            
+            float assertion_diff = fabsf(galaxies[i].Mvir - ((1.0f + i * 0.01f) * 1e10f));
+            TEST_ASSERT(assertion_diff < 1e-4f, "Galaxy mass should be preserved");
             TEST_ASSERT(galaxies[i].GalaxyIndex == (uint64_t)(1000 + i), "Galaxy index should be preserved");
         }
     } else {
-        printf("Array was not reallocated in safe test\n");
+        printf("No reallocation needed - testing larger expansion to force reallocation...\n");
+        // Try a much larger expansion to force reallocation
+        result = galaxy_array_expand(&galaxies, &capacity, EXPAND_TO * 4, NUM_GALAXIES);
+        TEST_ASSERT(result == 0, "Large safe expansion should return 0 on success");
     }
+    
+    printf("Safe galaxy array expansion test completed.\n");
     
     // Clean up
     for (int i = 0; i < NUM_GALAXIES; i++) {
@@ -196,18 +212,15 @@ static void test_massive_reallocation_stress() {
     int capacity = INITIAL_CAPACITY;
     int num_galaxies = 0;
     
+    printf("Testing massive reallocation with %d galaxies...\n", STRESS_GALAXIES);
     TEST_ASSERT(galaxies != NULL, "Initial galaxy array allocation should succeed");
     
     // Store properties pointers for verification
     galaxy_properties_t** all_props = mymalloc(STRESS_GALAXIES * sizeof(galaxy_properties_t*));
     
-    printf("Creating and expanding galaxy array through %d galaxies...\n", STRESS_GALAXIES);
-    
     for (int i = 0; i < STRESS_GALAXIES; i++) {
         // Create new galaxy if needed
         if (num_galaxies >= capacity - 1) {
-            printf("  Expanding array from capacity %d to accommodate galaxy %d\n", capacity, i);
-            
             // Use SAFE expansion
             int result = galaxy_array_expand(&galaxies, &capacity, num_galaxies + 10, num_galaxies);
             TEST_ASSERT(result == 0, "Safe array expansion should succeed");
@@ -229,20 +242,21 @@ static void test_massive_reallocation_stress() {
         all_props[num_galaxies] = galaxies[num_galaxies].properties;
         num_galaxies++;
         
-        // Periodic verification
+        // Progress indicator
         if (i % 100 == 99) {
-            printf("  Verified %d galaxies - all properties pointers intact\n", i + 1);
+            printf("  Progress: %d/%d galaxies created and verified\n", i + 1, STRESS_GALAXIES);
         }
     }
     
-    printf("Final verification of all %d galaxies...\n", num_galaxies);
-    
     // Final comprehensive verification
+    printf("Final verification of all %d galaxies...\n", num_galaxies);
     for (int i = 0; i < num_galaxies; i++) {
         TEST_ASSERT(galaxies[i].properties != NULL, "Final check: properties should not be NULL");
         TEST_ASSERT(galaxies[i].properties == all_props[i], "Final check: properties pointer should be unchanged");
         TEST_ASSERT(galaxies[i].GalaxyNr == i, "Final check: galaxy data should be intact");
     }
+    
+    printf("Massive reallocation stress test completed.\n");
     
     // Clean up
     for (int i = 0; i < num_galaxies; i++) {
@@ -250,15 +264,14 @@ static void test_massive_reallocation_stress() {
     }
     myfree(all_props);
     myfree(galaxies);
-    
-    printf("Massive reallocation stress test completed successfully!\n");
 }
 
 /**
- * @brief Test corruption detection by unsafe function
+ * @brief Test properties preservation through multiple reallocations
+ * This test verifies that properties remain valid through several reallocation cycles.
  */
-static void test_corruption_detection() {
-    printf("\n=== Testing corruption detection by unsafe function ===\n");
+static void test_properties_preservation() {
+    printf("\n=== Testing properties preservation through multiple reallocations ===\n");
     
     const int INITIAL_CAPACITY = 3;
     const int NUM_GALAXIES = 2;
@@ -266,33 +279,45 @@ static void test_corruption_detection() {
     struct GALAXY* galaxies = mymalloc(INITIAL_CAPACITY * sizeof(struct GALAXY));
     int capacity = INITIAL_CAPACITY;
     
+    printf("Testing properties preservation through multiple reallocations...\n");
     // Create galaxies with properties
     for (int i = 0; i < NUM_GALAXIES; i++) {
         create_test_galaxy(&galaxies[i], i);
     }
     
-    // Force reallocation with unsafe function
-    struct GALAXY* old_array = galaxies;
-    int result = galaxy_array_expand(&galaxies, &capacity, INITIAL_CAPACITY * 4, NUM_GALAXIES);
+    // Store original properties for verification
+    galaxy_properties_t* original_props[NUM_GALAXIES];
+    for (int i = 0; i < NUM_GALAXIES; i++) {
+        original_props[i] = galaxies[i].properties;
+    }
     
-    if (old_array != galaxies) {
-        printf("Array was reallocated - unsafe function should detect corruption\n");
-        TEST_ASSERT(result == -2, "Unsafe function should return -2 when corruption detected");
+    // Perform multiple reallocations to stress test properties preservation
+    int expansion_sizes[] = {12, 50, 100, 200};
+    int num_tests = sizeof(expansion_sizes) / sizeof(expansion_sizes[0]);
+    
+    for (int test = 0; test < num_tests; test++) {
+        int result = galaxy_array_expand(&galaxies, &capacity, expansion_sizes[test], NUM_GALAXIES);
         
-        // Properties should be set to NULL by unsafe function
+        TEST_ASSERT(result == 0, "Safe expansion should return 0 on success");
+        TEST_ASSERT(capacity >= expansion_sizes[test], "Capacity should meet expansion requirement");
+        
+        // Verify properties are preserved
         for (int i = 0; i < NUM_GALAXIES; i++) {
-            TEST_ASSERT(galaxies[i].properties == NULL, "Unsafe function should nullify properties to prevent crashes");
-        }
-        printf("Corruption detection working correctly!\n");
-    } else {
-        printf("Array was not reallocated - increasing expansion size\n");
-        result = galaxy_array_expand(&galaxies, &capacity, INITIAL_CAPACITY * 10, NUM_GALAXIES);
-        if (result == -2) {
-            printf("Corruption detection triggered on larger expansion\n");
+            TEST_ASSERT(galaxies[i].properties != NULL, "Properties should not be NULL after expansion");
+            TEST_ASSERT(galaxies[i].properties == original_props[i], "Properties pointer should be preserved");
+            
+            // Verify galaxy data integrity
+            TEST_ASSERT(galaxies[i].GalaxyNr == i, "Galaxy number should be preserved");
+            TEST_ASSERT(galaxies[i].Type == i % 3, "Galaxy type should be preserved");
         }
     }
     
-    // Note: Don't free properties as they were nullified by unsafe function
+    printf("Properties preservation test completed.\n");
+    
+    // Clean up
+    for (int i = 0; i < NUM_GALAXIES; i++) {
+        free_galaxy_properties(&galaxies[i]);
+    }
     myfree(galaxies);
 }
 
@@ -306,9 +331,9 @@ int main(void) {
     printf("========================================\n");
 
     // Run the critical tests
-    test_safe_vs_unsafe_expansion();
+    test_safe_galaxy_array_expansion();
     test_massive_reallocation_stress();
-    test_corruption_detection();
+    test_properties_preservation();
     
     // Report results
     printf("\n========================================\n");

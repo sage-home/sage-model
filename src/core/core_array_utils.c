@@ -83,12 +83,18 @@ int array_expand_default(void **array, size_t element_size, int *current_capacit
     return array_expand(array, element_size, current_capacity, min_new_size, ARRAY_DEFAULT_GROWTH_FACTOR);
 }
 
+// Forward declaration for property copying function
+#ifndef TESTING_STANDALONE
+extern int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src, const struct params *params);
+extern void free_galaxy_properties(struct GALAXY *g);
+#endif
+
 /**
- * @brief Safe galaxy array expansion that preserves properties pointers
+ * @brief Safe galaxy array expansion that preserves all galaxy data
  * @param array Pointer to galaxy array pointer
  * @param current_capacity Pointer to current capacity
  * @param min_new_size Minimum new size needed
- * @param num_valid_galaxies Number of galaxies with valid data (for properties preservation)
+ * @param num_valid_galaxies Number of galaxies with valid data (for preservation)
  * @return 0 on success, negative on error
  */
 int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_new_size, int num_valid_galaxies) {
@@ -106,44 +112,98 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
     // Save the old array pointer to detect reallocation
     struct GALAXY *old_array = *array;
     
-    // Step 1: Save all valid properties pointers BEFORE reallocation
-    galaxy_properties_t **temp_props = NULL;
+    #ifndef TESTING_STANDALONE
+    // Step 1: Save ALL galaxy data BEFORE reallocation to prevent corruption
+    struct GALAXY *temp_galaxies = NULL;
+    galaxy_properties_t **saved_properties = NULL;
     if (num_valid_galaxies > 0) {
-        temp_props = mymalloc(num_valid_galaxies * sizeof(galaxy_properties_t*));
-        if (!temp_props) {
-            LOG_ERROR("Failed to allocate temporary properties pointer array");
+        // Allocate temporary storage for complete galaxy structures
+        temp_galaxies = mymalloc(num_valid_galaxies * sizeof(struct GALAXY));
+        if (!temp_galaxies) {
+            LOG_ERROR("Failed to allocate temporary galaxy backup array");
             return -1;
         }
-        for (int i = 0; i < num_valid_galaxies; i++) {
-            temp_props[i] = (*array)[i].properties;
+        
+        // Allocate temporary storage for properties pointers
+        saved_properties = mymalloc(num_valid_galaxies * sizeof(galaxy_properties_t*));
+        if (!saved_properties) {
+            LOG_ERROR("Failed to allocate temporary properties pointer array");
+            myfree(temp_galaxies);
+            return -1;
         }
-        printf("SEGFAULT-FIX: Saved %d properties pointers before galaxy array reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved
-        LOG_DEBUG("Saved %d properties pointers before reallocation", num_valid_galaxies);
+        
+        // Save both the complete galaxy data AND the properties pointers
+        for (int i = 0; i < num_valid_galaxies; i++) {
+            // Save the complete galaxy structure (all direct fields)
+            memcpy(&temp_galaxies[i], &(*array)[i], sizeof(struct GALAXY));
+            // Save the properties pointer separately (will remain valid across reallocation)
+            saved_properties[i] = (*array)[i].properties;
+        }
+        printf("SEGFAULT-FIX: Saved %d complete galaxies before galaxy array reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved
+        LOG_DEBUG("Saved complete galaxy data and properties pointers for %d galaxies before reallocation", num_valid_galaxies);
     }
+    #endif
     
     // Step 2: Perform the reallocation
     int status = array_expand_default((void **)array, galaxy_size, current_capacity, min_new_size);
     
-    // Step 3: Restore properties pointers if the array was moved
+    #ifndef TESTING_STANDALONE
+    // Step 3: Restore ALL galaxy data if the array was moved
     if (status == 0 && old_array != *array && num_valid_galaxies > 0) {
-        printf("SEGFAULT-FIX: Galaxy array reallocated from %p to %p - restoring %d properties pointers\n", 
+        printf("SEGFAULT-FIX: Galaxy array reallocated from %p to %p - restoring %d complete galaxies\n", 
                (void*)old_array, (void*)*array, num_valid_galaxies);  // TODO: Remove after segfault resolved
-        LOG_DEBUG("Galaxy array reallocated from %p to %p - restoring %d properties pointers", 
-                 old_array, *array, num_valid_galaxies);
+        LOG_DEBUG("Galaxy array reallocated from %p to %p - restoring complete galaxy data", 
+                 old_array, *array);
         
-        // Restore the properties pointers to their new locations
+        // CRITICAL FIX: Restore the complete galaxy data AND fix the properties pointers
         for (int i = 0; i < num_valid_galaxies; i++) {
-            (*array)[i].properties = temp_props[i];
+            // Restore the complete galaxy structure (all direct fields)
+            memcpy(&(*array)[i], &temp_galaxies[i], sizeof(struct GALAXY));
+            // Fix the properties pointer to the correct saved address
+            (*array)[i].properties = saved_properties[i];
         }
         
-        printf("SEGFAULT-FIX: Successfully restored %d properties pointers after reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved
-        LOG_DEBUG("Successfully restored %d properties pointers after reallocation", num_valid_galaxies);
+        printf("SEGFAULT-FIX: Successfully restored %d complete galaxies after reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved
+        LOG_DEBUG("Successfully restored complete galaxy data and properties pointers for %d galaxies", num_valid_galaxies);
     }
     
-    // Clean up temporary array
-    if (temp_props) {
-        myfree(temp_props);
+    // Clean up temporary storage
+    if (temp_galaxies) {
+        myfree(temp_galaxies);
     }
+    if (saved_properties) {
+        myfree(saved_properties);
+    }
+    #else
+    // For testing mode, fall back to simple memcpy (no properties to worry about)
+    struct GALAXY *temp_galaxies = NULL;
+    if (num_valid_galaxies > 0) {
+        temp_galaxies = mymalloc(num_valid_galaxies * sizeof(struct GALAXY));
+        if (!temp_galaxies) {
+            LOG_ERROR("Failed to allocate temporary galaxy backup array");
+            return -1;
+        }
+        memcpy(temp_galaxies, *array, num_valid_galaxies * sizeof(struct GALAXY));
+        printf("SEGFAULT-FIX: Saved %d complete galaxies before galaxy array reallocation\n", num_valid_galaxies);
+        LOG_DEBUG("Saved %d complete galaxies before reallocation", num_valid_galaxies);
+    }
+    
+    if (status == 0 && old_array != *array && num_valid_galaxies > 0) {
+        printf("SEGFAULT-FIX: Galaxy array reallocated from %p to %p - restoring %d complete galaxies\n", 
+               (void*)old_array, (void*)*array, num_valid_galaxies);
+        LOG_DEBUG("Galaxy array reallocated from %p to %p - restoring %d complete galaxies", 
+                 old_array, *array, num_valid_galaxies);
+        
+        memcpy(*array, temp_galaxies, num_valid_galaxies * sizeof(struct GALAXY));
+        
+        printf("SEGFAULT-FIX: Successfully restored %d complete galaxies after reallocation\n", num_valid_galaxies);
+        LOG_DEBUG("Successfully restored %d complete galaxies after reallocation", num_valid_galaxies);
+    }
+    
+    if (temp_galaxies) {
+        myfree(temp_galaxies);
+    }
+    #endif
     
     // Initialize any new memory region
     if (status == 0 && *current_capacity > num_valid_galaxies) {
