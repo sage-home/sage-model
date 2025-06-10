@@ -23,27 +23,63 @@ struct GalaxyArray {
     int capacity;
 };
 
+// Helper function to sync properties to direct fields (single direction)
+static inline void sync_core_properties_to_direct_fields(struct GALAXY *gal) {
+    if (gal->properties == NULL) return;
+    
+    gal->Type = GALAXY_PROP_Type(gal);
+    gal->SnapNum = GALAXY_PROP_SnapNum(gal);
+    gal->Mvir = GALAXY_PROP_Mvir(gal);
+    gal->Vmax = GALAXY_PROP_Vmax(gal);
+    gal->Rvir = GALAXY_PROP_Rvir(gal);
+    gal->GalaxyIndex = GALAXY_PROP_GalaxyIndex(gal);
+    for (int j = 0; j < 3; j++) {
+        gal->Pos[j] = GALAXY_PROP_Pos_ELEM(gal, j);
+    }
+}
+
 // Safe deep copy function that only copies fields that actually exist in GALAXY struct
 static inline void safe_deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params)
 {
-    // CRITICAL FIX: Initialize properties to NULL before any copying to prevent
-    // use-after-free bugs from copy_galaxy_properties
-    dest->properties = NULL;
+    // Zero-initialize destination
+    memset(dest, 0, sizeof(struct GALAXY));
     
-    // Perform a bitwise copy for all non-pointer fields FIRST.
-    memcpy(dest, src, sizeof(struct GALAXY));
-
-    // CRITICAL FIX: After the memcpy, dest->properties now aliases src->properties.
-    // We MUST break this alias BEFORE calling copy_galaxy_properties, which
-    // would otherwise free the source galaxy's properties.
-    dest->properties = NULL;
+    // Copy non-synced direct fields only
+    dest->GalaxyNr = src->GalaxyNr;
+    dest->CentralGal = src->CentralGal;
+    dest->HaloNr = src->HaloNr;
+    dest->MostBoundID = src->MostBoundID;
+    // GalaxyIndex is synced from properties - don't copy directly
+    dest->CentralGalaxyIndex = src->CentralGalaxyIndex;
+    dest->mergeType = src->mergeType;
+    dest->mergeIntoID = src->mergeIntoID;
+    dest->mergeIntoSnapNum = src->mergeIntoSnapNum;
+    dest->dT = src->dT;
+    dest->Len = src->Len;
+    dest->deltaMvir = src->deltaMvir;
+    dest->CentralMvir = src->CentralMvir;
+    dest->Vvir = src->Vvir;
+    dest->MergTime = src->MergTime;
+    dest->infallMvir = src->infallMvir;
+    dest->infallVvir = src->infallVvir;
+    dest->infallVmax = src->infallVmax;
+    
+    // Copy velocity arrays (not synced with properties)
+    for (int i = 0; i < 3; i++) {
+        dest->Vel[i] = src->Vel[i];
+    }
 
     // Deep copy the dynamic properties structure
     if (copy_galaxy_properties(dest, src, run_params) != 0) {
         LOG_ERROR("Failed to deep copy galaxy properties during safe copy operation");
     }
     
-    // Extension mechanism - reset extension data pointers after memcpy to avoid aliasing
+    // Sync from properties to direct fields
+    if (dest->properties != NULL) {
+        sync_core_properties_to_direct_fields(dest);
+    }
+    
+    // Initialize extension mechanism
     dest->extension_data = NULL;  // Will be reallocated if needed
     dest->num_extensions = 0;
     dest->extension_flags = 0;

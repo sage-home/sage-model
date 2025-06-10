@@ -114,7 +114,7 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
     struct GALAXY *old_array = *array;
     
     #ifndef TESTING_STANDALONE
-    // Step 1: Save ALL galaxy data BEFORE reallocation to prevent corruption
+    // Save galaxy data before reallocation to prevent corruption
     struct GALAXY *temp_galaxies = NULL;
     galaxy_properties_t **saved_properties = NULL;
     if (num_valid_galaxies > 0) {
@@ -140,31 +140,27 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
             // Save the properties pointer separately (will remain valid across reallocation)
             saved_properties[i] = (*array)[i].properties;
         }
-        printf("SEGFAULT-FIX: Saved %d complete galaxies before galaxy array reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved
         LOG_DEBUG("Saved complete galaxy data and properties pointers for %d galaxies before reallocation", num_valid_galaxies);
     }
     #endif
     
-    // Step 2: Perform the reallocation
+    // Perform the reallocation
     int status = array_expand_default((void **)array, galaxy_size, current_capacity, min_new_size);
     
     #ifndef TESTING_STANDALONE
-    // Step 3: Restore ALL galaxy data if the array was moved
+    // Restore galaxy data if the array was moved
     if (status == 0 && old_array != *array && num_valid_galaxies > 0) {
-        printf("SEGFAULT-FIX: Galaxy array reallocated from %p to %p - restoring %d complete galaxies\n", 
-               (void*)old_array, (void*)*array, num_valid_galaxies);  // TODO: Remove after segfault resolved
         LOG_DEBUG("Galaxy array reallocated from %p to %p - restoring complete galaxy data", 
                  old_array, *array);
         
-        // CRITICAL FIX: Restore the complete galaxy data AND fix the properties pointers
+        // Restore the complete galaxy data and fix the properties pointers
         for (int i = 0; i < num_valid_galaxies; i++) {
             // Restore the complete galaxy structure (all direct fields)
             memcpy(&(*array)[i], &temp_galaxies[i], sizeof(struct GALAXY));
             // Fix the properties pointer to the correct saved address
             (*array)[i].properties = saved_properties[i];
             
-            // HEISENBUG FIX: Sync clean property values to potentially corrupted direct fields
-            // Properties struct content is preserved across reallocation, direct fields may be corrupted
+            // Sync property values to direct fields for dual-field consistency
             if ((*array)[i].properties != NULL) {
                 (*array)[i].Type = GALAXY_PROP_Type(&(*array)[i]);
                 (*array)[i].SnapNum = GALAXY_PROP_SnapNum(&(*array)[i]);
@@ -178,7 +174,6 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
             }
         }
         
-        printf("SEGFAULT-FIX: Successfully restored %d complete galaxies after reallocation\n", num_valid_galaxies);  // TODO: Remove after segfault resolved
         LOG_DEBUG("Successfully restored complete galaxy data and properties pointers for %d galaxies", num_valid_galaxies);
     }
     
@@ -199,19 +194,15 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
             return -1;
         }
         memcpy(temp_galaxies, *array, num_valid_galaxies * sizeof(struct GALAXY));
-        printf("SEGFAULT-FIX: Saved %d complete galaxies before galaxy array reallocation\n", num_valid_galaxies);
         LOG_DEBUG("Saved %d complete galaxies before reallocation", num_valid_galaxies);
     }
     
     if (status == 0 && old_array != *array && num_valid_galaxies > 0) {
-        printf("SEGFAULT-FIX: Galaxy array reallocated from %p to %p - restoring %d complete galaxies\n", 
-               (void*)old_array, (void*)*array, num_valid_galaxies);
         LOG_DEBUG("Galaxy array reallocated from %p to %p - restoring %d complete galaxies", 
                  old_array, *array, num_valid_galaxies);
         
         memcpy(*array, temp_galaxies, num_valid_galaxies * sizeof(struct GALAXY));
         
-        printf("SEGFAULT-FIX: Successfully restored %d complete galaxies after reallocation\n", num_valid_galaxies);
         LOG_DEBUG("Successfully restored %d complete galaxies after reallocation", num_valid_galaxies);
     }
     
