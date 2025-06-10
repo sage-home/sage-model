@@ -33,6 +33,7 @@
 #include "../src/core/core_logging.h"
 #include "../src/core/core_mymalloc.h"
 #include "../src/core/core_init.h"
+#include "../src/core/galaxy_array.h"
 #include "../src/io/io_galaxy_output.h"
 
 // Test counter for reporting
@@ -109,8 +110,8 @@ static struct test_context {
     struct params run_params;
     struct halo_data *test_halos;
     struct halo_aux_data *test_haloaux;
-    struct GALAXY *test_galaxies;
-    struct GALAXY *test_halogal;
+    GalaxyArray *test_galaxies;
+    GalaxyArray *test_halogal;
     int num_halos;
     int num_galaxies;
     int max_galaxies;
@@ -288,19 +289,11 @@ static void teardown_test_context(void) {
     }
     
     if (test_ctx.test_galaxies) {
-        for (int i = 0; i < test_ctx.max_galaxies; i++) {
-            free_galaxy_properties(&test_ctx.test_galaxies[i]);
-        }
-        free(test_ctx.test_galaxies);
-        test_ctx.test_galaxies = NULL;
+        galaxy_array_free(&test_ctx.test_galaxies);
     }
     
     if (test_ctx.test_halogal) {
-        for (int i = 0; i < test_ctx.max_galaxies; i++) {
-            free_galaxy_properties(&test_ctx.test_halogal[i]);
-        }
-        free(test_ctx.test_halogal);
-        test_ctx.test_halogal = NULL;
+        galaxy_array_free(&test_ctx.test_halogal);
     }
     
     if (test_ctx.halo_snapshots) {
@@ -415,19 +408,16 @@ static int create_test_halos(void) {
 static int create_test_galaxies(void) {
     printf("Creating test galaxies using construct_galaxies...\n");
     
-    // Allocate galaxy arrays using the same method as SAGE
-    test_ctx.test_galaxies = mymalloc(test_ctx.max_galaxies * sizeof(struct GALAXY));
-    test_ctx.test_halogal = mymalloc(test_ctx.max_galaxies * sizeof(struct GALAXY));
+    // Allocate galaxy arrays using GalaxyArray API
+    test_ctx.test_galaxies = galaxy_array_new();
+    test_ctx.test_halogal = galaxy_array_new();
     
     if (!test_ctx.test_galaxies || !test_ctx.test_halogal) {
         printf("ERROR: Failed to allocate galaxy arrays\n");
         return -1;
     }
     
-    // CRITICAL: Zero-initialize the arrays to prevent garbage values
-    // This is exactly what we fixed in the main SAGE code
-    memset(test_ctx.test_galaxies, 0, test_ctx.max_galaxies * sizeof(struct GALAXY));
-    memset(test_ctx.test_halogal, 0, test_ctx.max_galaxies * sizeof(struct GALAXY));
+    // GalaxyArray handles initialization internally, no manual memset needed
     
     // Build galaxies for each halo using the core SAGE function
     int total_galaxies = 0;
@@ -439,9 +429,9 @@ static int create_test_galaxies(void) {
         printf("  Building galaxies for halo %d...\n", halo_idx);
         
         int result = construct_galaxies(halo_idx, &total_galaxies, &galaxy_counter,
-                                      &test_ctx.max_galaxies, test_ctx.test_halos,
-                                      test_ctx.test_haloaux, &test_ctx.test_galaxies,
-                                      &test_ctx.test_halogal, &test_ctx.run_params);
+                                      test_ctx.test_halos, test_ctx.test_haloaux, 
+                                      test_ctx.test_galaxies, test_ctx.test_halogal, 
+                                      &test_ctx.run_params);
         
         if (result != 0) {
             printf("ERROR: construct_galaxies failed for halo %d with result %d\n", halo_idx, result);
@@ -510,7 +500,7 @@ static void capture_galaxy_snapshots(void) {
     printf("Capturing galaxy property snapshots...\n");
     
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        struct GALAXY *galaxy = &test_ctx.test_halogal[i];
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
         struct test_galaxy_snapshot *snapshot = &test_ctx.galaxy_snapshots[i];
         
         // Capture core properties directly from the galaxy structure
@@ -588,7 +578,7 @@ static bool verify_halo_integrity(int halo_idx) {
 static bool verify_galaxy_integrity(int gal_idx) {
     if (gal_idx >= test_ctx.num_galaxies) return false;
     
-    struct GALAXY *galaxy = &test_ctx.test_halogal[gal_idx];
+    struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, gal_idx);
     struct test_galaxy_snapshot *snapshot = &test_ctx.galaxy_snapshots[gal_idx];
     
     bool integrity_ok = true;
@@ -729,7 +719,7 @@ static void test_halo_to_galaxy_data_preservation(void) {
     
     // Verify that galaxy properties correctly reflect halo properties
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        struct GALAXY *galaxy = &test_ctx.test_halogal[i];
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
         int halo_idx = galaxy->HaloNr;
         
         TEST_ASSERT(halo_idx >= 0 && halo_idx < test_ctx.num_halos,
@@ -805,7 +795,7 @@ static void test_galaxy_pipeline_integrity(void) {
         TEST_ASSERT(integrity, "Galaxy %d should maintain integrity through pipeline", i);
         
         // Additional checks for pipeline corruption
-        struct GALAXY *galaxy = &test_ctx.test_halogal[i];
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
         
         // Check for memory corruption patterns
         TEST_ASSERT(!detect_memory_corruption(&galaxy->GalaxyNr, sizeof(galaxy->GalaxyNr), 
@@ -861,7 +851,7 @@ static void test_output_serialization_accuracy(void) {
     
     // Verify that galaxy indices were generated correctly
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        struct GALAXY *galaxy = &test_ctx.test_halogal[i];
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
         
         // Test that GalaxyIndex is within reasonable bounds
         TEST_ASSERT(galaxy->GalaxyIndex > 0 && galaxy->GalaxyIndex < UINT64_MAX,
@@ -883,9 +873,11 @@ static void test_output_serialization_accuracy(void) {
     // Verify unique galaxy indices (no duplicates)
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
         for (int j = i + 1; j < test_ctx.num_galaxies; j++) {
-            TEST_ASSERT(test_ctx.test_halogal[i].GalaxyIndex != test_ctx.test_halogal[j].GalaxyIndex,
+            struct GALAXY *gal_i = galaxy_array_get(test_ctx.test_halogal, i);
+            struct GALAXY *gal_j = galaxy_array_get(test_ctx.test_halogal, j);
+            TEST_ASSERT(gal_i->GalaxyIndex != gal_j->GalaxyIndex,
                        "Galaxies %d and %d should have unique GalaxyIndex: %" PRIu64, 
-                       i, j, test_ctx.test_halogal[i].GalaxyIndex);
+                       i, j, gal_i->GalaxyIndex);
         }
     }
     
@@ -918,7 +910,7 @@ static void test_memory_corruption_detection(void) {
     // Test 2: Verify corruption detection in galaxy arrays
     bool all_galaxies_clean = true;
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        struct GALAXY *galaxy = &test_ctx.test_halogal[i];
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
         
         // Check for various corruption patterns
         if (galaxy->GalaxyNr == (int32_t)MEMORY_POISON_VALUE_32 ||

@@ -219,17 +219,17 @@ static int find_most_massive_progenitor(const int halonr, struct halo_data *halo
  * their properties while updating their status based on the evolving
  * dark matter structures.
  */
-static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart, const int first_occupied,
-                                         int *galaxycounter, struct halo_data *halos,
-                                         struct halo_aux_data *haloaux, GalaxyArray *temp_fof_galaxies,
-                                         const GalaxyArray *galaxies_prev_snap, struct params *run_params)
+static int copy_galaxies_from_progenitors(const int halonr, GalaxyArray *galaxies_for_halo,
+                                         int32_t *galaxycounter, struct halo_data *halos,
+                                         struct halo_aux_data *haloaux, const GalaxyArray *galaxies_prev_snap,
+                                         struct params *run_params)
 {
     int prog;
     struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)galaxies_prev_snap);
-    bool main_galaxy_inherited = false; // Flag to ensure only one galaxy becomes the new primary.
+
+    int first_occupied = find_most_massive_progenitor(halonr, halos, haloaux);
 
     prog = halos[halonr].FirstProgenitor;
-
     while (prog >= 0) {
         for (int i = 0; i < haloaux[prog].NGalaxies; i++) {
             const struct GALAXY* source_gal = &galaxies_prev_raw[haloaux[prog].FirstGalaxy + i];
@@ -245,82 +245,63 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
             /* Copy extension data (this will just copy flags since the data is accessed on demand) */
             galaxy_extension_copy(&temp_galaxy, source_gal);
 
-            // This is the main galaxy to be inherited. It must be:
-            // 1. From the 'first_occupied' (most massive) progenitor.
-            // 2. The central galaxy of that progenitor (source_gal->Type == 0).
-            // 3. The first such galaxy we have encountered for this new halo.
-            const bool is_main_progenitor_galaxy = (prog == first_occupied && source_gal->Type == 0 && !main_galaxy_inherited);
+            if (temp_galaxy.Type == 0 || temp_galaxy.Type == 1) {
+                if (prog == first_occupied) {
+                    // This galaxy is the descendant of the most massive progenitor.
+                    // It becomes the new central (Type 0) or satellite (Type 1).
+                    const float previousMvir = temp_galaxy.Mvir;
+                    const float previousVvir = temp_galaxy.Vvir;
+                    const float previousVmax = temp_galaxy.Vmax;
 
-            if (is_main_progenitor_galaxy) {
-                main_galaxy_inherited = true; // Set the flag to prevent any other galaxy from becoming a primary.
-
-                // This galaxy becomes the new central or satellite of the descendant halo.
-                const float previousMvir = temp_galaxy.Mvir;
-                const float previousVvir = temp_galaxy.Vvir;
-                const float previousVmax = temp_galaxy.Vmax;
-
-                // Update core halo properties from the new host halo.
-                temp_galaxy.MostBoundID = halos[halonr].MostBoundID;
-                for (int j = 0; j < 3; j++) {
-                    temp_galaxy.Pos[j] = halos[halonr].Pos[j];
-                    temp_galaxy.Vel[j] = halos[halonr].Vel[j];
-                }
-                temp_galaxy.Len = halos[halonr].Len;
-                temp_galaxy.Vmax = halos[halonr].Vmax;
-                temp_galaxy.deltaMvir = get_virial_mass(halonr, halos, run_params) - temp_galaxy.Mvir;
-
-                if (get_virial_mass(halonr, halos, run_params) > temp_galaxy.Mvir) {
-                    temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);
-                    temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);
-                }
-                temp_galaxy.Mvir = get_virial_mass(halonr, halos, run_params);
-
-                // Now, determine if it's a central (Type 0) or satellite (Type 1).
-                if (halonr == halos[halonr].FirstHaloInFOFgroup) {
-                    // The new host is a main FOF halo, so this galaxy becomes the new CENTRAL.
-                    temp_galaxy.MergTime = 999.9;
-                    temp_galaxy.Type = 0;
-                } else {
-                    // The new host is a subhalo, so this galaxy becomes a SATELLITE.
-                    temp_galaxy.infallMvir = previousMvir;
-                    temp_galaxy.infallVvir = previousVvir;
-                    temp_galaxy.infallVmax = previousVmax;
-                    
-                    // Estimate merging time for the new satellite.
-                    double coulomb = log1p(halos[halos[halonr].FirstHaloInFOFgroup].Len / ((double) halos[halonr].Len) );
-                    if (coulomb > 0) {
-                        double sat_mass = get_virial_mass(halonr, halos, run_params);
-                        if(sat_mass > 0) {
-                            temp_galaxy.MergTime = 2.0 * 1.17 * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_velocity(halos[halonr].FirstHaloInFOFgroup, halos, run_params) / (coulomb * run_params->cosmology.G * sat_mass);
-                        } else {
-                            temp_galaxy.MergTime = 999.9;
-                        }
-                    } else {
-                        temp_galaxy.MergTime = 999.9;
+                    temp_galaxy.MostBoundID = halos[halonr].MostBoundID;
+                    for(int j = 0; j < 3; j++) {
+                        temp_galaxy.Pos[j] = halos[halonr].Pos[j];
+                        temp_galaxy.Vel[j] = halos[halonr].Vel[j];
                     }
-                    temp_galaxy.Type = 1;
-                }
-            } else {
-                // ALL other galaxies become ORPHANS (Type 2).
-                // This includes satellites of the main progenitor and all galaxies from other progenitors.
-                const float previousMvir = temp_galaxy.Mvir;
-                const float previousVvir = temp_galaxy.Vvir;
-                const float previousVmax = temp_galaxy.Vmax;
+                    temp_galaxy.Len = halos[halonr].Len;
+                    temp_galaxy.Vmax = halos[halonr].Vmax;
+                    temp_galaxy.deltaMvir = get_virial_mass(halonr, halos, run_params) - temp_galaxy.Mvir;
 
-                temp_galaxy.deltaMvir = -1.0 * temp_galaxy.Mvir;
-                temp_galaxy.Mvir = 0.0;
+                    if (get_virial_mass(halonr, halos, run_params) > temp_galaxy.Mvir) {
+                        temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);
+                        temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);
+                    }
+                    temp_galaxy.Mvir = get_virial_mass(halonr, halos, run_params);
 
-                if (temp_galaxy.MergTime > 999.0 || source_gal->Type == 0) {
-                    temp_galaxy.MergTime = 0.0; // Merge immediately.
-                    temp_galaxy.infallMvir = previousMvir;
-                    temp_galaxy.infallVvir = previousVvir;
-                    temp_galaxy.infallVmax = previousVmax;
+                    if (halonr == halos[halonr].FirstHaloInFOFgroup) {
+                        temp_galaxy.MergTime = 999.9;
+                        temp_galaxy.Type = 0; // Central galaxy of the main FOF halo.
+                    } else {
+                        if (temp_galaxy.Type == 0) { // It was a central, now it's a satellite.
+                            temp_galaxy.infallMvir = previousMvir;
+                            temp_galaxy.infallVvir = previousVvir;
+                            temp_galaxy.infallVmax = previousVmax;
+                        }
+                        // This logic matches the legacy code's merger time calculation.
+                        if (temp_galaxy.Type == 0 || temp_galaxy.MergTime > 999.0) {
+                             double coulomb = log1p(halos[halos[halonr].FirstHaloInFOFgroup].Len / ((double) halos[halonr].Len) );
+                             if (coulomb > 0) {
+                                 double sat_mass = get_virial_mass(halonr, halos, run_params);
+                                 if(sat_mass > 0) {
+                                     temp_galaxy.MergTime = 2.0 * 1.17 * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_velocity(halos[halonr].FirstHaloInFOFgroup, halos, run_params) / (coulomb * run_params->cosmology.G * sat_mass);
+                                 } else {
+                                     temp_galaxy.MergTime = 999.9;
+                                 }
+                             } else {
+                                 temp_galaxy.MergTime = 999.9;
+                             }
+                        }
+                        temp_galaxy.Type = 1; // Satellite galaxy of a subhalo.
+                    }
+                } else {
+                    // This galaxy is NOT from the most massive progenitor, so it must become an orphan.
+                    temp_galaxy.Type = 2;
+                    temp_galaxy.MergTime = 0.0;
                 }
-                temp_galaxy.Type = 2;
             }
-
-            if (galaxy_array_append(temp_fof_galaxies, &temp_galaxy, run_params) < 0) {
-                LOG_ERROR("Failed to append galaxy in copy_galaxies_from_progenitors.");
+            
+            if (galaxy_array_append(galaxies_for_halo, &temp_galaxy, run_params) < 0) {
+                LOG_ERROR("Failed to append galaxy.");
                 free_galaxy_properties(&temp_galaxy);
                 return EXIT_FAILURE;
             }
@@ -329,14 +310,15 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
         prog = halos[prog].NextProgenitor;
     }
 
-    if (galaxy_array_get_count(temp_fof_galaxies) == ngalstart) {
+    if (galaxy_array_get_count(galaxies_for_halo) == 0) {
+        // No progenitors with galaxies. Create a new galaxy if this is a main FOF halo.
         if (halonr == halos[halonr].FirstHaloInFOFgroup) {
             struct GALAXY temp_new_galaxy;
             memset(&temp_new_galaxy, 0, sizeof(struct GALAXY));
             galaxy_extension_initialize(&temp_new_galaxy);
             init_galaxy(0, halonr, galaxycounter, halos, &temp_new_galaxy, run_params);
-            if (galaxy_array_append(temp_fof_galaxies, &temp_new_galaxy, run_params) < 0) {
-                LOG_ERROR("Failed to append new galaxy in copy_galaxies_from_progenitors.");
+            if (galaxy_array_append(galaxies_for_halo, &temp_new_galaxy, run_params) < 0) {
+                LOG_ERROR("Failed to append new galaxy.");
                 free_galaxy_properties(&temp_new_galaxy);
                 return EXIT_FAILURE;
             }
@@ -479,33 +461,43 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
         // progenitor galaxies into our single temporary array.
         int current_fof_halo = fofhalo;
         while(current_fof_halo >= 0) {
-            int status = join_galaxies_of_progenitors(current_fof_halo, temp_fof_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params);
-            if(status != EXIT_SUCCESS) {
-                LOG_ERROR("Failed to join galaxies of progenitors for FOF halo %d", current_fof_halo);
+            if (join_galaxies_of_progenitors(current_fof_halo, temp_fof_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params) != EXIT_SUCCESS) {
                 galaxy_array_free(&temp_fof_galaxies);
                 return EXIT_FAILURE;
             }
             current_fof_halo = halos[current_fof_halo].NextHaloInFOFgroup;
         }
 
-        // SET CENTRALS STEP: Now that all galaxies for the FOF group are collected,
-        // find the single central and set all CentralGal pointers correctly.
+        // FINAL FOF-LEVEL CENTRAL ASSIGNMENT: Find the single Type 0 galaxy and set all CentralGal pointers.
         int ngal_fof = galaxy_array_get_count(temp_fof_galaxies);
         if (ngal_fof > 0) {
             struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(temp_fof_galaxies);
-            if (set_galaxy_centrals(0, ngal_fof, galaxies_raw) != 0) {
-                LOG_ERROR("Failed to set central galaxy for the entire FOF group %d", fofhalo);
-                galaxy_array_free(&temp_fof_galaxies);
-                return EXIT_FAILURE;
+            int central_for_fof = -1;
+            for(int i = 0; i < ngal_fof; ++i) {
+                if(galaxies_raw[i].Type == 0) {
+                    if(central_for_fof != -1) {
+                        LOG_ERROR("Found multiple Type 0 galaxies in a single FOF group. This should not happen.");
+                        galaxy_array_free(&temp_fof_galaxies);
+                        return EXIT_FAILURE;
+                    }
+                    central_for_fof = i;
+                }
+            }
+            // Set all galaxies to point to the central galaxy
+            if(central_for_fof != -1) {
+                for(int i = 0; i < ngal_fof; ++i) {
+                    galaxies_raw[i].CentralGal = central_for_fof;
+                }
+            } else if (ngal_fof > 0) {
+                 LOG_WARNING("No central (Type 0) galaxy found for FOF group %d with %d galaxies.", fofhalo, ngal_fof);
+                 // This might be a valid state if all galaxies are orphans, but let's check if there's any Type 1.
+                 // If so, one of them should have been promoted. If not, they have no central to merge to.
             }
         }
 
-        // EVOLVE STEP: Evolve the entire, correctly structured FOF group.
-        int status = evolve_galaxies(fofhalo, temp_fof_galaxies, numgals, halos, haloaux, galaxies_this_snap, run_params);
-        if(status != EXIT_SUCCESS) {
-            LOG_ERROR("Failed to evolve galaxies in FOF group %d", fofhalo);
+        if (evolve_galaxies(fofhalo, temp_fof_galaxies, numgals, halos, haloaux, galaxies_this_snap, run_params) != EXIT_SUCCESS) {
             galaxy_array_free(&temp_fof_galaxies);
-            return status;
+            return EXIT_FAILURE;
         }
 
         // Clean up the temporary array for this FOF group.
@@ -524,24 +516,40 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
  * and then calling the function to copy galaxies. It operates on the FOF-group-level
  * temporary galaxy array.
  */
-static int join_galaxies_of_progenitors(const int halonr, GalaxyArray* temp_fof_galaxies, int *galaxycounter,
+static int join_galaxies_of_progenitors(const int halonr, GalaxyArray* temp_fof_galaxies, int32_t *galaxycounter,
                                         struct halo_data *halos, struct halo_aux_data *haloaux,
-                                        const GalaxyArray* galaxies_prev_snap, struct params *run_params)
+                                        const GalaxyArray *galaxies_prev_snap, struct params *run_params)
 {
-    int first_occupied = find_most_massive_progenitor(halonr, halos, haloaux);
-    int ngalstart = galaxy_array_get_count(temp_fof_galaxies);
+    GalaxyArray *galaxies_for_this_halo = galaxy_array_new();
+    if (!galaxies_for_this_halo) return EXIT_FAILURE;
 
-    int status = copy_galaxies_from_progenitors(halonr, ngalstart, first_occupied, galaxycounter,
-                                               halos, haloaux, temp_fof_galaxies, galaxies_prev_snap, run_params);
-
+    int status = copy_galaxies_from_progenitors(halonr, galaxies_for_this_halo, galaxycounter,
+                                               halos, haloaux, galaxies_prev_snap, run_params);
     if (status != EXIT_SUCCESS) {
-        LOG_ERROR("Failed to copy galaxies from progenitors for halo %d", halonr);
+        galaxy_array_free(&galaxies_for_this_halo);
         return EXIT_FAILURE;
     }
 
-    // NOTE: The call to set_galaxy_centrals has been REMOVED from this function.
-    // It is now correctly handled at the FOF-group level in construct_galaxies.
+    int ngal_this_halo = galaxy_array_get_count(galaxies_for_this_halo);
+    if (ngal_this_halo > 0) {
+        struct GALAXY *raw_gals = galaxy_array_get_raw_data(galaxies_for_this_halo);
+        if (set_galaxy_centrals(0, ngal_this_halo, raw_gals) != 0) {
+             LOG_ERROR("Failed to set central galaxy for halo %d", halonr);
+             galaxy_array_free(&galaxies_for_this_halo);
+             return EXIT_FAILURE;
+        }
 
+        // Now append these correctly processed galaxies to the main FOF list.
+        for (int i = 0; i < ngal_this_halo; ++i) {
+            if (galaxy_array_append(temp_fof_galaxies, &raw_gals[i], run_params) < 0) {
+                LOG_ERROR("Failed to append galaxy from halo %d to FOF list", halonr);
+                galaxy_array_free(&galaxies_for_this_halo);
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    galaxy_array_free(&galaxies_for_this_halo);
     return EXIT_SUCCESS;
 }
 /* end of join_galaxies_of_progenitors */

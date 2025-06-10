@@ -37,8 +37,12 @@ static int tests_passed = 0;
 } while(0)
 
 // Test parameters structure - minimal required for properties allocation
-// Note: allocate_galaxy_properties doesn't actually use params, so this can be minimal
-static struct params test_params = {0};
+// Initialize basic test params for property allocation
+static struct params test_params = {
+    .simulation = {
+        .NumSnapOutputs = 10  // Required for StarFormationHistory dynamic array
+    }
+};
 
 /**
  * @brief Create a test galaxy with REAL initialized properties
@@ -115,7 +119,7 @@ static void test_safe_vs_unsafe_expansion() {
     // Test UNSAFE expansion (should detect corruption)
     printf("\nTesting UNSAFE galaxy_array_expand...\n");
     struct GALAXY* old_array = galaxies;
-    int result_unsafe = galaxy_array_expand(&galaxies, &capacity, EXPAND_TO);
+    int result_unsafe = galaxy_array_expand(&galaxies, &capacity, EXPAND_TO, NUM_GALAXIES);
     
     if (old_array != galaxies) {
         printf("Array was reallocated from %p to %p\n", (void*)old_array, (void*)galaxies);
@@ -145,7 +149,7 @@ static void test_safe_vs_unsafe_expansion() {
     // Test SAFE expansion
     printf("\nTesting SAFE galaxy_array_expand_safe...\n");
     old_array = galaxies;
-    int result_safe = galaxy_array_expand_safe(&galaxies, &capacity, EXPAND_TO * 2, NUM_GALAXIES);
+    int result_safe = galaxy_array_expand(&galaxies, &capacity, EXPAND_TO * 2, NUM_GALAXIES);
     
     TEST_ASSERT(result_safe == 0, "Safe expansion should return 0 on success");
     TEST_ASSERT(capacity >= EXPAND_TO * 2, "Capacity should be expanded to requested size");
@@ -205,7 +209,7 @@ static void test_massive_reallocation_stress() {
             printf("  Expanding array from capacity %d to accommodate galaxy %d\n", capacity, i);
             
             // Use SAFE expansion
-            int result = galaxy_array_expand_safe(&galaxies, &capacity, num_galaxies + 10, num_galaxies);
+            int result = galaxy_array_expand(&galaxies, &capacity, num_galaxies + 10, num_galaxies);
             TEST_ASSERT(result == 0, "Safe array expansion should succeed");
             
             // Verify ALL existing properties pointers are still valid
@@ -269,7 +273,7 @@ static void test_corruption_detection() {
     
     // Force reallocation with unsafe function
     struct GALAXY* old_array = galaxies;
-    int result = galaxy_array_expand(&galaxies, &capacity, INITIAL_CAPACITY * 4);
+    int result = galaxy_array_expand(&galaxies, &capacity, INITIAL_CAPACITY * 4, NUM_GALAXIES);
     
     if (old_array != galaxies) {
         printf("Array was reallocated - unsafe function should detect corruption\n");
@@ -282,7 +286,7 @@ static void test_corruption_detection() {
         printf("Corruption detection working correctly!\n");
     } else {
         printf("Array was not reallocated - increasing expansion size\n");
-        result = galaxy_array_expand(&galaxies, &capacity, INITIAL_CAPACITY * 10);
+        result = galaxy_array_expand(&galaxies, &capacity, INITIAL_CAPACITY * 10, NUM_GALAXIES);
         if (result == -2) {
             printf("Corruption detection triggered on larger expansion\n");
         }

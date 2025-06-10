@@ -228,7 +228,7 @@ static void test_galaxy_array_expansion(void) {
     // Expand to larger size
     int old_capacity = capacity;
     int target_size = capacity * 2;
-    int result = galaxy_array_expand(&galaxies, &capacity, target_size);
+    int result = galaxy_array_expand(&galaxies, &capacity, target_size, old_capacity);
     
     TEST_ASSERT(result == 0, "galaxy_array_expand should return success (0)");
     TEST_ASSERT(capacity >= old_capacity * 2, "Capacity should increase by at least 2x");
