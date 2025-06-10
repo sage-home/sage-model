@@ -52,7 +52,7 @@
 2025-06-10: [Science] Extension Copy Ordering and Memory Safety Decision  
 - Rationale: Careful analysis of galaxy_extension_copy() placement in copy_galaxies_from_progenitors() revealed that extension copying must occur after core property assignment (HaloNr, dT) but before physics processing. Extension data contains flags and metadata that don't overwrite core properties, but physics modules may depend on both core properties and extension state being properly synchronized.
 - Impact: Current placement (line 248) after HaloNr/dT assignment (lines 244-245) is scientifically correct. Extension copy transfers module-specific metadata without affecting core infrastructure fields. This ordering ensures physics modules see consistent galaxy state with both updated core properties and proper extension flags during subsequent processing phases.
+
 2025-06-11: [Phase 5.2.F.3] Forest-Level Auxiliary Flag Management Decision
 - **Rationale**: "Multiple Type 0 galaxies in single FOF group" error was caused by incorrectly resetting `HaloFlag` and `DoneFlag` per-snapshot instead of per-forest. Legacy SAGE processes one tree at a time with flags persisting across all snapshots in that tree. Refactored architecture processes all snapshots in nested loops but must preserve tree/forest-level flag semantics.
 - **Impact**: Moved flag initialization to forest-level in `sage.c`, kept only `NGalaxies` reset per-snapshot. Added `fof_halonr` parameter threading through `copy_galaxies_from_progenitors()` for consistent FOF identification. Fixed central galaxy logic to use `halonr == fof_halonr`. SAGE now runs to completion successfully with correct single central galaxy per FOF group.
-EOF < /dev/null

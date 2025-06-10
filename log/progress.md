@@ -181,4 +181,3 @@
 - **✅ Validation Success**: SAGE now runs to completion without errors, each FOF group correctly has exactly one central galaxy, no multiple centrals detected, clean execution without debug output noise
 - **🚀 Major Milestone**: This represents completion of core-physics separation with working galaxy evolution pipeline - SAGE refactored architecture now fully functional\!
 - Modified files: src/core/core_build_model.c (function signatures + central galaxy logic), src/core/sage.c (flag initialization fix)
-EOF < /dev/null

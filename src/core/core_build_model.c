@@ -416,9 +416,6 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
 {
     int prog, fofhalo;
 
-    // TODO: Remove debug output once FOF group issue is fully resolved
-    // printf("CONSTRUCT_GALAXIES: Called for halo=%d (FOF=%d) DoneFlag=%d\n", 
-    //        halonr, halos[halonr].FirstHaloInFOFgroup, haloaux[halonr].DoneFlag);
     haloaux[halonr].DoneFlag = 1;
 
     // First, recursively process all progenitors of the current halo.
@@ -436,11 +433,8 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
 
     // Second, process all progenitors of other halos in the same FOF group.
     fofhalo = halos[halonr].FirstHaloInFOFgroup;
-    // TODO: Remove debug output once FOF group issue is fully resolved
-    // printf("PROGENITOR_PHASE: halo=%d fofhalo=%d HaloFlag=%d\n", halonr, fofhalo, haloaux[fofhalo].HaloFlag);
     if(haloaux[fofhalo].HaloFlag == 0) {
         haloaux[fofhalo].HaloFlag = 1;
-        // printf("  -> Set HaloFlag to 1 for FOF %d\n", fofhalo);
         int current_fof_halo = fofhalo; // Use a new variable to iterate
         while(current_fof_halo >= 0) {
             prog = halos[current_fof_halo].FirstProgenitor;
@@ -463,12 +457,9 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
     // and evolve them forward in time together.
 
     fofhalo = halos[halonr].FirstHaloInFOFgroup;
-    // TODO: Remove debug output once FOF group issue is fully resolved
-    // printf("GALAXY_PHASE: halo=%d fofhalo=%d HaloFlag=%d\n", halonr, fofhalo, haloaux[fofhalo].HaloFlag);
     if(haloaux[fofhalo].HaloFlag == 1) {
         // Set the flag to ensure this FOF group is processed only once.
         haloaux[fofhalo].HaloFlag = 2;
-        // printf("  -> Set HaloFlag to 2 for FOF %d (PROCESSING GALAXIES)\n", fofhalo);
 
         // Create a single temporary GalaxyArray for the entire FOF group.
         GalaxyArray *temp_fof_galaxies = galaxy_array_new();
@@ -479,12 +470,8 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
 
         // AGGREGATE STEP: Loop through all halos in the FOF group and join their
         // progenitor galaxies into our single temporary array.
-        // TODO: Remove debug output once FOF group issue is fully resolved
-        // printf("FOF_PROCESSING: Starting FOF group %d\n", fofhalo);
         int current_fof_halo = fofhalo;
         while(current_fof_halo >= 0) {
-            // printf("  Processing halo %d in FOF group %d (is_main_fof: %s)\n", 
-            //        current_fof_halo, fofhalo, (current_fof_halo == fofhalo) ? "YES" : "NO");
             if (join_galaxies_of_progenitors(current_fof_halo, fofhalo, temp_fof_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params) != EXIT_SUCCESS) {
                 galaxy_array_free(&temp_fof_galaxies);
                 return EXIT_FAILURE;
@@ -500,26 +487,11 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
             for(int i = 0; i < ngal_fof; ++i) {
                 if(galaxies_raw[i].Type == 0) {
                     if(central_for_fof != -1) {
-                        // TODO: Remove debug output once FOF group issue is fully resolved
-                        // printf("MULTIPLE_CENTRALS: FOF=%d Already_found_central_at_idx=%d Now_found_another_at_idx=%d\n", fofhalo, central_for_fof, i);
-                        // printf("  FIRST_CENTRAL:  Snap=%d Type=%d HaloNr=%d MostBoundID=%llu Mvir=%.3e Pos=[%.3f,%.3f,%.3f]\n", 
-                        //        galaxies_raw[central_for_fof].SnapNum, galaxies_raw[central_for_fof].Type, 
-                        //        galaxies_raw[central_for_fof].HaloNr, galaxies_raw[central_for_fof].MostBoundID, galaxies_raw[central_for_fof].Mvir,
-                        //        galaxies_raw[central_for_fof].Pos[0], galaxies_raw[central_for_fof].Pos[1], galaxies_raw[central_for_fof].Pos[2]);
-                        // printf("  SECOND_CENTRAL: Snap=%d Type=%d HaloNr=%d MostBoundID=%llu Mvir=%.3e Pos=[%.3f,%.3f,%.3f]\n", 
-                        //        galaxies_raw[i].SnapNum, galaxies_raw[i].Type, 
-                        //        galaxies_raw[i].HaloNr, galaxies_raw[i].MostBoundID, galaxies_raw[i].Mvir,
-                        //        galaxies_raw[i].Pos[0], galaxies_raw[i].Pos[1], galaxies_raw[i].Pos[2]);
                         LOG_ERROR("Found multiple Type 0 galaxies in a single FOF group. This should not happen.");
                         galaxy_array_free(&temp_fof_galaxies);
                         return EXIT_FAILURE;
                     }
                     central_for_fof = i;
-                    // TODO: Remove debug output once FOF group issue is fully resolved
-                    // printf("CENTRAL_FOUND: FOF=%d Snap=%d GalIdx=%d Type=%d HaloNr=%d MostBoundID=%llu Mvir=%.3e Pos=[%.3f,%.3f,%.3f]\n", 
-                    //        fofhalo, galaxies_raw[i].SnapNum, i, galaxies_raw[i].Type, 
-                    //        galaxies_raw[i].HaloNr, galaxies_raw[i].MostBoundID, galaxies_raw[i].Mvir,
-                    //        galaxies_raw[i].Pos[0], galaxies_raw[i].Pos[1], galaxies_raw[i].Pos[2]);
                 }
             }
             // Set all galaxies to point to the central galaxy
