@@ -172,3 +172,13 @@
 - **Code Cleanup**: Removed all debug printf statements and excessive commenting from core files, focusing code on functionality rather than debugging history
 - **Scientific Impact**: Validated that SAGE galaxy array system is scientifically robust with no systematic memory offset issues affecting halo/galaxy structures
 - Modified files: tests/test_galaxy_array.c (test logic fix + cleanup), src/core/core_array_utils.c (debug cleanup), src/core/galaxy_array.c (comment cleanup)
+
+2025-06-11: [Phase 5.2.F.3] **🎉 MAJOR BREAKTHROUGH: FOF Group Bug Resolution & SAGE Execution Success\! 🎉** ✅ COMPLETED
+- **🔥 CRITICAL BUG FIXED**: Resolved "multiple Type 0 galaxies in single FOF group" error that was preventing SAGE from running to completion
+- **🧠 Root Cause Analysis**: Through systematic comparison with legacy code, identified that `HaloFlag` and `DoneFlag` were incorrectly being reset per-snapshot instead of per-forest, causing FOF groups to be processed multiple times
+- **🔧 Three-Part Fix Implementation**: (1) Added `fof_halonr` parameter threading through `copy_galaxies_from_progenitors()` and `join_galaxies_of_progenitors()` for consistent FOF identification, (2) Fixed central galaxy logic to use `halonr == fof_halonr` instead of recalculating FirstHaloInFOFgroup, (3) **KEY FIX**: Moved `HaloFlag`/`DoneFlag` initialization to forest-level (once per forest) instead of snapshot-level in `sage.c`
+- **🏗️ Legacy Architecture Insight**: Discovered that legacy SAGE processes one tree at a time with flags persisting across all snapshots in that tree, while refactored architecture processes all snapshots in nested loops requiring forest-level flag semantics
+- **✅ Validation Success**: SAGE now runs to completion without errors, each FOF group correctly has exactly one central galaxy, no multiple centrals detected, clean execution without debug output noise
+- **🚀 Major Milestone**: This represents completion of core-physics separation with working galaxy evolution pipeline - SAGE refactored architecture now fully functional\!
+- Modified files: src/core/core_build_model.c (function signatures + central galaxy logic), src/core/sage.c (flag initialization fix)
+EOF < /dev/null

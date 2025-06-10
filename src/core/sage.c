@@ -305,6 +305,13 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
 
     HaloAux = mymalloc(nhalos * sizeof(HaloAux[0]));
 
+    // Initialize auxiliary halo data for the entire forest (done once per forest, not per snapshot)
+    for(int i = 0; i < nhalos; i++) {
+        HaloAux[i].HaloFlag = 0;
+        HaloAux[i].DoneFlag = 0;
+        HaloAux[i].NGalaxies = 0;
+    }
+
     // NEW: Double-buffer implementation.
     GalaxyArray* galaxies_prev_snap = galaxy_array_new();
     GalaxyArray* galaxies_this_snap = NULL;
@@ -314,9 +321,8 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         galaxies_this_snap = galaxy_array_new();
 
         // Reset auxiliary halo data for this snapshot's processing.
+        // NOTE: HaloFlag and DoneFlag should NOT be reset per snapshot - they persist across the entire forest
         for(int i = 0; i < nhalos; i++) {
-            HaloAux[i].HaloFlag = 0;
-            HaloAux[i].DoneFlag = 0;
             HaloAux[i].NGalaxies = 0; // Reset this for the new snapshot.
         }
 
