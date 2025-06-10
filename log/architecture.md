@@ -232,21 +232,36 @@ The SAGE refactoring has achieved true runtime functional modularity through:
 
 Architecture is now ready for implementing physics modules as pure add-ons to the core, with comprehensive validation to ensure scientific consistency with the original SAGE implementation.
 
-## Recent Update: Parameters.yaml Metadata-Driven System (June 7, 2025) ✅ COMPLETED
+## Recent Update: Architectural Refactoring Plan Implementation (June 10, 2025) ✅ COMPLETED
 
-The final major architectural component for core-physics separation has been completed with the implementation of the parameters.yaml metadata-driven system.
+The comprehensive architectural refactoring plan has been successfully implemented, transforming SAGE from a monolithic implementation into a modular, physics-agnostic system with complete core-physics separation.
 
-**Key Technical Achievements:**
-- **Complete Parameter Abstraction**: Created parameters.yaml with 45 parameters (22 core, 23 physics) following the same architectural pattern as properties.yaml
-- **Metadata-Driven Code Generation**: Extended generate_property_headers.py to auto-generate parameter system files with type-safe accessors
-- **Core Infrastructure Refactoring**: Eliminated 200+ lines of hardcoded parameter arrays from core_read_parameter_file.c
-- **Type Safety & Validation**: Implemented bounds checking, enum validation, and error handling for all parameter types
-- **Build System Integration**: Automatic generation during compilation with proper dependency tracking
+**Major Architectural Achievements:**
 
-**Architectural Impact:**
-- Core infrastructure now has **zero hardcoded physics parameter knowledge**
-- Maintains existing *.par file format compatibility for users
-- Completes the core-physics separation architecture enabling true runtime functional modularity
-- Sets foundation for physics modules to access parameters through consistent, physics-agnostic interface
+**1. GalaxyArray Memory Management System:**
+- **Safe Dynamic Memory**: Replaced static galaxy arrays with GalaxyArray system providing automatic expansion, bounds checking, and memory corruption prevention
+- **Property-Based Deep Copying**: Implemented deep_copy_galaxy() function using property system to replace dangerous shallow pointer copying
+- **Memory Safety**: Fixed critical memory corruption issues where multiple galaxies shared property pointers, causing segfaults during evolution
 
-The system now demonstrates complete separation between core infrastructure and physics implementations, with both properties and parameters managed through metadata-driven, auto-generated systems.
+**2. Modular Galaxy Evolution Pipeline:**
+- **Four-Phase Execution**: Established HALO → GALAXY → POST → FINAL phase model with configurable physics modules
+- **Physics-Agnostic Core**: Core infrastructure operates independently from physics implementations, enabling runtime module configuration
+- **Extension System Integration**: Added galaxy_extension_copy() for module-specific data while maintaining core-physics separation
+
+**3. Complete Scientific Algorithm Preservation:**
+- **Exact Original Logic**: Maintained scientific accuracy from original SAGE implementation while modernizing infrastructure
+- **Helper Function Extraction**: Separated concerns with find_most_massive_progenitor(), copy_galaxies_from_progenitors(), set_galaxy_centrals()
+- **Memory Safety Without Science Changes**: Resolved memory issues without altering galaxy evolution algorithms
+
+**4. Enhanced Build System and Code Generation:**
+- **Explicit Property Control**: Enhanced build targets (physics-free, full-physics, custom-physics) with automatic code generation
+- **Metadata-Driven Systems**: Both properties.yaml and parameters.yaml drive automatic C code generation
+- **Core-Physics Separation Compliance**: Zero hardcoded physics knowledge in core infrastructure
+
+**Technical Impact:**
+- **Runtime Configurability**: Physics modules can be enabled/disabled through JSON configuration
+- **Memory Robustness**: Comprehensive memory management with automatic cleanup and corruption detection
+- **Scientific Integrity**: Maintains exact scientific results while providing modular, extensible architecture
+- **Development Efficiency**: Modular design enables independent physics module development and testing
+
+The refactored architecture demonstrates complete separation between core galaxy evolution infrastructure and physics implementations, enabling true runtime functional modularity while preserving the scientific accuracy of the original SAGE model.
