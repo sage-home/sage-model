@@ -29,7 +29,6 @@ static int tests_passed = 0;
         return; \
     } else { \
         tests_passed++; \
-        printf("PASS: %s\n", message); \
     } \
 } while(0)
 
@@ -66,6 +65,14 @@ static int create_simple_test_galaxy(struct GALAXY* gal, int galaxy_id) {
     // Add some data to the properties to verify it's preserved.
     if (gal->properties) {
         GALAXY_PROP_Mvir(gal) = (float)galaxy_id * 1.5f;
+        GALAXY_PROP_GalaxyIndex(gal) = (uint64_t)(1000 + galaxy_id);
+        GALAXY_PROP_Type(gal) = galaxy_id % 3;
+        GALAXY_PROP_SnapNum(gal) = 63;
+        GALAXY_PROP_Vmax(gal) = 200.0f + galaxy_id * 10.0f;
+        GALAXY_PROP_Rvir(gal) = 100.0f + galaxy_id * 5.0f;
+        for (int j = 0; j < 3; j++) {
+            GALAXY_PROP_Pos_ELEM(gal, j) = gal->Pos[j];
+        }
     }
     
     return 0;
@@ -126,6 +133,9 @@ static void test_galaxy_array_append() {
     struct GALAXY* retrieved1 = galaxy_array_get(arr, 0);
     TEST_ASSERT(retrieved1 != NULL, "Retrieved galaxy should not be NULL");
     TEST_ASSERT(retrieved1->GalaxyNr == 1, "First galaxy should have GalaxyNr = 1");
+    if (retrieved1->GalaxyIndex != 1001) {
+        printf("DEBUG: Expected GalaxyIndex=1001 but got GalaxyIndex=%llu\n", (unsigned long long)retrieved1->GalaxyIndex);
+    }
     TEST_ASSERT(retrieved1->GalaxyIndex == 1001, "First galaxy should have GalaxyIndex = 1001");
     
     struct GALAXY* retrieved2 = galaxy_array_get(arr, 1);
@@ -187,6 +197,10 @@ static void test_galaxy_array_expansion() {
         TEST_ASSERT(fabs(GALAXY_PROP_Mvir(gal) - (i * 1.5f)) < 1e-5, "Properties data must be preserved");
 
         TEST_ASSERT(gal->GalaxyNr == i, "Galaxy number should be preserved");
+        if (i < 3 && gal->GalaxyIndex != (uint64_t)(1000 + i)) {
+            printf("DEBUG stress test: Expected GalaxyIndex=%llu but got GalaxyIndex=%llu for galaxy %d\n", 
+                   (unsigned long long)(1000 + i), (unsigned long long)gal->GalaxyIndex, i);
+        }
         TEST_ASSERT(gal->GalaxyIndex == (uint64_t)(1000 + i), "Galaxy index should be preserved");
         
         if (i % 200 == 199) {

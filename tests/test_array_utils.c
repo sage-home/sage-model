@@ -19,13 +19,7 @@
 #include <sys/types.h>  // for off_t
 #include <limits.h>     // for INT_MAX
 
-/* Create a minimal GALAXY struct for testing without including core_allvars.h */
-struct GALAXY {
-    int Type;
-    int64_t GalaxyIndex;
-    /* Add only the fields we actually use in tests */
-};
-
+#include "../src/core/core_allvars.h"
 #include "../src/core/core_mymalloc.h"
 #include "../src/core/core_array_utils.h"
 
@@ -242,7 +236,7 @@ static void test_galaxy_array_expansion(void) {
     // Verify values are preserved
     for (int i = 0; i < old_capacity; i++) {
         TEST_ASSERT(galaxies[i].Type == i % 3, "Original Type values should be preserved after expansion");
-        TEST_ASSERT(galaxies[i].GalaxyIndex == (int64_t)(i + 1000), 
+        TEST_ASSERT(galaxies[i].GalaxyIndex == (uint64_t)(i + 1000), 
                    "Original GalaxyIndex values should be preserved after expansion");
     }
 }

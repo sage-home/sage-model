@@ -372,7 +372,7 @@ static int create_test_halos(void) {
         halo->NextHaloInFOFgroup = -1;  // No other halos in FOF group
         
         // Set up halo with specific, verifiable values
-        halo->SnapNum = 63; // Final snapshot
+        halo->SnapNum = 62; // Halo snapshot - galaxies evolve from SnapNum-1 to SnapNum
         halo->Len = 100 + i * 50; // Varying particle counts
         halo->MostBoundID = 1000000 + i; // Unique IDs
         halo->Mvir = 10.0 + i * 5.0; // Varying masses (1e10 Msun/h units)
@@ -452,6 +452,14 @@ static int create_test_galaxies(void) {
         
         printf("    Created %d galaxies (total: %d, galaxy_counter: %d)\n", 
                num_gals_in_halo, total_galaxies, galaxy_counter);
+        
+        // Debug: Check the SnapNum of created galaxies
+        if (num_gals_in_halo > 0) {
+            struct GALAXY *created_gal = galaxy_array_get(test_ctx.test_galaxies, total_galaxies - 1);
+            if (created_gal) {
+                printf("    -> Created galaxy has SnapNum=%d, HaloNr=%d\n", created_gal->SnapNum, created_gal->HaloNr);
+            }
+        }
     }
     
     test_ctx.num_galaxies = total_galaxies;
@@ -500,7 +508,7 @@ static void capture_galaxy_snapshots(void) {
     printf("Capturing galaxy property snapshots...\n");
     
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         struct test_galaxy_snapshot *snapshot = &test_ctx.galaxy_snapshots[i];
         
         // Capture core properties directly from the galaxy structure
@@ -578,7 +586,7 @@ static bool verify_halo_integrity(int halo_idx) {
 static bool verify_galaxy_integrity(int gal_idx) {
     if (gal_idx >= test_ctx.num_galaxies) return false;
     
-    struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, gal_idx);
+    struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, gal_idx);
     struct test_galaxy_snapshot *snapshot = &test_ctx.galaxy_snapshots[gal_idx];
     
     bool integrity_ok = true;
@@ -719,7 +727,7 @@ static void test_halo_to_galaxy_data_preservation(void) {
     
     // Verify that galaxy properties correctly reflect halo properties
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         int halo_idx = galaxy->HaloNr;
         
         TEST_ASSERT(halo_idx >= 0 && halo_idx < test_ctx.num_halos,
@@ -767,8 +775,8 @@ static void test_halo_to_galaxy_data_preservation(void) {
         TEST_ASSERT(galaxy->Type == 0, // Central galaxies in our test
                    "Galaxy %d should be central (Type=0), got %d", i, galaxy->Type);
         
-        TEST_ASSERT(galaxy->SnapNum == 63, // Same as halo SnapNum in physics-free mode  
-                   "Galaxy %d should have SnapNum=63, got %d", i, galaxy->SnapNum);
+        TEST_ASSERT(galaxy->SnapNum == 61, // Galaxies evolve from halo.SnapNum-1 (61) to halo.SnapNum (62)
+                   "Galaxy %d should have SnapNum=61 (halo.SnapNum-1), got %d", i, galaxy->SnapNum);
         
         printf("  Galaxy %d: GalaxyNr=%d, HaloNr=%d, integrity verified\n",
                i, galaxy->GalaxyNr, galaxy->HaloNr);
@@ -795,7 +803,7 @@ static void test_galaxy_pipeline_integrity(void) {
         TEST_ASSERT(integrity, "Galaxy %d should maintain integrity through pipeline", i);
         
         // Additional checks for pipeline corruption
-        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         
         // Check for memory corruption patterns
         TEST_ASSERT(!detect_memory_corruption(&galaxy->GalaxyNr, sizeof(galaxy->GalaxyNr), 
@@ -841,7 +849,7 @@ static void test_output_serialization_accuracy(void) {
                                            test_ctx.test_halos,
                                            &test_ctx.forest_info,
                                            test_ctx.test_haloaux,
-                                           test_ctx.test_halogal,
+                                           galaxy_array_get_raw_data(test_ctx.test_galaxies),
                                            test_ctx.num_galaxies,
                                            &test_ctx.output_ctx,
                                            &test_ctx.run_params);
@@ -851,7 +859,7 @@ static void test_output_serialization_accuracy(void) {
     
     // Verify that galaxy indices were generated correctly
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         
         // Test that GalaxyIndex is within reasonable bounds
         TEST_ASSERT(galaxy->GalaxyIndex > 0 && galaxy->GalaxyIndex < UINT64_MAX,
@@ -873,8 +881,8 @@ static void test_output_serialization_accuracy(void) {
     // Verify unique galaxy indices (no duplicates)
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
         for (int j = i + 1; j < test_ctx.num_galaxies; j++) {
-            struct GALAXY *gal_i = galaxy_array_get(test_ctx.test_halogal, i);
-            struct GALAXY *gal_j = galaxy_array_get(test_ctx.test_halogal, j);
+            struct GALAXY *gal_i = galaxy_array_get(test_ctx.test_galaxies, i);
+            struct GALAXY *gal_j = galaxy_array_get(test_ctx.test_galaxies, j);
             TEST_ASSERT(gal_i->GalaxyIndex != gal_j->GalaxyIndex,
                        "Galaxies %d and %d should have unique GalaxyIndex: %" PRIu64, 
                        i, j, gal_i->GalaxyIndex);
@@ -910,7 +918,7 @@ static void test_memory_corruption_detection(void) {
     // Test 2: Verify corruption detection in galaxy arrays
     bool all_galaxies_clean = true;
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
-        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_halogal, i);
+        struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         
         // Check for various corruption patterns
         if (galaxy->GalaxyNr == (int32_t)MEMORY_POISON_VALUE_32 ||
