@@ -256,47 +256,57 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
                 const float previousVmax = temp_galaxy.Vmax;
 
                 if (prog == first_occupied) {
-                    /* Update properties of this galaxy with physical properties of halo */
-                    temp_galaxy.MostBoundID = halos[halonr].MostBoundID;
+                    /* This deals with the central galaxies of (sub)halos */
+                    if (temp_galaxy.Type == 0 || temp_galaxy.Type == 1) {
 
-                    for (int j = 0; j < 3; j++) {
-                        temp_galaxy.Pos[j] = halos[halonr].Pos[j];
-                        temp_galaxy.Vel[j] = halos[halonr].Vel[j];
-                    }
+                        /* Update properties of this galaxy with physical properties of halo */
+                        temp_galaxy.MostBoundID = halos[halonr].MostBoundID;
 
-                    temp_galaxy.Len = halos[halonr].Len;
-                    temp_galaxy.Vmax = halos[halonr].Vmax;
+                        for (int j = 0; j < 3; j++) {
+                            temp_galaxy.Pos[j] = halos[halonr].Pos[j];
+                            temp_galaxy.Vel[j] = halos[halonr].Vel[j];
+                        }
 
-                    temp_galaxy.deltaMvir = get_virial_mass(halonr, halos, run_params) - temp_galaxy.Mvir;
+                        temp_galaxy.Len = halos[halonr].Len;
+                        temp_galaxy.Vmax = halos[halonr].Vmax;
 
-                    if (get_virial_mass(halonr, halos, run_params) > temp_galaxy.Mvir) {
-                        temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);  /* use the maximum Rvir in model */
-                        temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);  /* use the maximum Vvir in model */
-                    }
-                    temp_galaxy.Mvir = get_virial_mass(halonr, halos, run_params);
+                        temp_galaxy.deltaMvir = get_virial_mass(halonr, halos, run_params) - temp_galaxy.Mvir;
 
-                    if (halonr == halos[halonr].FirstHaloInFOFgroup) {
-                        /* A central galaxy */
-                        temp_galaxy.Type = 0;
+                        if (get_virial_mass(halonr, halos, run_params) > temp_galaxy.Mvir) {
+                            temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);  /* use the maximum Rvir in model */
+                            temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);  /* use the maximum Vvir in model */
+                        }
+                        temp_galaxy.Mvir = get_virial_mass(halonr, halos, run_params);
+
+                        if (halonr == halos[halonr].FirstHaloInFOFgroup) {
+                            /* A central galaxy of the main halo */
+                            temp_galaxy.Type = 0;
+                        } else {
+                            /* A central galaxy of a sub-halo */
+                            if (temp_galaxy.Type == 0)
+                            {
+                                /* Remember the infall properties before becoming a subhalo */
+                                temp_galaxy.infallMvir = previousMvir;
+                                temp_galaxy.infallVvir = previousVvir;
+                                temp_galaxy.infallVmax = previousVmax;
+                            }
+                            temp_galaxy.Type = 1;
+                        }
                     } else {
-                        /* A satellite with subhalo */
-                        if (temp_galaxy.Type == 0) {  /* remember the infall properties before becoming a subhalo */
+                        /* An orphan satellite */
+                        temp_galaxy.deltaMvir = -1.0 * temp_galaxy.Mvir;
+                        temp_galaxy.Mvir = 0.0;
+                        
+                        if (temp_galaxy.Type == 0)
+                        {
+                            /* The galaxy has gone from type 0 to type 2 */
                             temp_galaxy.infallMvir = previousMvir;
                             temp_galaxy.infallVvir = previousVvir;
                             temp_galaxy.infallVmax = previousVmax;
                         }
-                        temp_galaxy.Type = 1;
+
+                        temp_galaxy.Type = 2;
                     }
-                } else {
-                    /* An orphan satellite galaxy - in physics-free mode, just update properties */
-                    temp_galaxy.deltaMvir = -1.0 * temp_galaxy.Mvir;
-                    temp_galaxy.Mvir = 0.0;
-                    
-                    temp_galaxy.infallMvir = previousMvir;
-                    temp_galaxy.infallVvir = previousVvir;
-                    temp_galaxy.infallVmax = previousVmax;
-                    
-                    temp_galaxy.Type = 2;
                 }
             }
 
@@ -336,7 +346,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int ngalstart,
             free_galaxy_properties(&temp_new_galaxy);
         }
     }
-
+    
     return EXIT_SUCCESS;
 }
 
@@ -361,10 +371,11 @@ static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAX
     for (i = ngalstart, centralgal = -1; i < ngal; i++) {
         if (galaxies[i].Type == 0 || galaxies[i].Type == 1) {
             if (centralgal != -1) {
-                LOG_ERROR("Expected to find centralgal=-1, instead centralgal=%d", centralgal);
+                LOG_ERROR("Multiple central galaxies found in halo");
                 return -1;
+            } else {
+                centralgal = i;
             }
-            centralgal = i;
         }
     }
 
@@ -487,13 +498,51 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
       }
 
       /* Third, join galaxies from all progenitors within the FOF group */
+      /* Process each halo in the FOF group individually to maintain scientific accuracy */
       while(fofhalo >= 0) {
-          int status = join_galaxies_of_progenitors(fofhalo, temp_fof_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params);
-          if(status != EXIT_SUCCESS) {
-              LOG_ERROR("Failed to join galaxies of progenitors for FOF halo %d", fofhalo);
+          /* Create temporary array for this individual halo */
+          GalaxyArray *temp_halo_galaxies = galaxy_array_new();
+          if (!temp_halo_galaxies) {
+              LOG_ERROR("Failed to create temporary halo galaxy array for halo %d", fofhalo);
               galaxy_array_free(&temp_fof_galaxies);
               return EXIT_FAILURE;
           }
+
+          /* Process this specific halo's progenitors */
+          int status = join_galaxies_of_progenitors(fofhalo, temp_halo_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params);
+          if(status != EXIT_SUCCESS) {
+              LOG_ERROR("Failed to join galaxies of progenitors for FOF halo %d", fofhalo);
+              galaxy_array_free(&temp_halo_galaxies);
+              galaxy_array_free(&temp_fof_galaxies);
+              return EXIT_FAILURE;
+          }
+
+          /* Set up central galaxy relationships for this specific halo */
+          struct GALAXY* halo_galaxies_raw = galaxy_array_get_raw_data(temp_halo_galaxies);
+          int halo_ngal = galaxy_array_get_count(temp_halo_galaxies);
+          if (halo_ngal > 0) {
+              if (set_galaxy_centrals(0, halo_ngal, halo_galaxies_raw) != 0) {
+                  LOG_ERROR("Failed to set central galaxy relationships for halo %d", fofhalo);
+                  galaxy_array_free(&temp_halo_galaxies);
+                  galaxy_array_free(&temp_fof_galaxies);
+                  return EXIT_FAILURE;
+              }
+
+              /* Copy processed galaxies to the FOF group array */
+              for (int i = 0; i < halo_ngal; i++) {
+                  if (galaxy_array_append(temp_fof_galaxies, &halo_galaxies_raw[i], run_params) < 0) {
+                      LOG_ERROR("Failed to append galaxy to FOF group array");
+                      galaxy_array_free(&temp_halo_galaxies);
+                      galaxy_array_free(&temp_fof_galaxies);
+                      return EXIT_FAILURE;
+                  }
+              }
+          }
+
+          /* Clean up this halo's temporary array */
+          galaxy_array_free(&temp_halo_galaxies);
+
+          /* Move to next halo in FOF group */
           fofhalo = halos[fofhalo].NextHaloInFOFgroup;
       }
 
@@ -549,6 +598,7 @@ static int join_galaxies_of_progenitors(const int halonr, GalaxyArray* temp_fof_
     /* Find the most massive progenitor with galaxies */
     first_occupied = find_most_massive_progenitor(halonr, halos, haloaux);
 
+
     /* Record starting galaxy count for this halo */
     int ngalstart = galaxy_array_get_count(temp_fof_galaxies);
 
@@ -560,14 +610,8 @@ static int join_galaxies_of_progenitors(const int halonr, GalaxyArray* temp_fof_
         return EXIT_FAILURE;
     }
 
-    /* Set up central galaxy relationships */
-    struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(temp_fof_galaxies);
+    /* Central galaxy relationships will be set by the caller */
     int ngal_end = galaxy_array_get_count(temp_fof_galaxies);
-    if (set_galaxy_centrals(ngalstart, ngal_end, galaxies_raw) != 0) {
-        LOG_ERROR("Failed to set central galaxy relationships for halo %d", halonr);
-        return EXIT_FAILURE;
-    }
-    
     LOG_DEBUG("Joined progenitor galaxies for halo %d: ngal=%d", halonr, ngal_end);
 
     return EXIT_SUCCESS;
