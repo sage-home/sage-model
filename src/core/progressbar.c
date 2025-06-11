@@ -90,18 +90,18 @@ void finish_myprogressbar(FILE *stream, int *interrupted)
   if (SMALLPRINTSTEP > 0.0) {
     if (*interrupted == 0) {
       if (percent < 100.0) {
-        fprintf(stream, "100%% done.");
+        fprintf(stream, "100%% DONE");
       } else {
-        fprintf(stream, " done.");
+        fprintf(stream, " DONE");
       }
     } else {
-      fprintf(stream, "\n%s done.", PROGRESSBARSTRING);
+      fprintf(stream, "\n%s DONE", PROGRESSBARSTRING);
       *interrupted = 0;
     }
   } else {
-    fprintf(stream, " done.");
+    fprintf(stream, " DONE");
   }
-  fprintf(stream, " Time taken = %s\n", time_string);
+  fprintf(stream, " [time taken = %s]\n", time_string);
   free(time_string);
 
   beg_of_string_index = 0;
