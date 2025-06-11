@@ -119,7 +119,7 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
     galaxy_properties_t **saved_properties = NULL;
     if (num_valid_galaxies > 0) {
         // Allocate temporary storage for complete galaxy structures
-        temp_galaxies = mymalloc(num_valid_galaxies * sizeof(struct GALAXY));
+        temp_galaxies = mymalloc_full(num_valid_galaxies * sizeof(struct GALAXY), "ArrayUtils_temp_backup");
         if (!temp_galaxies) {
             LOG_ERROR("Failed to allocate temporary galaxy backup array");
             return -1;
@@ -188,7 +188,7 @@ int galaxy_array_expand(struct GALAXY **array, int *current_capacity, int min_ne
     // For testing mode, fall back to simple memcpy (no properties to worry about)
     struct GALAXY *temp_galaxies = NULL;
     if (num_valid_galaxies > 0) {
-        temp_galaxies = mymalloc(num_valid_galaxies * sizeof(struct GALAXY));
+        temp_galaxies = mymalloc_full(num_valid_galaxies * sizeof(struct GALAXY), "ArrayUtils_testing_backup");
         if (!temp_galaxies) {
             LOG_ERROR("Failed to allocate temporary galaxy backup array");
             return -1;

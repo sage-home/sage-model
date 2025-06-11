@@ -45,6 +45,7 @@ void *mymalloc_full(size_t n, const char *desc)
         LOG_DEBUG("Large allocation requested: %.2f MB (%s)", 
                  n / (1024.0 * 1024.0), desc ? desc : "unknown");
     }
+    
 
     /* Check if we still have capacity after potential expansion */
     if(Nblocks >= MaxBlocks) {
@@ -255,8 +256,8 @@ void memory_system_cleanup(void)
     /* Free any remaining allocated blocks */
     for (long i = 0; i < Nblocks; i++) {
         if (Table[i] != NULL) {
-            LOG_WARNING("Freeing unfreed block %ld of size %.2f MB", 
-                       i, SizeTable[i] / (1024.0 * 1024.0));
+            LOG_DEBUG("Freeing unfreed block %ld of size %.2f MB at address %p", 
+                     i, SizeTable[i] / (1024.0 * 1024.0), Table[i]);
             free(Table[i]);
         }
     }

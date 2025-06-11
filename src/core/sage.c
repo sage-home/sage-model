@@ -206,6 +206,9 @@ cleanup:
     /* sage is done running -> do the cleanup */
     cleanup_forests_io(run_params->io.TreeType, &forest_info);
     
+    /* Clean up the I/O interface system */
+    io_cleanup();
+    
     /* Call comprehensive cleanup function */
     cleanup(run_params);
     

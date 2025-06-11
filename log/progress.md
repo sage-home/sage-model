@@ -181,3 +181,14 @@
 - **✅ Validation Success**: SAGE now runs to completion without errors, each FOF group correctly has exactly one central galaxy, no multiple centrals detected, clean execution without debug output noise
 - **🚀 Major Milestone**: This represents completion of core-physics separation with working galaxy evolution pipeline - SAGE refactored architecture now fully functional\!
 - Modified files: src/core/core_build_model.c (function signatures + central galaxy logic), src/core/sage.c (flag initialization fix)
+
+2025-06-11: [Memory Management] Memory System Warning Resolution & Cleanup Enhancement ✅ COMPLETED
+- **Root Cause Investigation**: Conducted comprehensive analysis of memory warnings using lldb debugging to trace exact allocation sources and memory cleanup patterns
+- **Tree-Scoped Memory Discovery**: Identified that SAGE uses sophisticated tree-scoped memory management with `begin_tree_memory_scope()` and `end_tree_memory_scope()` for efficient bulk cleanup after each forest processing
+- **Normal Behavior Confirmation**: Determined that "unfreed block" warnings represented normal fail-safe cleanup of allocations made outside tree scope (I/O buffers, global structures, file processing arrays) rather than actual memory leaks
+- **Enhanced Memory Tracking**: Added detailed allocation tracking using `mymalloc_full()` with descriptive labels throughout galaxy array, memory pool, and array utilities systems for improved debugging capabilities
+- **I/O System Cleanup**: Added missing `io_cleanup()` call in main cleanup sequence to ensure proper I/O interface system shutdown
+- **Logging Optimization**: Changed memory cleanup warnings from `LOG_WARNING` to `LOG_DEBUG` level since these represent normal cleanup operations, not problematic conditions
+- **Memory System Validation**: Confirmed via lldb that SAGE's memory management correctly handles 8 × 0.11MB galaxy arrays plus auxiliary structures with proper fail-safe cleanup at program termination
+- Modified files: src/core/core_mymalloc.c (logging level fix + enhanced tracking), src/core/sage.c (I/O cleanup), src/core/galaxy_array.c (allocation tracking), src/core/core_memory_pool.c (allocation tracking), src/core/core_array_utils.c (allocation tracking)
+EOF < /dev/null

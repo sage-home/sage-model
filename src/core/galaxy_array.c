@@ -96,7 +96,7 @@ static int galaxy_array_expand(GalaxyArray* arr) {
     // 1. Before realloc, save all valid `properties` pointers (only if we have existing galaxies).
     galaxy_properties_t** temp_props = NULL;
     if (arr->count > 0) {
-        temp_props = mymalloc(arr->count * sizeof(galaxy_properties_t*));
+        temp_props = mymalloc_full(arr->count * sizeof(galaxy_properties_t*), "GalaxyArray_temp_props");
         if (!temp_props) {
             LOG_ERROR("Failed to allocate temporary properties pointer array for expansion.");
             return -1;
@@ -110,7 +110,7 @@ static int galaxy_array_expand(GalaxyArray* arr) {
     struct GALAXY* new_array;
     if (arr->galaxies == NULL) {
         // First allocation
-        new_array = mymalloc(new_capacity * sizeof(struct GALAXY));
+        new_array = mymalloc_full(new_capacity * sizeof(struct GALAXY), "GalaxyArray_expansion");
     } else {
         // Reallocation of existing array
         new_array = myrealloc(arr->galaxies, new_capacity * sizeof(struct GALAXY));
@@ -138,7 +138,7 @@ static int galaxy_array_expand(GalaxyArray* arr) {
 
 // API Implementation
 GalaxyArray* galaxy_array_new(void) {
-    GalaxyArray* arr = mymalloc(sizeof(GalaxyArray));
+    GalaxyArray* arr = mymalloc_full(sizeof(GalaxyArray), "GalaxyArray_struct");
     if (!arr) {
         LOG_ERROR("Failed to allocate GalaxyArray structure");
         return NULL;

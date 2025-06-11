@@ -69,7 +69,7 @@ struct memory_pool* galaxy_pool_create(size_t initial_capacity, size_t block_siz
     pool->peak_usage = 0;
     
     /* Allocate blocks array */
-    pool->blocks = (struct GALAXY **) mymalloc(num_blocks * sizeof(struct GALAXY *));
+    pool->blocks = (struct GALAXY **) mymalloc_full(num_blocks * sizeof(struct GALAXY *), "MemoryPool_blocks_array");
     if (pool->blocks == NULL) {
         LOG_ERROR("Failed to allocate block array for memory pool");
         myfree(pool);
@@ -77,7 +77,7 @@ struct memory_pool* galaxy_pool_create(size_t initial_capacity, size_t block_siz
     }
     
     /* Allocate free list array */
-    pool->free_list = (struct GALAXY **) mymalloc(pool->free_list_capacity * sizeof(struct GALAXY *));
+    pool->free_list = (struct GALAXY **) mymalloc_full(pool->free_list_capacity * sizeof(struct GALAXY *), "MemoryPool_free_list");
     if (pool->free_list == NULL) {
         LOG_ERROR("Failed to allocate free list array for memory pool");
         myfree(pool->blocks);
@@ -87,7 +87,7 @@ struct memory_pool* galaxy_pool_create(size_t initial_capacity, size_t block_siz
     
     /* Allocate initial blocks */
     for (size_t i = 0; i < num_blocks; i++) {
-        pool->blocks[i] = (struct GALAXY *) mymalloc(block_size * sizeof(struct GALAXY));
+        pool->blocks[i] = (struct GALAXY *) mymalloc_full(block_size * sizeof(struct GALAXY), "MemoryPool_galaxy_block");
         if (pool->blocks[i] == NULL) {
             /* Clean up already allocated blocks */
             for (size_t j = 0; j < i; j++) {
@@ -175,7 +175,7 @@ struct GALAXY* galaxy_pool_alloc(struct memory_pool* pool) {
         pool->blocks = new_blocks;
         
         /* Allocate new block */
-        pool->blocks[new_block_idx] = (struct GALAXY *) mymalloc(pool->block_size * sizeof(struct GALAXY));
+        pool->blocks[new_block_idx] = (struct GALAXY *) mymalloc_full(pool->block_size * sizeof(struct GALAXY), "MemoryPool_expansion_block");
         if (pool->blocks[new_block_idx] == NULL) {
             LOG_ERROR("Failed to allocate new block for memory pool");
             return NULL;
@@ -403,7 +403,7 @@ struct GALAXY* galaxy_alloc(void) {
     }
     
     /* Allocate with mymalloc */
-    struct GALAXY *galaxy = (struct GALAXY *) mymalloc(sizeof(struct GALAXY));
+    struct GALAXY *galaxy = (struct GALAXY *) mymalloc_full(sizeof(struct GALAXY), "MemoryPool_fallback_galaxy");
     if (galaxy != NULL) {
         /* Initialize extensions */
         galaxy->extension_data = NULL;
