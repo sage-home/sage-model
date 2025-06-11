@@ -1,6 +1,7 @@
 #include "save_gals_hdf5_internal.h"
 #include "../core/core_logging.h"
 #include "../core/core_module_system.h"
+#include "../core/core_parameters.h"
 
 // Function prototypes for the components were moved to the internal header
 
@@ -173,6 +174,81 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
     return EXIT_SUCCESS;
 }
 
+// Helper function to get parameter value using the auto-generated parameter accessor functions
+static int32_t write_parameter_value_to_hdf5(hid_t group_id, const char *param_name, parameter_id_t param_id, 
+                                              const char *param_type, const struct params *run_params) {
+    // Use the auto-generated parameter accessor functions instead of hardcoded paths
+    if (strcmp(param_type, "string") == 0) {
+        const char *str_val = get_string_parameter(run_params, param_id, "");
+        if (str_val == NULL) {
+            // Handle NULL return - this should not happen with default value
+            LOG_WARNING("get_string_parameter returned NULL for parameter '%s', using empty string", param_name);
+            str_val = "";
+        }
+        if (strlen(str_val) > 0) {
+            size_t str_len = strlen(str_val);
+            CREATE_STRING_ATTRIBUTE(group_id, param_name, str_val, str_len);
+        } else {
+            // Handle empty strings with minimum length of 1
+            CREATE_STRING_ATTRIBUTE(group_id, param_name, "", 1);
+        }
+    } 
+    else if (strcmp(param_type, "int") == 0) {
+        int int_val = get_int_parameter(run_params, param_id, 0);
+        CREATE_SINGLE_ATTRIBUTE(group_id, param_name, int_val, H5T_NATIVE_INT);
+    }
+    else if (strcmp(param_type, "double") == 0) {
+        double double_val = get_double_parameter(run_params, param_id, 0.0);
+        CREATE_SINGLE_ATTRIBUTE(group_id, param_name, double_val, H5T_NATIVE_DOUBLE);
+    }
+    else if (strcmp(param_type, "bool") == 0) {
+        // Treat boolean parameters as integers for HDF5
+        int int_val = get_int_parameter(run_params, param_id, 0);
+        CREATE_SINGLE_ATTRIBUTE(group_id, param_name, int_val, H5T_NATIVE_INT);
+    }
+    else if (strcmp(param_type, "int[]") == 0) {
+        // Special handling for array parameters like ListOutputSnaps
+        if (strcmp(param_name, "ListOutputSnaps") == 0) {
+            // This is handled separately as a dataset in write_header, skip here
+            return EXIT_SUCCESS;
+        }
+    }
+    else {
+        LOG_WARNING("Unsupported parameter type '%s' for parameter '%s', skipping", param_type, param_name);
+    }
+    
+    return EXIT_SUCCESS;
+}
+
+// Write all core parameters dynamically using the parameter metadata
+static int32_t write_core_parameters_to_hdf5(hid_t runtime_group_id, hid_t sim_group_id, const struct params *run_params) {
+    extern parameter_meta_t PARAMETER_META[PARAM_COUNT];
+    
+    for (parameter_id_t param_id = 0; param_id < PARAM_COUNT; param_id++) {
+        const parameter_meta_t *meta = &PARAMETER_META[param_id];
+        
+        // Only process core parameters (skip physics parameters - they have their own system)
+        if (strcmp(meta->category, "core") != 0) {
+            continue;
+        }
+        
+        // Determine which group to write to (most go to runtime, some to sim)
+        hid_t target_group_id = runtime_group_id;
+        if (strstr(meta->struct_field, "simulation.") == meta->struct_field ||
+            strstr(meta->struct_field, "cosmology.") == meta->struct_field) {
+            target_group_id = sim_group_id;
+        }
+        
+        // Use the dynamic parameter writer that leverages auto-generated accessors
+        int32_t status = write_parameter_value_to_hdf5(target_group_id, meta->name, param_id, meta->type, run_params);
+        if (status != EXIT_SUCCESS) {
+            return status;
+        }
+    }
+    
+    return EXIT_SUCCESS;
+}
+
 // Write all parameters dynamically using the module parameter registries
 static int32_t write_physics_parameters_to_hdf5(hid_t runtime_group_id, const struct physics_params *physics __attribute__((unused))) {
     // Use the module system's parameter registries to write all registered parameters
@@ -251,24 +327,13 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
                                     "Failed to create the Header/Miscgroup.\nThe file ID was %d\n",
                                     (int32_t) file_id);
 
-    // Simulation information  
-    // Handle empty strings by using a minimum length of 1
-    size_t sim_dir_len = strlen(run_params->io.SimulationDir);
-    if (sim_dir_len == 0) sim_dir_len = 1;
-    CREATE_STRING_ATTRIBUTE(sim_group_id, "SimulationDir", &run_params->io.SimulationDir, sim_dir_len);
+    // Write all core parameters dynamically from parameters.yaml metadata
+    // This replaces the previous hardcoded parameter sections and ensures
+    // all parameters from parameters.yaml are automatically included
+    write_core_parameters_to_hdf5(runtime_group_id, sim_group_id, run_params);
     
-    size_t snap_list_len = strlen(run_params->io.FileWithSnapList);
-    if (snap_list_len == 0) snap_list_len = 1;
-    CREATE_STRING_ATTRIBUTE(sim_group_id, "FileWithSnapList", &run_params->io.FileWithSnapList, snap_list_len);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "LastSnapshotNr", run_params->simulation.LastSnapshotNr, H5T_NATIVE_INT);
+    // SimMaxSnaps is not in parameters.yaml - write it manually
     CREATE_SINGLE_ATTRIBUTE(sim_group_id, "SimMaxSnaps", run_params->simulation.SimMaxSnaps, H5T_NATIVE_INT);
-
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_matter", run_params->cosmology.Omega, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "omega_lambda", run_params->cosmology.OmegaLambda, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "particle_mass", run_params->cosmology.PartMass, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "hubble_h", run_params->cosmology.Hubble_h, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "num_simulation_tree_files", run_params->io.NumSimulationTreeFiles, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(sim_group_id, "box_size", run_params->cosmology.BoxSize, H5T_NATIVE_DOUBLE);
 
     // If we're writing the header attributes for the master file, we don't have knowledge of trees
     if (forest_info != NULL) {
@@ -288,19 +353,8 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     CREATE_STRING_ATTRIBUTE(misc_group_id, "sage_version", &SAGE_VERSION, strlen(SAGE_VERSION));
     CREATE_STRING_ATTRIBUTE(misc_group_id, "git_SHA_reference", &GITREF_STR, strlen(GITREF_STR));
 
-    // Output file info
-    CREATE_STRING_ATTRIBUTE(runtime_group_id, "FileNameGalaxies", &run_params->io.FileNameGalaxies, strlen(run_params->io.FileNameGalaxies));
-    CREATE_STRING_ATTRIBUTE(runtime_group_id, "OutputDir", &run_params->io.OutputDir, strlen(run_params->io.OutputDir));
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FirstFile", run_params->io.FirstFile, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "LastFile", run_params->io.LastFile, H5T_NATIVE_INT);
-
     // Dynamic physics parameters - uses existing parameter system to write all available physics parameters
     write_physics_parameters_to_hdf5(runtime_group_id, &run_params->physics);
-
-    // Misc runtime Parameters
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitLength_in_cm", run_params->units.UnitLength_in_cm, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitMass_in_g", run_params->units.UnitMass_in_g, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "UnitVelocity_in_cm_per_s", run_params->units.UnitVelocity_in_cm_per_s, H5T_NATIVE_DOUBLE);
 
     // Redshift at each snapshot
     hsize_t dims[1];

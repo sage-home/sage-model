@@ -1978,7 +1978,22 @@ def generate_parameter_accessor_implementations(parameters):
             param_name = param['name'].replace('-', '_').replace('.', '_').upper()
             struct_field = param.get('struct_field', '')
             if struct_field:
-                impl += f"""
+                # Check if this is an enum parameter requiring special handling
+                if param_type == 'string' and param.get('enum_type', False) and param.get('enum_values'):
+                    # Generate enum-to-string conversion
+                    impl += f"""
+        case PARAM_{param_name}:
+            /* Convert enum to string representation */
+            switch (params->{struct_field}) {{"""
+                    for enum_val in param['enum_values']:
+                        impl += f"""
+                case {enum_val}: return "{enum_val}";"""
+                    impl += f"""
+                default: return default_val;
+            }}"""
+                else:
+                    # Regular field access
+                    impl += f"""
         case PARAM_{param_name}:
             {return_stmt} params->{struct_field};"""
         
