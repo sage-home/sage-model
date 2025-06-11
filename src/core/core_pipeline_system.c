@@ -35,7 +35,18 @@ static int pipeline_execute_phase_with_executor(
     /* Set the execution phase in the context */
     context->execution_phase = phase;
 
-    LOG_DEBUG("Executing pipeline '%s' for phase %d", pipeline->name, phase);
+    /* Interval-based debug logging (first 5 executions only) */
+    static int debug_count_executions = 0;
+    debug_count_executions++;
+    if (debug_count_executions <= 5) {
+        if (debug_count_executions == 5) {
+            LOG_DEBUG("Executing pipeline '%s' for phase %d (execution #%d - further messages suppressed)", 
+                     pipeline->name, phase, debug_count_executions);
+        } else {
+            LOG_DEBUG("Executing pipeline '%s' for phase %d (execution #%d)", 
+                     pipeline->name, phase, debug_count_executions);
+        }
+    }
 
     /* Execute each enabled step that supports this phase */
     for (int i = 0; i < pipeline->num_steps; i++) {
@@ -79,7 +90,16 @@ static int pipeline_execute_phase_with_executor(
         }
     }
 
-    LOG_DEBUG("Pipeline phase %d execution completed", phase);
+    /* Interval-based debug logging (first 5 completions only) */
+    static int debug_count_completions = 0;
+    debug_count_completions++;
+    if (debug_count_completions <= 5) {
+        if (debug_count_completions == 5) {
+            LOG_DEBUG("Pipeline phase %d execution completed (completion #%d - further messages suppressed)", phase, debug_count_completions);
+        } else {
+            LOG_DEBUG("Pipeline phase %d execution completed (completion #%d)", phase, debug_count_completions);
+        }
+    }
     return 0;
 }
 
@@ -616,7 +636,16 @@ void pipeline_context_init(
     /* Initialize shared data */
     context->shared_data.num_entries = 0;
 
-    LOG_DEBUG("Pipeline context initialized");
+    /* Interval-based debug logging (first 5 initializations only) */
+    static int context_init_debug_count = 0;
+    context_init_debug_count++;
+    if (context_init_debug_count <= 5) {
+        if (context_init_debug_count == 5) {
+            LOG_DEBUG("Pipeline context initialized (init #%d - further messages suppressed)", context_init_debug_count);
+        } else {
+            LOG_DEBUG("Pipeline context initialized (init #%d)", context_init_debug_count);
+        }
+    }
 }
 
 /**
@@ -661,8 +690,19 @@ int pipeline_init_property_serialization(
     }
 
     struct property_serialization_context *prop_ctx = (struct property_serialization_context *)context->prop_ctx;
-    LOG_DEBUG("Initialized property serialization context with %d properties",
-             prop_ctx->num_properties);
+    
+    /* Interval-based debug logging (first 5 initializations only) */
+    static int prop_serialization_init_debug_count = 0;
+    prop_serialization_init_debug_count++;
+    if (prop_serialization_init_debug_count <= 5) {
+        if (prop_serialization_init_debug_count == 5) {
+            LOG_DEBUG("Initialized property serialization context with %d properties (init #%d - further messages suppressed)",
+                     prop_ctx->num_properties, prop_serialization_init_debug_count);
+        } else {
+            LOG_DEBUG("Initialized property serialization context with %d properties (init #%d)",
+                     prop_ctx->num_properties, prop_serialization_init_debug_count);
+        }
+    }
     return 0;
 }
 
@@ -740,7 +780,7 @@ static int pipeline_execute_step(
                     module_type_name(step->type), step->step_name);
             error_log_count++;
         } else if (error_log_count == 5) {
-            LOG_ERROR("Further placeholder execution errors will be suppressed.");
+            LOG_ERROR("Further placeholder execution errors (further messages suppressed)");
             error_log_count++;
         }
         logged_error_types[step->type] = true;

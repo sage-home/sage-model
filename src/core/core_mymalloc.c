@@ -256,8 +256,16 @@ void memory_system_cleanup(void)
     /* Free any remaining allocated blocks */
     for (long i = 0; i < Nblocks; i++) {
         if (Table[i] != NULL) {
-            LOG_DEBUG("Freeing unfreed block %ld of size %.2f MB at address %p", 
-                     i, SizeTable[i] / (1024.0 * 1024.0), Table[i]);
+            /* Reduce noise - only log first few unfreed blocks */
+            static int unfreed_logged = 0;
+            if (unfreed_logged < 5) {
+                LOG_DEBUG("Freeing unfreed block %ld of size %.2f MB at address %p",
+                         i, SizeTable[i] / (1024.0 * 1024.0), Table[i]);
+                unfreed_logged++;
+            } else if (unfreed_logged == 5) {
+                LOG_DEBUG("Additional unfreed blocks exist (further messages suppressed)");
+                unfreed_logged++;
+            }
             free(Table[i]);
         }
     }
@@ -342,13 +350,24 @@ void check_memory_pressure_and_expand(void)
 /* Tree-scoped memory management */
 void begin_tree_memory_scope(void)
 {
+    static long debug_counter = 0;
+    
     if (!memory_system_initialized) {
         LOG_WARNING("Memory system not initialized for tree scope");
         return;
     }
     
     TreeScopeStart = Nblocks;
-    LOG_DEBUG("Starting tree memory scope at block %ld", TreeScopeStart);
+    
+    /* Interval-based debug logging (first 5 trees only) */
+    debug_counter++;
+    if (debug_counter <= 5) {
+        if (debug_counter == 5) {
+            LOG_DEBUG("Starting tree memory scope at block %ld (further messages suppressed)", TreeScopeStart);
+        } else {
+            LOG_DEBUG("Starting tree memory scope at block %ld", TreeScopeStart);
+        }
+    }
 }
 
 void end_tree_memory_scope(void)
@@ -377,8 +396,18 @@ void end_tree_memory_scope(void)
         Nblocks--;
     }
     
-    LOG_DEBUG("Freed %ld blocks (%.2f MB) in tree scope cleanup", 
-             blocks_to_free, memory_to_free / (1024.0 * 1024.0));
+    /* Interval-based debug logging (first 5 trees only) */
+    static long cleanup_debug_counter = 0;
+    cleanup_debug_counter++;
+    if (cleanup_debug_counter <= 5) {
+        if (cleanup_debug_counter == 5) {
+            LOG_DEBUG("Freed %ld blocks (%.2f MB) in tree scope cleanup (further messages suppressed)", 
+                     blocks_to_free, memory_to_free / (1024.0 * 1024.0));
+        } else {
+            LOG_DEBUG("Freed %ld blocks (%.2f MB) in tree scope cleanup", 
+                     blocks_to_free, memory_to_free / (1024.0 * 1024.0));
+        }
+    }
 }
 
 /* Enhanced memory statistics */

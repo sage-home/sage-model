@@ -151,8 +151,18 @@ static int register_scalar_property(property_id_t property_id,
     /* Store mapping */
     standard_property_to_extension_id[property_id] = extension_id;
     
-    LOG_DEBUG("Registered property '%s' (ID %d) with extension ID %d", 
-             name, property_id, extension_id);
+    /* Interval-based debug logging (first 5 scalar properties only) */
+    static int debug_count_scalar = 0;
+    debug_count_scalar++;
+    if (debug_count_scalar <= 5) {
+        if (debug_count_scalar == 5) {
+            LOG_DEBUG("Registered property '%s' (ID %d) with extension ID %d (further messages suppressed)", 
+                     name, property_id, extension_id);
+        } else {
+            LOG_DEBUG("Registered property '%s' (ID %d) with extension ID %d", 
+                     name, property_id, extension_id);
+        }
+    }
     
     return 0;
 }
@@ -218,8 +228,18 @@ static int register_fixed_array_property(property_id_t property_id,
     /* Store mapping */
     standard_property_to_extension_id[property_id] = extension_id;
     
-    LOG_DEBUG("Registered array property '%s' (ID %d) with extension ID %d", 
-             name, property_id, extension_id);
+    /* Interval-based debug logging (first 5 array properties only) */
+    static int debug_count_array = 0;
+    debug_count_array++;
+    if (debug_count_array <= 5) {
+        if (debug_count_array == 5) {
+            LOG_DEBUG("Registered array property '%s' (ID %d) with extension ID %d (further messages suppressed)", 
+                     name, property_id, extension_id);
+        } else {
+            LOG_DEBUG("Registered array property '%s' (ID %d) with extension ID %d", 
+                     name, property_id, extension_id);
+        }
+    }
     
     return 0;
 }
@@ -281,8 +301,18 @@ static int register_dynamic_array_property(property_id_t property_id,
     /* Store mapping */
     standard_property_to_extension_id[property_id] = extension_id;
     
-    LOG_DEBUG("Registered dynamic array property '%s' (ID %d) with extension ID %d", 
-             name, property_id, extension_id);
+    /* Interval-based debug logging (first 5 dynamic array properties only) */
+    static int debug_count_dynamic = 0;
+    debug_count_dynamic++;
+    if (debug_count_dynamic <= 5) {
+        if (debug_count_dynamic == 5) {
+            LOG_DEBUG("Registered dynamic array property '%s' (ID %d) with extension ID %d (further messages suppressed)", 
+                     name, property_id, extension_id);
+        } else {
+            LOG_DEBUG("Registered dynamic array property '%s' (ID %d) with extension ID %d", 
+                     name, property_id, extension_id);
+        }
+    }
     
     return 0;
 }

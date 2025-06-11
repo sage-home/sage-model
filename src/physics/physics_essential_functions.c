@@ -118,7 +118,16 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
             GALAXY_PROP_Spin_ELEM(&galaxies[p], j) = 0.0; // Default value
         }
         
-        LOG_DEBUG("Successfully initialized galaxy %d with allocated properties", p);
+        /* Reduce noise - only log galaxy initialization for first 5 galaxies */
+        static int init_count = 0;
+        init_count++;
+        if (init_count <= 5) {
+            if (init_count == 5) {
+                LOG_DEBUG("Successfully initialized galaxy %d with allocated properties (init #%d - further messages suppressed)", p, init_count);
+            } else {
+                LOG_DEBUG("Successfully initialized galaxy %d with allocated properties (init #%d)", p, init_count);
+            }
+        }
     } else {
         LOG_ERROR("CRITICAL ERROR: Galaxy %d properties allocation failed - this will cause output errors", p);
     }

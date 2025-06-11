@@ -41,7 +41,16 @@ int core_process_merger_queue_agnostically(struct pipeline_context *pipeline_ctx
         return -1;
     }
     
-    LOG_DEBUG("Core merger processor handling %d events", queue->num_events);
+    /* Only log merger processing for first 5 calls to reduce noise */
+    static int merger_process_count = 0;
+    merger_process_count++;
+    if (merger_process_count <= 5) {
+        if (merger_process_count == 5) {
+            LOG_DEBUG("Core merger processor handling %d events (call #%d - further messages suppressed)", queue->num_events, merger_process_count);
+        } else {
+            LOG_DEBUG("Core merger processor handling %d events (call #%d)", queue->num_events, merger_process_count);
+        }
+    }
     
     /* Check if merger handlers are configured - if not, we're in physics-free mode */
     if (queue->num_events > 0 && 

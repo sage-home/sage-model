@@ -53,7 +53,16 @@ int core_evolution_diagnostics_initialize(struct core_evolution_diagnostics *dia
     diag->pipeline_steps_executed = 0;
     diag->module_callbacks_executed = 0;
     
-    LOG_DEBUG("Initialized core evolution diagnostics for halo %d with %d galaxies", halo_nr, ngal);
+    /* Interval-based debug logging (first 5 initializations only) */
+    static int init_debug_count = 0;
+    init_debug_count++;
+    if (init_debug_count <= 5) {
+        if (init_debug_count == 5) {
+            LOG_DEBUG("Initialized core evolution diagnostics for halo %d with %d galaxies (init #%d - further messages suppressed)", halo_nr, ngal, init_debug_count);
+        } else {
+            LOG_DEBUG("Initialized core evolution diagnostics for halo %d with %d galaxies (init #%d)", halo_nr, ngal, init_debug_count);
+        }
+    }
     
     return 0;
 }
@@ -95,7 +104,16 @@ int core_evolution_diagnostics_start_phase(struct core_evolution_diagnostics *di
     /* Record start time for this phase */
     diag->phases[phase_index].start_time = clock();
     
-    LOG_DEBUG("Starting phase %d for halo %d", phase, diag->halo_nr);
+    /* Interval-based debug logging (first 5 phase starts only) */
+    static int phase_start_debug_count = 0;
+    phase_start_debug_count++;
+    if (phase_start_debug_count <= 5) {
+        if (phase_start_debug_count == 5) {
+            LOG_DEBUG("Starting phase %d for halo %d (start #%d - further messages suppressed)", phase, diag->halo_nr, phase_start_debug_count);
+        } else {
+            LOG_DEBUG("Starting phase %d for halo %d (start #%d)", phase, diag->halo_nr, phase_start_debug_count);
+        }
+    }
     
     return 0;
 }
@@ -126,7 +144,16 @@ int core_evolution_diagnostics_end_phase(struct core_evolution_diagnostics *diag
     diag->phases[phase_index].total_time += (end_time - diag->phases[phase_index].start_time);
     diag->phases[phase_index].step_count++;
     
-    LOG_DEBUG("Ending phase %d for halo %d, step %d", phase, diag->halo_nr, diag->phases[phase_index].step_count);
+    /* Interval-based debug logging (first 5 phase ends only) */
+    static int phase_end_debug_count = 0;
+    phase_end_debug_count++;
+    if (phase_end_debug_count <= 5) {
+        if (phase_end_debug_count == 5) {
+            LOG_DEBUG("Ending phase %d for halo %d, step %d (end #%d - further messages suppressed)", phase, diag->halo_nr, diag->phases[phase_index].step_count, phase_end_debug_count);
+        } else {
+            LOG_DEBUG("Ending phase %d for halo %d, step %d (end #%d)", phase, diag->halo_nr, diag->phases[phase_index].step_count, phase_end_debug_count);
+        }
+    }
     
     return 0;
 }
@@ -214,8 +241,18 @@ int core_evolution_diagnostics_finalize(struct core_evolution_diagnostics *diag)
         diag->galaxies_per_second = 0.0;
     }
     
-    LOG_DEBUG("Finalized core diagnostics for halo %d, elapsed time: %.3f seconds", 
-              diag->halo_nr, diag->elapsed_seconds);
+    /* Interval-based debug logging (first 5 finalizations only) */
+    static int finalize_debug_count = 0;
+    finalize_debug_count++;
+    if (finalize_debug_count <= 5) {
+        if (finalize_debug_count == 5) {
+            LOG_DEBUG("Finalized core diagnostics for halo %d, elapsed time: %.3f seconds (finalize #%d - further messages suppressed)", 
+                      diag->halo_nr, diag->elapsed_seconds, finalize_debug_count);
+        } else {
+            LOG_DEBUG("Finalized core diagnostics for halo %d, elapsed time: %.3f seconds (finalize #%d)", 
+                      diag->halo_nr, diag->elapsed_seconds, finalize_debug_count);
+        }
+    }
     
     return 0;
 }

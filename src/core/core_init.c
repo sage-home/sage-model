@@ -655,7 +655,15 @@ void initialize_evolution_context(struct evolution_context *ctx,
     
     /* Validate the newly initialized context */
     if (!validate_evolution_context(ctx)) {
-        LOG_WARNING("Evolution context validation failed after initialization");
+        static int validation_warning_count = 0;
+        validation_warning_count++;
+        if (validation_warning_count <= 5) {
+            if (validation_warning_count == 5) {
+                LOG_WARNING("Evolution context validation failed after initialization (warning #%d - further messages suppressed)", validation_warning_count);
+            } else {
+                LOG_WARNING("Evolution context validation failed after initialization (warning #%d)", validation_warning_count);
+            }
+        }
     }
     
     /* Ensure all galaxies have their extension fields properly initialized */

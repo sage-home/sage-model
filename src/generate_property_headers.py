@@ -765,6 +765,11 @@ def generate_allocate_arrays_code(properties):
     # Find properties with dynamic arrays
     dynamic_arrays = [p for p in properties if parse_type(p['type'])[3]]
     if dynamic_arrays:
+        # Add static counters for interval-based debug logging
+        code_lines.append("    /* Static counters for interval-based debug logging */")
+        for prop in dynamic_arrays:
+            code_lines.append(f"    static int debug_count_{prop['name']} = 0;")
+        code_lines.append("")
         
         for prop in dynamic_arrays:
             base_type = parse_type(prop['type'])[0]
@@ -791,7 +796,15 @@ def generate_allocate_arrays_code(properties):
                 f"{indent}        free_galaxy_properties(g); // Cleanup partially allocated",
                 f"{indent}        return -1;",
                 f"{indent}    }}",
-                f"{indent}    LOG_DEBUG(\"Allocated dynamic array '{prop['name']}' with size %d\", resolved_size);",
+                f"{indent}    // Interval-based debug logging (first 5 allocations only)",
+                f"{indent}    debug_count_{prop['name']}++;",
+                f"{indent}    if (debug_count_{prop['name']} <= 5) {{",
+                f"{indent}        if (debug_count_{prop['name']} == 5) {{",
+                f"{indent}            LOG_DEBUG(\"Allocated dynamic array '{prop['name']}' with size %d (further messages suppressed)\", resolved_size);",
+                f"{indent}        }} else {{",
+                f"{indent}            LOG_DEBUG(\"Allocated dynamic array '{prop['name']}' with size %d\", resolved_size);",
+                f"{indent}        }}",
+                f"{indent}    }}",
                 f"{indent}}}"
             ])
     
@@ -1765,7 +1778,16 @@ int set_parameter_from_string(struct params *params, parameter_id_t param_id, co
         return -1;
     }}
     
-    LOG_DEBUG("Setting parameter %s = %s", PARAMETER_META[param_id].name, value);
+    /* Interval-based debug logging (first 5 parameters only) */
+    static int debug_count_params = 0;
+    debug_count_params++;
+    if (debug_count_params <= 5) {{
+        if (debug_count_params == 5) {{
+            LOG_DEBUG("Setting parameter %s = %s (further messages suppressed)", PARAMETER_META[param_id].name, value);
+        }} else {{
+            LOG_DEBUG("Setting parameter %s = %s", PARAMETER_META[param_id].name, value);
+        }}
+    }}
     
     /* Parse and set parameter based on type and validate bounds */
     switch (param_id) {{

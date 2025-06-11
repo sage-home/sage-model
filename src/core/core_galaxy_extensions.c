@@ -137,8 +137,18 @@ int galaxy_extension_register(galaxy_property_t *property) {
     /* Update module extension count */
     global_extension_registry->module_extensions[module_ext_index].num_extensions++;
     
-    LOG_INFO("Registered galaxy property '%s' (module %d) with ID %d", 
-             property->name, property->module_id, extension_id);
+    /* Interval-based debug logging (first 5 registrations only) */
+    static int debug_count_registrations = 0;
+    debug_count_registrations++;
+    if (debug_count_registrations <= 5) {
+        if (debug_count_registrations == 5) {
+            LOG_INFO("Registered galaxy property '%s' (module %d) with ID %d (further messages suppressed)", 
+                     property->name, property->module_id, extension_id);
+        } else {
+            LOG_INFO("Registered galaxy property '%s' (module %d) with ID %d", 
+                     property->name, property->module_id, extension_id);
+        }
+    }
     
     return extension_id;
 }

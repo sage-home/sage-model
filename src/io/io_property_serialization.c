@@ -257,25 +257,59 @@ int property_serialize_galaxy(struct property_serialization_context *ctx,
     }
     
     if (ctx->num_properties == 0) {
-        LOG_DEBUG("No properties to serialize for galaxy %lld", galaxy->GalaxyIndex);
+        static int no_props_count = 0;
+        no_props_count++;
+        if (no_props_count <= 5) {
+            if (no_props_count == 5) {
+                LOG_DEBUG("No properties to serialize for galaxy %lld (notice #%d - further messages suppressed)", galaxy->GalaxyIndex, no_props_count);
+            } else {
+                LOG_DEBUG("No properties to serialize for galaxy %lld (notice #%d)", galaxy->GalaxyIndex, no_props_count);
+            }
+        }
         return PROPERTY_SERIALIZATION_SUCCESS;
     }
     
-    LOG_DEBUG("Serializing %d properties for galaxy %lld", ctx->num_properties, galaxy->GalaxyIndex);
+    static int serialize_count = 0;
+    serialize_count++;
+    if (serialize_count <= 5) {
+        if (serialize_count == 5) {
+            LOG_DEBUG("Serializing %d properties for galaxy %lld (serialization #%d - further messages suppressed)", ctx->num_properties, galaxy->GalaxyIndex, serialize_count);
+        } else {
+            LOG_DEBUG("Serializing %d properties for galaxy %lld (serialization #%d)", ctx->num_properties, galaxy->GalaxyIndex, serialize_count);
+        }
+    }
     
     // For each property
     for (int i = 0; i < ctx->num_properties; i++) {
         const struct serialized_property_meta *prop = &ctx->properties[i];
         int extension_id = ctx->property_id_map[i];
         
-        LOG_DEBUG("Serializing property %d: '%s' (extension_id=%d, type=%d)", 
-                 i, prop->name, extension_id, prop->type);
+        static int prop_serialize_count = 0;
+        prop_serialize_count++;
+        if (prop_serialize_count <= 5) {
+            if (prop_serialize_count == 5) {
+                LOG_DEBUG("Serializing property %d: '%s' (extension_id=%d, type=%d) (prop #%d - further messages suppressed)",
+                         i, prop->name, extension_id, prop->type, prop_serialize_count);
+            } else {
+                LOG_DEBUG("Serializing property %d: '%s' (extension_id=%d, type=%d) (prop #%d)",
+                         i, prop->name, extension_id, prop->type, prop_serialize_count);
+            }
+        }
         
         // Get property data from galaxy
         void *prop_data = galaxy_extension_get_data(galaxy, extension_id);
         if (prop_data == NULL) {
-            LOG_DEBUG("Property '%s' not present in galaxy %lld, zeroing data", 
-                     prop->name, galaxy->GalaxyIndex);
+            static int missing_prop_count = 0;
+            missing_prop_count++;
+            if (missing_prop_count <= 5) {
+                if (missing_prop_count == 5) {
+                    LOG_DEBUG("Property '%s' not present in galaxy %lld, zeroing data (missing #%d - further messages suppressed)",
+                             prop->name, galaxy->GalaxyIndex, missing_prop_count);
+                } else {
+                    LOG_DEBUG("Property '%s' not present in galaxy %lld, zeroing data (missing #%d)",
+                             prop->name, galaxy->GalaxyIndex, missing_prop_count);
+                }
+            }
             memset((char *)output_buffer + prop->offset, 0, prop->size);
             continue;
         }
@@ -304,8 +338,17 @@ int property_serialize_galaxy(struct property_serialization_context *ctx,
         }
     }
     
-    LOG_DEBUG("Successfully serialized %d properties for galaxy %lld", 
-             ctx->num_properties, galaxy->GalaxyIndex);
+    static int serialize_success_count = 0;
+    serialize_success_count++;
+    if (serialize_success_count <= 5) {
+        if (serialize_success_count == 5) {
+            LOG_DEBUG("Successfully serialized %d properties for galaxy %lld (success #%d - further messages suppressed)",
+                      ctx->num_properties, galaxy->GalaxyIndex, serialize_success_count);
+        } else {
+            LOG_DEBUG("Successfully serialized %d properties for galaxy %lld (success #%d)",
+                      ctx->num_properties, galaxy->GalaxyIndex, serialize_success_count);
+        }
+    }
     
     return PROPERTY_SERIALIZATION_SUCCESS;
 }
@@ -339,19 +382,44 @@ int property_deserialize_galaxy(struct property_serialization_context *ctx,
     }
     
     if (ctx->num_properties == 0) {
-        LOG_DEBUG("No properties to deserialize for galaxy %lld", galaxy->GalaxyIndex);
+        static int no_props_deser_count = 0;
+        no_props_deser_count++;
+        if (no_props_deser_count <= 5) {
+            if (no_props_deser_count == 5) {
+                LOG_DEBUG("No properties to deserialize for galaxy %lld (notice #%d - further messages suppressed)", galaxy->GalaxyIndex, no_props_deser_count);
+            } else {
+                LOG_DEBUG("No properties to deserialize for galaxy %lld (notice #%d)", galaxy->GalaxyIndex, no_props_deser_count);
+            }
+        }
         return PROPERTY_SERIALIZATION_SUCCESS;
     }
     
-    LOG_DEBUG("Deserializing %d properties for galaxy %lld", ctx->num_properties, galaxy->GalaxyIndex);
+    static int deserialize_count = 0;
+    deserialize_count++;
+    if (deserialize_count <= 5) {
+        if (deserialize_count == 5) {
+            LOG_DEBUG("Deserializing %d properties for galaxy %lld (deserialization #%d - further messages suppressed)", ctx->num_properties, galaxy->GalaxyIndex, deserialize_count);
+        } else {
+            LOG_DEBUG("Deserializing %d properties for galaxy %lld (deserialization #%d)", ctx->num_properties, galaxy->GalaxyIndex, deserialize_count);
+        }
+    }
     
     // For each property
     for (int i = 0; i < ctx->num_properties; i++) {
         const struct serialized_property_meta *prop = &ctx->properties[i];
         int extension_id = ctx->property_id_map[i];
         
-        LOG_DEBUG("Deserializing property %d: '%s' (extension_id=%d, type=%d)", 
-                 i, prop->name, extension_id, prop->type);
+        static int prop_deserialize_count = 0;
+        prop_deserialize_count++;
+        if (prop_deserialize_count <= 5) {
+            if (prop_deserialize_count == 5) {
+                LOG_DEBUG("Deserializing property %d: '%s' (extension_id=%d, type=%d) (prop #%d - further messages suppressed)",
+                         i, prop->name, extension_id, prop->type, prop_deserialize_count);
+            } else {
+                LOG_DEBUG("Deserializing property %d: '%s' (extension_id=%d, type=%d) (prop #%d)",
+                         i, prop->name, extension_id, prop->type, prop_deserialize_count);
+            }
+        }
         
         // Ensure galaxy has space for this extension
         if (galaxy->extension_data == NULL || extension_id >= galaxy->num_extensions) {
@@ -402,8 +470,17 @@ int property_deserialize_galaxy(struct property_serialization_context *ctx,
         }
     }
     
-    LOG_DEBUG("Successfully deserialized %d properties for galaxy %lld", 
-             ctx->num_properties, galaxy->GalaxyIndex);
+    static int deserialize_success_count = 0;
+    deserialize_success_count++;
+    if (deserialize_success_count <= 5) {
+        if (deserialize_success_count == 5) {
+            LOG_DEBUG("Successfully deserialized %d properties for galaxy %lld (success #%d - further messages suppressed)",
+                      ctx->num_properties, galaxy->GalaxyIndex, deserialize_success_count);
+        } else {
+            LOG_DEBUG("Successfully deserialized %d properties for galaxy %lld (success #%d)",
+                      ctx->num_properties, galaxy->GalaxyIndex, deserialize_success_count);
+        }
+    }
     
     return PROPERTY_SERIALIZATION_SUCCESS;
 }

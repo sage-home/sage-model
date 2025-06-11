@@ -340,7 +340,15 @@ int module_get_parameter_registry(int module_id, module_parameter_registry_t **r
             return MODULE_STATUS_ERROR;
         }
         
-        LOG_DEBUG("Parameter registry initialized for module %d", module_id);
+        static int param_registry_init_count = 0;
+        param_registry_init_count++;
+        if (param_registry_init_count <= 5) {
+            if (param_registry_init_count == 5) {
+                LOG_DEBUG("Parameter registry initialized for module %d (init #%d - further messages suppressed)", module_id, param_registry_init_count);
+            } else {
+                LOG_DEBUG("Parameter registry initialized for module %d (init #%d)", module_id, param_registry_init_count);
+            }
+        }
     }
     
     *registry = global_module_registry->modules[module_id].parameter_registry;
@@ -838,8 +846,17 @@ int module_register(struct base_module *module) {
     /* Increment module count */
     global_module_registry->num_modules++;
     
-    LOG_DEBUG("Registered module '%s' (type %d) with ID %d", 
-              module->name, module->type, module_id);
+    static int module_register_count = 0;
+    module_register_count++;
+    if (module_register_count <= 5) {
+        if (module_register_count == 5) {
+            LOG_DEBUG("Registered module '%s' (type %d) with ID %d (registration #%d - further messages suppressed)", 
+                      module->name, module->type, module_id, module_register_count);
+        } else {
+            LOG_DEBUG("Registered module '%s' (type %d) with ID %d (registration #%d)", 
+                      module->name, module->type, module_id, module_register_count);
+        }
+    }
     
     return MODULE_STATUS_SUCCESS;
 }
@@ -1052,7 +1069,15 @@ int module_cleanup(int module_id) {
         module_parameter_registry_free(global_module_registry->modules[module_id].parameter_registry);
         myfree(global_module_registry->modules[module_id].parameter_registry);
         global_module_registry->modules[module_id].parameter_registry = NULL;
-        LOG_DEBUG("Freed parameter registry for module '%s' (ID %d)", module->name, module_id);
+        static int param_registry_free_count = 0;
+        param_registry_free_count++;
+        if (param_registry_free_count <= 5) {
+            if (param_registry_free_count == 5) {
+                LOG_DEBUG("Freed parameter registry for module '%s' (ID %d) (free #%d - further messages suppressed)", module->name, module_id, param_registry_free_count);
+            } else {
+                LOG_DEBUG("Freed parameter registry for module '%s' (ID %d) (free #%d)", module->name, module_id, param_registry_free_count);
+            }
+        }
     }
     
     LOG_INFO("Cleaned up module '%s' (ID %d)", module->name, module_id);
@@ -1366,8 +1391,17 @@ int module_validate_runtime_dependencies(int module_id) {
                 }
             }
             
-            LOG_DEBUG("Dependency on type %s satisfied by active module %s version %s",
-                     module_type_name(dep->type), active_module->name, active_module->version);
+            static int dependency_satisfied_count = 0;
+            dependency_satisfied_count++;
+            if (dependency_satisfied_count <= 5) {
+                if (dependency_satisfied_count == 5) {
+                    LOG_DEBUG("Dependency on type %s satisfied by active module %s version %s (check #%d - further messages suppressed)",
+                             module_type_name(dep->type), active_module->name, active_module->version, dependency_satisfied_count);
+                } else {
+                    LOG_DEBUG("Dependency on type %s satisfied by active module %s version %s (check #%d)",
+                             module_type_name(dep->type), active_module->name, active_module->version, dependency_satisfied_count);
+                }
+            }
         }
         /* If this is a name-based dependency */
         else if (dep->name[0] != '\0') {
@@ -1408,7 +1442,15 @@ int module_validate_runtime_dependencies(int module_id) {
                 }
             }
             
-            LOG_DEBUG("Dependency on named module %s satisfied", dep->name);
+            static int named_dependency_count = 0;
+            named_dependency_count++;
+            if (named_dependency_count <= 5) {
+                if (named_dependency_count == 5) {
+                    LOG_DEBUG("Dependency on named module %s satisfied (check #%d - further messages suppressed)", dep->name, named_dependency_count);
+                } else {
+                    LOG_DEBUG("Dependency on named module %s satisfied (check #%d)", dep->name, named_dependency_count);
+                }
+            }
         }
     }
     

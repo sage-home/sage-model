@@ -42,15 +42,35 @@ static bool galaxy_is_valid_for_properties(struct GALAXY *galaxy) {
     }
     
     if (galaxy->properties == NULL) {
-        LOG_DEBUG("galaxy_is_valid_for_properties: galaxy->properties pointer is NULL for GalaxyNr %d", 
-                  galaxy->GalaxyNr);
+        /* Reduce noise - only log properties issues for first 5 galaxies */
+        static int null_props_count = 0;
+        null_props_count++;
+        if (null_props_count <= 5) {
+            if (null_props_count == 5) {
+                LOG_DEBUG("galaxy_is_valid_for_properties: galaxy->properties pointer is NULL for GalaxyNr %d (issue #%d - further messages suppressed)", 
+                          galaxy->GalaxyNr, null_props_count);
+            } else {
+                LOG_DEBUG("galaxy_is_valid_for_properties: galaxy->properties pointer is NULL for GalaxyNr %d (issue #%d)", 
+                          galaxy->GalaxyNr, null_props_count);
+            }
+        }
         return false;
     }
     
     // Only consider galaxies that haven't merged or been disrupted
     if (galaxy->mergeType > 0) {
-        LOG_DEBUG("Galaxy %d is not valid for property access (mergeType=%d)", 
-                galaxy->GalaxyNr, galaxy->mergeType);
+        /* Reduce noise - only log merge type issues for first 5 galaxies */
+        static int merge_type_count = 0;
+        merge_type_count++;
+        if (merge_type_count <= 5) {
+            if (merge_type_count == 5) {
+                LOG_DEBUG("Galaxy %d is not valid for property access (mergeType=%d) (issue #%d - further messages suppressed)", 
+                        galaxy->GalaxyNr, galaxy->mergeType, merge_type_count);
+            } else {
+                LOG_DEBUG("Galaxy %d is not valid for property access (mergeType=%d) (issue #%d)", 
+                        galaxy->GalaxyNr, galaxy->mergeType, merge_type_count);
+            }
+        }
         return false;
     }
     
@@ -101,7 +121,16 @@ int physics_step_executor(
                 }
                 
                 if (valid) {
-                    LOG_DEBUG("Executing HALO phase for module '%s'", module->name);
+                    /* Reduce noise - only log halo phase execution for first 5 calls */
+                    static int halo_exec_count = 0;
+                    halo_exec_count++;
+                    if (halo_exec_count <= 5) {
+                        if (halo_exec_count == 5) {
+                            LOG_DEBUG("Executing HALO phase for module '%s' (execution #%d - further messages suppressed)", module->name, halo_exec_count);
+                        } else {
+                            LOG_DEBUG("Executing HALO phase for module '%s' (execution #%d)", module->name, halo_exec_count);
+                        }
+                    }
                     status = module->execute_halo_phase(module_data, context);
                 } else {
                     LOG_WARNING("HALO phase skipped for module '%s': central galaxy properties not available", module->name);
@@ -122,11 +151,30 @@ int physics_step_executor(
                 }
                 
                 if (valid) {
-                    LOG_DEBUG("Executing GALAXY phase for module '%s', galaxy %d", module->name, context->current_galaxy);
+                    /* Reduce noise - only log galaxy phase execution for first 5 galaxies */
+                    static int galaxy_exec_count = 0;
+                    galaxy_exec_count++;
+                    if (galaxy_exec_count <= 5) {
+                        if (galaxy_exec_count == 5) {
+                            LOG_DEBUG("Executing GALAXY phase for module '%s', galaxy %d (execution #%d - further messages suppressed)", module->name, context->current_galaxy, galaxy_exec_count);
+                        } else {
+                            LOG_DEBUG("Executing GALAXY phase for module '%s', galaxy %d (execution #%d)", module->name, context->current_galaxy, galaxy_exec_count);
+                        }
+                    }
                     status = module->execute_galaxy_phase(module_data, context);
                 } else {
-                    LOG_DEBUG("GALAXY phase skipped for module '%s', galaxy %d: properties not available", 
-                            module->name, context->current_galaxy);
+                    /* Reduce noise - only log skipped galaxies for first 5 occurrences */
+                    static int galaxy_skip_count = 0;
+                    galaxy_skip_count++;
+                    if (galaxy_skip_count <= 5) {
+                        if (galaxy_skip_count == 5) {
+                            LOG_DEBUG("GALAXY phase skipped for module '%s', galaxy %d: properties not available (skip #%d - further messages suppressed)", 
+                                    module->name, context->current_galaxy, galaxy_skip_count);
+                        } else {
+                            LOG_DEBUG("GALAXY phase skipped for module '%s', galaxy %d: properties not available (skip #%d)", 
+                                    module->name, context->current_galaxy, galaxy_skip_count);
+                        }
+                    }
                     status = 0; // Skip but don't fail
                 }
             } else {
@@ -136,7 +184,16 @@ int physics_step_executor(
 
         case PIPELINE_PHASE_POST:
             if (module->execute_post_phase != NULL) {
-                LOG_DEBUG("Executing POST phase for module '%s'", module->name);
+                /* Reduce noise - only log post phase execution for first 5 calls */
+                static int post_exec_count = 0;
+                post_exec_count++;
+                if (post_exec_count <= 5) {
+                    if (post_exec_count == 5) {
+                        LOG_DEBUG("Executing POST phase for module '%s' (execution #%d - further messages suppressed)", module->name, post_exec_count);
+                    } else {
+                        LOG_DEBUG("Executing POST phase for module '%s' (execution #%d)", module->name, post_exec_count);
+                    }
+                }
                 status = module->execute_post_phase(module_data, context);
             } else {
                 LOG_DEBUG("Module '%s' has no POST phase implementation.", module->name);
@@ -145,7 +202,16 @@ int physics_step_executor(
 
         case PIPELINE_PHASE_FINAL:
             if (module->execute_final_phase != NULL) {
-                LOG_DEBUG("Executing FINAL phase for module '%s'", module->name);
+                /* Reduce noise - only log final phase execution for first 5 calls */
+                static int final_exec_count = 0;
+                final_exec_count++;
+                if (final_exec_count <= 5) {
+                    if (final_exec_count == 5) {
+                        LOG_DEBUG("Executing FINAL phase for module '%s' (execution #%d - further messages suppressed)", module->name, final_exec_count);
+                    } else {
+                        LOG_DEBUG("Executing FINAL phase for module '%s' (execution #%d)", module->name, final_exec_count);
+                    }
+                }
                 status = module->execute_final_phase(module_data, context);
             } else {
                 LOG_DEBUG("Module '%s' has no FINAL phase implementation.", module->name);

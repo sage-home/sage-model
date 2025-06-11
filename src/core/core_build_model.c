@@ -639,7 +639,16 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
         return EXIT_FAILURE;
     }
 
-    CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Starting evolution for halo %d with %d galaxies", halonr, ngal);
+    /* Reduce noise - only log evolution starts for first 5 halos */
+    static int evolution_start_count = 0;
+    evolution_start_count++;
+    if (evolution_start_count <= 5) {
+        if (evolution_start_count == 5) {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Starting evolution for halo %d with %d galaxies (start #%d - further messages suppressed)", halonr, ngal, evolution_start_count);
+        } else {
+            CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Starting evolution for halo %d with %d galaxies (start #%d)", halonr, ngal, evolution_start_count);
+        }
+    }
 
     // Validate central galaxy
     if(galaxies[ctx.centralgal].Type != 0 || galaxies[ctx.centralgal].HaloNr != halonr) {
@@ -686,14 +695,21 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
         return EXIT_FAILURE;
     }
     
-    // Log pipeline usage
     static bool first_pipeline_usage = true;
     if (first_pipeline_usage) {
         CONTEXT_LOG(&ctx, LOG_LEVEL_INFO, "Using physics pipeline '%s' with %d steps",
                 physics_pipeline->name, physics_pipeline->num_steps);
         first_pipeline_usage = false;
     } else {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Using physics pipeline for halo %d", ctx.halo_nr);
+        static int pipeline_usage_count = 0;
+        pipeline_usage_count++;
+        if (pipeline_usage_count <= 5) {
+            if (pipeline_usage_count == 5) {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Using physics pipeline for halo %d (usage #%d - further messages suppressed)", ctx.halo_nr, pipeline_usage_count);
+            } else {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Using physics pipeline for halo %d (usage #%d)", ctx.halo_nr, pipeline_usage_count);
+            }
+        }
     }
 
     // Create merger event queue
@@ -838,9 +854,18 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
             return EXIT_FAILURE;
         }
 
-        // Diagnostic tracking for processed mergers
-        CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processed %d merger events for step %d",
-                  merger_queue.num_events, step);
+        // Interval-based debug logging (first 5 merger processings only)
+        static int merger_debug_count = 0;
+        merger_debug_count++;
+        if (merger_debug_count <= 5) {
+            if (merger_debug_count == 5) {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processed %d merger events for step %d (further messages suppressed)",
+                          merger_queue.num_events, step);
+            } else {
+                CONTEXT_LOG(&ctx, LOG_LEVEL_DEBUG, "Processed %d merger events for step %d",
+                          merger_queue.num_events, step);
+            }
+        }
         for (int i = 0; i < merger_queue.num_events; i++) {
             core_evolution_diagnostics_add_merger_processed(&diag, merger_queue.events[i].merger_type);
         }

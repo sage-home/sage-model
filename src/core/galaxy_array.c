@@ -91,7 +91,16 @@ static inline void safe_deep_copy_galaxy(struct GALAXY *dest, const struct GALAX
 // Internal function to safely expand the array.
 static int galaxy_array_expand(GalaxyArray* arr) {
     int new_capacity = arr->capacity == 0 ? GALAXY_ARRAY_INITIAL_CAPACITY : arr->capacity * 2;
-    LOG_DEBUG("Expanding galaxy array from %d to %d capacity.", arr->capacity, new_capacity);
+    /* Reduce noise - only log array expansion for first 5 expansions */
+    static int expand_count = 0;
+    expand_count++;
+    if (expand_count <= 5) {
+        if (expand_count == 5) {
+            LOG_DEBUG("Expanding galaxy array from %d to %d capacity (expansion #%d - further messages suppressed)", arr->capacity, new_capacity, expand_count);
+        } else {
+            LOG_DEBUG("Expanding galaxy array from %d to %d capacity (expansion #%d)", arr->capacity, new_capacity, expand_count);
+        }
+    }
 
     // 1. Before realloc, save all valid `properties` pointers (only if we have existing galaxies).
     galaxy_properties_t** temp_props = NULL;
