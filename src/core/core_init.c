@@ -718,13 +718,11 @@ void read_snap_list(struct params *run_params)
     }
 
     run_params->simulation.Snaplistlen = 0;
-    do {
-        if(fscanf(fd, " %lg ", &(run_params->simulation.AA[run_params->simulation.Snaplistlen])) == 1) {
-            run_params->simulation.Snaplistlen++;
-        } else {
-            break;
-        }
-    } while(run_params->simulation.Snaplistlen < run_params->simulation.SimMaxSnaps);
+    while (run_params->simulation.Snaplistlen < run_params->simulation.SimMaxSnaps && 
+        fscanf(fd, " %lg ", &(run_params->simulation.AA[run_params->simulation.Snaplistlen])) == 1)
+    {
+        run_params->simulation.Snaplistlen++;
+    }
     fclose(fd);
 
 #ifdef VERBOSE
