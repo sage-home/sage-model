@@ -27,43 +27,14 @@ struct GalaxyArray {
 static inline void sync_core_properties_to_direct_fields(struct GALAXY *gal) {
     if (gal->properties == NULL) return;
     
-    /* CRITICAL DEBUG: Track property corruption */
-    static int debug_sync_count = 0;
-    if (debug_sync_count < 5) {
-        int old_snapnum = gal->SnapNum;
-        int prop_snapnum = GALAXY_PROP_SnapNum(gal);
-        
-        if (old_snapnum >= 62) {
-            printf("DEBUG: PROPERTY_SYNC - BEFORE: direct SnapNum=%d, property SnapNum=%d\n", 
-                   old_snapnum, prop_snapnum);
-        }
-        
-        gal->Type = GALAXY_PROP_Type(gal);
-        gal->SnapNum = GALAXY_PROP_SnapNum(gal);
-        gal->Mvir = GALAXY_PROP_Mvir(gal);
-        gal->Vmax = GALAXY_PROP_Vmax(gal);
-        gal->Rvir = GALAXY_PROP_Rvir(gal);
-        gal->GalaxyIndex = GALAXY_PROP_GalaxyIndex(gal);
-        for (int j = 0; j < 3; j++) {
-            gal->Pos[j] = GALAXY_PROP_Pos_ELEM(gal, j);
-        }
-        
-        if (old_snapnum >= 62) {
-            printf("DEBUG: PROPERTY_SYNC - AFTER: direct SnapNum=%d (was %d, property was %d)\n", 
-                   gal->SnapNum, old_snapnum, prop_snapnum);
-            debug_sync_count++;
-            if (debug_sync_count == 5) printf("\t...future property sync debug suppressed\n");
-        }
-    } else {
-        gal->Type = GALAXY_PROP_Type(gal);
-        gal->SnapNum = GALAXY_PROP_SnapNum(gal);
-        gal->Mvir = GALAXY_PROP_Mvir(gal);
-        gal->Vmax = GALAXY_PROP_Vmax(gal);
-        gal->Rvir = GALAXY_PROP_Rvir(gal);
-        gal->GalaxyIndex = GALAXY_PROP_GalaxyIndex(gal);
-        for (int j = 0; j < 3; j++) {
-            gal->Pos[j] = GALAXY_PROP_Pos_ELEM(gal, j);
-        }
+    gal->Type = GALAXY_PROP_Type(gal);
+    gal->SnapNum = GALAXY_PROP_SnapNum(gal);
+    gal->Mvir = GALAXY_PROP_Mvir(gal);
+    gal->Vmax = GALAXY_PROP_Vmax(gal);
+    gal->Rvir = GALAXY_PROP_Rvir(gal);
+    gal->GalaxyIndex = GALAXY_PROP_GalaxyIndex(gal);
+    for (int j = 0; j < 3; j++) {
+        gal->Pos[j] = GALAXY_PROP_Pos_ELEM(gal, j);
     }
 }
 
@@ -215,18 +186,6 @@ int galaxy_array_append(GalaxyArray* arr, const struct GALAXY* galaxy, const str
         return -1;
     }
     
-    /* CRITICAL DEBUG: Track what we're trying to append */
-    static int debug_append_count = 0;
-    if (debug_append_count < 5 && galaxy->SnapNum >= 62) {
-        printf("DEBUG: GALAXY_ARRAY_APPEND - INPUT: SnapNum=%d, properties=%p\n", 
-               galaxy->SnapNum, galaxy->properties);
-        if (galaxy->properties) {
-            printf("DEBUG: GALAXY_ARRAY_APPEND - INPUT property SnapNum=%d\n", 
-                   GALAXY_PROP_SnapNum(galaxy));
-        }
-        debug_append_count++;
-        if (debug_append_count == 5) printf("\t...future append debug suppressed\n");
-    }
     
     if (arr->count >= arr->capacity) {
         if (galaxy_array_expand(arr) != 0) {
@@ -239,18 +198,6 @@ int galaxy_array_append(GalaxyArray* arr, const struct GALAXY* galaxy, const str
     // Perform a full, safe deep copy of the GALAXY struct and its properties.
     safe_deep_copy_galaxy(dest, galaxy, p);
 
-    /* CRITICAL DEBUG: Track what we actually stored */
-    static int debug_append_result_count = 0;
-    if (debug_append_result_count < 5 && dest->SnapNum >= 62) {
-        printf("DEBUG: GALAXY_ARRAY_APPEND - RESULT: SnapNum=%d, properties=%p\n", 
-               dest->SnapNum, dest->properties);
-        if (dest->properties) {
-            printf("DEBUG: GALAXY_ARRAY_APPEND - RESULT property SnapNum=%d\n", 
-                   GALAXY_PROP_SnapNum(dest));
-        }
-        debug_append_result_count++;
-        if (debug_append_result_count == 5) printf("\t...future append result debug suppressed\n");
-    }
 
     arr->count++;
     return arr->count - 1;
@@ -270,18 +217,6 @@ int galaxy_array_get_count(const GalaxyArray* arr) {
 struct GALAXY* galaxy_array_get_raw_data(GalaxyArray* arr) {
     if (!arr) return NULL;
     
-    /* CRITICAL DEBUG: Track what we're returning */
-    static int debug_get_count = 0;
-    if (debug_get_count < 5 && arr->count > 0) {
-        printf("DEBUG: GALAXY_ARRAY_GET_RAW_DATA - Returning %d galaxies, first galaxy SnapNum=%d\n", 
-               arr->count, arr->galaxies[0].SnapNum);
-        if (arr->galaxies[0].properties) {
-            printf("DEBUG: GALAXY_ARRAY_GET_RAW_DATA - First galaxy property SnapNum=%d\n", 
-                   GALAXY_PROP_SnapNum(&arr->galaxies[0]));
-        }
-        debug_get_count++;
-        if (debug_get_count == 5) printf("\t...future get_raw_data debug suppressed\n");
-    }
     
     return arr->galaxies;
 }

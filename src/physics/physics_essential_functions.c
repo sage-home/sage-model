@@ -29,10 +29,6 @@
 #include "core_logging.h"
 #include "physics_essential_functions.h"
 
-#ifndef LOG_DEBUG
-#define LOG_DEBUG(fmt, ...) fprintf(stderr, "DEBUG: " fmt "\n", ##__VA_ARGS__)
-#endif
-
 void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_data *halos, 
                  struct GALAXY *galaxies, const struct params *run_params) {
     // Initialize core properties only
@@ -53,15 +49,6 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
     galaxies[p].HaloNr = halonr;
     galaxies[p].MostBoundID = halos[halonr].MostBoundID;
     galaxies[p].SnapNum = halos[halonr].SnapNum;
-    
-    /* CHECKPOINT 12: SnapNum assignment debug */
-    static int debug_count_12 = 0; // TODO: Remove this debug counter later
-    if (halonr == 0 && debug_count_12 < 5) {
-        printf("DEBUG: INIT_GALAXY - Halo SnapNum=%d -> Galaxy SnapNum=%d (correctly matched)\n",
-               halos[halonr].SnapNum, galaxies[p].SnapNum);
-        debug_count_12++;
-        if (debug_count_12 == 5) printf("\t...future debug output will be suppressed\n");
-    }
     
     // Initialize from halo data
     for (int j = 0; j < 3; j++) {
@@ -125,17 +112,6 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
             GALAXY_PROP_Pos_ELEM(&galaxies[p], j) = galaxies[p].Pos[j];
             GALAXY_PROP_Vel_ELEM(&galaxies[p], j) = galaxies[p].Vel[j];
             GALAXY_PROP_Spin_ELEM(&galaxies[p], j) = 0.0; // Default value
-        }
-        
-        /* Reduce noise - only log galaxy initialization for first 5 galaxies */
-        static int init_count = 0;
-        init_count++;
-        if (init_count <= 5) {
-            if (init_count == 5) {
-                LOG_DEBUG("Successfully initialized galaxy %d with allocated properties (init #%d - further messages suppressed)", p, init_count);
-            } else {
-                LOG_DEBUG("Successfully initialized galaxy %d with allocated properties (init #%d)", p, init_count);
-            }
         }
     } else {
         LOG_ERROR("CRITICAL ERROR: Galaxy %d properties allocation failed - this will cause output errors", p);

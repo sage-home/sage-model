@@ -922,15 +922,6 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
         if (ctx.galaxies[p].mergeType == 0) { // If it hasn't been merged
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
 
-            /* CHECKPOINT 14: SnapNum update during evolution */
-            static int debug_count_14 = 0; // TODO: Remove this debug counter later
-            if (halos[currenthalo].SnapNum >= 62 && halonr == 0 && debug_count_14 < 5) {
-                printf("DEBUG: Evolution snapshot %d - Galaxy %d gets SnapNum %d\n",
-                       halos[currenthalo].SnapNum, p, ctx.galaxies[p].SnapNum);
-                debug_count_14++;
-                if (debug_count_14 == 5) printf("\t...future debug output will be suppressed\n");
-
-            }
 
             // Copy galaxy to the snapshot array using the new API
             struct GALAXY temp_galaxy;
@@ -939,26 +930,7 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
             deep_copy_galaxy(&temp_galaxy, &ctx.galaxies[p], run_params);
             temp_galaxy.SnapNum = halos[currenthalo].SnapNum;
             
-            /* CHECKPOINT 15: Track SnapNum corruption */
-            static int debug_count_15 = 0; // TODO: Remove this debug counter later
-            if (halos[currenthalo].SnapNum >= 62 && halonr == 0 && debug_count_15 < 5) {
-                printf("DEBUG: CORRUPTION_TRACE - Before deep_copy: ctx.galaxies[%d].SnapNum=%d, halo.SnapNum=%d\n",
-                       p, ctx.galaxies[p].SnapNum, halos[currenthalo].SnapNum);
-                printf("DEBUG: CORRUPTION_TRACE - After deep_copy: temp_galaxy.SnapNum=%d\n", temp_galaxy.SnapNum);
-                printf("DEBUG: CORRUPTION_TRACE - After assignment: temp_galaxy.SnapNum=%d (should be %d)\n",
-                       temp_galaxy.SnapNum, halos[currenthalo].SnapNum);
-                debug_count_15++;
-                if (debug_count_15 == 5) printf("\t...future debug output will be suppressed\n");
-            }
 
-            /* CHECKPOINT 16: Track galaxies added to galaxies_this_snap */
-            static int debug_count_16 = 0;
-            if (halos[currenthalo].SnapNum >= 62 && halonr == 0 && debug_count_16 < 5) {
-                printf("DEBUG: APPEND_TRACE - Adding galaxy with SnapNum=%d to galaxies_this_snap (snapshot %d)\n",
-                       temp_galaxy.SnapNum, halos[currenthalo].SnapNum);
-                debug_count_16++;
-                if (debug_count_16 == 5) printf("\t...future append debug output will be suppressed\n");
-            }
 
             if (galaxy_array_append(galaxies_this_snap, &temp_galaxy, run_params) < 0) {
                 LOG_ERROR("Failed to append galaxy to snapshot array");

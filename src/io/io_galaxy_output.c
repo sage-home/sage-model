@@ -121,21 +121,6 @@ int prepare_galaxies_for_output(const int64_t task_forestnr,
     for (int snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
         int output_snap = run_params->simulation.ListOutputSnaps[snap_idx];
 
-        /* CHECKPOINT 11: Output snapshot matching */
-        if (task_forestnr == 0 && snap_idx == 0) printf("DEBUG: Looking for galaxies at output_snap %d (snap_idx %d)\n", output_snap, snap_idx);
-        
-        /* CHECKPOINT 11.1: Track SnapNum corruption */
-        if (task_forestnr == 0 && output_snap == 63) {
-            printf("DEBUG: SNAP 63 DEBUG - Checking %d galaxies for SnapNum=63\n", numgals);
-            int count_62 = 0, count_63 = 0, count_other = 0;
-            for (int gal_idx = 0; gal_idx < numgals && gal_idx < 10; gal_idx++) {
-                printf("DEBUG: Galaxy %d has SnapNum=%d\n", gal_idx, halogal[gal_idx].SnapNum);
-                if (halogal[gal_idx].SnapNum == 62) count_62++;
-                else if (halogal[gal_idx].SnapNum == 63) count_63++;
-                else count_other++;
-            }
-            printf("DEBUG: Sample galaxy SnapNums: %d have SnapNum=62, %d have SnapNum=63, %d have other values\n", count_62, count_63, count_other);
-        }
                 
         for (int gal_idx = 0; gal_idx < numgals; gal_idx++) {
             if (halogal[gal_idx].SnapNum == output_snap) {

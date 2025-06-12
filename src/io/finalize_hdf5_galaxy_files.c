@@ -45,15 +45,9 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         // Write any remaining galaxies in the buffer
         int32_t num_gals_to_write = hdf5_save_info->num_gals_in_buffer[snap_idx];
 
-        /* CHECKPOINT 8: Buffer flush during finalize */
-        if (forest_info->nforests_this_task > 0 && snap_idx == 0) printf("DEBUG: finalize_hdf5_galaxy_files snap_idx %d: flushing %d galaxies from buffer\n", snap_idx, num_gals_to_write);
-
         if (num_gals_to_write > 0) {
             h5_status = trigger_buffer_write(snap_idx, num_gals_to_write,
                                              hdf5_save_info->tot_ngals[snap_idx], save_info_base, run_params);
-            
-            /* CHECKPOINT 9: Buffer flush result */
-            if (forest_info->nforests_this_task > 0 && snap_idx == 0) printf("DEBUG: trigger_buffer_write returned status %d\n", (int)h5_status);
             if (h5_status != EXIT_SUCCESS) {
                 return h5_status;
             }
