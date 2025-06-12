@@ -191,7 +191,7 @@
 - **Logging Optimization**: Changed memory cleanup warnings from `LOG_WARNING` to `LOG_DEBUG` level since these represent normal cleanup operations, not problematic conditions
 - **Memory System Validation**: Confirmed via lldb that SAGE's memory management correctly handles 8 × 0.11MB galaxy arrays plus auxiliary structures with proper fail-safe cleanup at program termination
 - Modified files: src/core/core_mymalloc.c (logging level fix + enhanced tracking), src/core/sage.c (I/O cleanup), src/core/galaxy_array.c (allocation tracking), src/core/core_memory_pool.c (allocation tracking), src/core/core_array_utils.c (allocation tracking)
-EOF < /dev/null
+
 2025-06-13: [Critical Bug Fix] **🎉 HDF5 Galaxy Output Corruption Resolution 🎉** ✅ COMPLETED
 - **🔥 CRITICAL BUG FIXED**: Resolved "zero galaxies written to HDF5 output" issue that was preventing scientific data from being saved - HDF5 files increased from 4MB (empty) to 55MB (populated with galaxies)
 - **🧠 Root Cause Analysis**: Identified SnapNum corruption during `copy_galaxy_properties()` where snapshot 63 galaxies were being corrupted to snapshot 62 during property copying due to blind memcpy of entire properties structure
@@ -200,4 +200,3 @@ EOF < /dev/null
 - **✅ Validation Success**: SAGE now properly writes galaxies to HDF5 files with correct SnapNum values, scientific data integrity preserved, no galaxy loss during accumulation process
 - **🚀 Major Impact**: This fix enables scientific analysis of SAGE simulation results - HDF5 output files now contain complete galaxy population data across all snapshots including critical z=0 data
 - Modified files: src/generate_property_headers.py (SnapNum preservation in property copying), src/core/core_properties.c (regenerated with fix)
-EOF < /dev/null

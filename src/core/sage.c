@@ -315,7 +315,8 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         HaloAux[i].NGalaxies = 0;
     }
 
-    // NEW: Double-buffer implementation.
+    // NEW: Accumulate all galaxies from all snapshots like legacy code
+    GalaxyArray* all_galaxies = galaxy_array_new();
     GalaxyArray* galaxies_prev_snap = galaxy_array_new();
     GalaxyArray* galaxies_this_snap = NULL;
     int32_t galaxycounter = 0;
@@ -329,7 +330,6 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
             HaloAux[i].NGalaxies = 0; // Reset this for the new snapshot.
         }
 
-
         for (int halonr = 0; halonr < nhalos; ++halonr) {
             if (Halo[halonr].SnapNum == snapshot && HaloAux[halonr].DoneFlag == 0) {
                 int numgals_in_fof_group = 0;
@@ -338,25 +338,48 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                 if (status != EXIT_SUCCESS) {
                     galaxy_array_free(&galaxies_prev_snap);
                     galaxy_array_free(&galaxies_this_snap);
+                    galaxy_array_free(&all_galaxies);
                     end_tree_memory_scope();
                     return status;
                 }
             }
         }
 
-        // Save galaxies at the end of the snapshot processing.
-        int final_ngal = galaxy_array_get_count(galaxies_this_snap);
-        struct GALAXY *final_gals = galaxy_array_get_raw_data(galaxies_this_snap);
+        // Accumulate all galaxies from this snapshot into the master collection
+        int snap_ngal = galaxy_array_get_count(galaxies_this_snap);
+        struct GALAXY *snap_gals = galaxy_array_get_raw_data(galaxies_this_snap);
         
-        status = save_galaxies(forestnr, final_ngal, Halo, forest_info, HaloAux, final_gals, save_info, run_params);
+        
+        for (int i = 0; i < snap_ngal; i++) {
+            int append_result = galaxy_array_append(all_galaxies, &snap_gals[i], run_params);
+            if (append_result < 0) {
+                galaxy_array_free(&galaxies_prev_snap);
+                galaxy_array_free(&galaxies_this_snap);
+                galaxy_array_free(&all_galaxies);
+                end_tree_memory_scope();
+                return EXIT_FAILURE;
+            }
+        }
 
         // SWAP BUFFERS: The results of this snapshot become the input for the next.
         galaxy_array_free(&galaxies_prev_snap);
         galaxies_prev_snap = galaxies_this_snap;
     }
 
+    // Save all galaxies at once (like legacy code) - the I/O layer will filter by snapshot
+    int total_ngal = galaxy_array_get_count(all_galaxies);
+    struct GALAXY *all_gals = galaxy_array_get_raw_data(all_galaxies);
+    
+    
+    if (total_ngal > 0) {
+        status = save_galaxies(forestnr, total_ngal, Halo, forest_info, HaloAux, all_gals, save_info, run_params);
+    } else {
+        status = EXIT_SUCCESS;
+    }
+
     /* free galaxies and the forest */
     galaxy_array_free(&galaxies_prev_snap); // This frees the final snapshot's data.
+    galaxy_array_free(&all_galaxies);
     myfree(HaloAux);
     myfree(Halo);
 
