@@ -775,8 +775,8 @@ static void test_halo_to_galaxy_data_preservation(void) {
         TEST_ASSERT(galaxy->Type == 0, // Central galaxies in our test
                    "Galaxy %d should be central (Type=0), got %d", i, galaxy->Type);
         
-        TEST_ASSERT(galaxy->SnapNum == 61, // Galaxies evolve from halo.SnapNum-1 (61) to halo.SnapNum (62)
-                   "Galaxy %d should have SnapNum=61 (halo.SnapNum-1), got %d", i, galaxy->SnapNum);
+        TEST_ASSERT(galaxy->SnapNum == 62, // Galaxies evolve from halo.SnapNum-1 (61) to halo.SnapNum (62) - final state after evolution
+                   "Galaxy %d should have SnapNum=62 (halo.SnapNum after evolution), got %d", i, galaxy->SnapNum);
         
         printf("  Galaxy %d: GalaxyNr=%d, HaloNr=%d, integrity verified\n",
                i, galaxy->GalaxyNr, galaxy->HaloNr);
