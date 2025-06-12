@@ -48,7 +48,7 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
     
     galaxies[p].HaloNr = halonr;
     galaxies[p].MostBoundID = halos[halonr].MostBoundID;
-    galaxies[p].SnapNum = halos[halonr].SnapNum;
+    galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
     
     // Initialize from halo data
     for (int j = 0; j < 3; j++) {
