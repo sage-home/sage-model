@@ -831,8 +831,15 @@ def generate_free_arrays_code(properties):
 
 def generate_copy_fixed_fields_code(properties):
     """Generate code for copying fixed-size fields"""
-    return """    /* Copy the basic structure */
+    return """    /* Copy fixed-size fields */
+    /* Save the correct SnapNum from source galaxy before memcpy */
+    int correct_snapnum = src->SnapNum;
+    
+    /* Copy the basic structure */
     memcpy(dest->properties, src->properties, sizeof(galaxy_properties_t));
+    
+    /* Restore the correct SnapNum in the copied properties */
+    dest->properties->SnapNum = correct_snapnum;
 
     /* Reset dynamic array pointers to NULL to avoid double-free issues */""" + '\n'.join([
         f"    dest->properties->{p['name']} = NULL;" 
