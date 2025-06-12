@@ -294,6 +294,9 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         end_tree_memory_scope();
         return nhalos;
     }
+    
+    /* CHECKPOINT 1: Halo loading */
+    if (forestnr == 0) printf("DEBUG: Forest %"PRId64" loaded %"PRId64" halos\n", forestnr, nhalos);
 
 #ifdef PROCESS_LHVT_STYLE
 #error Processing in Locally-horizontal vertical tree (LHVT) style not implemented yet
@@ -329,6 +332,15 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
             HaloAux[i].NGalaxies = 0; // Reset this for the new snapshot.
         }
 
+        /* CHECKPOINT 13: Snapshot processing debug */
+        int halos_at_snapshot = 0;
+        for (int i = 0; i < nhalos; i++) {
+            if (Halo[i].SnapNum == snapshot) halos_at_snapshot++;
+        }
+        if (forestnr == 0) { // Only log for forest 0
+            printf("DEBUG: Snapshot %d has %d halos\n", snapshot, halos_at_snapshot);
+        }
+
         for (int halonr = 0; halonr < nhalos; ++halonr) {
             if (Halo[halonr].SnapNum == snapshot && HaloAux[halonr].DoneFlag == 0) {
                 int numgals_in_fof_group = 0;
@@ -342,11 +354,39 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                 }
             }
         }
+        
+        /* CHECKPOINT 2: Galaxy construction */
+        int galaxies_constructed = galaxy_array_get_count(galaxies_this_snap);
+        
+        /* CHECKPOINT: Track snapshot progression */
+        static int max_snapshot_seen = -1;
+        if (snapshot > max_snapshot_seen && forestnr == 0) {
+            max_snapshot_seen = snapshot;
+            printf("DEBUG: NEW MAXIMUM SNAPSHOT REACHED: %d (Forest %"PRId64")\n", 
+                   snapshot, forestnr);
+        }
+        
+        if (forestnr == 0) printf("DEBUG: Forest %"PRId64" snapshot %d: constructed %d galaxies\n", forestnr, snapshot, galaxies_constructed);
 
         // Save galaxies at the end of the snapshot processing.
         int final_ngal = galaxy_array_get_count(galaxies_this_snap);
         struct GALAXY *final_gals = galaxy_array_get_raw_data(galaxies_this_snap);
+        
+        /* CHECKPOINT 3: Before saving - detailed analysis */
+        if (forestnr == 0) printf("DEBUG: Forest %"PRId64" snapshot %d: about to save %d galaxies\n", forestnr, snapshot, final_ngal);
+        
+        /* CHECKPOINT 17: Track what galaxies are retrieved for saving */
+        if (forestnr == 0 && snapshot >= 62 && final_ngal > 0) {
+            printf("DEBUG: RETRIEVE_TRACE - Retrieved %d galaxies from galaxies_this_snap for snapshot %d\n", final_ngal, snapshot);
+            for (int g = 0; g < final_ngal && g < 5; g++) {
+                printf("DEBUG: RETRIEVE_TRACE - Galaxy %d has SnapNum=%d\n", g, final_gals[g].SnapNum);
+            }
+        }
+        
         status = save_galaxies(forestnr, final_ngal, Halo, forest_info, HaloAux, final_gals, save_info, run_params);
+        
+        /* CHECKPOINT 4: After saving */
+        if (forestnr == 0) printf("DEBUG: Forest %"PRId64" snapshot %d: save_galaxies returned status %d\n", forestnr, snapshot, status);
 
         // SWAP BUFFERS: The results of this snapshot become the input for the next.
         galaxy_array_free(&galaxies_prev_snap);

@@ -139,6 +139,9 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
 {
     int32_t status = EXIT_FAILURE;
 
+    /* CHECKPOINT 5: Inside save_galaxies */
+    if (task_forestnr == 0) printf("DEBUG: save_galaxies called with %d galaxies for forest %"PRId64"\n", numgals, task_forestnr);
+
     // Use the modern I/O galaxy output interface to prepare galaxies
     struct galaxy_output_context output_ctx;
     status = prepare_galaxies_for_output(task_forestnr, halos, forest_info, haloaux, halogal,
@@ -149,12 +152,20 @@ int32_t save_galaxies(const int64_t task_forestnr, const int numgals, struct hal
                 "Failed to prepare galaxies for output (task_forestnr = %"PRId64")", task_forestnr);
         io_set_error(IO_ERROR_VALIDATION_FAILED, error_buffer);
         log_io_error("save_galaxies", IO_ERROR_VALIDATION_FAILED);
+        /* CHECKPOINT 5.1 */
+        if (task_forestnr == 0) printf("DEBUG: prepare_galaxies_for_output FAILED with status %d\n", status);
         return map_io_error_to_sage_error(IO_ERROR_VALIDATION_FAILED);
     }
+    
+    /* CHECKPOINT 6: After prepare_galaxies_for_output */
+    if (task_forestnr == 0) printf("DEBUG: prepare_galaxies_for_output SUCCESS\n");
 
     // HDF5 is the only supported output format
 #ifdef HDF5
     status = save_hdf5_galaxies(task_forestnr, numgals, forest_info, halos, haloaux, halogal, save_info, run_params);
+    
+    /* CHECKPOINT 7: After save_hdf5_galaxies */
+    if (task_forestnr == 0) printf("DEBUG: save_hdf5_galaxies returned status %d\n", status);
 #else
     // HDF5 is required
     io_set_error(IO_ERROR_FORMAT_ERROR, "HDF5 support is required but not compiled in");

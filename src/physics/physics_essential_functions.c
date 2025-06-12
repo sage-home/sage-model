@@ -52,7 +52,16 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
     
     galaxies[p].HaloNr = halonr;
     galaxies[p].MostBoundID = halos[halonr].MostBoundID;
-    galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
+    galaxies[p].SnapNum = halos[halonr].SnapNum;
+    
+    /* CHECKPOINT 12: SnapNum assignment debug */
+    static int debug_count_12 = 0; // TODO: Remove this debug counter later
+    if (halonr == 0 && debug_count_12 < 5) {
+        printf("DEBUG: INIT_GALAXY - Halo SnapNum=%d -> Galaxy SnapNum=%d (correctly matched)\n",
+               halos[halonr].SnapNum, galaxies[p].SnapNum);
+        debug_count_12++;
+        if (debug_count_12 == 5) printf("\t...future debug output will be suppressed\n");
+    }
     
     // Initialize from halo data
     for (int j = 0; j < 3; j++) {

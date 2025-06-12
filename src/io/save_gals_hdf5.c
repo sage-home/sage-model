@@ -108,9 +108,14 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         return EXIT_FAILURE;
     }
 
+    /* CHECKPOINT 10: save_hdf5_galaxies processing */
+    if (task_forestnr == 0) printf("DEBUG: save_hdf5_galaxies processing %d galaxies for forest %"PRId64"\n", num_gals, task_forestnr);
+
     for (int32_t gal_idx = 0; gal_idx < num_gals; gal_idx++) {
         // Only processing galaxies at selected snapshots
         if (haloaux[gal_idx].output_snap_n < 0) {
+            /* CHECKPOINT 10.1 */
+            if (task_forestnr == 0 && gal_idx < 5) printf("DEBUG: galaxy %d skipped - output_snap_n = %d\n", gal_idx, haloaux[gal_idx].output_snap_n);
             continue;
         }
 
@@ -142,14 +147,23 @@ int32_t save_hdf5_galaxies(const int64_t task_forestnr, const int32_t num_gals, 
         }
         
         // Process galaxy data into property buffers using the HDF5 structure
+        /* CHECKPOINT 10.2 */
+        if (task_forestnr == 0 && gal_idx < 5) printf("DEBUG: galaxy %d accepted for output - snap_idx = %d\n", gal_idx, snap_idx);
+
         status = process_galaxy_for_output(&halogal[gal_idx], save_info, snap_idx, 
                                            halos, task_forestnr, forest_info->original_treenr[task_forestnr], 
                                            run_params);
         if (status != EXIT_SUCCESS) {
+            /* CHECKPOINT 10.3 */
+            if (task_forestnr == 0) printf("DEBUG: process_galaxy_for_output FAILED with status %d\n", status);
             return status;
         }
         
         save_info->num_gals_in_buffer[snap_idx]++;
+
+        /* CHECKPOINT 10.4 */
+        if (task_forestnr == 0 && gal_idx < 5) printf("DEBUG: galaxy %d added to buffer - buffer now has %d galaxies (buffer_size=%d)\n",
+               gal_idx, save_info->num_gals_in_buffer[snap_idx], save_info->buffer_size);
 
         // Increment forest_ngals counter for this snapshot and forest
         // Validate task_forestnr bounds (forest_ngals allocated with fixed size)
