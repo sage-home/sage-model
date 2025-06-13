@@ -23,6 +23,20 @@ struct GalaxyArray {
     int capacity;
 };
 
+// Helper function to sync properties from direct fields to property system
+static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
+    if (gal->properties == NULL) return;
+    
+    // Sync the problematic properties that are set in direct fields but need to be in property system
+    GALAXY_PROP_dT(gal) = gal->dT;
+    GALAXY_PROP_deltaMvir(gal) = gal->deltaMvir;
+    GALAXY_PROP_CentralMvir(gal) = gal->CentralMvir;
+    GALAXY_PROP_MergTime(gal) = gal->MergTime;
+    GALAXY_PROP_infallMvir(gal) = gal->infallMvir;
+    GALAXY_PROP_infallVvir(gal) = gal->infallVvir;
+    GALAXY_PROP_infallVmax(gal) = gal->infallVmax;
+}
+
 // Helper function to sync properties to direct fields (single direction)
 static inline void sync_core_properties_to_direct_fields(struct GALAXY *gal) {
     if (gal->properties == NULL) return;
@@ -33,6 +47,14 @@ static inline void sync_core_properties_to_direct_fields(struct GALAXY *gal) {
     gal->Vmax = GALAXY_PROP_Vmax(gal);
     gal->Rvir = GALAXY_PROP_Rvir(gal);
     gal->GalaxyIndex = GALAXY_PROP_GalaxyIndex(gal);
+    // Also sync the problematic properties
+    gal->dT = GALAXY_PROP_dT(gal);
+    gal->deltaMvir = GALAXY_PROP_deltaMvir(gal);
+    gal->CentralMvir = GALAXY_PROP_CentralMvir(gal);
+    gal->MergTime = GALAXY_PROP_MergTime(gal);
+    gal->infallMvir = GALAXY_PROP_infallMvir(gal);
+    gal->infallVvir = GALAXY_PROP_infallVvir(gal);
+    gal->infallVmax = GALAXY_PROP_infallVmax(gal);
     for (int j = 0; j < 3; j++) {
         gal->Pos[j] = GALAXY_PROP_Pos_ELEM(gal, j);
     }
@@ -72,6 +94,11 @@ static inline void safe_deep_copy_galaxy(struct GALAXY *dest, const struct GALAX
     // Deep copy the dynamic properties structure
     if (copy_galaxy_properties(dest, src, run_params) != 0) {
         LOG_ERROR("Failed to deep copy galaxy properties during safe copy operation");
+    }
+    
+    // CRITICAL: Sync direct fields to properties system for properties that are set in direct fields
+    if (dest->properties != NULL) {
+        sync_direct_fields_to_properties(dest);
     }
     
     // Sync from properties to direct fields

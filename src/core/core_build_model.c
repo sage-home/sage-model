@@ -66,6 +66,30 @@ double get_virial_velocity(const int halonr, struct halo_data *halos, struct par
 void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_data *halos,
                 struct GALAXY *galaxies, struct params *run_params);
 
+/* Forward declaration for property sync function */
+static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
+    if (gal->properties == NULL) {
+        // Debug: Properties not allocated
+        return;
+    }
+    
+    // Sync the problematic properties that are set in direct fields but need to be in property system
+    GALAXY_PROP_dT(gal) = gal->dT;
+    GALAXY_PROP_deltaMvir(gal) = gal->deltaMvir;
+    GALAXY_PROP_CentralMvir(gal) = gal->CentralMvir;
+    GALAXY_PROP_MergTime(gal) = gal->MergTime;
+    GALAXY_PROP_infallMvir(gal) = gal->infallMvir;
+    GALAXY_PROP_infallVvir(gal) = gal->infallVvir;
+    GALAXY_PROP_infallVmax(gal) = gal->infallVmax;
+    
+    // Debug: Quick check that one property was actually set
+    static int debug_count = 0;
+    if (debug_count < 5) {
+        debug_count++;
+        // Only print this for the first few calls
+    }
+}
+
 /**
  * @brief   Finds the most massive progenitor halo that contains a galaxy
  *
@@ -241,6 +265,16 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
             temp_galaxy.HaloNr = halonr;
             temp_galaxy.dT = -1.0;
             
+            // Ensure properties are allocated before syncing
+            if (temp_galaxy.properties == NULL) {
+                if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                    LOG_WARNING("Failed to allocate properties for temp galaxy");
+                }
+            }
+            
+            // Sync direct field changes to property system
+            sync_direct_fields_to_properties(&temp_galaxy);
+            
             // This is a shallow copy of extension flags/pointers, which is fine as they are managed on demand.
             galaxy_extension_copy(&temp_galaxy, source_gal);
 
@@ -260,15 +294,45 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                     }
                     temp_galaxy.Len = halos[halonr].Len;
                     temp_galaxy.Vmax = halos[halonr].Vmax;
-                    temp_galaxy.deltaMvir = get_virial_mass(halonr, halos, run_params) - temp_galaxy.Mvir;
-                    temp_galaxy.Mvir = get_virial_mass(halonr, halos, run_params);
+                    float new_mvir = get_virial_mass(halonr, halos, run_params);
+                    temp_galaxy.deltaMvir = new_mvir - temp_galaxy.Mvir;
+                    
+                    // Debug: Print first few delta calculations
+                    static int debug_count = 0;
+                    if (debug_count < 5) {
+                        printf("DEBUG deltaMvir: old=%.3f, new=%.3f, delta=%.3f\n", 
+                               temp_galaxy.Mvir, new_mvir, temp_galaxy.deltaMvir);
+                        debug_count++;
+                    }
+                    
+                    temp_galaxy.Mvir = new_mvir;
                     temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);
                     temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);
+                    
+                    // Ensure properties are allocated before syncing
+                    if (temp_galaxy.properties == NULL) {
+                        if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                            LOG_WARNING("Failed to allocate properties for temp galaxy");
+                        }
+                    }
+                    
+                    // Sync halo property updates to property system
+                    sync_direct_fields_to_properties(&temp_galaxy);
 
                     if (halonr == fof_halonr) {
                         // It remains a central galaxy (Type 0) of the main FOF.
                         temp_galaxy.MergTime = 999.9;
                         temp_galaxy.Type = 0;
+                        
+                        // Ensure properties are allocated before syncing
+                        if (temp_galaxy.properties == NULL) {
+                            if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                                LOG_WARNING("Failed to allocate properties for temp galaxy");
+                            }
+                        }
+                        
+                        // Sync merger and type updates to property system
+                        sync_direct_fields_to_properties(&temp_galaxy);
                     } else {
                         // It was a central but is now a satellite (Type 1).
                         // Record its properties at the point of infall.
@@ -289,11 +353,31 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                             temp_galaxy.MergTime = 999.9;
                         }
                         temp_galaxy.Type = 1;
+                        
+                        // Ensure properties are allocated before syncing
+                        if (temp_galaxy.properties == NULL) {
+                            if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                                LOG_WARNING("Failed to allocate properties for temp galaxy");
+                            }
+                        }
+                        
+                        // Sync infall properties, merger time, and type updates to property system
+                        sync_direct_fields_to_properties(&temp_galaxy);
                     }
                 } else {
                     // This was a satellite of the main progenitor. It becomes an orphan.
                     temp_galaxy.Type = 2;
                     temp_galaxy.MergTime = 0.0;
+                    
+                    // Ensure properties are allocated before syncing
+                    if (temp_galaxy.properties == NULL) {
+                        if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                            LOG_WARNING("Failed to allocate properties for temp galaxy");
+                        }
+                    }
+                    
+                    // Sync orphan status updates to property system
+                    sync_direct_fields_to_properties(&temp_galaxy);
                 }
             } else {
                 // This galaxy is from a less massive progenitor. It must become an orphan.
@@ -305,6 +389,16 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                 }
                 temp_galaxy.Type = 2;
                 temp_galaxy.MergTime = 0.0;
+                
+                // Ensure properties are allocated before syncing
+                if (temp_galaxy.properties == NULL) {
+                    if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                        LOG_WARNING("Failed to allocate properties for temp galaxy");
+                    }
+                }
+                
+                // Sync orphan properties and status updates to property system
+                sync_direct_fields_to_properties(&temp_galaxy);
             }
             
             // Append the processed galaxy to the array for this halo.
