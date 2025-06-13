@@ -59,7 +59,7 @@ static int setup_test_context(void) {
     logging_init(LOG_LEVEL_DEBUG, stdout);
     
     // Initialize test parameters with realistic values FIRST
-    test_ctx.test_params.simulation.NumSnapOutputs = 15;  // For dynamic arrays (StarFormationHistory, TestNonZeroArray)
+    test_ctx.test_params.simulation.NumSnapOutputs = 15;  // For dynamic arrays (StarFormationHistory)
     test_ctx.test_params.cosmology.Omega = 0.3;
     test_ctx.test_params.cosmology.OmegaLambda = 0.7;
     test_ctx.test_params.cosmology.Hubble_h = 0.7;
@@ -262,16 +262,6 @@ static void test_dynamic_array_access(void) {
     TEST_ASSERT(array_size == expected_size, "Dynamic array: size should match NumSnapOutputs");
     
     printf("  StarFormationHistory array size: %d (expected=%d)\n", array_size, expected_size);
-    
-    // Test TestNonZeroArray (dynamic array with non-zero initial values) - already using generic accessors correctly
-    int test_array_size = get_property_array_size(test_ctx.test_galaxy, PROP_TestNonZeroArray);
-    TEST_ASSERT(test_array_size == expected_size, "TestNonZeroArray: size should match NumSnapOutputs");
-    
-    // Check initial values are correct (should be 1.0 from properties.yaml)
-    float first_element = get_float_array_element_property(test_ctx.test_galaxy, PROP_TestNonZeroArray, 0, -999.0f);
-    TEST_ASSERT(fabsf(first_element - 1.0f) < 1e-6f, "TestNonZeroArray: initial value should be 1.0");
-    
-    printf("  TestNonZeroArray size: %d, first element: %g (physics property)\n", test_array_size, first_element);
 }
 
 /**

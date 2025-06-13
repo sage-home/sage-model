@@ -69,7 +69,6 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_
 /* Forward declaration for property sync function */
 static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
     if (gal->properties == NULL) {
-        // Debug: Properties not allocated
         return;
     }
     
@@ -81,13 +80,6 @@ static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
     GALAXY_PROP_infallMvir(gal) = gal->infallMvir;
     GALAXY_PROP_infallVvir(gal) = gal->infallVvir;
     GALAXY_PROP_infallVmax(gal) = gal->infallVmax;
-    
-    // Debug: Quick check that one property was actually set
-    static int debug_count = 0;
-    if (debug_count < 5) {
-        debug_count++;
-        // Only print this for the first few calls
-    }
 }
 
 /**
@@ -297,14 +289,6 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                     float new_mvir = get_virial_mass(halonr, halos, run_params);
                     temp_galaxy.deltaMvir = new_mvir - temp_galaxy.Mvir;
                     
-                    // Debug: Print first few delta calculations
-                    static int debug_count = 0;
-                    if (debug_count < 5) {
-                        printf("DEBUG deltaMvir: old=%.3f, new=%.3f, delta=%.3f\n", 
-                               temp_galaxy.Mvir, new_mvir, temp_galaxy.deltaMvir);
-                        debug_count++;
-                    }
-                    
                     temp_galaxy.Mvir = new_mvir;
                     temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);
                     temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);
@@ -321,7 +305,6 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
 
                     if (halonr == fof_halonr) {
                         // It remains a central galaxy (Type 0) of the main FOF.
-                        temp_galaxy.MergTime = 999.9;
                         temp_galaxy.Type = 0;
                         
                         // Ensure properties are allocated before syncing
@@ -334,24 +317,11 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                         // Sync merger and type updates to property system
                         sync_direct_fields_to_properties(&temp_galaxy);
                     } else {
-                        // It was a central but is now a satellite (Type 1).
-                        // Record its properties at the point of infall.
+                        // It was a central but is now a satellite (Type 1). Record its properties at the point of infall.
                         temp_galaxy.infallMvir = previousMvir;
                         temp_galaxy.infallVvir = previousVvir;
                         temp_galaxy.infallVmax = previousVmax;
-                        
-                        // Estimate a new merger time.
-                        double coulomb = log1p(halos[halos[halonr].FirstHaloInFOFgroup].Len / ((double) halos[halonr].Len));
-                        if (coulomb > 0) {
-                            double sat_mass = get_virial_mass(halonr, halos, run_params);
-                            if(sat_mass > 0) {
-                                temp_galaxy.MergTime = 2.0 * 1.17 * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_radius(halos[halonr].FirstHaloInFOFgroup, halos, run_params) * get_virial_velocity(halos[halonr].FirstHaloInFOFgroup, halos, run_params) / (coulomb * run_params->cosmology.G * sat_mass);
-                            } else {
-                                temp_galaxy.MergTime = 999.9;
-                            }
-                        } else {
-                            temp_galaxy.MergTime = 999.9;
-                        }
+
                         temp_galaxy.Type = 1;
                         
                         // Ensure properties are allocated before syncing
@@ -367,7 +337,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                 } else {
                     // This was a satellite of the main progenitor. It becomes an orphan.
                     temp_galaxy.Type = 2;
-                    temp_galaxy.MergTime = 0.0;
+                    temp_galaxy.mergeType = 1;
                     
                     // Ensure properties are allocated before syncing
                     if (temp_galaxy.properties == NULL) {
@@ -388,7 +358,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                     temp_galaxy.infallVmax = temp_galaxy.Vmax;
                 }
                 temp_galaxy.Type = 2;
-                temp_galaxy.MergTime = 0.0;
+                temp_galaxy.mergeType = 1;
                 
                 // Ensure properties are allocated before syncing
                 if (temp_galaxy.properties == NULL) {

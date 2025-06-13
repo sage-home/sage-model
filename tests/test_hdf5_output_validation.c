@@ -748,12 +748,6 @@ static int create_realistic_galaxy_data(struct GALAXY **galaxies, int *ngals) {
             set_float_array_element_property(gal, PROP_SfrBulgeColdGas, step, 4.0e6f + step * 2.0e5f);
             set_float_array_element_property(gal, PROP_SfrBulgeColdGasMetals, step, 8.0e4f + step * 4.0e3f);
         }
-        
-        // Initialize TestNonZeroArray property for validation
-        for (int step = 0; step < 5; step++) {
-            float test_value = 100.0f + step * 10.0f;
-            set_float_array_element_property(gal, PROP_TestNonZeroArray, step, test_value);
-        }
     }
     
     printf("Created %d realistic test galaxies with initialized property systems\n", test_ngals);
@@ -1447,11 +1441,6 @@ static void test_comprehensive_galaxy_properties(void) {
     for (int step = 0; step < 10 && step < TEST_STEPS; step++) {
         float sfr_value = 1.0f + step * 0.1f;  // Increasing SFR over time
         set_float_array_element_property(&test_galaxy, PROP_StarFormationHistory, step, sfr_value);
-    }
-    
-    // Test non-zero array property
-    for (int i = 0; i < 5; i++) {
-        set_float_array_element_property(&test_galaxy, PROP_TestNonZeroArray, i, 1.0f + i);
     }
     
     // Test core structural properties that don't use property system
