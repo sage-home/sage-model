@@ -101,7 +101,7 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
         GALAXY_PROP_Rvir(&galaxies[p]) = galaxies[p].Rvir;
         GALAXY_PROP_Vvir(&galaxies[p]) = galaxies[p].Vvir;
         GALAXY_PROP_Vmax(&galaxies[p]) = galaxies[p].Vmax;
-        GALAXY_PROP_VelDisp(&galaxies[p]) = 0.0; // Default value
+        GALAXY_PROP_VelDisp(&galaxies[p]) = halos[halonr].VelDisp;
         GALAXY_PROP_MergTime(&galaxies[p]) = galaxies[p].MergTime;
         GALAXY_PROP_infallMvir(&galaxies[p]) = galaxies[p].infallMvir;
         GALAXY_PROP_infallVvir(&galaxies[p]) = galaxies[p].infallVvir;
@@ -111,7 +111,7 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
         for (int j = 0; j < 3; j++) {
             GALAXY_PROP_Pos_ELEM(&galaxies[p], j) = galaxies[p].Pos[j];
             GALAXY_PROP_Vel_ELEM(&galaxies[p], j) = galaxies[p].Vel[j];
-            GALAXY_PROP_Spin_ELEM(&galaxies[p], j) = 0.0; // Default value
+            GALAXY_PROP_Spin_ELEM(&galaxies[p], j) = halos[halonr].Spin[j];
         }
     } else {
         LOG_ERROR("CRITICAL ERROR: Galaxy %d properties allocation failed - this will cause output errors", p);
