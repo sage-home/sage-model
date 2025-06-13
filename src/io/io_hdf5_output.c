@@ -475,6 +475,16 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             else if (strcmp(field_name, "Vel_z") == 0) {
                 *(float *)dest_ptr = GALAXY_PROP_Vel_ELEM(galaxy, 2);
             }
+            // Handle spin components from core GALAXY_PROP_Spin_ELEM macro
+            else if (strcmp(field_name, "Spin_x") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_Spin_ELEM(galaxy, 0);
+            }
+            else if (strcmp(field_name, "Spin_y") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_Spin_ELEM(galaxy, 1);
+            }
+            else if (strcmp(field_name, "Spin_z") == 0) {
+                *(float *)dest_ptr = GALAXY_PROP_Spin_ELEM(galaxy, 2);
+            }
             // For all other fields, use the generic property access system
             else {
                 property_id_t prop_id = get_cached_property_id(field_name);
@@ -753,19 +763,16 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
     // Initialize field index
     int field_idx = 0;
     
-    // Extern declaration for property metadata (defined in core_properties.c)
-    // This should ideally be included via a header if it's part of a public API for other modules.
-    // For now, direct extern declaration as it's specific to SAGE's build process.
-    extern const GalaxyPropertyInfo galaxy_property_info[MAX_GALAXY_PROPERTIES];
-    extern const int32_t TotGalaxyProperties;
+    // Use the generated property metadata from core_properties.h
+    extern property_meta_t PROPERTY_META[PROP_COUNT];
 
     // Generate field metadata from property metadata
     // Iterate through all defined properties in the central registry
-    for (int i = 0; i < TotGalaxyProperties; i++) {
-        const GalaxyPropertyInfo *meta = &galaxy_property_info[i]; // Use the central definition
+    for (int i = 0; i < PROP_COUNT; i++) {
+        const property_meta_t *meta = &PROPERTY_META[i]; // Use the central definition
         
         // Skip properties that aren't marked for output
-        if (!meta->output_field) { // Assuming 'output_field' is the flag in GalaxyPropertyInfo
+        if (!meta->output) { // Check the output flag in property_meta_t
             continue;
         }
         
@@ -779,12 +786,12 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
         // For now, we assume all properties in galaxy_property_info are "core" for output purposes,
         // or that their 'output_field' flag correctly indicates they should be standard HDF5 columns.
 
-        if (meta->is_array && strcmp(meta->type_str, "float") == 0) { // Assuming type_str holds "float", "int32_t" etc.
-            if (meta->array_len > 0) { // Fixed-size arrays like Pos[3]
+        if (meta->is_array && strcmp(meta->type, "float") == 0) { // Use meta->type instead of meta->type_str
+            if (meta->array_dimension > 0) { // Use meta->array_dimension instead of meta->array_len
                 bool handled_as_components = false;
-                if (strcmp(meta->name, "Pos") == 0 && meta->array_len == 3) {
+                if (strcmp(meta->name, "Pos") == 0 && meta->array_dimension == 3) {
                     const char components[] = {'x', 'y', 'z'};
-                    for (int dim = 0; dim < meta->array_len; dim++) {
+                    for (int dim = 0; dim < meta->array_dimension; dim++) {
                         snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, components[dim]);
                         snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component %c", meta->description, components[dim]);
                         strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
@@ -793,9 +800,20 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
                     }
                     handled_as_components = true;
                 } 
-                else if (strcmp(meta->name, "Vel") == 0 && meta->array_len == 3) {
+                else if (strcmp(meta->name, "Vel") == 0 && meta->array_dimension == 3) {
                     const char components[] = {'x', 'y', 'z'};
-                    for (int dim = 0; dim < meta->array_len; dim++) {
+                    for (int dim = 0; dim < meta->array_dimension; dim++) {
+                        snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, components[dim]);
+                        snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component %c", meta->description, components[dim]);
+                        strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
+                        field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
+                        field_idx++;
+                    }
+                    handled_as_components = true;
+                }
+                else if (strcmp(meta->name, "Spin") == 0 && meta->array_dimension == 3) {
+                    const char components[] = {'x', 'y', 'z'};
+                    for (int dim = 0; dim < meta->array_dimension; dim++) {
                         snprintf(field_names[field_idx], MAX_STRING_LEN, "%s_%c", meta->name, components[dim]);
                         snprintf(field_descriptions[field_idx], MAX_STRING_LEN, "%s component %c", meta->description, components[dim]);
                         strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
@@ -824,21 +842,21 @@ static int generate_field_metadata(char (*field_names)[MAX_STRING_LEN],
             strncpy(field_units[field_idx], meta->units, MAX_STRING_LEN-1);
             
             // Set appropriate HDF5 datatype based on property type string
-            if (strcmp(meta->type_str, "int32_t") == 0) {
+            if (strcmp(meta->type, "int32_t") == 0) {
                 field_dtypes[field_idx] = H5T_NATIVE_INT32;
-            } else if (strcmp(meta->type_str, "int64_t") == 0 || strcmp(meta->type_str, "long long") == 0) {
+            } else if (strcmp(meta->type, "int64_t") == 0 || strcmp(meta->type, "long long") == 0) {
                 field_dtypes[field_idx] = H5T_NATIVE_INT64;
-            } else if (strcmp(meta->type_str, "uint64_t") == 0) { // Assuming uint64_t is also output as H5T_NATIVE_INT64 or specific unsigned type
+            } else if (strcmp(meta->type, "uint64_t") == 0) { // Assuming uint64_t is also output as H5T_NATIVE_INT64 or specific unsigned type
                 field_dtypes[field_idx] = H5T_NATIVE_UINT64; // Use appropriate HDF5 unsigned type
-            } else if (strcmp(meta->type_str, "float") == 0) {
+            } else if (strcmp(meta->type, "float") == 0) {
                 field_dtypes[field_idx] = H5T_NATIVE_FLOAT;
-            } else if (strcmp(meta->type_str, "double") == 0) {
+            } else if (strcmp(meta->type, "double") == 0) {
                 field_dtypes[field_idx] = H5T_NATIVE_DOUBLE;
-            } else if (strcmp(meta->type_str, "bool") == 0) { // bool often stored as int or char
+            } else if (strcmp(meta->type, "bool") == 0) { // bool often stored as int or char
                 field_dtypes[field_idx] = H5T_NATIVE_INT8; // Or H5T_NATIVE_HBOOL if available and preferred
             } else {
                 LOG_ERROR("Unknown property type string '%s' for core property '%s'. Cannot determine HDF5 type.", 
-                           meta->type_str, meta->name);
+                           meta->type, meta->name);
                 // Default to float and log an error, or return error
                 field_dtypes[field_idx] = H5T_NATIVE_FLOAT; 
             }

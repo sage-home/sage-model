@@ -51,6 +51,7 @@ typedef int hid_t;
 #define H5T_NATIVE_DOUBLE 1
 #define H5T_NATIVE_INT 2
 #define H5T_NATIVE_LLONG 3
+#define H5T_NATIVE_ULLONG 4
 #endif
 
 /* Property types and metadata */
@@ -695,7 +696,36 @@ def generate_transformer_dispatch_chain(properties):
         return -1;
     }
     
-    // This uses the output_prop_id to fetch the raw value
+    // Check for component-wise array access first
+    if (strlen(output_prop_name) >= 4) {
+        char last_char = output_prop_name[strlen(output_prop_name) - 1];
+        if (last_char == 'x' || last_char == 'y' || last_char == 'z') {
+            // Extract component index from name suffix
+            int component_idx = -1;
+            if (last_char == 'x') component_idx = 0;
+            else if (last_char == 'y') component_idx = 1;
+            else if (last_char == 'z') component_idx = 2;
+            
+            // Handle known 3-element arrays
+            if (strncmp(output_prop_name, "Pos", 3) == 0 && strlen(output_prop_name) == 4) {
+                *((float*)output_buffer_element_ptr) = GALAXY_PROP_Pos_ELEM(galaxy, component_idx);
+            }
+            else if (strncmp(output_prop_name, "Vel", 3) == 0 && strlen(output_prop_name) == 4) {
+                *((float*)output_buffer_element_ptr) = GALAXY_PROP_Vel_ELEM(galaxy, component_idx);
+            }
+            else if (strncmp(output_prop_name, "Spin", 4) == 0 && strlen(output_prop_name) == 5) {
+                *((float*)output_buffer_element_ptr) = GALAXY_PROP_Spin_ELEM(galaxy, component_idx);
+            }
+            else {
+                // Not a recognized array component, fall through to regular property access
+                goto regular_property_access;
+            }
+            return status; // Component handled successfully
+        }
+    }
+    
+    regular_property_access:
+    // Regular property access using the property ID
     if (h5_dtype == H5T_NATIVE_FLOAT) {
         *((float*)output_buffer_element_ptr) = get_float_property(galaxy, output_prop_id, 0.0f);
     } else if (h5_dtype == H5T_NATIVE_DOUBLE) {
@@ -703,8 +733,25 @@ def generate_transformer_dispatch_chain(properties):
     } else if (h5_dtype == H5T_NATIVE_INT) {
         *((int32_t*)output_buffer_element_ptr) = get_int32_property(galaxy, output_prop_id, 0);
     } else if (h5_dtype == H5T_NATIVE_LLONG) {
-        // Assuming int64_t for H5T_NATIVE_LLONG output
-        *((int64_t*)output_buffer_element_ptr) = get_int64_property(galaxy, output_prop_id, 0LL);
+        // Handle specific signed 64-bit properties
+        if (output_prop_id == PROP_MostBoundID) {
+            *((int64_t*)output_buffer_element_ptr) = GALAXY_PROP_MostBoundID(galaxy);
+        } else if (output_prop_id == PROP_SimulationHaloIndex) {
+            *((int64_t*)output_buffer_element_ptr) = GALAXY_PROP_SimulationHaloIndex(galaxy);
+        } else {
+            LOG_ERROR("Unsupported signed 64-bit property '%s' (ID: %d)", output_prop_name, output_prop_id);
+            *((int64_t*)output_buffer_element_ptr) = 0;
+        }
+    } else if (h5_dtype == H5T_NATIVE_ULLONG) {
+        // Handle specific unsigned 64-bit properties
+        if (output_prop_id == PROP_GalaxyIndex) {
+            *((uint64_t*)output_buffer_element_ptr) = GALAXY_PROP_GalaxyIndex(galaxy);
+        } else if (output_prop_id == PROP_CentralGalaxyIndex) {
+            *((uint64_t*)output_buffer_element_ptr) = GALAXY_PROP_CentralGalaxyIndex(galaxy);
+        } else {
+            LOG_ERROR("Unsupported unsigned 64-bit property '%s' (ID: %d)", output_prop_name, output_prop_id);
+            *((uint64_t*)output_buffer_element_ptr) = 0;
+        }
     } else {
         LOG_ERROR("Unsupported HDF5 type for default identity transform of property '%s'", output_prop_name);
         status = -1;
