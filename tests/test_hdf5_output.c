@@ -28,6 +28,7 @@
 #include "../src/core/core_properties.h"
 #include "../src/core/standard_properties.h"
 #include "../src/core/core_property_utils.h"
+#include "../src/core/core_init.h"
 
 // Test counter for reporting
 static int tests_run = 0;
@@ -220,6 +221,14 @@ static struct GALAXY *create_test_galaxy(int snap_num, int halo_nr) {
         return NULL;
     }
     
+    // Initialize extension data
+    status = galaxy_extension_initialize(galaxy);
+    if (status != 0) {
+        free_galaxy_properties(galaxy);
+        free(galaxy);
+        return NULL;
+    }
+    
     // Set basic galaxy properties using core property macros
     galaxy->SnapNum = snap_num;
     GALAXY_PROP_Type(galaxy) = 0;
@@ -351,6 +360,9 @@ static int setup_test_context(void) {
     setup_mock_save_info();
     setup_mock_registry();
     
+    // Initialize extension system
+    initialize_galaxy_extension_system();
+    
     // Initialize property system
     initialize_property_system(&test_ctx.mock_params);
     
@@ -375,6 +387,7 @@ static void teardown_test_context(void) {
     }
     
     cleanup_property_system();
+    cleanup_galaxy_extension_system();
     test_ctx.initialized = 0;
 }
 
@@ -455,10 +468,23 @@ static void test_galaxy_write_and_read_cycle(void) {
     
     // Create test galaxies
     const int num_galaxies = 5;
-    struct GALAXY *galaxies[num_galaxies];
+    // FIXED: Create contiguous array instead of array of pointers
+    struct GALAXY *galaxies = calloc(num_galaxies, sizeof(struct GALAXY));
+    TEST_ASSERT(galaxies != NULL, "Galaxy array allocation should succeed");
+    
     for (int i = 0; i < num_galaxies; i++) {
-        galaxies[i] = create_test_galaxy(63, i);
-        TEST_ASSERT(galaxies[i] != NULL, "Galaxy creation should succeed");
+        struct GALAXY *template_galaxy = create_test_galaxy(63, i);
+        TEST_ASSERT(template_galaxy != NULL, "Galaxy creation should succeed");
+        
+        // Copy template into contiguous array
+        galaxies[i] = *template_galaxy;
+        galaxies[i].properties = template_galaxy->properties;
+        galaxies[i].extension_data = template_galaxy->extension_data;
+        
+        // Prevent double-free
+        template_galaxy->properties = NULL;
+        template_galaxy->extension_data = NULL;
+        free(template_galaxy);
     }
     
     // Use direct HDF5 output functions since the unified interface was removed
@@ -471,7 +497,7 @@ static void test_galaxy_write_and_read_cycle(void) {
     test_ctx.mock_save_info.base.forest_ngals[0][0] = num_galaxies;
     
     // Write galaxies using direct function
-    ret = hdf5_output_write_galaxies((struct GALAXY *)galaxies, num_galaxies, &test_ctx.mock_save_info.base, format_data);
+    ret = hdf5_output_write_galaxies(galaxies, num_galaxies, &test_ctx.mock_save_info.base, format_data);
     TEST_ASSERT(ret == 0, "Galaxy writing should succeed");
     
     // Cleanup using direct function
@@ -506,8 +532,14 @@ static void test_galaxy_write_and_read_cycle(void) {
     
     // Clean up test galaxies
     for (int i = 0; i < num_galaxies; i++) {
-        free_test_galaxy(galaxies[i]);
+        if (galaxies[i].properties != NULL) {
+            free_galaxy_properties(&galaxies[i]);
+        }
+        if (galaxies[i].extension_data != NULL) {
+            galaxy_extension_cleanup(&galaxies[i]);
+        }
     }
+    free(galaxies);
 }
 
 /**
@@ -595,21 +627,39 @@ static void test_resource_management(void) {
     TEST_ASSERT(open_handles >= 0, "Should return valid handle count");
     printf("  Open handles after initialization: %d\n", open_handles);
     
-    // Create and write a test galaxy
-    struct GALAXY *galaxy = create_test_galaxy(63, 0);
-    TEST_ASSERT(galaxy != NULL, "Test galaxy should be created");
+    // Create and write a test galaxy  
+    // FIXED: Create as structure, not pointer, for correct API usage
+    struct GALAXY galaxy_structure;
+    struct GALAXY *template_galaxy = create_test_galaxy(63, 0);
+    TEST_ASSERT(template_galaxy != NULL, "Template galaxy should be created");
+    
+    // Copy template into structure
+    galaxy_structure = *template_galaxy;
+    galaxy_structure.properties = template_galaxy->properties;
+    galaxy_structure.extension_data = template_galaxy->extension_data;
+    
+    // Prevent double-free
+    template_galaxy->properties = NULL;
+    template_galaxy->extension_data = NULL;
+    free(template_galaxy);
     
     test_ctx.mock_save_info.base.tot_ngals[0] = 1;
     test_ctx.mock_save_info.base.forest_ngals[0][0] = 1;
     
-    ret = hdf5_output_write_galaxies(galaxy, 1, &test_ctx.mock_save_info.base, format_data);
+    ret = hdf5_output_write_galaxies(&galaxy_structure, 1, &test_ctx.mock_save_info.base, format_data);
     TEST_ASSERT(ret == 0, "Galaxy writing should succeed");
     
     // Clean up
     ret = hdf5_output_cleanup(format_data);
     TEST_ASSERT(ret == 0, "HDF5 output cleanup should succeed");
     
-    free_test_galaxy(galaxy);
+    // Clean up galaxy structure
+    if (galaxy_structure.properties != NULL) {
+        free_galaxy_properties(&galaxy_structure);
+    }
+    if (galaxy_structure.extension_data != NULL) {
+        galaxy_extension_cleanup(&galaxy_structure);
+    }
 }
 
 /**
@@ -651,19 +701,35 @@ static void test_multiple_galaxy_handling(void) {
     printf("\n=== Testing multiple galaxy handling ===\n");
     
     const int num_galaxies = 10;
-    struct GALAXY *galaxies[num_galaxies];
+    // FIXED: Create contiguous array of galaxy structures instead of array of pointers
+    struct GALAXY *galaxies = calloc(num_galaxies, sizeof(struct GALAXY));
+    TEST_ASSERT(galaxies != NULL, "Galaxy array allocation should succeed");
     
-    // Create multiple test galaxies
+    // Create multiple test galaxies - copy from templates into contiguous array
     for (int i = 0; i < num_galaxies; i++) {
-        galaxies[i] = create_test_galaxy(63, i);
-        TEST_ASSERT(galaxies[i] != NULL, "Galaxy creation should succeed for all galaxies");
+        struct GALAXY *template_galaxy = create_test_galaxy(63, i);
+        TEST_ASSERT(template_galaxy != NULL, "Template galaxy creation should succeed");
+        
+        // Copy the template galaxy into the contiguous array
+        galaxies[i] = *template_galaxy;  // Shallow copy the structure
+        
+        // Fix up pointers that need deep copying
+        galaxies[i].properties = template_galaxy->properties;
+        galaxies[i].extension_data = template_galaxy->extension_data;
+        
+        // Nullify template pointers to prevent double-free
+        template_galaxy->properties = NULL;
+        template_galaxy->extension_data = NULL;
+        
+        // Free the template (just the structure, not the pointed-to data)
+        free(template_galaxy);
     }
     
     // Verify each galaxy has unique properties
     for (int i = 0; i < num_galaxies; i++) {
-        TEST_ASSERT(galaxies[i]->GalaxyIndex == (uint64_t)(1000 + i), "Each galaxy should have unique GalaxyIndex");
+        TEST_ASSERT(galaxies[i].GalaxyIndex == (uint64_t)(1000 + i), "Each galaxy should have unique GalaxyIndex");
         float expected_mvir = 1e12 + i * 1e11;
-        float actual_mvir = GALAXY_PROP_Mvir(galaxies[i]);
+        float actual_mvir = GALAXY_PROP_Mvir(&galaxies[i]);
         TEST_ASSERT(fabs(actual_mvir - expected_mvir) < 1e8, "Each galaxy should have unique Mvir");
     }
     
@@ -675,16 +741,23 @@ static void test_multiple_galaxy_handling(void) {
     test_ctx.mock_save_info.base.tot_ngals[0] = num_galaxies;
     test_ctx.mock_save_info.base.forest_ngals[0][0] = num_galaxies;
     
-    ret = hdf5_output_write_galaxies((struct GALAXY *)galaxies, num_galaxies, &test_ctx.mock_save_info.base, format_data);
+    ret = hdf5_output_write_galaxies(galaxies, num_galaxies, &test_ctx.mock_save_info.base, format_data);
     TEST_ASSERT(ret == 0, "Writing multiple galaxies should succeed");
     
     // Clean up
     ret = hdf5_output_cleanup(format_data);
     TEST_ASSERT(ret == 0, "HDF5 output cleanup should succeed");
     
+    // Clean up the contiguous galaxy array
     for (int i = 0; i < num_galaxies; i++) {
-        free_test_galaxy(galaxies[i]);
+        if (galaxies[i].properties != NULL) {
+            free_galaxy_properties(&galaxies[i]);
+        }
+        if (galaxies[i].extension_data != NULL) {
+            galaxy_extension_cleanup(&galaxies[i]);
+        }
     }
+    free(galaxies);
 }
 
 //=============================================================================

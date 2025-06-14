@@ -152,10 +152,21 @@ void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struc
     dest->infallVvir = src->infallVvir;
     dest->infallVmax = src->infallVmax;
     
-    // Copy extension mechanism
-    dest->extension_data = src->extension_data;
+    // Copy extension mechanism - FIXED: proper deep copy instead of shallow copy
     dest->num_extensions = src->num_extensions;
     dest->extension_flags = src->extension_flags;
+    
+    // Initialize extension data pointer
+    dest->extension_data = NULL;
+    
+    // Deep copy extension data if present
+    if (src->extension_data != NULL && src->num_extensions > 0) {
+        // Use the galaxy extension copy mechanism instead of manual copying
+        int status = galaxy_extension_copy(dest, src);
+        if (status != 0) {
+            LOG_ERROR("Failed to copy galaxy extension data. Source GalaxyIndex: %llu", src->GalaxyIndex);
+        }
+    }
     
     // Initialize properties pointer to NULL before allocating
     dest->properties = NULL;
