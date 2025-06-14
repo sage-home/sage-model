@@ -71,8 +71,8 @@ static void test_struct_memory_layout(void) {
     galaxy.MostBoundID = 0x1234567890ABCDEFLL;
     
     TEST_ASSERT(galaxy.SnapNum == 0x12345678, "SnapNum memory access");
-    TEST_ASSERT(galaxy.Type == 0x87654321, "Type memory access");
-    TEST_ASSERT(galaxy.GalaxyNr == 0xABCDEF00, "GalaxyNr memory access");
+    TEST_ASSERT(galaxy.Type == (int32_t)0x87654321, "Type memory access");
+    TEST_ASSERT(galaxy.GalaxyNr == (int32_t)0xABCDEF00, "GalaxyNr memory access");
     TEST_ASSERT(galaxy.HaloNr == 0x00FEDCBA, "HaloNr memory access");
     TEST_ASSERT(galaxy.MostBoundID == 0x1234567890ABCDEFLL, "MostBoundID memory access");
     
@@ -118,14 +118,12 @@ static void test_galaxy_array_operations(void) {
     
     struct params run_params;
     memset(&run_params, 0, sizeof(run_params));
+    run_params.simulation.NumSnapOutputs = 10; // Set valid parameter for dynamic arrays
     
     // Create a galaxy array
-    struct GalaxyArray galaxy_array;
-    int result = galaxy_array_init(&galaxy_array, 10);
-    TEST_ASSERT(result == 0, "Galaxy array initialization");
-    TEST_ASSERT(galaxy_array.galaxies != NULL, "Galaxy array memory allocation");
-    TEST_ASSERT(galaxy_array.size == 10, "Galaxy array initial size");
-    TEST_ASSERT(galaxy_array.capacity >= 10, "Galaxy array initial capacity");
+    GalaxyArray* galaxy_array = galaxy_array_new();
+    TEST_ASSERT(galaxy_array != NULL, "Galaxy array initialization");
+    TEST_ASSERT(galaxy_array_get_count(galaxy_array) == 0, "Galaxy array initial size");
     
     // Test adding galaxies to the array
     for (int i = 0; i < 5; i++) {
@@ -147,22 +145,41 @@ static void test_galaxy_array_operations(void) {
         galaxy.Vel[0] = 100.0f + i; galaxy.Vel[1] = 200.0f + i; galaxy.Vel[2] = 300.0f + i;
         
         // Allocate properties for this galaxy
-        result = allocate_galaxy_properties(&galaxy, &run_params);
+        int result = allocate_galaxy_properties(&galaxy, &run_params);
         TEST_ASSERT(result == 0, "Galaxy property allocation in array");
         
         if (galaxy.properties != NULL) {
-            // Set physics properties
-            GALAXY_PROP_ColdGas(&galaxy) = (2.0f + 0.5f * i) * 1e10f;
-            GALAXY_PROP_StellarMass(&galaxy) = (3.0f + 0.3f * i) * 1e10f;
-            GALAXY_PROP_HotGas(&galaxy) = (8.0f + 0.8f * i) * 1e10f;
-            GALAXY_PROP_mergeType(&galaxy) = i % 4;
-            GALAXY_PROP_mergeIntoID(&galaxy) = 5000 + i;
-            GALAXY_PROP_mergeIntoSnapNum(&galaxy) = 55 + i;
+            // Set physics properties using generic property system
+            property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+            property_id_t prop_stellar = get_cached_property_id("StellarMass");
+            property_id_t prop_hotgas = get_cached_property_id("HotGas");
+            property_id_t prop_merge_type = get_cached_property_id("mergeType");
+            property_id_t prop_merge_id = get_cached_property_id("mergeIntoID");
+            property_id_t prop_merge_snap = get_cached_property_id("mergeIntoSnapNum");
+            
+            if (prop_coldgas < PROP_COUNT) {
+                set_float_property(&galaxy, prop_coldgas, (2.0f + 0.5f * i) * 1e10f);
+            }
+            if (prop_stellar < PROP_COUNT) {
+                set_float_property(&galaxy, prop_stellar, (3.0f + 0.3f * i) * 1e10f);
+            }
+            if (prop_hotgas < PROP_COUNT) {
+                set_float_property(&galaxy, prop_hotgas, (8.0f + 0.8f * i) * 1e10f);
+            }
+            if (prop_merge_type < PROP_COUNT) {
+                set_int32_property(&galaxy, prop_merge_type, i % 4);
+            }
+            if (prop_merge_id < PROP_COUNT) {
+                set_int32_property(&galaxy, prop_merge_id, 5000 + i);
+            }
+            if (prop_merge_snap < PROP_COUNT) {
+                set_int32_property(&galaxy, prop_merge_snap, 55 + i);
+            }
         }
         
         // Add galaxy to array using deep copy
-        result = galaxy_array_add(&galaxy_array, &galaxy);
-        TEST_ASSERT(result == 0, "Galaxy array add operation");
+        int index = galaxy_array_append(galaxy_array, &galaxy, &run_params);
+        TEST_ASSERT(index >= 0, "Galaxy array add operation");
         
         // Original galaxy cleanup (array should have its own copy)
         if (galaxy.properties != NULL) {
@@ -170,11 +187,11 @@ static void test_galaxy_array_operations(void) {
         }
     }
     
-    TEST_ASSERT(galaxy_array.size == 5, "Galaxy array size after additions");
+    TEST_ASSERT(galaxy_array_get_count(galaxy_array) == 5, "Galaxy array size after additions");
     
     // Verify all galaxies were copied correctly
     for (int i = 0; i < 5; i++) {
-        struct GALAXY *g = &galaxy_array.galaxies[i];
+        struct GALAXY *g = galaxy_array_get(galaxy_array, i);
         
         // Test core properties
         TEST_ASSERT(g->SnapNum == 60 + i, "Array galaxy core property: SnapNum");
@@ -191,33 +208,49 @@ static void test_galaxy_array_operations(void) {
         
         // Test physics properties if available
         if (g->properties != NULL) {
-            float expected_coldgas = (2.0f + 0.5f * i) * 1e10f;
-            float coldgas = GALAXY_PROP_ColdGas(g);
-            TEST_ASSERT(fabs(coldgas - expected_coldgas) < 1e7f, "Array galaxy physics property: ColdGas");
+            property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+            property_id_t prop_stellar = get_cached_property_id("StellarMass");
+            property_id_t prop_merge_type = get_cached_property_id("mergeType");
+            property_id_t prop_merge_id = get_cached_property_id("mergeIntoID");
+            property_id_t prop_merge_snap = get_cached_property_id("mergeIntoSnapNum");
             
-            float expected_stellar = (3.0f + 0.3f * i) * 1e10f;
-            float stellar = GALAXY_PROP_StellarMass(g);
-            TEST_ASSERT(fabs(stellar - expected_stellar) < 1e7f, "Array galaxy physics property: StellarMass");
+            if (prop_coldgas < PROP_COUNT) {
+                float expected_coldgas = (2.0f + 0.5f * i) * 1e10f;
+                float coldgas = get_float_property(g, prop_coldgas, 0.0f);
+                TEST_ASSERT(fabs(coldgas - expected_coldgas) < 1e7f, "Array galaxy physics property: ColdGas");
+            }
             
-            int expected_merge_type = i % 4;
-            int merge_type = GALAXY_PROP_mergeType(g);
-            TEST_ASSERT(merge_type == expected_merge_type, "Array galaxy physics property: mergeType");
+            if (prop_stellar < PROP_COUNT) {
+                float expected_stellar = (3.0f + 0.3f * i) * 1e10f;
+                float stellar = get_float_property(g, prop_stellar, 0.0f);
+                TEST_ASSERT(fabs(stellar - expected_stellar) < 1e7f, "Array galaxy physics property: StellarMass");
+            }
             
-            int expected_merge_id = 5000 + i;
-            int merge_id = GALAXY_PROP_mergeIntoID(g);
-            TEST_ASSERT(merge_id == expected_merge_id, "Array galaxy physics property: mergeIntoID");
+            if (prop_merge_type < PROP_COUNT) {
+                int expected_merge_type = i % 4;
+                int merge_type = get_int32_property(g, prop_merge_type, 0);
+                TEST_ASSERT(merge_type == expected_merge_type, "Array galaxy physics property: mergeType");
+            }
             
-            int expected_merge_snap = 55 + i;
-            int merge_snap = GALAXY_PROP_mergeIntoSnapNum(g);
-            TEST_ASSERT(merge_snap == expected_merge_snap, "Array galaxy physics property: mergeIntoSnapNum");
+            if (prop_merge_id < PROP_COUNT) {
+                int expected_merge_id = 5000 + i;
+                int merge_id = get_int32_property(g, prop_merge_id, 0);
+                TEST_ASSERT(merge_id == expected_merge_id, "Array galaxy physics property: mergeIntoID");
+            }
+            
+            if (prop_merge_snap < PROP_COUNT) {
+                int expected_merge_snap = 55 + i;
+                int merge_snap = get_int32_property(g, prop_merge_snap, 0);
+                TEST_ASSERT(merge_snap == expected_merge_snap, "Array galaxy physics property: mergeIntoSnapNum");
+            }
         }
     }
     
     // Test array expansion
-    int original_capacity = galaxy_array.capacity;
+    int original_count = galaxy_array_get_count(galaxy_array);
     
-    // Add galaxies until expansion is needed
-    for (int i = 5; i < original_capacity + 5; i++) {
+    // Add more galaxies to test expansion
+    for (int i = 5; i < 15; i++) {
         struct GALAXY galaxy;
         memset(&galaxy, 0, sizeof(galaxy));
         
@@ -225,25 +258,28 @@ static void test_galaxy_array_operations(void) {
         galaxy.Type = i % 3;
         galaxy.GalaxyNr = 1000 + i;
         
-        result = allocate_galaxy_properties(&galaxy, &run_params);
-        if (result == 0 && galaxy.properties != NULL) {
-            GALAXY_PROP_ColdGas(&galaxy) = (2.0f + 0.5f * i) * 1e10f;
+        int result2 = allocate_galaxy_properties(&galaxy, &run_params);
+        if (result2 == 0 && galaxy.properties != NULL) {
+            property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+            if (prop_coldgas < PROP_COUNT) {
+                set_float_property(&galaxy, prop_coldgas, (2.0f + 0.5f * i) * 1e10f);
+            }
         }
         
-        result = galaxy_array_add(&galaxy_array, &galaxy);
-        TEST_ASSERT(result == 0, "Galaxy array add during expansion");
+        int index = galaxy_array_append(galaxy_array, &galaxy, &run_params);
+        TEST_ASSERT(index >= 0, "Galaxy array add during expansion");
         
         if (galaxy.properties != NULL) {
             free_galaxy_properties(&galaxy);
         }
     }
     
-    TEST_ASSERT(galaxy_array.capacity > original_capacity, "Galaxy array expansion occurred");
-    TEST_ASSERT(galaxy_array.size == original_capacity + 5, "Galaxy array size after expansion");
+    TEST_ASSERT(galaxy_array_get_count(galaxy_array) > original_count, "Galaxy array expansion occurred");
+    TEST_ASSERT(galaxy_array_get_count(galaxy_array) == 15, "Galaxy array size after expansion");
     
     // Verify data integrity after expansion
     for (int i = 0; i < 3; i++) {  // Check first few galaxies
-        struct GALAXY *g = &galaxy_array.galaxies[i];
+        struct GALAXY *g = galaxy_array_get(galaxy_array, i);
         TEST_ASSERT(g->SnapNum == 60 + i, "Data integrity after expansion: SnapNum");
         TEST_ASSERT(g->Type == i % 3, "Data integrity after expansion: Type");
         TEST_ASSERT(g->GalaxyNr == 1000 + i, "Data integrity after expansion: GalaxyNr");
@@ -261,6 +297,7 @@ static void test_property_allocation_robustness(void) {
     
     struct params run_params;
     memset(&run_params, 0, sizeof(run_params));
+    run_params.simulation.NumSnapOutputs = 10; // Set valid parameter for dynamic arrays
     
     // Test normal allocation/deallocation cycle
     struct GALAXY galaxy;
@@ -272,17 +309,35 @@ static void test_property_allocation_robustness(void) {
     
     if (galaxy.properties != NULL) {
         // Test that allocated memory is accessible
-        GALAXY_PROP_ColdGas(&galaxy) = 1.5e10f;
-        GALAXY_PROP_StellarMass(&galaxy) = 2.3e10f;
-        GALAXY_PROP_mergeType(&galaxy) = 2;
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+        property_id_t prop_stellar = get_cached_property_id("StellarMass");
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
         
-        float coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        float stellar = GALAXY_PROP_StellarMass(&galaxy);
-        int merge_type = GALAXY_PROP_mergeType(&galaxy);
+        if (prop_coldgas < PROP_COUNT) {
+            set_float_property(&galaxy, prop_coldgas, 1.5e10f);
+        }
+        if (prop_stellar < PROP_COUNT) {
+            set_float_property(&galaxy, prop_stellar, 2.3e10f);
+        }
+        if (prop_merge_type < PROP_COUNT) {
+            set_int32_property(&galaxy, prop_merge_type, 2);
+        }
         
-        TEST_ASSERT(fabs(coldgas - 1.5e10f) < 1e6f, "Property access after allocation");
-        TEST_ASSERT(fabs(stellar - 2.3e10f) < 1e6f, "Property access after allocation");
-        TEST_ASSERT(merge_type == 2, "Property access after allocation");
+        float coldgas = 0.0f, stellar = 0.0f;
+        int merge_type = 0;
+        
+        if (prop_coldgas < PROP_COUNT) {
+            coldgas = get_float_property(&galaxy, prop_coldgas, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 1.5e10f) < 1e6f, "Property access after allocation: ColdGas");
+        }
+        if (prop_stellar < PROP_COUNT) {
+            stellar = get_float_property(&galaxy, prop_stellar, 0.0f);
+            TEST_ASSERT(fabs(stellar - 2.3e10f) < 1e6f, "Property access after allocation: StellarMass");
+        }
+        if (prop_merge_type < PROP_COUNT) {
+            merge_type = get_int32_property(&galaxy, prop_merge_type, 0);
+            TEST_ASSERT(merge_type == 2, "Property access after allocation: mergeType");
+        }
         
         // Test deallocation
         free_galaxy_properties(&galaxy);
@@ -299,15 +354,25 @@ static void test_property_allocation_robustness(void) {
         
         if (test_galaxy.properties != NULL) {
             // Set unique values for this cycle
-            GALAXY_PROP_ColdGas(&test_galaxy) = (1.0f + 0.1f * cycle) * 1e10f;
-            GALAXY_PROP_mergeType(&test_galaxy) = cycle % 4;
+            property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+            property_id_t prop_merge_type = get_cached_property_id("mergeType");
             
-            float coldgas = GALAXY_PROP_ColdGas(&test_galaxy);
-            int merge_type = GALAXY_PROP_mergeType(&test_galaxy);
+            if (prop_coldgas < PROP_COUNT) {
+                set_float_property(&test_galaxy, prop_coldgas, (1.0f + 0.1f * cycle) * 1e10f);
+            }
+            if (prop_merge_type < PROP_COUNT) {
+                set_int32_property(&test_galaxy, prop_merge_type, cycle % 4);
+            }
             
-            float expected_coldgas = (1.0f + 0.1f * cycle) * 1e10f;
-            TEST_ASSERT(fabs(coldgas - expected_coldgas) < 1e7f, "Property persistence in cycle");
-            TEST_ASSERT(merge_type == cycle % 4, "Property persistence in cycle");
+            if (prop_coldgas < PROP_COUNT) {
+                float coldgas = get_float_property(&test_galaxy, prop_coldgas, 0.0f);
+                float expected_coldgas = (1.0f + 0.1f * cycle) * 1e10f;
+                TEST_ASSERT(fabs(coldgas - expected_coldgas) < 1e7f, "Property persistence in cycle: ColdGas");
+            }
+            if (prop_merge_type < PROP_COUNT) {
+                int merge_type = get_int32_property(&test_galaxy, prop_merge_type, 0);
+                TEST_ASSERT(merge_type == cycle % 4, "Property persistence in cycle: mergeType");
+            }
             
             free_galaxy_properties(&test_galaxy);
         }
@@ -334,6 +399,7 @@ static void test_edge_cases_and_errors(void) {
     
     struct params run_params;
     memset(&run_params, 0, sizeof(run_params));
+    run_params.simulation.NumSnapOutputs = 10; // Set valid parameter for dynamic arrays
     
     // Test double allocation (should handle gracefully)
     struct GALAXY galaxy;
@@ -384,17 +450,28 @@ static void test_edge_cases_and_errors(void) {
         source_galaxy.properties != NULL && dest_galaxy.properties != NULL) {
         
         // Set source values
-        GALAXY_PROP_ColdGas(&source_galaxy) = 5.5e10f;
-        GALAXY_PROP_mergeType(&source_galaxy) = 3;
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
+        
+        if (prop_coldgas < PROP_COUNT) {
+            set_float_property(&source_galaxy, prop_coldgas, 5.5e10f);
+        }
+        if (prop_merge_type < PROP_COUNT) {
+            set_int32_property(&source_galaxy, prop_merge_type, 3);
+        }
         
         // Test normal copy
-        int copy_result = copy_galaxy_properties(&dest_galaxy, &source_galaxy);
+        int copy_result = copy_galaxy_properties(&dest_galaxy, &source_galaxy, &run_params);
         TEST_ASSERT(copy_result == 0, "Normal property copy succeeds");
         
-        float coldgas = GALAXY_PROP_ColdGas(&dest_galaxy);
-        int merge_type = GALAXY_PROP_mergeType(&dest_galaxy);
-        TEST_ASSERT(fabs(coldgas - 5.5e10f) < 1e7f, "Property copy accuracy");
-        TEST_ASSERT(merge_type == 3, "Property copy accuracy");
+        if (prop_coldgas < PROP_COUNT) {
+            float coldgas = get_float_property(&dest_galaxy, prop_coldgas, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 5.5e10f) < 1e7f, "Property copy accuracy: ColdGas");
+        }
+        if (prop_merge_type < PROP_COUNT) {
+            int merge_type = get_int32_property(&dest_galaxy, prop_merge_type, 0);
+            TEST_ASSERT(merge_type == 3, "Property copy accuracy: mergeType");
+        }
         
         // Cleanup
         free_galaxy_properties(&source_galaxy);

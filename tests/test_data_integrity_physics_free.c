@@ -528,7 +528,13 @@ static void capture_galaxy_snapshots(void) {
         snapshot->original_vmax = galaxy->Vmax;
         snapshot->original_rvir = galaxy->Rvir;
         snapshot->original_vvir = galaxy->Vvir;
-        snapshot->original_mergtime = galaxy->MergTime;
+        // MergTime is now a physics property - get via property system
+        property_id_t mergtime_prop = get_cached_property_id("MergTime");
+        if (mergtime_prop < PROP_COUNT && galaxy->properties != NULL) {
+            snapshot->original_mergtime = get_float_property(galaxy, mergtime_prop, 0.0f);
+        } else {
+            snapshot->original_mergtime = 0.0f; // Default value if property not available
+        }
         snapshot->original_infall_mvir = galaxy->infallMvir;
         snapshot->original_infall_vvir = galaxy->infallVvir;
         snapshot->original_infall_vmax = galaxy->infallVmax;

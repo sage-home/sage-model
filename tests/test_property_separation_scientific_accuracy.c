@@ -67,6 +67,18 @@ static void test_galaxy_initialization_consistency(void) {
     // Set required parameter for dynamic arrays
     run_params.simulation.NumSnapOutputs = 10; // Non-zero value to allow dynamic array allocation
     
+    // Initialize simulation arrays for virial radius calculations
+    // Arrays are statically allocated - just initialize the needed values
+    // Initialize snapshot 63 data (used by test_halo.SnapNum = 63)
+    run_params.simulation.ZZ[63] = 0.0;  // redshift = 0 (present day)
+    run_params.simulation.AA[63] = 1.0;  // scale factor = 1 (present day)
+    
+    // Initialize cosmology parameters for virial radius calculations
+    run_params.cosmology.Hubble_h = 0.7;      // h parameter
+    run_params.cosmology.Omega = 0.3;         // Matter density
+    run_params.cosmology.OmegaLambda = 0.7;   // Dark energy density
+    run_params.cosmology.PartMass = 8.6e8;    // Particle mass in solar masses
+    
     // Initialize two galaxies with identical halo data
     struct GALAXY galaxy1, galaxy2;
     memset(&galaxy1, 0, sizeof(galaxy1));
@@ -101,17 +113,27 @@ static void test_galaxy_initialization_consistency(void) {
     
     // Verify physics properties are identical (if properties are allocated)
     if (galaxy1.properties != NULL && galaxy2.properties != NULL) {
-        float coldgas1 = GALAXY_PROP_ColdGas(&galaxy1);
-        float coldgas2 = GALAXY_PROP_ColdGas(&galaxy2);
-        TEST_ASSERT(fabs(coldgas1 - coldgas2) < FLOAT_TOLERANCE, "ColdGas initialization consistency");
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+        property_id_t prop_stellar = get_cached_property_id("StellarMass");
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
         
-        float stellar1 = GALAXY_PROP_StellarMass(&galaxy1);
-        float stellar2 = GALAXY_PROP_StellarMass(&galaxy2);
-        TEST_ASSERT(fabs(stellar1 - stellar2) < FLOAT_TOLERANCE, "StellarMass initialization consistency");
+        if (prop_coldgas < PROP_COUNT) {
+            float coldgas1 = get_float_property(&galaxy1, prop_coldgas, 0.0f);
+            float coldgas2 = get_float_property(&galaxy2, prop_coldgas, 0.0f);
+            TEST_ASSERT(fabs(coldgas1 - coldgas2) < FLOAT_TOLERANCE, "ColdGas initialization consistency");
+        }
         
-        int merge_type1 = GALAXY_PROP_mergeType(&galaxy1);
-        int merge_type2 = GALAXY_PROP_mergeType(&galaxy2);
-        TEST_ASSERT(merge_type1 == merge_type2, "mergeType initialization consistency");
+        if (prop_stellar < PROP_COUNT) {
+            float stellar1 = get_float_property(&galaxy1, prop_stellar, 0.0f);
+            float stellar2 = get_float_property(&galaxy2, prop_stellar, 0.0f);
+            TEST_ASSERT(fabs(stellar1 - stellar2) < FLOAT_TOLERANCE, "StellarMass initialization consistency");
+        }
+        
+        if (prop_merge_type < PROP_COUNT) {
+            int merge_type1 = get_int32_property(&galaxy1, prop_merge_type, 0);
+            int merge_type2 = get_int32_property(&galaxy2, prop_merge_type, 0);
+            TEST_ASSERT(merge_type1 == merge_type2, "mergeType initialization consistency");
+        }
     }
     
     // Cleanup
@@ -130,6 +152,18 @@ static void test_property_copying_accuracy(void) {
     // Set required parameter for dynamic arrays
     run_params.simulation.NumSnapOutputs = 10; // Non-zero value to allow dynamic array allocation
     
+    // Initialize simulation arrays for virial radius calculations
+    // Arrays are statically allocated - just initialize the needed values
+    // Initialize snapshot 62 data (used by source.SnapNum = 62)
+    run_params.simulation.ZZ[62] = 0.1;  // redshift = 0.1 
+    run_params.simulation.AA[62] = 1.0/(1.0+0.1);  // scale factor 
+    
+    // Initialize cosmology parameters for virial radius calculations
+    run_params.cosmology.Hubble_h = 0.7;      // h parameter
+    run_params.cosmology.Omega = 0.3;         // Matter density
+    run_params.cosmology.OmegaLambda = 0.7;   // Dark energy density
+    run_params.cosmology.PartMass = 8.6e8;    // Particle mass in solar masses
+    
     // Create source galaxy with known values
     struct GALAXY source, dest;
     memset(&source, 0, sizeof(source));
@@ -145,7 +179,7 @@ static void test_property_copying_accuracy(void) {
     source.Rvir = 300.0f;
     source.Vvir = 200.0f;
     source.Vmax = 250.0f;
-    source.MergTime = 3.5f;
+    // Note: MergTime is now a physics property, set via property system
     
     source.Pos[0] = 15.0f; source.Pos[1] = 25.0f; source.Pos[2] = 35.0f;
     source.Vel[0] = 120.0f; source.Vel[1] = 220.0f; source.Vel[2] = 320.0f;
@@ -155,14 +189,40 @@ static void test_property_copying_accuracy(void) {
     TEST_ASSERT(result == 0, "Source galaxy property allocation");
     
     if (source.properties != NULL) {
-        // Set physics properties
-        GALAXY_PROP_ColdGas(&source) = 3.5e10f;
-        GALAXY_PROP_StellarMass(&source) = 4.7e10f;
-        GALAXY_PROP_HotGas(&source) = 8.2e10f;
-        GALAXY_PROP_BlackHoleMass(&source) = 2.1e8f;
-        GALAXY_PROP_mergeType(&source) = 2;
-        GALAXY_PROP_mergeIntoID(&source) = 54321;
-        GALAXY_PROP_mergeIntoSnapNum(&source) = 61;
+        // Set physics properties using generic property system
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+        property_id_t prop_stellar = get_cached_property_id("StellarMass");
+        property_id_t prop_hotgas = get_cached_property_id("HotGas");
+        property_id_t prop_bh = get_cached_property_id("BlackHoleMass");
+        property_id_t prop_merge_time = get_cached_property_id("MergTime");
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
+        property_id_t prop_merge_id = get_cached_property_id("mergeIntoID");
+        property_id_t prop_merge_snap = get_cached_property_id("mergeIntoSnapNum");
+        
+        if (prop_coldgas < PROP_COUNT) {
+            set_float_property(&source, prop_coldgas, 3.5e10f);
+        }
+        if (prop_stellar < PROP_COUNT) {
+            set_float_property(&source, prop_stellar, 4.7e10f);
+        }
+        if (prop_hotgas < PROP_COUNT) {
+            set_float_property(&source, prop_hotgas, 8.2e10f);
+        }
+        if (prop_bh < PROP_COUNT) {
+            set_float_property(&source, prop_bh, 2.1e8f);
+        }
+        if (prop_merge_time < PROP_COUNT) {
+            set_float_property(&source, prop_merge_time, 3.5f);
+        }
+        if (prop_merge_type < PROP_COUNT) {
+            set_int32_property(&source, prop_merge_type, 2);
+        }
+        if (prop_merge_id < PROP_COUNT) {
+            set_int32_property(&source, prop_merge_id, 54321);
+        }
+        if (prop_merge_snap < PROP_COUNT) {
+            set_int32_property(&source, prop_merge_snap, 61);
+        }
     }
     
     // Allocate properties for destination
@@ -181,7 +241,7 @@ static void test_property_copying_accuracy(void) {
         dest.Rvir = source.Rvir;
         dest.Vvir = source.Vvir;
         dest.Vmax = source.Vmax;
-        dest.MergTime = source.MergTime;
+        // MergTime is now a physics property, copied via property system
         
         for (int i = 0; i < 3; i++) {
             dest.Pos[i] = source.Pos[i];
@@ -203,36 +263,64 @@ static void test_property_copying_accuracy(void) {
         TEST_ASSERT(fabs(dest.Rvir - source.Rvir) < FLOAT_TOLERANCE, "Rvir copying accuracy");
         TEST_ASSERT(fabs(dest.Vvir - source.Vvir) < FLOAT_TOLERANCE, "Vvir copying accuracy");
         TEST_ASSERT(fabs(dest.Vmax - source.Vmax) < FLOAT_TOLERANCE, "Vmax copying accuracy");
-        TEST_ASSERT(fabs(dest.MergTime - source.MergTime) < FLOAT_TOLERANCE, "MergTime copying accuracy");
         
         // Verify physics properties were copied correctly
-        float src_coldgas = GALAXY_PROP_ColdGas(&source);
-        float dst_coldgas = GALAXY_PROP_ColdGas(&dest);
-        TEST_ASSERT(fabs(src_coldgas - dst_coldgas) < FLOAT_TOLERANCE, "ColdGas copying accuracy");
+        property_id_t prop_coldgas_copy = get_cached_property_id("ColdGas");
+        property_id_t prop_stellar_copy = get_cached_property_id("StellarMass");
+        property_id_t prop_hotgas_copy = get_cached_property_id("HotGas");
+        property_id_t prop_bh_copy = get_cached_property_id("BlackHoleMass");
+        property_id_t prop_merge_time_copy = get_cached_property_id("MergTime");
+        property_id_t prop_merge_type_copy = get_cached_property_id("mergeType");
+        property_id_t prop_merge_id_copy = get_cached_property_id("mergeIntoID");
+        property_id_t prop_merge_snap_copy = get_cached_property_id("mergeIntoSnapNum");
         
-        float src_stellar = GALAXY_PROP_StellarMass(&source);
-        float dst_stellar = GALAXY_PROP_StellarMass(&dest);
-        TEST_ASSERT(fabs(src_stellar - dst_stellar) < FLOAT_TOLERANCE, "StellarMass copying accuracy");
+        if (prop_coldgas_copy < PROP_COUNT) {
+            float src_coldgas = get_float_property(&source, prop_coldgas_copy, 0.0f);
+            float dst_coldgas = get_float_property(&dest, prop_coldgas_copy, 0.0f);
+            TEST_ASSERT(fabs(src_coldgas - dst_coldgas) < FLOAT_TOLERANCE, "ColdGas copying accuracy");
+        }
         
-        float src_hotgas = GALAXY_PROP_HotGas(&source);
-        float dst_hotgas = GALAXY_PROP_HotGas(&dest);
-        TEST_ASSERT(fabs(src_hotgas - dst_hotgas) < FLOAT_TOLERANCE, "HotGas copying accuracy");
+        if (prop_stellar_copy < PROP_COUNT) {
+            float src_stellar = get_float_property(&source, prop_stellar_copy, 0.0f);
+            float dst_stellar = get_float_property(&dest, prop_stellar_copy, 0.0f);
+            TEST_ASSERT(fabs(src_stellar - dst_stellar) < FLOAT_TOLERANCE, "StellarMass copying accuracy");
+        }
         
-        float src_bh = GALAXY_PROP_BlackHoleMass(&source);
-        float dst_bh = GALAXY_PROP_BlackHoleMass(&dest);
-        TEST_ASSERT(fabs(src_bh - dst_bh) < FLOAT_TOLERANCE, "BlackHoleMass copying accuracy");
+        if (prop_hotgas_copy < PROP_COUNT) {
+            float src_hotgas = get_float_property(&source, prop_hotgas_copy, 0.0f);
+            float dst_hotgas = get_float_property(&dest, prop_hotgas_copy, 0.0f);
+            TEST_ASSERT(fabs(src_hotgas - dst_hotgas) < FLOAT_TOLERANCE, "HotGas copying accuracy");
+        }
         
-        int src_merge_type = GALAXY_PROP_mergeType(&source);
-        int dst_merge_type = GALAXY_PROP_mergeType(&dest);
-        TEST_ASSERT(src_merge_type == dst_merge_type, "mergeType copying accuracy");
+        if (prop_bh_copy < PROP_COUNT) {
+            float src_bh = get_float_property(&source, prop_bh_copy, 0.0f);
+            float dst_bh = get_float_property(&dest, prop_bh_copy, 0.0f);
+            TEST_ASSERT(fabs(src_bh - dst_bh) < FLOAT_TOLERANCE, "BlackHoleMass copying accuracy");
+        }
         
-        int src_merge_id = GALAXY_PROP_mergeIntoID(&source);
-        int dst_merge_id = GALAXY_PROP_mergeIntoID(&dest);
-        TEST_ASSERT(src_merge_id == dst_merge_id, "mergeIntoID copying accuracy");
+        if (prop_merge_time_copy < PROP_COUNT) {
+            float src_merge_time = get_float_property(&source, prop_merge_time_copy, 0.0f);
+            float dst_merge_time = get_float_property(&dest, prop_merge_time_copy, 0.0f);
+            TEST_ASSERT(fabs(src_merge_time - dst_merge_time) < FLOAT_TOLERANCE, "MergTime copying accuracy");
+        }
         
-        int src_merge_snap = GALAXY_PROP_mergeIntoSnapNum(&source);
-        int dst_merge_snap = GALAXY_PROP_mergeIntoSnapNum(&dest);
-        TEST_ASSERT(src_merge_snap == dst_merge_snap, "mergeIntoSnapNum copying accuracy");
+        if (prop_merge_type_copy < PROP_COUNT) {
+            int src_merge_type = get_int32_property(&source, prop_merge_type_copy, 0);
+            int dst_merge_type = get_int32_property(&dest, prop_merge_type_copy, 0);
+            TEST_ASSERT(src_merge_type == dst_merge_type, "mergeType copying accuracy");
+        }
+        
+        if (prop_merge_id_copy < PROP_COUNT) {
+            int src_merge_id = get_int32_property(&source, prop_merge_id_copy, 0);
+            int dst_merge_id = get_int32_property(&dest, prop_merge_id_copy, 0);
+            TEST_ASSERT(src_merge_id == dst_merge_id, "mergeIntoID copying accuracy");
+        }
+        
+        if (prop_merge_snap_copy < PROP_COUNT) {
+            int src_merge_snap = get_int32_property(&source, prop_merge_snap_copy, 0);
+            int dst_merge_snap = get_int32_property(&dest, prop_merge_snap_copy, 0);
+            TEST_ASSERT(src_merge_snap == dst_merge_snap, "mergeIntoSnapNum copying accuracy");
+        }
     }
     
     // Cleanup
@@ -250,6 +338,18 @@ static void test_hdf5_output_consistency(void) {
     memset(&run_params, 0, sizeof(run_params));
     // Set required parameter for dynamic arrays
     run_params.simulation.NumSnapOutputs = 10; // Non-zero value to allow dynamic array allocation
+    
+    // Initialize simulation arrays for virial radius calculations
+    // Arrays are statically allocated - just initialize the needed values
+    // Initialize snapshot 63 data (used by galaxy.SnapNum = 63)
+    run_params.simulation.ZZ[63] = 0.0;  // redshift = 0 (present day)
+    run_params.simulation.AA[63] = 1.0;  // scale factor = 1 (present day)
+    
+    // Initialize cosmology parameters for virial radius calculations
+    run_params.cosmology.Hubble_h = 0.7;      // h parameter
+    run_params.cosmology.Omega = 0.3;         // Matter density
+    run_params.cosmology.OmegaLambda = 0.7;   // Dark energy density
+    run_params.cosmology.PartMass = 8.6e8;    // Particle mass in solar masses
     
     // Create a galaxy with known values for HDF5 output testing
     struct GALAXY galaxy;
@@ -271,14 +371,36 @@ static void test_hdf5_output_consistency(void) {
     TEST_ASSERT(result == 0, "Galaxy property allocation for HDF5 test");
     
     if (galaxy.properties != NULL) {
-        // Set physics properties
-        GALAXY_PROP_ColdGas(&galaxy) = 2.8e10f;
-        GALAXY_PROP_StellarMass(&galaxy) = 5.2e10f;
-        GALAXY_PROP_HotGas(&galaxy) = 9.1e10f;
-        GALAXY_PROP_BlackHoleMass(&galaxy) = 3.7e8f;
-        GALAXY_PROP_mergeType(&galaxy) = 1;
-        GALAXY_PROP_mergeIntoID(&galaxy) = 22222;
-        GALAXY_PROP_mergeIntoSnapNum(&galaxy) = 62;
+        // Set physics properties using generic property system
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+        property_id_t prop_stellar = get_cached_property_id("StellarMass");
+        property_id_t prop_hotgas = get_cached_property_id("HotGas");
+        property_id_t prop_bh = get_cached_property_id("BlackHoleMass");
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
+        property_id_t prop_merge_id = get_cached_property_id("mergeIntoID");
+        property_id_t prop_merge_snap = get_cached_property_id("mergeIntoSnapNum");
+        
+        if (prop_coldgas < PROP_COUNT) {
+            set_float_property(&galaxy, prop_coldgas, 2.8e10f);
+        }
+        if (prop_stellar < PROP_COUNT) {
+            set_float_property(&galaxy, prop_stellar, 5.2e10f);
+        }
+        if (prop_hotgas < PROP_COUNT) {
+            set_float_property(&galaxy, prop_hotgas, 9.1e10f);
+        }
+        if (prop_bh < PROP_COUNT) {
+            set_float_property(&galaxy, prop_bh, 3.7e8f);
+        }
+        if (prop_merge_type < PROP_COUNT) {
+            set_int32_property(&galaxy, prop_merge_type, 1);
+        }
+        if (prop_merge_id < PROP_COUNT) {
+            set_int32_property(&galaxy, prop_merge_id, 22222);
+        }
+        if (prop_merge_snap < PROP_COUNT) {
+            set_int32_property(&galaxy, prop_merge_snap, 62);
+        }
         
         // Test that property system maintains values consistently
         // This simulates what HDF5 output would read
@@ -295,39 +417,68 @@ static void test_hdf5_output_consistency(void) {
         TEST_ASSERT(fabs(galaxy.Vmax - 210.0f) < FLOAT_TOLERANCE, "HDF5 core property: Vmax");
         
         // Physics properties should be read from property system
-        float coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        float stellar = GALAXY_PROP_StellarMass(&galaxy);
-        float hotgas = GALAXY_PROP_HotGas(&galaxy);
-        float bh = GALAXY_PROP_BlackHoleMass(&galaxy);
-        int merge_type = GALAXY_PROP_mergeType(&galaxy);
-        int merge_id = GALAXY_PROP_mergeIntoID(&galaxy);
-        int merge_snap = GALAXY_PROP_mergeIntoSnapNum(&galaxy);
+        property_id_t prop_coldgas_hdf5 = get_cached_property_id("ColdGas");
+        property_id_t prop_stellar_hdf5 = get_cached_property_id("StellarMass");
+        property_id_t prop_hotgas_hdf5 = get_cached_property_id("HotGas");
+        property_id_t prop_bh_hdf5 = get_cached_property_id("BlackHoleMass");
+        property_id_t prop_merge_type_hdf5 = get_cached_property_id("mergeType");
+        property_id_t prop_merge_id_hdf5 = get_cached_property_id("mergeIntoID");
+        property_id_t prop_merge_snap_hdf5 = get_cached_property_id("mergeIntoSnapNum");
         
-        TEST_ASSERT(fabs(coldgas - 2.8e10f) < FLOAT_TOLERANCE, "HDF5 physics property: ColdGas");
-        TEST_ASSERT(fabs(stellar - 5.2e10f) < FLOAT_TOLERANCE, "HDF5 physics property: StellarMass");
-        TEST_ASSERT(fabs(hotgas - 9.1e10f) < FLOAT_TOLERANCE, "HDF5 physics property: HotGas");
-        TEST_ASSERT(fabs(bh - 3.7e8f) < FLOAT_TOLERANCE, "HDF5 physics property: BlackHoleMass");
-        TEST_ASSERT(merge_type == 1, "HDF5 physics property: mergeType");
-        TEST_ASSERT(merge_id == 22222, "HDF5 physics property: mergeIntoID");
-        TEST_ASSERT(merge_snap == 62, "HDF5 physics property: mergeIntoSnapNum");
+        if (prop_coldgas_hdf5 < PROP_COUNT) {
+            float coldgas = get_float_property(&galaxy, prop_coldgas_hdf5, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 2.8e10f) < FLOAT_TOLERANCE, "HDF5 physics property: ColdGas");
+        }
+        if (prop_stellar_hdf5 < PROP_COUNT) {
+            float stellar = get_float_property(&galaxy, prop_stellar_hdf5, 0.0f);
+            TEST_ASSERT(fabs(stellar - 5.2e10f) < FLOAT_TOLERANCE, "HDF5 physics property: StellarMass");
+        }
+        if (prop_hotgas_hdf5 < PROP_COUNT) {
+            float hotgas = get_float_property(&galaxy, prop_hotgas_hdf5, 0.0f);
+            TEST_ASSERT(fabs(hotgas - 9.1e10f) < FLOAT_TOLERANCE, "HDF5 physics property: HotGas");
+        }
+        if (prop_bh_hdf5 < PROP_COUNT) {
+            float bh = get_float_property(&galaxy, prop_bh_hdf5, 0.0f);
+            TEST_ASSERT(fabs(bh - 3.7e8f) < FLOAT_TOLERANCE, "HDF5 physics property: BlackHoleMass");
+        }
+        if (prop_merge_type_hdf5 < PROP_COUNT) {
+            int merge_type = get_int32_property(&galaxy, prop_merge_type_hdf5, 0);
+            TEST_ASSERT(merge_type == 1, "HDF5 physics property: mergeType");
+        }
+        if (prop_merge_id_hdf5 < PROP_COUNT) {
+            int merge_id = get_int32_property(&galaxy, prop_merge_id_hdf5, 0);
+            TEST_ASSERT(merge_id == 22222, "HDF5 physics property: mergeIntoID");
+        }
+        if (prop_merge_snap_hdf5 < PROP_COUNT) {
+            int merge_snap = get_int32_property(&galaxy, prop_merge_snap_hdf5, 0);
+            TEST_ASSERT(merge_snap == 62, "HDF5 physics property: mergeIntoSnapNum");
+        }
         
         // Test that there's no confusion between sources
         // Modify one system and verify the other is unchanged
         galaxy.Type = 1;  // Change core property
-        GALAXY_PROP_ColdGas(&galaxy) = 3.0e10f;  // Change physics property
+        
+        if (prop_coldgas_hdf5 < PROP_COUNT) {
+            set_float_property(&galaxy, prop_coldgas_hdf5, 3.0e10f);  // Change physics property
+        }
         
         // Verify core property changed but physics property through property system unchanged in struct
         TEST_ASSERT(galaxy.Type == 1, "HDF5 core property independence");
-        coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        TEST_ASSERT(fabs(coldgas - 3.0e10f) < FLOAT_TOLERANCE, "HDF5 physics property independence");
+        
+        if (prop_coldgas_hdf5 < PROP_COUNT) {
+            float coldgas = get_float_property(&galaxy, prop_coldgas_hdf5, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 3.0e10f) < FLOAT_TOLERANCE, "HDF5 physics property independence");
+        }
         
         // Other core properties should be unchanged
         TEST_ASSERT(galaxy.SnapNum == 63, "HDF5 other core properties unchanged");
         TEST_ASSERT(fabs(galaxy.Mvir - 1.8e12f) < FLOAT_TOLERANCE, "HDF5 other core properties unchanged");
         
         // Other physics properties should be unchanged
-        stellar = GALAXY_PROP_StellarMass(&galaxy);
-        TEST_ASSERT(fabs(stellar - 5.2e10f) < FLOAT_TOLERANCE, "HDF5 other physics properties unchanged");
+        if (prop_stellar_hdf5 < PROP_COUNT) {
+            float stellar = get_float_property(&galaxy, prop_stellar_hdf5, 0.0f);
+            TEST_ASSERT(fabs(stellar - 5.2e10f) < FLOAT_TOLERANCE, "HDF5 other physics properties unchanged");
+        }
     }
     
     // Cleanup
@@ -347,6 +498,18 @@ static void test_no_data_loss(void) {
     // Set required parameter for dynamic arrays
     run_params.simulation.NumSnapOutputs = 10; // Non-zero value to allow dynamic array allocation
     
+    // Initialize simulation arrays for virial radius calculations
+    // Arrays are statically allocated - just initialize the needed values
+    // Initialize snapshot 42 data (used by galaxy.SnapNum = 42)
+    run_params.simulation.ZZ[42] = 0.5;  // redshift = 0.5
+    run_params.simulation.AA[42] = 1.0/(1.0+0.5);  // scale factor 
+    
+    // Initialize cosmology parameters for virial radius calculations
+    run_params.cosmology.Hubble_h = 0.7;      // h parameter
+    run_params.cosmology.Omega = 0.3;         // Matter density
+    run_params.cosmology.OmegaLambda = 0.7;   // Dark energy density
+    run_params.cosmology.PartMass = 8.6e8;    // Particle mass in solar masses
+    
     // Create galaxy and populate with comprehensive data
     struct GALAXY galaxy;
     memset(&galaxy, 0, sizeof(galaxy));
@@ -361,7 +524,7 @@ static void test_no_data_loss(void) {
     galaxy.Rvir = 271.828f;
     galaxy.Vvir = 141.421f;
     galaxy.Vmax = 173.205f;
-    galaxy.MergTime = 2.71828f;
+    // Note: MergTime is now a physics property, set via property system
     galaxy.infallMvir = 2.99792e12f;
     galaxy.infallVvir = 137.036f;
     galaxy.infallVmax = 169.000f;
@@ -375,28 +538,72 @@ static void test_no_data_loss(void) {
     TEST_ASSERT(result == 0, "Property allocation for data loss test");
     
     if (galaxy.properties != NULL) {
-        // Populate physics properties with known patterns
-        GALAXY_PROP_ColdGas(&galaxy) = 1.23456e10f;
-        GALAXY_PROP_StellarMass(&galaxy) = 2.34567e10f;
-        GALAXY_PROP_HotGas(&galaxy) = 3.45678e10f;
-        GALAXY_PROP_EjectedMass(&galaxy) = 4.56789e10f;
-        GALAXY_PROP_BlackHoleMass(&galaxy) = 5.6789e8f;
-        GALAXY_PROP_BulgeMass(&galaxy) = 6.78901e9f;
-        GALAXY_PROP_ICS(&galaxy) = 7.89012e8f;
+        // Populate physics properties with known patterns using generic property system
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+        property_id_t prop_stellar = get_cached_property_id("StellarMass");
+        property_id_t prop_hotgas = get_cached_property_id("HotGas");
+        property_id_t prop_ejected = get_cached_property_id("EjectedMass");
+        property_id_t prop_bh = get_cached_property_id("BlackHoleMass");
+        property_id_t prop_bulge = get_cached_property_id("BulgeMass");
+        property_id_t prop_ics = get_cached_property_id("ICS");
+        property_id_t prop_metals_cold = get_cached_property_id("MetalsColdGas");
+        property_id_t prop_metals_stellar = get_cached_property_id("MetalsStellarMass");
+        property_id_t prop_metals_hot = get_cached_property_id("MetalsHotGas");
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
+        property_id_t prop_merge_id = get_cached_property_id("mergeIntoID");
+        property_id_t prop_merge_snap = get_cached_property_id("mergeIntoSnapNum");
+        property_id_t prop_merge_time = get_cached_property_id("MergTime");
+        property_id_t prop_cooling = get_cached_property_id("Cooling");
+        property_id_t prop_heating = get_cached_property_id("Heating");
         
-        // Metal properties
-        GALAXY_PROP_MetalsColdGas(&galaxy) = 1.111e8f;
-        GALAXY_PROP_MetalsStellarMass(&galaxy) = 2.222e8f;
-        GALAXY_PROP_MetalsHotGas(&galaxy) = 3.333e8f;
-        
-        // Merger properties
-        GALAXY_PROP_mergeType(&galaxy) = 3;
-        GALAXY_PROP_mergeIntoID(&galaxy) = 87654;
-        GALAXY_PROP_mergeIntoSnapNum(&galaxy) = 41;
-        
-        // Cooling/heating properties
-        GALAXY_PROP_Cooling(&galaxy) = 1.23456789e25;
-        GALAXY_PROP_Heating(&galaxy) = 9.87654321e24;
+        if (prop_coldgas < PROP_COUNT) {
+            set_float_property(&galaxy, prop_coldgas, 1.23456e10f);
+        }
+        if (prop_stellar < PROP_COUNT) {
+            set_float_property(&galaxy, prop_stellar, 2.34567e10f);
+        }
+        if (prop_hotgas < PROP_COUNT) {
+            set_float_property(&galaxy, prop_hotgas, 3.45678e10f);
+        }
+        if (prop_ejected < PROP_COUNT) {
+            set_float_property(&galaxy, prop_ejected, 4.56789e10f);
+        }
+        if (prop_bh < PROP_COUNT) {
+            set_float_property(&galaxy, prop_bh, 5.6789e8f);
+        }
+        if (prop_bulge < PROP_COUNT) {
+            set_float_property(&galaxy, prop_bulge, 6.78901e9f);
+        }
+        if (prop_ics < PROP_COUNT) {
+            set_float_property(&galaxy, prop_ics, 7.89012e8f);
+        }
+        if (prop_metals_cold < PROP_COUNT) {
+            set_float_property(&galaxy, prop_metals_cold, 1.111e8f);
+        }
+        if (prop_metals_stellar < PROP_COUNT) {
+            set_float_property(&galaxy, prop_metals_stellar, 2.222e8f);
+        }
+        if (prop_metals_hot < PROP_COUNT) {
+            set_float_property(&galaxy, prop_metals_hot, 3.333e8f);
+        }
+        if (prop_merge_type < PROP_COUNT) {
+            set_int32_property(&galaxy, prop_merge_type, 3);
+        }
+        if (prop_merge_id < PROP_COUNT) {
+            set_int32_property(&galaxy, prop_merge_id, 87654);
+        }
+        if (prop_merge_snap < PROP_COUNT) {
+            set_int32_property(&galaxy, prop_merge_snap, 41);
+        }
+        if (prop_merge_time < PROP_COUNT) {
+            set_float_property(&galaxy, prop_merge_time, 2.71828f);
+        }
+        if (prop_cooling < PROP_COUNT) {
+            set_double_property(&galaxy, prop_cooling, 1.23456789e25);
+        }
+        if (prop_heating < PROP_COUNT) {
+            set_double_property(&galaxy, prop_heating, 9.87654321e24);
+        }
         
         // Create a second galaxy and copy all data
         struct GALAXY galaxy_copy;
@@ -416,7 +623,7 @@ static void test_no_data_loss(void) {
             galaxy_copy.Rvir = galaxy.Rvir;
             galaxy_copy.Vvir = galaxy.Vvir;
             galaxy_copy.Vmax = galaxy.Vmax;
-            galaxy_copy.MergTime = galaxy.MergTime;
+            // MergTime is now a physics property, copied via property system
             galaxy_copy.infallMvir = galaxy.infallMvir;
             galaxy_copy.infallVvir = galaxy.infallVvir;
             galaxy_copy.infallVmax = galaxy.infallVmax;
@@ -441,7 +648,7 @@ static void test_no_data_loss(void) {
             TEST_ASSERT(fabs(galaxy_copy.Rvir - 271.828f) < FLOAT_TOLERANCE, "Data preservation: Rvir");
             TEST_ASSERT(fabs(galaxy_copy.Vvir - 141.421f) < FLOAT_TOLERANCE, "Data preservation: Vvir");
             TEST_ASSERT(fabs(galaxy_copy.Vmax - 173.205f) < FLOAT_TOLERANCE, "Data preservation: Vmax");
-            TEST_ASSERT(fabs(galaxy_copy.MergTime - 2.71828f) < FLOAT_TOLERANCE, "Data preservation: MergTime");
+            // MergTime is now copied via property system - test below
             TEST_ASSERT(fabs(galaxy_copy.infallMvir - 2.99792e12f) < FLOAT_TOLERANCE, "Data preservation: infallMvir");
             TEST_ASSERT(fabs(galaxy_copy.infallVvir - 137.036f) < FLOAT_TOLERANCE, "Data preservation: infallVvir");
             TEST_ASSERT(fabs(galaxy_copy.infallVmax - 169.000f) < FLOAT_TOLERANCE, "Data preservation: infallVmax");
@@ -454,30 +661,61 @@ static void test_no_data_loss(void) {
                 TEST_ASSERT(fabs(galaxy_copy.Vel[i] - expected_vel[i]) < FLOAT_TOLERANCE, "Data preservation: Vel array");
             }
             
-            // Physics properties preservation
-            float coldgas = GALAXY_PROP_ColdGas(&galaxy_copy);
-            TEST_ASSERT(fabs(coldgas - 1.23456e10f) < FLOAT_TOLERANCE, "Data preservation: ColdGas");
+            // Physics properties preservation - test using generic property system
+            property_id_t prop_coldgas_preserve = get_cached_property_id("ColdGas");
+            property_id_t prop_stellar_preserve = get_cached_property_id("StellarMass");
+            property_id_t prop_hotgas_preserve = get_cached_property_id("HotGas");
+            property_id_t prop_merge_type_preserve = get_cached_property_id("mergeType");
+            property_id_t prop_merge_id_preserve = get_cached_property_id("mergeIntoID");
+            property_id_t prop_merge_snap_preserve = get_cached_property_id("mergeIntoSnapNum");
+            property_id_t prop_merge_time_preserve = get_cached_property_id("MergTime");
+            property_id_t prop_cooling_preserve = get_cached_property_id("Cooling");
+            property_id_t prop_heating_preserve = get_cached_property_id("Heating");
             
-            float stellar = GALAXY_PROP_StellarMass(&galaxy_copy);
-            TEST_ASSERT(fabs(stellar - 2.34567e10f) < FLOAT_TOLERANCE, "Data preservation: StellarMass");
+            if (prop_coldgas_preserve < PROP_COUNT) {
+                float coldgas = get_float_property(&galaxy_copy, prop_coldgas_preserve, 0.0f);
+                TEST_ASSERT(fabs(coldgas - 1.23456e10f) < FLOAT_TOLERANCE, "Data preservation: ColdGas");
+            }
             
-            float hotgas = GALAXY_PROP_HotGas(&galaxy_copy);
-            TEST_ASSERT(fabs(hotgas - 3.45678e10f) < FLOAT_TOLERANCE, "Data preservation: HotGas");
+            if (prop_stellar_preserve < PROP_COUNT) {
+                float stellar = get_float_property(&galaxy_copy, prop_stellar_preserve, 0.0f);
+                TEST_ASSERT(fabs(stellar - 2.34567e10f) < FLOAT_TOLERANCE, "Data preservation: StellarMass");
+            }
             
-            int merge_type = GALAXY_PROP_mergeType(&galaxy_copy);
-            TEST_ASSERT(merge_type == 3, "Data preservation: mergeType");
+            if (prop_hotgas_preserve < PROP_COUNT) {
+                float hotgas = get_float_property(&galaxy_copy, prop_hotgas_preserve, 0.0f);
+                TEST_ASSERT(fabs(hotgas - 3.45678e10f) < FLOAT_TOLERANCE, "Data preservation: HotGas");
+            }
             
-            int merge_id = GALAXY_PROP_mergeIntoID(&galaxy_copy);
-            TEST_ASSERT(merge_id == 87654, "Data preservation: mergeIntoID");
+            if (prop_merge_type_preserve < PROP_COUNT) {
+                int merge_type = get_int32_property(&galaxy_copy, prop_merge_type_preserve, 0);
+                TEST_ASSERT(merge_type == 3, "Data preservation: mergeType");
+            }
             
-            int merge_snap = GALAXY_PROP_mergeIntoSnapNum(&galaxy_copy);
-            TEST_ASSERT(merge_snap == 41, "Data preservation: mergeIntoSnapNum");
+            if (prop_merge_id_preserve < PROP_COUNT) {
+                int merge_id = get_int32_property(&galaxy_copy, prop_merge_id_preserve, 0);
+                TEST_ASSERT(merge_id == 87654, "Data preservation: mergeIntoID");
+            }
             
-            double cooling = GALAXY_PROP_Cooling(&galaxy_copy);
-            TEST_ASSERT(fabs(cooling - 1.23456789e25) < 1e20, "Data preservation: Cooling");
+            if (prop_merge_snap_preserve < PROP_COUNT) {
+                int merge_snap = get_int32_property(&galaxy_copy, prop_merge_snap_preserve, 0);
+                TEST_ASSERT(merge_snap == 41, "Data preservation: mergeIntoSnapNum");
+            }
             
-            double heating = GALAXY_PROP_Heating(&galaxy_copy);
-            TEST_ASSERT(fabs(heating - 9.87654321e24) < 1e19, "Data preservation: Heating");
+            if (prop_merge_time_preserve < PROP_COUNT) {
+                float merge_time = get_float_property(&galaxy_copy, prop_merge_time_preserve, 0.0f);
+                TEST_ASSERT(fabs(merge_time - 2.71828f) < FLOAT_TOLERANCE, "Data preservation: MergTime");
+            }
+            
+            if (prop_cooling_preserve < PROP_COUNT) {
+                double cooling = get_double_property(&galaxy_copy, prop_cooling_preserve, 0.0);
+                TEST_ASSERT(fabs(cooling - 1.23456789e25) < 1e20, "Data preservation: Cooling");
+            }
+            
+            if (prop_heating_preserve < PROP_COUNT) {
+                double heating = get_double_property(&galaxy_copy, prop_heating_preserve, 0.0);
+                TEST_ASSERT(fabs(heating - 9.87654321e24) < 1e19, "Data preservation: Heating");
+            }
         }
         
         // Cleanup copy

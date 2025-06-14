@@ -57,7 +57,6 @@ static void test_core_property_direct_access(void) {
     galaxy.Rvir = 250.0f;
     galaxy.Vvir = 180.0f;
     galaxy.Vmax = 200.0f;
-    galaxy.MergTime = 5.5f;
     galaxy.infallMvir = 1.2e12f;
     galaxy.infallVvir = 175.0f;
     galaxy.infallVmax = 195.0f;
@@ -76,7 +75,7 @@ static void test_core_property_direct_access(void) {
     TEST_ASSERT(fabs(galaxy.Rvir - 250.0f) < 0.1f, "Rvir direct access");
     TEST_ASSERT(fabs(galaxy.Vvir - 180.0f) < 0.1f, "Vvir direct access");
     TEST_ASSERT(fabs(galaxy.Vmax - 200.0f) < 0.1f, "Vmax direct access");
-    TEST_ASSERT(fabs(galaxy.MergTime - 5.5f) < 0.1f, "MergTime direct access");
+    // MergTime is now a physics property, not a core property
     TEST_ASSERT(fabs(galaxy.infallMvir - 1.2e12f) < 1e6f, "infallMvir direct access");
     TEST_ASSERT(fabs(galaxy.infallVvir - 175.0f) < 0.1f, "infallVvir direct access");
     TEST_ASSERT(fabs(galaxy.infallVmax - 195.0f) < 0.1f, "infallVmax direct access");
@@ -111,35 +110,40 @@ static void test_physics_property_system_access(void) {
     TEST_ASSERT(galaxy.properties != NULL, "Properties pointer is not NULL");
     
     if (galaxy.properties != NULL) {
-        // Test physics properties via property system only
-        GALAXY_PROP_ColdGas(&galaxy) = 1.5e10f;
-        GALAXY_PROP_StellarMass(&galaxy) = 2.3e10f;
-        GALAXY_PROP_HotGas(&galaxy) = 5.7e10f;
-        GALAXY_PROP_BlackHoleMass(&galaxy) = 1.2e8f;
+        // Test physics properties via generic property system
+        // Use property names as strings since macros may not be available in physics-free mode
         
-        // Verify values can be retrieved
-        float coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        float stellar = GALAXY_PROP_StellarMass(&galaxy);
-        float hotgas = GALAXY_PROP_HotGas(&galaxy);
-        float bh = GALAXY_PROP_BlackHoleMass(&galaxy);
+        // Test that in physics-free mode, only core properties are available
+        // Try to access physics properties via string lookup - should return invalid ID
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+        property_id_t prop_stellar = get_cached_property_id("StellarMass");
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
         
-        TEST_ASSERT(fabs(coldgas - 1.5e10f) < 1e6f, "ColdGas property system access");
-        TEST_ASSERT(fabs(stellar - 2.3e10f) < 1e6f, "StellarMass property system access");
-        TEST_ASSERT(fabs(hotgas - 5.7e10f) < 1e6f, "HotGas property system access");
-        TEST_ASSERT(fabs(bh - 1.2e8f) < 1e4f, "BlackHoleMass property system access");
-        
-        // Test merger properties that will be moved to property system
-        GALAXY_PROP_mergeType(&galaxy) = 2;
-        GALAXY_PROP_mergeIntoID(&galaxy) = 12345;
-        GALAXY_PROP_mergeIntoSnapNum(&galaxy) = 62;
-        
-        int merge_type = GALAXY_PROP_mergeType(&galaxy);
-        int merge_id = GALAXY_PROP_mergeIntoID(&galaxy);
-        int merge_snap = GALAXY_PROP_mergeIntoSnapNum(&galaxy);
-        
-        TEST_ASSERT(merge_type == 2, "mergeType property system access");
-        TEST_ASSERT(merge_id == 12345, "mergeIntoID property system access");
-        TEST_ASSERT(merge_snap == 62, "mergeIntoSnapNum property system access");
+        // In physics-free mode, these should return PROP_COUNT (invalid)
+        // In full-physics mode, these would return valid IDs
+        if (prop_coldgas < PROP_COUNT) {
+            // Full-physics mode - test property access
+            set_float_property(&galaxy, prop_coldgas, 1.5e10f);
+            float coldgas = get_float_property(&galaxy, prop_coldgas, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 1.5e10f) < 1e6f, "ColdGas property access in full-physics mode");
+            
+            if (prop_stellar < PROP_COUNT) {
+                set_float_property(&galaxy, prop_stellar, 2.3e10f);
+                float stellar = get_float_property(&galaxy, prop_stellar, 0.0f);
+                TEST_ASSERT(fabs(stellar - 2.3e10f) < 1e6f, "StellarMass property access in full-physics mode");
+            }
+            
+            if (prop_merge_type < PROP_COUNT) {
+                set_int32_property(&galaxy, prop_merge_type, 2);
+                int merge_type = get_int32_property(&galaxy, prop_merge_type, 0);
+                TEST_ASSERT(merge_type == 2, "mergeType property access in full-physics mode");
+            }
+        } else {
+            // Physics-free mode - physics properties should not be available
+            TEST_ASSERT(prop_coldgas >= PROP_COUNT, "ColdGas not available in physics-free mode (expected)");
+            TEST_ASSERT(prop_stellar >= PROP_COUNT, "StellarMass not available in physics-free mode (expected)");
+            TEST_ASSERT(prop_merge_type >= PROP_COUNT, "mergeType not available in physics-free mode (expected)");
+        }
     }
     
     // Cleanup
@@ -172,32 +176,31 @@ static void test_no_dual_state_synchronization(void) {
         galaxy.Type = 1;
         galaxy.Mvir = 1.5e12f;
         
-        // Set physics properties via property system
-        GALAXY_PROP_ColdGas(&galaxy) = 2.5e10f;
-        GALAXY_PROP_StellarMass(&galaxy) = 3.7e10f;
+        // Test core-physics independence via generic property system
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
         
-        // After separation, these should be independent - no synchronization needed
-        // Test that each system maintains its values independently
+        // Test that core and physics systems are truly independent
         TEST_ASSERT(galaxy.SnapNum == 42, "Core SnapNum maintains value independently");
         TEST_ASSERT(galaxy.Type == 1, "Core Type maintains value independently");
         TEST_ASSERT(fabs(galaxy.Mvir - 1.5e12f) < 1e6f, "Core Mvir maintains value independently");
         
-        float coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        float stellar = GALAXY_PROP_StellarMass(&galaxy);
-        TEST_ASSERT(fabs(coldgas - 2.5e10f) < 1e6f, "Physics ColdGas maintains value independently");
-        TEST_ASSERT(fabs(stellar - 3.7e10f) < 1e6f, "Physics StellarMass maintains value independently");
-        
-        // Modify one system and verify the other is unaffected
-        galaxy.Type = 2;  // Change core property
-        GALAXY_PROP_ColdGas(&galaxy) = 3.0e10f;  // Change physics property
-        
-        TEST_ASSERT(galaxy.Type == 2, "Core property change is independent");
-        coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        TEST_ASSERT(fabs(coldgas - 3.0e10f) < 1e6f, "Physics property change is independent");
-        TEST_ASSERT(fabs(galaxy.Mvir - 1.5e12f) < 1e6f, "Other core properties unaffected");
-        
-        stellar = GALAXY_PROP_StellarMass(&galaxy);
-        TEST_ASSERT(fabs(stellar - 3.7e10f) < 1e6f, "Other physics properties unaffected");
+        // Only test physics properties if they're available (full-physics mode)
+        if (prop_coldgas < PROP_COUNT) {
+            set_float_property(&galaxy, prop_coldgas, 2.5e10f);
+            float coldgas = get_float_property(&galaxy, prop_coldgas, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 2.5e10f) < 1e6f, "Physics ColdGas maintains value independently");
+            
+            // Modify core property and verify physics property is unaffected
+            galaxy.Type = 2;
+            coldgas = get_float_property(&galaxy, prop_coldgas, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 2.5e10f) < 1e6f, "Physics property unchanged when core modified");
+            TEST_ASSERT(galaxy.Type == 2, "Core property change is independent");
+        } else {
+            // In physics-free mode, just verify core independence
+            galaxy.Type = 2;
+            TEST_ASSERT(galaxy.Type == 2, "Core property change works in physics-free mode");
+            TEST_ASSERT(fabs(galaxy.Mvir - 1.5e12f) < 1e6f, "Other core properties unaffected");
+        }
     }
     
     // Cleanup
@@ -225,22 +228,7 @@ static void test_property_system_data_types(void) {
     TEST_ASSERT(result == 0, "Property system allocation succeeds");
     
     if (galaxy.properties != NULL) {
-        // Test int32_t properties
-        GALAXY_PROP_mergeType(&galaxy) = 2;
-        int merge_type = GALAXY_PROP_mergeType(&galaxy);
-        TEST_ASSERT(merge_type == 2, "int32_t property handling");
-        
-        // Test float properties
-        GALAXY_PROP_ColdGas(&galaxy) = 1.23456e10f;
-        float coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        TEST_ASSERT(fabs(coldgas - 1.23456e10f) < 1e4f, "float property handling");
-        
-        // Test double properties
-        GALAXY_PROP_Cooling(&galaxy) = 9.87654321e20;
-        double cooling = GALAXY_PROP_Cooling(&galaxy);
-        TEST_ASSERT(fabs(cooling - 9.87654321e20) < 1e15, "double property handling");
-        
-        // Test array properties (if accessible)
+        // Test core array properties (these should always be available)
         GALAXY_PROP_Pos_ELEM(&galaxy, 0) = 10.5f;
         GALAXY_PROP_Pos_ELEM(&galaxy, 1) = 20.5f;
         GALAXY_PROP_Pos_ELEM(&galaxy, 2) = 30.5f;
@@ -249,18 +237,46 @@ static void test_property_system_data_types(void) {
         float pos_y = GALAXY_PROP_Pos_ELEM(&galaxy, 1);
         float pos_z = GALAXY_PROP_Pos_ELEM(&galaxy, 2);
         
-        TEST_ASSERT(fabs(pos_x - 10.5f) < 0.1f, "Array property element [0] access");
-        TEST_ASSERT(fabs(pos_y - 20.5f) < 0.1f, "Array property element [1] access");
-        TEST_ASSERT(fabs(pos_z - 30.5f) < 0.1f, "Array property element [2] access");
+        TEST_ASSERT(fabs(pos_x - 10.5f) < 0.1f, "Core array property element [0] access");
+        TEST_ASSERT(fabs(pos_y - 20.5f) < 0.1f, "Core array property element [1] access");
+        TEST_ASSERT(fabs(pos_z - 30.5f) < 0.1f, "Core array property element [2] access");
         
-        // Test boundary values
-        GALAXY_PROP_ColdGas(&galaxy) = 0.0f;
-        coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        TEST_ASSERT(fabs(coldgas - 0.0f) < 1e-10f, "Zero value handling");
+        // Test physics properties via generic accessors if available
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
+        property_id_t prop_coldgas = get_cached_property_id("ColdGas");
+        property_id_t prop_cooling = get_cached_property_id("Cooling");
         
-        GALAXY_PROP_ColdGas(&galaxy) = 1e15f;  // Very large value
-        coldgas = GALAXY_PROP_ColdGas(&galaxy);
-        TEST_ASSERT(fabs(coldgas - 1e15f) < 1e10f, "Large value handling");
+        if (prop_merge_type < PROP_COUNT) {
+            set_int32_property(&galaxy, prop_merge_type, 2);
+            int merge_type = get_int32_property(&galaxy, prop_merge_type, 0);
+            TEST_ASSERT(merge_type == 2, "int32_t physics property handling");
+        }
+        
+        if (prop_coldgas < PROP_COUNT) {
+            set_float_property(&galaxy, prop_coldgas, 1.23456e10f);
+            float coldgas = get_float_property(&galaxy, prop_coldgas, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 1.23456e10f) < 1e4f, "float physics property handling");
+            
+            // Test boundary values
+            set_float_property(&galaxy, prop_coldgas, 0.0f);
+            coldgas = get_float_property(&galaxy, prop_coldgas, -1.0f);
+            TEST_ASSERT(fabs(coldgas - 0.0f) < 1e-10f, "Zero value handling");
+            
+            set_float_property(&galaxy, prop_coldgas, 1e15f);
+            coldgas = get_float_property(&galaxy, prop_coldgas, 0.0f);
+            TEST_ASSERT(fabs(coldgas - 1e15f) < 1e10f, "Large value handling");
+        }
+        
+        if (prop_cooling < PROP_COUNT) {
+            set_double_property(&galaxy, prop_cooling, 9.87654321e20);
+            double cooling = get_double_property(&galaxy, prop_cooling, 0.0);
+            TEST_ASSERT(fabs(cooling - 9.87654321e20) < 1e15, "double physics property handling");
+        }
+        
+        // If we're in physics-free mode, verify core properties work correctly
+        if (prop_coldgas >= PROP_COUNT) {
+            TEST_ASSERT(1, "Physics-free mode confirmed - physics properties unavailable");
+        }
     }
     
     // Cleanup
@@ -304,18 +320,30 @@ static void test_dual_state_properties_removed(void) {
     TEST_ASSERT(result == 0, "Property system allocation succeeds");
     
     if (galaxy.properties != NULL) {
-        // These properties should ONLY be accessible via property system now
-        GALAXY_PROP_mergeType(&galaxy) = 2;
-        GALAXY_PROP_mergeIntoID(&galaxy) = 12345;
-        GALAXY_PROP_mergeIntoSnapNum(&galaxy) = 62;
+        // Test that physics properties are only accessible via generic property system
+        property_id_t prop_merge_type = get_cached_property_id("mergeType");
+        property_id_t prop_merge_id = get_cached_property_id("mergeIntoID");
+        property_id_t prop_merge_snap = get_cached_property_id("mergeIntoSnapNum");
         
-        int merge_type = GALAXY_PROP_mergeType(&galaxy);
-        int merge_id = GALAXY_PROP_mergeIntoID(&galaxy);
-        int merge_snap = GALAXY_PROP_mergeIntoSnapNum(&galaxy);
-        
-        TEST_ASSERT(merge_type == 2, "mergeType only accessible via property system");
-        TEST_ASSERT(merge_id == 12345, "mergeIntoID only accessible via property system");
-        TEST_ASSERT(merge_snap == 62, "mergeIntoSnapNum only accessible via property system");
+        if (prop_merge_type < PROP_COUNT) {
+            // In full-physics mode, these should be accessible
+            set_int32_property(&galaxy, prop_merge_type, 2);
+            set_int32_property(&galaxy, prop_merge_id, 12345);
+            set_int32_property(&galaxy, prop_merge_snap, 62);
+            
+            int merge_type = get_int32_property(&galaxy, prop_merge_type, -1);
+            int merge_id = get_int32_property(&galaxy, prop_merge_id, -1);
+            int merge_snap = get_int32_property(&galaxy, prop_merge_snap, -1);
+            
+            TEST_ASSERT(merge_type == 2, "mergeType only accessible via generic property system");
+            TEST_ASSERT(merge_id == 12345, "mergeIntoID only accessible via generic property system");
+            TEST_ASSERT(merge_snap == 62, "mergeIntoSnapNum only accessible via generic property system");
+        } else {
+            // In physics-free mode, these properties should not be available
+            TEST_ASSERT(prop_merge_type >= PROP_COUNT, "mergeType unavailable in physics-free mode");
+            TEST_ASSERT(prop_merge_id >= PROP_COUNT, "mergeIntoID unavailable in physics-free mode");
+            TEST_ASSERT(prop_merge_snap >= PROP_COUNT, "mergeIntoSnapNum unavailable in physics-free mode");
+        }
     }
     
     // Cleanup
