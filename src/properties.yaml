@@ -117,6 +117,15 @@ properties:
     read_only: false
     is_core: true
 
+  - name: merged
+    type: int32_t
+    initial_value: 0
+    units: "dimensionless"
+    description: "Galaxy merger status (0=active, 1=merged/removed)"
+    output: false
+    read_only: false
+    is_core: true
+
   # Merger Properties - Physics Module Properties
   - name: mergeType
     type: int32_t

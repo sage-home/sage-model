@@ -200,3 +200,12 @@
 - **✅ Validation Success**: SAGE now properly writes galaxies to HDF5 files with correct SnapNum values, scientific data integrity preserved, no galaxy loss during accumulation process
 - **🚀 Major Impact**: This fix enables scientific analysis of SAGE simulation results - HDF5 output files now contain complete galaxy population data across all snapshots including critical z=0 data
 - Modified files: src/generate_property_headers.py (SnapNum preservation in property copying), src/core/core_properties.c (regenerated with fix)
+
+2025-06-14: [Architecture] **🎉 Core-Physics Property Separation Implementation 🎉** ✅ COMPLETED
+- **🔥 MAJOR ARCHITECTURAL FIX**: Implemented complete separation between core and physics properties, eliminating dangerous dual-state synchronization system that violated stated architecture
+- **🧠 Problem Analysis**: Fixed issue where mergeType, mergeIntoID, mergeIntoSnapNum were incorrectly used as core properties when they should be physics-only, creating synchronization bugs and architectural violations
+- **🔧 Seven-Point Implementation**: (1) Added new "merged" core property (0=active, 1=merged) for clean lifecycle decisions, (2) Updated Type=2 assignments to set merged=1, (3) Replaced mergeType usage with merged flag in core code, (4) Removed merger property copying from core operations, (5) Added HDF5 output filtering for merged=0 only, (6) Implemented end-of-snapshot galaxy removal for merged=1, (7) Cleaned up dead mergeIntoID validation/update code
+- **🏗️ Clean Architecture Achievement**: Core code no longer uses physics properties for decisions, eliminated single-source-of-truth violations, physics properties handled only by physics modules using generic accessors
+- **✅ Build Validation**: Successfully builds in physics-free mode, confirming clean core-physics separation with no coupling violations
+- **🚀 Scientific Impact**: Ensures merged galaxies don't contaminate scientific results, proper memory cleanup, and maintains data integrity through consistent filtering
+- Modified files: src/properties.yaml (added merged property), src/core/physics_pipeline_executor.c, src/core/core_build_model.c, src/core/galaxy_array.c, src/io/save_gals_hdf5.c, src/io/io_galaxy_output.c/.h, src/io/io_validation.c, src/physics/physics_essential_functions.c

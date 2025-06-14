@@ -81,21 +81,7 @@ extern int generate_unique_galaxy_indices(const struct halo_data *halos,
                                          const int64_t forestnr_mulfac,
                                          const enum Valid_TreeTypes tree_type);
 
-/**
- * @brief Update merger pointers for output
- * 
- * Updates mergeIntoID values to point to the correct output indices.
- * 
- * @param halogal Galaxy data array
- * @param numgals Number of galaxies
- * @param output_gal_order Mapping from internal to output indices
- * @param task_forestnr Task-local forest number for debugging
- * @return 0 on success, non-zero on failure
- */
-extern int update_merger_pointers_for_output(struct GALAXY *halogal,
-                                            const int64_t numgals,
-                                            const int32_t *output_gal_order,
-                                            const int64_t task_forestnr);
+/* Removed update_merger_pointers_for_output() - no longer needed */
 
 /**
  * @brief Allocate output tracking arrays

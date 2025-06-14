@@ -132,12 +132,8 @@ int prepare_galaxies_for_output(const int64_t task_forestnr,
         }
     }
     
-    // Update merge pointers to reference output indices
-    status = update_merger_pointers_for_output(halogal, numgals, ctx->output_gal_order, task_forestnr);
-    if (status != EXIT_SUCCESS) {
-        free_output_arrays(ctx);
-        return status;
-    }
+    // Note: Removed update_merger_pointers_for_output() as mergeIntoID is no longer used
+    // by core system. Merged galaxies are now filtered out entirely (merged=0 only).
     
     // Generate unique IDs for each galaxy
     status = generate_unique_galaxy_indices(halos, haloaux, halogal, numgals,
@@ -152,39 +148,8 @@ int prepare_galaxies_for_output(const int64_t task_forestnr,
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Update merger pointers for output
- * 
- * Updates mergeIntoID values to point to the correct output indices.
- * 
- * @param halogal Galaxy data array
- * @param numgals Number of galaxies
- * @param output_gal_order Mapping from internal to output indices
- * @param task_forestnr Task-local forest number for debugging
- * @return 0 on success, non-zero on failure
- */
-int update_merger_pointers_for_output(struct GALAXY *halogal,
-                                     const int64_t numgals,
-                                     const int32_t *output_gal_order,
-                                     const int64_t task_forestnr) {
-    
-    for (int gal_idx = 0; gal_idx < numgals; gal_idx++) {
-        const int mergeID = halogal[gal_idx].mergeIntoID;
-        if (mergeID > -1) {
-            if (!(mergeID >= 0 && mergeID < numgals)) {
-                fprintf(stderr, "Error: For galaxy number %d, expected mergeintoID to be within [0, %"PRId64") "
-                        "but found mergeintoID = %d instead\n", gal_idx, numgals, mergeID);
-                fprintf(stderr, "Additional debugging info\n");
-                fprintf(stderr, "task_forestnr = %"PRId64" snapshot = %d\n",
-                        task_forestnr, halogal[gal_idx].SnapNum);
-                return -1;
-            }
-            halogal[gal_idx].mergeIntoID = output_gal_order[halogal[gal_idx].mergeIntoID];
-        }
-    }
-    
-    return EXIT_SUCCESS;
-}
+// Removed update_merger_pointers_for_output() function - no longer needed
+// since merged galaxies are filtered out entirely and mergeIntoID is not used by core system
 
 /**
  * @brief Get error message for tree type

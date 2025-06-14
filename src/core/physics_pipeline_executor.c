@@ -58,17 +58,17 @@ static bool galaxy_is_valid_for_properties(struct GALAXY *galaxy) {
     }
     
     // Only consider galaxies that haven't merged or been disrupted
-    if (galaxy->mergeType > 0) {
-        /* Reduce noise - only log merge type issues for first 5 galaxies */
-        static int merge_type_count = 0;
-        merge_type_count++;
-        if (merge_type_count <= 5) {
-            if (merge_type_count == 5) {
-                LOG_DEBUG("Galaxy %d is not valid for property access (mergeType=%d) (issue #%d - further messages suppressed)", 
-                        galaxy->GalaxyNr, galaxy->mergeType, merge_type_count);
+    if (GALAXY_PROP_merged(galaxy) > 0) {
+        /* Reduce noise - only log merge status issues for first 5 galaxies */
+        static int merge_status_count = 0;
+        merge_status_count++;
+        if (merge_status_count <= 5) {
+            if (merge_status_count == 5) {
+                LOG_DEBUG("Galaxy %d is not valid for property access (merged=%d) (issue #%d - further messages suppressed)", 
+                        galaxy->GalaxyNr, GALAXY_PROP_merged(galaxy), merge_status_count);
             } else {
-                LOG_DEBUG("Galaxy %d is not valid for property access (mergeType=%d) (issue #%d)", 
-                        galaxy->GalaxyNr, galaxy->mergeType, merge_type_count);
+                LOG_DEBUG("Galaxy %d is not valid for property access (merged=%d) (issue #%d)", 
+                        galaxy->GalaxyNr, GALAXY_PROP_merged(galaxy), merge_status_count);
             }
         }
         return false;

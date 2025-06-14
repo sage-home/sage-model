@@ -131,10 +131,8 @@ static inline void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *sr
     dest->GalaxyIndex = src->GalaxyIndex;
     dest->CentralGalaxyIndex = src->CentralGalaxyIndex;
     
-    // Merger properties
-    dest->mergeType = src->mergeType;
-    dest->mergeIntoID = src->mergeIntoID;
-    dest->mergeIntoSnapNum = src->mergeIntoSnapNum;
+    // Merger properties (mergeType, mergeIntoID, mergeIntoSnapNum) are physics properties
+    // and will be copied by copy_galaxy_properties() function
     dest->dT = src->dT;
     
     // Core halo properties
@@ -337,7 +335,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                 } else {
                     // This was a satellite of the main progenitor. It becomes an orphan.
                     temp_galaxy.Type = 2;
-                    temp_galaxy.mergeType = 1;
+                    GALAXY_PROP_merged(&temp_galaxy) = 1;
                     
                     // Ensure properties are allocated before syncing
                     if (temp_galaxy.properties == NULL) {
@@ -358,7 +356,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                     temp_galaxy.infallVmax = temp_galaxy.Vmax;
                 }
                 temp_galaxy.Type = 2;
-                temp_galaxy.mergeType = 1;
+                GALAXY_PROP_merged(&temp_galaxy) = 1;
                 
                 // Ensure properties are allocated before syncing
                 if (temp_galaxy.properties == NULL) {
@@ -974,6 +972,23 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
     const double inv_deltaT = (time_diff > 1e-10) ? 1.0 / time_diff : 0.0; // Avoid division by zero or very small numbers
     (void)inv_deltaT; // Mark as intentionally unused
 
+    // Remove merged galaxies from the galaxy array before attaching to final list
+    // This compacts the array to only contain active galaxies (merged=0)
+    int active_galaxies = 0;
+    for(int p = 0; p < ctx.ngal; p++) {
+        if (GALAXY_PROP_merged(&ctx.galaxies[p]) == 0) {
+            if (active_galaxies != p) {
+                // Move galaxy to compact position
+                ctx.galaxies[active_galaxies] = ctx.galaxies[p];
+            }
+            active_galaxies++;
+        } else {
+            // Free resources for merged galaxy
+            free_galaxy_properties(&ctx.galaxies[p]);
+        }
+    }
+    ctx.ngal = active_galaxies; // Update galaxy count to active galaxies only
+
     // Attach final galaxy list to halo
     for(int p = 0, currenthalo = -1; p < ctx.ngal; p++) {
         if(ctx.galaxies[p].HaloNr != currenthalo) {
@@ -983,7 +998,7 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
         }
 
         // After evolution, append survivors to the main array for this snapshot
-        if (ctx.galaxies[p].mergeType == 0) { // If it hasn't been merged
+        if (GALAXY_PROP_merged(&ctx.galaxies[p]) == 0) { // If it hasn't been merged
             ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
 
 

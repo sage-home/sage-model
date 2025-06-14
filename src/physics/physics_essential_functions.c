@@ -26,6 +26,7 @@
 #include <math.h>
 #include "core_allvars.h"
 #include "core_properties.h"
+#include "core_property_utils.h"
 #include "core_logging.h"
 #include "physics_essential_functions.h"
 
@@ -74,10 +75,21 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
     galaxies[p].num_extensions = 0;
     galaxies[p].extension_flags = 0;
     
-    // Initialize merger properties with defaults
-    galaxies[p].mergeType = 0;
-    galaxies[p].mergeIntoID = -1;
-    galaxies[p].mergeIntoSnapNum = -1;
+    // Initialize merger properties with defaults - use generic accessors for physics properties
+    // These properties may not be available in physics-free mode
+    property_id_t mergeType_id = get_property_id("mergeType");
+    property_id_t mergeIntoID_id = get_property_id("mergeIntoID");
+    property_id_t mergeIntoSnapNum_id = get_property_id("mergeIntoSnapNum");
+    
+    if (mergeType_id != PROP_COUNT) {
+        set_int32_property(&galaxies[p], mergeType_id, 0);
+    }
+    if (mergeIntoID_id != PROP_COUNT) {
+        set_int32_property(&galaxies[p], mergeIntoID_id, -1);
+    }
+    if (mergeIntoSnapNum_id != PROP_COUNT) {
+        set_int32_property(&galaxies[p], mergeIntoSnapNum_id, -1);
+    }
     galaxies[p].dT = -1.0;
     galaxies[p].MergTime = 0.0;
 

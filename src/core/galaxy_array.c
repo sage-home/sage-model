@@ -73,9 +73,8 @@ static inline void safe_deep_copy_galaxy(struct GALAXY *dest, const struct GALAX
     dest->MostBoundID = src->MostBoundID;
     // GalaxyIndex is synced from properties - don't copy directly
     dest->CentralGalaxyIndex = src->CentralGalaxyIndex;
-    dest->mergeType = src->mergeType;
-    dest->mergeIntoID = src->mergeIntoID;
-    dest->mergeIntoSnapNum = src->mergeIntoSnapNum;
+    // Merger properties (mergeType, mergeIntoID, mergeIntoSnapNum) are physics properties
+    // and will be copied by copy_galaxy_properties() function
     dest->dT = src->dT;
     dest->Len = src->Len;
     dest->deltaMvir = src->deltaMvir;

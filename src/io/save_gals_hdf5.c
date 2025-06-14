@@ -38,6 +38,11 @@ static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_sav
         return EXIT_FAILURE;
     }
     
+    // Skip merged galaxies from output - only write active galaxies (merged=0)
+    if (GALAXY_PROP_merged(g) != 0) {
+        return EXIT_SUCCESS; // Skip this galaxy but don't treat as error
+    }
+    
     // CRITICAL: Check for corrupted properties pointer - FAIL HARD if detected
     if (g->properties != NULL && ((uintptr_t)g->properties & 0xFFFFFFFF00000000ULL) == 0xFFFFFFFF00000000ULL) {
         LOG_ERROR("FATAL: Corrupted galaxy properties pointer detected: %p for galaxy index %llu", 

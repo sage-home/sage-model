@@ -1154,17 +1154,7 @@ static int validate_galaxy_references(struct validation_context *ctx,
                                     const char *component) {
     int status = 0;
     
-    // Check mergeIntoID is valid
-    if (galaxy->mergeIntoID != -1) {
-        if (galaxy->mergeIntoID < -1 || galaxy->mergeIntoID >= count) {
-            status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
-                                          VALIDATION_SEVERITY_ERROR,
-                                          VALIDATION_CHECK_GALAXY_REFS, component,
-                                          __FILE__, __LINE__,
-                                          "Galaxy %d has invalid mergeIntoID = %d (valid range: -1 to %d)",
-                                          index, galaxy->mergeIntoID, count - 1);
-        }
-    }
+    // Note: Removed mergeIntoID validation - it's now a physics property not used by core system
     
     // Check CentralGal is valid
     if (galaxy->CentralGal >= count) {
@@ -1196,15 +1186,7 @@ static int validate_galaxy_references(struct validation_context *ctx,
                                       index, galaxy->GalaxyNr);
     }
     
-    // Check mergeType is valid (0-4)
-    if (galaxy->mergeType < 0 || galaxy->mergeType > 4) {
-        status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
-                                      VALIDATION_SEVERITY_ERROR,
-                                      VALIDATION_CHECK_GALAXY_REFS, component,
-                                      __FILE__, __LINE__,
-                                      "Galaxy %d has invalid mergeType = %d (valid range: 0-4)",
-                                      index, galaxy->mergeType);
-    }
+    // Note: Removed mergeType validation - it's now a physics property not used by core system
     
     return status;
 }

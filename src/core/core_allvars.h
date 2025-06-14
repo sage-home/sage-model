@@ -168,16 +168,15 @@ struct GALAXY
     uint64_t  GalaxyIndex;        /* Unique galaxy identifier based on tree local galaxy number, 
                                      file local tree number and file number */
     uint64_t  CentralGalaxyIndex; /* Galaxy index of the central galaxy of this galaxy's FoF group */
-
-    /* Merger properties */
-    int32_t   mergeType;          /* 0=none; 1=minor merger; 2=major merger; 3=disk instability; 4=disrupt to ICS */
-    int32_t   mergeIntoID;        /* Galaxy ID that this galaxy merges into */
-    int32_t   mergeIntoSnapNum;   /* Snapshot number when the merger occurs */
+    int32_t   SAGEHaloIndex;      /* SAGE-specific halo identifier */
+    int32_t   SAGETreeIndex;      /* SAGE-specific tree identifier */
+    long long SimulationHaloIndex; /* Original simulation halo index */
     float     dT;                 /* Time step for galaxy evolution */
 
     /* Core halo properties */
     float     Pos[3];             /* Position coordinates (x,y,z) */
     float     Vel[3];             /* Velocity components (vx,vy,vz) */
+    float     Spin[3];            /* Angular momentum vector (Jx,Jy,Jz) */
     int       Len;                /* Number of particles in the halo */
     float     Mvir;               /* Virial mass of the halo */
     float     deltaMvir;          /* Change in virial mass since last snapshot */
@@ -185,6 +184,7 @@ struct GALAXY
     float     Rvir;               /* Virial radius */
     float     Vvir;               /* Virial velocity */
     float     Vmax;               /* Maximum circular velocity */
+    float     VelDisp;            /* Velocity dispersion */
 
     /* Core merger tracking */
     float     MergTime;           /* Time until merger */
