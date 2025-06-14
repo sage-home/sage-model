@@ -23,6 +23,7 @@ This separation allows for optimal performance while maintaining configuration f
 
 **Properties Generated**: Only core properties marked with `is_core: true`
 - Galaxy identification (GalaxyIndex, Type, SnapNum)
+- Galaxy lifecycle (merged flag for clean state management)
 - Positions and velocities (Pos, Vel)
 - Basic halo properties (Mvir, Rvir, etc.)
 
@@ -41,6 +42,7 @@ This separation allows for optimal performance while maintaining configuration f
 - Core properties + all physics properties
 - Star formation histories (SfrDisk, SfrBulge)
 - Gas properties (ColdGas, HotGas, etc.)
+- Merger properties (MergTime, mergeType, mergeIntoID, etc.)
 - All module-specific properties
 
 **Use Cases**:

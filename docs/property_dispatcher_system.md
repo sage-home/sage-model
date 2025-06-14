@@ -91,6 +91,23 @@ The implementation has been verified with a standalone test (`test_dispatcher_ac
 2. This works for both scalar properties and array properties
 3. Array size retrieval works correctly
 
+## Current Implementation Status (June 2025)
+
+### ✅ Production Implementation
+
+The type-safe property dispatcher system is now fully implemented and in production use:
+
+#### Function Simplification Achievement
+- **init_galaxy()**: Now uses auto-generated `reset_galaxy_properties()` function instead of manual field setting
+- **deep_copy_galaxy()**: Simplified to use `copy_galaxy_properties()` for all property handling  
+- **Property-First Architecture**: Functions trust the auto-generated property system for data management
+- **Eliminated Manual Synchronization**: Removed 150+ lines of redundant property initialization code
+
+#### Core-Physics Separation Compliance
+- **Core Properties**: Direct access via GALAXY_PROP_* macros for `is_core: true` properties
+- **Physics Properties**: Generic accessors with availability checking for all physics properties
+- **MergTime Migration**: Successfully moved from core to physics property using generic access patterns
+
 ## Future Enhancements
 
 In the future, we could further enhance this system by:

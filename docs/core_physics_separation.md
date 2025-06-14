@@ -6,27 +6,31 @@ This document describes the architecture that achieves complete independence bet
 
 ### Core Infrastructure
 
-The core infrastructure is now completely physics-agnostic:
+The core infrastructure is now completely physics-agnostic with successful implementation of complete core-physics separation:
 
 1. **Metadata-Driven Properties**: properties.yaml defines all galaxy properties with core/physics separation
 2. **Metadata-Driven Parameters**: parameters.yaml defines all runtime parameters with physics-agnostic core
-3. **Clean GALAXY struct**: Removed physics-dependent fields, keeping only core infrastructure fields
-4. **Pipeline Execution**: Uses a purely abstract execution model with phases (HALO, GALAXY, POST, FINAL)
-5. **Module System**: Allows physics modules to register themselves at runtime
-6. **No direct field synchronization**: Removed synchronization between direct fields and properties
-7. **Configuration-based**: Physics modules and pipeline steps are defined in configuration files
-8. **Separated Event Systems**: Core infrastructure events and physics events are completely separated
+3. **Clean GALAXY struct**: Successfully removed all physics-dependent fields, keeping only core infrastructure fields
+4. **Core Property System**: Added "merged" core property for clean galaxy lifecycle management (0=active, 1=merged)
+5. **Pipeline Execution**: Uses a purely abstract execution model with phases (HALO, GALAXY, POST, FINAL)
+6. **Module System**: Allows physics modules to register themselves at runtime
+7. **Property-First Architecture**: Eliminated dangerous dual-field synchronization, properties are authoritative
+8. **Configuration-based**: Physics modules and pipeline steps are defined in configuration files
+9. **Separated Event Systems**: Core infrastructure events and physics events are completely separated
+10. **Simplified Functions**: Core functions use auto-generated property system instead of manual field management
 
 ### Physics Modules
 
-Physics modules are now implemented as pure add-ons:
+Physics modules are now implemented as pure add-ons with complete independence from core infrastructure:
 
 1. **Self-contained**: Each module contains its own implementation
 2. **Registration**: Modules register themselves with the core at runtime
-3. **Property access**: Modules use GALAXY_PROP_* macros to access properties
-4. **Phase support**: Modules declare which pipeline phases they support
-5. **No core dependencies**: Modules don't depend on core infrastructure details
-6. **Independent Events**: Physics modules use dedicated physics event system (`src/physics/physics_events.h`)
+3. **Generic Property Access**: Modules use generic property accessors (get_float_property, set_float_property) for physics properties
+4. **Core Property Access**: Modules can use GALAXY_PROP_* macros only for core properties (is_core: true)
+5. **Phase support**: Modules declare which pipeline phases they support
+6. **No core dependencies**: Modules don't depend on core infrastructure details or physics-specific data structures
+7. **Independent Events**: Physics modules use dedicated physics event system (`src/physics/physics_events.h`)
+8. **Property System Integration**: Modules rely on auto-generated property system for all data management
 
 ### Event System Architecture
 
@@ -49,6 +53,33 @@ Physics Event System (src/physics/physics_events.h)
 This separation enables:
 - **Core Infrastructure Monitoring**: Track pipeline performance and system health
 - **Physics Module Communication**: Enable inter-module physics interactions
+
+## Implementation Status
+
+### ✅ Complete Core-Physics Separation Achieved
+
+As of June 2025, SAGE has successfully achieved complete core-physics separation with the following major milestones:
+
+#### Property System Separation
+- **Core Properties**: Successfully isolated core properties (marked `is_core: true`) in properties.yaml
+- **Physics Properties**: All physics properties now use generic property accessors exclusively
+- **Eliminated Dual-State**: Removed dangerous synchronization between direct fields and properties
+- **Property-First Architecture**: Properties are now the authoritative source for all galaxy data
+
+#### Core Function Simplification
+- **init_galaxy()**: Simplified to use auto-generated `reset_galaxy_properties()` function instead of manual field setting
+- **deep_copy_galaxy()**: Unified to single function using `copy_galaxy_properties()` for all property handling
+- **Eliminated Manual Synchronization**: Removed 150+ lines of redundant manual property initialization code
+
+#### Galaxy Lifecycle Management
+- **"merged" Core Property**: Added clean lifecycle tracking (0=active, 1=merged) replacing physics-specific merger properties
+- **Clean Output Filtering**: HDF5 output now filters merged=0 galaxies automatically
+- **Memory Cleanup**: Automatic removal of merged galaxies at end-of-snapshot processing
+
+#### Architecture Validation
+- **Physics-Free Mode**: Successfully builds and runs with `make physics-free` 
+- **No Coupling Violations**: Core infrastructure operates independently of physics property definitions
+- **Generic Access Compliance**: All core code uses generic property accessors for physics properties
 
 ## Parameter System Architecture
 

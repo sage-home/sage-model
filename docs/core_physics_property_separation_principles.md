@@ -1,6 +1,6 @@
-# Core-Physics Property Separation Principles (May 2025)
+# Core-Physics Property Separation Principles (June 2025)
 
-The complete separation between core infrastructure and physics has been implemented to ensure a modular and maintainable SAGE codebase. This separation is primarily achieved through a well-defined property system.
+The complete separation between core infrastructure and physics has been successfully implemented and validated to ensure a modular and maintainable SAGE codebase. This separation is achieved through a well-defined property system with strict access control patterns.
 
 ## Key Principles:
 
@@ -25,14 +25,43 @@ The complete separation between core infrastructure and physics has been impleme
 See `tests/test_property_array_access.c` for working examples of proper separation:
 
 ```c
-// Core properties - direct macro access allowed
+// Core properties - direct macro access allowed in core code
 GALAXY_PROP_Mvir(galaxy) = 1.5e12f;
 int64_t index = GALAXY_PROP_GalaxyIndex(galaxy);
+GALAXY_PROP_merged(galaxy) = 0;  // New core property for lifecycle management
 
-// Physics properties - generic accessors only
-set_float_property(galaxy, PROP_ColdGas, 2.5e10f);
-float coldgas = get_float_property(galaxy, PROP_ColdGas, 0.0f);
+// Physics properties - generic accessors only (including from core code)
+property_id_t mergtime_id = get_property_id("MergTime");
+if (has_property(galaxy, mergtime_id)) {
+    set_float_property(galaxy, mergtime_id, 5.2f);
+    float mergtime = get_float_property(galaxy, mergtime_id, 999.9f);
+}
+
+// Example of availability checking for physics properties
+property_id_t coldgas_id = get_property_id("ColdGas"); 
+if (has_property(galaxy, coldgas_id)) {
+    set_float_property(galaxy, coldgas_id, 2.5e10f);
+}
 ```
+
+## Implementation Status
+
+### ✅ Successfully Implemented (June 2025)
+
+The core-physics property separation principles have been fully implemented and validated:
+
+#### Achieved Milestones
+- **Complete Property Migration**: All physics properties (including MergTime) moved from core to physics category
+- **Generic Access Compliance**: All core code now uses generic property accessors for physics properties  
+- **Core Property System**: Added "merged" core property for clean galaxy lifecycle management
+- **Elimination of Dual-State**: Removed dangerous synchronization between direct fields and properties
+- **Function Simplification**: Core functions now trust auto-generated property system for all data management
+
+#### Validation Results
+- **Physics-Free Mode**: Successfully builds and runs with `make physics-free` targeting core properties only
+- **No Coupling Violations**: Core infrastructure operates independently of physics property definitions
+- **Property Availability**: All physics property access includes proper availability checking with `has_property()`
+- **Scientific Accuracy**: Maintains exact scientific algorithms while achieving complete architectural separation
 
 ## Benefits:
 
@@ -40,5 +69,6 @@ float coldgas = get_float_property(galaxy, PROP_ColdGas, 0.0f);
 *   **Flexibility**: Simulations can be run with varying sets of physics modules, and the I/O system can adapt to output only the available properties.
 *   **Maintainability**: Clear separation of concerns makes the codebase easier to understand, debug, and extend.
 *   **Reduced Coupling**: Core systems like HDF5 output are no longer tightly coupled to specific physics property names or data types.
+*   **Runtime Adaptability**: Core infrastructure adapts to any combination of physics modules without recompilation.
 
-This separation ensures that the SAGE core infrastructure remains robust and independent of the specific scientific models being implemented, paving the way for more complex and varied physics implementations in the future.
+This separation ensures that the SAGE core infrastructure remains robust and independent of the specific scientific models being implemented, enabling complex and varied physics implementations with complete modularity.
