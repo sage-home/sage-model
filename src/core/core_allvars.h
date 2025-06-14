@@ -186,9 +186,6 @@ struct GALAXY
     float     Vmax;               /* Maximum circular velocity */
     float     VelDisp;            /* Velocity dispersion */
 
-    /* Core merger tracking */
-    float     MergTime;           /* Time until merger */
-    
     /* Core infall properties */
     float     infallMvir;         /* Virial mass at infall */
     float     infallVvir;         /* Virial velocity at infall */

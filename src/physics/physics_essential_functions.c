@@ -32,102 +32,60 @@
 
 void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_data *halos, 
                  struct GALAXY *galaxies, const struct params *run_params) {
-    // Initialize core properties only
-
+    // SIMPLIFIED: Following senior developer recommendations - only allocate properties and call reset
+    
     if (halonr != halos[halonr].FirstHaloInFOFgroup) {
         LOG_ERROR("Halo validation failed: halonr=%d should equal FirstHaloInFOFgroup=%d", 
                 halonr, halos[halonr].FirstHaloInFOFgroup);
     }
 
-    // CRITICAL: Initialize properties pointer to NULL to prevent corruption
-    galaxies[p].properties = NULL;
+    // Zero-initialize the galaxy struct first
+    memset(&galaxies[p], 0, sizeof(struct GALAXY));
     
+    // Set essential identifiers that are needed before property system
     galaxies[p].Type = 0;  // New galaxies start as a central galaxy
-    
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;
-    
     galaxies[p].HaloNr = halonr;
     galaxies[p].MostBoundID = halos[halonr].MostBoundID;
     galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
     
-    // Initialize from halo data
+    // Copy halo data to galaxy struct (these are core fields that need direct initialization)
     for (int j = 0; j < 3; j++) {
         galaxies[p].Pos[j] = halos[halonr].Pos[j];
         galaxies[p].Vel[j] = halos[halonr].Vel[j];
+        galaxies[p].Spin[j] = halos[halonr].Spin[j];
     }
-    
     galaxies[p].Len = halos[halonr].Len;
     galaxies[p].Vmax = halos[halonr].Vmax;
+    galaxies[p].VelDisp = halos[halonr].VelDisp;
     galaxies[p].Rvir = get_virial_radius(halonr, halos, run_params);
     galaxies[p].Mvir = get_virial_mass(halonr, halos, run_params);
     galaxies[p].Vvir = get_virial_velocity(halonr, halos, run_params);
-
     galaxies[p].deltaMvir = 0.0;
+    galaxies[p].dT = -1.0;
     
-    // infall properties
+    // Initialize infall properties
     galaxies[p].infallMvir = -1.0;
     galaxies[p].infallVvir = -1.0;
     galaxies[p].infallVmax = -1.0;
 
-    // Extension system initialization for compatibility
+    // CRITICAL: Initialize properties pointer to NULL before allocation
+    galaxies[p].properties = NULL;
+    
+    // Allocate the properties structure
+    if (allocate_galaxy_properties(&galaxies[p], run_params) != 0) {
+        LOG_ERROR("Failed to allocate galaxy properties for galaxy %d", p);
+        return;
+    }
+    
+    // Call the auto-generated reset function to initialize all properties with defaults
+    reset_galaxy_properties(&galaxies[p]);
+    
+    // Extension system initialization
     galaxies[p].extension_data = NULL;
     galaxies[p].num_extensions = 0;
     galaxies[p].extension_flags = 0;
-    
-    // Initialize merger properties with defaults - use generic accessors for physics properties
-    // These properties may not be available in physics-free mode
-    property_id_t mergeType_id = get_property_id("mergeType");
-    property_id_t mergeIntoID_id = get_property_id("mergeIntoID");
-    property_id_t mergeIntoSnapNum_id = get_property_id("mergeIntoSnapNum");
-    
-    if (mergeType_id != PROP_COUNT) {
-        set_int32_property(&galaxies[p], mergeType_id, 0);
-    }
-    if (mergeIntoID_id != PROP_COUNT) {
-        set_int32_property(&galaxies[p], mergeIntoID_id, -1);
-    }
-    if (mergeIntoSnapNum_id != PROP_COUNT) {
-        set_int32_property(&galaxies[p], mergeIntoSnapNum_id, -1);
-    }
-    galaxies[p].dT = -1.0;
-    galaxies[p].MergTime = 0.0;
-
-    // CRITICAL FIX: Allocate properties BEFORE any property system operations
-    if (allocate_galaxy_properties(&galaxies[p], run_params) != 0) {
-        LOG_ERROR("Failed to allocate galaxy properties for galaxy %d", p);
-        return; // Early return on allocation failure to prevent further errors
-    }
-    
-    // Set core galaxy properties using property system (critical for output phase)
-    // Properties are now safely allocated above
-    if (galaxies[p].properties != NULL) {
-        // Update properties to match direct field values for consistency
-        GALAXY_PROP_Type(&galaxies[p]) = galaxies[p].Type;
-        GALAXY_PROP_SnapNum(&galaxies[p]) = galaxies[p].SnapNum;
-        GALAXY_PROP_HaloNr(&galaxies[p]) = galaxies[p].HaloNr;
-        GALAXY_PROP_MostBoundID(&galaxies[p]) = galaxies[p].MostBoundID;
-        GALAXY_PROP_Len(&galaxies[p]) = galaxies[p].Len;
-        GALAXY_PROP_Mvir(&galaxies[p]) = galaxies[p].Mvir;
-        GALAXY_PROP_deltaMvir(&galaxies[p]) = galaxies[p].deltaMvir;
-        GALAXY_PROP_Rvir(&galaxies[p]) = galaxies[p].Rvir;
-        GALAXY_PROP_Vvir(&galaxies[p]) = galaxies[p].Vvir;
-        GALAXY_PROP_Vmax(&galaxies[p]) = galaxies[p].Vmax;
-        GALAXY_PROP_VelDisp(&galaxies[p]) = halos[halonr].VelDisp;
-        GALAXY_PROP_MergTime(&galaxies[p]) = galaxies[p].MergTime;
-        GALAXY_PROP_infallMvir(&galaxies[p]) = galaxies[p].infallMvir;
-        GALAXY_PROP_infallVvir(&galaxies[p]) = galaxies[p].infallVvir;
-        GALAXY_PROP_infallVmax(&galaxies[p]) = galaxies[p].infallVmax;
-        
-        // Set position and velocity arrays
-        for (int j = 0; j < 3; j++) {
-            GALAXY_PROP_Pos_ELEM(&galaxies[p], j) = galaxies[p].Pos[j];
-            GALAXY_PROP_Vel_ELEM(&galaxies[p], j) = galaxies[p].Vel[j];
-            GALAXY_PROP_Spin_ELEM(&galaxies[p], j) = halos[halonr].Spin[j];
-        }
-    } else {
-        LOG_ERROR("CRITICAL ERROR: Galaxy %d properties allocation failed - this will cause output errors", p);
-    }
 }
 
 double get_virial_mass(const int halonr, const struct halo_data *halos, const struct params *run_params) {

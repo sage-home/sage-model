@@ -13,6 +13,7 @@
 #include "core_logging.h"
 #include "core_properties.h"
 #include "core_galaxy_extensions.h"
+#include "core_build_model.h"
 
 #define GALAXY_ARRAY_INITIAL_CAPACITY 256
 
@@ -23,96 +24,8 @@ struct GalaxyArray {
     int capacity;
 };
 
-// Helper function to sync properties from direct fields to property system
-static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
-    if (gal->properties == NULL) return;
-    
-    // Sync the problematic properties that are set in direct fields but need to be in property system
-    GALAXY_PROP_dT(gal) = gal->dT;
-    GALAXY_PROP_deltaMvir(gal) = gal->deltaMvir;
-    GALAXY_PROP_CentralMvir(gal) = gal->CentralMvir;
-    GALAXY_PROP_MergTime(gal) = gal->MergTime;
-    GALAXY_PROP_infallMvir(gal) = gal->infallMvir;
-    GALAXY_PROP_infallVvir(gal) = gal->infallVvir;
-    GALAXY_PROP_infallVmax(gal) = gal->infallVmax;
-}
-
-// Helper function to sync properties to direct fields (single direction)
-static inline void sync_core_properties_to_direct_fields(struct GALAXY *gal) {
-    if (gal->properties == NULL) return;
-    
-    gal->Type = GALAXY_PROP_Type(gal);
-    gal->SnapNum = GALAXY_PROP_SnapNum(gal);
-    gal->Mvir = GALAXY_PROP_Mvir(gal);
-    gal->Vmax = GALAXY_PROP_Vmax(gal);
-    gal->Rvir = GALAXY_PROP_Rvir(gal);
-    gal->GalaxyIndex = GALAXY_PROP_GalaxyIndex(gal);
-    // Also sync the problematic properties
-    gal->dT = GALAXY_PROP_dT(gal);
-    gal->deltaMvir = GALAXY_PROP_deltaMvir(gal);
-    gal->CentralMvir = GALAXY_PROP_CentralMvir(gal);
-    gal->MergTime = GALAXY_PROP_MergTime(gal);
-    gal->infallMvir = GALAXY_PROP_infallMvir(gal);
-    gal->infallVvir = GALAXY_PROP_infallVvir(gal);
-    gal->infallVmax = GALAXY_PROP_infallVmax(gal);
-    for (int j = 0; j < 3; j++) {
-        gal->Pos[j] = GALAXY_PROP_Pos_ELEM(gal, j);
-    }
-}
-
-// Safe deep copy function that only copies fields that actually exist in GALAXY struct
-static inline void safe_deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params)
-{
-    // Zero-initialize destination
-    memset(dest, 0, sizeof(struct GALAXY));
-    
-    // Copy non-synced direct fields only
-    dest->GalaxyNr = src->GalaxyNr;
-    dest->CentralGal = src->CentralGal;
-    dest->HaloNr = src->HaloNr;
-    dest->MostBoundID = src->MostBoundID;
-    // GalaxyIndex is synced from properties - don't copy directly
-    dest->CentralGalaxyIndex = src->CentralGalaxyIndex;
-    // Merger properties (mergeType, mergeIntoID, mergeIntoSnapNum) are physics properties
-    // and will be copied by copy_galaxy_properties() function
-    dest->dT = src->dT;
-    dest->Len = src->Len;
-    dest->deltaMvir = src->deltaMvir;
-    dest->CentralMvir = src->CentralMvir;
-    dest->Vvir = src->Vvir;
-    dest->MergTime = src->MergTime;
-    dest->infallMvir = src->infallMvir;
-    dest->infallVvir = src->infallVvir;
-    dest->infallVmax = src->infallVmax;
-    
-    // Copy velocity arrays (not synced with properties)
-    for (int i = 0; i < 3; i++) {
-        dest->Vel[i] = src->Vel[i];
-    }
-
-    // Deep copy the dynamic properties structure
-    if (copy_galaxy_properties(dest, src, run_params) != 0) {
-        LOG_ERROR("Failed to deep copy galaxy properties during safe copy operation");
-    }
-    
-    // CRITICAL: Sync direct fields to properties system for properties that are set in direct fields
-    if (dest->properties != NULL) {
-        sync_direct_fields_to_properties(dest);
-    }
-    
-    // Sync from properties to direct fields
-    if (dest->properties != NULL) {
-        sync_core_properties_to_direct_fields(dest);
-    }
-    
-    // Initialize extension mechanism
-    dest->extension_data = NULL;  // Will be reallocated if needed
-    dest->num_extensions = 0;
-    dest->extension_flags = 0;
-    
-    // Copy extension data (this will just copy flags since the data is accessed on demand)
-    galaxy_extension_copy(dest, src);
-}
+// Using the simplified deep_copy_galaxy from core_build_model.c
+// No need to duplicate complex copying logic here
 
 // Internal function to safely expand the array.
 static int galaxy_array_expand(GalaxyArray* arr) {
@@ -222,7 +135,7 @@ int galaxy_array_append(GalaxyArray* arr, const struct GALAXY* galaxy, const str
     struct GALAXY* dest = &arr->galaxies[arr->count];
     
     // Perform a full, safe deep copy of the GALAXY struct and its properties.
-    safe_deep_copy_galaxy(dest, galaxy, p);
+    deep_copy_galaxy(dest, galaxy, p);
 
 
     arr->count++;

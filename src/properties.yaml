@@ -127,6 +127,16 @@ properties:
     is_core: true
 
   # Merger Properties - Physics Module Properties
+  - name: MergTime
+    type: float
+    initial_value: 999.9
+    units: "Gyr"
+    description: "Time until merger"
+    output: true
+    read_only: false
+    is_core: false
+    required_modules: ["mergers"]
+
   - name: mergeType
     type: int32_t
     initial_value: 0
@@ -465,15 +475,6 @@ properties:
     output: true
     read_only: false
     is_core: false
-    
-  - name: MergTime
-    type: float
-    initial_value: 999.9
-    units: "Gyr"
-    description: "Time until merger"
-    output: true
-    read_only: false
-    is_core: true
     
   # Cooling & Heating
   - name: Cooling

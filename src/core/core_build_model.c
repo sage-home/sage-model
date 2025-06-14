@@ -76,7 +76,7 @@ static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
     GALAXY_PROP_dT(gal) = gal->dT;
     GALAXY_PROP_deltaMvir(gal) = gal->deltaMvir;
     GALAXY_PROP_CentralMvir(gal) = gal->CentralMvir;
-    GALAXY_PROP_MergTime(gal) = gal->MergTime;
+    // MergTime is now a physics property - handled by property system
     GALAXY_PROP_infallMvir(gal) = gal->infallMvir;
     GALAXY_PROP_infallVvir(gal) = gal->infallVvir;
     GALAXY_PROP_infallVmax(gal) = gal->infallVmax;
@@ -116,12 +116,12 @@ static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
  * direct structure assignment (=) which only performs shallow copying and
  * creates dangerous pointer aliasing.
  */
-static inline void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params)
+void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params)
 {
-    // CRITICAL FIX: Avoid shallow copy that creates shared properties pointers
-    // Instead, manually copy each field to prevent dangerous pointer aliasing
+    // SIMPLIFIED: Following senior developer recommendations - only copy core fields and use copy_galaxy_properties()
+    // The property system handles all property copying automatically and stays up-to-date with properties.yaml
     
-    // Core galaxy identification
+    // Copy only the core struct fields that exist in struct GALAXY
     dest->SnapNum = src->SnapNum;
     dest->Type = src->Type;
     dest->GalaxyNr = src->GalaxyNr;
@@ -130,16 +130,16 @@ static inline void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *sr
     dest->MostBoundID = src->MostBoundID;
     dest->GalaxyIndex = src->GalaxyIndex;
     dest->CentralGalaxyIndex = src->CentralGalaxyIndex;
-    
-    // Merger properties (mergeType, mergeIntoID, mergeIntoSnapNum) are physics properties
-    // and will be copied by copy_galaxy_properties() function
     dest->dT = src->dT;
     
-    // Core halo properties
+    // Copy core arrays
     for (int i = 0; i < 3; i++) {
         dest->Pos[i] = src->Pos[i];
         dest->Vel[i] = src->Vel[i];
+        dest->Spin[i] = src->Spin[i];
     }
+    
+    // Copy core properties
     dest->Len = src->Len;
     dest->Mvir = src->Mvir;
     dest->deltaMvir = src->deltaMvir;
@@ -147,28 +147,22 @@ static inline void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *sr
     dest->Rvir = src->Rvir;
     dest->Vvir = src->Vvir;
     dest->Vmax = src->Vmax;
-    
-    // Core merger tracking
-    dest->MergTime = src->MergTime;
-    
-    // Core infall properties
+    dest->VelDisp = src->VelDisp;
     dest->infallMvir = src->infallMvir;
     dest->infallVvir = src->infallVvir;
     dest->infallVmax = src->infallVmax;
     
-    // Extension mechanism
+    // Copy extension mechanism
     dest->extension_data = src->extension_data;
     dest->num_extensions = src->num_extensions;
     dest->extension_flags = src->extension_flags;
     
-    // CRITICAL: Initialize properties pointer to NULL before allocating
+    // Initialize properties pointer to NULL before allocating
     dest->properties = NULL;
     
-    // Deep copy the properties using the property system
+    // Let the auto-generated property system handle ALL property copying
     if (copy_galaxy_properties(dest, src, run_params) != 0) {
-        LOG_ERROR("A failure occurred during the deep copy of galaxy properties. Source GalaxyIndex: %llu\n", src->GalaxyIndex);
-        // In a production environment, you might want to add more robust error handling here,
-        // such as returning an error code to the caller.
+        LOG_ERROR("Failed to copy galaxy properties. Source GalaxyIndex: %llu\n", src->GalaxyIndex);
     }
 }
 
