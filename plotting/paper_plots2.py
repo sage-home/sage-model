@@ -30,8 +30,8 @@ def setup_paper_style():
     
     # Figure settings
     plt.rcParams['figure.figsize'] = (5, 5)
-    plt.rcParams['figure.dpi'] = 300
-    plt.rcParams['savefig.dpi'] = 300
+    plt.rcParams['figure.dpi'] = 500
+    plt.rcParams['savefig.dpi'] = 500
     plt.rcParams['savefig.bbox'] = 'tight'
     plt.rcParams['savefig.transparent'] = False
     
@@ -101,7 +101,7 @@ def style_legend(ax, loc='best', ncol=1, fontsize=16, frameon=False, **kwargs):
 def finalize_plot(fig, filename):
     """Finalize and save plot with consistent settings"""
     plt.tight_layout()
-    fig.savefig(filename, dpi=300, bbox_inches='tight')
+    fig.savefig(filename, dpi=500, bbox_inches='tight')
     logger.info(f'Plot saved as: {filename}')
     plt.close(fig)
 
@@ -275,7 +275,7 @@ redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14
 SMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 BHMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 
-OutputFormat = '.png'
+OutputFormat = '.pdf'
 
 # Enhanced performance optimization options
 USE_PARALLEL = True  # Enable parallel processing

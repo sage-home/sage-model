@@ -96,7 +96,7 @@ redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14
              0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
              0.116, 0.089, 0.064, 0.041, 0.020, 0.000]  # Redshift of each snapshot
 
-OutputFormat = '.png'
+OutputFormat = '.pdf'
 plt.rcParams["figure.figsize"] = (15, 12)
 plt.rcParams["figure.dpi"] = 300
 plt.rcParams["font.size"] = 16

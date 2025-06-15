@@ -27,9 +27,9 @@ whichimf = 1        # 0=Slapeter; 1=Chabrier
 dilute = 10000       # Number of galaxies to plot in scatter plots
 sSFRcut = -11.0     # Divide quiescent from star forming galaxies
 
-OutputFormat = '.png'
+OutputFormat = '.pdf'
 plt.rcParams["figure.figsize"] = (8.34,6.25)
-plt.rcParams["figure.dpi"] = 96
+plt.rcParams["figure.dpi"] = 500
 plt.rcParams["font.size"] = 14
 
 

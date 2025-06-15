@@ -50,9 +50,9 @@ BHMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 #SMFsnaps = [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4]  # Snapshots to plot the SMF
 #BHMFsnaps = [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4]  # Snapshots to plot the BHMF
 
-OutputFormat = '.png'
+OutputFormat = '.pdf'
 plt.rcParams["figure.figsize"] = (8.34,6.25)
-plt.rcParams["figure.dpi"] = 96
+plt.rcParams["figure.dpi"] = 500
 plt.rcParams["font.size"] = 14
 
 
@@ -1235,16 +1235,12 @@ if __name__ == '__main__':
 
     # --------------------------------------------------------
 
-    print('Plotting the stellar mass function')
+    print('Plotting the CGM mass function')
 
     plt.figure()  # New figure
     ax = plt.subplot(111)  # 1 plot on the figure
 
     ###### z=0
-
-    # Define minimum number of particles
-    min_particles = 30  # Change this to your desired minimum number of particles
-    min_halo_mass = min_particles * 0.08 * 1.0e10  # Convert to solar masses
 
     w = np.where((StellarMassFull[SMFsnaps[0]] > 0.0) & (HaloMassFull[SMFsnaps[0]] >= 0))[0]
     mass = np.log10(cgmFull[SMFsnaps[0]][w])

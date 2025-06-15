@@ -108,9 +108,9 @@ redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14
 SMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 BHMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 
-OutputFormat = '.png'
+OutputFormat = '.pdf'
 plt.rcParams["figure.figsize"] = (10, 8)
-plt.rcParams["figure.dpi"] = 96
+plt.rcParams["figure.dpi"] = 500
 plt.rcParams["font.size"] = 14
 
 # Enhanced performance optimization options
@@ -1008,7 +1008,7 @@ if __name__ == '__main__':
         t.set_fontsize('medium')         
 
     outputFile = OutputDir + 'G.SFR_density_history' + OutputFormat
-    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     logger.info(f'Saved file to {outputFile}')
     plt.close()
     
@@ -1131,7 +1131,7 @@ if __name__ == '__main__':
         t.set_fontsize('medium')
 
     outputFile = OutputDir + 'H.stellar_mass_density_history' + OutputFormat
-    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     logger.info(f'Saved file to {outputFile}')
     plt.close()
     
