@@ -581,7 +581,7 @@ properties:
   # Infall Properties
   - name: infallMvir
     type: float
-    initial_value: 0.0
+    initial_value: -1.0
     units: "1e10 Msun/h"
     description: "Virial mass at infall"
     output: true
@@ -590,7 +590,7 @@ properties:
     
   - name: infallVvir
     type: float
-    initial_value: 0.0
+    initial_value: -1.0
     units: "km/s"
     description: "Virial velocity at infall"
     output: true
@@ -599,7 +599,7 @@ properties:
     
   - name: infallVmax
     type: float
-    initial_value: 0.0
+    initial_value: -1.0
     units: "km/s"
     description: "Maximum circular velocity at infall"
     output: true

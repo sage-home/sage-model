@@ -46,9 +46,9 @@ CORE_PROPERTIES = {
     'Vmax': {'type': 'float32', 'units': 'km/s', 'expected_range': (0.0, 1000.0)},
     'VelDisp': {'type': 'float32', 'units': 'km/s', 'expected_range': (0.0, 1000.0)},
     'MergTime': {'type': 'float32', 'units': 'Gyr', 'expected_range': (0.0, 999.9)},
-    'infallMvir': {'type': 'float32', 'units': '1e10 Msun/h', 'expected_range': (0.0, 1e6)},
-    'infallVvir': {'type': 'float32', 'units': 'km/s', 'expected_range': (0.0, 3000.0)},
-    'infallVmax': {'type': 'float32', 'units': 'km/s', 'expected_range': (0.0, 1000.0)}
+    'infallMvir': {'type': 'float32', 'units': '1e10 Msun/h', 'expected_range': (-1.0, 1e6)},
+    'infallVvir': {'type': 'float32', 'units': 'km/s', 'expected_range': (-1.0, 3000.0)},
+    'infallVmax': {'type': 'float32', 'units': 'km/s', 'expected_range': (-1.0, 1000.0)}
 }
 
 def check_dataset_properties(dataset, prop_name, prop_info):
