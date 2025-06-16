@@ -690,7 +690,7 @@ static int create_realistic_galaxy_data(struct GALAXY **galaxies, int *ngals) {
         }
         
         // Reset to default values
-        reset_galaxy_properties(gal);
+        initialize_all_properties(gal);
         
         // Set core infrastructure properties using GALAXY_PROP_* macros
         GALAXY_PROP_SnapNum(gal) = 63;
@@ -1130,7 +1130,7 @@ static void test_property_system_hdf5_integration(void) {
     TEST_ASSERT(test_galaxy.properties != NULL, "Galaxy properties should be allocated");
     
     // Reset to default values
-    reset_galaxy_properties(&test_galaxy);
+    initialize_all_properties(&test_galaxy);
     
     // Set some test values using proper property system patterns
     GALAXY_PROP_SnapNum(&test_galaxy) = 63;
@@ -1264,7 +1264,7 @@ static void test_comprehensive_galaxy_properties(void) {
     TEST_ASSERT(test_galaxy.properties != NULL, "Galaxy properties should be allocated");
     
     // Reset to default values
-    reset_galaxy_properties(&test_galaxy);
+    initialize_all_properties(&test_galaxy);
     
     // Test core properties using GALAXY_PROP_* macros
     GALAXY_PROP_SnapNum(&test_galaxy) = 63;
@@ -1703,7 +1703,7 @@ static void test_property_transformer_system(void) {
     TEST_ASSERT(test_galaxy.properties != NULL, "Galaxy properties should be allocated");
     
     // Reset to default values
-    reset_galaxy_properties(&test_galaxy);
+    initialize_all_properties(&test_galaxy);
     
     // Set up test values with simple relationship: Vvir = sqrt(Mvir/Rvir) when G=1
     GALAXY_PROP_Mvir(&test_galaxy) = 100.0f;         // Simple mass value
@@ -1851,7 +1851,7 @@ static void test_property_metadata_discovery(void) {
     TEST_ASSERT(test_galaxy.properties != NULL, "Galaxy properties should be allocated");
     
     // Reset to default values
-    reset_galaxy_properties(&test_galaxy);
+    initialize_all_properties(&test_galaxy);
     
     // Test core properties (should be accessible via direct macros)
     printf("Testing core property discovery...\n");
@@ -2032,7 +2032,7 @@ static void test_error_handling_edge_cases(void) {
     TEST_ASSERT(prop_status == 0, "Should be able to allocate galaxy properties for boundary test");
     
     // Reset to default values
-    reset_galaxy_properties(&boundary_test_galaxy);
+    initialize_all_properties(&boundary_test_galaxy);
     
     // Test with extremely large galaxy indices (boundary of uint64_t)
     GALAXY_PROP_GalaxyIndex(&boundary_test_galaxy) = UINT64_MAX - 1;

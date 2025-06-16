@@ -593,7 +593,7 @@ static void test_memory_pressure_degradation(void) {
         
         if (status == 0) {
             // Test that basic operations still work in degraded mode
-            reset_galaxy_properties(error_ctx.test_galaxy);
+            initialize_all_properties(error_ctx.test_galaxy);
             error_ctx.test_galaxy->Type = 0;
             error_ctx.test_galaxy->Mvir = 1e11;
             
@@ -773,7 +773,7 @@ static void test_module_failure_system_stability(void) {
         TEST_ASSERT(system_stable, "System stability after module failure recovery");
         
         // Test that other system operations still work
-        reset_galaxy_properties(error_ctx.test_galaxy);
+        initialize_all_properties(error_ctx.test_galaxy);
         error_ctx.test_galaxy->Mvir = stable_mvir;
         error_ctx.test_galaxy->Type = stable_type;
         

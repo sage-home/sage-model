@@ -263,7 +263,7 @@ static struct GALAXY *create_mock_galaxies(int num_galaxies) {
             free(galaxies);
             exit(1);
         }
-        reset_galaxy_properties(&galaxies[i]);
+        initialize_all_properties(&galaxies[i]);
         GALAXY_PROP_Type(&galaxies[i]) = (i == 0) ? 0 : 1;
         GALAXY_PROP_CentralGal(&galaxies[i]) = 0;
         GALAXY_PROP_HaloNr(&galaxies[i]) = 1; 

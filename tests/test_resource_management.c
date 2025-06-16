@@ -346,7 +346,7 @@ static void test_galaxy_memory_lifecycle(void) {
     TEST_ASSERT(status == 0, "Galaxy properties allocation");
     
     // Test property access
-    reset_galaxy_properties(galaxy);
+    initialize_all_properties(galaxy);
     
     // Clean up galaxy properties
     free_galaxy_properties(galaxy);

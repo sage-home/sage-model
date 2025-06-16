@@ -116,7 +116,7 @@ static void test_property_initialisation(void) {
     TEST_ASSERT(test_ctx.test_galaxy->properties != NULL, "Galaxy properties should be allocated");
     
     // Initialize with default values
-    reset_galaxy_properties(test_ctx.test_galaxy);
+    initialize_all_properties(test_ctx.test_galaxy);
     
     // Verify property access returns sensible initial values
     float mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
@@ -409,7 +409,7 @@ static void test_memory_management(void) {
     free_galaxy_properties(&copy_galaxy);
     
     // Test reset functionality
-    reset_galaxy_properties(test_ctx.test_galaxy);
+    initialize_all_properties(test_ctx.test_galaxy);
     
     float reset_mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
     int32_t reset_type = GALAXY_PROP_Type(test_ctx.test_galaxy);

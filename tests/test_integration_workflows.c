@@ -164,7 +164,7 @@ static void test_property_io_integration(void) {
     
     if (status == 0) {
         // Initialize galaxy with test data
-        reset_galaxy_properties(test_ctx.test_galaxy);
+        initialize_all_properties(test_ctx.test_galaxy);
         
         // Set some basic properties for testing
         test_ctx.test_galaxy->Type = 0;
@@ -214,7 +214,7 @@ static void test_property_io_integration(void) {
         backup_props.Mvir = test_ctx.test_galaxy->Mvir;
         
         // Simulate I/O round-trip by resetting and restoring
-        reset_galaxy_properties(test_ctx.test_galaxy);
+        initialize_all_properties(test_ctx.test_galaxy);
         test_ctx.test_galaxy->Type = backup_props.Type;
         test_ctx.test_galaxy->SnapNum = backup_props.SnapNum;
         test_ctx.test_galaxy->Mvir = backup_props.Mvir;
@@ -251,7 +251,7 @@ static void test_property_format_integration(void) {
         if (test_galaxies[i]) {
             int status = allocate_galaxy_properties(test_galaxies[i], &test_ctx.test_params);
             if (status == 0) {
-                reset_galaxy_properties(test_galaxies[i]);
+                initialize_all_properties(test_galaxies[i]);
                 
                 // Set different property patterns
                 test_galaxies[i]->Type = i % 3;
@@ -572,7 +572,7 @@ static void test_complete_workflow_integration(void) {
     if (init_status == 0) {
         // Phase 3: Processing
         printf("  Phase 3: Galaxy processing\n");
-        reset_galaxy_properties(workflow_galaxy);
+        initialize_all_properties(workflow_galaxy);
         
         // Initialize galaxy with realistic starting values for evolution
         workflow_galaxy->Type = 0;  // Central galaxy
@@ -755,7 +755,7 @@ static void test_cross_system_state_management(void) {
     initial_state.central_mvir = test_ctx.test_galaxy->CentralMvir;
     
     // Test state consistency across property system operations
-    reset_galaxy_properties(test_ctx.test_galaxy);
+    initialize_all_properties(test_ctx.test_galaxy);
     
     // Restore critical state
     test_ctx.test_galaxy->Type = initial_state.type;
@@ -877,7 +877,7 @@ static void test_concurrent_state_access(void) {
     if (second_galaxy) {
         int status = allocate_galaxy_properties(second_galaxy, &test_ctx.test_params);
         if (status == 0) {
-            reset_galaxy_properties(second_galaxy);
+            initialize_all_properties(second_galaxy);
             
             // Set different values
             second_galaxy->Mvir = test_ctx.test_galaxy->Mvir * 2.0;
