@@ -67,7 +67,7 @@ As of June 2025, SAGE has successfully achieved complete core-physics separation
 - **Property-First Architecture**: Properties are now the authoritative source for all galaxy data
 
 #### Core Function Simplification
-- **init_galaxy()**: Simplified to use auto-generated `reset_galaxy_properties()` function instead of manual field setting
+- **init_galaxy()**: Simplified to use auto-generated `initialize_all_properties()` function instead of manual field setting
 - **deep_copy_galaxy()**: Unified to single function using `copy_galaxy_properties()` for all property handling
 - **Eliminated Manual Synchronization**: Removed 150+ lines of redundant manual property initialization code
 

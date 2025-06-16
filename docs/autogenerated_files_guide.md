@@ -256,7 +256,7 @@ The auto-generated file system has been successfully implemented and is now the 
 
 #### Core-Physics Separation Achievement
 - **Complete Property Migration**: All physics properties (including MergTime) now use auto-generated generic accessors
-- **Function Simplification**: Core functions (`init_galaxy()`, `deep_copy_galaxy()`) now rely entirely on auto-generated property system functions (`reset_galaxy_properties()`, `copy_galaxy_properties()`)
+- **Function Simplification**: Core functions (`init_galaxy()`, `deep_copy_galaxy()`) now rely entirely on auto-generated property system functions (`initialize_all_properties()`, `copy_galaxy_properties()`)
 - **Eliminated Manual Code**: Removed 150+ lines of manual property initialization and synchronization code
 
 #### Property System Maturity

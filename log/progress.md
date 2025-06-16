@@ -227,3 +227,14 @@
 - **✅ Build Validation**: Successfully builds in physics-free mode, confirming simplified functions work correctly with the property system
 - **🚀 Architectural Achievement**: Functions now follow the principle of minimal manual work - let the property system handle what it's designed for, resulting in cleaner, more maintainable code
 - Modified files: src/physics/physics_essential_functions.c (init_galaxy simplification), src/core/core_build_model.c (deep_copy_galaxy simplification), src/core/galaxy_array.c (duplicate function removal), src/core/core_build_model.h (function declaration)
+
+- 2025-06-16: [Architecture] Implement proper galaxy initialization with single source of truth architecture
+- Rename reset_galaxy_properties() to initialize_all_properties() for clarity
+- Rewrite init_galaxy() to use proper flow: defaults first, then halo data
+- Eliminate manual synchronization between direct fields and property system
+- Remove deltaMvir and dT explicit setting (use defaults from properties.yaml)
+- Update dT default value from 0.0 to -1.0 to match expected behavior
+- Update verification script to handle correct dT range
+- This implementation eliminates the data flow bug where halo data was being overwritten with zeros, while maintaining proper core-physics separation
+- principles. Properties now serve as the single source of truth for all galaxy data.
+- Modified files: src/generate_property_headers.py, src/physics/physics_essential_functions.c
