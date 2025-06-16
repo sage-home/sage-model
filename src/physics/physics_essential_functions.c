@@ -32,7 +32,6 @@
 
 void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_data *halos, 
                  struct GALAXY *galaxies, const struct params *run_params) {
-    // SIMPLIFIED: Following senior developer recommendations - only allocate properties and call reset
     
     if (halonr != halos[halonr].FirstHaloInFOFgroup) {
         LOG_ERROR("Halo validation failed: halonr=%d should equal FirstHaloInFOFgroup=%d", 
@@ -42,30 +41,20 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
     // Zero-initialize the galaxy struct first
     memset(&galaxies[p], 0, sizeof(struct GALAXY));
     
-    // Set essential identifiers that are needed before property system
-    galaxies[p].Type = 0;  // New galaxies start as a central galaxy
-    galaxies[p].GalaxyNr = *galaxycounter;
-    (*galaxycounter)++;
-    galaxies[p].HaloNr = halonr;
-    galaxies[p].MostBoundID = halos[halonr].MostBoundID;
-    galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
-    
-    // CRITICAL: Initialize properties pointer to NULL before allocation
-    galaxies[p].properties = NULL;
-    
     // Allocate the properties structure
     if (allocate_galaxy_properties(&galaxies[p], run_params) != 0) {
         LOG_ERROR("Failed to allocate galaxy properties for galaxy %d", p);
         return;
     }
     
-    // Initialize ALL properties (core + physics) with their default values from properties.yaml
+    // Initialize ALL properties with their default values from properties.yaml
     initialize_all_properties(&galaxies[p]);
     
     // Now set core properties directly from halo data (single source of truth)
     GALAXY_PROP_SnapNum(&galaxies[p]) = halos[halonr].SnapNum - 1;
     GALAXY_PROP_Type(&galaxies[p]) = 0;  // Central galaxy initially
-    GALAXY_PROP_GalaxyNr(&galaxies[p]) = p;
+    GALAXY_PROP_GalaxyNr(&galaxies[p]) = *galaxycounter;
+    (*galaxycounter)++;
     GALAXY_PROP_HaloNr(&galaxies[p]) = halonr;
     GALAXY_PROP_MostBoundID(&galaxies[p]) = halos[halonr].MostBoundID;
     
@@ -84,13 +73,7 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
     GALAXY_PROP_Mvir(&galaxies[p]) = get_virial_mass(halonr, halos, run_params);
     GALAXY_PROP_Vvir(&galaxies[p]) = get_virial_velocity(halonr, halos, run_params);
     
-    // Initialize infall properties (core properties for tracking galaxy history)
-    // Note: These remain as direct fields as they're used internally by core infrastructure
-    galaxies[p].infallMvir = -1.0;
-    galaxies[p].infallVvir = -1.0;
-    galaxies[p].infallVmax = -1.0;
-    
-    // Extension system initialization
+    // Extension system initialization (not part of property system)
     galaxies[p].extension_data = NULL;
     galaxies[p].num_extensions = 0;
     galaxies[p].extension_flags = 0;
