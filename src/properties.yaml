@@ -169,7 +169,7 @@ properties:
     
   - name: dT
     type: float
-    initial_value: 0.0
+    initial_value: -1.0
     units: "Gyr"
     description: "Time step for galaxy evolution"
     output: true

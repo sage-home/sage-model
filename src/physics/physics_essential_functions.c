@@ -50,26 +50,6 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
     galaxies[p].MostBoundID = halos[halonr].MostBoundID;
     galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
     
-    // Copy halo data to galaxy struct (these are core fields that need direct initialization)
-    for (int j = 0; j < 3; j++) {
-        galaxies[p].Pos[j] = halos[halonr].Pos[j];
-        galaxies[p].Vel[j] = halos[halonr].Vel[j];
-        galaxies[p].Spin[j] = halos[halonr].Spin[j];
-    }
-    galaxies[p].Len = halos[halonr].Len;
-    galaxies[p].Vmax = halos[halonr].Vmax;
-    galaxies[p].VelDisp = halos[halonr].VelDisp;
-    galaxies[p].Rvir = get_virial_radius(halonr, halos, run_params);
-    galaxies[p].Mvir = get_virial_mass(halonr, halos, run_params);
-    galaxies[p].Vvir = get_virial_velocity(halonr, halos, run_params);
-    galaxies[p].deltaMvir = 0.0;
-    galaxies[p].dT = -1.0;
-    
-    // Initialize infall properties
-    galaxies[p].infallMvir = -1.0;
-    galaxies[p].infallVvir = -1.0;
-    galaxies[p].infallVmax = -1.0;
-
     // CRITICAL: Initialize properties pointer to NULL before allocation
     galaxies[p].properties = NULL;
     
@@ -79,8 +59,36 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
         return;
     }
     
-    // Call the auto-generated reset function to initialize all properties with defaults
-    reset_galaxy_properties(&galaxies[p]);
+    // Initialize ALL properties (core + physics) with their default values from properties.yaml
+    initialize_all_properties(&galaxies[p]);
+    
+    // Now set core properties directly from halo data (single source of truth)
+    GALAXY_PROP_SnapNum(&galaxies[p]) = halos[halonr].SnapNum - 1;
+    GALAXY_PROP_Type(&galaxies[p]) = 0;  // Central galaxy initially
+    GALAXY_PROP_GalaxyNr(&galaxies[p]) = p;
+    GALAXY_PROP_HaloNr(&galaxies[p]) = halonr;
+    GALAXY_PROP_MostBoundID(&galaxies[p]) = halos[halonr].MostBoundID;
+    
+    // Copy position, velocity, and spin arrays directly from halo data
+    for (int j = 0; j < 3; j++) {
+        GALAXY_PROP_Pos(&galaxies[p])[j] = halos[halonr].Pos[j];
+        GALAXY_PROP_Vel(&galaxies[p])[j] = halos[halonr].Vel[j];
+        GALAXY_PROP_Spin(&galaxies[p])[j] = halos[halonr].Spin[j];
+    }
+    
+    // Set scalar halo properties directly from halo data
+    GALAXY_PROP_Len(&galaxies[p]) = halos[halonr].Len;
+    GALAXY_PROP_Vmax(&galaxies[p]) = halos[halonr].Vmax;
+    GALAXY_PROP_VelDisp(&galaxies[p]) = halos[halonr].VelDisp;
+    GALAXY_PROP_Rvir(&galaxies[p]) = get_virial_radius(halonr, halos, run_params);
+    GALAXY_PROP_Mvir(&galaxies[p]) = get_virial_mass(halonr, halos, run_params);
+    GALAXY_PROP_Vvir(&galaxies[p]) = get_virial_velocity(halonr, halos, run_params);
+    
+    // Initialize infall properties (core properties for tracking galaxy history)
+    // Note: These remain as direct fields as they're used internally by core infrastructure
+    galaxies[p].infallMvir = -1.0;
+    galaxies[p].infallVvir = -1.0;
+    galaxies[p].infallVmax = -1.0;
     
     // Extension system initialization
     galaxies[p].extension_data = NULL;

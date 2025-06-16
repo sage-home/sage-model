@@ -138,7 +138,7 @@ int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src, const 
  * @brief Reset properties to initial values
  * @param g Galaxy pointer
  */
-void reset_galaxy_properties(struct GALAXY *g);
+void initialize_all_properties(struct GALAXY *g);
 
 /**
  * @brief Get property name string for a property ID
@@ -365,7 +365,7 @@ int copy_galaxy_properties(struct GALAXY *dest, const struct GALAXY *src, const 
 /**
  * @brief Reset properties to initial values
  */
-void reset_galaxy_properties(struct GALAXY *g)
+void initialize_all_properties(struct GALAXY *g)
 {{
     if (g == NULL || g->properties == NULL) {{
         LOG_ERROR("Cannot reset properties for NULL galaxy or property pointer");

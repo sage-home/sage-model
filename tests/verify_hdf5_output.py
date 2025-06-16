@@ -24,7 +24,7 @@ CORE_PROPERTIES = {
     'SAGEHaloIndex': {'type': 'int32', 'units': 'dimensionless', 'expected_range': (-1, None)},
     'SAGETreeIndex': {'type': 'int32', 'units': 'dimensionless', 'expected_range': (-1, None)},
     'SimulationHaloIndex': {'type': 'int64', 'units': 'dimensionless', 'expected_range': (-1, None)},
-    'dT': {'type': 'float32', 'units': 'Gyr', 'expected_range': (0.0, 15.0)},
+    'dT': {'type': 'float32', 'units': 'Gyr', 'expected_range': (-1.0, 15.0)},
     # Position components - stored as individual fields
     'Posx': {'type': 'float32', 'units': 'Mpc/h', 'expected_range': (0.0, 500.0)},
     'Posy': {'type': 'float32', 'units': 'Mpc/h', 'expected_range': (0.0, 500.0)},
