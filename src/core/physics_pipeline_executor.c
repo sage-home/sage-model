@@ -48,10 +48,10 @@ static bool galaxy_is_valid_for_properties(struct GALAXY *galaxy) {
         if (null_props_count <= 5) {
             if (null_props_count == 5) {
                 LOG_DEBUG("galaxy_is_valid_for_properties: galaxy->properties pointer is NULL for GalaxyNr %d (issue #%d - further messages suppressed)", 
-                          galaxy->GalaxyNr, null_props_count);
+                          GALAXY_PROP_GalaxyNr(galaxy), null_props_count);
             } else {
                 LOG_DEBUG("galaxy_is_valid_for_properties: galaxy->properties pointer is NULL for GalaxyNr %d (issue #%d)", 
-                          galaxy->GalaxyNr, null_props_count);
+                          GALAXY_PROP_GalaxyNr(galaxy), null_props_count);
             }
         }
         return false;
@@ -65,10 +65,10 @@ static bool galaxy_is_valid_for_properties(struct GALAXY *galaxy) {
         if (merge_status_count <= 5) {
             if (merge_status_count == 5) {
                 LOG_DEBUG("Galaxy %d is not valid for property access (merged=%d) (issue #%d - further messages suppressed)", 
-                        galaxy->GalaxyNr, GALAXY_PROP_merged(galaxy), merge_status_count);
+                        GALAXY_PROP_GalaxyNr(galaxy), GALAXY_PROP_merged(galaxy), merge_status_count);
             } else {
                 LOG_DEBUG("Galaxy %d is not valid for property access (merged=%d) (issue #%d)", 
-                        galaxy->GalaxyNr, GALAXY_PROP_merged(galaxy), merge_status_count);
+                        GALAXY_PROP_GalaxyNr(galaxy), GALAXY_PROP_merged(galaxy), merge_status_count);
             }
         }
         return false;
@@ -239,7 +239,7 @@ int physics_step_executor(
                     module->name, step->step_name, phase_name, 
                     context->current_galaxy,
                     (context->current_galaxy >= 0 && context->current_galaxy < context->ngal) ? 
-                        context->galaxies[context->current_galaxy].Type : -1,
+                        GALAXY_PROP_Type(&context->galaxies[context->current_galaxy]) : -1,
                     status);
         } else {
             LOG_ERROR("Module '%s' (step '%s') failed during %s phase execution with status %d",

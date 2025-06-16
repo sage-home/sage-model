@@ -123,7 +123,7 @@ int prepare_galaxies_for_output(const int64_t task_forestnr,
 
                 
         for (int gal_idx = 0; gal_idx < numgals; gal_idx++) {
-            if (halogal[gal_idx].SnapNum == output_snap) {
+            if (GALAXY_PROP_SnapNum(&halogal[gal_idx]) == output_snap) {
                 // Assign output index and track which snapshot this galaxy is in
                 ctx->output_gal_order[gal_idx] = ctx->output_gal_count[snap_idx];
                 ctx->output_gal_count[snap_idx]++;
@@ -234,8 +234,8 @@ int generate_unique_galaxy_indices(const struct halo_data *halos,
         struct GALAXY *this_gal = &halogal[gal_idx];
         
         // Get galaxy number and central galaxy number
-        int32_t GalaxyNr = this_gal->GalaxyNr;
-        int32_t CentralGalaxyNr = halogal[haloaux[halos[this_gal->HaloNr].FirstHaloInFOFgroup].FirstGalaxy].GalaxyNr;
+        int32_t GalaxyNr = GALAXY_PROP_GalaxyNr(this_gal);
+        int32_t CentralGalaxyNr = GALAXY_PROP_GalaxyNr(&halogal[haloaux[halos[GALAXY_PROP_HaloNr(this_gal)].FirstHaloInFOFgroup].FirstGalaxy]);
         
         // Check that the mechanism would produce unique galaxy index within this run
         if (GalaxyNr > forestnr_mulfac || (filenr_mulfac > 0 && forestnr*forestnr_mulfac > filenr_mulfac)) {
@@ -290,8 +290,8 @@ int generate_unique_galaxy_indices(const struct halo_data *halos,
         }
         
         // Generate the final unique indices
-        this_gal->GalaxyIndex = GalaxyNr + id_from_forest_and_file;
-        this_gal->CentralGalaxyIndex = CentralGalaxyNr + id_from_forest_and_file;
+        GALAXY_PROP_GalaxyIndex(this_gal) = GalaxyNr + id_from_forest_and_file;
+        GALAXY_PROP_CentralGalaxyIndex(this_gal) = CentralGalaxyNr + id_from_forest_and_file;
     }
     
     return EXIT_SUCCESS;

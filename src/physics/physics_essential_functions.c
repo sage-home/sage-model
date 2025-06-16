@@ -38,16 +38,8 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
                 halonr, halos[halonr].FirstHaloInFOFgroup);
     }
 
-    // Zero-initialize the galaxy struct first
+    // Zero-initialize the galaxy struct
     memset(&galaxies[p], 0, sizeof(struct GALAXY));
-    
-    // Set essential identifiers in direct fields (needed by core infrastructure)
-    galaxies[p].Type = 0;  // New galaxies start as a central galaxy
-    galaxies[p].GalaxyNr = *galaxycounter;
-    galaxies[p].HaloNr = halonr;
-    galaxies[p].MostBoundID = halos[halonr].MostBoundID;
-    galaxies[p].SnapNum = halos[halonr].SnapNum - 1;
-    (*galaxycounter)++;
     
     // Allocate the properties structure
     if (allocate_galaxy_properties(&galaxies[p], run_params) != 0) {
@@ -58,12 +50,13 @@ void init_galaxy(int p, int halonr, int32_t *galaxycounter, const struct halo_da
     // Initialize ALL properties with their default values from properties.yaml
     initialize_all_properties(&galaxies[p]);
     
-    // Now set core properties from halo data (syncing with direct fields above)
-    GALAXY_PROP_SnapNum(&galaxies[p]) = galaxies[p].SnapNum;
-    GALAXY_PROP_Type(&galaxies[p]) = galaxies[p].Type;
-    GALAXY_PROP_GalaxyNr(&galaxies[p]) = galaxies[p].GalaxyNr;
-    GALAXY_PROP_HaloNr(&galaxies[p]) = galaxies[p].HaloNr;
-    GALAXY_PROP_MostBoundID(&galaxies[p]) = galaxies[p].MostBoundID;
+    // SINGLE SOURCE OF TRUTH: Set core properties from halo data
+    GALAXY_PROP_Type(&galaxies[p]) = 0;  // New galaxies start as central
+    GALAXY_PROP_GalaxyNr(&galaxies[p]) = *galaxycounter;
+    GALAXY_PROP_HaloNr(&galaxies[p]) = halonr;
+    GALAXY_PROP_MostBoundID(&galaxies[p]) = halos[halonr].MostBoundID;
+    GALAXY_PROP_SnapNum(&galaxies[p]) = halos[halonr].SnapNum - 1;
+    (*galaxycounter)++;
     
     // Copy position, velocity, and spin arrays directly from halo data
     for (int j = 0; j < 3; j++) {

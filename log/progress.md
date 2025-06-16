@@ -238,3 +238,15 @@
 - This implementation eliminates the data flow bug where halo data was being overwritten with zeros, while maintaining proper core-physics separation
 - principles. Properties now serve as the single source of truth for all galaxy data.
 - Modified files: src/generate_property_headers.py, src/physics/physics_essential_functions.c
+
+2025-06-17: [Architecture] **🎉 Dual Property System Elimination Implementation 🎉** ✅ COMPLETED
+- **🔥 MAJOR ARCHITECTURAL ACHIEVEMENT**: Successfully eliminated dual property system where core properties existed in both direct GALAXY struct fields and property system, achieving single source of truth architecture
+- **🏗️ Complete Field Removal**: Removed all 31 direct core property fields from GALAXY struct (SnapNum, Type, GalaxyNr, CentralGal, HaloNr, MostBoundID, etc.), keeping only extension mechanism and property system integration
+- **🔄 Systematic Access Conversion**: Converted 50+ instances of direct field access across 15+ files from `galaxy.field` and `galaxy->field` patterns to `GALAXY_PROP_field(&galaxy)` and `GALAXY_PROP_field(galaxy)` macros
+- **⚡ Zero Performance Impact**: GALAXY_PROP_* macros compile to direct memory access, maintaining same performance as original direct field access
+- **🧹 Auto-Generation Fix**: Fixed auto-generated property copying to use `GALAXY_PROP_SnapNum(src)` instead of `src->SnapNum` in generate_property_headers.py
+- **✅ Full Validation**: Both physics-free and full-physics modes build cleanly, run successfully, and produce valid HDF5 output with all properties working correctly (27 core + 44 physics = 71 total properties)
+- **🚀 Architecture Compliance**: Achieved clean, fast, scientifically accurate architecture with zero legacy technical debt as specified in implementation plan
+- Modified files: src/core/core_allvars.h (GALAXY struct), src/core/core_build_model.c, src/core/core_init.c, src/physics/physics_essential_functions.c, src/core/physics_pipeline_executor.c, src/core/core_array_utils.c, src/core/core_property_utils.c, 8+ I/O files, src/generate_property_headers.py
+- Created files: No new files - worked within existing architecture
+EOF < /dev/null

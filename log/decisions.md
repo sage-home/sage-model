@@ -56,3 +56,10 @@
 2025-06-11: [Phase 5.2.F.3] Forest-Level Auxiliary Flag Management Decision
 - **Rationale**: "Multiple Type 0 galaxies in single FOF group" error was caused by incorrectly resetting `HaloFlag` and `DoneFlag` per-snapshot instead of per-forest. Legacy SAGE processes one tree at a time with flags persisting across all snapshots in that tree. Refactored architecture processes all snapshots in nested loops but must preserve tree/forest-level flag semantics.
 - **Impact**: Moved flag initialization to forest-level in `sage.c`, kept only `NGalaxies` reset per-snapshot. Added `fof_halonr` parameter threading through `copy_galaxies_from_progenitors()` for consistent FOF identification. Fixed central galaxy logic to use `halonr == fof_halonr`. SAGE now runs to completion successfully with correct single central galaxy per FOF group.
+
+2025-06-17: [Architecture] Dual Property System Elimination Strategy
+- **Decision**: Eliminated dual property system by removing all direct core property fields from GALAXY struct and converting access to GALAXY_PROP_* macros, rather than maintaining dual synchronization or gradual migration approaches
+- **Rationale**: Direct field removal forces complete conversion to property system as single source of truth, eliminating synchronization bugs and architectural violations. GALAXY_PROP_* macros provide same performance as direct field access while enabling compile-time property optimization
+- **Impact**: Achieves zero legacy technical debt with clean architecture. Both physics-free (27 core properties) and full-physics (71 total properties) modes work correctly. Property system now serves as authoritative data source with extension mechanism integration preserved
+- **Alternative Rejected**: Maintaining dual system with synchronization would have perpetuated architectural debt and potential data consistency issues
+EOF < /dev/null

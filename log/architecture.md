@@ -140,26 +140,25 @@ Properties Module Architecture
 - **custom-physics**: Module-specific properties, optimised for production
 
 ### Core Galaxy Structure
-The GALAXY struct contains only essential infrastructure fields:
+The GALAXY struct contains only extension mechanism and property system integration:
 
 ```
 struct GALAXY {
-    // Core identifiers & tree structure
-    int SnapNum;
-    long long GalaxyIndex;
-    int TreeIndex;
-    int Type;
-    long long HaloIndex;
-    int MostBoundID;
-    int NextGalaxy;
+    /* Extension mechanism - placed at the end for binary compatibility */
+    void     **extension_data;    /* Array of pointers to module-specific data */
+    int        num_extensions;    /* Number of registered extensions */
+    uint64_t   extension_flags;   /* Bitmap to track which extensions are in use */
     
-    // Properties & extension system
-    galaxy_properties_t *properties;  // All physics properties
-    void **extension_data;            // Module extensions
-    int num_extensions;
-    uint64_t extension_flags;
+    /* Property system integration - SINGLE SOURCE OF TRUTH */
+    galaxy_properties_t *properties; /* All properties managed by the property system */
 };
 ```
+
+**Key Architectural Features:**
+- **Single Source of Truth**: All galaxy data (core + physics) stored in property system
+- **Zero Direct Fields**: No direct field access - all data accessed via GALAXY_PROP_* macros
+- **Property System Performance**: GALAXY_PROP_* macros compile to direct memory access
+- **Extension Integration**: Module-specific data handled through extension mechanism
 
 ## I/O System
 The I/O system uses property-based serialization:

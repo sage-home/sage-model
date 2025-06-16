@@ -46,7 +46,7 @@ static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_sav
     // CRITICAL: Check for corrupted properties pointer - FAIL HARD if detected
     if (g->properties != NULL && ((uintptr_t)g->properties & 0xFFFFFFFF00000000ULL) == 0xFFFFFFFF00000000ULL) {
         LOG_ERROR("FATAL: Corrupted galaxy properties pointer detected: %p for galaxy index %llu", 
-                 g->properties, g->GalaxyIndex);
+                 g->properties, GALAXY_PROP_GalaxyIndex(g));
         LOG_ERROR("FATAL: This indicates memory corruption that would produce invalid scientific results");
         LOG_ERROR("FATAL: The simulation must be terminated to prevent data corruption");
         return EXIT_FAILURE;
@@ -54,7 +54,7 @@ static int32_t process_galaxy_for_output(const struct GALAXY *g, struct hdf5_sav
     
     // CRITICAL: Check for NULL properties - FAIL HARD if detected  
     if (g->properties == NULL) {
-        LOG_ERROR("FATAL: Galaxy %llu has NULL properties pointer", g->GalaxyIndex);
+        LOG_ERROR("FATAL: Galaxy %llu has NULL properties pointer", GALAXY_PROP_GalaxyIndex(g));
         LOG_ERROR("FATAL: This would result in invalid scientific data - terminating");
         return EXIT_FAILURE;
     }

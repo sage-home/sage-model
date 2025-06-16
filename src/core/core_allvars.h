@@ -158,45 +158,12 @@ struct evolution_context {
 /* This structure contains the properties used within the code */
 struct GALAXY
 {
-    /* Core galaxy identification */
-    int32_t   SnapNum;            /* Snapshot number of the galaxy */
-    int32_t   Type;               /* Galaxy type (0=central, 1=satellite, 2=orphan, 3=merged) */
-    int32_t   GalaxyNr;           /* Galaxy number within the tree */
-    int32_t   CentralGal;         /* Index of the central galaxy in the same FoF group */
-    int32_t   HaloNr;             /* Halo number in the tree */
-    long long MostBoundID;        /* ID of the most bound particle in the subhalo */
-    uint64_t  GalaxyIndex;        /* Unique galaxy identifier based on tree local galaxy number, 
-                                     file local tree number and file number */
-    uint64_t  CentralGalaxyIndex; /* Galaxy index of the central galaxy of this galaxy's FoF group */
-    int32_t   SAGEHaloIndex;      /* SAGE-specific halo identifier */
-    int32_t   SAGETreeIndex;      /* SAGE-specific tree identifier */
-    long long SimulationHaloIndex; /* Original simulation halo index */
-    float     dT;                 /* Time step for galaxy evolution */
-
-    /* Core halo properties */
-    float     Pos[3];             /* Position coordinates (x,y,z) */
-    float     Vel[3];             /* Velocity components (vx,vy,vz) */
-    float     Spin[3];            /* Angular momentum vector (Jx,Jy,Jz) */
-    int       Len;                /* Number of particles in the halo */
-    float     Mvir;               /* Virial mass of the halo */
-    float     deltaMvir;          /* Change in virial mass since last snapshot */
-    float     CentralMvir;        /* Virial mass of the central subhalo */
-    float     Rvir;               /* Virial radius */
-    float     Vvir;               /* Virial velocity */
-    float     Vmax;               /* Maximum circular velocity */
-    float     VelDisp;            /* Velocity dispersion */
-
-    /* Core infall properties */
-    float     infallMvir;         /* Virial mass at infall */
-    float     infallVvir;         /* Virial velocity at infall */
-    float     infallVmax;         /* Maximum circular velocity at infall */
-    
     /* Extension mechanism - placed at the end for binary compatibility */
     void     **extension_data;    /* Array of pointers to module-specific data */
     int        num_extensions;    /* Number of registered extensions */
     uint64_t   extension_flags;   /* Bitmap to track which extensions are in use */
     
-    /* Property system integration */
+    /* Property system integration - SINGLE SOURCE OF TRUTH */
     galaxy_properties_t *properties; /* All properties managed by the property system */
 };
 

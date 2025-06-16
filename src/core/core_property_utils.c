@@ -44,12 +44,12 @@ float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, flo
         return default_value;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_float_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_float_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
@@ -62,12 +62,12 @@ int32_t get_int32_property(const struct GALAXY *galaxy, property_id_t prop_id, i
         return default_value;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_int32_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_int32_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
@@ -80,12 +80,12 @@ double get_double_property(const struct GALAXY *galaxy, property_id_t prop_id, d
         return default_value;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_double_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_double_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
@@ -98,12 +98,12 @@ int64_t get_int64_property(const struct GALAXY *galaxy, property_id_t prop_id, i
         return default_value;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_int64_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_int64_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
@@ -145,12 +145,12 @@ int set_float_property(struct GALAXY *galaxy, property_id_t prop_id, float value
         return EXIT_FAILURE;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in set_float_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in set_float_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
@@ -164,12 +164,12 @@ int set_int32_property(struct GALAXY *galaxy, property_id_t prop_id, int32_t val
         return EXIT_FAILURE;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in set_int32_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in set_int32_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
@@ -183,12 +183,12 @@ int set_double_property(struct GALAXY *galaxy, property_id_t prop_id, double val
         return EXIT_FAILURE;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in set_double_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in set_double_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
@@ -202,19 +202,19 @@ float get_float_array_element_property(const struct GALAXY *galaxy, property_id_
         return default_value;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_float_array_element_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_float_array_element_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     const property_meta_t *meta = get_property_meta(prop_id);
     if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but was accessed as one for galaxy %llu.",
-                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
     // Bounds check is handled by get_generated_float_array_element
@@ -227,19 +227,19 @@ int32_t get_int32_array_element_property(const struct GALAXY *galaxy, property_i
         return default_value;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_int32_array_element_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_int32_array_element_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     const property_meta_t *meta = get_property_meta(prop_id);
     if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but was accessed as one for galaxy %llu.",
-                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
     // Bounds check is handled by get_generated_int32_array_element
@@ -252,19 +252,19 @@ double get_double_array_element_property(const struct GALAXY *galaxy, property_i
         return default_value;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_double_array_element_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_double_array_element_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %llu.", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
 
     const property_meta_t *meta = get_property_meta(prop_id);
     if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but was accessed as one for galaxy %llu.",
-                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return default_value;
     }
     // Bounds check is handled by get_generated_double_array_element
@@ -277,27 +277,27 @@ int set_float_array_element_property(struct GALAXY *galaxy, property_id_t prop_i
         return EXIT_FAILURE;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in set_float_array_element_property (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in set_float_array_element_property (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) {
         LOG_ERROR("Invalid property ID %d requested for galaxy %llu in set_float_array_element_property.",
-                 prop_id, galaxy->GalaxyIndex);
+                 prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
     const property_meta_t *meta = get_property_meta(prop_id);
     if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but was set as one for galaxy %llu.",
-                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
     int array_size = get_property_array_size(galaxy, prop_id);
     if (array_idx < 0 || array_idx >= array_size) {
         LOG_ERROR("Array index %d out of bounds for property '%s' (ID %d, size %d) for galaxy %llu.",
-                  array_idx, meta->name, prop_id, array_size, galaxy->GalaxyIndex);
+                  array_idx, meta->name, prop_id, array_size, GALAXY_PROP_GalaxyIndex(galaxy));
         return EXIT_FAILURE;
     }
 
@@ -311,7 +311,7 @@ bool has_property(const struct GALAXY *galaxy, property_id_t prop_id) {
         return false;
     }
     if (galaxy->properties == NULL) {
-        LOG_DEBUG("Galaxy properties pointer is NULL in has_property check (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_DEBUG("Galaxy properties pointer is NULL in has_property check (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return false;
     }
 
@@ -378,20 +378,20 @@ int get_property_array_size(const struct GALAXY *galaxy, property_id_t prop_id) 
         return 0;
     }
     if (galaxy->properties == NULL) {
-        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_property_array_size (GalaxyIndex: %llu).", galaxy->GalaxyIndex);
+        LOG_ERROR("Galaxy properties pointer cannot be NULL in get_property_array_size (GalaxyIndex: %llu).", GALAXY_PROP_GalaxyIndex(galaxy));
         return 0;
     }
 
     if (prop_id < 0 || prop_id >= (property_id_t)TotGalaxyProperties) { // Use TotGalaxyProperties
         LOG_ERROR("Invalid property ID %d requested for galaxy %llu in get_property_array_size.",
-                 prop_id, galaxy->GalaxyIndex);
+                 prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return 0;
     }
 
     const property_meta_t *meta = get_property_meta(prop_id);
     if (meta == NULL || !meta->is_array) {
         LOG_ERROR("Property '%s' (ID %d) is not an array property but queried for array size for galaxy %llu.",
-                  meta ? meta->name : "unknown", prop_id, galaxy->GalaxyIndex);
+                  meta ? meta->name : "unknown", prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
         return 0;
     }
 

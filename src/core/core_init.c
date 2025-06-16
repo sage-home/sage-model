@@ -577,8 +577,8 @@ bool validate_evolution_context(const struct evolution_context *ctx)
     }
 
     /* Validate the central galaxy type */
-    if (ctx->galaxies[ctx->centralgal].Type != 0) {
-        LOG_WARNING("Central galaxy has unexpected type: %d (should be 0)", ctx->galaxies[ctx->centralgal].Type);
+    if (GALAXY_PROP_Type(&ctx->galaxies[ctx->centralgal]) != 0) {
+        LOG_WARNING("Central galaxy has unexpected type: %d (should be 0)", GALAXY_PROP_Type(&ctx->galaxies[ctx->centralgal]));
         /* Not a critical error, just a warning */
     }
     
@@ -630,7 +630,7 @@ void initialize_evolution_context(struct evolution_context *ctx,
     /* Initialize galaxy references */
     ctx->galaxies = galaxies;
     ctx->ngal = ngal;
-    ctx->centralgal = galaxies[0].CentralGal;
+    ctx->centralgal = GALAXY_PROP_CentralGal(&galaxies[0]);
     
     /* Initialize halo properties */
     ctx->halo_nr = halonr;

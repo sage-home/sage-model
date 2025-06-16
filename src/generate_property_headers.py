@@ -926,7 +926,7 @@ def generate_copy_fixed_fields_code(properties):
     """Generate code for copying fixed-size fields"""
     return """    /* Copy fixed-size fields */
     /* Save the correct SnapNum from source galaxy before memcpy */
-    int correct_snapnum = src->SnapNum;
+    int correct_snapnum = GALAXY_PROP_SnapNum(src);
     
     /* Copy the basic structure */
     memcpy(dest->properties, src->properties, sizeof(galaxy_properties_t));

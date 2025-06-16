@@ -398,7 +398,7 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
         int snap_idx = -1;
         for (int j = 0; j < data->num_snapshots; j++) {
             // Simple match by snapshot number
-            if (galaxies[i].SnapNum == j) {
+            if (GALAXY_PROP_SnapNum(&galaxies[i]) == j) {
                 snap_idx = j;
                 break;
             }
@@ -446,14 +446,14 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             
             // Ensure properties are accessible
             if (galaxy->properties == NULL) {
-                LOG_WARNING("Galaxy %lld at SnapNum %d has NULL properties pointer, skipping property access for field '%s'.", galaxy->GalaxyIndex, galaxy->SnapNum, field_name);
+                LOG_WARNING("Galaxy %lld at SnapNum %d has NULL properties pointer, skipping property access for field '%s'.", GALAXY_PROP_GalaxyIndex(galaxy), GALAXY_PROP_SnapNum(galaxy), field_name);
                 memset(dest_ptr, 0, dtype_size); // Zero-fill if properties are missing
                 continue;
             }
             
             // Special handling for derived or component fields that are still part of the "core" output definition
             if (strcmp(field_name, "SAGETreeIndex") == 0) {
-                *(int32_t *)dest_ptr = galaxy->HaloNr; // Using HaloNr instead of TreeIndex
+                *(int32_t *)dest_ptr = GALAXY_PROP_HaloNr(galaxy); // Using HaloNr instead of TreeIndex
             }
             // Handle position components from core GALAXY_PROP_Pos_ELEM macro
             else if (strcmp(field_name, "Pos_x") == 0) {
@@ -542,7 +542,7 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
                     }
                 } else {
                     // Property ID not found by name or galaxy doesn't have it (e.g. optional physics property)
-                    LOG_WARNING("HDF5 output: Property '%s' (ID %d) not found or not available for galaxy %lld. Zeroing value.", field_name, prop_id, galaxy->GalaxyIndex);
+                    LOG_WARNING("HDF5 output: Property '%s' (ID %d) not found or not available for galaxy %lld. Zeroing value.", field_name, prop_id, GALAXY_PROP_GalaxyIndex(galaxy));
                     memset(dest_ptr, 0, dtype_size);
                 }
             }

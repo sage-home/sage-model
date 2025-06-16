@@ -67,20 +67,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_
                 struct GALAXY *galaxies, struct params *run_params);
 
 /* Forward declaration for property sync function */
-static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
-    if (gal->properties == NULL) {
-        return;
-    }
-    
-    // Sync the problematic properties that are set in direct fields but need to be in property system
-    GALAXY_PROP_dT(gal) = gal->dT;
-    GALAXY_PROP_deltaMvir(gal) = gal->deltaMvir;
-    GALAXY_PROP_CentralMvir(gal) = gal->CentralMvir;
-    // MergTime is now a physics property - handled by property system
-    GALAXY_PROP_infallMvir(gal) = gal->infallMvir;
-    GALAXY_PROP_infallVvir(gal) = gal->infallVvir;
-    GALAXY_PROP_infallVmax(gal) = gal->infallVmax;
-}
+// NOTE: sync_direct_fields_to_properties removed - single source of truth through property system
 
 /**
  * @brief   Finds the most massive progenitor halo that contains a galaxy
@@ -118,41 +105,9 @@ static inline void sync_direct_fields_to_properties(struct GALAXY *gal) {
  */
 void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params)
 {
-    // SIMPLIFIED: Following senior developer recommendations - only copy core fields and use copy_galaxy_properties()
-    // The property system handles all property copying automatically and stays up-to-date with properties.yaml
+    // SINGLE SOURCE OF TRUTH: Use property system for all galaxy data copying
     
-    // Copy only the core struct fields that exist in struct GALAXY
-    dest->SnapNum = src->SnapNum;
-    dest->Type = src->Type;
-    dest->GalaxyNr = src->GalaxyNr;
-    dest->CentralGal = src->CentralGal;
-    dest->HaloNr = src->HaloNr;
-    dest->MostBoundID = src->MostBoundID;
-    dest->GalaxyIndex = src->GalaxyIndex;
-    dest->CentralGalaxyIndex = src->CentralGalaxyIndex;
-    dest->dT = src->dT;
-    
-    // Copy core arrays
-    for (int i = 0; i < 3; i++) {
-        dest->Pos[i] = src->Pos[i];
-        dest->Vel[i] = src->Vel[i];
-        dest->Spin[i] = src->Spin[i];
-    }
-    
-    // Copy core properties
-    dest->Len = src->Len;
-    dest->Mvir = src->Mvir;
-    dest->deltaMvir = src->deltaMvir;
-    dest->CentralMvir = src->CentralMvir;
-    dest->Rvir = src->Rvir;
-    dest->Vvir = src->Vvir;
-    dest->Vmax = src->Vmax;
-    dest->VelDisp = src->VelDisp;
-    dest->infallMvir = src->infallMvir;
-    dest->infallVvir = src->infallVvir;
-    dest->infallVmax = src->infallVmax;
-    
-    // Copy extension mechanism - FIXED: proper deep copy instead of shallow copy
+    // Copy extension mechanism
     dest->num_extensions = src->num_extensions;
     dest->extension_flags = src->extension_flags;
     
@@ -164,7 +119,7 @@ void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struc
         // Use the galaxy extension copy mechanism instead of manual copying
         int status = galaxy_extension_copy(dest, src);
         if (status != 0) {
-            LOG_ERROR("Failed to copy galaxy extension data. Source GalaxyIndex: %llu", src->GalaxyIndex);
+            LOG_ERROR("Failed to copy galaxy extension data. Source GalaxyIndex: %llu", GALAXY_PROP_GalaxyIndex(src));
         }
     }
     
@@ -173,7 +128,7 @@ void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struc
     
     // Let the auto-generated property system handle ALL property copying
     if (copy_galaxy_properties(dest, src, run_params) != 0) {
-        LOG_ERROR("Failed to copy galaxy properties. Source GalaxyIndex: %llu\n", src->GalaxyIndex);
+        LOG_ERROR("Failed to copy galaxy properties. Source GalaxyIndex: %llu\n", GALAXY_PROP_GalaxyIndex(src));
     }
 }
 
@@ -257,8 +212,8 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
             galaxy_extension_initialize(&temp_galaxy);
             deep_copy_galaxy(&temp_galaxy, source_gal, run_params);
 
-            temp_galaxy.HaloNr = halonr;
-            temp_galaxy.dT = -1.0;
+            GALAXY_PROP_HaloNr(&temp_galaxy) = halonr;
+            GALAXY_PROP_dT(&temp_galaxy) = -1.0;
             
             // Ensure properties are allocated before syncing
             if (temp_galaxy.properties == NULL) {
@@ -268,33 +223,33 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
             }
             
             // Sync direct field changes to property system
-            sync_direct_fields_to_properties(&temp_galaxy);
+            // No sync needed - single source of truth through property system
             
             // This is a shallow copy of extension flags/pointers, which is fine as they are managed on demand.
             galaxy_extension_copy(&temp_galaxy, source_gal);
 
             if (prog == first_occupied) {
                 // This galaxy is from the most massive progenitor.
-                if (temp_galaxy.Type == 0) {
+                if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
                     // This is the central of the main progenitor. It becomes the new central/main satellite.
-                    const float previousMvir = temp_galaxy.Mvir;
-                    const float previousVvir = temp_galaxy.Vvir;
-                    const float previousVmax = temp_galaxy.Vmax;
+                    const float previousMvir = GALAXY_PROP_Mvir(&temp_galaxy);
+                    const float previousVvir = GALAXY_PROP_Vvir(&temp_galaxy);
+                    const float previousVmax = GALAXY_PROP_Vmax(&temp_galaxy);
 
                     // Update its properties to match the new host halo.
-                    temp_galaxy.MostBoundID = halos[halonr].MostBoundID;
+                    GALAXY_PROP_MostBoundID(&temp_galaxy) = halos[halonr].MostBoundID;
                     for(int j = 0; j < 3; j++) {
-                        temp_galaxy.Pos[j] = halos[halonr].Pos[j];
-                        temp_galaxy.Vel[j] = halos[halonr].Vel[j];
+                        GALAXY_PROP_Pos(&temp_galaxy)[j] = halos[halonr].Pos[j];
+                        GALAXY_PROP_Vel(&temp_galaxy)[j] = halos[halonr].Vel[j];
                     }
-                    temp_galaxy.Len = halos[halonr].Len;
-                    temp_galaxy.Vmax = halos[halonr].Vmax;
+                    GALAXY_PROP_Len(&temp_galaxy) = halos[halonr].Len;
+                    GALAXY_PROP_Vmax(&temp_galaxy) = halos[halonr].Vmax;
                     float new_mvir = get_virial_mass(halonr, halos, run_params);
-                    temp_galaxy.deltaMvir = new_mvir - temp_galaxy.Mvir;
+                    GALAXY_PROP_deltaMvir(&temp_galaxy) = new_mvir - GALAXY_PROP_Mvir(&temp_galaxy);
                     
-                    temp_galaxy.Mvir = new_mvir;
-                    temp_galaxy.Rvir = get_virial_radius(halonr, halos, run_params);
-                    temp_galaxy.Vvir = get_virial_velocity(halonr, halos, run_params);
+                    GALAXY_PROP_Mvir(&temp_galaxy) = new_mvir;
+                    GALAXY_PROP_Rvir(&temp_galaxy) = get_virial_radius(halonr, halos, run_params);
+                    GALAXY_PROP_Vvir(&temp_galaxy) = get_virial_velocity(halonr, halos, run_params);
                     
                     // Ensure properties are allocated before syncing
                     if (temp_galaxy.properties == NULL) {
@@ -304,11 +259,11 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                     }
                     
                     // Sync halo property updates to property system
-                    sync_direct_fields_to_properties(&temp_galaxy);
+                    // No sync needed - single source of truth through property system
 
                     if (halonr == fof_halonr) {
                         // It remains a central galaxy (Type 0) of the main FOF.
-                        temp_galaxy.Type = 0;
+                        GALAXY_PROP_Type(&temp_galaxy) = 0;
                         
                         // Ensure properties are allocated before syncing
                         if (temp_galaxy.properties == NULL) {
@@ -318,14 +273,14 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                         }
                         
                         // Sync merger and type updates to property system
-                        sync_direct_fields_to_properties(&temp_galaxy);
+                        // No sync needed - single source of truth through property system
                     } else {
                         // It was a central but is now a satellite (Type 1). Record its properties at the point of infall.
-                        temp_galaxy.infallMvir = previousMvir;
-                        temp_galaxy.infallVvir = previousVvir;
-                        temp_galaxy.infallVmax = previousVmax;
+                        GALAXY_PROP_infallMvir(&temp_galaxy) = previousMvir;
+                        GALAXY_PROP_infallVvir(&temp_galaxy) = previousVvir;
+                        GALAXY_PROP_infallVmax(&temp_galaxy) = previousVmax;
 
-                        temp_galaxy.Type = 1;
+                        GALAXY_PROP_Type(&temp_galaxy) = 1;
                         
                         // Ensure properties are allocated before syncing
                         if (temp_galaxy.properties == NULL) {
@@ -335,11 +290,11 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                         }
                         
                         // Sync infall properties, merger time, and type updates to property system
-                        sync_direct_fields_to_properties(&temp_galaxy);
+                        // No sync needed - single source of truth through property system
                     }
                 } else {
                     // This was a satellite of the main progenitor. It becomes an orphan.
-                    temp_galaxy.Type = 2;
+                    GALAXY_PROP_Type(&temp_galaxy) = 2;
                     GALAXY_PROP_merged(&temp_galaxy) = 1;
                     
                     // Ensure properties are allocated before syncing
@@ -350,17 +305,17 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                     }
                     
                     // Sync orphan status updates to property system
-                    sync_direct_fields_to_properties(&temp_galaxy);
+                    // No sync needed - single source of truth through property system
                 }
             } else {
                 // This galaxy is from a less massive progenitor. It must become an orphan.
-                if (temp_galaxy.Type == 0) {
+                if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
                     // If it was a central, we must record its properties at infall.
-                    temp_galaxy.infallMvir = temp_galaxy.Mvir;
-                    temp_galaxy.infallVvir = temp_galaxy.Vvir;
-                    temp_galaxy.infallVmax = temp_galaxy.Vmax;
+                    GALAXY_PROP_infallMvir(&temp_galaxy) = GALAXY_PROP_Mvir(&temp_galaxy);
+                    GALAXY_PROP_infallVvir(&temp_galaxy) = GALAXY_PROP_Vvir(&temp_galaxy);
+                    GALAXY_PROP_infallVmax(&temp_galaxy) = GALAXY_PROP_Vmax(&temp_galaxy);
                 }
-                temp_galaxy.Type = 2;
+                GALAXY_PROP_Type(&temp_galaxy) = 2;
                 GALAXY_PROP_merged(&temp_galaxy) = 1;
                 
                 // Ensure properties are allocated before syncing
@@ -371,7 +326,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                 }
                 
                 // Sync orphan properties and status updates to property system
-                sync_direct_fields_to_properties(&temp_galaxy);
+                // No sync needed - single source of truth through property system
             }
             
             // Append the processed galaxy to the array for this halo.
@@ -426,7 +381,7 @@ static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAX
     /* Per Halo there can be only one Type 0 or 1 galaxy, all others are Type 2 (orphan)
      * Find the central galaxy for this halo */
     for (i = ngalstart, centralgal = -1; i < ngal; i++) {
-        if (galaxies[i].Type == 0 || galaxies[i].Type == 1) {
+        if (GALAXY_PROP_Type(&galaxies[i]) == 0 || GALAXY_PROP_Type(&galaxies[i]) == 1) {
             if (centralgal != -1) {
                 LOG_ERROR("Multiple central galaxies found in halo");
                 return -1;
@@ -438,7 +393,7 @@ static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAX
 
     /* Set all galaxies to point to the central galaxy */
     for (i = ngalstart; i < ngal; i++) {
-        galaxies[i].CentralGal = centralgal;
+        GALAXY_PROP_CentralGal(&galaxies[i]) = centralgal;
     }
     
     return 0;
@@ -552,7 +507,7 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
             struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(temp_fof_galaxies);
             int central_for_fof = -1;
             for(int i = 0; i < ngal_fof; ++i) {
-                if(galaxies_raw[i].Type == 0) {
+                if(GALAXY_PROP_Type(&galaxies_raw[i]) == 0) {
                     if(central_for_fof != -1) {
                         LOG_ERROR("Found multiple Type 0 galaxies in a single FOF group. This should not happen.");
                         galaxy_array_free(&temp_fof_galaxies);
@@ -564,7 +519,7 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
             // Set all galaxies to point to the central galaxy
             if(central_for_fof != -1) {
                 for(int i = 0; i < ngal_fof; ++i) {
-                    galaxies_raw[i].CentralGal = central_for_fof;
+                    GALAXY_PROP_CentralGal(&galaxies_raw[i]) = central_for_fof;
                 }
             } else if (ngal_fof > 0) {
                  LOG_WARNING("No central (Type 0) galaxy found for FOF group %d with %d galaxies.", fofhalo, ngal_fof);
@@ -718,10 +673,10 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
     }
 
     // Validate central galaxy
-    if(galaxies[ctx.centralgal].Type != 0 || galaxies[ctx.centralgal].HaloNr != halonr) {
+    if(GALAXY_PROP_Type(&galaxies[ctx.centralgal]) != 0 || GALAXY_PROP_HaloNr(&galaxies[ctx.centralgal]) != halonr) {
         CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR,
                     "Invalid central galaxy: expected type=0, halonr=%d but found type=%d, halonr=%d",
-                    halonr, galaxies[ctx.centralgal].Type, galaxies[ctx.centralgal].HaloNr);
+                    halonr, GALAXY_PROP_Type(&galaxies[ctx.centralgal]), GALAXY_PROP_HaloNr(&galaxies[ctx.centralgal]));
         return EXIT_FAILURE;
     }
 
@@ -856,8 +811,8 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
 
         for (int p = 0; p < ctx.ngal; p++) {
             // Calculate the timestep for this galaxy (should be per-galaxy)
-            ctx.deltaT = run_params->simulation.Age[galaxies[p].SnapNum] - run_params->simulation.Age[halos[halonr].SnapNum];
-            ctx.time = run_params->simulation.Age[galaxies[p].SnapNum] - (step + 0.5) * (ctx.deltaT / STEPS);
+            ctx.deltaT = run_params->simulation.Age[GALAXY_PROP_SnapNum(&galaxies[p])] - run_params->simulation.Age[halos[halonr].SnapNum];
+            ctx.time = run_params->simulation.Age[GALAXY_PROP_SnapNum(&galaxies[p])] - (step + 0.5) * (ctx.deltaT / STEPS);
             
             // Update pipeline context with current galaxy-specific time values
             pipeline_ctx.dt = ctx.deltaT / STEPS; // Per-step time interval
@@ -973,7 +928,7 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
 
     // Extra miscellaneous stuff before finishing this halo
     
-    const double time_diff = run_params->simulation.Age[ctx.galaxies[0].SnapNum] - ctx.halo_age;
+    const double time_diff = run_params->simulation.Age[GALAXY_PROP_SnapNum(&ctx.galaxies[0])] - ctx.halo_age;
     const double inv_deltaT = (time_diff > 1e-10) ? 1.0 / time_diff : 0.0; // Avoid division by zero or very small numbers
     (void)inv_deltaT; // Mark as intentionally unused
 
@@ -996,15 +951,15 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
 
     // Attach final galaxy list to halo
     for(int p = 0, currenthalo = -1; p < ctx.ngal; p++) {
-        if(ctx.galaxies[p].HaloNr != currenthalo) {
-            currenthalo = ctx.galaxies[p].HaloNr;
+        if(GALAXY_PROP_HaloNr(&ctx.galaxies[p]) != currenthalo) {
+            currenthalo = GALAXY_PROP_HaloNr(&ctx.galaxies[p]);
             haloaux[currenthalo].FirstGalaxy = *numgals;
             haloaux[currenthalo].NGalaxies = 0;
         }
 
         // After evolution, append survivors to the main array for this snapshot
         if (GALAXY_PROP_merged(&ctx.galaxies[p]) == 0) { // If it hasn't been merged
-            ctx.galaxies[p].SnapNum = halos[currenthalo].SnapNum;
+            GALAXY_PROP_SnapNum(&ctx.galaxies[p]) = halos[currenthalo].SnapNum;
 
 
             // Copy galaxy to the snapshot array using the new API
@@ -1012,7 +967,7 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
             memset(&temp_galaxy, 0, sizeof(struct GALAXY));
             galaxy_extension_initialize(&temp_galaxy);
             deep_copy_galaxy(&temp_galaxy, &ctx.galaxies[p], run_params);
-            temp_galaxy.SnapNum = halos[currenthalo].SnapNum;
+            GALAXY_PROP_SnapNum(&temp_galaxy) = halos[currenthalo].SnapNum;
             
 
 

@@ -1157,33 +1157,33 @@ static int validate_galaxy_references(struct validation_context *ctx,
     // Note: Removed mergeIntoID validation - it's now a physics property not used by core system
     
     // Check CentralGal is valid
-    if (galaxy->CentralGal >= count) {
+    if (GALAXY_PROP_CentralGal(galaxy) >= count) {
         status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
                                       VALIDATION_SEVERITY_ERROR,
                                       VALIDATION_CHECK_GALAXY_REFS, component,
                                       __FILE__, __LINE__,
                                       "Galaxy %d has invalid CentralGal = %d (max valid value: %d)",
-                                      index, galaxy->CentralGal, count - 1);
+                                      index, GALAXY_PROP_CentralGal(galaxy), count - 1);
     }
     
     // Check Type is valid (0=central, 1=satellite, 2=orphan)
-    if (galaxy->Type < 0 || galaxy->Type > 2) {
+    if (GALAXY_PROP_Type(galaxy) < 0 || GALAXY_PROP_Type(galaxy) > 2) {
         status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
                                       VALIDATION_SEVERITY_ERROR,
                                       VALIDATION_CHECK_GALAXY_REFS, component,
                                       __FILE__, __LINE__,
                                       "Galaxy %d has invalid Type = %d (valid values: 0, 1, 2)",
-                                      index, galaxy->Type);
+                                      index, GALAXY_PROP_Type(galaxy));
     }
     
     // Check GalaxyNr is valid (should be >= 0)
-    if (galaxy->GalaxyNr < 0) {
+    if (GALAXY_PROP_GalaxyNr(galaxy) < 0) {
         status |= validation_add_result(ctx, VALIDATION_ERROR_REFERENCE_INVALID,
                                       VALIDATION_SEVERITY_ERROR,
                                       VALIDATION_CHECK_GALAXY_REFS, component,
                                       __FILE__, __LINE__,
                                       "Galaxy %d has invalid GalaxyNr = %d (should be >= 0)",
-                                      index, galaxy->GalaxyNr);
+                                      index, GALAXY_PROP_GalaxyNr(galaxy));
     }
     
     // Note: Removed mergeType validation - it's now a physics property not used by core system
