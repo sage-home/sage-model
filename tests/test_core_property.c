@@ -70,7 +70,7 @@ static int setup_test_context(void) {
     // Initialize galaxy property pointers
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
         test_ctx.test_galaxies[i].properties = &test_ctx.test_properties[i];
-        test_ctx.test_galaxies[i].GalaxyIndex = 1000 + i; // Set unique IDs
+        GALAXY_PROP_GalaxyIndex(&test_ctx.test_galaxies[i]) = 1000 + i; // Set unique IDs
     }
     
     test_ctx.initialized = true;

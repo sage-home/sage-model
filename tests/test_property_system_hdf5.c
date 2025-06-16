@@ -924,19 +924,19 @@ static void test_error_handling(void) {
     struct GALAXY test_galaxy;
     memset(&test_galaxy, 0, sizeof(struct GALAXY));
     
-    // Set minimal required values to prevent core assertion failures
-    test_galaxy.SnapNum = run_params.simulation.ListOutputSnaps[0]; // Match the output snap
-    test_galaxy.Type = 0;         // Central galaxy
-    test_galaxy.GalaxyNr = 0;     // Arbitrary ID
-    test_galaxy.CentralGal = 0;   // Self is central
-    test_galaxy.HaloNr = 0;       // Arbitrary halo number
-    test_galaxy.MostBoundID = 1000; // Arbitrary ID
-    test_galaxy.GalaxyIndex = 0;  // First galaxy
-    
-    // Allocate properties with defaults (zero values)
+    // Allocate properties first
     printf("Allocating minimal properties for test galaxy...\n");
     TEST_ASSERT(allocate_galaxy_properties(&test_galaxy, &run_params) == 0,
                "Property allocation should succeed even for minimal galaxy");
+    
+    // Set minimal required values using property macros
+    GALAXY_PROP_SnapNum(&test_galaxy) = run_params.simulation.ListOutputSnaps[0]; // Match the output snap
+    GALAXY_PROP_Type(&test_galaxy) = 0;         // Central galaxy
+    test_galaxy.GalaxyNr = 0;     // Arbitrary ID
+    GALAXY_PROP_CentralGal(&test_galaxy) = 0;   // Self is central
+    GALAXY_PROP_HaloNr(&test_galaxy) = 0;       // Arbitrary halo number
+    GALAXY_PROP_MostBoundID(&test_galaxy) = 1000; // Arbitrary ID
+    GALAXY_PROP_GalaxyIndex(&test_galaxy) = 0;  // First galaxy
     
     // Set up output buffers for properties that we expect to be transformed
     const int NUM_PROPERTIES = 4;
@@ -1018,18 +1018,18 @@ static void test_error_handling(void) {
     struct GALAXY edge_galaxy;
     memset(&edge_galaxy, 0, sizeof(struct GALAXY));
     
-    // Set minimal required values
-    edge_galaxy.SnapNum = run_params.simulation.ListOutputSnaps[0];
-    edge_galaxy.Type = 0;
-    edge_galaxy.GalaxyNr = 0;
-    edge_galaxy.CentralGal = 0;
-    edge_galaxy.HaloNr = 0;
-    edge_galaxy.MostBoundID = 1000;
-    edge_galaxy.GalaxyIndex = 0;
-    
-    // Allocate and initialize properties to test error handling
+    // Allocate properties first
     TEST_ASSERT(allocate_galaxy_properties(&edge_galaxy, &run_params) == 0,
                "Property allocation should succeed for edge case galaxy");
+    
+    // Set minimal required values using property macros
+    GALAXY_PROP_SnapNum(&edge_galaxy) = run_params.simulation.ListOutputSnaps[0];
+    GALAXY_PROP_Type(&edge_galaxy) = 0;
+    edge_galaxy.GalaxyNr = 0;
+    GALAXY_PROP_CentralGal(&edge_galaxy) = 0;
+    GALAXY_PROP_HaloNr(&edge_galaxy) = 0;
+    GALAXY_PROP_MostBoundID(&edge_galaxy) = 1000;
+    GALAXY_PROP_GalaxyIndex(&edge_galaxy) = 0;
     
     // Set specific properties to extreme values that might trigger internal error handling
     printf("Setting extreme values for edge case galaxy...\n");
@@ -1201,17 +1201,28 @@ static int init_test_galaxies(struct GALAXY *galaxies, int count, const struct p
         // Initialize basic structure for each galaxy
         memset(&galaxies[i], 0, sizeof(struct GALAXY));
         
-        // Required struct fields that might be checked by core code
-        galaxies[i].GalaxyIndex = i;  // For error messages/lookups
-        galaxies[i].GalaxyNr = i;     // Unique ID
-        galaxies[i].SnapNum = run_params->simulation.ListOutputSnaps[0]; // Match output snap
-        galaxies[i].Type = 0;         // Central galaxy
-        galaxies[i].HaloNr = i;       // Match halo number to galaxy index for test simplicity
-        galaxies[i].MostBoundID = 1000 + i; // Arbitrary but unique
-        
-        // Allocate properties using property system
+        // Allocate properties first
         printf("  Allocating properties for galaxy %d\n", i);
         if (allocate_galaxy_properties(&galaxies[i], run_params) != 0) {
+            printf("ERROR: Failed to allocate properties for galaxy %d\n", i);
+            // Free previously allocated galaxies
+            for (int j = 0; j < i; j++) {
+                free_galaxy_properties(&galaxies[j]);
+            }
+            free(galaxies);
+            return NULL;
+        }
+        
+        // Set required values using property macros
+        GALAXY_PROP_GalaxyIndex(&galaxies[i]) = i;  // For error messages/lookups
+        galaxies[i].GalaxyNr = i;     // Unique ID
+        GALAXY_PROP_SnapNum(&galaxies[i]) = run_params->simulation.ListOutputSnaps[0]; // Match output snap
+        GALAXY_PROP_Type(&galaxies[i]) = 0;         // Central galaxy
+        GALAXY_PROP_HaloNr(&galaxies[i]) = i;       // Match halo number to galaxy index for test simplicity
+        GALAXY_PROP_MostBoundID(&galaxies[i]) = 1000 + i; // Arbitrary but unique
+        
+        // Check if allocation succeeded
+        if (false) {
             printf("ERROR: Failed to allocate properties for galaxy %d\n", i);
             return -1; // Return error code instead of void return
         }

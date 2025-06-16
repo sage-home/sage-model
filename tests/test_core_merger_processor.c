@@ -179,7 +179,14 @@ static int setup_test_context(void) {
     // Initialize test galaxies
     for (int i = 0; i < 10; i++) {
         memset(&test_ctx.test_galaxies[i], 0, sizeof(struct GALAXY));
-        test_ctx.test_galaxies[i].Type = 0; // Central
+        
+        // Allocate properties
+        if (allocate_galaxy_properties(&test_ctx.test_galaxies[i], &test_ctx.test_params) != 0) {
+            printf("Failed to allocate properties for test galaxy %d\n", i);
+            exit(1);
+        }
+        
+        GALAXY_PROP_Type(&test_ctx.test_galaxies[i]) = 0; // Central
     }
     
     // Setup pipeline context
@@ -264,6 +271,10 @@ static int complete_setup(void) {
 
 // Teardown function - called after tests
 static void teardown_test_context(void) {
+    // Free galaxy properties
+    for (int i = 0; i < 10; i++) {
+        free_galaxy_properties(&test_ctx.test_galaxies[i]);
+    }
     module_callback_system_cleanup();
 }
 

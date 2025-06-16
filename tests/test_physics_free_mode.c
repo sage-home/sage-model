@@ -298,12 +298,14 @@ static int verify_pipeline_execution_physics_free(void) {
     /* Initialize galaxies with core properties only */
     for (int i = 0; i < ngal; i++) {
         memset(&galaxies[i], 0, sizeof(struct GALAXY));
-        galaxies[i].SnapNum = 0;
-        galaxies[i].Type = (i == 0) ? 0 : 1;
-        galaxies[i].GalaxyIndex = i + 1000; /* Unique IDs for tracking */
         
         int status = allocate_galaxy_properties(&galaxies[i], &test_params);
         TEST_ASSERT(status == 0, "Failed to allocate galaxy properties");
+        
+        /* Set values using property macros */
+        GALAXY_PROP_SnapNum(&galaxies[i]) = 0;
+        GALAXY_PROP_Type(&galaxies[i]) = (i == 0) ? 0 : 1;
+        GALAXY_PROP_GalaxyIndex(&galaxies[i]) = i + 1000; /* Unique IDs for tracking */
     }
     
     /* Create pipeline context */
@@ -360,9 +362,9 @@ static int verify_property_passthrough(struct GALAXY *galaxies, int ngal) {
         
         /* Verify core identifiers preserved */
         uint64_t expected_id = i + 1000;
-        TEST_ASSERT(gal->GalaxyIndex == expected_id, 
+        TEST_ASSERT(GALAXY_PROP_GalaxyIndex(gal) == expected_id, 
                     "GalaxyIndex should be preserved through physics-free pipeline");
-        TEST_ASSERT((gal->Type == 0 || gal->Type == 1), 
+        TEST_ASSERT((GALAXY_PROP_Type(gal) == 0 || GALAXY_PROP_Type(gal) == 1), 
                     "Galaxy Type should remain valid after physics-free execution");
         
         /* Verify properties structure intact */
@@ -370,7 +372,7 @@ static int verify_property_passthrough(struct GALAXY *galaxies, int ngal) {
                     "Properties structure should remain allocated after physics-free execution");
         
         LOG_INFO("Galaxy %d: ID=%llu, Type=%d - pass-through verified", 
-                 i, (unsigned long long)gal->GalaxyIndex, gal->Type);
+                 i, (unsigned long long)GALAXY_PROP_GalaxyIndex(gal), GALAXY_PROP_Type(gal));
     }
     
     LOG_INFO("Property pass-through validation completed successfully");
@@ -416,15 +418,17 @@ static int verify_no_physics_calculations(void) {
     
     struct GALAXY test_galaxy;
     memset(&test_galaxy, 0, sizeof(test_galaxy));
-    test_galaxy.GalaxyIndex = 99999;
-    test_galaxy.Type = 0;
     
     int status = allocate_galaxy_properties(&test_galaxy, &test_params);
     TEST_ASSERT(status == 0, "Property allocation should succeed for physics calculation test");
     
+    /* Set values using property macros */
+    GALAXY_PROP_GalaxyIndex(&test_galaxy) = 99999;
+    GALAXY_PROP_Type(&test_galaxy) = 0;
+    
     /* Record initial state (should be zeros/defaults) */
-    uint64_t initial_galaxy_index = test_galaxy.GalaxyIndex;
-    int initial_type = test_galaxy.Type;
+    uint64_t initial_galaxy_index = GALAXY_PROP_GalaxyIndex(&test_galaxy);
+    int initial_type = GALAXY_PROP_Type(&test_galaxy);
     
     /* Execute pipeline in physics-free mode */
     struct pipeline_context context;
@@ -442,9 +446,9 @@ static int verify_no_physics_calculations(void) {
     TEST_ASSERT(status == 0, "Physics-free GALAXY phase should execute successfully");
     
     /* Verify no physics modifications occurred */
-    TEST_ASSERT(test_galaxy.GalaxyIndex == initial_galaxy_index, 
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(&test_galaxy) == initial_galaxy_index, 
                 "GalaxyIndex should not be modified by physics-free execution");
-    TEST_ASSERT(test_galaxy.Type == initial_type, 
+    TEST_ASSERT(GALAXY_PROP_Type(&test_galaxy) == initial_type, 
                 "Galaxy Type should not be modified by physics-free execution");
     
     /* Physics properties should remain at defaults/zeros if present */

@@ -646,12 +646,24 @@ static void test_memory_integration(void) {
     for (int i = 0; i < num_galaxies; i++) {
         // calloc already zeroed the struct GALAXY, so galaxies[i].properties is NULL.
 
-        // Set basic galaxy info (direct members of struct GALAXY)
-        galaxies[i].GalaxyIndex = (uint64_t)(i * 1000); // Direct member
-        galaxies[i].GalaxyNr = i;                     // Direct member
+        // Set basic galaxy info
+        galaxies[i].GalaxyNr = i;                     // Direct member (no property equivalent)
 
         // Allocate the internal properties struct for this galaxy
         if (allocate_galaxy_properties(&galaxies[i], &test_ctx.test_params) != 0) {
+            // Free previously allocated galaxies on failure
+            for (int j = 0; j < i; j++) {
+                free_galaxy_properties(&galaxies[j]);
+            }
+            myfree(galaxies);
+            return -1;
+        }
+        
+        // Set property values using property macros
+        GALAXY_PROP_GalaxyIndex(&galaxies[i]) = (uint64_t)(i * 1000);
+        
+        // Continue with allocation check
+        if (false) {
             // Use TEST_ASSERT for failure reporting within the test framework
             TEST_ASSERT(0, "Failed to allocate properties for galaxies[i]");
             // Cleanup previously allocated galaxies and return to avoid further errors
@@ -796,12 +808,14 @@ static void test_property_serialization_integration(void) {
     // Create a second galaxy for round-trip testing
     struct GALAXY test_galaxy_copy;
     memset(&test_galaxy_copy, 0, sizeof(test_galaxy_copy));
-    test_galaxy_copy.GalaxyIndex = 999;  // Set direct member
-    test_galaxy_copy.GalaxyNr = 2;       // Set direct member
+    test_galaxy_copy.GalaxyNr = 2;       // Set direct member (no property equivalent)
     
     // Allocate properties for the copy
     int alloc_result = allocate_galaxy_properties(&test_galaxy_copy, &test_ctx.test_params);
     TEST_ASSERT(alloc_result == 0, "Property allocation for copy galaxy should succeed");
+    
+    // Set property values using property macros
+    GALAXY_PROP_GalaxyIndex(&test_galaxy_copy) = 999;
     TEST_ASSERT(test_galaxy_copy.properties != NULL, "Copy galaxy properties should be allocated");
     
     // Test property copying (simulates serialization/deserialization round-trip)

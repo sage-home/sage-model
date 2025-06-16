@@ -86,8 +86,14 @@ static int setup_test_context(void) {
     }
     
     for (int i = 0; i < test_ctx.galaxy_capacity; i++) {
-        test_ctx.galaxy_array[i].Type = i % 3;
-        test_ctx.galaxy_array[i].GalaxyIndex = (int64_t)(i + 1000);
+        // Allocate properties for each galaxy
+        if (allocate_galaxy_properties(&test_ctx.galaxy_array[i], NULL) != 0) {
+            teardown_test_context();
+            return -1;
+        }
+        // Set values using property macros
+        GALAXY_PROP_Type(&test_ctx.galaxy_array[i]) = i % 3;
+        GALAXY_PROP_GalaxyIndex(&test_ctx.galaxy_array[i]) = (uint64_t)(i + 1000);
     }
     
     test_ctx.initialized = 1;
@@ -107,6 +113,10 @@ static void teardown_test_context(void) {
     }
     
     if (test_ctx.galaxy_array) {
+        // Free properties for each galaxy before freeing array
+        for (int i = 0; i < test_ctx.galaxy_capacity; i++) {
+            free_galaxy_properties(&test_ctx.galaxy_array[i]);
+        }
         myfree(test_ctx.galaxy_array);
         test_ctx.galaxy_array = NULL;
     }
@@ -216,8 +226,8 @@ static void test_galaxy_array_expansion(void) {
     
     // Verify initial state
     TEST_ASSERT(capacity == 30, "Initial capacity should be 30");
-    TEST_ASSERT(galaxies[15].Type == 15 % 3, "Initial Type values should be correctly set");
-    TEST_ASSERT(galaxies[15].GalaxyIndex == (15 + 1000), "Initial GalaxyIndex values should be correctly set");
+    TEST_ASSERT(GALAXY_PROP_Type(&galaxies[15]) == 15 % 3, "Initial Type values should be correctly set");
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(&galaxies[15]) == (15 + 1000), "Initial GalaxyIndex values should be correctly set");
     
     // Expand to larger size
     int old_capacity = capacity;
@@ -235,8 +245,8 @@ static void test_galaxy_array_expansion(void) {
     
     // Verify values are preserved
     for (int i = 0; i < old_capacity; i++) {
-        TEST_ASSERT(galaxies[i].Type == i % 3, "Original Type values should be preserved after expansion");
-        TEST_ASSERT(galaxies[i].GalaxyIndex == (uint64_t)(i + 1000), 
+        TEST_ASSERT(GALAXY_PROP_Type(&galaxies[i]) == i % 3, "Original Type values should be preserved after expansion");
+        TEST_ASSERT(GALAXY_PROP_GalaxyIndex(&galaxies[i]) == (uint64_t)(i + 1000), 
                    "Original GalaxyIndex values should be preserved after expansion");
     }
 }

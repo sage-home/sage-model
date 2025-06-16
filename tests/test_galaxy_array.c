@@ -53,29 +53,23 @@ static struct params test_params = {
  * This function creates a galaxy exactly as the real SAGE code does,
  * ensuring our test accurately reflects real-world usage.
  */
-// Helper function to sync properties to direct fields (single direction)
-static inline void sync_core_properties_to_direct_fields(struct GALAXY *gal) {
-    gal->Type = GALAXY_PROP_Type(gal);
-    gal->SnapNum = GALAXY_PROP_SnapNum(gal);
-    gal->Mvir = GALAXY_PROP_Mvir(gal);
-    gal->Vmax = GALAXY_PROP_Vmax(gal);
-    gal->Rvir = GALAXY_PROP_Rvir(gal);
-    gal->GalaxyIndex = GALAXY_PROP_GalaxyIndex(gal);
-    for (int j = 0; j < 3; j++) {
-        gal->Pos[j] = GALAXY_PROP_Pos_ELEM(gal, j);
-    }
-}
+// Note: Dual property system has been eliminated. Property system is single source of truth.
 
 static int create_test_galaxy(struct GALAXY* gal, int galaxy_id) {
     // 1. Zero-initialize entire struct to eliminate padding corruption
     memset(gal, 0, sizeof(struct GALAXY));
     
-    // 2. Set NON-SYNCED direct fields only (fields without property equivalents)
-    gal->GalaxyNr = galaxy_id;
-    
-    // 3. CRITICAL: Allocate properties BEFORE setting any synced values
-    // This allocates memory for the properties struct with real data
+    // 2. Allocate properties first
     if (allocate_galaxy_properties(gal, &test_params) != 0) {
+        printf("ERROR: Failed to allocate galaxy properties for galaxy %d\n", galaxy_id);
+        return -1;
+    }
+    
+    // 3. Set all values using property macros
+    GALAXY_PROP_GalaxyNr(gal) = galaxy_id;
+    
+    // Continue with allocation check
+    if (false) {
         printf("ERROR: Failed to allocate galaxy properties for galaxy %d\n", galaxy_id);
         return -1;
     }
@@ -101,7 +95,7 @@ static int create_test_galaxy(struct GALAXY* gal, int galaxy_id) {
     
     // 5. SINGLE one-way sync from properties to direct fields
     // This ensures direct fields match properties for performance-critical runtime access
-    sync_core_properties_to_direct_fields(gal);
+    // Property system is now the single source of truth - no sync needed
     
     return 0;
 }
@@ -159,12 +153,11 @@ static void test_safe_galaxy_array_expansion() {
         // Verify galaxy data integrity
         printf("Verifying galaxy data integrity after reallocation...\n");
         for (int i = 0; i < NUM_GALAXIES; i++) {
-            TEST_ASSERT(galaxies[i].GalaxyNr == i, "Galaxy number should be preserved");
-            TEST_ASSERT(galaxies[i].Type == i % 3, "Galaxy type should be preserved");
+            TEST_ASSERT(GALAXY_PROP_GalaxyNr(&galaxies[i]) == i, "Galaxy number should be preserved");
+            TEST_ASSERT(GALAXY_PROP_Type(&galaxies[i]) == i % 3, "Galaxy type should be preserved");
             
-            // Verify data integrity after reallocation
-            TEST_ASSERT(fabsf(galaxies[i].Mvir - GALAXY_PROP_Mvir(&galaxies[i])) < 1e-6f, "Direct field and property field should match");
-            TEST_ASSERT(galaxies[i].GalaxyIndex == (uint64_t)(1000 + i), "Galaxy index should be preserved");
+            // Property system is now the single source of truth
+            TEST_ASSERT(GALAXY_PROP_GalaxyIndex(&galaxies[i]) == (uint64_t)(1000 + i), "Galaxy index should be preserved");
         }
     } else {
         printf("No reallocation needed - testing larger expansion to force reallocation...\n");
@@ -237,7 +230,7 @@ static void test_massive_reallocation_stress() {
     for (int i = 0; i < num_galaxies; i++) {
         TEST_ASSERT(galaxies[i].properties != NULL, "Final check: properties should not be NULL");
         TEST_ASSERT(galaxies[i].properties == all_props[i], "Final check: properties pointer should be unchanged");
-        TEST_ASSERT(galaxies[i].GalaxyNr == i, "Final check: galaxy data should be intact");
+        TEST_ASSERT(GALAXY_PROP_GalaxyNr(&galaxies[i]) == i, "Final check: galaxy data should be intact");
     }
     
     printf("Massive reallocation stress test completed.\n");
@@ -291,8 +284,8 @@ static void test_properties_preservation() {
             TEST_ASSERT(galaxies[i].properties == original_props[i], "Properties pointer should be preserved");
             
             // Verify galaxy data integrity
-            TEST_ASSERT(galaxies[i].GalaxyNr == i, "Galaxy number should be preserved");
-            TEST_ASSERT(galaxies[i].Type == i % 3, "Galaxy type should be preserved");
+            TEST_ASSERT(GALAXY_PROP_GalaxyNr(&galaxies[i]) == i, "Galaxy number should be preserved");
+            TEST_ASSERT(GALAXY_PROP_Type(&galaxies[i]) == i % 3, "Galaxy type should be preserved");
         }
     }
     

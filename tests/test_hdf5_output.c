@@ -727,7 +727,7 @@ static void test_multiple_galaxy_handling(void) {
     
     // Verify each galaxy has unique properties
     for (int i = 0; i < num_galaxies; i++) {
-        TEST_ASSERT(galaxies[i].GalaxyIndex == (uint64_t)(1000 + i), "Each galaxy should have unique GalaxyIndex");
+        TEST_ASSERT(GALAXY_PROP_GalaxyIndex(&galaxies[i]) == (uint64_t)(1000 + i), "Each galaxy should have unique GalaxyIndex");
         float expected_mvir = 1e12 + i * 1e11;
         float actual_mvir = GALAXY_PROP_Mvir(&galaxies[i]);
         TEST_ASSERT(fabs(actual_mvir - expected_mvir) < 1e8, "Each galaxy should have unique Mvir");
