@@ -24,7 +24,7 @@ VolumeFraction = 1.0  # Fraction of the full volume output by the model
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
-dilute = 10000       # Number of galaxies to plot in scatter plots
+dilute = 7500       # Number of galaxies to plot in scatter plots
 sSFRcut = -11.0     # Divide quiescent from star forming galaxies
 
 OutputFormat = '.pdf'
@@ -727,6 +727,109 @@ if __name__ == '__main__':
     print('Saved to', outputFile, '\n')
     plt.close()
 
+    plt.figure()  # New figure
+    ax = plt.subplot(111)  # 1 plot on the figure
+
+    w2 = np.where(StellarMass > 0.01)[0]
+    if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
+    mass = np.log10(StellarMass[w2])
+    sSFR = np.log10( (SfrDisk[w2] + SfrBulge[w2]) / StellarMass[w2] )
+
+    # additionally calculate red
+    w = np.where(sSFR < sSFRcut)[0]
+    sfr_RED = sSFR[w]
+    mass_RED = mass[w]
+
+    # additionally calculate blue
+    w = np.where(sSFR > sSFRcut)[0]
+    sfr_BLU = sSFR[w]
+    mass_BLU = mass[w]
+
+    plt.scatter(mass_BLU, sfr_BLU, marker='o', s=1, c='#0072B2', alpha=0.3)
+    plt.scatter(mass_RED, sfr_RED, marker='o', s=1, c='#D55E00', alpha=0.3)
+
+    # Define mass bins
+    mass_bins = np.arange(8.0, 12.0, 0.2)  # 0.2 dex bins
+    mass_centers = mass_bins[:-1] + 0.1  # Center of each bin
+
+    # Calculate median and scatter for star-forming population
+    median_sf = []
+    p16_sf = []
+    p84_sf = []
+
+    for i in range(len(mass_bins)-1):
+        mask = (mass_BLU >= mass_bins[i]) & (mass_BLU < mass_bins[i+1])
+        if np.sum(mask) > 5:  # Need at least 5 galaxies
+            values = sfr_BLU[mask]
+            median_sf.append(np.median(values))
+            p16_sf.append(np.percentile(values, 16))
+            p84_sf.append(np.percentile(values, 84))
+        else:
+            median_sf.append(np.nan)
+            p16_sf.append(np.nan)
+            p84_sf.append(np.nan)
+
+    # Calculate median and scatter for quiescent population  
+    median_q = []
+    p16_q = []
+    p84_q = []
+
+    for i in range(len(mass_bins)-1):
+        mask = (mass_RED >= mass_bins[i]) & (mass_RED < mass_bins[i+1])
+        if np.sum(mask) > 5:  # Need at least 5 galaxies
+            values = sfr_RED[mask]
+            median_q.append(np.median(values))
+            p16_q.append(np.percentile(values, 16))
+            p84_q.append(np.percentile(values, 84))
+        else:
+            median_q.append(np.nan)
+            p16_q.append(np.nan)
+            p84_q.append(np.nan)
+
+    # Convert to arrays and remove NaN values
+    median_sf = np.array(median_sf)
+    p16_sf = np.array(p16_sf)
+    p84_sf = np.array(p84_sf)
+    median_q = np.array(median_q)
+    p16_q = np.array(p16_q)
+    p84_q = np.array(p84_q)
+
+    # Remove NaN entries
+    valid_sf = ~np.isnan(median_sf)
+    valid_q = ~np.isnan(median_q)
+
+    # Plot median lines
+    if np.sum(valid_sf) > 0:
+        plt.plot(mass_centers[valid_sf], median_sf[valid_sf], 'b-', linewidth=1.5, 
+                alpha=0.8, zorder=3, label='Star forming')
+
+    if np.sum(valid_q) > 0:
+        plt.plot(mass_centers[valid_q], median_q[valid_q], 'r-', linewidth=1.5, 
+                alpha=0.8, zorder=3, label='Quiescent')
+
+    # overplot dividing line between SF and passive
+    w = np.arange(7.0, 13.0, 1.0)
+    #plt.plot(w, w/w*sSFRcut, 'k:', lw=2.0)
+
+    plt.ylabel(r'$\log_{10}\ s\mathrm{SFR}\ (\mathrm{yr^{-1}})$')  # Set the y...
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
+
+    # Set the x and y axis minor ticks
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+
+    plt.axis([8.0, 12.0, -16.0, -8.0])
+
+    leg = plt.legend(loc='upper right')
+    leg.draw_frame(False)  # Don't want a box frame
+    for t in leg.get_texts():  # Reduce the size of the text
+        t.set_fontsize('medium')
+
+    outputFile = OutputDir + '5.SpecificStarFormationRate_bimodal' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved to', outputFile, '\n')
+    plt.close()
+
     print('Plotting the SFR')
 
     plt.figure()  # New figure
@@ -736,12 +839,20 @@ if __name__ == '__main__':
     if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
     mass = np.log10(StellarMass[w2])
     SFR =  (SfrDisk[w2] + SfrBulge[w2])
-    mask = ColdGas[w2] > 0
-    Z = np.full(len(w2), np.nan)  # Initialize with NaN
-    Z[mask] = np.log10((MetalsColdGas[w2][mask] / ColdGas[w2][mask]) / 0.02) + 9.0
+
+    # additionally calculate red
+    w = np.where(sSFR < sSFRcut)[0]
+    sfr_RED = SFR[w]
+    mass_RED = mass[w]
+
+    # additionally calculate blue
+    w = np.where(sSFR > sSFRcut)[0]
+    sfr_BLU = SFR[w]
+    mass_BLU = mass[w]
 
     # Create scatter plot with metallicity coloring
-    plt.scatter(mass, np.log10(SFR), c='b', marker='o', s=1, alpha=0.7, label='Model galaxies')
+    plt.scatter(mass_BLU, np.log10(sfr_BLU), c='b', marker='o', s=1, alpha=0.7, label='Star forming')
+    plt.scatter(mass_RED, np.log10(sfr_RED), c='r', marker='o', s=1, alpha=0.7, label='Passive')
 
     plt.ylabel(r'$\log_{10} \mathrm{SFR}\ (M_{\odot}\ \mathrm{yr^{-1}})$')  # Set the y...
     plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
@@ -750,8 +861,8 @@ if __name__ == '__main__':
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
-    plt.xlim(8.0, 12.5)
-    plt.ylim(-3, 3)  # Set y-axis limits for SFR
+    plt.xlim(6.0, 12.2)
+    plt.ylim(-5, 3)  # Set y-axis limits for SFR
 
     outputFile = OutputDir + '5.StarFormationRate' + OutputFormat
     plt.savefig(outputFile)  # Save the figure

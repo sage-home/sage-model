@@ -40,7 +40,7 @@ MODEL_CONFIGS = [
         'volume_fraction': 1.0       # Fraction of the full volume output by the model
     },
     {
-        'name': 'SAGE (C16)',           # Display name for legend
+        'name': 'SAGE C16',           # Display name for legend
         'dir': './output/millennium_vanilla/',  # Second directory path
         'color': 'black',             # Color for plotting
         'linestyle': '--',           # Dashed line style

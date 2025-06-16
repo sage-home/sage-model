@@ -729,7 +729,301 @@ def load_smd_data(filename):
     except Exception as e:
         logger.warning(f"Error reading SMD ECSV file: {e}")
         return None, None, None, None
+    
+# -----------------------------------------------------------------------
+# Median SFR vs Lookback Time for z=0 galaxies binned by stellar mass
 
+logger.info('\n=== Median SFR vs Lookback Time Analysis ===')
+
+def calculate_lookback_time(redshifts, H0=70, Om0=0.3, OL0=0.7):
+    """Calculate lookback time in Gyr for given redshifts"""
+    # Simple approximation for lookback time
+    # For more accuracy, you could use astropy.cosmology
+    lookback_times = []
+    
+    for z in redshifts:
+        if z == 0:
+            lookback_times.append(0.0)
+        else:
+            # Simplified calculation - for exact values use cosmology packages
+            t_H = 9.78 / (H0/100)  # Hubble time in Gyr
+            # Approximation valid for z < 5
+            t_lookback = t_H * (1 - 1/np.sqrt((1+z)**3 * Om0 + OL0))
+            lookback_times.append(t_lookback)
+    
+    return np.array(lookback_times)
+
+def process_simulation_sfr_evolution(sim_path, sim_label, redshifts, FirstSnap, LastSnap, Main_Hubble_h):
+    """Process SFR evolution for a given simulation"""
+    logger.info(f'Processing {sim_label}...')
+    
+    # Calculate lookback times for this simulation
+    lookback_times = calculate_lookback_time(redshifts, H0=Main_Hubble_h*100)
+    
+    # Read z=0 data to define stellar mass bins
+    z0_snapshot = f'Snap_{LastSnap}'
+    logger.info(f'Reading z=0 data from {z0_snapshot} for {sim_label}...')
+
+    # Read z=0 stellar masses and galaxy indices for tracking
+    StellarMass_z0 = read_hdf_ultra_optimized(snap_num=z0_snapshot, param='StellarMass', directory=sim_path) * 1.0e10 / Main_Hubble_h
+    Type_z0 = read_hdf_ultra_optimized(snap_num=z0_snapshot, param='Type', directory=sim_path)
+
+    # Try to read galaxy indices for tracking
+    try:
+        GalaxyIndex_z0 = read_hdf_ultra_optimized(snap_num=z0_snapshot, param='GalaxyIndex', directory=sim_path)
+        has_galaxy_tracking = True
+        logger.info(f'Galaxy tracking available via GalaxyIndex for {sim_label}')
+    except:
+        try:
+            GalaxyIndex_z0 = read_hdf_ultra_optimized(snap_num=z0_snapshot, param='GalaxyNr', directory=sim_path)
+            has_galaxy_tracking = True
+            logger.info(f'Galaxy tracking available via GalaxyNr for {sim_label}')
+        except:
+            has_galaxy_tracking = False
+            logger.warning(f'No galaxy tracking available for {sim_label} - using snapshot-by-snapshot approach')
+
+    # Filter for valid z=0 galaxies
+    valid_z0 = (StellarMass_z0 > 1e8) & (StellarMass_z0 < 1e13) & (Type_z0 >= 0)
+    StellarMass_z0_valid = StellarMass_z0[valid_z0]
+
+    if has_galaxy_tracking:
+        GalaxyIndex_z0_valid = GalaxyIndex_z0[valid_z0]
+
+    # Define stellar mass bins (0.25 dex width)
+    log_mass_min = 9.0
+    log_mass_max = 12.0
+    bin_width = 0.25
+    mass_bin_edges = np.arange(log_mass_min, log_mass_max + bin_width, bin_width)
+    mass_bin_centers = mass_bin_edges[:-1] + bin_width/2
+
+    if has_galaxy_tracking:
+        # Bin z=0 galaxies by stellar mass
+        log_stellar_mass_z0 = np.log10(StellarMass_z0_valid)
+        
+        # For each mass bin, collect galaxy indices
+        mass_bin_galaxies = {}
+        mass_bin_mean_masses = {}
+        
+        for i, (mass_low, mass_high) in enumerate(zip(mass_bin_edges[:-1], mass_bin_edges[1:])):
+            bin_mask = (log_stellar_mass_z0 >= mass_low) & (log_stellar_mass_z0 < mass_high)
+            if np.sum(bin_mask) > 10:  # Require at least 10 galaxies per bin
+                mass_bin_galaxies[i] = GalaxyIndex_z0_valid[bin_mask]
+                mass_bin_mean_masses[i] = np.mean(StellarMass_z0_valid[bin_mask])
+        
+        # For each snapshot, calculate median SFR for each mass bin
+        median_sfr_evolution = {bin_idx: [] for bin_idx in mass_bin_galaxies.keys()}
+        
+        for snap in range(FirstSnap, LastSnap + 1):
+            snap_name = f'Snap_{snap}'
+            
+            try:
+                # Read data for this snapshot
+                sfr_disk = read_hdf_ultra_optimized(snap_num=snap_name, param='SfrDisk', directory=sim_path)
+                sfr_bulge = read_hdf_ultra_optimized(snap_num=snap_name, param='SfrBulge', directory=sim_path)
+                galaxy_indices = read_hdf_ultra_optimized(snap_num=snap_name, param='GalaxyIndex', directory=sim_path)
+                
+                if len(sfr_disk) == 0 or len(galaxy_indices) == 0:
+                    for bin_idx in mass_bin_galaxies.keys():
+                        median_sfr_evolution[bin_idx].append(0.0)
+                    continue
+                
+                total_sfr = sfr_disk + sfr_bulge
+                
+                # For each mass bin, find galaxies and calculate median SFR
+                for bin_idx, target_galaxies in mass_bin_galaxies.items():
+                    galaxy_matches = np.isin(galaxy_indices, target_galaxies)
+                    
+                    if np.sum(galaxy_matches) > 0:
+                        bin_sfr_values = total_sfr[galaxy_matches]
+                        nonzero_sfr = bin_sfr_values[bin_sfr_values > 0]
+                        if len(nonzero_sfr) > 0:
+                            median_sfr = np.median(nonzero_sfr)
+                        else:
+                            median_sfr = 0.0
+                    else:
+                        median_sfr = 0.0
+                    
+                    median_sfr_evolution[bin_idx].append(median_sfr)
+            
+            except Exception as e:
+                logger.warning(f'Error processing snapshot {snap} for {sim_label}: {e}')
+                for bin_idx in mass_bin_galaxies.keys():
+                    median_sfr_evolution[bin_idx].append(0.0)
+
+    else:
+        # Alternative approach: snapshot-by-snapshot
+        median_sfr_evolution = {i: [] for i in range(len(mass_bin_centers))}
+        mass_bin_mean_masses = {}
+        
+        for i, mass_center in enumerate(mass_bin_centers):
+            mass_bin_mean_masses[i] = 10**mass_center
+        
+        for snap in range(FirstSnap, LastSnap + 1):
+            snap_name = f'Snap_{snap}'
+            
+            try:
+                sfr_disk = read_hdf_ultra_optimized(snap_num=snap_name, param='SfrDisk', directory=sim_path)
+                sfr_bulge = read_hdf_ultra_optimized(snap_num=snap_name, param='SfrBulge', directory=sim_path)
+                stellar_mass = read_hdf_ultra_optimized(snap_num=snap_name, param='StellarMass', directory=sim_path) * 1.0e10 / Main_Hubble_h
+                galaxy_type = read_hdf_ultra_optimized(snap_num=snap_name, param='Type', directory=sim_path)
+                
+                if len(sfr_disk) == 0:
+                    for bin_idx in range(len(mass_bin_centers)):
+                        median_sfr_evolution[bin_idx].append(0.0)
+                    continue
+                
+                total_sfr = sfr_disk + sfr_bulge
+                log_stellar_mass = np.log10(stellar_mass + 1e-10)
+                
+                valid = (stellar_mass > 1e8) & (stellar_mass < 1e13) & (galaxy_type >= 0)
+                
+                for i, (mass_low, mass_high) in enumerate(zip(mass_bin_edges[:-1], mass_bin_edges[1:])):
+                    bin_mask = valid & (log_stellar_mass >= mass_low) & (log_stellar_mass < mass_high)
+                    
+                    if np.sum(bin_mask) > 0:
+                        bin_sfr_values = total_sfr[bin_mask]
+                        nonzero_sfr = bin_sfr_values[bin_sfr_values > 0]
+                        if len(nonzero_sfr) > 0:
+                            median_sfr = np.median(nonzero_sfr)
+                        else:
+                            median_sfr = 0.0
+                    else:
+                        median_sfr = 0.0
+                    
+                    median_sfr_evolution[i].append(median_sfr)
+            
+            except Exception as e:
+                logger.warning(f'Error processing snapshot {snap} for {sim_label}: {e}')
+                for bin_idx in range(len(mass_bin_centers)):
+                    median_sfr_evolution[bin_idx].append(0.0)
+
+    return median_sfr_evolution, mass_bin_mean_masses, lookback_times, mass_bin_centers
+
+# Create custom colormap from red (most massive) to navy (least massive)
+def create_red_to_navy_colormap(n_colors):
+    """Create colormap from red to navy"""
+    # Define colors: red -> orange -> yellow -> green -> blue -> navy
+    colors_list = ['#8B0000', '#B22222', '#DC143C', '#FF4500', '#FF8C00', '#FFA500', 
+                   '#FFD700', '#ADFF2F', '#32CD32', '#00CED1', '#4169E1', '#000080']
+    
+    # Select colors based on number needed
+    if n_colors <= len(colors_list):
+        selected_colors = [colors_list[int(i * (len(colors_list)-1) / (n_colors-1))] for i in range(n_colors)]
+    else:
+        # Interpolate if we need more colors
+        selected_colors = plt.cm.Spectral_r(np.linspace(0, 1, n_colors))
+    
+    return selected_colors
+
+# Process both simulations
+plt.figure(figsize=(12, 16))
+ax = plt.subplot(111)
+
+# Find main simulation and vanilla simulation
+main_sim_path = DirName
+vanilla_sim_path = None
+
+for sim_config in SFR_SimDirs:
+    if 'vanilla' in sim_config['label'].lower() or 'c16' in sim_config['label'].lower():
+        vanilla_sim_path = sim_config['path']
+        break
+
+# Process main simulation (SAGE 2.0)
+if os.path.exists(main_sim_path):
+    logger.info('Processing main simulation (SAGE 2.0)...')
+    median_sfr_main, mass_bin_means_main, lookback_times_main, mass_bin_centers = process_simulation_sfr_evolution(
+        main_sim_path, 'SAGE 2.0', redshifts, FirstSnap, LastSnap, Main_Hubble_h)
+    
+    # Create color scheme
+    colors = create_red_to_navy_colormap(len(mass_bin_centers))
+    colors = colors[::-1]  # Reverse the color order
+    
+    # Plot main simulation results (solid lines)
+    for bin_idx, sfr_evolution in median_sfr_main.items():
+        sfr_array = np.array(sfr_evolution)
+        
+        # Only plot if we have meaningful data
+        nonzero_mask = sfr_array > 0
+        if np.sum(nonzero_mask) > 3:
+            
+            # Use lookback time for x-axis (reverse order)
+            lookback_reversed = lookback_times_main[::-1][:len(sfr_array)]
+            sfr_reversed = sfr_array[::-1]
+            
+            # Plot solid line for main simulation
+            line_color = colors[bin_idx] if bin_idx < len(colors) else 'black'
+            plt.plot(lookback_reversed, np.log10(sfr_reversed + 1e-5), 
+                    color=line_color, linewidth=3.0, linestyle='-',
+                    alpha=0.8)
+            
+            # Add mass label for main simulation only
+            if len(lookback_reversed) > 5:
+                # Find index closest to 11.5 Gyr lookback time
+                target_lookback = 10.2
+                label_idx = np.argmin(np.abs(lookback_reversed - target_lookback))
+                
+                if label_idx < len(lookback_reversed) and sfr_reversed[label_idx] > 0:
+                    mean_mass_log = np.log10(mass_bin_means_main[bin_idx])
+                    plt.annotate(f'{mean_mass_log:.1f}', 
+                            xy=(lookback_reversed[label_idx], np.log10(sfr_reversed[label_idx] + 1e-5)),
+                            xytext=(5, 5), textcoords='offset points',  # Positive offset to put text to the right of the point
+                            fontsize=16, color=line_color, weight='bold')
+
+# Process vanilla simulation (SAGE C16) if available
+if vanilla_sim_path and os.path.exists(vanilla_sim_path):
+    logger.info('Processing vanilla simulation (SAGE C16)...')
+    median_sfr_vanilla, mass_bin_means_vanilla, lookback_times_vanilla, _ = process_simulation_sfr_evolution(
+        vanilla_sim_path, 'SAGE C16', redshifts, FirstSnap, LastSnap, Main_Hubble_h)
+    
+    # Plot vanilla simulation results (dashed lines)
+    for bin_idx, sfr_evolution in median_sfr_vanilla.items():
+        sfr_array = np.array(sfr_evolution)
+        
+        # Only plot if we have meaningful data
+        nonzero_mask = sfr_array > 0
+        if np.sum(nonzero_mask) > 3:
+            
+            # Use lookback time for x-axis (reverse order)
+            lookback_reversed = lookback_times_vanilla[::-1][:len(sfr_array)]
+            sfr_reversed = sfr_array[::-1]
+            
+            # Plot dashed line for vanilla simulation
+            line_color = colors[bin_idx] if bin_idx < len(colors) else 'black'
+            plt.plot(lookback_reversed, np.log10(sfr_reversed + 1e-5), 
+                    color=line_color, linewidth=3.0, linestyle=':',
+                    alpha=0.8)
+
+# Create custom legend with just two entries
+legend_elements = []
+if os.path.exists(main_sim_path):
+    legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=3, linestyle='-', label='SAGE 2.0'))
+if vanilla_sim_path and os.path.exists(vanilla_sim_path):
+    legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=3, linestyle=':', label='SAGE C16'))
+
+plt.xlabel(r'Lookback Time (Gyr)', fontsize=16)
+plt.ylabel(r'$\log_{10}$ SFR $(M_{\odot}\ \mathrm{yr}^{-1})$', fontsize=16)
+
+# Set axis limits
+max_lookback = max(lookback_times_main) if 'lookback_times_main' in locals() else 14
+plt.xlim(0, max_lookback)
+plt.ylim(-2.5, 2.3)
+
+# Set minor ticks
+ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
+ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
+
+# Legend in upper left corner
+if legend_elements:
+    leg = plt.legend(handles=legend_elements, loc='upper left', fontsize=14)
+    leg.draw_frame(False)
+
+# Save plot
+outputFile = OutputDir + 'I.median_sfr_vs_lookback_time' + OutputFormat
+plt.savefig(outputFile, dpi=500, bbox_inches='tight')
+logger.info(f'Saved file to {outputFile}')
+plt.close()
+
+logger.info('Median SFR vs lookback time analysis complete')
 # ==================================================================
 
 if __name__ == '__main__':

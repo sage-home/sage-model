@@ -7,6 +7,9 @@ import os
 from scipy.interpolate import interp1d
 from random import sample, seed
 import pandas as pd
+from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -14,7 +17,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium/'
+DirName = './output/millennium_full_mod_27052025/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -43,42 +46,189 @@ redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14
 
 CGMsnaps = [63, 50, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 
-
 # ==================================================================
 
-def read_hdf(filename=None, snap_num=None, param=None):
-    """Read data from one or more SAGE model files"""
-    # Get list of all model files in directory
-    model_files = [f for f in os.listdir(DirName) if f.startswith('model_') and f.endswith('.hdf5')]
-    model_files.sort()
+class OptimizedDataReader:
+    """Optimized data reader for large HDF5 files with caching and batch reading"""
     
-    # Initialize empty array for combined data
-    combined_data = None
+    def __init__(self, dir_name):
+        self.dir_name = dir_name
+        self.model_files = [f for f in os.listdir(dir_name) 
+                           if f.startswith('model_') and f.endswith('.hdf5')]
+        self.model_files.sort()
+        self._cache = {}
+        self._file_handles = {}
+        print(f'Found {len(self.model_files)} model files')
     
-    # Read and combine data from each model file
-    for model_file in model_files:
-        property = h5.File(DirName + model_file, 'r')
-        data = np.array(property[snap_num][param])
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close_all_files()
+    
+    def close_all_files(self):
+        """Close all open file handles"""
+        for handle in self._file_handles.values():
+            handle.close()
+        self._file_handles.clear()
+    
+    def _get_file_handle(self, model_file):
+        """Get cached file handle or open new one"""
+        if model_file not in self._file_handles:
+            self._file_handles[model_file] = h5.File(self.dir_name + model_file, 'r')
+        return self._file_handles[model_file]
+    
+    @lru_cache(maxsize=128)
+    def read_single_param(self, snap_num, param, model_file):
+        """Read single parameter from single file with caching"""
+        cache_key = (snap_num, param, model_file)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
         
-        if combined_data is None:
-            combined_data = data
-        else:
-            combined_data = np.concatenate((combined_data, data))
+        try:
+            file_handle = self._get_file_handle(model_file)
+            data = np.array(file_handle[snap_num][param])
+            # Only cache if data is reasonably small
+            if data.nbytes < 100 * 1024 * 1024:  # 100MB threshold
+                self._cache[cache_key] = data
+            return data
+        except Exception as e:
+            print(f"Error reading {param} from {model_file}: {e}")
+            return np.array([])
+    
+    def read_hdf_batch(self, snap_num, params):
+        """Read multiple parameters at once for efficiency"""
+        print(f"Reading {len(params)} parameters for {snap_num}")
+        start_time = time.time()
+        
+        results = {}
+        
+        # Use parallel reading for multiple files
+        with ThreadPoolExecutor(max_workers=min(4, len(self.model_files))) as executor:
+            # Submit tasks for each file
+            future_to_file = {}
+            for model_file in self.model_files:
+                future = executor.submit(self._read_file_params, model_file, snap_num, params)
+                future_to_file[future] = model_file
             
-    return combined_data
+            # Collect results
+            file_results = {}
+            for future in as_completed(future_to_file):
+                model_file = future_to_file[future]
+                try:
+                    file_results[model_file] = future.result()
+                except Exception as e:
+                    print(f"Error reading {model_file}: {e}")
+                    file_results[model_file] = {param: np.array([]) for param in params}
+        
+        # Combine results from all files
+        for param in params:
+            combined_data = None
+            for model_file in self.model_files:
+                if param in file_results[model_file]:
+                    data = file_results[model_file][param]
+                    if combined_data is None:
+                        combined_data = data
+                    else:
+                        combined_data = np.concatenate((combined_data, data))
+            
+            results[param] = combined_data if combined_data is not None else np.array([])
+        
+        elapsed = time.time() - start_time
+        print(f"Batch read completed in {elapsed:.2f} seconds")
+        return results
+    
+    def _read_file_params(self, model_file, snap_num, params):
+        """Read multiple parameters from a single file"""
+        file_handle = self._get_file_handle(model_file)
+        results = {}
+        
+        try:
+            snapshot_group = file_handle[snap_num]
+            for param in params:
+                if param in snapshot_group:
+                    results[param] = np.array(snapshot_group[param])
+                else:
+                    print(f"Warning: Parameter {param} not found in {model_file}")
+                    results[param] = np.array([])
+        except Exception as e:
+            print(f"Error reading from {model_file}: {e}")
+            results = {param: np.array([]) for param in params}
+        
+        return results
+    
+    def read_hdf(self, snap_num=None, param=None):
+        """Legacy interface for single parameter reading"""
+        combined_data = None
+        
+        for model_file in self.model_files:
+            data = self.read_single_param(snap_num, param, model_file)
+            if combined_data is None:
+                combined_data = data
+            else:
+                combined_data = np.concatenate((combined_data, data))
+                
+        return combined_data
 
+def load_all_snapshots_optimized(data_reader, params):
+    """
+    Optimized loading of all snapshots for multiple parameters
+    Uses memory-efficient chunked loading and parallel processing
+    """
+    print(f'Loading {len(params)} parameters for snapshots {FirstSnap} to {LastSnap}')
+    start_time = time.time()
+    
+    # Initialize data structures
+    data_full = {param: [None] * (LastSnap - FirstSnap + 1) for param in params}
+    
+    # Process snapshots in chunks to manage memory
+    chunk_size = 8  # Process 8 snapshots at a time
+    
+    for chunk_start in range(FirstSnap, LastSnap + 1, chunk_size):
+        chunk_end = min(chunk_start + chunk_size, LastSnap + 1)
+        chunk_snaps = list(range(chunk_start, chunk_end))
+        
+        print(f'Processing snapshot chunk {chunk_start} to {chunk_end-1}')
+        
+        # Use threading for I/O bound operations
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_snap = {}
+            for snap in chunk_snaps:
+                snapshot_name = f'Snap_{snap}'
+                future = executor.submit(data_reader.read_hdf_batch, snapshot_name, params)
+                future_to_snap[future] = snap
+            
+            # Collect results
+            for future in as_completed(future_to_snap):
+                snap = future_to_snap[future]
+                try:
+                    snap_data = future.result()
+                    for param in params:
+                        data_full[param][snap] = snap_data[param] * 1.0e10 / Hubble_h
+                except Exception as e:
+                    print(f"Error loading snapshot {snap}: {e}")
+                    for param in params:
+                        data_full[param][snap] = np.array([])
+    
+    elapsed = time.time() - start_time
+    print(f'Loaded all snapshots in {elapsed:.2f} seconds')
+    
+    return data_full
 
 # ==================================================================
 
-def plot_cgm_mass_histogram():
+def plot_cgm_mass_histogram(data_reader):
     """
     Create CGM mass histogram divided by halo mass bins
     """
     print('Creating CGM mass histogram by halo mass bins')
     
-    # Read data
-    cgm = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-    mvir = read_hdf(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
+    # Read data using batch reader
+    params = ['CGMgas', 'Mvir']
+    data = data_reader.read_hdf_batch(Snapshot, params)
+    
+    cgm = data['CGMgas'] * 1.0e10 / Hubble_h
+    mvir = data['Mvir'] * 1.0e10 / Hubble_h
     
     # Filter out invalid data
     valid_mask = (cgm > 0) & (mvir > 0)
@@ -115,21 +265,24 @@ def plot_cgm_mass_histogram():
     
     custom_lines = []
     
+    # Pre-compute log values once
+    log_mvir = np.log10(mvir_valid)
+    log_cgm = np.log10(cgm_valid)
+    
     # Create subsets based on halo mass and plot histograms
     for i, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, subset_colors, legend_labels)):
         # Create mask for this halo mass bin
-        log_mvir = np.log10(mvir_valid)
         if i == len(halo_mass_bins) - 1:  # Last bin: no upper limit
             mask = log_mvir >= mass_min
         else:
             mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
         
         # Get CGM masses for this halo mass bin
-        cgm_subset = cgm_valid[mask]
+        cgm_subset = log_cgm[mask]
         
         if len(cgm_subset) > 0:
             # Create histogram
-            (counts, binedges) = np.histogram(np.log10(cgm_subset), range=(mi, ma), bins=NB)
+            (counts, binedges) = np.histogram(cgm_subset, range=(mi, ma), bins=NB)
             xaxeshisto = binedges[:-1] + 0.5 * binwidth
             
             # Plot line and fill
@@ -140,7 +293,7 @@ def plot_cgm_mass_histogram():
             custom_lines.append(line)
     
     # Plot overall histogram (all CGM masses)
-    (counts_all, binedges_all) = np.histogram(np.log10(cgm_valid), range=(mi, ma), bins=NB)
+    (counts_all, binedges_all) = np.histogram(log_cgm, range=(mi, ma), bins=NB)
     xaxeshisto_all = binedges_all[:-1] + 0.5 * binwidth
     line_all, = ax.plot(xaxeshisto_all, counts_all / volume / binwidth, 
                        color='black', label='Overall', linewidth=3)
@@ -172,23 +325,15 @@ def plot_cgm_mass_histogram():
 
 # ==================================================================
 
-def plot_cgm_mass_histogram_grid():
+def plot_cgm_mass_histogram_grid(data_reader):
     """
     Create CGM mass histogram grid divided by halo mass bins across redshifts
     """
     print('Creating CGM mass histogram grid by halo mass bins across redshifts')
     
-    # Read CGM and halo mass data for all snapshots
-    cgmFull = [0]*(LastSnap-FirstSnap+1)
-    HaloMassFull = [0]*(LastSnap-FirstSnap+1)
-    StellarMassFull = [0]*(LastSnap-FirstSnap+1)
-
-    print('Reading galaxy properties from', DirName)
-    for snap in range(FirstSnap, LastSnap+1):
-        Snapshot = 'Snap_'+str(snap)
-        cgmFull[snap] = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-        HaloMassFull[snap] = read_hdf(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
-        StellarMassFull[snap] = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
+    # Load all required data at once
+    params = ['CGMgas', 'Mvir', 'StellarMass']
+    data_full = load_all_snapshots_optimized(data_reader, params)
     
     # Calculate volume
     volume = (BoxSize / Hubble_h)**3.0 * VolumeFraction
@@ -231,63 +376,70 @@ def plot_cgm_mass_histogram_grid():
     else:
         axes = axes.flatten()
     
-    # Colors for different redshifts (matching your script style)
-    redshift_colors = ['black', 'blue', 'green', 'red']
-    
     for plot_idx, snap in enumerate(CGMsnaps):
         ax = axes[plot_idx]
         z = redshifts[snap]
         
-        # Filter out invalid data for this snapshot
-        cgm_snap = cgmFull[snap]
-        mvir_snap = HaloMassFull[snap]
-        stellar_snap = StellarMassFull[snap]
+        # Get data for this snapshot
+        cgm_snap = data_full['CGMgas'][snap]
+        mvir_snap = data_full['Mvir'][snap]
+        stellar_snap = data_full['StellarMass'][snap]
         
+        # Filter out invalid data
         valid_mask = (cgm_snap > 0) & (mvir_snap > 0) & (stellar_snap > 0)
         cgm_valid = cgm_snap[valid_mask]
         mvir_valid = mvir_snap[valid_mask]
+        
+        # Pre-compute log values
+        log_mvir = np.log10(mvir_valid)
+        log_cgm = np.log10(cgm_valid)
         
         custom_lines = []
         
         # Create subsets based on halo mass and plot histograms
         for i, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, subset_colors, legend_labels)):
             # Create mask for this halo mass bin
-            log_mvir = np.log10(mvir_valid)
             if i == len(halo_mass_bins) - 1:  # Last bin: no upper limit
                 mask = log_mvir >= mass_min
             else:
                 mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
             
             # Get CGM masses for this halo mass bin
-            cgm_subset = cgm_valid[mask]
+            cgm_subset = log_cgm[mask]
             
             if len(cgm_subset) > 0:
                 # Create histogram
-                (counts, binedges) = np.histogram(np.log10(cgm_subset), range=(mi, ma), bins=NB)
+                (counts, binedges) = np.histogram(cgm_subset, range=(mi, ma), bins=NB)
                 xaxeshisto = binedges[:-1] + 0.5 * binwidth
                 
+                # Calculate y-values and take log10
+                y_values = counts / volume / binwidth
+                # Add small value to avoid log(0) and take log10
+                y_values_log = np.log10(y_values + 1e-10)
+                
                 # Plot line and fill
-                line, = ax.plot(xaxeshisto, counts / volume / binwidth, 
+                line, = ax.plot(xaxeshisto, y_values_log, 
                                color=color, label=label, alpha=0.8, linewidth=2)
-                ax.fill_between(xaxeshisto, 0, counts / volume / binwidth, 
+                ax.fill_between(xaxeshisto, np.full_like(xaxeshisto, -10), y_values_log, 
                                color=color, alpha=0.2)
                 custom_lines.append(line)
         
         # Plot overall histogram (all CGM masses)
-        (counts_all, binedges_all) = np.histogram(np.log10(cgm_valid), range=(mi, ma), bins=NB)
+        (counts_all, binedges_all) = np.histogram(log_cgm, range=(mi, ma), bins=NB)
         xaxeshisto_all = binedges_all[:-1] + 0.5 * binwidth
-        line_all, = ax.plot(xaxeshisto_all, counts_all / volume / binwidth, 
+        y_values_all = counts_all / volume / binwidth
+        y_values_all_log = np.log10(y_values_all + 1e-10)
+        line_all, = ax.plot(xaxeshisto_all, y_values_all_log, 
                            color='black', label='Overall', linewidth=3)
         
-        # Set plot properties
-        ax.set_yscale('log')
-        ax.set_ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
+        # Set plot properties (removed set_yscale('log'))
+        ax.set_ylabel(r'$\log_{10}[\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})]$')
         ax.set_xlabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
         ax.set_title(f'z = {z:.1f}')
         
-        # Set axis limits
+        # Set axis limits (now in log10 space)
         ax.set_xlim(mi, ma)
-        ax.set_ylim(1e-6, 1e-1)
+        ax.set_ylim(-6, 0)  # log10(1e-6) = -6, log10(1e-0) = 0
         
         # Add legend only to the first plot
         if plot_idx == 0:
@@ -301,7 +453,6 @@ def plot_cgm_mass_histogram_grid():
         print(f'\nRedshift z = {z:.1f} (Snap {snap}):')
         print(f'Total number of galaxies: {len(cgm_valid)}')
         for i, ((mass_min, mass_max), label) in enumerate(zip(halo_mass_bins, legend_labels)):
-            log_mvir = np.log10(mvir_valid)
             if i == len(halo_mass_bins) - 1:
                 mask = log_mvir >= mass_min
             else:
@@ -327,37 +478,35 @@ def plot_cgm_mass_histogram_grid():
 
 # ==================================================================
 
-def plot_halo_mass_histogram_grid():
+def plot_halo_mass_histogram_grid(data_reader):
     """
     Create Halo mass histogram grid divided by gas component types across redshifts
     Subsets: Hot Gas, CGM mass, and IntraCluster Stars
     """
     print('Creating Halo mass histogram grid by gas component types across redshifts')
     
-    # Read all necessary data for all snapshots
-    cgmFull = [0]*(LastSnap-FirstSnap+1)
-    HaloMassFull = [0]*(LastSnap-FirstSnap+1)
-    StellarMassFull = [0]*(LastSnap-FirstSnap+1)
-    HotGasFull = [0]*(LastSnap-FirstSnap+1)
-    IntraClusterStarsFull = [0]*(LastSnap-FirstSnap+1)
-
-    print('Reading galaxy properties from', DirName)
-    for snap in range(FirstSnap, LastSnap+1):
-        Snapshot = 'Snap_'+str(snap)
-        cgmFull[snap] = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-        HaloMassFull[snap] = read_hdf(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
-        StellarMassFull[snap] = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
-        HotGasFull[snap] = read_hdf(snap_num=Snapshot, param='HotGas') * 1.0e10 / Hubble_h
-        # Try to read IntraClusterStars - adjust parameter name as needed
-        try:
-            IntraClusterStarsFull[snap] = read_hdf(snap_num=Snapshot, param='IntraClusterStars') * 1.0e10 / Hubble_h
-        except:
-            # If IntraClusterStars doesn't exist, try alternative names or use zeros
-            try:
-                IntraClusterStarsFull[snap] = read_hdf(snap_num=Snapshot, param='ICM') * 1.0e10 / Hubble_h
-            except:
-                print(f"Warning: IntraClusterStars parameter not found for snap {snap}, using zeros")
-                IntraClusterStarsFull[snap] = np.zeros_like(HaloMassFull[snap])
+    # Load all required data at once
+    params = ['CGMgas', 'Mvir', 'StellarMass', 'HotGas']
+    
+    # Try to read IntraClusterStars - handle if it doesn't exist
+    try:
+        test_data = data_reader.read_hdf_batch(Snapshot, ['IntraClusterStars'])
+        if len(test_data['IntraClusterStars']) > 0:
+            params.append('IntraClusterStars')
+        else:
+            params.append('ICM')  # Try alternative name
+    except:
+        print("Warning: IntraClusterStars/ICM parameter not found, using zeros")
+    
+    data_full = load_all_snapshots_optimized(data_reader, params)
+    
+    # Handle missing IntraClusterStars
+    if 'IntraClusterStars' not in data_full and 'ICM' not in data_full:
+        for snap in range(FirstSnap, LastSnap+1):
+            data_full['IntraClusterStars'] = [np.zeros_like(data_full['Mvir'][snap]) 
+                                            for snap in range(FirstSnap, LastSnap+1)]
+    elif 'ICM' in data_full:
+        data_full['IntraClusterStars'] = data_full['ICM']
     
     # Calculate volume
     volume = (BoxSize / Hubble_h)**3.0 * VolumeFraction
@@ -368,14 +517,6 @@ def plot_halo_mass_histogram_grid():
     binwidth = 0.25
     NB = int((ma - mi) / binwidth)
     
-    # Define component types and their properties
-    component_properties = [
-        ('HotGas', 'Hot Gas'),
-        ('CGM', 'CGM Gas'),
-        ('IntraClusterStars', 'IntraCluster Stars'),
-        ('StellarMass', 'Stellar Mass')
-    ]
-
     subset_colors = ['red', 'green', 'blue']
     legend_labels = [
         r'CGM Gas',
@@ -406,16 +547,14 @@ def plot_halo_mass_histogram_grid():
         z = redshifts[snap]
         
         # Get data for this snapshot
-        halo_mass = HaloMassFull[snap]
-        hot_gas = HotGasFull[snap]
-        cgm_gas = cgmFull[snap]
-        ic_stars = IntraClusterStarsFull[snap]
-        stellar_mass = StellarMassFull[snap]
+        halo_mass = data_full['Mvir'][snap]
+        cgm_gas = data_full['CGMgas'][snap]
+        ic_stars = data_full['IntraClusterStars'][snap]
+        stellar_mass = data_full['StellarMass'][snap]
         
         # Filter out invalid data
         valid_mask = (halo_mass > 0) & (stellar_mass > 0)
         halo_mass_valid = halo_mass[valid_mask]
-        hot_gas_valid = hot_gas[valid_mask]
         cgm_gas_valid = cgm_gas[valid_mask]
         ic_stars_valid = ic_stars[valid_mask]
         stellar_mass_valid = stellar_mass[valid_mask]
@@ -453,14 +592,14 @@ def plot_halo_mass_histogram_grid():
                            color='black', label='Overall', linewidth=3)
         
         # Set plot properties
-        ax.set_yscale('log')
-        ax.set_ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
+        #ax.set_yscale('log')
+        ax.set_ylabel(r'$\log_{10}\ \phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
         ax.set_xlabel(r'$\log_{10} M_{\mathrm{halo}}\ (M_{\odot})$')
         ax.set_title(f'Halo Mass Function by Components, z = {z:.1f}')
         
         # Set axis limits
         ax.set_xlim(mi, ma)
-        ax.set_ylim(1e-6, 1e-1)
+        ax.set_ylim(1e-6, 1e-0)
         
         # Add grid for better readability
         ax.grid(True, alpha=0.3)
@@ -500,24 +639,15 @@ def plot_halo_mass_histogram_grid():
 
 # ==================================================================
 
-def plot_component_mass_function_evolution():
+def plot_component_mass_function_evolution(data_reader):
     """
     Create evolution plot showing Hot Gas, CGM, and IntraCluster Stars mass functions
     """
     print('Creating component mass function evolution plot')
     
-    # Read data for all snapshots
-    cgmFull = [0]*(LastSnap-FirstSnap+1)
-    HaloMassFull = [0]*(LastSnap-FirstSnap+1)
-    StellarMassFull = [0]*(LastSnap-FirstSnap+1)
-    HotGasFull = [0]*(LastSnap-FirstSnap+1)
-
-    for snap in range(FirstSnap, LastSnap+1):
-        Snapshot = 'Snap_'+str(snap)
-        cgmFull[snap] = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-        HaloMassFull[snap] = read_hdf(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
-        StellarMassFull[snap] = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
-        HotGasFull[snap] = read_hdf(snap_num=Snapshot, param='HotGas') * 1.0e10 / Hubble_h
+    # Load all required data at once
+    params = ['CGMgas', 'Mvir', 'StellarMass', 'HotGas']
+    data_full = load_all_snapshots_optimized(data_reader, params)
     
     # Calculate volume
     volume = (BoxSize / Hubble_h)**3.0 * VolumeFraction
@@ -525,7 +655,7 @@ def plot_component_mass_function_evolution():
     # Create three subplots: one for each component
     fig, axes = plt.subplots(1, 3, figsize=(24, 6))
     
-    component_data = [HotGasFull, cgmFull]
+    component_data = [data_full['HotGas'], data_full['CGMgas']]
     component_names = ['Hot Gas', 'CGM Gas']
     
     # Colors for different redshifts
@@ -540,8 +670,11 @@ def plot_component_mass_function_evolution():
             color = colors[i % len(colors)]
             
             # Filter data
-            w = np.where((StellarMassFull[snap] > 0.0) & (component_full[snap] > 0.0))[0]
-            mass = np.log10(component_full[snap][w])
+            stellar_snap = data_full['StellarMass'][snap]
+            component_snap = component_full[snap]
+            
+            w = np.where((stellar_snap > 0.0) & (component_snap > 0.0))[0]
+            mass = np.log10(component_snap[w])
             
             if len(mass) > 0:
                 binwidth = 0.1
@@ -560,7 +693,7 @@ def plot_component_mass_function_evolution():
         ax.set_ylim(1.0e-6, 1.0e-0)
         ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
         ax.set_ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
-        ax.set_xlabel(f'$\\log_{{10}} M_{{{comp_name.replace(" ", "\\ ")}}}$ $(M_{{\\odot}})$')
+        ax.set_xlabel(f'$\log_{{10}} M_{{{comp_name.replace(" ", "")}}}$ $(M_{{\odot}})$')
         ax.set_title(f'{comp_name} Mass Function Evolution')
         ax.grid(True, alpha=0.3)
         
@@ -576,12 +709,15 @@ def plot_component_mass_function_evolution():
     z = redshifts[snap]
     
     for comp_idx, (component_full, comp_name, color) in enumerate(zip(
-            [HotGasFull, cgmFull], 
+            [data_full['HotGas'], data_full['CGMgas']], 
             ['Hot Gas', 'CGM Gas'],
             ['red', 'blue'])):
         
-        w = np.where((StellarMassFull[snap] > 0.0) & (component_full[snap] > 0.0))[0]
-        mass = np.log10(component_full[snap][w])
+        stellar_snap = data_full['StellarMass'][snap]
+        component_snap = component_full[snap]
+        
+        w = np.where((stellar_snap > 0.0) & (component_snap > 0.0))[0]
+        mass = np.log10(component_snap[w])
         
         if len(mass) > 0:
             binwidth = 0.1
@@ -617,7 +753,7 @@ def plot_component_mass_function_evolution():
     print(f'Saved component mass function evolution to {outputFile}')
     plt.close()
 
-def plot_cgm_mass_evolution():
+def plot_cgm_mass_evolution(data_reader):
     """
     Plot CGM mass evolution over redshift for different halo mass bins
     Shows how median CGM mass changes with time for 3 different halo mass ranges
@@ -635,17 +771,9 @@ def plot_cgm_mass_evolution():
         print("Warning: astropy not available, using approximate age calculation")
         cosmo = None
     
-    # Read data for all snapshots
-    cgmFull = [0]*(LastSnap-FirstSnap+1)
-    HaloMassFull = [0]*(LastSnap-FirstSnap+1)
-    StellarMassFull = [0]*(LastSnap-FirstSnap+1)
-
-    print('Reading galaxy properties from', DirName)
-    for snap in range(FirstSnap, LastSnap+1):
-        Snapshot = 'Snap_'+str(snap)
-        cgmFull[snap] = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-        HaloMassFull[snap] = read_hdf(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
-        StellarMassFull[snap] = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
+    # Load all required data at once
+    params = ['CGMgas', 'Mvir', 'StellarMass']
+    data_full = load_all_snapshots_optimized(data_reader, params)
     
     # Define halo mass bins (in log10 solar masses)
     halo_mass_bins = [
@@ -667,8 +795,6 @@ def plot_cgm_mass_evolution():
             return cosmo.age(z).value  # Returns age in Gyr
         else:
             # Approximate formula for Planck cosmology
-            # Age ~ 13.8 Gyr / (1+z)^1.5 (very rough approximation)
-            # Better approximation using integral approximation
             H0 = 67.4  # km/s/Mpc
             Omega_m = 0.315
             Omega_lambda = 0.685
@@ -717,9 +843,9 @@ def plot_cgm_mass_evolution():
             z = actual_redshifts[i]  # Use the actual redshift for this snapshot
             
             # Get data for this snapshot
-            cgm_snap = cgmFull[snap]
-            mvir_snap = HaloMassFull[snap]
-            stellar_snap = StellarMassFull[snap]
+            cgm_snap = data_full['CGMgas'][snap]
+            mvir_snap = data_full['Mvir'][snap]
+            stellar_snap = data_full['StellarMass'][snap]
             
             # Filter valid data
             valid_mask = (cgm_snap > 0) & (mvir_snap > 0) & (stellar_snap > 0)
@@ -730,7 +856,7 @@ def plot_cgm_mass_evolution():
             log_mvir = np.log10(mvir_valid)
             mass_mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
             
-            if np.sum(mass_mask) > 1:  # Require at least 10 galaxies for statistics
+            if np.sum(mass_mask) > 1:  # Require at least 2 galaxies for statistics
                 cgm_in_bin = cgm_valid[mass_mask]
                 median_cgm = np.median(cgm_in_bin)
                 std_cgm = np.std(np.log10(cgm_in_bin))
@@ -774,7 +900,6 @@ def plot_cgm_mass_evolution():
     ax2 = ax.twiny()
     
     # Set up the relationship between age and redshift for the top axis
-    # Create a range of redshifts and corresponding ages for the secondary axis
     z_ticks = np.array([0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
     age_ticks = np.array([redshift_to_age(z) for z in z_ticks])
     
@@ -789,15 +914,7 @@ def plot_cgm_mass_evolution():
     
     # Set reasonable axis limits
     ax.set_ylim(9.0, 11.5)
-    
-    # Determine age range from the data
-    all_ages = []
-    for z in actual_redshifts:
-        all_ages.append(redshift_to_age(z))
-    
-    age_min = min(all_ages) - 0.5
-    age_max = max(all_ages) + 0.5
-    ax.set_xlim(age_min, age_max)
+    ax.set_xlim(min(age_ticks), 14)  # Age of Universe from 0 to 13 Gyr
     
     plt.tight_layout()
     
@@ -808,14 +925,11 @@ def plot_cgm_mass_evolution():
     print(f'Saved CGM mass evolution plot to {outputFile}')
     plt.close()
 
-def plot_cgm_mass_evolution2():
+def plot_cgm_mass_evolution2(data_reader):
     """
     Plot CGM mass evolution over redshift for different halo mass bins
     Shows how median CGM mass changes with time for 3 different halo mass ranges
     Includes scatter plot of individual galaxies behind the median lines
-    Uses specific redshifts: 0.0, 0.1, 0.25, 0.4, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5
-    Bottom x-axis: Age of Universe (increasing left to right)
-    Top x-axis: Redshift (decreasing left to right)
     """
     print('Creating CGM mass evolution plot for different halo mass bins with scatter')
     
@@ -827,17 +941,9 @@ def plot_cgm_mass_evolution2():
         print("Warning: astropy not available, using approximate age calculation")
         cosmo = None
     
-    # Read data for all snapshots
-    cgmFull = [0]*(LastSnap-FirstSnap+1)
-    HaloMassFull = [0]*(LastSnap-FirstSnap+1)
-    StellarMassFull = [0]*(LastSnap-FirstSnap+1)
-
-    print('Reading galaxy properties from', DirName)
-    for snap in range(FirstSnap, LastSnap+1):
-        Snapshot = 'Snap_'+str(snap)
-        cgmFull[snap] = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-        HaloMassFull[snap] = read_hdf(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
-        StellarMassFull[snap] = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
+    # Load all required data at once
+    params = ['CGMgas', 'Mvir', 'StellarMass']
+    data_full = load_all_snapshots_optimized(data_reader, params)
     
     # Define halo mass bins (in log10 solar masses)
     halo_mass_bins = [
@@ -853,27 +959,20 @@ def plot_cgm_mass_evolution2():
         r'$10^{13.5} < M_{\mathrm{halo}}$'
     ]
     
-    # Function to calculate age of Universe (approximate if astropy not available)
+    # Function to calculate age of Universe
     def redshift_to_age(z):
         if cosmo is not None:
-            return cosmo.age(z).value  # Returns age in Gyr
+            return cosmo.age(z).value
         else:
-            # Approximate formula for Planck cosmology
-            # Age ~ 13.8 Gyr / (1+z)^1.5 (very rough approximation)
-            # Better approximation using integral approximation
-            H0 = 67.4  # km/s/Mpc
+            H0 = 67.4
             Omega_m = 0.315
             Omega_lambda = 0.685
+            H0_Gyr = H0 / 977.8
             
-            # Convert H0 to 1/Gyr
-            H0_Gyr = H0 / 977.8  # Conversion factor
-            
-            # Approximate age calculation
             def integrand(z_prime):
                 E_z = np.sqrt(Omega_m * (1 + z_prime)**3 + Omega_lambda)
                 return 1.0 / ((1 + z_prime) * E_z)
             
-            # Numerical integration (simple trapezoidal rule)
             z_vals = np.linspace(z, 30, 1000)
             y_vals = [integrand(z_val) for z_val in z_vals]
             age = np.trapz(y_vals, z_vals) / H0_Gyr
@@ -890,21 +989,13 @@ def plot_cgm_mass_evolution2():
     actual_redshifts = []
     
     for target_z in desired_redshifts:
-        # Find the snapshot with redshift closest to target_z
         differences = [abs(z - target_z) for z in redshifts]
         closest_snap = differences.index(min(differences))
         selected_snapshots.append(closest_snap)
         actual_redshifts.append(redshifts[closest_snap])
-        print(f'Target z={target_z:.2f} -> Snap {closest_snap}, actual z={redshifts[closest_snap]:.3f}')
     
     # For scatter plot, use more snapshots for continuity
-    # Use every 2nd snapshot to get good coverage
     scatter_snapshots = list(range(FirstSnap, LastSnap+1, 2))
-    scatter_redshifts = [redshifts[snap] for snap in scatter_snapshots]
-    print(f'Using {len(scatter_snapshots)} snapshots for scatter plot (every 2nd snapshot)')
-    
-    # First pass: collect scatter plot data for each mass bin using broader snapshot range
-    scatter_data = {bin_idx: {'ages': [], 'cgm_masses': []} for bin_idx in range(len(halo_mass_bins))}
     
     # Target number of points per mass bin
     target_points_per_bin = 750
@@ -916,22 +1007,23 @@ def plot_cgm_mass_evolution2():
         age2 = redshift_to_age(redshifts[scatter_snapshots[i+1]])
         age_spacings.append(abs(age2 - age1))
     typical_spacing = np.median(age_spacings) if age_spacings else 0.1
-    jitter_range = typical_spacing * 0.9  # Use 80% of typical spacing for jitter
+    jitter_range = typical_spacing * 0.9
     
-    # For each halo mass bin, collect scatter points across many snapshots
+    # Collect scatter data for each mass bin
+    scatter_data = {bin_idx: {'ages': [], 'cgm_masses': []} for bin_idx in range(len(halo_mass_bins))}
+    
     for bin_idx, (mass_min, mass_max) in enumerate(halo_mass_bins):
         all_ages = []
         all_cgm_masses = []
         
-        # Collect data points from scatter_snapshots for continuous coverage
         for snap in scatter_snapshots:
             z = redshifts[snap]
             base_age = redshift_to_age(z)
             
             # Get data for this snapshot
-            cgm_snap = cgmFull[snap]
-            mvir_snap = HaloMassFull[snap]
-            stellar_snap = StellarMassFull[snap]
+            cgm_snap = data_full['CGMgas'][snap]
+            mvir_snap = data_full['Mvir'][snap]
+            stellar_snap = data_full['StellarMass'][snap]
             
             # Filter valid data
             valid_mask = (cgm_snap > 0) & (mvir_snap > 0) & (stellar_snap > 0)
@@ -945,7 +1037,7 @@ def plot_cgm_mass_evolution2():
             if np.sum(mass_mask) > 0:
                 cgm_in_bin = cgm_valid[mass_mask]
                 
-                # Sample a few points from each snapshot to spread them out
+                # Sample a few points from each snapshot
                 max_points_per_snap = max(1, target_points_per_bin // len(scatter_snapshots))
                 if len(cgm_in_bin) > max_points_per_snap:
                     sample_indices = np.random.choice(len(cgm_in_bin), max_points_per_snap, replace=False)
@@ -953,41 +1045,35 @@ def plot_cgm_mass_evolution2():
                 else:
                     cgm_sampled = cgm_in_bin
                 
-                # Add temporal jitter to create smoother flow
+                # Add temporal jitter
                 n_points = len(cgm_sampled)
                 jittered_ages = base_age + np.random.uniform(-jitter_range/2, jitter_range/2, n_points)
                 
                 all_ages.extend(jittered_ages)
                 all_cgm_masses.extend(cgm_sampled)
         
-        # Store the collected data
         scatter_data[bin_idx]['ages'] = np.array(all_ages)
         scatter_data[bin_idx]['cgm_masses'] = np.array(all_cgm_masses)
-        
-        print(f'Mass bin {bin_idx+1}: collected {len(scatter_data[bin_idx]["ages"])} scatter points across {len(scatter_snapshots)} snapshots')
     
-    # Plot scatter points first (so they appear behind the lines)
+    # Plot scatter points first
     for bin_idx, (color, label) in enumerate(zip(colors, labels)):
         if len(scatter_data[bin_idx]['ages']) > 0:
             ax.scatter(scatter_data[bin_idx]['ages'], 
                       np.log10(scatter_data[bin_idx]['cgm_masses']),
                       c=color, alpha=0.1, s=5, rasterized=True)
     
-    # Second pass: calculate and plot median lines
+    # Plot median lines
     for bin_idx, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, colors, labels)):
-        redshift_values = []
         age_values = []
         median_cgm_masses = []
-        std_cgm_masses = []
         
-        # Loop through selected snapshots only
         for i, snap in enumerate(selected_snapshots):
-            z = actual_redshifts[i]  # Use the actual redshift for this snapshot
+            z = actual_redshifts[i]
             
             # Get data for this snapshot
-            cgm_snap = cgmFull[snap]
-            mvir_snap = HaloMassFull[snap]
-            stellar_snap = StellarMassFull[snap]
+            cgm_snap = data_full['CGMgas'][snap]
+            mvir_snap = data_full['Mvir'][snap]
+            stellar_snap = data_full['StellarMass'][snap]
             
             # Filter valid data
             valid_mask = (cgm_snap > 0) & (mvir_snap > 0) & (stellar_snap > 0)
@@ -998,56 +1084,35 @@ def plot_cgm_mass_evolution2():
             log_mvir = np.log10(mvir_valid)
             mass_mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
             
-            if np.sum(mass_mask) > 1:  # Require at least 2 galaxies for statistics
+            if np.sum(mass_mask) > 1:
                 cgm_in_bin = cgm_valid[mass_mask]
                 median_cgm = np.median(cgm_in_bin)
-                std_cgm = np.std(np.log10(cgm_in_bin))
-                
-                # Calculate age of Universe at this redshift
                 age = redshift_to_age(z)
                 
-                redshift_values.append(z)
                 age_values.append(age)
                 median_cgm_masses.append(median_cgm)
-                std_cgm_masses.append(std_cgm)
-                
-                print(f'z={z:.3f}, age={age:.2f} Gyr, Halo bin {bin_idx+1}: {np.sum(mass_mask)} galaxies, median CGM = {median_cgm:.2e} M_sun')
         
-        # Plot evolution for this halo mass bin using age on x-axis
         if len(age_values) > 0:
             age_values = np.array(age_values)
             median_cgm_masses = np.array(median_cgm_masses)
             
-            # Sort by age to ensure proper line plotting
             sort_idx = np.argsort(age_values)
             age_values = age_values[sort_idx]
             median_cgm_masses = median_cgm_masses[sort_idx]
             
             ax.plot(age_values, np.log10(median_cgm_masses), 
                    color=color, label=label, linewidth=3, zorder=10)
-            
-            # Add shaded error region
-            log_median_cgm = np.log10(median_cgm_masses)
-            upper_bound = log_median_cgm + std_cgm_masses
-            lower_bound = log_median_cgm - std_cgm_masses
-
-            #ax.fill_between(age_values, lower_bound, upper_bound, 
-            #            color=color, alpha=0.3, zorder=5)
     
-    # Set up bottom x-axis (age)
+    # Set up axes
     ax.set_xlabel('Age of Universe (Gyr)', fontsize=14)
     ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$', fontsize=14)
     
     # Create top x-axis for redshift
     ax2 = ax.twiny()
-    
-    # Set up the relationship between age and redshift for the top axis
-    # Create a range of redshifts and corresponding ages for the secondary axis
     z_ticks = np.array([0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
     age_ticks = np.array([redshift_to_age(z) for z in z_ticks])
     
-    # Set the secondary axis limits and ticks
-    ax2.set_xlim(ax.get_xlim())  # Match the primary axis limits
+    ax2.set_xlim(ax.get_xlim())
     ax2.set_xticks(age_ticks)
     ax2.set_xticklabels([f'{z:.1f}' for z in z_ticks])
     ax2.set_xlabel('Redshift', fontsize=14)
@@ -1055,17 +1120,8 @@ def plot_cgm_mass_evolution2():
     # Create legend
     leg = ax.legend(loc='lower left', frameon=False, fontsize=12)
     
-    # Set reasonable axis limits
+    # Set axis limits
     ax.set_ylim(9.0, 11.5)
-    
-    # Determine age range from the data
-    all_ages = []
-    for z in actual_redshifts:
-        all_ages.append(redshift_to_age(z))
-    
-    age_min = min(all_ages) - 0.5
-    age_max = max(all_ages) + 0.5
-    ax.set_xlim(age_min, age_max)
     
     plt.tight_layout()
     
@@ -1076,14 +1132,9 @@ def plot_cgm_mass_evolution2():
     print(f'Saved CGM mass evolution plot with scatter to {outputFile}')
     plt.close()
 
-def plot_cgm_mass_evolution_central_satellite():
+def plot_cgm_mass_evolution_central_satellite(data_reader):
     """
     Plot CGM mass evolution over redshift for different halo mass bins separated by centrals and satellites
-    Shows how median CGM mass changes with time for 3 different halo mass ranges, each split by Type
-    Uses specific redshifts: 0.0, 0.1, 0.25, 0.4, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5
-    Bottom x-axis: Age of Universe (increasing left to right)
-    Top x-axis: Redshift (decreasing left to right)
-    Creates 6 lines total: 3 mass bins × 2 galaxy types (central/satellite)
     """
     print('Creating CGM mass evolution plot for centrals vs satellites in different halo mass bins')
     
@@ -1095,19 +1146,9 @@ def plot_cgm_mass_evolution_central_satellite():
         print("Warning: astropy not available, using approximate age calculation")
         cosmo = None
     
-    # Read data for all snapshots
-    cgmFull = [0]*(LastSnap-FirstSnap+1)
-    HaloMassFull = [0]*(LastSnap-FirstSnap+1)
-    StellarMassFull = [0]*(LastSnap-FirstSnap+1)
-    TypeFull = [0]*(LastSnap-FirstSnap+1)
-
-    print('Reading galaxy properties from', DirName)
-    for snap in range(FirstSnap, LastSnap+1):
-        Snapshot = 'Snap_'+str(snap)
-        cgmFull[snap] = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-        HaloMassFull[snap] = read_hdf(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
-        StellarMassFull[snap] = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
-        TypeFull[snap] = read_hdf(snap_num=Snapshot, param='Type')
+    # Load all required data at once
+    params = ['CGMgas', 'Mvir', 'StellarMass', 'Type']
+    data_full = load_all_snapshots_optimized(data_reader, params)
     
     # Define halo mass bins (in log10 solar masses)
     halo_mass_bins = [
@@ -1131,27 +1172,20 @@ def plot_cgm_mass_evolution_central_satellite():
         r'$10^{13.5} < M_{\mathrm{halo}} < 10^{14.5}$ M$_{\odot}$'
     ]
     
-    # Function to calculate age of Universe (approximate if astropy not available)
+    # Function to calculate age of Universe
     def redshift_to_age(z):
         if cosmo is not None:
-            return cosmo.age(z).value  # Returns age in Gyr
+            return cosmo.age(z).value
         else:
-            # Approximate formula for Planck cosmology
-            # Age ~ 13.8 Gyr / (1+z)^1.5 (very rough approximation)
-            # Better approximation using integral approximation
-            H0 = 67.4  # km/s/Mpc
+            H0 = 67.4
             Omega_m = 0.315
             Omega_lambda = 0.685
+            H0_Gyr = H0 / 977.8
             
-            # Convert H0 to 1/Gyr
-            H0_Gyr = H0 / 977.8  # Conversion factor
-            
-            # Approximate age calculation
             def integrand(z_prime):
                 E_z = np.sqrt(Omega_m * (1 + z_prime)**3 + Omega_lambda)
                 return 1.0 / ((1 + z_prime) * E_z)
             
-            # Numerical integration (simple trapezoidal rule)
             z_vals = np.linspace(z, 30, 1000)
             y_vals = [integrand(z_val) for z_val in z_vals]
             age = np.trapz(y_vals, z_vals) / H0_Gyr
@@ -1168,20 +1202,16 @@ def plot_cgm_mass_evolution_central_satellite():
     actual_redshifts = []
     
     for target_z in desired_redshifts:
-        # Find the snapshot with redshift closest to target_z
         differences = [abs(z - target_z) for z in redshifts]
         closest_snap = differences.index(min(differences))
         selected_snapshots.append(closest_snap)
         actual_redshifts.append(redshifts[closest_snap])
-        print(f'Target z={target_z:.2f} -> Snap {closest_snap}, actual z={redshifts[closest_snap]:.3f}')
     
     # For each halo mass bin and galaxy type combination, track CGM mass evolution
     for mass_bin_idx, (mass_min, mass_max) in enumerate(halo_mass_bins):
         for type_idx, galaxy_type in enumerate(galaxy_types):
-            redshift_values = []
             age_values = []
             median_cgm_masses = []
-            std_cgm_masses = []
             
             # Create label for this combination
             type_name = type_names[type_idx]
@@ -1193,19 +1223,18 @@ def plot_cgm_mass_evolution_central_satellite():
             
             # Loop through selected snapshots only
             for i, snap in enumerate(selected_snapshots):
-                z = actual_redshifts[i]  # Use the actual redshift for this snapshot
+                z = actual_redshifts[i]
                 
                 # Get data for this snapshot
-                cgm_snap = cgmFull[snap]
-                mvir_snap = HaloMassFull[snap]
-                stellar_snap = StellarMassFull[snap]
-                type_snap = TypeFull[snap]
+                cgm_snap = data_full['CGMgas'][snap]
+                mvir_snap = data_full['Mvir'][snap]
+                stellar_snap = data_full['StellarMass'][snap]
+                type_snap = data_full['Type'][snap]
                 
                 # Filter valid data
                 valid_mask = (cgm_snap > 0) & (mvir_snap > 0) & (stellar_snap > 0)
                 cgm_valid = cgm_snap[valid_mask]
                 mvir_valid = mvir_snap[valid_mask]
-                stellar_valid = stellar_snap[valid_mask]
                 type_valid = type_snap[valid_mask]
                 
                 # Filter by halo mass bin
@@ -1219,44 +1248,29 @@ def plot_cgm_mass_evolution_central_satellite():
                 # Filter by galaxy type within this mass bin
                 type_mask = (type_mass_filtered == galaxy_type)
                 
-                if np.sum(type_mask) > 5:  # Require at least 5 galaxies for statistics (reduced threshold)
+                if np.sum(type_mask) > 5:  # Require at least 5 galaxies for statistics
                     cgm_final = cgm_mass_filtered[type_mask]
                     median_cgm = np.median(cgm_final)
-                    std_cgm = np.std(np.log10(cgm_final))
                     
                     # Calculate age of Universe at this redshift
                     age = redshift_to_age(z)
                     
-                    redshift_values.append(z)
                     age_values.append(age)
                     median_cgm_masses.append(median_cgm)
-                    std_cgm_masses.append(std_cgm)
-                    
-                    print(f'z={z:.3f}, age={age:.2f} Gyr, Mass bin {mass_bin_idx+1}, {type_name}: {np.sum(type_mask)} galaxies, median CGM = {median_cgm:.2e} M_sun')
             
             # Plot evolution for this combination using age on x-axis
             if len(age_values) > 0:
                 age_values = np.array(age_values)
                 median_cgm_masses = np.array(median_cgm_masses)
-                std_cgm_masses = np.array(std_cgm_masses)
                 
                 # Sort by age to ensure proper line plotting
                 sort_idx = np.argsort(age_values)
                 age_values = age_values[sort_idx]
                 median_cgm_masses = median_cgm_masses[sort_idx]
-                std_cgm_masses = std_cgm_masses[sort_idx]
                 
                 # Plot the main line
                 ax.plot(age_values, np.log10(median_cgm_masses), 
                        color=color, label=label, linewidth=3, linestyle=linestyle)
-                
-                # Add shaded error region
-                log_median_cgm = np.log10(median_cgm_masses)
-                upper_bound = log_median_cgm + std_cgm_masses
-                lower_bound = log_median_cgm - std_cgm_masses
-                
-                # ax.fill_between(age_values, lower_bound, upper_bound, 
-                #                color=color, alpha=0.2)  # Reduced alpha since we have more lines
     
     # Set up bottom x-axis (age)
     ax.set_xlabel('Age of Universe (Gyr)', fontsize=14)
@@ -1264,32 +1278,19 @@ def plot_cgm_mass_evolution_central_satellite():
     
     # Create top x-axis for redshift
     ax2 = ax.twiny()
-    
-    # Set up the relationship between age and redshift for the top axis
-    # Create a range of redshifts and corresponding ages for the secondary axis
     z_ticks = np.array([0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
     age_ticks = np.array([redshift_to_age(z) for z in z_ticks])
     
-    # Set the secondary axis limits and ticks
-    ax2.set_xlim(ax.get_xlim())  # Match the primary axis limits
+    ax2.set_xlim(ax.get_xlim())
     ax2.set_xticks(age_ticks)
     ax2.set_xticklabels([f'{z:.1f}' for z in z_ticks])
     ax2.set_xlabel('Redshift', fontsize=14)
     
     # Create legend
-    leg = ax.legend(loc='lower left', frameon=False, fontsize=10)  # Smaller font since more entries
+    leg = ax.legend(loc='lower left', frameon=False, fontsize=10)
     
     # Set reasonable axis limits
     ax.set_ylim(9.0, 11.0)
-    
-    # Determine age range from the data
-    all_ages = []
-    for z in actual_redshifts:
-        all_ages.append(redshift_to_age(z))
-    
-    age_min = min(all_ages) - 0.5
-    age_max = max(all_ages) + 0.5
-    ax.set_xlim(age_min, age_max)
     
     plt.tight_layout()
     
@@ -1302,328 +1303,321 @@ def plot_cgm_mass_evolution_central_satellite():
 
 # ==================================================================
 
+def bin_average(x, y, num_bins=10):
+    """
+    Calculate the average of array x for y value bins.
+    
+    Parameters:
+    x (array-like): Values to be averaged
+    y (array-like): Values to determine bins
+    num_bins (int): Number of bins to create
+    
+    Returns:
+    bin_centers (array): Centers of each bin
+    bin_averages (array): Average x value for each bin
+    bin_counts (array): Number of values in each bin
+    """
+    # Create bins based on y values
+    y_min, y_max = np.min(y), np.max(y)
+    bins = np.linspace(y_min, y_max, num_bins + 1)
+    
+    # Initialize arrays to store results
+    bin_averages = np.zeros(num_bins)
+    bin_counts = np.zeros(num_bins)
+    bin_centers = (bins[:-1] + bins[1:]) / 2
+    
+    # Calculate averages for each bin
+    for i in range(num_bins):
+        # Find indices of y values that fall into this bin
+        mask = (y >= bins[i]) & (y < bins[i+1])
+        
+        # If last bin, include the upper boundary
+        if i == num_bins - 1:
+            mask = (y >= bins[i]) & (y <= bins[i+1])
+            
+        # Get x values that correspond to y values in this bin
+        x_in_bin = x[mask]
+        
+        # Calculate average if there are values in this bin
+        if len(x_in_bin) > 0:
+            bin_averages[i] = np.mean(x_in_bin)
+            bin_counts[i] = len(x_in_bin)
+        else:
+            bin_averages[i] = np.nan  # Set NaN for empty bins
+    
+    return bin_centers, bin_averages, bin_counts
+
+# ==================================================================
 
 if __name__ == '__main__':
 
-    print('Running allresults (local)\n')
+    print('Running optimized analysis\n')
 
     seed(2222)
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
 
     OutputDir = DirName + 'plots/'
-    if not os.path.exists(OutputDir): os.makedirs(OutputDir)
+    if not os.path.exists(OutputDir): 
+        os.makedirs(OutputDir)
 
-    print('Reading galaxy properties from', DirName)
-    model_files = [f for f in os.listdir(DirName) if f.startswith('model_') and f.endswith('.hdf5')]
-    print(f'Found {len(model_files)} model files')
-
-    CentralMvir = read_hdf(snap_num = Snapshot, param = 'CentralMvir') * 1.0e10 / Hubble_h
-    Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
-    StellarMass = read_hdf(snap_num = Snapshot, param = 'StellarMass') * 1.0e10 / Hubble_h
-    BulgeMass = read_hdf(snap_num = Snapshot, param = 'BulgeMass') * 1.0e10 / Hubble_h
-    HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
-    Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
-    Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
-    Rvir = read_hdf(snap_num = Snapshot, param = 'Rvir')
-    SfrDisk = read_hdf(snap_num = Snapshot, param = 'SfrDisk')
-    SfrBulge = read_hdf(snap_num = Snapshot, param = 'SfrBulge')
-
-    cgm = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
-
-    plot_cgm_mass_histogram()
-    plot_cgm_mass_histogram_grid()
-    plot_halo_mass_histogram_grid()
-    plot_component_mass_function_evolution()
-    plot_cgm_mass_evolution()
-    plot_cgm_mass_evolution2()
-    plot_cgm_mass_evolution_central_satellite()
-
-# -------------------------------------------------------
-
-    print('Plotting CGM outflow diagnostics')
-
-    plt.figure(figsize=(10, 8))  # New figure
-
-    # First subplot: Vmax vs Stellar Mass
-    ax1 = plt.subplot(111)  # Top plot
-
-    w = np.where((Vmax > 0))[0]
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-
-    mass = np.log10(Mvir[w])
-    cgm = np.log10(cgm[w])
-
-    # Color points by halo mass
-    halo_mass = np.log10(StellarMass[w])
-    sc = plt.scatter(mass, cgm, c=halo_mass, cmap='viridis', s=5, alpha=0.7)
-    cbar = plt.colorbar(sc)
-    cbar.set_label(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
-
-    plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
-    plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-    plt.axis([9.5, 14.0, 7.0, 10.5])
-    plt.title('CGM vs Mvir')
-
-    #plt.legend(loc='upper left')
-
-    plt.tight_layout()
-
-    outputFile = OutputDir + '19.CGMMass' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved file to', outputFile, '\n')
-    plt.close()
-
-    # -------------------------------------------------------
-
-    print('Plotting CGM Mass Fuctions')
-
-    plt.figure()  # New figure
-    ax = plt.subplot(111)  # 1 plot on the figure
-
-    binwidth = 0.1  # mass function histogram bin width
-    cgm = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
-
-    # calculate all
-    filter = np.where((Mvir > 0.0))[0]
-    if(len(filter) > dilute): filter = sample(list(range(len(filter))), dilute)
-
-    mass = np.log10(cgm[filter])
-
-    mi = 7
-    ma = 10
-    NB = 25
-    (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
-    xaxeshisto = binedges[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
-
-    plt.plot(xaxeshisto, counts    / volume / binwidth, 'k-', lw=2, label='Model - CGM')
-
-    plt.yscale('log')
-    plt.axis([7.0, 10.2, 1.0e-6, 1.0e-1])
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
-
-    plt.ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')  # Set the y...
-    plt.xlabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')  # and the x-axis labels
-
-    leg = plt.legend(loc='lower left', numpoints=1, labelspacing=0.1)
-    leg.draw_frame(False)  # Don't want a box frame
-    for t in leg.get_texts():  # Reduce the size of the text
-        t.set_fontsize('medium')
-
-    outputFile = OutputDir + '20.CGMMassFunction' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved to', outputFile, '\n')
-    plt.close()
-
-    # Calculate sSFR
-
-    # Filter out invalid values if needed (e.g., where StellarMass is zero)
-    #valid_indices = np.isfinite(sSFR) & (StellarMass > 0)
-    filter = np.where(StellarMass > 0.01)[0]
-    if(len(filter) > dilute): filter = sample(list(range(len(filter))), dilute)
-
-    mvir = (read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h)[filter]
-    HotGas = (read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h)[filter]
-    cgm = (read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h)[filter]
-    sSFR = (np.log10((SfrDisk + SfrBulge) / StellarMass))[filter]
-
-    # Calculate CGM mass fraction
-    f_CGM = (cgm / mvir)
-    f_CGM_normalized = f_CGM / 0.17  # Normalized by cosmic baryon fraction
-    combined_gas = (cgm + HotGas) / mvir
-    f_combined_gas = combined_gas / 0.17
-    
-    log_mvir = np.log10(mvir)
-    sSFR_valid = sSFR
-    f_combined_gas_valid = f_combined_gas
-
-    # Create a DataFrame with the provided variables
-    df = pd.DataFrame({
-        'log_mvir': log_mvir,
-        'sSFR': sSFR_valid,
-        'f_combined_gas': f_combined_gas_valid
-    })
-
-    # Sort by log_mvir
-    df = df.sort_values('log_mvir')
-
-    # Calculate running median (adjust window size as needed)
-    window_size = 101  # This should be an odd number
-    df['sSFR_median'] = df['sSFR'].rolling(window=window_size, center=True).median()
-
-    # Handle NaN values at the edges due to rolling window
-    # Only try to fill edges if we have any valid median values
-    if df['sSFR_median'].notna().any():
-        first_valid = df['sSFR_median'].first_valid_index()
-        last_valid = df['sSFR_median'].last_valid_index()
-        if first_valid is not None and last_valid is not None:
-            df.loc[:first_valid, 'sSFR_median'] = df.loc[first_valid, 'sSFR_median']
-            df.loc[last_valid:, 'sSFR_median'] = df.loc[last_valid, 'sSFR_median']
-
-    # Alternative: use interpolation to handle NaN values
-    # Create an interpolation function
-    mask = df['sSFR_median'].notna()
-    if mask.sum() > 1:  # Make sure we have at least 2 points for interpolation
-        f_interp = interp1d(
-            df.loc[mask, 'log_mvir'], 
-            df.loc[mask, 'sSFR_median'],
-            bounds_error=False,
-            fill_value=(df.loc[mask, 'sSFR_median'].iloc[0], df.loc[mask, 'sSFR_median'].iloc[-1])
-        )
-        df['sSFR_median'] = f_interp(df['log_mvir'])
-
-    # Calculate residuals
-    df['sSFR_residual'] = df['sSFR'] - df['sSFR_median']
-
-    # CALCULATE RUNNING MEDIAN OF f_combined_gas VS LOG_MVIR
-    # This will be shown as a black line
-    df['f_combined_gas_median'] = df['f_combined_gas'].rolling(window=window_size, center=True).median()
-
-    # Handle NaN values for f_combined_gas_median
-    mask_gas = df['f_combined_gas_median'].notna()
-    if mask_gas.sum() > 1:
-        f_gas_interp = interp1d(
-            df.loc[mask_gas, 'log_mvir'], 
-            df.loc[mask_gas, 'f_combined_gas_median'],
-            bounds_error=False,
-            fill_value=(df.loc[mask_gas, 'f_combined_gas_median'].iloc[0], 
-                    df.loc[mask_gas, 'f_combined_gas_median'].iloc[-1])
-        )
-        df['f_combined_gas_median'] = f_gas_interp(df['log_mvir'])
-
-    # Create the plot
-    plt.figure(figsize=(8, 6))
-
-    sc = plt.scatter(np.log10(mvir), f_combined_gas, c=df['sSFR_residual'], cmap='jet_r', s=5, vmin = -1.5, vmax = 1.5)
-
-    cbar = plt.colorbar(sc)
-    cbar.set_label(r'$\log_{10} sSFR$')
-
-    plt.plot(
-            df['log_mvir'], 
-            df['f_combined_gas_median'], 
-            'k-', 
-            linewidth=2
-        )
-
-    plt.axis([9.75, 14.5, 0, 1.0])
-
-    # Customize plot
-    plt.xlabel(r'$\log_{10}(M_{vir}) [M_{\odot}]$')
-    plt.ylabel(r'$f_{\mathrm{CGM}}/{\Omega_b}$')
-
-    leg = plt.legend(loc='lower left', numpoints=1, labelspacing=0.1)
-    leg.draw_frame(False)  # Don't want a box frame
-    for t in leg.get_texts():  # Reduce the size of the text
-        t.set_fontsize('medium')
-
-    outputFile = OutputDir + '21.CGMMassFraction' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved to', outputFile, '\n')
-    plt.close()
-
-    # -------------------------------------------------------
-
-    def bin_average(x, y, num_bins=10):
-        """
-        Calculate the average of array x for y value bins.
+    # Use the optimized data reader
+    with OptimizedDataReader(DirName) as data_reader:
         
-        Parameters:
-        x (array-like): Values to be averaged
-        y (array-like): Values to determine bins
-        num_bins (int): Number of bins to create
+        print('Reading galaxy properties from', DirName)
         
-        Returns:
-        bin_centers (array): Centers of each bin
-        bin_averages (array): Average x value for each bin
-        bin_counts (array): Number of values in each bin
-        """
-        # Create bins based on y values
-        y_min, y_max = np.min(y), np.max(y)
-        bins = np.linspace(y_min, y_max, num_bins + 1)
+        # Read data using batch reader for the main analysis
+        main_params = ['CentralMvir', 'Mvir', 'StellarMass', 'BulgeMass', 'HotGas', 
+                      'Vvir', 'Vmax', 'Rvir', 'SfrDisk', 'SfrBulge', 'CGMgas']
         
-        # Initialize arrays to store results
-        bin_averages = np.zeros(num_bins)
-        bin_counts = np.zeros(num_bins)
-        bin_centers = (bins[:-1] + bins[1:]) / 2
+        print('Loading main parameters for current snapshot...')
+        start_time = time.time()
+        main_data = data_reader.read_hdf_batch(Snapshot, main_params)
         
-        # Calculate averages for each bin
-        for i in range(num_bins):
-            # Find indices of y values that fall into this bin
-            mask = (y >= bins[i]) & (y < bins[i+1])
-            
-            # If last bin, include the upper boundary
-            if i == num_bins - 1:
-                mask = (y >= bins[i]) & (y <= bins[i+1])
-                
-            # Get x values that correspond to y values in this bin
-            x_in_bin = x[mask]
-            
-            # Calculate average if there are values in this bin
-            if len(x_in_bin) > 0:
-                bin_averages[i] = np.mean(x_in_bin)
-                bin_counts[i] = len(x_in_bin)
-            else:
-                bin_averages[i] = np.nan  # Set NaN for empty bins
+        # Apply unit conversions
+        CentralMvir = main_data['CentralMvir'] * 1.0e10 / Hubble_h
+        Mvir = main_data['Mvir'] * 1.0e10 / Hubble_h
+        StellarMass = main_data['StellarMass'] * 1.0e10 / Hubble_h
+        BulgeMass = main_data['BulgeMass'] * 1.0e10 / Hubble_h
+        HotGas = main_data['HotGas'] * 1.0e10 / Hubble_h
+        Vvir = main_data['Vvir']
+        Vmax = main_data['Vmax']
+        Rvir = main_data['Rvir']
+        SfrDisk = main_data['SfrDisk']
+        SfrBulge = main_data['SfrBulge']
+        cgm = main_data['CGMgas'] * 1.0e10 / Hubble_h
         
-        return bin_centers, bin_averages, bin_counts
+        elapsed = time.time() - start_time
+        print(f'Main data loaded in {elapsed:.2f} seconds')
+        
+        # Run optimized plotting functions
+        print('\nGenerating plots...')
+        
+        #plot_cgm_mass_histogram(data_reader)
+        plot_cgm_mass_histogram_grid(data_reader)
+        #plot_halo_mass_histogram_grid(data_reader)
+        #plot_component_mass_function_evolution(data_reader)
+        #plot_cgm_mass_evolution(data_reader)
+        #plot_cgm_mass_evolution2(data_reader)
+        #plot_cgm_mass_evolution_central_satellite(data_reader)
 
-    # Sample data
-    mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
-    HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
-    cgm = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
+        # -------------------------------------------------------
 
-    cgm_fraction = np.log10(cgm / (0.17 * mvir))  # Normalized by cosmic baryon fraction
-    hotgas_fraction = np.log10(HotGas / (0.17 * mvir))  # Normalized by cosmic baryon fraction
+        print('Plotting CGM outflow diagnostics')
 
-    print('CGM fraction:', cgm_fraction)
-    #print(np.log10(x))
+        plt.figure(figsize=(10, 8))  # New figure
 
-    x = np.log10(mvir)
+        # First subplot: Vmax vs Stellar Mass
+        ax1 = plt.subplot(111)  # Top plot
 
-    valid_indices = np.isfinite(cgm_fraction) & np.isfinite(np.log10(mvir)) & np.isfinite(np.log10(HotGas))
-    cgm_fraction_filtered = cgm_fraction[valid_indices]
-    mvir_filtered = mvir[valid_indices]
-    hotgas_fraction_filtered = hotgas_fraction[valid_indices]
+        w = np.where((Vmax > 0))[0]
+        if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
 
-    combined_gas = cgm + HotGas
-    combined_gas_fraction = np.log10(combined_gas / (0.17 * mvir))  # Normalized by cosmic baryon fraction
+        mass = np.log10(Mvir[w])
+        cgm_subset = np.log10(cgm[w])
 
-    # Filter the combined fraction with the same criteria
-    combined_gas_fraction_filtered = combined_gas_fraction[valid_indices]
+        # Color points by halo mass
+        halo_mass = np.log10(StellarMass[w])
+        sc = plt.scatter(mass, cgm_subset, c=halo_mass, cmap='viridis', s=5, alpha=0.7)
+        cbar = plt.colorbar(sc)
+        cbar.set_label(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
 
-    # Calculate bin averages for the combined fraction
-    bin_centers_combined, bin_averages_combined, bin_counts_combined = bin_average(
-        combined_gas_fraction_filtered, np.log10(mvir_filtered), num_bins=20)
+        plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+        plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        plt.axis([9.5, 14.0, 7.0, 10.5])
+        plt.title('CGM vs Mvir')
 
-   
-    # Calculate bin averages
-    bin_centers, bin_averages, bin_counts = bin_average(cgm_fraction_filtered, np.log10(mvir_filtered), num_bins=20)
-    bin_centers_hgas, bin_averages_hgas, bin_counts_hgas = bin_average(hotgas_fraction_filtered, np.log10(mvir_filtered), num_bins=20)
-    # Print results
-    print("Bin centers:", bin_centers)
-    print("Bin averages:", bin_averages)
-    print("Number of values in each bin:", bin_counts)
-    
-    # Plot results
-    plt.figure(figsize=(10, 6))
-    plt.scatter(np.log10(mvir_filtered), cgm_fraction_filtered, alpha=0.1, c='b', s=0.5)
-    plt.scatter(np.log10(mvir_filtered), hotgas_fraction_filtered, alpha=0.1, c='r', s=0.5)
+        plt.tight_layout()
 
-    plt.plot(bin_centers, bin_averages, '--', linewidth=1, c='b', label = 'CGM')
-    plt.plot(bin_centers_hgas, bin_averages_hgas, '--', linewidth=1, c='r', label = 'Hot Gas')
-    plt.plot(bin_centers_combined, bin_averages_combined, '-', linewidth=2, c='k', label = 'Combined Gas')
+        outputFile = OutputDir + '19.CGMMass' + OutputFormat
+        plt.savefig(outputFile)  # Save the figure
+        print('Saved file to', outputFile, '\n')
+        plt.close()
 
-    # Customize plot
-    plt.axis([10, 14.5, -2.5, 0.0])
-    plt.xlabel(r'$\log_{10}(M_{vir}) [M_{\odot}]$')
-    plt.ylabel(r'$\log_{10}M_{CGM}\ /\ f_b\ M_h$')
+        # -------------------------------------------------------
 
-    leg = plt.legend(loc='lower right', numpoints=1, labelspacing=0.1)
-    leg.draw_frame(False)  # Don't want a box frame
-    for t in leg.get_texts():  # Reduce the size of the text
-        t.set_fontsize('medium')
+        print('Plotting CGM Mass Functions')
 
-    outputFile = OutputDir + '22.CGMMassFraction' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved to', outputFile, '\n')
-    plt.close()
+        plt.figure()  # New figure
+        ax = plt.subplot(111)  # 1 plot on the figure
+
+        binwidth = 0.1  # mass function histogram bin width
+
+        # calculate all
+        filter = np.where((Mvir > 0.0))[0]
+        if(len(filter) > dilute): filter = sample(list(range(len(filter))), dilute)
+
+        mass = np.log10(cgm[filter])
+
+        mi = 7
+        ma = 10
+        NB = 25
+        (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
+        xaxeshisto = binedges[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
+
+        plt.plot(xaxeshisto, counts / volume / binwidth, 'k-', lw=2, label='Model - CGM')
+
+        plt.yscale('log')
+        plt.axis([7.0, 10.2, 1.0e-6, 1.0e-1])
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+
+        plt.ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')  # Set the y...
+        plt.xlabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')  # and the x-axis labels
+
+        leg = plt.legend(loc='lower left', numpoints=1, labelspacing=0.1)
+        leg.draw_frame(False)  # Don't want a box frame
+        for t in leg.get_texts():  # Reduce the size of the text
+            t.set_fontsize('medium')
+
+        outputFile = OutputDir + '20.CGMMassFunction' + OutputFormat
+        plt.savefig(outputFile)  # Save the figure
+        print('Saved to', outputFile, '\n')
+        plt.close()
+
+        # Calculate sSFR and CGM fraction analysis
+
+        # Filter out invalid values
+        filter = np.where(StellarMass > 0.01)[0]
+        if(len(filter) > dilute): filter = sample(list(range(len(filter))), dilute)
+
+        mvir = Mvir[filter]
+        HotGas_filtered = HotGas[filter]
+        cgm_filtered = cgm[filter]
+        sSFR = (np.log10((SfrDisk + SfrBulge) / StellarMass))[filter]
+
+        # Calculate CGM mass fraction
+        f_CGM = (cgm_filtered / mvir)
+        f_CGM_normalized = f_CGM / 0.17  # Normalized by cosmic baryon fraction
+        combined_gas = (cgm_filtered + HotGas_filtered) / mvir
+        f_combined_gas = combined_gas / 0.17
+        
+        log_mvir = np.log10(mvir)
+        sSFR_valid = sSFR
+        f_combined_gas_valid = f_combined_gas
+
+        # Create a DataFrame with the provided variables
+        df = pd.DataFrame({
+            'log_mvir': log_mvir,
+            'sSFR': sSFR_valid,
+            'f_combined_gas': f_combined_gas_valid
+        })
+
+        # Sort by log_mvir
+        df = df.sort_values('log_mvir')
+
+        # Calculate running median (adjust window size as needed)
+        window_size = 101  # This should be an odd number
+        df['sSFR_median'] = df['sSFR'].rolling(window=window_size, center=True).median()
+
+        # Handle NaN values at the edges due to rolling window
+        if df['sSFR_median'].notna().any():
+            first_valid = df['sSFR_median'].first_valid_index()
+            last_valid = df['sSFR_median'].last_valid_index()
+            if first_valid is not None and last_valid is not None:
+                df.loc[:first_valid, 'sSFR_median'] = df.loc[first_valid, 'sSFR_median']
+                df.loc[last_valid:, 'sSFR_median'] = df.loc[last_valid, 'sSFR_median']
+
+        # Alternative: use interpolation to handle NaN values
+        mask = df['sSFR_median'].notna()
+        if mask.sum() > 1:  # Make sure we have at least 2 points for interpolation
+            f_interp = interp1d(
+                df.loc[mask, 'log_mvir'], 
+                df.loc[mask, 'sSFR_median'],
+                bounds_error=False,
+                fill_value=(df.loc[mask, 'sSFR_median'].iloc[0], df.loc[mask, 'sSFR_median'].iloc[-1])
+            )
+            df['sSFR_median'] = f_interp(df['log_mvir'])
+
+        # Calculate residuals
+        df['sSFR_residual'] = df['sSFR'] - df['sSFR_median']
+
+        # CALCULATE RUNNING MEDIAN OF f_combined_gas VS LOG_MVIR
+        df['f_combined_gas_median'] = df['f_combined_gas'].rolling(window=window_size, center=True).median()
+
+        # Handle NaN values for f_combined_gas_median
+        mask_gas = df['f_combined_gas_median'].notna()
+        if mask_gas.sum() > 1:
+            f_gas_interp = interp1d(
+                df.loc[mask_gas, 'log_mvir'], 
+                df.loc[mask_gas, 'f_combined_gas_median'],
+                bounds_error=False,
+                fill_value=(df.loc[mask_gas, 'f_combined_gas_median'].iloc[0], 
+                        df.loc[mask_gas, 'f_combined_gas_median'].iloc[-1])
+            )
+            df['f_combined_gas_median'] = f_gas_interp(df['log_mvir'])
+
+        # Create the plot
+        plt.figure(figsize=(8, 6))
+
+        sc = plt.scatter(np.log10(mvir), f_combined_gas, c=df['sSFR_residual'], cmap='jet_r', s=5, vmin=-1.5, vmax=1.5)
+
+        cbar = plt.colorbar(sc)
+        cbar.set_label(r'$\log_{10} sSFR$')
+
+        plt.plot(df['log_mvir'], df['f_combined_gas_median'], 'k-', linewidth=2)
+
+        plt.axis([9.75, 14.5, 0, 1.0])
+
+        # Customize plot
+        plt.xlabel(r'$\log_{10}(M_{vir}) [M_{\odot}]$')
+        plt.ylabel(r'$f_{\mathrm{CGM}}/{\Omega_b}$')
+
+        leg = plt.legend(loc='lower left', numpoints=1, labelspacing=0.1)
+        leg.draw_frame(False)  # Don't want a box frame
+        for t in leg.get_texts():  # Reduce the size of the text
+            t.set_fontsize('medium')
+
+        outputFile = OutputDir + '21.CGMMassFraction' + OutputFormat
+        plt.savefig(outputFile)  # Save the figure
+        print('Saved to', outputFile, '\n')
+        plt.close()
+
+        # -------------------------------------------------------
+
+        # Sample data for final plot
+        cgm_fraction = np.log10(cgm_filtered / (0.17 * mvir))  # Normalized by cosmic baryon fraction
+        hotgas_fraction = np.log10(HotGas_filtered / (0.17 * mvir))  # Normalized by cosmic baryon fraction
+
+        valid_indices = np.isfinite(cgm_fraction) & np.isfinite(np.log10(mvir)) & np.isfinite(np.log10(HotGas_filtered))
+        cgm_fraction_filtered = cgm_fraction[valid_indices]
+        mvir_filtered_final = mvir[valid_indices]
+        hotgas_fraction_filtered = hotgas_fraction[valid_indices]
+
+        combined_gas_final = cgm_filtered + HotGas_filtered
+        combined_gas_fraction = np.log10(combined_gas_final / (0.17 * mvir))
+
+        # Filter the combined fraction with the same criteria
+        combined_gas_fraction_filtered = combined_gas_fraction[valid_indices]
+
+        # Calculate bin averages for the combined fraction
+        bin_centers_combined, bin_averages_combined, bin_counts_combined = bin_average(
+            combined_gas_fraction_filtered, np.log10(mvir_filtered_final), num_bins=20)
+
+        # Calculate bin averages
+        bin_centers, bin_averages, bin_counts = bin_average(cgm_fraction_filtered, np.log10(mvir_filtered_final), num_bins=20)
+        bin_centers_hgas, bin_averages_hgas, bin_counts_hgas = bin_average(hotgas_fraction_filtered, np.log10(mvir_filtered_final), num_bins=20)
+        
+        # Plot results
+        plt.figure(figsize=(10, 6))
+        plt.scatter(np.log10(mvir_filtered_final), cgm_fraction_filtered, alpha=0.1, c='b', s=0.5)
+        plt.scatter(np.log10(mvir_filtered_final), hotgas_fraction_filtered, alpha=0.1, c='r', s=0.5)
+
+        plt.plot(bin_centers, bin_averages, '--', linewidth=1, c='b', label='CGM')
+        plt.plot(bin_centers_hgas, bin_averages_hgas, '--', linewidth=1, c='r', label='Hot Gas')
+        plt.plot(bin_centers_combined, bin_averages_combined, '-', linewidth=2, c='k', label='Combined Gas')
+
+        # Customize plot
+        plt.axis([10, 14.5, -2.5, 0.0])
+        plt.xlabel(r'$\log_{10}(M_{vir}) [M_{\odot}]$')
+        plt.ylabel(r'$\log_{10}M_{CGM}\ /\ f_b\ M_h$')
+
+        leg = plt.legend(loc='lower right', numpoints=1, labelspacing=0.1)
+        leg.draw_frame(False)  # Don't want a box frame
+        for t in leg.get_texts():  # Reduce the size of the text
+            t.set_fontsize('medium')
+
+        outputFile = OutputDir + '22.CGMMassFraction' + OutputFormat
+        plt.savefig(outputFile)  # Save the figure
+        print('Saved to', outputFile, '\n')
+        plt.close()
+
+    print('\nOptimized analysis completed!')
