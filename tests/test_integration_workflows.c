@@ -385,6 +385,14 @@ static void test_multiple_module_execution(void) {
         return;
     }
     
+    // Set up realistic initial values for module testing
+    // (The test galaxy may have been initialized to zero values)
+    GALAXY_PROP_Type(test_ctx.test_galaxy) = 0;
+    GALAXY_PROP_SnapNum(test_ctx.test_galaxy) = 5;
+    GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) = 1e12;
+    GALAXY_PROP_Mvir(test_ctx.test_galaxy) = 5e11;
+    GALAXY_PROP_Rvir(test_ctx.test_galaxy) = 250.0;
+    
     // Test sequential module execution pattern
     double initial_values[4];
     initial_values[0] = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
@@ -667,6 +675,14 @@ static void test_io_processing_workflow(void) {
         return;
     }
     
+    // Ensure galaxy has realistic values for I/O workflow testing
+    // (Previous tests may have modified values, so reset to known good state)
+    GALAXY_PROP_Type(test_ctx.test_galaxy) = 0;
+    GALAXY_PROP_SnapNum(test_ctx.test_galaxy) = 10;
+    GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) = 8e11;
+    GALAXY_PROP_Mvir(test_ctx.test_galaxy) = 4e11;
+    GALAXY_PROP_Rvir(test_ctx.test_galaxy) = 180.0;
+    
     // Phase 1: Input processing
     printf("  Phase 1: Input data processing\n");
     
@@ -747,6 +763,14 @@ static void test_cross_system_state_management(void) {
         printf("Skipping cross-system state test - no galaxy available\n");
         return;
     }
+    
+    // Ensure galaxy has realistic values for cross-system state testing
+    // (Previous tests may have modified values, so reset to known good state)
+    GALAXY_PROP_Type(test_ctx.test_galaxy) = 1;
+    GALAXY_PROP_SnapNum(test_ctx.test_galaxy) = 15;
+    GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) = 6e11;
+    GALAXY_PROP_Mvir(test_ctx.test_galaxy) = 3e11;
+    GALAXY_PROP_Rvir(test_ctx.test_galaxy) = 160.0;
     
     // Test state preservation across different system operations
     
