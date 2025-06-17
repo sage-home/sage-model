@@ -65,6 +65,15 @@ static int setup_test_context(void) {
     // Initialize parameters for property system
     memset(&test_ctx.run_params, 0, sizeof(test_ctx.run_params));
     test_ctx.run_params.simulation.NumSnapOutputs = 10; // Required for dynamic arrays
+    test_ctx.run_params.simulation.SimMaxSnaps = 20;    // Required for StarFormationHistory size
+    test_ctx.run_params.simulation.LastSnapshotNr = 19; // SimMaxSnaps = LastSnapshotNr + 1
+    
+    // Initialize property system
+    int prop_init_result = initialize_property_system(&test_ctx.run_params);
+    if (prop_init_result != 0) {
+        printf("ERROR: Property system initialization failed with code %d\n", prop_init_result);
+        return -1;
+    }
     
     // Initialize test arrays with initial capacities
     test_ctx.int_capacity = 10;
@@ -92,11 +101,15 @@ static int setup_test_context(void) {
     }
     
     for (int i = 0; i < test_ctx.galaxy_capacity; i++) {
+        // Initialize galaxy structure first
+        memset(&test_ctx.galaxy_array[i], 0, sizeof(struct GALAXY));
+        
         // Allocate properties for each galaxy
         if (allocate_galaxy_properties(&test_ctx.galaxy_array[i], &test_ctx.run_params) != 0) {
             teardown_test_context();
             return -1;
         }
+        
         // Set values using property macros
         GALAXY_PROP_Type(&test_ctx.galaxy_array[i]) = i % 3;
         GALAXY_PROP_GalaxyIndex(&test_ctx.galaxy_array[i]) = (uint64_t)(i + 1000);
@@ -121,11 +134,16 @@ static void teardown_test_context(void) {
     if (test_ctx.galaxy_array) {
         // Free properties for each galaxy before freeing array
         for (int i = 0; i < test_ctx.galaxy_capacity; i++) {
-            free_galaxy_properties(&test_ctx.galaxy_array[i]);
+            if (test_ctx.galaxy_array[i].properties != NULL) {
+                free_galaxy_properties(&test_ctx.galaxy_array[i]);
+            }
         }
         myfree(test_ctx.galaxy_array);
         test_ctx.galaxy_array = NULL;
     }
+    
+    // Cleanup property system
+    cleanup_property_system();
     
     test_ctx.int_capacity = 0;
     test_ctx.float_capacity = 0;
