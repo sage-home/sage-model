@@ -340,6 +340,8 @@ static void test_galaxy_memory_lifecycle(void) {
     // Create minimal valid params for property allocation
     struct params test_params = {0};
     test_params.simulation.NumSnapOutputs = 10;  // Minimal valid value for dynamic arrays
+    test_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    test_params.simulation.LastSnapshotNr = 63;  // Required parameter
     
     // Initialize galaxy properties with valid params
     int status = allocate_galaxy_properties(galaxy, &test_params);
@@ -688,6 +690,8 @@ static void test_integrated_resource_lifecycle(void) {
     // Test galaxy properties + HDF5 + memory pool integration
     struct params test_params = {0};
     test_params.simulation.NumSnapOutputs = 5;
+    test_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    test_params.simulation.LastSnapshotNr = 63;  // Required parameter
     
     // Allocate galaxy with properties
     struct GALAXY* galaxy = mymalloc(sizeof(struct GALAXY));

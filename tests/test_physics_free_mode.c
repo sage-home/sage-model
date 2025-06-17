@@ -288,6 +288,8 @@ static int verify_pipeline_execution_physics_free(void) {
     struct params test_params;
     memset(&test_params, 0, sizeof(struct params));
     test_params.simulation.NumSnapOutputs = 8;
+    test_params.simulation.SimMaxSnaps = 64;
+    test_params.simulation.LastSnapshotNr = 63;
     test_params.cosmology.Hubble_h = 0.73;
     
     /* Create test galaxies */
@@ -414,6 +416,8 @@ static int verify_no_physics_calculations(void) {
     struct params test_params;
     memset(&test_params, 0, sizeof(test_params));
     test_params.simulation.NumSnapOutputs = 8;
+    test_params.simulation.SimMaxSnaps = 64;
+    test_params.simulation.LastSnapshotNr = 63;
     test_params.cosmology.Hubble_h = 0.73;
     
     struct GALAXY test_galaxy;

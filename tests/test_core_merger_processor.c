@@ -175,6 +175,8 @@ static int setup_test_context(void) {
     
     // Initialize parameters for property system
     test_ctx.test_params.simulation.NumSnapOutputs = 10; // Required for dynamic arrays
+    test_ctx.test_params.simulation.SimMaxSnaps = 64;
+    test_ctx.test_params.simulation.LastSnapshotNr = 63;
     
     // Initialize merger queue
     init_merger_queue(&test_ctx.merger_queue);

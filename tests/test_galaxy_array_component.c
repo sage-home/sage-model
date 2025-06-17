@@ -243,6 +243,8 @@ int setup_tests() {
     test_params.cosmology.OmegaLambda = 0.7;
     test_params.cosmology.Hubble_h = 0.7;
     test_params.simulation.NumSnapOutputs = 64;  // Required for dynamic arrays
+    test_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    test_params.simulation.LastSnapshotNr = 63;  // Required parameter
     
     return initialize_property_system(&test_params);
 }

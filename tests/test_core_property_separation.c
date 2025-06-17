@@ -52,6 +52,8 @@ static void test_core_property_system_access(void) {
     struct params run_params;
     memset(&run_params, 0, sizeof(run_params));
     run_params.simulation.NumSnapOutputs = 10; // Required for property system
+    run_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    run_params.simulation.LastSnapshotNr = 63;  // Required parameter
     
     // CRITICAL: Allocate properties FIRST
     int result = allocate_galaxy_properties(&galaxy, &run_params);
@@ -119,6 +121,8 @@ static void test_physics_property_system_access(void) {
     memset(&run_params, 0, sizeof(run_params));
     // Set required parameter for dynamic arrays
     run_params.simulation.NumSnapOutputs = 10; // Non-zero value to allow dynamic array allocation
+    run_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    run_params.simulation.LastSnapshotNr = 63;  // Required parameter
     
     // Allocate property system
     int result = allocate_galaxy_properties(&galaxy, &run_params);
@@ -181,6 +185,8 @@ static void test_no_dual_state_synchronization(void) {
     memset(&run_params, 0, sizeof(run_params));
     // Set required parameter for dynamic arrays
     run_params.simulation.NumSnapOutputs = 10; // Non-zero value to allow dynamic array allocation
+    run_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    run_params.simulation.LastSnapshotNr = 63;  // Required parameter
     
     // Allocate property system
     int result = allocate_galaxy_properties(&galaxy, &run_params);
@@ -238,6 +244,8 @@ static void test_property_system_data_types(void) {
     memset(&run_params, 0, sizeof(run_params));
     // Set required parameter for dynamic arrays
     run_params.simulation.NumSnapOutputs = 10; // Non-zero value to allow dynamic array allocation
+    run_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    run_params.simulation.LastSnapshotNr = 63;  // Required parameter
     
     // Allocate property system
     int result = allocate_galaxy_properties(&galaxy, &run_params);
@@ -330,6 +338,8 @@ static void test_dual_state_properties_removed(void) {
     memset(&run_params, 0, sizeof(run_params));
     // Set required parameter for dynamic arrays
     run_params.simulation.NumSnapOutputs = 10; // Non-zero value to allow dynamic array allocation
+    run_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    run_params.simulation.LastSnapshotNr = 63;  // Required parameter
     
     // Allocate property system
     int result = allocate_galaxy_properties(&galaxy, &run_params);

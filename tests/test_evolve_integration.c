@@ -254,7 +254,9 @@ static struct GALAXY *create_mock_galaxies(int num_galaxies) {
     }
     
     struct params test_params = {0};
-    test_params.simulation.NumSnapOutputs = 1; 
+    test_params.simulation.NumSnapOutputs = 1;
+    test_params.simulation.SimMaxSnaps = 64;
+    test_params.simulation.LastSnapshotNr = 63; 
     
     for (int i = 0; i < num_galaxies; i++) {
         if (allocate_galaxy_properties(&galaxies[i], &test_params) != 0) {
@@ -289,7 +291,9 @@ static struct evolution_context *setup_mock_evolution_context(void) {
     struct params *params = malloc(sizeof(struct params));
     if (!params) { printf("ERROR: Failed to allocate mock params\n"); free(ctx->galaxies); free(ctx); exit(1); }
     memset(params, 0, sizeof(struct params));
-    params->simulation.NumSnapOutputs = 1; 
+    params->simulation.NumSnapOutputs = 1;
+    params->simulation.SimMaxSnaps = 64;
+    params->simulation.LastSnapshotNr = 63; 
     ctx->params = params;
     
     struct merger_event_queue *queue = malloc(sizeof(struct merger_event_queue));

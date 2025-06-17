@@ -44,7 +44,9 @@ static int tests_passed = 0;
 // Initialize basic test params for property allocation
 static struct params test_params = {
     .simulation = {
-        .NumSnapOutputs = 10  // Required for StarFormationHistory dynamic array
+        .NumSnapOutputs = 10,  // Required for StarFormationHistory dynamic array
+        .SimMaxSnaps = 64,     // Required parameter
+        .LastSnapshotNr = 63   // Required parameter
     }
 };
 

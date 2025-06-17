@@ -60,6 +60,8 @@ static int setup_test_context(void) {
     
     // Initialize test parameters with realistic values FIRST
     test_ctx.test_params.simulation.NumSnapOutputs = 15;  // For dynamic arrays (StarFormationHistory)
+    test_ctx.test_params.simulation.SimMaxSnaps = 64;     // Required parameter
+    test_ctx.test_params.simulation.LastSnapshotNr = 63;  // Required parameter
     test_ctx.test_params.cosmology.Omega = 0.3;
     test_ctx.test_params.cosmology.OmegaLambda = 0.7;
     test_ctx.test_params.cosmology.Hubble_h = 0.7;
@@ -245,7 +247,8 @@ static void test_dynamic_array_access(void) {
     printf("\n=== Testing dynamic array property access ===\n");
     
     // Test StarFormationHistory (dynamic array) - physics property, use generic accessors
-    int expected_size = test_ctx.test_params.simulation.NumSnapOutputs;
+    // StarFormationHistory is sized by SimMaxSnaps, not NumSnapOutputs, as it tracks all simulation snapshots
+    int expected_size = test_ctx.test_params.simulation.SimMaxSnaps;
     
     // Set values in the dynamic array using generic accessors
     for (int i = 0; i < expected_size; i++) {
@@ -266,7 +269,7 @@ static void test_dynamic_array_access(void) {
     
     // Test array size retrieval
     int array_size = get_property_array_size(test_ctx.test_galaxy, PROP_StarFormationHistory);
-    TEST_ASSERT(array_size == expected_size, "Dynamic array: size should match NumSnapOutputs");
+    TEST_ASSERT(array_size == expected_size, "Dynamic array: size should match SimMaxSnaps");
     
     printf("  StarFormationHistory array size: %d (expected=%d)\n", array_size, expected_size);
 }
@@ -368,7 +371,7 @@ static void test_property_metadata(void) {
     int sfh_size = get_property_array_size(test_ctx.test_galaxy, PROP_StarFormationHistory);
     
     TEST_ASSERT(sfr_size == TEST_STEPS, "SfrDisk size should match STEPS (fixed array)");
-    TEST_ASSERT(sfh_size == test_ctx.test_params.simulation.NumSnapOutputs, "StarFormationHistory size should match NumSnapOutputs (dynamic array)");
+    TEST_ASSERT(sfh_size == test_ctx.test_params.simulation.SimMaxSnaps, "StarFormationHistory size should match SimMaxSnaps (dynamic array)");
     
     printf("  Property validation: has_mvir=%s, has_invalid=%s\n", 
            has_mvir ? "true" : "false", has_invalid ? "true" : "false");
