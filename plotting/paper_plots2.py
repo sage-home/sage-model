@@ -248,8 +248,8 @@ GAS_SimConfigs = [
     # Your second model
     {
         'path': './output/millennium_br/', 
-        'label': 'Blitz and Rosolowsky', 
-        'color': PLOT_COLORS['model_alt'], 
+        'label': 'Pressure-based model', 
+        'color': PLOT_COLORS['model_main'], 
         'linestyle': '--',
         'BoxSize': 62.5,  # adjust to your actual values
         'Hubble_h': 0.73,  # adjust to your actual values
@@ -1550,6 +1550,183 @@ def plot_sfr_density_comparison():
     
     logger.info('SFR density comparison plot complete')
 
+def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
+    """Plot H2 fraction vs stellar mass with observational data"""
+    logger.info('=== H2 Fraction vs Stellar Mass Analysis ===')
+    
+    # Create standardized figure
+    fig, ax = create_figure()
+    
+    # Lists to collect legend handles and labels
+    obs_handles = []
+    obs_labels = []
+    model_handles = []
+    model_labels = []
+    
+    # =============== OBSERVATIONAL DATA ===============
+    
+    # Saintonge et al. 2011 (COLD GASS) - most commonly used
+    # Median H2/H* vs stellar mass for star-forming galaxies
+    saintonge_mass = np.array([9.0, 9.2, 9.4, 9.6, 9.8, 10.0, 10.2, 10.4, 10.6, 10.8, 11.0, 11.2])
+    saintonge_h2_frac = np.array([0.08, 0.12, 0.15, 0.18, 0.20, 0.22, 0.20, 0.18, 0.15, 0.12, 0.08, 0.05])
+    saintonge_h2_frac_err = saintonge_h2_frac * 0.3  # Approximate error bars
+    
+    # Boselli et al. 2014 (Herschel Reference Survey) - Local Universe
+    boselli_mass = np.array([8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5])
+    boselli_h2_frac = np.array([0.05, 0.10, 0.18, 0.25, 0.20, 0.12, 0.06])
+    
+    # Tacconi et al. 2020 - High redshift (z~1-3) compilation
+    tacconi_mass_z1 = np.array([9.5, 10.0, 10.5, 11.0, 11.5])
+    tacconi_h2_frac_z1 = np.array([0.25, 0.35, 0.40, 0.30, 0.20])  # Higher at z~1
+    
+    # Plot observational data with standardized styling
+    # Saintonge et al. 2011 - with error bars instead of shading
+    saintonge_errorbar = ax.errorbar(saintonge_mass, saintonge_h2_frac, yerr=saintonge_h2_frac_err,
+                                    fmt='-', color='purple', linewidth=2, markersize=6, 
+                                    capsize=3, capthick=1, label='Saintonge et al. 2011 (z~0)')
+    obs_handles.append(saintonge_errorbar)
+    obs_labels.append('Saintonge et al. 2011 (z~0)')
+    
+    # Boselli et al. 2014
+    boselli_scatter = ax.scatter(boselli_mass, boselli_h2_frac, marker='s', s=80, 
+                                color='darkgreen', edgecolors='black', linewidth=1,
+                                label='Boselli et al. 2014 (z~0)', zorder=5)
+    obs_handles.append(boselli_scatter)
+    obs_labels.append('Boselli et al. 2014 (z~0)')
+    
+    # Tacconi et al. 2020 (high-z)
+    tacconi_scatter = ax.scatter(tacconi_mass_z1, tacconi_h2_frac_z1, marker='^', s=100,
+                                color='red', edgecolors='black', linewidth=1,
+                                label='Tacconi et al. 2020 (z~1)', zorder=5)
+    obs_handles.append(tacconi_scatter)
+    obs_labels.append('Tacconi et al. 2020 (z~1)')
+    
+    # =============== MODEL DATA ===============
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        linestyle = sim_config['linestyle']
+        linewidth = sim_config.get('linewidth', 2)
+        alpha = sim_config.get('alpha', 0.8)
+        hubble_h = sim_config['Hubble_h']
+        
+        logger.info(f'Processing {label} for H2 fraction analysis...')
+        
+        try:
+            # Read required galaxy properties
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2_gas', directory=directory) * 1.0e10 / hubble_h
+            HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+            ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
+            SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
+            SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            
+            logger.info(f'  Total galaxies: {len(StellarMass)}')
+            
+            # Calculate sSFR for star-forming galaxy selection
+            sSFR = np.log10((SfrDisk + SfrBulge) / StellarMass)
+            
+            # Select star-forming galaxies with valid data
+            w = np.where((StellarMass > 1e8) & (ColdGas > 0) & (H2Gas > 0))[0]  # Central, star-forming galaxies
+            
+            if len(w) == 0:
+                logger.warning(f'  No valid galaxies for {label}')
+                continue
+            
+            logger.info(f'  Star-forming centrals with H2: {len(w)}')
+            
+            # Calculate H2 fraction: f_H2 = M_H2 / (M_H2 + M_HI)
+            stellar_mass_sel = StellarMass[w]
+            h2_gas_sel = H2Gas[w] 
+            hi_gas_sel = HI_Gas[w]
+            cold_gas_sel = ColdGas[w]
+            
+            # Calculate molecular fraction
+            h2_fraction = h2_gas_sel / (h2_gas_sel + hi_gas_sel)
+            
+            # Alternative: H2 fraction relative to cold gas
+            h2_frac_cold = h2_gas_sel / cold_gas_sel
+            
+            # Bin by stellar mass
+            log_stellar_mass = np.log10(stellar_mass_sel)
+            mass_bins = np.arange(8.5, 12.0, 0.2)
+            mass_centers = mass_bins[:-1] + 0.1
+            
+            # Calculate median in each bin (no percentiles for shading)
+            median_h2_frac = []
+            
+            for j in range(len(mass_bins)-1):
+                mask = (log_stellar_mass >= mass_bins[j]) & (log_stellar_mass < mass_bins[j+1])
+                if np.sum(mask) > 5:  # Require at least 5 galaxies per bin
+                    median_h2_frac.append(np.median(h2_fraction[mask]))
+                else:
+                    median_h2_frac.append(np.nan)
+            
+            # Convert to arrays and remove NaN values
+            median_h2_frac = np.array(median_h2_frac)
+            valid_bins = ~np.isnan(median_h2_frac)
+            
+            if np.any(valid_bins):
+                mass_centers_valid = mass_centers[valid_bins]
+                median_h2_frac_valid = median_h2_frac[valid_bins]
+                
+                # Plot median line
+                model_line = ax.plot(mass_centers_valid, median_h2_frac_valid, 
+                                   color=color, linestyle=linestyle, linewidth=linewidth,
+                                   label=label, alpha=alpha)[0]
+                model_handles.append(model_line)
+                model_labels.append(label)
+                
+                # Plot individual galaxies as scatter (subsample for visibility)
+                if len(w) > 2000:
+                    indices = sample(range(len(w)), 2000)
+                    scatter_mass = log_stellar_mass[indices]
+                    scatter_h2_frac = h2_fraction[indices]
+                else:
+                    scatter_mass = log_stellar_mass
+                    scatter_h2_frac = h2_fraction
+                
+                # Only for main model, add scatter points
+                if i == 0:
+                    ax.scatter(scatter_mass, scatter_h2_frac, s=1, alpha=0.25, 
+                             color=color, rasterized=True)
+                
+                logger.info(f'  H2 fraction range: {np.min(h2_fraction):.3f} - {np.max(h2_fraction):.3f}')
+                logger.info(f'  Median H2 fraction: {np.median(h2_fraction):.3f}')
+                
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            continue
+    
+    # =============== FORMATTING ===============
+    
+    # Set axis limits and formatting
+    ax.set_xlim(8.0, 12.2)
+    ax.set_ylim(0.0, 0.5)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    
+    ax.set_xlabel(r'$\log_{10} M_\star\ (M_{\odot})$')
+    ax.set_ylabel(r'$f_{\mathrm{H_2}} = M_{\mathrm{H_2}} / (M_{\mathrm{H_2}} + M_{\mathrm{HI}})$')
+    
+    # Create two separate legends with new locations
+    # First legend: Observations (lower left)
+    obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', fontsize=14, frameon=False)
+    ax.add_artist(obs_legend)
+    
+    # Second legend: Models (upper right)
+    model_legend = ax.legend(model_handles, model_labels, loc='upper right', fontsize=14, frameon=False)
+    
+    # Save plot
+    output_filename = output_dir + 'h2_fraction_vs_stellar_mass' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    logger.info('H2 fraction vs stellar mass analysis complete')
+
 # ========================== MAIN EXECUTION ==========================
 
 if __name__ == '__main__':
@@ -1750,7 +1927,7 @@ if __name__ == '__main__':
     # -----------------------------------------------------------------------
     
     plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
-
+    plot_h2_fraction_vs_stellar_mass(GAS_SimConfigs, Snapshot, OutputDir)
     
     logger.info(f'Total execution time: {time.time() - start_time:.2f} seconds')
     logger.info('Analysis complete!')

@@ -790,7 +790,7 @@ def process_simulation_sfr_evolution(sim_path, sim_label, redshifts, FirstSnap, 
         GalaxyIndex_z0_valid = GalaxyIndex_z0[valid_z0]
 
     # Define stellar mass bins (0.25 dex width)
-    log_mass_min = 9.0
+    log_mass_min = 8.0
     log_mass_max = 12.0
     bin_width = 0.25
     mass_bin_edges = np.arange(log_mass_min, log_mass_max + bin_width, bin_width)
@@ -916,7 +916,7 @@ def create_red_to_navy_colormap(n_colors):
     return selected_colors
 
 # Process both simulations
-plt.figure(figsize=(12, 16))
+plt.figure(figsize=(10, 8))
 ax = plt.subplot(111)
 
 # Find main simulation and vanilla simulation
@@ -1006,7 +1006,7 @@ plt.ylabel(r'$\log_{10}$ SFR $(M_{\odot}\ \mathrm{yr}^{-1})$', fontsize=16)
 # Set axis limits
 max_lookback = max(lookback_times_main) if 'lookback_times_main' in locals() else 14
 plt.xlim(0, max_lookback)
-plt.ylim(-2.5, 2.3)
+plt.ylim(-2.5, 2.8)
 
 # Set minor ticks
 ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
@@ -1182,7 +1182,7 @@ if __name__ == '__main__':
             logger.warning(f"Error reading ECSV file: {e}")
             return np.array([])
 
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(10, 8))
     ax = plt.subplot(111)
 
     # Read and plot ECSV data if available
@@ -1311,7 +1311,7 @@ if __name__ == '__main__':
     
     logger.info('\n=== Stellar Mass Density Evolution Analysis ===')
     
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(10, 8))
     ax = plt.subplot(111)
     
     # SMD observations taken from Marchesini+ 2009, h=0.7
