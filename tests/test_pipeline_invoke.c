@@ -25,6 +25,8 @@
 #include "../src/core/core_module_system.h"
 #include "../src/core/core_module_callback.h"
 #include "../src/core/core_types.h"
+#include "../src/core/core_allvars.h"
+#include "../src/core/core_properties.h"
 
 // Test counter for reporting
 static int tests_run = 0;
@@ -38,6 +40,7 @@ static int tests_passed = 0;
         printf("  at %s:%d\n", __FILE__, __LINE__); \
     } else { \
         tests_passed++; \
+        printf("PASS: %s\n", message); \
     } \
 } while(0)
 
@@ -190,11 +193,31 @@ static int setup_test_context(void) {
     event_system_initialize();
     pipeline_system_initialize();
     
-    // Initialize test parameters
+    // Initialize test parameters (required for property allocation)
     memset(&test_ctx.test_params, 0, sizeof(test_ctx.test_params));
+    // Set required values for property system
+    test_ctx.test_params.simulation.SimMaxSnaps = 64;
+    test_ctx.test_params.simulation.NumSnapOutputs = 32;
     
-    // Initialize mock galaxies
+    // Initialize mock galaxies with proper property allocation
     memset(test_ctx.test_galaxies, 0, sizeof(test_ctx.test_galaxies));
+    
+    // Properly allocate galaxy properties (this was missing and causing the segfault)
+    for (int i = 0; i < 2; i++) {
+        int status = allocate_galaxy_properties(&test_ctx.test_galaxies[i], &test_ctx.test_params);
+        if (status != 0) {
+            printf("ERROR: Failed to allocate properties for galaxy %d\n", i);
+            return -1;
+        }
+        
+        // Initialize galaxy properties with meaningful test values
+        test_ctx.test_galaxies[i].properties->GalaxyNr = i;
+        test_ctx.test_galaxies[i].properties->Type = (i == 0) ? 0 : 1; // Central vs satellite
+        test_ctx.test_galaxies[i].properties->merged = 0; // Active galaxy (not merged)
+        test_ctx.test_galaxies[i].properties->SnapNum = 0;
+        test_ctx.test_galaxies[i].properties->HaloNr = 0;
+        test_ctx.test_galaxies[i].properties->CentralGal = 0;
+    }
     
     // Create test pipeline
     test_ctx.pipeline = pipeline_create("test_pipeline");
@@ -216,6 +239,11 @@ static void teardown_test_context(void) {
         if (test_ctx.module_ids[i] >= 0) {
             module_cleanup(test_ctx.module_ids[i]);
         }
+    }
+    
+    // Clean up galaxy properties
+    for (int i = 0; i < 2; i++) {
+        free_galaxy_properties(&test_ctx.test_galaxies[i]);
     }
     
     // Clean up pipeline
