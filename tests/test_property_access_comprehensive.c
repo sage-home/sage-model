@@ -54,6 +54,7 @@ static int tests_passed = 0;
         printf("  at %s:%d\n", __FILE__, __LINE__); \
     } else { \
         tests_passed++; \
+        printf("PASS: %s\n", message); \
     } \
 } while(0)
 
@@ -83,6 +84,8 @@ static int setup_test_context(void) {
 
     // Initialize test parameters with realistic values
     test_ctx.test_params.simulation.NumSnapOutputs = 15;  // For dynamic arrays
+    test_ctx.test_params.simulation.SimMaxSnaps = 64;     // Set SimMaxSnaps for StarFormationHistory array (following test_property_serialization.c pattern)
+    test_ctx.test_params.simulation.LastSnapshotNr = 63;  // LastSnapshotNr should be SimMaxSnaps - 1
     test_ctx.test_params.cosmology.Omega = 0.3;
     test_ctx.test_params.cosmology.OmegaLambda = 0.7;
     test_ctx.test_params.cosmology.Hubble_h = 0.7;
