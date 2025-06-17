@@ -181,7 +181,8 @@ static void test_galaxy_array_expansion() {
 
         // CRITICAL VERIFICATION: Check that the properties pointer is valid and data is intact.
         TEST_ASSERT(gal->properties != NULL, "Properties pointer must not be NULL after expansion");
-        TEST_ASSERT(fabs(GALAXY_PROP_Mvir(gal) - (i * 1.5f)) < 1e-5, "Properties data must be preserved");
+        float expected_mvir = 1e10 + i * 1e8;
+        TEST_ASSERT(fabs(GALAXY_PROP_Mvir(gal) - expected_mvir) < 1e-5, "Properties data must be preserved");
 
         TEST_ASSERT(GALAXY_PROP_GalaxyNr(gal) == i, "Galaxy number should be preserved");
         if (i < 3 && GALAXY_PROP_GalaxyIndex(gal) != (uint64_t)(1000 + i)) {

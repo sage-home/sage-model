@@ -49,6 +49,8 @@ static struct test_context {
     int int_capacity;
     int float_capacity;
     int galaxy_capacity;
+    // Parameters for property system
+    struct params run_params;
     // Initialization flag
     int initialized;
 } test_ctx;
@@ -59,6 +61,10 @@ static void teardown_test_context(void);
 // Setup function - called before tests
 static int setup_test_context(void) {
     memset(&test_ctx, 0, sizeof(test_ctx));
+    
+    // Initialize parameters for property system
+    memset(&test_ctx.run_params, 0, sizeof(test_ctx.run_params));
+    test_ctx.run_params.simulation.NumSnapOutputs = 10; // Required for dynamic arrays
     
     // Initialize test arrays with initial capacities
     test_ctx.int_capacity = 10;
@@ -87,7 +93,7 @@ static int setup_test_context(void) {
     
     for (int i = 0; i < test_ctx.galaxy_capacity; i++) {
         // Allocate properties for each galaxy
-        if (allocate_galaxy_properties(&test_ctx.galaxy_array[i], NULL) != 0) {
+        if (allocate_galaxy_properties(&test_ctx.galaxy_array[i], &test_ctx.run_params) != 0) {
             teardown_test_context();
             return -1;
         }

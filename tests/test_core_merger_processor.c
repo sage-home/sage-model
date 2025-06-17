@@ -173,6 +173,9 @@ static struct base_module mock_error_disruption_module = {
 static int setup_test_context(void) {
     memset(&test_ctx, 0, sizeof(test_ctx));
     
+    // Initialize parameters for property system
+    test_ctx.test_params.simulation.NumSnapOutputs = 10; // Required for dynamic arrays
+    
     // Initialize merger queue
     init_merger_queue(&test_ctx.merger_queue);
     
