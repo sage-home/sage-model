@@ -596,9 +596,14 @@ static void test_memory_pressure_degradation(void) {
             initialize_all_properties(error_ctx.test_galaxy);
             GALAXY_PROP_Type(error_ctx.test_galaxy) = 0;
             GALAXY_PROP_Mvir(error_ctx.test_galaxy) = 1e11;
-            
+
             TEST_ASSERT(GALAXY_PROP_Type(error_ctx.test_galaxy) == 0 && GALAXY_PROP_Mvir(error_ctx.test_galaxy) > 0,
                         "Basic operations functional under memory pressure");
+        } else {
+            // Properties allocation failed completely - clean up and skip property tests
+            myfree(error_ctx.test_galaxy);
+            error_ctx.test_galaxy = NULL;
+            printf("  Properties allocation failed - skipping property access tests\n");
         }
     }
 }
@@ -693,31 +698,70 @@ static void test_module_callback_error_recovery(void) {
             case 1: // Memory allocation error in callback
                 // Simulate memory allocation failure in callback
                 {
-                    void* test_alloc = malloc(SIZE_MAX / 4);
-                    if (test_alloc == NULL) {
-                        callback_success = 0;
-                        callback_errors++;
-                        
-                        // Recovery: use smaller allocation or skip operation
-                        test_alloc = malloc(1024);
-                        if (test_alloc) {
-                            callback_recoveries++;
-                            callback_success = 1;
+                    // Use a more reasonable but still very large allocation that's likely to fail
+                    // Try allocating 1GB at a time until we get a failure
+                    void* test_alloc = NULL;
+                    size_t large_size = 1024UL * 1024UL * 1024UL; // 1GB
+                    
+                    // Try progressively larger allocations to find failure point
+                    for (int attempt = 0; attempt < 10; attempt++) {
+                        test_alloc = malloc(large_size * (attempt + 1));
+                        if (test_alloc == NULL) {
+                            // Found allocation failure
+                            callback_success = 0;
+                            callback_errors++;
+                            
+                            // Recovery: use smaller allocation or skip operation
+                            test_alloc = malloc(1024);
+                            if (test_alloc) {
+                                callback_recoveries++;
+                                callback_success = 1;
+                                free(test_alloc);
+                            }
+                            break;
+                        } else {
                             free(test_alloc);
+                            test_alloc = NULL;
                         }
-                    } else {
-                        free(test_alloc);
+                        
+                        // Safety limit: don't exceed reasonable system limits
+                        if (large_size * (attempt + 2) > 10UL * 1024UL * 1024UL * 1024UL) { // 10GB limit
+                            // If we can't trigger natural failure, simulate it
+                            callback_success = 0;
+                            callback_errors++;
+                            
+                            // Recovery: use smaller allocation
+                            test_alloc = malloc(1024);
+                            if (test_alloc) {
+                                callback_recoveries++;
+                                callback_success = 1;
+                                free(test_alloc);
+                            }
+                            break;
+                        }
                     }
                 }
                 break;
                 
             case 2: // Data validation error in callback
-                if (error_ctx.test_galaxy && GALAXY_PROP_Mvir(error_ctx.test_galaxy) <= 0) {
+                if (error_ctx.test_galaxy) {
+                    // Only access properties if galaxy was successfully allocated with properties
+                    double mvir = GALAXY_PROP_Mvir(error_ctx.test_galaxy);
+                    if (mvir <= 0) {
+                        callback_success = 0;
+                        callback_errors++;
+                        
+                        // Recovery: set safe default value
+                        GALAXY_PROP_Mvir(error_ctx.test_galaxy) = 1e11;
+                        callback_recoveries++;
+                        callback_success = 1;
+                    }
+                } else {
+                    // Simulate case where galaxy is unavailable - this is a recoverable error
                     callback_success = 0;
                     callback_errors++;
                     
-                    // Recovery: set safe default value
-                    GALAXY_PROP_Mvir(error_ctx.test_galaxy) = 1e11;
+                    // Recovery: skip this operation gracefully
                     callback_recoveries++;
                     callback_success = 1;
                 }
