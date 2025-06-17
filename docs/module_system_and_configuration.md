@@ -826,7 +826,7 @@ Modules should follow these property access patterns:
 1. **For Core Properties**: Direct access using `GALAXY_PROP_*` macros
    ```c
    int type = GALAXY_PROP_Type(galaxy);
-   float mass = GALAXY_PROP_StellarMass(galaxy);
+   int galaxy_nr = GALAXY_PROP_GalaxyNr(galaxy);
    ```
 
 2. **For Physics Properties**: Use generic accessors from `core_property_utils.h`

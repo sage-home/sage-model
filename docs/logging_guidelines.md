@@ -131,7 +131,7 @@ if (is_log_level_enabled(LOG_LEVEL_DEBUG)) {
 
 // Module-specific logging with error handling
 if (cooling_calculation_failed) {
-    MODULE_LOG("cooling", LOG_ERROR, "Cooling calculation failed for galaxy %d", galaxy->ID);
+    MODULE_LOG("cooling", LOG_ERROR, "Cooling calculation failed for galaxy %d", GALAXY_PROP_GalaxyNr(galaxy));
     return CALCULATION_FAILED;
 }
 

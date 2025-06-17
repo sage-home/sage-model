@@ -62,7 +62,7 @@ float get_float_property(const struct GALAXY *galaxy, property_id_t prop_id, flo
     sage_assert(galaxy->properties != NULL, "Galaxy properties pointer cannot be NULL in get_float_property.");
 
     if (prop_id < 0 || prop_id >= (property_id_t)MAX_GALAXY_PROPERTIES) {
-        LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, galaxy->GalaxyIndex);
+        LOG_ERROR("Invalid property ID %d requested for galaxy %lld.", prop_id, GALAXY_PROP_GalaxyNr(galaxy));
         return default_value;
     }
     

@@ -237,7 +237,7 @@ Galaxy data is now processed directly by the HDF5 output functions, eliminating 
 // In save_hdf5_galaxies() - simplified processing
 for (int i = 0; i < num_gals; i++) {
     struct GALAXY *galaxy = &halogal[i];
-    int snap_idx = get_output_snap_idx(galaxy->SnapNum, forest_info);
+    int snap_idx = get_output_snap_idx(GALAXY_PROP_SnapNum(galaxy), forest_info);
     
     // Skip galaxies that don't belong to any output snapshot
     if (snap_idx < 0) continue;

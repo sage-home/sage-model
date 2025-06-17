@@ -410,7 +410,7 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 *   **5.2.B.3 Integrate Header Generation into Build System**: Add Makefile rules to run the generation script.
 *   **5.2.B.4 Implement Core Registration**: Create system (`standard_properties.c/h`) to register standard properties with the Galaxy Extension system.
 *   **5.2.B.5 Implement Memory Management**: Ensure `allocate/free/copy/reset_galaxy_properties` correctly handle dynamic arrays based on runtime parameters.
-*   **5.2.B.6 Implement Synchronization Functions**: Create `sync_direct_to_properties` and `sync_properties_to_direct` in `core_properties_sync.c/h` to copy data between direct fields and the `properties` struct.
+*   **5.2.B.6 Implement Synchronization Functions**: ~~Create `sync_direct_to_properties` and `sync_properties_to_direct` in `core_properties_sync.c/h` to copy data between direct fields and the `properties` struct.~~ **SUPERSEDED**: Single source of truth architecture implemented - no synchronization needed.
 
 ##### 5.2.C: Core Integration & Synchronization ✅ COMPLETED
 *   **5.2.C.1 Integrate Synchronization Calls**: Insert calls to synchronization functions around module execution points in the pipeline executor (`physics_pipeline_executor.c`).
@@ -433,7 +433,7 @@ Cross-platform library loading abstracts OS-specific details, enabling consisten
 
 ##### 5.2.F: Core-Physics Separation ✅ LARGELY COMPLETED
 **Goal:** Achieve complete independence between core infrastructure and physics to create a truly physics-agnostic system.
-*   **5.2.F.1 Core Isolation** ✅ COMPLETED: Removed ALL physics dependencies from core infrastructure. Removed all direct physics calls in `evolve_galaxies.c`. Removed physics-related include statements from core files. Created minimal properties definition with only core infrastructure properties. Removed direct field synchronization from pipeline executor. Removed physics fields from `struct GALAXY` definition. Updated all core code to be physics-property-agnostic.
+*   **5.2.F.1 Core Isolation** ✅ COMPLETED: Removed ALL physics dependencies from core infrastructure. Removed all direct physics calls in `evolve_galaxies.c`. Removed physics-related include statements from core files. Created minimal properties definition with only core infrastructure properties. **UPDATED**: Eliminated dual property system - all direct fields removed from GALAXY struct, achieving single source of truth architecture with property system only. Updated all core code to be physics-property-agnostic.
 *   **5.2.F.2 Empty Pipeline Validation** ✅ COMPLETED: Created empty placeholder modules for essential pipeline points. Registered empty modules in the pipeline. Configured pipeline to execute all phases with no physics operations. Tested that the system can run end-to-end with empty properties.yaml. Implemented tests verifying core independence from physics. Documented the physics-free model baseline. Optimized memory management.
 *   **5.2.F.3 Legacy Code Removal** ✅ COMPLETED: Removed all legacy physics implementation files. Updated build system to remove legacy components. Cleaned up remaining legacy references. Removed synchronization infrastructure after verification. Completed configuration-driven pipeline creation for full core-physics separation.
 
@@ -497,10 +497,11 @@ void convert_AoS_to_SoA(struct GALAXY *galaxies, int ngal, galaxy_hotpath_data_t
 
     // Copy data to SoA layout
     for (int i = 0; i < ngal; i++) {
-        hotpath->ColdGas[i] = GALAXY_PROP_ColdGas(&galaxies[i]); // Use macro
-        hotpath->HotGas[i] = GALAXY_PROP_HotGas(&galaxies[i]);   // Use macro
-        hotpath->StellarMass[i] = GALAXY_PROP_StellarMass(&galaxies[i]); // Use macro
-        hotpath->BulgeMass[i] = GALAXY_PROP_BulgeMass(&galaxies[i]);     // Use macro
+        // CORRECTED: Physics properties must use generic accessors
+        hotpath->ColdGas[i] = get_float_property(&galaxies[i], PROP_ColdGas, 0.0);
+        hotpath->HotGas[i] = get_float_property(&galaxies[i], PROP_HotGas, 0.0);
+        hotpath->StellarMass[i] = get_float_property(&galaxies[i], PROP_StellarMass, 0.0);
+        hotpath->BulgeMass[i] = get_float_property(&galaxies[i], PROP_BulgeMass, 0.0);
 
         // ... other properties ...
     }

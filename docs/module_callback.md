@@ -517,7 +517,7 @@ static double calculate_cooling_rate(
         return 0.0;
     }
     
-    if (galaxy->Type == 3) {  // Merged galaxy
+    if (GALAXY_PROP_Type(galaxy) == 3) {  // Merged galaxy
         module_call_set_error(-2, "Cannot calculate cooling for merged galaxy");
         return 0.0;
     }
