@@ -69,6 +69,7 @@ static int tests_passed = 0;
         fflush(stdout); \
     } else { \
         tests_passed++; \
+        printf("PASS: %s\n", message); \
     } \
 } while(0)
 
@@ -138,7 +139,6 @@ static void capture_galaxy_snapshots(void);
 static bool verify_halo_integrity(int halo_idx);
 static bool verify_galaxy_integrity(int gal_idx);
 static void inject_memory_poison(void *ptr, size_t size);
-static bool detect_memory_corruption(void *ptr, size_t size, const char *name);
 
 //=============================================================================
 // Setup and Teardown
@@ -535,25 +535,10 @@ static void capture_galaxy_snapshots(void) {
         } else {
             snapshot->original_mergtime = 0.0f; // Default value if property not available
         }
-        // Check if infallMvir and infallVvir are available as properties
-        property_id_t infall_mvir_prop = get_cached_property_id("infallMvir");
-        property_id_t infall_vvir_prop = get_cached_property_id("infallVvir");
-        if (infall_mvir_prop < PROP_COUNT && galaxy->properties != NULL) {
-            snapshot->original_infall_mvir = get_float_property(galaxy, infall_mvir_prop, 0.0f);
-        } else {
-            snapshot->original_infall_mvir = 0.0f;
-        }
-        if (infall_vvir_prop < PROP_COUNT && galaxy->properties != NULL) {
-            snapshot->original_infall_vvir = get_float_property(galaxy, infall_vvir_prop, 0.0f);
-        } else {
-            snapshot->original_infall_vvir = 0.0f;
-        }
-        property_id_t infall_vmax_prop = get_cached_property_id("infallVmax");
-        if (infall_vmax_prop < PROP_COUNT && galaxy->properties != NULL) {
-            snapshot->original_infall_vmax = get_float_property(galaxy, infall_vmax_prop, 0.0f);
-        } else {
-            snapshot->original_infall_vmax = 0.0f;
-        }
+        // infallMvir, infallVvir, and infallVmax are core properties - use direct access
+        snapshot->original_infall_mvir = GALAXY_PROP_infallMvir(galaxy);
+        snapshot->original_infall_vvir = GALAXY_PROP_infallVvir(galaxy);
+        snapshot->original_infall_vmax = GALAXY_PROP_infallVmax(galaxy);
         snapshot->original_galaxy_index = GALAXY_PROP_GalaxyIndex(galaxy);
         snapshot->original_central_galaxy_index = GALAXY_PROP_CentralGalaxyIndex(galaxy);
         
@@ -669,20 +654,6 @@ static void inject_memory_poison(void *ptr, size_t size) {
     }
 }
 
-static bool detect_memory_corruption(void *ptr, size_t size, const char *name) {
-    uint32_t *ptr32 = (uint32_t *)ptr;
-    size_t num_32bit = size / sizeof(uint32_t);
-    
-    for (size_t i = 0; i < num_32bit; i++) {
-        if (ptr32[i] == MEMORY_POISON_VALUE_32) {
-            printf("ERROR: Memory corruption detected in %s at offset %zu (poison value found)\n", 
-                   name, i * sizeof(uint32_t));
-            return true;
-        }
-    }
-    
-    return false;
-}
 
 //=============================================================================
 // Test Cases

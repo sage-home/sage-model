@@ -27,16 +27,17 @@
 static int tests_run = 0;
 static int tests_passed = 0;
 
-#define TEST_ASSERT(condition, message) \
-    do { \
-        tests_run++; \
-        if (condition) { \
-            tests_passed++; \
-            printf("  ✓ %s\n", message); \
-        } else { \
-            printf("  ✗ %s\n", message); \
-        } \
-    } while (0)
+// Helper macro for test assertions
+#define TEST_ASSERT(condition, message) do { \
+    tests_run++; \
+    if (!(condition)) { \
+        printf("FAIL: %s\n", message); \
+        printf("  at %s:%d\n", __FILE__, __LINE__); \
+    } else { \
+        tests_passed++; \
+        printf("PASS: %s\n", message); \
+    } \
+} while(0)
 
 /**
  * Test that core properties are accessible via property system (single source of truth)
@@ -367,14 +368,25 @@ static void test_dual_state_properties_removed(void) {
     }
 }
 
-int main(void) {
-    printf("Starting Core-Physics Property Separation Tests\n");
-    printf("================================================\n");
+int main(int argc, char *argv[]) {
+    // Suppress unused parameter warnings
+    (void)argc;
+    (void)argv;
     
+    printf("\n========================================\n");
+    printf("Starting tests for test_core_property_separation\n");
+    printf("========================================\n\n");
+    
+    printf("This test verifies that core-physics property separation is properly implemented:\n");
+    printf("  1. Core properties are accessible via direct struct access\n");
+    printf("  2. Physics properties are only accessible via property system\n");
+    printf("  3. No dual-state synchronization issues exist\n");
+    printf("  4. Property system robustness for all data types\n\n");
+
     // Initialize logging to suppress debug output during tests
     logging_init(LOG_LEVEL_WARNING, stderr);
     
-    // Run all test suites
+    // Run tests
     test_core_property_system_access();
     test_physics_property_system_access();
     test_no_dual_state_synchronization();
@@ -382,14 +394,12 @@ int main(void) {
     test_dual_state_properties_removed();
     
     // Report results
-    printf("\n================================================\n");
-    printf("Test Results: %d/%d tests passed\n", tests_passed, tests_run);
+    printf("\n========================================\n");
+    printf("Test results for test_core_property_separation:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
     
-    if (tests_passed == tests_run) {
-        printf("✓ All tests passed! Core-physics property separation is working correctly.\n");
-        return EXIT_SUCCESS;
-    } else {
-        printf("✗ %d tests failed. Property separation needs attention.\n", tests_run - tests_passed);
-        return EXIT_FAILURE;
-    }
+    return (tests_run == tests_passed) ? 0 : 1;
 }

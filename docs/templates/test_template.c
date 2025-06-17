@@ -34,6 +34,7 @@ static int tests_passed = 0;
         printf("  at %s:%d\n", __FILE__, __LINE__); \
     } else { \
         tests_passed++; \
+        printf("PASS: %s\n", message); \
     } \
 } while(0)
 
