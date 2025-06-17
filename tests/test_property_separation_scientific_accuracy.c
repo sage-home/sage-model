@@ -80,6 +80,8 @@ static int setup_test_context(void) {
     
     // Initialize test parameters
     test_ctx.run_params.simulation.NumSnapOutputs = 10;
+    test_ctx.run_params.simulation.LastSnapshotNr = TEST_SNAPNUM;  // Set to TEST_SNAPNUM (63)
+    test_ctx.run_params.simulation.SimMaxSnaps = TEST_SNAPNUM + 1;  // This should be 64
     
     // Initialize simulation arrays for virial radius calculations
     test_ctx.run_params.simulation.ZZ[TEST_SNAPNUM] = 0.0;  // redshift = 0 (present day)

@@ -67,6 +67,8 @@ static void test_struct_memory_layout(void) {
     struct params run_params;
     memset(&run_params, 0, sizeof(run_params));
     run_params.simulation.NumSnapOutputs = 10;
+    run_params.simulation.SimMaxSnaps = 64;        // Required for dynamic arrays like StarFormationHistory
+    run_params.simulation.LastSnapshotNr = 63;     // Required parameter
     int result = allocate_galaxy_properties(&galaxy, &run_params);
     TEST_ASSERT(result == 0, "Property allocation for struct test");
     
@@ -131,6 +133,8 @@ static void test_galaxy_array_operations(void) {
     struct params run_params;
     memset(&run_params, 0, sizeof(run_params));
     run_params.simulation.NumSnapOutputs = 10; // Set valid parameter for dynamic arrays
+    run_params.simulation.SimMaxSnaps = 64;        // Required for dynamic arrays like StarFormationHistory
+    run_params.simulation.LastSnapshotNr = 63;     // Required parameter
     
     // Create a galaxy array
     GalaxyArray* galaxy_array = galaxy_array_new();
@@ -311,6 +315,8 @@ static void test_property_allocation_robustness(void) {
     struct params run_params;
     memset(&run_params, 0, sizeof(run_params));
     run_params.simulation.NumSnapOutputs = 10; // Set valid parameter for dynamic arrays
+    run_params.simulation.SimMaxSnaps = 64;        // Required for dynamic arrays like StarFormationHistory
+    run_params.simulation.LastSnapshotNr = 63;     // Required parameter
     
     // Test normal allocation/deallocation cycle
     struct GALAXY galaxy;
@@ -413,6 +419,8 @@ static void test_edge_cases_and_errors(void) {
     struct params run_params;
     memset(&run_params, 0, sizeof(run_params));
     run_params.simulation.NumSnapOutputs = 10; // Set valid parameter for dynamic arrays
+    run_params.simulation.SimMaxSnaps = 64;        // Required for dynamic arrays like StarFormationHistory
+    run_params.simulation.LastSnapshotNr = 63;     // Required parameter
     
     // Test double allocation (should handle gracefully)
     struct GALAXY galaxy;

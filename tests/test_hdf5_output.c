@@ -162,6 +162,7 @@ static void setup_mock_params(void) {
     
     // Simulation parameters
     test_ctx.mock_params.simulation.NumSnapOutputs = 2;
+    test_ctx.mock_params.simulation.SimMaxSnaps = 101;  // Add missing parameter for dynamic arrays
     test_ctx.mock_params.simulation.ListOutputSnaps[0] = 63;
     test_ctx.mock_params.simulation.ListOutputSnaps[1] = 100;
     test_ctx.mock_params.simulation.ZZ[63] = 0.5;

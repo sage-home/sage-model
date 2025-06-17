@@ -930,6 +930,7 @@ static void test_memory_corruption_detection(void) {
     struct params test_params;
     memset(&test_params, 0, sizeof(test_params));
     test_params.simulation.NumSnapOutputs = 10;
+    test_params.simulation.SimMaxSnaps = 64; // Required for dynamic array allocation
     
     // Allocate properties first
     int result = allocate_galaxy_properties(&test_galaxy, &test_params);
