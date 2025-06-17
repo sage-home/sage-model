@@ -69,6 +69,10 @@ galaxy_property_t mock_properties[MAX_TEST_PROPERTIES];
 // Flag to enable endianness testing
 int test_endianness = 1;
 
+// Global test parameters structure for property allocation
+static struct params test_params;
+static int params_initialized = 0;
+
 //=============================================================================
 // Function Declarations
 //=============================================================================
@@ -256,12 +260,28 @@ struct GALAXY *create_test_galaxy() {
         return NULL;
     }
     
+    // Use global test parameters, initialize if needed
+    if (!params_initialized) {
+        memset(&test_params, 0, sizeof(struct params));
+        // Set required values for dynamic array allocation
+        test_params.simulation.SimMaxSnaps = 64; // Typical value for testing
+        test_params.simulation.NumSnapOutputs = 32; // Typical value for testing
+        params_initialized = 1;
+    }
+    
+    // Initialize the properties system first
+    if (allocate_galaxy_properties(galaxy, &test_params) != 0) {
+        free(galaxy);
+        return NULL;
+    }
+    
     // Initialize extension data array
     galaxy->extension_data = calloc(mock_registry.num_extensions, sizeof(void *));
     galaxy->num_extensions = mock_registry.num_extensions;
     galaxy->extension_flags = 0;
     
     if (galaxy->extension_data == NULL) {
+        free_galaxy_properties(galaxy);
         free(galaxy);
         return NULL;
     }
@@ -340,6 +360,9 @@ void free_test_galaxy(struct GALAXY *galaxy) {
         }
         free(galaxy->extension_data);
     }
+    
+    // Free the properties system
+    free_galaxy_properties(galaxy);
     
     free(galaxy);
 }
@@ -447,6 +470,14 @@ void test_add_properties() {
 void test_serialization_deserialization() {
     printf("\n=== Testing serialization and deserialization ===\n");
     
+    // Initialize global test parameters
+    if (!params_initialized) {
+        memset(&test_params, 0, sizeof(struct params));
+        test_params.simulation.SimMaxSnaps = 64;
+        test_params.simulation.NumSnapOutputs = 32;
+        params_initialized = 1;
+    }
+    
     struct property_serialization_context ctx;
     struct GALAXY *source_galaxy = create_test_galaxy();
     TEST_ASSERT(source_galaxy != NULL, "Source galaxy creation should succeed");
@@ -472,6 +503,13 @@ void test_serialization_deserialization() {
     // Create destination galaxy with no extension data
     struct GALAXY *dest_galaxy = calloc(1, sizeof(struct GALAXY));
     TEST_ASSERT(dest_galaxy != NULL, "Destination galaxy allocation should succeed");
+    
+    // Initialize properties for destination galaxy (required for logging in deserializer)
+    if (allocate_galaxy_properties(dest_galaxy, &test_params) != 0) {
+        free(dest_galaxy);
+        dest_galaxy = NULL;
+    }
+    TEST_ASSERT(dest_galaxy != NULL, "Destination galaxy properties allocation should succeed");
     
     // Deserialize properties
     ret = property_deserialize_galaxy(&ctx, dest_galaxy, buffer);
@@ -555,6 +593,14 @@ void test_endianness_handling() {
         return;
     }
     
+    // Initialize global test parameters
+    if (!params_initialized) {
+        memset(&test_params, 0, sizeof(struct params));
+        test_params.simulation.SimMaxSnaps = 64;
+        test_params.simulation.NumSnapOutputs = 32;
+        params_initialized = 1;
+    }
+    
     struct property_serialization_context serialize_ctx, deserialize_ctx;
     
     // Initialize both contexts with default settings
@@ -594,6 +640,13 @@ void test_endianness_handling() {
     // Create destination galaxy with no extension data
     struct GALAXY *dest_galaxy = calloc(1, sizeof(struct GALAXY));
     TEST_ASSERT(dest_galaxy != NULL, "Destination galaxy allocation should succeed");
+    
+    // Initialize properties for destination galaxy (required for logging in deserializer)
+    if (allocate_galaxy_properties(dest_galaxy, &test_params) != 0) {
+        free(dest_galaxy);
+        dest_galaxy = NULL;
+    }
+    TEST_ASSERT(dest_galaxy != NULL, "Destination galaxy properties allocation should succeed");
     
     // Deserialize properties with opposite endianness setting
     ret = property_deserialize_galaxy(&deserialize_ctx, dest_galaxy, buffer);
@@ -664,6 +717,14 @@ void test_endianness_handling() {
 void test_array_property_serialization() {
     printf("\n=== Testing array property serialization ===\n");
     
+    // Initialize global test parameters
+    if (!params_initialized) {
+        memset(&test_params, 0, sizeof(struct params));
+        test_params.simulation.SimMaxSnaps = 64;
+        test_params.simulation.NumSnapOutputs = 32;
+        params_initialized = 1;
+    }
+    
     struct property_serialization_context ctx;
     int ret = property_serialization_init(&ctx, SERIALIZE_ALL);
     TEST_ASSERT(ret == 0, "Context initialization should succeed");
@@ -714,6 +775,13 @@ void test_array_property_serialization() {
     
     struct GALAXY *dest_galaxy = calloc(1, sizeof(struct GALAXY));
     TEST_ASSERT(dest_galaxy != NULL, "Destination galaxy allocation should succeed");
+    
+    // Initialize properties for destination galaxy (required for logging in deserializer)
+    if (allocate_galaxy_properties(dest_galaxy, &test_params) != 0) {
+        free(dest_galaxy);
+        dest_galaxy = NULL;
+    }
+    TEST_ASSERT(dest_galaxy != NULL, "Destination galaxy properties allocation should succeed");
     
     ret = property_deserialize_galaxy(&ctx, dest_galaxy, buffer);
     TEST_ASSERT(ret == 0, "Array property deserialization should succeed");
