@@ -29,16 +29,16 @@
 static int tests_run = 0;
 static int tests_passed = 0;
 
-#define TEST_ASSERT(condition, message) \
-    do { \
-        tests_run++; \
-        if (condition) { \
-            tests_passed++; \
-            printf("  ✓ %s\n", message); \
-        } else { \
-            printf("  ✗ %s\n", message); \
-        } \
-    } while (0)
+#define TEST_ASSERT(condition, message) do { \
+    tests_run++; \
+    if (!(condition)) { \
+        printf("FAIL: %s\n", message); \
+        printf("  at %s:%d\n", __FILE__, __LINE__); \
+    } else { \
+        tests_passed++; \
+        printf("PASS: %s\n", message); \
+    } \
+} while(0)
 
 #define MEMORY_PATTERN_A 0xAAAAAAAA
 #define MEMORY_PATTERN_B 0xBBBBBBBB
@@ -508,8 +508,15 @@ static void test_edge_cases_and_errors(void) {
 }
 
 int main(void) {
-    printf("Starting Memory Safety Validation Tests\n");
-    printf("=======================================\n");
+    printf("\n========================================\n");
+    printf("Starting tests for test_property_separation_memory_safety\n");
+    printf("========================================\n\n");
+    
+    printf("This test verifies that the core-physics property separation maintains memory safety:\n");
+    printf("  1. struct GALAXY memory layout is correct after property removal\n");
+    printf("  2. Galaxy array operations work with new struct layout\n");
+    printf("  3. Property allocation/deallocation is robust\n");
+    printf("  4. Edge cases and error conditions are handled properly\n\n");
     
     // Initialize logging to suppress debug output during tests
     logging_init(LOG_LEVEL_WARNING, stderr);
@@ -521,14 +528,12 @@ int main(void) {
     test_edge_cases_and_errors();
     
     // Report results
-    printf("\n=======================================\n");
-    printf("Test Results: %d/%d tests passed\n", tests_passed, tests_run);
+    printf("\n========================================\n");
+    printf("Test results for test_property_separation_memory_safety:\n");
+    printf("  Total tests: %d\n", tests_run);
+    printf("  Passed: %d\n", tests_passed);
+    printf("  Failed: %d\n", tests_run - tests_passed);
+    printf("========================================\n\n");
     
-    if (tests_passed == tests_run) {
-        printf("✓ All tests passed! Memory safety is maintained with property separation.\n");
-        return EXIT_SUCCESS;
-    } else {
-        printf("✗ %d tests failed. Memory safety validation needs attention.\n", tests_run - tests_passed);
-        return EXIT_FAILURE;
-    }
+    return (tests_run == tests_passed) ? 0 : 1;
 }
