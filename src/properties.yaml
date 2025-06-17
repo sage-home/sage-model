@@ -276,6 +276,34 @@ properties:
     read_only: false
     is_core: true
 
+  # Infall Properties
+  - name: infallMvir
+    type: float
+    initial_value: -1.0
+    units: "1e10 Msun/h"
+    description: "Virial mass at infall"
+    output: true
+    read_only: false
+    is_core: true
+    
+  - name: infallVvir
+    type: float
+    initial_value: -1.0
+    units: "km/s"
+    description: "Virial velocity at infall"
+    output: true
+    read_only: false
+    is_core: true
+    
+  - name: infallVmax
+    type: float
+    initial_value: -1.0
+    units: "km/s"
+    description: "Maximum circular velocity at infall"
+    output: true
+    read_only: false
+    is_core: true
+
   # Baryonic Components
   - name: ColdGas
     type: float
@@ -577,31 +605,3 @@ properties:
     read_only: true
     is_core: false
     output_transformer_function: "derive_output_SfrBulgeZ"
-    
-  # Infall Properties
-  - name: infallMvir
-    type: float
-    initial_value: -1.0
-    units: "1e10 Msun/h"
-    description: "Virial mass at infall"
-    output: true
-    read_only: false
-    is_core: true
-    
-  - name: infallVvir
-    type: float
-    initial_value: -1.0
-    units: "km/s"
-    description: "Virial velocity at infall"
-    output: true
-    read_only: false
-    is_core: true
-    
-  - name: infallVmax
-    type: float
-    initial_value: -1.0
-    units: "km/s"
-    description: "Maximum circular velocity at infall"
-    output: true
-    read_only: false
-    is_core: true
