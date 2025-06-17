@@ -1513,6 +1513,26 @@ static int resolve_parameter_value(const char *param_name, const struct params *
         }
         return params->simulation.NumSnapOutputs;
     }
+    else if (strcmp(param_name, "SimMaxSnaps") == 0) {
+        // SimMaxSnaps is calculated as LastSnapshotNr + 1
+        if (params->simulation.SimMaxSnaps <= 0) {
+            LOG_ERROR("Invalid value for SimMaxSnaps: %d", params->simulation.SimMaxSnaps);
+            return -1;
+        }
+        return params->simulation.SimMaxSnaps;
+    }
+    else if (strcmp(param_name, "NumOutputs") == 0) {
+        // Number of output snapshots to be written to file
+        if (params->simulation.NumSnapOutputs <= 0) {
+            LOG_ERROR("Invalid value for NumOutputs/NumSnapOutputs: %d", params->simulation.NumSnapOutputs);
+            return -1;
+        }
+        return params->simulation.NumSnapOutputs;
+    }
+    else if (strcmp(param_name, "STEPS") == 0) {
+        // STEPS is a compile-time constant defined in macros.h
+        return STEPS;
+    }
     // Add lookups for other potential size parameters here...
     // Example:
     // else if (strcmp(param_name, "some_other_section.some_size") == 0) {

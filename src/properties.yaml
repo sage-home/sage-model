@@ -485,10 +485,10 @@ properties:
   # Example of Dynamic Array Property
   - name: StarFormationHistory
     type: float[]
-    size_parameter: "simulation.NumSnapOutputs"
+    size_parameter: "SimMaxSnaps"
     initial_value: 0.0
     units: "Msun/yr"
-    description: "Complete star formation history for all output snapshots"
+    description: "Complete star formation history for all simulation snapshots"
     output: true
     read_only: false
     is_core: false
