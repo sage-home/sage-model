@@ -594,10 +594,10 @@ static void test_memory_pressure_degradation(void) {
         if (status == 0) {
             // Test that basic operations still work in degraded mode
             initialize_all_properties(error_ctx.test_galaxy);
-            error_ctx.test_galaxy->Type = 0;
-            error_ctx.test_galaxy->Mvir = 1e11;
+            GALAXY_PROP_Type(error_ctx.test_galaxy) = 0;
+            GALAXY_PROP_Mvir(error_ctx.test_galaxy) = 1e11;
             
-            TEST_ASSERT(error_ctx.test_galaxy->Type == 0 && error_ctx.test_galaxy->Mvir > 0,
+            TEST_ASSERT(GALAXY_PROP_Type(error_ctx.test_galaxy) == 0 && GALAXY_PROP_Mvir(error_ctx.test_galaxy) > 0,
                         "Basic operations functional under memory pressure");
         }
     }
@@ -712,12 +712,12 @@ static void test_module_callback_error_recovery(void) {
                 break;
                 
             case 2: // Data validation error in callback
-                if (error_ctx.test_galaxy && error_ctx.test_galaxy->Mvir <= 0) {
+                if (error_ctx.test_galaxy && GALAXY_PROP_Mvir(error_ctx.test_galaxy) <= 0) {
                     callback_success = 0;
                     callback_errors++;
                     
                     // Recovery: set safe default value
-                    error_ctx.test_galaxy->Mvir = 1e11;
+                    GALAXY_PROP_Mvir(error_ctx.test_galaxy) = 1e11;
                     callback_recoveries++;
                     callback_success = 1;
                 }
@@ -746,38 +746,38 @@ static void test_module_failure_system_stability(void) {
     // Test that core system remains stable after module failures
     if (error_ctx.test_galaxy) {
         // Record stable state
-        double stable_mvir = error_ctx.test_galaxy->Mvir;
-        int stable_type = error_ctx.test_galaxy->Type;
+        double stable_mvir = GALAXY_PROP_Mvir(error_ctx.test_galaxy);
+        int stable_type = GALAXY_PROP_Type(error_ctx.test_galaxy);
         
         // Simulate module failure affecting galaxy state
-        error_ctx.test_galaxy->Mvir = -1.0; // Invalid state from failed module
-        error_ctx.test_galaxy->Type = -1;   // Invalid type
+        GALAXY_PROP_Mvir(error_ctx.test_galaxy) = -1.0; // Invalid state from failed module
+        GALAXY_PROP_Type(error_ctx.test_galaxy) = -1;   // Invalid type
         
         error_ctx.error_count++;
         
         // Test system recovery mechanisms
-        if (error_ctx.test_galaxy->Mvir <= 0) {
-            error_ctx.test_galaxy->Mvir = stable_mvir; // Restore stable state
+        if (GALAXY_PROP_Mvir(error_ctx.test_galaxy) <= 0) {
+            GALAXY_PROP_Mvir(error_ctx.test_galaxy) = stable_mvir; // Restore stable state
         }
-        if (error_ctx.test_galaxy->Type < 0 || error_ctx.test_galaxy->Type > 2) {
-            error_ctx.test_galaxy->Type = stable_type; // Restore valid type
+        if (GALAXY_PROP_Type(error_ctx.test_galaxy) < 0 || GALAXY_PROP_Type(error_ctx.test_galaxy) > 2) {
+            GALAXY_PROP_Type(error_ctx.test_galaxy) = stable_type; // Restore valid type
         }
         
         error_ctx.recovery_count++;
         
         // Verify system stability
-        int system_stable = (error_ctx.test_galaxy->Mvir > 0 && 
-                            error_ctx.test_galaxy->Type >= 0 && 
-                            error_ctx.test_galaxy->Type <= 2);
+        int system_stable = (GALAXY_PROP_Mvir(error_ctx.test_galaxy) > 0 && 
+                            GALAXY_PROP_Type(error_ctx.test_galaxy) >= 0 && 
+                            GALAXY_PROP_Type(error_ctx.test_galaxy) <= 2);
         
         TEST_ASSERT(system_stable, "System stability after module failure recovery");
         
         // Test that other system operations still work
         initialize_all_properties(error_ctx.test_galaxy);
-        error_ctx.test_galaxy->Mvir = stable_mvir;
-        error_ctx.test_galaxy->Type = stable_type;
+        GALAXY_PROP_Mvir(error_ctx.test_galaxy) = stable_mvir;
+        GALAXY_PROP_Type(error_ctx.test_galaxy) = stable_type;
         
-        TEST_ASSERT(error_ctx.test_galaxy->Mvir == stable_mvir, 
+        TEST_ASSERT(GALAXY_PROP_Mvir(error_ctx.test_galaxy) == stable_mvir, 
                     "Core operations functional after module failure");
     }
 }
@@ -908,13 +908,13 @@ static void test_pipeline_partial_failure_recovery(void) {
         // Simulate different failure scenarios
         switch (phase) {
             case 1: // Process phase failure
-                if (error_ctx.test_galaxy->Mvir <= 0) {
+                if (GALAXY_PROP_Mvir(error_ctx.test_galaxy) <= 0) {
                     phase_success = 0;
                     failed_phases++;
                     error_ctx.error_count++;
                     
                     // Recovery: set safe default
-                    error_ctx.test_galaxy->Mvir = 1e11;
+                    GALAXY_PROP_Mvir(error_ctx.test_galaxy) = 1e11;
                     recovered_phases++;
                     error_ctx.recovery_count++;
                     phase_success = 1;
@@ -923,13 +923,13 @@ static void test_pipeline_partial_failure_recovery(void) {
                 
             case 2: // Evolve phase failure
                 // Simulate evolution calculation error
-                if (error_ctx.test_galaxy->Rvir <= 0) {
+                if (GALAXY_PROP_Rvir(error_ctx.test_galaxy) <= 0) {
                     phase_success = 0;
                     failed_phases++;
                     error_ctx.error_count++;
                     
                     // Recovery: calculate from Mvir
-                    error_ctx.test_galaxy->Rvir = pow(error_ctx.test_galaxy->Mvir / 1e12, 1.0/3.0) * 250.0;
+                    GALAXY_PROP_Rvir(error_ctx.test_galaxy) = pow(GALAXY_PROP_Mvir(error_ctx.test_galaxy) / 1e12, 1.0/3.0) * 250.0;
                     recovered_phases++;
                     error_ctx.recovery_count++;
                     phase_success = 1;
@@ -966,7 +966,7 @@ static void test_pipeline_partial_failure_recovery(void) {
                 "Pipeline phase recovery success rate");
     
     // Test pipeline state after recovery
-    if (error_ctx.test_galaxy->Mvir > 0 && error_ctx.test_galaxy->Rvir > 0) {
+    if (GALAXY_PROP_Mvir(error_ctx.test_galaxy) > 0 && GALAXY_PROP_Rvir(error_ctx.test_galaxy) > 0) {
         TEST_ASSERT(1, "Pipeline state valid after partial failure recovery");
     }
 }
@@ -1151,8 +1151,8 @@ static void test_error_isolation(void) {
     // Test that errors in one system don't propagate to others
     
     // System 1: Property system error
-    double original_mvir = error_ctx.test_galaxy->Mvir;
-    error_ctx.test_galaxy->Mvir = -1.0; // Invalid value
+    double original_mvir = GALAXY_PROP_Mvir(error_ctx.test_galaxy);
+    GALAXY_PROP_Mvir(error_ctx.test_galaxy) = -1.0; // Invalid value
     error_ctx.error_count++;
     
     // Test that I/O system is not affected
@@ -1168,7 +1168,7 @@ static void test_error_isolation(void) {
     TEST_ASSERT(memory_system_ok, "Memory system unaffected by property system error");
     
     // Recovery of property system
-    error_ctx.test_galaxy->Mvir = original_mvir;
+    GALAXY_PROP_Mvir(error_ctx.test_galaxy) = original_mvir;
     error_ctx.recovery_count++;
     
     // System 2: Memory system stress (without affecting others)
@@ -1186,7 +1186,7 @@ static void test_error_isolation(void) {
     }
     
     // Test that property system still works under memory pressure
-    double mvir_during_pressure = error_ctx.test_galaxy->Mvir;
+    double mvir_during_pressure = GALAXY_PROP_Mvir(error_ctx.test_galaxy);
     TEST_ASSERT(mvir_during_pressure == original_mvir, 
                 "Property system unaffected by memory pressure");
     
@@ -1214,14 +1214,14 @@ static void test_error_amplification_prevention(void) {
     
     // Introduce small error
     if (error_ctx.test_galaxy) {
-        error_ctx.test_galaxy->Rvir = 0.0; // Small error - zero radius
+        GALAXY_PROP_Rvir(error_ctx.test_galaxy) = 0.0; // Small error - zero radius
         error_ctx.error_count++;
         
         // Test that this doesn't cause cascade of errors
         
         // Check if other properties are affected
-        double mvir_after_error = error_ctx.test_galaxy->Mvir;
-        int type_after_error = error_ctx.test_galaxy->Type;
+        double mvir_after_error = GALAXY_PROP_Mvir(error_ctx.test_galaxy);
+        int type_after_error = GALAXY_PROP_Type(error_ctx.test_galaxy);
         
         int cascade_prevented = (mvir_after_error > 0 && 
                                 type_after_error >= 0 && 
@@ -1230,11 +1230,11 @@ static void test_error_amplification_prevention(void) {
         TEST_ASSERT(cascade_prevented, "Error cascade prevention - other properties unaffected");
         
         // Recovery from small error
-        error_ctx.test_galaxy->Rvir = pow(error_ctx.test_galaxy->Mvir / 1e12, 1.0/3.0) * 250.0;
+        GALAXY_PROP_Rvir(error_ctx.test_galaxy) = pow(GALAXY_PROP_Mvir(error_ctx.test_galaxy) / 1e12, 1.0/3.0) * 250.0;
         error_ctx.recovery_count++;
         
         // Verify recovery success
-        TEST_ASSERT(error_ctx.test_galaxy->Rvir > 0, "Small error recovery successful");
+        TEST_ASSERT(GALAXY_PROP_Rvir(error_ctx.test_galaxy) > 0, "Small error recovery successful");
     }
     
     // Test that error count didn't explode
@@ -1267,7 +1267,7 @@ static void test_multiple_simultaneous_errors(void) {
     
     // Error 3: Invalid galaxy properties
     if (error_ctx.test_galaxy) {
-        error_ctx.test_galaxy->Type = -1; // Invalid type
+        GALAXY_PROP_Type(error_ctx.test_galaxy) = -1; // Invalid type
         error_ctx.error_count++;
     }
     
@@ -1295,8 +1295,8 @@ static void test_multiple_simultaneous_errors(void) {
     }
     
     // Recovery 3: Fix galaxy properties
-    if (error_ctx.test_galaxy && error_ctx.test_galaxy->Type < 0) {
-        error_ctx.test_galaxy->Type = 0; // Valid type
+    if (error_ctx.test_galaxy && GALAXY_PROP_Type(error_ctx.test_galaxy) < 0) {
+        GALAXY_PROP_Type(error_ctx.test_galaxy) = 0; // Valid type
         error_ctx.recovery_count++;
     }
     
@@ -1337,37 +1337,37 @@ static void test_data_consistency_after_recovery(void) {
     consistent_state.central_mvir = 2e12;
     
     // Apply consistent state
-    error_ctx.test_galaxy->Type = consistent_state.type;
-    error_ctx.test_galaxy->Mvir = consistent_state.mvir;
-    error_ctx.test_galaxy->Rvir = consistent_state.rvir;
-    error_ctx.test_galaxy->CentralMvir = consistent_state.central_mvir;
+    GALAXY_PROP_Type(error_ctx.test_galaxy) = consistent_state.type;
+    GALAXY_PROP_Mvir(error_ctx.test_galaxy) = consistent_state.mvir;
+    GALAXY_PROP_Rvir(error_ctx.test_galaxy) = consistent_state.rvir;
+    GALAXY_PROP_CentralMvir(error_ctx.test_galaxy) = consistent_state.central_mvir;
     
     // Introduce error that affects consistency
-    error_ctx.test_galaxy->Rvir = -100.0; // Inconsistent with Mvir
+    GALAXY_PROP_Rvir(error_ctx.test_galaxy) = -100.0; // Inconsistent with Mvir
     error_ctx.error_count++;
     
     // Test error detection
-    int inconsistency_detected = (error_ctx.test_galaxy->Rvir < 0 || 
-                                 error_ctx.test_galaxy->Rvir > 1000.0);
+    int inconsistency_detected = (GALAXY_PROP_Rvir(error_ctx.test_galaxy) < 0 || 
+                                 GALAXY_PROP_Rvir(error_ctx.test_galaxy) > 1000.0);
     TEST_ASSERT(inconsistency_detected, "Data inconsistency detection");
     
     // Recovery: restore consistency
-    if (error_ctx.test_galaxy->Rvir <= 0) {
+    if (GALAXY_PROP_Rvir(error_ctx.test_galaxy) <= 0) {
         // Calculate consistent Rvir from Mvir
-        error_ctx.test_galaxy->Rvir = pow(error_ctx.test_galaxy->Mvir / 1e12, 1.0/3.0) * 250.0;
+        GALAXY_PROP_Rvir(error_ctx.test_galaxy) = pow(GALAXY_PROP_Mvir(error_ctx.test_galaxy) / 1e12, 1.0/3.0) * 250.0;
         error_ctx.recovery_count++;
     }
     
     // Verify consistency restored
-    int consistency_restored = (error_ctx.test_galaxy->Rvir > 0 &&
-                               error_ctx.test_galaxy->Mvir > 0 &&
-                               error_ctx.test_galaxy->Type >= 0);
+    int consistency_restored = (GALAXY_PROP_Rvir(error_ctx.test_galaxy) > 0 &&
+                               GALAXY_PROP_Mvir(error_ctx.test_galaxy) > 0 &&
+                               GALAXY_PROP_Type(error_ctx.test_galaxy) >= 0);
     
     TEST_ASSERT(consistency_restored, "Data consistency restored after recovery");
     
     // Test relationships are reasonable
-    double expected_rvir = pow(error_ctx.test_galaxy->Mvir / 1e12, 1.0/3.0) * 250.0;
-    double rvir_ratio = error_ctx.test_galaxy->Rvir / expected_rvir;
+    double expected_rvir = pow(GALAXY_PROP_Mvir(error_ctx.test_galaxy) / 1e12, 1.0/3.0) * 250.0;
+    double rvir_ratio = GALAXY_PROP_Rvir(error_ctx.test_galaxy) / expected_rvir;
     
     TEST_ASSERT(rvir_ratio > 0.5 && rvir_ratio < 2.0, 
                 "Data relationships reasonable after recovery");
@@ -1385,10 +1385,10 @@ static void test_output_integrity_after_errors(void) {
     }
     
     // Prepare valid galaxy data for output
-    error_ctx.test_galaxy->Type = 0;
-    error_ctx.test_galaxy->SnapNum = 5;
-    error_ctx.test_galaxy->Mvir = 1e12;
-    error_ctx.test_galaxy->Rvir = 250.0;
+    GALAXY_PROP_Type(error_ctx.test_galaxy) = 0;
+    GALAXY_PROP_SnapNum(error_ctx.test_galaxy) = 5;
+    GALAXY_PROP_Mvir(error_ctx.test_galaxy) = 1e12;
+    GALAXY_PROP_Rvir(error_ctx.test_galaxy) = 250.0;
     
     // Introduce input error
     double corrupted_mvir = -1e12; // Invalid input
@@ -1398,7 +1398,7 @@ static void test_output_integrity_after_errors(void) {
     double output_mvir;
     if (corrupted_mvir <= 0) {
         // Error recovery: use valid galaxy data instead
-        output_mvir = error_ctx.test_galaxy->Mvir;
+        output_mvir = GALAXY_PROP_Mvir(error_ctx.test_galaxy);
         error_ctx.recovery_count++;
     } else {
         output_mvir = corrupted_mvir;
@@ -1411,10 +1411,10 @@ static void test_output_integrity_after_errors(void) {
     FILE* output_file = fopen(error_ctx.test_files[error_ctx.file_count], "w");
     if (output_file) {
         fprintf(output_file, "# SAGE Output File\n");
-        fprintf(output_file, "Type: %d\n", error_ctx.test_galaxy->Type);
-        fprintf(output_file, "SnapNum: %d\n", error_ctx.test_galaxy->SnapNum);
+        fprintf(output_file, "Type: %d\n", GALAXY_PROP_Type(error_ctx.test_galaxy));
+        fprintf(output_file, "SnapNum: %d\n", GALAXY_PROP_SnapNum(error_ctx.test_galaxy));
         fprintf(output_file, "Mvir: %e\n", output_mvir);
-        fprintf(output_file, "Rvir: %e\n", error_ctx.test_galaxy->Rvir);
+        fprintf(output_file, "Rvir: %e\n", GALAXY_PROP_Rvir(error_ctx.test_galaxy));
         fclose(output_file);
         
         error_ctx.file_count++;

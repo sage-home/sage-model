@@ -932,7 +932,7 @@ static void test_error_handling(void) {
     // Set minimal required values using property macros
     GALAXY_PROP_SnapNum(&test_galaxy) = run_params.simulation.ListOutputSnaps[0]; // Match the output snap
     GALAXY_PROP_Type(&test_galaxy) = 0;         // Central galaxy
-    test_galaxy.GalaxyNr = 0;     // Arbitrary ID
+    GALAXY_PROP_GalaxyNr(&test_galaxy) = 0;     // Arbitrary ID
     GALAXY_PROP_CentralGal(&test_galaxy) = 0;   // Self is central
     GALAXY_PROP_HaloNr(&test_galaxy) = 0;       // Arbitrary halo number
     GALAXY_PROP_MostBoundID(&test_galaxy) = 1000; // Arbitrary ID
@@ -1025,7 +1025,7 @@ static void test_error_handling(void) {
     // Set minimal required values using property macros
     GALAXY_PROP_SnapNum(&edge_galaxy) = run_params.simulation.ListOutputSnaps[0];
     GALAXY_PROP_Type(&edge_galaxy) = 0;
-    edge_galaxy.GalaxyNr = 0;
+    GALAXY_PROP_GalaxyNr(&edge_galaxy) = 0;
     GALAXY_PROP_CentralGal(&edge_galaxy) = 0;
     GALAXY_PROP_HaloNr(&edge_galaxy) = 0;
     GALAXY_PROP_MostBoundID(&edge_galaxy) = 1000;
@@ -1210,12 +1210,12 @@ static int init_test_galaxies(struct GALAXY *galaxies, int count, const struct p
                 free_galaxy_properties(&galaxies[j]);
             }
             free(galaxies);
-            return NULL;
+            return -1;
         }
         
         // Set required values using property macros
         GALAXY_PROP_GalaxyIndex(&galaxies[i]) = i;  // For error messages/lookups
-        galaxies[i].GalaxyNr = i;     // Unique ID
+        GALAXY_PROP_GalaxyNr(&galaxies[i]) = i;     // Unique ID
         GALAXY_PROP_SnapNum(&galaxies[i]) = run_params->simulation.ListOutputSnaps[0]; // Match output snap
         GALAXY_PROP_Type(&galaxies[i]) = 0;         // Central galaxy
         GALAXY_PROP_HaloNr(&galaxies[i]) = i;       // Match halo number to galaxy index for test simplicity

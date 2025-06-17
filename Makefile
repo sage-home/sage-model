@@ -425,13 +425,13 @@ MODULE_TESTS = test_pipeline_invoke test_module_callback test_module_lifecycle
 UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS)
 
 # Core infrastructure test targets
-test_pipeline: tests/test_pipeline.c $(SAGELIB)
+test_pipeline: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_pipeline.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline tests/test_pipeline.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_array_utils: tests/test_array_utils.c $(SAGELIB)
+test_array_utils: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_array_utils.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_array_utils tests/test_array_utils.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_galaxy_array: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_galaxy_array.c $(SAGELIB)
+test_galaxy_array: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_galaxy_array.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_array tests/test_galaxy_array.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_galaxy_array_component: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_galaxy_array_component.c $(SAGELIB)
@@ -440,13 +440,13 @@ test_galaxy_array_component: $(ROOT_DIR)/.stamps/generate_properties_full.stamp 
 test_core_property: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_core_property.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_property tests/test_core_property.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_core_pipeline_registry: tests/test_core_pipeline_registry.c $(SAGELIB)
+test_core_pipeline_registry: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_core_pipeline_registry.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_pipeline_registry tests/test_core_pipeline_registry.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_dispatcher_access: tests/test_dispatcher_access.c $(SAGELIB)
+test_dispatcher_access: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_dispatcher_access.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_dispatcher_access tests/test_dispatcher_access.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_evolution_diagnostics: tests/test_evolution_diagnostics.c $(SAGELIB)
+test_evolution_diagnostics: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_evolution_diagnostics.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_evolution_diagnostics tests/test_evolution_diagnostics.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_evolve_integration: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_evolve_integration.c $(SAGELIB)
@@ -479,55 +479,55 @@ test_parameter_yaml_validation: $(ROOT_DIR)/.stamps/generate_properties_full.sta
 test_io_interface: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_io_interface.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_interface tests/test_io_interface.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_endian_utils: tests/test_endian_utils.c $(SAGELIB)
+test_endian_utils: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_endian_utils.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_endian_utils tests/test_endian_utils.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_lhalo_binary: tests/test_lhalo_binary.c $(SAGELIB)
+test_lhalo_binary: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_lhalo_binary.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_lhalo_binary tests/test_lhalo_binary.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_hdf5_output: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_hdf5_output.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_hdf5_output tests/test_hdf5_output.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_lhalo_hdf5: tests/test_lhalo_hdf5.c $(SAGELIB)
+test_lhalo_hdf5: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_lhalo_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_lhalo_hdf5 tests/test_lhalo_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_gadget4_hdf5: tests/test_gadget4_hdf5.c $(SAGELIB)
+test_gadget4_hdf5: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_gadget4_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_gadget4_hdf5 tests/test_gadget4_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_genesis_hdf5: tests/test_genesis_hdf5.c $(SAGELIB)
+test_genesis_hdf5: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_genesis_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_genesis_hdf5 tests/test_genesis_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_consistent_trees_hdf5: tests/test_consistent_trees_hdf5.c $(SAGELIB)
+test_consistent_trees_hdf5: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_consistent_trees_hdf5.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_consistent_trees_hdf5 tests/test_consistent_trees_hdf5.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_io_memory_map: tests/test_io_memory_map.c $(SAGELIB)
+test_io_memory_map: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_io_memory_map.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_memory_map tests/test_io_memory_map.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_io_buffer_manager: tests/test_io_buffer_manager.c $(SAGELIB)
+test_io_buffer_manager: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_io_buffer_manager.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_io_buffer_manager tests/test_io_buffer_manager.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_validation_framework: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_validation_framework.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_validation_framework tests/test_validation_framework.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_pipeline_invoke: tests/test_pipeline_invoke.c $(SAGELIB)
+test_pipeline_invoke: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_pipeline_invoke.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_pipeline_invoke tests/test_pipeline_invoke.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_module_callback: tests/test_module_callback.c $(SAGELIB)
+test_module_callback: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_module_callback.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_callback tests/test_module_callback.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_module_lifecycle: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_module_lifecycle.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_module_lifecycle tests/test_module_lifecycle.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_merger_queue: tests/test_merger_queue.c $(SAGELIB)
+test_merger_queue: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_merger_queue.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_merger_queue tests/test_merger_queue.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_core_merger_processor: tests/test_core_merger_processor.c $(SAGELIB)
+test_core_merger_processor: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_core_merger_processor.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_core_merger_processor tests/test_core_merger_processor.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_config_system: tests/test_config_system.c $(SAGELIB)
+test_config_system: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_config_system.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_config_system tests/test_config_system.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_parameter_validation: tests/test_parameter_validation.c $(SAGELIB)
+test_parameter_validation: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_parameter_validation.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_parameter_validation tests/test_parameter_validation.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_resource_management: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_resource_management.c $(SAGELIB)

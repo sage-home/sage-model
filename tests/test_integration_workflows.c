@@ -166,16 +166,16 @@ static void test_property_io_integration(void) {
         // Initialize galaxy with test data
         initialize_all_properties(test_ctx.test_galaxy);
         
-        // Set some basic properties for testing
-        test_ctx.test_galaxy->Type = 0;
-        test_ctx.test_galaxy->SnapNum = 5;
-        test_ctx.test_galaxy->CentralMvir = 1e12;
-        test_ctx.test_galaxy->Mvir = 5e11;
-        test_ctx.test_galaxy->Rvir = 250.0;
+        // Set some basic properties for testing using property macros
+        GALAXY_PROP_Type(test_ctx.test_galaxy) = 0;
+        GALAXY_PROP_SnapNum(test_ctx.test_galaxy) = 5;
+        GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) = 1e12;
+        GALAXY_PROP_Mvir(test_ctx.test_galaxy) = 5e11;
+        GALAXY_PROP_Rvir(test_ctx.test_galaxy) = 250.0;
         
         // Test property access and validation
         int prop_valid = 1;
-        if (test_ctx.test_galaxy->Mvir <= 0 || test_ctx.test_galaxy->Rvir <= 0) {
+        if (GALAXY_PROP_Mvir(test_ctx.test_galaxy) <= 0 || GALAXY_PROP_Rvir(test_ctx.test_galaxy) <= 0) {
             prop_valid = 0;
         }
         TEST_ASSERT(prop_valid, "Galaxy properties validation after initialization");
@@ -208,18 +208,18 @@ static void test_property_io_integration(void) {
 #endif
         
         // Test property pass-through in I/O cycle
-        struct GALAXY backup_props;
-        backup_props.Type = test_ctx.test_galaxy->Type;
-        backup_props.SnapNum = test_ctx.test_galaxy->SnapNum;
-        backup_props.Mvir = test_ctx.test_galaxy->Mvir;
+        // Store backup values as simple variables
+        int32_t backup_type = GALAXY_PROP_Type(test_ctx.test_galaxy);
+        int32_t backup_snapnum = GALAXY_PROP_SnapNum(test_ctx.test_galaxy);
+        float backup_mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
         
         // Simulate I/O round-trip by resetting and restoring
         initialize_all_properties(test_ctx.test_galaxy);
-        test_ctx.test_galaxy->Type = backup_props.Type;
-        test_ctx.test_galaxy->SnapNum = backup_props.SnapNum;
-        test_ctx.test_galaxy->Mvir = backup_props.Mvir;
+        GALAXY_PROP_Type(test_ctx.test_galaxy) = backup_type;
+        GALAXY_PROP_SnapNum(test_ctx.test_galaxy) = backup_snapnum;
+        GALAXY_PROP_Mvir(test_ctx.test_galaxy) = backup_mvir;
         
-        TEST_ASSERT(test_ctx.test_galaxy->Type == backup_props.Type, 
+        TEST_ASSERT(GALAXY_PROP_Type(test_ctx.test_galaxy) == backup_type, 
                     "Property preservation in I/O round-trip");
     }
     
@@ -254,9 +254,9 @@ static void test_property_format_integration(void) {
                 initialize_all_properties(test_galaxies[i]);
                 
                 // Set different property patterns
-                test_galaxies[i]->Type = i % 3;
-                test_galaxies[i]->SnapNum = i;
-                test_galaxies[i]->Mvir = (i + 1) * 1e11;
+                GALAXY_PROP_Type(test_galaxies[i]) = i % 3;
+                GALAXY_PROP_SnapNum(test_galaxies[i]) = i;
+                GALAXY_PROP_Mvir(test_galaxies[i]) = (i + 1) * 1e11;
                 
                 valid_galaxies++;
             }
@@ -268,7 +268,7 @@ static void test_property_format_integration(void) {
     // Test property consistency across multiple galaxies
     int consistency_check = 1;
     for (int i = 0; i < valid_galaxies; i++) {
-        if (test_galaxies[i]->Mvir <= 0 || test_galaxies[i]->SnapNum < 0) {
+        if (GALAXY_PROP_Mvir(test_galaxies[i]) <= 0 || GALAXY_PROP_SnapNum(test_galaxies[i]) < 0) {
             consistency_check = 0;
             break;
         }
@@ -319,17 +319,17 @@ static void test_module_pipeline_integration(void) {
         // Test module state preservation across phases
         if (test_ctx.test_galaxy) {
             // Verify galaxy state is maintained across "phases"
-            double initial_mvir = test_ctx.test_galaxy->Mvir;
+            double initial_mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
             
             // Simulate module operation
-            test_ctx.test_galaxy->Mvir *= 1.001; // Small modification
+            GALAXY_PROP_Mvir(test_ctx.test_galaxy) *= 1.001; // Small modification
             
             // Verify state change
-            TEST_ASSERT(test_ctx.test_galaxy->Mvir != initial_mvir, 
+            TEST_ASSERT(GALAXY_PROP_Mvir(test_ctx.test_galaxy) != initial_mvir, 
                         "Module state modification in pipeline phase");
             
             // Restore for next phase
-            test_ctx.test_galaxy->Mvir = initial_mvir;
+            GALAXY_PROP_Mvir(test_ctx.test_galaxy) = initial_mvir;
         }
         
         module_count++;
@@ -340,17 +340,17 @@ static void test_module_pipeline_integration(void) {
     // Test module error handling within pipeline context
     if (test_ctx.test_galaxy) {
         // Test that module errors don't corrupt galaxy state
-        double safe_mvir = test_ctx.test_galaxy->Mvir;
+        double safe_mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
         
         // Simulate error condition and recovery
-        test_ctx.test_galaxy->Mvir = -1.0; // Invalid value
+        GALAXY_PROP_Mvir(test_ctx.test_galaxy) = -1.0; // Invalid value
         
         // Simulate error detection and recovery
-        if (test_ctx.test_galaxy->Mvir <= 0) {
-            test_ctx.test_galaxy->Mvir = safe_mvir; // Recovery
+        if (GALAXY_PROP_Mvir(test_ctx.test_galaxy) <= 0) {
+            GALAXY_PROP_Mvir(test_ctx.test_galaxy) = safe_mvir; // Recovery
         }
         
-        TEST_ASSERT(test_ctx.test_galaxy->Mvir == safe_mvir, 
+        TEST_ASSERT(GALAXY_PROP_Mvir(test_ctx.test_galaxy) == safe_mvir, 
                     "Module error recovery in pipeline context");
     }
     
@@ -376,10 +376,10 @@ static void test_multiple_module_execution(void) {
     
     // Test sequential module execution pattern
     double initial_values[4];
-    initial_values[0] = test_ctx.test_galaxy->Mvir;
-    initial_values[1] = test_ctx.test_galaxy->Rvir;
-    initial_values[2] = test_ctx.test_galaxy->CentralMvir;
-    initial_values[3] = (double)test_ctx.test_galaxy->SnapNum;
+    initial_values[0] = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
+    initial_values[1] = GALAXY_PROP_Rvir(test_ctx.test_galaxy);
+    initial_values[2] = GALAXY_PROP_CentralMvir(test_ctx.test_galaxy);
+    initial_values[3] = (double)GALAXY_PROP_SnapNum(test_ctx.test_galaxy);
     
     // Simulate multiple module operations
     for (int module = 0; module < 4; module++) {
@@ -388,16 +388,16 @@ static void test_multiple_module_execution(void) {
         // Each "module" modifies different properties
         switch (module) {
             case 0: // Mass evolution module
-                test_ctx.test_galaxy->Mvir *= 1.1;
+                GALAXY_PROP_Mvir(test_ctx.test_galaxy) *= 1.1;
                 break;
             case 1: // Size evolution module  
-                test_ctx.test_galaxy->Rvir *= 1.05;
+                GALAXY_PROP_Rvir(test_ctx.test_galaxy) *= 1.05;
                 break;
             case 2: // Central mass module
-                test_ctx.test_galaxy->CentralMvir *= 1.02;
+                GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) *= 1.02;
                 break;
             case 3: // Snapshot tracking module
-                test_ctx.test_galaxy->SnapNum++;
+                GALAXY_PROP_SnapNum(test_ctx.test_galaxy)++;
                 break;
         }
         
@@ -405,16 +405,16 @@ static void test_multiple_module_execution(void) {
         int module_success = 0;
         switch (module) {
             case 0:
-                module_success = (test_ctx.test_galaxy->Mvir > initial_values[0]);
+                module_success = (GALAXY_PROP_Mvir(test_ctx.test_galaxy) > initial_values[0]);
                 break;
             case 1:
-                module_success = (test_ctx.test_galaxy->Rvir > initial_values[1]);
+                module_success = (GALAXY_PROP_Rvir(test_ctx.test_galaxy) > initial_values[1]);
                 break;
             case 2:
-                module_success = (test_ctx.test_galaxy->CentralMvir > initial_values[2]);
+                module_success = (GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) > initial_values[2]);
                 break;
             case 3:
-                module_success = (test_ctx.test_galaxy->SnapNum > (int)initial_values[3]);
+                module_success = (GALAXY_PROP_SnapNum(test_ctx.test_galaxy) > (int)initial_values[3]);
                 break;
         }
         
@@ -423,10 +423,10 @@ static void test_multiple_module_execution(void) {
     
     // Test that all modules executed correctly
     int all_modules_success = 1;
-    if (test_ctx.test_galaxy->Mvir <= initial_values[0] ||
-        test_ctx.test_galaxy->Rvir <= initial_values[1] ||
-        test_ctx.test_galaxy->CentralMvir <= initial_values[2] ||
-        test_ctx.test_galaxy->SnapNum <= (int)initial_values[3]) {
+    if (GALAXY_PROP_Mvir(test_ctx.test_galaxy) <= initial_values[0] ||
+        GALAXY_PROP_Rvir(test_ctx.test_galaxy) <= initial_values[1] ||
+        GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) <= initial_values[2] ||
+        GALAXY_PROP_SnapNum(test_ctx.test_galaxy) <= (int)initial_values[3]) {
         all_modules_success = 0;
     }
     
@@ -504,8 +504,8 @@ static void test_runtime_configuration_integration(void) {
         
         // Test that galaxy operations use new configuration
         // (This is a simplified test - in real SAGE, configuration affects calculations)
-        double config_dependent_value = test_ctx.test_galaxy->Mvir * test_ctx.test_params.cosmology.Hubble_h;
-        double expected_value = test_ctx.test_galaxy->Mvir * 0.8;
+        double config_dependent_value = GALAXY_PROP_Mvir(test_ctx.test_galaxy) * test_ctx.test_params.cosmology.Hubble_h;
+        double expected_value = GALAXY_PROP_Mvir(test_ctx.test_galaxy) * 0.8;
         
         TEST_ASSERT(fabs(config_dependent_value - expected_value) < 1e-10,
                     "Runtime configuration change affects operations");
@@ -575,23 +575,23 @@ static void test_complete_workflow_integration(void) {
         initialize_all_properties(workflow_galaxy);
         
         // Initialize galaxy with realistic starting values for evolution
-        workflow_galaxy->Type = 0;  // Central galaxy
-        workflow_galaxy->Mvir = 1e11;  // 10^11 solar masses
-        workflow_galaxy->Rvir = 200.0;  // 200 kpc
-        workflow_galaxy->CentralMvir = workflow_galaxy->Mvir;
-        workflow_galaxy->SnapNum = 0;
+        GALAXY_PROP_Type(workflow_galaxy) = 0;  // Central galaxy
+        GALAXY_PROP_Mvir(workflow_galaxy) = 1e11;  // 10^11 solar masses
+        GALAXY_PROP_Rvir(workflow_galaxy) = 200.0;  // 200 kpc
+        GALAXY_PROP_CentralMvir(workflow_galaxy) = GALAXY_PROP_Mvir(workflow_galaxy);
+        GALAXY_PROP_SnapNum(workflow_galaxy) = 0;
         
         // Simulate evolution across snapshots
         int snapshots_processed = 0;
         for (int snap = 0; snap < workflow_params.simulation.NumSnapOutputs; snap++) {
-            workflow_galaxy->SnapNum = snap;
-            workflow_galaxy->Mvir *= 1.05; // Growth
-            workflow_galaxy->Rvir = pow(workflow_galaxy->Mvir / 1e12, 1.0/3.0) * 250.0; // Scaling
+            GALAXY_PROP_SnapNum(workflow_galaxy) = snap;
+            GALAXY_PROP_Mvir(workflow_galaxy) *= 1.05; // Growth
+            GALAXY_PROP_Rvir(workflow_galaxy) = pow(GALAXY_PROP_Mvir(workflow_galaxy) / 1e12, 1.0/3.0) * 250.0; // Scaling
             
             // Validate galaxy state at each snapshot
-            if (workflow_galaxy->Mvir <= 0 || workflow_galaxy->Rvir <= 0) {
+            if (GALAXY_PROP_Mvir(workflow_galaxy) <= 0 || GALAXY_PROP_Rvir(workflow_galaxy) <= 0) {
                 printf("    ERROR: Galaxy state became invalid at snapshot %d: Mvir=%e, Rvir=%e\n", 
-                       snap, workflow_galaxy->Mvir, workflow_galaxy->Rvir);
+                       snap, GALAXY_PROP_Mvir(workflow_galaxy), GALAXY_PROP_Rvir(workflow_galaxy));
                 break;
             }
             snapshots_processed++;
@@ -599,7 +599,7 @@ static void test_complete_workflow_integration(void) {
         
         TEST_ASSERT(snapshots_processed == workflow_params.simulation.NumSnapOutputs,
                     "Workflow processing completed all snapshots");
-        TEST_ASSERT(workflow_galaxy->Mvir > 0 && workflow_galaxy->Rvir > 0,
+        TEST_ASSERT(GALAXY_PROP_Mvir(workflow_galaxy) > 0 && GALAXY_PROP_Rvir(workflow_galaxy) > 0,
                     "Workflow galaxy state valid after processing");
         
         // Phase 4: Output
@@ -661,10 +661,10 @@ static void test_io_processing_workflow(void) {
     
     // Simulate input data validation
     int input_valid = 1;
-    if (test_ctx.test_galaxy->Type < 0 || test_ctx.test_galaxy->Type > 2) {
+    if (GALAXY_PROP_Type(test_ctx.test_galaxy) < 0 || GALAXY_PROP_Type(test_ctx.test_galaxy) > 2) {
         input_valid = 0;
     }
-    if (test_ctx.test_galaxy->Mvir <= 0 || test_ctx.test_galaxy->Rvir <= 0) {
+    if (GALAXY_PROP_Mvir(test_ctx.test_galaxy) <= 0 || GALAXY_PROP_Rvir(test_ctx.test_galaxy) <= 0) {
         input_valid = 0;
     }
     TEST_ASSERT(input_valid, "Input data validation in workflow");
@@ -680,10 +680,10 @@ static void test_io_processing_workflow(void) {
     if (temp_file) {
         // Write intermediate data
         fprintf(temp_file, "# Galaxy processing intermediate data\n");
-        fprintf(temp_file, "Type: %d\n", test_ctx.test_galaxy->Type);
-        fprintf(temp_file, "SnapNum: %d\n", test_ctx.test_galaxy->SnapNum);
-        fprintf(temp_file, "Mvir: %e\n", test_ctx.test_galaxy->Mvir);
-        fprintf(temp_file, "Rvir: %e\n", test_ctx.test_galaxy->Rvir);
+        fprintf(temp_file, "Type: %d\n", GALAXY_PROP_Type(test_ctx.test_galaxy));
+        fprintf(temp_file, "SnapNum: %d\n", GALAXY_PROP_SnapNum(test_ctx.test_galaxy));
+        fprintf(temp_file, "Mvir: %e\n", GALAXY_PROP_Mvir(test_ctx.test_galaxy));
+        fprintf(temp_file, "Rvir: %e\n", GALAXY_PROP_Rvir(test_ctx.test_galaxy));
         fclose(temp_file);
         
         test_ctx.file_count++;
@@ -709,8 +709,8 @@ static void test_io_processing_workflow(void) {
     printf("  Phase 3: Output generation\n");
     
     // Test that processed data can be output correctly
-    double final_mvir = test_ctx.test_galaxy->Mvir;
-    double final_rvir = test_ctx.test_galaxy->Rvir;
+    double final_mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
+    double final_rvir = GALAXY_PROP_Rvir(test_ctx.test_galaxy);
     
     TEST_ASSERT(final_mvir > 0 && final_rvir > 0, 
                 "I/O processing workflow produces valid output");
@@ -748,27 +748,27 @@ static void test_cross_system_state_management(void) {
         double central_mvir;
     } initial_state;
     
-    initial_state.type = test_ctx.test_galaxy->Type;
-    initial_state.snapnum = test_ctx.test_galaxy->SnapNum;
-    initial_state.mvir = test_ctx.test_galaxy->Mvir;
-    initial_state.rvir = test_ctx.test_galaxy->Rvir;
-    initial_state.central_mvir = test_ctx.test_galaxy->CentralMvir;
+    initial_state.type = GALAXY_PROP_Type(test_ctx.test_galaxy);
+    initial_state.snapnum = GALAXY_PROP_SnapNum(test_ctx.test_galaxy);
+    initial_state.mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
+    initial_state.rvir = GALAXY_PROP_Rvir(test_ctx.test_galaxy);
+    initial_state.central_mvir = GALAXY_PROP_CentralMvir(test_ctx.test_galaxy);
     
     // Test state consistency across property system operations
     initialize_all_properties(test_ctx.test_galaxy);
     
     // Restore critical state
-    test_ctx.test_galaxy->Type = initial_state.type;
-    test_ctx.test_galaxy->SnapNum = initial_state.snapnum;
-    test_ctx.test_galaxy->Mvir = initial_state.mvir;
-    test_ctx.test_galaxy->Rvir = initial_state.rvir;
-    test_ctx.test_galaxy->CentralMvir = initial_state.central_mvir;
+    GALAXY_PROP_Type(test_ctx.test_galaxy) = initial_state.type;
+    GALAXY_PROP_SnapNum(test_ctx.test_galaxy) = initial_state.snapnum;
+    GALAXY_PROP_Mvir(test_ctx.test_galaxy) = initial_state.mvir;
+    GALAXY_PROP_Rvir(test_ctx.test_galaxy) = initial_state.rvir;
+    GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) = initial_state.central_mvir;
     
     // Verify state consistency
     int state_consistent = 1;
-    if (test_ctx.test_galaxy->Type != initial_state.type ||
-        test_ctx.test_galaxy->SnapNum != initial_state.snapnum ||
-        fabs(test_ctx.test_galaxy->Mvir - initial_state.mvir) > 1e-10) {
+    if (GALAXY_PROP_Type(test_ctx.test_galaxy) != initial_state.type ||
+        GALAXY_PROP_SnapNum(test_ctx.test_galaxy) != initial_state.snapnum ||
+        fabs(GALAXY_PROP_Mvir(test_ctx.test_galaxy) - initial_state.mvir) > 1e-10) {
         state_consistent = 0;
     }
     
@@ -776,18 +776,18 @@ static void test_cross_system_state_management(void) {
     
     // Test state management across simulated module operations
     for (int system = 0; system < 3; system++) {
-        double pre_mvir = test_ctx.test_galaxy->Mvir;
+        double pre_mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
         
         // Simulate system operation
         switch (system) {
             case 0: // Property system
-                test_ctx.test_galaxy->Mvir *= 1.001;
+                GALAXY_PROP_Mvir(test_ctx.test_galaxy) *= 1.001;
                 break;
             case 1: // I/O system (simulated)
-                test_ctx.test_galaxy->Rvir *= 1.001;
+                GALAXY_PROP_Rvir(test_ctx.test_galaxy) *= 1.001;
                 break;
             case 2: // Module system (simulated)
-                test_ctx.test_galaxy->CentralMvir *= 1.001;
+                GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) *= 1.001;
                 break;
         }
         
@@ -795,13 +795,13 @@ static void test_cross_system_state_management(void) {
         int system_modified_state = 0;
         switch (system) {
             case 0:
-                system_modified_state = (test_ctx.test_galaxy->Mvir != pre_mvir);
+                system_modified_state = (GALAXY_PROP_Mvir(test_ctx.test_galaxy) != pre_mvir);
                 break;
             case 1:
-                system_modified_state = (test_ctx.test_galaxy->Rvir != initial_state.rvir);
+                system_modified_state = (GALAXY_PROP_Rvir(test_ctx.test_galaxy) != initial_state.rvir);
                 break;
             case 2:
-                system_modified_state = (test_ctx.test_galaxy->CentralMvir != initial_state.central_mvir);
+                system_modified_state = (GALAXY_PROP_CentralMvir(test_ctx.test_galaxy) != initial_state.central_mvir);
                 break;
         }
         
@@ -809,15 +809,15 @@ static void test_cross_system_state_management(void) {
     }
     
     // Test state recovery after partial failures
-    double safe_mvir = test_ctx.test_galaxy->Mvir;
-    test_ctx.test_galaxy->Mvir = -1.0; // Simulate corruption
+    double safe_mvir = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
+    GALAXY_PROP_Mvir(test_ctx.test_galaxy) = -1.0; // Simulate corruption
     
     // Simulate state recovery
-    if (test_ctx.test_galaxy->Mvir <= 0) {
-        test_ctx.test_galaxy->Mvir = safe_mvir;
+    if (GALAXY_PROP_Mvir(test_ctx.test_galaxy) <= 0) {
+        GALAXY_PROP_Mvir(test_ctx.test_galaxy) = safe_mvir;
     }
     
-    TEST_ASSERT(test_ctx.test_galaxy->Mvir == safe_mvir, 
+    TEST_ASSERT(GALAXY_PROP_Mvir(test_ctx.test_galaxy) == safe_mvir, 
                 "Cross-system state recovery after corruption");
     
     test_ctx.end_time = get_current_time_ms();
@@ -847,18 +847,18 @@ static void test_concurrent_state_access(void) {
     double rvir_values[5];
     
     // Store initial values
-    mvir_values[0] = test_ctx.test_galaxy->Mvir;
-    rvir_values[0] = test_ctx.test_galaxy->Rvir;
+    mvir_values[0] = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
+    rvir_values[0] = GALAXY_PROP_Rvir(test_ctx.test_galaxy);
     
     // Multiple "accesses" to the same galaxy with modifications
     for (int access = 1; access < 5; access++) {
         // Simulate small modifications from different "systems"
-        test_ctx.test_galaxy->Mvir *= (1.0 + access * 0.001);
-        test_ctx.test_galaxy->Rvir *= (1.0 + access * 0.0005);
+        GALAXY_PROP_Mvir(test_ctx.test_galaxy) *= (1.0 + access * 0.001);
+        GALAXY_PROP_Rvir(test_ctx.test_galaxy) *= (1.0 + access * 0.0005);
         
         // Store values after modification
-        mvir_values[access] = test_ctx.test_galaxy->Mvir;
-        rvir_values[access] = test_ctx.test_galaxy->Rvir;
+        mvir_values[access] = GALAXY_PROP_Mvir(test_ctx.test_galaxy);
+        rvir_values[access] = GALAXY_PROP_Rvir(test_ctx.test_galaxy);
     }
     
     // Verify that values increase as expected (showing consistent access patterns)
@@ -880,12 +880,12 @@ static void test_concurrent_state_access(void) {
             initialize_all_properties(second_galaxy);
             
             // Set different values
-            second_galaxy->Mvir = test_ctx.test_galaxy->Mvir * 2.0;
-            second_galaxy->Type = (test_ctx.test_galaxy->Type + 1) % 3;
+            GALAXY_PROP_Mvir(second_galaxy) = GALAXY_PROP_Mvir(test_ctx.test_galaxy) * 2.0;
+            GALAXY_PROP_Type(second_galaxy) = (GALAXY_PROP_Type(test_ctx.test_galaxy) + 1) % 3;
             
             // Verify isolation
-            int state_isolated = (second_galaxy->Mvir != test_ctx.test_galaxy->Mvir) &&
-                                (second_galaxy->Type != test_ctx.test_galaxy->Type);
+            int state_isolated = (GALAXY_PROP_Mvir(second_galaxy) != GALAXY_PROP_Mvir(test_ctx.test_galaxy)) &&
+                                (GALAXY_PROP_Type(second_galaxy) != GALAXY_PROP_Type(test_ctx.test_galaxy));
             
             TEST_ASSERT(state_isolated, "Concurrent galaxy state isolation");
             

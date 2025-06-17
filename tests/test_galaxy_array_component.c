@@ -42,38 +42,25 @@ static int create_simple_test_galaxy(struct GALAXY* gal, int galaxy_id) {
     // Zero-initialize the galaxy struct
     memset(gal, 0, sizeof(struct GALAXY));
     
-    // Set basic fields that don't require property allocation
-    gal->GalaxyNr = galaxy_id;
-    gal->Type = galaxy_id % 3;
-    gal->SnapNum = 63;
-    gal->Mvir = 1e10 + galaxy_id * 1e8;
-    gal->Vmax = 200.0 + galaxy_id * 10.0;
-    gal->Rvir = 100.0 + galaxy_id * 5.0;
-    gal->GalaxyIndex = (uint64_t)(1000 + galaxy_id);
-    
-    // Initialize position with unique values
-    gal->Pos[0] = galaxy_id * 10.0;
-    gal->Pos[1] = galaxy_id * 20.0;
-    gal->Pos[2] = galaxy_id * 30.0;
-    
-    // CRITICAL FIX: The test MUST allocate properties to be valid.
+    // CRITICAL FIX: The test MUST allocate properties FIRST to be valid.
     if (allocate_galaxy_properties(gal, &test_params) != 0) {
         printf("ERROR: Test setup failed - could not allocate properties for galaxy %d\n", galaxy_id);
         return -1;
     }
     
-    // Add some data to the properties to verify it's preserved.
-    if (gal->properties) {
-        GALAXY_PROP_Mvir(gal) = (float)galaxy_id * 1.5f;
-        GALAXY_PROP_GalaxyIndex(gal) = (uint64_t)(1000 + galaxy_id);
-        GALAXY_PROP_Type(gal) = galaxy_id % 3;
-        GALAXY_PROP_SnapNum(gal) = 63;
-        GALAXY_PROP_Vmax(gal) = 200.0f + galaxy_id * 10.0f;
-        GALAXY_PROP_Rvir(gal) = 100.0f + galaxy_id * 5.0f;
-        for (int j = 0; j < 3; j++) {
-            GALAXY_PROP_Pos_ELEM(gal, j) = gal->Pos[j];
-        }
-    }
+    // Set basic properties using property macros
+    GALAXY_PROP_GalaxyNr(gal) = galaxy_id;
+    GALAXY_PROP_Type(gal) = galaxy_id % 3;
+    GALAXY_PROP_SnapNum(gal) = 63;
+    GALAXY_PROP_Mvir(gal) = 1e10 + galaxy_id * 1e8;
+    GALAXY_PROP_Vmax(gal) = 200.0 + galaxy_id * 10.0;
+    GALAXY_PROP_Rvir(gal) = 100.0 + galaxy_id * 5.0;
+    GALAXY_PROP_GalaxyIndex(gal) = (uint64_t)(1000 + galaxy_id);
+    
+    // Initialize position with unique values using property macros
+    GALAXY_PROP_Pos_ELEM(gal, 0) = galaxy_id * 10.0;
+    GALAXY_PROP_Pos_ELEM(gal, 1) = galaxy_id * 20.0;
+    GALAXY_PROP_Pos_ELEM(gal, 2) = galaxy_id * 30.0;
     
     return 0;
 }
@@ -132,28 +119,28 @@ static void test_galaxy_array_append() {
     // Test retrieving galaxies
     struct GALAXY* retrieved1 = galaxy_array_get(arr, 0);
     TEST_ASSERT(retrieved1 != NULL, "Retrieved galaxy should not be NULL");
-    TEST_ASSERT(retrieved1->GalaxyNr == 1, "First galaxy should have GalaxyNr = 1");
-    if (retrieved1->GalaxyIndex != 1001) {
-        printf("DEBUG: Expected GalaxyIndex=1001 but got GalaxyIndex=%llu\n", (unsigned long long)retrieved1->GalaxyIndex);
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(retrieved1) == 1, "First galaxy should have GalaxyNr = 1");
+    if (GALAXY_PROP_GalaxyIndex(retrieved1) != 1001) {
+        printf("DEBUG: Expected GalaxyIndex=1001 but got GalaxyIndex=%llu\n", (unsigned long long)GALAXY_PROP_GalaxyIndex(retrieved1));
     }
-    TEST_ASSERT(retrieved1->GalaxyIndex == 1001, "First galaxy should have GalaxyIndex = 1001");
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(retrieved1) == 1001, "First galaxy should have GalaxyIndex = 1001");
     
     struct GALAXY* retrieved2 = galaxy_array_get(arr, 1);
     TEST_ASSERT(retrieved2 != NULL, "Second retrieved galaxy should not be NULL");
-    TEST_ASSERT(retrieved2->GalaxyNr == 2, "Second galaxy should have GalaxyNr = 2");
-    TEST_ASSERT(retrieved2->GalaxyIndex == 1002, "Second galaxy should have GalaxyIndex = 1002");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(retrieved2) == 2, "Second galaxy should have GalaxyNr = 2");
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(retrieved2) == 1002, "Second galaxy should have GalaxyIndex = 1002");
     
     struct GALAXY* retrieved3 = galaxy_array_get(arr, 2);
     TEST_ASSERT(retrieved3 != NULL, "Third retrieved galaxy should not be NULL");
-    TEST_ASSERT(retrieved3->GalaxyNr == 3, "Third galaxy should have GalaxyNr = 3");
-    TEST_ASSERT(retrieved3->GalaxyIndex == 1003, "Third galaxy should have GalaxyIndex = 1003");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(retrieved3) == 3, "Third galaxy should have GalaxyNr = 3");
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(retrieved3) == 1003, "Third galaxy should have GalaxyIndex = 1003");
     
     // Test raw data access
     struct GALAXY* raw_data = galaxy_array_get_raw_data(arr);
     TEST_ASSERT(raw_data != NULL, "Raw data should not be NULL");
-    TEST_ASSERT(raw_data[0].GalaxyNr == 1, "Raw data first element should match");
-    TEST_ASSERT(raw_data[1].GalaxyNr == 2, "Raw data second element should match");
-    TEST_ASSERT(raw_data[2].GalaxyNr == 3, "Raw data third element should match");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&raw_data[0]) == 1, "Raw data first element should match");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&raw_data[1]) == 2, "Raw data second element should match");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&raw_data[2]) == 3, "Raw data third element should match");
     
     galaxy_array_free(&arr);
 }
@@ -196,12 +183,12 @@ static void test_galaxy_array_expansion() {
         TEST_ASSERT(gal->properties != NULL, "Properties pointer must not be NULL after expansion");
         TEST_ASSERT(fabs(GALAXY_PROP_Mvir(gal) - (i * 1.5f)) < 1e-5, "Properties data must be preserved");
 
-        TEST_ASSERT(gal->GalaxyNr == i, "Galaxy number should be preserved");
-        if (i < 3 && gal->GalaxyIndex != (uint64_t)(1000 + i)) {
+        TEST_ASSERT(GALAXY_PROP_GalaxyNr(gal) == i, "Galaxy number should be preserved");
+        if (i < 3 && GALAXY_PROP_GalaxyIndex(gal) != (uint64_t)(1000 + i)) {
             printf("DEBUG stress test: Expected GalaxyIndex=%llu but got GalaxyIndex=%llu for galaxy %d\n", 
-                   (unsigned long long)(1000 + i), (unsigned long long)gal->GalaxyIndex, i);
+                   (unsigned long long)(1000 + i), (unsigned long long)GALAXY_PROP_GalaxyIndex(gal), i);
         }
-        TEST_ASSERT(gal->GalaxyIndex == (uint64_t)(1000 + i), "Galaxy index should be preserved");
+        TEST_ASSERT(GALAXY_PROP_GalaxyIndex(gal) == (uint64_t)(1000 + i), "Galaxy index should be preserved");
         
         if (i % 200 == 199) {
             printf("  Verified %d galaxies\n", i + 1);

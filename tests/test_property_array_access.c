@@ -76,9 +76,16 @@ static int setup_test_context(void) {
         return -1;
     }
     
-    // Set basic galaxy info
-    test_ctx.test_galaxy->GalaxyIndex = 12345;
-    test_ctx.test_galaxy->GalaxyNr = 1;
+    // Allocate properties first
+    if (allocate_galaxy_properties(test_ctx.test_galaxy, &test_ctx.test_params) != 0) {
+        printf("ERROR: Failed to allocate galaxy properties\n");
+        free(test_ctx.test_galaxy);
+        return -1;
+    }
+    
+    // Set basic galaxy info using property macros
+    GALAXY_PROP_GalaxyIndex(test_ctx.test_galaxy) = 12345;
+    GALAXY_PROP_GalaxyNr(test_ctx.test_galaxy) = 1;
     
     test_ctx.initialized = 1;
     return 0;
@@ -376,13 +383,15 @@ static void test_memory_management(void) {
     
     // Test galaxy copying with properties
     struct GALAXY copy_galaxy = {0};
-    copy_galaxy.GalaxyIndex = 99999;
     
-    // Allocate properties for copy
+    // Allocate properties for copy galaxy first
     if (allocate_galaxy_properties(&copy_galaxy, &test_ctx.test_params) != 0) {
         printf("ERROR: Failed to allocate properties for copy galaxy\n");
         return;
     }
+    
+    GALAXY_PROP_GalaxyIndex(&copy_galaxy) = 99999;
+    
     
     // Set some values in original (using appropriate access patterns)
     GALAXY_PROP_Mvir(test_ctx.test_galaxy) = 1.23e12f;  // Core property - direct access OK

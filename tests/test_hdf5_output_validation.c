@@ -1155,9 +1155,9 @@ static void test_property_system_hdf5_integration(void) {
     TEST_ASSERT(fabsf(GALAXY_PROP_Pos_ELEM(&test_galaxy, 2) - 35.0f) < TOLERANCE_FLOAT, "Pos[2] should be accessible");
     
     // Test property validation and type safety
-    TEST_ASSERT(sizeof(test_galaxy.GalaxyIndex) == 8, "GalaxyIndex should be 64-bit");
-    TEST_ASSERT(sizeof(test_galaxy.SnapNum) == 4, "SnapNum should be 32-bit");
-    TEST_ASSERT(sizeof(test_galaxy.Mvir) == 4, "Mvir should be 32-bit float");
+    TEST_ASSERT(sizeof(GALAXY_PROP_GalaxyIndex(&test_galaxy)) == 8, "GalaxyIndex should be 64-bit");
+    TEST_ASSERT(sizeof(GALAXY_PROP_SnapNum(&test_galaxy)) == 4, "SnapNum should be 32-bit");
+    TEST_ASSERT(sizeof(GALAXY_PROP_Mvir(&test_galaxy)) == 4, "Mvir should be 32-bit float");
     
     printf("Basic property access validation passed.\n");
     printf("Type safety and field accessibility validated.\n");
@@ -1443,11 +1443,11 @@ static void test_comprehensive_galaxy_properties(void) {
         set_float_array_element_property(&test_galaxy, PROP_StarFormationHistory, step, sfr_value);
     }
     
-    // Test core structural properties that don't use property system
-    test_galaxy.GalaxyNr = 12345;                    // Galaxy number within snapshot
-    test_galaxy.CentralGal = 12345;                  // Central galaxy number
-    test_galaxy.HaloNr = 67890;                      // Halo number
-    test_galaxy.MostBoundID = 999888777ULL;          // Most bound particle ID
+    // Test core structural properties using proper property system
+    GALAXY_PROP_GalaxyNr(&test_galaxy) = 12345;                    // Galaxy number within snapshot
+    GALAXY_PROP_CentralGal(&test_galaxy) = 12345;                  // Central galaxy number
+    GALAXY_PROP_HaloNr(&test_galaxy) = 67890;                      // Halo number
+    GALAXY_PROP_MostBoundID(&test_galaxy) = 999888777ULL;          // Most bound particle ID
     
     // Validate all additional properties
     printf("Validating additional properties...\n");
@@ -1524,10 +1524,10 @@ static void test_comprehensive_galaxy_properties(void) {
     }
     
     // Validate core structural properties
-    TEST_ASSERT(test_galaxy.GalaxyNr == 12345, "GalaxyNr should be accessible");
-    TEST_ASSERT(test_galaxy.CentralGal == 12345, "CentralGal should be accessible");
-    TEST_ASSERT(test_galaxy.HaloNr == 67890, "HaloNr should be accessible");
-    TEST_ASSERT(test_galaxy.MostBoundID == 999888777ULL, "MostBoundID should be accessible");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&test_galaxy) == 12345, "GalaxyNr should be accessible");
+    TEST_ASSERT(GALAXY_PROP_CentralGal(&test_galaxy) == 12345, "CentralGal should be accessible");
+    TEST_ASSERT(GALAXY_PROP_HaloNr(&test_galaxy) == 67890, "HaloNr should be accessible");
+    TEST_ASSERT(GALAXY_PROP_MostBoundID(&test_galaxy) == 999888777ULL, "MostBoundID should be accessible");
     
     printf("Tested ~60+ galaxy properties including all core, physics, and array properties.\n");
     printf("All properties from properties.yaml are covered and validated.\n");
@@ -1634,25 +1634,39 @@ static void test_scientific_data_consistency(void) {
     memset(&gal1, 0, sizeof(gal1));
     memset(&gal2, 0, sizeof(gal2));
     
-    // Set up central-satellite pair
-    gal1.GalaxyIndex = 1000001ULL;
-    gal1.CentralGalaxyIndex = 1000001ULL;  // Central points to itself
-    gal1.Type = 0;  // Central
+    // CRITICAL: Initialize property system for both galaxies
+    int status1 = allocate_galaxy_properties(&gal1, &test_ctx.run_params);
+    TEST_ASSERT(status1 == 0, "Should be able to allocate galaxy properties for gal1");
+    int status2 = allocate_galaxy_properties(&gal2, &test_ctx.run_params);
+    TEST_ASSERT(status2 == 0, "Should be able to allocate galaxy properties for gal2");
     
-    gal2.GalaxyIndex = 1000002ULL;
-    gal2.CentralGalaxyIndex = 1000001ULL;  // Satellite points to central
-    gal2.Type = 1;  // Satellite
+    // Reset to default values
+    initialize_all_properties(&gal1);
+    initialize_all_properties(&gal2);
+    
+    // Set up central-satellite pair
+    GALAXY_PROP_GalaxyIndex(&gal1) = 1000001ULL;
+    GALAXY_PROP_CentralGalaxyIndex(&gal1) = 1000001ULL;  // Central points to itself
+    GALAXY_PROP_Type(&gal1) = 0;  // Central
+    
+    GALAXY_PROP_GalaxyIndex(&gal2) = 1000002ULL;
+    GALAXY_PROP_CentralGalaxyIndex(&gal2) = 1000001ULL;  // Satellite points to central
+    GALAXY_PROP_Type(&gal2) = 1;  // Satellite
     
     // Test galaxy index uniqueness
-    TEST_ASSERT(gal1.GalaxyIndex != gal2.GalaxyIndex, "Galaxy indices should be unique");
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(&gal1) != GALAXY_PROP_GalaxyIndex(&gal2), "Galaxy indices should be unique");
     
     // Test central-satellite relationship consistency
-    TEST_ASSERT(gal1.CentralGalaxyIndex == gal1.GalaxyIndex, "Central galaxy should point to itself");
-    TEST_ASSERT(gal2.CentralGalaxyIndex == gal1.GalaxyIndex, "Satellite should point to central");
+    TEST_ASSERT(GALAXY_PROP_CentralGalaxyIndex(&gal1) == GALAXY_PROP_GalaxyIndex(&gal1), "Central galaxy should point to itself");
+    TEST_ASSERT(GALAXY_PROP_CentralGalaxyIndex(&gal2) == GALAXY_PROP_GalaxyIndex(&gal1), "Satellite should point to central");
     
     // Test galaxy types are consistent with relationships
-    TEST_ASSERT(gal1.Type == 0, "Central galaxy should have Type=0");
-    TEST_ASSERT(gal2.Type == 1, "Satellite galaxy should have Type=1");
+    TEST_ASSERT(GALAXY_PROP_Type(&gal1) == 0, "Central galaxy should have Type=0");
+    TEST_ASSERT(GALAXY_PROP_Type(&gal2) == 1, "Satellite galaxy should have Type=1");
+    
+    // Cleanup galaxy properties
+    free_galaxy_properties(&gal1);
+    free_galaxy_properties(&gal2);
     
     printf("Scientific data consistency test completed.\n");
 }
@@ -1914,9 +1928,9 @@ static void test_property_metadata_discovery(void) {
     printf("Testing property data type consistency...\n");
     
     // These tests verify that the property system correctly handles different data types
-    TEST_ASSERT(sizeof(test_galaxy.SnapNum) == 4, "SnapNum should be 32-bit integer");
-    TEST_ASSERT(sizeof(test_galaxy.GalaxyIndex) == 8, "GalaxyIndex should be 64-bit integer");
-    TEST_ASSERT(sizeof(test_galaxy.Mvir) == 4, "Mvir should be 32-bit float");
+    TEST_ASSERT(sizeof(GALAXY_PROP_SnapNum(&test_galaxy)) == 4, "SnapNum should be 32-bit integer");
+    TEST_ASSERT(sizeof(GALAXY_PROP_GalaxyIndex(&test_galaxy)) == 8, "GalaxyIndex should be 64-bit integer");
+    TEST_ASSERT(sizeof(GALAXY_PROP_Mvir(&test_galaxy)) == 4, "Mvir should be 32-bit float");
     
     // Cleanup test galaxy properties
     free_galaxy_properties(&test_galaxy);

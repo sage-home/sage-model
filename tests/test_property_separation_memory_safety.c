@@ -54,49 +54,61 @@ static void test_struct_memory_layout(void) {
     size_t struct_size = sizeof(struct GALAXY);
     printf("  Current struct GALAXY size: %zu bytes\n", struct_size);
     
-    // After removing mergeType, mergeIntoID, mergeIntoSnapNum (3 × int32_t = 12 bytes)
-    // the struct should be smaller than before
-    TEST_ASSERT(struct_size > 100, "struct GALAXY has reasonable minimum size");
-    TEST_ASSERT(struct_size < 1000, "struct GALAXY has reasonable maximum size");
+    // After property separation, the struct should be small (just extension system + properties pointer)
+    // With property separation, struct should be around 32 bytes (4 pointers + 2 ints + uint64_t)
+    TEST_ASSERT(struct_size >= 24, "struct GALAXY has reasonable minimum size after property separation");
+    TEST_ASSERT(struct_size <= 64, "struct GALAXY has reasonable maximum size after property separation");
     
     // Test memory alignment and access patterns
     struct GALAXY galaxy;
     memset(&galaxy, 0, sizeof(galaxy));
     
-    // Test that all core properties are properly aligned and accessible
-    galaxy.SnapNum = 0x12345678;
-    galaxy.Type = 0x87654321;
-    galaxy.GalaxyNr = 0xABCDEF00;
-    galaxy.HaloNr = 0x00FEDCBA;
-    galaxy.MostBoundID = 0x1234567890ABCDEFLL;
+    // Allocate properties for this galaxy first
+    struct params run_params;
+    memset(&run_params, 0, sizeof(run_params));
+    run_params.simulation.NumSnapOutputs = 10;
+    int result = allocate_galaxy_properties(&galaxy, &run_params);
+    TEST_ASSERT(result == 0, "Property allocation for struct test");
     
-    TEST_ASSERT(galaxy.SnapNum == 0x12345678, "SnapNum memory access");
-    TEST_ASSERT(galaxy.Type == (int32_t)0x87654321, "Type memory access");
-    TEST_ASSERT(galaxy.GalaxyNr == (int32_t)0xABCDEF00, "GalaxyNr memory access");
-    TEST_ASSERT(galaxy.HaloNr == 0x00FEDCBA, "HaloNr memory access");
-    TEST_ASSERT(galaxy.MostBoundID == 0x1234567890ABCDEFLL, "MostBoundID memory access");
+    // Test that all core properties are properly aligned and accessible
+    GALAXY_PROP_SnapNum(&galaxy) = 0x12345678;
+    GALAXY_PROP_Type(&galaxy) = 0x87654321;
+    GALAXY_PROP_GalaxyNr(&galaxy) = 0xABCDEF00;
+    GALAXY_PROP_HaloNr(&galaxy) = 0x00FEDCBA;
+    GALAXY_PROP_MostBoundID(&galaxy) = 0x1234567890ABCDEFLL;
+    
+    TEST_ASSERT(GALAXY_PROP_SnapNum(&galaxy) == 0x12345678, "SnapNum memory access");
+    TEST_ASSERT(GALAXY_PROP_Type(&galaxy) == (int32_t)0x87654321, "Type memory access");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&galaxy) == (int32_t)0xABCDEF00, "GalaxyNr memory access");
+    TEST_ASSERT(GALAXY_PROP_HaloNr(&galaxy) == 0x00FEDCBA, "HaloNr memory access");
+    TEST_ASSERT(GALAXY_PROP_MostBoundID(&galaxy) == 0x1234567890ABCDEFLL, "MostBoundID memory access");
     
     // Test float fields
-    galaxy.Mvir = 1.23456789e12f;
-    galaxy.Rvir = 9.87654321e2f;
-    galaxy.Vvir = 5.55555555e2f;
-    galaxy.Vmax = 7.77777777e2f;
+    GALAXY_PROP_Mvir(&galaxy) = 1.23456789e12f;
+    GALAXY_PROP_Rvir(&galaxy) = 9.87654321e2f;
+    GALAXY_PROP_Vvir(&galaxy) = 5.55555555e2f;
+    GALAXY_PROP_Vmax(&galaxy) = 7.77777777e2f;
     
-    TEST_ASSERT(fabs(galaxy.Mvir - 1.23456789e12f) < 1e6f, "Mvir memory access");
-    TEST_ASSERT(fabs(galaxy.Rvir - 9.87654321e2f) < 1e-3f, "Rvir memory access");
-    TEST_ASSERT(fabs(galaxy.Vvir - 5.55555555e2f) < 1e-3f, "Vvir memory access");
-    TEST_ASSERT(fabs(galaxy.Vmax - 7.77777777e2f) < 1e-3f, "Vmax memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&galaxy) - 1.23456789e12f) < 1e6f, "Mvir memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Rvir(&galaxy) - 9.87654321e2f) < 1e-3f, "Rvir memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vvir(&galaxy) - 5.55555555e2f) < 1e-3f, "Vvir memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vmax(&galaxy) - 7.77777777e2f) < 1e-3f, "Vmax memory access");
     
     // Test array fields
-    galaxy.Pos[0] = 1.111f; galaxy.Pos[1] = 2.222f; galaxy.Pos[2] = 3.333f;
-    galaxy.Vel[0] = 4.444f; galaxy.Vel[1] = 5.555f; galaxy.Vel[2] = 6.666f;
+    GALAXY_PROP_Pos(&galaxy)[0] = 1.111f; GALAXY_PROP_Pos(&galaxy)[1] = 2.222f; GALAXY_PROP_Pos(&galaxy)[2] = 3.333f;
+    GALAXY_PROP_Vel(&galaxy)[0] = 4.444f; GALAXY_PROP_Vel(&galaxy)[1] = 5.555f; GALAXY_PROP_Vel(&galaxy)[2] = 6.666f;
     
-    TEST_ASSERT(fabs(galaxy.Pos[0] - 1.111f) < 1e-3f, "Pos[0] memory access");
-    TEST_ASSERT(fabs(galaxy.Pos[1] - 2.222f) < 1e-3f, "Pos[1] memory access");
-    TEST_ASSERT(fabs(galaxy.Pos[2] - 3.333f) < 1e-3f, "Pos[2] memory access");
-    TEST_ASSERT(fabs(galaxy.Vel[0] - 4.444f) < 1e-3f, "Vel[0] memory access");
-    TEST_ASSERT(fabs(galaxy.Vel[1] - 5.555f) < 1e-3f, "Vel[1] memory access");
-    TEST_ASSERT(fabs(galaxy.Vel[2] - 6.666f) < 1e-3f, "Vel[2] memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Pos(&galaxy)[0] - 1.111f) < 1e-3f, "Pos[0] memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Pos(&galaxy)[1] - 2.222f) < 1e-3f, "Pos[1] memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Pos(&galaxy)[2] - 3.333f) < 1e-3f, "Pos[2] memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vel(&galaxy)[0] - 4.444f) < 1e-3f, "Vel[0] memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vel(&galaxy)[1] - 5.555f) < 1e-3f, "Vel[1] memory access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vel(&galaxy)[2] - 6.666f) < 1e-3f, "Vel[2] memory access");
+    
+    // Clean up properties
+    if (galaxy.properties != NULL) {
+        free_galaxy_properties(&galaxy);
+    }
     
     // Test extension system pointers
     galaxy.extension_data = NULL;
@@ -130,23 +142,23 @@ static void test_galaxy_array_operations(void) {
         struct GALAXY galaxy;
         memset(&galaxy, 0, sizeof(galaxy));
         
-        // Set unique values for each galaxy
-        galaxy.SnapNum = 60 + i;
-        galaxy.Type = i % 3;
-        galaxy.GalaxyNr = 1000 + i;
-        galaxy.HaloNr = 2000 + i;
-        galaxy.MostBoundID = 3000000000LL + i;
-        galaxy.Mvir = (1.0f + 0.1f * i) * 1e12f;
-        galaxy.Rvir = 200.0f + 10.0f * i;
-        galaxy.Vvir = 150.0f + 5.0f * i;
-        galaxy.Vmax = 180.0f + 8.0f * i;
-        
-        galaxy.Pos[0] = 10.0f * i; galaxy.Pos[1] = 20.0f * i; galaxy.Pos[2] = 30.0f * i;
-        galaxy.Vel[0] = 100.0f + i; galaxy.Vel[1] = 200.0f + i; galaxy.Vel[2] = 300.0f + i;
-        
-        // Allocate properties for this galaxy
+        // Allocate properties for this galaxy FIRST
         int result = allocate_galaxy_properties(&galaxy, &run_params);
         TEST_ASSERT(result == 0, "Galaxy property allocation in array");
+        
+        // Set unique values for each galaxy
+        GALAXY_PROP_SnapNum(&galaxy) = 60 + i;
+        GALAXY_PROP_Type(&galaxy) = i % 3;
+        GALAXY_PROP_GalaxyNr(&galaxy) = 1000 + i;
+        GALAXY_PROP_HaloNr(&galaxy) = 2000 + i;
+        GALAXY_PROP_MostBoundID(&galaxy) = 3000000000LL + i;
+        GALAXY_PROP_Mvir(&galaxy) = (1.0f + 0.1f * i) * 1e12f;
+        GALAXY_PROP_Rvir(&galaxy) = 200.0f + 10.0f * i;
+        GALAXY_PROP_Vvir(&galaxy) = 150.0f + 5.0f * i;
+        GALAXY_PROP_Vmax(&galaxy) = 180.0f + 8.0f * i;
+        
+        GALAXY_PROP_Pos(&galaxy)[0] = 10.0f * i; GALAXY_PROP_Pos(&galaxy)[1] = 20.0f * i; GALAXY_PROP_Pos(&galaxy)[2] = 30.0f * i;
+        GALAXY_PROP_Vel(&galaxy)[0] = 100.0f + i; GALAXY_PROP_Vel(&galaxy)[1] = 200.0f + i; GALAXY_PROP_Vel(&galaxy)[2] = 300.0f + i;
         
         if (galaxy.properties != NULL) {
             // Set physics properties using generic property system
@@ -194,17 +206,17 @@ static void test_galaxy_array_operations(void) {
         struct GALAXY *g = galaxy_array_get(galaxy_array, i);
         
         // Test core properties
-        TEST_ASSERT(g->SnapNum == 60 + i, "Array galaxy core property: SnapNum");
-        TEST_ASSERT(g->Type == i % 3, "Array galaxy core property: Type");
-        TEST_ASSERT(g->GalaxyNr == 1000 + i, "Array galaxy core property: GalaxyNr");
-        TEST_ASSERT(g->HaloNr == 2000 + i, "Array galaxy core property: HaloNr");
-        TEST_ASSERT(g->MostBoundID == 3000000000LL + i, "Array galaxy core property: MostBoundID");
+        TEST_ASSERT(GALAXY_PROP_SnapNum(g) == 60 + i, "Array galaxy core property: SnapNum");
+        TEST_ASSERT(GALAXY_PROP_Type(g) == i % 3, "Array galaxy core property: Type");
+        TEST_ASSERT(GALAXY_PROP_GalaxyNr(g) == 1000 + i, "Array galaxy core property: GalaxyNr");
+        TEST_ASSERT(GALAXY_PROP_HaloNr(g) == 2000 + i, "Array galaxy core property: HaloNr");
+        TEST_ASSERT(GALAXY_PROP_MostBoundID(g) == 3000000000LL + i, "Array galaxy core property: MostBoundID");
         
         float expected_mvir = (1.0f + 0.1f * i) * 1e12f;
-        TEST_ASSERT(fabs(g->Mvir - expected_mvir) < 1e9f, "Array galaxy core property: Mvir");
+        TEST_ASSERT(fabs(GALAXY_PROP_Mvir(g) - expected_mvir) < 1e9f, "Array galaxy core property: Mvir");
         
         float expected_rvir = 200.0f + 10.0f * i;
-        TEST_ASSERT(fabs(g->Rvir - expected_rvir) < 1e-3f, "Array galaxy core property: Rvir");
+        TEST_ASSERT(fabs(GALAXY_PROP_Rvir(g) - expected_rvir) < 1e-3f, "Array galaxy core property: Rvir");
         
         // Test physics properties if available
         if (g->properties != NULL) {
@@ -254,11 +266,12 @@ static void test_galaxy_array_operations(void) {
         struct GALAXY galaxy;
         memset(&galaxy, 0, sizeof(galaxy));
         
-        galaxy.SnapNum = 60 + i;
-        galaxy.Type = i % 3;
-        galaxy.GalaxyNr = 1000 + i;
-        
+        // Allocate properties FIRST
         int result2 = allocate_galaxy_properties(&galaxy, &run_params);
+        
+        GALAXY_PROP_SnapNum(&galaxy) = 60 + i;
+        GALAXY_PROP_Type(&galaxy) = i % 3;
+        GALAXY_PROP_GalaxyNr(&galaxy) = 1000 + i;
         if (result2 == 0 && galaxy.properties != NULL) {
             property_id_t prop_coldgas = get_cached_property_id("ColdGas");
             if (prop_coldgas < PROP_COUNT) {
@@ -280,9 +293,9 @@ static void test_galaxy_array_operations(void) {
     // Verify data integrity after expansion
     for (int i = 0; i < 3; i++) {  // Check first few galaxies
         struct GALAXY *g = galaxy_array_get(galaxy_array, i);
-        TEST_ASSERT(g->SnapNum == 60 + i, "Data integrity after expansion: SnapNum");
-        TEST_ASSERT(g->Type == i % 3, "Data integrity after expansion: Type");
-        TEST_ASSERT(g->GalaxyNr == 1000 + i, "Data integrity after expansion: GalaxyNr");
+        TEST_ASSERT(GALAXY_PROP_SnapNum(g) == 60 + i, "Data integrity after expansion: SnapNum");
+        TEST_ASSERT(GALAXY_PROP_Type(g) == i % 3, "Data integrity after expansion: Type");
+        TEST_ASSERT(GALAXY_PROP_GalaxyNr(g) == 1000 + i, "Data integrity after expansion: GalaxyNr");
     }
     
     // Cleanup

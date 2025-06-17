@@ -39,54 +39,69 @@ static int tests_passed = 0;
     } while (0)
 
 /**
- * Test that core properties are accessible via direct struct access
+ * Test that core properties are accessible via property system (single source of truth)
  */
-static void test_core_property_direct_access(void) {
-    printf("\n=== Testing Core Property Direct Access ===\n");
+static void test_core_property_system_access(void) {
+    printf("\n=== Testing Core Property System Access ===\n");
     
     struct GALAXY galaxy;
     memset(&galaxy, 0, sizeof(galaxy));
     
-    // Test direct access to core properties
-    galaxy.SnapNum = 42;
-    galaxy.Type = 1;
-    galaxy.GalaxyNr = 12345;
-    galaxy.HaloNr = 67890;
-    galaxy.MostBoundID = 9876543210LL;
-    galaxy.Mvir = 1.5e12f;
-    galaxy.Rvir = 250.0f;
-    galaxy.Vvir = 180.0f;
-    galaxy.Vmax = 200.0f;
-    galaxy.infallMvir = 1.2e12f;
-    galaxy.infallVvir = 175.0f;
-    galaxy.infallVmax = 195.0f;
+    // Initialize minimal params for property system  
+    struct params run_params;
+    memset(&run_params, 0, sizeof(run_params));
+    run_params.simulation.NumSnapOutputs = 10; // Required for property system
     
-    // Position and velocity arrays
-    galaxy.Pos[0] = 10.5f; galaxy.Pos[1] = 20.5f; galaxy.Pos[2] = 30.5f;
-    galaxy.Vel[0] = 100.0f; galaxy.Vel[1] = 200.0f; galaxy.Vel[2] = 300.0f;
+    // CRITICAL: Allocate properties FIRST
+    int result = allocate_galaxy_properties(&galaxy, &run_params);
+    TEST_ASSERT(result == 0, "Property system allocation succeeds");
+    TEST_ASSERT(galaxy.properties != NULL, "Properties pointer is not NULL");
     
-    // Test that all core properties are directly accessible
-    TEST_ASSERT(galaxy.SnapNum == 42, "SnapNum direct access");
-    TEST_ASSERT(galaxy.Type == 1, "Type direct access");
-    TEST_ASSERT(galaxy.GalaxyNr == 12345, "GalaxyNr direct access");
-    TEST_ASSERT(galaxy.HaloNr == 67890, "HaloNr direct access");
-    TEST_ASSERT(galaxy.MostBoundID == 9876543210LL, "MostBoundID direct access");
-    TEST_ASSERT(fabs(galaxy.Mvir - 1.5e12f) < 1e6f, "Mvir direct access");
-    TEST_ASSERT(fabs(galaxy.Rvir - 250.0f) < 0.1f, "Rvir direct access");
-    TEST_ASSERT(fabs(galaxy.Vvir - 180.0f) < 0.1f, "Vvir direct access");
-    TEST_ASSERT(fabs(galaxy.Vmax - 200.0f) < 0.1f, "Vmax direct access");
-    // MergTime is now a physics property, not a core property
-    TEST_ASSERT(fabs(galaxy.infallMvir - 1.2e12f) < 1e6f, "infallMvir direct access");
-    TEST_ASSERT(fabs(galaxy.infallVvir - 175.0f) < 0.1f, "infallVvir direct access");
-    TEST_ASSERT(fabs(galaxy.infallVmax - 195.0f) < 0.1f, "infallVmax direct access");
+    if (galaxy.properties == NULL) {
+        printf("ERROR: Cannot test core properties without property allocation\n");
+        return;
+    }
     
-    // Test array access
-    TEST_ASSERT(fabs(galaxy.Pos[0] - 10.5f) < 0.1f, "Pos[0] direct access");
-    TEST_ASSERT(fabs(galaxy.Pos[1] - 20.5f) < 0.1f, "Pos[1] direct access");
-    TEST_ASSERT(fabs(galaxy.Pos[2] - 30.5f) < 0.1f, "Pos[2] direct access");
-    TEST_ASSERT(fabs(galaxy.Vel[0] - 100.0f) < 0.1f, "Vel[0] direct access");
-    TEST_ASSERT(fabs(galaxy.Vel[1] - 200.0f) < 0.1f, "Vel[1] direct access");
-    TEST_ASSERT(fabs(galaxy.Vel[2] - 300.0f) < 0.1f, "Vel[2] direct access");
+    // Set core properties using property macros (single source of truth)
+    GALAXY_PROP_SnapNum(&galaxy) = 42;
+    GALAXY_PROP_Type(&galaxy) = 1;
+    GALAXY_PROP_GalaxyNr(&galaxy) = 12345;
+    GALAXY_PROP_HaloNr(&galaxy) = 67890;
+    GALAXY_PROP_MostBoundID(&galaxy) = 9876543210LL;
+    GALAXY_PROP_Mvir(&galaxy) = 1.5e12f;
+    GALAXY_PROP_Rvir(&galaxy) = 250.0f;
+    GALAXY_PROP_Vvir(&galaxy) = 180.0f;
+    GALAXY_PROP_Vmax(&galaxy) = 200.0f;
+    
+    // Position and velocity arrays using property macros
+    GALAXY_PROP_Pos_ELEM(&galaxy, 0) = 10.5f;
+    GALAXY_PROP_Pos_ELEM(&galaxy, 1) = 20.5f;
+    GALAXY_PROP_Pos_ELEM(&galaxy, 2) = 30.5f;
+    GALAXY_PROP_Vel_ELEM(&galaxy, 0) = 100.0f;
+    GALAXY_PROP_Vel_ELEM(&galaxy, 1) = 200.0f;
+    GALAXY_PROP_Vel_ELEM(&galaxy, 2) = 300.0f;
+    
+    // Test that all core properties are accessible via property system
+    TEST_ASSERT(GALAXY_PROP_SnapNum(&galaxy) == 42, "SnapNum property access");
+    TEST_ASSERT(GALAXY_PROP_Type(&galaxy) == 1, "Type property access");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&galaxy) == 12345, "GalaxyNr property access");
+    TEST_ASSERT(GALAXY_PROP_HaloNr(&galaxy) == 67890, "HaloNr property access");
+    TEST_ASSERT(GALAXY_PROP_MostBoundID(&galaxy) == 9876543210LL, "MostBoundID property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&galaxy) - 1.5e12f) < 1e6f, "Mvir property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Rvir(&galaxy) - 250.0f) < 0.1f, "Rvir property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vvir(&galaxy) - 180.0f) < 0.1f, "Vvir property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vmax(&galaxy) - 200.0f) < 0.1f, "Vmax property access");
+    
+    // Test array access via property system
+    TEST_ASSERT(fabs(GALAXY_PROP_Pos_ELEM(&galaxy, 0) - 10.5f) < 0.1f, "Pos[0] property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Pos_ELEM(&galaxy, 1) - 20.5f) < 0.1f, "Pos[1] property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Pos_ELEM(&galaxy, 2) - 30.5f) < 0.1f, "Pos[2] property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vel_ELEM(&galaxy, 0) - 100.0f) < 0.1f, "Vel[0] property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vel_ELEM(&galaxy, 1) - 200.0f) < 0.1f, "Vel[1] property access");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vel_ELEM(&galaxy, 2) - 300.0f) < 0.1f, "Vel[2] property access");
+    
+    // Clean up
+    free_galaxy_properties(&galaxy);
 }
 
 /**
@@ -171,18 +186,18 @@ static void test_no_dual_state_synchronization(void) {
     TEST_ASSERT(result == 0, "Property system allocation succeeds");
     
     if (galaxy.properties != NULL) {
-        // Set core properties via direct access
-        galaxy.SnapNum = 42;
-        galaxy.Type = 1;
-        galaxy.Mvir = 1.5e12f;
+        // Set core properties via property system (single source of truth)
+        GALAXY_PROP_SnapNum(&galaxy) = 42;
+        GALAXY_PROP_Type(&galaxy) = 1;
+        GALAXY_PROP_Mvir(&galaxy) = 1.5e12f;
         
-        // Test core-physics independence via generic property system
+        // Test core-physics independence via property system
         property_id_t prop_coldgas = get_cached_property_id("ColdGas");
         
-        // Test that core and physics systems are truly independent
-        TEST_ASSERT(galaxy.SnapNum == 42, "Core SnapNum maintains value independently");
-        TEST_ASSERT(galaxy.Type == 1, "Core Type maintains value independently");
-        TEST_ASSERT(fabs(galaxy.Mvir - 1.5e12f) < 1e6f, "Core Mvir maintains value independently");
+        // Test that core and physics systems work together in single source of truth
+        TEST_ASSERT(GALAXY_PROP_SnapNum(&galaxy) == 42, "Core SnapNum accessible via property system");
+        TEST_ASSERT(GALAXY_PROP_Type(&galaxy) == 1, "Core Type accessible via property system");
+        TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&galaxy) - 1.5e12f) < 1e6f, "Core Mvir accessible via property system");
         
         // Only test physics properties if they're available (full-physics mode)
         if (prop_coldgas < PROP_COUNT) {
@@ -191,15 +206,15 @@ static void test_no_dual_state_synchronization(void) {
             TEST_ASSERT(fabs(coldgas - 2.5e10f) < 1e6f, "Physics ColdGas maintains value independently");
             
             // Modify core property and verify physics property is unaffected
-            galaxy.Type = 2;
+            GALAXY_PROP_Type(&galaxy) = 2;
             coldgas = get_float_property(&galaxy, prop_coldgas, 0.0f);
             TEST_ASSERT(fabs(coldgas - 2.5e10f) < 1e6f, "Physics property unchanged when core modified");
-            TEST_ASSERT(galaxy.Type == 2, "Core property change is independent");
+            TEST_ASSERT(GALAXY_PROP_Type(&galaxy) == 2, "Core property change works via property system");
         } else {
-            // In physics-free mode, just verify core independence
-            galaxy.Type = 2;
-            TEST_ASSERT(galaxy.Type == 2, "Core property change works in physics-free mode");
-            TEST_ASSERT(fabs(galaxy.Mvir - 1.5e12f) < 1e6f, "Other core properties unaffected");
+            // In physics-free mode, just verify core property system works
+            GALAXY_PROP_Type(&galaxy) = 2;
+            TEST_ASSERT(GALAXY_PROP_Type(&galaxy) == 2, "Core property change works in physics-free mode");
+            TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&galaxy) - 1.5e12f) < 1e6f, "Other core properties unaffected");
         }
     }
     
@@ -360,7 +375,7 @@ int main(void) {
     logging_init(LOG_LEVEL_WARNING, stderr);
     
     // Run all test suites
-    test_core_property_direct_access();
+    test_core_property_system_access();
     test_physics_property_system_access();
     test_no_dual_state_synchronization();
     test_property_system_data_types();

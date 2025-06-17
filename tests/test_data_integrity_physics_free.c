@@ -457,7 +457,7 @@ static int create_test_galaxies(void) {
         if (num_gals_in_halo > 0) {
             struct GALAXY *created_gal = galaxy_array_get(test_ctx.test_galaxies, total_galaxies - 1);
             if (created_gal) {
-                printf("    -> Created galaxy has SnapNum=%d, HaloNr=%d\n", created_gal->SnapNum, created_gal->HaloNr);
+                printf("    -> Created galaxy has SnapNum=%d, HaloNr=%d\n", GALAXY_PROP_SnapNum(created_gal), GALAXY_PROP_HaloNr(created_gal));
             }
         }
     }
@@ -511,35 +511,51 @@ static void capture_galaxy_snapshots(void) {
         struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         struct test_galaxy_snapshot *snapshot = &test_ctx.galaxy_snapshots[i];
         
-        // Capture core properties directly from the galaxy structure
-        snapshot->original_galaxynr = galaxy->GalaxyNr;
-        snapshot->original_type = galaxy->Type;
-        snapshot->original_snapnum = galaxy->SnapNum;
-        snapshot->original_halonr = galaxy->HaloNr;
-        snapshot->original_mvir = galaxy->Mvir;
-        snapshot->original_pos[0] = galaxy->Pos[0];
-        snapshot->original_pos[1] = galaxy->Pos[1];
-        snapshot->original_pos[2] = galaxy->Pos[2];
-        snapshot->original_vel[0] = galaxy->Vel[0];
-        snapshot->original_vel[1] = galaxy->Vel[1];
-        snapshot->original_vel[2] = galaxy->Vel[2];
-        snapshot->original_mostboundid = galaxy->MostBoundID;
-        snapshot->original_len = galaxy->Len;
-        snapshot->original_vmax = galaxy->Vmax;
-        snapshot->original_rvir = galaxy->Rvir;
-        snapshot->original_vvir = galaxy->Vvir;
-        // MergTime is now a physics property - get via property system
+        // Capture core properties via property system (single source of truth)
+        snapshot->original_galaxynr = GALAXY_PROP_GalaxyNr(galaxy);
+        snapshot->original_type = GALAXY_PROP_Type(galaxy);
+        snapshot->original_snapnum = GALAXY_PROP_SnapNum(galaxy);
+        snapshot->original_halonr = GALAXY_PROP_HaloNr(galaxy);
+        snapshot->original_mvir = GALAXY_PROP_Mvir(galaxy);
+        snapshot->original_pos[0] = GALAXY_PROP_Pos_ELEM(galaxy, 0);
+        snapshot->original_pos[1] = GALAXY_PROP_Pos_ELEM(galaxy, 1);
+        snapshot->original_pos[2] = GALAXY_PROP_Pos_ELEM(galaxy, 2);
+        snapshot->original_vel[0] = GALAXY_PROP_Vel_ELEM(galaxy, 0);
+        snapshot->original_vel[1] = GALAXY_PROP_Vel_ELEM(galaxy, 1);
+        snapshot->original_vel[2] = GALAXY_PROP_Vel_ELEM(galaxy, 2);
+        snapshot->original_mostboundid = GALAXY_PROP_MostBoundID(galaxy);
+        snapshot->original_len = GALAXY_PROP_Len(galaxy);
+        snapshot->original_vmax = GALAXY_PROP_Vmax(galaxy);
+        snapshot->original_rvir = GALAXY_PROP_Rvir(galaxy);
+        snapshot->original_vvir = GALAXY_PROP_Vvir(galaxy);
+        // MergTime is a physics property - get via property system
         property_id_t mergtime_prop = get_cached_property_id("MergTime");
         if (mergtime_prop < PROP_COUNT && galaxy->properties != NULL) {
             snapshot->original_mergtime = get_float_property(galaxy, mergtime_prop, 0.0f);
         } else {
             snapshot->original_mergtime = 0.0f; // Default value if property not available
         }
-        snapshot->original_infall_mvir = galaxy->infallMvir;
-        snapshot->original_infall_vvir = galaxy->infallVvir;
-        snapshot->original_infall_vmax = galaxy->infallVmax;
-        snapshot->original_galaxy_index = galaxy->GalaxyIndex;
-        snapshot->original_central_galaxy_index = galaxy->CentralGalaxyIndex;
+        // Check if infallMvir and infallVvir are available as properties
+        property_id_t infall_mvir_prop = get_cached_property_id("infallMvir");
+        property_id_t infall_vvir_prop = get_cached_property_id("infallVvir");
+        if (infall_mvir_prop < PROP_COUNT && galaxy->properties != NULL) {
+            snapshot->original_infall_mvir = get_float_property(galaxy, infall_mvir_prop, 0.0f);
+        } else {
+            snapshot->original_infall_mvir = 0.0f;
+        }
+        if (infall_vvir_prop < PROP_COUNT && galaxy->properties != NULL) {
+            snapshot->original_infall_vvir = get_float_property(galaxy, infall_vvir_prop, 0.0f);
+        } else {
+            snapshot->original_infall_vvir = 0.0f;
+        }
+        property_id_t infall_vmax_prop = get_cached_property_id("infallVmax");
+        if (infall_vmax_prop < PROP_COUNT && galaxy->properties != NULL) {
+            snapshot->original_infall_vmax = get_float_property(galaxy, infall_vmax_prop, 0.0f);
+        } else {
+            snapshot->original_infall_vmax = 0.0f;
+        }
+        snapshot->original_galaxy_index = GALAXY_PROP_GalaxyIndex(galaxy);
+        snapshot->original_central_galaxy_index = GALAXY_PROP_CentralGalaxyIndex(galaxy);
         
         printf("  Galaxy %d snapshot: GalaxyNr=%d, Type=%d, Mvir=%.1f, GalaxyIndex=%" PRIu64 "\n",
                i, snapshot->original_galaxynr, snapshot->original_type, 
@@ -598,34 +614,38 @@ static bool verify_galaxy_integrity(int gal_idx) {
     bool integrity_ok = true;
     
     // Check for the specific corruption we fixed: garbage values in GalaxyNr
-    if (galaxy->GalaxyNr < 0 || galaxy->GalaxyNr > MAX_REASONABLE_GALAXY_NR) {
+    int32_t galaxy_nr = GALAXY_PROP_GalaxyNr(galaxy);
+    if (galaxy_nr < 0 || galaxy_nr > MAX_REASONABLE_GALAXY_NR) {
         printf("ERROR: Galaxy %d has corrupted GalaxyNr: %d (outside reasonable range)\n",
-               gal_idx, galaxy->GalaxyNr);
+               gal_idx, galaxy_nr);
         integrity_ok = false;
     }
     
-    if (galaxy->GalaxyNr != snapshot->original_galaxynr) {
+    if (galaxy_nr != snapshot->original_galaxynr) {
         printf("ERROR: Galaxy %d GalaxyNr corrupted: expected %d, got %d\n",
-               gal_idx, snapshot->original_galaxynr, galaxy->GalaxyNr);
+               gal_idx, snapshot->original_galaxynr, galaxy_nr);
         integrity_ok = false;
     }
     
-    if (galaxy->Type != snapshot->original_type) {
+    int32_t galaxy_type = GALAXY_PROP_Type(galaxy);
+    if (galaxy_type != snapshot->original_type) {
         printf("ERROR: Galaxy %d Type corrupted: expected %d, got %d\n",
-               gal_idx, snapshot->original_type, galaxy->Type);
+               gal_idx, snapshot->original_type, galaxy_type);
         integrity_ok = false;
     }
     
-    if (fabsf(galaxy->Mvir - snapshot->original_mvir) > TOLERANCE_NORMAL) {
+    float galaxy_mvir = GALAXY_PROP_Mvir(galaxy);
+    if (fabsf(galaxy_mvir - snapshot->original_mvir) > TOLERANCE_NORMAL) {
         printf("ERROR: Galaxy %d Mvir corrupted: expected %.6f, got %.6f\n",
-               gal_idx, snapshot->original_mvir, galaxy->Mvir);
+               gal_idx, snapshot->original_mvir, galaxy_mvir);
         integrity_ok = false;
     }
     
     // Check GalaxyIndex for corruption (this was affected by the garbage GalaxyNr issue)
-    if (galaxy->GalaxyIndex != snapshot->original_galaxy_index) {
+    uint64_t galaxy_index = GALAXY_PROP_GalaxyIndex(galaxy);
+    if (galaxy_index != snapshot->original_galaxy_index) {
         printf("ERROR: Galaxy %d GalaxyIndex corrupted: expected %" PRIu64 ", got %" PRIu64 "\n",
-               gal_idx, snapshot->original_galaxy_index, galaxy->GalaxyIndex);
+               gal_idx, snapshot->original_galaxy_index, galaxy_index);
         integrity_ok = false;
     }
     
@@ -689,11 +709,20 @@ static void test_memory_initialization_integrity(void) {
     inject_memory_poison(test_array_poison, test_size * sizeof(struct GALAXY));
     
     // Test that uninitialized memory contains garbage (this should detect corruption)
+    // Check the actual fields that exist in the new struct layout
     bool found_garbage = false;
     for (int i = 0; i < test_size; i++) {
-        if (test_array_poison[i].GalaxyNr == (int32_t)MEMORY_POISON_VALUE_32 ||
-            test_array_poison[i].GalaxyNr < -1000000 || 
-            test_array_poison[i].GalaxyNr > 1000000) {
+        // Check if extension_data pointer has garbage values
+        if (test_array_poison[i].extension_data != NULL &&
+            ((uintptr_t)test_array_poison[i].extension_data == MEMORY_POISON_VALUE_64 ||
+             (uintptr_t)test_array_poison[i].extension_data > 0x7FFFFFFFFFFFFFFF)) {
+            found_garbage = true;
+            break;
+        }
+        // Check if num_extensions has garbage values  
+        if (test_array_poison[i].num_extensions == (int)MEMORY_POISON_VALUE_32 ||
+            test_array_poison[i].num_extensions < -1000000 || 
+            test_array_poison[i].num_extensions > 1000000) {
             found_garbage = true;
             break;
         }
@@ -703,14 +732,16 @@ static void test_memory_initialization_integrity(void) {
     // Now test that memset fixes the corruption
     memset(test_array_poison, 0, test_size * sizeof(struct GALAXY));
     
-    // Verify all critical fields are zeroed
+    // Verify all critical fields are zeroed (check actual struct fields)
     for (int i = 0; i < test_size; i++) {
-        TEST_ASSERT(test_array_poison[i].GalaxyNr == 0, 
-                   "GalaxyNr should be zero after memset");
-        TEST_ASSERT(test_array_poison[i].Type == 0, 
-                   "Type should be zero after memset");
-        TEST_ASSERT(test_array_poison[i].GalaxyIndex == 0, 
-                   "GalaxyIndex should be zero after memset");
+        TEST_ASSERT(test_array_poison[i].extension_data == NULL, 
+                   "extension_data should be NULL after memset");
+        TEST_ASSERT(test_array_poison[i].num_extensions == 0, 
+                   "num_extensions should be zero after memset");
+        TEST_ASSERT(test_array_poison[i].extension_flags == 0, 
+                   "extension_flags should be zero after memset");
+        TEST_ASSERT(test_array_poison[i].properties == NULL, 
+                   "properties should be NULL after memset");
     }
     
     printf("Memory initialization test: Verified that memset correctly zeros galaxy arrays\n");
@@ -734,7 +765,7 @@ static void test_halo_to_galaxy_data_preservation(void) {
     // Verify that galaxy properties correctly reflect halo properties
     for (int i = 0; i < test_ctx.num_galaxies; i++) {
         struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
-        int halo_idx = galaxy->HaloNr;
+        int halo_idx = GALAXY_PROP_HaloNr(galaxy);
         
         TEST_ASSERT(halo_idx >= 0 && halo_idx < test_ctx.num_halos,
                    "Galaxy %d should reference a valid halo index: %d", i, halo_idx);
@@ -743,49 +774,52 @@ static void test_halo_to_galaxy_data_preservation(void) {
             struct halo_data *halo = &test_ctx.test_halos[halo_idx];
             
             // Test position preservation
-            TEST_ASSERT_VALUES(fabsf(galaxy->Pos[0] - halo->Pos[0]) < TOLERANCE_EXACT,
-                              halo->Pos[0], galaxy->Pos[0],
+            TEST_ASSERT_VALUES(fabsf(GALAXY_PROP_Pos_ELEM(galaxy, 0) - halo->Pos[0]) < TOLERANCE_EXACT,
+                              halo->Pos[0], GALAXY_PROP_Pos_ELEM(galaxy, 0),
                               "Galaxy %d Pos[0] should match halo", i);
             
-            TEST_ASSERT_VALUES(fabsf(galaxy->Pos[1] - halo->Pos[1]) < TOLERANCE_EXACT,
-                              halo->Pos[1], galaxy->Pos[1], 
+            TEST_ASSERT_VALUES(fabsf(GALAXY_PROP_Pos_ELEM(galaxy, 1) - halo->Pos[1]) < TOLERANCE_EXACT,
+                              halo->Pos[1], GALAXY_PROP_Pos_ELEM(galaxy, 1), 
                               "Galaxy %d Pos[1] should match halo", i);
             
-            TEST_ASSERT_VALUES(fabsf(galaxy->Pos[2] - halo->Pos[2]) < TOLERANCE_EXACT,
-                              halo->Pos[2], galaxy->Pos[2],
+            TEST_ASSERT_VALUES(fabsf(GALAXY_PROP_Pos_ELEM(galaxy, 2) - halo->Pos[2]) < TOLERANCE_EXACT,
+                              halo->Pos[2], GALAXY_PROP_Pos_ELEM(galaxy, 2),
                               "Galaxy %d Pos[2] should match halo", i);
             
             // Test velocity preservation
-            TEST_ASSERT_VALUES(fabsf(galaxy->Vel[0] - halo->Vel[0]) < TOLERANCE_EXACT,
-                              halo->Vel[0], galaxy->Vel[0],
+            TEST_ASSERT_VALUES(fabsf(GALAXY_PROP_Vel_ELEM(galaxy, 0) - halo->Vel[0]) < TOLERANCE_EXACT,
+                              halo->Vel[0], GALAXY_PROP_Vel_ELEM(galaxy, 0),
                               "Galaxy %d Vel[0] should match halo", i);
             
             // Test other critical properties
-            TEST_ASSERT_VALUES(galaxy->MostBoundID == halo->MostBoundID,
-                              halo->MostBoundID, galaxy->MostBoundID,
+            TEST_ASSERT_VALUES(GALAXY_PROP_MostBoundID(galaxy) == halo->MostBoundID,
+                              halo->MostBoundID, GALAXY_PROP_MostBoundID(galaxy),
                               "Galaxy %d MostBoundID should match halo", i);
             
-            TEST_ASSERT_VALUES(galaxy->Len == halo->Len,
-                              halo->Len, galaxy->Len,
+            TEST_ASSERT_VALUES(GALAXY_PROP_Len(galaxy) == halo->Len,
+                              halo->Len, GALAXY_PROP_Len(galaxy),
                               "Galaxy %d Len should match halo", i);
             
-            TEST_ASSERT_VALUES(fabsf(galaxy->Vmax - halo->Vmax) < TOLERANCE_NORMAL,
-                              halo->Vmax, galaxy->Vmax,
+            TEST_ASSERT_VALUES(fabsf(GALAXY_PROP_Vmax(galaxy) - halo->Vmax) < TOLERANCE_NORMAL,
+                              halo->Vmax, GALAXY_PROP_Vmax(galaxy),
                               "Galaxy %d Vmax should match halo", i);
         }
         
         // Test galaxy-specific property initialization
-        TEST_ASSERT(galaxy->GalaxyNr >= 0 && galaxy->GalaxyNr < MAX_REASONABLE_GALAXY_NR,
-                   "Galaxy %d should have reasonable GalaxyNr: %d", i, galaxy->GalaxyNr);
+        int32_t galaxy_nr = GALAXY_PROP_GalaxyNr(galaxy);
+        TEST_ASSERT(galaxy_nr >= 0 && galaxy_nr < MAX_REASONABLE_GALAXY_NR,
+                   "Galaxy %d should have reasonable GalaxyNr: %d", i, galaxy_nr);
         
-        TEST_ASSERT(galaxy->Type == 0, // Central galaxies in our test
-                   "Galaxy %d should be central (Type=0), got %d", i, galaxy->Type);
+        int32_t galaxy_type = GALAXY_PROP_Type(galaxy);
+        TEST_ASSERT(galaxy_type == 0, // Central galaxies in our test
+                   "Galaxy %d should be central (Type=0), got %d", i, galaxy_type);
         
-        TEST_ASSERT(galaxy->SnapNum == 62, // Galaxies evolve from halo.SnapNum-1 (61) to halo.SnapNum (62) - final state after evolution
-                   "Galaxy %d should have SnapNum=62 (halo.SnapNum after evolution), got %d", i, galaxy->SnapNum);
+        int32_t galaxy_snapnum = GALAXY_PROP_SnapNum(galaxy);
+        TEST_ASSERT(galaxy_snapnum == 62, // Galaxies evolve from halo.SnapNum-1 (61) to halo.SnapNum (62) - final state after evolution
+                   "Galaxy %d should have SnapNum=62 (halo.SnapNum after evolution), got %d", i, galaxy_snapnum);
         
         printf("  Galaxy %d: GalaxyNr=%d, HaloNr=%d, integrity verified\n",
-               i, galaxy->GalaxyNr, galaxy->HaloNr);
+               i, galaxy_nr, halo_idx);
     }
     
     printf("Halo to galaxy preservation test: Verified %d galaxies\n", test_ctx.num_galaxies);
@@ -811,30 +845,35 @@ static void test_galaxy_pipeline_integrity(void) {
         // Additional checks for pipeline corruption
         struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         
-        // Check for memory corruption patterns
-        TEST_ASSERT(!detect_memory_corruption(&galaxy->GalaxyNr, sizeof(galaxy->GalaxyNr), 
-                                            "GalaxyNr"),
-                   "Galaxy %d GalaxyNr should not contain memory corruption", i);
+        // Check for memory corruption patterns by examining property values
+        int32_t galaxy_nr = GALAXY_PROP_GalaxyNr(galaxy);
+        TEST_ASSERT(galaxy_nr >= 0 && galaxy_nr < MAX_REASONABLE_GALAXY_NR,
+                   "Galaxy %d GalaxyNr should not contain memory corruption: %d", i, galaxy_nr);
         
         // Verify reasonable values for computed properties
-        if (galaxy->Mvir > 0.0f) {
-            TEST_ASSERT(galaxy->Rvir > 0.0f,
+        float galaxy_mvir = GALAXY_PROP_Mvir(galaxy);
+        if (galaxy_mvir > 0.0f) {
+            float galaxy_rvir = GALAXY_PROP_Rvir(galaxy);
+            TEST_ASSERT(galaxy_rvir > 0.0f,
                        "Galaxy %d with Mvir=%.3f should have positive Rvir=%.3f", 
-                       i, galaxy->Mvir, galaxy->Rvir);
+                       i, galaxy_mvir, galaxy_rvir);
             
-            TEST_ASSERT(galaxy->Vvir > 0.0f,
+            float galaxy_vvir = GALAXY_PROP_Vvir(galaxy);
+            TEST_ASSERT(galaxy_vvir > 0.0f,
                        "Galaxy %d with Mvir=%.3f should have positive Vvir=%.3f",
-                       i, galaxy->Mvir, galaxy->Vvir);
+                       i, galaxy_mvir, galaxy_vvir);
         }
         
         // GalaxyIndex and CentralGalaxyIndex are set during output preparation,
         // not during pipeline execution, so they should be 0 here
-        TEST_ASSERT(galaxy->GalaxyIndex == 0,
-                   "Galaxy %d should have unset GalaxyIndex before output prep: %" PRIu64, i, galaxy->GalaxyIndex);
+        uint64_t galaxy_index = GALAXY_PROP_GalaxyIndex(galaxy);
+        TEST_ASSERT(galaxy_index == 0,
+                   "Galaxy %d should have unset GalaxyIndex before output prep: %" PRIu64, i, galaxy_index);
         
-        TEST_ASSERT(galaxy->CentralGalaxyIndex == 0,
+        uint64_t central_galaxy_index = GALAXY_PROP_CentralGalaxyIndex(galaxy);
+        TEST_ASSERT(central_galaxy_index == 0,
                    "Galaxy %d should have unset CentralGalaxyIndex before output prep: %" PRIu64, 
-                   i, galaxy->CentralGalaxyIndex);
+                   i, central_galaxy_index);
     }
     
     printf("Pipeline integrity test: Verified %d galaxies maintain integrity\n", 
@@ -868,20 +907,22 @@ static void test_output_serialization_accuracy(void) {
         struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         
         // Test that GalaxyIndex is within reasonable bounds
-        TEST_ASSERT(galaxy->GalaxyIndex > 0 && galaxy->GalaxyIndex < UINT64_MAX,
-                   "Galaxy %d should have valid GalaxyIndex: %" PRIu64, i, galaxy->GalaxyIndex);
+        uint64_t galaxy_index = GALAXY_PROP_GalaxyIndex(galaxy);
+        TEST_ASSERT(galaxy_index > 0 && galaxy_index < UINT64_MAX,
+                   "Galaxy %d should have valid GalaxyIndex: %" PRIu64, i, galaxy_index);
         
         // Test that CentralGalaxyIndex is valid
-        TEST_ASSERT(galaxy->CentralGalaxyIndex > 0 && galaxy->CentralGalaxyIndex < UINT64_MAX,
-                   "Galaxy %d should have valid CentralGalaxyIndex: %" PRIu64, i, galaxy->CentralGalaxyIndex);
+        uint64_t central_galaxy_index = GALAXY_PROP_CentralGalaxyIndex(galaxy);
+        TEST_ASSERT(central_galaxy_index > 0 && central_galaxy_index < UINT64_MAX,
+                   "Galaxy %d should have valid CentralGalaxyIndex: %" PRIu64, i, central_galaxy_index);
         
         // In our test case, all galaxies are central, so indices should be equal
-        TEST_ASSERT(galaxy->GalaxyIndex == galaxy->CentralGalaxyIndex,
+        TEST_ASSERT(galaxy_index == central_galaxy_index,
                    "Galaxy %d: central galaxy indices should match: %" PRIu64 " != %" PRIu64,
-                   i, galaxy->GalaxyIndex, galaxy->CentralGalaxyIndex);
+                   i, galaxy_index, central_galaxy_index);
         
         printf("  Galaxy %d: GalaxyIndex=%" PRIu64 ", CentralGalaxyIndex=%" PRIu64 "\n",
-               i, galaxy->GalaxyIndex, galaxy->CentralGalaxyIndex);
+               i, galaxy_index, central_galaxy_index);
     }
     
     // Verify unique galaxy indices (no duplicates)
@@ -889,9 +930,11 @@ static void test_output_serialization_accuracy(void) {
         for (int j = i + 1; j < test_ctx.num_galaxies; j++) {
             struct GALAXY *gal_i = galaxy_array_get(test_ctx.test_galaxies, i);
             struct GALAXY *gal_j = galaxy_array_get(test_ctx.test_galaxies, j);
-            TEST_ASSERT(gal_i->GalaxyIndex != gal_j->GalaxyIndex,
+            uint64_t gal_i_index = GALAXY_PROP_GalaxyIndex(gal_i);
+            uint64_t gal_j_index = GALAXY_PROP_GalaxyIndex(gal_j);
+            TEST_ASSERT(gal_i_index != gal_j_index,
                        "Galaxies %d and %d should have unique GalaxyIndex: %" PRIu64, 
-                       i, j, gal_i->GalaxyIndex);
+                       i, j, gal_i_index);
         }
     }
     
@@ -912,13 +955,22 @@ static void test_memory_corruption_detection(void) {
     struct GALAXY test_galaxy;
     memset(&test_galaxy, 0, sizeof(struct GALAXY));
     
+    // Initialize minimal params for property system
+    struct params test_params;
+    memset(&test_params, 0, sizeof(test_params));
+    test_params.simulation.NumSnapOutputs = 10;
+    
+    // Allocate properties first
+    int result = allocate_galaxy_properties(&test_galaxy, &test_params);
+    TEST_ASSERT(result == 0, "Property allocation should succeed");
+    
     // Set a normal value
-    test_galaxy.GalaxyNr = 42;
-    TEST_ASSERT(test_galaxy.GalaxyNr == 42, "Normal value should be preserved");
+    GALAXY_PROP_GalaxyNr(&test_galaxy) = 42;
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&test_galaxy) == 42, "Normal value should be preserved");
     
     // Inject corruption
-    test_galaxy.GalaxyNr = MEMORY_POISON_VALUE_32;
-    TEST_ASSERT(test_galaxy.GalaxyNr == (int32_t)MEMORY_POISON_VALUE_32, 
+    GALAXY_PROP_GalaxyNr(&test_galaxy) = MEMORY_POISON_VALUE_32;
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&test_galaxy) == (int32_t)MEMORY_POISON_VALUE_32, 
                "Should detect injected corruption");
     
     // Test 2: Verify corruption detection in galaxy arrays
@@ -927,20 +979,22 @@ static void test_memory_corruption_detection(void) {
         struct GALAXY *galaxy = galaxy_array_get(test_ctx.test_galaxies, i);
         
         // Check for various corruption patterns
-        if (galaxy->GalaxyNr == (int32_t)MEMORY_POISON_VALUE_32 ||
-            galaxy->GalaxyNr == (int32_t)0xDEADBEEF ||
-            galaxy->GalaxyNr == -1 ||
-            galaxy->GalaxyNr > MAX_REASONABLE_GALAXY_NR) {
+        int32_t galaxy_nr = GALAXY_PROP_GalaxyNr(galaxy);
+        if (galaxy_nr == (int32_t)MEMORY_POISON_VALUE_32 ||
+            galaxy_nr == (int32_t)0xDEADBEEF ||
+            galaxy_nr == -1 ||
+            galaxy_nr > MAX_REASONABLE_GALAXY_NR) {
             printf("ERROR: Detected corruption in galaxy %d: GalaxyNr = %d\n", 
-                   i, galaxy->GalaxyNr);
+                   i, galaxy_nr);
             all_galaxies_clean = false;
         }
         
         // Check for unreasonable GalaxyIndex values
-        if (galaxy->GalaxyIndex == MEMORY_POISON_VALUE_64 ||
-            galaxy->GalaxyIndex == 0) {
+        uint64_t galaxy_index = GALAXY_PROP_GalaxyIndex(galaxy);
+        if (galaxy_index == MEMORY_POISON_VALUE_64 ||
+            galaxy_index == 0) {
             printf("ERROR: Detected corruption in galaxy %d: GalaxyIndex = %" PRIu64 "\n", 
-                   i, galaxy->GalaxyIndex);
+                   i, galaxy_index);
             all_galaxies_clean = false;
         }
     }

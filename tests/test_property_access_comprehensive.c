@@ -33,6 +33,7 @@
 #include "../src/core/core_property_utils.h"
 #include "../src/core/core_init.h"
 #include "../src/core/core_logging.h"
+#include "../src/core/core_mymalloc.h"
 
 // Test configuration constants
 #define PERFORMANCE_ITERATIONS 100000
@@ -99,11 +100,7 @@ static int setup_test_context(void) {
         return -1;
     }
 
-    // Set basic galaxy info (direct members of struct GALAXY)
-    test_ctx.test_galaxy->GalaxyIndex = 12345; // This is a direct member, not via ->properties
-    test_ctx.test_galaxy->GalaxyNr = 1;     // This is a direct member
-
-    // Allocate the GALAXY's internal properties struct
+    // Allocate the GALAXY's internal properties struct first
     // This is where SnapNum, Mvir, etc. are stored.
     if (allocate_galaxy_properties(test_ctx.test_galaxy, &test_ctx.test_params) != 0) {
         printf("ERROR: Failed to allocate galaxy properties for test_galaxy\n");
@@ -111,6 +108,10 @@ static int setup_test_context(void) {
         test_ctx.test_galaxy = NULL;
         return -1;
     }
+
+    // Set basic galaxy info using property macros (after properties are allocated)
+    GALAXY_PROP_GalaxyIndex(test_ctx.test_galaxy) = 12345;
+    GALAXY_PROP_GalaxyNr(test_ctx.test_galaxy) = 1;
 
     test_ctx.initialized = 1;
     return 0;
@@ -473,8 +474,8 @@ static void test_performance_comparison(void) {
     // Benchmark direct field access (if available)
     clock_t start = clock();
     for (int i = 0; i < PERFORMANCE_ITERATIONS; i++) {
-        g->SnapNum = i;
-        volatile int32_t value = g->SnapNum;
+        GALAXY_PROP_SnapNum(g) = i;
+        volatile int32_t value = GALAXY_PROP_SnapNum(g);
         (void)value;
     }
     clock_t end = clock();
@@ -646,20 +647,18 @@ static void test_memory_integration(void) {
     for (int i = 0; i < num_galaxies; i++) {
         // calloc already zeroed the struct GALAXY, so galaxies[i].properties is NULL.
 
-        // Set basic galaxy info
-        galaxies[i].GalaxyNr = i;                     // Direct member (no property equivalent)
-
-        // Allocate the internal properties struct for this galaxy
+        // Allocate the internal properties struct for this galaxy first
         if (allocate_galaxy_properties(&galaxies[i], &test_ctx.test_params) != 0) {
             // Free previously allocated galaxies on failure
             for (int j = 0; j < i; j++) {
                 free_galaxy_properties(&galaxies[j]);
             }
-            myfree(galaxies);
-            return -1;
+            free(galaxies);
+            return;
         }
         
-        // Set property values using property macros
+        // Set basic galaxy info using property macros (after properties are allocated)
+        GALAXY_PROP_GalaxyNr(&galaxies[i]) = i;
         GALAXY_PROP_GalaxyIndex(&galaxies[i]) = (uint64_t)(i * 1000);
         
         // Continue with allocation check
@@ -808,11 +807,14 @@ static void test_property_serialization_integration(void) {
     // Create a second galaxy for round-trip testing
     struct GALAXY test_galaxy_copy;
     memset(&test_galaxy_copy, 0, sizeof(test_galaxy_copy));
-    test_galaxy_copy.GalaxyNr = 2;       // Set direct member (no property equivalent)
-    
-    // Allocate properties for the copy
+    // Properties will be allocated below, then we can set GalaxyNr
+    // Allocate properties for the copy first
     int alloc_result = allocate_galaxy_properties(&test_galaxy_copy, &test_ctx.test_params);
     TEST_ASSERT(alloc_result == 0, "Property allocation for copy galaxy should succeed");
+    
+    GALAXY_PROP_GalaxyNr(&test_galaxy_copy) = 2;
+    
+    // Properties already allocated above
     
     // Set property values using property macros
     GALAXY_PROP_GalaxyIndex(&test_galaxy_copy) = 999;

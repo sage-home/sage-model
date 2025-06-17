@@ -230,9 +230,9 @@ static struct GALAXY *create_test_galaxy(int snap_num, int halo_nr) {
     }
     
     // Set basic galaxy properties using core property macros
-    galaxy->SnapNum = snap_num;
+    GALAXY_PROP_SnapNum(galaxy) = snap_num;
     GALAXY_PROP_Type(galaxy) = 0;
-    galaxy->GalaxyIndex = 1000 + halo_nr;
+    GALAXY_PROP_GalaxyIndex(galaxy) = 1000 + halo_nr;
     GALAXY_PROP_mergeType(galaxy) = 0;
     GALAXY_PROP_mergeIntoID(galaxy) = -1;
     GALAXY_PROP_mergeIntoSnapNum(galaxy) = -1;
@@ -555,7 +555,7 @@ static void test_property_system_integration(void) {
     // Verify core properties are accessible via macros
     TEST_ASSERT(GALAXY_PROP_Type(galaxy) == 0, "Core property Type should be accessible");
     TEST_ASSERT(GALAXY_PROP_mergeType(galaxy) == 0, "Core property mergeType should be accessible");
-    TEST_ASSERT(galaxy->GalaxyIndex == 1000, "Core field GalaxyIndex should be set");
+    TEST_ASSERT(GALAXY_PROP_GalaxyIndex(galaxy) == 1000, "Core field GalaxyIndex should be set");
     
     // Verify physics properties are accessible via property system
     property_id_t prop_id = get_property_id("ColdGas");
@@ -689,7 +689,7 @@ static void test_core_physics_separation(void) {
     // Verify that we can access both types of properties in the same context
     // without creating dependencies between core and physics
     TEST_ASSERT(galaxy->properties != NULL, "Galaxy properties structure should exist");
-    TEST_ASSERT(galaxy->SnapNum >= 0, "Core field should be accessible directly");
+    TEST_ASSERT(GALAXY_PROP_SnapNum(galaxy) >= 0, "Core field should be accessible directly");
     
     free_test_galaxy(galaxy);
 }

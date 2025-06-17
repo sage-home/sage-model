@@ -91,23 +91,27 @@ static void test_galaxy_initialization_consistency(void) {
     init_galaxy(0, 0, &galaxy_counter1, &test_halo, &galaxy1, &run_params);
     init_galaxy(0, 0, &galaxy_counter2, &test_halo, &galaxy2, &run_params);
     
-    // Verify core properties are identical
-    TEST_ASSERT(galaxy1.SnapNum == galaxy2.SnapNum, "SnapNum initialization consistency");
-    TEST_ASSERT(galaxy1.Type == galaxy2.Type, "Type initialization consistency");
-    TEST_ASSERT(galaxy1.GalaxyNr == galaxy2.GalaxyNr, "GalaxyNr initialization consistency");
-    TEST_ASSERT(galaxy1.HaloNr == galaxy2.HaloNr, "HaloNr initialization consistency");
-    TEST_ASSERT(galaxy1.MostBoundID == galaxy2.MostBoundID, "MostBoundID initialization consistency");
+    // Allocate properties for both galaxies before accessing them
+    allocate_galaxy_properties(&galaxy1, &run_params);
+    allocate_galaxy_properties(&galaxy2, &run_params);
     
-    TEST_ASSERT(fabs(galaxy1.Mvir - galaxy2.Mvir) < FLOAT_TOLERANCE, "Mvir initialization consistency");
-    TEST_ASSERT(fabs(galaxy1.Rvir - galaxy2.Rvir) < FLOAT_TOLERANCE, "Rvir initialization consistency");
-    TEST_ASSERT(fabs(galaxy1.Vvir - galaxy2.Vvir) < FLOAT_TOLERANCE, "Vvir initialization consistency");
-    TEST_ASSERT(fabs(galaxy1.Vmax - galaxy2.Vmax) < FLOAT_TOLERANCE, "Vmax initialization consistency");
+    // Verify core properties are identical
+    TEST_ASSERT(GALAXY_PROP_SnapNum(&galaxy1) == GALAXY_PROP_SnapNum(&galaxy2), "SnapNum initialization consistency");
+    TEST_ASSERT(GALAXY_PROP_Type(&galaxy1) == GALAXY_PROP_Type(&galaxy2), "Type initialization consistency");
+    TEST_ASSERT(GALAXY_PROP_GalaxyNr(&galaxy1) == GALAXY_PROP_GalaxyNr(&galaxy2), "GalaxyNr initialization consistency");
+    TEST_ASSERT(GALAXY_PROP_HaloNr(&galaxy1) == GALAXY_PROP_HaloNr(&galaxy2), "HaloNr initialization consistency");
+    TEST_ASSERT(GALAXY_PROP_MostBoundID(&galaxy1) == GALAXY_PROP_MostBoundID(&galaxy2), "MostBoundID initialization consistency");
+    
+    TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&galaxy1) - GALAXY_PROP_Mvir(&galaxy2)) < FLOAT_TOLERANCE, "Mvir initialization consistency");
+    TEST_ASSERT(fabs(GALAXY_PROP_Rvir(&galaxy1) - GALAXY_PROP_Rvir(&galaxy2)) < FLOAT_TOLERANCE, "Rvir initialization consistency");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vvir(&galaxy1) - GALAXY_PROP_Vvir(&galaxy2)) < FLOAT_TOLERANCE, "Vvir initialization consistency");
+    TEST_ASSERT(fabs(GALAXY_PROP_Vmax(&galaxy1) - GALAXY_PROP_Vmax(&galaxy2)) < FLOAT_TOLERANCE, "Vmax initialization consistency");
     
     // Test position and velocity arrays
     for (int i = 0; i < 3; i++) {
-        TEST_ASSERT(fabs(galaxy1.Pos[i] - galaxy2.Pos[i]) < FLOAT_TOLERANCE, 
+        TEST_ASSERT(fabs(GALAXY_PROP_Pos(&galaxy1)[i] - GALAXY_PROP_Pos(&galaxy2)[i]) < FLOAT_TOLERANCE, 
                    "Position array initialization consistency");
-        TEST_ASSERT(fabs(galaxy1.Vel[i] - galaxy2.Vel[i]) < FLOAT_TOLERANCE, 
+        TEST_ASSERT(fabs(GALAXY_PROP_Vel(&galaxy1)[i] - GALAXY_PROP_Vel(&galaxy2)[i]) < FLOAT_TOLERANCE, 
                    "Velocity array initialization consistency");
     }
     
@@ -169,24 +173,26 @@ static void test_property_copying_accuracy(void) {
     memset(&source, 0, sizeof(source));
     memset(&dest, 0, sizeof(dest));
     
-    // Set up source galaxy with specific values
-    source.SnapNum = 62;
-    source.Type = 1;
-    source.GalaxyNr = 12345;
-    source.HaloNr = 67890;
-    source.MostBoundID = 9876543210LL;
-    source.Mvir = 2.5e12f;
-    source.Rvir = 300.0f;
-    source.Vvir = 200.0f;
-    source.Vmax = 250.0f;
-    // Note: MergTime is now a physics property, set via property system
-    
-    source.Pos[0] = 15.0f; source.Pos[1] = 25.0f; source.Pos[2] = 35.0f;
-    source.Vel[0] = 120.0f; source.Vel[1] = 220.0f; source.Vel[2] = 320.0f;
-    
-    // Allocate properties for source
+    // Allocate properties first
     int result = allocate_galaxy_properties(&source, &run_params);
     TEST_ASSERT(result == 0, "Source galaxy property allocation");
+    
+    // Set up source galaxy with specific values
+    GALAXY_PROP_SnapNum(&source) = 62;
+    GALAXY_PROP_Type(&source) = 1;
+    GALAXY_PROP_GalaxyNr(&source) = 12345;
+    GALAXY_PROP_HaloNr(&source) = 67890;
+    GALAXY_PROP_MostBoundID(&source) = 9876543210LL;
+    GALAXY_PROP_Mvir(&source) = 2.5e12f;
+    GALAXY_PROP_Rvir(&source) = 300.0f;
+    GALAXY_PROP_Vvir(&source) = 200.0f;
+    GALAXY_PROP_Vmax(&source) = 250.0f;
+    // Note: MergTime is now a physics property, set via property system
+    
+    GALAXY_PROP_Pos(&source)[0] = 15.0f; GALAXY_PROP_Pos(&source)[1] = 25.0f; GALAXY_PROP_Pos(&source)[2] = 35.0f;
+    GALAXY_PROP_Vel(&source)[0] = 120.0f; GALAXY_PROP_Vel(&source)[1] = 220.0f; GALAXY_PROP_Vel(&source)[2] = 320.0f;
+    
+    // Properties already allocated above
     
     if (source.properties != NULL) {
         // Set physics properties using generic property system
@@ -232,20 +238,20 @@ static void test_property_copying_accuracy(void) {
     // Perform deep copy (this tests our separation implementation)
     if (source.properties != NULL && dest.properties != NULL) {
         // Copy core properties manually (since they're in struct)
-        dest.SnapNum = source.SnapNum;
-        dest.Type = source.Type;
-        dest.GalaxyNr = source.GalaxyNr;
-        dest.HaloNr = source.HaloNr;
-        dest.MostBoundID = source.MostBoundID;
-        dest.Mvir = source.Mvir;
-        dest.Rvir = source.Rvir;
-        dest.Vvir = source.Vvir;
-        dest.Vmax = source.Vmax;
+        GALAXY_PROP_SnapNum(&dest) = GALAXY_PROP_SnapNum(&source);
+        GALAXY_PROP_Type(&dest) = GALAXY_PROP_Type(&source);
+        GALAXY_PROP_GalaxyNr(&dest) = GALAXY_PROP_GalaxyNr(&source);
+        GALAXY_PROP_HaloNr(&dest) = GALAXY_PROP_HaloNr(&source);
+        GALAXY_PROP_MostBoundID(&dest) = GALAXY_PROP_MostBoundID(&source);
+        GALAXY_PROP_Mvir(&dest) = GALAXY_PROP_Mvir(&source);
+        GALAXY_PROP_Rvir(&dest) = GALAXY_PROP_Rvir(&source);
+        GALAXY_PROP_Vvir(&dest) = GALAXY_PROP_Vvir(&source);
+        GALAXY_PROP_Vmax(&dest) = GALAXY_PROP_Vmax(&source);
         // MergTime is now a physics property, copied via property system
         
         for (int i = 0; i < 3; i++) {
-            dest.Pos[i] = source.Pos[i];
-            dest.Vel[i] = source.Vel[i];
+            GALAXY_PROP_Pos(&dest)[i] = GALAXY_PROP_Pos(&source)[i];
+            GALAXY_PROP_Vel(&dest)[i] = GALAXY_PROP_Vel(&source)[i];
         }
         
         // Copy physics properties via property system
@@ -253,16 +259,16 @@ static void test_property_copying_accuracy(void) {
         TEST_ASSERT(result == 0, "Property copying operation succeeds");
         
         // Verify core properties were copied correctly
-        TEST_ASSERT(dest.SnapNum == source.SnapNum, "SnapNum copying accuracy");
-        TEST_ASSERT(dest.Type == source.Type, "Type copying accuracy");
-        TEST_ASSERT(dest.GalaxyNr == source.GalaxyNr, "GalaxyNr copying accuracy");
-        TEST_ASSERT(dest.HaloNr == source.HaloNr, "HaloNr copying accuracy");
-        TEST_ASSERT(dest.MostBoundID == source.MostBoundID, "MostBoundID copying accuracy");
+        TEST_ASSERT(GALAXY_PROP_SnapNum(&dest) == GALAXY_PROP_SnapNum(&source), "SnapNum copying accuracy");
+        TEST_ASSERT(GALAXY_PROP_Type(&dest) == GALAXY_PROP_Type(&source), "Type copying accuracy");
+        TEST_ASSERT(GALAXY_PROP_GalaxyNr(&dest) == GALAXY_PROP_GalaxyNr(&source), "GalaxyNr copying accuracy");
+        TEST_ASSERT(GALAXY_PROP_HaloNr(&dest) == GALAXY_PROP_HaloNr(&source), "HaloNr copying accuracy");
+        TEST_ASSERT(GALAXY_PROP_MostBoundID(&dest) == GALAXY_PROP_MostBoundID(&source), "MostBoundID copying accuracy");
         
-        TEST_ASSERT(fabs(dest.Mvir - source.Mvir) < FLOAT_TOLERANCE, "Mvir copying accuracy");
-        TEST_ASSERT(fabs(dest.Rvir - source.Rvir) < FLOAT_TOLERANCE, "Rvir copying accuracy");
-        TEST_ASSERT(fabs(dest.Vvir - source.Vvir) < FLOAT_TOLERANCE, "Vvir copying accuracy");
-        TEST_ASSERT(fabs(dest.Vmax - source.Vmax) < FLOAT_TOLERANCE, "Vmax copying accuracy");
+        TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&dest) - GALAXY_PROP_Mvir(&source)) < FLOAT_TOLERANCE, "Mvir copying accuracy");
+        TEST_ASSERT(fabs(GALAXY_PROP_Rvir(&dest) - GALAXY_PROP_Rvir(&source)) < FLOAT_TOLERANCE, "Rvir copying accuracy");
+        TEST_ASSERT(fabs(GALAXY_PROP_Vvir(&dest) - GALAXY_PROP_Vvir(&source)) < FLOAT_TOLERANCE, "Vvir copying accuracy");
+        TEST_ASSERT(fabs(GALAXY_PROP_Vmax(&dest) - GALAXY_PROP_Vmax(&source)) < FLOAT_TOLERANCE, "Vmax copying accuracy");
         
         // Verify physics properties were copied correctly
         property_id_t prop_coldgas_copy = get_cached_property_id("ColdGas");
@@ -355,20 +361,22 @@ static void test_hdf5_output_consistency(void) {
     struct GALAXY galaxy;
     memset(&galaxy, 0, sizeof(galaxy));
     
-    // Set core properties
-    galaxy.SnapNum = 63;
-    galaxy.Type = 0;
-    galaxy.GalaxyNr = 98765;
-    galaxy.HaloNr = 11111;
-    galaxy.MostBoundID = 5555555555LL;
-    galaxy.Mvir = 1.8e12f;
-    galaxy.Rvir = 280.0f;
-    galaxy.Vvir = 190.0f;
-    galaxy.Vmax = 210.0f;
-    
-    // Allocate properties
+    // Allocate properties first
     int result = allocate_galaxy_properties(&galaxy, &run_params);
     TEST_ASSERT(result == 0, "Galaxy property allocation for HDF5 test");
+    
+    // Set core properties
+    GALAXY_PROP_SnapNum(&galaxy) = 63;
+    GALAXY_PROP_Type(&galaxy) = 0;
+    GALAXY_PROP_GalaxyNr(&galaxy) = 98765;
+    GALAXY_PROP_HaloNr(&galaxy) = 11111;
+    GALAXY_PROP_MostBoundID(&galaxy) = 5555555555LL;
+    GALAXY_PROP_Mvir(&galaxy) = 1.8e12f;
+    GALAXY_PROP_Rvir(&galaxy) = 280.0f;
+    GALAXY_PROP_Vvir(&galaxy) = 190.0f;
+    GALAXY_PROP_Vmax(&galaxy) = 210.0f;
+    
+    // Properties already allocated above
     
     if (galaxy.properties != NULL) {
         // Set physics properties using generic property system
@@ -406,15 +414,15 @@ static void test_hdf5_output_consistency(void) {
         // This simulates what HDF5 output would read
         
         // Core properties should be read from struct directly
-        TEST_ASSERT(galaxy.SnapNum == 63, "HDF5 core property: SnapNum");
-        TEST_ASSERT(galaxy.Type == 0, "HDF5 core property: Type");
-        TEST_ASSERT(galaxy.GalaxyNr == 98765, "HDF5 core property: GalaxyNr");
-        TEST_ASSERT(galaxy.HaloNr == 11111, "HDF5 core property: HaloNr");
-        TEST_ASSERT(galaxy.MostBoundID == 5555555555LL, "HDF5 core property: MostBoundID");
-        TEST_ASSERT(fabs(galaxy.Mvir - 1.8e12f) < FLOAT_TOLERANCE, "HDF5 core property: Mvir");
-        TEST_ASSERT(fabs(galaxy.Rvir - 280.0f) < FLOAT_TOLERANCE, "HDF5 core property: Rvir");
-        TEST_ASSERT(fabs(galaxy.Vvir - 190.0f) < FLOAT_TOLERANCE, "HDF5 core property: Vvir");
-        TEST_ASSERT(fabs(galaxy.Vmax - 210.0f) < FLOAT_TOLERANCE, "HDF5 core property: Vmax");
+        TEST_ASSERT(GALAXY_PROP_SnapNum(&galaxy) == 63, "HDF5 core property: SnapNum");
+        TEST_ASSERT(GALAXY_PROP_Type(&galaxy) == 0, "HDF5 core property: Type");
+        TEST_ASSERT(GALAXY_PROP_GalaxyNr(&galaxy) == 98765, "HDF5 core property: GalaxyNr");
+        TEST_ASSERT(GALAXY_PROP_HaloNr(&galaxy) == 11111, "HDF5 core property: HaloNr");
+        TEST_ASSERT(GALAXY_PROP_MostBoundID(&galaxy) == 5555555555LL, "HDF5 core property: MostBoundID");
+        TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&galaxy) - 1.8e12f) < FLOAT_TOLERANCE, "HDF5 core property: Mvir");
+        TEST_ASSERT(fabs(GALAXY_PROP_Rvir(&galaxy) - 280.0f) < FLOAT_TOLERANCE, "HDF5 core property: Rvir");
+        TEST_ASSERT(fabs(GALAXY_PROP_Vvir(&galaxy) - 190.0f) < FLOAT_TOLERANCE, "HDF5 core property: Vvir");
+        TEST_ASSERT(fabs(GALAXY_PROP_Vmax(&galaxy) - 210.0f) < FLOAT_TOLERANCE, "HDF5 core property: Vmax");
         
         // Physics properties should be read from property system
         property_id_t prop_coldgas_hdf5 = get_cached_property_id("ColdGas");
@@ -456,14 +464,14 @@ static void test_hdf5_output_consistency(void) {
         
         // Test that there's no confusion between sources
         // Modify one system and verify the other is unchanged
-        galaxy.Type = 1;  // Change core property
+        GALAXY_PROP_Type(&galaxy) = 1;  // Change core property
         
         if (prop_coldgas_hdf5 < PROP_COUNT) {
             set_float_property(&galaxy, prop_coldgas_hdf5, 3.0e10f);  // Change physics property
         }
         
         // Verify core property changed but physics property through property system unchanged in struct
-        TEST_ASSERT(galaxy.Type == 1, "HDF5 core property independence");
+        TEST_ASSERT(GALAXY_PROP_Type(&galaxy) == 1, "HDF5 core property independence");
         
         if (prop_coldgas_hdf5 < PROP_COUNT) {
             float coldgas = get_float_property(&galaxy, prop_coldgas_hdf5, 0.0f);
@@ -471,8 +479,8 @@ static void test_hdf5_output_consistency(void) {
         }
         
         // Other core properties should be unchanged
-        TEST_ASSERT(galaxy.SnapNum == 63, "HDF5 other core properties unchanged");
-        TEST_ASSERT(fabs(galaxy.Mvir - 1.8e12f) < FLOAT_TOLERANCE, "HDF5 other core properties unchanged");
+        TEST_ASSERT(GALAXY_PROP_SnapNum(&galaxy) == 63, "HDF5 other core properties unchanged");
+        TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&galaxy) - 1.8e12f) < FLOAT_TOLERANCE, "HDF5 other core properties unchanged");
         
         // Other physics properties should be unchanged
         if (prop_stellar_hdf5 < PROP_COUNT) {
@@ -514,28 +522,30 @@ static void test_no_data_loss(void) {
     struct GALAXY galaxy;
     memset(&galaxy, 0, sizeof(galaxy));
     
-    // Populate core properties with specific patterns for validation
-    galaxy.SnapNum = 42;
-    galaxy.Type = 2;
-    galaxy.GalaxyNr = 13579;
-    galaxy.HaloNr = 24680;
-    galaxy.MostBoundID = 1111111111LL;
-    galaxy.Mvir = 3.14159e12f;
-    galaxy.Rvir = 271.828f;
-    galaxy.Vvir = 141.421f;
-    galaxy.Vmax = 173.205f;
-    // Note: MergTime is now a physics property, set via property system
-    galaxy.infallMvir = 2.99792e12f;
-    galaxy.infallVvir = 137.036f;
-    galaxy.infallVmax = 169.000f;
-    
-    // Pattern in arrays: Fibonacci-like sequence
-    galaxy.Pos[0] = 1.0f; galaxy.Pos[1] = 1.0f; galaxy.Pos[2] = 2.0f;
-    galaxy.Vel[0] = 3.0f; galaxy.Vel[1] = 5.0f; galaxy.Vel[2] = 8.0f;
-    
-    // Allocate properties
+    // Allocate properties first
     int result = allocate_galaxy_properties(&galaxy, &run_params);
     TEST_ASSERT(result == 0, "Property allocation for data loss test");
+    
+    // Populate core properties with specific patterns for validation
+    GALAXY_PROP_SnapNum(&galaxy) = 42;
+    GALAXY_PROP_Type(&galaxy) = 2;
+    GALAXY_PROP_GalaxyNr(&galaxy) = 13579;
+    GALAXY_PROP_HaloNr(&galaxy) = 24680;
+    GALAXY_PROP_MostBoundID(&galaxy) = 1111111111LL;
+    GALAXY_PROP_Mvir(&galaxy) = 3.14159e12f;
+    GALAXY_PROP_Rvir(&galaxy) = 271.828f;
+    GALAXY_PROP_Vvir(&galaxy) = 141.421f;
+    GALAXY_PROP_Vmax(&galaxy) = 173.205f;
+    // Note: MergTime is now a physics property, set via property system
+    GALAXY_PROP_infallMvir(&galaxy) = 2.99792e12f;
+    GALAXY_PROP_infallVvir(&galaxy) = 137.036f;
+    GALAXY_PROP_infallVmax(&galaxy) = 169.000f;
+    
+    // Pattern in arrays: Fibonacci-like sequence
+    GALAXY_PROP_Pos(&galaxy)[0] = 1.0f; GALAXY_PROP_Pos(&galaxy)[1] = 1.0f; GALAXY_PROP_Pos(&galaxy)[2] = 2.0f;
+    GALAXY_PROP_Vel(&galaxy)[0] = 3.0f; GALAXY_PROP_Vel(&galaxy)[1] = 5.0f; GALAXY_PROP_Vel(&galaxy)[2] = 8.0f;
+    
+    // Properties already allocated above
     
     if (galaxy.properties != NULL) {
         // Populate physics properties with known patterns using generic property system
@@ -614,23 +624,23 @@ static void test_no_data_loss(void) {
         
         if (galaxy_copy.properties != NULL) {
             // Copy core properties manually
-            galaxy_copy.SnapNum = galaxy.SnapNum;
-            galaxy_copy.Type = galaxy.Type;
-            galaxy_copy.GalaxyNr = galaxy.GalaxyNr;
-            galaxy_copy.HaloNr = galaxy.HaloNr;
-            galaxy_copy.MostBoundID = galaxy.MostBoundID;
-            galaxy_copy.Mvir = galaxy.Mvir;
-            galaxy_copy.Rvir = galaxy.Rvir;
-            galaxy_copy.Vvir = galaxy.Vvir;
-            galaxy_copy.Vmax = galaxy.Vmax;
+            GALAXY_PROP_SnapNum(&galaxy_copy) = GALAXY_PROP_SnapNum(&galaxy);
+            GALAXY_PROP_Type(&galaxy_copy) = GALAXY_PROP_Type(&galaxy);
+            GALAXY_PROP_GalaxyNr(&galaxy_copy) = GALAXY_PROP_GalaxyNr(&galaxy);
+            GALAXY_PROP_HaloNr(&galaxy_copy) = GALAXY_PROP_HaloNr(&galaxy);
+            GALAXY_PROP_MostBoundID(&galaxy_copy) = GALAXY_PROP_MostBoundID(&galaxy);
+            GALAXY_PROP_Mvir(&galaxy_copy) = GALAXY_PROP_Mvir(&galaxy);
+            GALAXY_PROP_Rvir(&galaxy_copy) = GALAXY_PROP_Rvir(&galaxy);
+            GALAXY_PROP_Vvir(&galaxy_copy) = GALAXY_PROP_Vvir(&galaxy);
+            GALAXY_PROP_Vmax(&galaxy_copy) = GALAXY_PROP_Vmax(&galaxy);
             // MergTime is now a physics property, copied via property system
-            galaxy_copy.infallMvir = galaxy.infallMvir;
-            galaxy_copy.infallVvir = galaxy.infallVvir;
-            galaxy_copy.infallVmax = galaxy.infallVmax;
+            GALAXY_PROP_infallMvir(&galaxy_copy) = GALAXY_PROP_infallMvir(&galaxy);
+            GALAXY_PROP_infallVvir(&galaxy_copy) = GALAXY_PROP_infallVvir(&galaxy);
+            GALAXY_PROP_infallVmax(&galaxy_copy) = GALAXY_PROP_infallVmax(&galaxy);
             
             for (int i = 0; i < 3; i++) {
-                galaxy_copy.Pos[i] = galaxy.Pos[i];
-                galaxy_copy.Vel[i] = galaxy.Vel[i];
+                GALAXY_PROP_Pos(&galaxy_copy)[i] = GALAXY_PROP_Pos(&galaxy)[i];
+                GALAXY_PROP_Vel(&galaxy_copy)[i] = GALAXY_PROP_Vel(&galaxy)[i];
             }
             
             // Copy physics properties
@@ -638,27 +648,27 @@ static void test_no_data_loss(void) {
             TEST_ASSERT(result == 0, "Property copying for data loss test");
             
             // Verify ALL data was preserved exactly
-            TEST_ASSERT(galaxy_copy.SnapNum == 42, "Data preservation: SnapNum");
-            TEST_ASSERT(galaxy_copy.Type == 2, "Data preservation: Type");
-            TEST_ASSERT(galaxy_copy.GalaxyNr == 13579, "Data preservation: GalaxyNr");
-            TEST_ASSERT(galaxy_copy.HaloNr == 24680, "Data preservation: HaloNr");
-            TEST_ASSERT(galaxy_copy.MostBoundID == 1111111111LL, "Data preservation: MostBoundID");
+            TEST_ASSERT(GALAXY_PROP_SnapNum(&galaxy_copy) == 42, "Data preservation: SnapNum");
+            TEST_ASSERT(GALAXY_PROP_Type(&galaxy_copy) == 2, "Data preservation: Type");
+            TEST_ASSERT(GALAXY_PROP_GalaxyNr(&galaxy_copy) == 13579, "Data preservation: GalaxyNr");
+            TEST_ASSERT(GALAXY_PROP_HaloNr(&galaxy_copy) == 24680, "Data preservation: HaloNr");
+            TEST_ASSERT(GALAXY_PROP_MostBoundID(&galaxy_copy) == 1111111111LL, "Data preservation: MostBoundID");
             
-            TEST_ASSERT(fabs(galaxy_copy.Mvir - 3.14159e12f) < FLOAT_TOLERANCE, "Data preservation: Mvir");
-            TEST_ASSERT(fabs(galaxy_copy.Rvir - 271.828f) < FLOAT_TOLERANCE, "Data preservation: Rvir");
-            TEST_ASSERT(fabs(galaxy_copy.Vvir - 141.421f) < FLOAT_TOLERANCE, "Data preservation: Vvir");
-            TEST_ASSERT(fabs(galaxy_copy.Vmax - 173.205f) < FLOAT_TOLERANCE, "Data preservation: Vmax");
+            TEST_ASSERT(fabs(GALAXY_PROP_Mvir(&galaxy_copy) - 3.14159e12f) < FLOAT_TOLERANCE, "Data preservation: Mvir");
+            TEST_ASSERT(fabs(GALAXY_PROP_Rvir(&galaxy_copy) - 271.828f) < FLOAT_TOLERANCE, "Data preservation: Rvir");
+            TEST_ASSERT(fabs(GALAXY_PROP_Vvir(&galaxy_copy) - 141.421f) < FLOAT_TOLERANCE, "Data preservation: Vvir");
+            TEST_ASSERT(fabs(GALAXY_PROP_Vmax(&galaxy_copy) - 173.205f) < FLOAT_TOLERANCE, "Data preservation: Vmax");
             // MergTime is now copied via property system - test below
-            TEST_ASSERT(fabs(galaxy_copy.infallMvir - 2.99792e12f) < FLOAT_TOLERANCE, "Data preservation: infallMvir");
-            TEST_ASSERT(fabs(galaxy_copy.infallVvir - 137.036f) < FLOAT_TOLERANCE, "Data preservation: infallVvir");
-            TEST_ASSERT(fabs(galaxy_copy.infallVmax - 169.000f) < FLOAT_TOLERANCE, "Data preservation: infallVmax");
+            TEST_ASSERT(fabs(GALAXY_PROP_infallMvir(&galaxy_copy) - 2.99792e12f) < FLOAT_TOLERANCE, "Data preservation: infallMvir");
+            TEST_ASSERT(fabs(GALAXY_PROP_infallVvir(&galaxy_copy) - 137.036f) < FLOAT_TOLERANCE, "Data preservation: infallVvir");
+            TEST_ASSERT(fabs(GALAXY_PROP_infallVmax(&galaxy_copy) - 169.000f) < FLOAT_TOLERANCE, "Data preservation: infallVmax");
             
             // Array data preservation
             float expected_pos[] = {1.0f, 1.0f, 2.0f};
             float expected_vel[] = {3.0f, 5.0f, 8.0f};
             for (int i = 0; i < 3; i++) {
-                TEST_ASSERT(fabs(galaxy_copy.Pos[i] - expected_pos[i]) < FLOAT_TOLERANCE, "Data preservation: Pos array");
-                TEST_ASSERT(fabs(galaxy_copy.Vel[i] - expected_vel[i]) < FLOAT_TOLERANCE, "Data preservation: Vel array");
+                TEST_ASSERT(fabs(GALAXY_PROP_Pos(&galaxy_copy)[i] - expected_pos[i]) < FLOAT_TOLERANCE, "Data preservation: Pos array");
+                TEST_ASSERT(fabs(GALAXY_PROP_Vel(&galaxy_copy)[i] - expected_vel[i]) < FLOAT_TOLERANCE, "Data preservation: Vel array");
             }
             
             // Physics properties preservation - test using generic property system
