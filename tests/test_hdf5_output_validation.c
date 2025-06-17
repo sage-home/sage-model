@@ -113,7 +113,7 @@ static int setup_test_context(void) {
     test_ctx.run_params.simulation.NumSnapOutputs = TEST_OUTPUT_SNAPS;
     test_ctx.run_params.simulation.ListOutputSnaps[0] = 63;
     test_ctx.run_params.simulation.SimMaxSnaps = TEST_MAX_SNAPS;
-    test_ctx.run_params.simulation.LastSnapshotNr = 63;
+    test_ctx.run_params.simulation.LastSnapshotNr = TEST_MAX_SNAPS - 1; // Max snapshot number (0-63)
     
     test_ctx.run_params.cosmology.PartMass = 1.0e10;
     test_ctx.run_params.cosmology.BoxSize = 62.5;
@@ -1438,7 +1438,8 @@ static void test_comprehensive_galaxy_properties(void) {
     set_float_array_element_property(&test_galaxy, PROP_SfrBulgeColdGasMetals, 0, 4.0e6f); // 0.02 * 2.0e8
     
     // Test star formation history array (full temporal coverage)
-    for (int step = 0; step < 10 && step < TEST_STEPS; step++) {
+    int max_history_snaps = test_ctx.run_params.simulation.NumSnapOutputs;
+    for (int step = 0; step < max_history_snaps; step++) {
         float sfr_value = 1.0f + step * 0.1f;  // Increasing SFR over time
         set_float_array_element_property(&test_galaxy, PROP_StarFormationHistory, step, sfr_value);
     }
