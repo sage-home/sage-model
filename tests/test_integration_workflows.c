@@ -97,6 +97,8 @@ static int setup_integration_context(void) {
     
     // Simulation parameters
     test_ctx.test_params.simulation.NumSnapOutputs = 10;
+    test_ctx.test_params.simulation.SimMaxSnaps = 64;  // Required for StarFormationHistory dynamic array
+    test_ctx.test_params.simulation.LastSnapshotNr = 63;
     test_ctx.test_params.io.FirstFile = 0;
     test_ctx.test_params.io.LastFile = 0;
     strcpy(test_ctx.test_params.io.FileNameGalaxies, "test_integration");
@@ -115,6 +117,12 @@ static int setup_integration_context(void) {
     
     // Create output directory
     system("mkdir -p /tmp/sage_integration_test");
+    
+    // Initialize property system - required before allocating galaxy properties
+    if (initialize_property_system(&test_ctx.test_params) != 0) {
+        printf("ERROR: Failed to initialize property system\n");
+        return -1;
+    }
     
     return 0;
 }
@@ -139,6 +147,9 @@ static void cleanup_integration_context(void) {
     
     // Remove test directory
     system("rm -rf /tmp/sage_integration_test");
+    
+    // Cleanup property system
+    cleanup_property_system();
     
     memset(&test_ctx, 0, sizeof(test_ctx));
 }
