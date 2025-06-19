@@ -405,8 +405,8 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     double eta = NORM * z_term * v_term;
     
     // Cap the maximum mass-loading factor to prevent extreme feedback
-    if (eta > 100.0) {
-        eta = 100.0;
+    if (eta > 50.0) {
+        eta = 50.0;
     }
     
     // Safety check for the result

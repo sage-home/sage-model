@@ -927,15 +927,19 @@ def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
     Baldry_Blue_y_log = np.log10(Baldry_Blue_y)
     Baldry_Red_y_log = np.log10(Baldry_Red_y)
     
-    # Plot observational data with standardized styling
-    ax.fill_between(Baldry_xval, Baldry_yvalU_log, Baldry_yvalL_log, 
-        facecolor='purple', alpha=0.25, label='Baldry et al. 2008 (z=0.1)')
+    # # Plot observational data with standardized styling
+    # ax.fill_between(Baldry_xval, Baldry_yvalU_log, Baldry_yvalL_log, 
+    #     facecolor='purple', alpha=0.25, label='Baldry et al. 2008 (z=0.1)')
     
     # Plot additional observational data (removed Weaver et al.)
     ax.scatter(Baldry_Blue_x, Baldry_Blue_y_log, marker='s', s=50, edgecolor='navy', 
                 facecolor='navy', alpha=0.3, label='Baldry et al. 2012 - Star forming Galaxies')
     ax.scatter(Baldry_Red_x, Baldry_Red_y_log, marker='s', s=50, edgecolor='maroon', 
                 facecolor='maroon', alpha=0.3, label='Baldry et al. 2012 - Quiescent Galaxies')
+    ax.scatter(x_blue, np.log10(y_blue), marker='o', s=50, edgecolor='blue',
+                facecolor='blue', alpha=0.3, label='Weaver et al. 2022 - Star forming Galaxies')
+    ax.scatter(x_red, np.log10(y_red), marker='o', s=50, edgecolor='red',
+                facecolor='red', alpha=0.3, label='Weaver et al. 2022 - Quiescent Galaxies')
     
     # Add color legend for red/blue model divisions
     if len(sim_configs) > 0:
@@ -1653,32 +1657,57 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             
             # Bin by stellar mass
             log_stellar_mass = np.log10(stellar_mass_sel)
-            mass_bins = np.arange(8.5, 12.0, 0.2)
+            mass_bins = np.arange(8.0, 12.0, 0.25)
             mass_centers = mass_bins[:-1] + 0.1
             
-            # Calculate median in each bin (no percentiles for shading)
+            # Calculate median and error bars in each bin
             median_h2_frac = []
+            error_h2_frac = []
             
             for j in range(len(mass_bins)-1):
                 mask = (log_stellar_mass >= mass_bins[j]) & (log_stellar_mass < mass_bins[j+1])
                 if np.sum(mask) > 5:  # Require at least 5 galaxies per bin
-                    median_h2_frac.append(np.median(h2_fraction[mask]))
+                    bin_data = h2_fraction[mask]
+                    median_h2_frac.append(np.median(bin_data))
+                    
+                    # Option 1: Standard error of the mean (recommended)
+                    error_h2_frac.append(np.std(bin_data) / np.sqrt(len(bin_data)))
+                    
+                    # Option 2: Interquartile range (uncomment to use instead)
+                    # p25, p75 = np.percentile(bin_data, [25, 75])
+                    # error_h2_frac.append((p75 - p25) / 2)  # Half the IQR
+                    
+                    # Option 3: Reduced standard deviation (uncomment to use instead)
+                    # error_h2_frac.append(0.3 * np.std(bin_data))  # 30% of std
+                    
                 else:
                     median_h2_frac.append(np.nan)
+                    error_h2_frac.append(np.nan)
             
             # Convert to arrays and remove NaN values
             median_h2_frac = np.array(median_h2_frac)
+            error_h2_frac = np.array(error_h2_frac)
             valid_bins = ~np.isnan(median_h2_frac)
             
             if np.any(valid_bins):
                 mass_centers_valid = mass_centers[valid_bins]
                 median_h2_frac_valid = median_h2_frac[valid_bins]
+                error_h2_frac_valid = error_h2_frac[valid_bins]
                 
-                # Plot median line
-                model_line = ax.plot(mass_centers_valid, median_h2_frac_valid, 
-                                   color=color, linestyle=linestyle, linewidth=linewidth,
-                                   label=label, alpha=alpha)[0]
-                model_handles.append(model_line)
+                # Plot with error bars for SAGE 2.0 (first model), regular line for others
+                if i == 0:  # SAGE 2.0 model - add error bars
+                    model_errorbar = ax.errorbar(mass_centers_valid, median_h2_frac_valid, 
+                                               yerr=error_h2_frac_valid,
+                                               fmt='-', color=color, linewidth=linewidth,
+                                               markersize=4, capsize=4, capthick=1.5,
+                                               label=label, alpha=alpha, zorder=6)
+                    model_handles.append(model_errorbar)
+                else:  # Other models - regular line
+                    model_line = ax.plot(mass_centers_valid, median_h2_frac_valid, 
+                                       color=color, linestyle=linestyle, linewidth=linewidth,
+                                       label=label, alpha=alpha)[0]
+                    model_handles.append(model_line)
+                
                 model_labels.append(label)
                 
                 # Plot individual galaxies as scatter (subsample for visibility)
@@ -1690,13 +1719,18 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
                     scatter_mass = log_stellar_mass
                     scatter_h2_frac = h2_fraction
                 
-                # Only for main model, add scatter points
-                if i == 0:
-                    ax.scatter(scatter_mass, scatter_h2_frac, s=1, alpha=0.25, 
-                             color=color, rasterized=True)
+                # # Only for main model, add scatter points
+                # if i == 0:
+                #     ax.scatter(scatter_mass, scatter_h2_frac, s=1, alpha=0.25, 
+                #              color=color, rasterized=True)
                 
                 logger.info(f'  H2 fraction range: {np.min(h2_fraction):.3f} - {np.max(h2_fraction):.3f}')
                 logger.info(f'  Median H2 fraction: {np.median(h2_fraction):.3f}')
+                
+                # Log statistics for SAGE 2.0 error bars
+                if i == 0:
+                    logger.info(f'  Error bar range: {np.min(error_h2_frac_valid):.3f} - {np.max(error_h2_frac_valid):.3f}')
+                    logger.info(f'  Mean error bar size: {np.mean(error_h2_frac_valid):.3f}')
                 
         except Exception as e:
             logger.error(f'Error processing {label}: {e}')

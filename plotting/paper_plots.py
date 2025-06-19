@@ -790,7 +790,7 @@ def process_simulation_sfr_evolution(sim_path, sim_label, redshifts, FirstSnap, 
         GalaxyIndex_z0_valid = GalaxyIndex_z0[valid_z0]
 
     # Define stellar mass bins (0.25 dex width)
-    log_mass_min = 8.0
+    log_mass_min = 8.5
     log_mass_max = 12.0
     bin_width = 0.25
     mass_bin_edges = np.arange(log_mass_min, log_mass_max + bin_width, bin_width)
@@ -916,7 +916,7 @@ def create_red_to_navy_colormap(n_colors):
     return selected_colors
 
 # Process both simulations
-plt.figure(figsize=(10, 8))
+plt.figure(figsize=(10, 16))
 ax = plt.subplot(111)
 
 # Find main simulation and vanilla simulation
@@ -936,7 +936,7 @@ if os.path.exists(main_sim_path):
     
     # Create color scheme
     colors = create_red_to_navy_colormap(len(mass_bin_centers))
-    colors = colors[::-1]  # Reverse the color order
+    #colors = colors[::-1]  # Reverse the color order
     
     # Plot main simulation results (solid lines)
     for bin_idx, sfr_evolution in median_sfr_main.items():
@@ -992,29 +992,111 @@ if vanilla_sim_path and os.path.exists(vanilla_sim_path):
             plt.plot(lookback_reversed, np.log10(sfr_reversed + 1e-5), 
                     color=line_color, linewidth=3.0, linestyle=':',
                     alpha=0.8)
+    # Replace your existing xlabel/ylabel calls with this:
 
-# Create custom legend with just two entries
+# Set primary axis labels FIRST (before creating secondary axis)
+ax.set_xlabel(r'Lookback Time (Gyr)', fontsize=16)
+ax.set_ylabel(r'$\log_{10}$ SFR $(M_{\odot}\ \mathrm{yr}^{-1})$', fontsize=16)
+
+# Set axis limits for primary axis
+max_lookback = max(lookback_times_main) if 'lookback_times_main' in locals() else 14
+ax.set_xlim(0, max_lookback)
+ax.set_ylim(-2.5, 2.8)
+
+# Set minor ticks for primary axis
+ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
+ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
+
+# NOW create secondary x-axis for redshift
+ax2 = ax.twiny()
+
+# Use your simulation's redshift-lookback relationship directly (most accurate)
+if 'lookback_times_main' in locals() and 'redshifts' in locals():
+    sim_redshifts_array = np.array(redshifts)
+    sim_lookback_array = np.array(lookback_times_main)
+    
+    # Find redshift values at nice lookback time intervals
+    lookback_tick_positions = np.array([0, 2, 4, 6, 8, 10, 12])
+    lookback_tick_positions = lookback_tick_positions[lookback_tick_positions <= max_lookback]
+    
+    redshift_labels = []
+    for lb_target in lookback_tick_positions:
+        # Find closest lookback time in simulation data
+        idx = np.argmin(np.abs(sim_lookback_array - lb_target))
+        z_value = sim_redshifts_array[idx]
+        redshift_labels.append(z_value)
+    
+    # Set ticks and labels for secondary axis
+    ax2.set_xlim(ax.get_xlim())  # Match primary axis limits
+    ax2.set_xticks(lookback_tick_positions)
+    
+    # Format redshift labels nicely
+    formatted_labels = []
+    for z in redshift_labels:
+        if z < 0.1:
+            formatted_labels.append(f'{z:.2f}')
+        elif z < 1.0:
+            formatted_labels.append(f'{z:.1f}')
+        else:
+            formatted_labels.append(f'{z:.0f}')
+    
+    ax2.set_xticklabels(formatted_labels)
+    ax2.set_xlabel('Redshift', fontsize=16)
+
+    # Debug: print the conversion for verification
+    print("Lookback Time (Gyr) → Redshift conversion:")
+    for lb, z in zip(lookback_tick_positions, redshift_labels):
+        print(f"  {lb:.0f} Gyr → z = {z:.2f}")
+
+else:
+    # Fallback: use analytical conversion with your cosmological parameters
+    def lookback_to_redshift_accurate(t_lookback, H0=73, Om0=0.3, OL0=0.7):
+        """More accurate lookback time to redshift conversion"""
+        if t_lookback <= 0:
+            return 0.0
+        
+        # Age of universe
+        t_universe = 13.8  # Gyr
+        
+        # For small lookback times, use approximation
+        if t_lookback < 1.0:
+            # Linear approximation for small z
+            return t_lookback * H0 / (100 * 9.78 * np.sqrt(Om0))
+        
+        # For larger lookback times, use more accurate formula
+        # This is an approximation, but much better than the simple one
+        age_at_z = t_universe - t_lookback
+        
+        # Approximate redshift from age (fitted formula)
+        if age_at_z <= 0.5:
+            return 10.0  # Very high redshift
+        elif age_at_z >= t_universe:
+            return 0.0
+        else:
+            # Empirical fit (good approximation for standard cosmology)
+            x = age_at_z / t_universe
+            z_approx = (1.0 / x - 1.0) * 0.7  # Rough approximation
+            return max(0.0, z_approx)
+    
+    lookback_tick_positions = np.array([0, 2, 4, 6, 8, 10, 12])
+    lookback_tick_positions = lookback_tick_positions[lookback_tick_positions <= max_lookback]
+    
+    redshift_labels = [lookback_to_redshift_accurate(lb) for lb in lookback_tick_positions]
+    
+    ax2.set_xlim(ax.get_xlim())
+    ax2.set_xticks(lookback_tick_positions)
+    ax2.set_xticklabels([f'{z:.1f}' for z in redshift_labels])
+    ax2.set_xlabel('Redshift', fontsize=16)
+
+# Create custom legend (rest of your existing legend code)
 legend_elements = []
 if os.path.exists(main_sim_path):
     legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=3, linestyle='-', label='SAGE 2.0'))
 if vanilla_sim_path and os.path.exists(vanilla_sim_path):
     legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=3, linestyle=':', label='SAGE C16'))
 
-plt.xlabel(r'Lookback Time (Gyr)', fontsize=16)
-plt.ylabel(r'$\log_{10}$ SFR $(M_{\odot}\ \mathrm{yr}^{-1})$', fontsize=16)
-
-# Set axis limits
-max_lookback = max(lookback_times_main) if 'lookback_times_main' in locals() else 14
-plt.xlim(0, max_lookback)
-plt.ylim(-2.5, 2.8)
-
-# Set minor ticks
-ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
-ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
-
-# Legend in upper left corner
 if legend_elements:
-    leg = plt.legend(handles=legend_elements, loc='upper left', fontsize=14)
+    leg = ax.legend(handles=legend_elements, loc='upper left', fontsize=14)  # Use ax.legend, not plt.legend
     leg.draw_frame(False)
 
 # Save plot
@@ -1024,6 +1106,7 @@ logger.info(f'Saved file to {outputFile}')
 plt.close()
 
 logger.info('Median SFR vs lookback time analysis complete')
+
 # ==================================================================
 
 if __name__ == '__main__':

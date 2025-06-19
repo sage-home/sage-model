@@ -287,15 +287,15 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
                        (1.0 + pow(v_crit/vvir, run_params->CGMBuildAlpha));
     
     // Apply additional suppression for intermediate-mass halos at high-z
-    if (z > 1.0 && vvir > 50.0 && vvir < 150.0) {
-        double peak_suppress = 0.3 * (z - 1.0) / 2.0;
-        if (peak_suppress > 0.5) peak_suppress = 0.5;
+    // if (z > 1.0 && vvir > 50.0 && vvir < 150.0) {
+    //     double peak_suppress = 0.3 * (z - 1.0) / 2.0;
+    //     if (peak_suppress > 0.5) peak_suppress = 0.5;
         
-        double v_relative = (vvir - 100.0) / 50.0;
-        double extra_suppress = peak_suppress * exp(-v_relative * v_relative);
+    //     double v_relative = (vvir - 100.0) / 50.0;
+    //     double extra_suppress = peak_suppress * exp(-v_relative * v_relative);
         
-        f_suppress *= (1.0 - extra_suppress);
-    }
+    //     f_suppress *= (1.0 - extra_suppress);
+    // }
     
     // Ensure bounds
     if (f_suppress < 0.05) f_suppress = 0.05;

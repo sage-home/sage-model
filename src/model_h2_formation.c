@@ -513,13 +513,17 @@ void apply_environmental_effects(struct GALAXY *g, const struct params *run_para
     // Skip if no H2 gas
     if (g->H2_gas <= 0.0) return;
     
-    // --- IMPROVEMENT 4: REFINED ENVIRONMENTAL EFFECTS ---
+    // CRITICAL FIX: Environmental effects should ONLY apply to satellite galaxies
+    // Central galaxies should not experience environmental stripping
+    if (g->Type == 0) {
+        return;  // Skip all environmental effects for central galaxies
+    }
     
-    // 1. Apply to all galaxies, but stronger in satellites
+    // --- REFINED ENVIRONMENTAL EFFECTS (SATELLITES ONLY) ---
+    
+    // Apply to satellite galaxies only
     float type_factor = 1.0;
-    if (g->Type == 0) {  // Central galaxy
-        type_factor = 0.3;  // Environmental effects are 70% weaker in centrals
-    } else if (g->Type == 1) {  // Satellite with subhalo
+    if (g->Type == 1) {  // Satellite with subhalo
         type_factor = 1.0;  // Full effect
     } else if (g->Type == 2) {  // Orphan satellite
         type_factor = 1.2;  // 20% stronger effect for orphan satellites (no protection from subhalo)
