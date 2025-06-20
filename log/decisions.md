@@ -14,56 +14,14 @@
 
 *Recent critical decisions - historical decisions archived in `archive/decisions-current.md`*
 
-2025-05-27: [Phase 5.2.G] Physics-Agnostic Merger Architecture Decision
-- **Decision**: Implemented merger event handling using core processor + configurable physics handlers via module_invoke, rather than direct physics module pipeline execution
-- **Rationale**: Enables runtime configuration of merger physics, better testability, and cleaner separation of event triggering from physics implementation
-- **Impact**: Merger physics now fully configurable via parameters; core completely agnostic to merger implementation details; enables multiple merger physics modules simultaneously
-- **Alternative Rejected**: Direct POST phase execution by physics modules would have coupled event processing to specific module implementations
-
-2025-06-02: [Phase 5.2.G] Strict Duplicate Registration Prevention Policy
-- Rationale: Investigation revealed that the module system was incorrectly allowing duplicate function registrations by silently updating existing registrations instead of failing. This "silent recovery" approach hides bugs and violates the "fail fast" principle essential for robust software design. Both module registration and function registration should explicitly prevent duplicates.
-- Impact: Changed `module_register_function()` to return `MODULE_STATUS_ERROR` for duplicate function names instead of updating existing registrations. This ensures clean architectural boundaries, helps detect development errors early, and aligns with the modular architecture goal of explicit, controlled interactions. Tests updated to use proper system APIs (`module_initialize()`) rather than bypassing built-in protections.
-
-
-2025-06-05: [Phase 5.3] I/O Interface Migration Strategy
-- Rationale: Chose incremental migration approach with graceful fallback to legacy functions rather than big-bang replacement of all tree reading infrastructure. This allows validation of each format individually while maintaining scientific accuracy and system stability during the transition.
-- Impact: LHalo HDF5 format successfully migrated to I/O interface with legacy header dependencies eliminated. Core system (core_io_tree.c) tries I/O interface first, gracefully falls back to legacy functions for non-migrated formats. Enables format-agnostic development while preserving backward compatibility.
-
-2025-06-07: [Architecture] Parameters.yaml Metadata-Driven System Implementation
-- Rationale: Following the same architectural pattern as properties.yaml, implemented parameters.yaml to eliminate core-physics separation violations in core_read_parameter_file.c where hardcoded physics parameter names violated SAGE's modular design principles. Modules shouldn't own parameters - like properties.yaml, we need a master parameter list from which modules can draw, ensuring future-proof extensibility.
-- Impact: Eliminates 200+ lines of hardcoded parameter arrays, provides type-safe parameter accessors with validation, maintains existing *.par file format compatibility, and uses metadata-driven code generation. Auto-generates parameter system files during build process, enabling runtime-configurable physics with full core-physics separation compliance.
-
-2025-06-08: [Project Management] Log File Renaming for Developer Efficiency
-- Rationale: The original log file names (phase-tracker-log.md, recent-progress-log.md, project-state-log.md, decision-log.md) were becoming cumbersome to type frequently during development work. Shorter, clear names improve developer productivity while maintaining semantic clarity about file purposes.
-- Impact: Renamed to phase.md, progress.md, architecture.md, decisions.md respectively. Updated all documentation references and maintained clear purpose statements in file headers. Historical logs preserved in archive/ directory with clear transition documentation for continuity.
-
-2025-06-09: [Memory Debugging] Comprehensive Memory Corruption Detection Strategy
-- Rationale: Implemented systematic debugging approach for segfault investigation including: 1) Enhanced validation macros to detect corruption patterns, 2) Focused debugging on reallocation points, 3) Root cause analysis of memory layout issues. Fixed critical bug in galaxy_array_expand() that was writing to uninitialized memory by nullifying properties for entire capacity instead of just valid galaxies.
-- Impact: Provides comprehensive memory corruption detection infrastructure, fixes galaxy array expansion bug, implements safe deep copying, and validates systematic debugging methodology for complex memory issues. While segfaults persist (requiring further investigation), defensive programming enhancements provide robust debugging foundation for future memory issue resolution.
-
-2025-06-09: [Critical Bug Fix] Scientific Data Integrity Protection Decision
-- Rationale: During initial memory corruption fix implementation, accidentally introduced dangerous "graceful degradation" that set corrupted properties to NULL and used default values, effectively masking scientific data corruption to make code run. User immediately identified this as unacceptable scientific practice: "you cannot do this! You are changing scientific data just to make the code run!"
-- Impact: Reverted all data corruption masking. System now fails hard (SIGTRAP) when corruption is detected, preserving scientific data integrity. Corruption detection macros provide detailed debugging information while ensuring invalid scientific results never propagate. Validates principle that scientific software must fail rather than produce invalid data.
-
-2025-06-10: [Architecture] GalaxyArray and Property System Integration Decision
-- Rationale: Implemented GalaxyArray system with property-based deep copying to resolve fundamental memory management issues while preserving scientific accuracy. The original shallow copying (`Gal[ngal] = HaloGal[...]`) created dangerous pointer aliasing where multiple galaxies shared the same properties pointer, leading to memory corruption when one galaxy was modified or freed.
-- Impact: Replaced shallow copying with deep_copy_galaxy() function that properly allocates separate property memory for each galaxy copy. GalaxyArray provides safe dynamic expansion with bounds checking and automatic cleanup. Extension system integrated via galaxy_extension_copy() for module-specific data. Maintains exact scientific algorithms from original SAGE while providing robust memory management infrastructure for modular architecture.
-
-2025-06-10: [Science] Extension Copy Ordering and Memory Safety Decision  
-- Rationale: Careful analysis of galaxy_extension_copy() placement in copy_galaxies_from_progenitors() revealed that extension copying must occur after core property assignment (HaloNr, dT) but before physics processing. Extension data contains flags and metadata that don't overwrite core properties, but physics modules may depend on both core properties and extension state being properly synchronized.
-- Impact: Current placement (line 248) after HaloNr/dT assignment (lines 244-245) is scientifically correct. Extension copy transfers module-specific metadata without affecting core infrastructure fields. This ordering ensures physics modules see consistent galaxy state with both updated core properties and proper extension flags during subsequent processing phases.
-
-2025-06-11: [Phase 5.2.F.3] Forest-Level Auxiliary Flag Management Decision
-- **Rationale**: "Multiple Type 0 galaxies in single FOF group" error was caused by incorrectly resetting `HaloFlag` and `DoneFlag` per-snapshot instead of per-forest. Legacy SAGE processes one tree at a time with flags persisting across all snapshots in that tree. Refactored architecture processes all snapshots in nested loops but must preserve tree/forest-level flag semantics.
-- **Impact**: Moved flag initialization to forest-level in `sage.c`, kept only `NGalaxies` reset per-snapshot. Added `fof_halonr` parameter threading through `copy_galaxies_from_progenitors()` for consistent FOF identification. Fixed central galaxy logic to use `halonr == fof_halonr`. SAGE now runs to completion successfully with correct single central galaxy per FOF group.
 
 2025-06-17: [Architecture] Dual Property System Elimination Strategy
-- **Decision**: Eliminated dual property system by removing all direct core property fields from GALAXY struct and converting access to GALAXY_PROP_* macros, rather than maintaining dual synchronization or gradual migration approaches
-- **Rationale**: Direct field removal forces complete conversion to property system as single source of truth, eliminating synchronization bugs and architectural violations. GALAXY_PROP_* macros provide same performance as direct field access while enabling compile-time property optimization
-- **Impact**: Achieves zero legacy technical debt with clean architecture. Both physics-free (27 core properties) and full-physics (71 total properties) modes work correctly. Property system now serves as authoritative data source with extension mechanism integration preserved
-- **Alternative Rejected**: Maintaining dual system with synchronization would have perpetuated architectural debt and potential data consistency issues
+- **Decision**: Eliminated dual property system by removing all direct GALAXY struct fields, converting to GALAXY_PROP_* macros as single source of truth
+- **Rationale**: Forces complete property system adoption, eliminating synchronization bugs and architectural violations while maintaining performance
+- **Impact**: Achieves clean architecture with zero legacy debt. Both physics-free (27 properties) and full-physics (71 properties) modes work correctly
 EOF < /dev/null
 2025-06-20: [Documentation] Professional Documentation Consolidation Strategy
-- Rationale: Identified that SAGE's 30+ documentation files contained significant duplication, poor organization, and fragmented navigation that hindered professional use. Implemented comprehensive consolidation strategy: 4 major guides covering essential topics (architecture, property-system, io-system, testing), role-based navigation, and complete elimination of content duplication. Preserved all valuable content while achieving professional scientific documentation standards.
-- Impact: Reduced maintenance burden from 30+ files to 20 focused documents, eliminated duplication across 16 consolidated files, established clear document ownership boundaries, and created navigable structure with quick reference for experienced developers. Documentation now meets highest professional standards with focused, accurate, navigable content supporting SAGE's sophisticated architecture.
+- **Decision**: Consolidated SAGE's 30+ fragmented documentation files into 20 focused documents with 4 comprehensive guides
+- **Rationale**: Eliminated significant duplication, poor organization, and navigation issues hindering professional scientific use
+- **Impact**: Reduced maintenance burden, established clear ownership boundaries, achieved professional documentation standards with role-based navigation
 EOF < /dev/null
