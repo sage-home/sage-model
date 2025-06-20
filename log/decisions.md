@@ -19,9 +19,8 @@
 - **Decision**: Eliminated dual property system by removing all direct GALAXY struct fields, converting to GALAXY_PROP_* macros as single source of truth
 - **Rationale**: Forces complete property system adoption, eliminating synchronization bugs and architectural violations while maintaining performance
 - **Impact**: Achieves clean architecture with zero legacy debt. Both physics-free (27 properties) and full-physics (71 properties) modes work correctly
-EOF < /dev/null
+
 2025-06-20: [Documentation] Professional Documentation Consolidation Strategy
 - **Decision**: Consolidated SAGE's 30+ fragmented documentation files into 20 focused documents with 4 comprehensive guides
 - **Rationale**: Eliminated significant duplication, poor organization, and navigation issues hindering professional scientific use
 - **Impact**: Reduced maintenance burden, established clear ownership boundaries, achieved professional documentation standards with role-based navigation
-EOF < /dev/null

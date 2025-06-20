@@ -86,7 +86,7 @@
 - **Performance**: Zero performance impact - macros compile to direct memory access
 - **Validation**: Both physics-free (27 properties) and full-physics (71 properties) modes work correctly with valid HDF5 output
 - Modified files: src/core/core_allvars.h, src/core/core_build_model.c, multiple core and I/O files, src/generate_property_headers.py
-EOF < /dev/null
+
 2025-06-20: [Documentation] **🎉 Comprehensive SAGE Documentation Reorganization 🎉** ✅ COMPLETED
 - **Major Reorganization**: Transformed 30+ scattered files into focused 20-document structure with 4 comprehensive guides
 - **Consolidation**: Created architecture.md, property-system.md, io-system.md, testing-guide.md consolidating 16 files
@@ -94,4 +94,3 @@ EOF < /dev/null
 - **Result**: Documentation meets professional scientific standards - focused, navigable, accurate, maintainable
 - Modified files: docs/README.md (rewrite), created 5 comprehensive guides
 - Archived files: 16 consolidated files with mapping documentation
-EOF < /dev/null
