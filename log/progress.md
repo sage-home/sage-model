@@ -94,3 +94,11 @@
 - **Result**: Documentation meets professional scientific standards - focused, navigable, accurate, maintainable
 - Modified files: docs/README.md (rewrite), created 5 comprehensive guides
 - Archived files: 16 consolidated files with mapping documentation
+
+2025-06-20: [Core Refactoring] **🎉 SAGE Core Processing Refactoring - Phase 1 Complete 🎉** ✅ MAJOR MILESTONE
+- **Phase 1.1**: Implemented efficient snapshot indexing system (core_snapshot_indexing.h/.c) providing O(1) access to halos/FOF groups by snapshot
+- **Phase 1.2**: Implemented pure snapshot-based memory model eliminating all_galaxies accumulator - achieved bounded memory O(max_snapshot_galaxies)
+- **Performance**: Replaced unbounded memory growth with snapshot-based I/O, perfect buffer swap pattern, comprehensive error handling
+- **Validation**: Model runs successfully end-to-end with new architecture, foundation ready for O(snapshots×halos) → O(halos) main loop optimization
+- Created files: src/core/core_snapshot_indexing.h, src/core/core_snapshot_indexing.c, sage-core-processing-refactoring-plan.md
+- Modified files: src/core/sage.c, Makefile
