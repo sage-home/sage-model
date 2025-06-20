@@ -31,7 +31,7 @@ dilute = 7500  # Not used for filtering anymore - only for scatter plots if need
 
 # Performance options
 ENABLE_FILTERING = True  # Filter out galaxies with zero stellar mass early
-MIN_STELLAR_MASS = 0.001  # Minimum stellar mass to include (in file units, before 1e10/h scaling)
+MIN_STELLAR_MASS = 0.0001  # Minimum stellar mass to include (in file units, before 1e10/h scaling)
 MEMORY_EFFICIENT = False  # Use memory-efficient operations
 
 OutputFormat = '.pdf'

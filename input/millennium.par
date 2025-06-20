@@ -111,7 +111,7 @@ IntegrationBins             15     %Number of radial bins to use for integration
 %----- ENVIRONMENT PARAMETERS -----
 %------------------------------------------
 
-EnvEffectStrength             0.5     % Strength of environmental effects (0.0-2.0)
+EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- CGM Building -----------------------

@@ -287,21 +287,48 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
                        (1.0 + pow(v_crit/vvir, run_params->CGMBuildAlpha));
     
     // Apply additional suppression for intermediate-mass halos at high-z
-    // if (z > 1.0 && vvir > 50.0 && vvir < 150.0) {
-    //     double peak_suppress = 0.3 * (z - 1.0) / 2.0;
-    //     if (peak_suppress > 0.5) peak_suppress = 0.5;
+    if (z > 0.01 && vvir > 50.0 && vvir < 100.0) {
+        double peak_suppress = 0.5 * (z - 0.01) / 2.0;  // Increased from 0.3 to 0.5
+        if (peak_suppress > 0.7) peak_suppress = 0.7;  // Increased cap from 0.5 to 0.7
         
-    //     double v_relative = (vvir - 100.0) / 50.0;
-    //     double extra_suppress = peak_suppress * exp(-v_relative * v_relative);
+        double v_relative = (vvir - 100.0) / 50.0;
+        double extra_suppress = peak_suppress * exp(-v_relative * v_relative);
         
-    //     f_suppress *= (1.0 - extra_suppress);
-    // }
+        f_suppress *= (1.0 - extra_suppress);
+    }
     
     // Ensure bounds
     if (f_suppress < 0.05) f_suppress = 0.05;
     if (f_suppress > 1.0) f_suppress = 1.0;
+
+    double base_cgm_fraction = 1.0 - f_suppress;
+
+    // 1. Redshift evolution (strong at high-z, declining at very high-z)
+    double z_scaling = 1.0;
+    if (z > 7.5) {
+        z_scaling = 1.0 - 0.8 * (z - 7.5) / 2.5;  // Decline from z=7.5 to z=10
+        if (z_scaling < 0.2) z_scaling = 0.3;  // Minimum 30% strength at very high-z
+    } else if (z > 3.0) {
+        z_scaling = 1.0;  // Full strength at high-z
+    } else if (z > 1.0) {
+        z_scaling = 0.3 + 0.7 * (z - 1.0) / 2.0;  // Decline from z=3 to z=1
+    } else {
+        z_scaling = 0.3;  // 30% strength at low-z
+    }
     
-    double cgm_fraction = 1.0 - f_suppress;
+    // 2. Mass-dependent efficiency
+    double mass_factor = 1.0;
+    if (galaxies[gal].Mvir > 0.0) {
+        double log_mvir = log10(galaxies[gal].Mvir * 1.0e10 / run_params->Hubble_h);
+        
+        if (log_mvir > 12.0) {
+            // Massive galaxies: further reduced CGM effects
+            mass_factor = 0.5 - 0.4 * fmin(1.0, (log_mvir - 12.0) / 1.5);
+        }
+    }
+    
+    double cgm_fraction = base_cgm_fraction * z_scaling * mass_factor;
+
     
     return cgm_fraction;
 }

@@ -2908,7 +2908,7 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
         
         # Formatting
         ax.set_title(f'{z_low:.1f} < z < {z_high:.1f}', fontsize=12)
-        ax.set_xlim(mass_range)
+        ax.set_xlim(8, 12)
         ax.set_ylim(-6, -1)
         
         # MODIFIED LEGEND HANDLING: Create two separate legends

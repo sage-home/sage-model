@@ -1161,11 +1161,23 @@ if __name__ == '__main__':
     MeanBaryonFractionU = []
     MeanBaryonFractionL = []
     MeanStars = []
+    MeanStarsU = []
+    MeanStarsL = []
     MeanCold = []
+    MeanColdU = []
+    MeanColdL = []
     MeanHot = []
+    MeanHotU = []
+    MeanHotL = []
     MeanCGM = []
+    MeanCGMU = []
+    MeanCGML = []
     MeanICS = []
+    MeanICSU = []
+    MeanICSL = []
     MeanBH = []
+    MeanBHU = []
+    MeanBHL = []
 
     bin_indices = np.digitize(HaloMass, HaloBins) - 1
 
@@ -1176,24 +1188,108 @@ if __name__ == '__main__':
         if HalosFound > 2:
             w2 = np.where(np.isin(CentralGalaxyIndex, CentralGalaxyIndex[w1]))[0]
             
-            BaryonFraction = np.sum(Baryons[w2]) / np.sum(Mvir[w1])
+            # Calculate fractions for each halo in this bin
+            BaryonFractions = []
+            StarsFractions = []
+            ColdFractions = []
+            HotFractions = []
+            CGMFractions = []
+            ICSFractions = []
+            BHFractions = []
+            
+            for halo_idx in w1:
+                halo_galaxies = np.where(CentralGalaxyIndex == CentralGalaxyIndex[halo_idx])[0]
+                halo_mvir = Mvir[halo_idx]
+                
+                total_baryons = np.sum(StellarMass[halo_galaxies] + ColdGas[halo_galaxies] + 
+                                     HotGas[halo_galaxies] + cgm[halo_galaxies] + 
+                                     IntraClusterStars[halo_galaxies] + BlackHoleMass[halo_galaxies])
+                
+                BaryonFractions.append(total_baryons / halo_mvir)
+                StarsFractions.append(np.sum(StellarMass[halo_galaxies]) / halo_mvir)
+                ColdFractions.append(np.sum(ColdGas[halo_galaxies]) / halo_mvir)
+                HotFractions.append(np.sum(HotGas[halo_galaxies]) / halo_mvir)
+                CGMFractions.append(np.sum(cgm[halo_galaxies]) / halo_mvir)
+                ICSFractions.append(np.sum(IntraClusterStars[halo_galaxies]) / halo_mvir)
+                BHFractions.append(np.sum(BlackHoleMass[halo_galaxies]) / halo_mvir)
+            
             CentralHaloMass = np.log10(Mvir[w1])
             
             MeanCentralHaloMass.append(np.mean(CentralHaloMass))
-            MeanBaryonFraction.append(np.mean(BaryonFraction))
-            MeanBaryonFractionU.append(np.mean(BaryonFraction) + np.var(BaryonFraction))
-            MeanBaryonFractionL.append(np.mean(BaryonFraction) - np.var(BaryonFraction))
             
-            MeanStars.append(np.mean(np.sum(StellarMass[w2]) / np.sum(Mvir[w1])))
-            MeanCold.append(np.mean(np.sum(ColdGas[w2]) / np.sum(Mvir[w1])))
-            MeanHot.append(np.mean(np.sum(HotGas[w2]) / np.sum(Mvir[w1])))
-            MeanCGM.append(np.mean(np.sum(cgm[w2]) / np.sum(Mvir[w1])))
-            MeanICS.append(np.mean(np.sum(IntraClusterStars[w2]) / np.sum(Mvir[w1])))
-            MeanBH.append(np.mean(np.sum(BlackHoleMass[w2]) / np.sum(Mvir[w1])))
+            n_halos = len(BaryonFractions)
+            
+            MeanBaryonFraction.append(np.mean(BaryonFractions))
+            MeanBaryonFractionU.append(np.mean(BaryonFractions) + np.std(BaryonFractions) / np.sqrt(n_halos))
+            MeanBaryonFractionL.append(np.mean(BaryonFractions) - np.std(BaryonFractions) / np.sqrt(n_halos))
+            
+            MeanStars.append(np.mean(StarsFractions))
+            MeanStarsU.append(np.mean(StarsFractions) + np.std(StarsFractions) / np.sqrt(n_halos))
+            MeanStarsL.append(np.mean(StarsFractions) - np.std(StarsFractions) / np.sqrt(n_halos))
+            
+            MeanCold.append(np.mean(ColdFractions))
+            MeanColdU.append(np.mean(ColdFractions) + np.std(ColdFractions) / np.sqrt(n_halos))
+            MeanColdL.append(np.mean(ColdFractions) - np.std(ColdFractions) / np.sqrt(n_halos))
+            
+            MeanHot.append(np.mean(HotFractions))
+            MeanHotU.append(np.mean(HotFractions) + np.std(HotFractions) / np.sqrt(n_halos))
+            MeanHotL.append(np.mean(HotFractions) - np.std(HotFractions) / np.sqrt(n_halos))
+            
+            MeanCGM.append(np.mean(CGMFractions))
+            MeanCGMU.append(np.mean(CGMFractions) + np.std(CGMFractions) / np.sqrt(n_halos))
+            MeanCGML.append(np.mean(CGMFractions) - np.std(CGMFractions) / np.sqrt(n_halos))
+            
+            MeanICS.append(np.mean(ICSFractions))
+            MeanICSU.append(np.mean(ICSFractions) + np.std(ICSFractions) / np.sqrt(n_halos))
+            MeanICSL.append(np.mean(ICSFractions) - np.std(ICSFractions) / np.sqrt(n_halos))
+            
+            MeanBH.append(np.mean(BHFractions))
+            MeanBHU.append(np.mean(BHFractions) + np.std(BHFractions) / np.sqrt(n_halos))
+            MeanBHL.append(np.mean(BHFractions) - np.std(BHFractions) / np.sqrt(n_halos))
+
+    # Convert lists to arrays and ensure positive values for log scale
+    MeanCentralHaloMass = np.array(MeanCentralHaloMass)
+    MeanBaryonFraction = np.array(MeanBaryonFraction)
+    MeanBaryonFractionU = np.array(MeanBaryonFractionU)
+    MeanBaryonFractionL = np.maximum(np.array(MeanBaryonFractionL), 1e-6)  # Prevent negative values on log scale
+    
+    MeanStars = np.array(MeanStars)
+    MeanStarsU = np.array(MeanStarsU)
+    MeanStarsL = np.maximum(np.array(MeanStarsL), 1e-6)
+    
+    MeanCold = np.array(MeanCold)
+    MeanColdU = np.array(MeanColdU)
+    MeanColdL = np.maximum(np.array(MeanColdL), 1e-6)
+    
+    MeanHot = np.array(MeanHot)
+    MeanHotU = np.array(MeanHotU)
+    MeanHotL = np.maximum(np.array(MeanHotL), 1e-6)
+    
+    MeanCGM = np.array(MeanCGM)
+    MeanCGMU = np.array(MeanCGMU)
+    MeanCGML = np.maximum(np.array(MeanCGML), 1e-6)
+    
+    MeanICS = np.array(MeanICS)
+    MeanICSU = np.array(MeanICSU)
+    MeanICSL = np.maximum(np.array(MeanICSL), 1e-6)
 
     baryon_frac = 0.17
     plt.axhline(y=baryon_frac, color='grey', linestyle='--', linewidth=1.0, 
             label='Baryon Fraction = {:.2f}'.format(baryon_frac))
+
+    # Add 1-sigma shading for each mass reservoir
+    plt.fill_between(MeanCentralHaloMass, MeanBaryonFractionL, MeanBaryonFractionU, 
+                     color='black', alpha=0.2)
+    plt.fill_between(MeanCentralHaloMass, MeanStarsL, MeanStarsU, 
+                     color='purple', alpha=0.2)
+    plt.fill_between(MeanCentralHaloMass, MeanColdL, MeanColdU, 
+                     color='blue', alpha=0.2)
+    plt.fill_between(MeanCentralHaloMass, MeanHotL, MeanHotU, 
+                     color='red', alpha=0.2)
+    plt.fill_between(MeanCentralHaloMass, MeanCGML, MeanCGMU, 
+                     color='green', alpha=0.2)
+    plt.fill_between(MeanCentralHaloMass, MeanICSL, MeanICSU, 
+                     color='orange', alpha=0.2)
 
     plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='Total')
     plt.plot(MeanCentralHaloMass, MeanStars, label='Stars', color='purple', linestyle='--')
@@ -1602,4 +1698,3 @@ if __name__ == '__main__':
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
-    

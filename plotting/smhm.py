@@ -27,7 +27,7 @@ VolumeFraction = 1.0
 whichimf = 1
 dilute = 7500  # Not used for filtering anymore - only for scatter plots if needed
 sSFRcut = -11.0
-bulge_ratio_cut = 0.1  # Galaxies with B/T > 0.5 are ETGs
+bulge_ratio_cut = 0.1  # Legacy parameter - now using SAGE 2.0/C16 criteria for ETG/LTG
 
 OutputFormat = '.pdf'
 plt.rcParams["figure.figsize"] = (10,8)
@@ -139,34 +139,50 @@ def smart_sampling_strategy_centrals_only(mvir, stellar_mass, galaxy_type, targe
     
     return central_indices
 
-def smart_sampling_strategy_etg_ltg(mvir, stellar_mass, galaxy_type, bulge_ratio, bulge_cut, target_sample_size=None):
+def smart_sampling_strategy_etg_ltg(mvir, stellar_mass, galaxy_type, bulge_mass, cold_gas, target_sample_size=None):
     """
-    Filter and separate ETGs and LTGs based on bulge-to-total stellar mass ratio (centrals + satellites)
-    No sampling - use ALL galaxies for better statistics
+    Filter and separate ETGs and LTGs based on SAGE 2.0 and C16 criteria
+    
+    For LTGs (disk-dominated/spiral galaxies):
+    - Centrals only (Type == 0)
+    - Positive total baryonic mass (StellarMass + ColdGas > 0.0)
+    - Bulge-to-stellar mass ratio between 0.1 and 0.5
+    
+    For ETGs (early-type galaxies):
+    - All galaxies with B/T > 0.5
     """
-    # Filter for all galaxies with positive stellar mass (centrals + satellites)
-    mass_mask = stellar_mass > 0
-    all_indices = np.where(mass_mask)[0]
-    all_bulge_ratio = bulge_ratio[mass_mask]
-    all_types = galaxy_type[mass_mask]
+    # Calculate bulge-to-stellar mass ratio
+    bulge_ratio = np.where(stellar_mass > 0, bulge_mass / stellar_mass, 0.0)
     
-    # Separate into ETGs and LTGs based on bulge ratio
-    etg_mask = all_bulge_ratio > bulge_cut
-    ltg_mask = all_bulge_ratio <= bulge_cut
+    # LTGs (Late Type Galaxies - disk dominated/spiral): SAGE 2.0 and C16 criteria
+    ltg_mask = ((galaxy_type == 0) & 
+                (stellar_mass + cold_gas > 0.0) & 
+                (bulge_ratio > 0.1) & 
+                (bulge_ratio < 0.5))
+    ltg_indices = np.where(ltg_mask)[0]
     
-    # ETGs (Early Type Galaxies - bulge dominated)
-    etg_indices = all_indices[etg_mask]
-    etg_types = all_types[etg_mask]
+    # ETGs (Early Type Galaxies - bulge dominated): Traditional criterion
+    # Include both centrals and satellites with high bulge fraction
+    etg_mask = (stellar_mass > 0) & (bulge_ratio > 0.5)
+    etg_indices = np.where(etg_mask)[0]
     
-    # LTGs (Late Type Galaxies - disk dominated)
-    ltg_indices = all_indices[ltg_mask]
-    ltg_types = all_types[ltg_mask]
+    # Get galaxy types for reporting
+    ltg_types = galaxy_type[ltg_indices] if len(ltg_indices) > 0 else np.array([])
+    etg_types = galaxy_type[etg_indices] if len(etg_indices) > 0 else np.array([])
     
-    print(f"ETGs (B/T > {bulge_cut}): {len(etg_indices)} galaxies")
-    print(f"  - Centrals: {np.sum(etg_types == 0)}, Satellites: {np.sum(etg_types == 1)}")
-    print(f"LTGs (B/T <= {bulge_cut}): {len(ltg_indices)} galaxies")
-    print(f"  - Centrals: {np.sum(ltg_types == 0)}, Satellites: {np.sum(ltg_types == 1)}")
-    print(f"Total galaxies: {len(all_indices)}")
+    print(f"LTGs (SAGE 2.0/C16 criteria - centrals only, 0.1 < B/T < 0.5): {len(ltg_indices)} galaxies")
+    if len(ltg_indices) > 0:
+        print(f"  - All centrals by definition: {np.sum(ltg_types == 0)}")
+        ltg_bulge_ratios = bulge_ratio[ltg_indices]
+        print(f"  - B/T range: {ltg_bulge_ratios.min():.3f} to {ltg_bulge_ratios.max():.3f}")
+    
+    print(f"ETGs (B/T > 0.5): {len(etg_indices)} galaxies")
+    if len(etg_indices) > 0:
+        print(f"  - Centrals: {np.sum(etg_types == 0)}, Satellites: {np.sum(etg_types == 1)}")
+        etg_bulge_ratios = bulge_ratio[etg_indices]
+        print(f"  - B/T range: {etg_bulge_ratios.min():.3f} to {etg_bulge_ratios.max():.3f}")
+    
+    print(f"Total classified galaxies: {len(ltg_indices) + len(etg_indices)}")
     
     return etg_indices, ltg_indices
 
@@ -201,10 +217,10 @@ def plot_behroozi13(ax, z, labels=True, label='Behroozi+13'):
         ax.plot(xmf, m, 'r', linestyle='dashdot', linewidth=1.5, label=label)
 
 def calculate_median_std(log_mvir_data, log_stellar_data, bin_edges, label_prefix=""):
-    """Calculate median and standard deviation in bins"""
+    """Calculate median and standard error in bins"""
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     medians = []
-    std_devs = []
+    std_errors = []  # Changed from std_devs to std_errors
     valid_bins = []
     
     for i in range(len(bin_edges) - 1):
@@ -217,16 +233,54 @@ def calculate_median_std(log_mvir_data, log_stellar_data, bin_edges, label_prefi
             median_val = np.median(bin_stellar)
             std_val = np.std(bin_stellar)
             
-            if len(bin_stellar) <= 3 and std_val < 0.1:
-                std_val = 0.3
+            # Use standard error of the mean instead of full standard deviation
+            if len(bin_stellar) > 1:
+                std_error = std_val / np.sqrt(len(bin_stellar))
+            else:
+                std_error = 0.3  # Default uncertainty for single galaxy bins
+            
+            # Set minimum error bar to avoid overly small error bars
+            if std_error < 0.05:
+                std_error = 0.05
             
             medians.append(median_val)
-            std_devs.append(std_val)
+            std_errors.append(std_error)
             valid_bins.append(bin_centers[i])
             
         print(f"{label_prefix}Bin {bin_edges[i]:.1f}-{bin_edges[i+1]:.1f}: {len(bin_stellar)} galaxies")
     
-    return np.array(valid_bins), np.array(medians), np.array(std_devs)
+    return np.array(valid_bins), np.array(medians), np.array(std_errors)
+
+def calculate_median_iqr(log_mvir_data, log_stellar_data, bin_edges, label_prefix=""):
+    """Calculate median and inter-quartile range in bins - shows data spread rather than uncertainty"""
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    medians = []
+    iqr_errors = []
+    valid_bins = []
+    
+    for i in range(len(bin_edges) - 1):
+        bin_mask = (log_mvir_data >= bin_edges[i]) & (log_mvir_data < bin_edges[i+1])
+        bin_stellar = log_stellar_data[bin_mask]
+        
+        min_galaxies = 3  # Need at least 3 for meaningful quartiles
+        
+        if len(bin_stellar) >= min_galaxies:
+            median_val = np.median(bin_stellar)
+            q25 = np.percentile(bin_stellar, 25)
+            q75 = np.percentile(bin_stellar, 75)
+            iqr_error = (q75 - q25) / 2  # Half the IQR for symmetric error bars
+            
+            # Set minimum error bar
+            if iqr_error < 0.05:
+                iqr_error = 0.05
+            
+            medians.append(median_val)
+            iqr_errors.append(iqr_error)
+            valid_bins.append(bin_centers[i])
+            
+        print(f"{label_prefix}Bin {bin_edges[i]:.1f}-{bin_edges[i+1]:.1f}: {len(bin_stellar)} galaxies")
+    
+    return np.array(valid_bins), np.array(medians), np.array(iqr_errors)
 
 def smhm_plot_fixed(compare_old_model=True):
     """Plot the stellar mass-halo mass relation with fixed sampling"""
@@ -377,17 +431,17 @@ def smhm_plot_fixed(compare_old_model=True):
         print(f"WARNING: {invalid_stellar} galaxies with stellar mass <= 0")
     
     # SAGE 2.0 statistics (all galaxies)
-    # valid_bins, medians, std_devs = calculate_median_std(log_mvir, log_stellar, bin_edges, "SAGE 2.0 (all) ")
+    # valid_bins, medians, std_errors = calculate_median_std(log_mvir, log_stellar, bin_edges, "SAGE 2.0 (all) ")
     
     # # Plot SAGE 2.0 median with error bars
-    # sage2_handle = plt.errorbar(valid_bins, medians, yerr=std_devs, 
+    # sage2_handle = plt.errorbar(valid_bins, medians, yerr=std_errors, 
     #             fmt='k-', linewidth=2, capsize=3, capthick=1.5, zorder=10)
     # sage_handles.append(sage2_handle)
     # sage_labels.append('SAGE 2.0')
     
     # Older SAGE statistics and plotting (if data available)
     if log_mvir_old is not None:
-        valid_bins_old, medians_old, std_devs_old = calculate_median_std(
+        valid_bins_old, medians_old, std_errors_old = calculate_median_std(
             log_mvir_old, log_stellar_old, bin_edges, "SAGE C16 (all) ")
         
         sage_old_handle, = plt.plot(valid_bins_old, medians_old, 
@@ -432,34 +486,19 @@ def smhm_plot_etg_ltg(compare_old_model=True):
     Mvir = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h  
     Type = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='Type')
     
-    # Load bulge mass
+    # Load bulge mass and cold gas for SAGE 2.0/C16 criteria
     BulgeMass = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='BulgeMass') * 1.0e10 / Hubble_h
+    ColdGas = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='ColdGas') * 1.0e10 / Hubble_h
     
-    if any(x is None for x in [StellarMass, Mvir, Type, BulgeMass]):
+    if any(x is None for x in [StellarMass, Mvir, Type, BulgeMass, ColdGas]):
         print("Failed to load SAGE 2.0 data")
         return
     
     print(f"Loaded {len(StellarMass)} galaxies")
     
-    # Calculate bulge-to-total ratio for SAGE 2.0
-    bulge_ratio = calculate_bulge_ratio(BulgeMass, StellarMass)
-    print(f"Bulge ratio statistics:")
-    print(f"  Min: {np.min(bulge_ratio):.3f}")
-    print(f"  Max: {np.max(bulge_ratio):.3f}")
-    print(f"  Median: {np.median(bulge_ratio):.3f}")
-    print(f"  Mean: {np.mean(bulge_ratio):.3f}")
-    print(f"  Fraction with B/T > 0.5: {np.sum(bulge_ratio > 0.5) / len(bulge_ratio):.3f}")
-    print(f"  Fraction with B/T > 0.8: {np.sum(bulge_ratio > 0.8) / len(bulge_ratio):.3f}")
-    # Check for potential issues
-    problematic = bulge_ratio > 1.0
-    print(f"Galaxies with B/T > 1.0: {np.sum(problematic)}")
-    if np.sum(problematic) > 0:
-        print(f"  BulgeMass range: {BulgeMass[problematic].min():.2e} to {BulgeMass[problematic].max():.2e}")
-        print(f"  StellarMass range: {StellarMass[problematic].min():.2e} to {StellarMass[problematic].max():.2e}")
-    
-    # Apply filtering for ETGs and LTGs (no sampling - use all galaxies)
+    # Apply filtering for ETGs and LTGs using SAGE 2.0/C16 criteria
     etg_indices, ltg_indices = smart_sampling_strategy_etg_ltg(
-        Mvir, StellarMass, Type, bulge_ratio, bulge_ratio_cut)
+        Mvir, StellarMass, Type, BulgeMass, ColdGas)
     
     # Get the filtered data for SAGE 2.0 ETGs
     if len(etg_indices) > 0:
@@ -491,14 +530,12 @@ def smhm_plot_etg_ltg(compare_old_model=True):
             Mvir_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
             Type_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='Type')
             BulgeMass_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='BulgeMass') * 1.0e10 / Hubble_h
+            ColdGas_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='ColdGas') * 1.0e10 / Hubble_h
             
-            if all(x is not None for x in [StellarMass_old, Mvir_old, Type_old, BulgeMass_old]):
-                # Calculate bulge ratio for older model
-                bulge_ratio_old = calculate_bulge_ratio(BulgeMass_old, StellarMass_old)
-                
-                # Apply filtering to older model (no sampling)
+            if all(x is not None for x in [StellarMass_old, Mvir_old, Type_old, BulgeMass_old, ColdGas_old]):
+                # Apply filtering to older model using SAGE 2.0/C16 criteria
                 etg_indices_old, ltg_indices_old = smart_sampling_strategy_etg_ltg(
-                    Mvir_old, StellarMass_old, Type_old, bulge_ratio_old, bulge_ratio_cut)
+                    Mvir_old, StellarMass_old, Type_old, BulgeMass_old, ColdGas_old)
                 
                 if len(etg_indices_old) > 0:
                     log_mvir_etg_old = np.log10(Mvir_old[etg_indices_old])
@@ -598,29 +635,29 @@ def smhm_plot_etg_ltg(compare_old_model=True):
     
     # Plot SAGE 2.0 ETGs
     if len(log_mvir_etg) > 0:
-        valid_bins_etg, medians_etg, std_devs_etg = calculate_median_std(
+        valid_bins_etg, medians_etg, std_errors_etg = calculate_median_std(
             log_mvir_etg, log_stellar_etg, bin_edges, "SAGE 2.0 ETGs (all) ")
         
         if len(valid_bins_etg) > 0:
-            handle_etg = plt.errorbar(valid_bins_etg, medians_etg, yerr=std_devs_etg, 
+            handle_etg = plt.errorbar(valid_bins_etg, medians_etg, yerr=std_errors_etg, 
                         fmt='r-', linewidth=2, capsize=3, capthick=1.5, zorder=10, color='red')
             handles.append(handle_etg)
             labels.append('SAGE 2.0 ETGs')
     
     # Plot SAGE 2.0 LTGs
     if len(log_mvir_ltg) > 0:
-        valid_bins_ltg, medians_ltg, std_devs_ltg = calculate_median_std(
+        valid_bins_ltg, medians_ltg, std_errors_ltg = calculate_median_std(
             log_mvir_ltg, log_stellar_ltg, bin_edges, "SAGE 2.0 LTGs (all) ")
         
         if len(valid_bins_ltg) > 0:
-            handle_ltg = plt.errorbar(valid_bins_ltg, medians_ltg, yerr=std_devs_ltg, 
+            handle_ltg = plt.errorbar(valid_bins_ltg, medians_ltg, yerr=std_errors_ltg, 
                         fmt='b-', linewidth=2, capsize=3, capthick=1.5, zorder=10, color='blue')
             handles.append(handle_ltg)
             labels.append('SAGE 2.0 LTGs')
     
     # Plot older SAGE ETGs
     if log_mvir_etg_old is not None and len(log_mvir_etg_old) > 0:
-        valid_bins_etg_old, medians_etg_old, std_devs_etg_old = calculate_median_std(
+        valid_bins_etg_old, medians_etg_old, std_errors_etg_old = calculate_median_std(
             log_mvir_etg_old, log_stellar_etg_old, bin_edges, "SAGE C16 ETGs (all) ")
         
         if len(valid_bins_etg_old) > 0:
@@ -631,7 +668,7 @@ def smhm_plot_etg_ltg(compare_old_model=True):
     
     # Plot older SAGE LTGs
     if log_mvir_ltg_old is not None and len(log_mvir_ltg_old) > 0:
-        valid_bins_ltg_old, medians_ltg_old, std_devs_ltg_old = calculate_median_std(
+        valid_bins_ltg_old, medians_ltg_old, std_errors_ltg_old = calculate_median_std(
             log_mvir_ltg_old, log_stellar_ltg_old, bin_edges, "SAGE C16 LTGs (all) ")
         
         if len(valid_bins_ltg_old) > 0:
@@ -777,25 +814,25 @@ def smhm_plot_sf_passive_redshift_grid(compare_old_model=True):
         
         # Plot SAGE 2.0 star forming galaxies
         if len(log_mvir_sf) > 0:
-            valid_bins_sf, medians_sf, std_devs_sf = calculate_median_std(
+            valid_bins_sf, medians_sf, std_errors_sf = calculate_median_std(
                 log_mvir_sf, log_stellar_sf, bin_edges, f"z={actual_z:.1f} SAGE 2.0 SF ")
             
             if len(valid_bins_sf) > 0:
-                ax.errorbar(valid_bins_sf, medians_sf, yerr=std_devs_sf, 
+                ax.errorbar(valid_bins_sf, medians_sf, yerr=std_errors_sf, 
                            fmt='b-', linewidth=2, capsize=2, capthick=1, zorder=10, color='blue')
         
         # Plot SAGE 2.0 passive galaxies
         if len(log_mvir_passive) > 0:
-            valid_bins_passive, medians_passive, std_devs_passive = calculate_median_std(
+            valid_bins_passive, medians_passive, std_errors_passive = calculate_median_std(
                 log_mvir_passive, log_stellar_passive, bin_edges, f"z={actual_z:.1f} SAGE 2.0 Passive ")
             
             if len(valid_bins_passive) > 0:
-                ax.errorbar(valid_bins_passive, medians_passive, yerr=std_devs_passive, 
+                ax.errorbar(valid_bins_passive, medians_passive, yerr=std_errors_passive, 
                            fmt='r-', linewidth=2, capsize=2, capthick=1, zorder=10, color='red')
         
         # Plot older SAGE star forming galaxies
         if log_mvir_sf_old is not None and len(log_mvir_sf_old) > 0:
-            valid_bins_sf_old, medians_sf_old, std_devs_sf_old = calculate_median_std(
+            valid_bins_sf_old, medians_sf_old, std_errors_sf_old = calculate_median_std(
                 log_mvir_sf_old, log_stellar_sf_old, bin_edges, f"z={actual_z:.1f} SAGE C16 SF ")
             
             if len(valid_bins_sf_old) > 0:
@@ -804,7 +841,7 @@ def smhm_plot_sf_passive_redshift_grid(compare_old_model=True):
         
         # Plot older SAGE passive galaxies
         if log_mvir_passive_old is not None and len(log_mvir_passive_old) > 0:
-            valid_bins_passive_old, medians_passive_old, std_devs_passive_old = calculate_median_std(
+            valid_bins_passive_old, medians_passive_old, std_errors_passive_old = calculate_median_std(
                 log_mvir_passive_old, log_stellar_passive_old, bin_edges, f"z={actual_z:.1f} SAGE C16 Passive ")
             
             if len(valid_bins_passive_old) > 0:
