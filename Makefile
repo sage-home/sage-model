@@ -52,6 +52,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/core_galaxy_accessors.c core/core_pipeline_registry.c \
         core/core_properties.c core/core_parameters.c core/standard_properties.c \
         core/physics_pipeline_executor.c core/core_property_utils.c \
+        core/core_snapshot_indexing.c \
         core/generated_output_transformers.c
 
 # Physics model source files

@@ -28,6 +28,7 @@
 #include "core_event_system.h"
 #include "core_pipeline_system.h"
 #include "core_config_system.h"
+#include "core_snapshot_indexing.h"
 #include "galaxy_array.h"
 
 #ifdef HDF5
@@ -315,11 +316,45 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         HaloAux[i].NGalaxies = 0;
     }
 
-    // NEW: Accumulate all galaxies from all snapshots like legacy code
-    GalaxyArray* all_galaxies = galaxy_array_new();
+    // NEW: Build snapshot indexing for efficient processing
+    struct forest_snapshot_indices snapshot_indices;
+    status = snapshot_indices_init(&snapshot_indices, run_params->simulation.SimMaxSnaps, nhalos);
+    if (status != EXIT_SUCCESS) {
+        LOG_ERROR("Failed to initialize snapshot indices for forest %ld", forestnr);
+        myfree(HaloAux);
+        myfree(Halo);
+        end_tree_memory_scope();
+        return EXIT_FAILURE;
+    }
+    
+    status = snapshot_indices_build(&snapshot_indices, Halo, nhalos);
+    if (status != EXIT_SUCCESS) {
+        LOG_ERROR("Failed to build snapshot indices for forest %ld", forestnr);
+        snapshot_indices_cleanup(&snapshot_indices);
+        myfree(HaloAux);
+        myfree(Halo);
+        end_tree_memory_scope();
+        return EXIT_FAILURE;
+    }
+    
+    // Log indexing statistics for first few forests
+    static int forests_logged = 0;
+    if (forests_logged < 3) {
+        size_t index_memory;
+        double overhead;
+        snapshot_indices_get_memory_stats(&snapshot_indices, &index_memory, &overhead);
+        LOG_INFO("Forest %ld: %ld halos, indexing uses %.2f KB (%.1f%% overhead)", 
+                 forestnr, nhalos, index_memory / 1024.0, overhead);
+        forests_logged++;
+    }
+
+    // Pure snapshot-based memory model - bounded memory usage O(max_snapshot_galaxies)
     GalaxyArray* galaxies_prev_snap = galaxy_array_new();
     GalaxyArray* galaxies_this_snap = NULL;
     int32_t galaxycounter = 0;
+    
+    // Keep track of total galaxies saved for logging
+    int total_galaxies_saved = 0;
 
     for (int snapshot = 0; snapshot < run_params->simulation.SimMaxSnaps; ++snapshot) {
         galaxies_this_snap = galaxy_array_new();
@@ -338,26 +373,44 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                 if (status != EXIT_SUCCESS) {
                     galaxy_array_free(&galaxies_prev_snap);
                     galaxy_array_free(&galaxies_this_snap);
-                    galaxy_array_free(&all_galaxies);
+                    snapshot_indices_cleanup(&snapshot_indices);
+                    myfree(HaloAux);
+                    myfree(Halo);
                     end_tree_memory_scope();
                     return status;
                 }
             }
         }
 
-        // Accumulate all galaxies from this snapshot into the master collection
+        // SNAPSHOT-BASED OUTPUT: Save galaxies immediately after processing each snapshot
         int snap_ngal = galaxy_array_get_count(galaxies_this_snap);
-        struct GALAXY *snap_gals = galaxy_array_get_raw_data(galaxies_this_snap);
-        
-        
-        for (int i = 0; i < snap_ngal; i++) {
-            int append_result = galaxy_array_append(all_galaxies, &snap_gals[i], run_params);
-            if (append_result < 0) {
+        if (snap_ngal > 0) {
+            struct GALAXY *snap_gals = galaxy_array_get_raw_data(galaxies_this_snap);
+            
+            // Update halo associations before saving
+            for (int i = 0; i < snap_ngal; i++) {
+                GALAXY_PROP_SnapNum(&snap_gals[i]) = snapshot;
+            }
+            
+            status = save_galaxies(forestnr, snap_ngal, Halo, forest_info, HaloAux, snap_gals, save_info, run_params);
+            if (status != EXIT_SUCCESS) {
+                LOG_ERROR("Failed to save %d galaxies for snapshot %d in forest %ld", snap_ngal, snapshot, forestnr);
                 galaxy_array_free(&galaxies_prev_snap);
                 galaxy_array_free(&galaxies_this_snap);
-                galaxy_array_free(&all_galaxies);
+                snapshot_indices_cleanup(&snapshot_indices);
+                myfree(HaloAux);
+                myfree(Halo);
                 end_tree_memory_scope();
-                return EXIT_FAILURE;
+                return status;
+            }
+            
+            total_galaxies_saved += snap_ngal;
+            
+            // Log progress for first few snapshots
+            static int snapshot_saves_logged = 0;
+            if (snapshot_saves_logged < 5) {
+                LOG_DEBUG("Forest %ld snapshot %d: saved %d galaxies", forestnr, snapshot, snap_ngal);
+                snapshot_saves_logged++;
             }
         }
 
@@ -365,21 +418,20 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         galaxy_array_free(&galaxies_prev_snap);
         galaxies_prev_snap = galaxies_this_snap;
     }
-
-    // Save all galaxies at once (like legacy code) - the I/O layer will filter by snapshot
-    int total_ngal = galaxy_array_get_count(all_galaxies);
-    struct GALAXY *all_gals = galaxy_array_get_raw_data(all_galaxies);
     
-    
-    if (total_ngal > 0) {
-        status = save_galaxies(forestnr, total_ngal, Halo, forest_info, HaloAux, all_gals, save_info, run_params);
-    } else {
-        status = EXIT_SUCCESS;
+    // Log total for first few forests
+    static int forest_saves_logged = 0;
+    if (forest_saves_logged < 3) {
+        LOG_INFO("Forest %ld: saved %d total galaxies across %d snapshots", 
+                 forestnr, total_galaxies_saved, run_params->simulation.SimMaxSnaps);
+        forest_saves_logged++;
     }
+
+    status = EXIT_SUCCESS;
 
     /* free galaxies and the forest */
     galaxy_array_free(&galaxies_prev_snap); // This frees the final snapshot's data.
-    galaxy_array_free(&all_galaxies);
+    snapshot_indices_cleanup(&snapshot_indices);
     myfree(HaloAux);
     myfree(Halo);
 
