@@ -4,7 +4,7 @@
 
 The HDF5 Output Handler is an implementation of the I/O interface for writing galaxy data in the SAGE HDF5 format. It provides a standardized approach to galaxy output with support for property-based serialization, output transformers, and robust resource management.
 
-**Note**: This document covers how to *use* the HDF5 output functionality through the I/O interface. For detailed information about the internal implementation of the HDF5 output engine, see [HDF5 Galaxy Output System](hdf5_galaxy_output.md).
+**Note**: This document covers how to *use* the HDF5 output functionality through the I/O interface. For detailed information about the internal implementation of the HDF5 output engine, see [I/O System Guide](io-system.md).
 
 ## Features
 

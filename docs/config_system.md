@@ -687,7 +687,7 @@ A successful test run exits with code 0 and these error messages demonstrate cor
 ## See Also
 - [Module System and Configuration](module_system_and_configuration.md)
 - [Pipeline System](pipeline_phases.md)
-- [Parameter System](parameter_system.md)
+- [Property System Guide](property-system.md)
 
 ---
 
