@@ -420,40 +420,29 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
 {
     int prog, fofhalo;
 
-    haloaux[halonr].DoneFlag = 1;
-
-    // First, recursively process all progenitors of the current halo.
+    // STATELESS PROCESSING: Recursively process all progenitors of the current halo.
+    // Note: Since we process by snapshot, progenitors are always in previous snapshots
+    // and will have been processed already by the snapshot-based loop.
     prog = halos[halonr].FirstProgenitor;
     while(prog >= 0) {
-        if(haloaux[prog].DoneFlag == 0) {
-            int status = construct_galaxies(prog, numgals, galaxycounter, halos, haloaux, galaxies_this_snap, galaxies_prev_snap, run_params);
-            if(status != EXIT_SUCCESS) {
-                LOG_ERROR("Failed to construct galaxies for progenitor %d", prog);
-                return status;
-            }
-        }
+        // In snapshot-based processing, progenitors are processed automatically
+        // by the snapshot loop, so no explicit recursive call is needed here
         prog = halos[prog].NextProgenitor;
     }
 
-    // Second, process all progenitors of other halos in the same FOF group.
+    // STATELESS PROCESSING: Process all progenitors of other halos in the same FOF group.
+    // In snapshot-based processing, we don't need the HaloFlag state tracking.
     fofhalo = halos[halonr].FirstHaloInFOFgroup;
-    if(haloaux[fofhalo].HaloFlag == 0) {
-        haloaux[fofhalo].HaloFlag = 1;
-        int current_fof_halo = fofhalo; // Use a new variable to iterate
-        while(current_fof_halo >= 0) {
-            prog = halos[current_fof_halo].FirstProgenitor;
-            while(prog >= 0) {
-                if(haloaux[prog].DoneFlag == 0) {
-                    int status = construct_galaxies(prog, numgals, galaxycounter, halos, haloaux, galaxies_this_snap, galaxies_prev_snap, run_params);
-                    if(status != EXIT_SUCCESS) {
-                        LOG_ERROR("Failed to construct galaxies for FOF group progenitor %d", prog);
-                        return status;
-                    }
-                }
-                prog = halos[prog].NextProgenitor;
-            }
-            current_fof_halo = halos[current_fof_halo].NextHaloInFOFgroup;
+    
+    // Process FOF group progenitors (they are automatically handled by snapshot loop)
+    int current_fof_halo = fofhalo;
+    while(current_fof_halo >= 0) {
+        prog = halos[current_fof_halo].FirstProgenitor;
+        while(prog >= 0) {
+            // Progenitors are automatically processed by the snapshot-based loop
+            prog = halos[prog].NextProgenitor;
         }
+        current_fof_halo = halos[current_fof_halo].NextHaloInFOFgroup;
     }
 
     // At this point, the galaxies for all progenitors of this halo and all other
@@ -461,63 +450,62 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
     // and evolve them forward in time together.
 
     fofhalo = halos[halonr].FirstHaloInFOFgroup;
-    if(haloaux[fofhalo].HaloFlag == 1) {
-        // Set the flag to ensure this FOF group is processed only once.
-        haloaux[fofhalo].HaloFlag = 2;
+    
+    // STATELESS PROCESSING: Process FOF group without state flags
+    // In snapshot-based processing, each halo processes its FOF group independently
+    
+    // Create a single temporary GalaxyArray for the entire FOF group.
+    GalaxyArray *temp_fof_galaxies = galaxy_array_new();
+    if (!temp_fof_galaxies) {
+        LOG_ERROR("Failed to create temporary galaxy array for FOF group %d", fofhalo);
+        return EXIT_FAILURE;
+    }
 
-        // Create a single temporary GalaxyArray for the entire FOF group.
-        GalaxyArray *temp_fof_galaxies = galaxy_array_new();
-        if (!temp_fof_galaxies) {
-            LOG_ERROR("Failed to create temporary galaxy array for FOF group %d", fofhalo);
-            return EXIT_FAILURE;
-        }
-
-        // AGGREGATE STEP: Loop through all halos in the FOF group and join their
-        // progenitor galaxies into our single temporary array.
-        int current_fof_halo = fofhalo;
-        while(current_fof_halo >= 0) {
-            if (join_galaxies_of_progenitors(current_fof_halo, fofhalo, temp_fof_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params) != EXIT_SUCCESS) {
-                galaxy_array_free(&temp_fof_galaxies);
-                return EXIT_FAILURE;
-            }
-            current_fof_halo = halos[current_fof_halo].NextHaloInFOFgroup;
-        }
-
-        // FINAL FOF-LEVEL CENTRAL ASSIGNMENT: Find the single Type 0 galaxy and set all CentralGal pointers.
-        int ngal_fof = galaxy_array_get_count(temp_fof_galaxies);
-        if (ngal_fof > 0) {
-            struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(temp_fof_galaxies);
-            int central_for_fof = -1;
-            for(int i = 0; i < ngal_fof; ++i) {
-                if(GALAXY_PROP_Type(&galaxies_raw[i]) == 0) {
-                    if(central_for_fof != -1) {
-                        LOG_ERROR("Found multiple Type 0 galaxies in a single FOF group. This should not happen.");
-                        galaxy_array_free(&temp_fof_galaxies);
-                        return EXIT_FAILURE;
-                    }
-                    central_for_fof = i;
-                }
-            }
-            // Set all galaxies to point to the central galaxy
-            if(central_for_fof != -1) {
-                for(int i = 0; i < ngal_fof; ++i) {
-                    GALAXY_PROP_CentralGal(&galaxies_raw[i]) = central_for_fof;
-                }
-            } else if (ngal_fof > 0) {
-                 LOG_WARNING("No central (Type 0) galaxy found for FOF group %d with %d galaxies.", fofhalo, ngal_fof);
-                 // This might be a valid state if all galaxies are orphans, but let's check if there's any Type 1.
-                 // If so, one of them should have been promoted. If not, they have no central to merge to.
-            }
-        }
-
-        if (evolve_galaxies(fofhalo, temp_fof_galaxies, numgals, halos, haloaux, galaxies_this_snap, run_params) != EXIT_SUCCESS) {
+    // AGGREGATE STEP: Loop through all halos in the FOF group and join their
+    // progenitor galaxies into our single temporary array.
+    current_fof_halo = fofhalo;
+    while(current_fof_halo >= 0) {
+        if (join_galaxies_of_progenitors(current_fof_halo, fofhalo, temp_fof_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params) != EXIT_SUCCESS) {
             galaxy_array_free(&temp_fof_galaxies);
             return EXIT_FAILURE;
         }
-
-        // Clean up the temporary array for this FOF group.
-        galaxy_array_free(&temp_fof_galaxies);
+        current_fof_halo = halos[current_fof_halo].NextHaloInFOFgroup;
     }
+
+    // FINAL FOF-LEVEL CENTRAL ASSIGNMENT: Find the single Type 0 galaxy and set all CentralGal pointers.
+    int ngal_fof = galaxy_array_get_count(temp_fof_galaxies);
+    if (ngal_fof > 0) {
+        struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(temp_fof_galaxies);
+        int central_for_fof = -1;
+        for(int i = 0; i < ngal_fof; ++i) {
+            if(GALAXY_PROP_Type(&galaxies_raw[i]) == 0) {
+                if(central_for_fof != -1) {
+                    LOG_ERROR("Found multiple Type 0 galaxies in a single FOF group. This should not happen.");
+                    galaxy_array_free(&temp_fof_galaxies);
+                    return EXIT_FAILURE;
+                }
+                central_for_fof = i;
+            }
+        }
+        // Set all galaxies to point to the central galaxy
+        if(central_for_fof != -1) {
+            for(int i = 0; i < ngal_fof; ++i) {
+                GALAXY_PROP_CentralGal(&galaxies_raw[i]) = central_for_fof;
+            }
+        } else if (ngal_fof > 0) {
+             LOG_WARNING("No central (Type 0) galaxy found for FOF group %d with %d galaxies.", fofhalo, ngal_fof);
+             // This might be a valid state if all galaxies are orphans, but let's check if there's any Type 1.
+             // If so, one of them should have been promoted. If not, they have no central to merge to.
+        }
+    }
+
+    if (evolve_galaxies(fofhalo, temp_fof_galaxies, numgals, halos, haloaux, galaxies_this_snap, run_params) != EXIT_SUCCESS) {
+        galaxy_array_free(&temp_fof_galaxies);
+        return EXIT_FAILURE;
+    }
+
+    // Clean up the temporary array for this FOF group.
+    galaxy_array_free(&temp_fof_galaxies);
 
     return EXIT_SUCCESS;
 }

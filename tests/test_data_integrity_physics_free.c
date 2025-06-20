@@ -392,11 +392,11 @@ static int create_test_halos(void) {
         halo->SubhaloIndex = i;
         
         // Initialize auxiliary data
-        aux->HaloFlag = 0;
+        // Note: HaloFlag removed in Phase 2.2 refactoring
         aux->NGalaxies = 0;
         aux->FirstGalaxy = -1;
         aux->output_snap_n = -1;
-        aux->DoneFlag = 0;  // CRITICAL: construct_galaxies checks this
+        // Note: DoneFlag removed in Phase 2.2 refactoring for stateless processing
         
         printf("  Halo %d: SnapNum=%d, Len=%d, Mvir=%.1f, MostBoundID=%lld\n",
                i, halo->SnapNum, halo->Len, halo->Mvir, halo->MostBoundID);

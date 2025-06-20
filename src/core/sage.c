@@ -311,8 +311,6 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
 
     // Initialize auxiliary halo data for the entire forest (done once per forest, not per snapshot)
     for(int i = 0; i < nhalos; i++) {
-        HaloAux[i].HaloFlag = 0;
-        HaloAux[i].DoneFlag = 0;
         HaloAux[i].NGalaxies = 0;
     }
 
@@ -360,25 +358,29 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
         galaxies_this_snap = galaxy_array_new();
 
         // Reset auxiliary halo data for this snapshot's processing.
-        // NOTE: HaloFlag and DoneFlag should NOT be reset per snapshot - they persist across the entire forest
         for(int i = 0; i < nhalos; i++) {
             HaloAux[i].NGalaxies = 0; // Reset this for the new snapshot.
         }
 
-        for (int halonr = 0; halonr < nhalos; ++halonr) {
-            if (Halo[halonr].SnapNum == snapshot && HaloAux[halonr].DoneFlag == 0) {
-                int numgals_in_fof_group = 0;
-                status = construct_galaxies(halonr, &numgals_in_fof_group, &galaxycounter, Halo, HaloAux,
-                                            galaxies_this_snap, galaxies_prev_snap, run_params);
-                if (status != EXIT_SUCCESS) {
-                    galaxy_array_free(&galaxies_prev_snap);
-                    galaxy_array_free(&galaxies_this_snap);
-                    snapshot_indices_cleanup(&snapshot_indices);
-                    myfree(HaloAux);
-                    myfree(Halo);
-                    end_tree_memory_scope();
-                    return status;
-                }
+        // EFFICIENT LOOP: Direct O(1) access to halos for this snapshot
+        int32_t halo_count;
+        const int32_t *halo_indices = snapshot_indices_get_halos(&snapshot_indices, snapshot, &halo_count);
+        
+        for (int i = 0; i < halo_count; ++i) {
+            int halonr = halo_indices[i];
+            
+            // STATELESS PROCESSING: Each snapshot processes all its halos independently
+            int numgals_in_fof_group = 0;
+            status = construct_galaxies(halonr, &numgals_in_fof_group, &galaxycounter, Halo, HaloAux,
+                                        galaxies_this_snap, galaxies_prev_snap, run_params);
+            if (status != EXIT_SUCCESS) {
+                galaxy_array_free(&galaxies_prev_snap);
+                galaxy_array_free(&galaxies_this_snap);
+                snapshot_indices_cleanup(&snapshot_indices);
+                myfree(HaloAux);
+                myfree(Halo);
+                end_tree_memory_scope();
+                return status;
             }
         }
 

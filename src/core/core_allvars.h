@@ -172,8 +172,6 @@ struct GALAXY
 /* auxiliary halo data */
 struct halo_aux_data
 {
-    int32_t DoneFlag;
-    int32_t HaloFlag;
     int32_t NGalaxies;
     int FirstGalaxy;
 #ifdef PROCESS_LHVT_STYLE
