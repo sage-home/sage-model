@@ -362,16 +362,16 @@ int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
             HaloAux[i].NGalaxies = 0; // Reset this for the new snapshot.
         }
 
-        // EFFICIENT LOOP: Direct O(1) access to halos for this snapshot
-        int32_t halo_count;
-        const int32_t *halo_indices = snapshot_indices_get_halos(&snapshot_indices, snapshot, &halo_count);
+        // FOF-LEVEL PROCESSING: Direct O(1) access to FOF groups for this snapshot
+        int32_t fof_count;
+        const int32_t *fof_roots = snapshot_indices_get_fof_groups(&snapshot_indices, snapshot, &fof_count);
         
-        for (int i = 0; i < halo_count; ++i) {
-            int halonr = halo_indices[i];
+        for (int i = 0; i < fof_count; ++i) {
+            int fof_halonr = fof_roots[i];
             
-            // STATELESS PROCESSING: Each snapshot processes all its halos independently
+            // OPTIMIZED FOF PROCESSING: Process entire FOF group at once
             int numgals_in_fof_group = 0;
-            status = construct_galaxies(halonr, &numgals_in_fof_group, &galaxycounter, Halo, HaloAux,
+            status = construct_galaxies(fof_halonr, &numgals_in_fof_group, &galaxycounter, Halo, HaloAux,
                                         galaxies_this_snap, galaxies_prev_snap, run_params);
             if (status != EXIT_SUCCESS) {
                 galaxy_array_free(&galaxies_prev_snap);

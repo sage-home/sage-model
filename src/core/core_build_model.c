@@ -388,8 +388,24 @@ static int join_galaxies_of_progenitors(const int halonr, const int fof_halonr, 
                                         struct halo_data *halos, struct halo_aux_data *haloaux,
                                         const GalaxyArray* galaxies_prev_snap, struct params *run_params);
 
+// New specialized functions for Phase 3.1 refactoring
+static int join_progenitors_from_prev_snapshot(int halonr, int fof_halonr, 
+                                               GalaxyArray* temp_fof_galaxies, int32_t *galaxycounter,
+                                               const GalaxyArray* galaxies_prev_snap, 
+                                               struct halo_data *halos,
+                                               struct halo_aux_data *haloaux,
+                                               struct params *run_params);
+
+static int process_fof_group_at_snapshot(int fof_halonr, int snapshot,
+                                        GalaxyArray* galaxies_prev_snap, 
+                                        GalaxyArray* galaxies_this_snap,
+                                        struct halo_data *halos,
+                                        struct halo_aux_data *haloaux,
+                                        int32_t *galaxycounter,
+                                        struct params *run_params);
+
 /**
- * @brief   Recursively constructs galaxies by traversing the merger tree
+ * @brief   Main galaxy construction function - simplified with clean responsibilities
  *
  * @param   halonr    Index of the current halo in the halo array
  * @param   numgals   Pointer to total number of galaxies created
@@ -401,71 +417,76 @@ static int join_galaxies_of_progenitors(const int halonr, const int fof_halonr, 
  * @param   run_params Simulation parameters and configuration
  * @return  EXIT_SUCCESS on success, EXIT_FAILURE on error
  *
- * This function traverses the merger tree in a depth-first manner to ensure
- * that galaxies are constructed from their progenitors before being evolved.
- * It follows these steps:
- *
- * 1. First processes all progenitors of the current halo recursively.
- * 2. Then processes all progenitors of other halos in the same FOF group.
- * 3. Finally, it aggregates all galaxies from all progenitors within the FOF group
- *    into a single temporary array and evolves them forward in time together.
- *
- * The recursive approach ensures that galaxies are built in the correct
- * chronological order. The aggregation step is crucial for correctly modeling
- * physical processes that depend on the shared FOF environment.
+ * Simplified main function that delegates to specialized functions with single responsibilities.
+ * In the snapshot-based architecture, this function primarily coordinates FOF group processing.
+ * The complex recursive logic has been eliminated in favor of clean functional separation.
  */
 int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, struct halo_data *halos,
                        struct halo_aux_data *haloaux, GalaxyArray *galaxies_this_snap,
                        GalaxyArray *galaxies_prev_snap, struct params *run_params)
 {
-    int prog, fofhalo;
-
-    // STATELESS PROCESSING: Recursively process all progenitors of the current halo.
-    // Note: Since we process by snapshot, progenitors are always in previous snapshots
-    // and will have been processed already by the snapshot-based loop.
-    prog = halos[halonr].FirstProgenitor;
-    while(prog >= 0) {
-        // In snapshot-based processing, progenitors are processed automatically
-        // by the snapshot loop, so no explicit recursive call is needed here
-        prog = halos[prog].NextProgenitor;
-    }
-
-    // STATELESS PROCESSING: Process all progenitors of other halos in the same FOF group.
-    // In snapshot-based processing, we don't need the HaloFlag state tracking.
-    fofhalo = halos[halonr].FirstHaloInFOFgroup;
+    // CLEAN ARCHITECTURE: Delegate to specialized function with single responsibility
+    // In snapshot-based processing, we process entire FOF groups together
+    int fofhalo = halos[halonr].FirstHaloInFOFgroup;
     
-    // Process FOF group progenitors (they are automatically handled by snapshot loop)
-    int current_fof_halo = fofhalo;
-    while(current_fof_halo >= 0) {
-        prog = halos[current_fof_halo].FirstProgenitor;
-        while(prog >= 0) {
-            // Progenitors are automatically processed by the snapshot-based loop
-            prog = halos[prog].NextProgenitor;
-        }
-        current_fof_halo = halos[current_fof_halo].NextHaloInFOFgroup;
-    }
-
-    // At this point, the galaxies for all progenitors of this halo and all other
-    // halos in the same FOF group have been constructed. We can now join them
-    // and evolve them forward in time together.
-
-    fofhalo = halos[halonr].FirstHaloInFOFgroup;
+    // Use the specialized FOF group processing function
+    // The snapshot parameter is not directly available here, but the function
+    // can work without it as progenitors are handled by the snapshot loop
+    int snapshot = halos[halonr].SnapNum; // Get snapshot from halo data
     
-    // STATELESS PROCESSING: Process FOF group without state flags
-    // In snapshot-based processing, each halo processes its FOF group independently
-    
-    // Create a single temporary GalaxyArray for the entire FOF group.
+    return process_fof_group_at_snapshot(fofhalo, snapshot, galaxies_prev_snap, galaxies_this_snap,
+                                        halos, haloaux, galaxycounter, run_params);
+}
+/* end of construct_galaxies*/
+
+/**
+ * @brief   Copy and classify progenitor galaxies from previous snapshot
+ *
+ * Single responsibility: copy progenitor galaxies from previous snapshot and 
+ * classify them based on their new halo environment.
+ */
+static int join_progenitors_from_prev_snapshot(int halonr, int fof_halonr, 
+                                               GalaxyArray* temp_fof_galaxies, int32_t *galaxycounter,
+                                               const GalaxyArray* galaxies_prev_snap, 
+                                               struct halo_data *halos,
+                                               struct halo_aux_data *haloaux,
+                                               struct params *run_params)
+{
+    // This function delegates to the existing join_galaxies_of_progenitors
+    // but with a clear single responsibility: handling progenitor galaxy copying
+    return join_galaxies_of_progenitors(halonr, fof_halonr, temp_fof_galaxies, galaxycounter, 
+                                       halos, haloaux, galaxies_prev_snap, run_params);
+}
+
+/**
+ * @brief   Process complete FOF group at specific snapshot  
+ *
+ * Single responsibility: process complete FOF group at specific snapshot,
+ * handling galaxy evolution for the entire group.
+ */
+static int process_fof_group_at_snapshot(int fof_halonr, int snapshot,
+                                        GalaxyArray* galaxies_prev_snap, 
+                                        GalaxyArray* galaxies_this_snap,
+                                        struct halo_data *halos,
+                                        struct halo_aux_data *haloaux,
+                                        int32_t *galaxycounter,
+                                        struct params *run_params)
+{
+    // Create temporary FOF group galaxy array
     GalaxyArray *temp_fof_galaxies = galaxy_array_new();
     if (!temp_fof_galaxies) {
-        LOG_ERROR("Failed to create temporary galaxy array for FOF group %d", fofhalo);
+        LOG_ERROR("Failed to create temporary galaxy array for FOF group %d", fof_halonr);
         return EXIT_FAILURE;
     }
 
     // AGGREGATE STEP: Loop through all halos in the FOF group and join their
     // progenitor galaxies into our single temporary array.
-    current_fof_halo = fofhalo;
+    int current_fof_halo = fof_halonr;
     while(current_fof_halo >= 0) {
-        if (join_galaxies_of_progenitors(current_fof_halo, fofhalo, temp_fof_galaxies, galaxycounter, halos, haloaux, galaxies_prev_snap, run_params) != EXIT_SUCCESS) {
+        int status = join_progenitors_from_prev_snapshot(current_fof_halo, fof_halonr, 
+                                                        temp_fof_galaxies, galaxycounter,
+                                                        galaxies_prev_snap, halos, haloaux, run_params);
+        if (status != EXIT_SUCCESS) {
             galaxy_array_free(&temp_fof_galaxies);
             return EXIT_FAILURE;
         }
@@ -493,24 +514,19 @@ int construct_galaxies(const int halonr, int *numgals, int32_t *galaxycounter, s
                 GALAXY_PROP_CentralGal(&galaxies_raw[i]) = central_for_fof;
             }
         } else if (ngal_fof > 0) {
-             LOG_WARNING("No central (Type 0) galaxy found for FOF group %d with %d galaxies.", fofhalo, ngal_fof);
-             // This might be a valid state if all galaxies are orphans, but let's check if there's any Type 1.
-             // If so, one of them should have been promoted. If not, they have no central to merge to.
+             LOG_WARNING("No central (Type 0) galaxy found for FOF group %d with %d galaxies.", fof_halonr, ngal_fof);
         }
     }
 
-    if (evolve_galaxies(fofhalo, temp_fof_galaxies, numgals, halos, haloaux, galaxies_this_snap, run_params) != EXIT_SUCCESS) {
-        galaxy_array_free(&temp_fof_galaxies);
-        return EXIT_FAILURE;
-    }
-
+    // Evolve galaxies for this FOF group
+    int numgals_dummy = 0; // This parameter is not used in the current implementation
+    int status = evolve_galaxies(fof_halonr, temp_fof_galaxies, &numgals_dummy, halos, haloaux, galaxies_this_snap, run_params);
+    
     // Clean up the temporary array for this FOF group.
     galaxy_array_free(&temp_fof_galaxies);
-
-    return EXIT_SUCCESS;
+    
+    return status;
 }
-/* end of construct_galaxies*/
-
 
 /**
  * @brief   Main function to join galaxies from progenitor halos

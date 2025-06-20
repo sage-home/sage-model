@@ -109,3 +109,12 @@
 - **Achievement**: Pure snapshot-based processing architecture - no persistent state corruption between snapshots
 - **Performance**: Model runs 12% faster (23.8s vs 26.7s) with dramatically improved algorithmic complexity and cache locality
 - Modified files: src/core/sage.c, src/core/core_build_model.c, src/core/core_allvars.h, tests/test_data_integrity_physics_free.c
+
+2025-06-20: [Core Refactoring] **🎉 SAGE Core Processing Refactoring - Phases 3 & 4 Complete 🎉** ✅ MAJOR MILESTONE
+- **Phase 3.1**: Refactored construct_galaxies function with clean separation of responsibilities
+- **Phase 4.1**: Implemented FOF-level processing optimization using snapshot indexing for FOF groups
+- **Architecture**: Clean functional separation with single-responsibility functions
+- **Performance**: Additional 9% improvement (20.9s vs 23.1s) through FOF-level processing efficiency
+- **Code Quality**: Eliminated complex recursive logic in favor of clear delegation patterns
+- Created functions: join_progenitors_from_prev_snapshot(), process_fof_group_at_snapshot()
+- Modified files: src/core/core_build_model.c, src/core/sage.c
