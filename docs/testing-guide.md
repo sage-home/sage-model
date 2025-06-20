@@ -16,7 +16,7 @@ The SAGE testing framework is built around three key principles:
 
 ## Test Categories
 
-### Core Infrastructure Tests (19 tests)
+### Core Infrastructure Tests (25 tests)
 
 These tests validate the fundamental infrastructure components of SAGE:
 
@@ -40,6 +40,12 @@ These tests validate the fundamental infrastructure components of SAGE:
 | **test_error_recovery** | Tests system resilience and recovery from failures | Phase 5.2.G (June 2025) |
 | **test_dynamic_memory_expansion** | Tests the dynamic memory expansion system for scaling to large simulations | Phase 5.3 (Jun 2025) |
 | **test_data_integrity_physics_free** | Tests data integrity in physics-free mode with core properties only | Phase 5.3 (Jun 2025) |
+| **test_galaxy_array** | Tests the galaxy array data structure and component management | Phase 5.3 (Jun 2025) |
+| **test_galaxy_array_component** | Tests individual galaxy array component access and manipulation | Phase 5.3 (Jun 2025) |
+| **test_halo_progenitor_integrity** | Validates halo progenitor relationships and data integrity | Phase 5.3 (Jun 2025) |
+| **test_core_property_separation** | Tests separation between core and physics properties | Phase 5.3 (Jun 2025) |
+| **test_property_separation_scientific_accuracy** | Tests scientific accuracy with property separation enabled | Phase 5.3 (Jun 2025) |
+| **test_property_separation_memory_safety** | Tests memory safety with property separation enabled | Phase 5.3 (Jun 2025) |
 | **test_hdf5_output_validation** | Validates HDF5 output format and property serialization | Phase 5.3 (Jun 2025) |
 
 **Purpose**: Core infrastructure tests should always pass, as they validate the stability of the foundation on which everything else is built.
@@ -405,8 +411,8 @@ SAGE includes a performance benchmarking system:
 ## Test Suite Statistics
 
 The SAGE test suite contains:
-- **Total tests**: 40 individual unit tests
-- **Core Infrastructure**: 19 tests
+- **Total tests**: 46 individual unit tests
+- **Core Infrastructure**: 25 tests
 - **Property System**: 7 tests  
 - **I/O System**: 11 tests
 - **Module System**: 3 tests

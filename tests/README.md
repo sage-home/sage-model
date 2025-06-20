@@ -35,9 +35,9 @@ make test_property_system_hdf5
 
 ## Test Categories and Components
 
-The SAGE test suite contains **40 individual unit tests** organized into 4 main categories:
+The SAGE test suite contains **46 individual unit tests** organized into 4 main categories:
 
-### Core Infrastructure Tests (`CORE_TESTS`) - 19 tests
+### Core Infrastructure Tests (`CORE_TESTS`) - 25 tests
 
 Tests that validate the fundamental components of SAGE:
 
@@ -59,6 +59,12 @@ Tests that validate the fundamental components of SAGE:
 - **test_error_recovery** - Tests system resilience and recovery
 - **test_dynamic_memory_expansion** - Tests dynamic memory expansion system
 - **test_data_integrity_physics_free** - Tests data integrity in physics-free mode
+- **test_galaxy_array** - Tests the galaxy array data structure and component management
+- **test_galaxy_array_component** - Tests individual galaxy array component access and manipulation
+- **test_halo_progenitor_integrity** - Validates halo progenitor relationships and data integrity
+- **test_core_property_separation** - Tests separation between core and physics properties
+- **test_property_separation_scientific_accuracy** - Tests scientific accuracy with property separation
+- **test_property_separation_memory_safety** - Tests memory safety with property separation
 - **test_hdf5_output_validation** - Tests HDF5 output validation
 
 ### Property System Tests (`PROPERTY_TESTS`) - 7 tests
@@ -197,8 +203,8 @@ During Phase 5 (Core Module Migration), unit tests should pass, but end-to-end s
 
 ## Test Suite Statistics
 
-- **Total unit tests**: 40 individual test executables
-- **Core Infrastructure**: 19 tests (pipeline, properties, memory, configuration, etc.)
+- **Total unit tests**: 46 individual test executables
+- **Core Infrastructure**: 25 tests (pipeline, properties, memory, configuration, etc.)
 - **Property System**: 7 tests (serialization, validation, YAML parsing, etc.)
 - **I/O System**: 11 tests (multiple tree formats, endianness, buffering, etc.)
 - **Module System**: 3 tests (lifecycle, callbacks, invocation)
