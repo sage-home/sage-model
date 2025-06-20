@@ -229,83 +229,24 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
 
                 if (prog == first_occupied) {
                     // This galaxy is from the most massive progenitor.
-                    if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
-                        // This is the central of the main progenitor. It becomes the new central/main satellite.
 
-                        // Update its properties to match the new host halo.
-                        GALAXY_PROP_MostBoundID(&temp_galaxy) = halos[halonr].MostBoundID;
-                        for(int j = 0; j < 3; j++) {
-                            GALAXY_PROP_Pos(&temp_galaxy)[j] = halos[halonr].Pos[j];
-                            GALAXY_PROP_Vel(&temp_galaxy)[j] = halos[halonr].Vel[j];
-                        }
-                        GALAXY_PROP_Len(&temp_galaxy) = halos[halonr].Len;
-                        GALAXY_PROP_Vmax(&temp_galaxy) = halos[halonr].Vmax;
-                        float new_mvir = get_virial_mass(halonr, halos, run_params);
-                        GALAXY_PROP_deltaMvir(&temp_galaxy) = new_mvir - GALAXY_PROP_Mvir(&temp_galaxy);
-                        
-                        GALAXY_PROP_Mvir(&temp_galaxy) = new_mvir;
-                        GALAXY_PROP_Rvir(&temp_galaxy) = get_virial_radius(halonr, halos, run_params);
-                        GALAXY_PROP_Vvir(&temp_galaxy) = get_virial_velocity(halonr, halos, run_params);
-                        
-                        // Ensure properties are allocated before syncing
-                        if (temp_galaxy.properties == NULL) {
-                            if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
-                                LOG_WARNING("Failed to allocate properties for temp galaxy");
-                            }
-                        }
+                    // Update its properties to match the new host halo.
+                    GALAXY_PROP_MostBoundID(&temp_galaxy) = halos[halonr].MostBoundID;
 
-                        if (halonr == fof_halonr) {
-                            // It remains a central galaxy (Type 0) of the main FOF.
-                            GALAXY_PROP_Type(&temp_galaxy) = 0;
-                            
-                            // Ensure properties are allocated before syncing
-                            if (temp_galaxy.properties == NULL) {
-                                if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
-                                    LOG_WARNING("Failed to allocate properties for temp galaxy");
-                                }
-                            }
-                        } else {
-                            if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
-                                // It was a central but is now a satellite (Type 1). Record its properties at the point of infall.
-                                GALAXY_PROP_infallMvir(&temp_galaxy) = previousMvir;
-                                GALAXY_PROP_infallVvir(&temp_galaxy) = previousVvir;
-                                GALAXY_PROP_infallVmax(&temp_galaxy) = previousVmax;
-                            }
-                            GALAXY_PROP_Type(&temp_galaxy) = 1;
-                            
-                            // Ensure properties are allocated before syncing
-                            if (temp_galaxy.properties == NULL) {
-                                if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
-                                    LOG_WARNING("Failed to allocate properties for temp galaxy");
-                                }
-                            }
-                        }
-                    } else {
-                        // This was a satellite of the main progenitor. It becomes an orphan.
-                        GALAXY_PROP_Type(&temp_galaxy) = 2;
-                        GALAXY_PROP_merged(&temp_galaxy) = 1;
-                        
-                        // Ensure properties are allocated before syncing
-                        if (temp_galaxy.properties == NULL) {
-                            if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
-                                LOG_WARNING("Failed to allocate properties for temp galaxy");
-                            }
-                        }
-                    }
-                } else {
-                    // This galaxy is from a less massive progenitor. It must become an orphan.
-                    GALAXY_PROP_deltaMvir(&temp_galaxy) = -1.0 * GALAXY_PROP_Mvir(&temp_galaxy);
-                    GALAXY_PROP_Mvir(&temp_galaxy) = 0.0;
-
-                    if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
-                        // If it was a central, we must record its properties at infall.
-                        GALAXY_PROP_infallMvir(&temp_galaxy) = previousMvir;
-                        GALAXY_PROP_infallVvir(&temp_galaxy) = previousVvir;
-                        GALAXY_PROP_infallVmax(&temp_galaxy) = previousVmax;
+                    for(int j = 0; j < 3; j++) {
+                        GALAXY_PROP_Pos(&temp_galaxy)[j] = halos[halonr].Pos[j];
+                        GALAXY_PROP_Vel(&temp_galaxy)[j] = halos[halonr].Vel[j];
                     }
 
-                    GALAXY_PROP_Type(&temp_galaxy) = 2;
-                    GALAXY_PROP_merged(&temp_galaxy) = 1;
+                    GALAXY_PROP_Len(&temp_galaxy) = halos[halonr].Len;
+                    GALAXY_PROP_Vmax(&temp_galaxy) = halos[halonr].Vmax;
+
+                    float new_mvir = get_virial_mass(halonr, halos, run_params);
+                    GALAXY_PROP_deltaMvir(&temp_galaxy) = new_mvir - GALAXY_PROP_Mvir(&temp_galaxy);
+                    
+                    GALAXY_PROP_Mvir(&temp_galaxy) = new_mvir;
+                    GALAXY_PROP_Rvir(&temp_galaxy) = get_virial_radius(halonr, halos, run_params);
+                    GALAXY_PROP_Vvir(&temp_galaxy) = get_virial_velocity(halonr, halos, run_params);
                     
                     // Ensure properties are allocated before syncing
                     if (temp_galaxy.properties == NULL) {
@@ -313,8 +254,61 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                             LOG_WARNING("Failed to allocate properties for temp galaxy");
                         }
                     }
-                }
 
+                    if (halonr == fof_halonr) {
+
+                        // It remains a central galaxy (Type 0) of the main FOF.
+                        GALAXY_PROP_Type(&temp_galaxy) = 0;
+                        
+                        // Ensure properties are allocated before syncing
+                        if (temp_galaxy.properties == NULL) {
+                            if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                                LOG_WARNING("Failed to allocate properties for temp galaxy");
+                            }
+                        }
+
+                    } else {
+
+                        if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
+                            // It was a central but is now a satellite (Type 1). Record its properties at the point of infall.
+                            GALAXY_PROP_infallMvir(&temp_galaxy) = previousMvir;
+                            GALAXY_PROP_infallVvir(&temp_galaxy) = previousVvir;
+                            GALAXY_PROP_infallVmax(&temp_galaxy) = previousVmax;
+                        }
+
+                        GALAXY_PROP_Type(&temp_galaxy) = 1;
+
+                        // Ensure properties are allocated before syncing
+                        if (temp_galaxy.properties == NULL) {
+                            if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                                LOG_WARNING("Failed to allocate properties for temp galaxy");
+                            }
+                        }
+                    }
+
+                } else {
+
+                    GALAXY_PROP_deltaMvir(&temp_galaxy) = -1.0 * GALAXY_PROP_Mvir(&temp_galaxy);
+                    GALAXY_PROP_Mvir(&temp_galaxy) = 0.0;
+    
+                    if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
+                        // If it was a central, we must record its properties at infall.
+                        GALAXY_PROP_infallMvir(&temp_galaxy) = previousMvir;
+                        GALAXY_PROP_infallVvir(&temp_galaxy) = previousVvir;
+                        GALAXY_PROP_infallVmax(&temp_galaxy) = previousVmax;
+                    }
+    
+                    // This was a satellite of the main progenitor. It becomes an orphan.
+                    GALAXY_PROP_Type(&temp_galaxy) = 2;
+                    GALAXY_PROP_merged(&temp_galaxy) = 1;
+
+                    // Ensure properties are allocated before syncing
+                    if (temp_galaxy.properties == NULL) {
+                        if (allocate_galaxy_properties(&temp_galaxy, run_params) != 0) {
+                            LOG_WARNING("Failed to allocate properties for temp galaxy");
+                        }
+                    }
+                }
             }
             
             // Append the processed galaxy to the array for this halo.
