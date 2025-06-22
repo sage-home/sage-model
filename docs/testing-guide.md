@@ -16,7 +16,7 @@ The SAGE testing framework is built around three key principles:
 
 ## Test Categories
 
-### Core Infrastructure Tests (25 tests)
+### Core Infrastructure Tests (28 tests)
 
 These tests validate the fundamental infrastructure components of SAGE:
 
@@ -47,6 +47,9 @@ These tests validate the fundamental infrastructure components of SAGE:
 | **test_property_separation_scientific_accuracy** | Tests scientific accuracy with property separation enabled | Phase 5.3 (Jun 2025) |
 | **test_property_separation_memory_safety** | Tests memory safety with property separation enabled | Phase 5.3 (Jun 2025) |
 | **test_hdf5_output_validation** | Validates HDF5 output format and property serialization | Phase 5.3 (Jun 2025) |
+| **test_fof_group_assembly** | Tests FOF group galaxy type assignment and central identification | Phase 5.3 (Jun 2025) |
+| **test_fof_evolution_context** | Tests FOF-centric timing and merger tree continuity | Phase 5.3 (Jun 2025) |
+| **test_fof_memory_management** | Tests memory management for large FOF groups and leak detection | Phase 5.3 (Jun 2025) |
 
 **Purpose**: Core infrastructure tests should always pass, as they validate the stability of the foundation on which everything else is built.
 
@@ -411,8 +414,8 @@ SAGE includes a performance benchmarking system:
 ## Test Suite Statistics
 
 The SAGE test suite contains:
-- **Total tests**: 46 individual unit tests
-- **Core Infrastructure**: 25 tests
+- **Total tests**: 49 individual unit tests
+- **Core Infrastructure**: 28 tests
 - **Property System**: 7 tests  
 - **I/O System**: 11 tests
 - **Module System**: 3 tests

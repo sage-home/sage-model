@@ -307,15 +307,53 @@ int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap,
             }
         }
         
-        // Enhanced error handling for central assignment
+        // Handle central galaxy assignment and mergers
         if (type0_count == 0) {
             LOG_ERROR("No Type 0 central galaxy found in FOF group %d with %d galaxies", fof_halonr, ngal_fof);
             galaxy_array_free(&temp_fof_galaxies);
             return EXIT_FAILURE;
         } else if (type0_count > 1) {
-            LOG_ERROR("Multiple Type 0 galaxies (%d) found in FOF group %d", type0_count, fof_halonr);
-            galaxy_array_free(&temp_fof_galaxies);
-            return EXIT_FAILURE;
+            // Handle merger scenario: multiple central galaxies from different progenitors
+            LOG_DEBUG("Found %d Type 0 galaxies in FOF group %d - handling central galaxy merger", type0_count, fof_halonr);
+            
+            // Find the most massive galaxy to remain central
+            int most_massive_idx = -1;
+            float max_stellar_mass = -1.0f;
+            
+            for(int i = 0; i < ngal_fof; ++i) {
+                if(GALAXY_PROP_Type(&galaxies_raw[i]) == 0) {
+                    float stellar_mass = GALAXY_PROP_StellarMass(&galaxies_raw[i]);
+                    if (stellar_mass > max_stellar_mass) {
+                        max_stellar_mass = stellar_mass;
+                        most_massive_idx = i;
+                    }
+                }
+            }
+            
+            if (most_massive_idx == -1) {
+                LOG_ERROR("Failed to find most massive galaxy in merger scenario for FOF group %d", fof_halonr);
+                galaxy_array_free(&temp_fof_galaxies);
+                return EXIT_FAILURE;
+            }
+            
+            // Demote all other Type 0 galaxies to satellites (Type 1)
+            int demoted_count = 0;
+            for(int i = 0; i < ngal_fof; ++i) {
+                if(GALAXY_PROP_Type(&galaxies_raw[i]) == 0 && i != most_massive_idx) {
+                    // Record infall properties for central→satellite demotion
+                    GALAXY_PROP_infallMvir(&galaxies_raw[i]) = GALAXY_PROP_Mvir(&galaxies_raw[i]);
+                    GALAXY_PROP_infallVvir(&galaxies_raw[i]) = GALAXY_PROP_Vvir(&galaxies_raw[i]);
+                    GALAXY_PROP_infallVmax(&galaxies_raw[i]) = GALAXY_PROP_Vmax(&galaxies_raw[i]);
+                    
+                    // Demote to satellite
+                    GALAXY_PROP_Type(&galaxies_raw[i]) = 1;
+                    demoted_count++;
+                }
+            }
+            
+            central_for_fof = most_massive_idx;
+            LOG_DEBUG("Central galaxy merger resolved: kept galaxy %d as central, demoted %d galaxies to satellites", 
+                     most_massive_idx, demoted_count);
         }
         
         // Set all galaxies to point to the single central galaxy
