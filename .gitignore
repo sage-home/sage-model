@@ -74,6 +74,9 @@ tests/test_galaxy_array_component
 test_core_property_separation
 test_property_separation_memory_safety
 test_property_separation_scientific_accuracy
+tests/test_fof_evolution_context
+tests/test_fof_group_assembly
+tests/test_fof_memory_management
 
 tests/test_output/
 .repomix/
