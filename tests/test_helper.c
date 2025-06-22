@@ -7,6 +7,13 @@
 #include "../src/core/core_mymalloc.h"
 #include "../src/core/core_properties.h"
 #include "../src/core/core_parameters.h"
+#include "../src/core/core_logging.h"
+#include "../src/core/core_init.h"
+#include "../src/core/core_module_system.h"
+#include "../src/core/core_galaxy_extensions.h"
+#include "../src/core/core_pipeline_system.h"
+#include "../src/core/core_event_system.h"
+#include "../src/core/core_module_callback.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -39,6 +46,7 @@ int setup_test_environment(struct TestContext* ctx, int nhalos) {
     ctx->test_params.simulation.NumSnapOutputs = 10;
     ctx->test_params.simulation.SimMaxSnaps = 64;
     ctx->test_params.simulation.LastSnapshotNr = 63;
+    ctx->test_params.simulation.Snaplistlen = 64;  // CRITICAL: Set snapshot list length
     ctx->test_params.io.FirstFile = 0;
     ctx->test_params.io.LastFile = 0;
     
@@ -95,6 +103,44 @@ int setup_test_environment(struct TestContext* ctx, int nhalos) {
         return -1;
     }
     
+    // **CRITICAL: Initialize core systems required by process_fof_group**
+    // Initialize logging system first (required for CONTEXT_LOG macro)
+    if (initialize_logging(&ctx->test_params) != 0) {
+        printf("Failed to initialize logging system\n");
+        return -1;
+    }
+    
+    // Initialize basic units and constants
+    initialize_units(&ctx->test_params);
+    
+    // Initialize module system (required for pipeline)
+    if (initialize_module_system(&ctx->test_params) != 0) {
+        printf("Failed to initialize module system\n");
+        return -1;
+    }
+    
+    // Initialize module callback system
+    initialize_module_callback_system();
+    
+    // Initialize galaxy extension system
+    initialize_galaxy_extension_system();
+    
+    // Initialize property system
+    if (initialize_property_system(&ctx->test_params) != 0) {
+        printf("Failed to initialize property system\n");
+        cleanup_module_system();
+        return -1;
+    }
+    
+    // Initialize standard properties
+    initialize_standard_properties(&ctx->test_params);
+    
+    // Initialize event system
+    initialize_event_system();
+    
+    // Initialize pipeline system (creates physics-free pipeline for tests)
+    initialize_pipeline_system();
+    
     ctx->galaxycounter = 1;
     ctx->initialized = 1;
     
@@ -103,6 +149,14 @@ int setup_test_environment(struct TestContext* ctx, int nhalos) {
 
 void teardown_test_environment(struct TestContext* ctx) {
     if (!ctx || !ctx->initialized) return;
+    
+    // Clean up core systems in reverse order
+    cleanup_pipeline_system();
+    cleanup_event_system();
+    cleanup_property_system();
+    cleanup_galaxy_extension_system();
+    cleanup_module_system();
+    cleanup_logging();
     
     // Free allocated arrays in reverse order
     if (ctx->age_array) {
