@@ -118,3 +118,12 @@
 - **Code Quality**: Eliminated complex recursive logic in favor of clear delegation patterns
 - Created functions: join_progenitors_from_prev_snapshot(), process_fof_group_at_snapshot()
 - Modified files: src/core/core_build_model.c, src/core/sage.c
+
+2025-06-22: [Core Refactoring] **🎉 SAGE FOF Group Processing Optimization - Complete Implementation 🎉** ✅ MAJOR MILESTONE
+- **Phase 1**: Implemented FOF-centric evolution context with consistent timing based on FOF root snapshot for all galaxies
+- **Phase 2**: Eliminated redundant set_galaxy_centrals function, enhanced central assignment with robust validation for exactly one Type 0 per FOF group
+- **Phase 3**: Optimized memory patterns with direct FOF array append, eliminating intermediate allocations and data copying
+- **Architecture**: Achieved pure snapshot-based FOF processing model, eliminating legacy tree-based processing inconsistencies
+- **Code Quality**: Added comprehensive error handling, explanatory comments, and memory-safe GalaxyArray integration
+- Modified files: src/core/core_build_model.c, src/core/sage.c, docs/architecture.md
+
