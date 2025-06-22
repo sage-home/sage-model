@@ -565,14 +565,14 @@ test_property_separation_memory_safety: $(ROOT_DIR)/.stamps/generate_properties_
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_property_separation_memory_safety tests/test_property_separation_memory_safety.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # FOF Processing Optimization Tests
-test_fof_group_assembly: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_fof_group_assembly.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_fof_group_assembly tests/test_fof_group_assembly.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_fof_group_assembly: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_fof_group_assembly.c tests/test_helper.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_fof_group_assembly tests/test_fof_group_assembly.c tests/test_helper.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_fof_evolution_context: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_fof_evolution_context.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_fof_evolution_context tests/test_fof_evolution_context.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_fof_evolution_context: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_fof_evolution_context.c tests/test_helper.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_fof_evolution_context tests/test_fof_evolution_context.c tests/test_helper.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_fof_memory_management: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_fof_memory_management.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_fof_memory_management tests/test_fof_memory_management.c -L. -l$(LIBNAME) $(LIBFLAGS)
+test_fof_memory_management: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_fof_memory_management.c tests/test_helper.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_fof_memory_management tests/test_fof_memory_management.c tests/test_helper.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
 core_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(CORE_TESTS)

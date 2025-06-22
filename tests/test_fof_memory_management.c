@@ -18,11 +18,8 @@
 #include <assert.h>
 #include <math.h>
 
-#include "../src/core/core_allvars.h"
+#include "test_helper.h"
 #include "../src/core/core_build_model.h"
-#include "../src/core/galaxy_array.h"
-#include "../src/core/core_properties.h"
-#include "../src/core/core_mymalloc.h"
 #include "../src/core/core_memory_pool.h"
 
 // Test counter for reporting
@@ -41,26 +38,8 @@ static int tests_passed = 0;
     } \
 } while(0)
 
-// Test parameters structure
-static struct params test_params = {
-    .simulation = {
-        .NumSnapOutputs = 10,
-        .SimMaxSnaps = 64,
-        .LastSnapshotNr = 63
-    }
-};
-
-// Test fixtures
-static struct test_context {
-    struct halo_data *halos;
-    struct halo_aux_data *haloaux;
-    GalaxyArray *galaxies_prev_snap;
-    GalaxyArray *galaxies_this_snap;
-    int32_t galaxycounter;
-    int nhalo;
-    size_t initial_memory_usage;
-    int initialized;
-} test_ctx;
+// Use the shared context
+static struct TestContext test_ctx;
 
 //=============================================================================
 // Test Helper Functions
@@ -81,135 +60,14 @@ static size_t get_current_memory_usage(void) {
 }
 
 /**
- * Create a mock halo structure for memory testing
- */
-static void create_test_halo(int halo_idx, int snap_num, float mvir, 
-                           int first_prog, int next_prog, int next_in_fof) {
-    test_ctx.halos[halo_idx].SnapNum = snap_num;
-    test_ctx.halos[halo_idx].Mvir = mvir;
-    test_ctx.halos[halo_idx].FirstProgenitor = first_prog;
-    test_ctx.halos[halo_idx].NextProgenitor = next_prog;
-    test_ctx.halos[halo_idx].NextHaloInFOFgroup = next_in_fof;
-    test_ctx.halos[halo_idx].MostBoundID = 1000000 + halo_idx;
-    
-    // Set positions and velocities
-    for (int i = 0; i < 3; i++) {
-        test_ctx.halos[halo_idx].Pos[i] = 10.0f + halo_idx;
-        test_ctx.halos[halo_idx].Vel[i] = 100.0f + halo_idx;
-    }
-    test_ctx.halos[halo_idx].Len = 100 + halo_idx;
-    test_ctx.halos[halo_idx].Vmax = 200.0f + halo_idx;
-    
-    // Initialize aux data
-    test_ctx.haloaux[halo_idx].FirstGalaxy = -1;
-    test_ctx.haloaux[halo_idx].NGalaxies = 0;
-}
-
-/**
- * Create a test galaxy with proper memory management
- */
-static int create_test_galaxy(int galaxy_type, int halo_nr, float stellar_mass __attribute__((unused))) {
-    struct GALAXY temp_galaxy;
-    memset(&temp_galaxy, 0, sizeof(struct GALAXY));
-    
-    // Initialize properties
-    if (allocate_galaxy_properties(&temp_galaxy, &test_params) != 0) {
-        printf("Failed to allocate galaxy properties\n");
-        return -1;
-    }
-    
-    // Set basic properties
-    GALAXY_PROP_Type(&temp_galaxy) = galaxy_type;
-    GALAXY_PROP_HaloNr(&temp_galaxy) = halo_nr;
-    GALAXY_PROP_GalaxyIndex(&temp_galaxy) = test_ctx.galaxycounter++;
-    GALAXY_PROP_SnapNum(&temp_galaxy) = test_ctx.halos[halo_nr].SnapNum - 1;
-    GALAXY_PROP_merged(&temp_galaxy) = 0;
-    
-    // Set masses and positions
-    GALAXY_PROP_Mvir(&temp_galaxy) = test_ctx.halos[halo_nr].Mvir;
-    for (int i = 0; i < 3; i++) {
-        GALAXY_PROP_Pos(&temp_galaxy)[i] = test_ctx.halos[halo_nr].Pos[i];
-        GALAXY_PROP_Vel(&temp_galaxy)[i] = test_ctx.halos[halo_nr].Vel[i];
-    }
-    
-    // Add to previous snapshot galaxies
-    int galaxy_idx = galaxy_array_append(test_ctx.galaxies_prev_snap, &temp_galaxy, &test_params);
-    
-    // Update halo aux data
-    if (test_ctx.haloaux[halo_nr].FirstGalaxy == -1) {
-        test_ctx.haloaux[halo_nr].FirstGalaxy = galaxy_idx;
-    }
-    test_ctx.haloaux[halo_nr].NGalaxies++;
-    
-    free_galaxy_properties(&temp_galaxy);
-    return galaxy_idx;
-}
-
-/**
  * Create large number of galaxies for stress testing
  */
 static void create_large_galaxy_set(int halo_idx, int num_galaxies) {
     for (int i = 0; i < num_galaxies; i++) {
         int galaxy_type = (i == 0) ? 0 : ((i % 3 == 0) ? 1 : 2);  // Mix of types
         float mass = 1e9 + i * 1e8;  // Varying masses
-        create_test_galaxy(galaxy_type, halo_idx, mass);
+        create_test_galaxy(&test_ctx, galaxy_type, halo_idx, mass);
     }
-}
-
-//=============================================================================
-// Setup and Teardown
-//=============================================================================
-
-static int setup_test_context(void) {
-    memset(&test_ctx, 0, sizeof(test_ctx));
-    
-    // Allocate test arrays - larger for stress testing
-    test_ctx.nhalo = 200;  // Increased for large FOF groups
-    test_ctx.halos = mymalloc_full(test_ctx.nhalo * sizeof(struct halo_data), "test_halos");
-    test_ctx.haloaux = mymalloc_full(test_ctx.nhalo * sizeof(struct halo_aux_data), "test_haloaux");
-    
-    if (!test_ctx.halos || !test_ctx.haloaux) {
-        printf("Failed to allocate test halo arrays\n");
-        return -1;
-    }
-    
-    // Initialize halo arrays
-    memset(test_ctx.halos, 0, test_ctx.nhalo * sizeof(struct halo_data));
-    memset(test_ctx.haloaux, 0, test_ctx.nhalo * sizeof(struct halo_aux_data));
-    
-    // Create galaxy arrays
-    test_ctx.galaxies_prev_snap = galaxy_array_new();
-    test_ctx.galaxies_this_snap = galaxy_array_new();
-    
-    if (!test_ctx.galaxies_prev_snap || !test_ctx.galaxies_this_snap) {
-        printf("Failed to create galaxy arrays\n");
-        return -1;
-    }
-    
-    test_ctx.galaxycounter = 1;
-    test_ctx.initial_memory_usage = get_current_memory_usage();
-    test_ctx.initialized = 1;
-    return 0;
-}
-
-static void teardown_test_context(void) {
-    // Cleanup in reverse order of allocation
-    if (test_ctx.galaxies_this_snap) {
-        galaxy_array_free(&test_ctx.galaxies_this_snap);
-    }
-    if (test_ctx.galaxies_prev_snap) {
-        galaxy_array_free(&test_ctx.galaxies_prev_snap);
-    }
-    if (test_ctx.haloaux) {
-        myfree(test_ctx.haloaux);
-        test_ctx.haloaux = NULL;
-    }
-    if (test_ctx.halos) {
-        myfree(test_ctx.halos);
-        test_ctx.halos = NULL;
-    }
-    
-    test_ctx.initialized = 0;
 }
 
 //=============================================================================
@@ -222,29 +80,26 @@ static void teardown_test_context(void) {
 static void test_basic_memory_management(void) {
     printf("=== Testing basic memory allocation and cleanup ===\n");
     
+    // Reset galaxy arrays for fresh test
+    reset_test_galaxies(&test_ctx);
+    
     size_t start_usage = get_current_memory_usage();
     
     // Create simple FOF group
-    create_test_halo(0, 10, 1e12, 1, -1, -1);
-    create_test_halo(1, 9, 9e11, -1, -1, -1);
+    create_test_halo(&test_ctx, 0, 10, 1e12, 1, -1, -1);
+    create_test_halo(&test_ctx, 1, 9, 9e11, -1, -1, -1);
     
     // Create galaxies
-    create_test_galaxy(0, 1, 2e10);
+    create_test_galaxy(&test_ctx, 0, 1, 2e10);
     
     size_t after_creation = get_current_memory_usage();
     TEST_ASSERT(after_creation > start_usage, "Memory usage should increase after creating test data");
     
     // Process FOF group
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_params);
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
     
     TEST_ASSERT(status == EXIT_SUCCESS, "Basic FOF processing should succeed");
-    
-    // Clear arrays to test cleanup by recreating them
-    galaxy_array_free(&test_ctx.galaxies_prev_snap);
-    galaxy_array_free(&test_ctx.galaxies_this_snap);
-    test_ctx.galaxies_prev_snap = galaxy_array_new();
-    test_ctx.galaxies_this_snap = galaxy_array_new();
     
     printf("  Basic memory management test completed\n");
 }
@@ -255,6 +110,9 @@ static void test_basic_memory_management(void) {
 static void test_galaxy_array_expansion(void) {
     printf("\n=== Testing GalaxyArray expansion and memory integrity ===\n");
     
+    // Reset galaxy arrays for fresh test
+    reset_test_galaxies(&test_ctx);
+    
     // Create FOF group that will trigger array expansion
     const int num_halos = 10;
     const int galaxies_per_halo = 30;  // Will trigger expansions
@@ -262,13 +120,13 @@ static void test_galaxy_array_expansion(void) {
     // Create FOF chain
     for (int i = 0; i < num_halos; i++) {
         int next_halo = (i < num_halos - 1) ? i + 1 : -1;
-        create_test_halo(i, 15, 1e12 - i * 1e10, num_halos + i, -1, next_halo);
+        create_test_halo(&test_ctx, i, 15, 1e12 - i * 1e10, num_halos + i, -1, next_halo);
     }
     
     // Create progenitors and galaxies
     for (int i = 0; i < num_halos; i++) {
         int prog_idx = num_halos + i;
-        create_test_halo(prog_idx, 14, (1e12 - i * 1e10) * 0.9, -1, -1, -1);
+        create_test_halo(&test_ctx, prog_idx, 14, (1e12 - i * 1e10) * 0.9, -1, -1, -1);
         create_large_galaxy_set(prog_idx, galaxies_per_halo);
     }
     
@@ -277,7 +135,7 @@ static void test_galaxy_array_expansion(void) {
     
     // Process FOF group - this should trigger multiple array expansions
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_params);
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
     
     TEST_ASSERT(status == EXIT_SUCCESS, "Large FOF processing should succeed despite expansions");
     
@@ -306,11 +164,8 @@ static void test_galaxy_array_expansion(void) {
 static void test_large_fof_group_memory(void) {
     printf("\n=== Testing large FOF group memory handling ===\n");
     
-    // Clear previous test data by recreating arrays
-    galaxy_array_free(&test_ctx.galaxies_prev_snap);
-    galaxy_array_free(&test_ctx.galaxies_this_snap);
-    test_ctx.galaxies_prev_snap = galaxy_array_new();
-    test_ctx.galaxies_this_snap = galaxy_array_new();
+    // Reset galaxy arrays for fresh test
+    reset_test_galaxies(&test_ctx);
     
     const int num_halos = 50;
     const int galaxies_per_halo = 15;  // Total: 750 galaxies
@@ -321,13 +176,13 @@ static void test_large_fof_group_memory(void) {
     // Create large FOF chain
     for (int i = 0; i < num_halos; i++) {
         int next_halo = (i < num_halos - 1) ? i + 1 : -1;
-        create_test_halo(i, 20, 2e12 - i * 1e10, num_halos + i, -1, next_halo);
+        create_test_halo(&test_ctx, i, 20, 2e12 - i * 1e10, num_halos + i, -1, next_halo);
     }
     
     // Create progenitors with many galaxies
     for (int i = 0; i < num_halos; i++) {
         int prog_idx = num_halos + i;
-        create_test_halo(prog_idx, 19, (2e12 - i * 1e10) * 0.95, -1, -1, -1);
+        create_test_halo(&test_ctx, prog_idx, 19, (2e12 - i * 1e10) * 0.95, -1, -1, -1);
         create_large_galaxy_set(prog_idx, galaxies_per_halo);
     }
     
@@ -335,7 +190,7 @@ static void test_large_fof_group_memory(void) {
     
     // Process large FOF group
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_params);
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
     
     TEST_ASSERT(status == EXIT_SUCCESS, "Large FOF group processing should succeed");
     
@@ -374,19 +229,16 @@ static void test_memory_leak_detection(void) {
     size_t memory_readings[num_iterations];
     
     for (int iter = 0; iter < num_iterations; iter++) {
-        // Clear arrays by recreating them
-        galaxy_array_free(&test_ctx.galaxies_prev_snap);
-        galaxy_array_free(&test_ctx.galaxies_this_snap);
-        test_ctx.galaxies_prev_snap = galaxy_array_new();
-        test_ctx.galaxies_this_snap = galaxy_array_new();
+        // Reset arrays for fresh iteration
+        reset_test_galaxies(&test_ctx);
         
         // Create and process FOF group
-        create_test_halo(0, 25 + iter, 1.5e12, 10, -1, -1);
-        create_test_halo(10, 24 + iter, 1.3e12, -1, -1, -1);
-        create_test_galaxy(0, 10, 2e10);
+        create_test_halo(&test_ctx, 0, 25 + iter, 1.5e12, 10, -1, -1);
+        create_test_halo(&test_ctx, 10, 24 + iter, 1.3e12, -1, -1, -1);
+        create_test_galaxy(&test_ctx, 0, 10, 2e10);
         
         int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                      test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_params);
+                                      test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
         
         TEST_ASSERT(status == EXIT_SUCCESS, "Iteration should succeed");
         
@@ -424,10 +276,10 @@ static void test_memory_stress(void) {
             struct GALAXY temp_galaxy;
             memset(&temp_galaxy, 0, sizeof(struct GALAXY));
             
-            if (allocate_galaxy_properties(&temp_galaxy, &test_params) == 0) {
+            if (allocate_galaxy_properties(&temp_galaxy, &test_ctx.test_params) == 0) {
                 GALAXY_PROP_Type(&temp_galaxy) = i % 3;
                 GALAXY_PROP_GalaxyIndex(&temp_galaxy) = i;
-                galaxy_array_append(temp_array, &temp_galaxy, &test_params);
+                galaxy_array_append(temp_array, &temp_galaxy, &test_ctx.test_params);
                 free_galaxy_properties(&temp_galaxy);
             }
         }
@@ -447,19 +299,22 @@ static void test_memory_stress(void) {
  * Test: Memory pool integration and stress testing
  */
 static void test_memory_pool_integration(void) {
-    printf("\\n=== Testing memory pool integration ===\\n");
+    printf("\n=== Testing memory pool integration ===\n");
     
     // Initialize memory pool
     int init_result = galaxy_pool_initialize();
     TEST_ASSERT(init_result == 0, "Memory pool initialization should succeed");
     
+    // Reset galaxy arrays for fresh test
+    reset_test_galaxies(&test_ctx);
+    
     // Create and process FOF group with memory pool
-    create_test_halo(0, 30, 1.8e12, 5, -1, -1);
-    create_test_halo(5, 29, 1.6e12, -1, -1, -1);
-    create_test_galaxy(0, 5, 2.5e10);
+    create_test_halo(&test_ctx, 0, 30, 1.8e12, 5, -1, -1);
+    create_test_halo(&test_ctx, 5, 29, 1.6e12, -1, -1, -1);
+    create_test_galaxy(&test_ctx, 0, 5, 2.5e10);
     
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_params);
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
     
     TEST_ASSERT(status == EXIT_SUCCESS, "FOF processing with memory pool should succeed");
     
@@ -470,7 +325,7 @@ static void test_memory_pool_integration(void) {
     // Cleanup memory pool
     galaxy_pool_cleanup();
     
-    printf("  Memory pool integration test completed\\n");
+    printf("  Memory pool integration test completed\n");
 }
 
 //=============================================================================
@@ -488,8 +343,8 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
     printf("  3. Large FOF group handling (>500 galaxies)\n");
     printf("  4. Memory stress testing and leak detection\n\n");
 
-    // Setup
-    if (setup_test_context() != 0) {
+    // Setup standardized test environment
+    if (setup_test_environment(&test_ctx, 200) != 0) {  // Larger for stress testing
         printf("ERROR: Failed to set up test context\n");
         return 1;
     }
@@ -503,7 +358,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
     test_memory_pool_integration();
     
     // Teardown
-    teardown_test_context();
+    teardown_test_environment(&test_ctx);
     
     // Report results
     printf("\n========================================\n");
