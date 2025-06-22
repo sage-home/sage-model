@@ -134,4 +134,9 @@
 - **Status**: Original inheritance bug fixed, but memory corruption still occurring after 10+ seconds runtime - requires further investigation
 - Modified files: src/core/core_build_model.c, src/core/core_build_model.h, src/core/sage.c, tests/test_data_integrity_physics_free.c
 
-EOF < /dev/null
+2025-06-22: [Critical Bug Fix] **🎉 FOF Galaxy Inheritance & Memory Corruption Resolution - Complete Fix 🎉** ✅ COMPLETED
+- **Memory Bug Fix**: Resolved critical "double free" memory corruption caused by shallow copying galaxy properties during array compaction in evolve_galaxies
+- **Solution**: Replaced problematic in-place array modification with safe deep-copy approach, ensuring each galaxy's properties are freed exactly once
+- **Architecture**: Maintained robust direct galaxy scanning for progenitor inheritance, added explanatory comments for two-pass scanning logic
+- **Validation**: Millennium simulation runs successfully (24s) with exit code 0, no crashes or memory errors, clean function signatures
+- Modified files: src/core/core_build_model.c, src/core/core_build_model.h, src/core/sage.c

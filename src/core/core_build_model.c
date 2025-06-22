@@ -123,7 +123,9 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
     struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)galaxies_prev_snap);
     int ngal_prev = galaxy_array_get_count(galaxies_prev_snap);
     
-    // First pass: find most massive progenitor that contains galaxies
+    // We use a two-pass approach to handle progenitor inheritance efficiently.
+    // Pass 1: Find the most massive progenitor that contains at least one galaxy.
+    // This galaxy will be the one that inherits the primary properties of the descendant halo.
     int first_occupied = -1;
     int lenoccmax = 0;
     
@@ -144,7 +146,9 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
         prog = halos[prog].NextProgenitor;
     }
 
-    // Second pass: copy galaxies from all progenitors
+    // Pass 2: Iterate through all progenitors again. Copy galaxies, classifying them
+    // as central, satellite, or orphan based on whether they belong to the
+    // 'first_occupied' progenitor halo.
     int galaxies_added_for_halo = 0;
     prog = halos[halonr].FirstProgenitor;
     while (prog >= 0) {
@@ -279,7 +283,7 @@ static int process_halo_galaxies(const int halonr, const int fof_halonr,
 int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap, 
                             GalaxyArray* galaxies_this_snap, struct halo_data *halos,
                             struct halo_aux_data *haloaux, int32_t *galaxycounter,
-                            struct params *run_params, int nhalos __attribute__((unused)))
+                            struct params *run_params)
 {
     GalaxyArray *temp_fof_galaxies = galaxy_array_new();
     if (!temp_fof_galaxies) {
@@ -588,47 +592,41 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
     core_evolution_diagnostics_finalize(&diag);
     core_evolution_diagnostics_report(&diag, LOG_LEVEL_INFO);
 
-    // Remove merged galaxies and compact array
-    int active_galaxies = 0;
+    // =================================================================
+    // NEW, SAFE LOGIC STARTS HERE
+    // =================================================================
+
+    // Attach surviving galaxies to the final snapshot array.
+    // We iterate through the evolved FOF group and deep-copy only the
+    // galaxies that have not been merged.
     for(int p = 0; p < ctx.ngal; p++) {
+        // Skip any galaxy that was marked as merged during the evolution step.
         if (GALAXY_PROP_merged(&ctx.galaxies[p]) == 0) {
-            if (active_galaxies != p) {
-                ctx.galaxies[active_galaxies] = ctx.galaxies[p];
+
+            // Find the current halo for this galaxy to update auxiliary data.
+            int currenthalo = GALAXY_PROP_HaloNr(&ctx.galaxies[p]);
+            if (haloaux[currenthalo].NGalaxies == 0) {
+                // This is the first galaxy for this halo in the output list.
+                haloaux[currenthalo].FirstGalaxy = *numgals;
             }
-            active_galaxies++;
-        } else {
-            free_galaxy_properties(&ctx.galaxies[p]);
-        }
-    }
-    ctx.ngal = active_galaxies;
 
-    // Attach surviving galaxies to snapshot array
-    for(int p = 0, currenthalo = -1; p < ctx.ngal; p++) {
-        if(GALAXY_PROP_HaloNr(&ctx.galaxies[p]) != currenthalo) {
-            currenthalo = GALAXY_PROP_HaloNr(&ctx.galaxies[p]);
-            haloaux[currenthalo].FirstGalaxy = *numgals;
-            haloaux[currenthalo].NGalaxies = 0;
-        }
-
-        if (GALAXY_PROP_merged(&ctx.galaxies[p]) == 0) {
-            GALAXY_PROP_SnapNum(&ctx.galaxies[p]) = halos[currenthalo].SnapNum;
-
-            struct GALAXY temp_galaxy;
-            memset(&temp_galaxy, 0, sizeof(struct GALAXY));
-            galaxy_extension_initialize(&temp_galaxy);
-            deep_copy_galaxy(&temp_galaxy, &ctx.galaxies[p], run_params);
-            GALAXY_PROP_SnapNum(&temp_galaxy) = halos[currenthalo].SnapNum;
-
-            if (galaxy_array_append(galaxies_this_snap, &temp_galaxy, run_params) < 0) {
-                LOG_ERROR("Failed to append galaxy to snapshot array");
-                free_galaxy_properties(&temp_galaxy);
+            // Perform a deep copy to the final output array for this snapshot.
+            // This ensures a clean, separate copy with its own allocated properties.
+            if (galaxy_array_append(galaxies_this_snap, &ctx.galaxies[p], run_params) < 0) {
+                LOG_ERROR("Failed to append surviving galaxy to snapshot array.");
                 return EXIT_FAILURE;
             }
-            free_galaxy_properties(&temp_galaxy);
+
+            // Increment the total number of galaxies for this snapshot and for this halo.
             (*numgals)++;
             haloaux[currenthalo].NGalaxies++;
         }
     }
+
+    // The temp_fof_galaxies array (which contains both survivors and merged galaxies)
+    // will be freed by the calling function, `process_fof_group`. This is the correct
+    // place to free it, as it ensures all properties (even for merged galaxies)
+    // are freed exactly once.
 
     return EXIT_SUCCESS;
 }
