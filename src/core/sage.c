@@ -404,7 +404,7 @@ static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_in
             int fof_halonr = fof_roots[i];
             
             status = process_fof_group(fof_halonr, galaxies_prev_snap, galaxies_this_snap,
-                                       Halo, HaloAux, &galaxycounter, run_params);
+                                       Halo, HaloAux, &galaxycounter, run_params, nhalos);
             if (status != EXIT_SUCCESS) {
                 galaxy_array_free(&galaxies_prev_snap);
                 galaxy_array_free(&galaxies_this_snap);

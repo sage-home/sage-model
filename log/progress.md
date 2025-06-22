@@ -127,3 +127,11 @@
 - **Code Quality**: Added comprehensive error handling, explanatory comments, and memory-safe GalaxyArray integration
 - Modified files: src/core/core_build_model.c, src/core/sage.c, docs/architecture.md
 
+2025-06-23: [Critical Bug Fix] **Galaxy Inheritance Bug Resolution & Memory Corruption Investigation** ⚠️ PARTIAL PROGRESS
+- **Critical Fix**: Resolved galaxy inheritance bug where `for (int i = 0; i < haloaux[prog].NGalaxies; i++)` loop never executed, preventing galaxy properties from inheriting from progenitors
+- **Root Cause**: Data flow mismatch - function received `haloaux` for current snapshot but needed previous snapshot auxiliary data for progenitor halos  
+- **Solution**: Implemented direct galaxy scanning approach, eliminating auxiliary data reconstruction to prevent memory corruption while ensuring galaxy inheritance
+- **Status**: Original inheritance bug fixed, but memory corruption still occurring after 10+ seconds runtime - requires further investigation
+- Modified files: src/core/core_build_model.c, src/core/core_build_model.h, src/core/sage.c, tests/test_data_integrity_physics_free.c
+
+EOF < /dev/null

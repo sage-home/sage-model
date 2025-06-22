@@ -430,7 +430,7 @@ static int create_test_galaxies(void) {
         
         int result = process_fof_group(halo_idx, test_ctx.test_halogal, test_ctx.test_galaxies,
                                      test_ctx.test_halos, test_ctx.test_haloaux, 
-                                     &galaxy_counter, &test_ctx.run_params);
+                                     &galaxy_counter, &test_ctx.run_params, test_ctx.num_halos);
         
         if (result != 0) {
             printf("ERROR: process_fof_group failed for halo %d with result %d\n", halo_idx, result);
