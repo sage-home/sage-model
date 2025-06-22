@@ -197,6 +197,44 @@ SAGE uses bit flags for phase identification:
 - Phase-specific module callbacks
 - Runtime configurability
 
+### FOF-Centric Galaxy Processing
+
+SAGE implements a **pure snapshot-based FOF (Friends-of-Friends) processing model** that eliminates legacy tree-based processing inconsistencies. This architecture ensures optimal performance and scientific accuracy.
+
+#### Processing Flow
+
+```
+For each snapshot:
+  For each FOF group in the snapshot:
+    1. FOF Group Assembly     → Inherit all progenitor galaxies into a single FOF galaxy list
+    2. Type Classification    → Assign Type 0 (central), Type 1 (satellite), Type 2 (orphan) status
+    3. FOF Group Evolution   → Execute 4-phase physics pipeline on entire FOF group
+    4. Snapshot Attachment   → Add surviving galaxies to final output list
+  
+  Save all galaxies for the snapshot
+```
+
+#### Key Design Principles
+
+1. **FOF-Centric Evolution**: All processing logic treats the FOF group as the fundamental unit of evolution
+2. **Single Central Assignment**: Exactly one Type 0 central galaxy per FOF group, determined by FOF hierarchy
+3. **Consistent Timing**: All galaxies within an FOF group use consistent timestep (`deltaT`) based on FOF root's snapshot time
+4. **Memory Optimization**: Direct append to FOF arrays eliminates intermediate allocations and data copying
+
+#### Implementation Components
+
+- **`process_fof_group()`**: Main entry point for FOF group processing with central assignment validation
+- **`evolve_galaxies()`**: Four-phase physics pipeline executor for complete FOF groups
+- **`copy_galaxies_from_progenitors()`**: Optimized progenitor inheritance with direct FOF array append
+- **`GalaxyArray`**: Memory-safe dynamic arrays using SAGE's memory pool system
+
+#### Benefits
+
+- **Architectural Consistency**: Snapshot-based outer loop matches snapshot-based inner processing
+- **Performance**: Reduced memory allocations and optimized data flow patterns  
+- **Scientific Accuracy**: Consistent physics timing across all galaxies in FOF groups
+- **Maintainability**: Clear separation of concerns and robust error handling
+
 ### Physics-Free Mode
 
 SAGE supports physics-free mode where core infrastructure runs with completely empty pipelines:

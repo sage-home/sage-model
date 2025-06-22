@@ -399,6 +399,8 @@ static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_in
         const int32_t *fof_roots = snapshot_indices_get_fof_groups(&snapshot_indices, snapshot, &fof_count);
         
         for (int i = 0; i < fof_count; ++i) {
+            // Process each FOF group in this snapshot
+            // fof_roots contains the root halo number for each FOF group
             int fof_halonr = fof_roots[i];
             
             status = process_fof_group(fof_halonr, galaxies_prev_snap, galaxies_this_snap,

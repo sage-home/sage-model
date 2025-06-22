@@ -105,10 +105,10 @@ static int find_most_massive_progenitor(const int halonr, struct halo_data *halo
 }
 
 /**
- * @brief Progenitor inheritance processor with type classification
+ * @brief Progenitor inheritance processor with type classification - optimized for direct FOF append
  * @param halonr Current halo number
  * @param fof_halonr FOF group root halo number
- * @param galaxies_for_halo Output galaxy array for this halo
+ * @param temp_fof_galaxies Output FOF galaxy array (direct append)
  * @param galaxycounter Global galaxy counter
  * @param halos Halo data array
  * @param haloaux Halo auxiliary data array
@@ -121,9 +121,9 @@ static int find_most_massive_progenitor(const int halonr, struct halo_data *halo
  *        deep_copy_galaxy() - duplicate galaxy safely
  *        get_virial_mass() - calculate halo virial mass
  *        init_galaxy() - create new galaxy
- *        galaxy_array_append() - add to galaxy list
+ *        galaxy_array_append() - add directly to FOF array
  */
-static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr, GalaxyArray *galaxies_for_halo,
+static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr, GalaxyArray *temp_fof_galaxies,
                                          int32_t *galaxycounter, struct halo_data *halos,
                                          struct halo_aux_data *haloaux, const GalaxyArray *galaxies_prev_snap,
                                          struct params *run_params)
@@ -198,8 +198,8 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                 }
             }
             
-            if (galaxy_array_append(galaxies_for_halo, &temp_galaxy, run_params) < 0) {
-                LOG_ERROR("Failed to append galaxy");
+            if (galaxy_array_append(temp_fof_galaxies, &temp_galaxy, run_params) < 0) {
+                LOG_ERROR("Failed to append galaxy to FOF array");
                 free_galaxy_properties(&temp_galaxy);
                 return EXIT_FAILURE;
             }
@@ -209,14 +209,26 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
     }
 
     // Create new galaxy if no progenitors and this is main FOF halo
-    if (galaxy_array_get_count(galaxies_for_halo) == 0 && halonr == fof_halonr) {
+    // Check if any galaxies were inherited from progenitors by summing the NGalaxies
+    // count from the auxiliary halo data of all progenitors. This avoids scanning
+    // the FOF array and is more efficient than the previous temporary array approach.
+    int galaxies_added_for_halo = 0;
+    
+    // Count how many galaxies were added for this halo during progenitor processing
+    int progenitor = halos[halonr].FirstProgenitor;
+    while (progenitor >= 0) {
+        galaxies_added_for_halo += haloaux[progenitor].NGalaxies;
+        progenitor = halos[progenitor].NextProgenitor;
+    }
+    
+    if (galaxies_added_for_halo == 0 && halonr == fof_halonr) {
         struct GALAXY temp_new_galaxy;
         memset(&temp_new_galaxy, 0, sizeof(struct GALAXY));
         galaxy_extension_initialize(&temp_new_galaxy);
         init_galaxy(0, halonr, galaxycounter, halos, &temp_new_galaxy, run_params);
 
-        if (galaxy_array_append(galaxies_for_halo, &temp_new_galaxy, run_params) < 0) {
-            LOG_ERROR("Failed to append new galaxy");
+        if (galaxy_array_append(temp_fof_galaxies, &temp_new_galaxy, run_params) < 0) {
+            LOG_ERROR("Failed to append new galaxy to FOF array");
             free_galaxy_properties(&temp_new_galaxy);
             return EXIT_FAILURE;
         }
@@ -226,42 +238,10 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Central galaxy reference setter for single halo
- * @param ngalstart Starting galaxy index
- * @param ngal Total number of galaxies
- * @param galaxies Galaxy array
- * @return 0 on success, -1 on error
- * 
- * Called by: process_halo_galaxies()
- * Calls: None (pure assignment)
- */
-static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAXY *galaxies)
-{
-    int centralgal = -1;
-    
-    // Find the central galaxy (Type 0 or 1)
-    for (int i = ngalstart; i < ngal; i++) {
-        if (GALAXY_PROP_Type(&galaxies[i]) == 0 || GALAXY_PROP_Type(&galaxies[i]) == 1) {
-            if (centralgal != -1) {
-                LOG_ERROR("Multiple central galaxies found in halo");
-                return -1;
-            }
-            centralgal = i;
-        }
-    }
-
-    // Set all galaxies to point to the central galaxy
-    for (int i = ngalstart; i < ngal; i++) {
-        GALAXY_PROP_CentralGal(&galaxies[i]) = centralgal;
-    }
-    
-    return 0;
-}
 
 
 // Internal function declarations
-static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int *numgals, 
+static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_galaxies, int *numgals, 
                           struct halo_data *halos, struct halo_aux_data *haloaux, 
                           GalaxyArray *galaxies_this_snap, struct params *run_params);
 static int process_halo_galaxies(const int halonr, const int fof_halonr, 
@@ -310,32 +290,41 @@ int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap,
         current_fof_halo = halos[current_fof_halo].NextHaloInFOFgroup;
     }
 
-    // Set central galaxy references for FOF group
+    // Set central galaxy references for FOF group with enhanced error handling
     int ngal_fof = galaxy_array_get_count(temp_fof_galaxies);
     if (ngal_fof > 0) {
         struct GALAXY* galaxies_raw = galaxy_array_get_raw_data(temp_fof_galaxies);
         int central_for_fof = -1;
+        int type0_count = 0;
         
-        // Find Type 0 galaxy
+        // Find Type 0 galaxy with comprehensive validation
         for(int i = 0; i < ngal_fof; ++i) {
             if(GALAXY_PROP_Type(&galaxies_raw[i]) == 0) {
-                if(central_for_fof != -1) {
-                    LOG_ERROR("Multiple Type 0 galaxies in FOF group");
-                    galaxy_array_free(&temp_fof_galaxies);
-                    return EXIT_FAILURE;
+                type0_count++;
+                if(central_for_fof == -1) {
+                    central_for_fof = i;
                 }
-                central_for_fof = i;
             }
         }
         
-        // Set all galaxies to point to central
-        if(central_for_fof != -1) {
-            for(int i = 0; i < ngal_fof; ++i) {
-                GALAXY_PROP_CentralGal(&galaxies_raw[i]) = central_for_fof;
-            }
-        } else if (ngal_fof > 0) {
-             LOG_WARNING("No central galaxy found for FOF group %d with %d galaxies", fof_halonr, ngal_fof);
+        // Enhanced error handling for central assignment
+        if (type0_count == 0) {
+            LOG_ERROR("No Type 0 central galaxy found in FOF group %d with %d galaxies", fof_halonr, ngal_fof);
+            galaxy_array_free(&temp_fof_galaxies);
+            return EXIT_FAILURE;
+        } else if (type0_count > 1) {
+            LOG_ERROR("Multiple Type 0 galaxies (%d) found in FOF group %d", type0_count, fof_halonr);
+            galaxy_array_free(&temp_fof_galaxies);
+            return EXIT_FAILURE;
         }
+        
+        // Set all galaxies to point to the single central galaxy
+        for(int i = 0; i < ngal_fof; ++i) {
+            GALAXY_PROP_CentralGal(&galaxies_raw[i]) = central_for_fof;
+        }
+        
+        LOG_DEBUG("Set central galaxy index %d for FOF group %d with %d galaxies", 
+                  central_for_fof, fof_halonr, ngal_fof);
     }
 
     // Evolve galaxies
@@ -348,10 +337,10 @@ int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap,
 }
 
 /**
- * @brief Individual halo galaxy processor within FOF group
+ * @brief Individual halo galaxy processor within FOF group - optimized for direct FOF append
  * @param halonr Current halo number
  * @param fof_halonr FOF group root halo number
- * @param temp_fof_galaxies FOF group galaxy accumulator
+ * @param temp_fof_galaxies FOF group galaxy accumulator (direct append)
  * @param galaxycounter Global galaxy counter
  * @param halos Halo data array
  * @param haloaux Halo auxiliary data array
@@ -360,52 +349,23 @@ int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap,
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
  * 
  * Called by: process_fof_group()
- * Calls: copy_galaxies_from_progenitors() - inherit from progenitors
- *        set_galaxy_centrals() - set central references
- *        galaxy_array_append() - add to FOF list
+ * Calls: copy_galaxies_from_progenitors() - inherit from progenitors directly to FOF array
  */
 static int process_halo_galaxies(const int halonr, const int fof_halonr, 
                                 GalaxyArray* temp_fof_galaxies, int32_t *galaxycounter,
                                 struct halo_data *halos, struct halo_aux_data *haloaux,
                                 const GalaxyArray* galaxies_prev_snap, struct params *run_params)
 {
-    GalaxyArray *galaxies_for_this_halo = galaxy_array_new();
-    if (!galaxies_for_this_halo) return EXIT_FAILURE;
-
-    int status = copy_galaxies_from_progenitors(halonr, fof_halonr, galaxies_for_this_halo, 
+    // Direct append to FOF array - no intermediate allocation
+    int status = copy_galaxies_from_progenitors(halonr, fof_halonr, temp_fof_galaxies, 
                                                galaxycounter, halos, haloaux, 
                                                galaxies_prev_snap, run_params);
-    if (status != EXIT_SUCCESS) {
-        galaxy_array_free(&galaxies_for_this_halo);
-        return EXIT_FAILURE;
-    }
-
-    int ngal_this_halo = galaxy_array_get_count(galaxies_for_this_halo);
-    if (ngal_this_halo > 0) {
-        struct GALAXY *raw_gals = galaxy_array_get_raw_data(galaxies_for_this_halo);
-        if (set_galaxy_centrals(0, ngal_this_halo, raw_gals) != 0) {
-             LOG_ERROR("Failed to set central galaxy for halo %d", halonr);
-             galaxy_array_free(&galaxies_for_this_halo);
-             return EXIT_FAILURE;
-        }
-
-        // Append processed galaxies to FOF list
-        for (int i = 0; i < ngal_this_halo; ++i) {
-            if (galaxy_array_append(temp_fof_galaxies, &raw_gals[i], run_params) < 0) {
-                LOG_ERROR("Failed to append galaxy from halo %d to FOF list", halonr);
-                galaxy_array_free(&galaxies_for_this_halo);
-                return EXIT_FAILURE;
-            }
-        }
-    }
-
-    galaxy_array_free(&galaxies_for_this_halo);
-    return EXIT_SUCCESS;
+    return status;
 }
 
 /**
  * @brief Four-phase physics pipeline executor for FOF group
- * @param halonr FOF root halo number
+ * @param fof_root_halonr FOF group root halo number
  * @param temp_fof_galaxies FOF group galaxies to evolve
  * @param numgals Output number of galaxies processed
  * @param halos Halo data array
@@ -421,7 +381,7 @@ static int process_halo_galaxies(const int halonr, const int fof_halonr,
  *        deep_copy_galaxy() - create output copies
  *        galaxy_array_append() - add to snapshot
  */
-static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int *numgals, 
+static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_galaxies, int *numgals, 
                           struct halo_data *halos, struct halo_aux_data *haloaux, 
                           GalaxyArray *galaxies_this_snap, struct params *run_params)
 {
@@ -430,28 +390,28 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
 
     // Initialize evolution context and diagnostics
     struct evolution_context ctx;
-    initialize_evolution_context(&ctx, halonr, galaxies, ngal, halos, run_params);
+    initialize_evolution_context(&ctx, fof_root_halonr, galaxies, ngal, halos, run_params);
     
     struct core_evolution_diagnostics diag;
-    core_evolution_diagnostics_initialize(&diag, halonr, ngal);
+    core_evolution_diagnostics_initialize(&diag, fof_root_halonr, ngal);
     ctx.diagnostics = &diag;
 
     if (!validate_evolution_context(&ctx)) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Evolution context validation failed for halo %d", halonr);
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Evolution context validation failed for FOF group %d", fof_root_halonr);
         return EXIT_FAILURE;
     }
 
-    // Validate central galaxy
-    if(GALAXY_PROP_Type(&galaxies[ctx.centralgal]) != 0 || GALAXY_PROP_HaloNr(&galaxies[ctx.centralgal]) != halonr) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Invalid central galaxy: expected type=0, halonr=%d but found type=%d, halonr=%d",
-                    halonr, GALAXY_PROP_Type(&galaxies[ctx.centralgal]), GALAXY_PROP_HaloNr(&galaxies[ctx.centralgal]));
+    // Validate central galaxy for FOF group
+    if(GALAXY_PROP_Type(&galaxies[ctx.centralgal]) != 0) {
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Invalid central galaxy: expected type=0 but found type=%d",
+                    GALAXY_PROP_Type(&galaxies[ctx.centralgal]));
         return EXIT_FAILURE;
     }
 
     // Setup pipeline context
     struct pipeline_context pipeline_ctx;
     pipeline_context_init(&pipeline_ctx, run_params, ctx.galaxies, ctx.ngal, ctx.centralgal, 
-                          0.0, 0.0, ctx.halo_nr, 0, &ctx);
+                          0.0, 0.0, fof_root_halonr, 0, &ctx);
     pipeline_ctx.redshift = ctx.redshift;
 
     // Initialize property serialization for extensions
@@ -487,7 +447,7 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
     core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_HALO);
     
     if (status != 0) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute HALO phase for halo %d", halonr);
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute HALO phase for FOF group %d", fof_root_halonr);
         core_evolution_diagnostics_finalize(&diag);
         core_evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
         return EXIT_FAILURE;
@@ -504,7 +464,7 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
 
         for (int p = 0; p < ctx.ngal; p++) {
             ctx.deltaT = run_params->simulation.Age[GALAXY_PROP_SnapNum(&galaxies[p])] - 
-                        run_params->simulation.Age[halos[halonr].SnapNum];
+                        run_params->simulation.Age[halos[fof_root_halonr].SnapNum];
             ctx.time = run_params->simulation.Age[GALAXY_PROP_SnapNum(&galaxies[p])] - 
                       (step + 0.5) * (ctx.deltaT / STEPS);
             
@@ -565,7 +525,7 @@ static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int
     core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_FINAL);
 
     if (status != 0) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute FINAL phase for halo %d", halonr);
+        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute FINAL phase for FOF group %d", fof_root_halonr);
         core_evolution_diagnostics_finalize(&diag);
         core_evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
         return EXIT_FAILURE;
