@@ -194,7 +194,7 @@ static int setup_test_context(void) {
     // I/O parameters
     test_ctx.run_params.io.TreeType = lhalo_binary; // Set a specific tree type
     
-    // Initialize core systems that construct_galaxies requires
+    // Initialize core systems that process_fof_group requires
     printf("Initializing core systems...\n");
     
     // Initialize logging system FIRST (required for CONTEXT_LOG macro)
@@ -364,7 +364,7 @@ static int create_test_halos(void) {
         memset(halo, 0, sizeof(struct halo_data));
         memset(aux, 0, sizeof(struct halo_aux_data));
         
-        // Set up merger tree pointers (CRITICAL for construct_galaxies)
+        // Set up merger tree pointers (CRITICAL for process_fof_group)
         halo->Descendant = -1;          // No descendants (these are final snapshot halos)
         halo->FirstProgenitor = -1;     // No progenitors (simplest case)
         halo->NextProgenitor = -1;      // No progenitor siblings
@@ -406,7 +406,7 @@ static int create_test_halos(void) {
 }
 
 static int create_test_galaxies(void) {
-    printf("Creating test galaxies using construct_galaxies...\n");
+    printf("Creating test galaxies using process_fof_group...\n");
     
     // Allocate galaxy arrays using GalaxyArray API
     test_ctx.test_galaxies = galaxy_array_new();
@@ -428,13 +428,12 @@ static int create_test_galaxies(void) {
         
         printf("  Building galaxies for halo %d...\n", halo_idx);
         
-        int result = construct_galaxies(halo_idx, &total_galaxies, &galaxy_counter,
-                                      test_ctx.test_halos, test_ctx.test_haloaux, 
-                                      test_ctx.test_galaxies, test_ctx.test_halogal, 
-                                      &test_ctx.run_params);
+        int result = process_fof_group(halo_idx, test_ctx.test_halogal, test_ctx.test_galaxies,
+                                     test_ctx.test_halos, test_ctx.test_haloaux, 
+                                     &galaxy_counter, &test_ctx.run_params);
         
         if (result != 0) {
-            printf("ERROR: construct_galaxies failed for halo %d with result %d\n", halo_idx, result);
+            printf("ERROR: process_fof_group failed for halo %d with result %d\n", halo_idx, result);
             printf("       This indicates a core infrastructure problem\n");
             printf("       Check pipeline system initialization and galaxy validation\n");
             
@@ -447,8 +446,8 @@ static int create_test_galaxies(void) {
             return -1;
         }
         
+        total_galaxies = galaxy_array_get_count(test_ctx.test_galaxies);
         int num_gals_in_halo = total_galaxies - num_gals_before;
-        test_ctx.test_haloaux[halo_idx].NGalaxies = num_gals_in_halo;
         
         printf("    Created %d galaxies (total: %d, galaxy_counter: %d)\n", 
                num_gals_in_halo, total_galaxies, galaxy_counter);
@@ -805,7 +804,7 @@ static void test_halo_to_galaxy_data_preservation(void) {
 static void test_galaxy_pipeline_integrity(void) {
     printf("\n=== Testing galaxy pipeline integrity ===\n");
     
-    // At this point, galaxies have been through construct_galaxies
+    // At this point, galaxies have been through process_fof_group
     // In physics-free mode, most properties should remain unchanged
     
     // Verify all galaxies maintain integrity

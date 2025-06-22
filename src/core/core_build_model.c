@@ -3,7 +3,7 @@
  * @brief   Core galaxy construction and evolution functions
  *
  * Main galaxy processing functions:
- * - construct_galaxies(): Entry point for FOF group processing
+ * - process_fof_group(): Entry point for FOF group processing
  * - evolve_galaxies(): Time integration with 4-phase physics pipeline
  * - copy_galaxies_from_progenitors(): Galaxy inheritance from merger trees
  */
@@ -32,7 +32,14 @@ double get_virial_velocity(const int halonr, struct halo_data *halos, struct par
 void init_galaxy(const int p, const int halonr, int *galaxycounter, struct halo_data *halos,
                 struct GALAXY *galaxies, struct params *run_params);
 
-// Helper function to ensure galaxy properties are allocated
+/**
+ * @brief Lazy property allocation helper
+ * @param galaxy Galaxy structure to check
+ * @param run_params SAGE parameters structure
+ * 
+ * Called by: Evolution pipeline functions
+ * Calls: allocate_galaxy_properties() - create property memory
+ */
 static inline void ensure_galaxy_properties(struct GALAXY *galaxy, struct params *run_params) {
     if (galaxy->properties == NULL) {
         if (allocate_galaxy_properties(galaxy, run_params) != 0) {
@@ -41,7 +48,16 @@ static inline void ensure_galaxy_properties(struct GALAXY *galaxy, struct params
     }
 }
 
-// Deep copy galaxy structure with proper property handling
+/**
+ * @brief Safe galaxy duplication with complete property handling
+ * @param dest Destination galaxy structure
+ * @param src Source galaxy structure to copy
+ * @param run_params SAGE parameters structure
+ * 
+ * Called by: Progenitor copying, evolution output
+ * Calls: galaxy_extension_copy() - copy extension data
+ *        copy_galaxy_properties() - duplicate property arrays
+ */
 void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params)
 {
     dest->num_extensions = src->num_extensions;
@@ -60,7 +76,16 @@ void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struc
     }
 }
 
-// Find most massive progenitor that contains galaxies
+/**
+ * @brief Dominant progenitor finder for galaxy inheritance
+ * @param halonr Current halo number
+ * @param halos Halo data array
+ * @param haloaux Halo auxiliary data array
+ * @return Halo number of most massive progenitor containing galaxies
+ * 
+ * Called by: copy_galaxies_from_progenitors()
+ * Calls: None (pure algorithm)
+ */
 static int find_most_massive_progenitor(const int halonr, struct halo_data *halos, 
                                        struct halo_aux_data *haloaux)
 {
@@ -79,7 +104,25 @@ static int find_most_massive_progenitor(const int halonr, struct halo_data *halo
     return first_occupied;
 }
 
-// Copy and update galaxies from progenitor halos
+/**
+ * @brief Progenitor inheritance processor with type classification
+ * @param halonr Current halo number
+ * @param fof_halonr FOF group root halo number
+ * @param galaxies_for_halo Output galaxy array for this halo
+ * @param galaxycounter Global galaxy counter
+ * @param halos Halo data array
+ * @param haloaux Halo auxiliary data array
+ * @param galaxies_prev_snap Previous snapshot galaxies
+ * @param run_params SAGE parameters structure
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
+ * 
+ * Called by: process_halo_galaxies()
+ * Calls: find_most_massive_progenitor() - identify dominant progenitor
+ *        deep_copy_galaxy() - duplicate galaxy safely
+ *        get_virial_mass() - calculate halo virial mass
+ *        init_galaxy() - create new galaxy
+ *        galaxy_array_append() - add to galaxy list
+ */
 static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr, GalaxyArray *galaxies_for_halo,
                                          int32_t *galaxycounter, struct halo_data *halos,
                                          struct halo_aux_data *haloaux, const GalaxyArray *galaxies_prev_snap,
@@ -183,7 +226,16 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
     return EXIT_SUCCESS;
 }
 
-// Set central galaxy reference for all galaxies in halo
+/**
+ * @brief Central galaxy reference setter for single halo
+ * @param ngalstart Starting galaxy index
+ * @param ngal Total number of galaxies
+ * @param galaxies Galaxy array
+ * @return 0 on success, -1 on error
+ * 
+ * Called by: process_halo_galaxies()
+ * Calls: None (pure assignment)
+ */
 static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAXY *galaxies)
 {
     int centralgal = -1;
@@ -212,28 +264,30 @@ static int set_galaxy_centrals(const int ngalstart, const int ngal, struct GALAX
 static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int *numgals, 
                           struct halo_data *halos, struct halo_aux_data *haloaux, 
                           GalaxyArray *galaxies_this_snap, struct params *run_params);
-static int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap, 
-                            GalaxyArray* galaxies_this_snap, struct halo_data *halos,
-                            struct halo_aux_data *haloaux, int32_t *galaxycounter,
-                            struct params *run_params);
 static int process_halo_galaxies(const int halonr, const int fof_halonr, 
                                 GalaxyArray* temp_fof_galaxies, int32_t *galaxycounter,
                                 struct halo_data *halos, struct halo_aux_data *haloaux,
                                 const GalaxyArray* galaxies_prev_snap, struct params *run_params);
 
-// Main galaxy construction entry point
-int construct_galaxies(const int halonr, int *numgals __attribute__((unused)), int32_t *galaxycounter, struct halo_data *halos,
-                       struct halo_aux_data *haloaux, GalaxyArray *galaxies_this_snap,
-                       GalaxyArray *galaxies_prev_snap, struct params *run_params)
-{
-    int fofhalo = halos[halonr].FirstHaloInFOFgroup;
-    return process_fof_group(fofhalo, galaxies_prev_snap, galaxies_this_snap,
-                            halos, haloaux, galaxycounter, run_params);
-}
 
-
-// Process complete FOF group
-static int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap, 
+/**
+ * @brief Complete FOF group processor with central assignment
+ * @param fof_halonr FOF group root halo number
+ * @param galaxies_prev_snap Previous snapshot galaxies
+ * @param galaxies_this_snap Output current snapshot galaxies
+ * @param halos Halo data array
+ * @param haloaux Halo auxiliary data array
+ * @param galaxycounter Global galaxy counter
+ * @param run_params SAGE parameters structure
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
+ * 
+ * Called by: sage_per_forest() (via direct call)
+ * Calls: process_halo_galaxies() - handle individual halos
+ *        evolve_galaxies() - execute physics pipeline
+ *        galaxy_array_new() - create galaxy container
+ *        galaxy_array_free() - release galaxy memory
+ */
+int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap, 
                             GalaxyArray* galaxies_this_snap, struct halo_data *halos,
                             struct halo_aux_data *haloaux, int32_t *galaxycounter,
                             struct params *run_params)
@@ -285,15 +339,31 @@ static int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap,
     }
 
     // Evolve galaxies
-    int numgals_dummy = 0;
-    int status = evolve_galaxies(fof_halonr, temp_fof_galaxies, &numgals_dummy, 
+    int current_total_galaxies = galaxy_array_get_count(galaxies_this_snap);
+    int status = evolve_galaxies(fof_halonr, temp_fof_galaxies, &current_total_galaxies, 
                                 halos, haloaux, galaxies_this_snap, run_params);
     
     galaxy_array_free(&temp_fof_galaxies);
     return status;
 }
 
-// Process galaxies for a single halo within FOF group
+/**
+ * @brief Individual halo galaxy processor within FOF group
+ * @param halonr Current halo number
+ * @param fof_halonr FOF group root halo number
+ * @param temp_fof_galaxies FOF group galaxy accumulator
+ * @param galaxycounter Global galaxy counter
+ * @param halos Halo data array
+ * @param haloaux Halo auxiliary data array
+ * @param galaxies_prev_snap Previous snapshot galaxies
+ * @param run_params SAGE parameters structure
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
+ * 
+ * Called by: process_fof_group()
+ * Calls: copy_galaxies_from_progenitors() - inherit from progenitors
+ *        set_galaxy_centrals() - set central references
+ *        galaxy_array_append() - add to FOF list
+ */
 static int process_halo_galaxies(const int halonr, const int fof_halonr, 
                                 GalaxyArray* temp_fof_galaxies, int32_t *galaxycounter,
                                 struct halo_data *halos, struct halo_aux_data *haloaux,
@@ -333,7 +403,24 @@ static int process_halo_galaxies(const int halonr, const int fof_halonr,
     return EXIT_SUCCESS;
 }
 
-// Evolve galaxies through 4-phase physics pipeline: HALO -> GALAXY -> POST -> FINAL
+/**
+ * @brief Four-phase physics pipeline executor for FOF group
+ * @param halonr FOF root halo number
+ * @param temp_fof_galaxies FOF group galaxies to evolve
+ * @param numgals Output number of galaxies processed
+ * @param halos Halo data array
+ * @param haloaux Halo auxiliary data array
+ * @param galaxies_this_snap Output snapshot galaxy array
+ * @param run_params SAGE parameters structure
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
+ * 
+ * Called by: process_fof_group()
+ * Calls: initialize_evolution_context() - setup evolution state
+ *        pipeline_execute_phase() - run physics modules
+ *        core_process_merger_queue_agnostically() - handle mergers
+ *        deep_copy_galaxy() - create output copies
+ *        galaxy_array_append() - add to snapshot
+ */
 static int evolve_galaxies(const int halonr, GalaxyArray* temp_fof_galaxies, int *numgals, 
                           struct halo_data *halos, struct halo_aux_data *haloaux, 
                           GalaxyArray *galaxies_this_snap, struct params *run_params)

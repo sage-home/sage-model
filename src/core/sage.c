@@ -15,6 +15,7 @@
 #include "core_mymalloc.h"
 #include "../io/io_interface.h"
 #include "core_build_model.h"
+
 #include "core_save.h"
 #include "core_utils.h"
 #include "progressbar.h"
@@ -37,6 +38,26 @@ static void cleanup_save_info(struct save_info *save_info, struct params *run_pa
 static void cleanup_sage_systems(struct params *run_params, struct forest_info *forest_info);
 
 
+/**
+ * @brief Main SAGE execution orchestrator
+ * @param ThisTask MPI task ID
+ * @param NTasks Total number of MPI tasks
+ * @param param_file Path to parameter file
+ * @param params Output pointer to allocated parameters
+ * @return EXIT_SUCCESS on success, error code on failure
+ * 
+ * Called by: External API (main program entry)
+ * Calls: read_parameter_file() - parse simulation parameters
+ *        initialize_sage_systems() - boot core subsystems
+ *        setup_forest_processing() - distribute forests across MPI
+ *        init() - initialize simulation constants
+ *        allocate_save_info() - create galaxy count arrays
+ *        initialize_galaxy_files() - open HDF5 output files
+ *        sage_per_forest() - process individual merger trees
+ *        finalize_galaxy_files() - close HDF5 files
+ *        cleanup_save_info() - free memory arrays
+ *        cleanup_sage_systems() - shutdown all subsystems
+ */
 int run_sage(const int ThisTask, const int NTasks, const char *param_file, void **params)
 {
     struct params *run_params = malloc(sizeof(*run_params));
@@ -144,6 +165,16 @@ cleanup:
 }
 
 
+/**
+ * @brief Final cleanup and master file creation
+ * @param params Pointer to SAGE parameters structure
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
+ * 
+ * Called by: External API (after run completion)
+ * Calls: create_hdf5_master_file() - generate HDF5 master file
+ *        cleanup_logging() - shutdown logging system
+ *        free() - release parameter memory
+ */
 int32_t finalize_sage(void *params)
 {
     struct params *run_params = (struct params *) params;
@@ -169,6 +200,16 @@ int32_t finalize_sage(void *params)
 
 // Helper function implementations
 
+/**
+ * @brief Boot core SAGE subsystems
+ * @param run_params SAGE parameters structure
+ * @return EXIT_SUCCESS on success, error code on failure
+ * 
+ * Called by: run_sage()
+ * Calls: initialize_logging() - setup logging infrastructure
+ *        memory_system_init() - initialize custom allocators
+ *        io_init() - boot I/O interface system
+ */
 static int initialize_sage_systems(struct params *run_params)
 {
     int32_t status = initialize_logging(run_params);
@@ -191,6 +232,17 @@ static int initialize_sage_systems(struct params *run_params)
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Configure forest MPI distribution
+ * @param run_params SAGE parameters structure
+ * @param forest_info Output forest distribution information
+ * @param ThisTask Current MPI task ID
+ * @param NTasks Total number of MPI tasks
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
+ * 
+ * Called by: run_sage()
+ * Calls: setup_forests_io() - distribute trees across tasks
+ */
 static int setup_forest_processing(struct params *run_params, struct forest_info *forest_info, 
                                   int ThisTask, int NTasks)
 {
@@ -209,6 +261,17 @@ static int setup_forest_processing(struct params *run_params, struct forest_info
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Create galaxy count tracking arrays
+ * @param save_info Output save information structure
+ * @param run_params SAGE parameters structure  
+ * @param Nforests Number of forests to process
+ * @return EXIT_SUCCESS on success, error code on failure
+ * 
+ * Called by: run_sage()
+ * Calls: mycalloc() - allocate memory safely
+ *        CHECK_POINTER_AND_RETURN_ON_NULL() - validate allocations
+ */
 static int allocate_save_info(struct save_info *save_info, struct params *run_params, int64_t Nforests)
 {
     save_info->tot_ngals = mycalloc(run_params->simulation.NumSnapOutputs, sizeof(*(save_info->tot_ngals)));
@@ -225,6 +288,14 @@ static int allocate_save_info(struct save_info *save_info, struct params *run_pa
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Free galaxy count tracking arrays
+ * @param save_info Save information structure to cleanup
+ * @param run_params SAGE parameters structure
+ * 
+ * Called by: run_sage()
+ * Calls: myfree() - safe memory deallocation
+ */
 static void cleanup_save_info(struct save_info *save_info, struct params *run_params)
 {
     for(int snap_idx = 0; snap_idx < run_params->simulation.NumSnapOutputs; snap_idx++) {
@@ -234,6 +305,18 @@ static void cleanup_save_info(struct save_info *save_info, struct params *run_pa
     myfree(save_info->tot_ngals);
 }
 
+/**
+ * @brief Shutdown all systems in orderly fashion
+ * @param run_params SAGE parameters structure
+ * @param forest_info Forest distribution information
+ * 
+ * Called by: run_sage()
+ * Calls: cleanup_forests_io() - shutdown forest I/O
+ *        io_cleanup() - cleanup I/O interface
+ *        cleanup() - general simulation cleanup
+ *        memory_system_cleanup() - shutdown custom allocators  
+ *        cleanup_logging() - close logging system
+ */
 static void cleanup_sage_systems(struct params *run_params, struct forest_info *forest_info)
 {
     cleanup_forests_io(run_params->io.TreeType, forest_info);
@@ -243,7 +326,22 @@ static void cleanup_sage_systems(struct params *run_params, struct forest_info *
     cleanup_logging();
 }
 
-// Main per-forest processing function
+/**
+ * @brief Snapshot-based forest evolution processor
+ * @param forestnr Forest number to process
+ * @param save_info Galaxy count tracking structure
+ * @param forest_info Forest distribution information
+ * @param run_params SAGE parameters structure
+ * @return EXIT_SUCCESS on success, error code on failure
+ * 
+ * Called by: run_sage() (main processing loop)
+ * Calls: load_forest() - read merger tree data
+ *        snapshot_indices_init() - create snapshot indexing
+ *        snapshot_indices_build() - build O(1) FOF access
+ *        process_fof_group() - process FOF groups
+ *        save_galaxies() - write galaxy data
+ *        galaxy_array_free() - release galaxy memory
+ */
 static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                                struct forest_info *forest_info, struct params *run_params)
 {
@@ -302,10 +400,9 @@ static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_in
         
         for (int i = 0; i < fof_count; ++i) {
             int fof_halonr = fof_roots[i];
-            int numgals_in_fof_group = 0;
             
-            status = construct_galaxies(fof_halonr, &numgals_in_fof_group, &galaxycounter, Halo, HaloAux,
-                                        galaxies_this_snap, galaxies_prev_snap, run_params);
+            status = process_fof_group(fof_halonr, galaxies_prev_snap, galaxies_this_snap,
+                                       Halo, HaloAux, &galaxycounter, run_params);
             if (status != EXIT_SUCCESS) {
                 galaxy_array_free(&galaxies_prev_snap);
                 galaxy_array_free(&galaxies_this_snap);
