@@ -173,24 +173,43 @@ static void test_merger_tree_continuity(void) {
     int prev_snap = 19;
     
     // Current snapshot FOF group
-    create_test_halo(&test_ctx, 0, current_snap, 3e12, 5, -1, 1);  // FOF root
-    create_test_halo(&test_ctx, 1, current_snap, 1e12, 6, -1, -1); // Subhalo
+    create_test_halo(&test_ctx, 0, current_snap, 3e12, -1, -1, 1);  // FOF root
+    create_test_halo(&test_ctx, 1, current_snap, 1e12, -1, -1, -1); // Subhalo
     
     // Previous snapshot - multiple progenitors
-    create_test_halo(&test_ctx, 5, prev_snap, 2.5e12, 8, 9, -1);  // Main progenitor
-    create_test_halo(&test_ctx, 6, prev_snap, 8e11, 10, -1, -1);   // Subhalo progenitor
-    create_test_halo(&test_ctx, 8, prev_snap, 2e12, -1, -1, -1);   // Secondary progenitor 1
-    create_test_halo(&test_ctx, 9, prev_snap, 5e11, -1, -1, -1);   // Secondary progenitor 2
-    create_test_halo(&test_ctx, 10, prev_snap, 7e11, -1, -1, -1);  // Subhalo only progenitor
+    create_test_halo(&test_ctx, 5, prev_snap, 2.5e12, -1, -1, -1);  // Main progenitor of halo 0
+    create_test_halo(&test_ctx, 6, prev_snap, 8e11, -1, -1, -1);   // Main progenitor of halo 1
+    create_test_halo(&test_ctx, 8, prev_snap, 2e12, -1, -1, -1);   // Secondary progenitor of halo 0
+    create_test_halo(&test_ctx, 9, prev_snap, 5e11, -1, -1, -1);   // Tertiary progenitor of halo 0
+    create_test_halo(&test_ctx, 10, prev_snap, 7e11, -1, -1, -1);  // Secondary progenitor of halo 1
     
-    // CRITICAL: Set up descendant links and FOF group memberships for proper merger tree
-    test_ctx.halos[0].FirstHaloInFOFgroup = 0;  // Halo 0 is FOF root
-    test_ctx.halos[1].FirstHaloInFOFgroup = 0;  // Halo 1 is part of same FOF group
-    test_ctx.halos[5].Descendant = 0;  // Halo 5 → Halo 0
-    test_ctx.halos[6].Descendant = 1;  // Halo 6 → Halo 1  
-    test_ctx.halos[8].Descendant = 0;  // Halo 8 → Halo 0 (merges into FOF root)
-    test_ctx.halos[9].Descendant = 0;  // Halo 9 → Halo 0 (merges into FOF root)
-    test_ctx.halos[10].Descendant = 1; // Halo 10 → Halo 1 (merges into subhalo)
+    // CRITICAL: Set up descendant and progenitor links correctly.
+    // The original test setup was flawed.
+
+    // Set descendant links (which progenitor belongs to which descendant)
+    test_ctx.halos[5].Descendant = 0;
+    test_ctx.halos[8].Descendant = 0;
+    test_ctx.halos[9].Descendant = 0;
+    test_ctx.halos[6].Descendant = 1;
+    test_ctx.halos[10].Descendant = 1;
+
+    // Set FOF group membership for the current snapshot halos
+    test_ctx.halos[0].FirstHaloInFOFgroup = 0; // Halo 0 is FOF root
+    test_ctx.halos[1].FirstHaloInFOFgroup = 0; // Halo 1 is part of the same FOF group
+
+    // Set progenitor links on the DESCENDANT halos
+    // This is the key fix. The original test was setting these on the progenitors.
+
+    // Progenitor chain for Halo 0: 5 -> 8 -> 9
+    test_ctx.halos[0].FirstProgenitor = 5;
+    test_ctx.halos[5].NextProgenitor = 8;
+    test_ctx.halos[8].NextProgenitor = 9;
+    test_ctx.halos[9].NextProgenitor = -1; // End of chain
+
+    // Progenitor chain for Halo 1: 6 -> 10
+    test_ctx.halos[1].FirstProgenitor = 6;
+    test_ctx.halos[6].NextProgenitor = 10;
+    test_ctx.halos[10].NextProgenitor = -1; // End of chain
     
     // Create galaxies representing merger tree
     printf("  Creating test galaxies:\n");
