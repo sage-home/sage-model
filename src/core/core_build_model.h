@@ -13,6 +13,10 @@ extern "C" {
                                  struct halo_aux_data *haloaux, int32_t *galaxycounter,
                                  struct params *run_params, bool *processed_flags);
     
+    extern int identify_and_process_orphans(const int fof_halonr, GalaxyArray* temp_fof_galaxies,
+                                           const GalaxyArray* galaxies_prev_snap, bool *processed_flags,
+                                           struct halo_data *halos, struct params *run_params);
+    
     extern void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params);
 
 #ifdef __cplusplus

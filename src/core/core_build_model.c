@@ -296,10 +296,16 @@ static int process_halo_galaxies(const int halonr, const int fof_halonr,
  * @param run_params SAGE runtime parameters.
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
  */
-static int identify_and_process_orphans(const int fof_halonr, GalaxyArray* temp_fof_galaxies,
-                                        const GalaxyArray* galaxies_prev_snap, bool *processed_flags,
-                                        struct halo_data *halos, struct params *run_params)
+int identify_and_process_orphans(const int fof_halonr, GalaxyArray* temp_fof_galaxies,
+                                 const GalaxyArray* galaxies_prev_snap, bool *processed_flags,
+                                 struct halo_data *halos, struct params *run_params)
 {
+    // Check required parameters
+    if (!temp_fof_galaxies) {
+        LOG_ERROR("NULL temp_fof_galaxies passed to identify_and_process_orphans");
+        return EXIT_FAILURE;
+    }
+    
     if (!galaxies_prev_snap || !processed_flags) {
         return EXIT_SUCCESS; // Nothing to do if there's no previous snapshot.
     }
