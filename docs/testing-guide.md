@@ -16,7 +16,7 @@ The SAGE testing framework is built around three key principles:
 
 ## Test Categories
 
-### Core Infrastructure Tests (30 tests)
+### Core Infrastructure Tests (31 tests)
 
 These tests validate the fundamental infrastructure components of SAGE:
 
@@ -52,6 +52,7 @@ These tests validate the fundamental infrastructure components of SAGE:
 | **test_fof_memory_management** | Tests memory management for large FOF groups and leak detection | Phase 5.3 (Jun 2025) |
 | **test_orphan_tracking** | Tests comprehensive orphan galaxy tracking for mass conservation when host halos disappear | Phase 5.3 (Jun 2025) |
 | **test_orphan_tracking_simple** | Tests simplified orphan galaxy tracking functionality with basic scenarios | Phase 5.3 (Jun 2025) |
+| **test_orphan_fof_disruption** | Tests critical orphan galaxy handling during FOF group disruption scenarios | Phase 5.3 (Jun 2025) |
 
 **Purpose**: Core infrastructure tests should always pass, as they validate the stability of the foundation on which everything else is built.
 
@@ -416,8 +417,8 @@ SAGE includes a performance benchmarking system:
 ## Test Suite Statistics
 
 The SAGE test suite contains:
-- **Total tests**: 51 individual unit tests
-- **Core Infrastructure**: 30 tests
+- **Total tests**: 52 individual unit tests
+- **Core Infrastructure**: 31 tests
 - **Property System**: 7 tests  
 - **I/O System**: 11 tests
 - **Module System**: 3 tests

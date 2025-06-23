@@ -35,9 +35,9 @@ make test_property_system_hdf5
 
 ## Test Categories and Components
 
-The SAGE test suite contains **51 individual unit tests** organized into 4 main categories:
+The SAGE test suite contains **52 individual unit tests** organized into 4 main categories:
 
-### Core Infrastructure Tests (`CORE_TESTS`) - 30 tests
+### Core Infrastructure Tests (`CORE_TESTS`) - 31 tests
 
 Tests that validate the fundamental components of SAGE:
 
@@ -71,6 +71,7 @@ Tests that validate the fundamental components of SAGE:
 - **test_fof_memory_management** - Tests memory management for large FOF groups and leak detection
 - **test_orphan_tracking** - Tests comprehensive orphan galaxy tracking for mass conservation when host halos disappear
 - **test_orphan_tracking_simple** - Tests simplified orphan galaxy tracking functionality with basic scenarios
+- **test_orphan_fof_disruption** - Tests critical orphan galaxy handling during FOF group disruption scenarios
 
 ### Property System Tests (`PROPERTY_TESTS`) - 7 tests
 
@@ -208,8 +209,8 @@ During Phase 5 (Core Module Migration), unit tests should pass, but end-to-end s
 
 ## Test Suite Statistics
 
-- **Total unit tests**: 51 individual test executables
-- **Core Infrastructure**: 30 tests (pipeline, properties, memory, configuration, FOF processing, orphan tracking, etc.)
+- **Total unit tests**: 52 individual test executables
+- **Core Infrastructure**: 31 tests (pipeline, properties, memory, configuration, FOF processing, orphan tracking, etc.)
 - **Property System**: 7 tests (serialization, validation, YAML parsing, etc.)
 - **I/O System**: 11 tests (multiple tree formats, endianness, buffering, etc.)
 - **Module System**: 3 tests (lifecycle, callbacks, invocation)
