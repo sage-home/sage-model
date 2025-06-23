@@ -271,7 +271,7 @@ process_fof_group(fof_halonr=A) {
         first_occupied = A_prev;  // Most massive: 3e12 > 2e12 > 1e12
         
         // Galaxy from A_prev: prog==first_occupied && halonr==fof_halonr → Type 0 ✓
-        // Galaxy from B_prev: prog!=first_occupied → Type 2 (orphan) ❌ WRONG!
+        // Galaxy from B_prev: prog!=first_occupied → Type 1 (satellite)
         // Galaxy from C_prev: prog!=first_occupied → Type 2 (orphan) ✓
     }
     
@@ -284,15 +284,13 @@ process_fof_group(fof_halonr=A) {
 }
 ```
 
-**⚠️ IDENTIFIED BUG**: Galaxy from B_prev should become Type 1 (satellite), not Type 2 (orphan), because Halo B still exists as a subhalo.
-
 ---
 
 ## 4. Processing Logic Verification
 
 ### 4.1 Corrected Understanding
 
-**Current Logic** (lines 182-223 in `copy_galaxies_from_progenitors`) **IS CORRECT**:
+**Current Logic** (lines 182-223 in `copy_galaxies_from_progenitors`):
 ```c
 if (prog == first_occupied) {
     // Galaxy from most massive progenitor inherits halo properties → Type 0 or 1
@@ -325,8 +323,6 @@ if (prog == first_occupied) {
 - Galaxies from **smaller progenitors** represent halos that were **disrupted during the merger**
 - These disrupted galaxies correctly become **orphans** (Type 2) within the surviving halo
 
-**No Bug Exists**: The logic correctly implements the physics of hierarchical structure formation where smaller halos are disrupted when they merge with larger ones.
-
 ---
 
 ## 5. Legacy Code Comparison
@@ -358,16 +354,7 @@ if(prog == first_occupied) {
 
 ## 6. Test Case Analysis
 
-### 6.1 Test Failure Investigation Required
-
-**Status**: The failing test `test_merger_tree_continuity()` needs investigation to determine why expected satellites are appearing as orphans.
-
-**Possible Causes**:
-1. **Test setup issues**: Incorrect merger tree construction or missing halo links
-2. **Edge case behavior**: Specific merger tree topology exposing unexpected logic paths
-3. **Orphan detection interaction**: The `identify_and_process_orphans()` function may be interfering
-
-### 6.2 Recommended Test Scenarios
+### 6.1 Recommended Test Scenarios
 
 **Essential validation cases**:
 1. Simple FOF formation (2 independent halos → 1 FOF group)
@@ -376,7 +363,7 @@ if(prog == first_occupied) {
 4. Single-snapshot disruption (Type 0 → Type 2 direct)
 5. Orphan detection with complex merger trees
 
-### 6.3 Scientific Validation Metrics
+### 6.2 Scientific Validation Metrics
 
 **Key observables to monitor**:
 - Satellite galaxy fraction in massive halos
