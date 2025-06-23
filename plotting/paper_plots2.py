@@ -968,7 +968,7 @@ def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
     logger.info('Stellar mass function comparison plot complete')
 
 def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
-    """Plot H1 and H2 mass functions for multiple models with standardized styling"""
+    """Plot H1 and H2 mass functions for multiple models with standardized styling and error shading"""
     logger.info(f'=== Multi-Model Gas Mass Functions Analysis ===')
     
     # Mass function parameters
@@ -979,36 +979,77 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
     
     fig, ax = create_figure()
     
-    # Plot observational data first (same as before)
-    # Observational data
-    Zwaan = np.array([[6.933, -0.333], [7.057, -0.490], [7.209, -0.698], [7.365, -0.667],
-                      [7.528, -0.823], [7.647, -0.958], [7.809, -0.917], [7.971, -0.948],
-                      [8.112, -0.927], [8.263, -0.917], [8.404, -1.062], [8.566, -1.177],
-                      [8.707, -1.177], [8.853, -1.312], [9.010, -1.344], [9.161, -1.448],
-                      [9.302, -1.604], [9.448, -1.792], [9.599, -2.021], [9.740, -2.406],
-                      [9.897, -2.615], [10.053, -3.031], [10.178, -3.677], [10.335, -4.448],
-                      [10.492, -5.083]], dtype=np.float32)
+    # Lists to collect legend handles and labels
+    obs_handles_h1 = []
+    obs_labels_h1 = []
+    model_handles_h1 = []
+    model_labels_h1 = []
     
+    # Read observational data from files
+    # Use the first simulation's Hubble parameter for observations (assuming similar cosmology)
+    hubble_h_obs = sim_configs[0]['Hubble_h']
+    
+    # Load Jones et al. 2018 ALFALFA data
+    try:
+        jones_data = np.loadtxt('./data/HIMF_Jones18.dat')
+        jones_h_original = 0.7  # h value used in Jones et al. 2018
+        
+        # Convert from Jones h=0.7 to simulation h value
+        jones_mass_log = jones_data[:, 0] + 2*np.log10(jones_h_original/hubble_h_obs)
+        jones_phi_log = jones_data[:, 1] + 3*np.log10(hubble_h_obs/jones_h_original)
+        jones_phi_lower = jones_data[:, 2] + 3*np.log10(hubble_h_obs/jones_h_original)
+        jones_phi_upper = jones_data[:, 3] + 3*np.log10(hubble_h_obs/jones_h_original)
+        
+        # Plot Jones et al. 2018 data with error bars
+        jones_errorbar = ax.errorbar(jones_mass_log, jones_phi_log, 
+                                   yerr=[jones_phi_log - jones_phi_lower, jones_phi_upper - jones_phi_log],
+                                   color='red', marker='o', markersize=6, linestyle='None', 
+                                   capsize=3, capthick=1, elinewidth=1,
+                                   label='Jones et al. 2018 (ALFALFA)', zorder=5)
+        obs_handles_h1.append(jones_errorbar)
+        obs_labels_h1.append('Jones et al. 2018 (ALFALFA)')
+        logger.info('Successfully loaded Jones et al. 2018 HIMF data')
+    except Exception as e:
+        logger.warning(f'Could not load Jones et al. 2018 data: {e}')
+    
+    # Load Zwaan et al. 2005 data
+    try:
+        zwaan_data = np.loadtxt('./data/HIMF_Zwaan2005.dat')
+        zwaan_h_original = 0.75  # H0=75 means h=0.75
+        
+        # Convert from Zwaan h=0.75 to simulation h value
+        zwaan_mass_log = zwaan_data[:, 0] + 2*np.log10(zwaan_h_original/hubble_h_obs)
+        zwaan_phi_log = zwaan_data[:, 1] + 3*np.log10(hubble_h_obs/zwaan_h_original)
+        zwaan_phi_lower = zwaan_data[:, 2]  # These are already error values, not absolute values
+        zwaan_phi_upper = zwaan_data[:, 3]
+        
+        # Plot Zwaan et al. 2005 data with error bars
+        zwaan_errorbar = ax.errorbar(zwaan_mass_log, zwaan_phi_log, 
+                                   yerr=[zwaan_phi_lower, zwaan_phi_upper],
+                                   color='blue', marker='^', markersize=6, linestyle='None', 
+                                   capsize=3, capthick=1, elinewidth=1,
+                                   label='Zwaan et al. 2005', zorder=5)
+        obs_handles_h1.append(zwaan_errorbar)
+        obs_labels_h1.append('Zwaan et al. 2005')
+        logger.info('Successfully loaded Zwaan et al. 2005 HIMF data')
+    except Exception as e:
+        logger.warning(f'Could not load Zwaan et al. 2005 data: {e}')
+    
+    # Keep original hardcoded observational data as backup
     ObrCold = np.array([[8.009, -1.042], [8.215, -1.156], [8.409, -0.990], [8.604, -1.156],
                         [8.799, -1.208], [9.020, -1.333], [9.194, -1.385], [9.404, -1.552],
                         [9.599, -1.677], [9.788, -1.812], [9.999, -2.312], [10.172, -2.656],
                         [10.362, -3.500], [10.551, -3.635], [10.740, -5.010]], dtype=np.float32)
     
-    # Use the first simulation's Hubble parameter for observations (assuming similar cosmology)
-    hubble_h_obs = sim_configs[0]['Hubble_h']
-    
     # Convert observational data
     ObrCold_xval = np.log10(10**(ObrCold[:, 0]) / hubble_h_obs / hubble_h_obs)
     ObrCold_yval_log = ObrCold[:, 1] + np.log10(hubble_h_obs * hubble_h_obs * hubble_h_obs)
     
-    Zwaan_xval = np.log10(10**(Zwaan[:, 0]) / hubble_h_obs / hubble_h_obs)
-    Zwaan_yval_log = Zwaan[:, 1] + np.log10(hubble_h_obs * hubble_h_obs * hubble_h_obs)
-    
     # Plot observational data with standardized styling
-    ax.scatter(ObrCold_xval, ObrCold_yval_log, color='grey', marker='s', s=80, 
+    obr_cold_scatter = ax.scatter(ObrCold_xval, ObrCold_yval_log, color='grey', marker='s', s=80, 
                label='Obr. & Raw. 2009 (Cold Gas)', zorder=5, edgecolors='black', linewidth=0.5)
-    ax.scatter(Zwaan_xval, Zwaan_yval_log, color='black', marker='^', s=80, 
-               label='Zwaan et al. 2005', zorder=5, edgecolors='black', linewidth=0.5)
+    obs_handles_h1.append(obr_cold_scatter)
+    obs_labels_h1.append('Obr. & Raw. 2009 (Cold Gas)')
     
     # Process each simulation model
     for i, sim_config in enumerate(sim_configs):
@@ -1091,21 +1132,69 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             model_cold_gas_log, mask_cold = safe_log10_with_mask(counts_cold / volume / binwidth)
             model_h1_gas_log, mask_h1 = safe_log10_with_mask(counts_h1 / volume / binwidth)
             
+            # Calculate error bars for SAGE 2.0 (main model only)
+            if i == 0 and len(w_h1) > 0:  # Only for the main model
+                # Calculate bin-by-bin errors for H1
+                error_h1_upper = []
+                error_h1_lower = []
+                
+                for bin_idx in range(NB):
+                    bin_left = mi + bin_idx * binwidth
+                    bin_right = mi + (bin_idx + 1) * binwidth
+                    
+                    # Find galaxies in this mass bin
+                    bin_mask = (h1 >= bin_left) & (h1 < bin_right)
+                    bin_data = h1[bin_mask]
+                    
+                    if len(bin_data) > 1:
+                        # Calculate standard error using the provided formula
+                        error_mass = np.std(bin_data) / np.sqrt(len(bin_data))
+                        
+                        # Convert to error in number density (fractional error)
+                        if counts_h1[bin_idx] > 0:
+                            # Estimate fractional error based on mass uncertainty
+                            fractional_error = error_mass / (binwidth * 0.5)  # Normalize by bin width
+                            log_error = fractional_error / np.log(10)  # Convert to log space
+                            
+                            error_h1_upper.append(model_h1_gas_log[bin_idx] + log_error)
+                            error_h1_lower.append(model_h1_gas_log[bin_idx] - log_error)
+                        else:
+                            error_h1_upper.append(np.nan)
+                            error_h1_lower.append(np.nan)
+                    else:
+                        error_h1_upper.append(np.nan)
+                        error_h1_lower.append(np.nan)
+                
+                error_h1_upper = np.array(error_h1_upper)
+                error_h1_lower = np.array(error_h1_lower)
+                
+                # Plot error shading for H1
+                valid_error_mask = ~(np.isnan(error_h1_upper) | np.isnan(error_h1_lower)) & mask_h1
+                if np.any(valid_error_mask):
+                    ax.fill_between(xaxeshisto_h1[valid_error_mask], 
+                                  error_h1_lower[valid_error_mask], 
+                                  error_h1_upper[valid_error_mask],
+                                  color=color, alpha=0.2, zorder=1)
+            
             # Plot cold gas line (dotted) only for main model
             if i == 0:  # Only for the main (first) model
-                ax.plot(xaxeshisto_cold[mask_cold], model_cold_gas_log[mask_cold], 
+                cold_gas_line = ax.plot(xaxeshisto_cold[mask_cold], model_cold_gas_log[mask_cold], 
                        color=PLOT_COLORS['cold_gas'], linestyle=':', linewidth=3, 
-                       label='Cold Gas', alpha=0.9)
+                       label='Cold Gas', alpha=0.9)[0]
+                model_handles_h1.append(cold_gas_line)
+                model_labels_h1.append('Cold Gas')
             
-            # Plot H2 gas line for each model - use original label for main model
+            # Plot H1 gas line for each model - use original label for main model
             if i == 0:
-                h1_label = 'All Galaxies'
+                h1_label = 'SAGE 2.0'
             else:
                 h1_label = label
             
-            ax.plot(xaxeshisto_h1[mask_h1], model_h1_gas_log[mask_h1], 
+            h1_line = ax.plot(xaxeshisto_h1[mask_h1], model_h1_gas_log[mask_h1], 
                    color=color, linestyle=linestyle, linewidth=linewidth, 
-                   label=h1_label, alpha=alpha)
+                   label=h1_label, alpha=alpha, zorder=3)[0]
+            model_handles_h1.append(h1_line)
+            model_labels_h1.append(h1_label)
             
             # For the main model (first one), also plot central/satellite breakdown
             if i == 0:  # Only for the first (main) model
@@ -1116,17 +1205,21 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
                     mass_sat = np.log10(H1Gas[sats])
                     (countssat, _) = np.histogram(mass_sat, range=(mi, ma), bins=NB)
                     model_sats_log, mask_sats = safe_log10_with_mask(countssat / volume / binwidth)
-                    ax.plot(xaxeshisto_h1[mask_sats], model_sats_log[mask_sats], 
-                           color=PLOT_COLORS['satellites'], linestyle='--', linewidth=2, 
-                           label='Satellites', alpha=0.7)
+                    sats_line = ax.plot(xaxeshisto_h1[mask_sats], model_sats_log[mask_sats], 
+                           color=PLOT_COLORS['satellites'], linestyle=':', linewidth=2, 
+                           label='Satellites', alpha=0.7)[0]
+                    model_handles_h1.append(sats_line)
+                    model_labels_h1.append('Satellites')
                 
                 if len(cent) > 0:
                     mass_cent = np.log10(H1Gas[cent])
                     (countscent, _) = np.histogram(mass_cent, range=(mi, ma), bins=NB)
                     model_cents_log, mask_cents = safe_log10_with_mask(countscent / volume / binwidth)
-                    ax.plot(xaxeshisto_h1[mask_cents], model_cents_log[mask_cents], 
-                           color=PLOT_COLORS['centrals'], linestyle='--', linewidth=2, 
-                           label='Centrals', alpha=0.7)
+                    cents_line = ax.plot(xaxeshisto_h1[mask_cents], model_cents_log[mask_cents], 
+                           color=PLOT_COLORS['centrals'], linestyle=':', linewidth=2, 
+                           label='Centrals', alpha=0.7)[0]
+                    model_handles_h1.append(cents_line)
+                    model_labels_h1.append('Centrals')
             
             logger.info(f'  Processed {len(w_h1)} galaxies with H1 gas, {len(w_cold)} with cold gas')
             
@@ -1142,7 +1235,13 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
     ax.set_ylabel(r'$\log_{10} \phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
     ax.set_xlabel(r'$\log_{10} M_{\mathrm{HI}}\ (M_{\odot})$')
     
-    style_legend(ax, loc='lower left', fontsize=16)
+    # Create two separate legends for H1 plot
+    # First legend: Observations (lower left)
+    obs_legend_h1 = ax.legend(obs_handles_h1, obs_labels_h1, loc='lower left', frameon=False)
+    ax.add_artist(obs_legend_h1)  # Add this legend to the plot
+    
+    # Second legend: Models (upper right)
+    model_legend_h1 = ax.legend(model_handles_h1, model_labels_h1, loc='upper right', frameon=False)
     
     output_filename_h1 = output_dir + 'h1_mass_function' + OutputFormat
     finalize_plot(fig, output_filename_h1)
@@ -1152,7 +1251,60 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
     
     fig, ax = create_figure()
     
-    # Observational data for H2
+    # Lists to collect legend handles and labels for H2 plot
+    obs_handles_h2 = []
+    obs_labels_h2 = []
+    model_handles_h2 = []
+    model_labels_h2 = []
+    
+    # Read observational data from files for H2
+    # Load Fletcher et al. 2021 H2 mass function data
+    try:
+        fletcher_detnondet_data = np.loadtxt('./data/H2MF_Fletcher21_DetNonDet.dat')
+        fletcher_h_original = 0.7  # Assuming h=0.7 for Fletcher et al. 2021 (standard value)
+        
+        # Convert from Fletcher h=0.7 to simulation h value
+        fletcher_detnondet_mass_log = fletcher_detnondet_data[:, 0] + 2*np.log10(fletcher_h_original/hubble_h_obs)
+        fletcher_detnondet_phi_log = fletcher_detnondet_data[:, 1] + 3*np.log10(hubble_h_obs/fletcher_h_original)
+        fletcher_detnondet_phi_lower = fletcher_detnondet_data[:, 2] + 3*np.log10(hubble_h_obs/fletcher_h_original)  # Column 2 is lower
+        fletcher_detnondet_phi_upper = fletcher_detnondet_data[:, 3] + 3*np.log10(hubble_h_obs/fletcher_h_original)  # Column 3 is upper
+        
+        # Plot Fletcher et al. 2021 Det+NonDet data with error bars
+        fletcher_detnondet_errorbar = ax.errorbar(fletcher_detnondet_mass_log, fletcher_detnondet_phi_log, 
+                                   yerr=[fletcher_detnondet_phi_log - fletcher_detnondet_phi_lower, 
+                                         fletcher_detnondet_phi_upper - fletcher_detnondet_phi_log],
+                                   color='red', marker='o', markersize=6, linestyle='None', 
+                                   capsize=3, capthick=1, elinewidth=1,
+                                   label='Fletcher et al. 2021 (Det+NonDet)', zorder=5)
+        obs_handles_h2.append(fletcher_detnondet_errorbar)
+        obs_labels_h2.append('Fletcher et al. 2021 (Det+NonDet)')
+        logger.info('Successfully loaded Fletcher et al. 2021 Det+NonDet H2MF data')
+    except Exception as e:
+        logger.warning(f'Could not load Fletcher et al. 2021 Det+NonDet data: {e}')
+    
+    try:
+        fletcher_estimated_data = np.loadtxt('./data/H2MF_Fletcher21_Estimated.dat')
+        
+        # Convert from Fletcher h=0.7 to simulation h value
+        fletcher_estimated_mass_log = fletcher_estimated_data[:, 0] + 2*np.log10(fletcher_h_original/hubble_h_obs)
+        fletcher_estimated_phi_log = fletcher_estimated_data[:, 1] + 3*np.log10(hubble_h_obs/fletcher_h_original)
+        fletcher_estimated_phi_lower = fletcher_estimated_data[:, 2] + 3*np.log10(hubble_h_obs/fletcher_h_original)  # Column 2 is lower
+        fletcher_estimated_phi_upper = fletcher_estimated_data[:, 3] + 3*np.log10(hubble_h_obs/fletcher_h_original)  # Column 3 is upper
+        
+        # Plot Fletcher et al. 2021 Estimated data with error bars
+        fletcher_estimated_errorbar = ax.errorbar(fletcher_estimated_mass_log, fletcher_estimated_phi_log, 
+                                   yerr=[fletcher_estimated_phi_log - fletcher_estimated_phi_lower, 
+                                         fletcher_estimated_phi_upper - fletcher_estimated_phi_log],
+                                   color='blue', marker='^', markersize=6, linestyle='None', 
+                                   capsize=3, capthick=1, elinewidth=1,
+                                   label='Fletcher et al. 2021 (Estimated)', zorder=5)
+        obs_handles_h2.append(fletcher_estimated_errorbar)
+        obs_labels_h2.append('Fletcher et al. 2021 (Estimated)')
+        logger.info('Successfully loaded Fletcher et al. 2021 Estimated H2MF data')
+    except Exception as e:
+        logger.warning(f'Could not load Fletcher et al. 2021 Estimated data: {e}')
+    
+    # Keep original hardcoded observational data as backup
     ObrRaw = np.array([[7.300, -1.104], [7.576, -1.302], [7.847, -1.250], [8.133, -1.240],
                        [8.409, -1.344], [8.691, -1.479], [8.956, -1.792], [9.231, -2.271],
                        [9.507, -3.198], [9.788, -5.062]], dtype=np.float32)
@@ -1162,10 +1314,16 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
     ObrRaw_yval_log = ObrRaw[:, 1] + np.log10(hubble_h_obs * hubble_h_obs * hubble_h_obs)
     
     # Plot observational data with standardized styling
-    ax.scatter(ObrCold_xval, ObrCold_yval_log, color='grey', marker='s', s=80, 
+    obr_cold_scatter_h2 = ax.scatter(ObrCold_xval, ObrCold_yval_log, color='grey', marker='s', s=80, 
                label='Obr. & Raw. 2009 (Cold Gas)', zorder=5, edgecolors='black', linewidth=0.5)
-    ax.scatter(ObrRaw_xval, ObrRaw_yval_log, color='black', marker='^', s=80, 
+    obs_handles_h2.append(obr_cold_scatter_h2)
+    obs_labels_h2.append('Obr. & Raw. 2009 (Cold Gas)')
+    
+    obr_raw_scatter = ax.scatter(ObrRaw_xval, ObrRaw_yval_log, color='black', marker='^', s=80, 
                label='Obr. & Raw. 2009', zorder=5, edgecolors='black', linewidth=0.5)
+    obs_handles_h2.append(obr_raw_scatter)
+    obs_labels_h2.append('Obr. & Raw. 2009')
+
     
     # Process each simulation model for H2
     for i, sim_config in enumerate(sim_configs):
@@ -1239,21 +1397,69 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             model_cold_gas_log, mask_cold = safe_log10_with_mask(counts_cold / volume / binwidth)
             model_h2_gas_log, mask_h2 = safe_log10_with_mask(counts_h2 / volume / binwidth)
             
+            # Calculate error bars for SAGE 2.0 (main model only)
+            if i == 0 and len(w_h2) > 0:  # Only for the main model
+                # Calculate bin-by-bin errors for H2
+                error_h2_upper = []
+                error_h2_lower = []
+                
+                for bin_idx in range(NB):
+                    bin_left = mi + bin_idx * binwidth
+                    bin_right = mi + (bin_idx + 1) * binwidth
+                    
+                    # Find galaxies in this mass bin
+                    bin_mask = (h2 >= bin_left) & (h2 < bin_right)
+                    bin_data = h2[bin_mask]
+                    
+                    if len(bin_data) > 1:
+                        # Calculate standard error using the provided formula
+                        error_mass = np.std(bin_data) / np.sqrt(len(bin_data))
+                        
+                        # Convert to error in number density (fractional error)
+                        if counts_h2[bin_idx] > 0:
+                            # Estimate fractional error based on mass uncertainty
+                            fractional_error = error_mass / (binwidth * 0.5)  # Normalize by bin width
+                            log_error = fractional_error / np.log(10)  # Convert to log space
+                            
+                            error_h2_upper.append(model_h2_gas_log[bin_idx] + log_error)
+                            error_h2_lower.append(model_h2_gas_log[bin_idx] - log_error)
+                        else:
+                            error_h2_upper.append(np.nan)
+                            error_h2_lower.append(np.nan)
+                    else:
+                        error_h2_upper.append(np.nan)
+                        error_h2_lower.append(np.nan)
+                
+                error_h2_upper = np.array(error_h2_upper)
+                error_h2_lower = np.array(error_h2_lower)
+                
+                # Plot error shading for H2
+                valid_error_mask = ~(np.isnan(error_h2_upper) | np.isnan(error_h2_lower)) & mask_h2
+                if np.any(valid_error_mask):
+                    ax.fill_between(xaxeshisto_h2[valid_error_mask], 
+                                  error_h2_lower[valid_error_mask], 
+                                  error_h2_upper[valid_error_mask],
+                                  color=color, alpha=0.2, zorder=1)
+            
             # Plot cold gas line (dotted) only for main model
             if i == 0:  # Only for the main (first) model
-                ax.plot(xaxeshisto_cold[mask_cold], model_cold_gas_log[mask_cold], 
+                cold_gas_line_h2 = ax.plot(xaxeshisto_cold[mask_cold], model_cold_gas_log[mask_cold], 
                        color=PLOT_COLORS['cold_gas'], linestyle=':', linewidth=3, 
-                       label='Cold Gas', alpha=0.9)
+                       label='Cold Gas', alpha=0.9)[0]
+                model_handles_h2.append(cold_gas_line_h2)
+                model_labels_h2.append('Cold Gas')
             
             # Plot H2 gas line for each model - use original label for main model
             if i == 0:
-                h2_label = 'All Galaxies'
+                h2_label = 'SAGE 2.0'
             else:
                 h2_label = label
             
-            ax.plot(xaxeshisto_h2[mask_h2], model_h2_gas_log[mask_h2], 
+            h2_line = ax.plot(xaxeshisto_h2[mask_h2], model_h2_gas_log[mask_h2], 
                    color=color, linestyle=linestyle, linewidth=linewidth, 
-                   label=h2_label, alpha=alpha)
+                   label=h2_label, alpha=alpha, zorder=3)[0]
+            model_handles_h2.append(h2_line)
+            model_labels_h2.append(h2_label)
             
             # For the main model (first one), also plot central/satellite breakdown
             if i == 0:  # Only for the first (main) model
@@ -1264,17 +1470,21 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
                     mass_sat = np.log10(H2Gas[sats])
                     (countssat, _) = np.histogram(mass_sat, range=(mi, ma), bins=NB)
                     model_sats_log, mask_sats = safe_log10_with_mask(countssat / volume / binwidth)
-                    ax.plot(xaxeshisto_h2[mask_sats], model_sats_log[mask_sats], 
-                           color=PLOT_COLORS['satellites'], linestyle='--', linewidth=2, 
-                           label='Satellites', alpha=0.7)
+                    sats_line_h2 = ax.plot(xaxeshisto_h2[mask_sats], model_sats_log[mask_sats], 
+                           color=PLOT_COLORS['satellites'], linestyle=':', linewidth=2, 
+                           label='Satellites', alpha=0.7)[0]
+                    model_handles_h2.append(sats_line_h2)
+                    model_labels_h2.append('Satellites')
                 
                 if len(cent) > 0:
                     mass_cent = np.log10(H2Gas[cent])
                     (countscent, _) = np.histogram(mass_cent, range=(mi, ma), bins=NB)
                     model_cents_log, mask_cents = safe_log10_with_mask(countscent / volume / binwidth)
-                    ax.plot(xaxeshisto_h2[mask_cents], model_cents_log[mask_cents], 
-                           color=PLOT_COLORS['centrals'], linestyle='--', linewidth=2, 
-                           label='Centrals', alpha=0.7)
+                    cents_line_h2 = ax.plot(xaxeshisto_h2[mask_cents], model_cents_log[mask_cents], 
+                           color=PLOT_COLORS['centrals'], linestyle=':', linewidth=2, 
+                           label='Centrals', alpha=0.7)[0]
+                    model_handles_h2.append(cents_line_h2)
+                    model_labels_h2.append('Centrals')
             
             logger.info(f'  Processed {len(w_h2)} galaxies with H2 gas, {len(w_cold)} with cold gas')
             
@@ -1290,7 +1500,13 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
     ax.set_ylabel(r'$\log_{10} \phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
     ax.set_xlabel(r'$\log_{10} M_{\mathrm{H_2}}\ (M_{\odot})$')
 
-    style_legend(ax, loc='lower left', fontsize=16)
+    # Create two separate legends for H2 plot
+    # First legend: Observations (lower left)
+    obs_legend_h2 = ax.legend(obs_handles_h2, obs_labels_h2, loc='lower left', fontsize=14, frameon=False)
+    ax.add_artist(obs_legend_h2)  # Add this legend to the plot
+    
+    # Second legend: Models (upper right)
+    model_legend_h2 = ax.legend(model_handles_h2, model_labels_h2, loc='upper right', frameon=False)
     
     output_filename_h2 = output_dir + 'h2_mass_function' + OutputFormat
     finalize_plot(fig, output_filename_h2)
@@ -1666,7 +1882,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             
             for j in range(len(mass_bins)-1):
                 mask = (log_stellar_mass >= mass_bins[j]) & (log_stellar_mass < mass_bins[j+1])
-                if np.sum(mask) > 5:  # Require at least 5 galaxies per bin
+                if np.sum(mask) > 1:  # Require at least 5 galaxies per bin
                     bin_data = h2_fraction[mask]
                     median_h2_frac.append(np.median(bin_data))
                     
@@ -1696,12 +1912,17 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
                 
                 # Plot with error bars for SAGE 2.0 (first model), regular line for others
                 if i == 0:  # SAGE 2.0 model - add error bars
-                    model_errorbar = ax.errorbar(mass_centers_valid, median_h2_frac_valid, 
-                                               yerr=error_h2_frac_valid,
-                                               fmt='-', color=color, linewidth=linewidth,
-                                               markersize=4, capsize=4, capthick=1.5,
-                                               label=label, alpha=alpha, zorder=6)
-                    model_handles.append(model_errorbar)
+                    model_line = ax.plot(mass_centers_valid, median_h2_frac_valid, 
+                        color=color, linewidth=linewidth,
+                        label=label, alpha=alpha, zorder=6)[0]
+    
+                    # Shaded error region
+                    ax.fill_between(mass_centers_valid, 
+                                median_h2_frac_valid - error_h2_frac_valid,
+                                median_h2_frac_valid + error_h2_frac_valid,
+                                color=color, alpha=0.2, zorder=5)
+                    
+                    model_handles.append(model_line)
                 else:  # Other models - regular line
                     model_line = ax.plot(mass_centers_valid, median_h2_frac_valid, 
                                        color=color, linestyle=linestyle, linewidth=linewidth,
@@ -1760,6 +1981,958 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
     finalize_plot(fig, output_filename)
     
     logger.info('H2 fraction vs stellar mass analysis complete')
+
+def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
+    """Plot Black Hole - Bulge Mass relation with observational data and standardized styling"""
+    logger.info('=== Black Hole - Bulge Mass Relation Analysis ===')
+    
+    # Create standardized figure
+    fig, ax = create_figure()
+    
+    # Store model data for median calculations
+    model_data = {}
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        linestyle = sim_config['linestyle']
+        linewidth = sim_config.get('linewidth', 2)
+        alpha = sim_config.get('alpha', 0.8)
+        hubble_h = sim_config['Hubble_h']
+        
+        logger.info(f'Processing {label} for BHBM relation...')
+        
+        try:
+            # Read required galaxy properties
+            BulgeMass = read_hdf_ultra_optimized(snap_num=snapshot, param='BulgeMass', directory=directory) * 1.0e10 / hubble_h
+            BlackHoleMass = read_hdf_ultra_optimized(snap_num=snapshot, param='BlackHoleMass', directory=directory) * 1.0e10 / hubble_h
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            
+            logger.info(f'  Total galaxies: {len(BulgeMass)}')
+            
+            # Apply selection criteria: BulgeMass > 1e8 and BlackHoleMass > 1e6
+            w = np.where((BulgeMass > 1.0e8) & (BlackHoleMass > 1.0e6))[0]
+            logger.info(f'  Galaxies passing selection: {len(w)}')
+            
+            if len(w) == 0:
+                logger.warning(f'  No galaxies meet selection criteria for {label}')
+                continue
+            
+            # Calculate log masses for all valid galaxies (not sampled)
+            bh_all = np.log10(BlackHoleMass[w])
+            bulge_all = np.log10(BulgeMass[w])
+            type_all = Type[w]
+            
+            # Store data for median calculations
+            model_data[label] = {
+                'bulge_mass': bulge_all,
+                'bh_mass': bh_all,
+                'type': type_all
+            }
+            
+            # Sample down for scatter plot if too many galaxies
+            if len(w) > dilute:
+                w_sample = sample(list(range(len(w))), dilute)
+                bh = bh_all[w_sample]
+                bulge = bulge_all[w_sample]
+                type_sel = type_all[w_sample]
+            else:
+                bh = bh_all
+                bulge = bulge_all
+                type_sel = type_all
+            
+            # # Plot scatter points with different styles for each model
+            # if i == 0:  # Main model - scatter with smaller points
+            #     # scatter = ax.scatter(bulge, bh, marker='o', s=2, c=color, alpha=0.5, 
+            #     #                    label=f'{label}', rasterized=True)
+                
+            #     # Also separate central vs satellite galaxies for main model
+            #     centrals = type_sel == 0
+            #     satellites = type_sel == 1
+                
+            #     if np.any(centrals):
+            #         ax.scatter(bulge[centrals], bh[centrals], marker='o', s=3, 
+            #                  c=PLOT_COLORS['model_main'], alpha=0.3, rasterized=True)
+                
+            #     # if np.any(satellites):
+            #         # ax.scatter(bulge[satellites], bh[satellites], marker='s', s=2, 
+            #         #          c=PLOT_COLORS['satellites'], alpha=0.4, label='Satellites', rasterized=True)
+            # else:
+            #     # Other models - different markers and colors
+            #     markers = ['s', '^', 'D', 'v', '<', '>']
+            #     marker = markers[min(i-1, len(markers)-1)]
+            #     # ax.scatter(bulge, bh, marker=marker, s=4, c=PLOT_COLORS['model_alt'], alpha=alpha, 
+            #     #          label=f'{label}', rasterized=True)
+            
+            logger.info(f'  BH mass range: {np.min(bh_all):.2f} - {np.max(bh_all):.2f}')
+            logger.info(f'  Bulge mass range: {np.min(bulge_all):.2f} - {np.max(bulge_all):.2f}')
+            
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            continue
+    
+     # =============== CALCULATE AND PLOT MEDIAN LINES ===============
+    
+    # Define mass bins for median calculation
+    mass_bins = np.arange(8.0, 12.5, 0.2)  # 0.2 dex bins
+    mass_centers = mass_bins[:-1] + 0.1
+    
+    for i, (model_name, data) in enumerate(model_data.items()):
+        bulge_mass = data['bulge_mass']
+        bh_mass = data['bh_mass']
+        
+        median_bh = []
+        std_bh = []
+        valid_centers = []
+        
+        # Calculate median and std in each mass bin
+        for j in range(len(mass_bins)-1):
+            mask = (bulge_mass >= mass_bins[j]) & (bulge_mass < mass_bins[j+1])
+            if np.sum(mask) >= 5:  # Require at least 5 galaxies per bin
+                bin_bh = bh_mass[mask]
+                median_bh.append(np.median(bin_bh))
+                std_bh.append(np.std(bin_bh))
+                valid_centers.append(mass_centers[j])
+        
+        if len(median_bh) > 0:
+            median_bh = np.array(median_bh)
+            std_bh = np.array(std_bh)
+            valid_centers = np.array(valid_centers)
+            
+            if 'SAGE 2.0' in model_name or i == 0:  # Main model - thick black line with grey shading
+                # Plot thick black median line
+                ax.plot(valid_centers, median_bh, color='black', linewidth=2.5, 
+                       label='SAGE 2.0', alpha=0.9, zorder=10)
+                
+                # Plot grey shading for 1-sigma errors
+                ax.fill_between(valid_centers, median_bh - std_bh, median_bh + std_bh,
+                               color='grey', alpha=0.3, zorder=8)
+                
+                logger.info(f'  SAGE 2.0 median line: {len(valid_centers)} bins')
+                
+            elif 'C16' in model_name or 'Vanilla' in model_name:  # C16 model - dashed dark red line
+                # Plot dashed dark red median line (no error bars)
+                ax.plot(valid_centers, median_bh, color='darkred', linewidth=1.5, 
+                       linestyle='--', label='SAGE C16', alpha=0.9, zorder=8)
+                
+                logger.info(f'  SAGE (C16) median line: {len(valid_centers)} bins')
+    
+    # =============== OBSERVATIONAL DATA ===============
+    
+    # Load observational data from files
+    try:
+        # Terrazas et al. 2017 - stellar mass vs BH mass
+        terrazas_data = np.loadtxt('./data/MBH_host_gals_Terrazas17.dat')
+        terrazas_mstar = terrazas_data[:, 0]  # log10(Mstar/Msun)
+        terrazas_mbh = terrazas_data[:, 3]    # log10(MBH/Msun)
+        terrazas_mbh_err = terrazas_data[:, 4]  # BH mass error
+        
+        # Plot Terrazas et al. data
+        ax.errorbar(terrazas_mstar, terrazas_mbh, yerr=terrazas_mbh_err,
+                   fmt='o', color='darkred', markersize=4, capsize=2, capthick=1,
+                   alpha=0.3, label='Terrazas et al. 2017', zorder=4)
+        
+        logger.info(f'  Loaded {len(terrazas_mstar)} galaxies from Terrazas et al. 2017')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Terrazas et al. 2017 data: {e}')
+    
+    try:
+        # Davis et al. 2019 - spiral galaxies (spheroid mass vs BH mass)
+        davis_data = np.loadtxt('./data/MBH_Mstar_Davis2019.dat')
+        davis_mbh = davis_data[:, 0]          # log10(MBH/Msun)
+        davis_mbh_errup = davis_data[:, 1]    # upper error
+        davis_mbh_errdn = davis_data[:, 2]    # lower error
+        davis_msph = davis_data[:, 3]         # log10(Msph/Msun) - spheroid mass
+        davis_mstar = davis_data[:, 5]        # log10(Mstar/Msun) - total stellar mass
+        
+        # Remove entries with missing spheroid mass data (marked as 00000)
+        valid_sph = davis_msph > 5.0  # Reasonable lower limit
+        davis_mbh_valid = davis_mbh[valid_sph]
+        davis_msph_valid = davis_msph[valid_sph]
+        davis_mbh_err_valid = (davis_mbh_errup[valid_sph] + davis_mbh_errdn[valid_sph]) / 2
+        
+        # Plot Davis et al. data (spheroid mass - more appropriate for BHBM relation)
+        ax.errorbar(davis_msph_valid, davis_mbh_valid, yerr=davis_mbh_err_valid,
+                   fmt='s', color='darkgreen', markersize=4, capsize=2, capthick=1,
+                   alpha=0.3, label='Davis et al. 2019 (Spirals)', zorder=4)
+        
+        logger.info(f'  Loaded {len(davis_mbh_valid)} spiral galaxies from Davis et al. 2019')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Davis et al. 2019 data: {e}')
+    
+    try:
+        # Sahu et al. 2019 - elliptical and S0 galaxies
+        sahu_data = np.loadtxt('./data/MBH_Mstar_Sahu2019_complete.dat')
+        sahu_mbh = sahu_data[:, 0]      # log10(MBH/Msun)
+        sahu_mbh_err = sahu_data[:, 1]  # BH mass error
+        sahu_mgal = sahu_data[:, 2]     # log10(Mgal/Msun) - total galaxy mass
+        
+        # Plot Sahu et al. data
+        ax.errorbar(sahu_mgal, sahu_mbh, yerr=sahu_mbh_err,
+                   fmt='^', color='purple', markersize=4, capsize=2, capthick=1,
+                   alpha=0.3, label='Sahu et al. 2019 (E/S0)', zorder=4)
+        
+        logger.info(f'  Loaded {len(sahu_mbh)} elliptical/S0 galaxies from Sahu et al. 2019')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Sahu et al. 2019 data: {e}')
+    
+    try:
+        # Sahu et al. 2019 - spheroid mass data (alternative file)
+        sahu_sph_data = np.loadtxt('./data/MBH_Mstar_Sahu2019.dat')
+        sahu_sph_mbh = sahu_sph_data[:, 0]      # log10(MBH/Msun)
+        sahu_sph_mbh_err = sahu_sph_data[:, 1]  # BH mass error
+        sahu_sph_msph = sahu_sph_data[:, 2]     # log10(Msph/Msun) - spheroid mass
+        
+        # Only plot if significantly different from total galaxy mass
+        # Plot as smaller points to avoid overcrowding
+        ax.errorbar(sahu_sph_msph, sahu_sph_mbh, yerr=sahu_sph_mbh_err,
+                   fmt='v', color='darkviolet', markersize=3, capsize=1, capthick=0.5,
+                   alpha=0.1, label='Sahu et al. 2019 (Spheroids)', zorder=3)
+        
+        logger.info(f'  Loaded {len(sahu_sph_mbh)} spheroid masses from Sahu et al. 2019')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Sahu et al. 2019 spheroid data: {e}')
+    
+    # =============== THEORETICAL RELATIONS ===============
+    
+    # Häring & Rix 2004 relation
+    w_bulge = 10. ** np.arange(8.0, 12.5, 0.1)  # More reasonable range
+    BHdata_haring = 10. ** (8.2 + 1.12 * np.log10(w_bulge / 1.0e11))
+    ax.plot(np.log10(w_bulge), np.log10(BHdata_haring), color='blue', linewidth=3, 
+            label="Häring & Rix 2004", alpha=0.7)
+    
+    # McConnell & Ma 2013 relation (alternative/updated)
+    BHdata_mcconnell = 10. ** (8.32 + 1.05 * np.log10(w_bulge / 1.0e11))
+    ax.plot(np.log10(w_bulge), np.log10(BHdata_mcconnell), color='red', linewidth=2, 
+            linestyle='--', label="McConnell & Ma 2013", alpha=0.6)
+    
+    # Kormendy & Ho 2013 relation
+    BHdata_kormendy = 10. ** (8.39 + 1.09 * np.log10(w_bulge / 1.0e11))
+    ax.plot(np.log10(w_bulge), np.log10(BHdata_kormendy), color='green', linewidth=2, 
+            linestyle=':', label="Kormendy & Ho 2013", alpha=0.6)
+    
+    # Add scatter around the relations to show observational uncertainty
+    # Typical scatter is ~0.3-0.4 dex
+    scatter_dex = 0.34  # Häring & Rix 2004 intrinsic scatter
+    
+    # Plot scatter region around Häring & Rix relation
+    upper_bound = np.log10(BHdata_haring) + scatter_dex
+    lower_bound = np.log10(BHdata_haring) - scatter_dex
+    ax.fill_between(np.log10(w_bulge), lower_bound, upper_bound, 
+                   color='blue', alpha=0.05)
+    
+    # =============== FORMATTING ===============
+    
+    # Standardized axis formatting
+    ax.set_ylabel(r'$\log_{10}$ $M_{\mathrm{BH}}$ [$M_\odot$]')
+    ax.set_xlabel(r'$\log_{10}$ $M_{\mathrm{*}}$ [$M_\odot$]')
+    
+    # Set axis limits
+    ax.set_xlim(8.0, 12.5)
+    ax.set_ylim(6.0, 10.5)
+    
+    # Set minor ticks with standardized styling
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    
+    # # Add reference lines for key mass scales
+    # ax.axvline(x=10.0, color='gray', linestyle=':', alpha=0.5, linewidth=1)  # MW bulge mass
+    # ax.axhline(y=6.6, color='gray', linestyle=':', alpha=0.5, linewidth=1)   # MW BH mass
+    
+    # # Add text annotations for reference masses
+    # ax.text(10.05, 4.6, 'MW bulge', rotation=90, alpha=0.7, fontsize=10)
+    # ax.text(8.1, 6.7, 'MW BH', alpha=0.7, fontsize=10)
+    
+    # Create separate legends for models and observations
+    
+    # Collect handles and labels for different categories
+    model_handles = []
+    model_labels = []
+    obs_handles = []
+    obs_labels = []
+    theory_handles = []
+    theory_labels = []
+    
+    # Get all legend elements
+    handles, labels = ax.get_legend_handles_labels()
+    
+    # Categorize legend entries
+    for handle, label in zip(handles, labels):
+        if any(model_name in label for model_name in ['SAGE 2.0', 'SAGE C16', 'Centrals', 'Satellites', 'Median', '1σ']):
+            model_handles.append(handle)
+            model_labels.append(label)
+        elif any(obs_name in label for obs_name in ['Terrazas', 'Davis', 'Sahu']):
+            obs_handles.append(handle)
+            obs_labels.append(label)
+        else:
+            obs_handles.append(handle)
+            obs_labels.append(label)
+    
+    # Create observations legend (upper left)
+    if obs_handles:
+        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', 
+                              fontsize=12, frameon=False)
+        obs_legend.get_title().set_fontsize(12)
+        ax.add_artist(obs_legend)
+    
+    # Combine models and theory for lower right legend
+    combined_handles = model_handles + theory_handles
+    combined_labels = model_labels + theory_labels
+    
+    # Create models + theory legend (lower right)
+    if combined_handles:
+        model_legend = ax.legend(combined_handles, combined_labels, loc='lower right', 
+                               fontsize=12, frameon=False)
+        model_legend.get_title().set_fontsize(12)
+    
+    # Save plot
+    output_filename = output_dir + 'bh_bulge_mass_relation' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    # Print summary statistics
+    logger.info('=== BHBM Relation Statistics ===')
+    try:
+        # Calculate statistics for the main simulation using stored data
+        if model_data:
+            main_model_name = list(model_data.keys())[0]
+            main_data = model_data[main_model_name]
+            
+            bh_log = main_data['bh_mass']
+            bulge_log = main_data['bulge_mass']
+            
+            # Calculate correlation coefficient
+            correlation = np.corrcoef(bulge_log, bh_log)[0, 1]
+            
+            # Fit a linear relation
+            coeffs = np.polyfit(bulge_log, bh_log, 1)
+            slope, intercept = coeffs
+            
+            logger.info(f'Main simulation ({main_model_name}):')
+            logger.info(f'  Total galaxies in relation: {len(bh_log)}')
+            logger.info(f'  Correlation coefficient: {correlation:.3f}')
+            logger.info(f'  Best-fit slope: {slope:.3f}')
+            logger.info(f'  Best-fit intercept: {intercept:.3f}')
+            logger.info(f'  Relation: log(M_BH) = {intercept:.2f} + {slope:.2f} * log(M_bulge)')
+            
+            # Compare to Häring & Rix
+            haring_slope = 1.12
+            haring_intercept = 8.2 - 1.12 * np.log10(1e11)  # Convert to same form
+            logger.info(f'  Difference from Häring & Rix:')
+            logger.info(f'    Slope difference: {slope - haring_slope:.3f}')
+            logger.info(f'    Intercept difference: {intercept - haring_intercept:.3f}')
+            
+            # Print median line statistics
+            logger.info(f'  Median lines plotted with 0.2 dex bins')
+            if 'SAGE 2.0' in main_model_name or main_model_name == list(model_data.keys())[0]:
+                logger.info(f'  SAGE 2.0: Thick black line with 1σ error bars')
+            if len(model_data) > 1:
+                second_model_name = list(model_data.keys())[1]
+                if 'C16' in second_model_name or 'Vanilla' in second_model_name:
+                    logger.info(f'  SAGE (C16): Dashed dark red line (no error bars)')
+    
+    except Exception as e:
+        logger.warning(f'Could not calculate BHBM statistics: {e}')
+    
+    logger.info('Black Hole - Bulge Mass relation analysis complete')
+
+def plot_mass_metallicity_relation(sim_configs, snapshot, output_dir):
+    """Plot Mass-Metallicity relation with observational data and standardized styling"""
+    logger.info('=== Mass-Metallicity Relation Analysis ===')
+    
+    # Create standardized figure
+    fig, ax = create_figure()
+    
+    # Lists to collect legend handles and labels
+    obs_handles = []
+    obs_labels = []
+    model_handles = []
+    model_labels = []
+    
+    # =============== MODEL DATA ===============
+    
+    # Define mass bins for median calculation
+    mass_bins = np.arange(8.0, 12.0, 0.2)
+    mass_centers = mass_bins[:-1] + 0.1
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        linestyle = sim_config['linestyle']
+        linewidth = sim_config.get('linewidth', 2)
+        alpha = sim_config.get('alpha', 0.8)
+        hubble_h = sim_config['Hubble_h']
+        
+        logger.info(f'Processing {label} for mass-metallicity relation...')
+        
+        try:
+            # Read required galaxy properties
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
+            MetalsColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='MetalsColdGas', directory=directory) * 1.0e10 / hubble_h
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            
+            logger.info(f'  Total galaxies: {len(StellarMass)}')
+            
+            # Apply selection criteria: central galaxies with gas fraction > 0.1 and stellar mass > 1e8
+            w = np.where((Type == 0) & (ColdGas / (StellarMass + ColdGas) > 0.1) & (StellarMass > 1.0e8))[0]
+            logger.info(f'  Galaxies passing selection: {len(w)}')
+            
+            if len(w) == 0:
+                logger.warning(f'  No galaxies meet selection criteria for {label}')
+                continue
+            
+            # Calculate mass and metallicity for selected galaxies
+            mass = np.log10(StellarMass[w])
+            Z = np.log10((MetalsColdGas[w] / ColdGas[w]) / 0.02) + 9.0
+            
+            # Calculate median and 1-sigma error in each mass bin
+            median_Z = []
+            sigma_Z = []
+            valid_centers = []
+            
+            for j in range(len(mass_bins)-1):
+                mask = (mass >= mass_bins[j]) & (mass < mass_bins[j+1])
+                if np.sum(mask) >= 5:  # Require at least 5 galaxies per bin
+                    bin_Z = Z[mask]
+                    n_gal = len(bin_Z)
+                    median_Z.append(np.median(bin_Z))
+                    # 1-sigma error on the mean (standard error)
+                    sigma_Z.append(np.std(bin_Z) / np.sqrt(n_gal))
+                    valid_centers.append(mass_centers[j])
+            
+            if len(median_Z) > 0:
+                median_Z = np.array(median_Z)
+                sigma_Z = np.array(sigma_Z)
+                valid_centers = np.array(valid_centers)
+                
+                if 'SAGE 2.0' in label or i == 0:  # Main model - thick black line with error bars
+                    # Plot thick black median line
+                    line = ax.plot(valid_centers, median_Z, color='black', linewidth=2.5, 
+                                  label='SAGE 2.0', alpha=0.9, zorder=10)[0]
+                    model_handles.append(line)
+                    model_labels.append('SAGE 2.0')
+                    
+                    # Plot 1-sigma error bars (standard error of the mean)
+                    # Plot grey shading for 1-sigma errors
+                    ax.fill_between(valid_centers, median_Z - sigma_Z, median_Z + sigma_Z,
+                                   color='grey', alpha=0.3, zorder=8)
+                    
+                    logger.info(f'  SAGE 2.0 median line: {len(valid_centers)} bins')
+                    
+                elif 'C16' in label or 'Vanilla' in label:  # C16 model - dashed dark red line
+                    # Plot dashed dark red median line (no error bars)
+                    line = ax.plot(valid_centers, median_Z, color='darkred', linewidth=1.5, 
+                                  linestyle='--', label='SAGE (C16)', alpha=0.9, zorder=8)[0]
+                    model_handles.append(line)
+                    model_labels.append('SAGE (C16)')
+                    
+                    logger.info(f'  SAGE (C16) median line: {len(valid_centers)} bins')
+                
+                else:  # Other models - use config colors/styles
+                    line = ax.plot(valid_centers, median_Z, color=color, linewidth=linewidth,
+                                  linestyle=linestyle, label=label, alpha=alpha, zorder=7)[0]
+                    model_handles.append(line)
+                    model_labels.append(label)
+                    
+                    logger.info(f'  {label} median line: {len(valid_centers)} bins')
+            
+            logger.info(f'  Metallicity range: {np.min(Z):.2f} - {np.max(Z):.2f}')
+            logger.info(f'  Stellar mass range: {np.min(mass):.2f} - {np.max(mass):.2f}')
+            
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            continue
+    
+    # =============== OBSERVATIONAL DATA ===============
+    
+    # Tremonti et al. 2004 - the primary observational reference
+    try:
+        tremonti_data = np.loadtxt('./data/Tremonti04.dat')
+        tremonti_mass = tremonti_data[:, 0]
+        tremonti_Z = tremonti_data[:, 1]
+        tremonti_Z_err_low = tremonti_data[:, 2]
+        tremonti_Z_err_high = tremonti_data[:, 3]
+        
+        # Convert IMF if needed
+        if whichimf == 0:
+            # Conversion from Kroupa IMF to Salpeter IMF
+            tremonti_mass_corrected = np.log10(10**tremonti_mass * 1.5)
+        elif whichimf == 1:
+            # Conversion from Kroupa IMF to Salpeter IMF to Chabrier IMF
+            tremonti_mass_corrected = np.log10(10**tremonti_mass * 1.5 / 1.8)
+        else:
+            tremonti_mass_corrected = tremonti_mass
+        
+        # Plot main line
+        tremonti_line = ax.plot(tremonti_mass_corrected, tremonti_Z, '-', 
+                               color='orange', linewidth=1.5, alpha=0.7,
+                               label='Tremonti et al. 2004')[0]
+        
+        # Plot error shading
+        ax.fill_between(tremonti_mass_corrected, tremonti_Z_err_low, tremonti_Z_err_high,
+                       color='orange', alpha=0.2, zorder=5)
+        
+        obs_handles.append(tremonti_line)
+        obs_labels.append('Tremonti et al. 2004')
+        
+        logger.info(f'Loaded Tremonti et al. 2004: {len(tremonti_mass)} points')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Tremonti et al. 2004 data: {e}')
+        
+        # Fallback to original polynomial fit
+        w_obs = np.arange(7.0, 13.0, 0.1)
+        Zobs = -1.492 + 1.847*w_obs - 0.08026*w_obs*w_obs
+        
+        if whichimf == 0:
+            tremonti_line = ax.plot(np.log10((10**w_obs * 1.5)), Zobs, 'o-', linewidth=3, 
+                                   label='Tremonti et al. 2004')[0]
+        elif whichimf == 1:
+            tremonti_line = ax.plot(np.log10((10**w_obs * 1.5 / 1.8)), Zobs, 'o-', linewidth=3, 
+                                   label='Tremonti et al. 2004')[0]
+        
+        obs_handles.append(tremonti_line)
+        obs_labels.append('Tremonti et al. 2004')
+    
+    # Curti et al. 2020
+    try:
+        curti_data = np.loadtxt('./data/Curti2020.dat')
+        curti_mass = curti_data[:, 0]
+        curti_Z = curti_data[:, 1]
+        curti_Z_low = curti_data[:, 2]
+        curti_Z_high = curti_data[:, 3]
+        
+        # Convert to error bars
+        curti_err_low = curti_Z - curti_Z_low
+        curti_err_high = curti_Z_high - curti_Z
+        
+        # Plot main line  
+        curti_line = ax.plot(curti_mass, curti_Z, 'o-', color='red', 
+                            linewidth=2, markersize=3, alpha=0.9,
+                            label='Curti et al. 2020')[0]
+        
+        # Plot error shading
+        ax.fill_between(curti_mass, curti_Z_low, curti_Z_high,
+                       color='red', alpha=0.2, zorder=5)
+        
+        obs_handles.append(curti_line)
+        obs_labels.append('Curti et al. 2020')
+        
+        logger.info(f'Loaded Curti et al. 2020: {len(curti_mass)} points')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Curti et al. 2020 data: {e}')
+    
+    # Andrews & Martini 2013
+    try:
+        andrews_data = np.loadtxt('./data/MMAdrews13.dat')
+        andrews_mass = andrews_data[:, 0]
+        andrews_Z = andrews_data[:, 1]
+        
+        # Convert IMF if needed (data is in Kroupa)
+        if whichimf == 0:
+            # Conversion from Kroupa IMF to Salpeter IMF
+            andrews_mass_corrected = np.log10(10**andrews_mass * 1.5)
+        elif whichimf == 1:
+            # Conversion from Kroupa IMF to Salpeter IMF to Chabrier IMF
+            andrews_mass_corrected = np.log10(10**andrews_mass * 1.5 / 1.8)
+        else:
+            andrews_mass_corrected = andrews_mass
+        
+        andrews_scatter = ax.scatter(andrews_mass_corrected, andrews_Z, marker='s', s=30,
+                                   color='green', edgecolors='darkgreen', linewidth=0.5,
+                                   alpha=0.7, label='Andrews & Martini 2013')
+        obs_handles.append(andrews_scatter)
+        obs_labels.append('Andrews & Martini 2013')
+        
+        logger.info(f'Loaded Andrews & Martini 2013: {len(andrews_mass)} points')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Andrews & Martini 2013 data: {e}')
+    
+    # Kewley & Ellison 2008 - T04 calibration (most commonly used)
+    try:
+        kewley_data = np.loadtxt('./data/MMR-Kewley08.dat')
+        
+        # Find T04 calibration data (starts around line with comment "#T04 (1)")
+        # The T04 data appears to be from indices 59-74 based on the file structure
+        t04_start = 59  # Approximate start of T04 data
+        t04_end = 74    # Approximate end of T04 data
+        
+        kewley_mass_t04 = kewley_data[t04_start:t04_end, 0]
+        kewley_Z_t04 = kewley_data[t04_start:t04_end, 1]
+        
+        # Convert IMF if needed (data is in Kroupa)
+        if whichimf == 0:
+            # Conversion from Kroupa IMF to Salpeter IMF
+            kewley_mass_corrected = np.log10(10**kewley_mass_t04 * 1.5)
+        elif whichimf == 1:
+            # Conversion from Kroupa IMF to Salpeter IMF to Chabrier IMF
+            kewley_mass_corrected = np.log10(10**kewley_mass_t04 * 1.5 / 1.8)
+        else:
+            kewley_mass_corrected = kewley_mass_t04
+        
+        kewley_scatter = ax.scatter(kewley_mass_corrected, kewley_Z_t04, 
+                                   marker='D', s=40, color='purple', 
+                                   edgecolors='darkmagenta', linewidth=0.8,
+                                   alpha=0.8, label='Kewley & Ellison 2008')
+        obs_handles.append(kewley_scatter)
+        obs_labels.append('Kewley & Ellison 2008')
+        
+        logger.info(f'Loaded Kewley & Ellison 2008 T04: {len(kewley_mass_t04)} points')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Kewley & Ellison 2008 data: {e}')
+    
+    # Gallazzi et al. 2005 - Stellar metallicity (note: this is different from gas metallicity)
+    try:
+        gallazzi_data = np.loadtxt('./data/MSZR-Gallazzi05.dat')
+        # Skip Kirby+13 data (first 7 points) and use only Gallazzi+05 data
+        gallazzi_mass = gallazzi_data[7:, 0]
+        gallazzi_Z_stellar = gallazzi_data[7:, 1]  # This is log(Z*/Z_sun), not 12+log(O/H)
+        
+        # Convert stellar metallicity to gas-phase metallicity (approximate)
+        # Typical relation: [O/H]_gas ≈ [Z/H]_stellar + 0.1 (rough approximation)
+        # Convert log(Z*/Z_sun) to 12+log(O/H): 12+log(O/H) = log(Z*/Z_sun) + 8.69
+        gallazzi_Z_gas_approx = gallazzi_Z_stellar + 8.69
+        
+        # Convert IMF if needed (data should already be in Chabrier based on comment)
+        gallazzi_mass_corrected = gallazzi_mass  # Already corrected to Chabrier
+        
+        gallazzi_scatter = ax.scatter(gallazzi_mass_corrected, gallazzi_Z_gas_approx, 
+                                    marker='^', s=25, color='orange', 
+                                    edgecolors='darkorange', linewidth=0.5,
+                                    alpha=0.6, label='Gallazzi et al. 2005 (stellar)')
+        obs_handles.append(gallazzi_scatter)
+        obs_labels.append('Gallazzi et al. 2005 (stellar)')
+        
+        logger.info(f'Loaded Gallazzi et al. 2005: {len(gallazzi_mass)} points')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Gallazzi et al. 2005 data: {e}')
+    
+    # =============== FORMATTING ===============
+    
+    # Standardized axis formatting
+    ax.set_ylabel(r'$12 + \log_{10}[\mathrm{O/H}]$')
+    ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    
+    # Set axis limits
+    ax.set_xlim(8.0, 12.0)
+    ax.set_ylim(8.0, 9.5)
+    
+    # Set minor ticks with standardized styling
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+    
+    # Create separate legends for observations and models
+    
+    # Observations legend (upper left)
+    if obs_handles:
+        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', 
+                              fontsize=12, frameon=False)
+        ax.add_artist(obs_legend)
+    
+    # Models legend (lower right)
+    if model_handles:
+        model_legend = ax.legend(model_handles, model_labels, loc='lower right', 
+                               fontsize=14, frameon=False)
+    
+    # Save plot
+    output_filename = output_dir + 'mass_metallicity_relation' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    # Print summary statistics
+    logger.info('=== Mass-Metallicity Relation Statistics ===')
+    try:
+        # Calculate statistics for the main simulation
+        main_sim = sim_configs[0]
+        directory = main_sim['path']
+        hubble_h = main_sim['Hubble_h']
+        
+        # Re-read data for statistics (not sampled)
+        StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+        ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
+        MetalsColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='MetalsColdGas', directory=directory) * 1.0e10 / hubble_h
+        Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+        
+        w = np.where((Type == 0) & (ColdGas / (StellarMass + ColdGas) > 0.1) & (StellarMass > 1.0e8))[0]
+        
+        if len(w) > 0:
+            mass_all = np.log10(StellarMass[w])
+            Z_all = np.log10((MetalsColdGas[w] / ColdGas[w]) / 0.02) + 9.0
+            
+            # Calculate correlation coefficient
+            correlation = np.corrcoef(mass_all, Z_all)[0, 1]
+            
+            # Fit a linear relation
+            coeffs = np.polyfit(mass_all, Z_all, 1)
+            slope, intercept = coeffs
+            
+            logger.info(f'Main simulation ({main_sim["label"]}):')
+            logger.info(f'  Total galaxies in relation: {len(w)}')
+            logger.info(f'  Correlation coefficient: {correlation:.3f}')
+            logger.info(f'  Best-fit slope: {slope:.3f}')
+            logger.info(f'  Best-fit intercept: {intercept:.3f}')
+            logger.info(f'  Relation: 12+log(O/H) = {intercept:.2f} + {slope:.2f} * log(M*)')
+            
+            # Compare to Tremonti et al. at 10^10 M_sun
+            tremonti_Z_10 = -1.492 + 1.847*10.0 - 0.08026*10.0*10.0
+            model_Z_10 = intercept + slope * 10.0
+            logger.info(f'  Metallicity at log(M*)=10.0:')
+            logger.info(f'    Model: {model_Z_10:.3f}')
+            logger.info(f'    Tremonti: {tremonti_Z_10:.3f}')
+            logger.info(f'    Difference: {model_Z_10 - tremonti_Z_10:.3f} dex')
+    
+    except Exception as e:
+        logger.warning(f'Could not calculate mass-metallicity statistics: {e}')
+    
+    logger.info('Mass-Metallicity relation analysis complete')
+
+def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
+    """Plot Stellar Mass vs Bulge Fraction relation with standardized styling"""
+    logger.info('=== Mass-Bulge Fraction Relation Analysis ===')
+    
+    # Create standardized figure
+    fig, ax = create_figure()
+    
+    # Lists to collect legend handles and labels
+    obs_handles = []
+    obs_labels = []
+    model_handles = []
+    model_labels = []
+    
+    # =============== MODEL DATA ===============
+    
+    # Define mass bins for median calculation
+    mass_bins = np.arange(9.0, 12.0, 0.2)
+    mass_centers = mass_bins[:-1] + 0.1
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        linestyle = sim_config['linestyle']
+        linewidth = sim_config.get('linewidth', 2)
+        alpha = sim_config.get('alpha', 0.8)
+        hubble_h = sim_config['Hubble_h']
+        
+        logger.info(f'Processing {label} for mass-bulge fraction relation...')
+        
+        try:
+            # Read required galaxy properties
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            BulgeMass = read_hdf_ultra_optimized(snap_num=snapshot, param='BulgeMass', directory=directory) * 1.0e10 / hubble_h
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            
+            logger.info(f'  Total galaxies: {len(StellarMass)}')
+            
+            # Apply selection criteria: central galaxies with stellar mass > 1e9
+            w = np.where((Type == 0) & (StellarMass > 1.0e8))[0]
+            logger.info(f'  Galaxies passing selection: {len(w)}')
+            
+            if len(w) == 0:
+                logger.warning(f'  No galaxies meet selection criteria for {label}')
+                continue
+            
+            # Calculate mass and bulge fraction for selected galaxies
+            mass = np.log10(StellarMass[w])
+            bulge_fraction = BulgeMass[w] / StellarMass[w]
+            
+            # Remove any invalid values (NaN, inf, negative)
+            valid_mask = (bulge_fraction >= 0) & np.isfinite(bulge_fraction) & (bulge_fraction <= 1.0)
+            mass = mass[valid_mask]
+            bulge_fraction = bulge_fraction[valid_mask]
+            
+            logger.info(f'  Valid galaxies after cleaning: {len(mass)}')
+            
+            if len(mass) == 0:
+                logger.warning(f'  No valid galaxies after cleaning for {label}')
+                continue
+            
+            # Calculate median and 1-sigma error in each mass bin
+            median_bf = []
+            sigma_bf = []
+            valid_centers = []
+            
+            for j in range(len(mass_bins)-1):
+                mask = (mass >= mass_bins[j]) & (mass < mass_bins[j+1])
+                if np.sum(mask) >= 5:  # Require at least 5 galaxies per bin
+                    bin_bf = bulge_fraction[mask]
+                    n_gal = len(bin_bf)
+                    median_bf.append(np.median(bin_bf))
+                    # 1-sigma error on the mean (standard error)
+                    sigma_bf.append(np.std(bin_bf) / np.sqrt(n_gal))
+                    valid_centers.append(mass_centers[j])
+            
+            if len(median_bf) > 0:
+                median_bf = np.array(median_bf)
+                sigma_bf = np.array(sigma_bf)
+                valid_centers = np.array(valid_centers)
+                
+                if 'SAGE 2.0' in label or i == 0:  # Main model - thick black line with error bars
+                    # Plot thick black median line
+                    line = ax.plot(valid_centers, median_bf, color='black', linewidth=2.5, 
+                                  label='SAGE 2.0', alpha=0.9, zorder=10)[0]
+                    model_handles.append(line)
+                    model_labels.append('SAGE 2.0')
+                    
+                    # Plot grey shading for 1-sigma errors
+                    ax.fill_between(valid_centers, median_bf - sigma_bf, median_bf + sigma_bf,
+                                   color='grey', alpha=0.3, zorder=8)
+                    
+                    logger.info(f'  SAGE 2.0 median line: {len(valid_centers)} bins')
+                    
+                elif 'C16' in label or 'Vanilla' in label:  # C16 model - dashed dark red line
+                    # Plot dashed dark red median line (no error bars)
+                    line = ax.plot(valid_centers, median_bf, color='darkred', linewidth=1.5, 
+                                  linestyle='--', label='SAGE (C16)', alpha=0.9, zorder=8)[0]
+                    model_handles.append(line)
+                    model_labels.append('SAGE (C16)')
+                    
+                    logger.info(f'  SAGE (C16) median line: {len(valid_centers)} bins')
+                
+                else:  # Other models - use config colors/styles
+                    line = ax.plot(valid_centers, median_bf, color=color, linewidth=linewidth,
+                                  linestyle=linestyle, label=label, alpha=alpha, zorder=7)[0]
+                    model_handles.append(line)
+                    model_labels.append(label)
+                    
+                    logger.info(f'  {label} median line: {len(valid_centers)} bins')
+            
+            logger.info(f'  Bulge fraction range: {np.min(bulge_fraction):.3f} - {np.max(bulge_fraction):.3f}')
+            logger.info(f'  Stellar mass range: {np.min(mass):.2f} - {np.max(mass):.2f}')
+            
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            continue
+    
+    # =============== OBSERVATIONAL DATA ===============
+    
+    # Moffet et al. 2016 - Primary observational reference
+    try:
+        moffet_data = np.loadtxt('./data/Moffet16.dat')
+        moffet_mass = moffet_data[:, 0]  # log stellar mass
+        moffet_bf = moffet_data[:, 1]    # bulge fraction
+        moffet_bf_low = moffet_data[:, 2]   # -1sigma boundary
+        moffet_bf_high = moffet_data[:, 3]  # +1sigma boundary
+        
+        # Plot main line
+        moffet_line = ax.plot(moffet_mass, moffet_bf, 'o-', color='blue', 
+                             linewidth=3, markersize=5, alpha=0.9,
+                             label='Moffet et al. 2016')[0]
+        
+        # Plot error shading
+        ax.fill_between(moffet_mass, moffet_bf_low, moffet_bf_high,
+                       color='blue', alpha=0.2, zorder=5)
+        
+        obs_handles.append(moffet_line)
+        obs_labels.append('Moffet et al. 2016')
+        
+        logger.info(f'Loaded Moffet et al. 2016: {len(moffet_mass)} points')
+        
+    except Exception as e:
+        logger.warning(f'Could not load Moffet et al. 2016 data: {e}')
+    
+    # =============== FORMATTING ===============
+    
+    # Standardized axis formatting
+    ax.set_ylabel(r'Bulge Fraction ($M_{\mathrm{bulge}}/M_{\mathrm{stars}}$)')
+    ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    
+    # Set axis limits
+    ax.set_xlim(9.0, 12.0)
+    ax.set_ylim(0.0, 1.0)
+    
+    # Set minor ticks with standardized styling
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    
+    # Add horizontal reference lines
+    ax.axhline(y=0.0, color='gray', linestyle=':', alpha=0.5, zorder=1)  # Pure disk
+    ax.axhline(y=0.5, color='gray', linestyle=':', alpha=0.5, zorder=1)  # Equal bulge/disk
+    ax.axhline(y=1.0, color='gray', linestyle=':', alpha=0.5, zorder=1)  # Pure bulge
+    
+    # Create separate legends for observations and models
+    
+    # Observations legend (upper left)
+    if obs_handles:
+        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', 
+                              fontsize=12, frameon=False)
+        ax.add_artist(obs_legend)
+    
+    # Models legend (lower right)
+    if model_handles:
+        model_legend = ax.legend(model_handles, model_labels, loc='lower right', 
+                               fontsize=14, frameon=False)
+    
+    # Save plot
+    output_filename = output_dir + 'mass_bulge_fraction_relation' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    # Print summary statistics
+    logger.info('=== Mass-Bulge Fraction Relation Statistics ===')
+    try:
+        # Calculate statistics for the main simulation
+        main_sim = sim_configs[0]
+        directory = main_sim['path']
+        hubble_h = main_sim['Hubble_h']
+        
+        # Re-read data for statistics
+        StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+        BulgeMass = read_hdf_ultra_optimized(snap_num=snapshot, param='BulgeMass', directory=directory) * 1.0e10 / hubble_h
+        Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+        
+        w = np.where((Type == 0) & (StellarMass > 1.0e9))[0]
+        
+        if len(w) > 0:
+            mass_all = np.log10(StellarMass[w])
+            bulge_fraction_all = BulgeMass[w] / StellarMass[w]
+            
+            # Clean data
+            valid_mask = (bulge_fraction_all >= 0) & np.isfinite(bulge_fraction_all) & (bulge_fraction_all <= 1.0)
+            mass_all = mass_all[valid_mask]
+            bulge_fraction_all = bulge_fraction_all[valid_mask]
+            
+            if len(mass_all) > 0:
+                # Calculate correlation coefficient
+                correlation = np.corrcoef(mass_all, bulge_fraction_all)[0, 1]
+                
+                # Fit a linear relation
+                coeffs = np.polyfit(mass_all, bulge_fraction_all, 1)
+                slope, intercept = coeffs
+                
+                # Calculate fraction statistics
+                disk_dominated = np.sum(bulge_fraction_all < 0.2) / len(bulge_fraction_all)
+                intermediate = np.sum((bulge_fraction_all >= 0.2) & (bulge_fraction_all < 0.8)) / len(bulge_fraction_all)
+                bulge_dominated = np.sum(bulge_fraction_all >= 0.8) / len(bulge_fraction_all)
+                
+                logger.info(f'Main simulation ({main_sim["label"]}):')
+                logger.info(f'  Total galaxies in relation: {len(mass_all)}')
+                logger.info(f'  Correlation coefficient: {correlation:.3f}')
+                logger.info(f'  Best-fit slope: {slope:.3f}')
+                logger.info(f'  Best-fit intercept: {intercept:.3f}')
+                logger.info(f'  Relation: B/T = {intercept:.3f} + {slope:.3f} * log(M*)')
+                logger.info(f'  Morphological fractions:')
+                logger.info(f'    Disk-dominated (B/T < 0.2): {disk_dominated:.1%}')
+                logger.info(f'    Intermediate (0.2 ≤ B/T < 0.8): {intermediate:.1%}')
+                logger.info(f'    Bulge-dominated (B/T ≥ 0.8): {bulge_dominated:.1%}')
+                logger.info(f'  Mean bulge fraction: {np.mean(bulge_fraction_all):.3f}')
+                logger.info(f'  Median bulge fraction: {np.median(bulge_fraction_all):.3f}')
+    
+    except Exception as e:
+        logger.warning(f'Could not calculate mass-bulge fraction statistics: {e}')
+    
+    logger.info('Mass-Bulge Fraction relation analysis complete')
 
 # ========================== MAIN EXECUTION ==========================
 
@@ -1942,7 +3115,7 @@ if __name__ == '__main__':
     # Reionization Models Comparison Plot with standardized styling
     
     # Call the reionization plotting function
-    plot_reionization_comparison(OutputDir)
+    # plot_reionization_comparison(OutputDir)
     
     # -----------------------------------------------------------------------
     # Gas Mass Functions Analysis with standardized styling
@@ -1960,8 +3133,15 @@ if __name__ == '__main__':
 
     # -----------------------------------------------------------------------
     
-    plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
+    # plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
     plot_h2_fraction_vs_stellar_mass(GAS_SimConfigs, Snapshot, OutputDir)
+
+    # Add this line to your main execution section after the other plotting calls:
+    # plot_bh_bulge_mass_relation(SMF_SimConfigs, Snapshot, OutputDir)
+    # plot_mass_metallicity_relation(SMF_SimConfigs, Snapshot, OutputDir)
+    # plot_mass_bulge_fraction(SMF_SimConfigs, Snapshot, OutputDir)
+
+
     
     logger.info(f'Total execution time: {time.time() - start_time:.2f} seconds')
     logger.info('Analysis complete!')

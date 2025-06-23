@@ -308,7 +308,7 @@ def smhm_plot_fixed(compare_old_model=True):
     log_stellar = np.log10(StellarMass[filter_indices])
 
     # Plot SAGE 2.0 scatter
-    plt.scatter(log_mvir, log_stellar, s=1, alpha=0.3, color='lightblue')  # Removed label
+    # plt.scatter(log_mvir, log_stellar, s=1, alpha=0.3, color='lightblue')  # Removed label
 
     # Load and plot older SAGE model if requested
     log_mvir_old = None
@@ -329,7 +329,7 @@ def smhm_plot_fixed(compare_old_model=True):
                 log_mvir_old = np.log10(Mvir_old[filter_old])
                 log_stellar_old = np.log10(StellarMass_old[filter_old])
                 
-                plt.scatter(log_mvir_old, log_stellar_old, s=1, alpha=0.2, color='lightcoral')  # Removed label
+                # plt.scatter(log_mvir_old, log_stellar_old, s=1, alpha=0.2, color='lightcoral')  # Removed label
                 
                 print(f"Loaded older SAGE data: {len(filter_old)} galaxies")
             else:
@@ -431,13 +431,13 @@ def smhm_plot_fixed(compare_old_model=True):
         print(f"WARNING: {invalid_stellar} galaxies with stellar mass <= 0")
     
     # SAGE 2.0 statistics (all galaxies)
-    # valid_bins, medians, std_errors = calculate_median_std(log_mvir, log_stellar, bin_edges, "SAGE 2.0 (all) ")
+    valid_bins, medians, std_errors = calculate_median_std(log_mvir, log_stellar, bin_edges, "SAGE 2.0 (all) ")
     
     # # Plot SAGE 2.0 median with error bars
-    # sage2_handle = plt.errorbar(valid_bins, medians, yerr=std_errors, 
-    #             fmt='k-', linewidth=2, capsize=3, capthick=1.5, zorder=10)
-    # sage_handles.append(sage2_handle)
-    # sage_labels.append('SAGE 2.0')
+    sage2_handle = plt.errorbar(valid_bins, medians, yerr=std_errors, 
+                fmt='k-', linewidth=2, capsize=3, capthick=1.5, zorder=10)
+    sage_handles.append(sage2_handle)
+    sage_labels.append('SAGE 2.0')
     
     # Older SAGE statistics and plotting (if data available)
     if log_mvir_old is not None:
@@ -962,27 +962,49 @@ def sfms_plot_three_populations_redshift_grid(compare_old_model=True):
         print(f"  Green valley: {np.sum(green_valley_mask)} galaxies (centrals + satellites, all SFR)") 
         print(f"  Quiescent: {np.sum(quiescent_mask)} galaxies (centrals + satellites, all SFR)")
         
-        # Use ALL galaxies for each population (no sampling)
+        # Get indices for each population
         sf_plot_indices = np.where(sf_mask)[0]
         gv_plot_indices = np.where(green_valley_mask)[0]
         q_plot_indices = np.where(quiescent_mask)[0]
         
+        # Apply dilution to scatter plots using global dilute variable
+        if len(sf_plot_indices) > dilute:
+            sf_sample_indices = sample(list(sf_plot_indices), dilute)
+            print(f"  Star forming: diluted from {len(sf_plot_indices)} to {len(sf_sample_indices)} points")
+        else:
+            sf_sample_indices = sf_plot_indices
+            print(f"  Star forming: using all {len(sf_sample_indices)} points (no dilution needed)")
+            
+        if len(gv_plot_indices) > dilute:
+            gv_sample_indices = sample(list(gv_plot_indices), dilute)
+            print(f"  Green valley: diluted from {len(gv_plot_indices)} to {len(gv_sample_indices)} points")
+        else:
+            gv_sample_indices = gv_plot_indices
+            print(f"  Green valley: using all {len(gv_sample_indices)} points (no dilution needed)")
+            
+        if len(q_plot_indices) > dilute:
+            q_sample_indices = sample(list(q_plot_indices), dilute)
+            print(f"  Quiescent: diluted from {len(q_plot_indices)} to {len(q_sample_indices)} points")
+        else:
+            q_sample_indices = q_plot_indices
+            print(f"  Quiescent: using all {len(q_sample_indices)} points (no dilution needed)")
+        
         # Prepare data for plotting (handle zero SFR by using minimum value)
-        if len(sf_plot_indices) > 0:
-            log_stellar_sf = np.log10(stellar_mass_det[sf_plot_indices])
-            log_sfr_sf = np.log10(np.where(sfr_total_det[sf_plot_indices] > 0, sfr_total_det[sf_plot_indices], 1e-10))
+        if len(sf_sample_indices) > 0:
+            log_stellar_sf = np.log10(stellar_mass_det[sf_sample_indices])
+            log_sfr_sf = np.log10(np.where(sfr_total_det[sf_sample_indices] > 0, sfr_total_det[sf_sample_indices], 1e-10))
             ax.scatter(log_stellar_sf, log_sfr_sf, s=1.5, alpha=0.6, color='blue', 
                       label='Star Forming' if i == 0 else '', rasterized=True)
         
-        if len(gv_plot_indices) > 0:
-            log_stellar_gv = np.log10(stellar_mass_det[gv_plot_indices])
-            log_sfr_gv = np.log10(np.where(sfr_total_det[gv_plot_indices] > 0, sfr_total_det[gv_plot_indices], 1e-10))
+        if len(gv_sample_indices) > 0:
+            log_stellar_gv = np.log10(stellar_mass_det[gv_sample_indices])
+            log_sfr_gv = np.log10(np.where(sfr_total_det[gv_sample_indices] > 0, sfr_total_det[gv_sample_indices], 1e-10))
             ax.scatter(log_stellar_gv, log_sfr_gv, s=1.5, alpha=0.7, color='green', 
                       label='Green Valley' if i == 0 else '', rasterized=True)
         
-        if len(q_plot_indices) > 0:
-            log_stellar_q = np.log10(stellar_mass_det[q_plot_indices])
-            log_sfr_q = np.log10(np.where(sfr_total_det[q_plot_indices] > 0, sfr_total_det[q_plot_indices], 1e-10))
+        if len(q_sample_indices) > 0:
+            log_stellar_q = np.log10(stellar_mass_det[q_sample_indices])
+            log_sfr_q = np.log10(np.where(sfr_total_det[q_sample_indices] > 0, sfr_total_det[q_sample_indices], 1e-10))
             ax.scatter(log_stellar_q, log_sfr_q, s=1.5, alpha=0.7, color='red', 
                       label='Quiescent' if i == 0 else '', rasterized=True)
         
@@ -1005,11 +1027,11 @@ def sfms_plot_three_populations_redshift_grid(compare_old_model=True):
             sfms_relation = 0.88 * mass_range - 8.2
         
         ax.plot(mass_range, sfms_relation, 'k--', linewidth=2, alpha=0.8, 
-               label='Expected SFMS' if i == 0 else '')
+               label='SFMS' if i == 0 else '')
         
         # Also plot ±0.3 dex scatter around the main sequence
         ax.fill_between(mass_range, sfms_relation - 0.3, sfms_relation + 0.3, 
-                       color='gray', alpha=0.2, label='SFMS ±0.3 dex' if i == 0 else '')
+                       color='gray', alpha=0.2)
         
         # Load and plot older SAGE model if requested
         if compare_old_model and os.path.exists(DirName_old):
@@ -1027,8 +1049,18 @@ def sfms_plot_three_populations_redshift_grid(compare_old_model=True):
                     
                     # Use ALL galaxies - no SFR threshold filtering
                     if len(stellar_mass_old) > 100:  # Only plot if we have enough data
-                        # Use all data for older model (no sampling)
-                        ax.scatter(np.log10(stellar_mass_old), np.log10(np.where(sfr_total_old > 0, sfr_total_old, 1e-10)), 
+                        # Apply dilution to older model data as well
+                        if len(stellar_mass_old) > dilute:
+                            old_sample_indices = sample(list(range(len(stellar_mass_old))), dilute)
+                            stellar_mass_old_sample = stellar_mass_old[old_sample_indices]
+                            sfr_total_old_sample = sfr_total_old[old_sample_indices]
+                            print(f"  SAGE C16: diluted from {len(stellar_mass_old)} to {len(stellar_mass_old_sample)} points")
+                        else:
+                            stellar_mass_old_sample = stellar_mass_old
+                            sfr_total_old_sample = sfr_total_old
+                            print(f"  SAGE C16: using all {len(stellar_mass_old_sample)} points (no dilution needed)")
+                            
+                        ax.scatter(np.log10(stellar_mass_old_sample), np.log10(np.where(sfr_total_old_sample > 0, sfr_total_old_sample, 1e-10)), 
                                  s=0.8, alpha=0.3, color='orange', 
                                  label='SAGE C16' if i == 0 else '', rasterized=True)
                         
@@ -1044,7 +1076,7 @@ def sfms_plot_three_populations_redshift_grid(compare_old_model=True):
         
         # Add legend only to first subplot
         if i == 0:
-            ax.legend(loc='upper left', fontsize=9, frameon=False, markerscale=3)
+            ax.legend(loc='lower right', fontsize=9, frameon=False, markerscale=3)
     
     # Adjust layout
     plt.tight_layout()
@@ -1100,24 +1132,47 @@ def sfms_plot_three_populations_single_redshift(snapshot='Snap_63', compare_old_
     print(f"Green valley: {np.sum(green_valley_mask)} galaxies (centrals + satellites, all SFR)")
     print(f"Quiescent: {np.sum(quiescent_mask)} galaxies (centrals + satellites, all SFR)")
     
-    # Use ALL galaxies for each population (no sampling)
+    # Get indices for each population and apply dilution using global dilute variable
+    sf_indices = np.where(sf_mask)[0]
+    gv_indices = np.where(green_valley_mask)[0]
+    q_indices = np.where(quiescent_mask)[0]
+    
+    # Apply dilution to scatter plots using global dilute variable
+    if len(sf_indices) > dilute:
+        sf_sample_indices = sample(list(sf_indices), dilute)
+        print(f"Star forming: diluted from {len(sf_indices)} to {len(sf_sample_indices)} points")
+    else:
+        sf_sample_indices = sf_indices
+        print(f"Star forming: using all {len(sf_sample_indices)} points (no dilution needed)")
+        
+    if len(gv_indices) > dilute:
+        gv_sample_indices = sample(list(gv_indices), dilute)
+        print(f"Green valley: diluted from {len(gv_indices)} to {len(gv_sample_indices)} points")
+    else:
+        gv_sample_indices = gv_indices
+        print(f"Green valley: using all {len(gv_sample_indices)} points (no dilution needed)")
+        
+    if len(q_indices) > dilute:
+        q_sample_indices = sample(list(q_indices), dilute)
+        print(f"Quiescent: diluted from {len(q_indices)} to {len(q_sample_indices)} points")
+    else:
+        q_sample_indices = q_indices
+        print(f"Quiescent: using all {len(q_sample_indices)} points (no dilution needed)")
+    
     # Plot each population (handle zero SFR by using minimum value)
-    if np.sum(sf_mask) > 0:
-        sf_indices = np.where(sf_mask)[0]
-        plt.scatter(np.log10(stellar_mass_det[sf_indices]), 
-                   np.log10(np.where(sfr_total_det[sf_indices] > 0, sfr_total_det[sf_indices], 1e-10)), 
+    if len(sf_sample_indices) > 0:
+        plt.scatter(np.log10(stellar_mass_det[sf_sample_indices]), 
+                   np.log10(np.where(sfr_total_det[sf_sample_indices] > 0, sfr_total_det[sf_sample_indices], 1e-10)), 
                    s=2, alpha=0.6, color='blue', label=f'Star Forming', rasterized=True)
     
-    if np.sum(green_valley_mask) > 0:
-        gv_indices = np.where(green_valley_mask)[0]
-        plt.scatter(np.log10(stellar_mass_det[gv_indices]), 
-                   np.log10(np.where(sfr_total_det[gv_indices] > 0, sfr_total_det[gv_indices], 1e-10)), 
+    if len(gv_sample_indices) > 0:
+        plt.scatter(np.log10(stellar_mass_det[gv_sample_indices]), 
+                   np.log10(np.where(sfr_total_det[gv_sample_indices] > 0, sfr_total_det[gv_sample_indices], 1e-10)), 
                    s=2, alpha=0.7, color='green', label=f'Green Valley', rasterized=True)
     
-    if np.sum(quiescent_mask) > 0:
-        q_indices = np.where(quiescent_mask)[0]
-        plt.scatter(np.log10(stellar_mass_det[q_indices]), 
-                   np.log10(np.where(sfr_total_det[q_indices] > 0, sfr_total_det[q_indices], 1e-10)), 
+    if len(q_sample_indices) > 0:
+        plt.scatter(np.log10(stellar_mass_det[q_sample_indices]), 
+                   np.log10(np.where(sfr_total_det[q_sample_indices] > 0, sfr_total_det[q_sample_indices], 1e-10)), 
                    s=2, alpha=0.7, color='red', label=f'Quiescent', rasterized=True)
     
     # Plot observational SFMS (z=0 for Snap_63)
