@@ -610,6 +610,9 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
                 haloaux[currenthalo].FirstGalaxy = *numgals;
             }
 
+            // Update galaxy SnapNum to final snapshot after evolution
+            GALAXY_PROP_SnapNum(&ctx.galaxies[p]) = halos[currenthalo].SnapNum;
+
             // Perform a deep copy to the final output array for this snapshot.
             // This ensures a clean, separate copy with its own allocated properties.
             if (galaxy_array_append(galaxies_this_snap, &ctx.galaxies[p], run_params) < 0) {
