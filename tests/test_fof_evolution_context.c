@@ -160,10 +160,161 @@ static void test_central_validation_fof_centric(void) {
 }
 
 /**
+ * Test: Simple two-halo merger to build confidence
+ */
+static void test_simple_two_halo_merger(void) {
+    printf("\n=== Testing simple two-halo merger (sanity check) ===\n");
+    
+    // Reset galaxy arrays for fresh test
+    reset_test_galaxies(&test_ctx);
+    
+    int current_snap = 20;
+    int prev_snap = 19;
+    
+    // Current snapshot: one FOF group with one halo
+    create_test_halo(&test_ctx, 0, current_snap, 3e12, -1, -1, -1);  // FOF root
+    
+    // Previous snapshot: two independent halos that will merge
+    create_test_halo(&test_ctx, 5, prev_snap, 2.5e12, -1, -1, -1);  // Main progenitor
+    create_test_halo(&test_ctx, 6, prev_snap, 8e11, -1, -1, -1);    // Secondary progenitor
+    
+    // Set up merger tree links
+    test_ctx.halos[5].Descendant = 0;
+    test_ctx.halos[6].Descendant = 0;
+    
+    // Halo 0 has two progenitors: 5 (main) -> 6 (secondary)
+    test_ctx.halos[0].FirstProgenitor = 5;
+    test_ctx.halos[5].NextProgenitor = 6;
+    test_ctx.halos[6].NextProgenitor = -1;
+    
+    // FOF group setup
+    test_ctx.halos[0].FirstHaloInFOFgroup = 0;
+    
+    // Create galaxies - one in each progenitor
+    create_test_galaxy(&test_ctx, 0, 5, 4e10);  // Central in main progenitor
+    create_test_galaxy(&test_ctx, 0, 6, 2e10);  // Central in secondary progenitor
+    
+    printf("  Setup: Halo 0 <- Halo 5 (2.5e12) + Halo 6 (8e11)\n");
+    printf("  Expected: 1 central (from halo 5), 1 orphan (from halo 6)\n");
+    
+    // Process FOF group
+    bool processed_flags[30] = {0};
+    int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+    
+    TEST_ASSERT(status == EXIT_SUCCESS, "Simple merger should process successfully");
+    
+    int ngal = galaxy_array_get_count(test_ctx.galaxies_this_snap);
+    struct GALAXY *galaxies = galaxy_array_get_raw_data(test_ctx.galaxies_this_snap);
+    
+    printf("  Result: %d galaxies produced\n", ngal);
+    for (int i = 0; i < ngal; i++) {
+        int type = GALAXY_PROP_Type(&galaxies[i]);
+        printf("    Galaxy %d: Type %d, HaloNr %d\n", i, type, GALAXY_PROP_HaloNr(&galaxies[i]));
+    }
+    
+    TEST_ASSERT(ngal == 1, "Should have 1 galaxy (orphan removed by design)");
+    
+    // Count types
+    int type_counts[3] = {0, 0, 0};
+    for (int i = 0; i < ngal; i++) {
+        int type = GALAXY_PROP_Type(&galaxies[i]);
+        if (type >= 0 && type <= 2) type_counts[type]++;
+    }
+    
+    TEST_ASSERT(type_counts[0] == 1, "Should have 1 central galaxy");
+    TEST_ASSERT(type_counts[2] == 0, "Orphan galaxies should be removed from output");
+    
+    printf("  ✓ Simple merger test passed: 1 central (1 orphan removed as expected)\n");
+}
+
+/**
+ * Test: Three-halo complex merger
+ */
+static void test_three_halo_merger(void) {
+    printf("\n=== Testing three-halo complex merger ===\n");
+    
+    // Reset galaxy arrays for fresh test
+    reset_test_galaxies(&test_ctx);
+    
+    int current_snap = 20;
+    int prev_snap = 19;
+    
+    // Current snapshot: one FOF group with one halo
+    create_test_halo(&test_ctx, 0, current_snap, 4e12, -1, -1, -1);  // FOF root
+    
+    // Previous snapshot: three halos merging
+    create_test_halo(&test_ctx, 5, prev_snap, 2.5e12, -1, -1, -1);  // Main progenitor (most massive)
+    create_test_halo(&test_ctx, 6, prev_snap, 1.5e12, -1, -1, -1);  // Secondary progenitor
+    create_test_halo(&test_ctx, 7, prev_snap, 8e11, -1, -1, -1);    // Tertiary progenitor
+    
+    // Set up merger tree links
+    test_ctx.halos[5].Descendant = 0;
+    test_ctx.halos[6].Descendant = 0;
+    test_ctx.halos[7].Descendant = 0;
+    
+    // Progenitor chain: 5 (main) -> 6 -> 7
+    test_ctx.halos[0].FirstProgenitor = 5;
+    test_ctx.halos[5].NextProgenitor = 6;
+    test_ctx.halos[6].NextProgenitor = 7;
+    test_ctx.halos[7].NextProgenitor = -1;
+    
+    // FOF group setup
+    test_ctx.halos[0].FirstHaloInFOFgroup = 0;
+    
+    // Create galaxies - one in each progenitor
+    create_test_galaxy(&test_ctx, 0, 5, 4e10);  // Central in main progenitor
+    create_test_galaxy(&test_ctx, 0, 6, 3e10);  // Central in secondary progenitor  
+    create_test_galaxy(&test_ctx, 0, 7, 1e10);  // Central in tertiary progenitor
+    
+    printf("  Setup: Halo 0 <- Halo 5 (2.5e12) + Halo 6 (1.5e12) + Halo 7 (8e11)\n");
+    printf("  Expected: 1 central (from halo 5), 2 orphans (from halos 6,7)\n");
+    
+    // Process FOF group
+    bool processed_flags[30] = {0};
+    int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+    
+    TEST_ASSERT(status == EXIT_SUCCESS, "Three-halo merger should process successfully");
+    
+    int ngal = galaxy_array_get_count(test_ctx.galaxies_this_snap);
+    struct GALAXY *galaxies = galaxy_array_get_raw_data(test_ctx.galaxies_this_snap);
+    
+    printf("  Result: %d galaxies produced\n", ngal);
+    for (int i = 0; i < ngal; i++) {
+        int type = GALAXY_PROP_Type(&galaxies[i]);
+        printf("    Galaxy %d: Type %d, HaloNr %d\n", i, type, GALAXY_PROP_HaloNr(&galaxies[i]));
+    }
+    
+    TEST_ASSERT(ngal == 1, "Should have 1 galaxy (2 orphans removed by design)");
+    
+    // Count types
+    int type_counts[3] = {0, 0, 0};
+    for (int i = 0; i < ngal; i++) {
+        int type = GALAXY_PROP_Type(&galaxies[i]);
+        if (type >= 0 && type <= 2) type_counts[type]++;
+    }
+    
+    TEST_ASSERT(type_counts[0] == 1, "Should have 1 central galaxy");
+    TEST_ASSERT(type_counts[2] == 0, "Orphan galaxies should be removed from output");
+    
+    printf("  ✓ Three-halo merger test passed: 1 central (2 orphans removed as expected)\n");
+}
+
+/**
  * Test: Merger tree continuity within FOF groups
+ * 
+ * This test validates that SAGE correctly:
+ * 1. Identifies galaxies from most massive progenitors (inherit halo properties)
+ * 2. Marks galaxies from smaller progenitors as orphans (Type 2)
+ * 3. Removes orphan galaxies from output (physics-free mode behavior)
+ * 
+ * NOTE: The test validates orphan detection by counting MISSING galaxies.
+ * In physics-free mode, orphans are removed to keep output clean.
  */
 static void test_merger_tree_continuity(void) {
     printf("\n=== Testing merger tree continuity in FOF groups ===\n");
+    printf("  NOTE: In physics-free mode, orphan galaxies are removed from output by design\n");
     
     // Reset galaxy arrays for fresh test
     reset_test_galaxies(&test_ctx);
@@ -183,9 +334,6 @@ static void test_merger_tree_continuity(void) {
     create_test_halo(&test_ctx, 9, prev_snap, 5e11, -1, -1, -1);   // Tertiary progenitor of halo 0
     create_test_halo(&test_ctx, 10, prev_snap, 7e11, -1, -1, -1);  // Secondary progenitor of halo 1
     
-    // CRITICAL: Set up descendant and progenitor links correctly.
-    // The original test setup was flawed.
-
     // Set descendant links (which progenitor belongs to which descendant)
     test_ctx.halos[5].Descendant = 0;
     test_ctx.halos[8].Descendant = 0;
@@ -198,8 +346,6 @@ static void test_merger_tree_continuity(void) {
     test_ctx.halos[1].FirstHaloInFOFgroup = 0; // Halo 1 is part of the same FOF group
 
     // Set progenitor links on the DESCENDANT halos
-    // This is the key fix. The original test was setting these on the progenitors.
-
     // Progenitor chain for Halo 0: 5 -> 8 -> 9
     test_ctx.halos[0].FirstProgenitor = 5;
     test_ctx.halos[5].NextProgenitor = 8;
@@ -214,25 +360,25 @@ static void test_merger_tree_continuity(void) {
     // Create galaxies representing merger tree
     printf("  Creating test galaxies:\n");
     create_test_galaxy(&test_ctx, 0, 5, 4e10);  // Main central
-    printf("    Galaxy in halo 5: Type 0 (central), Mvir 2.5e12, StellarMass 4e10\n");
+    printf("    Galaxy in halo 5: Type 0 (central), StellarMass 4e10\n");
     create_test_galaxy(&test_ctx, 1, 5, 2e10);  // Satellite in main
-    printf("    Galaxy in halo 5: Type 1 (satellite), Mvir 2.5e12, StellarMass 2e10\n");
+    printf("    Galaxy in halo 5: Type 1 (satellite), StellarMass 2e10\n");
+    create_test_galaxy(&test_ctx, 0, 6, 2.5e10);  // Central in halo 6
+    printf("    Galaxy in halo 6: Type 0 (central), StellarMass 2.5e10\n");
     create_test_galaxy(&test_ctx, 0, 8, 3e10);  // Central in merging halo
-    printf("    Galaxy in halo 8: Type 0 (central), Mvir 2.0e12, StellarMass 3e10\n");
+    printf("    Galaxy in halo 8: Type 0 (central), StellarMass 3e10\n");
     create_test_galaxy(&test_ctx, 0, 9, 1e10);  // Central in small halo
-    printf("    Galaxy in halo 9: Type 0 (central), Mvir 5.0e11, StellarMass 1e10\n");
+    printf("    Galaxy in halo 9: Type 0 (central), StellarMass 1e10\n");
     create_test_galaxy(&test_ctx, 0, 10, 1.5e10); // Subhalo central
-    printf("    Galaxy in halo 10: Type 0 (central), Mvir 7.0e11, StellarMass 1.5e10\n");
+    printf("    Galaxy in halo 10: Type 0 (central), StellarMass 1.5e10\n");
     
     printf("  Merger tree structure:\n");
-    printf("    Halo 0 (current, FOF root) <- Halo 5 <- Halo 8 <- Halo 9\n");
-    printf("    Halo 1 (current, subhalo)  <- Halo 6 <- Halo 10\n");
-    printf("  Expected result (CORRECTED):\n");
-    printf("    - Galaxy from halo 5 (central): Type 0 in halo 0 (first_occupied for halo 0)\n");
-    printf("    - Galaxy from halo 5 (satellite): Type 1 in halo 0 (first_occupied for halo 0)\n");
-    printf("    - Galaxy from halo 8: Type 2 (orphan) in halo 0 (NOT first_occupied)\n");
-    printf("    - Galaxy from halo 9: Type 2 (orphan) in halo 0 (NOT first_occupied)\n");  
-    printf("    - Galaxy from halo 10: Type 1 in halo 1 (first_occupied for halo 1)\n");
+    printf("    Halo 0 (current, FOF root) <- Halo 5 (main) + Halo 8 + Halo 9\n");
+    printf("    Halo 1 (current, subhalo)  <- Halo 6 (main) + Halo 10\n");
+    printf("  Expected processing:\n");
+    printf("    - Halo 5 galaxies: inherit halo 0 (first_occupied = most massive)\n");
+    printf("    - Halo 6 galaxy: inherits halo 1 (first_occupied for halo 1)\n");
+    printf("    - Halo 8,9,10 galaxies: become orphans (smaller progenitors) → REMOVED\n");
     
     // Process FOF group
     bool processed_flags[30] = {0};
@@ -245,7 +391,7 @@ static void test_merger_tree_continuity(void) {
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
                                   test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
     
-    // Check which galaxies were processed
+    // Verify all galaxies were processed (important for orphan detection validation)
     printf("  Processed flags after FOF processing:\n");
     for (int i = 0; i < ngal_before; i++) {
         printf("    Galaxy %d: %s\n", i, processed_flags[i] ? "PROCESSED" : "NOT PROCESSED");
@@ -256,30 +402,40 @@ static void test_merger_tree_continuity(void) {
     int ngal = galaxy_array_get_count(test_ctx.galaxies_this_snap);
     struct GALAXY *galaxies = galaxy_array_get_raw_data(test_ctx.galaxies_this_snap);
     
-    // Verify merger tree continuity
-    TEST_ASSERT(ngal >= 2, "Should have multiple galaxies from merger tree");
-    
-    // Count galaxy types
+    // Count galaxy types in final output
     int type_counts[3] = {0, 0, 0};
     for (int i = 0; i < ngal; i++) {
         int type = GALAXY_PROP_Type(&galaxies[i]);
-        printf("  Galaxy %d: Type %d, HaloNr %d, Mvir %.1e\n", 
+        printf("  Output Galaxy %d: Type %d, HaloNr %d, Mvir %.1e\n", 
                i, type, GALAXY_PROP_HaloNr(&galaxies[i]), GALAXY_PROP_Mvir(&galaxies[i]));
         if (type >= 0 && type <= 2) {
             type_counts[type]++;
         }
     }
     
-    printf("  Type counts: %d centrals, %d satellites, %d orphans\n", 
+    printf("  Final counts: %d centrals, %d satellites, %d orphans\n", 
            type_counts[0], type_counts[1], type_counts[2]);
     
-    TEST_ASSERT(type_counts[0] == 1, "Merger tree should result in one central");
-    TEST_ASSERT(ngal == 5, "Should have all 5 galaxies processed");
-    TEST_ASSERT(type_counts[1] >= 1, "Should have at least one satellite");  
-    TEST_ASSERT(type_counts[2] >= 2, "Should have orphans from disrupted progenitors");
+    // Validate orphan detection by counting missing galaxies
+    int expected_survivors = 3;  // Halo 5 (2 galaxies) + Halo 6 (1 galaxy)
+    int expected_orphans = ngal_before - expected_survivors;  // Should be 3 orphans removed
     
-    printf("  Merger tree continuity: %d central, %d satellites from %d progenitors\n",
-           type_counts[0], type_counts[1], 5);
+    printf("  Orphan detection validation:\n");
+    printf("    Input: %d galaxies, Output: %d galaxies\n", ngal_before, ngal);
+    printf("    Expected survivors: %d, Expected orphans removed: %d\n", expected_survivors, expected_orphans);
+    
+    TEST_ASSERT(type_counts[0] == 1, "Should have exactly 1 central galaxy");
+    TEST_ASSERT(ngal == expected_survivors, "Should have only non-orphan galaxies in output");
+    TEST_ASSERT(type_counts[1] >= 1, "Should have at least 1 satellite galaxy");  
+    TEST_ASSERT(type_counts[2] == 0, "Orphan galaxies should be removed from output");
+    
+    // Validate that all input galaxies were processed (ensures orphan detection worked)
+    for (int i = 0; i < ngal_before; i++) {
+        TEST_ASSERT(processed_flags[i] == true, "All galaxies should be processed for orphan detection");
+    }
+    
+    printf("  ✓ Merger tree continuity validated: %d survivors, %d orphans detected and removed\n",
+           ngal, expected_orphans);
 }
 
 /**
@@ -332,9 +488,11 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
         return 1;
     }
     
-    // Run tests
+    // Run tests - start with simple tests to build confidence
     test_fof_centric_timing();
     test_central_validation_fof_centric();
+    test_simple_two_halo_merger();
+    test_three_halo_merger();
     test_merger_tree_continuity();
     test_evolution_diagnostics_fof();
     

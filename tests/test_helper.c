@@ -201,7 +201,11 @@ void create_test_halo(struct TestContext* ctx, int halo_idx, int snap_num, float
         halo->Pos[i] = 10.0f + halo_idx * 0.5f;  // Spread out in space
         halo->Vel[i] = 100.0f + halo_idx * 10.0f;
     }
-    halo->Len = 100 + halo_idx;
+    
+    // CRITICAL: Set Len proportional to mass for correct first_occupied calculation
+    // Len should be number of particles proportional to Mvir
+    halo->Len = (int)(mvir / 1e10);  // 1e10 Msun per particle (rough conversion)
+    
     halo->Vmax = 200.0f + halo_idx;
     halo->VelDisp = 50.0f + halo_idx * 2.0f;
     // Note: Vvir and Rvir are not in halo_data structure
@@ -228,7 +232,7 @@ int create_test_galaxy(struct TestContext* ctx, int galaxy_type, int halo_nr, fl
     GALAXY_PROP_Type(&temp_galaxy) = galaxy_type;
     GALAXY_PROP_HaloNr(&temp_galaxy) = halo_nr;
     GALAXY_PROP_GalaxyIndex(&temp_galaxy) = ctx->galaxycounter++;
-    GALAXY_PROP_SnapNum(&temp_galaxy) = ctx->halos[halo_nr].SnapNum - 1;
+    GALAXY_PROP_SnapNum(&temp_galaxy) = ctx->halos[halo_nr].SnapNum;  // Use same snapshot as halo
     GALAXY_PROP_merged(&temp_galaxy) = 0;
     
     // Set masses and positions from halo
