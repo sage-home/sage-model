@@ -96,9 +96,14 @@ static void test_basic_memory_management(void) {
     TEST_ASSERT(after_creation > start_usage, "Memory usage should increase after creating test data");
     
     // Process FOF group
-    bool processed_flags[200] = {0};
+    int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    bool *processed_flags = calloc(ngal_prev, sizeof(bool));
+    TEST_ASSERT(processed_flags != NULL, "Memory allocation for processed_flags should succeed");
+    
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
                                   test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+    
+    free(processed_flags);
 
     TEST_ASSERT(status == EXIT_SUCCESS, "Basic FOF processing should succeed");
     
@@ -135,9 +140,14 @@ static void test_galaxy_array_expansion(void) {
     printf("  Created %d galaxies, expecting array expansions\n", initial_count);
     
     // Process FOF group - this should trigger multiple array expansions
-    bool processed_flags[200] = {0};
+    int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    bool *processed_flags = calloc(ngal_prev, sizeof(bool));
+    TEST_ASSERT(processed_flags != NULL, "Memory allocation for processed_flags should succeed");
+    
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
                                   test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+    
+    free(processed_flags);
 
     TEST_ASSERT(status == EXIT_SUCCESS, "Large FOF processing should succeed despite expansions");
     
@@ -191,9 +201,14 @@ static void test_large_fof_group_memory(void) {
     size_t memory_before = get_current_memory_usage();
     
     // Process large FOF group
-    bool processed_flags[200] = {0};
+    int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    bool *processed_flags = calloc(ngal_prev, sizeof(bool));
+    TEST_ASSERT(processed_flags != NULL, "Memory allocation for processed_flags should succeed");
+    
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
                                   test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+    
+    free(processed_flags);
 
     TEST_ASSERT(status == EXIT_SUCCESS, "Large FOF group processing should succeed");
     
@@ -240,9 +255,14 @@ static void test_memory_leak_detection(void) {
         create_test_halo(&test_ctx, 10, 24 + iter, 1.3e12, -1, -1, -1);
         create_test_galaxy(&test_ctx, 0, 10, 2e10);
         
-        bool processed_flags[200] = {0};
+        int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+        bool *processed_flags = calloc(ngal_prev, sizeof(bool));
+        TEST_ASSERT(processed_flags != NULL, "Memory allocation for processed_flags should succeed");
+        
         int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
                                       test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+        
+        free(processed_flags);
     
         TEST_ASSERT(status == EXIT_SUCCESS, "Iteration should succeed");
         
@@ -317,9 +337,14 @@ static void test_memory_pool_integration(void) {
     create_test_halo(&test_ctx, 5, 29, 1.6e12, -1, -1, -1);
     create_test_galaxy(&test_ctx, 0, 5, 2.5e10);
     
-    bool processed_flags[200] = {0};
+    int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    bool *processed_flags = calloc(ngal_prev, sizeof(bool));
+    TEST_ASSERT(processed_flags != NULL, "Memory allocation for processed_flags should succeed");
+    
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
                                   test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+    
+    free(processed_flags);
 
     TEST_ASSERT(status == EXIT_SUCCESS, "FOF processing with memory pool should succeed");
     

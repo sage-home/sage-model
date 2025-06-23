@@ -174,11 +174,15 @@ void myfree(void *p)
 
 size_t get_aligned_memsize(size_t n)
 {
-    if((n % 8) > 0)
-        n = (n / 8 + 1) * 8;
+    /* On ARM64 and modern architectures, ensure 16-byte alignment for structures
+       containing 64-bit types like uint64_t, double, etc. */
+    const size_t alignment = 16;
+    
+    if((n % alignment) > 0)
+        n = (n / alignment + 1) * alignment;
 
     if(n == 0)
-        n = 8;
+        n = alignment;
 
     return n;
 }

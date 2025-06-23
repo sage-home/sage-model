@@ -369,19 +369,23 @@ int galaxy_pool_initialize(void) {
  */
 int galaxy_pool_cleanup(void) {
     if (global_pool == NULL) {
-        return 0;
+        return 0;  /* Already cleaned up */
     }
+    
+    /* Set to NULL first to prevent double cleanup */
+    struct memory_pool *pool_to_cleanup = global_pool;
+    global_pool = NULL;
+    pool_enabled = false;
     
     /* Log statistics before cleanup */
     size_t capacity, used, allocs, peak;
-    if (galaxy_pool_stats(global_pool, &capacity, &used, &allocs, &peak)) {
-        LOG_INFO("Galaxy pool statistics: capacity=%zu, used=%zu, allocs=%zu, peak=%zu", 
+    if (galaxy_pool_stats(pool_to_cleanup, &capacity, &used, &allocs, &peak)) {
+        LOG_INFO("Galaxy pool statistics: capacity=%zu, used=%zu, allocs=%zu, peak=%zu",
                 capacity, used, allocs, peak);
     }
     
-    galaxy_pool_destroy(global_pool);
-    global_pool = NULL;
-    pool_enabled = false;
+    /* Now safely destroy the pool */
+    galaxy_pool_destroy(pool_to_cleanup);
     
     LOG_INFO("Global galaxy memory pool cleaned up");
     
