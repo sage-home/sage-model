@@ -233,16 +233,30 @@ static void test_central_becomes_orphan(void) {
     TEST_ASSERT(ngal_current == 0, "No orphan should be created (central's central has no descendant)");
     
     // Now test the case where the central SHOULD become an orphan
-    // Reset and set up proper merger tree
+    // We need to create a completely different scenario with proper setup
+    
+    // Clean up previous test setup
+    free_galaxy_properties(&prev_central);
+    reset_test_galaxies(&test_ctx);
     galaxy_array_free(&current_galaxies);
     current_galaxies = galaxy_array_new();
-    processed_flags[0] = false;
+    myfree(processed_flags);
     
-    // Fix the merger tree: halo 3's central (itself) should point to the merging target
-    // Actually, for a central to become orphan, its original central must have a descendant
-    // Let's create a scenario where halo 3 was a satellite of halo 0, and halo 0 has descendant halo 5
-    GALAXY_PROP_CentralGal(&prev_central) = 0;  // Central is halo 0
-    test_ctx.halos[0].Descendant = 5;  // Halo 0 has descendant halo 5
+    // Setup proper scenario: halo 3 is a satellite of halo 0, both halos disappear
+    // but halo 0 (the central) has a descendant in halo 5
+    test_ctx.halos[0].Descendant = 5;   // Central halo 0 has descendant halo 5
+    test_ctx.halos[3].Descendant = -1;  // Satellite halo 3 disappears 
+    test_ctx.halos[3].FirstHaloInFOFgroup = 0;  // Halo 3 belongs to FOF group 0
+    test_ctx.halos[5].FirstHaloInFOFgroup = 5;  // New FOF group
+    
+    // Create a galaxy that was central in its disappeared halo, but belonged to FOF group 0
+    create_mock_galaxy(&prev_central, 2001, 3, 0, 0, 5e11f);  // Central in halo 3, but central FOF is halo 0
+    galaxy_array_append(test_ctx.galaxies_prev_snap, &prev_central, &test_ctx.test_params);
+    
+    // Setup processed flags
+    ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    processed_flags = mycalloc(ngal_prev, sizeof(bool));
+    processed_flags[0] = false;  // Galaxy not processed (halo disappeared)
     
     result = identify_and_process_orphans(5, current_galaxies, test_ctx.galaxies_prev_snap,
                                         processed_flags, test_ctx.halos, &test_ctx.test_params);
@@ -480,7 +494,7 @@ static void test_forward_looking_algorithm(void) {
 // Test Runner
 //=============================================================================
 
-int main(int argc, char *argv[]) {
+int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
     printf("\n========================================\n");
     printf("Starting tests for Orphan Galaxy Tracking\n");
     printf("========================================\n\n");

@@ -95,7 +95,7 @@ static void test_error_handling(void) {
     galaxy_array_free(&test_array);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
     printf("\n========================================\n");
     printf("Starting SIMPLIFIED tests for Orphan Galaxy Tracking\n");
     printf("========================================\n\n");
