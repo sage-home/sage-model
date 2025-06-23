@@ -193,13 +193,12 @@ static void test_central_becomes_orphan(void) {
     printf("\n=== Testing central galaxy becomes orphan ===\n");
     
     // Reset for this test
-    galaxy_array_free(&test_ctx.prev_galaxies);
-    galaxy_array_free(&test_ctx.current_galaxies);
-    test_ctx.prev_galaxies = galaxy_array_new();
-    test_ctx.current_galaxies = galaxy_array_new();
-    if (test_ctx.processed_flags) {
-        myfree(test_ctx.processed_flags);
-        test_ctx.processed_flags = NULL;
+    reset_test_galaxies(&test_ctx);
+    galaxy_array_free(&current_galaxies);
+    current_galaxies = galaxy_array_new();
+    if (processed_flags) {
+        myfree(processed_flags);
+        processed_flags = NULL;
     }
     
     // Setup: Small FOF (halo 3) merges entirely into larger FOF (halo 4)
@@ -213,31 +212,31 @@ static void test_central_becomes_orphan(void) {
     struct GALAXY prev_central;
     create_mock_galaxy(&prev_central, 2001, 3, 0, 3, 5e11f);  // Central in halo 3, central is itself
     
-    galaxy_array_append(test_ctx.prev_galaxies, &prev_central, &test_ctx.run_params);
+    galaxy_array_append(test_ctx.galaxies_prev_snap, &prev_central, &test_ctx.test_params);
     
     // Setup processed flags
-    int ngal_prev = galaxy_array_get_count(test_ctx.prev_galaxies);
-    test_ctx.processed_flags = mycalloc(ngal_prev, sizeof(bool));
-    test_ctx.processed_flags[0] = false;  // Central NOT processed (halo disappeared)
+    int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    processed_flags = mycalloc(ngal_prev, sizeof(bool));
+    processed_flags[0] = false;  // Central NOT processed (halo disappeared)
     
     // Test: Call identify_and_process_orphans for FOF group 5
     // This should NOT create an orphan because the central's central (itself) has no descendant
-    int result = identify_and_process_orphans(5, test_ctx.current_galaxies, test_ctx.prev_galaxies,
-                                            test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    int result = identify_and_process_orphans(5, current_galaxies, test_ctx.galaxies_prev_snap,
+                                            processed_flags, test_ctx.halos, &test_ctx.test_params);
     
     TEST_ASSERT(result == EXIT_SUCCESS, "identify_and_process_orphans should succeed");
     
     // For this test case, we need to set up the merger tree correctly
     // The central galaxy's central is itself (halo 3), but halo 3 has no descendant
     // So this galaxy should not become an orphan in FOF group 5
-    int ngal_current = galaxy_array_get_count(test_ctx.current_galaxies);
+    int ngal_current = galaxy_array_get_count(current_galaxies);
     TEST_ASSERT(ngal_current == 0, "No orphan should be created (central's central has no descendant)");
     
     // Now test the case where the central SHOULD become an orphan
     // Reset and set up proper merger tree
-    galaxy_array_free(&test_ctx.current_galaxies);
-    test_ctx.current_galaxies = galaxy_array_new();
-    test_ctx.processed_flags[0] = false;
+    galaxy_array_free(&current_galaxies);
+    current_galaxies = galaxy_array_new();
+    processed_flags[0] = false;
     
     // Fix the merger tree: halo 3's central (itself) should point to the merging target
     // Actually, for a central to become orphan, its original central must have a descendant
@@ -245,14 +244,14 @@ static void test_central_becomes_orphan(void) {
     GALAXY_PROP_CentralGal(&prev_central) = 0;  // Central is halo 0
     test_ctx.halos[0].Descendant = 5;  // Halo 0 has descendant halo 5
     
-    result = identify_and_process_orphans(5, test_ctx.current_galaxies, test_ctx.prev_galaxies,
-                                        test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    result = identify_and_process_orphans(5, current_galaxies, test_ctx.galaxies_prev_snap,
+                                        processed_flags, test_ctx.halos, &test_ctx.test_params);
     
-    ngal_current = galaxy_array_get_count(test_ctx.current_galaxies);
+    ngal_current = galaxy_array_get_count(current_galaxies);
     TEST_ASSERT(ngal_current == 1, "Orphan should be created for disrupted central");
     
     if (ngal_current > 0) {
-        struct GALAXY *orphan = galaxy_array_get_raw_data(test_ctx.current_galaxies);
+        struct GALAXY *orphan = galaxy_array_get_raw_data(current_galaxies);
         TEST_ASSERT(GALAXY_PROP_Type(orphan) == 2, "Galaxy should be Type 2 (orphan)");
         TEST_ASSERT(GALAXY_PROP_merged(orphan) == 0, "Orphan should remain active");
     }
@@ -268,13 +267,12 @@ static void test_successful_inheritance(void) {
     printf("\n=== Testing successful galaxy inheritance ===\n");
     
     // Reset for this test
-    galaxy_array_free(&test_ctx.prev_galaxies);
-    galaxy_array_free(&test_ctx.current_galaxies);
-    test_ctx.prev_galaxies = galaxy_array_new();
-    test_ctx.current_galaxies = galaxy_array_new();
-    if (test_ctx.processed_flags) {
-        myfree(test_ctx.processed_flags);
-        test_ctx.processed_flags = NULL;
+    reset_test_galaxies(&test_ctx);
+    galaxy_array_free(&current_galaxies);
+    current_galaxies = galaxy_array_new();
+    if (processed_flags) {
+        myfree(processed_flags);
+        processed_flags = NULL;
     }
     
     // Setup: Halo 0 has descendant halo 2, normal inheritance should occur
@@ -285,21 +283,21 @@ static void test_successful_inheritance(void) {
     struct GALAXY prev_galaxy;
     create_mock_galaxy(&prev_galaxy, 3001, 0, 0, 0, 2e12f);
     
-    galaxy_array_append(test_ctx.prev_galaxies, &prev_galaxy, &test_ctx.run_params);
+    galaxy_array_append(test_ctx.galaxies_prev_snap, &prev_galaxy, &test_ctx.test_params);
     
     // Setup processed flags
-    int ngal_prev = galaxy_array_get_count(test_ctx.prev_galaxies);
-    test_ctx.processed_flags = mycalloc(ngal_prev, sizeof(bool));
-    test_ctx.processed_flags[0] = true;  // Galaxy successfully processed by normal inheritance
+    int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    processed_flags = mycalloc(ngal_prev, sizeof(bool));
+    processed_flags[0] = true;  // Galaxy successfully processed by normal inheritance
     
     // Test: Call identify_and_process_orphans
-    int result = identify_and_process_orphans(2, test_ctx.current_galaxies, test_ctx.prev_galaxies,
-                                            test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    int result = identify_and_process_orphans(2, current_galaxies, test_ctx.galaxies_prev_snap,
+                                            processed_flags, test_ctx.halos, &test_ctx.test_params);
     
     TEST_ASSERT(result == EXIT_SUCCESS, "identify_and_process_orphans should succeed");
     
     // Verify: No orphans should be created (galaxy was already processed)
-    int ngal_current = galaxy_array_get_count(test_ctx.current_galaxies);
+    int ngal_current = galaxy_array_get_count(current_galaxies);
     TEST_ASSERT(ngal_current == 0, "No orphans should be created for successfully inherited galaxies");
     
     // Cleanup
@@ -313,13 +311,12 @@ static void test_multi_progenitor_merger(void) {
     printf("\n=== Testing multi-progenitor merger handling ===\n");
     
     // Reset for this test
-    galaxy_array_free(&test_ctx.prev_galaxies);
-    galaxy_array_free(&test_ctx.current_galaxies);
-    test_ctx.prev_galaxies = galaxy_array_new();
-    test_ctx.current_galaxies = galaxy_array_new();
-    if (test_ctx.processed_flags) {
-        myfree(test_ctx.processed_flags);
-        test_ctx.processed_flags = NULL;
+    reset_test_galaxies(&test_ctx);
+    galaxy_array_free(&current_galaxies);
+    current_galaxies = galaxy_array_new();
+    if (processed_flags) {
+        myfree(processed_flags);
+        processed_flags = NULL;
     }
     
     // Setup: Two halos (0 and 1) both have descendant halo 2 (merger)
@@ -332,38 +329,38 @@ static void test_multi_progenitor_merger(void) {
     create_mock_galaxy(&primary_galaxy, 4001, 0, 0, 0, 3e12f);    // Primary
     create_mock_galaxy(&secondary_galaxy, 4002, 1, 1, 0, 1e12f);  // Secondary (satellite)
     
-    galaxy_array_append(test_ctx.prev_galaxies, &primary_galaxy, &test_ctx.run_params);
-    galaxy_array_append(test_ctx.prev_galaxies, &secondary_galaxy, &test_ctx.run_params);
+    galaxy_array_append(test_ctx.galaxies_prev_snap, &primary_galaxy, &test_ctx.test_params);
+    galaxy_array_append(test_ctx.galaxies_prev_snap, &secondary_galaxy, &test_ctx.test_params);
     
     // Setup processed flags: both galaxies processed by normal merger logic
-    int ngal_prev = galaxy_array_get_count(test_ctx.prev_galaxies);
-    test_ctx.processed_flags = mycalloc(ngal_prev, sizeof(bool));
-    test_ctx.processed_flags[0] = true;  // Primary processed
-    test_ctx.processed_flags[1] = true;  // Secondary processed
+    int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    processed_flags = mycalloc(ngal_prev, sizeof(bool));
+    processed_flags[0] = true;  // Primary processed
+    processed_flags[1] = true;  // Secondary processed
     
     // Test: Call identify_and_process_orphans
-    int result = identify_and_process_orphans(2, test_ctx.current_galaxies, test_ctx.prev_galaxies,
-                                            test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    int result = identify_and_process_orphans(2, current_galaxies, test_ctx.galaxies_prev_snap,
+                                            processed_flags, test_ctx.halos, &test_ctx.test_params);
     
     TEST_ASSERT(result == EXIT_SUCCESS, "identify_and_process_orphans should succeed");
     
     // Verify: No orphans created (all galaxies handled by existing merger logic)
-    int ngal_current = galaxy_array_get_count(test_ctx.current_galaxies);
+    int ngal_current = galaxy_array_get_count(current_galaxies);
     TEST_ASSERT(ngal_current == 0, "No orphans should be created in multi-progenitor mergers");
     
     // Test edge case: one galaxy not processed (simulating an error in normal processing)
-    galaxy_array_free(&test_ctx.current_galaxies);
-    test_ctx.current_galaxies = galaxy_array_new();
-    test_ctx.processed_flags[1] = false;  // Secondary not processed
+    galaxy_array_free(&current_galaxies);
+    current_galaxies = galaxy_array_new();
+    processed_flags[1] = false;  // Secondary not processed
     
-    result = identify_and_process_orphans(2, test_ctx.current_galaxies, test_ctx.prev_galaxies,
-                                        test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    result = identify_and_process_orphans(2, current_galaxies, test_ctx.galaxies_prev_snap,
+                                        processed_flags, test_ctx.halos, &test_ctx.test_params);
     
-    ngal_current = galaxy_array_get_count(test_ctx.current_galaxies);
+    ngal_current = galaxy_array_get_count(current_galaxies);
     TEST_ASSERT(ngal_current == 1, "Unprocessed galaxy should become orphan");
     
     if (ngal_current > 0) {
-        struct GALAXY *orphan = galaxy_array_get_raw_data(test_ctx.current_galaxies);
+        struct GALAXY *orphan = galaxy_array_get_raw_data(current_galaxies);
         TEST_ASSERT(GALAXY_PROP_GalaxyNr(orphan) == 4002, "Should be the secondary galaxy");
         TEST_ASSERT(GALAXY_PROP_Type(orphan) == 2, "Should be Type 2 orphan");
     }
@@ -380,30 +377,29 @@ static void test_error_handling(void) {
     printf("\n=== Testing error handling ===\n");
     
     // Test NULL parameters
-    int result = identify_and_process_orphans(0, NULL, test_ctx.prev_galaxies, 
-                                            test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    int result = identify_and_process_orphans(0, NULL, test_ctx.galaxies_prev_snap, 
+                                            processed_flags, test_ctx.halos, &test_ctx.test_params);
     TEST_ASSERT(result == EXIT_FAILURE, "Should fail with NULL temp_fof_galaxies");
     
     // Test NULL previous galaxies (should succeed and do nothing)
-    result = identify_and_process_orphans(0, test_ctx.current_galaxies, NULL,
-                                        test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    result = identify_and_process_orphans(0, current_galaxies, NULL,
+                                        processed_flags, test_ctx.halos, &test_ctx.test_params);
     TEST_ASSERT(result == EXIT_SUCCESS, "Should succeed with NULL prev galaxies");
     
     // Test NULL processed flags (should succeed and do nothing)
-    result = identify_and_process_orphans(0, test_ctx.current_galaxies, test_ctx.prev_galaxies,
-                                        NULL, test_ctx.halos, &test_ctx.run_params);
+    result = identify_and_process_orphans(0, current_galaxies, test_ctx.galaxies_prev_snap,
+                                        NULL, test_ctx.halos, &test_ctx.test_params);
     TEST_ASSERT(result == EXIT_SUCCESS, "Should succeed with NULL processed flags");
     
     // Test empty previous galaxy array
-    galaxy_array_free(&test_ctx.prev_galaxies);
-    test_ctx.prev_galaxies = galaxy_array_new();
-    if (test_ctx.processed_flags) {
-        myfree(test_ctx.processed_flags);
-        test_ctx.processed_flags = mycalloc(0, sizeof(bool));  // Zero size
+    reset_test_galaxies(&test_ctx);
+    if (processed_flags) {
+        myfree(processed_flags);
+        processed_flags = mycalloc(0, sizeof(bool));  // Zero size
     }
     
-    result = identify_and_process_orphans(0, test_ctx.current_galaxies, test_ctx.prev_galaxies,
-                                        test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    result = identify_and_process_orphans(0, current_galaxies, test_ctx.galaxies_prev_snap,
+                                        processed_flags, test_ctx.halos, &test_ctx.test_params);
     TEST_ASSERT(result == EXIT_SUCCESS, "Should succeed with empty previous galaxy array");
 }
 
@@ -414,13 +410,12 @@ static void test_forward_looking_algorithm(void) {
     printf("\n=== Testing forward-looking detection algorithm ===\n");
     
     // Reset for this test
-    galaxy_array_free(&test_ctx.prev_galaxies);
-    galaxy_array_free(&test_ctx.current_galaxies);
-    test_ctx.prev_galaxies = galaxy_array_new();
-    test_ctx.current_galaxies = galaxy_array_new();
-    if (test_ctx.processed_flags) {
-        myfree(test_ctx.processed_flags);
-        test_ctx.processed_flags = NULL;
+    reset_test_galaxies(&test_ctx);
+    galaxy_array_free(&current_galaxies);
+    current_galaxies = galaxy_array_new();
+    if (processed_flags) {
+        myfree(processed_flags);
+        processed_flags = NULL;
     }
     
     // Setup complex scenario: multiple galaxies, some become orphans, some don't
@@ -440,34 +435,34 @@ static void test_forward_looking_algorithm(void) {
     create_mock_galaxy(&gal_sat1, 5002, 1, 1, 0, 1e11f);      // Satellite 1 becomes orphan
     create_mock_galaxy(&gal_sat2, 5003, 2, 1, 0, 8e10f);      // Satellite 2 becomes orphan
     
-    galaxy_array_append(test_ctx.prev_galaxies, &gal_central, &test_ctx.run_params);
-    galaxy_array_append(test_ctx.prev_galaxies, &gal_sat1, &test_ctx.run_params);
-    galaxy_array_append(test_ctx.prev_galaxies, &gal_sat2, &test_ctx.run_params);
+    galaxy_array_append(test_ctx.galaxies_prev_snap, &gal_central, &test_ctx.test_params);
+    galaxy_array_append(test_ctx.galaxies_prev_snap, &gal_sat1, &test_ctx.test_params);
+    galaxy_array_append(test_ctx.galaxies_prev_snap, &gal_sat2, &test_ctx.test_params);
     
     // Setup processed flags
-    int ngal_prev = galaxy_array_get_count(test_ctx.prev_galaxies);
-    test_ctx.processed_flags = mycalloc(ngal_prev, sizeof(bool));
-    test_ctx.processed_flags[0] = true;   // Central processed normally
-    test_ctx.processed_flags[1] = false;  // Satellite 1 not processed
-    test_ctx.processed_flags[2] = false;  // Satellite 2 not processed
+    int ngal_prev = galaxy_array_get_count(test_ctx.galaxies_prev_snap);
+    processed_flags = mycalloc(ngal_prev, sizeof(bool));
+    processed_flags[0] = true;   // Central processed normally
+    processed_flags[1] = false;  // Satellite 1 not processed
+    processed_flags[2] = false;  // Satellite 2 not processed
     
     // Test: Call identify_and_process_orphans
-    int result = identify_and_process_orphans(3, test_ctx.current_galaxies, test_ctx.prev_galaxies,
-                                            test_ctx.processed_flags, test_ctx.halos, &test_ctx.run_params);
+    int result = identify_and_process_orphans(3, current_galaxies, test_ctx.galaxies_prev_snap,
+                                            processed_flags, test_ctx.halos, &test_ctx.test_params);
     
     TEST_ASSERT(result == EXIT_SUCCESS, "identify_and_process_orphans should succeed");
     
     // Verify: Both satellites should become orphans
-    int ngal_current = galaxy_array_get_count(test_ctx.current_galaxies);
+    int ngal_current = galaxy_array_get_count(current_galaxies);
     TEST_ASSERT(ngal_current == 2, "Should create 2 orphan galaxies");
     
     // Verify processed flags are updated
-    TEST_ASSERT(test_ctx.processed_flags[1] == true, "Satellite 1 should be marked processed");
-    TEST_ASSERT(test_ctx.processed_flags[2] == true, "Satellite 2 should be marked processed");
+    TEST_ASSERT(processed_flags[1] == true, "Satellite 1 should be marked processed");
+    TEST_ASSERT(processed_flags[2] == true, "Satellite 2 should be marked processed");
     
     // Verify orphan properties
     if (ngal_current >= 2) {
-        struct GALAXY *orphans = galaxy_array_get_raw_data(test_ctx.current_galaxies);
+        struct GALAXY *orphans = galaxy_array_get_raw_data(current_galaxies);
         for (int i = 0; i < ngal_current; i++) {
             TEST_ASSERT(GALAXY_PROP_Type(&orphans[i]) == 2, "All should be Type 2 orphans");
             TEST_ASSERT(GALAXY_PROP_merged(&orphans[i]) == 0, "All orphans should remain active");
