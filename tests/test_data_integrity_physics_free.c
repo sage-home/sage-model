@@ -407,51 +407,59 @@ static int create_test_halos(void) {
 
 static int create_test_galaxies(void) {
     printf("Creating test galaxies using process_fof_group...\n");
-    
+
     // Allocate galaxy arrays using GalaxyArray API
     test_ctx.test_galaxies = galaxy_array_new();
     test_ctx.test_halogal = galaxy_array_new();
-    
+
     if (!test_ctx.test_galaxies || !test_ctx.test_halogal) {
         printf("ERROR: Failed to allocate galaxy arrays\n");
         return -1;
     }
-    
+
+    // Allocate and initialize processed_flags array for FOF group processing
+    bool *processed_flags = calloc(test_ctx.num_halos, sizeof(bool));
+    if (!processed_flags) {
+        printf("ERROR: Failed to allocate processed_flags array\n");
+        return -1;
+    }
+
     // GalaxyArray handles initialization internally, no manual memset needed
-    
+
     // Build galaxies for each halo using the core SAGE function
     int total_galaxies = 0;
     int32_t galaxy_counter = 0;
-    
+
     for (int halo_idx = 0; halo_idx < test_ctx.num_halos; halo_idx++) {
         int num_gals_before = total_galaxies;
-        
+
         printf("  Building galaxies for halo %d...\n", halo_idx);
-        
+
         int result = process_fof_group(halo_idx, test_ctx.test_halogal, test_ctx.test_galaxies,
-                                     test_ctx.test_halos, test_ctx.test_haloaux, 
-                                     &galaxy_counter, &test_ctx.run_params);
-        
+                                     test_ctx.test_halos, test_ctx.test_haloaux,
+                                     &galaxy_counter, &test_ctx.run_params, processed_flags);
+
         if (result != 0) {
             printf("ERROR: process_fof_group failed for halo %d with result %d\n", halo_idx, result);
             printf("       This indicates a core infrastructure problem\n");
             printf("       Check pipeline system initialization and galaxy validation\n");
-            
+
             // Add specific debugging for common failure points
             printf("       Common causes:\n");
             printf("         - XASSERT failure in init_galaxy (halo FOF group mismatch)\n");
             printf("         - Central galaxy validation failure in evolve_galaxies\n");
             printf("         - Pipeline system not properly initialized\n");
             printf("         - Property allocation failure\n");
+            free(processed_flags);
             return -1;
         }
-        
+
         total_galaxies = galaxy_array_get_count(test_ctx.test_galaxies);
         int num_gals_in_halo = total_galaxies - num_gals_before;
-        
-        printf("    Created %d galaxies (total: %d, galaxy_counter: %d)\n", 
+
+        printf("    Created %d galaxies (total: %d, galaxy_counter: %d)\n",
                num_gals_in_halo, total_galaxies, galaxy_counter);
-        
+
         // Debug: Check the SnapNum of created galaxies
         if (num_gals_in_halo > 0) {
             struct GALAXY *created_gal = galaxy_array_get(test_ctx.test_galaxies, total_galaxies - 1);
@@ -460,18 +468,20 @@ static int create_test_galaxies(void) {
             }
         }
     }
-    
+
+    free(processed_flags);
+
     test_ctx.num_galaxies = total_galaxies;
-    
+
     // Allocate snapshot arrays
     test_ctx.galaxy_snapshots = malloc(test_ctx.num_galaxies * sizeof(struct test_galaxy_snapshot));
     if (!test_ctx.galaxy_snapshots) {
         printf("ERROR: Failed to allocate galaxy snapshot array\n");
         return -1;
     }
-    
+
     printf("Successfully created %d galaxies from %d halos\n", test_ctx.num_galaxies, test_ctx.num_halos);
-    
+
     return 0;
 }
 

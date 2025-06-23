@@ -70,9 +70,11 @@ static void test_galaxy_type_assignment(void) {
     create_test_galaxy(&test_ctx, 0, 3, 5e9);   // Central in progenitor of subhalo
     
     // Process the FOF group
+    // Allocate and zero processed_flags for this test
+    bool processed_flags[50] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "process_fof_group should succeed");
     
     // Verify results
@@ -138,9 +140,10 @@ static void test_central_identification(void) {
     create_test_galaxy(&test_ctx, 0, 5, 5e9);   // Will become satellite
     
     // Process FOF group
+    bool processed_flags[50] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "process_fof_group should succeed for multi-halo group");
     
     // Analyze results
@@ -189,9 +192,10 @@ static void test_empty_fof_group(void) {
     create_test_halo(&test_ctx, 0, 20, 1e11, -1, -1, -1);  // No progenitors
     
     // Process empty FOF group
+    bool processed_flags[50] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "Empty FOF group should be processed successfully");
     
     // Should create exactly one new galaxy
@@ -224,9 +228,10 @@ static void test_single_galaxy_group(void) {
     create_test_galaxy(&test_ctx, 0, 1, 1.5e10);
     
     // Process single galaxy FOF group
+    bool processed_flags[50] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "Single galaxy FOF group should process successfully");
     
     int ngal = galaxy_array_get_count(test_ctx.galaxies_this_snap);
@@ -273,9 +278,10 @@ static void test_large_fof_group_memory(void) {
     }
     
     // Process large FOF group
+    bool processed_flags[50] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "Large FOF group should process successfully");
     
     // Verify results

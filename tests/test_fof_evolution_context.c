@@ -71,9 +71,10 @@ static void test_fof_centric_timing(void) {
     create_test_galaxy(&test_ctx, 0, 4, 1e10);    // Satellite progenitor
     
     // Process FOF group
+    bool processed_flags[30] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "FOF group with mixed timing should process successfully");
     
     // Verify all galaxies in the FOF group have consistent timing reference
@@ -126,9 +127,10 @@ static void test_central_validation_fof_centric(void) {
     create_test_galaxy(&test_ctx, 1, 7, 1e10);  // Already satellite
     
     // Process FOF group
+    bool processed_flags[30] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "FOF group should process successfully");
     
     int ngal = galaxy_array_get_count(test_ctx.galaxies_this_snap);
@@ -189,9 +191,10 @@ static void test_merger_tree_continuity(void) {
     create_test_galaxy(&test_ctx, 0, 10, 1.5e10); // Subhalo central
     
     // Process FOF group
+    bool processed_flags[30] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "Complex merger tree should process successfully");
     
     int ngal = galaxy_array_get_count(test_ctx.galaxies_this_snap);
@@ -232,9 +235,10 @@ static void test_evolution_diagnostics_fof(void) {
     create_test_galaxy(&test_ctx, 0, 3, 2e10);
     
     // Process and verify diagnostics are FOF-aware
+    bool processed_flags[30] = {0};
     int status = process_fof_group(0, test_ctx.galaxies_prev_snap, test_ctx.galaxies_this_snap,
-                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params);
-    
+                                  test_ctx.halos, test_ctx.haloaux, &test_ctx.galaxycounter, &test_ctx.test_params, processed_flags);
+
     TEST_ASSERT(status == EXIT_SUCCESS, "FOF group should process for diagnostics test");
     
     // Since we can't directly access internal diagnostics, verify the processing worked
