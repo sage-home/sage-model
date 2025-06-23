@@ -178,6 +178,7 @@ struct halo_aux_data
     int orig_index;
 #endif
     int output_snap_n;
+    bool was_processed_in_current_snap;
 };
 
 /* Forward declarations */

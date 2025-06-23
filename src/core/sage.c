@@ -391,6 +391,23 @@ static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_in
     for (int snapshot = 0; snapshot < run_params->simulation.SimMaxSnaps; ++snapshot) {
         galaxies_this_snap = galaxy_array_new();
 
+        // Allocate tracking array for previous snapshot's galaxies
+        int ngal_prev = galaxy_array_get_count(galaxies_prev_snap);
+        bool *processed_flags = NULL;
+        if (ngal_prev > 0) {
+            processed_flags = mycalloc(ngal_prev, sizeof(bool)); // mycalloc initializes to false
+            if (!processed_flags) {
+                LOG_ERROR("Failed to allocate processed_flags array for %d galaxies.", ngal_prev);
+                galaxy_array_free(&galaxies_prev_snap);
+                galaxy_array_free(&galaxies_this_snap);
+                snapshot_indices_cleanup(&snapshot_indices);
+                myfree(HaloAux);
+                myfree(Halo);
+                end_tree_memory_scope();
+                return EXIT_FAILURE;
+            }
+        }
+
         for(int i = 0; i < nhalos; i++) {
             HaloAux[i].NGalaxies = 0;
         }
@@ -404,8 +421,11 @@ static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_in
             int fof_halonr = fof_roots[i];
             
             status = process_fof_group(fof_halonr, galaxies_prev_snap, galaxies_this_snap,
-                                       Halo, HaloAux, &galaxycounter, run_params);
+                                       Halo, HaloAux, &galaxycounter, run_params, processed_flags);
             if (status != EXIT_SUCCESS) {
+                if (processed_flags != NULL) {
+                    myfree(processed_flags);
+                }
                 galaxy_array_free(&galaxies_prev_snap);
                 galaxy_array_free(&galaxies_this_snap);
                 snapshot_indices_cleanup(&snapshot_indices);
@@ -414,6 +434,11 @@ static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_in
                 end_tree_memory_scope();
                 return status;
             }
+        }
+
+        // Clean up processed_flags array
+        if (processed_flags != NULL) {
+            myfree(processed_flags);
         }
 
         // Save galaxies for this snapshot

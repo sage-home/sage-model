@@ -11,7 +11,7 @@ extern "C" {
     extern int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap, 
                                  GalaxyArray* galaxies_this_snap, struct halo_data *halos,
                                  struct halo_aux_data *haloaux, int32_t *galaxycounter,
-                                 struct params *run_params);
+                                 struct params *run_params, bool *processed_flags);
     
     extern void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params);
 

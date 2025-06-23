@@ -226,13 +226,24 @@ For each snapshot:
 - **`process_fof_group()`**: Main entry point for FOF group processing with central assignment validation
 - **`evolve_galaxies()`**: Four-phase physics pipeline executor for complete FOF groups
 - **`copy_galaxies_from_progenitors()`**: Optimized progenitor inheritance with direct FOF array append
+- **`identify_and_process_orphans()`**: Forward-looking orphan detection for mass conservation
 - **`GalaxyArray`**: Memory-safe dynamic arrays using SAGE's memory pool system
+
+#### Orphan Galaxy Tracking
+
+SAGE implements robust **forward-looking orphan detection** to ensure mass conservation when host halos are disrupted:
+
+**Problem**: Standard backward-looking processing (current halos → progenitors) misses galaxies whose host halos completely disappear between snapshots, violating mass conservation.
+
+**Solution**: Forward-looking scan (`identify_and_process_orphans()`) identifies unprocessed galaxies from the previous snapshot and reclassifies them as Type 2 orphan galaxies.
+
+**Orphan Assignment**: Orphans are assigned to FOF groups containing the descendant of their original central galaxy's halo, ensuring correct gravitational environment.
 
 #### Benefits
 
 - **Architectural Consistency**: Snapshot-based outer loop matches snapshot-based inner processing
 - **Performance**: Reduced memory allocations and optimized data flow patterns  
-- **Scientific Accuracy**: Consistent physics timing across all galaxies in FOF groups
+- **Scientific Accuracy**: Consistent physics timing across all galaxies in FOF groups, mass conservation via orphan tracking
 - **Maintainability**: Clear separation of concerns and robust error handling
 
 ### Physics-Free Mode

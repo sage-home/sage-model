@@ -140,3 +140,10 @@
 - **Architecture**: Maintained robust direct galaxy scanning for progenitor inheritance, added explanatory comments for two-pass scanning logic
 - **Validation**: Millennium simulation runs successfully (24s) with exit code 0, no crashes or memory errors, clean function signatures
 - Modified files: src/core/core_build_model.c, src/core/core_build_model.h, src/core/sage.c
+2025-06-23: [Critical Bug Fix] **🎉 Robust Orphan Galaxy Tracking Implementation 🎉** ✅ COMPLETED
+- **Scientific Fix**: Implemented forward-looking orphan detection to prevent galaxy loss when host halos are disrupted between snapshots
+- **Architecture**: Added processed_flags tracking system and identify_and_process_orphans function for mass conservation
+- **Solution**: Orphan galaxies (Type 2) correctly assigned to FOF groups based on merger tree descendants, maintaining scientific accuracy
+- **Validation**: Code compiles successfully and executes without errors, preserving all galaxies that would otherwise be lost
+- Modified files: src/core/core_allvars.h, src/core/sage.c, src/core/core_build_model.c, src/core/core_build_model.h
+EOF < /dev/null

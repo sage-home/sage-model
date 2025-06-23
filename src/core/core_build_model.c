@@ -100,7 +100,7 @@ void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struc
  */
 static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr, GalaxyArray *temp_fof_galaxies,
                                          int32_t *galaxycounter, struct halo_data *halos,
-                                         const GalaxyArray *galaxies_prev_snap, struct params *run_params)
+                                         const GalaxyArray *galaxies_prev_snap, struct params *run_params, bool *processed_flags)
 {
     if (!galaxies_prev_snap) {
         // No previous snapshot, create new galaxy if this is main FOF halo
@@ -229,6 +229,11 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                 return EXIT_FAILURE;
             }
             free_galaxy_properties(&temp_galaxy);
+            
+            // Mark galaxy as processed
+            if (processed_flags != NULL) {
+                processed_flags[i] = true;
+            }
         }
         prog = halos[prog].NextProgenitor;
     }
@@ -260,8 +265,90 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
 static int process_halo_galaxies(const int halonr, const int fof_halonr, 
                                 GalaxyArray* temp_fof_galaxies, int32_t *galaxycounter,
                                 struct halo_data *halos, const GalaxyArray* galaxies_prev_snap, 
-                                struct params *run_params);
+                                struct params *run_params, bool *processed_flags);
 
+
+/**
+ * @brief FORWARD-LOOKING ORPHAN DETECTION: Identifies galaxies from the previous 
+ *        snapshot whose host halos were disrupted and reclassifies them as orphan galaxies.
+ *
+ * **Problem**: The standard SAGE processing looks "backward" from current snapshot halos
+ * to find their progenitors. If a halo from the previous snapshot has NO descendant in 
+ * the current snapshot (i.e., it was completely disrupted), its galaxies are never found
+ * and are silently lost from the simulation. This violates mass conservation.
+ *
+ * **Solution**: This function performs a "forward-looking" scan of unprocessed galaxies
+ * from the previous snapshot to identify those whose host halos disappeared. These lost
+ * galaxies become "orphan" galaxies that continue to exist within the FOF group.
+ *
+ * **Orphan Host Assignment Logic**:
+ * When a galaxy's host halo disappears, the galaxy doesn't just vanish - it becomes an
+ * orphan that orbits within the larger FOF structure. To determine which FOF group should
+ * host the orphan, we follow the merger tree: the orphan belongs to the FOF group that
+ * contains the descendant of its original central galaxy's halo. This ensures orphans
+ * end up in the correct gravitational environment.
+ *
+ * @param fof_halonr The root halo number of the current FOF group.
+ * @param temp_fof_galaxies The galaxy array for the current FOF group, to which orphans will be appended.
+ * @param galaxies_prev_snap The galaxy array from the previous snapshot.
+ * @param processed_flags A boolean array tracking which galaxies from the previous snapshot have been processed.
+ * @param halos The halo data for the entire forest.
+ * @param run_params SAGE runtime parameters.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
+static int identify_and_process_orphans(const int fof_halonr, GalaxyArray* temp_fof_galaxies,
+                                        const GalaxyArray* galaxies_prev_snap, bool *processed_flags,
+                                        struct halo_data *halos, struct params *run_params)
+{
+    if (!galaxies_prev_snap || !processed_flags) {
+        return EXIT_SUCCESS; // Nothing to do if there's no previous snapshot.
+    }
+
+    struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)galaxies_prev_snap);
+    int ngal_prev = galaxy_array_get_count(galaxies_prev_snap);
+
+    for (int i = 0; i < ngal_prev; i++) {
+        // If this galaxy wasn't processed, it's a potential orphan.
+        if (!processed_flags[i]) {
+            const struct GALAXY* source_gal = &galaxies_prev_raw[i];
+
+            // An orphan's new host is the descendant of its old host's central.
+            // We need to check if this FOF group is the correct new home.
+            int old_central_halonr = GALAXY_PROP_CentralGal(source_gal);
+            if (old_central_halonr < 0) continue; // Should not happen for valid galaxies.
+            
+            int descendant_of_old_central = halos[old_central_halonr].Descendant;
+            if (descendant_of_old_central < 0) continue; // Old central has no descendant.
+            
+            // Check if the descendant of the old central belongs to the current FOF group.
+            if (halos[descendant_of_old_central].FirstHaloInFOFgroup == fof_halonr) {
+                
+                struct GALAXY temp_orphan;
+                memset(&temp_orphan, 0, sizeof(struct GALAXY));
+                galaxy_extension_initialize(&temp_orphan);
+                deep_copy_galaxy(&temp_orphan, source_gal, run_params);
+
+                // Reclassify as an orphan.
+                GALAXY_PROP_Type(&temp_orphan) = 2;
+                GALAXY_PROP_merged(&temp_orphan) = 0; // CRITICAL: Keep it active for processing.
+                GALAXY_PROP_Mvir(&temp_orphan) = 0.0; // Its host halo is gone.
+                GALAXY_PROP_deltaMvir(&temp_orphan) = -1.0 * GALAXY_PROP_Mvir(source_gal);
+
+                // Append to the current FOF group's galaxy list for evolution.
+                if (galaxy_array_append(temp_fof_galaxies, &temp_orphan, run_params) < 0) {
+                    LOG_ERROR("Failed to append orphan galaxy to FOF array.");
+                    free_galaxy_properties(&temp_orphan);
+                    return EXIT_FAILURE;
+                }
+                free_galaxy_properties(&temp_orphan);
+
+                // Mark as processed to ensure it's only added once.
+                processed_flags[i] = true;
+            }
+        }
+    }
+    return EXIT_SUCCESS;
+}
 
 /**
  * @brief Complete FOF group processor with central assignment
@@ -283,7 +370,7 @@ static int process_halo_galaxies(const int halonr, const int fof_halonr,
 int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap, 
                             GalaxyArray* galaxies_this_snap, struct halo_data *halos,
                             struct halo_aux_data *haloaux, int32_t *galaxycounter,
-                            struct params *run_params)
+                            struct params *run_params, bool *processed_flags)
 {
     GalaxyArray *temp_fof_galaxies = galaxy_array_new();
     if (!temp_fof_galaxies) {
@@ -297,12 +384,20 @@ int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap,
     int current_fof_halo = fof_halonr;
     while(current_fof_halo >= 0) {
         int status = process_halo_galaxies(current_fof_halo, fof_halonr, temp_fof_galaxies, 
-                                          galaxycounter, halos, galaxies_prev_snap, run_params);
+                                          galaxycounter, halos, galaxies_prev_snap, run_params, processed_flags);
         if (status != EXIT_SUCCESS) {
             galaxy_array_free(&temp_fof_galaxies);
             return EXIT_FAILURE;
         }
         current_fof_halo = halos[current_fof_halo].NextHaloInFOFgroup;
+    }
+
+    // NEW STEP: Identify and add true orphans to this FOF group.
+    int orphan_status = identify_and_process_orphans(fof_halonr, temp_fof_galaxies, galaxies_prev_snap, 
+                                                     processed_flags, halos, run_params);
+    if (orphan_status != EXIT_SUCCESS) {
+        galaxy_array_free(&temp_fof_galaxies);
+        return EXIT_FAILURE;
     }
 
     // Set central galaxy references for FOF group with enhanced error handling
@@ -409,11 +504,11 @@ int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap,
 static int process_halo_galaxies(const int halonr, const int fof_halonr, 
                                 GalaxyArray* temp_fof_galaxies, int32_t *galaxycounter,
                                 struct halo_data *halos, const GalaxyArray* galaxies_prev_snap, 
-                                struct params *run_params)
+                                struct params *run_params, bool *processed_flags)
 {
     // Direct append to FOF array - no intermediate allocation
     int status = copy_galaxies_from_progenitors(halonr, fof_halonr, temp_fof_galaxies, 
-                                               galaxycounter, halos, galaxies_prev_snap, run_params);
+                                               galaxycounter, halos, galaxies_prev_snap, run_params, processed_flags);
     return status;
 }
 
