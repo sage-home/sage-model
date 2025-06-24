@@ -61,10 +61,10 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         // Calculate final reincorporation amount
         double reincorporated = base_reincorporation_rate * total_scaling * dt;
 
-        if(reincorporated > galaxies[centralgal].EjectedMass)
-            reincorporated = galaxies[centralgal].EjectedMass;
+        if(reincorporated > galaxies[centralgal].CGMgas)
+            reincorporated = galaxies[centralgal].CGMgas;
 
-        const double metallicity = get_metallicity(galaxies[centralgal].EjectedMass, galaxies[centralgal].MetalsEjectedMass);
+        const double metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
         galaxies[centralgal].CGMgas -= reincorporated;
         galaxies[centralgal].MetalsCGMgas -= metallicity * reincorporated;
         galaxies[centralgal].HotGas += reincorporated;
