@@ -60,7 +60,7 @@ EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects 
 CGMBuildOn                  1   %0: switch off; 1: enable CGM building
 VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
-MassReincorporationOn       0   %0: switch off; 1: enable mass-dependent reincorporation
+MassReincorporationOn       1   %0: switch off; 1: enable mass-dependent reincorporation
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
 RedshiftReincorporationOn   0   %0: switch off; 1: enable redshift-scaled reioncorporation
 LowMassHighzSuppressionOn   0   %0: switch off; 1: enable low-mass and high-z suppression
@@ -111,22 +111,22 @@ IntegrationBins             15     %Number of radial bins to use for integration
 %----- ENVIRONMENT PARAMETERS -----
 %------------------------------------------
 
-EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
+EnvEffectStrength             50.0     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- CGM Building -----------------------
 %------------------------------------------
 
-CGMBuildVcrit  35.0        % Critical velocity scale (km/s)
-CGMBuildAlpha  0.8         % Power-law slope
-CGMBuildZdep   0.7         % Redshift dependence (0.5-1.0 recommended)
+CGMBuildVcrit  60.0        % Critical velocity scale (km/s)
+CGMBuildAlpha  0.5         % Power-law slope
+CGMBuildZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
 
 %------------------------------------------
 %----- SF Enhancement ---------------------
 %------------------------------------------
 
 VvirThreshold               60.0   % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        0.9    % Power-law exponent for velocity scaling
+VvirEnhancementPower        0.5    % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Reionization Models ----------------
@@ -143,7 +143,7 @@ PostReionSlope           -1.0    % Evolution of critical mass after reionization
 %------------------------------------------
 
 CriticalReincMass           1.0      % critical mass in 10^10 Msun/h
-ReincorporationMassExp      2.0      % linear scaling with halo mass
+ReincorporationMassExp      1.0      % linear scaling with halo mass
 MinReincorporationFactor    0.003    % minimum 10% of standard rate
 
 %------------------------------------------

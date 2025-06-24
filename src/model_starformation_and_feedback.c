@@ -343,13 +343,6 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[centralgal].CGMgas += adjusted_ejected_mass;
         galaxies[centralgal].MetalsCGMgas += metallicityHot * adjusted_ejected_mass;
 
-        //galaxies[centralgal].EjectedMass = 0.0;
-        //galaxies[centralgal].MetalsEjectedMass = 0.0;
-        
-        // Add to ejected reservoir
-        //galaxies[centralgal].EjectedMass += ejected_to_reservoir;
-        //galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_to_reservoir;
-
         galaxies[p].OutflowRate += adjusted_reheated_mass;
     }
 }
@@ -554,18 +547,19 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             // Get redshift-dependent ejection efficiency with significant reduction
-            double fb_eject = 0.2 * get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
+            double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
                                                              run_params->Ejection_Alpha, z);
             
-            // For smaller halos, further reduce ejection to allow gas to accumulate
-            if (galaxies[centralgal].Vvir < 80.0) {
-                fb_eject *= 0.5;
-            }
+            // // For smaller halos, further reduce ejection to allow gas to accumulate
+            // if (galaxies[centralgal].Vvir < 80.0) {
+            //     fb_eject *= 0.5;
+            // }
             
             // Modified ejection calculation
             if (stars > 0.0) {
-                ejected_mass = fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
-                              (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) * stars;
+                ejected_mass = (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                              (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                 run_params->FeedbackReheatingEpsilon) * stars;
                 
                 // Don't subtract the reheating term as that makes ejection too dependent on mass loading
                 // This is a departure from the original formula but helps maintain gas
@@ -576,18 +570,18 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
             ejected_mass = 0.0;
         }
 
-        if(ejected_mass < 0.0) {
-            ejected_mass = 0.0;
-        }
+    //     if(ejected_mass < 0.0) {
+    //         ejected_mass = 0.0;
+    //     }
         
-        // Hard cap on ejection to prevent complete gas loss
-        // This is critical - the log shows ejection is the main gas loss mechanism
-        double max_ejection = 0.1 * galaxies[centralgal].HotGas;
-        if (max_ejection < 0.005) max_ejection = 0.005; // Minimum cap for very small halos
+    //     // Hard cap on ejection to prevent complete gas loss
+    //     // This is critical - the log shows ejection is the main gas loss mechanism
+    //     double max_ejection = 0.1 * galaxies[centralgal].HotGas;
+    //     if (max_ejection < 0.005) max_ejection = 0.005; // Minimum cap for very small halos
         
-        if(ejected_mass > max_ejection) {
-            ejected_mass = max_ejection;
-        }
+    //     if(ejected_mass > max_ejection) {
+    //         ejected_mass = max_ejection;
+    //     }
     } else {
         ejected_mass = 0.0;
     }

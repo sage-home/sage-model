@@ -169,9 +169,6 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
     galaxies[t].HotGas += galaxies[p].HotGas;
     galaxies[t].MetalsHotGas += galaxies[p].MetalsHotGas;
 
-    //galaxies[t].EjectedMass += galaxies[p].EjectedMass;
-    //galaxies[t].MetalsEjectedMass += galaxies[p].MetalsEjectedMass;
-
     galaxies[t].CGMgas += galaxies[p].CGMgas;
     galaxies[t].MetalsCGMgas += galaxies[p].MetalsCGMgas;
 
@@ -349,9 +346,6 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
 {
     galaxies[centralgal].HotGas += galaxies[gal].ColdGas + galaxies[gal].HotGas;
     galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas;
-
-    //galaxies[centralgal].EjectedMass += galaxies[gal].EjectedMass;
-    //galaxies[centralgal].MetalsEjectedMass += galaxies[gal].MetalsEjectedMass;
 
     galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
     galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;

@@ -287,11 +287,11 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
                        (1.0 + pow(v_crit/vvir, run_params->CGMBuildAlpha));
     
     // Apply additional suppression for intermediate-mass halos at high-z
-    if (z > 0.01 && vvir > 50.0 && vvir < 100.0) {
-        double peak_suppress = 0.5 * (z - 0.01) / 2.0;  // Increased from 0.3 to 0.5
-        if (peak_suppress > 0.7) peak_suppress = 0.7;  // Increased cap from 0.5 to 0.7
+    if (z > 0.01 && vvir > 5.0 && vvir < 550.0) {
+        double peak_suppress = (z - 0.01) / 2.0;  // Increased from 0.3 to 0.5
+        if (peak_suppress > 1.0) peak_suppress = 1.0;  // Increased cap from 0.5 to 0.7
         
-        double v_relative = (vvir - 100.0) / 50.0;
+        double v_relative = (vvir - 550.0) / 5.0;
         double extra_suppress = peak_suppress * exp(-v_relative * v_relative);
         
         f_suppress *= (1.0 - extra_suppress);
@@ -316,18 +316,18 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
         z_scaling = 0.3;  // 30% strength at low-z
     }
     
-    // 2. Mass-dependent efficiency
-    double mass_factor = 1.0;
-    if (galaxies[gal].Mvir > 0.0) {
-        double log_mvir = log10(galaxies[gal].Mvir * 1.0e10 / run_params->Hubble_h);
+    // // 2. Mass-dependent efficiency
+    // double mass_factor = 1.0;
+    // if (galaxies[gal].Mvir > 0.0) {
+    //     double log_mvir = log10(galaxies[gal].Mvir * 1.0e10 / run_params->Hubble_h);
         
-        if (log_mvir > 12.0) {
-            // Massive galaxies: further reduced CGM effects
-            mass_factor = 0.5 - 0.4 * fmin(1.0, (log_mvir - 12.0) / 1.5);
-        }
-    }
+    //     if (log_mvir > 12.0) {
+    //         // Massive galaxies: further reduced CGM effects
+    //         mass_factor = 0.5 - 0.4 * fmin(1.0, (log_mvir - 12.0) / 1.5);
+    //     }
+    // }
     
-    double cgm_fraction = base_cgm_fraction * z_scaling * mass_factor;
+    double cgm_fraction = base_cgm_fraction * z_scaling;
 
     
     return cgm_fraction;

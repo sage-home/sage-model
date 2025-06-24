@@ -3137,9 +3137,9 @@ if __name__ == '__main__':
     plot_h2_fraction_vs_stellar_mass(GAS_SimConfigs, Snapshot, OutputDir)
 
     # Add this line to your main execution section after the other plotting calls:
-    # plot_bh_bulge_mass_relation(SMF_SimConfigs, Snapshot, OutputDir)
-    # plot_mass_metallicity_relation(SMF_SimConfigs, Snapshot, OutputDir)
-    # plot_mass_bulge_fraction(SMF_SimConfigs, Snapshot, OutputDir)
+    plot_bh_bulge_mass_relation(SMF_SimConfigs, Snapshot, OutputDir)
+    plot_mass_metallicity_relation(SMF_SimConfigs, Snapshot, OutputDir)
+    plot_mass_bulge_fraction(SMF_SimConfigs, Snapshot, OutputDir)
 
 
     
