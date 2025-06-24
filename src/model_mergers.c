@@ -296,21 +296,46 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // recompute the metallicity of the cold phase
     metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
 
-    // determine ejection
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
-            ejected_mass =
-                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                 run_params->FeedbackReheatingEpsilon) * stars;
+            
+            // Use consistent mass loading based on the chosen model
+            switch(run_params->MassLoadingModel) {
+                case MASS_LOADING_MURATOV:
+                    {
+                        double z = run_params->ZZ[galaxies[centralgal].SnapNum];
+                        double mass_loading = calculate_muratov_mass_loading(merger_centralgal, z, galaxies, run_params);
+                        ejected_mass = (mass_loading * 
+                                (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
+                                run_params->FeedbackReheatingEpsilon) * stars;
+                        break;
+                    }
+                case MASS_LOADING_LAGOS:
+                    {
+                        double z = run_params->ZZ[galaxies[centralgal].SnapNum];
+                        double mass_loading = calculate_lagos_mass_loading(merger_centralgal, z, galaxies, run_params);
+                        ejected_mass = (mass_loading * 
+                                (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
+                                run_params->FeedbackReheatingEpsilon) * stars;
+                        break;
+                    }
+                default:
+                    // Standard model
+                    ejected_mass = (run_params->FeedbackEjectionEfficiency * 
+                                (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
+                                run_params->FeedbackReheatingEpsilon) * stars;
+                    break;
+            }
+            
+            if(ejected_mass < 0.0) {
+                ejected_mass = 0.0;
+            }
         } else {
             ejected_mass = 0.0;
         }
-
-        if(ejected_mass < 0.0) {
-            ejected_mass = 0.0;
-        }
-    } else {
-        ejected_mass = 0.0;
     }
 
     if (galaxies[merger_centralgal].StellarMass > 1e10) {
