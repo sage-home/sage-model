@@ -111,15 +111,15 @@ IntegrationBins             15     %Number of radial bins to use for integration
 %----- ENVIRONMENT PARAMETERS -----
 %------------------------------------------
 
-EnvEffectStrength             50.0     % Strength of environmental effects (0.0-2.0)
+EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
 
 %------------------------------------------
 %----- CGM Building -----------------------
 %------------------------------------------
 
 CGMBuildVcrit  60.0        % Critical velocity scale (km/s)
-CGMBuildAlpha  0.5         % Power-law slope
-CGMBuildZdep   0.5         % Redshift dependence (0.5-1.0 recommended)
+CGMBuildAlpha  5.0         % Power-law slope
+CGMBuildZdep   5.0         % Redshift dependence (0.5-1.0 recommended)
 
 %------------------------------------------
 %----- SF Enhancement ---------------------
@@ -142,8 +142,8 @@ PostReionSlope           -1.0    % Evolution of critical mass after reionization
 %----- MASS-DEPENDANT REINCORPORATION -----
 %------------------------------------------
 
-CriticalReincMass           1.0      % critical mass in 10^10 Msun/h
-ReincorporationMassExp      1.0      % linear scaling with halo mass
+CriticalReincMass           5.0      % critical mass in 10^10 Msun/h
+ReincorporationMassExp      2.0      % linear scaling with halo mass
 MinReincorporationFactor    0.003    % minimum 10% of standard rate
 
 %------------------------------------------

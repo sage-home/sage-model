@@ -13,12 +13,12 @@
 
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, struct params *run_params)
 {
-    double tot_stellarMass, tot_BHMass, tot_coldMass, tot_hotMass, tot_ejected, tot_ICS;
-    double tot_ejectedMetals, tot_ICSMetals;
+    double tot_stellarMass, tot_BHMass, tot_coldMass, tot_hotMass, tot_CGM, tot_ICS;
+    double tot_CGMMetals, tot_ICSMetals;
     double infallingMass, reionization_modifier;
 
     // need to add up all the baryonic mass asociated with the full halo
-    tot_stellarMass = tot_coldMass = tot_hotMass = tot_ejected = tot_BHMass = tot_ejectedMetals = tot_ICS = tot_ICSMetals = 0.0;
+    tot_stellarMass = tot_coldMass = tot_hotMass = tot_CGM = tot_BHMass = tot_CGMMetals = tot_ICS = tot_ICSMetals = 0.0;
 
 	// loop over all galaxies in the FoF-halo
     for(int i = 0; i < ngal; i++) {
@@ -26,15 +26,15 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         tot_BHMass += galaxies[i].BlackHoleMass;
         tot_coldMass += galaxies[i].ColdGas;
         tot_hotMass += galaxies[i].HotGas;
-        tot_ejected += galaxies[i].EjectedMass;
-        tot_ejectedMetals += galaxies[i].MetalsEjectedMass;
+        tot_CGM += galaxies[i].CGMgas;
+        tot_CGMMetals += galaxies[i].MetalsCGMgas;
         tot_ICS += galaxies[i].ICS;
         tot_ICSMetals += galaxies[i].MetalsICS;
 
 
         if(i != centralgal) {
             // satellite ejected gas goes to central ejected reservior
-            galaxies[i].EjectedMass = galaxies[i].MetalsEjectedMass = 0.0;
+            galaxies[i].CGMgas = galaxies[i].MetalsCGMgas = 0.0;
 
             // satellite ICS goes to central ICS
             galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
@@ -56,21 +56,10 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     double cgm_fraction = 0.0;
     if (run_params->CGMBuildOn) {
         cgm_fraction = calculate_cgm(centralgal, Zcurr, galaxies, run_params);
-        
-        // NEW: Reduce CGM fraction for high-mass galaxies
-        if (galaxies[centralgal].Mvir > 10.0) {  // In 10^10 Msun/h units
-            double log_mvir = log10(galaxies[centralgal].Mvir * 1.0e10 / run_params->Hubble_h);
-            
-            if (log_mvir > 11.0) {
-                // Reduce CGM fraction by up to 50% for massive galaxies
-                double reduction = 0.9 * fmin(1.0, (log_mvir - 11.0) / 1.5);
-                cgm_fraction *= (1.0 - reduction);
-            }
-        }
     }
     
     // Calculate infall by subtracting existing baryons and CGM fraction from total baryon budget
-    double total_existing_baryons = tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS;
+    double total_existing_baryons = tot_stellarMass + tot_coldMass + tot_hotMass + tot_BHMass + tot_ICS;
     double cgm_mass = cgm_fraction * total_baryon_mass;
     
     // This is the actual amount available for infall after preventative effects
@@ -78,14 +67,6 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     
     // Update the CGM reservoir with the calculated mass
     galaxies[centralgal].CGMgas = cgm_mass;
-
-    // the central galaxy keeps all the ejected mass
-    galaxies[centralgal].EjectedMass = tot_ejected;
-    galaxies[centralgal].MetalsEjectedMass = tot_ejectedMetals;
-
-    if(galaxies[centralgal].MetalsEjectedMass > galaxies[centralgal].EjectedMass) {
-        galaxies[centralgal].MetalsEjectedMass = galaxies[centralgal].EjectedMass;
-    }
 
     if(galaxies[centralgal].CGMgas < 0.0) {
         galaxies[centralgal].CGMgas = galaxies[centralgal].MetalsCGMgas = 0.0;
@@ -128,7 +109,7 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
     }
 
     double strippedGas = -1.0 *
-        (reionization_modifier * run_params->BaryonFrac * galaxies[gal].Mvir - (galaxies[gal].StellarMass + galaxies[gal].ColdGas + galaxies[gal].HotGas + galaxies[gal].EjectedMass + galaxies[gal].BlackHoleMass + galaxies[gal].ICS) ) / STEPS;
+        (reionization_modifier * run_params->BaryonFrac * galaxies[gal].Mvir - (galaxies[gal].StellarMass + galaxies[gal].ColdGas + galaxies[gal].HotGas + galaxies[gal].CGMgas + galaxies[gal].BlackHoleMass + galaxies[gal].ICS) ) / STEPS;
     // ( reionization_modifier * run_params->BaryonFrac * galaxies[gal].deltaMvir ) / STEPS;
 
     if(strippedGas > 0.0) {
@@ -218,15 +199,15 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
     float metallicity;
 
     // if the halo has lost mass, subtract baryons from the ejected mass first, then the hot gas
-    if(infallingGas < 0.0 && galaxies[gal].EjectedMass > 0.0) {
-        metallicity = get_metallicity(galaxies[gal].EjectedMass, galaxies[gal].MetalsEjectedMass);
-        galaxies[gal].MetalsEjectedMass += infallingGas*metallicity;
-        if(galaxies[gal].MetalsEjectedMass < 0.0) galaxies[gal].MetalsEjectedMass = 0.0;
+    if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
+        metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
+        galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
+        if(galaxies[gal].MetalsCGMgas < 0.0) galaxies[gal].MetalsCGMgas = 0.0;
 
-        galaxies[gal].EjectedMass += infallingGas;
-        if(galaxies[gal].EjectedMass < 0.0) {
-            infallingGas = galaxies[gal].EjectedMass;
-            galaxies[gal].EjectedMass = galaxies[gal].MetalsEjectedMass = 0.0;
+        galaxies[gal].CGMgas += infallingGas;
+        if(galaxies[gal].CGMgas < 0.0) {
+            infallingGas = galaxies[gal].CGMgas;
+            galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
         } else {
             infallingGas = 0.0;
         }
@@ -288,8 +269,8 @@ double calculate_cgm(const int gal, const double z, struct GALAXY *galaxies, con
     
     // Apply additional suppression for intermediate-mass halos at high-z
     if (z > 0.01 && vvir > 5.0 && vvir < 550.0) {
-        double peak_suppress = (z - 0.01) / 2.0;  // Increased from 0.3 to 0.5
-        if (peak_suppress > 1.0) peak_suppress = 1.0;  // Increased cap from 0.5 to 0.7
+        double peak_suppress = 0.9 * (z - 0.01) / 2.0;  // Increased from 0.3 to 0.5
+        if (peak_suppress > 0.9) peak_suppress = 0.9;  // Increased cap from 0.5 to 0.7
         
         double v_relative = (vvir - 550.0) / 5.0;
         double extra_suppress = peak_suppress * exp(-v_relative * v_relative);
