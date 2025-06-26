@@ -181,16 +181,18 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
 
                 if (prog == first_occupied) {
                     // Update galaxy properties for new host halo
-                    GALAXY_PROP_MostBoundID(&temp_galaxy) = halos[halonr].MostBoundID;
                     for(int j = 0; j < 3; j++) {
                         GALAXY_PROP_Pos(&temp_galaxy)[j] = halos[halonr].Pos[j];
                         GALAXY_PROP_Vel(&temp_galaxy)[j] = halos[halonr].Vel[j];
+                        GALAXY_PROP_Spin(&temp_galaxy)[j] = halos[halonr].Spin[j];
                     }
+                    GALAXY_PROP_MostBoundID(&temp_galaxy) = halos[halonr].MostBoundID;
                     GALAXY_PROP_Len(&temp_galaxy) = halos[halonr].Len;
                     GALAXY_PROP_Vmax(&temp_galaxy) = halos[halonr].Vmax;
 
                     float new_mvir = get_virial_mass(halonr, halos, run_params);
                     GALAXY_PROP_deltaMvir(&temp_galaxy) = new_mvir - GALAXY_PROP_Mvir(&temp_galaxy);
+                    
                     GALAXY_PROP_Mvir(&temp_galaxy) = new_mvir;
                     GALAXY_PROP_Rvir(&temp_galaxy) = get_virial_radius(halonr, halos, run_params);
                     GALAXY_PROP_Vvir(&temp_galaxy) = get_virial_velocity(halonr, halos, run_params);
