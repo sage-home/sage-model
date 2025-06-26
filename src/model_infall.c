@@ -26,15 +26,15 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         tot_BHMass += galaxies[i].BlackHoleMass;
         tot_coldMass += galaxies[i].ColdGas;
         tot_hotMass += galaxies[i].HotGas;
-        tot_ejected += galaxies[i].EjectedMass;
-        tot_ejectedMetals += galaxies[i].MetalsEjectedMass;
+        tot_ejected += galaxies[i].CGMgas;
+        tot_ejectedMetals += galaxies[i].MetalsCGMgas;
         tot_ICS += galaxies[i].ICS;
         tot_ICSMetals += galaxies[i].MetalsICS;
 
 
         if(i != centralgal) {
             // satellite ejected gas goes to central ejected reservior
-            galaxies[i].EjectedMass = galaxies[i].MetalsEjectedMass = 0.0;
+            galaxies[i].CGMgas = galaxies[i].MetalsCGMgas = 0.0;
 
             // satellite ICS goes to central ICS
             galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
@@ -80,11 +80,11 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     galaxies[centralgal].CGMgas = cgm_mass;
 
     // the central galaxy keeps all the ejected mass
-    galaxies[centralgal].EjectedMass = tot_ejected;
-    galaxies[centralgal].MetalsEjectedMass = tot_ejectedMetals;
+    galaxies[centralgal].CGMgas = tot_ejected;
+    galaxies[centralgal].MetalsCGMgas = tot_ejectedMetals;
 
-    if(galaxies[centralgal].MetalsEjectedMass > galaxies[centralgal].EjectedMass) {
-        galaxies[centralgal].MetalsEjectedMass = galaxies[centralgal].EjectedMass;
+    if(galaxies[centralgal].MetalsCGMgas > galaxies[centralgal].CGMgas) {
+        galaxies[centralgal].MetalsCGMgas = galaxies[centralgal].CGMgas;
     }
 
     if(galaxies[centralgal].CGMgas < 0.0) {
@@ -128,7 +128,7 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
     }
 
     double strippedGas = -1.0 *
-        (reionization_modifier * run_params->BaryonFrac * galaxies[gal].Mvir - (galaxies[gal].StellarMass + galaxies[gal].ColdGas + galaxies[gal].HotGas + galaxies[gal].EjectedMass + galaxies[gal].BlackHoleMass + galaxies[gal].ICS) ) / STEPS;
+        (reionization_modifier * run_params->BaryonFrac * galaxies[gal].Mvir - (galaxies[gal].StellarMass + galaxies[gal].ColdGas + galaxies[gal].HotGas + galaxies[gal].CGMgas + galaxies[gal].BlackHoleMass + galaxies[gal].ICS) ) / STEPS;
     // ( reionization_modifier * run_params->BaryonFrac * galaxies[gal].deltaMvir ) / STEPS;
 
     if(strippedGas > 0.0) {
@@ -218,15 +218,15 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
     float metallicity;
 
     // if the halo has lost mass, subtract baryons from the ejected mass first, then the hot gas
-    if(infallingGas < 0.0 && galaxies[gal].EjectedMass > 0.0) {
-        metallicity = get_metallicity(galaxies[gal].EjectedMass, galaxies[gal].MetalsEjectedMass);
-        galaxies[gal].MetalsEjectedMass += infallingGas*metallicity;
-        if(galaxies[gal].MetalsEjectedMass < 0.0) galaxies[gal].MetalsEjectedMass = 0.0;
+    if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
+        metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
+        galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
+        if(galaxies[gal].MetalsCGMgas < 0.0) galaxies[gal].MetalsCGMgas = 0.0;
 
-        galaxies[gal].EjectedMass += infallingGas;
-        if(galaxies[gal].EjectedMass < 0.0) {
-            infallingGas = galaxies[gal].EjectedMass;
-            galaxies[gal].EjectedMass = galaxies[gal].MetalsEjectedMass = 0.0;
+        galaxies[gal].CGMgas += infallingGas;
+        if(galaxies[gal].CGMgas < 0.0) {
+            infallingGas = galaxies[gal].CGMgas;
+            galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
         } else {
             infallingGas = 0.0;
         }
