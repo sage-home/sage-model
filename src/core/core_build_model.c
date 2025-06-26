@@ -98,6 +98,54 @@ void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struc
  * instead of relying on auxiliary data, eliminating memory corruption issues
  * while still resolving the original bug where progenitor galaxies weren't inherited.
  */
+/**
+ * Find the most massive occupied progenitor for a given halo.
+ * Returns the progenitor index, or -1 if none found.
+ */
+static int find_most_massive_occupied_progenitor(int halonr,
+                                                 struct halo_data* halos,
+                                                 const GalaxyArray* prev_galaxies) {
+    int first_occupied = halos[halonr].FirstProgenitor;
+    int prog = halos[halonr].FirstProgenitor;
+
+    if (!prev_galaxies || prog < 0)
+        return first_occupied;
+
+    struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)prev_galaxies);
+    int ngal = galaxy_array_get_count(prev_galaxies);
+
+    // Check if FirstProgenitor has galaxies
+    int galaxy_count = 0;
+    for (int i = 0; i < ngal; i++) {
+        struct GALAXY* g = &galaxies_prev_raw[i];
+        if (g && GALAXY_PROP_HaloNr(g) == prog) {
+            galaxy_count++;
+        }
+    }
+    if (galaxy_count > 0) {
+        return first_occupied;  // Early return if FirstProgenitor is occupied
+    }
+
+    // Search for most massive occupied progenitor
+    int lenoccmax = 0;
+    prog = halos[halonr].FirstProgenitor;
+    while (prog >= 0) {
+        int prog_galaxy_count = 0;
+        for (int i = 0; i < ngal; i++) {
+            struct GALAXY* g = &galaxies_prev_raw[i];
+            if (g && GALAXY_PROP_HaloNr(g) == prog) {
+                prog_galaxy_count++;
+            }
+        }
+        if (halos[prog].Len > lenoccmax && prog_galaxy_count > 0) {
+            lenoccmax = halos[prog].Len;
+            first_occupied = prog;
+        }
+        prog = halos[prog].NextProgenitor;
+    }
+    return first_occupied;
+}
+
 static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr, GalaxyArray *temp_fof_galaxies,
                                          int32_t *galaxycounter, struct halo_data *halos,
                                          const GalaxyArray *galaxies_prev_snap, struct params *run_params, bool *processed_flags)
@@ -122,35 +170,15 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
     
     struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)galaxies_prev_snap);
     int ngal_prev = galaxy_array_get_count(galaxies_prev_snap);
-    
-    // We use a two-pass approach to handle progenitor inheritance efficiently.
-    // Pass 1: Find the most massive progenitor that contains at least one galaxy.
-    // This galaxy will be the one that inherits the primary properties of the descendant halo.
-    int first_occupied = -1;
-    int lenoccmax = 0;
-    
-    int prog = halos[halonr].FirstProgenitor;
-    while (prog >= 0) {
-        // Count galaxies in this progenitor halo
-        int galaxies_in_prog = 0;
-        for (int i = 0; i < ngal_prev; i++) {
-            if (GALAXY_PROP_HaloNr(&galaxies_prev_raw[i]) == prog) {
-                galaxies_in_prog++;
-            }
-        }
-        
-        if (galaxies_in_prog > 0 && halos[prog].Len > lenoccmax) {
-            lenoccmax = halos[prog].Len;
-            first_occupied = prog;
-        }
-        prog = halos[prog].NextProgenitor;
-    }
+
+    // Pass 1: Find the most massive occupied progenitor
+    int first_occupied = find_most_massive_occupied_progenitor(halonr, halos, galaxies_prev_snap);
 
     // Pass 2: Iterate through all progenitors again. Copy galaxies, classifying them
     // as central, satellite, or orphan based on whether they belong to the
     // 'first_occupied' progenitor halo.
     int galaxies_added_for_halo = 0;
-    prog = halos[halonr].FirstProgenitor;
+    int prog = halos[halonr].FirstProgenitor;
     while (prog >= 0) {
         // Scan for galaxies belonging to this progenitor halo
         for (int i = 0; i < ngal_prev; i++) {
