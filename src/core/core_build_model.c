@@ -76,29 +76,6 @@ void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struc
     }
 }
 
-
-/**
- * @brief Progenitor inheritance processor with type classification - direct galaxy scanning approach
- * @param halonr Current halo number
- * @param fof_halonr FOF group root halo number
- * @param temp_fof_galaxies Output FOF galaxy array (direct append)
- * @param galaxycounter Global galaxy counter
- * @param halos Halo data array
- * @param galaxies_prev_snap Previous snapshot galaxies
- * @param run_params SAGE parameters structure
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
- * 
- * Called by: process_halo_galaxies()
- * Calls: deep_copy_galaxy() - duplicate galaxy safely
- *        get_virial_mass() - calculate halo virial mass
- *        init_galaxy() - create new galaxy
- *        galaxy_array_append() - add directly to FOF array
- * 
- * CRITICAL FIX: This function now scans the previous snapshot's galaxies directly
- * instead of relying on auxiliary data, eliminating memory corruption issues
- * while still resolving the original bug where progenitor galaxies weren't inherited.
- */
-
 /**
  * Find the most massive occupied progenitor for a given halo.
  * Returns the progenitor index, defaulting to FirstProgenitor
@@ -147,6 +124,24 @@ static int find_most_massive_occupied_progenitor(int halonr,
     return first_occupied;
 }
 
+/**
+ * @brief Progenitor inheritance processor with type classification - direct galaxy scanning approach
+ * @param halonr Current halo number
+ * @param fof_halonr FOF group root halo number
+ * @param temp_fof_galaxies Output FOF galaxy array (direct append)
+ * @param galaxycounter Global galaxy counter
+ * @param halos Halo data array
+ * @param galaxies_prev_snap Previous snapshot galaxies
+ * @param run_params SAGE parameters structure
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
+ * 
+ * Called by: process_halo_galaxies()
+ * Calls: deep_copy_galaxy() - duplicate galaxy safely
+ *        get_virial_mass() - calculate halo virial mass
+ *        init_galaxy() - create new galaxy
+ *        galaxy_array_append() - add directly to FOF array
+ * 
+ */
 static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr, GalaxyArray *temp_fof_galaxies,
                                          int32_t *galaxycounter, struct halo_data *halos,
                                          const GalaxyArray *galaxies_prev_snap, struct params *run_params, bool *processed_flags)
