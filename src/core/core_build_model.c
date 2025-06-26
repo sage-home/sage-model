@@ -98,9 +98,10 @@ void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struc
  * instead of relying on auxiliary data, eliminating memory corruption issues
  * while still resolving the original bug where progenitor galaxies weren't inherited.
  */
+
 /**
  * Find the most massive occupied progenitor for a given halo.
- * Returns the progenitor index, or -1 if none found.
+ * Returns the progenitor index, defaulting to FirstProgenitor
  */
 static int find_most_massive_occupied_progenitor(int halonr,
                                                  struct halo_data* halos,
