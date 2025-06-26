@@ -89,6 +89,8 @@ struct HDF5_GALAXY_OUTPUT
     float *infallMvir;
     float *infallVvir;
     float *infallVmax;
+    float *infallToCGM;  // NEW: Infall to CGM
+    float *infallToHot;  // NEW: Infall to Hot gas reservoir
 
     float *CGMgas;
     float *MetalsCGMgas;

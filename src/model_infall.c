@@ -17,10 +17,9 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     double tot_ejectedMetals, tot_ICSMetals;
     double infallingMass, reionization_modifier;
 
-    // need to add up all the baryonic mass asociated with the full halo
+    // Calculate total baryonic mass in the halo
     tot_stellarMass = tot_coldMass = tot_hotMass = tot_ejected = tot_BHMass = tot_ejectedMetals = tot_ICS = tot_ICSMetals = 0.0;
 
-	// loop over all galaxies in the FoF-halo
     for(int i = 0; i < ngal; i++) {
         tot_stellarMass += galaxies[i].StellarMass;
         tot_BHMass += galaxies[i].BlackHoleMass;
@@ -31,87 +30,88 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         tot_ICS += galaxies[i].ICS;
         tot_ICSMetals += galaxies[i].MetalsICS;
 
-
         if(i != centralgal) {
-            // satellite ejected gas goes to central ejected reservior
+            // satellite ejected gas goes to central reservior
             galaxies[i].CGMgas = galaxies[i].MetalsCGMgas = 0.0;
-
-            // satellite ICS goes to central ICS
             galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
         }
     }
 
-    // include reionization if necessary
+    // Apply reionization modifier
     if(run_params->ReionizationOn) {
         reionization_modifier = do_reionization_enhanced(centralgal, Zcurr, galaxies, run_params);
     } else {
         reionization_modifier = 1.0;
     }
 
-   
-    // Calculate the total available baryon mass
-    double total_baryon_mass = reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].Mvir;
+    // Calculate total baryon budget
+    double total_baryon_budget = reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].Mvir;
     
-    // Calculate how much of that should go to the CGM (but don't update CGM yet)
+    // Calculate existing baryons  
+    double total_existing_baryons = tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS;
+    
+    // Calculate how much mass should be added this timestep
+    double total_infall_this_timestep = total_baryon_budget - total_existing_baryons;
+    
+    // Handle case where halo has lost mass (negative infall)
+    if (total_infall_this_timestep < 0.0) {
+        total_infall_this_timestep = 0.0;  // No infall if halo lost mass
+    }
+
+    // Calculate CGM fraction using preventative feedback
     double cgm_fraction = 0.0;
-    if (run_params->CGMBuildOn) {
+    if (run_params->CGMBuildOn && total_infall_this_timestep > 0.0) {
         cgm_fraction = calculate_cgm(centralgal, Zcurr, galaxies, run_params);
         
-        // NEW: Reduce CGM fraction for high-mass galaxies
-        if (galaxies[centralgal].Mvir > 10.0) {  // In 10^10 Msun/h units
+        // Reduce CGM fraction for high-mass galaxies
+        if (galaxies[centralgal].Mvir > 10.0) {
             double log_mvir = log10(galaxies[centralgal].Mvir * 1.0e10 / run_params->Hubble_h);
-            
             if (log_mvir > 11.0) {
-                // Reduce CGM fraction by up to 50% for massive galaxies
                 double reduction = 0.9 * fmin(1.0, (log_mvir - 11.0) / 1.5);
                 cgm_fraction *= (1.0 - reduction);
             }
         }
     }
     
-    // Calculate infall by subtracting existing baryons and CGM fraction from total baryon budget
-    double total_existing_baryons = tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS;
-    double cgm_mass = cgm_fraction * total_baryon_mass;
+    // Split the infall between CGM and hot gas
+    double cgm_infall_this_timestep = cgm_fraction * total_infall_this_timestep;
+    double hot_infall_this_timestep = (1.0 - cgm_fraction) * total_infall_this_timestep;
     
-    // This is the actual amount available for infall after preventative effects
-    infallingMass = total_baryon_mass - cgm_mass - total_existing_baryons;
+    // Track infall for output (these are total amounts per timestep, will be converted to rates later)
+    // DON'T ACCUMULATE HERE - this is called once per halo
+    galaxies[centralgal].infallToCGM = cgm_infall_this_timestep;  // Total for this timestep
+    // Note: infallToHot will be tracked in add_infall_to_hot()
     
-    // Update the CGM reservoir with the calculated mass
-    galaxies[centralgal].CGMgas = cgm_mass;
+    // Update CGM reservoir
+    galaxies[centralgal].CGMgas = tot_ejected + cgm_infall_this_timestep;
+    galaxies[centralgal].MetalsCGMgas = tot_ejectedMetals; // CGM infall assumed primordial for now
 
-    // the central galaxy keeps all the ejected mass
-    galaxies[centralgal].CGMgas = tot_ejected;
-    galaxies[centralgal].MetalsCGMgas = tot_ejectedMetals;
-
+    // Ensure CGM consistency
     if(galaxies[centralgal].MetalsCGMgas > galaxies[centralgal].CGMgas) {
         galaxies[centralgal].MetalsCGMgas = galaxies[centralgal].CGMgas;
     }
-
     if(galaxies[centralgal].CGMgas < 0.0) {
         galaxies[centralgal].CGMgas = galaxies[centralgal].MetalsCGMgas = 0.0;
     }
-
     if(galaxies[centralgal].MetalsCGMgas < 0.0) {
         galaxies[centralgal].MetalsCGMgas = 0.0;
     }
 
-    // the central galaxy keeps all the ICS (mostly for numerical convenience)
+    // Handle ICS
     galaxies[centralgal].ICS = tot_ICS;
     galaxies[centralgal].MetalsICS = tot_ICSMetals;
-
     if(galaxies[centralgal].MetalsICS > galaxies[centralgal].ICS) {
         galaxies[centralgal].MetalsICS = galaxies[centralgal].ICS;
     }
-
     if(galaxies[centralgal].ICS < 0.0) {
         galaxies[centralgal].ICS = galaxies[centralgal].MetalsICS = 0.0;
     }
-
     if(galaxies[centralgal].MetalsICS < 0.0) {
         galaxies[centralgal].MetalsICS = 0.0;
     }
 
-    return infallingMass;
+    // Return the amount that should go to hot gas (will be split over STEPS)
+    return hot_infall_this_timestep;
 }
 
 
@@ -216,6 +216,7 @@ double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxie
 void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies)
 {
     float metallicity;
+    double previous_hot_gas = galaxies[gal].HotGas;
 
     // if the halo has lost mass, subtract baryons from the ejected mass first, then the hot gas
     if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
@@ -242,6 +243,12 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
     // add (subtract) the ambient (enriched) infalling gas to the central galaxy hot component
     galaxies[gal].HotGas += infallingGas;
     if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
+
+    // NEW: Track net inflow to hot gas (only positive inflows)
+    double hot_gas_inflow = galaxies[gal].HotGas - previous_hot_gas;
+    if(hot_gas_inflow > 0.0) {
+        galaxies[gal].infallToHot += hot_gas_inflow;
+    }
 
 }
 

@@ -65,10 +65,19 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
             reincorporated = galaxies[centralgal].CGMgas;
 
         const double metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
+        // Track the hot gas before reincorporation
+        double previous_hot_gas = galaxies[centralgal].HotGas;
+        
         galaxies[centralgal].CGMgas -= reincorporated;
         galaxies[centralgal].MetalsCGMgas -= metallicity * reincorporated;
         galaxies[centralgal].HotGas += reincorporated;
         galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
+
+        // NEW: Track reincorporation as infall to hot gas
+        double hot_gas_increase = galaxies[centralgal].HotGas - previous_hot_gas;
+        if(hot_gas_increase > 0.0) {
+            galaxies[centralgal].infallToHot += hot_gas_increase;
+        }
 
         // Apply targeted suppression
         if (run_params->LowMassHighzSuppressionOn == 1) {
