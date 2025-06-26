@@ -169,6 +169,9 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
     galaxies[t].HotGas += galaxies[p].HotGas;
     galaxies[t].MetalsHotGas += galaxies[p].MetalsHotGas;
 
+    //galaxies[t].EjectedMass += galaxies[p].EjectedMass;
+    //galaxies[t].MetalsEjectedMass += galaxies[p].MetalsEjectedMass;
+
     galaxies[t].CGMgas += galaxies[p].CGMgas;
     galaxies[t].MetalsCGMgas += galaxies[p].MetalsCGMgas;
 
@@ -296,46 +299,21 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // recompute the metallicity of the cold phase
     metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
 
+    // determine ejection
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
-            
-            // Use consistent mass loading based on the chosen model
-            switch(run_params->MassLoadingModel) {
-                case MASS_LOADING_MURATOV:
-                    {
-                        double z = run_params->ZZ[galaxies[centralgal].SnapNum];
-                        double mass_loading = calculate_muratov_mass_loading(merger_centralgal, z, galaxies, run_params);
-                        ejected_mass = (mass_loading * 
-                                (run_params->EtaSNcode * run_params->EnergySNcode) / 
-                                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
-                                run_params->FeedbackReheatingEpsilon) * stars;
-                        break;
-                    }
-                case MASS_LOADING_LAGOS:
-                    {
-                        double z = run_params->ZZ[galaxies[centralgal].SnapNum];
-                        double mass_loading = calculate_lagos_mass_loading(merger_centralgal, z, galaxies, run_params);
-                        ejected_mass = (mass_loading * 
-                                (run_params->EtaSNcode * run_params->EnergySNcode) / 
-                                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
-                                run_params->FeedbackReheatingEpsilon) * stars;
-                        break;
-                    }
-                default:
-                    // Standard model
-                    ejected_mass = (run_params->FeedbackEjectionEfficiency * 
-                                (run_params->EtaSNcode * run_params->EnergySNcode) / 
-                                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
-                                run_params->FeedbackReheatingEpsilon) * stars;
-                    break;
-            }
-            
-            if(ejected_mass < 0.0) {
-                ejected_mass = 0.0;
-            }
+            ejected_mass =
+                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                 run_params->FeedbackReheatingEpsilon) * stars;
         } else {
             ejected_mass = 0.0;
         }
+
+        if(ejected_mass < 0.0) {
+            ejected_mass = 0.0;
+        }
+    } else {
+        ejected_mass = 0.0;
     }
 
     if (galaxies[merger_centralgal].StellarMass > 1e10) {
@@ -358,8 +336,10 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
         galaxies[merger_centralgal].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
         galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * FracZleaveDiskVal * stars;
     } else {
         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * stars;
     }
 }
 
@@ -369,6 +349,9 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
 {
     galaxies[centralgal].HotGas += galaxies[gal].ColdGas + galaxies[gal].HotGas;
     galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas;
+
+    //galaxies[centralgal].EjectedMass += galaxies[gal].EjectedMass;
+    //galaxies[centralgal].MetalsEjectedMass += galaxies[gal].MetalsEjectedMass;
 
     galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
     galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;
