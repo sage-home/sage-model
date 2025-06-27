@@ -457,7 +457,7 @@ struct params
     double RecycleFraction;
     double Yield;
     double FracZleaveDisk;
-    double ReIncorporationFactor;
+    double inflowFactor;
     double ThreshMajorMerger;
     double BaryonFrac;
     double SfrEfficiency;

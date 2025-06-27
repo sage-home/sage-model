@@ -6,11 +6,11 @@
 
 #include "core_allvars.h"
 
-#include "model_reincorporation.h"
+#include "model_inflow.h"
 #include "model_misc.h"
 #include "model_lowmass_suppression.h"
 
-void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+void inflow_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
     
     // Get current redshift for this galaxy
@@ -18,11 +18,11 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
     
     // SN velocity is 630km/s, and the condition for reincorporation is that the
     // halo has an escape velocity greater than this, i.e. V_SN/sqrt(2) = 445.48km/s
-    const double Vcrit = 445.48 * run_params->ReIncorporationFactor;
+    const double Vcrit = 445.48 * run_params->inflowFactor;
 
     if(galaxies[centralgal].Vvir > Vcrit) {
-        // Traditional reincorporation calculation
-        double base_reincorporation_rate = 
+        // Traditional inflow calculation
+        double base_inflow_rate = 
             (galaxies[centralgal].Vvir / Vcrit - 1.0) * 
             galaxies[centralgal].CGMgas / (galaxies[centralgal].Rvir / galaxies[centralgal].Vvir);
 
@@ -57,24 +57,24 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
             // Apply to total scaling
             total_scaling *= redshift_factor;
         }
-        
-        // Calculate final reincorporation amount
-        double reincorporated = base_reincorporation_rate * total_scaling * dt;
 
-        if(reincorporated > galaxies[centralgal].CGMgas)
-            reincorporated = galaxies[centralgal].CGMgas;
+        // Calculate final inflow amount
+        double inflowed = base_inflow_rate * total_scaling * dt;
+
+        if(inflowed > galaxies[centralgal].CGMgas)
+            inflowed = galaxies[centralgal].CGMgas;
 
         const double metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
-        galaxies[centralgal].CGMgas -= reincorporated;
-        galaxies[centralgal].MetalsCGMgas -= metallicity * reincorporated;
-        galaxies[centralgal].HotGas += reincorporated;
-        galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
+        galaxies[centralgal].CGMgas -= inflowed;
+        galaxies[centralgal].MetalsCGMgas -= metallicity * inflowed;
+        galaxies[centralgal].HotGas += inflowed;
+        galaxies[centralgal].MetalsHotGas += metallicity * inflowed;
 
         // Apply targeted suppression
         if (run_params->LowMassHighzSuppressionOn == 1) {
             double z = run_params->ZZ[galaxies[centralgal].SnapNum];
             double suppression = calculate_lowmass_suppression(centralgal, z, galaxies, run_params);
-            reincorporated *= suppression;
+            inflowed *= suppression;
         }
     }
 }

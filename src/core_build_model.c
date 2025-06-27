@@ -16,7 +16,7 @@
 #include "model_misc.h"
 #include "model_mergers.h"
 #include "model_infall.h"
-#include "model_reincorporation.h"
+#include "model_inflow.h"
 #include "model_starformation_and_feedback.h"
 #include "model_cooling_heating.h"
 
@@ -345,8 +345,8 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 // Add hot gas infall (split over STEPS)
                 add_infall_to_hot(centralgal, hot_infall_total / STEPS, galaxies);
 
-                if(run_params->ReIncorporationFactor > 0.0) {
-                    reincorporate_gas(centralgal, deltaT / STEPS, galaxies, run_params);
+                if(run_params->inflowFactor > 0.0) {
+                    inflow_gas(centralgal, deltaT / STEPS, galaxies, run_params);
                 }
             } else {
                 if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {

@@ -1222,7 +1222,7 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", run_params->SfrEfficiency, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackReheatingEpsilon", run_params->FeedbackReheatingEpsilon, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackEjectionEfficiency", run_params->FeedbackEjectionEfficiency, H5T_NATIVE_DOUBLE);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReIncorporationFactor", run_params->ReIncorporationFactor, H5T_NATIVE_DOUBLE);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "inflowFactor", run_params->inflowFactor, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "RadioModeEfficiency", run_params->RadioModeEfficiency, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "QuasarModeEfficiency", run_params->QuasarModeEfficiency, H5T_NATIVE_DOUBLE);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "BlackHoleGrowthRate", run_params->BlackHoleGrowthRate, H5T_NATIVE_DOUBLE);

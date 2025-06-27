@@ -58,7 +58,7 @@ DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through i
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects on H2 gas
 % CGMBuildOn                  1   %0: switch off; 1: enable CGM building
-VvirEnhancementOn           0   %0: switch off; 1: enable virial velocity enhancement
+VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
 MassReincorporationOn       0   %0: switch off; 1: enable mass-dependent reincorporation
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
@@ -74,7 +74,7 @@ SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
 FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
-ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
+inflowFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 
 RadioModeEfficiency     0.08   %AGN radio mode efficiency (AGNrecipeOn=2)
 QuasarModeEfficiency    0.005  %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
@@ -112,14 +112,6 @@ IntegrationBins             15     %Number of radial bins to use for integration
 %------------------------------------------
 
 EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
-
-%------------------------------------------
-%----- CGM Building -----------------------
-%------------------------------------------
-
-%CGMBuildVcrit  5.0        % Critical velocity scale (km/s)
-%CGMBuildAlpha  0.7         % Power-law slope
-%CGMBuildZdep   0.8         % Redshift dependence (0.5-1.0 recommended)
 
 %------------------------------------------
 %----- SF Enhancement ---------------------

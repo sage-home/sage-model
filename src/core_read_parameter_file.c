@@ -105,8 +105,8 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->RecycleFraction);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "ReIncorporationFactor", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ReIncorporationFactor);
+    strncpy(ParamTag[NParam], "inflowFactor", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->inflowFactor);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "UnitVelocity_in_cm_per_s", MAXTAGLEN);
