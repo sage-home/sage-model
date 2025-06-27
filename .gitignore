@@ -108,6 +108,7 @@ xx*
 yy*
 *.hdf5
 *.code-workspace
+.env
 
 # sage_analysis Package Stuff #
 *.egg-info
