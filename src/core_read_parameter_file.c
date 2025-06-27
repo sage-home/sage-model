@@ -338,6 +338,28 @@ int read_parameter_file(const char *fname, struct params *run_params)
     strncpy(ParamTag[NParam], "VvirEnhancementPower", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->VvirEnhancementPower);
     ParamID[NParam++] = DOUBLE;
+
+    run_params->CGMInfallFraction = 0.8;      // 80% through CGM first  
+    run_params->CGMTransferEfficiency = 0.1;  // 10% transfer efficiency
+    run_params->CGMPristineFraction = 0.7;    // 70% pristine
+    run_params->CGMMixingTimescale = 0.5;     // 0.5 Gyr mixing
+
+    strncpy(ParamTag[NParam], "CGMInfallFraction", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMInfallFraction);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "CGMTransferEfficiency", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMTransferEfficiency);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "CGMPristineFraction", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMPristineFraction);
+    ParamID[NParam++] = DOUBLE;
+    
+    strncpy(ParamTag[NParam], "CGMMixingTimescale", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMMixingTimescale);
+    ParamID[NParam++] = DOUBLE; 
+   
     
 
     used_tag = mymalloc(sizeof(int) * NParam);

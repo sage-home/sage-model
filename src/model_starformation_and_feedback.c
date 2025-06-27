@@ -330,12 +330,10 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         // Update the reservoirs
         galaxies[centralgal].HotGas -= adjusted_ejected_mass;
         galaxies[centralgal].MetalsHotGas -= metallicityHot * adjusted_ejected_mass;
-
-        // galaxies[centralgal].CGMgas = 0.0;
-        // galaxies[centralgal].MetalsCGMgas = 0.0;
         
         // Add to CGM
         galaxies[centralgal].CGMgas += adjusted_ejected_mass;
+        galaxies[centralgal].CGMgas_enriched += adjusted_ejected_mass;  // NEW: Add this line (ejected gas is enriched)
         galaxies[centralgal].MetalsCGMgas += metallicityHot * adjusted_ejected_mass;
 
         galaxies[p].OutflowRate += adjusted_reheated_mass;

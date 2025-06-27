@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_CGMfirst/
 
 FirstFile         0
 LastFile          7
@@ -57,7 +57,7 @@ ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects on H2 gas
-VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
+VvirEnhancementOn           0   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
 
@@ -137,6 +137,14 @@ Ejection_Alpha            0.0   %controls redshift dependence of ejection
 SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
 SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
 SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
+
+
+% CGM Infall and Mixing Parameters
+CGMInfallFraction      1.0     % 100% of infall goes through CGM first
+CGMTransferEfficiency  0.1     % 10% transfer efficiency per dynamical time
+CGMPristineFraction    0.7     % 70% of CGM infall is pristine
+CGMMixingTimescale     0.5     % 0.5 Gyr mixing timescale
+
 
 %------------------------------------------
 %----- Other code-related information -----

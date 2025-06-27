@@ -163,6 +163,12 @@ struct GALAXY
     float infallMvir;
     float infallVvir;
     float infallVmax;
+
+    float CGMgas_pristine;      // NEW: Pristine (metal-free) CGM gas
+    float CGMgas_enriched;      // NEW: Pre-enriched CGM gas
+    float InfallRate_to_CGM;        // NEW: Rate of infall to CGM
+    float InfallRate_to_Hot;        // NEW: Rate of direct infall to hot  
+    float TransferRate_CGM_to_Hot;  // NEW: Rate of CGM→Hot transfer
 };
 
 
@@ -479,6 +485,12 @@ struct params
     int32_t VvirEnhancementOn;        // Flag to enable/disable virial velocity enhancement
     double VvirThreshold;           // Virial velocity threshold for SF enhancement (km/s)
     double VvirEnhancementPower;    // Power-law exponent for velocity enhancement
+
+    /* CGM infall and mixing parameters */
+    double CGMInfallFraction;      // Fraction of infall through CGM first (0.0-1.0)
+    double CGMTransferEfficiency;  // CGM to hot transfer efficiency 
+    double CGMPristineFraction;    // Fraction of CGM infall that's pristine
+    double CGMMixingTimescale;     // Mixing timescale in Gyrs
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

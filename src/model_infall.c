@@ -175,36 +175,83 @@ double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxie
 
 
 
-void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies)
+void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies, 
+                       const struct params *run_params)
 {
     float metallicity;
 
-    // if the halo has lost mass, subtract baryons from the ejected mass first, then the hot gas
+    // Handle negative infall (halo mass loss) - same as before
     if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
         metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
         galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
         if(galaxies[gal].MetalsCGMgas < 0.0) galaxies[gal].MetalsCGMgas = 0.0;
 
         galaxies[gal].CGMgas += infallingGas;
+        // NEW: Also adjust CGM components
         if(galaxies[gal].CGMgas < 0.0) {
             infallingGas = galaxies[gal].CGMgas;
             galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
+            galaxies[gal].CGMgas_pristine = galaxies[gal].CGMgas_enriched = 0.0;  // NEW
         } else {
             infallingGas = 0.0;
         }
     }
 
-    // if the halo has lost mass, subtract hot metals mass next, then the hot gas
     if(infallingGas < 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
         metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
         galaxies[gal].MetalsHotGas += infallingGas*metallicity;
         if(galaxies[gal].MetalsHotGas < 0.0) galaxies[gal].MetalsHotGas = 0.0;
+
+        galaxies[gal].HotGas += infallingGas;
+        if(galaxies[gal].HotGas < 0.0) {
+            galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
+        }
+    } else if(infallingGas > 0.0) {
+        // NEW: Enhanced positive infall routing
+        // Debug: Print before modification
+        // if(gal == 0) {
+        //     printf("DEBUG: Before infall - CGM total: %.6f, pristine: %.6f, enriched: %.6f\n",
+        //            galaxies[gal].CGMgas, galaxies[gal].CGMgas_pristine, galaxies[gal].CGMgas_enriched);
+        // }
+        
+        // Split infall between direct-to-hot and CGM pathways
+        double cgm_pathway = infallingGas * run_params->CGMInfallFraction;
+        double direct_pathway = infallingGas * (1.0 - run_params->CGMInfallFraction);
+        
+        // Direct pathway (original behavior)
+        if(direct_pathway > 0.0) {
+            galaxies[gal].HotGas += direct_pathway;
+            galaxies[gal].MetalsHotGas += direct_pathway * 0.0;  // Primordial gas has no metals
+
+            // NEW: Track direct infall to hot
+            galaxies[gal].InfallRate_to_Hot += direct_pathway;
+        }
+        
+        // CGM pathway (new behavior) 
+        if(cgm_pathway > 0.0) {
+            double pristine_gas = cgm_pathway * run_params->CGMPristineFraction;
+            double enriched_gas = cgm_pathway * (1.0 - run_params->CGMPristineFraction);
+            
+            galaxies[gal].CGMgas += cgm_pathway;
+            galaxies[gal].CGMgas_pristine += pristine_gas;
+            galaxies[gal].CGMgas_enriched += enriched_gas;
+            
+            // Only enriched gas has metals (pristine has zero by definition)
+            // Following existing pattern: 0.3 * 0.02 = 0.006 (30% of solar metallicity)
+            double enriched_metallicity = 0.3 * 0.02;
+            galaxies[gal].MetalsCGMgas += enriched_gas * enriched_metallicity;
+
+            // NEW: Track infall to CGM
+            galaxies[gal].InfallRate_to_CGM += cgm_pathway;
+            
+        }
+        // Debug: Check consistency after modification
+        // if(gal == 0) {
+        //     double component_sum = galaxies[gal].CGMgas_pristine + galaxies[gal].CGMgas_enriched;
+        //     printf("DEBUG: After infall - CGM total: %.6f, components sum: %.6f, difference: %.6f\n",
+        //            galaxies[gal].CGMgas, component_sum, fabs(galaxies[gal].CGMgas - component_sum));
+        // }
     }
-
-    // add (subtract) the ambient (enriched) infalling gas to the central galaxy hot component
-    galaxies[gal].HotGas += infallingGas;
-    if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
-
 }
 
 double do_reionization_enhanced(const int gal, const double z, struct GALAXY *galaxies, const struct params *run_params)

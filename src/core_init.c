@@ -137,6 +137,23 @@ void init(struct params *run_params)
         run_params->VvirEnhancementPower = 0.9;  // Default power-law exponent
     }
 
+    if (run_params->CGMInfallFraction <= 0.0) {
+        run_params->CGMInfallFraction = 0.8;  // Default fraction of CGM infall
+    }
+
+    if (run_params->CGMTransferEfficiency <= 0.0) {
+        run_params->CGMTransferEfficiency = 0.1;  // Default efficiency of CGM to hot gas transfer
+    }
+
+    if (run_params->CGMPristineFraction <= 0.0) {
+        run_params->CGMPristineFraction = 0.7;  // Default fraction of CGM infall that is pristine
+    }
+
+    if (run_params->CGMMixingTimescale <= 0.0) {
+        run_params->CGMMixingTimescale = 0.5;  // Default mixing timescale
+    }
+
+
     set_units(run_params);
 
     read_snap_list(run_params);

@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium/'
+DirName = './output/millennium_CGMfirst/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -1621,3 +1621,426 @@ if __name__ == '__main__':
         plt.close()
 
     print('\nOptimized analysis completed!')
+
+    def plot_cgm_composition_analysis(data_reader):
+        """
+        Plot CGM composition: pristine vs enriched gas fractions
+        """
+        print('Creating CGM composition analysis plots')
+        
+        # Load required data
+        params = ['CGMgas', 'CGMgas_pristine', 'CGMgas_enriched', 'Mvir', 'StellarMass']
+        data = data_reader.read_hdf_batch(Snapshot, params)
+        
+        # Apply unit conversions
+        cgm_total = data['CGMgas'] * 1.0e10 / Hubble_h
+        cgm_pristine = data['CGMgas_pristine'] * 1.0e10 / Hubble_h
+        cgm_enriched = data['CGMgas_enriched'] * 1.0e10 / Hubble_h
+        mvir = data['Mvir'] * 1.0e10 / Hubble_h
+        stellar_mass = data['StellarMass'] * 1.0e10 / Hubble_h
+        print(cgm_total, cgm_pristine, cgm_enriched, mvir, stellar_mass)
+        
+        # Filter valid data
+        valid_mask = (cgm_total > 0) & (mvir > 0) & (stellar_mass > 0)
+        cgm_total_valid = cgm_total[valid_mask]
+        cgm_pristine_valid = cgm_pristine[valid_mask]
+        cgm_enriched_valid = cgm_enriched[valid_mask]
+        mvir_valid = mvir[valid_mask]
+        stellar_mass_valid = stellar_mass[valid_mask]
+        
+        # Calculate fractions
+        pristine_fraction = cgm_pristine_valid / cgm_total_valid
+        enriched_fraction = cgm_enriched_valid / cgm_total_valid
+        
+        # Create subplot figure
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # Plot 1: Pristine fraction vs Halo Mass
+        ax = axes[0, 0]
+        if len(mvir_valid) > dilute:
+            indices = sample(list(range(len(mvir_valid))), dilute)
+        else:
+            indices = list(range(len(mvir_valid)))
+        
+        scatter = ax.scatter(np.log10(mvir_valid[indices]), pristine_fraction[indices], 
+                            c=np.log10(stellar_mass_valid[indices]), cmap='viridis', s=10, alpha=0.7)
+        
+        # Add running median
+        bin_centers, bin_averages, _ = bin_average(pristine_fraction, np.log10(mvir_valid), num_bins=15)
+        ax.plot(bin_centers, bin_averages, 'r-', linewidth=3, label='Running Median')
+        
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$f_{\mathrm{pristine}} = M_{\mathrm{CGM,pristine}} / M_{\mathrm{CGM,total}}$')
+        ax.set_title('CGM Pristine Fraction vs Halo Mass')
+        ax.set_ylim(0, 1)
+        ax.legend()
+        
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
+        
+        # Plot 2: CGM Mass vs Halo Mass (colored by pristine fraction)
+        ax = axes[0, 1]
+        scatter = ax.scatter(np.log10(mvir_valid[indices]), np.log10(cgm_total_valid[indices]), 
+                            c=pristine_fraction[indices], cmap='RdYlBu', s=10, alpha=0.7, vmin=0, vmax=1)
+        
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+        ax.set_title('CGM Mass vs Halo Mass (colored by pristine fraction)')
+        
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label(r'$f_{\mathrm{pristine}}$')
+        
+        # Plot 3: Pristine vs Enriched Mass
+        ax = axes[1, 0]
+        ax.scatter(np.log10(cgm_pristine_valid[indices]), np.log10(cgm_enriched_valid[indices]), 
+                c=np.log10(mvir_valid[indices]), cmap='plasma', s=10, alpha=0.7)
+        
+        # Add 1:1 line
+        min_mass = min(np.log10(cgm_pristine_valid).min(), np.log10(cgm_enriched_valid).min())
+        max_mass = max(np.log10(cgm_pristine_valid).max(), np.log10(cgm_enriched_valid).max())
+        ax.plot([min_mass, max_mass], [min_mass, max_mass], 'k--', alpha=0.5, label='1:1 line')
+        
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{CGM,pristine}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM,enriched}}\ (M_{\odot})$')
+        ax.set_title('Pristine vs Enriched CGM Mass')
+        ax.legend()
+        
+        # Plot 4: Pristine fraction histogram
+        ax = axes[1, 1]
+        ax.hist(pristine_fraction, bins=50, alpha=0.7, color='blue', edgecolor='black')
+        ax.axvline(np.median(pristine_fraction), color='red', linestyle='--', linewidth=2, 
+                label=f'Median = {np.median(pristine_fraction):.2f}')
+        ax.set_xlabel(r'$f_{\mathrm{pristine}}$')
+        ax.set_ylabel('Number of Galaxies')
+        ax.set_title('Distribution of CGM Pristine Fractions')
+        ax.legend()
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        OutputDir = DirName + 'plots/'
+        outputFile = OutputDir + '28.CGM_Composition_Analysis' + OutputFormat
+        plt.savefig(outputFile, dpi=500, bbox_inches='tight')
+        print(f'Saved CGM composition analysis to {outputFile}')
+        plt.close()
+
+    def plot_gas_flow_rates_analysis(data_reader):
+        """
+        Plot gas flow rates: infall, transfer, and reincorporation rates
+        """
+        print('Creating gas flow rates analysis plots')
+        
+        # Load required data
+        params = ['CGMgas', 'HotGas', 'Mvir', 'StellarMass', 'Vvir',
+                'InfallRate_to_CGM', 'InfallRate_to_Hot', 
+                'TransferRate_CGM_to_Hot']
+        
+        data = data_reader.read_hdf_batch(Snapshot, params)
+        
+        # Apply unit conversions
+        cgm_gas = data['CGMgas'] * 1.0e10 / Hubble_h
+        hot_gas = data['HotGas'] * 1.0e10 / Hubble_h
+        mvir = data['Mvir'] * 1.0e10 / Hubble_h
+        stellar_mass = data['StellarMass'] * 1.0e10 / Hubble_h
+        vvir = data['Vvir']
+        
+        infall_to_cgm = data['InfallRate_to_CGM'] * 1.0e10 / Hubble_h
+        infall_to_hot = data['InfallRate_to_Hot'] * 1.0e10 / Hubble_h
+        transfer_cgm_to_hot = data['TransferRate_CGM_to_Hot'] * 1.0e10 / Hubble_h
+        
+        # Filter valid data
+        valid_mask = (mvir > 0) & (stellar_mass > 0)
+        
+        # Create subplot figure
+        fig, axes = plt.subplots(2, 3, figsize=(20, 12))
+        
+        # Plot 1: Infall rates vs Halo Mass
+        ax = axes[0, 0]
+        valid_infall = valid_mask & (infall_to_cgm > 0)
+        
+        if np.sum(valid_infall) > dilute:
+            indices = sample(list(np.where(valid_infall)[0]), dilute)
+        else:
+            indices = np.where(valid_infall)[0]
+        
+        scatter = ax.scatter(np.log10(mvir[indices]), np.log10(infall_to_cgm[indices]), 
+                            c=np.log10(vvir[indices]), cmap='plasma', s=10, alpha=0.7)
+        
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$\log_{10}$ Infall Rate to CGM $(M_{\odot}/\mathrm{timestep})$')
+        ax.set_title('Infall Rate to CGM vs Halo Mass')
+        
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label(r'$\log_{10} V_{\mathrm{vir}}$ (km/s)')
+        
+        # Plot 2: Transfer rates vs CGM Mass
+        ax = axes[0, 1]
+        valid_transfer = valid_mask & (transfer_cgm_to_hot > 0) & (cgm_gas > 0)
+        
+        if np.sum(valid_transfer) > dilute:
+            indices = sample(list(np.where(valid_transfer)[0]), dilute)
+        else:
+            indices = np.where(valid_transfer)[0]
+        
+        scatter = ax.scatter(np.log10(cgm_gas[indices]), np.log10(transfer_cgm_to_hot[indices]), 
+                            c=np.log10(mvir[indices]), cmap='viridis', s=10, alpha=0.7)
+        
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$\log_{10}$ Transfer Rate CGM→Hot $(M_{\odot}/\mathrm{timestep})$')
+        ax.set_title('CGM to Hot Transfer Rate vs CGM Mass')
+        
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        
+        # Plot 3: Transfer Efficiency (Transfer Rate / CGM Mass)
+        ax = axes[0, 2]
+        transfer_efficiency = transfer_cgm_to_hot / cgm_gas
+        valid_efficiency = valid_mask & (transfer_efficiency > 0) & np.isfinite(transfer_efficiency)
+        
+        if np.sum(valid_efficiency) > dilute:
+            indices = sample(list(np.where(valid_efficiency)[0]), dilute)
+        else:
+            indices = np.where(valid_efficiency)[0]
+        
+        scatter = ax.scatter(np.log10(mvir[indices]), np.log10(transfer_efficiency[indices]), 
+                            c=np.log10(vvir[indices]), cmap='coolwarm', s=10, alpha=0.7)
+        
+        # Add running median
+        bin_centers, bin_averages, _ = bin_average(np.log10(transfer_efficiency[valid_efficiency]), 
+                                                np.log10(mvir[valid_efficiency]), num_bins=15)
+        ax.plot(bin_centers, bin_averages, 'k-', linewidth=3, label='Running Median')
+        
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$\log_{10}$ Transfer Efficiency (1/timestep)')
+        ax.set_title('CGM Transfer Efficiency vs Halo Mass')
+        ax.legend()
+        
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label(r'$\log_{10} V_{\mathrm{vir}}$ (km/s)')
+        
+        # Plot 6: CGM Residence Time
+        ax = axes[1, 2]
+        cgm_residence_time = cgm_gas / (transfer_cgm_to_hot + 1e-10)  # Add small value to avoid division by zero
+        valid_residence = valid_mask & (cgm_residence_time > 0) & np.isfinite(cgm_residence_time) & (cgm_gas > 0)
+        
+        if np.sum(valid_residence) > dilute:
+            indices = sample(list(np.where(valid_residence)[0]), dilute)
+        else:
+            indices = np.where(valid_residence)[0]
+        
+        scatter = ax.scatter(np.log10(mvir[indices]), np.log10(cgm_residence_time[indices]), 
+                            c=np.log10(cgm_gas[indices]), cmap='viridis', s=10, alpha=0.7)
+        
+        # Add running median
+        bin_centers, bin_averages, _ = bin_average(np.log10(cgm_residence_time[valid_residence]), 
+                                                np.log10(mvir[valid_residence]), num_bins=15)
+        ax.plot(bin_centers, bin_averages, 'r-', linewidth=3, label='Running Median')
+        
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        ax.set_ylabel(r'$\log_{10}$ CGM Residence Time (timesteps)')
+        ax.set_title('CGM Residence Time vs Halo Mass')
+        ax.legend()
+        
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        OutputDir = DirName + 'plots/'
+        outputFile = OutputDir + '29.Gas_Flow_Rates_Analysis' + OutputFormat
+        plt.savefig(outputFile, dpi=500, bbox_inches='tight')
+        print(f'Saved gas flow rates analysis to {outputFile}')
+        plt.close()
+
+    def plot_cgm_composition_evolution(data_reader):
+        """
+        Plot evolution of CGM composition (pristine fraction) across redshift
+        """
+        print('Creating CGM composition evolution plot across redshift')
+        
+        # Load all required data at once
+        params = ['CGMgas', 'CGMgas_pristine', 'CGMgas_enriched', 'Mvir', 'StellarMass']
+        data_full = load_all_snapshots_optimized(data_reader, params)
+        
+        # Define halo mass bins (in log10 solar masses)
+        halo_mass_bins = [
+            (11.5, 12.5),    # Low mass halos
+            (12.5, 13.5),    # Intermediate mass halos  
+            (13.5, 15.0)     # High mass halos
+        ]
+        
+        colors = ['red', 'green', 'blue']
+        labels = [
+            r'$10^{11.5} < M_{\mathrm{halo}} < 10^{12.5}$ M$_{\odot}$',
+            r'$10^{12.5} < M_{\mathrm{halo}} < 10^{13.5}$ M$_{\odot}$',
+            r'$10^{13.5} < M_{\mathrm{halo}}$'
+        ]
+        
+        # Create figure
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # Plot 1: Pristine fraction evolution
+        ax = axes[0, 0]
+        
+        for bin_idx, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, colors, labels)):
+            redshift_values = []
+            median_pristine_fractions = []
+            
+            for snap in CGMsnaps:
+                z = redshifts[snap]
+                
+                # Get data for this snapshot
+                cgm_total = data_full['CGMgas'][snap]
+                cgm_pristine = data_full['CGMgas_pristine'][snap]
+                mvir_snap = data_full['Mvir'][snap]
+                stellar_snap = data_full['StellarMass'][snap]
+                
+                # Filter valid data
+                valid_mask = (cgm_total > 0) & (mvir_snap > 0) & (stellar_snap > 0)
+                cgm_total_valid = cgm_total[valid_mask]
+                cgm_pristine_valid = cgm_pristine[valid_mask]
+                mvir_valid = mvir_snap[valid_mask]
+                
+                # Filter by halo mass bin
+                log_mvir = np.log10(mvir_valid)
+                mass_mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
+                
+                if np.sum(mass_mask) > 10:  # Require at least 10 galaxies
+                    pristine_fraction = cgm_pristine_valid[mass_mask] / cgm_total_valid[mass_mask]
+                    median_pristine = np.median(pristine_fraction)
+                    
+                    redshift_values.append(z)
+                    median_pristine_fractions.append(median_pristine)
+            
+            if len(redshift_values) > 0:
+                ax.plot(redshift_values, median_pristine_fractions, 
+                    color=color, label=label, linewidth=3, marker='o')
+        
+        ax.set_xlabel('Redshift')
+        ax.set_ylabel('Median CGM Pristine Fraction')
+        ax.set_title('CGM Pristine Fraction Evolution')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        # Plot 2: Total CGM mass evolution  
+        ax = axes[0, 1]
+        
+        for bin_idx, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, colors, labels)):
+            redshift_values = []
+            median_cgm_masses = []
+            
+            for snap in CGMsnaps:
+                z = redshifts[snap]
+                
+                cgm_total = data_full['CGMgas'][snap]
+                mvir_snap = data_full['Mvir'][snap]
+                stellar_snap = data_full['StellarMass'][snap]
+                
+                valid_mask = (cgm_total > 0) & (mvir_snap > 0) & (stellar_snap > 0)
+                cgm_total_valid = cgm_total[valid_mask]
+                mvir_valid = mvir_snap[valid_mask]
+                
+                log_mvir = np.log10(mvir_valid)
+                mass_mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
+                
+                if np.sum(mass_mask) > 10:
+                    median_cgm = np.median(cgm_total_valid[mass_mask])
+                    
+                    redshift_values.append(z)
+                    median_cgm_masses.append(median_cgm)
+            
+            if len(redshift_values) > 0:
+                ax.plot(redshift_values, np.log10(median_cgm_masses), 
+                    color=color, label=label, linewidth=3, marker='s')
+        
+        ax.set_xlabel('Redshift')
+        ax.set_ylabel(r'$\log_{10}$ Median CGM Mass $(M_{\odot})$')
+        ax.set_title('CGM Mass Evolution')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        # Plot 3: Pristine/Enriched ratio evolution
+        ax = axes[1, 0]
+        
+        all_redshifts = []
+        all_pristine_ratios = []
+        
+        for snap in CGMsnaps:
+            z = redshifts[snap]
+            
+            cgm_pristine = data_full['CGMgas_pristine'][snap]
+            cgm_enriched = data_full['CGMgas_enriched'][snap]
+            mvir_snap = data_full['Mvir'][snap]
+            stellar_snap = data_full['StellarMass'][snap]
+            
+            valid_mask = (cgm_pristine > 0) & (cgm_enriched > 0) & (mvir_snap > 0) & (stellar_snap > 0)
+            
+            if np.sum(valid_mask) > 100:
+                pristine_enriched_ratio = cgm_pristine[valid_mask] / cgm_enriched[valid_mask]
+                median_ratio = np.median(pristine_enriched_ratio)
+                
+                all_redshifts.append(z)
+                all_pristine_ratios.append(median_ratio)
+        
+        if len(all_redshifts) > 0:
+            ax.plot(all_redshifts, all_pristine_ratios, 'k-', linewidth=3, marker='D')
+            ax.axhline(y=1, color='gray', linestyle='--', alpha=0.5, label='Equal masses')
+        
+        ax.set_xlabel('Redshift')
+        ax.set_ylabel('Median Pristine/Enriched Mass Ratio')
+        ax.set_title('CGM Pristine/Enriched Ratio Evolution')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        # Plot 4: CGM fraction of total baryons evolution
+        ax = axes[1, 1]
+        
+        for bin_idx, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, colors, labels)):
+            redshift_values = []
+            median_cgm_fractions = []
+            
+            for snap in CGMsnaps:
+                z = redshifts[snap]
+                
+                cgm_total = data_full['CGMgas'][snap]
+                mvir_snap = data_full['Mvir'][snap]
+                stellar_snap = data_full['StellarMass'][snap]
+                
+                valid_mask = (cgm_total > 0) & (mvir_snap > 0) & (stellar_snap > 0)
+                cgm_total_valid = cgm_total[valid_mask]
+                mvir_valid = mvir_snap[valid_mask]
+                
+                log_mvir = np.log10(mvir_valid)
+                mass_mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
+                
+                if np.sum(mass_mask) > 10:
+                    cgm_fraction = cgm_total_valid[mass_mask] / (0.17 * mvir_valid[mass_mask])
+                    median_fraction = np.median(cgm_fraction)
+                    
+                    redshift_values.append(z)
+                    median_cgm_fractions.append(median_fraction)
+            
+            if len(redshift_values) > 0:
+                ax.plot(redshift_values, median_cgm_fractions, 
+                    color=color, label=label, linewidth=3, marker='^')
+        
+        ax.set_xlabel('Redshift')
+        ax.set_ylabel(r'Median $f_{\mathrm{CGM}} = M_{\mathrm{CGM}} / (0.17 \times M_{\mathrm{vir}})$')
+        ax.set_title('CGM Baryon Fraction Evolution')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        OutputDir = DirName + 'plots/'
+        outputFile = OutputDir + '30.CGM_Composition_Evolution' + OutputFormat
+        plt.savefig(outputFile, dpi=500, bbox_inches='tight')
+        print(f'Saved CGM composition evolution to {outputFile}')
+        plt.close()
+
+    print('\n=== Creating CGM Tracking Analysis Plots ===')
+    plot_cgm_composition_analysis(data_reader)
+    plot_gas_flow_rates_analysis(data_reader)
+    plot_cgm_composition_evolution(data_reader)

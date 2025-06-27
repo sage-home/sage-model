@@ -92,6 +92,39 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].infallVvir = -1.0;
     galaxies[p].infallVmax = -1.0;
 
+  // Initialize flow rate tracking
+    galaxies[p].CGMgas_pristine = 0.0;  // NEW: Add this line
+    galaxies[p].CGMgas_enriched = 0.0;  // NEW: Add this line
+    galaxies[p].InfallRate_to_CGM = 0.0;
+    galaxies[p].InfallRate_to_Hot = 0.0;
+    galaxies[p].TransferRate_CGM_to_Hot = 0.0;
+
+}
+
+// Add this function to model_misc.c or create a new file
+void print_gas_flow_summary(const int gal, struct GALAXY *galaxies, const double dt, const double redshift)
+{
+    printf("=== Gas Flow Summary for Galaxy %d at z=%.2f ===\n", gal, redshift);
+    printf("Gas Reservoirs:\n");
+    printf("  Cold gas:    %.4f\n", galaxies[gal].ColdGas);
+    printf("  Hot gas:     %.4f\n", galaxies[gal].HotGas);
+    printf("  CGM total:   %.4f (Pristine: %.4f, Enriched: %.4f)\n", 
+           galaxies[gal].CGMgas, galaxies[gal].CGMgas_pristine, galaxies[gal].CGMgas_enriched);
+    
+    printf("\nFlow Rates (this timestep, dt=%.4f):\n", dt);
+    printf("  Infall to CGM:      %.6f\n", galaxies[gal].InfallRate_to_CGM);
+    printf("  Infall to Hot:      %.6f\n", galaxies[gal].InfallRate_to_Hot);
+    printf("  CGM -> Hot:         %.6f\n", galaxies[gal].TransferRate_CGM_to_Hot);
+    printf("  Total outflow:      %.6f\n", galaxies[gal].OutflowRate);
+    
+    // Calculate flow ratios
+    double total_inflow = galaxies[gal].InfallRate_to_CGM + galaxies[gal].InfallRate_to_Hot;
+    if(total_inflow > 0.0) {
+        printf("\nFlow Fractions:\n");
+        printf("  CGM pathway:    %.1f%%\n", 100.0 * galaxies[gal].InfallRate_to_CGM / total_inflow);
+        printf("  Direct pathway: %.1f%%\n", 100.0 * galaxies[gal].InfallRate_to_Hot / total_inflow);
+    }
+    printf("================================================\n\n");
 }
 
 

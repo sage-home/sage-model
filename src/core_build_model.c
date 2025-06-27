@@ -315,6 +315,12 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             centralgal, halonr, galaxies[centralgal].Type,
             halonr,  galaxies[centralgal].HaloNr);
 
+    // NEW: Initialize gas flow tracking for this timestep
+    for(int p = 0; p < ngal; p++) {
+        galaxies[p].InfallRate_to_CGM = 0.0;
+        galaxies[p].InfallRate_to_Hot = 0.0;
+        galaxies[p].TransferRate_CGM_to_Hot = 0.0;
+    }
     const int halo_snapnum = halos[halonr].SnapNum;
     const double Zcurr = run_params->ZZ[halo_snapnum];
     const double halo_age = run_params->Age[halo_snapnum];
@@ -343,7 +349,10 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             // For the central galaxy only
             if(p == centralgal) {
                 // Add hot gas infall (split over STEPS)
-                add_infall_to_hot(centralgal, hot_infall_total / STEPS, galaxies);
+                add_infall_to_hot(centralgal, hot_infall_total / STEPS, galaxies, run_params);
+
+                // NEW: Add this call after infall but before existing inflow
+                transfer_cgm_to_hot(centralgal, deltaT / STEPS, galaxies, run_params);
 
                 if(run_params->inflowFactor > 0.0) {
                     inflow_gas(centralgal, deltaT / STEPS, galaxies, run_params);
@@ -372,6 +381,10 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             }
             
         }
+
+        // if(centralgal == 0 && halonr < 10) {  // Print for first few halos
+        //     print_gas_flow_summary(centralgal, galaxies, deltaT, Zcurr);
+        // }
 
         // check for satellite disruption and merger events
         for(int p = 0; p < ngal; p++) {
