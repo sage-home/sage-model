@@ -299,22 +299,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Ejection_Alpha);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "CGMBuildOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMBuildOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "CGMBuildVcrit", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMBuildVcrit);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "CGMBuildAlpha", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMBuildAlpha);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "CGMBuildZdep", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMBuildZdep);
-    ParamID[NParam++] = DOUBLE;
-
     strncpy(ParamTag[NParam], "MassLoadingModel", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->MassLoadingModel);
     ParamID[NParam++] = INT;

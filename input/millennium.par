@@ -57,8 +57,8 @@ ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects on H2 gas
-CGMBuildOn                  1   %0: switch off; 1: enable CGM building
-VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
+% CGMBuildOn                  1   %0: switch off; 1: enable CGM building
+VvirEnhancementOn           0   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
 MassReincorporationOn       0   %0: switch off; 1: enable mass-dependent reincorporation
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
@@ -117,9 +117,9 @@ EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2
 %----- CGM Building -----------------------
 %------------------------------------------
 
-CGMBuildVcrit  25.0        % Critical velocity scale (km/s)
-CGMBuildAlpha  0.7         % Power-law slope
-CGMBuildZdep   0.8         % Redshift dependence (0.5-1.0 recommended)
+%CGMBuildVcrit  5.0        % Critical velocity scale (km/s)
+%CGMBuildAlpha  0.7         % Power-law slope
+%CGMBuildZdep   0.8         % Redshift dependence (0.5-1.0 recommended)
 
 %------------------------------------------
 %----- SF Enhancement ---------------------

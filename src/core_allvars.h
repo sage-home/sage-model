@@ -127,7 +127,6 @@ struct GALAXY
     float StellarMass;
     float BulgeMass;
     float HotGas;
-    float EjectedMass;
     float BlackHoleMass;
     float ICS;
     float CGMgas;     // NEW: Circumgalactic Medium gas reservoir
@@ -137,7 +136,6 @@ struct GALAXY
     float MetalsStellarMass;
     float MetalsBulgeMass;
     float MetalsHotGas;
-    float MetalsEjectedMass;
     float MetalsICS;
     float MetalsCGMgas;  // NEW: Metals in the CGM
 
@@ -491,12 +489,6 @@ struct params
     double MinReincorporationFactor; /* Minimum reincorporation rate as fraction of standard rate */
 
     int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov, 2=Lagos) */
-
-    // Preventative feedback parameters
-    int32_t CGMBuildOn;      // Flag to enable/disable preventative feedback
-    double CGMBuildVcrit; // Critical velocity scale
-    double CGMBuildAlpha; // Power-law index for velocity dependence
-    double CGMBuildZdep;  // Redshift dependence parameter
 
     int32_t VvirEnhancementOn;        // Flag to enable/disable virial velocity enhancement
     double VvirThreshold;           // Virial velocity threshold for SF enhancement (km/s)

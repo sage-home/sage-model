@@ -87,7 +87,7 @@ if __name__ == '__main__':
     #print(H2Gas)
     MetalsColdGas = read_hdf(snap_num = Snapshot, param = 'MetalsColdGas') * 1.0e10 / Hubble_h
     HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
-    EjectedMass = read_hdf(snap_num = Snapshot, param = 'EjectedMass') * 1.0e10 / Hubble_h
+    # EjectedMass = read_hdf(snap_num = Snapshot, param = 'EjectedMass') * 1.0e10 / Hubble_h
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
     InfallMvir = read_hdf(snap_num = Snapshot, param = 'infallMvir') * 1.0e10 / Hubble_h
     outflowrate = read_hdf(snap_num = Snapshot, param = 'OutflowRate') * 1.0e10 / Hubble_h
@@ -1298,7 +1298,7 @@ if __name__ == '__main__':
     plt.plot(MeanCentralHaloMass, MeanCGM, label='Circumgalactic Medium', color='green', linestyle='-.')
     plt.plot(MeanCentralHaloMass, MeanICS, label='Intracluster Stars', color='orange', linestyle='-.')
 
-    plt.yscale('log')
+    #plt.yscale('log')
 
     plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
     plt.ylabel(r'$\log_{10} \mathrm{Baryon\ Fraction}$')
@@ -1330,9 +1330,9 @@ if __name__ == '__main__':
     plt.scatter(HaloMass, np.log10(StellarMass[w]), marker='o', s=0.3, c='k', alpha=0.5, label='Stars')
     plt.scatter(HaloMass, np.log10(ColdGas[w]), marker='o', s=0.3, color='blue', alpha=0.5, label='Cold gas')
     plt.scatter(HaloMass, np.log10(HotGas[w]), marker='o', s=0.3, color='red', alpha=0.5, label='Hot gas')
-    plt.scatter(HaloMass, np.log10(EjectedMass[w]), marker='o', s=50.3, color='green', alpha=0.5, label='Ejected gas')
+    # plt.scatter(HaloMass, np.log10(EjectedMass[w]), marker='o', s=50.3, color='green', alpha=0.5, label='Ejected gas')
     plt.scatter(HaloMass, np.log10(IntraClusterStars[w]), marker='o', s=10, color='yellow', alpha=0.5, label='Intracluster stars')
-    plt.scatter(HaloMass, np.log10(cgm[w]), marker='o', s=0.3, color='magenta', alpha=0.5, label='CGM')
+    plt.scatter(HaloMass, np.log10(cgm[w]), marker='o', s=0.3, color='green', alpha=0.5, label='CGM')
 
     plt.ylabel(r'$\mathrm{stellar,\ cold,\ hot,\ ejected,\ ICS\ mass}$')  # Set the y...
     plt.xlabel(r'$\log\ M_{\mathrm{vir}}\ (h^{-1}\ M_{\odot})$')  # and the x-axis labels
@@ -1598,15 +1598,15 @@ if __name__ == '__main__':
 
     mass = np.log10(StellarMass[w])
     sats = np.log10(StellarMass[sat])
-    ejected = np.log10(EjectedMass[w])
+    ejected = np.log10(cgm[w])
 
     # Color points by halo mass
     halo_mass = np.log10(Mvir[w])
-    sc = plt.scatter(mass, ejected, c=halo_mass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
+    sc = plt.scatter(mass, np.log10(ejected), c=halo_mass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
     cbar = plt.colorbar(sc)
     cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
 
-    plt.scatter(sats, np.log10(EjectedMass[sat]), marker='*', s=250, c='k', alpha=0.5, label='Satellites')
+    # plt.scatter(sats, np.log10(cgm[sat]), marker='*', s=250, c='k', alpha=0.5, label='Satellites')
 
     plt.ylabel(r'$\log_{10} M_{\mathrm{ejected}}\ (M_{\odot})$')
     plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
@@ -1616,7 +1616,7 @@ if __name__ == '__main__':
 
     plt.tight_layout()
 
-    outputFile = OutputDir + '16.EjectionDiagnostics' + OutputFormat
+    outputFile = OutputDir + '16.CGMDiagnostics' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()

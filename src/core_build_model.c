@@ -315,15 +315,14 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             centralgal, halonr, galaxies[centralgal].Type,
             halonr,  galaxies[centralgal].HaloNr);
 
-    /*
-      MS: Note save halo_snapnum and galaxy_snapnum to local variables
-          and replace all instances of snapnum to those local variables
-     */
-
     const int halo_snapnum = halos[halonr].SnapNum;
     const double Zcurr = run_params->ZZ[halo_snapnum];
     const double halo_age = run_params->Age[halo_snapnum];
-    const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
+    const double deltaT = run_params->Age[galaxies[0].SnapNum] - halo_age;
+
+    // Calculate infall ONCE per halo, not per step
+    // This returns the hot gas portion and handles CGM internally
+    const double hot_infall_total = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
@@ -335,7 +334,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 continue;
             }
 
-            const double deltaT = run_params->Age[galaxies[p].SnapNum] - halo_age;
             const double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
 
             if(galaxies[p].dT < 0.0) {
@@ -344,7 +342,8 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // For the central galaxy only
             if(p == centralgal) {
-                add_infall_to_hot(centralgal, infallingGas / STEPS, galaxies);
+                // Add hot gas infall (split over STEPS)
+                add_infall_to_hot(centralgal, hot_infall_total / STEPS, galaxies);
 
                 if(run_params->ReIncorporationFactor > 0.0) {
                     reincorporate_gas(centralgal, deltaT / STEPS, galaxies, run_params);
@@ -384,7 +383,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                         "Error: galaxies[%d].MergTime = %lf is too large! Should have been within the age of the Universe\n",
                         p, galaxies[p].MergTime);
 
-                const double deltaT = run_params->Age[galaxies[p].SnapNum] - halo_age;
                 galaxies[p].MergTime -= deltaT / STEPS;
 
                 // only consider mergers or disruption for halo-to-baryonic mass ratios below the threshold
@@ -417,10 +415,8 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         }
     } // Go on to the next STEPS substep
 
-
     // Extra miscellaneous stuff before finishing this halo
     galaxies[centralgal].TotalSatelliteBaryons = 0.0;
-    const double deltaT = run_params->Age[galaxies[0].SnapNum] - halo_age;
     const double inv_deltaT = 1.0/deltaT;
 
     for(int p = 0; p < ngal; p++) {
@@ -430,6 +426,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             continue;
         }
 
+        // Convert accumulated values to rates (per year)
         galaxies[p].Cooling *= inv_deltaT;
         galaxies[p].Heating *= inv_deltaT;
         galaxies[p].OutflowRate *= inv_deltaT;
@@ -439,7 +436,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 (galaxies[p].StellarMass + galaxies[p].BlackHoleMass + galaxies[p].ColdGas + galaxies[p].HotGas);
         }
     }
-
 
     // Attach final galaxy list to halo
     for(int p = 0, currenthalo = -1; p < ngal; p++) {

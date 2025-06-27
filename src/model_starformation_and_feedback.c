@@ -339,8 +339,8 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[centralgal].HotGas -= adjusted_ejected_mass;
         galaxies[centralgal].MetalsHotGas -= metallicityHot * adjusted_ejected_mass;
 
-        galaxies[centralgal].CGMgas = 0.0;
-        galaxies[centralgal].MetalsCGMgas = 0.0;
+        // galaxies[centralgal].CGMgas = 0.0;
+        // galaxies[centralgal].MetalsCGMgas = 0.0;
         
         // Add to CGM
         galaxies[centralgal].CGMgas += adjusted_ejected_mass;

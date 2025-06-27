@@ -34,7 +34,7 @@ stellar_xlims = [1e8, 1e12]   # e.g., [1e8, 1e12] for Stellar Mass plot
 
 # Y-axis limits (set to None for automatic limits)  
 gas_ylims = None       # e.g., [1e8, 1e13] for gas mass
-infall_ylims = [1e-1, 1e5]    # Reasonable range for infall rates in M_sun/yr
+infall_ylims = [1e-3, 1e5]    # Reasonable range for infall rates in M_sun/yr
 
 OutputFormat = '.pdf'
 plt.rcParams["figure.figsize"] = (16, 6)  # Wider for side-by-side plots
@@ -130,6 +130,7 @@ def plot_infall_rates_enhanced(ax, x_data, infall_cgm, infall_hot, xlabel, title
     x_cgm, cgm_median = calculate_median_in_bins(x_cgm_filtered, reasonable_cgm, min_per_bin=1)
     print('Infall to Hot:')
     x_hot, hot_median = calculate_median_in_bins(x_hot_filtered, reasonable_hot, min_per_bin=1)
+    
     
     # Plot the median lines with distinct colors and styles
     if len(x_total) > 0:
@@ -261,173 +262,173 @@ if __name__ == '__main__':
 
     # Read infall rates - NO UNIT CONVERSION because they're already in M_sun/yr from C code
     try:
-        infallToCGM = read_hdf(snap_num = Snapshot, param = 'CGMInflowRate')  # Already in M_sun/yr
+        infallToCGM = read_hdf(snap_num = Snapshot, param = 'infallToCGM') # Already in M_sun/yr
         print('Successfully read infallToCGM')
     except:
         print('Warning: Could not read infallToCGM - setting to zeros')
         infallToCGM = np.zeros_like(Mvir)
 
     try:
-        infallToHot = read_hdf(snap_num = Snapshot, param = 'HotGasInflowRate')  # Already in M_sun/yr
+        infallToHot = read_hdf(snap_num = Snapshot, param = 'infallToHot') # Already in M_sun/yr
         print('Successfully read infallToHot')
     except:
         print('Warning: Could not read infallToHot - setting to zeros')
         infallToHot = np.zeros_like(Mvir)
     
-    # # Apply sanity filter to remove extreme outliers that might be due to bugs
-    # print(f'Before filtering: infallToHot max = {np.max(infallToHot):.3e} M_sun/yr')
+    # Apply sanity filter to remove extreme outliers that might be due to bugs
+    print(f'Before filtering: infallToHot max = {np.max(infallToHot):.3e} M_sun/yr')
     
     # Filter out unreasonably high infall rates (> 10^12 M_sun/yr)
-    # infallToHot = np.where(infallToHot > 1e12, 0.0, infallToHot)
-    # infallToCGM = np.where(infallToCGM > 1e10, 0.0, infallToCGM)  # More conservative for CGM
+    infallToHot = np.where(infallToHot > 1e12, 0.0, infallToHot)
+    infallToCGM = np.where(infallToCGM > 1e10, 0.0, infallToCGM)  # More conservative for CGM
     
-    # print(f'After filtering: infallToHot max = {np.max(infallToHot):.3e} M_sun/yr')
+    print(f'After filtering: infallToHot max = {np.max(infallToHot):.3e} M_sun/yr')
 
-    # Type = read_hdf(snap_num = Snapshot, param = 'Type')
+    Type = read_hdf(snap_num = Snapshot, param = 'Type')
 
-    # print(f'Total galaxies loaded: {len(StellarMass)}')
+    print(f'Total galaxies loaded: {len(StellarMass)}')
     
-    # # Separate central and satellite galaxies
-    # central_mask = (Type == 0) & (StellarMass > 0) & (Mvir > 0)
-    # satellite_mask = (Type == 1) & (StellarMass > 0) & (InfallMvir > 0)
+    # Separate central and satellite galaxies
+    central_mask = (Type == 0) & (StellarMass > 0) & (Mvir > 0)
+    satellite_mask = (Type == 1) & (StellarMass > 0) & (InfallMvir > 0)
     
-    # print(f'Central galaxies: {np.sum(central_mask)}')
-    # print(f'Satellite galaxies: {np.sum(satellite_mask)}')
+    print(f'Central galaxies: {np.sum(central_mask)}')
+    print(f'Satellite galaxies: {np.sum(satellite_mask)}')
     
-    # # Check values for central galaxies
-    # central_cgm_infall = infallToCGM[central_mask]
-    # central_hot_infall = infallToHot[central_mask]
-    # total_infall_central = central_cgm_infall + central_hot_infall
+    # Check values for central galaxies
+    central_cgm_infall = infallToCGM[central_mask]
+    central_hot_infall = infallToHot[central_mask]
+    total_infall_central = central_cgm_infall + central_hot_infall
     
-    # print(f'Central galaxies with CGM infall > 0: {np.sum(central_cgm_infall > 0)}')
-    # print(f'Central galaxies with Hot infall > 0: {np.sum(central_hot_infall > 0)}')
-    # print(f'Central galaxies with Total infall > 0: {np.sum(total_infall_central > 0)}')
+    print(f'Central galaxies with CGM infall > 0: {np.sum(central_cgm_infall > 0)}')
+    print(f'Central galaxies with Hot infall > 0: {np.sum(central_hot_infall > 0)}')
+    print(f'Central galaxies with Total infall > 0: {np.sum(total_infall_central > 0)}')
     
-    # if np.sum(central_cgm_infall > 0) > 0:
-    #     print(f'CGM infall median (>0): {np.median(central_cgm_infall[central_cgm_infall > 0]):.3e} M_sun/yr')
-    # if np.sum(central_hot_infall > 0) > 0:
-    #     print(f'Hot infall median (>0): {np.median(central_hot_infall[central_hot_infall > 0]):.3e} M_sun/yr')
-    # if np.sum(total_infall_central > 0) > 0:
-    #     print(f'Total infall median (>0): {np.median(total_infall_central[total_infall_central > 0]):.3e} M_sun/yr')
+    if np.sum(central_cgm_infall > 0) > 0:
+        print(f'CGM infall median (>0): {np.median(central_cgm_infall[central_cgm_infall > 0]):.3e} M_sun/yr')
+    if np.sum(central_hot_infall > 0) > 0:
+        print(f'Hot infall median (>0): {np.median(central_hot_infall[central_hot_infall > 0]):.3e} M_sun/yr')
+    if np.sum(total_infall_central > 0) > 0:
+        print(f'Total infall median (>0): {np.median(total_infall_central[total_infall_central > 0]):.3e} M_sun/yr')
     
-    # # Filter for central galaxies
-    # stellar_central = StellarMass[central_mask]
-    # mvir_central = Mvir[central_mask]
-    # hot_central = HotGas[central_mask]
-    # cgm_central = CGMgas[central_mask]
-    # cold_central = ColdGas[central_mask]
+    # Filter for central galaxies
+    stellar_central = StellarMass[central_mask]
+    mvir_central = Mvir[central_mask]
+    hot_central = HotGas[central_mask]
+    cgm_central = CGMgas[central_mask]
+    cold_central = ColdGas[central_mask]
     
-    # # Filter for satellite galaxies
-    # stellar_satellite = StellarMass[satellite_mask]
-    # infall_mvir_satellite = InfallMvir[satellite_mask]
+    # Filter for satellite galaxies
+    stellar_satellite = StellarMass[satellite_mask]
+    infall_mvir_satellite = InfallMvir[satellite_mask]
     
-    # # Figure 1: Enhanced Gas Masses with Virial Mass
-    # fig1, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    # Figure 1: Enhanced Gas Masses with Virial Mass
+    fig1, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
     
-    # plot_gas_masses_with_virial(ax1, mvir_central, hot_central, cgm_central, cold_central, mvir_central,
-    #                            r'M$_{vir}$ [M$_{\odot}$]', 'Masses vs Virial Mass (Centrals)', 
-    #                            xlims=mvir_xlims, ylims=gas_ylims)
+    plot_gas_masses_with_virial(ax1, mvir_central, hot_central, cgm_central, cold_central, mvir_central,
+                               r'M$_{vir}$ [M$_{\odot}$]', 'Masses vs Virial Mass (Centrals)', 
+                               xlims=mvir_xlims, ylims=gas_ylims)
     
-    # plot_gas_masses_with_virial(ax2, stellar_central, hot_central, cgm_central, cold_central, mvir_central,
-    #                            r'M$_*$ [M$_{\odot}$]', 'Masses vs Stellar Mass (Centrals)', 
-    #                            xlims=stellar_xlims, ylims=gas_ylims)
+    plot_gas_masses_with_virial(ax2, stellar_central, hot_central, cgm_central, cold_central, mvir_central,
+                               r'M$_*$ [M$_{\odot}$]', 'Masses vs Stellar Mass (Centrals)', 
+                               xlims=stellar_xlims, ylims=gas_ylims)
     
-    # plt.tight_layout()
-    # output_filename1 = f'{OutputDir}enhanced_gas_masses_central{OutputFormat}'
-    # plt.savefig(output_filename1, bbox_inches='tight', dpi=300)
-    # print(f'Enhanced gas masses plot saved as: {output_filename1}')
+    plt.tight_layout()
+    output_filename1 = f'{OutputDir}enhanced_gas_masses_central{OutputFormat}'
+    plt.savefig(output_filename1, bbox_inches='tight', dpi=300)
+    print(f'Enhanced gas masses plot saved as: {output_filename1}')
     
-    # # Figure 2: Enhanced Infall Rates for Central Galaxies
-    # fig2, (ax3, ax4) = plt.subplots(1, 2, figsize=(16, 6))
+    # Figure 2: Enhanced Infall Rates for Central Galaxies
+    fig2, (ax3, ax4) = plt.subplots(1, 2, figsize=(16, 6))
     
-    # plot_infall_rates_enhanced(ax3, mvir_central, central_cgm_infall, central_hot_infall,
-    #                           r'M$_{vir}$ [M$_{\odot}$]', 'Infall Rates vs Virial Mass (Centrals)', 
-    #                           xlims=mvir_xlims, ylims=infall_ylims)
+    plot_infall_rates_enhanced(ax3, mvir_central, central_cgm_infall, central_hot_infall,
+                              r'M$_{vir}$ [M$_{\odot}$]', 'Infall Rates vs Virial Mass (Centrals)', 
+                              xlims=mvir_xlims, ylims=infall_ylims)
     
-    # plot_infall_rates_enhanced(ax4, stellar_central, central_cgm_infall, central_hot_infall,
-    #                           r'M$_*$ [M$_{\odot}$]', 'Infall Rates vs Stellar Mass (Centrals)', 
-    #                           xlims=stellar_xlims, ylims=infall_ylims)
+    plot_infall_rates_enhanced(ax4, stellar_central, central_cgm_infall, central_hot_infall,
+                              r'M$_*$ [M$_{\odot}$]', 'Infall Rates vs Stellar Mass (Centrals)', 
+                              xlims=stellar_xlims, ylims=infall_ylims)
     
-    # plt.tight_layout()
-    # output_filename2 = f'{OutputDir}enhanced_infall_rates_central{OutputFormat}'
-    # plt.savefig(output_filename2, bbox_inches='tight', dpi=300)
-    # print(f'Enhanced infall rates plot saved as: {output_filename2}')
+    plt.tight_layout()
+    output_filename2 = f'{OutputDir}enhanced_infall_rates_central{OutputFormat}'
+    plt.savefig(output_filename2, bbox_inches='tight', dpi=300)
+    print(f'Enhanced infall rates plot saved as: {output_filename2}')
     
-    # # Figure 3: Satellite Properties
-    # fig3, (ax5, ax6) = plt.subplots(1, 2, figsize=(16, 6))
+    # Figure 3: Satellite Properties
+    fig3, (ax5, ax6) = plt.subplots(1, 2, figsize=(16, 6))
     
-    # plot_satellite_properties(ax5, stellar_satellite, infall_mvir_satellite,
-    #                          r'M$_*$ [M$_{\odot}$]', 'Satellite Infall Mass vs Stellar Mass', 
-    #                          xlims=stellar_xlims)
+    plot_satellite_properties(ax5, stellar_satellite, infall_mvir_satellite,
+                             r'M$_*$ [M$_{\odot}$]', 'Satellite Infall Mass vs Stellar Mass', 
+                             xlims=stellar_xlims)
     
-    # # Second subplot: Compare satellite infall masses with central galaxy current masses
-    # if len(stellar_satellite) > 0 and len(mvir_central) > 0:
-    #     # Plot satellite infall masses
-    #     x_sat, sat_median = calculate_median_in_bins(stellar_satellite, infall_mvir_satellite, min_per_bin=3)
-    #     if len(x_sat) > 0:
-    #         ax6.plot(x_sat, sat_median, 'orange', linewidth=2.5, label='Satellite Infall Mvir', alpha=0.8)
+    # Second subplot: Compare satellite infall masses with central galaxy current masses
+    if len(stellar_satellite) > 0 and len(mvir_central) > 0:
+        # Plot satellite infall masses
+        x_sat, sat_median = calculate_median_in_bins(stellar_satellite, infall_mvir_satellite, min_per_bin=3)
+        if len(x_sat) > 0:
+            ax6.plot(x_sat, sat_median, 'orange', linewidth=2.5, label='Satellite Infall Mvir', alpha=0.8)
         
-    #     # Plot central galaxy current masses for comparison
-    #     x_cent, cent_median = calculate_median_in_bins(stellar_central, mvir_central, min_per_bin=3)
-    #     if len(x_cent) > 0:
-    #         ax6.plot(x_cent, cent_median, 'purple', linewidth=2.5, label='Central Current Mvir', alpha=0.8)
+        # Plot central galaxy current masses for comparison
+        x_cent, cent_median = calculate_median_in_bins(stellar_central, mvir_central, min_per_bin=3)
+        if len(x_cent) > 0:
+            ax6.plot(x_cent, cent_median, 'purple', linewidth=2.5, label='Central Current Mvir', alpha=0.8)
     
-    # ax6.set_xlabel(r'M$_*$ [M$_{\odot}$]')
-    # ax6.set_ylabel(r'Halo Mass [M$_{\odot}$]')
-    # ax6.set_title('Satellite vs Central Halo Masses')
-    # ax6.set_xscale('log')
-    # ax6.set_yscale('log')
-    # ax6.grid(True, alpha=0.3)
-    # ax6.legend()
-    # if stellar_xlims: ax6.set_xlim(stellar_xlims)
+    ax6.set_xlabel(r'M$_*$ [M$_{\odot}$]')
+    ax6.set_ylabel(r'Halo Mass [M$_{\odot}$]')
+    ax6.set_title('Satellite vs Central Halo Masses')
+    ax6.set_xscale('log')
+    ax6.set_yscale('log')
+    ax6.grid(True, alpha=0.3)
+    ax6.legend()
+    if stellar_xlims: ax6.set_xlim(stellar_xlims)
     
-    # plt.tight_layout()
-    # output_filename3 = f'{OutputDir}enhanced_satellite_properties{OutputFormat}'
-    # plt.savefig(output_filename3, bbox_inches='tight', dpi=300)
-    # print(f'Enhanced satellite properties plot saved as: {output_filename3}')
+    plt.tight_layout()
+    output_filename3 = f'{OutputDir}enhanced_satellite_properties{OutputFormat}'
+    plt.savefig(output_filename3, bbox_inches='tight', dpi=300)
+    print(f'Enhanced satellite properties plot saved as: {output_filename3}')
     
-    # # Display enhanced statistics
-    # print('\n=== ENHANCED STATISTICS ===')
+    # Display enhanced statistics
+    print('\n=== ENHANCED STATISTICS ===')
     
-    # print('\nCENTRAL GALAXY STATISTICS:')
-    # print(f'Hot Gas median: {np.median(hot_central[hot_central > 0]):.2e} M_sun')
-    # print(f'CGM Gas median: {np.median(cgm_central[cgm_central > 0]):.2e} M_sun')
-    # print(f'Cold Gas median: {np.median(cold_central[cold_central > 0]):.2e} M_sun')
-    # print(f'Virial Mass median: {np.median(mvir_central[mvir_central > 0]):.2e} M_sun')
+    print('\nCENTRAL GALAXY STATISTICS:')
+    print(f'Hot Gas median: {np.median(hot_central[hot_central > 0]):.2e} M_sun')
+    print(f'CGM Gas median: {np.median(cgm_central[cgm_central > 0]):.2e} M_sun')
+    print(f'Cold Gas median: {np.median(cold_central[cold_central > 0]):.2e} M_sun')
+    print(f'Virial Mass median: {np.median(mvir_central[mvir_central > 0]):.2e} M_sun')
     
-    # active_infall = total_infall_central > 0
-    # if np.sum(active_infall) > 0:
-    #     print(f'\nINFALL STATISTICS (Active galaxies: {np.sum(active_infall)}):')
-    #     print(f'Total infall rate median: {np.median(total_infall_central[active_infall]):.2e} M_sun/yr')
-    #     print(f'CGM infall rate median: {np.median(central_cgm_infall[active_infall]):.2e} M_sun/yr')
-    #     print(f'Hot infall rate median: {np.median(central_hot_infall[active_infall]):.2e} M_sun/yr')
+    active_infall = total_infall_central > 0
+    if np.sum(active_infall) > 0:
+        print(f'\nINFALL STATISTICS (Active galaxies: {np.sum(active_infall)}):')
+        print(f'Total infall rate median: {np.median(total_infall_central[active_infall]):.2e} M_sun/yr')
+        print(f'CGM infall rate median: {np.median(central_cgm_infall[active_infall]):.2e} M_sun/yr')
+        print(f'Hot infall rate median: {np.median(central_hot_infall[active_infall]):.2e} M_sun/yr')
         
-    #     # Calculate fractions
-    #     cgm_fraction = central_cgm_infall[active_infall] / total_infall_central[active_infall]
-    #     hot_fraction = central_hot_infall[active_infall] / total_infall_central[active_infall]
+        # Calculate fractions
+        cgm_fraction = central_cgm_infall[active_infall] / total_infall_central[active_infall]
+        hot_fraction = central_hot_infall[active_infall] / total_infall_central[active_infall]
         
-    #     print(f'CGM fraction median: {np.median(cgm_fraction):.2f}')
-    #     print(f'Hot fraction median: {np.median(hot_fraction):.2f}')
+        print(f'CGM fraction median: {np.median(cgm_fraction):.2f}')
+        print(f'Hot fraction median: {np.median(hot_fraction):.2f}')
         
-    #     # Infall efficiency
-    #     efficiency = total_infall_central[active_infall] / mvir_central[active_infall]
-    #     print(f'Infall efficiency median: {np.median(efficiency):.2e} yr^-1')
-    #     print(f'Typical halo doubling time: {1.0/np.median(efficiency)/1e9:.1f} Gyr')
+        # Infall efficiency
+        efficiency = total_infall_central[active_infall] / mvir_central[active_infall]
+        print(f'Infall efficiency median: {np.median(efficiency):.2e} yr^-1')
+        print(f'Typical halo doubling time: {1.0/np.median(efficiency)/1e9:.1f} Gyr')
     
-    # print('\nSATELLITE GALAXY STATISTICS:')
-    # print(f'Satellite count: {len(stellar_satellite)}')
-    # print(f'Infall Mvir median: {np.median(infall_mvir_satellite):.2e} M_sun')
-    # print(f'Current stellar mass median: {np.median(stellar_satellite):.2e} M_sun')
+    print('\nSATELLITE GALAXY STATISTICS:')
+    print(f'Satellite count: {len(stellar_satellite)}')
+    print(f'Infall Mvir median: {np.median(infall_mvir_satellite):.2e} M_sun')
+    print(f'Current stellar mass median: {np.median(stellar_satellite):.2e} M_sun')
     
-    # # Mass ratio analysis
-    # if len(stellar_satellite) > 0:
-    #     mass_ratio = infall_mvir_satellite / stellar_satellite
-    #     print(f'Infall halo/stellar mass ratio median: {np.median(mass_ratio):.1f}')
+    # Mass ratio analysis
+    if len(stellar_satellite) > 0:
+        mass_ratio = infall_mvir_satellite / stellar_satellite
+        print(f'Infall halo/stellar mass ratio median: {np.median(mass_ratio):.1f}')
     
-    # print('\n=== SUCCESS: Enhanced analysis complete! ===')
-    # print('Generated plots:')
-    # print(f'  1. {output_filename1} - Gas masses + virial mass')
-    # print(f'  2. {output_filename2} - Infall rates + total infall')  
-    # print(f'  3. {output_filename3} - Satellite properties + comparisons')
+    print('\n=== SUCCESS: Enhanced analysis complete! ===')
+    print('Generated plots:')
+    print(f'  1. {output_filename1} - Gas masses + virial mass')
+    print(f'  2. {output_filename2} - Infall rates + total infall')  
+    print(f'  3. {output_filename3} - Satellite properties + comparisons')
 
     print(infallToHot, infallToCGM, Mvir, StellarMass, HotGas, CGMgas, ColdGas)

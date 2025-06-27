@@ -58,7 +58,6 @@ struct HDF5_GALAXY_OUTPUT
     float *StellarMass;
     float *BulgeMass;
     float *HotGas;
-    float *EjectedMass;
     float *BlackHoleMass;
     float *ICS;
     
@@ -67,7 +66,6 @@ struct HDF5_GALAXY_OUTPUT
     float *MetalsStellarMass;
     float *MetalsBulgeMass;
     float *MetalsHotGas;
-    float *MetalsEjectedMass;
     float *MetalsICS;
     
     /* to calculate magnitudes */

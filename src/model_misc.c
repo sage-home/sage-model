@@ -50,11 +50,9 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].StellarMass = 0.0;
     galaxies[p].BulgeMass = 0.0;
     galaxies[p].HotGas = 0.0;
-    galaxies[p].EjectedMass = 0.0;
     galaxies[p].BlackHoleMass = 0.0;
     galaxies[p].ICS = 0.0;
     galaxies[p].CGMgas = 0.0;
-    galaxies[p].MetalsCGMgas = 0.0;
 
     // Initialize H2 fractions if using that model
     if (run_params->SFprescription >= 1) {
@@ -66,8 +64,8 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].MetalsStellarMass = 0.0;
     galaxies[p].MetalsBulgeMass = 0.0;
     galaxies[p].MetalsHotGas = 0.0;
-    galaxies[p].MetalsEjectedMass = 0.0;
     galaxies[p].MetalsICS = 0.0;
+    galaxies[p].MetalsCGMgas = 0.0;
 
     for(int step = 0; step < STEPS; step++) {
         galaxies[p].SfrDisk[step] = 0.0;
@@ -87,7 +85,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].TimeOfLastMajorMerger = -1.0;
     galaxies[p].TimeOfLastMinorMerger = -1.0;
     galaxies[p].OutflowRate = 0.0;
-	galaxies[p].TotalSatelliteBaryons = 0.0;
+	  galaxies[p].TotalSatelliteBaryons = 0.0;
 
 	// infall properties
     galaxies[p].infallMvir = -1.0;
@@ -95,7 +93,6 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].infallVmax = -1.0;
 
 }
-
 
 
 double get_disk_radius(const int halonr, const int p, const struct halo_data *halos, const struct GALAXY *galaxies)
