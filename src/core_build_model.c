@@ -354,9 +354,9 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 // NEW: Add this call after infall but before existing inflow
                 transfer_cgm_to_hot(centralgal, deltaT / STEPS, galaxies, run_params);
 
-                if(run_params->inflowFactor > 0.0) {
-                    inflow_gas(centralgal, deltaT / STEPS, galaxies, run_params);
-                }
+                // if(run_params->inflowFactor > 0.0) {
+                //     inflow_gas(centralgal, deltaT / STEPS, galaxies, run_params);
+                // }
             } else {
                 if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
                     strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);

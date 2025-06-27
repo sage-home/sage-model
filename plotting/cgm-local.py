@@ -1638,36 +1638,88 @@ if __name__ == '__main__':
         cgm_enriched = data['CGMgas_enriched'] * 1.0e10 / Hubble_h
         mvir = data['Mvir'] * 1.0e10 / Hubble_h
         stellar_mass = data['StellarMass'] * 1.0e10 / Hubble_h
-        print(cgm_total, cgm_pristine, cgm_enriched, mvir, stellar_mass)
         
-        # Filter valid data
-        valid_mask = (cgm_total > 0) & (mvir > 0) & (stellar_mass > 0)
+        print(f'Initial data loaded - CGM total range: {cgm_total.min():.2e} to {cgm_total.max():.2e}')
+        print(f'CGM pristine range: {cgm_pristine.min():.2e} to {cgm_pristine.max():.2e}')
+        print(f'CGM enriched range: {cgm_enriched.min():.2e} to {cgm_enriched.max():.2e}')
+        
+        # Enhanced filtering for valid data - use more stringent thresholds
+        min_cgm_mass = 1e7  # Minimum CGM mass threshold (solar masses)
+        valid_mask = (
+            (cgm_total >= min_cgm_mass) & 
+            (mvir > 0) & 
+            (stellar_mass > 0) & 
+            np.isfinite(cgm_total) & 
+            np.isfinite(cgm_pristine) & 
+            np.isfinite(cgm_enriched) &
+            np.isfinite(mvir) &
+            np.isfinite(stellar_mass)
+        )
+        
+        print(f'Valid galaxies after filtering: {np.sum(valid_mask)} out of {len(cgm_total)}')
+        
         cgm_total_valid = cgm_total[valid_mask]
         cgm_pristine_valid = cgm_pristine[valid_mask]
         cgm_enriched_valid = cgm_enriched[valid_mask]
         mvir_valid = mvir[valid_mask]
         stellar_mass_valid = stellar_mass[valid_mask]
         
-        # Calculate fractions
-        pristine_fraction = cgm_pristine_valid / cgm_total_valid
-        enriched_fraction = cgm_enriched_valid / cgm_total_valid
+        # Calculate fractions with additional safety checks
+        pristine_fraction = np.zeros_like(cgm_total_valid)
+        enriched_fraction = np.zeros_like(cgm_total_valid)
+        
+        # Only calculate fractions where cgm_total is above threshold
+        safe_division_mask = cgm_total_valid > min_cgm_mass
+        
+        pristine_fraction[safe_division_mask] = cgm_pristine_valid[safe_division_mask] / cgm_total_valid[safe_division_mask]
+        enriched_fraction[safe_division_mask] = cgm_enriched_valid[safe_division_mask] / cgm_total_valid[safe_division_mask]
+        
+        # Additional check for finite values and reasonable ranges
+        finite_mask = (
+            np.isfinite(pristine_fraction) & 
+            np.isfinite(enriched_fraction) &
+            (pristine_fraction >= 0) & 
+            (pristine_fraction <= 1) &
+            (enriched_fraction >= 0) & 
+            (enriched_fraction <= 1)
+        )
+        
+        print(f'Galaxies with valid fractions: {np.sum(finite_mask)} out of {len(pristine_fraction)}')
+        
+        # Apply the finite mask to all arrays
+        pristine_fraction = pristine_fraction[finite_mask]
+        enriched_fraction = enriched_fraction[finite_mask]
+        cgm_total_final = cgm_total_valid[finite_mask]
+        cgm_pristine_final = cgm_pristine_valid[finite_mask]
+        cgm_enriched_final = cgm_enriched_valid[finite_mask]
+        mvir_final = mvir_valid[finite_mask]
+        stellar_mass_final = stellar_mass_valid[finite_mask]
+        
+        if len(pristine_fraction) == 0:
+            print("Warning: No valid data found for CGM composition analysis!")
+            return
+        
+        print(f'Pristine fraction range: {pristine_fraction.min():.3f} to {pristine_fraction.max():.3f}')
+        print(f'Enriched fraction range: {enriched_fraction.min():.3f} to {enriched_fraction.max():.3f}')
         
         # Create subplot figure
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
         
         # Plot 1: Pristine fraction vs Halo Mass
         ax = axes[0, 0]
-        if len(mvir_valid) > dilute:
-            indices = sample(list(range(len(mvir_valid))), dilute)
+        if len(mvir_final) > dilute:
+            indices = sample(list(range(len(mvir_final))), dilute)
         else:
-            indices = list(range(len(mvir_valid)))
+            indices = list(range(len(mvir_final)))
         
-        scatter = ax.scatter(np.log10(mvir_valid[indices]), pristine_fraction[indices], 
-                            c=np.log10(stellar_mass_valid[indices]), cmap='viridis', s=10, alpha=0.7)
+        scatter = ax.scatter(np.log10(mvir_final[indices]), pristine_fraction[indices], 
+                            c=np.log10(stellar_mass_final[indices]), cmap='viridis', s=10, alpha=0.7)
         
         # Add running median
-        bin_centers, bin_averages, _ = bin_average(pristine_fraction, np.log10(mvir_valid), num_bins=15)
-        ax.plot(bin_centers, bin_averages, 'r-', linewidth=3, label='Running Median')
+        bin_centers, bin_averages, _ = bin_average(pristine_fraction, np.log10(mvir_final), num_bins=15)
+        valid_bins = np.isfinite(bin_averages)
+        if np.sum(valid_bins) > 0:
+            ax.plot(bin_centers[valid_bins], bin_averages[valid_bins], 'r-', linewidth=3, label='Running Median')
         
         ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
         ax.set_ylabel(r'$f_{\mathrm{pristine}} = M_{\mathrm{CGM,pristine}} / M_{\mathrm{CGM,total}}$')
@@ -1680,7 +1732,7 @@ if __name__ == '__main__':
         
         # Plot 2: CGM Mass vs Halo Mass (colored by pristine fraction)
         ax = axes[0, 1]
-        scatter = ax.scatter(np.log10(mvir_valid[indices]), np.log10(cgm_total_valid[indices]), 
+        scatter = ax.scatter(np.log10(mvir_final[indices]), np.log10(cgm_total_final[indices]), 
                             c=pristine_fraction[indices], cmap='RdYlBu', s=10, alpha=0.7, vmin=0, vmax=1)
         
         ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
@@ -1692,13 +1744,32 @@ if __name__ == '__main__':
         
         # Plot 3: Pristine vs Enriched Mass
         ax = axes[1, 0]
-        ax.scatter(np.log10(cgm_pristine_valid[indices]), np.log10(cgm_enriched_valid[indices]), 
-                c=np.log10(mvir_valid[indices]), cmap='plasma', s=10, alpha=0.7)
         
-        # Add 1:1 line
-        min_mass = min(np.log10(cgm_pristine_valid).min(), np.log10(cgm_enriched_valid).min())
-        max_mass = max(np.log10(cgm_pristine_valid).max(), np.log10(cgm_enriched_valid).max())
-        ax.plot([min_mass, max_mass], [min_mass, max_mass], 'k--', alpha=0.5, label='1:1 line')
+        # Filter for galaxies with both pristine and enriched components > 0
+        both_components_mask = (cgm_pristine_final > 0) & (cgm_enriched_final > 0)
+        
+        if np.sum(both_components_mask) > 0:
+            pristine_subset = cgm_pristine_final[both_components_mask]
+            enriched_subset = cgm_enriched_final[both_components_mask]
+            mvir_subset = mvir_final[both_components_mask]
+            
+            if len(pristine_subset) > dilute:
+                plot_indices = sample(list(range(len(pristine_subset))), dilute)
+            else:
+                plot_indices = list(range(len(pristine_subset)))
+            
+            scatter = ax.scatter(np.log10(pristine_subset[plot_indices]), np.log10(enriched_subset[plot_indices]), 
+                        c=np.log10(mvir_subset[plot_indices]), cmap='plasma', s=10, alpha=0.7)
+            
+            # Add 1:1 line
+            min_mass = min(np.log10(pristine_subset).min(), np.log10(enriched_subset).min())
+            max_mass = max(np.log10(pristine_subset).max(), np.log10(enriched_subset).max())
+            ax.plot([min_mass, max_mass], [min_mass, max_mass], 'k--', alpha=0.5, label='1:1 line')
+            
+            cbar = plt.colorbar(scatter, ax=ax)
+            cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        else:
+            ax.text(0.5, 0.5, 'No galaxies with both\ncomponents > 0', ha='center', va='center', transform=ax.transAxes)
         
         ax.set_xlabel(r'$\log_{10} M_{\mathrm{CGM,pristine}}\ (M_{\odot})$')
         ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM,enriched}}\ (M_{\odot})$')
@@ -1707,9 +1778,26 @@ if __name__ == '__main__':
         
         # Plot 4: Pristine fraction histogram
         ax = axes[1, 1]
-        ax.hist(pristine_fraction, bins=50, alpha=0.7, color='blue', edgecolor='black')
-        ax.axvline(np.median(pristine_fraction), color='red', linestyle='--', linewidth=2, 
-                label=f'Median = {np.median(pristine_fraction):.2f}')
+        
+        # Create histogram with finite values only
+        if len(pristine_fraction) > 0:
+            # Remove any remaining edge cases
+            histogram_data = pristine_fraction[np.isfinite(pristine_fraction) & (pristine_fraction >= 0) & (pristine_fraction <= 1)]
+            
+            if len(histogram_data) > 0:
+                ax.hist(histogram_data, bins=50, alpha=0.7, color='blue', edgecolor='black')
+                median_val = np.median(histogram_data)
+                ax.axvline(median_val, color='red', linestyle='--', linewidth=2, 
+                        label=f'Median = {median_val:.2f}')
+                
+                # Add statistics text
+                ax.text(0.05, 0.95, f'N = {len(histogram_data)}', transform=ax.transAxes, 
+                    bbox=dict(boxstyle="round", facecolor='white', alpha=0.8))
+            else:
+                ax.text(0.5, 0.5, 'No valid data\nfor histogram', ha='center', va='center', transform=ax.transAxes)
+        else:
+            ax.text(0.5, 0.5, 'No valid data\nfor histogram', ha='center', va='center', transform=ax.transAxes)
+        
         ax.set_xlabel(r'$f_{\mathrm{pristine}}$')
         ax.set_ylabel('Number of Galaxies')
         ax.set_title('Distribution of CGM Pristine Fractions')
@@ -1723,6 +1811,26 @@ if __name__ == '__main__':
         plt.savefig(outputFile, dpi=500, bbox_inches='tight')
         print(f'Saved CGM composition analysis to {outputFile}')
         plt.close()
+        
+        # Print summary statistics
+        print(f'\n=== CGM Composition Summary ===')
+        print(f'Total galaxies analyzed: {len(pristine_fraction)}')
+        if len(pristine_fraction) > 0:
+            print(f'Median pristine fraction: {np.median(pristine_fraction):.3f}')
+            print(f'Mean pristine fraction: {np.mean(pristine_fraction):.3f}')
+            print(f'Std pristine fraction: {np.std(pristine_fraction):.3f}')
+            
+            # Count galaxies by dominant component
+            pristine_dominated = np.sum(pristine_fraction > 0.5)
+            enriched_dominated = np.sum(pristine_fraction < 0.5)
+            balanced = np.sum(np.abs(pristine_fraction - 0.5) < 0.1)
+            
+            print(f'Pristine-dominated galaxies (f_pris > 0.5): {pristine_dominated} ({pristine_dominated/len(pristine_fraction)*100:.1f}%)')
+            print(f'Enriched-dominated galaxies (f_pris < 0.5): {enriched_dominated} ({enriched_dominated/len(pristine_fraction)*100:.1f}%)')
+            print(f'Balanced galaxies (0.4 < f_pris < 0.6): {balanced} ({balanced/len(pristine_fraction)*100:.1f}%)')
+        print('================================\n')
+
+
 
     def plot_gas_flow_rates_analysis(data_reader):
         """

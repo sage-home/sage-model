@@ -140,9 +140,9 @@ SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
 
 
 % CGM Infall and Mixing Parameters
-CGMInfallFraction      1.0     % 100% of infall goes through CGM first
-CGMTransferEfficiency  0.1     % 10% transfer efficiency per dynamical time
-CGMPristineFraction    0.7     % 70% of CGM infall is pristine
+CGMInfallFraction      0.3     % 100% of infall goes through CGM first
+CGMTransferEfficiency  0.225     % 10% transfer efficiency per dynamical time
+CGMPristineFraction    0.8     % 70% of CGM infall is pristine
 CGMMixingTimescale     0.5     % 0.5 Gyr mixing timescale
 
 

@@ -131,7 +131,7 @@ PLOT_COLORS = {
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/millennium/'
+DirName = './output/millennium_CGMfirst/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 OutputDir = DirName + 'plots/'
@@ -144,7 +144,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Additional simulation directories for SFR density comparison
 SFR_SimDirs = [
     {
-        'path': './output/millennium/', 
+        'path': './output/millennium_CGMfirst/', 
         'label': 'Millennium', 
         'color': 'black', 
         'linestyle': '-',
@@ -203,7 +203,7 @@ SFR_SimDirs = [
 SMF_SimConfigs = [
     # SAGE 2.0 simulations (solid lines)
     {
-        'path': './output/millennium/', 
+        'path': './output/millennium_CGMfirst/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line
@@ -235,7 +235,7 @@ SMF_SimConfigs = [
 GAS_SimConfigs = [
     # Main simulation (your current one)
     {
-        'path': './output/millennium/', 
+        'path': './output/millennium_CGMfirst/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',
