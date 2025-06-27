@@ -57,13 +57,9 @@ ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
 EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects on H2 gas
-% CGMBuildOn                  1   %0: switch off; 1: enable CGM building
 VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
-MassReincorporationOn       0   %0: switch off; 1: enable mass-dependent reincorporation
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
-RedshiftReincorporationOn   0   %0: switch off; 1: enable redshift-scaled reioncorporation
-LowMassHighzSuppressionOn   0   %0: switch off; 1: enable low-mass and high-z suppression
 
 %------------------------------------------
 %----- SAGE model parameters --------------
@@ -130,22 +126,9 @@ PatchyReionWidth          1.0     % Width of reionization transition in dz
 LocalReionVariance        1.0     % Spatial variance in reionization timing
 PostReionSlope           -1.0    % Evolution of critical mass after reionization
 
-%------------------------------------------
-%----- MASS-DEPENDANT REINCORPORATION -----
-%------------------------------------------
-
-CriticalReincMass           5.0      % critical mass in 10^10 Msun/h
-ReincorporationMassExp      2.0      % linear scaling with halo mass
-MinReincorporationFactor    0.003    % minimum 10% of standard rate
-
-%------------------------------------------
-%----- REDSHIFT-DEPENDANT PARAMETERS -----
-%------------------------------------------
-
 SFR_Alpha                 0.0   %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
 Reheating_Alpha           0.0   % Redshift evolution exponent for FeedbackReheatingEpsilon (only used if MuratovMassLoading=0)
 Ejection_Alpha            0.0   %controls redshift dependence of ejection
-ReincorporationRedshiftExp       -10.0
 
 %------------------------------------------
 %----- Mass Dependent SF ------------------
@@ -154,10 +137,6 @@ ReincorporationRedshiftExp       -10.0
 SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
 SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
 SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
-
-SuppressionMassThreshold        45.0      % In units of 10^10 Msun/h
-SuppressionMassExponent         1.0      % Power-law exponent for mass dependence 
-SuppressionRedshiftExp          0.5      % Redshift scaling factor
 
 %------------------------------------------
 %----- Other code-related information -----

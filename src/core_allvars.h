@@ -430,16 +430,6 @@ struct params
     int32_t   DiskInstabilityOn;
     // Environmental effects parameters
     int32_t EnvironmentalEffectsOn;  // 0 = off, 1 = on
-    int32_t    MassReincorporationOn;  /* Flag to enable mass-dependent reincorporation */
-
-    int32_t    RedshiftReincorporationOn;  /* Flag to enable redshift-dependent reincorporation */
-    double ReincorporationRedshiftExp;     /* Exponent for redshift scaling: (1+z)^(-exponent) */
-
-    /* Low-mass galaxy suppression parameters */
-    int32_t    LowMassHighzSuppressionOn;   /* Flag to enable targeted suppression */
-    double     SuppressionMassThreshold;    /* Mass threshold in 10^10 Msun/h */
-    double     SuppressionMassExponent;     /* How steeply suppression depends on mass */
-    double     SuppressionRedshiftExp;      /* Redshift dependence exponent */
 
     int32_t MassDependentSFEnabled;  // 0 = off, 1 = on
     double SFMassPivot;            // Pivot mass in 10^10 Msun/h
@@ -483,10 +473,6 @@ struct params
     double SFR_Alpha;
     double Reheating_Alpha;
     double Ejection_Alpha;
-
-    double CriticalReincMass;      /* Mass threshold below which to apply delayed reincorporation (in 10^10 M_sun/h) */
-    double ReincorporationMassExp; /* Exponent for mass dependence of reincorporation */
-    double MinReincorporationFactor; /* Minimum reincorporation rate as fraction of standard rate */
 
     int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov, 2=Lagos) */
 

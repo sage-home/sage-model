@@ -79,28 +79,6 @@ void init(struct params *run_params)
         run_params->MassLoadingModel = 0;  // Default to standard model
     }
 
-    // Initialize redshift reincorporation parameters with default values if not set
-    if (run_params->RedshiftReincorporationOn != 0 && run_params->RedshiftReincorporationOn != 1) {
-        run_params->RedshiftReincorporationOn = 0;  // Disabled by default
-    }
-    if (run_params->ReincorporationRedshiftExp <= 0.0) {
-        run_params->ReincorporationRedshiftExp = 2.0;  // Default exponent value
-    }
-
-    // Initialize low-mass high-z suppression parameters
-    if (run_params->LowMassHighzSuppressionOn != 0 && run_params->LowMassHighzSuppressionOn != 1) {
-        run_params->LowMassHighzSuppressionOn = 0;  // Disabled by default
-    }
-    if (run_params->SuppressionMassThreshold <= 0.0) {
-        run_params->SuppressionMassThreshold = 0.3;  // Default: 3×10^9 Msun/h
-    }
-    if (run_params->SuppressionMassExponent <= 0.0) {
-        run_params->SuppressionMassExponent = 4.0;  // Default: sharp transition
-    }
-    if (run_params->SuppressionRedshiftExp <= 0.0) {
-        run_params->SuppressionRedshiftExp = 1.0;  // Default: linear with redshift
-    }
-
     // Initialize reionization parameters with default values
     if (run_params->ReionizationModel != 0 && 
         run_params->ReionizationModel != 1 && 

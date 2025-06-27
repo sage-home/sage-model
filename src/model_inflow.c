@@ -8,7 +8,6 @@
 
 #include "model_inflow.h"
 #include "model_misc.h"
-#include "model_lowmass_suppression.h"
 
 void inflow_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
@@ -28,36 +27,6 @@ void inflow_gas(const int centralgal, const double dt, struct GALAXY *galaxies, 
 
         // Apply scaling factors
         double total_scaling = 1.0;
-        
-        // Mass-dependent scaling (if enabled)
-        if (run_params->MassReincorporationOn == 1) {
-            // Only apply to halos below the critical mass
-            if (galaxies[centralgal].Mvir < run_params->CriticalReincMass) {
-                // Calculate mass-dependent factor
-                double mass_dependent_factor = galaxies[centralgal].Mvir / run_params->CriticalReincMass;
-                mass_dependent_factor = pow(mass_dependent_factor, run_params->ReincorporationMassExp);
-                
-                // Ensure factor is in sensible range
-                if (mass_dependent_factor < run_params->MinReincorporationFactor)
-                    mass_dependent_factor = run_params->MinReincorporationFactor;
-                if (mass_dependent_factor > 1.0)
-                    mass_dependent_factor = 1.0;
-                
-                // Apply to total scaling
-                total_scaling *= mass_dependent_factor;
-        
-            }
-        }
-        
-        // Redshift-dependent scaling (if enabled)
-        if (run_params->RedshiftReincorporationOn == 1) {
-            // Calculate redshift-dependent factor: slower reincorporation at high redshift
-            double redshift_factor = pow(1.0 + z, -run_params->ReincorporationRedshiftExp);
-            
-            // Apply to total scaling
-            total_scaling *= redshift_factor;
-        }
-
         // Calculate final inflow amount
         double inflowed = base_inflow_rate * total_scaling * dt;
 
@@ -69,12 +38,5 @@ void inflow_gas(const int centralgal, const double dt, struct GALAXY *galaxies, 
         galaxies[centralgal].MetalsCGMgas -= metallicity * inflowed;
         galaxies[centralgal].HotGas += inflowed;
         galaxies[centralgal].MetalsHotGas += metallicity * inflowed;
-
-        // Apply targeted suppression
-        if (run_params->LowMassHighzSuppressionOn == 1) {
-            double z = run_params->ZZ[galaxies[centralgal].SnapNum];
-            double suppression = calculate_lowmass_suppression(centralgal, z, galaxies, run_params);
-            inflowed *= suppression;
-        }
-    }
+}
 }

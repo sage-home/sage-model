@@ -2,7 +2,6 @@
 #include "core_allvars.h"
 #include "model_h2_formation.h"
 #include "model_misc.h"
-#include "model_lowmass_suppression.h" 
 
 /**
  * init_gas_components - Initialize gas components in a galaxy
@@ -799,15 +798,6 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     else {
         // Default for model 0 or anything else - simple prescription
         total_molecular_gas = 0.3 * g->ColdGas;  // Fixed 30% molecular fraction
-    }
-
-    // Apply targeted suppression to H₂ content
-    if (run_params->LowMassHighzSuppressionOn == 1) {
-        double z = run_params->ZZ[g->SnapNum];
-        // Since we only have a pointer to a single galaxy, we need to pass that directly
-        double suppression = calculate_lowmass_suppression(0, z, g, run_params);
-        g->H2_gas *= suppression;
-        g->HI_gas = g->ColdGas - g->H2_gas;
     }
     
     // Update gas components

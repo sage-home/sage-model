@@ -10,7 +10,6 @@
 #include "model_misc.h"
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
-#include "model_lowmass_suppression.h"
 
 // Fix for model_starformation_and_feedback.c
 
@@ -277,14 +276,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     } else {
         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
     }
-
-    // Apply targeted suppression to stars
-    if (run_params->LowMassHighzSuppressionOn == 1) {
-        double suppression = calculate_lowmass_suppression(p, z, galaxies, run_params);
-        stars *= suppression;
-    }
 }
-
 
 void update_from_star_formation(const int p, const double stars, const double metallicity, struct GALAXY *galaxies, const struct params *run_params)
 {
@@ -614,11 +606,6 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
     } else {
         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-    }
-    // Apply targeted suppression to stars
-    if (run_params->LowMassHighzSuppressionOn == 1) {
-        double suppression = calculate_lowmass_suppression(p, z, galaxies, run_params);
-        stars *= suppression;
     }
 }
 

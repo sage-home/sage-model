@@ -271,22 +271,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->EnvEffectStrength);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "MassReincorporationOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->MassReincorporationOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "CriticalReincMass", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CriticalReincMass);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "ReincorporationMassExp", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ReincorporationMassExp);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "MinReincorporationFactor", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->MinReincorporationFactor);
-    ParamID[NParam++] = DOUBLE;
-
     strncpy(ParamTag[NParam], "SFR_Alpha", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->SFR_Alpha);
     ParamID[NParam++] = DOUBLE;
@@ -302,30 +286,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     strncpy(ParamTag[NParam], "MassLoadingModel", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->MassLoadingModel);
     ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "RedshiftReincorporationOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->RedshiftReincorporationOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "ReincorporationRedshiftExp", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ReincorporationRedshiftExp);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "LowMassHighzSuppressionOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->LowMassHighzSuppressionOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "SuppressionMassThreshold", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SuppressionMassThreshold);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "SuppressionMassExponent", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SuppressionMassExponent);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "SuppressionRedshiftExp", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SuppressionRedshiftExp);
-    ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "ReionizationModel", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->ReionizationModel);
