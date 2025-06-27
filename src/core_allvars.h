@@ -165,9 +165,6 @@ struct GALAXY
     float infallMvir;
     float infallVvir;
     float infallVmax;
-    float infallToCGM;      // Rate of gas infall into CGM reservoir [10^10 Msun/h per timestep]
-    float infallToHot;      // Rate of gas infall into hot gas reservoir [10^10 Msun/h per timestep]
-
 };
 
 

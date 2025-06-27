@@ -117,7 +117,7 @@ EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2
 %----- CGM Building -----------------------
 %------------------------------------------
 
-CGMBuildVcrit  35.0        % Critical velocity scale (km/s)
+CGMBuildVcrit  25.0        % Critical velocity scale (km/s)
 CGMBuildAlpha  0.7         % Power-law slope
 CGMBuildZdep   0.8         % Redshift dependence (0.5-1.0 recommended)
 
