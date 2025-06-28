@@ -54,7 +54,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/physics_pipeline_executor.c core/core_property_utils.c \
         core/core_snapshot_indexing.c \
         core/generated_output_transformers.c \
-        core/tree_context.c core/tree_traversal.c
+        core/tree_context.c core/tree_traversal.c core/tree_galaxies.c
 
 # Physics model source files
 PHYSICS_SRC := physics/physics_output_transformers.c \
@@ -412,7 +412,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_galaxy_array test_galaxy_array_component test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion test_data_integrity_physics_free test_hdf5_output_validation test_halo_progenitor_integrity test_core_property_separation test_property_separation_scientific_accuracy test_property_separation_memory_safety test_fof_group_assembly test_fof_evolution_context test_fof_memory_management test_orphan_tracking test_orphan_fof_disruption test_tree_infrastructure
+CORE_TESTS = test_pipeline test_array_utils test_galaxy_array test_galaxy_array_component test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion test_data_integrity_physics_free test_hdf5_output_validation test_halo_progenitor_integrity test_core_property_separation test_property_separation_scientific_accuracy test_property_separation_memory_safety test_fof_group_assembly test_fof_evolution_context test_fof_memory_management test_orphan_tracking test_orphan_fof_disruption test_tree_infrastructure test_galaxy_inheritance
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_comprehensive test_property_yaml_validation test_parameter_yaml_validation
@@ -586,6 +586,9 @@ test_orphan_fof_disruption: $(ROOT_DIR)/.stamps/generate_properties_full.stamp t
 
 test_tree_infrastructure: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_tree_infrastructure.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_tree_infrastructure tests/test_tree_infrastructure.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_galaxy_inheritance: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_galaxy_inheritance.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_inheritance tests/test_galaxy_inheritance.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
 core_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(CORE_TESTS)
