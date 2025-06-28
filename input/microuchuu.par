@@ -18,8 +18,6 @@ NumOutputs              1             % sets the desired number of galaxy output
 % List your output snapshots after the arrow, highest to lowest (ignored when NumOutputs=-1)
 -> 49
 
-OutputFormat            sage_hdf5     % sets the desired output format, either sage_binary or sage_hdf5
-
 
 %------------------------------------------
 %----- Simulation information  ------------
@@ -31,6 +29,7 @@ TreeType                consistent_trees_hdf5           % one of genesis_lhalo_h
 SimulationDir           /Volumes/Internal/data/uchuu/microuchuu/mergertrees
 FileWithSnapList        /Volumes/Internal/data/uchuu/microuchuu/Uchuu100_scalefactor.txt
 LastSnapshotNr          49
+ProcessingMode          1             % 0=snapshot-based, 1=tree-based processing
 NumSimulationTreeFiles  1             % Number of files the trees are split over
 BoxSize                 100.0         % in Mpc/h
 
