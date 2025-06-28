@@ -22,6 +22,7 @@
 #include "core_logging.h"
 #include "core_snapshot_indexing.h"
 #include "galaxy_array.h"
+#include "sage_tree_mode.h"
 
 #ifdef HDF5
 #include "../io/save_gals_hdf5.h"
@@ -356,6 +357,19 @@ static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_in
         end_tree_memory_scope();
         return nhalos;
     }
+
+    // Check processing mode and dispatch to appropriate handler
+    if (run_params->simulation.ProcessingMode == 1) {
+        // Tree-based processing mode
+        LOG_DEBUG("Using tree-based processing for forest %ld", forestnr);
+        int32_t tree_status = sage_process_forest_tree_mode(forestnr, save_info, forest_info, run_params);
+        myfree(Halo);
+        end_tree_memory_scope();
+        return tree_status;
+    }
+    
+    // Default: snapshot-based processing mode
+    LOG_DEBUG("Using snapshot-based processing for forest %ld", forestnr);
 
     HaloAux = mymalloc(nhalos * sizeof(HaloAux[0]));
     for(int i = 0; i < nhalos; i++) {

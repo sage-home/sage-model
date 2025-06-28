@@ -535,6 +535,9 @@ struct units_params
  */
 struct simulation_params
 {
+    /* Processing mode */
+    int32_t ProcessingMode;     /* 0=snapshot-based, 1=tree-based processing */
+    
     /* Snapshot parameters */
     int32_t nsnapshots;         /* Number of snapshots */
     int32_t LastSnapshotNr;     /* Number of the last snapshot */

@@ -108,6 +108,15 @@ parameters:
         bounds: [0, 999]
         struct_field: "simulation.LastSnapshotNr"
 
+      - name: "ProcessingMode"
+        type: int
+        description: "Galaxy processing mode: 0=snapshot-based, 1=tree-based"
+        category: core
+        required: false
+        bounds: [0, 1]
+        default_value: 0
+        struct_field: "simulation.ProcessingMode"
+
       - name: "NumSimulationTreeFiles"
         type: int
         description: "Total number of tree files in simulation"
