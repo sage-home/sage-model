@@ -268,6 +268,15 @@ LOG_INFO("Galaxy processing completed: %.2f seconds, %d galaxies",
 
 ## Development Workflows
 
+### Working with Processing Modes
+
+SAGE now supports two processing modes, selectable at runtime via the `ProcessingMode` parameter in your parameter file:
+
+- **`ProcessingMode = 0` (Snapshot-Based)**: The default mode. Processes galaxies snapshot by snapshot. Best for performance-critical applications where the highest scientific accuracy for complex merger histories is not required.
+- **`ProcessingMode = 1` (Tree-Based)**: Processes galaxies by traversing the entire merger tree. Recommended for scientific accuracy, especially when tracking orphans and handling gaps in the merger tree.
+
+When developing, you should test your changes in both modes to ensure they are compatible and do not introduce regressions.
+
 ### Feature Development
 
 #### 1. Planning Phase
@@ -531,6 +540,15 @@ void debug_pipeline_execution(struct module_pipeline *pipeline) {
     }
 }
 ```
+
+#### Tree-Based Processing Issues
+
+When debugging the tree-based processing mode (`ProcessingMode = 1`), focus on the following areas:
+
+- **Tree Traversal**: Use the `process_tree_recursive_with_tracking()` function to add a callback and trace the traversal order. This can help identify issues with the recursive logic.
+- **Galaxy Inheritance**: Check the `inherit_galaxies_with_orphans()` function in `tree_galaxies.c`. Log the properties of inherited galaxies and orphans to ensure they are being created and updated correctly.
+- **FOF Group Processing**: The `process_tree_fof_group()` function in `tree_fof.c` is the main entry point for FOF processing. Check the `is_fof_ready()` function to ensure that FOF groups are being processed at the correct time.
+- **Memory Management**: The `TreeContext` structure manages all the data for tree processing. Use a debugger to inspect the `working_galaxies` and `output_galaxies` arrays to ensure that galaxies are being correctly allocated and transferred.
 
 ### GDB Debugging Tips
 
@@ -891,6 +909,15 @@ struct params;  // Forward declaration
 // Function that uses forward-declared types
 int process_galaxy_data(struct GALAXY *galaxy, struct params *params);
 ```
+
+### Tree-Based Processing Best Practices
+
+When working with the tree-based processing mode, follow these best practices:
+
+- **Isolate Logic**: Keep the core tree-based logic in the `tree_*.c` files. Avoid adding tree-specific logic to the main `sage.c` file.
+- **Manage Memory Carefully**: The `TreeContext` is designed to manage memory for a single forest. Ensure that all allocations within the tree-processing functions are managed by the `TreeContext` or are properly freed before the context is destroyed.
+- **Use the `GalaxyArray`**: The `GalaxyArray` is a memory-safe, dynamic array for storing galaxy data. Use it for all galaxy collections to avoid buffer overflows and memory leaks.
+- **Write Comprehensive Tests**: The tree-based logic is complex. Write unit tests that cover all aspects of the tree traversal, galaxy inheritance, and FOF processing. Use the `test_tree_infrastructure.c` and other `test_tree_*.c` files as templates.
 
 ## Troubleshooting
 

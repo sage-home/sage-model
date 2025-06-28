@@ -104,6 +104,21 @@ These tests validate the module system that enables SAGE's pluggable architectur
 
 **Purpose**: Module system tests ensure that physics components can be added, removed, or replaced without breaking the core functionality.
 
+### Tree-Based Processing Tests (6 tests)
+
+These tests validate the new tree-based processing mode:
+
+| Test Name | Purpose | Added in Phase |
+|-----------|---------|---------------|
+| **test_tree_infrastructure** | Validates the core tree infrastructure | Phase 6 (Jun 2025) |
+| **test_galaxy_inheritance** | Tests galaxy inheritance and orphan creation | Phase 6 (Jun 2025) |
+| **test_tree_fof_processing** | Validates FOF group processing in tree mode | Phase 6 (Jun 2025) |
+| **test_tree_physics_integration** | Tests the integration of the physics pipeline | Phase 6 (Jun 2025) |
+| **test_tree_physics_simple** | A simplified test for the physics pipeline integration | Phase 6 (Jun 2025) |
+| **test_tree_mode_scientific_validation** | Validates the scientific accuracy of the tree mode | Phase 6 (Jun 2025) |
+
+**Purpose**: Tree-based processing tests ensure the scientific accuracy and robustness of the new processing mode.
+
 ## Running Tests
 
 ### Important Note
@@ -417,13 +432,14 @@ SAGE includes a performance benchmarking system:
 ## Test Suite Statistics
 
 The SAGE test suite contains:
-- **Total tests**: 52 individual unit tests
+- **Total tests**: 58 individual unit tests
 - **Core Infrastructure**: 31 tests
-- **Property System**: 7 tests  
+- **Property System**: 7 tests
 - **I/O System**: 11 tests
 - **Module System**: 3 tests
-- **Test categories**: 4 main categories with specialized make targets
-- **End-to-end tests**: Scientific validation via `test_sage.sh`
+- **Tree-Based Processing**: 6 tests
+- **Test categories**: 5 main categories with specialized make targets
+- **End-to-end tests**: Scientific validation via `test_sage.sh` and `test_tree_mode_validation.py`
 
 ## Future Testing Enhancements
 

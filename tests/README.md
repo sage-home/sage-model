@@ -35,7 +35,7 @@ make test_property_system_hdf5
 
 ## Test Categories and Components
 
-The SAGE test suite contains **52 individual unit tests** organized into 4 main categories:
+The SAGE test suite contains **58 individual unit tests** organized into 5 main categories:
 
 ### Core Infrastructure Tests (`CORE_TESTS`) - 31 tests
 
@@ -109,20 +109,46 @@ Tests for the modular plugin architecture:
 - **test_module_callback** - Tests module callback system
 - **test_module_lifecycle** - Tests complete module lifecycle management
 
-### Specialized Tests
+### Tree-Based Processing Tests (`TREE_TESTS`) - 6 tests
 
-These tests validate key architectural principles:
+Tests for the new tree-based processing mode:
 
-- **test_physics_free_mode** - Verifies that the core can run without physics modules
-  ```bash
-  # Run directly
-  make test_physics_free_mode
-  ./tests/test_physics_free_mode
-  ```
+- **test_tree_infrastructure** - Validates the core tree infrastructure
+- **test_galaxy_inheritance** - Tests galaxy inheritance and orphan creation
+- **test_tree_fof_processing** - Validates FOF group processing in tree mode
+- **test_tree_physics_integration** - Tests the integration of the physics pipeline
+- **test_tree_physics_simple** - A simplified test for the physics pipeline integration
+- **test_tree_mode_scientific_validation** - Validates the scientific accuracy of the tree mode
+
+
+### Tree-Based Processing Tests (`TREE_TESTS`) - 6 tests
+
+Tests for the new tree-based processing mode:
+
+- **test_tree_infrastructure** - Validates the core tree infrastructure
+- **test_galaxy_inheritance** - Tests galaxy inheritance and orphan creation
+- **test_tree_fof_processing** - Validates FOF group processing in tree mode
+- **test_tree_physics_integration** - Tests the integration of the physics pipeline
+- **test_tree_physics_simple** - A simplified test for the physics pipeline integration
+- **test_tree_mode_scientific_validation** - Validates the scientific accuracy of the tree mode
 
 ## End-to-End Scientific Tests
 
-The `test_sage.sh` script provides comprehensive scientific validation by comparing SAGE outputs to reference results. These tests are automatically run as part of `make tests`.
+The `test_sage.sh` script provides comprehensive scientific validation for the **snapshot-based** processing mode by comparing SAGE outputs to reference results. These tests are automatically run as part of `make tests`.
+
+### Tree-Based Mode Validation
+
+The `test_tree_mode_validation.py` script provides a comprehensive validation suite for the **tree-based** processing mode. It compares the output of the tree mode with the snapshot mode and checks for:
+
+-   **Mass Conservation**: Validates that both processing modes produce reasonable halo masses.
+-   **Orphan Galaxy Handling**: Confirms that the tree mode correctly identifies orphan galaxies.
+-   **Gap Tolerance**: Ensures the tree mode handles missing snapshots in merger trees.
+-   **Performance Comparison**: Verifies that the tree mode meets performance requirements.
+
+To run the tree mode validation script:
+```bash
+python3 tests/test_tree_mode_validation.py
+```
 
 ### What the End-to-End Tests Do
 
@@ -209,13 +235,14 @@ During Phase 5 (Core Module Migration), unit tests should pass, but end-to-end s
 
 ## Test Suite Statistics
 
-- **Total unit tests**: 52 individual test executables
-- **Core Infrastructure**: 31 tests (pipeline, properties, memory, configuration, FOF processing, orphan tracking, etc.)
-- **Property System**: 7 tests (serialization, validation, YAML parsing, etc.)
-- **I/O System**: 11 tests (multiple tree formats, endianness, buffering, etc.)
-- **Module System**: 3 tests (lifecycle, callbacks, invocation)
-- **Test categories**: 4 main categories with specialized make targets
-- **Scientific validation**: End-to-end testing via `test_sage.sh`
+- **Total unit tests**: 58 individual test executables
+- **Core Infrastructure**: 31 tests
+- **Property System**: 7 tests
+- **I/O System**: 11 tests
+- **Module System**: 3 tests
+- **Tree-Based Processing**: 6 tests
+- **Test categories**: 5 main categories with specialized make targets
+- **Scientific validation**: End-to-end testing via `test_sage.sh` and `test_tree_mode_validation.py`
 
 ## Comprehensive Documentation
 

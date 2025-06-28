@@ -413,7 +413,7 @@ clean:
 
 # Test Categories
 # Core infrastructure tests
-CORE_TESTS = test_pipeline test_array_utils test_galaxy_array test_galaxy_array_component test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion test_data_integrity_physics_free test_hdf5_output_validation test_halo_progenitor_integrity test_core_property_separation test_property_separation_scientific_accuracy test_property_separation_memory_safety test_fof_group_assembly test_fof_evolution_context test_fof_memory_management test_orphan_tracking test_orphan_fof_disruption test_tree_infrastructure test_galaxy_inheritance test_tree_fof_processing test_tree_mode_scientific_validation
+CORE_TESTS = test_pipeline test_array_utils test_galaxy_array test_galaxy_array_component test_core_property test_core_pipeline_registry test_dispatcher_access test_evolution_diagnostics test_evolve_integration test_memory_pool test_merger_queue test_core_merger_processor test_config_system test_physics_free_mode test_parameter_validation test_resource_management test_integration_workflows test_error_recovery test_dynamic_memory_expansion test_data_integrity_physics_free test_hdf5_output_validation test_halo_progenitor_integrity test_core_property_separation test_property_separation_scientific_accuracy test_property_separation_memory_safety test_fof_group_assembly test_fof_evolution_context test_fof_memory_management test_orphan_tracking test_orphan_fof_disruption
 
 # Property system tests  
 PROPERTY_TESTS = test_property_serialization test_property_array_access test_property_system_hdf5 test_property_validation test_property_access_comprehensive test_property_yaml_validation test_parameter_yaml_validation
@@ -424,8 +424,11 @@ IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_outpu
 # Module system tests
 MODULE_TESTS = test_pipeline_invoke test_module_callback test_module_lifecycle
 
+# Tree-based processing tests
+TREE_TESTS = test_tree_infrastructure test_galaxy_inheritance test_tree_fof_processing test_tree_physics_integration test_tree_physics_simple test_tree_mode_scientific_validation
+
 # All unit tests (excludes complex integration tests with individual Makefiles)
-UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS)
+UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS) $(TREE_TESTS)
 
 # Core infrastructure test targets
 test_pipeline: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_pipeline.c $(SAGELIB)
@@ -676,6 +679,24 @@ module_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(MODULE_TESTS)
 		echo "\nAll module tests completed successfully!"; \
 	fi
 
+tree_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(TREE_TESTS)
+	@echo "=== Running Tree-Based Processing Tests ==="; \
+	failed_tests=""; \
+	for test in $(TREE_TESTS); do \
+		echo "\n# Running $$test..."; \
+		./tests/$$test; \
+		if [ $$? -ne 0 ]; then \
+			echo "!!!!! WARNING: $$test exited with non-zero status - this may be expected during development\n"; \
+			failed_tests="$$failed_tests $$test"; \
+		fi; \
+	done; \
+	if [ -n "$$failed_tests" ]; then \
+		echo "\n!!!!! The following tests reported non-zero exit codes:$$failed_tests"; \
+		echo "!!!!! This is not necessarily a failure - check the test output for details"; \
+	else \
+		echo "\nAll tree-based processing tests completed successfully!"; \
+	fi
+
 # Run all unit tests without the end-to-end scientific tests - faster for development
 unit_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(UNIT_TESTS)
 	@echo "=== Running All Unit Tests ==="; \
@@ -719,6 +740,11 @@ tests: $(EXEC) $(UNIT_TESTS)
 	done; \
 	echo "=== Module System Tests ==="; \
 	for test in $(MODULE_TESTS); do \
+		echo "\n# Running $$test..."; \
+		./tests/$$test || FAILED="$$FAILED $$test"; \
+	done; \
+	echo "=== Tree System Tests ==="; \
+	for test in $(TREE_TESTS); do \
 		echo "\n# Running $$test..."; \
 		./tests/$$test || FAILED="$$FAILED $$test"; \
 	done; \

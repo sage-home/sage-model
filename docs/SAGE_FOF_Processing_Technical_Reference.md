@@ -11,6 +11,8 @@
 
 ## Executive Summary
 
+**Processing Mode Note**: This document describes the **snapshot-based processing model** (`ProcessingMode = 0`). For details on the tree-based processing model (`ProcessingMode = 1`), please refer to the [Architecture Guide](architecture.md).
+
 SAGE processes cosmological merger trees by tracking dark matter halos and their embedded galaxies through cosmic time. The core challenge is correctly classifying galaxies as they transition between different gravitational environments: independent halos → FOF group members → disrupted orphans. This document defines the complete physics-to-code mapping for this process.
 
 **Key Concepts**:

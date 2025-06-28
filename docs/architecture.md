@@ -197,54 +197,96 @@ SAGE uses bit flags for phase identification:
 - Phase-specific module callbacks
 - Runtime configurability
 
-### FOF-Centric Galaxy Processing
+### Galaxy Processing Modes
 
-SAGE implements a **pure snapshot-based FOF (Friends-of-Friends) processing model** that eliminates legacy tree-based processing inconsistencies. This architecture ensures optimal performance and scientific accuracy.
+SAGE supports two distinct galaxy processing modes, selectable at runtime via the `ProcessingMode` parameter:
+
+1.  **Snapshot-Based Processing (Default)**: Evolves galaxies snapshot by snapshot. This mode is computationally efficient but can be less accurate in scenarios with complex merger trees.
+2.  **Tree-Based Processing**: Evolves galaxies by traversing the entire merger tree. This mode is more scientifically accurate, especially for handling orphans and gaps in the merger tree, but can be more computationally intensive.
+
+---
+
+### Snapshot-Based FOF Processing
+
+When `ProcessingMode` is set to `0` (or is omitted), SAGE uses a **pure snapshot-based FOF (Friends-of-Friends) processing model**. This architecture ensures optimal performance by processing all galaxies within a snapshot before moving to the next.
 
 #### Processing Flow
 
 ```
 For each snapshot:
   For each FOF group in the snapshot:
-    1. FOF Group Assembly     → Inherit all progenitor galaxies into a single FOF galaxy list
-    2. Type Classification    → Assign Type 0 (central), Type 1 (satellite), Type 2 (orphan) status
-    3. FOF Group Evolution   → Execute 4-phase physics pipeline on entire FOF group
-    4. Snapshot Attachment   → Add surviving galaxies to final output list
+    1. FOF Group Assembly     → Inherit all progenitor galaxies into a single FOF galaxy list.
+    2. Type Classification    → Assign Type 0 (central), Type 1 (satellite), Type 2 (orphan) status.
+    3. FOF Group Evolution   → Execute 4-phase physics pipeline on the entire FOF group.
+    4. Snapshot Attachment   → Add surviving galaxies to the final output list.
   
-  Save all galaxies for the snapshot
+  Save all galaxies for the snapshot.
 ```
 
 #### Key Design Principles
 
-1. **FOF-Centric Evolution**: All processing logic treats the FOF group as the fundamental unit of evolution
-2. **Single Central Assignment**: Exactly one Type 0 central galaxy per FOF group, determined by FOF hierarchy
-3. **Consistent Timing**: All galaxies within an FOF group use consistent timestep (`deltaT`) based on FOF root's snapshot time
-4. **Memory Optimization**: Direct append to FOF arrays eliminates intermediate allocations and data copying
+1. **FOF-Centric Evolution**: The FOF group is the fundamental unit of evolution.
+2. **Single Central Assignment**: Exactly one Type 0 central galaxy per FOF group.
+3. **Consistent Timing**: All galaxies within an FOF group use a consistent timestep (`deltaT`).
+4. **Memory Optimization**: Direct append to FOF arrays minimizes memory operations.
 
 #### Implementation Components
 
-- **`process_fof_group()`**: Main entry point for FOF group processing with central assignment validation
-- **`evolve_galaxies()`**: Four-phase physics pipeline executor for complete FOF groups
-- **`copy_galaxies_from_progenitors()`**: Optimized progenitor inheritance with direct FOF array append
-- **`identify_and_process_orphans()`**: Forward-looking orphan detection for mass conservation
-- **`GalaxyArray`**: Memory-safe dynamic arrays using SAGE's memory pool system
+- **`process_fof_group()`**: Main entry point for FOF group processing.
+- **`evolve_galaxies()`**: Four-phase physics pipeline executor.
+- **`copy_galaxies_from_progenitors()`**: Optimized progenitor inheritance.
+- **`identify_and_process_orphans()`**: Forward-looking orphan detection for mass conservation.
+- **`GalaxyArray`**: Memory-safe dynamic arrays.
 
 #### Orphan Galaxy Tracking
 
-SAGE implements robust **forward-looking orphan detection** to ensure mass conservation when host halos are disrupted:
-
-**Problem**: Standard backward-looking processing (current halos → progenitors) misses galaxies whose host halos completely disappear between snapshots, violating mass conservation.
-
-**Solution**: Forward-looking scan (`identify_and_process_orphans()`) identifies unprocessed galaxies from the previous snapshot and reclassifies them as Type 2 orphan galaxies.
-
-**Orphan Assignment**: Orphans are assigned to FOF groups containing the descendant of their original central galaxy's halo, ensuring correct gravitational environment.
+Snapshot-based mode uses **forward-looking orphan detection** to ensure mass conservation. It identifies unprocessed galaxies from the previous snapshot and reclassifies them as Type 2 orphans, assigning them to the FOF group of their descendant halo.
 
 #### Benefits
 
-- **Architectural Consistency**: Snapshot-based outer loop matches snapshot-based inner processing
-- **Performance**: Reduced memory allocations and optimized data flow patterns  
-- **Scientific Accuracy**: Consistent physics timing across all galaxies in FOF groups, mass conservation via orphan tracking
-- **Maintainability**: Clear separation of concerns and robust error handling
+- **Performance**: Optimized for speed with reduced memory allocations.
+- **Architectural Consistency**: A snapshot-based outer loop matches the inner processing.
+- **Maintainability**: Clear separation of concerns and robust error handling.
+
+---
+
+### Tree-Based Processing
+
+When `ProcessingMode` is set to `1`, SAGE uses a **tree-based processing model** that traverses the entire merger tree history for each galaxy. This approach provides a more accurate treatment of galaxy evolution, especially in cases of halo disruption or gaps in the tree.
+
+#### Processing Flow
+
+```
+For each forest (collection of trees):
+  1. Tree Traversal         → Perform a depth-first traversal of the merger tree.
+  2. Galaxy Inheritance     → Inherit galaxies from their progenitors, naturally handling orphans and gaps.
+  3. FOF Group Assembly     → Collect all galaxies within an FOF group once all its progenitors are processed.
+  4. Physics Application    → Execute the 4-phase physics pipeline on the assembled FOF group.
+  5. Output Organization    → Collect all processed galaxies and organize them by snapshot for output.
+```
+
+#### Key Design Principles
+
+1. **Scientific Accuracy**: Prioritizes correct galaxy evolution by following the full merger history.
+2. **Natural Orphan Handling**: Orphans are naturally created when a progenitor's branch of the tree terminates.
+3. **Gap Tolerance**: The depth-first traversal is resilient to missing snapshots in the merger tree.
+4. **Modern Implementation**: Leverages SAGE's modern architecture, including the `GalaxyArray`, property system, and memory pools.
+
+#### Implementation Components
+
+- **`sage_tree_mode.h`**: Main entry point for tree-based processing.
+- **`tree_context.h`**: Manages the state and data for tree processing.
+- **`tree_traversal.h`**: Implements the depth-first traversal algorithm.
+- **`tree_galaxies.h`**: Handles galaxy collection and inheritance.
+- **`tree_fof.h`**: Manages FOF group processing within the tree.
+- **`tree_physics.h`**: Integrates the physics pipeline.
+- **`tree_output.h`**: Organizes galaxies for output.
+
+#### Benefits
+
+- **Scientific Accuracy**: Eliminates galaxy loss from halo disruptions and tree gaps.
+- **Robustness**: More accurately models complex merger histories.
+- **Maintainability**: A clean, modular implementation that is well-tested and documented.
 
 ### Physics-Free Mode
 

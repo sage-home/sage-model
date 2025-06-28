@@ -84,7 +84,8 @@ Fundamental documents that define SAGE's design and operation.
 | **[Property System Guide](property-system.md)** | Metadata-driven property management, build system, and type-safe access |
 | **[I/O System Guide](io-system.md)** | Unified I/O interface for multiple tree formats and galaxy output |
 | **[Testing Guide](testing-guide.md)** | Comprehensive testing framework organization and execution |
-| **[SAGE FOF Processing Technical Reference](SAGE_FOF_Processing_Technical_Reference.md)** | Definitive guide to Friends-of-Friends merger tree processing and galaxy classification |
+| **[SAGE FOF Processing Technical Reference](SAGE_FOF_Processing_Technical_Reference.md)** | Merger tree processing and galaxy classification for snapshot-based processing |
+| **[SAGE Tree FOF Processing Technical Reference](SAGE_Tree_FOF_Processing_Technical_Reference.md)** | Merger tree processing and galaxy classification for the tree-based processing |
 
 ### Development Resources (3 docs)
 Essential guides for developers working on SAGE.
