@@ -130,7 +130,9 @@ python3 allresults-history.py     # Plot higher redshift results
 - Tree reading operations use `core_io_tree.c` which tries I/O interface first, then legacy functions
 - See `docs/io_interface_migration_guide.md` for I/O development guidelines
 
-## Using Gemini CLI for Large Codebase Analysis
+---
+
+# Using Gemini CLI for Large Codebase Analysis
 
 When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive
 context window. Use `gemini -p` to leverage Google Gemini's large context capacity.
@@ -140,9 +142,9 @@ context window. Use `gemini -p` to leverage Google Gemini's large context capaci
 Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to WHERE you run the
   gemini command:
 
-### Examples:
+## Examples:
 
-**Single file analysis:**
+Single file analysis:
 gemini -p "@src/main.py Explain this file's purpose and structure"
 
 Multiple files:
@@ -157,10 +159,10 @@ gemini -p "@src/ @tests/ Analyze test coverage for the source code"
 Current directory and subdirectories:
 gemini -p "@./ Give me an overview of this entire project"
 
-# Or use --all_files flag:
+Or use --all_files flag:
 gemini --all_files -p "Analyze the project structure and dependencies"
 
-Implementation Verification Examples
+**Implementation Verification Examples:**
 
 Check if a feature is implemented:
 gemini -p "@src/ @lib/ Has dark mode been implemented in this codebase? Show me the relevant files and functions"
@@ -186,7 +188,7 @@ gemini -p "@src/ @api/ Are SQL injection protections implemented? Show how user 
 Verify test coverage for features:
 gemini -p "@src/payment/ @tests/ Is the payment processing module fully tested? List all test cases"
 
-When to Use Gemini CLI
+## When to Use Gemini CLI
 
 Use gemini -p when:
 - Analyzing entire codebases or large directories
@@ -197,7 +199,7 @@ Use gemini -p when:
 - Verifying if specific features, patterns, or security measures are implemented
 - Checking for the presence of certain coding patterns across the entire codebase
 
-Important Notes
+## Important Notes
 
 - Paths in @ syntax are relative to your current working directory when invoking gemini
 - The CLI will include file contents directly in the context
@@ -205,7 +207,9 @@ Important Notes
 - Gemini's context window can handle entire codebases that would overflow Claude's context
 - When checking implementations, be specific about what you're looking for to get accurate results
 
-## User Instructions for Claude
+---
+
+# User Instructions for Claude
 
 - For the current project status, read `log/README.md` and follow the information trail
 - For context, read `docs/README.md` for the right documents to review for the current task
