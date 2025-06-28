@@ -13,10 +13,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 
 #include "../src/core/tree_context.h"
 #include "../src/core/tree_traversal.h"
 #include "../src/core/core_mymalloc.h"
+#include "../src/core/core_module_system.h"
+#include "../src/core/core_properties.h"
+#include "../src/core/core_galaxy_extensions.h"
+#include "../src/core/core_event_system.h"
+#include "../src/core/core_pipeline_system.h"
+#include "../src/core/core_logging.h"
 
 // Test counter for reporting
 static int tests_run = 0;
@@ -35,13 +42,8 @@ static int tests_passed = 0;
 } while(0)
 
 // Test parameters structure - minimal required for properties allocation
-static struct params test_params = {
-    .simulation = {
-        .NumSnapOutputs = 10,  // Required for StarFormationHistory dynamic array
-        .SimMaxSnaps = 64,     // Required parameter
-        .LastSnapshotNr = 63   // Required parameter
-    }
-};
+static struct params test_params;
+static double* age_array = NULL;  // Will be allocated in setup
 
 // Global traversal order tracking
 static int traversal_order[100];
@@ -50,6 +52,100 @@ static int traversal_count = 0;
 //=============================================================================
 // Test Helper Functions
 //=============================================================================
+
+// Initialize test parameters and core systems
+static void setup_test_parameters(void) {
+    memset(&test_params, 0, sizeof(struct params));
+    
+    // Basic simulation parameters
+    test_params.simulation.NumSnapOutputs = 10;
+    test_params.simulation.SimMaxSnaps = 64;
+    test_params.simulation.LastSnapshotNr = 63;
+    test_params.simulation.Snaplistlen = 64;
+    
+    // **CRITICAL: Allocate and initialize Age array (prevents segfaults)**
+    age_array = mymalloc(64 * sizeof(double));
+    test_params.simulation.Age = age_array;
+    
+    // Initialize realistic age and redshift progression
+    for (int i = 0; i < 64; i++) {
+        // Age from 0.1 to 13.7 Gyr (age of universe)
+        test_params.simulation.Age[i] = 0.1 + i * 0.21; 
+        // Redshift from z=20 to z=0 (ZZ is a fixed array, not pointer)
+        test_params.simulation.ZZ[i] = 20.0 * exp(-i * 0.075);
+    }
+    
+    // Basic cosmology parameters
+    test_params.cosmology.BoxSize = 62.5;
+    test_params.cosmology.Omega = 0.25;
+    test_params.cosmology.OmegaLambda = 0.75;
+    test_params.cosmology.Hubble_h = 0.73;
+    test_params.cosmology.PartMass = 0.0860657;
+    
+    // Unit conversions
+    test_params.units.UnitLength_in_cm = 3.085678e24;
+    test_params.units.UnitMass_in_g = 1.989e43;
+    test_params.units.UnitVelocity_in_cm_per_s = 1e5;
+    test_params.units.UnitTime_in_s = 3.085678e19;
+    test_params.units.UnitTime_in_Megayears = 978.462;
+    
+    // Basic physics parameters
+    test_params.physics.SfrEfficiency = 0.05;
+    test_params.physics.FeedbackReheatingEpsilon = 3.0;
+    test_params.physics.FeedbackEjectionEfficiency = 0.3;
+    test_params.physics.ReIncorporationFactor = 0.15;
+    test_params.physics.EnergySN = 1.0e51;
+    test_params.physics.EtaSN = 8.0e-3;
+    
+    // Runtime parameters
+    test_params.runtime.ThisTask = 0;
+    test_params.runtime.NTasks = 1;
+    
+    // **STEP 4: Initialize core logging system**
+    if (initialize_logging(&test_params) != 0) {
+        printf("FATAL: Failed to initialize logging system\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    // **STEP 5: Initialize module system**
+    if (initialize_module_system(&test_params) != 0) {
+        printf("FATAL: Failed to initialize module system\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    // **STEP 6: Initialize galaxy extension system**
+    initialize_galaxy_extension_system();
+    
+    // **STEP 7: Initialize property system**
+    if (initialize_property_system(&test_params) != 0) {
+        printf("FATAL: Failed to initialize property system\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    // **STEP 8: Initialize standard properties**
+    initialize_standard_properties(&test_params);
+    
+    // **STEP 9: Initialize event system**
+    initialize_event_system();
+    
+    // **STEP 10: Initialize pipeline system (creates physics-free pipeline for tests)**
+    initialize_pipeline_system();
+}
+
+static void cleanup_test_parameters(void) {
+    // Clean up core systems in reverse order
+    cleanup_pipeline_system();
+    cleanup_event_system();
+    cleanup_property_system();
+    cleanup_galaxy_extension_system();
+    cleanup_module_system();
+    cleanup_logging();
+    
+    if (age_array) {
+        myfree(age_array);
+        age_array = NULL;
+    }
+}
 
 // Create a simple test tree structure for testing
 static struct halo_data* create_test_tree(int* nhalos_out) {
@@ -344,6 +440,9 @@ int main(void) {
     // Initialize memory system
     memory_system_init();
     
+    // Setup test parameters with required arrays
+    setup_test_parameters();
+    
     // Run tests
     test_tree_context_lifecycle();
     test_tree_traversal_order();
@@ -351,6 +450,9 @@ int main(void) {
     test_fof_processing();
     test_error_handling();
     test_memory_management();
+    
+    // Cleanup test parameters
+    cleanup_test_parameters();
     
     // Report results
     printf("\n========================================\n");
