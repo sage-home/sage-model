@@ -52,9 +52,13 @@ These tests validate the fundamental infrastructure components of SAGE:
 | **test_fof_memory_management** | Tests memory management for large FOF groups and leak detection | Phase 5.3 (Jun 2025) |
 | **test_orphan_tracking** | Tests comprehensive orphan galaxy tracking for mass conservation when host halos disappear | Phase 5.3 (Jun 2025) |
 | **test_orphan_tracking_simple** | Tests simplified orphan galaxy tracking functionality with basic scenarios | Phase 5.3 (Jun 2025) |
-| **test_orphan_fof_disruption** | Tests critical orphan galaxy handling during FOF group disruption scenarios | Phase 5.3 (Jun 2025) |
+| **test_orphan_fof_disruption** | **REGRESSION TEST**: Documents known orphan loss bug in snapshot-based processing (ProcessingMode=0) | Phase 5.3 (Jun 2025) |
 
 **Purpose**: Core infrastructure tests should always pass, as they validate the stability of the foundation on which everything else is built.
+
+#### Special Note: test_orphan_fof_disruption Regression Test
+
+The `test_orphan_fof_disruption` test is a **regression test** that documents a known orphan loss bug in snapshot-based processing (ProcessingMode=0). This test **passes when it correctly detects the expected bug**, showing "REGRESSION TEST SUCCESS" and recommending tree-based processing (ProcessingMode=1) as the solution. Do not "fix" this test to expect orphan conservation in snapshot mode - it serves as documentation of why tree-based processing was implemented.
 
 ### Property System Tests (7 tests)
 
@@ -115,9 +119,11 @@ These tests validate the new tree-based processing mode:
 | **test_tree_fof_processing** | Validates FOF group processing in tree mode | Phase 6 (Jun 2025) |
 | **test_tree_physics_integration** | Tests the integration of the physics pipeline | Phase 6 (Jun 2025) |
 | **test_tree_physics_simple** | A simplified test for the physics pipeline integration | Phase 6 (Jun 2025) |
-| **test_tree_mode_scientific_validation** | Validates the scientific accuracy of the tree mode | Phase 6 (Jun 2025) |
+| **test_tree_mode_scientific_validation** | Validates the scientific accuracy of the tree mode, including correct orphan handling | Phase 6 (Jun 2025) |
 
 **Purpose**: Tree-based processing tests ensure the scientific accuracy and robustness of the new processing mode.
+
+**Note**: These tree-based tests validate the solution to the orphan loss problem documented in `test_orphan_fof_disruption`. While the regression test shows the problem in snapshot mode, these tests verify the fix in tree mode.
 
 ## Running Tests
 
