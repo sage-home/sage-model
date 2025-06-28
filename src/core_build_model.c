@@ -351,6 +351,9 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 // Add hot gas infall (split over STEPS)
                 add_infall_to_hot(centralgal, hot_infall_total / STEPS, galaxies, run_params);
 
+                // NEW: Mix CGM components before transfer
+                mix_cgm_components(centralgal, deltaT / STEPS, galaxies, run_params);
+
                 // NEW: Add this call after infall but before existing inflow
                 transfer_cgm_to_hot(centralgal, deltaT / STEPS, galaxies, run_params);
 

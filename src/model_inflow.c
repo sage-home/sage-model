@@ -114,3 +114,45 @@ void transfer_cgm_to_hot(const int centralgal, const double dt, struct GALAXY *g
         if(galaxies[centralgal].CGMgas_enriched < 0.0) galaxies[centralgal].CGMgas_enriched = 0.0;
     }
 }
+
+void mix_cgm_components(const int centralgal, const double dt, struct GALAXY *galaxies, 
+                       const struct params *run_params)
+{
+    if(galaxies[centralgal].CGMgas <= 0.0) return;
+    if(galaxies[centralgal].CGMgas_pristine <= 0.0) return;  // No pristine gas to mix
+    
+    // Calculate proper SAGE dynamical timescale using disk radius
+    const double reff = 3.0 * galaxies[centralgal].DiskScaleRadius;
+    const double dynamical_time = reff / galaxies[centralgal].Vvir;
+    
+    // Convert mixing timescale parameter to units of dynamical times
+    // CGMMixingTimescale is in Gyr, convert to code units and normalize by t_dyn
+    const double mixing_time_code_units = run_params->CGMMixingTimescale / run_params->UnitTime_in_Megayears * 1000.0; // Convert Gyr to code time units
+    const double mixing_rate_per_dyn_time = dynamical_time / mixing_time_code_units;
+    
+    // Calculate how much pristine gas gets mixed this timestep
+    double mixing_rate = mixing_rate_per_dyn_time * galaxies[centralgal].CGMgas_pristine / dynamical_time;
+    double mixed_amount = mixing_rate * dt;
+    
+    // Don't mix more than available pristine gas
+    if(mixed_amount > galaxies[centralgal].CGMgas_pristine) {
+        mixed_amount = galaxies[centralgal].CGMgas_pristine;
+    }
+    
+    if(mixed_amount > 0.0) {
+        // Calculate average metallicity after mixing
+        // Pristine gas has zero metallicity, enriched gas has some metallicity
+        const double current_enriched_metallicity = get_metallicity(galaxies[centralgal].CGMgas_enriched, 
+                                                                   galaxies[centralgal].MetalsCGMgas);
+        
+        // Move pristine gas to enriched component
+        galaxies[centralgal].CGMgas_pristine -= mixed_amount;
+        galaxies[centralgal].CGMgas_enriched += mixed_amount;
+        
+        // The mixed gas gets the average metallicity (pristine=0, so it's just diluted enriched metallicity)
+        // No change to total metals since pristine gas has zero metals
+        
+        // Safety checks
+        if(galaxies[centralgal].CGMgas_pristine < 0.0) galaxies[centralgal].CGMgas_pristine = 0.0;
+    }
+}
