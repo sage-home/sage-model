@@ -220,7 +220,7 @@ Use gemini -p when:
 - All new unit tests should follow the template in `docs/templates/test_template.c`
 - Add new unit tests to `.gitignore` in the correct section
 - Never simplify or dilute a test just to make it pass; a failing test might indicate a problem with the codebase, which makes it a successful test - That is the purpose of a unit test!
-- Prefer lldb for debugging and feed it a text file with commands ending with "quit"
+- Use lldb for debugging and feed it a text file with commands ending with "quit" (e.g. `lldb -s debug_commands.txt ./tests/test_tree_infrastructure`)
 - Never delete files, always archive into the `ignore` directory
 - Assume no persistent memory — rely on logs for all continuity
 - When reporting progress in `log/progress.md` include EVERY FILE that was changed, created, and removed
