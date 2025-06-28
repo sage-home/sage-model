@@ -18,6 +18,14 @@ extern "C" {
                                            struct halo_data *halos, struct params *run_params);
     
     extern void deep_copy_galaxy(struct GALAXY *dest, const struct GALAXY *src, const struct params *run_params);
+    
+    extern int evolve_galaxies_wrapper(const int fof_root_halonr, 
+                                      GalaxyArray* temp_fof_galaxies, 
+                                      int *numgals, 
+                                      struct halo_data *halos, 
+                                      struct halo_aux_data *haloaux,
+                                      GalaxyArray *galaxies_this_snap, 
+                                      struct params *run_params);
 
 #ifdef __cplusplus
 }

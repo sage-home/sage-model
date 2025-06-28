@@ -766,3 +766,29 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
 
     return EXIT_SUCCESS;
 }
+
+/**
+ * @brief Wrapper function for evolve_galaxies to enable tree-based processing
+ * 
+ * This function provides access to the static evolve_galaxies function for use
+ * in tree-based processing where physics needs to be applied to collected FOF galaxies.
+ * 
+ * @param fof_root_halonr FOF root halo number
+ * @param temp_fof_galaxies Galaxy array containing FOF galaxies to evolve
+ * @param numgals Pointer to galaxy count (updated)
+ * @param halos Halo data array
+ * @param haloaux Auxiliary halo data array
+ * @param galaxies_this_snap Output galaxy array for this snapshot
+ * @param run_params SAGE parameters
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error
+ */
+int evolve_galaxies_wrapper(const int fof_root_halonr, 
+                           GalaxyArray* temp_fof_galaxies, 
+                           int *numgals, 
+                           struct halo_data *halos, 
+                           struct halo_aux_data *haloaux,
+                           GalaxyArray *galaxies_this_snap, 
+                           struct params *run_params) {
+    return evolve_galaxies(fof_root_halonr, temp_fof_galaxies, numgals, 
+                          halos, haloaux, galaxies_this_snap, run_params);
+}

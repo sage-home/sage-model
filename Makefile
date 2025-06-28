@@ -54,7 +54,7 @@ CORE_SRC := core/sage.c core/core_read_parameter_file.c core/core_init.c \
         core/physics_pipeline_executor.c core/core_property_utils.c \
         core/core_snapshot_indexing.c \
         core/generated_output_transformers.c \
-        core/tree_context.c core/tree_traversal.c core/tree_galaxies.c core/tree_fof.c
+        core/tree_context.c core/tree_traversal.c core/tree_galaxies.c core/tree_fof.c core/tree_physics.c
 
 # Physics model source files
 PHYSICS_SRC := physics/physics_output_transformers.c \
@@ -592,6 +592,12 @@ test_galaxy_inheritance: $(ROOT_DIR)/.stamps/generate_properties_full.stamp test
 
 test_tree_fof_processing: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_tree_fof_processing.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_tree_fof_processing tests/test_tree_fof_processing.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_tree_physics_integration: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_tree_physics_integration.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_tree_physics_integration tests/test_tree_physics_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)
+
+test_tree_physics_simple: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_tree_physics_simple.c $(SAGELIB)
+	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_tree_physics_simple tests/test_tree_physics_simple.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 # Individual test category targets
 core_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(CORE_TESTS)

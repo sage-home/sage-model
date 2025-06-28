@@ -1,6 +1,7 @@
 #include "tree_fof.h"
 #include "tree_galaxies.h"
 #include "tree_traversal.h"
+#include "tree_physics.h"
 #include "core_logging.h"
 
 bool is_fof_ready(int fof_root, TreeContext* ctx) {
@@ -55,7 +56,6 @@ int process_tree_fof_group(int fof_root, TreeContext* ctx) {
     // Mark FOF as processed
     ctx->fof_done[fof_root] = true;
     
-    // Physics will be applied in Phase 4
-    
-    return EXIT_SUCCESS;
+    // Apply physics to the collected FOF galaxies
+    return apply_physics_to_fof(fof_root, ctx);
 }
