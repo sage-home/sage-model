@@ -44,7 +44,7 @@ PartMass        0.0860657
 %----- Module system configuration ---------
 %------------------------------------------
 
-ModuleConfigFile          ./tests/test_data/empty_pipeline_config.json
+% ModuleConfigFile          ./tests/test_data/empty_pipeline_config.json
 
 
 %------------------------------------------
