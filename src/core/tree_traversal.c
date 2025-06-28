@@ -1,4 +1,5 @@
 #include "tree_traversal.h"
+#include "tree_fof.h"
 #include "core_logging.h"
 
 int process_tree_recursive(int halo_nr, TreeContext* ctx) {
@@ -34,9 +35,10 @@ int process_tree_recursive_with_tracking(int halo_nr, TreeContext* ctx,
     // STEP 2: Check if we need to process FOF group
     int fof_root = halo->FirstHaloInFOFgroup;
     if (halo_nr == fof_root && !ctx->fof_done[fof_root]) {
-        // This will be implemented in Phase 3
-        // LOG_DEBUG("Ready to process FOF group %d", fof_root);
-        ctx->fof_done[fof_root] = true;
+        if (is_fof_ready(fof_root, ctx)) {
+            int status = process_tree_fof_group(fof_root, ctx);
+            if (status != EXIT_SUCCESS) return status;
+        }
     }
     
     return EXIT_SUCCESS;

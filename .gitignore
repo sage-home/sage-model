@@ -82,6 +82,7 @@ test_orphan_tracking_simple
 tests/test_orphan_fof_disruption
 tests/test_tree_infrastructure
 tests/test_galaxy_inheritance
+tests/test_tree_fof_processing
 
 tests/test_output/
 .repomix/
