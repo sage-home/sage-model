@@ -13,12 +13,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 
 #include "tree_context.h"
 #include "tree_fof.h"
 #include "tree_traversal.h"
 #include "tree_galaxies.h"
 #include "core_mymalloc.h"
+#include "core_module_system.h"
+#include "core_properties.h"
+#include "core_galaxy_extensions.h"
+#include "core_event_system.h"
+#include "core_pipeline_system.h"
+#include "core_logging.h"
 
 // Test counter for reporting
 static int tests_run = 0;
@@ -39,6 +46,7 @@ static int tests_passed = 0;
 // Test fixtures
 static struct test_context {
     struct params test_params;
+    double* age_array;  // Allocated Age array
     int initialized;
 } test_ctx;
 
@@ -46,10 +54,79 @@ static struct test_context {
 static int setup_test_context(void) {
     memset(&test_ctx, 0, sizeof(test_ctx));
     
-    // Initialize minimal test parameters
+    // Basic simulation parameters
     test_ctx.test_params.simulation.NumSnapOutputs = 10;
     test_ctx.test_params.simulation.SimMaxSnaps = 64;
     test_ctx.test_params.simulation.LastSnapshotNr = 63;
+    test_ctx.test_params.simulation.Snaplistlen = 64;
+    
+    // **CRITICAL: Allocate and initialize Age array (prevents segfaults)**
+    test_ctx.age_array = mymalloc(64 * sizeof(double));
+    test_ctx.test_params.simulation.Age = test_ctx.age_array;
+    
+    // Initialize realistic age and redshift progression
+    for (int i = 0; i < 64; i++) {
+        // Age from 0.1 to 13.7 Gyr (age of universe)
+        test_ctx.test_params.simulation.Age[i] = 0.1 + i * 0.21; 
+        // Redshift from z=20 to z=0 (ZZ is a fixed array, not pointer)
+        test_ctx.test_params.simulation.ZZ[i] = 20.0 * exp(-i * 0.075);
+    }
+    
+    // Basic cosmology parameters
+    test_ctx.test_params.cosmology.BoxSize = 62.5;
+    test_ctx.test_params.cosmology.Omega = 0.25;
+    test_ctx.test_params.cosmology.OmegaLambda = 0.75;
+    test_ctx.test_params.cosmology.Hubble_h = 0.73;
+    test_ctx.test_params.cosmology.PartMass = 0.0860657;
+    
+    // Unit conversions
+    test_ctx.test_params.units.UnitLength_in_cm = 3.085678e24;
+    test_ctx.test_params.units.UnitMass_in_g = 1.989e43;
+    test_ctx.test_params.units.UnitVelocity_in_cm_per_s = 1e5;
+    test_ctx.test_params.units.UnitTime_in_s = 3.085678e19;
+    test_ctx.test_params.units.UnitTime_in_Megayears = 978.462;
+    
+    // Basic physics parameters
+    test_ctx.test_params.physics.SfrEfficiency = 0.05;
+    test_ctx.test_params.physics.FeedbackReheatingEpsilon = 3.0;
+    test_ctx.test_params.physics.FeedbackEjectionEfficiency = 0.3;
+    test_ctx.test_params.physics.ReIncorporationFactor = 0.15;
+    test_ctx.test_params.physics.EnergySN = 1.0e51;
+    test_ctx.test_params.physics.EtaSN = 8.0e-3;
+    
+    // Runtime parameters
+    test_ctx.test_params.runtime.ThisTask = 0;
+    test_ctx.test_params.runtime.NTasks = 1;
+    
+    // **Initialize core logging system**
+    if (initialize_logging(&test_ctx.test_params) != 0) {
+        printf("FATAL: Failed to initialize logging system\n");
+        return -1;
+    }
+    
+    // **Initialize module system**
+    if (initialize_module_system(&test_ctx.test_params) != 0) {
+        printf("FATAL: Failed to initialize module system\n");
+        return -1;
+    }
+    
+    // **Initialize galaxy extension system**
+    initialize_galaxy_extension_system();
+    
+    // **Initialize property system**
+    if (initialize_property_system(&test_ctx.test_params) != 0) {
+        printf("FATAL: Failed to initialize property system\n");
+        return -1;
+    }
+    
+    // **Initialize standard properties**
+    initialize_standard_properties(&test_ctx.test_params);
+    
+    // **Initialize event system**
+    initialize_event_system();
+    
+    // **Initialize pipeline system (creates physics-free pipeline for tests)**
+    initialize_pipeline_system();
     
     test_ctx.initialized = 1;
     return 0;
@@ -57,6 +134,20 @@ static int setup_test_context(void) {
 
 // Teardown function - called after tests
 static void teardown_test_context(void) {
+    if (!test_ctx.initialized) return;
+    
+    // Clean up core systems in reverse order
+    cleanup_pipeline_system();
+    cleanup_event_system();
+    cleanup_property_system();
+    cleanup_galaxy_extension_system();
+    cleanup_module_system();
+    cleanup_logging();
+    
+    if (test_ctx.age_array) {
+        myfree(test_ctx.age_array);
+        test_ctx.age_array = NULL;
+    }
     test_ctx.initialized = 0;
 }
 
@@ -434,6 +525,9 @@ int main(void) {
     printf("  3. Integration with tree traversal system\n");
     printf("  4. Orphan creation from multiple progenitors\n");
     printf("  5. Correct handling of snapshot gaps\n\n");
+
+    // Initialize memory system
+    memory_system_init();
 
     // Setup
     if (setup_test_context() != 0) {
