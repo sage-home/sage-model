@@ -31,6 +31,7 @@ make help              # Show all available targets
 ```bash
 make tests             # Run complete test suite (unit + end-to-end)
 make unit_tests        # Run only unit tests (faster for development)
+make tree_tests        # Run tree-based processing tests
 ./tests/test_sage.sh   # End-to-end scientific validation
 ```
 
@@ -39,6 +40,7 @@ make unit_tests        # Run only unit tests (faster for development)
 - **Property Tests**: Property serialization, validation, HDF5 integration  
 - **I/O Tests**: Multiple tree formats (LHalo Binary/HDF5, Gadget4, Genesis, ConsistentTrees), I/O interface abstraction
 - **Module Tests**: Dynamic loading, lifecycle, callbacks, inter-module communication
+- **Tree Tests**: Tree-based processing, galaxy inheritance, FOF processing, physics integration
 - **End-to-End Tests**: HDF5 output validation, integration workflows, property system validation
 
 ## Architecture Overview
