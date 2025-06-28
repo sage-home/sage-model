@@ -423,7 +423,7 @@ static void test_fof_processing_with_gaps(void) {
 // Test Runner
 //=============================================================================
 
-int main(int argc, char *argv[]) {
+int main(void) {
     printf("\n========================================\n");
     printf("Starting tests for Tree FOF Processing\n");
     printf("========================================\n\n");
