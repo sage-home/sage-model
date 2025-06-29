@@ -31,7 +31,7 @@ void init(struct params *run_params)
 
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
     
-    // Initialize H2 fraction parameters with default values if not set and H2-based SF is enabled
+
     if(run_params->SFprescription == 1) {
         if(run_params->H2FractionFactor <= 0.0) {
             run_params->H2FractionFactor = 1.0;  // Default normalization factor for H2/HI ratio
@@ -41,7 +41,7 @@ void init(struct params *run_params)
         }
     }
 
-    // Initialize Krumholz & Dekel (2012) model parameters with default values if not set
+
     if(run_params->SFprescription == 2) {
         if(run_params->ClumpFactor <= 0.0) {
             run_params->ClumpFactor = 5.0;  // Default clumping factor
@@ -56,7 +56,6 @@ void init(struct params *run_params)
         run_params->MassLoadingModel = 0;  // Default to standard model
     }
 
-    // Initialize reionization parameters with default values
     if (run_params->ReionizationModel != 0 && 
         run_params->ReionizationModel != 1 && 
         run_params->ReionizationModel != 2 && 
@@ -84,7 +83,6 @@ void init(struct params *run_params)
         run_params->PostReionSlope = -2.0/3.0;  // Default from Sobacchi & Mesinger (2013)
     }
 
-    // Initialize mass-dependent SF parameters with default values if not set
     if (run_params->MassDependentSFEnabled != 0 && run_params->MassDependentSFEnabled != 1) {
         run_params->MassDependentSFEnabled = 0;  // Disabled by default
     }
@@ -101,7 +99,6 @@ void init(struct params *run_params)
         run_params->SFHighMassSlope = -0.3;  // Default high-mass slope (negative)
     }
 
-    // Initialize virial velocity enhancement parameters with default values
     if (run_params->VvirEnhancementOn != 0 && run_params->VvirEnhancementOn != 1) {
         run_params->VvirEnhancementOn = 0;  // Disabled by default
     }

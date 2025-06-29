@@ -429,76 +429,81 @@ struct params
     int32_t NumSimulationTreeFiles;
 
     /* recipe flags */
-    int32_t    SFprescription;
-    int32_t    AGNrecipeOn;
-    int32_t    SupernovaRecipeOn;
-    int32_t    ReionizationOn;
-    int32_t   DiskInstabilityOn;
+    int32_t     SFprescription;
+    int32_t     AGNrecipeOn;
+    int32_t     SupernovaRecipeOn;
+    int32_t     ReionizationOn;
+    int32_t     DiskInstabilityOn;
+    int32_t     MassDependentSFEnabled;  
+    int32_t     ReionizationModel;     
+    int32_t     MassLoadingModel;  
+    int32_t     VvirEnhancementOn;      
 
-    int32_t MassDependentSFEnabled;  // 0 = off, 1 = on
-    double SFMassPivot;            // Pivot mass in 10^10 Msun/h
-    double SFLowMassSlope;         // Power-law slope for M < Mpivot
-    double SFHighMassSlope;        // Power-law slope for M > Mpivot
+    double     RecycleFraction;
+    double     Yield;
+    double     FracZleaveDisk;
+    double     inflowFactor;
+    double     ThreshMajorMerger;
+    double     BaryonFrac;
+    double     SfrEfficiency;
+    double     FeedbackReheatingEpsilon;
+    double     FeedbackEjectionEfficiency;
+    double     RadioModeEfficiency;
+    double     QuasarModeEfficiency;
+    double     BlackHoleGrowthRate;
+    double     Reionization_z0;
+    double     Reionization_zr;
+    double     ThresholdSatDisruption;
+
+    // Parameters for Blitz and Rosolowsky (2006) model
+    double     H2FractionFactor;     // Controls normalization of H2/HI calculation
+    double     H2FractionExponent;   // Controls H2/HI ratio calculation
+
+    // Parameters for Krumholz & Dekel (2012) model
+    double     ClumpFactor;          // Gas clumping factor, default ~5
+    double     ClumpExponent;        // Power-law exponent for metallicity dependence, default ~0.5
+
+    // Parameters redshift-dependent parameters
+    double     SFR_Alpha;
+    double     Reheating_Alpha;
+    double     Ejection_Alpha;
+
+    // Parameters for star formation enhancement based on virial velocity
+    double     VvirThreshold;           // Virial velocity threshold for SF enhancement (km/s)
+    double     VvirEnhancementPower;    // Power-law exponent for velocity enhancement
+
+    // CGM infall and mixing parameters
+    double     CGMInfallFraction;      // Fraction of infall through CGM first (0.0-1.0)
+    double     CGMTransferEfficiency;  // CGM to hot transfer efficiency
+    double     CGMPristineFraction;    // Fraction of CGM infall that's pristine
+    double     CGMMixingTimescale;     // Mixing timescale in Gyrs
+
+    // Parameters for mass-dependent star formation
+    double     SFMassPivot;            // Pivot mass in 10^10 Msun/h
+    double     SFLowMassSlope;         // Power-law slope for M < Mpivot
+    double     SFHighMassSlope;        // Power-law slope for M > Mpivot
 
     // Enhanced reionization parameters
-    int32_t ReionizationModel;     // 0=Simple, 1=Gnedin, 2=Sobacchi-Mesinger, 3=Patchy
-    double FilteringMassNorm;      // Normalization of filtering mass [10^10 Msun/h]
-    double UVBackgroundStrength;   // Early UV background strength (pre-reionization)
-    double PatchyReionWidth;       // Width of reionization transition in redshift
-    double LocalReionVariance;     // Strength of spatial variance in reionization
-    double PostReionSlope;         // Slope of Mfilt evolution after reionization
+    double     FilteringMassNorm;      // Normalization of filtering mass [10^10 Msun/h]
+    double     UVBackgroundStrength;   // Early UV background strength (pre-reionization)
+    double     PatchyReionWidth;       // Width of reionization transition in redshift
+    double     LocalReionVariance;     // Strength of spatial variance in reionization
+    double     PostReionSlope;         // Slope of Mfilt evolution after reionization
 
-    double RecycleFraction;
-    double Yield;
-    double FracZleaveDisk;
-    double inflowFactor;
-    double ThreshMajorMerger;
-    double BaryonFrac;
-    double SfrEfficiency;
-    double FeedbackReheatingEpsilon;
-    double FeedbackEjectionEfficiency;
-    double RadioModeEfficiency;
-    double QuasarModeEfficiency;
-    double BlackHoleGrowthRate;
-    double Reionization_z0;
-    double Reionization_zr;
-    double ThresholdSatDisruption;
-    double H2FractionFactor;     // Controls normalization of H2/HI calculation
-    double H2FractionExponent;   // Controls H2/HI ratio calculation
-    // New parameters for Krumholz & Dekel (2012) model
-    double ClumpFactor;          // Gas clumping factor, default ~5
-    double ClumpExponent;        // Power-law exponent for metallicity dependence, default ~0.5
-
-    double SFR_Alpha;
-    double Reheating_Alpha;
-    double Ejection_Alpha;
-
-    int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov) */
-
-    int32_t VvirEnhancementOn;        // Flag to enable/disable virial velocity enhancement
-    double VvirThreshold;           // Virial velocity threshold for SF enhancement (km/s)
-    double VvirEnhancementPower;    // Power-law exponent for velocity enhancement
-
-    /* CGM infall and mixing parameters */
-    double CGMInfallFraction;      // Fraction of infall through CGM first (0.0-1.0)
-    double CGMTransferEfficiency;  // CGM to hot transfer efficiency 
-    double CGMPristineFraction;    // Fraction of CGM infall that's pristine
-    double CGMMixingTimescale;     // Mixing timescale in Gyrs
-
-    double UnitLength_in_cm;
-    double UnitVelocity_in_cm_per_s;
-    double UnitMass_in_g;
-    double UnitTime_in_s;
-    double RhoCrit;
-    double UnitPressure_in_cgs;
-    double UnitDensity_in_cgs;
-    double UnitCoolingRate_in_cgs;
-    double UnitEnergy_in_cgs;
-    double UnitTime_in_Megayears;
-    double G;
-    double Hubble;
-    double a0;
-    double ar;
+    double     UnitLength_in_cm;
+    double     UnitVelocity_in_cm_per_s;
+    double     UnitMass_in_g;
+    double     UnitTime_in_s;
+    double     RhoCrit;
+    double     UnitPressure_in_cgs;
+    double     UnitDensity_in_cgs;
+    double     UnitCoolingRate_in_cgs;
+    double     UnitEnergy_in_cgs;
+    double     UnitTime_in_Megayears;
+    double     G;
+    double     Hubble;
+    double     a0;
+    double     ar;
 
     int32_t nsnapshots;
     int32_t LastSnapshotNr;

@@ -321,7 +321,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
             if(run_params->MassLoadingModel == MASS_LOADING_MURATOV) {
                 // Use Muratov mass loading for ejection calculation
                 double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
-                double muratov_mass_loading = calculate_muratov_mass_loading(merger_centralgal, z, galaxies, run_params);
+                double muratov_mass_loading = calculate_muratov_mass_loading(merger_centralgal, z, galaxies);
                 
                 // Apply Muratov mass loading to calculate ejected mass
                 ejected_mass = (muratov_mass_loading * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -

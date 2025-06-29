@@ -13,7 +13,6 @@ extern "C" {
     extern void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies, const struct params *run_params);
     extern void update_gas_components(struct GALAXY *g, const struct params *run_params);
 
-    /* New enhanced reionization functions */
     extern double do_reionization_enhanced(const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
     extern double calculate_filtering_mass(const double z, const struct params *run_params);
     extern double calculate_local_reionization_redshift(const int gal, struct GALAXY *galaxies, const struct params *run_params);

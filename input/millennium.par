@@ -115,6 +115,10 @@ PatchyReionWidth          1.0     % Width of reionization transition in dz
 LocalReionVariance        1.0     % Spatial variance in reionization timing
 PostReionSlope           -1.0    % Evolution of critical mass after reionization
 
+%------------------------------------------
+%----- Redshift-Dependance ----------------
+%------------------------------------------
+
 SFR_Alpha                 0.0   %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
 Reheating_Alpha           0.0   % Redshift evolution exponent for FeedbackReheatingEpsilon (only used if MuratovMassLoading=0)
 Ejection_Alpha            0.0   %controls redshift dependence of ejection
@@ -127,8 +131,10 @@ SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
 SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
 SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
 
-
-% CGM Infall and Mixing Parameters 
+%------------------------------------------
+%----- CGM control ------------------------
+%------------------------------------------
+ 
 CGMInfallFraction      1.0          % Fraction of infall goes through CGM first
 CGMTransferEfficiency  0.07         % Transfer efficiency per dynamical time
 CGMPristineFraction    0.8          % Fraction of CGM transfer that is pristine

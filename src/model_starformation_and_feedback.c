@@ -353,7 +353,7 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
  * 
  * @return: Mass loading factor (η)
  */
-double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY *galaxies, const struct params *run_params)
+double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY *galaxies)
 {
     // Get circular velocity in km/s
     double vc = galaxies[p].Vvir;  // Using virial velocity (already in km/s)
@@ -496,7 +496,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     // *** KEY DIFFERENCE: Modified Muratov mass loading ***
     if (run_params->SupernovaRecipeOn == 1) {
         // Use Muratov mass loading with a reduced factor
-        reheated_mass = calculate_muratov_mass_loading(p, z, galaxies, run_params) * stars;
+        reheated_mass = calculate_muratov_mass_loading(p, z, galaxies) * stars;
         
         // Ensure we don't reheat more than the available cold gas
         if (reheated_mass > galaxies[p].ColdGas) {
