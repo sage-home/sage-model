@@ -17,6 +17,7 @@ tests/test_env/
 tests/test_results/
 tests/test_data/microuchuu
 tests/stubs/
+tests/test_output/
 
 tests/test_hdf5_output
 tests/test_io_interface
@@ -87,7 +88,6 @@ tests/test_tree_physics_integration
 tests/test_tree_physics_simple
 tests/test_tree_mode_scientific_validation
 
-tests/test_output/
 .repomix/
 trees_*
 *.o
@@ -115,6 +115,7 @@ yy*
 *.hdf5
 *.code-workspace
 .env
+src-legacy
 
 # sage_analysis Package Stuff #
 *.egg-info
