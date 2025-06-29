@@ -100,7 +100,7 @@ void grow_black_hole(const int merger_centralgal, const double mass_ratio, struc
 
     if(galaxies[merger_centralgal].ColdGas > 0.0) {
         // Store original black hole mass for logging
-        double original_bh_mass = galaxies[merger_centralgal].BlackHoleMass;
+        // double original_bh_mass = galaxies[merger_centralgal].BlackHoleMass;
 
         BHaccrete = run_params->BlackHoleGrowthRate * mass_ratio /
             (1.0 + SQR(280.0 / galaxies[merger_centralgal].Vvir)) * galaxies[merger_centralgal].ColdGas;

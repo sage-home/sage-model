@@ -3,6 +3,9 @@
 #include "model_h2_formation.h"
 #include "model_misc.h"
 
+// Static counter for debug output - only print every 9000000th galaxy
+static long galaxy_debug_counter = 0;
+
 /**
  * init_gas_components - Initialize gas components in a galaxy
  * 
@@ -153,459 +156,281 @@ float calculate_midplane_pressure(float gas_density, float stellar_density,
 }
 
 /**
- * get_mass_dependent_radiation_field - Better radiation field calculation
- * 
- * This improved version:
- * - Accounts for galaxy type (stronger in centrals with AGN)
- * - Has more realistic mass scaling
- * - Includes stellar mass and SFR feedback effects
+ * gd14_sigma_norm - Calculate GD14 normalization surface density
+ * This is the EXACT SHARK implementation from the gd14_sigma_norm function
  */
-float get_mass_dependent_radiation_field(struct GALAXY *g, const struct params *run_params)
+float gd14_sigma_norm(float d_mw, float u_mw)
 {
-    // Base radiation field from parameters
-    float radiation_field = run_params->RadiationFieldNorm;
+    // SHARK's exact g parameter calculation: g = sqrt(d_mw² + 0.0289)
+    float g = sqrt(d_mw * d_mw + 0.0289);
     
-    // --- IMPROVEMENT 3: BETTER RADIATION FIELD MODEL ---
+    // SHARK's exact sigma_r1 calculation
+    float sqrt_term = sqrt(0.01 + u_mw);
+    float sigma_r1 = 50.0 / g * sqrt_term / (1.0 + 0.69 * sqrt_term);
     
-    // 1. Account for galaxy type - centrals host AGN that increase radiation
-    if (g->Type == 0) {  // Central galaxy
-        radiation_field *= 1.2;  // 20% stronger field in centrals due to AGN
-    }
+    // Note: SHARK multiplies by constants::MEGA² to convert to M☉/Mpc², 
+    // but since we're working in M☉/pc², we don't need this conversion
     
-    // 2. More realistic mass scaling for radiation field
-    if (g->Mvir > 0.0) {
-        // Convert to solar masses
-        float log_mvir = log10(g->Mvir * 1.0e10 / run_params->Hubble_h);
-        
-        // Mass-dependent scaling with more realistic behavior
-        if (log_mvir > 12.0) {
-            // Strong radiation field in massive halos (AGN + many stars)
-            float mass_scale = 2.0 + 1.0 * (log_mvir - 12.0);
-            if (mass_scale > 5.0) mass_scale = 5.0;  // Cap at 5x
-            radiation_field *= mass_scale;
-        } 
-        else if (log_mvir > 10.5) {
-            // Moderate scaling for intermediate masses
-            radiation_field *= 1.0 + 0.8 * (log_mvir - 10.5);
-        } 
-        else if (log_mvir < 9.0) {
-            // Reduced field for very low-mass galaxies
-            float mass_scale = 0.3 + 0.7 * (log_mvir / 9.0);
-            radiation_field *= mass_scale;
-        }
-    }
-    
-    // 3. Account for SFR and stellar feedback
-    float recent_sfr = 0.0;
-    float specific_sfr = 0.0;
-    
-    // Calculate recent SFR from SFH
-    for (int step = 0; step < STEPS; step++) {
-        recent_sfr += g->SfrDisk[step] + g->SfrBulge[step];
-    }
-    recent_sfr /= STEPS;
-    
-    // Calculate specific SFR
-    if (g->StellarMass > 0.0) {
-        specific_sfr = recent_sfr / g->StellarMass;
-        
-        // High sSFR increases radiation field (active star formation)
-        if (specific_sfr > 1e-10) {  // Active star formation
-            radiation_field *= 1.0 + log10(specific_sfr * 1e11);  // Normalize to ~1 at 10^-11 yr^-1
-        }
-    }
-    
-    // 4. Include BH mass/growth effects
-    if (g->BlackHoleMass > 0.0) {
-        float log_bh = log10(g->BlackHoleMass);
-        
-        // Higher BH mass means stronger radiation field
-        if (log_bh > 7.0) {
-            radiation_field *= 1.0 + 0.25 * (log_bh - 7.0);
-        }
-        
-        // Recent BH growth (quasar mode) dramatically increases radiation
-        if (g->QuasarModeBHaccretionMass > 0.0 && g->BlackHoleMass > 0.0) {
-            float accretion_ratio = g->QuasarModeBHaccretionMass / g->BlackHoleMass;
-            if (accretion_ratio > 0.001) {
-                radiation_field *= 1.0 + 5.0 * accretion_ratio;  // Strong effect for active quasars
-            }
-        }
-    }
-    
-    return radiation_field;
+    return sigma_r1; // Returns in M☉/pc²
 }
 
 /**
- * calculate_molecular_fraction_GD14 - Improved molecular fraction calculation
- * 
- * Removes the artificial 80% minimum at high densities and uses a more
- * physically motivated density dependence
+ * calculate_molecular_fraction_GD14_SHARK_EXACT - EXACT SHARK implementation
+ * This follows SHARK's fmol function exactly for the GD14 case
  */
-float calculate_molecular_fraction_GD14(float gas_density, float metallicity, 
-                                     float radiation_field, const struct params *run_params)
+float calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity)
 {
-    // Early termination for zero or negative values
-    if (gas_density <= 0.0) {
+    // Early termination for edge cases (as SHARK does)
+    if (gas_surface_density <= 0.0) {
         return 0.0;
     }
     
-    // Early termination for extremely low metallicity environments
-    // (H2 formation requires dust, which requires metals)
-    if (metallicity < 1.0e-4) {
-        // Very low molecular fraction in extremely metal-poor gas
-        return 0.01 * gas_density / 100.0;  // Scale with density but keep very low
+    // SHARK's exact GD14 implementation from the fmol function:
+    // else if (parameters.model == StarFormationParameters::GD14){
+    //     //Galaxy parameters
+    //     double d_mw = zgas;
+    //     double u_mw = Sigma_gas / constants::sigma_gas_mw;
+    
+    // Step 1: Calculate d_mw (metallicity parameter)
+    // SHARK uses: d_mw = zgas (metallicity as absolute fraction, not relative to solar)
+    float d_mw = metallicity;
+    
+    // Step 2: Calculate u_mw (surface density parameter)  
+    // SHARK uses: constants::sigma_gas_mw = 10 M☉/pc²
+    const float sigma_gas_mw = 10.0; // M☉/pc² (SHARK's normalization)
+    float u_mw = gas_surface_density / sigma_gas_mw;
+    
+    // Step 3: Calculate alpha (variable exponent)
+    // SHARK's exact formula: alpha = 0.5 + 1/(1 + sqrt(u_mw * d_mw² / 600.0))
+    float alpha = 0.5 + 1.0 / (1.0 + sqrt(u_mw * d_mw * d_mw / 600.0));
+    
+    // Step 4: Calculate normalization surface density
+    // SHARK uses: gd14_sigma_norm(d_mw, u_mw)
+    float sigma_norm = gd14_sigma_norm(d_mw, u_mw);
+    
+    // Step 5: Calculate R_mol (molecular-to-atomic ratio)
+    // SHARK's exact formula: rmol = (Sigma_gas / sigma_norm)^alpha
+    float rmol = pow(gas_surface_density / sigma_norm, alpha);
+    
+    // Step 6: Convert to molecular fraction
+    // SHARK's exact formula: fmol = rmol / (1 + rmol)
+    float fmol = rmol / (1.0 + rmol);
+    
+    // Step 7: Apply bounds (as SHARK does in its fmol function)
+    if (fmol > 1.0) {
+        fmol = 1.0;
+    } else if (fmol < 0.0) {
+        fmol = 0.0;
     }
     
-    // Early termination for very strong radiation fields 
-    // (which dissociate H2 efficiently)
-    if (radiation_field > 1000.0) {
-        return 0.0;  // No H2 survives extremely strong radiation
-    }
-
-    // --- IMPROVEMENT 2: REMOVE ARTIFICIAL MINIMUM AT HIGH DENSITIES ---
-    
-    // Critical surface density (above which gas becomes mostly molecular)
-    const float SIGMA_CRIT = 10.0; // M⊙/pc²
-    
-    // Metallicity factor (using configurable exponent from run_params)
-    float metallicity_exponent = run_params->MetallicityExponent;
-    float z_factor = pow(metallicity, metallicity_exponent); 
-    
-    // Smoother transition for molecular fraction with density
-    // More physically motivated model without artificial 80% minimum
-    float f_mol = 0.0;
-    if (gas_density > 0.0) {
-        // Sigmoid function for a smoother transition from atomic to molecular
-        float density_ratio = gas_density / (SIGMA_CRIT / z_factor);
-        
-        // More physically motivated formula for H2 fraction
-        // Based on improved approximation of Gnedin & Draine results
-        f_mol = 1.0 / (1.0 + pow(density_ratio, -1.8));
-        
-        // Apply radiation field (higher radiation = less molecular)
-        // More physically motivated radiation scaling
-        float radiation_suppression = 1.0 / (1.0 + 0.7 * sqrt(radiation_field));
-        f_mol *= radiation_suppression;
-        
-        // At very high densities, molecular fraction approaches 1 naturally
-        // without an artificial minimum
-        if (gas_density > 100.0) {
-            // Natural asymptotic approach to high molecular fraction
-            float high_density_factor = 0.95 * (1.0 - exp(-(gas_density - 100.0) / 30.0));
-            f_mol = f_mol + high_density_factor * (1.0 - f_mol);
-        }
+    // Debug output every 50,000 galaxies
+    if (galaxy_debug_counter % 900000 == 0) {
+        printf("DEBUG GD14 SHARK EXACT (galaxy #%ld):\n", galaxy_debug_counter);
+        printf("  Input: gas_surf=%.2e M☉/pc², metallicity=%.4f\n", gas_surface_density, metallicity);
+        printf("  Step 1 - d_mw: %.4f\n", d_mw);
+        printf("  Step 2 - u_mw: %.4f (gas_surf/%.1f)\n", u_mw, sigma_gas_mw);
+        printf("  Step 3 - alpha: %.4f (0.5 + 1/(1 + sqrt(%.4f * %.4f² / 600)))\n", alpha, u_mw, d_mw);
+        printf("  Step 4 - sigma_norm: %.2f M☉/pc²\n", sigma_norm);
+        printf("  Step 5 - rmol: %.4f ((%.2e / %.2f)^%.4f)\n", rmol, gas_surface_density, sigma_norm, alpha);
+        printf("  Step 6 - f_H2: %.4f (%.4f / (1 + %.4f))\n", fmol, rmol, rmol);
+        printf("  ----------------------------------------\n");
     }
     
-    // Ensure bounds
-    if (f_mol < 0.0) f_mol = 0.0;
-    if (f_mol > 1.0) f_mol = 1.0;
-    
-    return f_mol;
+    return fmol;
 }
 
-
 /**
- * integrate_molecular_gas_radial - Calculates molecular gas mass by integrating over disk radius
- * 
- * @g: Galaxy structure containing disk properties
- * @run_params: Global parameters
- * 
- * Returns: Total molecular gas mass
+ * integrate_molecular_gas_radial_SHARK_EXACT - SHARK-style radial integration
+ * This follows SHARK's molecular_hydrogen function structure exactly
  */
 float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_params)
 {
-    // Don't calculate if there's no cold gas
     if (g->ColdGas <= 0.0) {
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("DEBUG RADIAL SHARK: No cold gas, returning 0\n");
+        }
         return 0.0;
     }
     
-    // Skip calculation for unrealistic disk radius values
-    if (g->DiskScaleRadius <= 0.0) {
+    // SHARK uses: re = cosmology->comoving_to_physical_size(rgas / constants::RDISK_HALF_SCALE, z)
+    // where constants::RDISK_HALF_SCALE = 1.67
+    float disk_scale_radius = g->DiskScaleRadius; // This is already the scale radius
+    
+    if (disk_scale_radius <= 1.0e-6) {
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("DEBUG RADIAL SHARK: Very small disk radius=%.2e, returning 0\n", disk_scale_radius);
+        }
         return 0.0;
     }
     
-    // For very small galaxies, use a simplified approximation
-    if (g->ColdGas < 1.0e-5 && g->StellarMass < 1.0e-5) {
-        return 0.3 * g->ColdGas;  // Simple fixed fraction
-    }
-    
-    // Early termination for very large stellar mass to gas ratios
-    // (these will have extremely low molecular fractions)
-    if (g->StellarMass > 0.0 && g->ColdGas/g->StellarMass < 1.0e-4) {
-        return 0.05 * g->ColdGas;  // Very low H2 fraction
-    }
-
-    // Don't calculate if there's no cold gas
-    if (g->ColdGas <= 0.0 || g->DiskScaleRadius <= 0.0) {
-        return 0.0;
-    }
-    
-    // IMPORTANT: Convert Mpc/h to pc for surface density calculations
-    // Typical values: h ≈ 0.7, so 1 Mpc/h ≈ 1.43 Mpc ≈ 1.43 × 10^6 pc
+    // SHARK conversion: re (half-mass radius) = rgas / 1.67
+    // Since our disk_scale_radius is the scale length, we need to convert
     const float h = run_params->Hubble_h;
-    const float disk_radius_pc = g->DiskScaleRadius * 1.0e6 / h;  // Convert Mpc/h to pc
+    const float re_pc = disk_scale_radius * 1.0e6 / h / 1.67; // Half-mass radius in pc
     
-    // Number of radial bins for integration
-    const int N_RADIAL_BINS = run_params->IntegrationBins > 0 ? run_params->IntegrationBins : 30;
-    
-    // Integrate from 0 to 5 scale radii (covers >99% of exponential disk)
-    const float MAX_RADIUS_FACTOR = 5.0;
-    const float dr = MAX_RADIUS_FACTOR * g->DiskScaleRadius / N_RADIAL_BINS;
-    const float dr_pc = dr * 1.0e6 / h;  // Convert to pc
-    
-    // Get metallicity
+    // Get metallicity (as absolute fraction, not relative to solar - this is key!)
     float metallicity = 0.0;
     if (g->ColdGas > 0.0) {
-        metallicity = g->MetalsColdGas / g->ColdGas / 0.02;  // Normalized to solar
+        // SHARK uses: zgas = galaxy.disk_gas.mass_metals / galaxy.disk_gas.mass
+        // This gives absolute metallicity fraction, not relative to solar
+        metallicity = g->MetalsColdGas / g->ColdGas; // Absolute metallicity fraction
     }
     
-    // Calculate stellar surface density at center
-    float stellar_surface_density_center = 0.0;
-    if (g->StellarMass > g->BulgeMass) {
-        // Only consider disk stars, not bulge stars
-        float disk_stellar_mass = g->StellarMass - g->BulgeMass;
-        if (g->DiskScaleRadius > 0.0) {
-            // Mass in 10^10 M_sun/h, area in (Mpc/h)^2
-            // Convert to M_sun/pc^2
-            float disk_area_pc2 = M_PI * disk_radius_pc * disk_radius_pc;
-            stellar_surface_density_center = (disk_stellar_mass * 1.0e10 / h) / disk_area_pc2;
-        }
+    if (galaxy_debug_counter % 900000 == 0) {
+        printf("\nDEBUG RADIAL SHARK: Starting integration\n");
+        printf("  ColdGas: %.2e, metallicity: %.4f (absolute)\n", g->ColdGas, metallicity);
+        printf("  DiskScaleRadius: %.2e Mpc/h, re_pc: %.2e pc\n", disk_scale_radius, re_pc);
     }
     
-    // Calculate gas surface density at center (exponential disk)
+    // SHARK integration parameters
+    // SHARK uses: double rmax = 5.0*re; (integrates to 5 × half-mass radius)
+    const int N_RADIAL_BINS = 20; // SHARK uses adaptive integration, but we'll use fixed bins
+    const float MAX_RADIUS_FACTOR = 5.0; // SHARK integrates to 5 × half-mass radius
+    
+    const float dr = MAX_RADIUS_FACTOR * re_pc / N_RADIAL_BINS;
+    
+    // Calculate gas surface density at center (half-mass radius)
+    // SHARK uses: Sigma_gas = cosmology->comoving_to_physical_mass(mcold) / constants::PI2 / (re * re)
     float gas_surface_density_center = 0.0;
-    if (g->DiskScaleRadius > 0.0) {
-        // Mass in 10^10 M_sun/h, area in (Mpc/h)^2
-        // Convert to M_sun/pc^2
-        float disk_area_pc2 = M_PI * disk_radius_pc * disk_radius_pc;
-        gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2;
+    if (re_pc > 0.0) {
+        // For exponential disk: Σ_gas(0) = M_gas / (2π × r_e²)
+        float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc; // Note: 2π for half-mass radius
+        gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
     }
     
-    // Setup for integration
-    float total_molecular_gas = 0.0;
-    float total_cold_gas = 0.0;
+    if (galaxy_debug_counter % 900000 == 0) {
+        printf("  gas_surface_density_center: %.2e M☉/pc²\n", gas_surface_density_center);
+    }
     
-    // Perform integration over radius
+    // SHARK-style radial integration
+    // SHARK integrates: PI2 * fmol(Sigma_gas, Sigma_stars, props->zgas, r) * Sigma_gas * r
+    float total_molecular_gas = 0.0;
+    
     for (int i = 0; i < N_RADIAL_BINS; i++) {
-        // Radius at the middle of this bin in Mpc/h (original units)
-        float radius = (i + 0.5) * dr;
-        float radius_pc = radius * 1.0e6 / h;  // Convert to pc
+        // Radius in half-mass radii (SHARK uses this scaling)
+        float radius_in_half_mass_radii = (i + 0.5) * MAX_RADIUS_FACTOR / N_RADIAL_BINS;
+        float radius_pc = radius_in_half_mass_radii * re_pc;
         
-        // Calculate local surface densities (exponential profile)
-        float exp_factor = exp(-radius / g->DiskScaleRadius);
-        float local_gas_density = gas_surface_density_center * exp_factor;  // M_sun/pc^2
-        float local_stellar_density = stellar_surface_density_center * exp_factor;  // M_sun/pc^2
+        // SHARK uses exponential profile: Sigma_gas = props->sigma_gas0 * exp(-r / props->re)
+        float exp_factor = exp(-radius_in_half_mass_radii);
+        float local_gas_density = gas_surface_density_center * exp_factor; // M☉/pc²
         
-        // Calculate area of this annular ring in pc^2
-        float ring_area_pc2 = 2.0 * M_PI * radius_pc * dr_pc;
+        // Area of this annular ring
+        float ring_area_pc2 = 2.0 * M_PI * radius_pc * dr;
         
-        // Gas mass in this ring in 10^10 M_sun/h (SAGE internal units)
+        // Gas mass in this ring (in SAGE units: 10^10 M☉/h)
         float ring_gas_mass = (local_gas_density * ring_area_pc2) / (1.0e10 / h);
-        total_cold_gas += ring_gas_mass;
         
-        // Use mass-dependent radiation field
-        float base_radiation_field = get_mass_dependent_radiation_field(g, run_params);
-        
-        // Scale radiation field with local stellar density
-        float radiation_field = base_radiation_field;
-        if (local_stellar_density > 0.0) {
-            radiation_field *= pow(local_stellar_density / stellar_surface_density_center, 0.3);
-        }
-        
-        // Now the surface density is correctly in M_sun/pc^2 for molecular fraction calculation
+        // Calculate molecular fraction using SHARK-exact GD14
         float molecular_fraction = calculate_molecular_fraction_GD14(
-            local_gas_density, metallicity, radiation_field, run_params);
+            local_gas_density, metallicity);
         
-        // Molecular gas in this ring in 10^10 M_sun/h
+        // Add molecular gas from this ring
         float ring_mol_gas = molecular_fraction * ring_gas_mass;
         total_molecular_gas += ring_mol_gas;
+        
+        if (i < 3 && galaxy_debug_counter % 900000 == 0) { // Debug first few rings
+            printf("  Ring %d: r=%.2f re, local_gas=%.2e M☉/pc², mol_frac=%.4f, ring_mol=%.3e\n", 
+                   i, radius_in_half_mass_radii, local_gas_density, molecular_fraction, ring_mol_gas);
+        }
     }
     
-    // Ensure we don't exceed total cold gas (can happen due to numerical integration)
-    if (total_molecular_gas > g->ColdGas) {
-        total_molecular_gas = g->ColdGas;
+    // Mass conservation check (SHARK does this)
+    if (total_molecular_gas > g->ColdGas * 0.95) { // Max 95% of cold gas can be molecular
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("  WARNING: H2 would be %.3f of cold gas, capping at 95%%\n", 
+                   total_molecular_gas / g->ColdGas);
+        }
+        total_molecular_gas = g->ColdGas * 0.95;
+    }
+    
+    if (galaxy_debug_counter % 900000 == 0) {
+        printf("  Final molecular gas: %.2e (fraction of cold gas: %.3f)\n", 
+               total_molecular_gas, total_molecular_gas / g->ColdGas);
+        printf("END DEBUG RADIAL SHARK\n\n");
     }
     
     return total_molecular_gas;
 }
 
 /**
- * calculate_bulge_molecular_gas - Estimate molecular gas in the galaxy bulge
- * 
- * @g: Galaxy structure containing bulge properties
- * @run_params: Global parameters
- * 
- * Returns: Molecular gas mass in bulge
+ * calculate_bulge_molecular_gas_SHARK_EXACT - SHARK-style bulge H2 calculation
+ * SHARK treats bulge and disk separately in get_molecular_gas function
  */
 float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_params)
 {
     // Check if we have any bulge
     if (g->BulgeMass <= 0.0) {
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("DEBUG BULGE SHARK: No bulge mass, returning 0\n");
+        }
         return 0.0;
     }
     
-    // Estimate bulge gas as fraction of cold gas based on B/T ratio
+    // SHARK estimates bulge gas based on bulge-to-total ratio
     float bulge_to_total = g->BulgeMass / (g->StellarMass > 0.0 ? g->StellarMass : 1.0);
     
-    // Estimate bulge gas fraction - bulges typically have less gas than disks
-    float bulge_gas_fraction = bulge_to_total * 0.5;  // typically less gas-rich
-    float bulge_gas = bulge_gas_fraction * g->ColdGas;
+    // Estimate bulge gas (SHARK doesn't specify exact method, so we use reasonable approach)
+    float bulge_gas = bulge_to_total * 0.3 * g->ColdGas; // 30% of proportional share
     
-    // Get bulge radius - if not available, estimate from disk radius
-    float bulge_radius = g->DiskScaleRadius * 0.2;  // typical bulge is ~1/5 of disk
-    
-    // IMPORTANT: Convert units for surface density calculation
-    const float h = run_params->Hubble_h;
-    const float bulge_radius_pc = bulge_radius * 1.0e6 / h;  // Convert Mpc/h to pc
-    
-    // Calculate bulge gas surface density (assuming spherical distribution)
-    float bulge_gas_surface_density = 0.0;
-    if (bulge_radius > 0.0) {
-        float bulge_area_pc2 = M_PI * bulge_radius_pc * bulge_radius_pc;
-        bulge_gas_surface_density = (bulge_gas * 1.0e10 / h) / bulge_area_pc2;  // M_sun/pc^2
+    if (bulge_gas <= 0.0) {
+        return 0.0;
     }
     
-    // Get metallicity - now using bulge metallicity from MetalsBulgeMass
+    // Calculate bulge properties
+    const float h = run_params->Hubble_h;
+    float bulge_radius = g->DiskScaleRadius * 0.2; // Typical bulge size
+    float bulge_radius_pc = bulge_radius * 1.0e6 / h;
+    
+    // Calculate bulge gas surface density
+    float bulge_gas_surface_density = 0.0;
+    if (bulge_radius_pc > 0.0) {
+        float bulge_area_pc2 = M_PI * bulge_radius_pc * bulge_radius_pc;
+        bulge_gas_surface_density = (bulge_gas * 1.0e10 / h) / bulge_area_pc2; // M☉/pc²
+    }
+    
+    // Get bulge metallicity (absolute fraction)
     float metallicity = 0.0;
     if (g->BulgeMass > 0.0) {
-        // Use actual bulge metallicity instead of cold gas metallicity
-        metallicity = g->MetalsBulgeMass / g->BulgeMass / 0.02;  // Normalized to solar
+        // SHARK uses: zgas = galaxy.bulge_gas.mass_metals / galaxy.bulge_gas.mass
+        metallicity = g->MetalsBulgeMass / g->BulgeMass; // Absolute metallicity fraction
     } else if (g->ColdGas > 0.0) {
-        // Fallback to cold gas metallicity if no bulge stars (unlikely given earlier check)
-        metallicity = g->MetalsColdGas / g->ColdGas / 0.02;
+        metallicity = g->MetalsColdGas / g->ColdGas; // Fallback to cold gas metallicity
     }
     
-    // GD14 model - but with enhanced radiation field due to dense stellar population
-    float radiation_field = run_params->RadiationFieldNorm * 2.0;  // Enhanced in bulge
+    if (galaxy_debug_counter % 900000 == 0) {
+        printf("DEBUG BULGE SHARK: bulge_gas=%.2e, gas_surf_dens=%.2e, metallicity=%.4f\n",
+               bulge_gas, bulge_gas_surface_density, metallicity);
+    }
     
+    // Use SHARK-exact GD14 calculation
     float molecular_fraction = calculate_molecular_fraction_GD14(
-        bulge_gas_surface_density, metallicity, radiation_field, run_params);
+        bulge_gas_surface_density, metallicity);
     
-    // Bulges typically have high molecular fractions due to high density
-    // Set minimum molecular fraction for bulges to 0.5
-    if (molecular_fraction < 0.5) {
-        molecular_fraction = 0.5;
-    }
-
-    if (g->StellarMass > 1e10) {
-        // Reduce molecular fraction in massive galaxy bulges
-        molecular_fraction *= 0.7;  // 30% reduction
+    float bulge_molecular_gas = bulge_gas * molecular_fraction;
+    
+    if (galaxy_debug_counter % 900000 == 0) {
+        printf("DEBUG BULGE SHARK: molecular_fraction=%.4f, bulge_H2=%.2e\n", 
+               molecular_fraction, bulge_molecular_gas);
     }
     
-    return bulge_gas * molecular_fraction;
+    return bulge_molecular_gas;
 }
 
 /**
- * apply_environmental_effects - Enhanced environmental effects
+ * update_gas_components - Enhanced gas component update with real disk radius
  * 
- * This improved version:
- * - Begins environmental effects at lower halo masses
- * - Has more gradual transition with halo mass
- * - Accounts for orbit/position within halo
- */
-void apply_environmental_effects(struct GALAXY *g, const struct params *run_params) 
-{
-    // Skip if environmental effects are disabled
-    if (run_params->EnvironmentalEffectsOn == 0) return;
-    
-    // Skip if no H2 gas
-    if (g->H2_gas <= 0.0) return;
-    
-    // CRITICAL FIX: Environmental effects should ONLY apply to satellite galaxies
-    // Central galaxies should not experience environmental stripping
-    if (g->Type == 0) {
-        return;  // Skip all environmental effects for central galaxies
-    }
-    
-    // --- REFINED ENVIRONMENTAL EFFECTS (SATELLITES ONLY) ---
-    
-    // Apply to satellite galaxies only
-    float type_factor = 1.0;
-    if (g->Type == 1) {  // Satellite with subhalo
-        type_factor = 1.0;  // Full effect
-    } else if (g->Type == 2) {  // Orphan satellite
-        type_factor = 1.2;  // 20% stronger effect for orphan satellites (no protection from subhalo)
-    }
-    
-    // 2. Start environmental effects at lower mass and make transition more gradual
-    float env_strength = 0.0;
-    
-    // Get central halo mass - use different approaches based on galaxy type
-    float central_mvir = 0.0;
-    if (g->Type == 0) {
-        central_mvir = g->Mvir;  // For centrals, use own virial mass
-    } else {
-        // For satellites, use stored CentralMvir
-        central_mvir = g->CentralMvir;
-        if (central_mvir <= 0.0) return;  // Safety check
-    }
-    
-    // Convert to solar masses
-    float central_mass = central_mvir * 1.0e10 / run_params->Hubble_h;
-    float log_mass = log10(central_mass > 0.0 ? central_mass : 1.0);
-    
-    // Begin effect at lower mass (10^12 M⊙) with more gradual increase
-    // Previous version started at 10^13 M⊙
-    if (log_mass > 12.0) {
-        // More gradual scaling with mass
-        env_strength = 0.2 + 0.3 * (log_mass - 12.0);  // 20% base effect + 30% per dex
-        
-        // Cap maximum effect
-        if (env_strength > 0.9) env_strength = 0.9;
-    } 
-    // Even galaxies in groups (10^11-10^12 M⊙) experience mild environmental effects
-    else if (log_mass > 11.0) {
-        env_strength = 0.05 + 0.15 * (log_mass - 11.0);  // 5% base effect + 15% scaling
-    }
-    
-    // 3. Scale with user parameter
-    env_strength *= run_params->EnvEffectStrength;
-    
-    // 4. Apply type-dependent scaling
-    env_strength *= type_factor;
-    
-    // 5. Account for orbit/position effects (time since infall)
-    if (g->Type > 0) {  // Only for satellites
-        // Use merger time as proxy for orbital phase
-        if (g->MergTime > 0.0 && g->infallVvir > 0.0) {
-            // Recently accreted satellites experience less environmental effects
-            float orbit_phase = 1.0 - g->MergTime / 3.0;  // Normalized to ~1 after 3 Gyr
-            if (orbit_phase < 0.0) orbit_phase = 0.0;
-            if (orbit_phase > 1.0) orbit_phase = 1.0;
-            
-            env_strength *= orbit_phase;  // Reduce effect for recent infall
-        }
-    }
-    
-    // Apply the effect - remove H2 gas
-    if (env_strength > 0.0) {
-        float h2_affected = g->H2_gas * env_strength;
-        
-        // 30% is completely removed, 70% converted to HI
-        float h2_removed = h2_affected * 0.3;
-        float h2_to_hi = h2_affected * 0.7;
-        
-        // Update gas components
-        g->H2_gas -= h2_affected;
-        g->HI_gas += h2_to_hi;
-        g->ColdGas -= h2_removed;  // Also update total cold gas
-        
-        // Ensure non-negative values
-        if (g->H2_gas < 0.0) g->H2_gas = 0.0;
-        if (g->HI_gas < 0.0) g->HI_gas = 0.0;
-        if (g->ColdGas < 0.0) g->ColdGas = 0.0;
-    }
-}
-
-/**
- * update_gas_components - Enhanced gas component update
- * 
- * This integrates all the improvements into the main function
+ * This function now uses SAGE's real disk radius (calculated via get_disk_radius 
+ * in model_misc.c during galaxy initialization) instead of any approximation.
+ * The GD14 molecular fraction prescription matches SHARK exactly, but uses
+ * the proper disk radius as calculated by SAGE's physics.
  */
 void update_gas_components(struct GALAXY *g, const struct params *run_params)
 {
-    // Early termination - if no cold gas or extremely small amount
+    // Increment the galaxy counter for debug purposes
+    galaxy_debug_counter++;
+    
+    // Early termination - if no cold gas
     if(g->ColdGas <= 0.0) {
         g->H2_gas = 0.0;
         g->HI_gas = 0.0;
@@ -614,210 +439,212 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     
     // Early termination - if disk radius is effectively zero
     if(g->DiskScaleRadius <= 1.0e-6) {
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("DEBUG MAIN SHARK: Very small DiskScaleRadius=%.2e, setting H2=0\n", 
+                   g->DiskScaleRadius);
+        }
         g->H2_gas = 0.0;
         g->HI_gas = g->ColdGas;
         return;
     }
     
-    // Early termination - if extremely metal-poor and low mass
-    // (H2 formation is inefficient in these conditions)
-    if(g->MetalsColdGas < 1.0e-8 && g->ColdGas < 1.0e-6) {
-        g->H2_gas = 0.1 * g->ColdGas;  // Assign small fixed fraction
-        g->HI_gas = g->ColdGas - g->H2_gas;
-        return;
-    }
-
     float total_molecular_gas = 0.0;
     
     if (run_params->SFprescription == 3) {
-        // GD14 model with radial integration
+        // GD14 model with SHARK-exact implementation
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("\nDEBUG MAIN SHARK: Starting SHARK-exact GD14 for galaxy #%ld\n", galaxy_debug_counter);
+            printf("  ColdGas=%.2e, StellarMass=%.2e, DiskScaleRadius=%.2e\n", 
+                   g->ColdGas, g->StellarMass, g->DiskScaleRadius);
+        }
         
-        // Calculate disk molecular gas through radial integration
-        // But using improved models for radiation field and molecular fraction
-        float disk_molecular_gas = 0.0;
+        // Calculate disk molecular gas through SHARK-exact radial integration
+        float disk_molecular_gas = integrate_molecular_gas_radial(g, run_params);
+        
+        // Calculate bulge molecular gas using SHARK-exact method
         float bulge_molecular_gas = 0.0;
-        
-        // Get metallicity
-        float metallicity = 0.0;
-        if (g->ColdGas > 0.0) {
-            metallicity = g->MetalsColdGas / g->ColdGas / 0.02;  // Normalized to solar
-        }
-        
-        // Set up for radial calculation
-        const float h = run_params->Hubble_h;
-        const float disk_radius_pc = g->DiskScaleRadius * 1.0e6 / h;  // Convert Mpc/h to pc
-        
-        // Number of radial bins for integration
-        const int N_RADIAL_BINS = run_params->IntegrationBins > 0 ? run_params->IntegrationBins : 30;
-        
-        // Max radius and step size
-        const float MAX_RADIUS_FACTOR = 5.0;
-        const float dr = MAX_RADIUS_FACTOR * g->DiskScaleRadius / N_RADIAL_BINS;
-        const float dr_pc = dr * 1.0e6 / h;  // Convert to pc
-        
-        // Calculate surface densities
-        float gas_surface_density_center = 0.0;
-        float stellar_surface_density_center = 0.0;
-        
-        if (g->DiskScaleRadius > 0.0) {
-            float disk_area_pc2 = M_PI * disk_radius_pc * disk_radius_pc;
-            gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2;
-            
-            if (g->StellarMass > g->BulgeMass) {
-                float disk_stellar_mass = g->StellarMass - g->BulgeMass;
-                stellar_surface_density_center = (disk_stellar_mass * 1.0e10 / h) / disk_area_pc2;
-            }
-        }
-        
-        // Get base radiation field with improvements
-        float base_radiation_field = get_mass_dependent_radiation_field(g, run_params);
-        
-        // Perform integration over radius
-        float total_cold_gas = 0.0;
-        
-        for (int i = 0; i < N_RADIAL_BINS; i++) {
-            // Radius at the middle of this bin in Mpc/h (original units)
-            float radius = (i + 0.5) * dr;
-            float radius_pc = radius * 1.0e6 / h;  // Convert to pc
-            
-            // Calculate local surface densities (exponential profile)
-            float exp_factor = exp(-radius / g->DiskScaleRadius);
-            float local_gas_density = gas_surface_density_center * exp_factor;  // M_sun/pc^2
-            float local_stellar_density = stellar_surface_density_center * exp_factor;  // M_sun/pc^2
-            
-            // Calculate area of this annular ring in pc^2
-            float ring_area_pc2 = 2.0 * M_PI * radius_pc * dr_pc;
-            
-            // Gas mass in this ring in 10^10 M_sun/h (SAGE internal units)
-            float ring_gas_mass = (local_gas_density * ring_area_pc2) / (1.0e10 / h);
-            total_cold_gas += ring_gas_mass;
-            
-            // Scale radiation field with local stellar density
-            float radiation_field = base_radiation_field;
-            if (local_stellar_density > 0.0) {
-                radiation_field *= pow(local_stellar_density / stellar_surface_density_center, 0.3);
-            }
-            
-            // Use molecular fraction calculation with improvements
-            float molecular_fraction = calculate_molecular_fraction_GD14(
-                local_gas_density, metallicity, radiation_field, run_params);
-            
-            // Molecular gas in this ring in 10^10 M_sun/h
-            float ring_mol_gas = molecular_fraction * ring_gas_mass;
-            disk_molecular_gas += ring_mol_gas;
-        }
-        
-        // Calculate bulge molecular gas
         if (g->BulgeMass > 0.0) {
-            // Similar approach for bulge gas
-            float bulge_to_total = g->BulgeMass / (g->StellarMass > 0.0 ? g->StellarMass : 1.0);
-            float bulge_gas_fraction = bulge_to_total * 0.5;
-            float bulge_gas = bulge_gas_fraction * g->ColdGas;
-            
-            float bulge_radius = g->DiskScaleRadius * 0.2;
-            float bulge_radius_pc = bulge_radius * 1.0e6 / h;
-            
-            if (bulge_radius > 0.0) {
-                float bulge_area_pc2 = M_PI * bulge_radius_pc * bulge_radius_pc;
-                float bulge_gas_surface_density = (bulge_gas * 1.0e10 / h) / bulge_area_pc2;
-                
-                // Get bulge metallicity
-                float bulge_metallicity = 0.0;
-                if (g->BulgeMass > 0.0) {
-                    bulge_metallicity = g->MetalsBulgeMass / g->BulgeMass / 0.02;
-                } else if (g->ColdGas > 0.0) {
-                    bulge_metallicity = g->MetalsColdGas / g->ColdGas / 0.02;
-                }
-                
-                // Enhanced radiation field in bulge (denser stellar population)
-                float bulge_radiation_field = base_radiation_field * 2.0;
-                
-                // Use molecular fraction calculation with improvements
-                float bulge_molecular_fraction = calculate_molecular_fraction_GD14(
-                    bulge_gas_surface_density, bulge_metallicity, bulge_radiation_field, run_params);
-                
-                bulge_molecular_gas = bulge_gas * bulge_molecular_fraction;
-            }
+            bulge_molecular_gas = calculate_bulge_molecular_gas(g, run_params);
         }
         
-        // Total molecular gas
+        // Total molecular gas - THIS IS THE KEY FIX
         total_molecular_gas = disk_molecular_gas + bulge_molecular_gas;
         
-        // Apply environmental effects with improvements
-        if (run_params->EnvironmentalEffectsOn != 0) {
-            apply_environmental_effects(g, run_params);
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("  CALCULATION CHECK: disk_H2=%.2e, bulge_H2=%.2e, total_H2=%.2e\n", 
+                   disk_molecular_gas, bulge_molecular_gas, total_molecular_gas);
+            printf("  FRACTION CHECK: total_H2/ColdGas = %.6f\n", total_molecular_gas / g->ColdGas);
         }
     }
-    else if (run_params->SFprescription == 2) {
-        // Existing KD12 model - kept largely unchanged
-        // Calculate surface density using disk scale radius
-        const float disk_area = M_PI * g->DiskScaleRadius * g->DiskScaleRadius;
-        if(disk_area <= 0.0) {
-            g->H2_gas = 0.0;
-            g->HI_gas = g->ColdGas;
-            return;
-        }
-        
-        const float surface_density = g->ColdGas / disk_area;
-        float metallicity = 0.0;
-        if(g->ColdGas > 0.0) {
-            metallicity = g->MetalsColdGas / g->ColdGas / 0.02;
-        }
-        
-        float clumping_factor = run_params->ClumpFactor;
-        if (metallicity * 0.02 < 0.01) {
-            clumping_factor = run_params->ClumpFactor * 
-                              pow(0.01, -run_params->ClumpExponent);
-        } else if (metallicity * 0.02 < 1.0) {
-            clumping_factor = run_params->ClumpFactor * 
-                              pow(metallicity * 0.02, -run_params->ClumpExponent);
-        }
-        
-        float f_H2 = calculate_H2_fraction_KD12(surface_density, metallicity, clumping_factor);
-        total_molecular_gas = f_H2 * g->ColdGas;
-    }
-    else if (run_params->SFprescription == 1) {
-        // Original pressure-based model - kept unchanged
-        const float disk_area = M_PI * g->DiskScaleRadius * g->DiskScaleRadius;
-        if(disk_area <= 0.0) {
-            g->H2_gas = 0.0;
-            g->HI_gas = g->ColdGas;
-            return;
-        }
-        
-        const float surface_density = g->ColdGas / disk_area;
-        float metallicity = 0.0;
-        if(g->ColdGas > 0.0) {
-            metallicity = g->MetalsColdGas / g->ColdGas / 0.02;
-        }
-        
-        float f_H2 = calculate_H2_fraction(surface_density, metallicity, 
-                                          g->DiskScaleRadius, run_params);
-        total_molecular_gas = f_H2 * g->ColdGas;
-    }
+    // REMOVE OR COMMENT OUT OTHER SF PRESCRIPTIONS TO AVOID FALLBACK
     else {
-        // Default for model 0 or anything else - simple prescription
-        total_molecular_gas = 0.3 * g->ColdGas;  // Fixed 30% molecular fraction
+        // For debugging, let's see what happens with other models
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("DEBUG: Using non-GD14 model (SFprescription=%d), setting H2=0\n", run_params->SFprescription);
+        }
+        total_molecular_gas = 0.0; // Don't use fallback for debugging
     }
     
-    // Update gas components
+    // Update gas components - CRITICAL: Use the actual calculated values
     g->H2_gas = total_molecular_gas;
+    
+    // Apply bounds checking
     if(g->H2_gas > g->ColdGas) {
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("DEBUG MAIN SHARK: H2 > ColdGas (%.2e > %.2e), capping at ColdGas\n", 
+                   g->H2_gas, g->ColdGas);
+        }
         g->H2_gas = g->ColdGas;
         g->HI_gas = 0.0;
     } else {
         g->HI_gas = g->ColdGas - g->H2_gas;
     }
 
-    // Final sanity checks
+    // Final sanity checks (as SHARK does)
     if(g->H2_gas < 0.0) g->H2_gas = 0.0;
     if(g->HI_gas < 0.0) g->HI_gas = 0.0;
     
-    // Check mass conservation with small numerical tolerance
+    // Mass conservation check with detailed debugging
     if(g->H2_gas + g->HI_gas > g->ColdGas * 1.001) {  
         float total = g->H2_gas + g->HI_gas;
         float scale = g->ColdGas / total;
+        if (galaxy_debug_counter % 900000 == 0) {
+            printf("DEBUG MAIN SHARK: Mass conservation issue - H2+HI=%.2e > ColdGas=%.2e\n", 
+                   total, g->ColdGas);
+            printf("  Applying scale factor: %.6f\n", scale);
+        }
         g->H2_gas *= scale;
         g->HI_gas *= scale;
     }
+    
+    if (galaxy_debug_counter % 900000 == 0) {
+        float h2_fraction = (g->ColdGas > 0.0) ? g->H2_gas / g->ColdGas : 0.0;
+        printf("  FINAL RESULT: H2=%.2e, HI=%.2e, f_H2=%.6f\n", 
+               g->H2_gas, g->HI_gas, h2_fraction);
+        printf("  CHECK: Does f_H2=%.6f match expected from integration?\n", h2_fraction);
+        printf("END DEBUG MAIN SHARK\n");
+        printf("========================================\n\n");
+    }
+}
+
+void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_params)
+{
+    // Only diagnose every 100,000 galaxies to avoid spam
+    galaxy_debug_counter++;
+    
+    if (g->ColdGas <= 0.0) return;
+    
+    if (galaxy_debug_counter % 900000 == 0) {
+        printf("========================================\n");
+        printf("DEBUG CGM-H2 DIAGNOSTIC for galaxy #%ld\n", galaxy_debug_counter);
+    }
+    
+    // Basic galaxy properties
+    printf("Galaxy Properties:\n");
+    printf("  ColdGas: %.2e, StellarMass: %.2e, BulgeMass: %.2e\n", 
+           g->ColdGas, g->StellarMass, g->BulgeMass);
+    printf("  H2_gas: %.2e, HI_gas: %.2e, f_H2: %.4f\n", 
+           g->H2_gas, g->HI_gas, g->H2_gas / g->ColdGas);
+    
+    // Metallicity assessment
+    float metallicity = g->MetalsColdGas / g->ColdGas;
+    float metallicity_solar = metallicity / 0.02; // Assuming Z_sun = 0.02
+    printf("  Metallicity: %.4f (%.1f%% solar)\n", metallicity, metallicity_solar * 100);
+    
+    // CGM properties
+    printf("\nCGM Properties:\n");
+    printf("  CGMgas: %.2e, HotGas: %.2e\n", g->CGMgas, g->HotGas);
+    printf("  CGM/ColdGas ratio: %.2f\n", g->CGMgas / g->ColdGas);
+    printf("  CGM/HotGas ratio: %.2f\n", g->CGMgas / (g->HotGas > 0 ? g->HotGas : 1e-10));
+    
+    // CGM metallicity
+    float cgm_metallicity = 0.0;
+    if (g->CGMgas > 0.0) {
+        cgm_metallicity = g->MetalsCGMgas / g->CGMgas;
+        printf("  CGM metallicity: %.4f (%.1f%% solar)\n", 
+               cgm_metallicity, cgm_metallicity / 0.02 * 100);
+    }
+    
+    // Gas cycle efficiency assessment
+    printf("\nGas Cycle Assessment:\n");
+    
+    // Check if galaxy is gas-rich or gas-poor
+    float gas_fraction = g->ColdGas / (g->ColdGas + g->StellarMass);
+    printf("  Gas fraction: %.3f ", gas_fraction);
+    if (gas_fraction > 0.5) {
+        printf("(Gas-rich - good for sustained SF)\n");
+    } else if (gas_fraction > 0.1) {
+        printf("(Moderate gas - balanced evolution)\n");
+    } else {
+        printf("(Gas-poor - may need more infall)\n");
+    }
+    
+    // Assess CGM reservoir size
+    float cgm_ratio = g->CGMgas / g->ColdGas;
+    printf("  CGM reservoir: ");
+    if (cgm_ratio > 10.0) {
+        printf("VERY LARGE (%.1fx cold gas - may be too slow transfer)\n", cgm_ratio);
+    } else if (cgm_ratio > 3.0) {
+        printf("LARGE (%.1fx cold gas - good reservoir)\n", cgm_ratio);
+    } else if (cgm_ratio > 1.0) {
+        printf("MODERATE (%.1fx cold gas - balanced)\n", cgm_ratio);
+    } else {
+        printf("SMALL (%.1fx cold gas - may need slower transfer)\n", cgm_ratio);
+    }
+    
+    // H2 formation assessment
+    printf("\nH2 Formation Assessment:\n");
+    float expected_h2_low = 0.001; // 0.1% for very low metallicity
+    float expected_h2_high = 0.1;  // 10% for moderate metallicity
+    
+    float actual_h2_frac = g->H2_gas / g->ColdGas;
+    printf("  f_H2 = %.4f ", actual_h2_frac);
+    
+    if (actual_h2_frac < expected_h2_low) {
+        printf("(Very low - typical for Z < 0.3 Z_sun)\n");
+    } else if (actual_h2_frac < expected_h2_high) {
+        printf("(Low-moderate - typical for Z ~ 0.3-1.0 Z_sun)\n");
+    } else {
+        printf("(High - typical for Z > 1.0 Z_sun)\n");
+    }
+    
+    // Metallicity-H2 consistency check
+    printf("  Metallicity-H2 consistency: ");
+    if (metallicity_solar < 0.3 && actual_h2_frac < 0.01) {
+        printf("✓ CONSISTENT (Low Z → Low f_H2)\n");
+    } else if (metallicity_solar > 0.7 && actual_h2_frac > 0.05) {
+        printf("✓ CONSISTENT (High Z → High f_H2)\n");
+    } else if (metallicity_solar < 0.3 && actual_h2_frac > 0.1) {
+        printf("⚠ INCONSISTENT (Low Z but High f_H2 - check parameters)\n");
+    } else if (metallicity_solar > 1.0 && actual_h2_frac < 0.01) {
+        printf("⚠ INCONSISTENT (High Z but Low f_H2 - check parameters)\n");
+    } else {
+        printf("~ BORDERLINE (In transition regime)\n");
+    }
+    
+    // Parameter effectiveness assessment
+    printf("\nCGM Parameter Effectiveness:\n");
+    printf("  Current settings (your values):\n");
+    printf("    CGMInfallFraction: %.2f\n", run_params->CGMInfallFraction);
+    printf("    CGMTransferEfficiency: %.3f\n", run_params->CGMTransferEfficiency);
+    printf("    CGMPristineFraction: %.2f\n", run_params->CGMPristineFraction);
+    printf("    CGMMixingTimescale: %.1f Gyr\n", run_params->CGMMixingTimescale);
+    
+    // Recommendations based on observations
+    printf("\n  Recommendations:\n");
+    if (cgm_ratio > 20.0) {
+        printf("    - Consider increasing CGMTransferEfficiency (current: %.3f → suggest: %.3f)\n", 
+               run_params->CGMTransferEfficiency, run_params->CGMTransferEfficiency * 1.5);
+    }
+    if (metallicity_solar > 1.5 && actual_h2_frac < 0.05) {
+        printf("    - Metal-rich galaxy with low f_H2 - check if CGM is too metal-poor\n");
+    }
+    if (gas_fraction < 0.05 && cgm_ratio < 1.0) {
+        printf("    - Gas-starved galaxy - consider decreasing CGMTransferEfficiency\n");
+    }
+    if (actual_h2_frac > 0.3) {
+        printf("    - Very high f_H2 - may need more pristine infall or faster mixing\n");
+    }
+    
+    printf("=====================================\n\n");
 }

@@ -55,9 +55,8 @@ AGNrecipeOn                 2   %0: switch off; 1: empirical model; 2: Bondi-Hoy
 SupernovaRecipeOn           1   %0: switch off
 ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15; 2: Lagos+13
-EnvironmentalEffectsOn      1   %0: switch off; 1: enable environmental effects on H2 gas
-VvirEnhancementOn           0   %0: switch off; 1: enable virial velocity enhancement
+MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15
+VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
 
@@ -99,22 +98,12 @@ H2FractionExponent          0.05   %Controls the H2/HI ratio calculation for Bli
 ClumpFactor                 5.0    %Clumping factor for Krumholz & Dekel H2
 ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz & Dekel H2
 
-RadiationFieldNorm          1.0    %Radiation field normalization relative to Milky Way (1.0 = MW)
-MetallicityExponent         0.7    %Exponent for metallicity dependence in GD14 model
-IntegrationBins             15     %Number of radial bins to use for integration (higher = more accurate but slower)
-
-%------------------------------------------
-%----- ENVIRONMENT PARAMETERS -----
-%------------------------------------------
-
-EnvEffectStrength             1.0     % Strength of environmental effects (0.0-2.0)
-
 %------------------------------------------
 %----- SF Enhancement ---------------------
 %------------------------------------------
 
-VvirThreshold               60.0   % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        0.5    % Power-law exponent for velocity scaling
+VvirThreshold               30.0   % Threshold velocity in km/s for enhancement
+VvirEnhancementPower        0.7    % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Reionization Models ----------------
@@ -139,10 +128,10 @@ SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
 SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
 
 
-% CGM Infall and Mixing Parameters
+% CGM Infall and Mixing Parameters 
 CGMInfallFraction      1.0          % Fraction of infall goes through CGM first
-CGMTransferEfficiency  0.05         % Transfer efficiency per dynamical time
-CGMPristineFraction    0.8          % Fraction of CGM that is pristine
+CGMTransferEfficiency  0.07         % Transfer efficiency per dynamical time
+CGMPristineFraction    0.8          % Fraction of CGM transfer that is pristine
 CGMMixingTimescale     2.0          % Gyr mixing timescale
 
 

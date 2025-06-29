@@ -412,7 +412,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
 {
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
     double reheated_mass = 0.0; // initialize
-    double cold_gas_before = galaxies[p].ColdGas; // Save for debugging
+    // double cold_gas_before = galaxies[p].ColdGas; // Save for debugging
 
     // Get current redshift for this galaxy
     double z = run_params->ZZ[galaxies[p].SnapNum];
@@ -498,9 +498,9 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         // Use Muratov mass loading with a reduced factor
         reheated_mass = calculate_muratov_mass_loading(p, z, galaxies, run_params) * stars;
         
-        // Ensure we don't reheat more than a fraction of the available cold gas
-        if (reheated_mass > 0.7 * galaxies[p].ColdGas) {
-            reheated_mass = 0.7 * galaxies[p].ColdGas;
+        // Ensure we don't reheat more than the available cold gas
+        if (reheated_mass > galaxies[p].ColdGas) {
+            reheated_mass = galaxies[p].ColdGas;
         }
     }
 
@@ -540,21 +540,15 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             // Get redshift-dependent ejection efficiency with significant reduction
-            double fb_eject = 0.2 * get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
+            double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
                                                              run_params->Ejection_Alpha, z);
-            
-            // For smaller halos, further reduce ejection to allow gas to accumulate
-            if (galaxies[centralgal].Vvir < 80.0) {
-                fb_eject *= 0.5;
-            }
             
             // Modified ejection calculation
             if (stars > 0.0) {
-                ejected_mass = fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
-                              (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) * stars;
+                ejected_mass = (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                reheated_mass) * stars;
                 
-                // Don't subtract the reheating term as that makes ejection too dependent on mass loading
-                // This is a departure from the original formula but helps maintain gas
             } else {
                 ejected_mass = 0.0;
             }
@@ -566,14 +560,6 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
             ejected_mass = 0.0;
         }
         
-        // Hard cap on ejection to prevent complete gas loss
-        // This is critical - the log shows ejection is the main gas loss mechanism
-        double max_ejection = 0.1 * galaxies[centralgal].HotGas;
-        if (max_ejection < 0.005) max_ejection = 0.005; // Minimum cap for very small halos
-        
-        if(ejected_mass > max_ejection) {
-            ejected_mass = max_ejection;
-        }
     } else {
         ejected_mass = 0.0;
     }
@@ -600,179 +586,6 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     if(galaxies[p].ColdGas > 1.0e-8) {
         const double FracZleaveDiskVal = run_params->FracZleaveDisk * 
                                      exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
-        galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-    } else {
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-    }
-}
-
-double calculate_lagos_mass_loading(const int p, const double z, struct GALAXY *galaxies, const struct params *run_params)
-{
-    // Get circular velocity in km/s
-    double vcirc = galaxies[p].Vvir;
-    
-    if (vcirc <= 0.0) {
-        return 0.0;
-    }
-    
-    // DRASTICALLY REDUCED PARAMETERS
-    const double epsilon_disk = 0.5;    // Reduced from 2.0 to 0.5
-    const double v_hot = 60.0;         // Slightly higher characteristic velocity
-    const double beta = 1.0;            // Drastically reduced from 2.0 to 1.0
-    const double z_p = 0.0;             // Eliminate redshift dependence temporarily
-    
-    // Simplified model with no redshift evolution for now
-    double v_hot_z = v_hot;
-    
-    // Calculate mass loading with lower power law
-    double eta = epsilon_disk * pow(vcirc / v_hot_z, -beta);
-    
-    // Much lower cap - start with very conservative value
-    if (eta > 1.0) {
-        eta = 1.0;
-    }
-    
-    // Extra reduction for dwarf galaxies which are most affected
-    if (vcirc < 80.0) {
-        // Scale down even further for smallest galaxies
-        eta *= 0.3 + 0.7 * (vcirc / 80.0);
-    }
-    
-    return eta;
-}
-
-void starformation_and_feedback_with_lagos(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
-                                           struct GALAXY *galaxies, const struct params *run_params)
-{
-    double reff, tdyn, strdot, stars, ejected_mass, metallicity;
-    double reheated_mass = 0.0; // initialize
-    
-    // Get current redshift for this galaxy
-    double z = run_params->ZZ[galaxies[p].SnapNum];
-    
-    // Calculate redshift-dependent parameters
-    double sfr_eff = get_redshift_dependent_parameter(run_params->SfrEfficiency, 
-                                                     run_params->SFR_Alpha, z);
-    
-    // Star formation rate tracking
-    galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
-    galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
-
-    // First, update the gas components to ensure H2 and HI are correctly calculated
-    if (run_params->SFprescription >= 1) {
-        update_gas_components(&galaxies[p], run_params);
-    }
-
-    // Standard star formation calculation based on chosen prescription
-    strdot = 0.0;
-    
-    // Choose appropriate star formation recipe based on SFprescription parameter
-    if(run_params->SFprescription == 0) {
-        // Original SAGE recipe (Kauffmann 1996)
-        reff = 3.0 * galaxies[p].DiskScaleRadius;
-        tdyn = reff / galaxies[p].Vvir;
-
-        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
-            strdot = sfr_eff * (galaxies[p].ColdGas - cold_crit) / tdyn;
-        }
-    } else if(run_params->SFprescription >= 1) {
-        // H2-based star formation models
-        if (galaxies[p].H2_gas > 0.0 && galaxies[p].Vvir > 0.0) {
-            reff = 3.0 * galaxies[p].DiskScaleRadius;
-            tdyn = reff / galaxies[p].Vvir;
-            
-            if(tdyn > 0.0) {
-                strdot = sfr_eff * galaxies[p].H2_gas / tdyn;
-            }
-        }
-    }
-
-    stars = strdot * dt;
-    if(stars < 0.0) {
-        stars = 0.0;
-    }
-
-    // Lagos mass loading calculation
-    if(run_params->SupernovaRecipeOn == 1) {
-        double mass_loading = calculate_lagos_mass_loading(p, z, galaxies, run_params);
-        reheated_mass = mass_loading * stars;
-        
-        // Optional: Scale down mass loading to match observational constraints
-        if (reheated_mass > 3.0 * stars) {
-            reheated_mass = 3.0 * stars; // Cap at 3x SFR if needed
-        }
-    }
-
-    // Constrain star formation and feedback based on available gas
-    if(run_params->SFprescription == 0) {
-        if((stars + reheated_mass) > galaxies[p].ColdGas && (stars + reheated_mass) > 0.0) {
-            const double fac = galaxies[p].ColdGas / (stars + reheated_mass);
-            stars *= fac;
-            reheated_mass *= fac;
-        }
-    } else {
-        // H2-based recipes
-        if(stars > galaxies[p].H2_gas) {
-            stars = galaxies[p].H2_gas;
-        }
-        
-        if((stars + reheated_mass) > galaxies[p].ColdGas) {
-            const double fac = galaxies[p].ColdGas / (stars + reheated_mass);
-            stars *= fac;
-            reheated_mass *= fac;
-        }
-        
-        // Update H2 gas after star formation
-        if(stars > 0.0) {
-            galaxies[p].H2_gas -= stars;
-            update_gas_components(&galaxies[p], run_params);
-        }
-    }
-
-    // Calculate ejection - using redshift-dependent ejection efficiency
-    double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
-                                                     run_params->Ejection_Alpha, z);
-    
-    if(run_params->SupernovaRecipeOn == 1) {
-        if(galaxies[centralgal].Vvir > 0.0) {
-            ejected_mass = (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
-                          (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
-                          reheated_mass/stars) * stars;
-        } else {
-            ejected_mass = 0.0;
-        }
-
-        if(ejected_mass < 0.0) {
-            ejected_mass = 0.0;
-        }
-    } else {
-        ejected_mass = 0.0;
-    }
-
-    // Update star formation rate
-    galaxies[p].SfrDisk[step] += stars / dt;
-
-    // Update for star formation
-    metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
-    update_from_star_formation(p, stars, metallicity, galaxies, run_params);
-
-    // Recompute metallicity
-    metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
-
-    // Update from SN feedback
-    update_from_feedback(p, centralgal, reheated_mass, ejected_mass, metallicity, galaxies, run_params);
-
-    // Check for disk instability
-    if(run_params->DiskInstabilityOn) {
-        check_disk_instability(p, centralgal, halonr, time, dt, step, galaxies, (struct params *) run_params);
-    }
-
-    // Formation of new metals
-    if(galaxies[p].ColdGas > 1.0e-8) {
-        const double FracZleaveDiskVal = run_params->FracZleaveDisk * 
-                                     exp(-1.0 * galaxies[centralgal].Mvir / 30.0);
         galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
         galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
     } else {

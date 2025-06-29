@@ -234,18 +234,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->ClumpExponent);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "RadiationFieldNorm", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->RadiationFieldNorm);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "MetallicityExponent", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->MetallicityExponent);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "IntegrationBins", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->IntegrationBins);
-    ParamID[NParam++] = DOUBLE;
-
     strncpy(ParamTag[NParam], "NumOutputs", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->NumSnapOutputs);
     ParamID[NParam++] = INT;
@@ -260,15 +248,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
 
     strncpy(ParamTag[NParam], "ExponentForestDistributionScheme", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
-    ParamID[NParam++] = DOUBLE;
-
-    // Add these in the appropriate section with other similar parameters
-    strncpy(ParamTag[NParam], "EnvironmentalEffectsOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->EnvironmentalEffectsOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "EnvEffectStrength", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->EnvEffectStrength);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "SFR_Alpha", MAXTAGLEN);

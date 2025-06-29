@@ -19,6 +19,7 @@
 #include "model_inflow.h"
 #include "model_starformation_and_feedback.h"
 #include "model_cooling_heating.h"
+#include "model_h2_formation.h"
 
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
@@ -375,20 +376,22 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 case MASS_LOADING_MURATOV:
                     starformation_and_feedback_with_muratov(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
                     break;
-                case MASS_LOADING_LAGOS:
-                    starformation_and_feedback_with_lagos(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
-                    break;
                 default:
                     starformation_and_feedback(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
                     break;
             }
+
+            // NEW: CGM-H2 diagnostic (only for central galaxy in final step)
+            // if (p == centralgal && step == (STEPS - 1)) {
+                
+            //     diagnose_cgm_h2_interaction(&galaxies[p], run_params);
+            // }
             
         }
 
         // if(centralgal == 0 && halonr < 10) {  // Print for first few halos
         //     print_gas_flow_summary(centralgal, galaxies, deltaT, Zcurr);
         // }
-
         // check for satellite disruption and merger events
         for(int p = 0; p < ngal; p++) {
 

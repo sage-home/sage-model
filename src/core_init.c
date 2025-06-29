@@ -51,31 +51,8 @@ void init(struct params *run_params)
         }
     }
 
-    // Gnedin & Draine (2014) model parameters 
-    if(run_params->SFprescription == 3) {
-        if(run_params->RadiationFieldNorm <= 0.0) {
-            run_params->RadiationFieldNorm = 0.5;  // Lower now, was 1.0
-        }
-        if(run_params->MetallicityExponent <= 0.0) {
-            run_params->MetallicityExponent = 0.7;  // Default metallicity scaling exponent
-        }
-        if(run_params->IntegrationBins <= 0) {
-            run_params->IntegrationBins = 30;  // Default number of radial bins
-        }
-    }
-    
-    // Initialize environmental effects parameters
-    if (run_params->EnvironmentalEffectsOn != 0 && run_params->EnvironmentalEffectsOn != 1) {
-        run_params->EnvironmentalEffectsOn = 1;  // Enable by default
-    }
-    
-    if (run_params->EnvEffectStrength <= 0.0) {
-        run_params->EnvEffectStrength = 1.0;  // Default strength
-    }
-
     if (run_params->MassLoadingModel != 0 && 
-        run_params->MassLoadingModel != 1 && 
-        run_params->MassLoadingModel != 2) {
+        run_params->MassLoadingModel != 1) {
         run_params->MassLoadingModel = 0;  // Default to standard model
     }
 

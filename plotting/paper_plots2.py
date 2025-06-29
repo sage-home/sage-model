@@ -1851,7 +1851,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             sSFR = np.log10((SfrDisk + SfrBulge) / StellarMass)
             
             # Select star-forming galaxies with valid data
-            w = np.where((StellarMass > 1e8) & (ColdGas > 0) & (H2Gas > 0))[0]  # Central, star-forming galaxies
+            w = np.where((StellarMass > 1e8) & (ColdGas > 0) & (Type == 0))[0]  # Central, star-forming galaxies
             
             if len(w) == 0:
                 logger.warning(f'  No valid galaxies for {label}')
@@ -1873,16 +1873,16 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             
             # Bin by stellar mass
             log_stellar_mass = np.log10(stellar_mass_sel)
-            mass_bins = np.arange(8.0, 12.0, 0.25)
-            mass_centers = mass_bins[:-1] + 0.1
-            
+            mass_bins = np.arange(8.0, 12.0, 0.125)
+            mass_centers = mass_bins[:-1] + 0.125
+
             # Calculate median and error bars in each bin
             median_h2_frac = []
             error_h2_frac = []
             
             for j in range(len(mass_bins)-1):
                 mask = (log_stellar_mass >= mass_bins[j]) & (log_stellar_mass < mass_bins[j+1])
-                if np.sum(mask) > 1:  # Require at least 5 galaxies per bin
+                if np.sum(mask) >= 3:  # Require at least 5 galaxies per bin
                     bin_data = h2_fraction[mask]
                     median_h2_frac.append(np.median(bin_data))
                     

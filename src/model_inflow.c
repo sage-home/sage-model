@@ -12,7 +12,7 @@
 void inflow_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
     // Get current redshift for this galaxy
-    double z = run_params->ZZ[galaxies[centralgal].SnapNum];
+    // double z = run_params->ZZ[galaxies[centralgal].SnapNum];
     
     const double Vcrit = 445.48 * run_params->inflowFactor;
 
@@ -142,8 +142,8 @@ void mix_cgm_components(const int centralgal, const double dt, struct GALAXY *ga
     if(mixed_amount > 0.0) {
         // Calculate average metallicity after mixing
         // Pristine gas has zero metallicity, enriched gas has some metallicity
-        const double current_enriched_metallicity = get_metallicity(galaxies[centralgal].CGMgas_enriched, 
-                                                                   galaxies[centralgal].MetalsCGMgas);
+        // const double current_enriched_metallicity = get_metallicity(galaxies[centralgal].CGMgas_enriched, 
+        //                                                            galaxies[centralgal].MetalsCGMgas);
         
         // Move pristine gas to enriched component
         galaxies[centralgal].CGMgas_pristine -= mixed_amount;

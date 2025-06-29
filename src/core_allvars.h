@@ -434,8 +434,6 @@ struct params
     int32_t    SupernovaRecipeOn;
     int32_t    ReionizationOn;
     int32_t   DiskInstabilityOn;
-    // Environmental effects parameters
-    int32_t EnvironmentalEffectsOn;  // 0 = off, 1 = on
 
     int32_t MassDependentSFEnabled;  // 0 = off, 1 = on
     double SFMassPivot;            // Pivot mass in 10^10 Msun/h
@@ -470,17 +468,12 @@ struct params
     // New parameters for Krumholz & Dekel (2012) model
     double ClumpFactor;          // Gas clumping factor, default ~5
     double ClumpExponent;        // Power-law exponent for metallicity dependence, default ~0.5
-    // New parameters for Gnedin & Draine model
-    double RadiationFieldNorm;   // Normalized radiation field strength
-    double MetallicityExponent;  // Exponent for metallicity dependence
-    double EnvEffectStrength;    // Strength multiplier (0.0-2.0)
-    double IntegrationBins;
 
     double SFR_Alpha;
     double Reheating_Alpha;
     double Ejection_Alpha;
 
-    int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov, 2=Lagos) */
+    int32_t    MassLoadingModel;  /* Flag to select mass loading implementation (0=Standard, 1=Muratov) */
 
     int32_t VvirEnhancementOn;        // Flag to enable/disable virial velocity enhancement
     double VvirThreshold;           // Virial velocity threshold for SF enhancement (km/s)
