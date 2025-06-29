@@ -655,6 +655,11 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
             ctx.time = run_params->simulation.Age[GALAXY_PROP_SnapNum(&galaxies[p])] - 
                       (step + 0.5) * (ctx.deltaT / STEPS);
             
+            // Set dT property if not already set (matching legacy behavior)
+            if (GALAXY_PROP_dT(&galaxies[p]) < 0.0) {
+                GALAXY_PROP_dT(&galaxies[p]) = ctx.deltaT;
+            }
+            
             pipeline_ctx.dt = ctx.deltaT / STEPS;
             pipeline_ctx.time = ctx.time;
             pipeline_ctx.current_galaxy = p;

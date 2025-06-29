@@ -292,6 +292,12 @@ int generate_unique_galaxy_indices(const struct halo_data *halos,
         // Generate the final unique indices
         GALAXY_PROP_GalaxyIndex(this_gal) = GalaxyNr + id_from_forest_and_file;
         GALAXY_PROP_CentralGalaxyIndex(this_gal) = CentralGalaxyNr + id_from_forest_and_file;
+        
+        // Set SAGETreeIndex to the original tree number (matching legacy behavior)
+        GALAXY_PROP_SAGETreeIndex(this_gal) = (int32_t)forestnr;
+        
+        // Set SimulationHaloIndex to absolute value of MostBoundID (matching legacy behavior)
+        GALAXY_PROP_SimulationHaloIndex(this_gal) = llabs(GALAXY_PROP_MostBoundID(this_gal));
     }
     
     return EXIT_SUCCESS;

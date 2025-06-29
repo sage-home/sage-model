@@ -453,7 +453,7 @@ int hdf5_output_write_galaxies(struct GALAXY *galaxies, int ngals,
             
             // Special handling for derived or component fields that are still part of the "core" output definition
             if (strcmp(field_name, "SAGETreeIndex") == 0) {
-                *(int32_t *)dest_ptr = GALAXY_PROP_HaloNr(galaxy); // Using HaloNr instead of TreeIndex
+                *(int32_t *)dest_ptr = GALAXY_PROP_SAGETreeIndex(galaxy); // Use actual SAGETreeIndex property value
             }
             // Handle position components from core GALAXY_PROP_Pos_ELEM macro
             else if (strcmp(field_name, "Pos_x") == 0) {
