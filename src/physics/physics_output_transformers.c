@@ -331,3 +331,87 @@ int derive_output_CentralGalaxyIndex(const struct GALAXY *galaxy __attribute__((
     
     return 0;
 }
+
+/**
+ * @brief Transform infallMvir property for output with Type-based filtering
+ * 
+ * Outputs 0.0 for central galaxies (Type=0) and actual infall value for satellites (Type!=0)
+ * to maintain legacy SAGE output compatibility
+ */
+int transform_output_infallMvir(const struct GALAXY *galaxy, property_id_t output_prop_id, 
+                               void *output_buffer_element_ptr, const struct params *run_params __attribute__((unused))) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
+        /* Property not found, set default */
+        *((float*)output_buffer_element_ptr) = 0.0f;
+        return 0;
+    }
+    
+    float *output_val_ptr = (float*)output_buffer_element_ptr;
+    
+    // Check galaxy type - output 0.0 for Type=0 (central), actual value for Type!=0 (satellite/orphan)
+    if (GALAXY_PROP_Type(galaxy) == 0) {
+        *output_val_ptr = 0.0f;  // Central galaxies have not "fallen in" to anything
+    } else {
+        // Get the actual infall value for satellites and orphans
+        float infall_mvir = get_float_property(galaxy, output_prop_id, -1.0f);
+        *output_val_ptr = infall_mvir;
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Transform infallVvir property for output with Type-based filtering
+ * 
+ * Outputs 0.0 for central galaxies (Type=0) and actual infall value for satellites (Type!=0)
+ * to maintain legacy SAGE output compatibility
+ */
+int transform_output_infallVvir(const struct GALAXY *galaxy, property_id_t output_prop_id, 
+                               void *output_buffer_element_ptr, const struct params *run_params __attribute__((unused))) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
+        /* Property not found, set default */
+        *((float*)output_buffer_element_ptr) = 0.0f;
+        return 0;
+    }
+    
+    float *output_val_ptr = (float*)output_buffer_element_ptr;
+    
+    // Check galaxy type - output 0.0 for Type=0 (central), actual value for Type!=0 (satellite/orphan)
+    if (GALAXY_PROP_Type(galaxy) == 0) {
+        *output_val_ptr = 0.0f;  // Central galaxies have not "fallen in" to anything
+    } else {
+        // Get the actual infall value for satellites and orphans
+        float infall_vvir = get_float_property(galaxy, output_prop_id, -1.0f);
+        *output_val_ptr = infall_vvir;
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Transform infallVmax property for output with Type-based filtering
+ * 
+ * Outputs 0.0 for central galaxies (Type=0) and actual infall value for satellites (Type!=0)
+ * to maintain legacy SAGE output compatibility
+ */
+int transform_output_infallVmax(const struct GALAXY *galaxy, property_id_t output_prop_id, 
+                               void *output_buffer_element_ptr, const struct params *run_params __attribute__((unused))) {
+    if (output_prop_id == PROP_COUNT || !has_property(galaxy, output_prop_id)) {
+        /* Property not found, set default */
+        *((float*)output_buffer_element_ptr) = 0.0f;
+        return 0;
+    }
+    
+    float *output_val_ptr = (float*)output_buffer_element_ptr;
+    
+    // Check galaxy type - output 0.0 for Type=0 (central), actual value for Type!=0 (satellite/orphan)
+    if (GALAXY_PROP_Type(galaxy) == 0) {
+        *output_val_ptr = 0.0f;  // Central galaxies have not "fallen in" to anything
+    } else {
+        // Get the actual infall value for satellites and orphans
+        float infall_vmax = get_float_property(galaxy, output_prop_id, -1.0f);
+        *output_val_ptr = infall_vmax;
+    }
+    
+    return 0;
+}

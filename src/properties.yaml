@@ -285,6 +285,7 @@ properties:
     output: true
     read_only: false
     is_core: true
+    output_transformer_function: "transform_output_infallMvir"
     
   - name: infallVvir
     type: float
@@ -294,6 +295,7 @@ properties:
     output: true
     read_only: false
     is_core: true
+    output_transformer_function: "transform_output_infallVvir"
     
   - name: infallVmax
     type: float
@@ -303,6 +305,7 @@ properties:
     output: true
     read_only: false
     is_core: true
+    output_transformer_function: "transform_output_infallVmax"
 
   # Baryonic Components
   - name: ColdGas

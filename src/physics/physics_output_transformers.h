@@ -44,4 +44,14 @@ int derive_output_SfrDiskZ(const struct GALAXY *galaxy, property_id_t output_pro
 int derive_output_SfrBulgeZ(const struct GALAXY *galaxy, property_id_t output_prop_id, 
                          void *output_buffer_element_ptr, const struct params *run_params);
 
+// Infall property transformers (Type-based filtering for legacy compatibility)
+int transform_output_infallMvir(const struct GALAXY *galaxy, property_id_t output_prop_id, 
+                               void *output_buffer_element_ptr, const struct params *run_params);
+
+int transform_output_infallVvir(const struct GALAXY *galaxy, property_id_t output_prop_id, 
+                               void *output_buffer_element_ptr, const struct params *run_params);
+
+int transform_output_infallVmax(const struct GALAXY *galaxy, property_id_t output_prop_id, 
+                               void *output_buffer_element_ptr, const struct params *run_params);
+
 #endif /* PHYSICS_OUTPUT_TRANSFORMERS_H */
