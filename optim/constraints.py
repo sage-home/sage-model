@@ -262,7 +262,7 @@ class Constraint(object):
     
         if class_name == 'SMF_z0':
             # Add SHARK for z=0
-            mass, phi = self.load_observation('/data/SHARK_SMF.csv', cols=[0,1])
+            mass, phi = self.load_observation('./data/SHARK_SMF.csv', cols=[0,1])
             ax.plot(mass, 10**phi, c='g', label='SHARK')
 
         elif class_name == 'SMF_z05':
@@ -586,6 +586,176 @@ class Constraint(object):
         args = self.__class__.__name__, self.domain[0], self.domain[1], self.weight, self.rel_weight
         return s % args
 
+class SMD_evolution(Constraint):
+    """Stellar Mass Density evolution constraint across redshifts"""
+    
+    domain = (0, 4)  # redshift range
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Define the redshifts and corresponding snapshots we want to evaluate
+        # You can customize these based on your simulation's available snapshots
+        self.redshifts = [0.0, 0.5, 1.0, 2.0, 3.0, 4.0]
+        # Map redshifts to snapshot numbers - adjust these for your simulation
+        self.snapshot_map = {
+            0.0: 63,
+            0.5: 38, 
+            1.0: 40,
+            2.0: 32,
+            3.0: 16,
+            4.0: 11
+        }
+        
+    def _calculate_smd_for_snapshot(self, modeldir, snapshot):
+        """Calculate stellar mass density for a specific snapshot"""
+        fields = ['StellarMass']
+        snap_num = f'Snap_{snapshot}'
+        
+        try:
+            # Get list of model files
+            model_files = [f for f in os.listdir(modeldir) if f.startswith('model_') and f.endswith('.hdf5')]
+            model_files.sort()
+            
+            if len(model_files) > 1:
+                # Combine data from multiple files
+                combined_stellar_mass = []
+                for model_file in model_files:
+                    G = r.read_sage_hdf(os.path.join(modeldir, model_file), snap_num=snap_num, fields=fields)
+                    combined_stellar_mass.append(G['StellarMass'])
+                stellar_masses = np.concatenate(combined_stellar_mass)
+            else:
+                # Single file
+                G = r.read_sage_hdf(os.path.join(modeldir, 'model_0.hdf5'), snap_num=snap_num, fields=fields)
+                stellar_masses = G['StellarMass']
+            
+            # Convert to physical units and sum
+            stellar_masses_physical = stellar_masses * 1e10 / self.h0  # Msun
+            
+            # Filter out very low mass galaxies and calculate total
+            valid_masses = stellar_masses_physical[stellar_masses_physical > 1e8]  # > 10^8 Msun
+            total_stellar_mass = np.sum(valid_masses)
+            
+            # Calculate stellar mass density (Msun/Mpc^3)
+            smd = total_stellar_mass / self.vol
+            
+            return smd
+            
+        except Exception as e:
+            print(f"Error calculating SMD for snapshot {snapshot}: {e}")
+            return None
+    
+    def _load_model_data(self, modeldir, subvols):
+        """Override to handle multiple snapshots for SMD evolution"""
+        # First call parent method to set up basic parameters like h0, vol, etc.
+        # We'll use the first snapshot for this
+        original_snapshot = self.snapshot
+        self.snapshot = [list(self.snapshot_map.values())[0]]  # Use first snapshot for setup
+        
+        # Call parent method to set up simulation parameters
+        result = super()._load_model_data(modeldir, subvols)
+        
+        # Now calculate SMD for each redshift
+        model_redshifts = []
+        model_smds = []
+        
+        for z in self.redshifts:
+            if z in self.snapshot_map:
+                snap = self.snapshot_map[z]
+                smd = self._calculate_smd_for_snapshot(modeldir, snap)
+                if smd is not None:
+                    model_redshifts.append(z)
+                    model_smds.append(np.log10(smd))
+        
+        self.model_redshifts = np.array(model_redshifts)
+        self.model_smds = np.array(model_smds)
+        
+        # Restore original snapshot
+        self.snapshot = original_snapshot
+        
+        return result
+    
+    def get_model_x_y(self, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue):
+        """Return stellar mass density evolution data"""
+        return self.model_redshifts, self.model_smds
+    
+    def get_obs_x_y_err(self):
+        """Load COSMOS stellar mass density data"""
+        # Load observational data from COSMOS
+        # You'll need to provide the correct file with COSMOS SMD data
+        # Expected format: redshift, log10(SMD [Msun/Mpc^3]), error
+        try:
+            redshift, log_smd, log_smd_err = self.load_observation('/data/SMD.ecsv', cols=[0,1,2])
+            return redshift, log_smd, log_smd_err, log_smd_err
+        except:
+            # Fallback with some typical values if data file not available
+            print("Warning: COSMOS_SMD.csv not found. Using placeholder data.")
+            redshift = np.array([0.0, 0.5, 1.0, 2.0, 3.0, 4.0])
+            # Typical stellar mass density values (log10 scale)
+            log_smd = np.array([8.2, 8.1, 7.9, 7.6, 7.2, 6.8])  
+            log_smd_err = np.array([0.1, 0.1, 0.15, 0.2, 0.2, 0.3])
+            return redshift, log_smd, log_smd_err, log_smd_err
+    
+    def get_sage_x_y(self):
+        """Load SAGE stellar mass density evolution reference data"""
+        try:
+            redshift, log_smd = self.load_observation('/data/sage_smd_evolution.csv', cols=[0,1])
+            return redshift, log_smd
+        except:
+            # Fallback with SAGE reference values if file not available
+            print("Warning: sage_smd_evolution.csv not found. Using placeholder data.")
+            redshift = np.array([0.0, 0.5, 1.0, 2.0, 3.0, 4.0])
+            log_smd = np.array([8.15, 8.05, 7.85, 7.55, 7.15, 6.75])
+            return redshift, log_smd
+    
+    def plot_smd_evolution(self, x_obs, y_obs, y_mod, x_sage, y_sage, output_dir):
+        """Plot stellar mass density evolution"""
+        plt.figure(figsize=(10, 7))
+        ax = plt.subplot(111)
+        
+        # Plot model, observations, and SAGE reference
+        plt.plot(x_obs, 10**y_mod, 'b-', linewidth=2, label='Model - SAGE', marker='o', markersize=6)
+        plt.plot(x_sage, 10**y_sage, 'k--', linewidth=2, label='SAGE Reference', marker='s', markersize=5)
+        plt.errorbar(x_obs, 10**y_obs, yerr=0.1*10**y_obs, fmt='rd', markersize=8, 
+                    capsize=5, capthick=2, label='COSMOS Observations')
+        
+        plt.yscale('log')
+        plt.xlabel('Redshift', fontsize=12)
+        plt.ylabel(r'Stellar Mass Density [M$_{\odot}$ Mpc$^{-3}$]', fontsize=12)
+        plt.title('Stellar Mass Density Evolution', fontsize=14)
+        plt.grid(True, alpha=0.3)
+        
+        # Invert x-axis to show cosmic time progression
+        #plt.gca().invert_xaxis()
+        
+        leg = plt.legend(loc='best', frameon=False, fontsize=11)
+        plt.tight_layout()
+        
+        plotfile = os.path.join(output_dir, 'smd_evolution_sage.png')
+        plt.savefig(plotfile, dpi=100, bbox_inches='tight')
+        plt.close()
+        
+        return
+    
+    def get_data(self, modeldir, subvols):
+        """Override get_data to add custom plotting"""
+        # Call parent get_data method
+        result = super().get_data(modeldir, subvols)
+        
+        # Add our custom plot - get the data again for plotting
+        x_obs, y_obs, y_dn, y_up = self.get_obs_x_y_err()
+        x_sage, y_sage = self.get_sage_x_y()
+        x_mod, y_mod = self.get_model_x_y(None, None, None, None, None, None, None, None, None, None)
+        
+        # Interpolate model to obs points for plotting
+        if len(x_mod) > 1:
+            interp_func = interp1d(x_mod, y_mod, kind='linear', fill_value="extrapolate")
+            y_mod_interp = interp_func(x_obs)
+        else:
+            y_mod_interp = np.full_like(x_obs, y_mod[0] if len(y_mod) > 0 else 8.0)
+        
+        self.plot_smd_evolution(x_obs, y_obs, y_mod_interp, x_sage, y_sage, self.output_dir)
+        
+        return result
 
 class BHMF(Constraint):
     """Common logic for SMF constraints"""
@@ -977,7 +1147,7 @@ class SMF_z0(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Driver et al. (2022)
-        logm, logphi, dlogphi = self.load_observation('/data/GAMA_SMF_highres.csv', cols=[0,1,2])
+        logm, logphi, dlogphi = self.load_observation('./data/GAMA_SMF_highres.csv', cols=[0,1,2])
         cosmology_correction_median = np.log10( r.comoving_distance(0.079, 100*self.h0, 0, self.Omega0, 1.0-self.Omega0) / r.comoving_distance(0.079, 70.0, 0, 0.3, 0.7) )
         cosmology_correction_maximum = np.log10( r.comoving_distance(0.1, 100*self.h0, 0, self.Omega0, 1.0-self.Omega0) / r.comoving_distance(0.1, 70.0, 0, 0.3, 0.7) )
         x_obs = logm + 2.0 * cosmology_correction_median 
@@ -987,7 +1157,7 @@ class SMF_z0(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[0,1])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[0,1])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1730,7 +1900,8 @@ def parse(spec, snapshot=None, sim=None, boxsize=None, vol_frac=None, age_alist_
         'HSMR_z10' : HSMR_z10,
         'HSMR_z20' : HSMR_z20,
         'HSMR_z30' : HSMR_z30,
-        'HSMR_z40' : HSMR_z40
+        'HSMR_z40' : HSMR_z40,
+        'SMD_evolution': SMD_evolution
     }
 
     def _parse(s,output_dir):

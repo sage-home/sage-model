@@ -1851,8 +1851,8 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             sSFR = np.log10((SfrDisk + SfrBulge) / StellarMass)
             
             # Select star-forming galaxies with valid data
-            w = np.where((StellarMass > 1e8) & (ColdGas > 0) & (Type == 0))[0]  # Central, star-forming galaxies
-            
+            w = np.where((StellarMass > 1e8) & (ColdGas > 0) & (Type == 0) & (H2Gas > 1e7))[0]  # Central, star-forming galaxies
+
             if len(w) == 0:
                 logger.warning(f'  No valid galaxies for {label}')
                 continue
@@ -1867,6 +1867,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             
             # Calculate molecular fraction
             h2_fraction = h2_gas_sel / (h2_gas_sel + hi_gas_sel)
+            h2_fraction_2 = H2Gas / (H2Gas + HI_Gas)  # Alternative fraction
             
             # Alternative: H2 fraction relative to cold gas
             h2_frac_cold = h2_gas_sel / cold_gas_sel
@@ -1874,7 +1875,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             # Bin by stellar mass
             log_stellar_mass = np.log10(stellar_mass_sel)
             mass_bins = np.arange(8.0, 12.0, 0.125)
-            mass_centers = mass_bins[:-1] + 0.125
+            mass_centers = (mass_bins[:-1] + mass_bins[1:]) / 2  # True bin centers
 
             # Calculate median and error bars in each bin
             median_h2_frac = []
@@ -1882,7 +1883,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             
             for j in range(len(mass_bins)-1):
                 mask = (log_stellar_mass >= mass_bins[j]) & (log_stellar_mass < mass_bins[j+1])
-                if np.sum(mask) >= 3:  # Require at least 5 galaxies per bin
+                if np.sum(mask) > 20:  # Require at least 20 galaxies per bin
                     bin_data = h2_fraction[mask]
                     median_h2_frac.append(np.median(bin_data))
                     
@@ -1915,7 +1916,9 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
                     model_line = ax.plot(mass_centers_valid, median_h2_frac_valid, 
                         color=color, linewidth=linewidth,
                         label=label, alpha=alpha, zorder=6)[0]
-    
+                    plt.scatter(np.log10(StellarMass), h2_fraction_2, s=1, alpha=0.25, 
+                                color=color, rasterized=True)
+
                     # Shaded error region
                     ax.fill_between(mass_centers_valid, 
                                 median_h2_frac_valid - error_h2_frac_valid,
@@ -1981,6 +1984,289 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
     finalize_plot(fig, output_filename)
     
     logger.info('H2 fraction vs stellar mass analysis complete')
+
+def plot_h2_fraction_vs_stellar_mass_with_selection(sim_configs, snapshot, output_dir):
+    """Plot H2 fraction vs stellar mass showing selection effects"""
+    logger.info('=== H2 Fraction vs Stellar Mass with Selection Effects ===')
+    
+    # Create figure with two subplots
+    fig = plt.figure(figsize=(16, 6))
+    
+    # Main plot: H2 fraction vs stellar mass
+    ax1 = plt.subplot(1, 2, 1)
+    
+    # Subplot: H2 fraction distribution 
+    ax2 = plt.subplot(1, 2, 2)
+    
+    # =============== OBSERVATIONAL DATA ===============
+    
+    # Saintonge et al. 2011 (COLD GASS) - most commonly used
+    saintonge_mass = np.array([9.0, 9.2, 9.4, 9.6, 9.8, 10.0, 10.2, 10.4, 10.6, 10.8, 11.0, 11.2])
+    saintonge_h2_frac = np.array([0.08, 0.12, 0.15, 0.18, 0.20, 0.22, 0.20, 0.18, 0.15, 0.12, 0.08, 0.05])
+    saintonge_h2_frac_err = saintonge_h2_frac * 0.3
+    
+    # Boselli et al. 2014 
+    boselli_mass = np.array([8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5])
+    boselli_h2_frac = np.array([0.05, 0.10, 0.18, 0.25, 0.20, 0.12, 0.06])
+    
+    # Plot observational data
+    ax1.errorbar(saintonge_mass, saintonge_h2_frac, yerr=saintonge_h2_frac_err,
+                fmt='-', color='purple', linewidth=3, markersize=6, 
+                capsize=3, capthick=1, label='Saintonge et al. 2011 (COLD GASS)')
+    
+    ax1.scatter(boselli_mass, boselli_h2_frac, marker='s', s=80, 
+               color='darkgreen', edgecolors='black', linewidth=1,
+               label='Boselli et al. 2014', zorder=5)
+    
+    # =============== MODEL DATA WITH MULTIPLE SELECTIONS ===============
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        hubble_h = sim_config['Hubble_h']
+        
+        logger.info(f'Processing {label} for selection effect analysis...')
+        
+        try:
+            # Read required galaxy properties
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2_gas', directory=directory) * 1.0e10 / hubble_h
+            HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+            ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
+            SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
+            SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            
+            # Calculate sSFR for star-forming galaxy selection
+            sSFR = np.log10((SfrDisk + SfrBulge) / StellarMass)
+            
+            # Calculate H2 fraction
+            h2_fraction = H2Gas / (H2Gas + HI_Gas)
+            log_stellar_mass = np.log10(StellarMass)
+            
+            # =============== DEFINE MULTIPLE SELECTIONS ===============
+            
+            # Selection 1: Full star-forming population
+            w_full = np.where(
+                (StellarMass > 1e9) & 
+                (ColdGas > 1e7) & 
+                (Type == 0) & 
+                (sSFR > -11.5) &
+                (H2Gas > 0) &
+                (HI_Gas > 0)
+            )[0]
+            
+            # Selection 2: COLD GASS-like sample  
+            w_coldgass = np.where(
+                (StellarMass > 5e9) &      # Intermediate mass cut
+                (ColdGas > 5e7) & 
+                (Type == 0) & 
+                (sSFR > -10.8) &           # More active SF
+                (H2Gas > 1e7)              # CO detection limit proxy
+            )[0]
+            
+            # Selection 3: High molecular gas galaxies (like CO surveys actually detect)
+            w_molecular = np.where(
+                (StellarMass > 1e10) &     # High mass
+                (ColdGas > 1e8) & 
+                (Type == 0) & 
+                (sSFR > -10.5) &           # Very active SF
+                (H2Gas > 5e7) &            # Strong CO detection
+                (h2_fraction > 0.08)       # Significant molecular fraction
+            )[0]
+            
+            logger.info(f'  Selection sizes: Full={len(w_full)}, COLD GASS-like={len(w_coldgass)}, Molecular={len(w_molecular)}')
+            
+            # =============== PLOT DIFFERENT SELECTIONS ===============
+            
+            selections = [
+                (w_full, 'Full Population', '--', 1.5, 0.6),
+                (w_coldgass, 'COLD GASS-like', '-', 2.5, 0.8),
+                (w_molecular, 'CO-detected', '-', 3.0, 1.0)
+            ]
+            
+            mass_bins = np.arange(8.5, 12.0, 0.15)
+            mass_centers = (mass_bins[:-1] + mass_bins[1:]) / 2  # True bin centers
+            
+            all_h2_fractions = []  # For distribution plot
+            
+            for j, (selection, sel_label, linestyle, linewidth, alpha) in enumerate(selections):
+                if len(selection) < 10:
+                    continue
+                    
+                # Calculate binned medians
+                median_h2_frac = []
+                for k in range(len(mass_bins)-1):
+                    mask = (log_stellar_mass[selection] >= mass_bins[k]) & (log_stellar_mass[selection] < mass_bins[k+1])
+                    if np.sum(mask) > 3:
+                        median_h2_frac.append(np.median(h2_fraction[selection][mask]))
+                    else:
+                        median_h2_frac.append(np.nan)
+                
+                median_h2_frac = np.array(median_h2_frac)
+                valid_bins = ~np.isnan(median_h2_frac)
+                
+                if np.any(valid_bins):
+                    # Adjust color intensity based on selection
+                    plot_color = color if j == 0 else plt.cm.Blues(0.4 + 0.3*j)
+                    if j == 2:  # CO-detected sample
+                        plot_color = 'red'
+                    
+                    ax1.plot(mass_centers[valid_bins], median_h2_frac[valid_bins], 
+                            color=plot_color, linestyle=linestyle, linewidth=linewidth,
+                            label=f'{label} ({sel_label})', alpha=alpha)
+                    
+                    # Store data for distribution plot
+                    all_h2_fractions.append({
+                        'data': h2_fraction[selection],
+                        'label': sel_label,
+                        'color': plot_color,
+                        'alpha': alpha * 0.7
+                    })
+                    
+                    # Log statistics
+                    median_val = np.median(h2_fraction[selection])
+                    logger.info(f'    {sel_label}: N={len(selection)}, median f_H2={median_val:.3f}')
+            
+            # =============== DISTRIBUTION SUBPLOT ===============
+            
+            # Plot H2 fraction distributions
+            for dist_data in all_h2_fractions:
+                # Use log scale for better visualization
+                hist_data = dist_data['data']
+                hist_data = hist_data[hist_data > 0.001]  # Remove very low values
+                
+                ax2.hist(hist_data, bins=np.logspace(-3, 0, 30), alpha=dist_data['alpha'],
+                        color=dist_data['color'], label=dist_data['label'], 
+                        density=True, histtype='step', linewidth=2)
+            
+            # Add observational "detection limit" line
+            ax2.axvline(0.05, color='gray', linestyle=':', linewidth=2, 
+                       label='Typical CO detection limit')
+            
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            continue
+    
+    # =============== FORMATTING ===============
+    
+    # Main plot formatting
+    ax1.set_xlim(8.5, 11.5)
+    ax1.set_ylim(0.0, 0.4)
+    ax1.set_xlabel(r'$\log_{10} M_\star\ (M_{\odot})$', fontsize=14)
+    ax1.set_ylabel(r'$f_{\mathrm{H_2}} = M_{\mathrm{H_2}} / (M_{\mathrm{H_2}} + M_{\mathrm{HI}})$', fontsize=14)
+    ax1.legend(loc='upper right', fontsize=11, frameon=True, fancybox=True, shadow=True)
+    ax1.grid(True, alpha=0.3)
+    ax1.set_title('Selection Effects in Molecular Gas Surveys', fontsize=16, weight='bold')
+    
+    # Distribution plot formatting  
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.set_xlim(0.001, 1.0)
+    ax2.set_xlabel(r'$f_{\mathrm{H_2}}$', fontsize=14)
+    ax2.set_ylabel('Probability Density', fontsize=14)
+    ax2.legend(loc='upper right', fontsize=11)
+    ax2.grid(True, alpha=0.3)
+    ax2.set_title('H₂ Fraction Distributions', fontsize=16, weight='bold')
+    
+    # Add annotation showing selection bias
+    ax1.annotate('Selection Bias:\nSurveys preferentially\ndetect high f$_{H_2}$ galaxies', 
+                xy=(10.5, 0.25), xytext=(9.2, 0.35),
+                fontsize=12, ha='center',
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.7),
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.2'))
+    
+    plt.tight_layout()
+    
+    # Save plot
+    output_filename = output_dir + 'h2_fraction_selection_effects' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    logger.info('H2 fraction selection effects analysis complete')
+
+def plot_h2_detection_statistics(sim_configs, snapshot, output_dir):
+    """Additional plot showing detection statistics and selection quantification"""
+    
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
+    
+    for sim_config in sim_configs:
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        hubble_h = sim_config['Hubble_h']
+        
+        # Read data (same as before)
+        StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+        H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2_gas', directory=directory) * 1.0e10 / hubble_h
+        HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+        ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
+        SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
+        SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
+        Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+        
+        sSFR = np.log10((SfrDisk + SfrBulge) / StellarMass)
+        h2_fraction = H2Gas / (H2Gas + HI_Gas)
+        
+        # Basic selection
+        basic_sel = (StellarMass > 1e9) & (Type == 0) & (sSFR > -11.5) & (ColdGas > 0)
+        
+        # Plot 1: Detection fraction vs stellar mass
+        mass_bins = np.logspace(9, 11.5, 15)
+        detection_fractions = []
+        mass_centers = []
+        
+        for i in range(len(mass_bins)-1):
+            mask = basic_sel & (StellarMass >= mass_bins[i]) & (StellarMass < mass_bins[i+1])
+            if np.sum(mask) > 10:
+                detectable = mask & (h2_fraction > 0.05) & (H2Gas > 1e7)
+                detection_frac = np.sum(detectable) / np.sum(mask)
+                detection_fractions.append(detection_frac)
+                mass_centers.append(np.sqrt(mass_bins[i] * mass_bins[i+1]))
+        
+        ax1.plot(np.log10(mass_centers), detection_fractions, 'o-', color=color, label=label)
+        
+        # Plot 2: H2 mass vs fraction colored by detectability
+        sample_mask = basic_sel & (np.random.random(len(StellarMass)) < 0.1)  # Sample for speed
+        detectable_mask = sample_mask & (h2_fraction > 0.05) & (H2Gas > 1e7)
+        undetectable_mask = sample_mask & ~(detectable_mask)
+        
+        ax2.scatter(h2_fraction[undetectable_mask], np.log10(H2Gas[undetectable_mask]), 
+                   s=1, alpha=0.3, color='gray', label='Undetectable')
+        ax2.scatter(h2_fraction[detectable_mask], np.log10(H2Gas[detectable_mask]), 
+                   s=1, alpha=0.7, color=color, label=f'{label} (Detectable)')
+        
+        # Plot 3: Cumulative H2 mass in different populations
+        all_sf = basic_sel
+        detectable = basic_sel & (h2_fraction > 0.05) & (H2Gas > 1e7)
+        
+        total_h2_all = np.sum(H2Gas[all_sf])
+        total_h2_det = np.sum(H2Gas[detectable])
+        
+        ax3.bar([f'{label}\nAll SF'], [total_h2_all], color=color, alpha=0.5)
+        ax3.bar([f'{label}\nDetectable'], [total_h2_det], color=color, alpha=1.0)
+        
+        logger.info(f'{label}: {total_h2_det/total_h2_all*100:.1f}% of H2 mass in detectable galaxies')
+    
+    # Formatting
+    ax1.set_xlabel('log₁₀ M* (M☉)')
+    ax1.set_ylabel('CO Detection Fraction')
+    ax1.set_title('Detection Fraction vs Stellar Mass')
+    ax1.legend()
+    
+    ax2.set_xlabel('f_H₂')
+    ax2.set_ylabel('log₁₀ M_H₂ (M☉)')
+    ax2.set_title('H₂ Mass vs Fraction')
+    ax2.legend()
+    
+    ax3.set_ylabel('Total H₂ Mass (M☉)')
+    ax3.set_title('H₂ Mass Budget')
+    
+    plt.tight_layout()
+    
+    output_filename = output_dir + 'h2_detection_statistics' + OutputFormat
+    finalize_plot(fig, output_filename)
 
 def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
     """Plot Black Hole - Bulge Mass relation with observational data and standardized styling"""
@@ -3135,6 +3421,7 @@ if __name__ == '__main__':
     
     # plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
     plot_h2_fraction_vs_stellar_mass(GAS_SimConfigs, Snapshot, OutputDir)
+    plot_h2_fraction_vs_stellar_mass_with_selection(GAS_SimConfigs, Snapshot, OutputDir)
 
     # Add this line to your main execution section after the other plotting calls:
     plot_bh_bulge_mass_relation(SMF_SimConfigs, Snapshot, OutputDir)

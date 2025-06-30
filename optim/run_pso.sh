@@ -1,23 +1,23 @@
 #!/bin/bash
 
 # Define arguments for main.py
-CONFIG_PATH="/Users/mbradley/Documents/PhD/SAGE-SHARK/sage-model/input/millennium.par"
-BASE_PATH="/Users/mbradley/Documents/PhD/SAGE-SHARK/sage-model/sage"
-OUTPUT_PATH="/Users/mbradley/Documents/PhD/SAGE-SHARK/sage-model/output/millennium_pso"
+CONFIG_PATH="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium.par"
+BASE_PATH="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/sage"
+OUTPUT_PATH="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_pso"
 PARTICLES=14
 ITERATIONS=30
 TEST="student-t"
 CONSTRAINTS="SMF_z0"
 AGE_ALIST_FILE_MINI_UCHUU='/fred/oz004/msinha/simulations/uchuu_suite/miniuchuu/mergertrees/u400_planck2016_50.a_list'
-AGE_ALIST_FILE_MINI_MILLENNIUM="/Users/mbradley/Documents/PhD/SAGE-SHARK/sage-model/input/millennium/trees/millennium.a_list"
+AGE_ALIST_FILE_MINI_MILLENNIUM="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium/trees/millennium.a_list"
 BOXSIZE=62.5
 SIM_MINI_UCHUU=0
 SIM_MINI_MILLENNIUM=1
 VOL_FRAC=1.0
 OMEGA0=0.25 
 H0=0.73
-CSVOUTPUT="/Users/mbradley/Documents/PhD/SAGE-SHARK/sage-model/output/millennium_pso/params_z0.csv"
-SPACEFILE="/Users/mbradley/Documents/PhD/SAGE-SHARK/sage-model/optim/space.txt"
+CSVOUTPUT="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_pso/params_z0.csv"
+SPACEFILE="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/optim/space.txt"
 ACCOUNT="oz004"
 
 python3 ./main.py \

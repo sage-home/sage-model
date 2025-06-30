@@ -76,7 +76,8 @@ def get_required_snapshots(constraints_str):
         'HSMR_z0': [63],
         'SMF_red_z0': [63],
         'SMF_blue_z0': [63],
-        'SMF_Color_z0': [63]
+        'SMF_Color_z0': [63],
+        'SMD_evolution': [63]
     }
     
     snapshots = set()

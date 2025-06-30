@@ -235,6 +235,15 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
             galaxies[gal].CGMgas += cgm_pathway;
             galaxies[gal].CGMgas_pristine += pristine_gas;
             galaxies[gal].CGMgas_enriched += enriched_gas;
+
+            // Safety check: ensure components don't exceed total
+            double component_sum = galaxies[gal].CGMgas_pristine + galaxies[gal].CGMgas_enriched;
+            if (component_sum > galaxies[gal].CGMgas) {
+                // Rescale components proportionally to match total
+                double scale_factor = galaxies[gal].CGMgas / component_sum;
+                galaxies[gal].CGMgas_pristine *= scale_factor;
+                galaxies[gal].CGMgas_enriched *= scale_factor;
+            }
             
             // Only enriched gas has metals (pristine has zero by definition)
             // Following existing pattern: 0.3 * 0.02 = 0.006 (30% of solar metallicity)

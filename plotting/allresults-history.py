@@ -1065,7 +1065,7 @@ if __name__ == '__main__':
     ax.xaxis.set_minor_locator(plt.MultipleLocator(1))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
 
-    plt.axis([0.0, 12.2, 3.5, 9.0])   
+    plt.axis([0.0, 4.2, 6.5, 9.0])   
 
     leg = plt.legend(loc='upper right', numpoints=1, labelspacing=0.1)
     leg.draw_frame(False)  # Don't want a box frame

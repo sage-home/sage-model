@@ -46,6 +46,7 @@ BaryonFrac      0.17
 Hubble_h        0.73
 PartMass        0.0860657
 BoxSize         62.5 % Size of the simulation box in Mpc/h.
+
 %------------------------------------------
 %----- SAGE recipe options ----------------
 %------------------------------------------
@@ -56,7 +57,7 @@ SupernovaRecipeOn           1   %0: switch off
 ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15
-VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
+VvirEnhancementOn           0   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
 
@@ -92,53 +93,53 @@ EtaSN                   5.0e-3  %supernova efficiency
 %----- H2 formation parameters ------------
 %------------------------------------------
 
-H2FractionFactor            0.5    %Controls the normalisation of the H2/HI calculation for Blitz & Rosolowsky
-H2FractionExponent          0.05   %Controls the H2/HI ratio calculation for Blitz & Rosolowsky
+H2FractionFactor            0.5         % Controls the normalisation of the H2/HI calculation for Blitz & Rosolowsky
+H2FractionExponent          0.05        % Controls the H2/HI ratio calculation for Blitz & Rosolowsky
 
-ClumpFactor                 5.0    %Clumping factor for Krumholz & Dekel H2
-ClumpExponent               0.5    %Metallicity dependance exponent for Krumholz & Dekel H2
+ClumpFactor                 5.0         % Clumping factor for Krumholz & Dekel H2
+ClumpExponent               0.5         % Metallicity dependance exponent for Krumholz & Dekel H2
 
 %------------------------------------------
 %----- SF Enhancement ---------------------
 %------------------------------------------
 
-VvirThreshold               30.0   % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        0.7    % Power-law exponent for velocity scaling
+VvirThreshold               60.0        % Threshold velocity in km/s for enhancement
+VvirEnhancementPower        0.7         % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Reionization Models ----------------
 %------------------------------------------
 
-FilteringMassNorm         0.5     % [10^10 Msun/h] Based on Okamoto et al. 2008
-UVBackgroundStrength      1.0     % Range 0-1, strength of early UV feedback
-PatchyReionWidth          1.0     % Width of reionization transition in dz
-LocalReionVariance        1.0     % Spatial variance in reionization timing
-PostReionSlope           -1.0    % Evolution of critical mass after reionization
+FilteringMassNorm         0.5           % [10^10 Msun/h] Based on Okamoto et al. 2008
+UVBackgroundStrength      1.0           % Range 0-1, strength of early UV feedback
+PatchyReionWidth          1.0           % Width of reionization transition in dz
+LocalReionVariance        1.0           % Spatial variance in reionization timing
+PostReionSlope           -1.0           % Evolution of critical mass after reionization
 
 %------------------------------------------
 %----- Redshift-Dependance ----------------
 %------------------------------------------
 
-SFR_Alpha                 0.0   %controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
-Reheating_Alpha           0.0   % Redshift evolution exponent for FeedbackReheatingEpsilon (only used if MuratovMassLoading=0)
-Ejection_Alpha            0.0   %controls redshift dependence of ejection
+SFR_Alpha                 0.0           % Controls redshift dependence: SFR_eff(z) = SFR_eff(0)*(1+z)^alpha
+Reheating_Alpha           0.0           % Redshift evolution exponent for FeedbackReheatingEpsilon (only used if MuratovMassLoading=0)
+Ejection_Alpha            0.0           % Controls redshift dependence of ejection
 
 %------------------------------------------
 %----- Mass Dependent SF ------------------
 %------------------------------------------
 
-SFMassPivot                4.2     % Pivot mass in 10^10 Msun/h
-SFLowMassSlope             0.005     % Power-law slope for M < Mpivot
-SFHighMassSlope            -0.0001    % Power-law slope for M > Mpivot
+SFMassPivot                1.0          % Pivot mass in 10^10 Msun/h
+SFLowMassSlope             0.5          % Power-law slope for M < Mpivot
+SFHighMassSlope            -0.3         % Power-law slope for M > Mpivot
 
 %------------------------------------------
 %----- CGM control ------------------------
 %------------------------------------------
  
-CGMInfallFraction      1.0          % Fraction of infall goes through CGM first
-CGMTransferEfficiency  0.07         % Transfer efficiency per dynamical time
-CGMPristineFraction    0.8          % Fraction of CGM transfer that is pristine
-CGMMixingTimescale     2.0          % Gyr mixing timescale
+CGMInfallFraction           1.0          % Fraction of infall goes through CGM first
+CGMTransferEfficiency       0.07         % Transfer efficiency per dynamical time
+CGMPristineFraction         0.8          % Fraction of CGM transfer that is pristine
+CGMMixingTimescale          2.0          % Gyr mixing timescale
 
 
 %------------------------------------------
