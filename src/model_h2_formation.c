@@ -322,8 +322,15 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
         float ring_gas_mass = (local_gas_density * ring_area_pc2) / (1.0e10 / h);
         
         // Calculate molecular fraction using SHARK-exact GD14
-        float molecular_fraction = calculate_molecular_fraction_GD14(
-            local_gas_density, metallicity);
+        float molecular_fraction = 0.0;
+
+        // SHARK applies sigma_HI_crit threshold HERE during integration
+        const float sigma_HI_crit = 10.0; // M☉/pc² (SHARK's default from parameters)
+        if (local_gas_density >= sigma_HI_crit) {
+            molecular_fraction = calculate_molecular_fraction_GD14(
+                local_gas_density, metallicity);
+        }
+        // If local_gas_density < sigma_HI_crit, molecular_fraction stays 0.0
         
         // Add molecular gas from this ring
         float ring_mol_gas = molecular_fraction * ring_gas_mass;
@@ -536,7 +543,7 @@ void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_para
     
     if (g->ColdGas <= 0.0) return;
     
-    if (galaxy_debug_counter % 50000 == 0) {
+    if (galaxy_debug_counter % 0000 == 0) {
         printf("========================================\n");
         printf("DEBUG CGM-H2 DIAGNOSTIC for galaxy #%ld\n", galaxy_debug_counter);
         

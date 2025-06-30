@@ -70,10 +70,22 @@ void transfer_cgm_to_hot(const int centralgal, const double dt, struct GALAXY *g
     const double reff = 3.0 * galaxies[centralgal].DiskScaleRadius;
     const double dynamical_time = reff / galaxies[centralgal].Vvir;
     
-    // Transfer rate: fraction of CGM per dynamical time
-    double base_transfer_rate = run_params->CGMTransferEfficiency * 
-                               galaxies[centralgal].CGMgas / dynamical_time;
-            
+    // Scale transfer efficiency with virial velocity for massive halos
+    double transfer_efficiency = run_params->CGMTransferEfficiency;  // Base: 0.3
+
+    if(galaxies[centralgal].Vvir > 100.0) {  // km/s threshold
+        // Logarithmic scaling for massive halos
+        double vvir_scaling = 1.0 + 0.4 * log10(galaxies[centralgal].Vvir / 100.0);
+        transfer_efficiency *= vvir_scaling;
+        
+        // Cap at reasonable maximum
+        if(transfer_efficiency > 0.8) transfer_efficiency = 0.8;
+    }
+
+    // Transfer rate: fraction of CGM per dynamical time  
+    double base_transfer_rate = transfer_efficiency * 
+                            galaxies[centralgal].CGMgas / dynamical_time;
+    // Scale by the timestep    
     double transfer_amount = base_transfer_rate * dt;
     
     if(transfer_amount > galaxies[centralgal].CGMgas) {

@@ -3253,7 +3253,9 @@ if __name__ == '__main__':
     StellarMass = read_hdf_ultra_optimized(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Main_Hubble_h
     logger.info('Loading Type...')
     Type = read_hdf_ultra_optimized(snap_num=Snapshot, param='Type')
-    
+    logger.info('Loading Mass loading factors...')
+    MassLoadingFactor = read_hdf_ultra_optimized(snap_num=Snapshot, param='MassLoadingFactor')
+
     logger.info(f'Total galaxies: {len(Vvir)}')
     
     if len(Vvir) > 0:
@@ -3264,7 +3266,8 @@ if __name__ == '__main__':
         Vvir_valid = Vvir[valid_mask]
         StellarMass_valid = StellarMass[valid_mask]
         Type_valid = Type[valid_mask]
-        
+        MassLoadingFactor_valid = MassLoadingFactor[valid_mask]
+        logger.info(f'Mass loading factors: {MassLoadingFactor_valid}')
         logger.info(f'Valid galaxies: {len(Vvir_valid)}')
 
         # Calculate mass loading for all valid galaxies (vectorized)
@@ -3314,10 +3317,12 @@ if __name__ == '__main__':
             indices = sample(range(len(Vvir_valid)), dilute)
             Vvir_plot = Vvir_valid[indices]
             mass_loading_plot = mass_loading[indices]
+            MassLoadingFactor_plot = MassLoadingFactor[indices]
             Type_plot = Type_valid[indices]
         else:
             Vvir_plot = Vvir_valid
             mass_loading_plot = mass_loading
+            MassLoadingFactor_plot = MassLoadingFactor
             Type_plot = Type_valid
 
         ax.scatter(shark_x, shark_y, color='grey', marker='^', s=50, label='SHARK v2')
@@ -3325,6 +3330,9 @@ if __name__ == '__main__':
         ax.scatter(heckman_x, heckman_y, color='grey', marker='x', s=50, label='Heckman et al. 2015')
         ax.scatter(rupke_x, rupke_y, color='grey', marker='s', s=50, label='Rupke et al. 2005')
         ax.scatter(sugahara_x, sugahara_y, color='grey', marker='d', s=50, label='Sugahara et al. 2017')
+        ax.scatter(Vvir_plot, mass_loading_plot, c='blue',
+                   cmap='viridis', s=10, alpha=0.7, edgecolors='none', 
+                   label='SAGE 2.0 galaxies', zorder=5)
         
         # Add vertical line at critical velocity
         ax.axvline(x=60, color='gray', linestyle=':', linewidth=2, alpha=0.7, 
