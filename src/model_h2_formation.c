@@ -531,18 +531,17 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
 
 void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_params)
 {
-    // Only diagnose every 100,000 galaxies to avoid spam
+    // Only diagnose every 9,000,000 galaxies to avoid spam
     galaxy_debug_counter++;
     
     if (g->ColdGas <= 0.0) return;
     
-    if (galaxy_debug_counter % 100000 == 0) {
+    if (galaxy_debug_counter % 50000 == 0) {
         printf("========================================\n");
         printf("DEBUG CGM-H2 DIAGNOSTIC for galaxy #%ld\n", galaxy_debug_counter);
-    }
-    
-    // Basic galaxy properties
-    printf("Galaxy Properties:\n");
+        
+        // Basic galaxy properties
+        printf("Galaxy Properties:\n");
     printf("  ColdGas: %.2e, StellarMass: %.2e, BulgeMass: %.2e\n", 
            g->ColdGas, g->StellarMass, g->BulgeMass);
     float h2_frac_cold = g->H2_gas / g->ColdGas;
@@ -654,4 +653,5 @@ void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_para
     }
     
     printf("=====================================\n\n");
+    } // End of conditional check for galaxy_debug_counter % 9000000 == 0
 }

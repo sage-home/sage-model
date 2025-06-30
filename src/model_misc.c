@@ -104,6 +104,14 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
 // Add this function to model_misc.c or create a new file
 void print_gas_flow_summary(const int gal, struct GALAXY *galaxies, const double dt, const double redshift)
 {
+    static int print_counter = 0;
+    print_counter++;
+    
+    // Only print for every 9,000,000th galaxy
+    if (print_counter % 50000 != 0) {
+        return;
+    }
+    
     printf("=== Gas Flow Summary for Galaxy %d at z=%.2f ===\n", gal, redshift);
     printf("Gas Reservoirs:\n");
     printf("  Cold gas:    %.4f\n", galaxies[gal].ColdGas);

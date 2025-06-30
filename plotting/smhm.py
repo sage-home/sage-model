@@ -18,10 +18,15 @@ DirName_old = './output/millennium_vanilla/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
-# Simulation details
+# Simulation details - NEW MODEL (SAGE 2.0)
 Hubble_h = 0.73
-BoxSize = 62.5
+BoxSize = 62.5          # Mpc/h
 VolumeFraction = 1.0
+
+# Simulation details - OLD MODEL (SAGE C16) - ADD THESE PARAMETERS
+BoxSize_old = 62.5      # Mpc/h - Change this to your old model's box size
+VolumeFraction_old = 1.0  # Change this to your old model's volume fraction
+Hubble_h_old = 0.73     # Change this if old model uses different Hubble parameter
 
 # Plotting options
 whichimf = 1
@@ -227,7 +232,7 @@ def calculate_median_std(log_mvir_data, log_stellar_data, bin_edges, label_prefi
         bin_mask = (log_mvir_data >= bin_edges[i]) & (log_mvir_data < bin_edges[i+1])
         bin_stellar = log_stellar_data[bin_mask]
         
-        min_galaxies = 1
+        min_galaxies = 5
         
         if len(bin_stellar) >= min_galaxies:
             median_val = np.median(bin_stellar)
@@ -262,7 +267,7 @@ def calculate_median_iqr(log_mvir_data, log_stellar_data, bin_edges, label_prefi
         bin_mask = (log_mvir_data >= bin_edges[i]) & (log_mvir_data < bin_edges[i+1])
         bin_stellar = log_stellar_data[bin_mask]
         
-        min_galaxies = 3  # Need at least 3 for meaningful quartiles
+        min_galaxies = 5  # Need at least 3 for meaningful quartiles
         
         if len(bin_stellar) >= min_galaxies:
             median_val = np.median(bin_stellar)
@@ -317,9 +322,10 @@ def smhm_plot_fixed(compare_old_model=True):
     if compare_old_model and os.path.exists(DirName_old):
         try:
             print(f'Loading older SAGE model from {DirName_old}')
+            print(f'Using old model parameters: BoxSize={BoxSize_old} Mpc/h, VolumeFraction={VolumeFraction_old}, h={Hubble_h_old}')
             
-            StellarMass_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
-            Mvir_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
+            StellarMass_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h_old
+            Mvir_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h_old
             Type_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='Type')
             
             if StellarMass_old is not None and Mvir_old is not None and Type_old is not None:
@@ -465,11 +471,14 @@ def smhm_plot_fixed(compare_old_model=True):
     if obs_handles:
         legend2 = plt.legend(obs_handles, obs_labels, loc='lower right', fontsize=12, frameon=False)
     
-    # Add text showing the mass range achieved
-    # max_mass_log = np.max(log_mvir)
-    # plt.text(0.05, 0.95, f'Max halo: 10^{max_mass_log:.1f} M☉', 
-    #          transform=plt.gca().transAxes, fontsize=10, 
-    #          bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+    # Add text showing the volume differences if different
+    if compare_old_model and os.path.exists(DirName_old):
+        volume_new = (BoxSize/Hubble_h)**3.0 * VolumeFraction
+        volume_old = (BoxSize_old/Hubble_h_old)**3.0 * VolumeFraction_old
+        if abs(volume_new - volume_old) > 0.01:  # Only show if significantly different
+            plt.text(0.05, 0.85, f'New: ({BoxSize:.1f}/h)³×{VolumeFraction:.1f}\nOld: ({BoxSize_old:.1f}/h)³×{VolumeFraction_old:.1f}', 
+                     transform=plt.gca().transAxes, fontsize=9, 
+                     bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
     
     # Save the plot
     plt.tight_layout()
@@ -525,12 +534,13 @@ def smhm_plot_etg_ltg(compare_old_model=True):
     if compare_old_model and os.path.exists(DirName_old):
         try:
             print(f'Loading older SAGE model from {DirName_old}')
+            print(f'Using old model parameters: BoxSize={BoxSize_old} Mpc/h, VolumeFraction={VolumeFraction_old}, h={Hubble_h_old}')
             
-            StellarMass_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
-            Mvir_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
+            StellarMass_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h_old
+            Mvir_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h_old
             Type_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='Type')
-            BulgeMass_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='BulgeMass') * 1.0e10 / Hubble_h
-            ColdGas_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='ColdGas') * 1.0e10 / Hubble_h
+            BulgeMass_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='BulgeMass') * 1.0e10 / Hubble_h_old
+            ColdGas_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='ColdGas') * 1.0e10 / Hubble_h_old
             
             if all(x is not None for x in [StellarMass_old, Mvir_old, Type_old, BulgeMass_old, ColdGas_old]):
                 # Apply filtering to older model using SAGE 2.0/C16 criteria
@@ -693,10 +703,14 @@ def smhm_plot_etg_ltg(compare_old_model=True):
     if obs_handles:
         legend2 = plt.legend(obs_handles, obs_labels, loc='lower right', fontsize=10, frameon=False)
     
-    # Add text showing the B/T cut used
-    # plt.text(0.05, 0.95, f'B/T cut = {bulge_ratio_cut}', 
-    #          transform=plt.gca().transAxes, fontsize=10, 
-    #          bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+    # Add text showing the volume differences if different
+    if compare_old_model and os.path.exists(DirName_old):
+        volume_new = (BoxSize/Hubble_h)**3.0 * VolumeFraction
+        volume_old = (BoxSize_old/Hubble_h_old)**3.0 * VolumeFraction_old
+        if abs(volume_new - volume_old) > 0.01:  # Only show if significantly different
+            plt.text(0.05, 0.85, f'New: ({BoxSize:.1f}/h)³×{VolumeFraction:.1f}\nOld: ({BoxSize_old:.1f}/h)³×{VolumeFraction_old:.1f}', 
+                     transform=plt.gca().transAxes, fontsize=9, 
+                     bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
     
     # Save the plot
     plt.tight_layout()
@@ -782,8 +796,8 @@ def smhm_plot_sf_passive_redshift_grid(compare_old_model=True):
         
         if compare_old_model and os.path.exists(DirName_old):
             try:
-                StellarMass_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='StellarMass') * 1.0e10 / Hubble_h
-                Mvir_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='Mvir') * 1.0e10 / Hubble_h
+                StellarMass_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='StellarMass') * 1.0e10 / Hubble_h_old
+                Mvir_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='Mvir') * 1.0e10 / Hubble_h_old
                 Type_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='Type')
                 SfrDisk_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='SfrDisk')
                 SfrBulge_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='SfrBulge')
@@ -1036,7 +1050,7 @@ def sfms_plot_three_populations_redshift_grid(compare_old_model=True):
         # Load and plot older SAGE model if requested
         if compare_old_model and os.path.exists(DirName_old):
             try:
-                StellarMass_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='StellarMass') * 1.0e10 / Hubble_h
+                StellarMass_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='StellarMass') * 1.0e10 / Hubble_h_old
                 Type_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='Type')
                 SfrDisk_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='SfrDisk')
                 SfrBulge_old = read_hdf_smart_sampling(DirName_old, snap_num=snap_name, param='SfrBulge')
@@ -1337,10 +1351,20 @@ def simple_smhm_plot(log_mvir, log_stellar, title="SMHM Relation",
 if __name__ == '__main__':
 
     print('Running SAGE plotting with ALL galaxies (centrals + satellites, no sampling)\n')
+    print(f'New model parameters: BoxSize={BoxSize} Mpc/h, VolumeFraction={VolumeFraction}, h={Hubble_h}')
+    print(f'Old model parameters: BoxSize={BoxSize_old} Mpc/h, VolumeFraction={VolumeFraction_old}, h={Hubble_h_old}')
 
     seed(2222)
     np.random.seed(2222)
+    
+    # Calculate volumes for both models
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
+    volume_old = (BoxSize_old/Hubble_h_old)**3.0 * VolumeFraction_old
+    
+    print(f'New model volume: {volume:.2f} (Mpc)³')
+    print(f'Old model volume: {volume_old:.2f} (Mpc)³')
+    if abs(volume - volume_old) > 0.01:
+        print(f'Volume ratio (new/old): {volume/volume_old:.3f}')
 
     OutputDir = DirName + 'plots/'
     if not os.path.exists(OutputDir): os.makedirs(OutputDir)
@@ -1362,6 +1386,7 @@ if __name__ == '__main__':
     simple_smhm_plot(log_mvir, log_stellar, 
                     title="SAGE 2.0 SMHM Relation", 
                     save_name="sage2_smhm_smooth",
+                    output_dir=OutputDir,
                     galaxies_per_bin=150,  # Fewer = more detail, more = smoother
                     use_rolling=True)      # Smooth rolling median
 

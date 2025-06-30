@@ -107,7 +107,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         } else {
             strdot = 0.0;
         }
-    } else if(run_params->SFprescription == 1) {
+    } else if(run_params->SFprescription >= 1) {
         // Blitz & Rosolowsky (2006)
         // H2-based star formation recipe
         // we take the typical star forming region as 3.0*r_s using the Milky Way as a guide
@@ -120,69 +120,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;
         } else {
             strdot = 0.0;
-        }
-    } else if(run_params->SFprescription == 2) {
-        // Krumholz & Dekel (2012) model
-        if(galaxies[p].H2_gas > 0.0 && galaxies[p].Vvir > 0.0) {
-            // For K&D model, star formation efficiency depends directly on H2 mass
-            // Calculate dynamical time
-            reff = 3.0 * galaxies[p].DiskScaleRadius;
-            tdyn = reff / galaxies[p].Vvir;
-            
-            if(tdyn > 0.0) {
-                // Base star formation on H2 density following Bigiel et al. (2008)
-                // SFR = 0.04 * Σ_H2/(10 M⊙pc⁻²) * Σ_H2
-                double disk_area = M_PI * galaxies[p].DiskScaleRadius * galaxies[p].DiskScaleRadius;
-                double h2_surface_density = 0.0;
-                
-                if(disk_area > 0.0) {
-                    h2_surface_density = galaxies[p].H2_gas / disk_area;
-                }
-                
-                // Scale efficiency with surface density (effectively implementing Bigiel's law)
-                double local_efficiency = sfr_eff;
-                if(h2_surface_density > 0.0) {
-                    // Use lower efficiency at low surface densities
-                    if(h2_surface_density < 10.0) {
-                        local_efficiency *= 0.5 * h2_surface_density / 10.0;
-                    }
-                    // And higher efficiency at high surface densities (starburst regime)
-                    else if(h2_surface_density > 100.0) {
-                        local_efficiency *= 1.0 + 0.5 * log10(h2_surface_density/100.0);
-                    }
-                }
-                
-                // Star formation rate based on molecular gas and efficiency
-                strdot = local_efficiency * galaxies[p].H2_gas / tdyn;
-            }
-        }
-    } else if(run_params->SFprescription == 3) {
-        if(galaxies[p].H2_gas > 0.0 && galaxies[p].Vvir > 0.0) {
-            // Calculate dynamical time
-            reff = 3.0 * galaxies[p].DiskScaleRadius;
-            tdyn = reff / galaxies[p].Vvir;
-            
-            if(tdyn > 0.0) {
-                // Mass-dependent efficiency scaling
-                // Higher efficiency for more massive galaxies
-                double mass_scaling = 1.0;
-                
-                if(galaxies[p].Mvir > 0.0) {
-                    double log_mvir = log10(galaxies[p].Mvir * 1.0e10 / run_params->Hubble_h);
-                    
-                    // Increase efficiency above 10^10.5 Msun
-                    if(log_mvir > 10.5) {
-                        // Progressive increase in efficiency
-                        mass_scaling = 1.0 + (log_mvir - 10.5) * 0.5;
-                        
-                        // Cap the scaling to prevent unrealistic values
-                        if(mass_scaling > 3.0) mass_scaling = 3.0;
-                    }
-                }
-                
-                // Apply mass-dependent efficiency
-                strdot = sfr_eff * mass_scaling * galaxies[p].H2_gas / tdyn;
-            }
         }
     } else {
         fprintf(stderr, "No star formation prescription selected!\n");
@@ -387,7 +324,6 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
         v_term = v_term_low * (1.0 - frac) + v_term_high * frac;
     }
     
-    // Calculate final mass loading factor with a scaling factor to tune down for SAGE
     double eta = NORM * z_term * v_term;
     
     // Cap the maximum mass-loading factor to prevent extreme feedback
@@ -462,7 +398,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         } else {
             strdot = 0.0;
         }
-    } else if(run_params->SFprescription == 1) {
+    } else if(run_params->SFprescription >= 1) {
         // H2-based star formation recipe
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
@@ -472,16 +408,6 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
             strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;
         } else {
             strdot = 0.0;
-        }
-    } else if(run_params->SFprescription == 2 || run_params->SFprescription == 3) {
-        // Other molecular gas models
-        if(galaxies[p].H2_gas > 0.0 && galaxies[p].Vvir > 0.0) {
-            reff = 3.0 * galaxies[p].DiskScaleRadius;
-            tdyn = reff / galaxies[p].Vvir;
-            
-            if(tdyn > 0.0) {
-                strdot = sfr_eff * galaxies[p].H2_gas / tdyn;
-            }
         }
     } else {
         fprintf(stderr, "No star formation prescription selected!\n");
@@ -513,10 +439,10 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         
         // Ensure we don't reheat more than the available cold gas
         if (reheated_mass > galaxies[p].ColdGas) {
-            if (muratov_debug_counter % 90000 == 0) {
-                printf("  WARNING: Capping reheated mass from %.2e to %.2e\n", 
-                       reheated_mass, galaxies[p].ColdGas);
-            }
+            // if (muratov_debug_counter % 90000 == 0) {
+            //     printf("  WARNING: Capping reheated mass from %.2e to %.2e\n", 
+            //            reheated_mass, galaxies[p].ColdGas);
+            // }
             reheated_mass = galaxies[p].ColdGas;
         }
         
