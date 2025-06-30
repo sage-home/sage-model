@@ -138,7 +138,7 @@ SFHighMassSlope            -0.3         % Power-law slope for M > Mpivot
  
 CGMInfallFraction           1.0          % Fraction of infall goes through CGM first
 CGMTransferEfficiency       0.3         % Transfer efficiency per dynamical time
-CGMPristineFraction         0.1          % Fraction of CGM transfer that is pristine
+CGMPristineFraction         0.8          % Fraction of CGM transfer that is pristine
 CGMMixingTimescale          0.005        % Gyr mixing timescale
 
 

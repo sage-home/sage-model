@@ -162,7 +162,7 @@ float calculate_midplane_pressure(float gas_density, float stellar_density,
 float gd14_sigma_norm(float d_mw, float u_mw)
 {
     // SHARK's exact g parameter calculation: g = sqrt(d_mw² + 0.0289)
-    float g = sqrt(d_mw * d_mw + 0.0289);
+    float g = sqrt(d_mw * d_mw + 0.02);
     
     // SHARK's exact sigma_r1 calculation
     float sqrt_term = sqrt(0.01 + u_mw);
@@ -197,7 +197,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     
     // Step 2: Calculate u_mw (surface density parameter)  
     // SHARK uses: constants::sigma_gas_mw = 10 M☉/pc²
-    const float sigma_gas_mw = 10.0; // M☉/pc² (SHARK's normalization)
+    const float sigma_gas_mw = 5.0; // M☉/pc² (SHARK's normalization)
     float u_mw = gas_surface_density / sigma_gas_mw;
     
     // Step 3: Calculate alpha (variable exponent)
@@ -224,17 +224,17 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     }
     
     // Debug output every 50,000 galaxies
-    // if (galaxy_debug_counter % 1000000 == 0) {
-    //     printf("DEBUG GD14 SHARK EXACT (galaxy #%ld):\n", galaxy_debug_counter);
-    //     printf("  Input: gas_surf=%.2e M☉/pc², metallicity=%.4f\n", gas_surface_density, metallicity);
-    //     printf("  Step 1 - d_mw: %.4f\n", d_mw);
-    //     printf("  Step 2 - u_mw: %.4f (gas_surf/%.1f)\n", u_mw, sigma_gas_mw);
-    //     printf("  Step 3 - alpha: %.4f (0.5 + 1/(1 + sqrt(%.4f * %.4f² / 600)))\n", alpha, u_mw, d_mw);
-    //     printf("  Step 4 - sigma_norm: %.2f M☉/pc²\n", sigma_norm);
-    //     printf("  Step 5 - rmol: %.4f ((%.2e / %.2f)^%.4f)\n", rmol, gas_surface_density, sigma_norm, alpha);
-    //     printf("  Step 6 - f_H2: %.4f (%.4f / (1 + %.4f))\n", fmol, rmol, rmol);
-    //     printf("  ----------------------------------------\n");
-    // }
+    if (galaxy_debug_counter % 1000000 == 0) {
+        printf("DEBUG GD14 SHARK EXACT (galaxy #%ld):\n", galaxy_debug_counter);
+        printf("  Input: gas_surf=%.2e M☉/pc², metallicity=%.4f\n", gas_surface_density, metallicity);
+        printf("  Step 1 - d_mw: %.4f\n", d_mw);
+        printf("  Step 2 - u_mw: %.4f (gas_surf/%.1f)\n", u_mw, sigma_gas_mw);
+        printf("  Step 3 - alpha: %.4f (0.5 + 1/(1 + sqrt(%.4f * %.4f² / 600)))\n", alpha, u_mw, d_mw);
+        printf("  Step 4 - sigma_norm: %.2f M☉/pc²\n", sigma_norm);
+        printf("  Step 5 - rmol: %.4f ((%.2e / %.2f)^%.4f)\n", rmol, gas_surface_density, sigma_norm, alpha);
+        printf("  Step 6 - f_H2: %.4f (%.4f / (1 + %.4f))\n", fmol, rmol, rmol);
+        printf("  ----------------------------------------\n");
+    }
     
     return fmol;
 }
@@ -524,16 +524,16 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         g->HI_gas *= scale;
     }
     
-    // if (galaxy_debug_counter % 1000000 == 0) {
-    //     float h2_fraction_cold = (g->ColdGas > 0.0) ? g->H2_gas / g->ColdGas : 0.0;
-    //     float h2_fraction_proper = (g->H2_gas + g->HI_gas > 0.0) ? g->H2_gas / (g->H2_gas + g->HI_gas) : 0.0;
-    //     printf("  FINAL RESULT: H2=%.2e, HI=%.2e\n", g->H2_gas, g->HI_gas);
-    //     printf("  f_H2 = H2/ColdGas = %.6f\n", h2_fraction_cold);
-    //     printf("  f_H2 = H2/(H2+HI) = %.6f\n", h2_fraction_proper);
-    //     printf("  CHECK: Does f_H2=%.6f match expected from integration?\n", h2_fraction_cold);
-    //     printf("END DEBUG MAIN SHARK\n");
-    //     printf("========================================\n\n");
-    // }
+    if (galaxy_debug_counter % 1000000 == 0) {
+        float h2_fraction_cold = (g->ColdGas > 0.0) ? g->H2_gas / g->ColdGas : 0.0;
+        float h2_fraction_proper = (g->H2_gas + g->HI_gas > 0.0) ? g->H2_gas / (g->H2_gas + g->HI_gas) : 0.0;
+        printf("  FINAL RESULT: H2=%.2e, HI=%.2e\n", g->H2_gas, g->HI_gas);
+        printf("  f_H2 = H2/ColdGas = %.6f\n", h2_fraction_cold);
+        printf("  f_H2 = H2/(H2+HI) = %.6f\n", h2_fraction_proper);
+        printf("  CHECK: Does f_H2=%.6f match expected from integration?\n", h2_fraction_cold);
+        printf("END DEBUG MAIN SHARK\n");
+        printf("========================================\n\n");
+    }
 }
 
 void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_params)
