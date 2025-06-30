@@ -403,9 +403,9 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
 
-        const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].H2_gas > h2_crit && tdyn > 0.0) {
-            strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;
+        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
+        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
+            strdot = sfr_eff * galaxies[p].H2_gas / tdyn;  // Still use H2 for SF rate
         } else {
             strdot = 0.0;
         }
@@ -484,14 +484,13 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         }
     }
 
-    // *** SIGNIFICANTLY REDUCE EJECTION TO MAINTAIN GAS SUPPLY ***
+
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             // Get redshift-dependent ejection efficiency with significant reduction
             double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
                                                              run_params->Ejection_Alpha, z);
             
-            // Modified ejection calculation
             if (stars > 0.0) {
                 ejected_mass = (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
                 (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
