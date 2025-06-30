@@ -169,6 +169,8 @@ struct GALAXY
     float InfallRate_to_CGM;        // NEW: Rate of infall to CGM
     float InfallRate_to_Hot;        // NEW: Rate of direct infall to hot  
     float TransferRate_CGM_to_Hot;  // NEW: Rate of CGM→Hot transfer
+
+    float MassLoadingFactor;        // NEW: Mass loading factor for outflows
 };
 
 

@@ -93,6 +93,8 @@ if __name__ == '__main__':
     outflowrate = read_hdf(snap_num = Snapshot, param = 'OutflowRate') * 1.0e10 / Hubble_h
     cgm = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
     #print(np.log10(CGM))
+    massload = read_hdf(snap_num = Snapshot, param = 'MassLoadingFactor')  # Mass loading factor for outflows
+    print('Mass loading factor for outflows:', massload)
 
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
     Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')

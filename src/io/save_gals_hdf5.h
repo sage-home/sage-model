@@ -96,6 +96,8 @@ struct HDF5_GALAXY_OUTPUT
     float *InfallRate_to_CGM;   // NEW: Infall rate to CGM
     float *InfallRate_to_Hot;   // NEW: Direct infall rate to hot
     float *TransferRate_CGM_to_Hot; // NEW: CGM to hot transfer rate
+
+    float *MassLoadingFactor;
 };
     
     // Proto-Types //

@@ -99,6 +99,8 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].InfallRate_to_Hot = 0.0;
     galaxies[p].TransferRate_CGM_to_Hot = 0.0;
 
+    galaxies[p].MassLoadingFactor = 0.0;  // NEW: Add this line
+
 }
 
 // Add this function to model_misc.c or create a new file

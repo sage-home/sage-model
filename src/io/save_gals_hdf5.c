@@ -18,7 +18,7 @@
 #define NUM_OUTPUT_FIELDS 2
 #pragma message "Using SAGE in MCMC mode (will only write " STR(NUM_OUTPUT_FIELDS) " fields into the hdf5 file)"
 #else
-#define NUM_OUTPUT_FIELDS 61
+#define NUM_OUTPUT_FIELDS 62
 #endif
 
 #define NUM_GALS_PER_BUFFER 8192
@@ -371,6 +371,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, InfallRate_to_CGM);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, InfallRate_to_Hot);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TransferRate_CGM_to_Hot);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MassLoadingFactor);
     }
 
     return EXIT_SUCCESS;
@@ -646,6 +647,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, InfallRate_to_CGM);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, InfallRate_to_Hot);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TransferRate_CGM_to_Hot);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MassLoadingFactor);
     }
 
     myfree(save_info->buffer_output_gals);
@@ -770,7 +772,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                          "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
                                                          "infallVvir", "infallVmax", "CGMgas", "MetalsCGMgas","CGMgas_pristine", "CGMgas_enriched", 
                                                         "InfallRate_to_CGM", "InfallRate_to_Hot",
-                                                        "TransferRate_CGM_to_Hot"};
+                                                        "TransferRate_CGM_to_Hot", "MassLoadingFactor"};
 
     // Must accurately describe what exactly each field is and any special considerations.
     char tmp_descriptions[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Snapshot the galaxy is located at.",
@@ -810,7 +812,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                                 "Mass of gas in the circumgalactic medium reservoir.", "Mass of metals in the circumgalactic medium.",
                                                                 "Pristine gas mass in CGM", "Enriched gas mass in CGM",
                                                                 "Gas infall rate to CGM", "Direct gas infall rate to hot halo", 
-                                                                "Gas transfer rate from CGM to hot halo"};
+                                                                "Gas transfer rate from CGM to hot halo", "Mass loading factor for outflows"};
 
     char tmp_units[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Unitless", "Unitless", "Unitless", "Unitless", "Unitless",
                                                          "Unitless", "Unitless", "Unitless", "Unitless",
@@ -823,7 +825,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                          "Msun/yr", "Mpc/h", "erg/s", "erg/s", "1.0e10 Msun/h",
                                                          "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s", "1.0e10 Msun/h", "1.0e10 Msun/h","10^10Msun/h", "10^10Msun/h", 
                                                         "10^10Msun/h/timestep", "10^10Msun/h/timestep",
-                                                        "10^10Msun/h/timestep"};
+                                                        "10^10Msun/h/timestep", "Unitless"};
 
     // These are the HDF5 datatypes for each field.
     hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT,
@@ -835,7 +837,8 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT};
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, 
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT};
 #endif
     for(int32_t i = 0; i < NUM_OUTPUT_FIELDS; i++) {
         memcpy(field_names[i], tmp_names[i], MAX_STRING_LEN);
@@ -915,6 +918,7 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
     save_info->buffer_output_gals[output_snap_idx].MetalsBulgeMass[gals_in_buffer] = g->MetalsBulgeMass;
     save_info->buffer_output_gals[output_snap_idx].MetalsHotGas[gals_in_buffer] = g->MetalsHotGas;
     save_info->buffer_output_gals[output_snap_idx].MetalsICS[gals_in_buffer] = g->MetalsICS;
+    save_info->buffer_output_gals[output_snap_idx].MassLoadingFactor[gals_in_buffer] = g->MassLoadingFactor;
 
     float tmp_SfrDisk = 0.0;
     float tmp_SfrBulge = 0.0;
@@ -1172,6 +1176,7 @@ int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write,
     EXTEND_AND_WRITE_GALAXY_DATASET(InfallRate_to_CGM);
     EXTEND_AND_WRITE_GALAXY_DATASET(InfallRate_to_Hot);
     EXTEND_AND_WRITE_GALAXY_DATASET(TransferRate_CGM_to_Hot);
+    EXTEND_AND_WRITE_GALAXY_DATASET(MassLoadingFactor);
     
 #endif
     // We've performed a write, so future galaxies will overwrite the old data.

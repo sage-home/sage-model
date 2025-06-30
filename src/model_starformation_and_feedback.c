@@ -78,6 +78,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     }
     double fb_reheat = get_redshift_dependent_parameter(run_params->FeedbackReheatingEpsilon, 
                                                       run_params->Reheating_Alpha, z);
+    galaxies[p].MassLoadingFactor = fb_reheat;  // Store for diagnostics
+
     double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
                                                      run_params->Ejection_Alpha, z);
 
@@ -421,35 +423,37 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
 
     // *** KEY DIFFERENCE: Modified Muratov mass loading ***
     if (run_params->SupernovaRecipeOn == 1) {
-        // Use Muratov mass loading with a reduced factor
+        // Use Muratov mass loading factor
         double mass_loading_factor = calculate_muratov_mass_loading(p, z, galaxies);
+        galaxies[p].MassLoadingFactor = mass_loading_factor;  // Store for diagnostics
+        
         reheated_mass = mass_loading_factor * stars;
         
         // Debug output every 90,000th galaxy
         static long muratov_debug_counter = 0;
         muratov_debug_counter++;
-        // if (muratov_debug_counter % 90000 == 0) {
-        //     printf("DEBUG MURATOV (galaxy #%ld): z=%.3f, Vvir=%.1f km/s\n", 
-        //            muratov_debug_counter, z, galaxies[p].Vvir);
-        //     printf("  Stars formed: %.2e, Mass loading η: %.2f\n", 
-        //            stars, mass_loading_factor);
-        //     printf("  Raw reheated mass: %.2e, ColdGas available: %.2e\n", 
-        //            reheated_mass, galaxies[p].ColdGas);
-        // }
+        if (muratov_debug_counter % 90000 == 0) {
+            printf("DEBUG MURATOV (galaxy #%ld): z=%.3f, Vvir=%.1f km/s\n", 
+                   muratov_debug_counter, z, galaxies[p].Vvir);
+            printf("  Stars formed: %.2e, Mass loading η: %.2f\n", 
+                   stars, mass_loading_factor);
+            printf("  Raw reheated mass: %.2e, ColdGas available: %.2e\n", 
+                   reheated_mass, galaxies[p].ColdGas);
+        }
         
         // Ensure we don't reheat more than the available cold gas
         if (reheated_mass > galaxies[p].ColdGas) {
-            // if (muratov_debug_counter % 90000 == 0) {
-            //     printf("  WARNING: Capping reheated mass from %.2e to %.2e\n", 
-            //            reheated_mass, galaxies[p].ColdGas);
-            // }
+            if (muratov_debug_counter % 90000 == 0) {
+                printf("  WARNING: Capping reheated mass from %.2e to %.2e\n", 
+                       reheated_mass, galaxies[p].ColdGas);
+            }
             reheated_mass = galaxies[p].ColdGas;
         }
         
-        // if (muratov_debug_counter % 90000 == 0) {
-        //     printf("  Final reheated mass: %.2e\n", reheated_mass);
-        //     printf("=====================================\n");
-        // }
+        if (muratov_debug_counter % 90000 == 0) {
+            printf("  Final reheated mass: %.2e\n", reheated_mass);
+            printf("=====================================\n");
+        }
     }
 
     XASSERT(reheated_mass >= 0.0, -1,
