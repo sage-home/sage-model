@@ -92,7 +92,7 @@ double get_virial_velocity(const int halonr, const struct halo_data *halos, cons
     Rvir = get_virial_radius(halonr, halos, run_params);
     
     if (Rvir > 0.0)
-        return sqrt(GRAVITY * get_virial_mass(halonr, halos, run_params) / Rvir);
+        return sqrt(run_params->cosmology.G * get_virial_mass(halonr, halos, run_params) / Rvir);
     else
         return 0.0;
 }
@@ -109,7 +109,7 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
          (1 - run_params->cosmology.Omega - run_params->cosmology.OmegaLambda) * zplus1 * zplus1 +
          run_params->cosmology.OmegaLambda);
     
-    rhocrit = 3 * hubble_of_z_sq / (8 * M_PI * GRAVITY);
+    rhocrit = 3 * hubble_of_z_sq / (8 * M_PI * run_params->cosmology.G);
     fac = 1 / (200 * 4 * M_PI / 3.0 * rhocrit);
     
     return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
