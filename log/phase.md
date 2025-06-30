@@ -102,8 +102,8 @@
 - [x] **Parameters.yaml metadata-driven system implementation** - Eliminates hardcoded physics parameters in core infrastructure
 - [X] Successfully run sage end-to-end in physics free mode
 - [ ] Validate each property in output file
-- [ ] Verify all legacy code removal
-- [ ] Review naming: `GALAXY_PROP_*`→`CORE_PROP_*`; `physics_pipeline_executor.*`→`core_pipeline_executor.*`; `physics_pipeline_executor.c/.h`→`core_pipeline_executor.c/.h`
+- [ ] Update naming: `GALAXY_PROP_*`→`CORE_PROP_*`; `physics_pipeline_executor.c/.h`→`core_pipeline_executor.c/.h`
+- [ ] Code review and cleaning
 
 ### Phase 5.2.G: Physics Module Migration ⏳ PENDING
 
