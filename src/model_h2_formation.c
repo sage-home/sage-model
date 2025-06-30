@@ -543,7 +543,7 @@ void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_para
     
     if (g->ColdGas <= 0.0) return;
     
-    if (galaxy_debug_counter % 0000 == 0) {
+    if (galaxy_debug_counter % 900000 == 0) {
         printf("========================================\n");
         printf("DEBUG CGM-H2 DIAGNOSTIC for galaxy #%ld\n", galaxy_debug_counter);
         
