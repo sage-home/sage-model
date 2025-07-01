@@ -103,8 +103,8 @@ ClumpExponent               0.5         % Metallicity dependance exponent for Kr
 %----- SF Enhancement ---------------------
 %------------------------------------------
 
-VvirThreshold               60.0        % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        0.8         % Power-law exponent for velocity scaling
+VvirThreshold               35.0        % Threshold velocity in km/s for enhancement
+VvirEnhancementPower        1.0         % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Reionization Models ----------------
@@ -136,10 +136,10 @@ SFHighMassSlope            -0.3         % Power-law slope for M > Mpivot
 %----- CGM control ------------------------
 %------------------------------------------
  
-CGMInfallFraction           1.0          % Fraction of infall goes through CGM first
+CGMInfallFraction           1.0           % Fraction of infall goes through CGM first
 CGMTransferEfficiency       0.025          % Transfer efficiency per dynamical time
-CGMPristineFraction         0.01          % Fraction of CGM transfer that is pristine
-CGMMixingTimescale          0.01          % Gyr mixing timescale
+CGMPristineFraction         0.5           % Fraction of CGM transfer that is pristine
+CGMMixingTimescale          0.001          % Gyr mixing timescale
 
 
 %------------------------------------------

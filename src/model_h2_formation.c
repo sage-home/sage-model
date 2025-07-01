@@ -3,7 +3,7 @@
 #include "model_h2_formation.h"
 #include "model_misc.h"
 
-// Static counter for debug output - only print every 10000000th galaxy
+// Static counter for debug output - only print every 1000000th galaxy
 static long galaxy_debug_counter = 0;
 
 /**
@@ -224,7 +224,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     }
     
     // Debug output every 50,000 galaxies
-    if (galaxy_debug_counter % 1000000 == 0) {
+    if (galaxy_debug_counter % 100000 == 0) {
         printf("DEBUG GD14 SHARK EXACT (galaxy #%ld):\n", galaxy_debug_counter);
         printf("  Input: gas_surf=%.2e M☉/pc², metallicity=%.4f\n", gas_surface_density, metallicity);
         printf("  Step 1 - d_mw: %.4f\n", d_mw);
@@ -246,7 +246,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
 // float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_params)
 // {
 //     if (g->ColdGas <= 0.0) {
-//         // if (galaxy_debug_counter % 1000000 == 0) {
+//         // if (galaxy_debug_counter % 100000 == 0) {
 //         //     printf("DEBUG RADIAL SHARK: No cold gas, returning 0\n");
 //         // }
 //         return 0.0;
@@ -257,7 +257,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
 //     float disk_scale_radius = g->DiskScaleRadius; // This is already the scale radius
     
 //     if (disk_scale_radius <= 1.0e-6) {
-//         // if (galaxy_debug_counter % 1000000 == 0) {
+//         // if (galaxy_debug_counter % 100000 == 0) {
 //         //     printf("DEBUG RADIAL SHARK: Very small disk radius=%.2e, returning 0\n", disk_scale_radius);
 //         // }
 //         return 0.0;
@@ -276,7 +276,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
 //         metallicity = g->MetalsColdGas / g->ColdGas; // Absolute metallicity fraction
 //     }
     
-//     // if (galaxy_debug_counter % 1000000 == 0) {
+//     // if (galaxy_debug_counter % 100000 == 0) {
 //     //     printf("\nDEBUG RADIAL SHARK: Starting integration\n");
 //     //     printf("  ColdGas: %.2e, metallicity: %.4f (absolute)\n", g->ColdGas, metallicity);
 //     //     printf("  DiskScaleRadius: %.2e Mpc/h, re_pc: %.2e pc\n", disk_scale_radius, re_pc);
@@ -298,7 +298,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
 //         gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
 //     }
     
-//     // if (galaxy_debug_counter % 1000000 == 0) {
+//     // if (galaxy_debug_counter % 100000 == 0) {
 //     //     printf("  gas_surface_density_center: %.2e M☉/pc²\n", gas_surface_density_center);
 //     // }
     
@@ -336,7 +336,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
 //         float ring_mol_gas = molecular_fraction * ring_gas_mass;
 //         total_molecular_gas += ring_mol_gas;
         
-//         // if (i < 3 && galaxy_debug_counter % 1000000 == 0) { // Debug first few rings
+//         // if (i < 3 && galaxy_debug_counter % 100000 == 0) { // Debug first few rings
 //         //     printf("  Ring %d: r=%.2f re, local_gas=%.2e M☉/pc², mol_frac=%.4f, ring_mol=%.3e\n", 
 //         //            i, radius_in_half_mass_radii, local_gas_density, molecular_fraction, ring_mol_gas);
 //         // }
@@ -344,14 +344,14 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     
 //     // Mass conservation check (SHARK does this)
 //     if (total_molecular_gas > g->ColdGas * 0.95) { // Max 95% of cold gas can be molecular
-//         // if (galaxy_debug_counter % 1000000 == 0) {
+//         // if (galaxy_debug_counter % 100000 == 0) {
 //         //     printf("  WARNING: H2 would be %.3f of cold gas, capping at 95%%\n", 
 //         //            total_molecular_gas / g->ColdGas);
 //         // }
 //         total_molecular_gas = g->ColdGas * 0.95;
 //     }
     
-//     // if (galaxy_debug_counter % 1000000 == 0) {
+//     // if (galaxy_debug_counter % 100000 == 0) {
 //     //     printf("  Final molecular gas: %.2e (fraction of cold gas: %.3f)\n", 
 //     //            total_molecular_gas, total_molecular_gas / g->ColdGas);
 //     //     printf("END DEBUG RADIAL SHARK\n\n");
@@ -368,7 +368,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
 // {
 //     // Check if we have any bulge
 //     if (g->BulgeMass <= 0.0) {
-//         // if (galaxy_debug_counter % 1000000 == 0) {
+//         // if (galaxy_debug_counter % 100000 == 0) {
 //         //     printf("DEBUG BULGE SHARK: No bulge mass, returning 0\n");
 //         // }
 //         return 0.0;
@@ -405,7 +405,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
 //         metallicity = g->MetalsColdGas / g->ColdGas; // Fallback to cold gas metallicity
 //     }
     
-//     // if (galaxy_debug_counter % 1000000 == 0) {
+//     // if (galaxy_debug_counter % 100000 == 0) {
 //     //     printf("DEBUG BULGE SHARK: bulge_gas=%.2e, gas_surf_dens=%.2e, metallicity=%.4f\n",
 //     //            bulge_gas, bulge_gas_surface_density, metallicity);
 //     // }
@@ -416,7 +416,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     
 //     float bulge_molecular_gas = bulge_gas * molecular_fraction;
     
-//     // if (galaxy_debug_counter % 1000000 == 0) {
+//     // if (galaxy_debug_counter % 100000 == 0) {
 //     //     printf("DEBUG BULGE SHARK: molecular_fraction=%.4f, bulge_H2=%.2e\n", 
 //     //            molecular_fraction, bulge_molecular_gas);
 //     // }
@@ -446,7 +446,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     
     // Early termination - if disk radius is effectively zero
     if(g->DiskScaleRadius <= 1.0e-6) {
-        // if (galaxy_debug_counter % 1000000 == 0) {
+        // if (galaxy_debug_counter % 100000 == 0) {
         //     printf("DEBUG MAIN SHARK: Very small DiskScaleRadius=%.2e, setting H2=0\n", 
         //            g->DiskScaleRadius);
         // }
@@ -459,7 +459,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     
     if (run_params->SFprescription == 3) {
         // GD14 model with SHARK-exact implementation
-        // if (galaxy_debug_counter % 1000000 == 0) {
+        // if (galaxy_debug_counter % 100000 == 0) {
         //     printf("\nDEBUG MAIN SHARK: Starting SHARK-exact GD14 for galaxy #%ld\n", galaxy_debug_counter);
         //     printf("  ColdGas=%.2e, StellarMass=%.2e, DiskScaleRadius=%.2e\n", 
         //            g->ColdGas, g->StellarMass, g->DiskScaleRadius);
@@ -483,20 +483,48 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
 
         total_molecular_gas = calculate_molecular_fraction_GD14(
             gas_surface_density_center, 
-            g->MetalsColdGas / g->ColdGas); // Use absolute metallicity fraction
-        
-        // if (galaxy_debug_counter % 1000000 == 0) {
-        //     printf("  CALCULATION CHECK: disk_H2=%.2e, bulge_H2=%.2e, total_H2=%.2e\n", 
-        //            disk_molecular_gas, bulge_molecular_gas, total_molecular_gas);
-        //     printf("  FRACTION CHECK: total_H2/ColdGas = %.6f\n", total_molecular_gas / g->ColdGas);
-        // }
+            g->MetalsColdGas / g->ColdGas) * g->ColdGas; // Use absolute metallicity fraction, convert to mass
     }
-    // REMOVE OR COMMENT OUT OTHER SF PRESCRIPTIONS TO AVOID FALLBACK
+    else if (run_params->SFprescription == 2) {
+        // KD12 model
+        const float disk_area = M_PI * g->DiskScaleRadius * g->DiskScaleRadius;
+        if(disk_area <= 0.0) {
+            g->H2_gas = 0.0;
+            g->HI_gas = g->ColdGas;
+            return;
+        }
+        const float surface_density = g->ColdGas / disk_area;
+        float metallicity = 0.0;
+        if(g->ColdGas > 0.0) {
+            metallicity = g->MetalsColdGas / g->ColdGas; // absolute fraction
+        }
+        float clumping_factor = run_params->ClumpFactor;
+        if (metallicity < 0.01) {
+            clumping_factor = run_params->ClumpFactor * pow(0.01, -run_params->ClumpExponent);
+        } else if (metallicity < 1.0) {
+            clumping_factor = run_params->ClumpFactor * pow(metallicity, -run_params->ClumpExponent);
+        }
+        float f_H2 = calculate_H2_fraction_KD12(surface_density, metallicity, clumping_factor);
+        total_molecular_gas = f_H2 * g->ColdGas;
+    }
+    else if (run_params->SFprescription == 1) {
+        // Pressure-based model
+        const float disk_area = M_PI * g->DiskScaleRadius * g->DiskScaleRadius;
+        if(disk_area <= 0.0) {
+            g->H2_gas = 0.0;
+            g->HI_gas = g->ColdGas;
+            return;
+        }
+        const float surface_density = g->ColdGas / disk_area;
+        float metallicity = 0.0;
+        if(g->ColdGas > 0.0) {
+            metallicity = g->MetalsColdGas / g->ColdGas; // absolute fraction
+        }
+        float f_H2 = calculate_H2_fraction(surface_density, metallicity, g->DiskScaleRadius, run_params);
+        total_molecular_gas = f_H2 * g->ColdGas;
+    }
     else {
         // For debugging, let's see what happens with other models
-        // if (galaxy_debug_counter % 1000000 == 0) {
-        //     printf("DEBUG: Using non-GD14 model (SFprescription=%d), setting H2=0\n", run_params->SFprescription);
-        // }
         total_molecular_gas = 0.0; // Don't use fallback for debugging
     }
     
@@ -508,7 +536,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     
     // Apply bounds checking
     if(g->H2_gas > g->ColdGas) {
-        // if (galaxy_debug_counter % 1000000 == 0) {
+        // if (galaxy_debug_counter % 100000 == 0) {
         //     printf("DEBUG MAIN SHARK: H2 > ColdGas (%.2e > %.2e), capping at ColdGas\n", 
         //            g->H2_gas, g->ColdGas);
         // }
@@ -525,7 +553,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     if(g->H2_gas + g->HI_gas > g->ColdGas * 1.001) {  
         float total = g->H2_gas + g->HI_gas;
         float scale = g->ColdGas / total;
-        // if (galaxy_debug_counter % 1000000 == 0) {
+        // if (galaxy_debug_counter % 100000 == 0) {
         //     printf("DEBUG MAIN SHARK: Mass conservation issue - H2+HI=%.2e > ColdGas=%.2e\n", 
         //            total, g->ColdGas);
         //     printf("  Applying scale factor: %.6f\n", scale);
@@ -534,7 +562,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         g->HI_gas *= scale;
     }
     
-    if (galaxy_debug_counter % 1000000 == 0) {
+    if (galaxy_debug_counter % 100000 == 0) {
         float h2_fraction_cold = (g->ColdGas > 0.0) ? g->H2_gas / g->ColdGas : 0.0;
         float hi_fraction_cold = (g->ColdGas > 0.0) ? g->HI_gas / g->ColdGas : 0.0;
         float h2_fraction_proper = (g->H2_gas + g->HI_gas > 0.0) ? g->H2_gas / (g->H2_gas + g->HI_gas) : 0.0;
@@ -673,5 +701,6 @@ void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_para
     }
     
     printf("=====================================\n\n");
-    } // End of conditional check for galaxy_debug_counter % 9000000 == 0
-}
+    printf("=====================================\n\n");    
+    }
+}   
