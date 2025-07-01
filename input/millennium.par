@@ -57,7 +57,7 @@ SupernovaRecipeOn           1   %0: switch off
 ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15
-VvirEnhancementOn           0   %0: switch off; 1: enable virial velocity enhancement
+VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
 ReionizationModel           0   %0: original Croton et al. 2016; 1: original enhanced; 2:Sobacchi-Mesinger; 3:Patchy
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
 
@@ -104,7 +104,7 @@ ClumpExponent               0.5         % Metallicity dependance exponent for Kr
 %------------------------------------------
 
 VvirThreshold               60.0        % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        0.7         % Power-law exponent for velocity scaling
+VvirEnhancementPower        0.8         % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Reionization Models ----------------
@@ -137,9 +137,9 @@ SFHighMassSlope            -0.3         % Power-law slope for M > Mpivot
 %------------------------------------------
  
 CGMInfallFraction           1.0          % Fraction of infall goes through CGM first
-CGMTransferEfficiency       0.3         % Transfer efficiency per dynamical time
-CGMPristineFraction         0.8          % Fraction of CGM transfer that is pristine
-CGMMixingTimescale          0.005        % Gyr mixing timescale
+CGMTransferEfficiency       0.025          % Transfer efficiency per dynamical time
+CGMPristineFraction         0.01          % Fraction of CGM transfer that is pristine
+CGMMixingTimescale          0.01          % Gyr mixing timescale
 
 
 %------------------------------------------

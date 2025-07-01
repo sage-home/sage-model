@@ -496,7 +496,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
                                                              run_params->Ejection_Alpha, z);
             
             if (stars > 0.0) {
-                ejected_mass = (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                ejected_mass = 0.2 * (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
                 (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
                 reheated_mass) * stars;
                 
