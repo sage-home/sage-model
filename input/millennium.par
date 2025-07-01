@@ -104,7 +104,7 @@ ClumpExponent               0.5         % Metallicity dependance exponent for Kr
 %------------------------------------------
 
 VvirThreshold               35.0        % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        1.0         % Power-law exponent for velocity scaling
+VvirEnhancementPower        0.8         % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Reionization Models ----------------
