@@ -51,7 +51,7 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription              3   %0: original Croton et al. 2006; 1: Blitz & Rosolowsky; 2: Krumholz & Dekel; 3: Gnedin & Draine
+SFprescription              1   %0: original Croton et al. 2006; 1: Gnedin & Draine
 AGNrecipeOn                 2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn           1   %0: switch off
 ReionizationOn              1   %0: switch off
@@ -90,20 +90,10 @@ EnergySN                1.0e51  %energy per supernova
 EtaSN                   5.0e-3  %supernova efficiency
 
 %------------------------------------------
-%----- H2 formation parameters ------------
-%------------------------------------------
-
-H2FractionFactor            0.5         % Controls the normalisation of the H2/HI calculation for Blitz & Rosolowsky
-H2FractionExponent          0.05        % Controls the H2/HI ratio calculation for Blitz & Rosolowsky
-
-ClumpFactor                 5.0         % Clumping factor for Krumholz & Dekel H2
-ClumpExponent               0.5         % Metallicity dependance exponent for Krumholz & Dekel H2
-
-%------------------------------------------
 %----- SF Enhancement ---------------------
 %------------------------------------------
 
-VvirThreshold               35.0        % Threshold velocity in km/s for enhancement
+VvirThreshold               80.0        % Threshold velocity in km/s for enhancement
 VvirEnhancementPower        0.8         % Power-law exponent for velocity scaling
 
 %------------------------------------------
@@ -138,8 +128,8 @@ SFHighMassSlope            -0.3         % Power-law slope for M > Mpivot
  
 CGMInfallFraction           1.0           % Fraction of infall goes through CGM first
 CGMTransferEfficiency       0.025          % Transfer efficiency per dynamical time
-CGMPristineFraction         0.5           % Fraction of CGM transfer that is pristine
-CGMMixingTimescale          0.001          % Gyr mixing timescale
+CGMPristineFraction         0.4           % Fraction of CGM transfer that is pristine
+CGMMixingTimescale          1.0          % Gyr mixing timescale
 
 
 %------------------------------------------

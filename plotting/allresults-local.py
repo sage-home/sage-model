@@ -1300,7 +1300,7 @@ if __name__ == '__main__':
     plt.plot(MeanCentralHaloMass, MeanCGM, label='Circumgalactic Medium', color='green', linestyle='-.')
     plt.plot(MeanCentralHaloMass, MeanICS, label='Intracluster Stars', color='orange', linestyle='-.')
 
-    plt.yscale('log')
+    #plt.yscale('log')
 
     plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
     plt.ylabel(r'$\log_{10} \mathrm{Baryon\ Fraction}$')

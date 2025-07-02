@@ -88,7 +88,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
 
     // First, update the gas components to ensure H2 and HI are correctly calculated
-    if (run_params->SFprescription == 1 || run_params->SFprescription == 2 || run_params->SFprescription == 3) {
+    if (run_params->SFprescription == 1) {
         update_gas_components(&galaxies[p], run_params);
     }
 

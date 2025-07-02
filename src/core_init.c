@@ -32,25 +32,6 @@ void init(struct params *run_params)
     run_params->Age = mymalloc(ABSOLUTEMAXSNAPS*sizeof(run_params->Age[0]));
     
 
-    if(run_params->SFprescription == 1) {
-        if(run_params->H2FractionFactor <= 0.0) {
-            run_params->H2FractionFactor = 1.0;  // Default normalization factor for H2/HI ratio
-        }
-        if(run_params->H2FractionExponent <= 0.0) {
-            run_params->H2FractionExponent = 0.92;  // Default power-law exponent for pressure relation
-        }
-    }
-
-
-    if(run_params->SFprescription == 2) {
-        if(run_params->ClumpFactor <= 0.0) {
-            run_params->ClumpFactor = 5.0;  // Default clumping factor
-        }
-        if(run_params->ClumpExponent <= 0.0) {
-            run_params->ClumpExponent = 0.5;  // Default metallicity dependence exponent
-        }
-    }
-
     if (run_params->MassLoadingModel != 0 && 
         run_params->MassLoadingModel != 1) {
         run_params->MassLoadingModel = 0;  // Default to standard model
