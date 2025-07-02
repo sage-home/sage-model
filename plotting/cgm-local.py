@@ -1367,7 +1367,8 @@ if __name__ == '__main__':
         
         # Read data using batch reader for the main analysis
         main_params = ['CentralMvir', 'Mvir', 'StellarMass', 'BulgeMass', 'HotGas', 
-                      'Vvir', 'Vmax', 'Rvir', 'SfrDisk', 'SfrBulge', 'CGMgas']
+                      'Vvir', 'Vmax', 'Rvir', 'SfrDisk', 'SfrBulge', 'CGMgas',
+                      'ColdGas', 'MetalsColdGas', 'MetalsCGMgas', 'Type']
         
         print('Loading main parameters for current snapshot...')
         start_time = time.time()
@@ -1385,6 +1386,10 @@ if __name__ == '__main__':
         SfrDisk = main_data['SfrDisk']
         SfrBulge = main_data['SfrBulge']
         cgm = main_data['CGMgas'] * 1.0e10 / Hubble_h
+        ColdGas = main_data['ColdGas'] * 1.0e10 / Hubble_h
+        MetalsColdGas = main_data['MetalsColdGas'] * 1.0e10 / Hubble_h
+        MetalsCGMgas = main_data['MetalsCGMgas'] * 1.0e10 / Hubble_h
+        Type = main_data['Type']
         
         elapsed = time.time() - start_time
         print(f'Main data loaded in {elapsed:.2f} seconds')
@@ -1475,14 +1480,23 @@ if __name__ == '__main__':
 
         # Calculate sSFR and CGM fraction analysis
 
-        # Filter out invalid values
-        filter = np.where(StellarMass > 0.01)[0]
-        if(len(filter) > dilute): filter = sample(list(range(len(filter))), dilute)
+        # Filter out invalid values using metallicity criteria similar to your example
+        w = np.where((Type == 0) & (ColdGas / (StellarMass + ColdGas) > 0.1) & (StellarMass > 1.0e8))[0]
+        if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
 
-        mvir = Mvir[filter]
-        HotGas_filtered = HotGas[filter]
-        cgm_filtered = cgm[filter]
-        sSFR = (np.log10((SfrDisk + SfrBulge) / StellarMass))[filter]
+        mvir = Mvir[w]
+        HotGas_filtered = HotGas[w]
+        cgm_filtered = cgm[w]
+        StellarMass_w = StellarMass[w]
+        ColdGas_w = ColdGas[w]
+        MetalsCGMgas_w = MetalsCGMgas[w]
+        
+        # Calculate CGM metallicity (12 + log(O/H)) using direct CGM metallicity
+        # MetalsCGMgas is the total metal mass in CGM gas
+        # Solar metallicity is 0.02
+        Z = np.log10((MetalsCGMgas_w / cgm_filtered) / 0.02) + 9.0
+        
+        # sSFR = (np.log10((SfrDisk + SfrBulge) / StellarMass_w))
 
         # Calculate CGM mass fraction
         f_CGM = (cgm_filtered / mvir)
@@ -1491,14 +1505,15 @@ if __name__ == '__main__':
         f_combined_gas = combined_gas / 0.17
         
         log_mvir = np.log10(mvir)
-        sSFR_valid = sSFR
+        # sSFR_valid = sSFR
         f_combined_gas_valid = f_combined_gas
 
         # Create a DataFrame with the provided variables
         df = pd.DataFrame({
             'log_mvir': log_mvir,
-            'sSFR': sSFR_valid,
-            'f_combined_gas': f_combined_gas_valid
+            # 'sSFR': sSFR_valid,
+            'f_combined_gas': f_combined_gas_valid,
+            'metallicity': Z
         })
 
         # Sort by log_mvir
@@ -1506,29 +1521,29 @@ if __name__ == '__main__':
 
         # Calculate running median (adjust window size as needed)
         window_size = 101  # This should be an odd number
-        df['sSFR_median'] = df['sSFR'].rolling(window=window_size, center=True).median()
+        # df['sSFR_median'] = df['sSFR'].rolling(window=window_size, center=True).median()
 
-        # Handle NaN values at the edges due to rolling window
-        if df['sSFR_median'].notna().any():
-            first_valid = df['sSFR_median'].first_valid_index()
-            last_valid = df['sSFR_median'].last_valid_index()
-            if first_valid is not None and last_valid is not None:
-                df.loc[:first_valid, 'sSFR_median'] = df.loc[first_valid, 'sSFR_median']
-                df.loc[last_valid:, 'sSFR_median'] = df.loc[last_valid, 'sSFR_median']
+        # # Handle NaN values at the edges due to rolling window
+        # if df['sSFR_median'].notna().any():
+        #     first_valid = df['sSFR_median'].first_valid_index()
+        #     last_valid = df['sSFR_median'].last_valid_index()
+        #     if first_valid is not None and last_valid is not None:
+        #         df.loc[:first_valid, 'sSFR_median'] = df.loc[first_valid, 'sSFR_median']
+        #         df.loc[last_valid:, 'sSFR_median'] = df.loc[last_valid, 'sSFR_median']
 
-        # Alternative: use interpolation to handle NaN values
-        mask = df['sSFR_median'].notna()
-        if mask.sum() > 1:  # Make sure we have at least 2 points for interpolation
-            f_interp = interp1d(
-                df.loc[mask, 'log_mvir'], 
-                df.loc[mask, 'sSFR_median'],
-                bounds_error=False,
-                fill_value=(df.loc[mask, 'sSFR_median'].iloc[0], df.loc[mask, 'sSFR_median'].iloc[-1])
-            )
-            df['sSFR_median'] = f_interp(df['log_mvir'])
+        # # Alternative: use interpolation to handle NaN values
+        # mask = df['sSFR_median'].notna()
+        # if mask.sum() > 1:  # Make sure we have at least 2 points for interpolation
+        #     f_interp = interp1d(
+        #         df.loc[mask, 'log_mvir'], 
+        #         df.loc[mask, 'sSFR_median'],
+        #         bounds_error=False,
+        #         fill_value=(df.loc[mask, 'sSFR_median'].iloc[0], df.loc[mask, 'sSFR_median'].iloc[-1])
+        #     )
+        #     df['sSFR_median'] = f_interp(df['log_mvir'])
 
-        # Calculate residuals
-        df['sSFR_residual'] = df['sSFR'] - df['sSFR_median']
+        # # Calculate residuals
+        # df['sSFR_residual'] = df['sSFR'] - df['sSFR_median']
 
         # CALCULATE RUNNING MEDIAN OF f_combined_gas VS LOG_MVIR
         df['f_combined_gas_median'] = df['f_combined_gas'].rolling(window=window_size, center=True).median()
@@ -1548,10 +1563,11 @@ if __name__ == '__main__':
         # Create the plot
         plt.figure(figsize=(8, 6))
 
-        sc = plt.scatter(np.log10(mvir), f_combined_gas, c=df['sSFR_residual'], cmap='jet_r', s=5, vmin=-1.5, vmax=1.5)
+        # Color scatter points by metallicity
+        sc = plt.scatter(np.log10(mvir), f_combined_gas, c=Z, cmap='viridis', s=5, vmin=7.5, vmax=9.5)
 
         cbar = plt.colorbar(sc)
-        cbar.set_label(r'$\log_{10} sSFR$')
+        cbar.set_label(r'$12 + \log(\mathrm{O/H})$ (Metallicity)')
 
         plt.plot(df['log_mvir'], df['f_combined_gas_median'], 'k-', linewidth=2)
 

@@ -492,11 +492,11 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             // Get redshift-dependent ejection efficiency with significant reduction
-            double fb_eject = get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
+            double fb_eject = 0.2 * get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
                                                              run_params->Ejection_Alpha, z);
             
             if (stars > 0.0) {
-                ejected_mass = 0.2 * (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                ejected_mass = (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
                 (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
                 reheated_mass) * stars;
                 
