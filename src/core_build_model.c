@@ -382,11 +382,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             }
 
             // NEW: CGM-H2 diagnostic (only for central galaxy in final step)
-            if (p == centralgal && step == (STEPS - 1)) {
+            // if (p == centralgal && step == (STEPS - 1)) {
                 
-                diagnose_cgm_h2_interaction(&galaxies[p], run_params);
-                print_gas_flow_summary(centralgal, galaxies, deltaT, Zcurr);
-            }
+            //     diagnose_cgm_h2_interaction(&galaxies[p], run_params);
+            //     print_gas_flow_summary(centralgal, galaxies, deltaT, Zcurr);
+            // }
             
         }
 
