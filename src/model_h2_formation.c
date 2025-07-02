@@ -360,7 +360,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         // Total molecular gas - THIS IS THE KEY FIX
         // total_molecular_gas = disk_molecular_gas + bulge_molecular_gas;
         const float h = run_params->Hubble_h;
-        const float re_pc = g->DiskScaleRadius * 1.0e6 / h; // Half-mass radius in pc
+        const float re_pc = g->DiskScaleRadius * 1.0e6 / h / 1.67; // Half-mass radius in pc
         float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc; // Note: 2π for half-mass radius
         float gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
 

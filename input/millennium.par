@@ -94,7 +94,7 @@ EtaSN                   5.0e-3  %supernova efficiency
 %------------------------------------------
 
 VvirThreshold               60.0        % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        1.5         % Power-law exponent for velocity scaling
+VvirEnhancementPower        1.2         % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Reionization Models ----------------
@@ -127,9 +127,9 @@ SFHighMassSlope            -0.3         % Power-law slope for M > Mpivot
 %------------------------------------------
  
 CGMInfallFraction           1.0           % Fraction of infall goes through CGM first
-CGMTransferEfficiency       0.03          % Transfer efficiency per dynamical time
-CGMPristineFraction         0.4           % Fraction of CGM transfer that is pristine
-CGMMixingTimescale          1.0          % Gyr mixing timescale
+CGMTransferEfficiency       0.025          % Transfer efficiency per dynamical time
+CGMPristineFraction         0.8           % Fraction of CGM transfer that is pristine
+CGMMixingTimescale          2.0          % Gyr mixing timescale
 
 
 %------------------------------------------
