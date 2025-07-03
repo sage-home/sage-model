@@ -131,10 +131,10 @@ def analyze_hdf5_file(filepath):
             if snap_groups:
                 print(f"\nFound {len(snap_groups)} snapshot groups: {snap_groups}")
                 
-                # Analyze first snapshot group for detailed property analysis
-                first_snap = snap_groups[0]
-                gal_group = f[first_snap]
-                print(f"\nAnalyzing snapshot {first_snap} (contains {len(gal_group.keys())} datasets)")
+                # Analyze last snapshot group for detailed property analysis
+                last_snap = snap_groups[-1]
+                gal_group = f[last_snap]
+                print(f"\nAnalyzing snapshot {last_snap} (contains {len(gal_group.keys())} datasets)")
                 
                 # Check each core property
                 missing_properties = []
@@ -152,7 +152,7 @@ def analyze_hdf5_file(filepath):
                         missing_properties.append(prop_name)
                 
                 # Report results
-                print(f"\n=== PROPERTY ANALYSIS (for {first_snap}) ===")
+                print(f"\n=== PROPERTY ANALYSIS (for {last_snap}) ===")
                 print(f"Core properties expected: {len(CORE_PROPERTIES)}")
                 print(f"Core properties found: {len(present_properties)}")
                 print(f"Core properties missing: {len(missing_properties)}")
@@ -161,13 +161,6 @@ def analyze_hdf5_file(filepath):
                     print(f"\nMISSING PROPERTIES:")
                     for prop in missing_properties:
                         print(f"  - {prop} ({CORE_PROPERTIES[prop]['units']})")
-                
-                if property_issues:
-                    print(f"\nPROPERTY ISSUES:")
-                    for prop, issues in property_issues.items():
-                        print(f"  {prop}:")
-                        for issue in issues:
-                            print(f"    - {issue}")
                 
                 # Check for additional properties (non-core)
                 additional_props = []
@@ -193,25 +186,57 @@ def analyze_hdf5_file(filepath):
                             inf_count = np.sum(np.isinf(data_flat))
                             print(f"    WARNING: Contains {nan_count} NaN and {inf_count} inf values")
                 
-                # Sample some data for inspection
-                print(f"\n=== SAMPLE DATA (from {first_snap}) ===")
-                sample_size = min(5, gal_group[list(gal_group.keys())[0]].shape[0])
-                print(f"Showing first {sample_size} galaxies:")
+                # Show sample table for all snapshots
+                print(f"\n=== SAMPLE TABLES FOR ALL SNAPSHOTS ===")
+                for snap_group in sorted(snap_groups):
+                    snap_data = f[snap_group]
+                    snap_sample_size = min(10, len(snap_data[list(snap_data.keys())[0]]))
+                    
+                    print(f"\n{snap_group} (first {snap_sample_size} galaxies):")
+                    print(f"{'Galaxy':<8} {'Type':<5} {'SnapNum':<8} {'Mvir':<12} {'Rvir':<10} {'Vmax':<10} {'Len':<8}")
+                    print("-" * 65)
+                    
+                    for i in range(snap_sample_size):
+                        galaxy_idx = i
+                        type_val = snap_data['Type'][i] if 'Type' in snap_data else 'N/A'
+                        snap_val = snap_data['SnapNum'][i] if 'SnapNum' in snap_data else 'N/A'
+                        mvir_val = f"{snap_data['Mvir'][i]:.3f}" if 'Mvir' in snap_data else 'N/A'
+                        rvir_val = f"{snap_data['Rvir'][i]:.3f}" if 'Rvir' in snap_data else 'N/A'
+                        vmax_val = f"{snap_data['Vmax'][i]:.1f}" if 'Vmax' in snap_data else 'N/A'
+                        len_val = snap_data['Len'][i] if 'Len' in snap_data else 'N/A'
+                        
+                        print(f"{galaxy_idx:<8} {type_val:<5} {snap_val:<8} {mvir_val:<12} {rvir_val:<10} {vmax_val:<10} {len_val:<8}")
                 
-                for prop_name in ['SnapNum', 'Type', 'GalaxyNr', 'Mvir', 'Rvir', 'VelDisp', 'Posx', 'Vely', 'Spinz'][:9]:
+                # Sample some data for inspection
+                print(f"\n=== SAMPLE DATA (from {last_snap}) ===")
+                sample_size = min(8, gal_group[list(gal_group.keys())[0]].shape[0])
+                
+                # Show all core properties in detail
+                print(f"--- ALL CORE PROPERTIES (first {sample_size} galaxies) ---")
+                for prop_name in CORE_PROPERTIES.keys():
                     if prop_name in gal_group:
                         data = gal_group[prop_name][...]
-                        print(f"  {prop_name}: {data[:sample_size]}")
+                        units = CORE_PROPERTIES[prop_name]['units']
+                        # Format the array values to prevent wrapping
+                        formatted_values = str(data[:sample_size]).replace('\n', '').replace('  ', ' ')
+                        print(f"  {prop_name:<20} ({units:<15}): {formatted_values}")
                 
-                # Check consistency across all snapshots
+                # Check consistency across all snapshots and show sample tables
                 print(f"\n=== SNAPSHOT CONSISTENCY CHECK ===")
                 for snap_group in snap_groups:
                     snap_data = f[snap_group]
                     snap_props = set(snap_data.keys())
-                    first_snap_props = set(gal_group.keys())
+                    last_snap_props = set(gal_group.keys())
                     
-                    missing_in_snap = first_snap_props - snap_props
-                    extra_in_snap = snap_props - first_snap_props
+                    missing_in_snap = last_snap_props - snap_props
+                    extra_in_snap = snap_props - last_snap_props
+                    
+                    # Count galaxy types
+                    type_counts = {}
+                    if 'Type' in snap_data:
+                        type_data = snap_data['Type'][...]
+                        for gal_type in [0, 1, 2]:
+                            type_counts[gal_type] = int(np.sum(type_data == gal_type))
                     
                     if missing_in_snap or extra_in_snap:
                         print(f"  {snap_group}: inconsistent properties")
@@ -220,11 +245,77 @@ def analyze_hdf5_file(filepath):
                         if extra_in_snap:
                             print(f"    Extra: {extra_in_snap}")
                     else:
-                        print(f"  {snap_group}: consistent ({len(snap_data.keys())} properties, {len(snap_data[list(snap_data.keys())[0]])} galaxies)")
+                        type_info = ""
+                        if type_counts:
+                            type_info = f", Types: {type_counts}"
+                        print(f"  {snap_group}: consistent ({len(snap_data.keys())} properties, {len(snap_data[list(snap_data.keys())[0]])} galaxies{type_info})")
+                
+                # Additional valuable checks
+                print(f"\n=== ADDITIONAL CHECKS ===")
+                
+                # Check for missing critical values
+                print("\nCritical value checks:")
+                for prop_name in ['Mvir', 'Rvir', 'Vmax', 'Type']:
+                    if prop_name in gal_group:
+                        data = gal_group[prop_name][...]
+                        zero_count = np.sum(data == 0)
+                        negative_count = np.sum(data < 0)
+                        if zero_count > 0:
+                            print(f"  {prop_name}: {zero_count} zero values ({zero_count/len(data)*100:.1f}%)")
+                        if negative_count > 0 and prop_name in ['Mvir', 'Rvir', 'Vmax']:
+                            print(f"  {prop_name}: {negative_count} negative values (suspicious!)")
+                
+                # Check for galaxy index consistency
+                if 'GalaxyIndex' in gal_group and 'CentralGalaxyIndex' in gal_group:
+                    gal_idx = gal_group['GalaxyIndex'][...]
+                    central_idx = gal_group['CentralGalaxyIndex'][...]
+                    type_data = gal_group['Type'][...] if 'Type' in gal_group else None
+                    
+                    if type_data is not None:
+                        centrals = type_data == 0
+                        satellites = type_data == 1
+                        
+                        # For centrals, GalaxyIndex should equal CentralGalaxyIndex
+                        central_mismatch = np.sum(centrals & (gal_idx != central_idx))
+                        if central_mismatch > 0:
+                            print(f"  Index consistency: {central_mismatch} centrals have mismatched galaxy/central indices")
+                        
+                        # Check for orphaned satellites (CentralGalaxyIndex not in current snapshot)
+                        unique_gal_indices = set(gal_idx)
+                        orphaned_satellites = 0
+                        for i, is_sat in enumerate(satellites):
+                            if is_sat and central_idx[i] not in unique_gal_indices:
+                                orphaned_satellites += 1
+                        if orphaned_satellites > 0:
+                            print(f"  Index consistency: {orphaned_satellites} satellites have invalid CentralGalaxyIndex")
+                
+                # Show property issues last to highlight problems
+                if property_issues:
+                    print(f"\n{'='*60}")
+                    print(f"PROPERTY ISSUES FOUND - REVIEW THESE CAREFULLY")
+                    print(f"{'='*60}")
+                    for prop, issues in property_issues.items():
+                        print(f"\n{prop}:")
+                        for issue in issues:
+                            print(f"  ⚠️  {issue}")
+                    print(f"{'='*60}")
+                else:
+                    print(f"\n✅ No property issues found in core properties!")
                         
             else:
                 print("ERROR: No snapshot groups found in HDF5 file")
                 print("Available groups:", list(f.keys()))
+                
+                # If we have Header, show some basic info
+                if 'Header' in f:
+                    header = f['Header']
+                    print(f"\n=== HEADER INFO ===")
+                    if 'output_snapshots' in header:
+                        output_snaps = header['output_snapshots'][...]
+                        print(f"Output snapshots: {output_snaps}")
+                    if 'snapshot_redshifts' in header:
+                        redshifts = header['snapshot_redshifts'][...]
+                        print(f"Redshifts: {redshifts[:10]}... ({len(redshifts)} total)")
                 
     except Exception as e:
         print(f"ERROR reading {filepath}: {e}")
@@ -242,14 +333,16 @@ def main():
         filepath = os.path.join(base_path, filename)
         analyze_hdf5_file(filepath)
     
-    print(f"\n=== SUMMARY ===")
-    print("Analysis complete. Check the detailed output above for any issues.")
-    print("Focus on:")
-    print("- Missing core properties")
-    print("- Data type mismatches") 
-    print("- Values outside expected ranges")
-    print("- High percentage of zero values")
-    print("- NaN or infinite values")
+    print(f"\n{'='*50}")
+    print("ANALYSIS COMPLETE")
+    print(f"{'='*50}")
+    print("Key things to check:")
+    print("• Property issues (highlighted above)")
+    print("• Unusual galaxy type distributions")
+    print("• High percentages of zero/negative values")
+    print("• Index consistency problems")
+    print("• Unexpected galaxy count evolution")
+    
 
 if __name__ == "__main__":
     main()
