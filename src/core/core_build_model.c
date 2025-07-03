@@ -368,7 +368,7 @@ int identify_and_process_orphans(const int fof_halonr, GalaxyArray* temp_fof_gal
 
                 // Reclassify as an orphan.
                 GALAXY_PROP_Type(&temp_orphan) = 2;
-                GALAXY_PROP_merged(&temp_orphan) = 0; // CRITICAL: Keep it active for processing.
+                GALAXY_PROP_merged(&temp_orphan) = 1; // FIXED: Mark as merged to filter from output
                 GALAXY_PROP_Mvir(&temp_orphan) = 0.0; // Its host halo is gone.
                 GALAXY_PROP_deltaMvir(&temp_orphan) = -1.0 * GALAXY_PROP_Mvir(source_gal);
 

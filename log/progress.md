@@ -279,4 +279,9 @@
 - **Scientific Value**: Test validates that tree-based processing was necessary to solve orphan conservation, prevents regressions in snapshot mode
 - Modified files: tests/test_orphan_fof_disruption.c
 
-EOF < /dev/null
+2025-07-03: [Bug Fix] **🎉 Type 2 Orphan Galaxy Output Filtering Fix 🎉** ✅ COMPLETED
+- **Critical Fix**: Resolved Type 2 orphan galaxies appearing in output files when they should be filtered out
+- **Root Cause**: Two missing `merged=1` assignments in orphan creation paths (core_build_model.c and tree_galaxies.c)
+- **Solution**: Added proper `merged=1` flags to mark orphans for output filtering while preserving full pipeline participation
+- **Impact**: 2,993 Type 2 galaxies now correctly filtered from output; orphans still participate in all evolution phases (HALO→GALAXY→POST→FINAL)
+- Modified files: src/core/core_build_model.c, src/core/tree_galaxies.c

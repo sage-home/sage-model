@@ -137,6 +137,7 @@ int inherit_galaxies_with_orphans(int halo_nr, TreeContext* ctx) {
                 } else {
                     // Other branches - create orphans
                     GALAXY_PROP_Type(&inherited) = 2;  // Orphan
+                    GALAXY_PROP_merged(&inherited) = 1; // FIXED: Mark as merged to filter from output
                     GALAXY_PROP_Mvir(&inherited) = 0.0;
                     GALAXY_PROP_HaloNr(&inherited) = halo_nr;
                     GALAXY_PROP_SnapNum(&inherited) = halo->SnapNum;
