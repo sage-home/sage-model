@@ -87,7 +87,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     }
     
     // Debug output every 50,000 galaxies
-    // if (galaxy_debug_counter % 100 == 0) {
+    // if (galaxy_debug_counter % 10000 == 0) {
     //     printf("DEBUG GD14 SHARK EXACT (galaxy #%ld):\n", galaxy_debug_counter);
     //     printf("  Input: gas_surf=%.2e M☉/pc², metallicity=%.4f\n", gas_surface_density, metallicity);
     //     printf("  Step 1 - d_mw: %.4f\n", d_mw);
@@ -129,7 +129,7 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
     // SHARK conversion: re (half-mass radius) = rgas / 1.67
     // Since our disk_scale_radius is the scale length, we need to convert
     const float h = run_params->Hubble_h;
-    const float re_pc = disk_scale_radius * 1.0e6 / h; // Half-mass radius in pc
+    const float re_pc = disk_scale_radius * 1.0e6 / h / 1.67; // Half-mass radius in pc
     
     // Get metallicity (as absolute fraction, not relative to solar - this is key!)
     float metallicity = 0.0;
@@ -206,13 +206,13 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
     }
     
     // Mass conservation check (SHARK does this)
-    // if (total_molecular_gas > g->ColdGas * 0.95) { // Max 95% of cold gas can be molecular
+    if (total_molecular_gas > g->ColdGas * 0.95) { // Max 95% of cold gas can be molecular
     //     if (galaxy_debug_counter % 100 == 0) {
     //         printf("  WARNING: H2 would be %.3f of cold gas, capping at 95%%\n", 
     //                total_molecular_gas / g->ColdGas);
     //     }
-    //     total_molecular_gas = g->ColdGas * 0.95;
-    // }
+        total_molecular_gas = g->ColdGas * 0.95;
+    }
 
     // CORRECT: Comparing fraction to fraction
     if (total_molecular_gas > 0.95) {
@@ -308,6 +308,119 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
 }
 
 /**
+ * apply_environmental_effects - Enhanced environmental effects with CGM transfer
+ * 
+ * This improved version:
+ * - Begins environmental effects at lower halo masses
+ * - Has more gradual transition with halo mass
+ * - Accounts for orbit/position within halo
+ * - Transfers stripped mass to central galaxy's CGM (NEW)
+ */
+void apply_environmental_effects(struct GALAXY *g, struct GALAXY *galaxies, 
+                                 int gal_index, int central_gal_index, 
+                                 const struct params *run_params) 
+{
+    // Skip if no H2 gas
+    if (g->H2_gas <= 0.0) return;
+    
+    // --- IMPROVEMENT 4: REFINED ENVIRONMENTAL EFFECTS ---
+    
+    // 1. Apply to all galaxies, but stronger in satellites
+    float type_factor = 1.0;
+    if (g->Type == 0) {  // Central galaxy
+        type_factor = 0.0;  // Environmental effects are 70% weaker in centrals
+    } else if (g->Type == 1) {  // Satellite with subhalo
+        type_factor = 1.0;  // Full effect
+    } else if (g->Type == 2) {  // Orphan satellite
+        type_factor = 1.2;  // 20% stronger effect for orphan satellites (no protection from subhalo)
+    }
+    
+    // 2. Start environmental effects at lower mass and make transition more gradual
+    float env_strength = 0.0;
+    
+    // Get central halo mass - use different approaches based on galaxy type
+    float central_mvir = 0.0;
+    if (g->Type == 0) {
+        central_mvir = g->Mvir;  // For centrals, use own virial mass
+    } else {
+        // For satellites, use stored CentralMvir
+        central_mvir = g->CentralMvir;
+        if (central_mvir <= 0.0) return;  // Safety check
+    }
+    
+    // Convert to solar masses
+    float central_mass = central_mvir * 1.0e10 / run_params->Hubble_h;
+    float log_mass = log10(central_mass > 0.0 ? central_mass : 1.0);
+    
+    // Begin effect at lower mass (10^12 M⊙) with more gradual increase
+    // Previous version started at 10^13 M⊙
+    if (log_mass > 12.0) {
+        // More gradual scaling with mass
+        env_strength = 0.2 + 0.3 * (log_mass - 12.0);  // 20% base effect + 30% per dex
+        
+        // Cap maximum effect
+        if (env_strength > 0.9) env_strength = 0.9;
+    } 
+    // Even galaxies in groups (10^11-10^12 M⊙) experience mild environmental effects
+    else if (log_mass > 11.0) {
+        env_strength = 0.05 + 0.15 * (log_mass - 11.0);  // 5% base effect + 15% scaling
+    }
+    
+    // 3. Scale with user parameter
+    env_strength *= 2.0;
+    // 4. Apply type-dependent scaling
+    env_strength *= type_factor;
+    
+    // 5. Account for orbit/position effects (time since infall)
+    if (g->Type > 0) {  // Only for satellites
+        // Use merger time as proxy for orbital phase
+        if (g->MergTime > 0.0 && g->infallVvir > 0.0) {
+            // Recently accreted satellites experience less environmental effects
+            float orbit_phase = 1.0 - g->MergTime / 3.0;  // Normalized to ~1 after 3 Gyr
+            if (orbit_phase < 0.0) orbit_phase = 0.0;
+            if (orbit_phase > 1.0) orbit_phase = 1.0;
+            
+            env_strength *= orbit_phase;  // Reduce effect for recent infall
+        }
+    }
+    
+    // Apply the effect - remove H2 gas
+    if (env_strength > 0.0) {
+        float h2_affected = g->H2_gas * env_strength;
+        
+        // 30% is completely removed, 70% converted to HI
+        float h2_removed = h2_affected * 0.3;
+        float h2_to_hi = h2_affected * 0.7;
+        
+        // Calculate metallicity before modifying gas masses
+        float metallicity = (g->ColdGas > 0.0) ? g->MetalsColdGas / g->ColdGas : 0.0;
+        
+        // Update gas components in current galaxy
+        g->H2_gas -= h2_affected;
+        g->HI_gas += h2_to_hi;
+        g->ColdGas -= h2_removed;  // Only the removed part reduces total cold gas
+        
+        // Remove metals proportionally for the stripped gas
+        g->MetalsColdGas -= h2_removed * metallicity;
+        
+        // NEW: Transfer stripped mass to central galaxy's CGM
+        if (g->Type > 0 && central_gal_index >= 0) {  // Only for satellites with valid central
+            galaxies[central_gal_index].CGMgas += h2_removed;
+            galaxies[central_gal_index].MetalsCGMgas += h2_removed * metallicity;
+            
+            // Optional: Track the source of CGM enrichment (if you have these fields)
+            // galaxies[central_gal_index].CGMgas_from_stripping += h2_removed;
+        }
+        
+        // Ensure non-negative values
+        if (g->H2_gas < 0.0) g->H2_gas = 0.0;
+        if (g->HI_gas < 0.0) g->HI_gas = 0.0;
+        if (g->ColdGas < 0.0) g->ColdGas = 0.0;
+        if (g->MetalsColdGas < 0.0) g->MetalsColdGas = 0.0;
+    }
+}
+
+/**
  * update_gas_components - Enhanced gas component update with real disk radius
  * 
  * This function now uses SAGE's real disk radius (calculated via get_disk_radius 
@@ -329,7 +442,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     
     // Early termination - if disk radius is effectively zero
     if(g->DiskScaleRadius <= 1.0e-6) {
-        if (galaxy_debug_counter % 100 == 0) {
+        if (galaxy_debug_counter % 10000 == 0) {
             printf("DEBUG MAIN: Very small DiskScaleRadius=%.2e, setting H2=0\n", 
                    g->DiskScaleRadius);
         }
@@ -349,24 +462,24 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         // }
         
         // Calculate disk molecular gas through SHARK-exact radial integration
-        // float disk_molecular_gas = integrate_molecular_gas_radial(g, run_params);
+        float disk_molecular_gas = integrate_molecular_gas_radial(g, run_params);
         
-        // // Calculate bulge molecular gas using SHARK-exact method
-        // float bulge_molecular_gas = 0.0;
-        // if (g->BulgeMass > 0.0) {
-        //     bulge_molecular_gas = calculate_bulge_molecular_gas(g, run_params);
-        // }
+        // Calculate bulge molecular gas using SHARK-exact method
+        float bulge_molecular_gas = 0.0;
+        if (g->BulgeMass > 0.0) {
+            bulge_molecular_gas = calculate_bulge_molecular_gas(g, run_params);
+        }
         
         // Total molecular gas - THIS IS THE KEY FIX
-        // total_molecular_gas = disk_molecular_gas + bulge_molecular_gas;
-        const float h = run_params->Hubble_h;
-        const float re_pc = g->DiskScaleRadius * 1.0e6 / h / 1.67; // Half-mass radius in pc
-        float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc; // Note: 2π for half-mass radius
-        float gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
+        total_molecular_gas = disk_molecular_gas + bulge_molecular_gas;
+        // const float h = run_params->Hubble_h;
+        // const float re_pc = g->DiskScaleRadius * 1.0e6 / h / 1.67; // Half-mass radius in pc
+        // float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc; // Note: 2π for half-mass radius
+        // float gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
 
-        total_molecular_gas = calculate_molecular_fraction_GD14(
-            gas_surface_density_center, 
-            g->MetalsColdGas / g->ColdGas); // Use absolute metallicity fraction
+        // total_molecular_gas = calculate_molecular_fraction_GD14(
+        //     gas_surface_density_center, 
+        //     g->MetalsColdGas / g->ColdGas); // Use absolute metallicity fraction
 
         // Mass conservation check (SHARK does this)
         // CORRECT: Comparing fraction to fraction

@@ -329,8 +329,8 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     double eta = NORM * z_term * v_term;
     
     // Cap the maximum mass-loading factor to prevent extreme feedback
-    if (eta > 25.0) {
-        eta = 25.0;
+    if (eta > 50.0) {
+        eta = 50.0;
     }
     
     // Safety check for the result
@@ -369,8 +369,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
             double v_enhancement = pow(velocity_ratio, run_params->VvirEnhancementPower);
             
             // Apply maximum enhancement cap
-            if (v_enhancement > 20.0) v_enhancement = 20.0;
-            
+            if (v_enhancement > 50.0) v_enhancement = 50.0;
             // Apply the enhancement
             sfr_eff *= v_enhancement;
         }

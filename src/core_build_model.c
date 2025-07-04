@@ -381,6 +381,15 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     break;
             }
 
+            // NEW: Apply environmental effects after star formation
+            // This ensures we use the updated H2_gas from star formation
+            apply_environmental_effects(&galaxies[p], galaxies, p, centralgal, run_params);
+            
+            // Update H2/HI gas components if needed (your existing function)
+            if (run_params->SFprescription >= 1) {
+                update_gas_components(&galaxies[p], run_params);
+            }
+
             // NEW: CGM-H2 diagnostic (only for central galaxy in final step)
             // if (p == centralgal && step == (STEPS - 1)) {
                 
