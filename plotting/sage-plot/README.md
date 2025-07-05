@@ -228,11 +228,32 @@ The plotting system is organized around these key components:
 
 ## Requirements
 
-- Python 3.x
+- Python 3.6+
 - NumPy
 - Matplotlib (>=3.0.0)
+- h5py (for HDF5 file support)
 - tqdm (for progress bars)
 - (Optional) LaTeX installation for high-quality text rendering in plots
+
+## Setup
+
+**From the main SAGE repository directory:**
+
+```bash
+# Set up Python environment (if not already done)
+python3 -m venv sage_venv
+source sage_venv/bin/activate
+pip install -r requirements.txt
+
+# Navigate to sage-plot directory
+cd plotting/sage-plot/
+```
+
+**Before running sage-plot.py, always activate the Python environment:**
+
+```bash
+source ../../sage_venv/bin/activate
+```
 
 ## License
 

@@ -3,7 +3,7 @@
 %------------------------------------------
 
 FileNameGalaxies        model
-OutputDir               /Volumes/Internal/results/sage-model/millennium/
+OutputDir               ./output/millennium/
 
 FirstFile               0
 LastFile                7
@@ -26,8 +26,8 @@ NumOutputs              8            % sets the desired number of galaxy outputs
 TreeName                trees_063     % assumes the trees are named TreeName.n where n is the file number
 TreeType                lhalo_binary  % either genesis_lhalo_hdf5 or lhalo_binary
 
-SimulationDir           /Volumes/Internal/data/millennium/
-FileWithSnapList        /Volumes/Internal/data/millennium/millennium.a_list
+SimulationDir           ./input/data/millennium/
+FileWithSnapList        ./input/data/millennium/millennium.a_list
 LastSnapshotNr          63
 ProcessingMode          1             % 0=snapshot-based, 1=tree-based processing
 NumSimulationTreeFiles  8             % Number of files the trees are split over

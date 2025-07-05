@@ -3,7 +3,7 @@
 %------------------------------------------
 
 FileNameGalaxies        model
-OutputDir               /Volumes/Internal/results/sage-model/uchuu/microuchuu/
+OutputDir               ./output/uchuu/microuchuu/
 
 FirstFile               0
 LastFile                0
@@ -26,8 +26,8 @@ NumOutputs              1             % sets the desired number of galaxy output
 TreeName                MicroUchuu_mergertree_info.h5   % assumes the trees are named TreeName.n where n is the file number
 TreeType                consistent_trees_hdf5           % one of genesis_lhalo_hdf5, lhalo_binary or consistent_trees_ascii
 
-SimulationDir           /Volumes/Internal/data/uchuu/microuchuu/mergertrees
-FileWithSnapList        /Volumes/Internal/data/uchuu/microuchuu/Uchuu100_scalefactor.txt
+SimulationDir           ./input/data/uchuu/microuchuu/mergertrees
+FileWithSnapList        ./input/data/uchuu/microuchuu/Uchuu100_scalefactor.txt
 LastSnapshotNr          49
 ProcessingMode          1             % 0=snapshot-based, 1=tree-based processing
 NumSimulationTreeFiles  1             % Number of files the trees are split over

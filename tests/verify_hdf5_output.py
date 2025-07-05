@@ -1,17 +1,42 @@
 #!/usr/bin/env python3
 """
 HDF5 Output Verification Script for SAGE Model
-Verifies that all core properties from properties.yaml are present in HDF5 output
-and checks for reasonable values given their units.
+
+This script verifies the integrity and correctness of HDF5 output files generated
+by the SAGE (Semi-Analytic Galaxy Evolution) model. It performs comprehensive
+validation of galaxy properties, data types, value ranges, and structural consistency.
+
+Key Features:
+- Validates all core properties from properties.yaml are present
+- Checks data types match expected specifications
+- Verifies value ranges are physically reasonable
+- Detects suspicious data patterns (excessive zeros, NaN/inf values)
+- Ensures consistency across multiple snapshots
+- Provides detailed analysis of galaxy populations and indices
+
+Usage:
+    python3 verify_hdf5_output.py                           # Use default paths
+    python3 verify_hdf5_output.py -d ./output/custom/       # Custom directory
+    python3 verify_hdf5_output.py -f model_1.hdf5          # Custom file
+    python3 verify_hdf5_output.py -d ./data/ -f output.hdf5 # Both custom
+
+The script analyzes one HDF5 file at a time but is designed to be easily
+extended for batch processing of multiple files.
+
+Author: SAGE Development Team
 """
 
 import h5py
 import numpy as np
 import sys
 import os
+import argparse
 from pathlib import Path
 
 # Core properties from properties.yaml (is_core: true)
+# This dictionary defines the expected properties, their data types, units,
+# and reasonable value ranges for validation. Properties marked as 'core'
+# in properties.yaml should be present in all HDF5 output files.
 CORE_PROPERTIES = {
     'SnapNum': {'type': 'int32', 'units': 'dimensionless', 'expected_range': (0, 100)},
     'Type': {'type': 'int32', 'units': 'dimensionless', 'expected_range': (0, 1)},
@@ -51,13 +76,25 @@ CORE_PROPERTIES = {
 }
 
 def check_dataset_properties(dataset, prop_name, prop_info):
-    """Check a single dataset for correct properties and reasonable values."""
+    """
+    Check a single dataset for correct properties and reasonable values.
+    
+    Args:
+        dataset: HDF5 dataset object
+        prop_name: Name of the property being checked
+        prop_info: Dictionary containing expected type, units, and range
+        
+    Returns:
+        List of issues found (empty if no issues)
+    """
     issues = []
     
-    # Check data type
+    # Check data type - HDF5 stores data with endianness markers
     expected_dtype = prop_info['type']
     actual_dtype = str(dataset.dtype)
     
+    # Map expected types to their possible HDF5 representations
+    # (includes different endianness: <little, >big, =native)
     dtype_map = {
         'int32': ['int32', '<i4', '>i4', '=i4'],
         'int64': ['int64', '<i8', '>i8', '=i8'],  
@@ -73,12 +110,12 @@ def check_dataset_properties(dataset, prop_name, prop_info):
     if len(dataset.shape) != 1:
         issues.append(f"Unexpected shape: expected 1D array, got {dataset.shape}")
     
-    # Check value ranges
+    # Check value ranges and data quality
     data = dataset[...]
     if 'expected_range' in prop_info:
         min_val, max_val = prop_info['expected_range']
         
-        # For arrays, check each component
+        # Flatten multi-dimensional arrays for analysis
         if len(data.shape) > 1:
             data_flat = data.flatten()
         else:
@@ -87,18 +124,19 @@ def check_dataset_properties(dataset, prop_name, prop_info):
         actual_min = np.min(data_flat)
         actual_max = np.max(data_flat)
         
+        # Check if values fall within expected physical ranges
         if min_val is not None and actual_min < min_val:
             issues.append(f"Values below expected minimum: min={actual_min:.6g}, expected_min={min_val}")
         if max_val is not None and actual_max > max_val:
             issues.append(f"Values above expected maximum: max={actual_max:.6g}, expected_max={max_val}")
             
-        # Check for suspicious patterns
+        # Check for suspicious patterns in physical quantities
         if prop_info['units'] != 'dimensionless':
             zero_fraction = np.sum(data_flat == 0) / len(data_flat)
             if zero_fraction > 0.95:
                 issues.append(f"Suspicious: {zero_fraction*100:.1f}% of values are exactly zero")
                 
-        # Check for NaN or inf values
+        # Check for invalid numerical values (NaN/inf)
         if np.any(~np.isfinite(data_flat)):
             nan_count = np.sum(np.isnan(data_flat))
             inf_count = np.sum(np.isinf(data_flat))
@@ -110,7 +148,15 @@ def check_dataset_properties(dataset, prop_name, prop_info):
     return issues
 
 def analyze_hdf5_file(filepath):
-    """Analyze a single HDF5 file."""
+    """
+    Perform comprehensive analysis of a single HDF5 file.
+    
+    This function examines the file structure, validates all core properties,
+    checks data consistency across snapshots, and identifies potential issues.
+    
+    Args:
+        filepath: Path to the HDF5 file to analyze
+    """
     print(f"\n=== Analyzing {filepath} ===")
     
     if not os.path.exists(filepath):
@@ -126,17 +172,18 @@ def analyze_hdf5_file(filepath):
                     print(f"    Shape: {obj.shape}, Type: {obj.dtype}")
             f.visititems(print_structure)
             
-            # Check for snapshot groups
+            # Check for snapshot groups (main galaxy data structure)
             snap_groups = [key for key in f.keys() if key.startswith('Snap_')]
             if snap_groups:
                 print(f"\nFound {len(snap_groups)} snapshot groups: {snap_groups}")
                 
                 # Analyze last snapshot group for detailed property analysis
+                # (last snapshot typically has the most complete data)
                 last_snap = snap_groups[-1]
                 gal_group = f[last_snap]
                 print(f"\nAnalyzing snapshot {last_snap} (contains {len(gal_group.keys())} datasets)")
                 
-                # Check each core property
+                # Validate each core property against expectations
                 missing_properties = []
                 present_properties = []
                 property_issues = {}
@@ -321,17 +368,36 @@ def analyze_hdf5_file(filepath):
         print(f"ERROR reading {filepath}: {e}")
 
 def main():
-    """Main analysis function."""
+    """
+    Main entry point for the HDF5 verification script.
+    
+    Parses command line arguments and initiates the analysis of the specified
+    HDF5 file. Provides a summary of key issues to check after analysis.
+    """
+    parser = argparse.ArgumentParser(
+        description='Verify HDF5 output from SAGE model',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python3 verify_hdf5_output.py                           # Use defaults
+  python3 verify_hdf5_output.py -d ./output/custom/       # Custom directory
+  python3 verify_hdf5_output.py -f model_1.hdf5          # Custom file
+  python3 verify_hdf5_output.py -d ./data/ -f output.hdf5 # Both custom
+        """
+    )
+    parser.add_argument('-d', '--directory', default='./output/millennium/',
+                       help='Base directory path for HDF5 files (default: ./output/millennium/)')
+    parser.add_argument('-f', '--file', default='model_0.hdf5',
+                       help='HDF5 file to analyze (default: model_0.hdf5)')
+    
+    args = parser.parse_args()
+    
     print("SAGE Model HDF5 Output Verification")
     print("=" * 50)
     
-    # Analyze both output files
-    base_path = "/Volumes/Internal/results/sage-model/millennium"
-    files_to_check = ["model.hdf5", "model_0.hdf5"]
-    
-    for filename in files_to_check:
-        filepath = os.path.join(base_path, filename)
-        analyze_hdf5_file(filepath)
+    # Analyze the specified file
+    filepath = os.path.join(args.directory, args.file)
+    analyze_hdf5_file(filepath)
     
     print(f"\n{'='*50}")
     print("ANALYSIS COMPLETE")

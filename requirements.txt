@@ -1,0 +1,67 @@
+# SAGE Model Python Dependencies
+# ==============================
+# 
+# This file contains all Python dependencies needed to run Python scripts
+# and tools in the SAGE (Semi-Analytic Galaxy Evolution) model repository.
+# 
+# Install with: pip install -r requirements.txt
+
+# Core Scientific Computing Dependencies
+# --------------------------------------
+# Required for numerical operations and data analysis
+numpy>=1.18.0
+matplotlib>=3.2.0
+h5py>=2.10.0
+
+# Python-C Interface
+# ------------------
+# Required for sage.py Python interface to SAGE C code
+cffi>=1.14.0
+
+# Configuration and Data Processing
+# ---------------------------------
+# Required for property system generation from YAML files
+PyYAML>=5.3.0
+
+# Progress Bars and User Interface
+# --------------------------------
+# Optional but recommended for better user experience
+tqdm>=4.50.0
+
+# Optional Dependencies
+# ---------------------
+# These provide additional functionality but are not required for basic operation
+
+# MPI support for parallel processing (optional)
+# Requires MPI libraries (OpenMPI, MPICH, etc.) to be installed separately
+# mpi4py>=3.0.0
+
+# External SAGE analysis package (for sage-analysis-examples)
+# This is a separate package developed by the SAGE team
+# sage-analysis>=0.2.4
+
+# Development and Testing Dependencies
+# ------------------------------------
+# These are included in Python 3.2+ but listed for completeness
+
+# argparse - Command line argument parsing (included in Python 3.2+)
+# pathlib - Object-oriented filesystem paths (included in Python 3.4+)
+
+# System Requirements Notes
+# ========================
+# 
+# 1. Python 3.6+ is required
+# 2. HDF5 C libraries must be installed separately for h5py support
+# 3. For MPI support, install an MPI implementation (OpenMPI, MPICH, Intel MPI)
+# 4. LaTeX installation is optional but recommended for high-quality plot text rendering
+# 
+# Platform-specific installation notes:
+# 
+# Ubuntu/Debian:
+#   sudo apt-get install python3-dev libhdf5-dev libopenmpi-dev
+# 
+# macOS (with Homebrew):
+#   brew install hdf5 open-mpi
+# 
+# CentOS/RHEL:
+#   sudo yum install python3-devel hdf5-devel openmpi-devel

@@ -222,6 +222,7 @@ Use gemini -p when:
 - Never simplify or dilute a test just to make it pass; a failing test might indicate a problem with the codebase, which makes it a successful test - That is the purpose of a unit test!
 - Use lldb for debugging and feed it a text file with commands ending with "quit" (e.g. `lldb -s debug_commands.txt ./tests/test_tree_infrastructure`)
 - Never delete files, always archive into the `ignore` directory
+- When asked to write a report or similar, put it in the `obsidian-inbox` directory
 - Assume no persistent memory — rely on logs for all continuity
 - When reporting progress in `log/progress.md` include EVERY FILE that was changed, created, and removed
 - Your code and tests should always be written to the highest professional coding standards 

@@ -25,6 +25,14 @@ Pre-requisites
 ``SAGE`` should compile on most systems out of the box and the only required tool is a `C99  compiler <https://en.wikipedia.org/wiki/C99>`_.
 `GSL <http://www.gnu.org/software/gsl/>`_ is recommended but not necessary.
 
+**For Python Analysis and Plotting:**
+
+Python 3.6+ is required for the analysis and plotting tools. The following system packages are recommended:
+
+- **Ubuntu/Debian**: ``sudo apt-get install python3-dev python3-venv libhdf5-dev libopenmpi-dev``
+- **macOS (Homebrew)**: ``brew install hdf5 open-mpi``
+- **CentOS/RHEL**: ``sudo yum install python3-devel hdf5-devel openmpi-devel``
+
 Downloading
 -----------
 
@@ -61,6 +69,34 @@ When compiling with MPI support, the ``Makefile`` expects that the MPI compiler 
 Addtionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting
 ``USE-HDF5 = yes`` in the ``Makefile``. If the input trees are in HDF5 format, or you wish to output the catalogs in HDF5 (rather than the default binary format), then please compile with the ``USE-HDF5 = yes`` option.
 
+Setting up Python Environment
+=============================
+
+``SAGE`` includes Python tools for analysis, plotting, and testing. To use these tools, set up a Python virtual environment:
+
+.. code::
+
+    $ python3 -m venv sage_venv
+    $ source sage_venv/bin/activate
+    $ pip install -r requirements.txt
+
+**What this installs:**
+
+- **Core libraries**: NumPy, Matplotlib, h5py for scientific computing and plotting
+- **Interface**: CFFI for Python-C integration
+- **Configuration**: PyYAML for property system generation
+- **User interface**: tqdm for progress bars
+- **Optional**: MPI support and external analysis packages
+
+**Activating the environment:**
+
+.. code::
+
+    $ source sage_venv/bin/activate    # Activate environment
+    $ deactivate                       # Deactivate when done
+
+The virtual environment needs to be activated before running Python scripts in the ``plotting/``, ``tests/``, or root directories.
+
 Running the code
 ================
 
@@ -87,15 +123,14 @@ or in parallel as:
 Plotting the output (basic method)
 ==================================
 
-If you already have Python 3 installed, you can switch to the plotting directory, where you will find two scripts, 
-``allresults-local.py`` (for z=0 results) and ``allresults-history.py`` (for higher redshift results). 
-If you're following the above, these scripts can run as-is to produce a series of figures you can use to check the model output.
+After setting up the Python environment (see above), you can use the basic plotting scripts in the plotting directory:
 
 .. code::
 
+    $ source sage_venv/bin/activate     # Activate Python environment
     $ cd plotting/
-    $ python3 allresults-local.py
-    $ python3 allresults-history.py
+    $ python3 allresults-local.py      # z=0 results
+    $ python3 allresults-history.py    # Higher redshift results
 
 Near the top of both scripts, there is a "USER OPTIONS" section where you can modify the simulation and plotting details for your own needs. 
 These scripts can be used as a template to read the hdf5 ``SAGE`` model output and to make your own custom figures.
@@ -111,24 +146,22 @@ documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sag
 Installing ``sage-analysis`` (requires python version >= 3.6)
 --------------------------------------------------------------
 
+You can install the external sage-analysis package in your existing Python environment:
+
+.. code::
+
+    $ source sage_venv/bin/activate   # Use the SAGE Python environment
+    $ pip install sage-analysis       # Install from PyPI
+
+Alternatively, to install from source:
+
 .. code::
 
     $ cd ../    # <- Change to the location where you want to clone the sage-analysis repo
     $ git clone https://github.com/sage-home/sage-analysis.git
     $ cd sage-analysis  
-
-You may need to first create a Python virtual environment in your sage-analysis directory and source it:
-
-.. code::
-
-    $ python3 -m venv .sage_venv
-    $ source .sage_venv/bin/activate
-
-Then finish installing sage-analysis:
-
-.. code::
-
-    $ python3 -m pip install -e .    # Install the sage-analysis python package
+    $ source ../sage-model/sage_venv/bin/activate    # Use the SAGE Python environment
+    $ python3 -m pip install -e .                    # Install the sage-analysis python package
     $ cd ../sage-model 
 
 Assuming that the `sage-analysis` repo was installed successfully, you are now ready to plot the output from ``SAGE``.
@@ -140,6 +173,7 @@ The ``plotting`` directory contains an ``example.py`` script that can be run to 
 
 .. code::
 
+    $ source sage_venv/bin/activate   # Activate Python environment
     $ cd plotting/
     $ python3 example.py
 

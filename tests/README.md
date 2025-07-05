@@ -147,6 +147,7 @@ The `test_tree_mode_validation.py` script provides a comprehensive validation su
 
 To run the tree mode validation script:
 ```bash
+source ../sage_venv/bin/activate  # Ensure Python environment is activated
 python3 tests/test_tree_mode_validation.py
 ```
 
@@ -172,6 +173,9 @@ python3 tests/test_tree_mode_validation.py
 ### Running End-to-End Tests
 
 ```bash
+# Ensure Python environment is activated
+source ../sage_venv/bin/activate
+
 # Run via the main Makefile (includes unit tests)
 make tests
 
@@ -256,5 +260,28 @@ For more detailed information about the testing architecture, see:
 
 - **C Compiler**: clang or gcc
 - **HDF5 Library**: For testing HDF5 input/output
-- **Python 3**: For end-to-end scientific testing
+- **Python 3.6+**: For end-to-end scientific testing and analysis tools
 - **Standard Libraries**: stdlib, stdio, etc.
+
+## Python Environment Setup
+
+Many tests require Python dependencies. Set up the Python environment from the main SAGE repository:
+
+```bash
+# From the main SAGE repository directory
+python3 -m venv sage_venv
+source sage_venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Before running Python-based tests, always activate the environment:**
+
+```bash
+source ../sage_venv/bin/activate  # From tests/ directory
+```
+
+**Python dependencies installed:**
+- **NumPy**: For numerical operations in test comparison scripts
+- **h5py**: For HDF5 file validation and comparison
+- **Matplotlib**: For plotting test results (if needed)
+- **Other utilities**: tqdm for progress bars, PyYAML for configuration
