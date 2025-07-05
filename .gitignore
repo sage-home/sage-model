@@ -17,7 +17,6 @@ src/core/generated_output_transformers.c
 tests/test_env/
 tests/test_results/
 tests/test_data/microuchuu
-tests/stubs/
 tests/test_output/
 
 tests/test_hdf5_output
