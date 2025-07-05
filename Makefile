@@ -717,7 +717,7 @@ unit_tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(UNIT_TESTS)
 	fi
 
 # Tests execution target
-tests: $(EXEC) $(UNIT_TESTS)
+tests: $(ROOT_DIR)/.stamps/generate_properties_full.stamp $(EXEC) $(UNIT_TESTS)
 	@echo "Running SAGE tests..."
 	@# Save test_sage.sh output to a log file to check for failures
 	@./tests/test_sage.sh 2>&1 | tee tests/test_output.log || echo "End-to-end tests failed (expected during Phase 5)"
