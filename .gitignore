@@ -133,3 +133,7 @@ docs/make.bat
 
 # Claude Code settings
 .claude/
+
+# Local debugging files
+codesign-sage.sh
+entitlements.plist
