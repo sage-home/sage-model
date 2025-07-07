@@ -220,7 +220,7 @@ Use gemini -p when:
 - All new unit tests should follow the template in `docs/templates/test_template.c`
 - Add new unit tests to `.gitignore` in the correct section
 - Never simplify or dilute a test just to make it pass; a failing test might indicate a problem with the codebase, which makes it a successful test - That is the purpose of a unit test!
-- Use lldb for debugging and feed it a text file with commands ending with "quit" (e.g. `lldb -s debug_commands.txt ./tests/test_tree_infrastructure`)
+- Use lldb for debugging; input commands from a file (always end with "quit"), e.g. `lldb -s debug_commands.txt ./tests/test_tree_infrastructure`; use absolute paths for parameter files as lldb changes the working directory
 - If using lldb, you MUST sign the sage executable with enhanced debugging entitlements by running `./codesign-sage.sh` after `make`
 - Never delete files, always archive into the `ignore` directory
 - When asked to write a report or similar, put it in the `obsidian-inbox` directory
