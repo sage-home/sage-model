@@ -129,7 +129,7 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
     // SHARK conversion: re (half-mass radius) = rgas / 1.67
     // Since our disk_scale_radius is the scale length, we need to convert
     const float h = run_params->Hubble_h;
-    const float re_pc = disk_scale_radius * 1.0e6 / h / 1.67; // Half-mass radius in pc
+    const float re_pc = disk_scale_radius * 1.0e6 / h ; // Half-mass radius in pc
     
     // Get metallicity (as absolute fraction, not relative to solar - this is key!)
     float metallicity = 0.0;
@@ -261,8 +261,8 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
     float bulge_to_total = g->BulgeMass / (g->StellarMass > 0.0 ? g->StellarMass : 1.0);
     
     // Estimate bulge gas (SHARK doesn't specify exact method, so we use reasonable approach)
-    float bulge_gas = bulge_to_total * 0.3 * g->ColdGas; // 30% of proportional share
-    
+    float bulge_gas = bulge_to_total * 0.5 * g->ColdGas; // 50% of proportional share
+
     if (bulge_gas <= 0.0) {
         return 0.0;
     }
@@ -367,7 +367,7 @@ void apply_environmental_effects(struct GALAXY *g, struct GALAXY *galaxies,
     }
     
     // 3. Scale with user parameter
-    env_strength *= 2.0;
+    // env_strength *= 25.0;
     // 4. Apply type-dependent scaling
     env_strength *= type_factor;
     
@@ -461,25 +461,25 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         //            g->ColdGas, g->StellarMass, g->DiskScaleRadius);
         // }
         
-        // Calculate disk molecular gas through SHARK-exact radial integration
-        float disk_molecular_gas = integrate_molecular_gas_radial(g, run_params);
+        // // Calculate disk molecular gas through SHARK-exact radial integration
+        // float disk_molecular_gas = integrate_molecular_gas_radial(g, run_params);
         
-        // Calculate bulge molecular gas using SHARK-exact method
-        float bulge_molecular_gas = 0.0;
-        if (g->BulgeMass > 0.0) {
-            bulge_molecular_gas = calculate_bulge_molecular_gas(g, run_params);
-        }
+        // // Calculate bulge molecular gas using SHARK-exact method
+        // float bulge_molecular_gas = 0.0;
+        // if (g->BulgeMass > 0.0) {
+        //     bulge_molecular_gas = calculate_bulge_molecular_gas(g, run_params);
+        // }
         
-        // Total molecular gas - THIS IS THE KEY FIX
-        total_molecular_gas = disk_molecular_gas + bulge_molecular_gas;
-        // const float h = run_params->Hubble_h;
-        // const float re_pc = g->DiskScaleRadius * 1.0e6 / h / 1.67; // Half-mass radius in pc
-        // float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc; // Note: 2π for half-mass radius
-        // float gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
+        // // Total molecular gas - THIS IS THE KEY FIX
+        // total_molecular_gas = disk_molecular_gas + bulge_molecular_gas;
+        const float h = run_params->Hubble_h;
+        const float re_pc = g->DiskScaleRadius * 1.0e6 / h; // Half-mass radius in pc
+        float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc; // Note: 2π for half-mass radius
+        float gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
 
-        // total_molecular_gas = calculate_molecular_fraction_GD14(
-        //     gas_surface_density_center, 
-        //     g->MetalsColdGas / g->ColdGas); // Use absolute metallicity fraction
+        total_molecular_gas = calculate_molecular_fraction_GD14(
+            gas_surface_density_center, 
+            g->MetalsColdGas / g->ColdGas); // Use absolute metallicity fraction
 
         // Mass conservation check (SHARK does this)
         // CORRECT: Comparing fraction to fraction

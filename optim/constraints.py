@@ -493,6 +493,108 @@ class Constraint(object):
         plt.savefig(plotfile, dpi=100)
         plt.close()
         return
+    
+    def plot_target_smf(self, x_obs, y_obs, y_mod, x_sage, y_sage, output_dir):
+        """Plot TARGET SMF comparison - unified function for all TARGET_SMF constraints"""
+        plt.figure(figsize=(10, 7))
+        ax = plt.subplot(111)
+
+        # Plot current model (what PSO is optimizing)
+        plt.plot(x_obs, 10**y_mod, 'b-', linewidth=2.5, label='Current Model (PSO)', zorder=3)
+        
+        # Plot target (SAGE 2.0 data we want to match)
+        plt.plot(x_obs, 10**y_obs, 'r-', linewidth=2.5, label='Target (SAGE 2.0)', zorder=2)
+        
+        # Plot reference SAGE for context
+        plt.plot(x_sage, 10**y_sage, 'k--', linewidth=2, alpha=0.7, label='Reference SAGE', zorder=1)
+        
+        # Calculate differences and add highlighting
+        diff = np.abs(y_mod - y_obs)
+        max_diff = np.max(diff)
+        avg_diff = np.mean(diff)
+        rms_diff = np.sqrt(np.mean(diff**2))
+        
+        # Shade regions where difference is large
+        large_diff_mask = diff > avg_diff + np.std(diff)
+        if np.any(large_diff_mask):
+            plt.scatter(x_obs[large_diff_mask], 10**y_obs[large_diff_mask], 
+                    s=100, c='orange', marker='o', alpha=0.7, 
+                    label=f'Large differences', zorder=4)
+
+        # Determine redshift and title from constraint class name
+        constraint_name = self.__class__.__name__
+        if 'TARGET_SMF_z0' in constraint_name:
+            z_label = 'z=0'
+            filename = 'target_smf_z0_progress.png'
+        elif 'TARGET_SMF_z05' in constraint_name:
+            z_label = 'z=0.5'
+            filename = 'target_smf_z05_progress.png'
+        elif 'TARGET_SMF_z10' in constraint_name:
+            z_label = 'z=1.0'
+            filename = 'target_smf_z10_progress.png'
+        elif 'TARGET_SMF_z15' in constraint_name:
+            z_label = 'z=1.5'
+            filename = 'target_smf_z15_progress.png'
+        elif 'TARGET_SMF_z20' in constraint_name:
+            z_label = 'z=2.0'
+            filename = 'target_smf_z20_progress.png'
+        elif 'TARGET_SMF_z24' in constraint_name:
+            z_label = 'z=2.4'
+            filename = 'target_smf_z24_progress.png'
+        elif 'TARGET_SMF_z31' in constraint_name:
+            z_label = 'z=3.1'
+            filename = 'target_smf_z31_progress.png'
+        elif 'TARGET_SMF_z36' in constraint_name:
+            z_label = 'z=3.6'
+            filename = 'target_smf_z36_progress.png'
+        elif 'TARGET_SMF_z46' in constraint_name:
+            z_label = 'z=4.6'
+            filename = 'target_smf_z46_progress.png'
+        elif 'TARGET_SMF_z57' in constraint_name:
+            z_label = 'z=5.7'
+            filename = 'target_smf_z57_progress.png'
+        elif 'TARGET_SMF_z63' in constraint_name:
+            z_label = 'z=6.3'
+            filename = 'target_smf_z63_progress.png'
+        elif 'TARGET_SMF_z77' in constraint_name:
+            z_label = 'z=7.7'
+            filename = 'target_smf_z77_progress.png'
+        elif 'TARGET_SMF_z85' in constraint_name:
+            z_label = 'z=8.5'
+            filename = 'target_smf_z85_progress.png'
+        elif 'TARGET_SMF_z104' in constraint_name:
+            z_label = 'z=10.4'
+            filename = 'target_smf_z104_progress.png'
+        else:
+            # Generic fallback
+            z_label = constraint_name.replace('TARGET_SMF_', '').replace('_', '=')
+            filename = f'{constraint_name.lower()}_progress.png'
+
+        plt.yscale('log')
+        plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+        plt.ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
+        plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+        
+        # Add statistics text box
+        stats_text = f'Max diff: {max_diff:.3f}\nAvg diff: {avg_diff:.3f}\nRMS diff: {rms_diff:.3f}'
+        plt.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+                verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+        
+        plt.title(f'TARGET SMF {z_label}: PSO Progress', fontsize=14)
+        leg = plt.legend(loc='upper right', numpoints=1, labelspacing=0.1)
+        leg.draw_frame(False)
+        for t in leg.get_texts():
+            t.set_fontsize('medium')
+            
+        plotfile = os.path.join(output_dir, filename)
+        plt.savefig(plotfile, dpi=100)
+        plt.close()
+        
+        # Print progress info
+        print(f"TARGET SMF {z_label}: Max diff = {max_diff:.3f}, Avg diff = {avg_diff:.3f}, RMS = {rms_diff:.3f}")
+        
+        return
 
     def _get_raw_data(self, modeldir, subvols):
         """Gets the model and observational data for further analysis.
@@ -539,6 +641,9 @@ class Constraint(object):
             
         # Get constraint name for appropriate plotting function
         constraint_name = self.__class__.__name__
+
+        if constraint_name.startswith('TARGET_SMF'):
+            self.plot_target_smf(x_obs, y_obs, y_mod, x_sage, y_sage, self.output_dir)
         if 'SMF' in constraint_name:
             if 'SMF_red' not in constraint_name and 'SMF_blue' not in constraint_name:
                 self.plot_smf(x_obs, y_obs, y_mod, x_sage, y_sage, self.output_dir)
@@ -1855,6 +1960,123 @@ class HSMR_z40(HSMR):
         y_sage = stellarmass
 
         return x_sage, y_sage
+    
+class TARGET_SMF_z0(SMF):
+    """SMF constraint that targets your SAGE 2.0 model's z=0 output"""
+    
+    z = [0]
+    
+    def get_obs_x_y_err(self):
+        # Load the target SMF data from CSV
+        target_data = self.load_observation('comprehensive_all_z0.0_0.5.csv', cols=[0,1])
+        x_obs = target_data[0]
+        y_obs = target_data[1]
+        err = np.ones_like(y_obs) * 0.05  # 5% error
+        return x_obs, y_obs, err, err
+    
+    def get_sage_x_y(self):
+        # Keep the real SAGE comparison for reference in plots
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[0,1])
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        x_sage = logm[valid_mask]
+        y_sage = logphi[valid_mask]
+        return x_sage, y_sage
+
+class TARGET_SMF_z05(SMF):
+    """SMF constraint that targets your SAGE 2.0 model's z=0.5 output"""
+    
+    z = [0.5]
+    
+    def get_obs_x_y_err(self):
+        target_data = np.loadtxt('/data/target_smf_data/target_smf_z05_sage_2.0.csv', 
+                               delimiter=',', comments='#')
+        x_obs = target_data[:, 0]
+        y_obs = target_data[:, 1]
+        err = np.ones_like(y_obs) * 0.05
+        return x_obs, y_obs, err, err
+    
+    def get_sage_x_y(self):
+        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[4,5])
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        return logm[valid_mask], logphi[valid_mask]
+
+class TARGET_SMF_z10(SMF):
+    """SMF constraint that targets your SAGE 2.0 model's z=1.0 output"""
+    
+    z = [1.0]
+    
+    def get_obs_x_y_err(self):
+        target_data = np.loadtxt('/data/target_smf_data/target_smf_z10_sage_2.0.csv', 
+                               delimiter=',', comments='#')
+        x_obs = target_data[:, 0]
+        y_obs = target_data[:, 1]
+        err = np.ones_like(y_obs) * 0.05
+        return x_obs, y_obs, err, err
+    
+    def get_sage_x_y(self):
+        logm, phi = self.load_observation('/data/sage_smf_extra_redshifts.csv', cols=[4,5])
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        return logm[valid_mask], logphi[valid_mask]
+
+class TARGET_SMF_z20(SMF):
+    """SMF constraint that targets your SAGE 2.0 model's z=2.0 output"""
+    
+    z = [2.0]
+    
+    def get_obs_x_y_err(self):
+        target_data = np.loadtxt('/data/target_smf_data/target_smf_z20_sage_2.0.csv', 
+                               delimiter=',', comments='#')
+        x_obs = target_data[:, 0]
+        y_obs = target_data[:, 1]
+        err = np.ones_like(y_obs) * 0.05
+        return x_obs, y_obs, err, err
+    
+    def get_sage_x_y(self):
+        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[12,13])
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        return logm[valid_mask], logphi[valid_mask]
+
+class TARGET_SMF_z31(SMF):
+    """SMF constraint that targets your SAGE 2.0 model's z=3.1 output"""
+    
+    z = [3.1]
+    
+    def get_obs_x_y_err(self):
+        target_data = np.loadtxt('/data/target_smf_data/target_smf_z31_sage_2.0.csv', 
+                               delimiter=',', comments='#')
+        x_obs = target_data[:, 0]
+        y_obs = target_data[:, 1]
+        err = np.ones_like(y_obs) * 0.05
+        return x_obs, y_obs, err, err
+    
+    def get_sage_x_y(self):
+        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[16,17])
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        return logm[valid_mask], logphi[valid_mask]
+
+class TARGET_SMF_z46(SMF):
+    """SMF constraint that targets your SAGE 2.0 model's z=4.6 output"""
+    
+    z = [4.6]
+    
+    def get_obs_x_y_err(self):
+        target_data = np.loadtxt('/data/target_smf_data/target_smf_z46_sage_2.0.csv', 
+                               delimiter=',', comments='#')
+        x_obs = target_data[:, 0]
+        y_obs = target_data[:, 1]
+        err = np.ones_like(y_obs) * 0.05
+        return x_obs, y_obs, err, err
+    
+    def get_sage_x_y(self):
+        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[20,21])
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        return logm[valid_mask], logphi[valid_mask]
 
 _constraint_re = re.compile((r'([0-9_a-zA-Z]+)' # name
                               r'(?:\(([0-9\.]+)-([0-9\.]+)\))?' # domain boundaries
@@ -1901,7 +2123,12 @@ def parse(spec, snapshot=None, sim=None, boxsize=None, vol_frac=None, age_alist_
         'HSMR_z20' : HSMR_z20,
         'HSMR_z30' : HSMR_z30,
         'HSMR_z40' : HSMR_z40,
-        'SMD_evolution': SMD_evolution
+        'TARGET_SMF_z0': TARGET_SMF_z0,
+        'TARGET_SMF_z05': TARGET_SMF_z05,
+        'TARGET_SMF_z10': TARGET_SMF_z10,
+        'TARGET_SMF_z20': TARGET_SMF_z20,
+        'TARGET_SMF_z31': TARGET_SMF_z31,
+        'TARGET_SMF_z46': TARGET_SMF_z46
     }
 
     def _parse(s,output_dir):

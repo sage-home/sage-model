@@ -25,13 +25,14 @@ import os
 from scipy import stats
 import pandas as pd
 from random import seed
+import matplotlib.gridspec as gridspec
 
 # Configuration parameters - UPDATE THESE TO MATCH YOUR SETUP
 # Define multiple directories and their properties
 MODEL_CONFIGS = [
     {
         'name': 'SAGE 2.0',           # Display name for legend
-        'dir': './output/millennium_CGMfirst/',  # Directory path
+        'dir': './output/millennium_noenviro/',  # Directory path
         'color': 'black',            # Color for plotting
         'linestyle': '-',            # Line style
         'linewidth': 3,              # Thick line for SAGE 2.0
@@ -48,6 +49,18 @@ MODEL_CONFIGS = [
         'alpha': 0.8,                # Transparency
         'boxsize': 62.5,             # Box size in h^-1 Mpc for this model
         'volume_fraction': 1.0       # Fraction of the full volume output by the model
+    },
+    # NEW: Add your comparison model here
+    {
+        'name': 'Broken Model',   # UPDATE: Display name for your comparison model
+        'dir': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/',  # UPDATE: Path to your comparison model directory
+        'color': 'blue',            # Color for plotting
+        'linestyle': ':',           # Dotted line style
+        'linewidth': 2,             # Line width
+        'alpha': 0.8,               # Transparency
+        'boxsize': 62.5,            # Box size in h^-1 Mpc for this model
+        'volume_fraction': 1.0,     # Fraction of the full volume output by the model
+        'use_for_residuals': True    # NEW: Flag to indicate this is the comparison model
     }
 ]
 
@@ -77,7 +90,7 @@ OBSERVATIONAL_FILES = [
 ]
 
 FileName = 'model_0.hdf5'
-OutputDir = './output/millennium_CGMfirst/plots/'
+OutputDir = './output/millennium_noenviro/plots/'
 ObsDataFile = './data/SMF_data_points.ecsv'  # Path to observational data file
 MuzzinDataFile = './data/SMF_Muzzin2013.dat'  # Path to Muzzin 2013 data file
 SantiniDataFile = './data/SMF_Santini2012.dat'  # Path to Santini 2012 data file
@@ -2342,6 +2355,456 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
     
     return fig, axes
 
+def calculate_residuals(bin_centers1, phi1, bin_centers2, phi2):
+    """
+    Calculate residuals between two SMF datasets by interpolating to common mass bins
+    
+    Parameters:
+    -----------
+    bin_centers1, phi1 : array
+        Mass bins and phi values for first dataset (SAGE 2.0)
+    bin_centers2, phi2 : array
+        Mass bins and phi values for second dataset (comparison model)
+        
+    Returns:
+    --------
+    common_masses, residuals : array
+        Common mass bins and log10(phi1/phi2) residuals
+    """
+    # Filter out zero or negative values
+    mask1 = phi1 > 0
+    mask2 = phi2 > 0
+    
+    if not np.any(mask1) or not np.any(mask2):
+        return np.array([]), np.array([])
+    
+    # Define common mass range
+    mass_min = max(np.min(bin_centers1[mask1]), np.min(bin_centers2[mask2]))
+    mass_max = min(np.max(bin_centers1[mask1]), np.max(bin_centers2[mask2]))
+    
+    if mass_min >= mass_max:
+        return np.array([]), np.array([])
+    
+    # Create common mass grid
+    common_masses = np.linspace(mass_min, mass_max, 20)
+    
+    # Interpolate both datasets to common grid
+    from scipy.interpolate import interp1d
+    
+    try:
+        # Convert to log space for interpolation
+        log_phi1 = np.log10(phi1[mask1])
+        log_phi2 = np.log10(phi2[mask2])
+        
+        # Create interpolation functions
+        interp1 = interp1d(bin_centers1[mask1], log_phi1, kind='linear', 
+                          bounds_error=False, fill_value=np.nan)
+        interp2 = interp1d(bin_centers2[mask2], log_phi2, kind='linear', 
+                          bounds_error=False, fill_value=np.nan)
+        
+        # Interpolate to common grid
+        log_phi1_interp = interp1(common_masses)
+        log_phi2_interp = interp2(common_masses)
+        
+        # Calculate residuals: log10(phi1/phi2) = log_phi1 - log_phi2
+        residuals = log_phi1_interp - log_phi2_interp
+        
+        # Filter out NaN values
+        mask = np.isfinite(residuals)
+        
+        return common_masses[mask], residuals[mask]
+        
+    except Exception as e:
+        print(f"Warning: Could not calculate residuals: {e}")
+        return np.array([]), np.array([])
+
+
+def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7, 12), 
+                                             save_path=None, show_observations=True, 
+                                             figure_title=""):
+    """
+    Create a comprehensive grid plot of stellar mass functions for ALL redshift bins
+    with residual plots beneath each main panel
+    
+    MODIFIED: Added residual plots comparing SAGE 2.0 vs comparison model
+    """
+    
+    # Load observational data
+    obs_data = {}
+    muzzin_data = {}
+    santini_data = {}
+    wright_data = {}
+    
+    # Track which dataset TYPES have appeared in legends globally
+    obs_datasets_in_legend = {
+        'baldry': False,
+        'muzzin': False,
+        'santini': False,
+        'cosmos': False,
+        'wright': False,
+        'smfvals': False,
+        'farmer': False
+    }
+    
+    # Track which simulation models have appeared in legends globally
+    sim_datasets_in_legend = {
+        'shark': False
+    }
+    
+    # Track which models have appeared in legends globally
+    models_in_legend = set()
+    
+    if show_observations:
+        obs_data = load_observational_data()
+        muzzin_data = load_muzzin_2013_data()
+        santini_data = load_santini_2012_data()
+        wright_data = load_wright_2018_data()
+        
+        if not obs_data and not muzzin_data and not santini_data and not wright_data:
+            print("Warning: No observational data loaded. Proceeding without observations.")
+            show_observations = False
+        else:
+            print(f"Loaded {len(obs_data)} ECSV bins, {len(muzzin_data)} Muzzin 2013 bins, and {len(santini_data)} Santini 2012 bins, and {len(wright_data)} Wright 2018 bins")
+
+    # Check that all model directories exist and get available snapshots
+    model_snapshots = {}
+    model_configs_valid = []
+    for model_config in MODEL_CONFIGS:
+        directory = model_config['dir']
+        model_name = model_config['name']
+        
+        if not os.path.exists(directory):
+            print(f"Error: Directory {directory} does not exist!")
+            continue
+            
+        available_snapshots = get_available_snapshots(directory)
+        if not available_snapshots:
+            print(f"Warning: No snapshots found in {directory}")
+            continue
+            
+        model_snapshots[model_name] = available_snapshots
+        model_configs_valid.append(model_config)
+        
+        # Print model info including box size
+        boxsize = model_config['boxsize']
+        volume_fraction = model_config['volume_fraction']
+        volume = get_model_volume(model_config)
+        print(f"Found {len(available_snapshots)} snapshots in {directory} for {model_name}")
+        print(f"  Box size: {boxsize} h^-1 Mpc, Volume fraction: {volume_fraction}, Total volume: {volume:.2e} (Mpc/h)^3")
+    
+    if not model_snapshots:
+        raise ValueError("No valid model directories with snapshots found")
+    
+    # Use snapshots from first valid model to create ALL redshift bins (no z_range filtering)
+    first_model_snapshots = list(model_snapshots.values())[0]
+    redshift_bins = create_redshift_bins(first_model_snapshots, z_range=None)  # Get ALL bins
+    
+    if not redshift_bins:
+        raise ValueError("No redshift bins with data found")
+    
+    print(f"Created {len(redshift_bins)} redshift bins covering full redshift range z=0-12")
+    
+    # MODIFIED: Create grid with main plots and residual plots
+    # Main plots: 5 rows × 3 cols, Residual plots: 5 rows × 3 cols (smaller height)
+    n_rows_main = 5
+    n_cols = 3
+    n_panels = len(redshift_bins)
+    
+    # Create figure with gridspec for different sized subplots
+    fig = plt.figure(figsize=(15, 30))
+    
+    # Create gridspec: each redshift bin gets 2 rows (1 main + 1 residual)
+    # Main plots get 3 units of height, residual plots get 1 unit
+    height_ratios = []
+    for i in range(n_rows_main):
+        height_ratios.extend([4, 1])  # 3:1 ratio for main:residual
+    
+    gs = gridspec.GridSpec(n_rows_main * 2, n_cols, height_ratios=height_ratios, 
+                          hspace=0.1, wspace=0.3, figure=fig)
+    
+    # Create arrays to store axes
+    main_axes = []
+    residual_axes = []
+    
+    for i in range(n_panels):
+        if i >= n_rows_main * n_cols:
+            break
+            
+        row = i // n_cols
+        col = i % n_cols
+        
+        # Main plot in the upper position
+        main_ax = fig.add_subplot(gs[row * 2, col])
+        main_axes.append(main_ax)
+        
+        # Residual plot in the lower position
+        residual_ax = fig.add_subplot(gs[row * 2 + 1, col])
+        residual_axes.append(residual_ax)
+        
+        # Share x-axis between main and residual plots
+        residual_ax.sharex(main_ax)
+    
+    # Store SMF data for residual calculations
+    model_smf_data = {}  # Will store {model_name: {bin_index: (masses, phi)}}
+    
+    for i, (z_low, z_high, z_center, snapshots) in enumerate(redshift_bins):
+        if i >= len(main_axes):
+            break
+            
+        main_ax = main_axes[i]
+        residual_ax = residual_axes[i]
+        
+        print(f"Processing redshift bin {i+1}/{n_panels}: {z_low:.1f} < z < {z_high:.1f} with {len(snapshots)} snapshots")
+        
+        # Track what gets plotted in this panel for legends
+        panel_sim_legend_items = []  # For simulations legend (upper right)
+        panel_obs_legend_items = []  # For observations legend (lower left)
+        
+        # Add observational data first (so it appears behind SAGE data)
+        if show_observations:
+            obs_legend_items, sim_legend_items = add_observational_data_with_baldry(
+                main_ax, z_low, z_high, obs_data, muzzin_data, santini_data, wright_data, 
+                obs_datasets_in_legend, sim_datasets_in_legend)
+            panel_obs_legend_items.extend(obs_legend_items)
+            panel_sim_legend_items.extend(sim_legend_items)
+        
+        # Initialize storage for this bin
+        model_smf_data[i] = {}
+        
+        # Process each model
+        model_redshifts_used = {}
+        
+        for model_idx, model_config in enumerate(model_configs_valid):
+            model_name = model_config['name']
+            directory = model_config['dir']
+            color = model_config['color']
+            linestyle = model_config['linestyle']
+            linewidth = model_config.get('linewidth', 2)
+            alpha = model_config['alpha']
+            
+            # Get model-specific volume
+            volume = get_model_volume(model_config)
+            
+            # Skip if this model doesn't have data
+            if model_name not in model_snapshots:
+                continue
+            
+            try:
+                # Find the best snapshot for this redshift bin from this model
+                available_snaps = model_snapshots[model_name]
+                target_z = z_low
+                best_snap = None
+                min_diff = float('inf')
+                
+                # Find snapshots in this bin for this model
+                snapshots_in_bin = []
+                for snap in available_snaps:
+                    z_snap = get_redshift_from_snapshot(snap)
+                    if z_low <= z_snap < z_high:
+                        snapshots_in_bin.append(snap)
+                
+                if not snapshots_in_bin:
+                    print(f"  No snapshots found for {model_name} in this redshift bin")
+                    continue
+                
+                # Use the same logic as original script to pick the best snapshot
+                if is_lowest_redshift_bin(z_low, z_high):
+                    # Use z=0 snapshot if available
+                    if 63 in snapshots_in_bin:
+                        best_snap = 63
+                    else:
+                        best_snap = snapshots_in_bin[0]  # Use first available
+                else:
+                    # Find snapshot with redshift just above the lower bound
+                    for snap in snapshots_in_bin:
+                        z_snap = get_redshift_from_snapshot(snap)
+                        if z_snap >= target_z:
+                            diff = z_snap - target_z
+                            if diff < min_diff:
+                                min_diff = diff
+                                best_snap = snap
+                    
+                    # If no snapshot found above target_z, use closest
+                    if best_snap is None:
+                        for snap in snapshots_in_bin:
+                            z_snap = get_redshift_from_snapshot(snap)
+                            diff = abs(z_snap - target_z)
+                            if diff < min_diff:
+                                min_diff = diff
+                                best_snap = snap
+                
+                if best_snap is None:
+                    continue
+                
+                snap_str = f'Snap_{best_snap}'
+                z_best = get_redshift_from_snapshot(best_snap)
+                model_redshifts_used[model_name] = z_best
+
+                # Read data for the selected snapshot
+                stellar_mass = read_hdf(directory, snap_num=snap_str, param='StellarMass')
+                galaxy_type = read_hdf(directory, snap_num=snap_str, param='Type')
+                
+                if stellar_mass is None or galaxy_type is None:
+                    print(f"  Could not read data for {model_name} Snap_{best_snap}")
+                    continue
+                
+                # Convert to solar masses
+                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                
+                # Apply galaxy type filter
+                if galaxy_types == 'central':
+                    mask = (galaxy_type == 0)
+                elif galaxy_types == 'satellite':
+                    mask = (galaxy_type == 1)
+                elif galaxy_types == 'orphan':
+                    mask = (galaxy_type == 2)
+                else:  # 'all'
+                    mask = np.ones(len(stellar_mass), dtype=bool)
+                
+                # Only keep galaxies with positive stellar mass and correct type
+                combined_mask = (stellar_mass > 0) & mask
+                filtered_masses = stellar_mass[combined_mask]
+                
+                print(f"  {model_name}: Using Snap_{best_snap} (z={z_best:.2f}): {len(filtered_masses)} galaxies, Volume={volume:.2e} (Mpc/h)^3")
+                
+                if len(filtered_masses) == 0:
+                    continue
+                
+                # Calculate SMF with model-specific volume
+                xaxeshisto, phi, phi_err = calculate_smf(filtered_masses, volume=volume)
+                
+                # Store SMF data for residual calculation
+                model_smf_data[i][model_name] = (xaxeshisto, phi)
+                
+                # Plot SAGE data on main axis
+                mask_plot = phi > 0
+                if np.any(mask_plot):
+                    phi_log = np.log10(phi[mask_plot])
+                    phi_err_log = phi_err[mask_plot] / (phi[mask_plot] * np.log(10))
+                    
+                    # Only create label for models that haven't appeared in any previous legend
+                    model_label = None
+                    if model_name not in models_in_legend:
+                        model_label = f'{model_name} (z={z_best:.2f})'
+                        models_in_legend.add(model_name)
+                    
+                    # SAGE models: LINES ONLY, NO POINTS
+                    sage_plot = main_ax.plot(xaxeshisto[mask_plot], phi_log, 
+                               color=color, linestyle=linestyle, linewidth=linewidth,
+                               label=model_label, alpha=alpha)
+                    
+                    # Add to simulation legend if labeled
+                    if model_label is not None:
+                        panel_sim_legend_items.append((sage_plot[0], model_label))
+                
+                # Add upper limits for zero counts
+                mask_upper = phi == 0
+                if np.any(mask_upper):
+                    phi_upper = np.log10(phi_err[mask_upper])
+                    main_ax.plot(xaxeshisto[mask_upper], phi_upper, 'v', 
+                               color=color, markersize=4, alpha=alpha*0.7)
+                
+            except Exception as e:
+                print(f"Warning: Could not process {model_name} for this redshift bin: {e}")
+                continue
+        
+        # CALCULATE AND PLOT RESIDUALS
+        # Find SAGE 2.0 and comparison model data
+        sage_2_data = model_smf_data[i].get('SAGE 2.0', None)
+        comparison_data = None
+        comparison_name = None
+        
+        # Find the comparison model (marked with use_for_residuals=True)
+        for model_config in model_configs_valid:
+            if model_config.get('use_for_residuals', False):
+                comparison_name = model_config['name']
+                comparison_data = model_smf_data[i].get(comparison_name, None)
+                break
+        
+        if sage_2_data is not None and comparison_data is not None:
+            sage_masses, sage_phi = sage_2_data
+            comp_masses, comp_phi = comparison_data
+            
+            # Calculate residuals
+            common_masses, residuals = calculate_residuals(sage_masses, sage_phi, 
+                                                         comp_masses, comp_phi)
+            
+            if len(residuals) > 0:
+                # Plot residuals
+                residual_ax.plot(common_masses, residuals, 'o-', color='red', 
+                               markersize=3, alpha=0.7, linewidth=1)
+                residual_ax.axhline(y=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+                
+                # Set residual plot limits and labels
+                residual_ax.set_ylim(-1.5, 1.5)
+                residual_ax.set_ylabel(f'log(SAGE 2.0/{comparison_name})', fontsize=10)
+                residual_ax.grid(True, alpha=0.3)
+                
+                print(f"  Plotted residuals: {len(residuals)} points, range: {np.min(residuals):.2f} to {np.max(residuals):.2f}")
+            else:
+                print(f"  No residuals calculated - insufficient overlap")
+                # Add text indicating no data
+                residual_ax.text(0.5, 0.5, 'No residual data', ha='center', va='center', 
+                               transform=residual_ax.transAxes, fontsize=10, alpha=0.5)
+        else:
+            print(f"  No residuals calculated - missing data (SAGE 2.0: {sage_2_data is not None}, Comparison: {comparison_data is not None})")
+            # Add text indicating missing data
+            residual_ax.text(0.5, 0.5, 'Missing model data', ha='center', va='center', 
+                           transform=residual_ax.transAxes, fontsize=10, alpha=0.5)
+        
+        # Formatting for main plot
+        main_ax.set_title(f'{z_low:.1f} < z < {z_high:.1f}', fontsize=12)
+        main_ax.set_xlim(8, 12)
+        main_ax.set_ylim(-6, -1)
+        
+        # Remove x-axis labels from main plots (residual plots will have them)
+        main_ax.set_xlabel('')
+        main_ax.tick_params(labelbottom=False)
+        
+        # LEGEND HANDLING: Create two separate legends for main plot only
+        main_ax.legend().set_visible(False) if main_ax.get_legend() else None
+        
+        # Create simulations legend (upper right) - SAGE models + SHARK
+        if panel_sim_legend_items:
+            sim_handles, sim_labels = zip(*panel_sim_legend_items)
+            sim_legend = main_ax.legend(sim_handles, sim_labels, fontsize=10, loc='upper right', 
+                                       frameon=False)
+            main_ax.add_artist(sim_legend)
+            print(f"  Panel {i+1}: Added simulation legend with {len(sim_handles)} items")
+        
+        # Create observations legend (lower left) - All observational data
+        if panel_obs_legend_items:
+            obs_handles, obs_labels = zip(*panel_obs_legend_items)
+            obs_legend = main_ax.legend(obs_handles, obs_labels, fontsize=10, loc='lower left', 
+                                       frameon=False)
+            print(f"  Panel {i+1}: Added observation legend with {len(obs_handles)} items")
+    
+    # Set common labels
+    n_bins = len(redshift_bins)
+    for i in range(min(n_bins, len(main_axes))):
+        row = i // n_cols
+        col = i % n_cols
+        
+        # Bottom row residual plots get x-labels
+        if row == n_rows_main - 1 or i >= n_bins - n_cols:
+            residual_axes[i].set_xlabel(r'$\log_{10}(M_*/M_{\odot})$', fontsize=14)
+        
+        # Left column gets y-labels
+        if col == 0:
+            main_axes[i].set_ylabel(r'$\log_{10}(\phi/\mathrm{Mpc}^{-3}\,\mathrm{dex}^{-1})$', fontsize=14)
+    
+    # Add overall title
+    if figure_title:
+        fig.suptitle(figure_title, fontsize=16, y=0.95)
+    
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved comprehensive redshift grid plot with residuals to {save_path}")
+    
+    return fig, main_axes, residual_axes
+
 def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12), 
                           save_path=None, show_observations=True, figure_title=""):
     """
@@ -3095,6 +3558,12 @@ if __name__ == "__main__":
         # Satellite galaxies only  
         plot_smf_all_redshift_bins(galaxy_types='satellite',
                                 save_path=OutputDir + 'comprehensive_satellite.pdf')
+        
+        print("\nCreating COMPREHENSIVE SMF grid with residuals (z=0-12)...")
+        plot_smf_all_redshift_bins_with_residuals(
+            galaxy_types='all',
+            save_path=OutputDir + 'comprehensive_all_with_residuals.pdf'
+        )
         
         print("\nSplit redshift SMF analysis complete!")
         print("Generated plots:")

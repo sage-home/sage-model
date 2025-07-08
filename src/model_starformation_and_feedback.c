@@ -493,6 +493,11 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
             // Get redshift-dependent ejection efficiency with significant reduction
             double fb_eject = 0.2 * get_redshift_dependent_parameter(run_params->FeedbackEjectionEfficiency, 
                                                              run_params->Ejection_Alpha, z);
+
+            // For smaller halos, further reduce ejection to allow gas to accumulate
+            // if (galaxies[centralgal].Vvir < 80.0) {
+            //     fb_eject *= 0.5;
+            // }
             
             if (stars > 0.0) {
                 ejected_mass = (fb_eject * (run_params->EtaSNcode * run_params->EnergySNcode) / 
