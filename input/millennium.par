@@ -70,7 +70,7 @@ SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
 FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
-inflowFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
+inflowFactor   0.0    %fraction of ejected mass reincorporated per dynamical time to hot
 
 RadioModeEfficiency     0.08   %AGN radio mode efficiency (AGNrecipeOn=2)
 QuasarModeEfficiency    0.005  %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
@@ -93,8 +93,8 @@ EtaSN                   5.0e-3  %supernova efficiency
 %----- SF Enhancement ---------------------
 %------------------------------------------
 
-VvirThreshold               60.0        % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        1.2         % Power-law exponent for velocity scaling
+VvirThreshold               35.0        % Threshold velocity in km/s for enhancement
+VvirEnhancementPower        0.8         % Power-law exponent for velocity scaling
 
 %------------------------------------------
 %----- Reionization Models ----------------
@@ -127,9 +127,9 @@ SFHighMassSlope            -0.3         % Power-law slope for M > Mpivot
 %------------------------------------------
  
 CGMInfallFraction           1.0           % Fraction of infall goes through CGM first
-CGMTransferEfficiency       0.025          % Transfer efficiency per dynamical time
+CGMTransferEfficiency       0.035          % Transfer efficiency per dynamical time
 CGMPristineFraction         0.8           % Fraction of CGM transfer that is pristine
-CGMMixingTimescale          2.0          % Gyr mixing timescale
+CGMMixingTimescale          1.0          % Gyr mixing timescale
 
 
 %------------------------------------------
