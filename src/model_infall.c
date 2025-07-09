@@ -233,8 +233,11 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
     } else if(infallingGas > 0.0) {
         
         // Split infall between direct-to-hot and CGM pathways
-        double cgm_pathway = infallingGas * get_cgm_infall_fraction(gal, galaxies, run_params);
-        double direct_pathway = infallingGas * (1.0 - get_cgm_infall_fraction(gal, galaxies, run_params));
+        // double cgm_pathway = infallingGas * get_cgm_infall_fraction(gal, galaxies, run_params);
+        // double direct_pathway = infallingGas * (1.0 - get_cgm_infall_fraction(gal, galaxies, run_params));
+
+        double cgm_pathway = infallingGas * run_params->CGMInfallFraction;
+        double direct_pathway = infallingGas * (1.0 - run_params->CGMInfallFraction);
 
         // Direct pathway (original behavior)
         if(direct_pathway > 0.0) {
