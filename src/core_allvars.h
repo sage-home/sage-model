@@ -437,7 +437,6 @@ struct params
     int32_t     ReionizationOn;
     int32_t     DiskInstabilityOn;
     int32_t     MassDependentSFEnabled;  
-    int32_t     ReionizationModel;     
     int32_t     MassLoadingModel;  
     int32_t     VvirEnhancementOn;      
 
@@ -457,19 +456,6 @@ struct params
     double     Reionization_zr;
     double     ThresholdSatDisruption;
 
-    // Parameters for Blitz and Rosolowsky (2006) model
-    double     H2FractionFactor;     // Controls normalization of H2/HI calculation
-    double     H2FractionExponent;   // Controls H2/HI ratio calculation
-
-    // Parameters for Krumholz & Dekel (2012) model
-    double     ClumpFactor;          // Gas clumping factor, default ~5
-    double     ClumpExponent;        // Power-law exponent for metallicity dependence, default ~0.5
-
-    // Parameters redshift-dependent parameters
-    double     SFR_Alpha;
-    double     Reheating_Alpha;
-    double     Ejection_Alpha;
-
     // Parameters for star formation enhancement based on virial velocity
     double     VvirThreshold;           // Virial velocity threshold for SF enhancement (km/s)
     double     VvirEnhancementPower;    // Power-law exponent for velocity enhancement
@@ -484,13 +470,6 @@ struct params
     double     SFMassPivot;            // Pivot mass in 10^10 Msun/h
     double     SFLowMassSlope;         // Power-law slope for M < Mpivot
     double     SFHighMassSlope;        // Power-law slope for M > Mpivot
-
-    // Enhanced reionization parameters
-    double     FilteringMassNorm;      // Normalization of filtering mass [10^10 Msun/h]
-    double     UVBackgroundStrength;   // Early UV background strength (pre-reionization)
-    double     PatchyReionWidth;       // Width of reionization transition in redshift
-    double     LocalReionVariance;     // Strength of spatial variance in reionization
-    double     PostReionSlope;         // Slope of Mfilt evolution after reionization
 
     double     UnitLength_in_cm;
     double     UnitVelocity_in_cm_per_s;

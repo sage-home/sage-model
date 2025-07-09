@@ -37,33 +37,6 @@ void init(struct params *run_params)
         run_params->MassLoadingModel = 0;  // Default to standard model
     }
 
-    if (run_params->ReionizationModel != 0 && 
-        run_params->ReionizationModel != 1 && 
-        run_params->ReionizationModel != 2 && 
-        run_params->ReionizationModel != 3) {
-        run_params->ReionizationModel = 0;  // Default to simple model
-    }
-
-    if (run_params->FilteringMassNorm <= 0.0) {
-        run_params->FilteringMassNorm = 0.7;  // Based on Okamoto et al. (2008)
-    }
-
-    if (run_params->UVBackgroundStrength < 0.0) {
-        run_params->UVBackgroundStrength = 0.1;  // Default mild pre-reionization UV 
-    }
-
-    if (run_params->PatchyReionWidth <= 0.0) {
-        run_params->PatchyReionWidth = 1.0;  // Default reionization width dz
-    }
-
-    if (run_params->LocalReionVariance < 0.0) {
-        run_params->LocalReionVariance = 0.5;  // Default variance strength
-    }
-
-    if (run_params->PostReionSlope <= 0.0) {
-        run_params->PostReionSlope = -2.0/3.0;  // Default from Sobacchi & Mesinger (2013)
-    }
-
     if (run_params->MassDependentSFEnabled != 0 && run_params->MassDependentSFEnabled != 1) {
         run_params->MassDependentSFEnabled = 0;  // Disabled by default
     }

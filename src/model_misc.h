@@ -14,7 +14,6 @@ extern "C" {
     extern double get_virial_mass(const int halonr, const struct halo_data *halos, const struct params *run_params);
     extern double get_disk_radius(const int halonr, const int p, const struct halo_data *halos, const struct GALAXY *galaxies);
     extern double dmax(const double x, const double y);
-    extern double get_redshift_dependent_parameter(double param_z0, double alpha, double redshift);
     extern void print_gas_flow_summary(const int gal, struct GALAXY *galaxies, const double dt, const double redshift);
 
 #ifdef __cplusplus

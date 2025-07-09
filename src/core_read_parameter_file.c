@@ -233,45 +233,9 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "SFR_Alpha", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SFR_Alpha);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "Reheating_Alpha", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->Reheating_Alpha);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "Ejection_Alpha", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->Ejection_Alpha);
-    ParamID[NParam++] = DOUBLE;
-
     strncpy(ParamTag[NParam], "MassLoadingModel", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->MassLoadingModel);
     ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "ReionizationModel", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->ReionizationModel);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "FilteringMassNorm", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FilteringMassNorm);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "UVBackgroundStrength", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->UVBackgroundStrength);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "PatchyReionWidth", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->PatchyReionWidth);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "LocalReionVariance", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->LocalReionVariance);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "PostReionSlope", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->PostReionSlope);
-    ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "MassDependentSFEnabled", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->MassDependentSFEnabled);
@@ -300,11 +264,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     strncpy(ParamTag[NParam], "VvirEnhancementPower", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->VvirEnhancementPower);
     ParamID[NParam++] = DOUBLE;
-
-    run_params->CGMInfallFraction = 0.8;      // 80% through CGM first  
-    run_params->CGMTransferEfficiency = 0.1;  // 10% transfer efficiency
-    run_params->CGMPristineFraction = 0.7;    // 70% pristine
-    run_params->CGMMixingTimescale = 0.5;     // 0.5 Gyr mixing
 
     strncpy(ParamTag[NParam], "CGMInfallFraction", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->CGMInfallFraction);
