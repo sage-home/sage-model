@@ -352,15 +352,12 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 // Add hot gas infall (split over STEPS)
                 add_infall_to_hot(centralgal, hot_infall_total / STEPS, galaxies, run_params);
 
-                // NEW: Mix CGM components before transfer
+                // Mix CGM components before transfer
                 mix_cgm_components(centralgal, deltaT / STEPS, galaxies, run_params);
 
-                // NEW: Add this call after infall but before existing inflow
+                // Add this call after infall but before existing inflow
                 transfer_cgm_to_hot(centralgal, deltaT / STEPS, galaxies, run_params);
 
-                // if(run_params->inflowFactor > 0.0) {
-                //     inflow_gas(centralgal, deltaT / STEPS, galaxies, run_params);
-                // }
             } else {
                 if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
                     strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
@@ -381,7 +378,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     break;
             }
 
-            // NEW: Apply environmental effects after star formation
+            // Apply environmental effects after star formation
             // This ensures we use the updated H2_gas from star formation
             // apply_environmental_effects(&galaxies[p], galaxies, p, centralgal, run_params);
             
@@ -390,7 +387,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             //     update_gas_components(&galaxies[p], run_params);
             // }
 
-            // NEW: CGM-H2 diagnostic (only for central galaxy in final step)
+            // CGM-H2 diagnostic (only for central galaxy in final step)
             // if (p == centralgal && step == (STEPS - 1)) {
                 
             //     diagnose_cgm_h2_interaction(&galaxies[p], run_params);
@@ -398,10 +395,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             // }
             
         }
-
-        // if(centralgal == 0 && halonr < 10) {  // Print for first few halos
-        //     print_gas_flow_summary(centralgal, galaxies, deltaT, Zcurr);
-        // }
         // check for satellite disruption and merger events
         for(int p = 0; p < ngal; p++) {
 

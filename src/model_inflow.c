@@ -11,8 +11,6 @@
 
 void inflow_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
-    // Get current redshift for this galaxy
-    // double z = run_params->ZZ[galaxies[centralgal].SnapNum];
     
     const double Vcrit = 445.48 * run_params->inflowFactor;
 
@@ -41,15 +39,15 @@ void inflow_gas(const int centralgal, const double dt, struct GALAXY *galaxies, 
             double pristine_removed = inflowed * pristine_fraction;
             double enriched_removed = inflowed * enriched_fraction;
             
-            // Remove from CGM (existing code)
+            // Remove from CGM 
             galaxies[centralgal].CGMgas -= inflowed;
             galaxies[centralgal].MetalsCGMgas -= metallicity * inflowed;
             
-            // NEW: Also remove from components
+            // Also remove from components
             galaxies[centralgal].CGMgas_pristine -= pristine_removed;
             galaxies[centralgal].CGMgas_enriched -= enriched_removed;
-            
-            // Add to hot (existing code)
+
+            // Add to hot gas
             galaxies[centralgal].HotGas += inflowed;
             galaxies[centralgal].MetalsHotGas += metallicity * inflowed;
             
@@ -78,26 +76,6 @@ double get_cgm_transfer_efficiency(const int gal, struct GALAXY *galaxies, const
     }
     
     if (base_efficiency < 0.01) base_efficiency = 0.01;  // Reasonable minimum
-    
-    // Debug output
-    static int debug_counter = 0;
-    debug_counter++;
-    if (debug_counter % 10000 == 0) {
-        printf("DEBUG CGM Transfer: z=%.2f, M=%.2e, original=%.3f, new=%.3f", 
-               z, galaxies[gal].Mvir, original_efficiency, base_efficiency);
-        
-        if (z > 0.0 && galaxies[gal].Mvir > 0.0) {
-            double log_mass = log10(galaxies[gal].Mvir);
-            if (log_mass < 2.5) {
-                printf(" [COLD STREAM REDUCTION]");
-            } else {
-                printf(" [HIGH-Z, MASSIVE HALO]");
-            }
-        } else {
-            printf(" [LOW-Z OR NO MASS]");
-        }
-        printf("\n");
-    }
     
     return base_efficiency;
 }
@@ -182,17 +160,9 @@ void mix_cgm_components(const int centralgal, const double dt, struct GALAXY *ga
     }
     
     if(mixed_amount > 0.0) {
-        // Calculate average metallicity after mixing
-        // Pristine gas has zero metallicity, enriched gas has some metallicity
-        // const double current_enriched_metallicity = get_metallicity(galaxies[centralgal].CGMgas_enriched, 
-        //                                                            galaxies[centralgal].MetalsCGMgas);
-        
         // Move pristine gas to enriched component
         galaxies[centralgal].CGMgas_pristine -= mixed_amount;
         galaxies[centralgal].CGMgas_enriched += mixed_amount;
-        
-        // The mixed gas gets the average metallicity (pristine=0, so it's just diluted enriched metallicity)
-        // No change to total metals since pristine gas has zero metals
         
         // Safety checks
         if(galaxies[centralgal].CGMgas_pristine < 0.0) galaxies[centralgal].CGMgas_pristine = 0.0;

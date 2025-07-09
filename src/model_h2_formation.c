@@ -24,88 +24,59 @@ void init_gas_components(struct GALAXY *g)
  */
 float gd14_sigma_norm(float d_mw, float u_mw)
 {
-    // SHARK's exact g parameter calculation: g = sqrt(d_mw² + 0.0289)
+    // g parameter calculation: g = sqrt(d_mw² + 0.0289)
     float g = sqrt(d_mw * d_mw + 0.02);
     
-    // SHARK's exact sigma_r1 calculation
+    // sigma_r1 calculation
     float sqrt_term = sqrt(0.01 + u_mw);
     float sigma_r1 = 50.0 / g * sqrt_term / (1.0 + 0.69 * sqrt_term);
-    
-    // Note: SHARK multiplies by constants::MEGA² to convert to M☉/Mpc², 
-    // but since we're working in M☉/pc², we don't need this conversion
     
     return sigma_r1; // Returns in M☉/pc²
 }
 
-/**
- * calculate_molecular_fraction_GD14_SHARK_EXACT - EXACT SHARK implementation
- * This follows SHARK's fmol function exactly for the GD14 case
- */
+
 float calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity)
 {
-    // Early termination for edge cases (as SHARK does)
+    // Early termination for edge cases
     if (gas_surface_density <= 0.0) {
         return 0.0;
     }
     
-    // SHARK's exact GD14 implementation from the fmol function:
-    // else if (parameters.model == StarFormationParameters::GD14){
-    //     //Galaxy parameters
-    //     double d_mw = zgas;
-    //     double u_mw = Sigma_gas / constants::sigma_gas_mw;
-    
     // Step 1: Calculate d_mw (metallicity parameter)
-    // SHARK uses: d_mw = zgas (metallicity as absolute fraction, not relative to solar)
+    // d_mw = zgas (metallicity as absolute fraction, not relative to solar)
     float d_mw = metallicity;
     
     // Step 2: Calculate u_mw (surface density parameter)  
-    // SHARK uses: constants::sigma_gas_mw = 10 M☉/pc²
+    // constants::sigma_gas_mw = 10 M☉/pc²
     const float sigma_gas_mw = 10.0; // M☉/pc² (SHARK's normalization)
     float u_mw = gas_surface_density / sigma_gas_mw;
     
     // Step 3: Calculate alpha (variable exponent)
-    // SHARK's exact formula: alpha = 0.5 + 1/(1 + sqrt(u_mw * d_mw² / 600.0))
+    // alpha = 0.5 + 1/(1 + sqrt(u_mw * d_mw² / 600.0))
     float alpha = 0.5 + 1.0 / (1.0 + sqrt(u_mw * d_mw * d_mw / 600.0));
     
     // Step 4: Calculate normalization surface density
-    // SHARK uses: gd14_sigma_norm(d_mw, u_mw)
+    // gd14_sigma_norm(d_mw, u_mw)
     float sigma_norm = gd14_sigma_norm(d_mw, u_mw);
     
     // Step 5: Calculate R_mol (molecular-to-atomic ratio)
-    // SHARK's exact formula: rmol = (Sigma_gas / sigma_norm)^alpha
+    // rmol = (Sigma_gas / sigma_norm)^alpha
     float rmol = pow(gas_surface_density / sigma_norm, alpha);
     
     // Step 6: Convert to molecular fraction
-    // SHARK's exact formula: fmol = rmol / (1 + rmol)
+    // fmol = rmol / (1 + rmol)
     float fmol = rmol / (1.0 + rmol);
     
-    // Step 7: Apply bounds (as SHARK does in its fmol function)
+    // Step 7: Apply bounds
     if (fmol > 1.0) {
         fmol = 1.0;
     } else if (fmol < 0.0) {
         fmol = 0.0;
     }
     
-    // Debug output every 50,000 galaxies
-    // if (galaxy_debug_counter % 10000 == 0) {
-    //     printf("DEBUG GD14 SHARK EXACT (galaxy #%ld):\n", galaxy_debug_counter);
-    //     printf("  Input: gas_surf=%.2e M☉/pc², metallicity=%.4f\n", gas_surface_density, metallicity);
-    //     printf("  Step 1 - d_mw: %.4f\n", d_mw);
-    //     printf("  Step 2 - u_mw: %.4f (gas_surf/%.1f)\n", u_mw, sigma_gas_mw);
-    //     printf("  Step 3 - alpha: %.4f (0.5 + 1/(1 + sqrt(%.4f * %.4f² / 600)))\n", alpha, u_mw, d_mw);
-    //     printf("  Step 4 - sigma_norm: %.2f M☉/pc²\n", sigma_norm);
-    //     printf("  Step 5 - rmol: %.4f ((%.2e / %.2f)^%.4f)\n", rmol, gas_surface_density, sigma_norm, alpha);
-    //     printf("  Step 6 - f_H2: %.4f (%.4f / (1 + %.4f))\n", fmol, rmol, rmol);
-    //     printf("  ----------------------------------------\n");
-    // }
-    
     return fmol;
 }
 
-/**
- * integrate_molecular_gas_radial_SHARK_EXACT - SHARK-style radial integration
- * This follows SHARK's molecular_hydrogen function structure exactly
- */
 float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_params)
 {
     if (g->ColdGas <= 0.0) {
@@ -115,9 +86,9 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
         return 0.0;
     }
     
-    // SHARK uses: re = cosmology->comoving_to_physical_size(rgas / constants::RDISK_HALF_SCALE, z)
+    // re = cosmology->comoving_to_physical_size(rgas / constants::RDISK_HALF_SCALE, z)
     // where constants::RDISK_HALF_SCALE = 1.67
-    float disk_scale_radius = g->DiskScaleRadius; // This is already the scale radius
+    float disk_scale_radius = g->DiskScaleRadius;
     
     if (disk_scale_radius <= 1.0e-6) {
         if (galaxy_debug_counter % 100 == 0) {
@@ -126,55 +97,41 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
         return 0.0;
     }
     
-    // SHARK conversion: re (half-mass radius) = rgas / 1.67
     // Since our disk_scale_radius is the scale length, we need to convert
     const float h = run_params->Hubble_h;
-    const float re_pc = disk_scale_radius * 1.0e6 / h ; // Half-mass radius in pc
+    const float re_pc = disk_scale_radius * 1.0e6 / h ; 
     
     // Get metallicity (as absolute fraction, not relative to solar - this is key!)
     float metallicity = 0.0;
     if (g->ColdGas > 0.0) {
-        // SHARK uses: zgas = galaxy.disk_gas.mass_metals / galaxy.disk_gas.mass
+        // zgas = galaxy.disk_gas.mass_metals / galaxy.disk_gas.mass
         // This gives absolute metallicity fraction, not relative to solar
         metallicity = g->MetalsColdGas / g->ColdGas; // Absolute metallicity fraction
     }
     
-    // if (galaxy_debug_counter % 10000 == 0) {
-    //     printf("\nDEBUG RADIAL SHARK: Starting integration\n");
-    //     printf("  ColdGas: %.2e, metallicity: %.4f (absolute)\n", g->ColdGas, metallicity);
-    //     printf("  DiskScaleRadius: %.2e Mpc/h, re_pc: %.2e pc\n", disk_scale_radius, re_pc);
-    // }
-    
-    // SHARK integration parameters
-    // SHARK uses: double rmax = 5.0*re; (integrates to 5 × half-mass radius)
-    const int N_RADIAL_BINS = 20; // SHARK uses adaptive integration, but we'll use fixed bins
-    const float MAX_RADIUS_FACTOR = 5.0; // SHARK integrates to 5 × half-mass radius
-    
+    // rmax = 5.0*re; (integrates to 5 × half-mass radius)
+    const int N_RADIAL_BINS = 20;
+    const float MAX_RADIUS_FACTOR = 5.0; 
     const float dr = MAX_RADIUS_FACTOR * re_pc / N_RADIAL_BINS;
     
     // Calculate gas surface density at center (half-mass radius)
-    // SHARK uses: Sigma_gas = cosmology->comoving_to_physical_mass(mcold) / constants::PI2 / (re * re)
+    // Sigma_gas = cosmology->comoving_to_physical_mass(mcold) / constants::PI2 / (re * re)
     float gas_surface_density_center = 0.0;
     if (re_pc > 0.0) {
         // For exponential disk: Σ_gas(0) = M_gas / (2π × r_e²)
         float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc; // Note: 2π for half-mass radius
         gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
     }
-    
-    // if (galaxy_debug_counter % 10000 == 0) {
-    //     printf("  gas_surface_density_center: %.2e M☉/pc²\n", gas_surface_density_center);
-    // }
-    
-    // SHARK-style radial integration
-    // SHARK integrates: PI2 * fmol(Sigma_gas, Sigma_stars, props->zgas, r) * Sigma_gas * r
+
+    // Integration = PI2 * fmol(Sigma_gas, Sigma_stars, props->zgas, r) * Sigma_gas * r
     float total_molecular_gas = 0.0;
     
     for (int i = 0; i < N_RADIAL_BINS; i++) {
-        // Radius in half-mass radii (SHARK uses this scaling)
+    
         float radius_in_half_mass_radii = (i + 0.5) * MAX_RADIUS_FACTOR / N_RADIAL_BINS;
         float radius_pc = radius_in_half_mass_radii * re_pc;
         
-        // SHARK uses exponential profile: Sigma_gas = props->sigma_gas0 * exp(-r / props->re)
+        // Exponential profile: Sigma_gas = props->sigma_gas0 * exp(-r / props->re)
         float exp_factor = exp(-radius_in_half_mass_radii);
         float local_gas_density = gas_surface_density_center * exp_factor; // M☉/pc²
         
@@ -184,83 +141,47 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
         // Gas mass in this ring (in SAGE units: 10^10 M☉/h)
         float ring_gas_mass = (local_gas_density * ring_area_pc2) / (1.0e10 / h);
         
-        // Calculate molecular fraction using SHARK-exact GD14
+        // Calculate molecular fraction
         float molecular_fraction = 0.0;
 
-        // SHARK applies sigma_HI_crit threshold HERE during integration
+        // sigma_HI_crit threshold HERE during integration
         const float sigma_HI_crit = 10.0; // M☉/pc² (SHARK's default from parameters)
         if (local_gas_density >= sigma_HI_crit) {
             molecular_fraction = calculate_molecular_fraction_GD14(
                 local_gas_density, metallicity);
         }
-        // If local_gas_density < sigma_HI_crit, molecular_fraction stays 0.0
         
         // Add molecular gas from this ring
         float ring_mol_gas = molecular_fraction * ring_gas_mass;
         total_molecular_gas += ring_mol_gas;
         
-        // if (i < 3 && galaxy_debug_counter % 100 == 0) { // Debug first few rings
-        //     printf("  Ring %d: r=%.2f re, local_gas=%.2e M☉/pc², mol_frac=%.4f, ring_mol=%.3e\n", 
-        //            i, radius_in_half_mass_radii, local_gas_density, molecular_fraction, ring_mol_gas);
-        // }
     }
     
-    // Mass conservation check (SHARK does this)
+    // Mass conservation check
     if (total_molecular_gas > g->ColdGas * 0.95) { // Max 95% of cold gas can be molecular
-    //     if (galaxy_debug_counter % 100 == 0) {
-    //         printf("  WARNING: H2 would be %.3f of cold gas, capping at 95%%\n", 
-    //                total_molecular_gas / g->ColdGas);
-    //     }
         total_molecular_gas = g->ColdGas * 0.95;
     }
 
-    // CORRECT: Comparing fraction to fraction
+    // Comparing fraction to fraction
     if (total_molecular_gas > 0.95) {
-        // if (galaxy_debug_counter % 100 == 0) {
-        //     printf("  WARNING: H2 would be %.3f of cold gas, capping at 97%%\n", 
-        //         total_molecular_gas);
-        // }
         total_molecular_gas = 0.95;
     }
-    
-    // if (galaxy_debug_counter % 10000 == 0) {
-    //     printf("  Final molecular gas: %.2e (fraction of cold gas: %.3f)\n", 
-    //            total_molecular_gas, total_molecular_gas / g->ColdGas);
-    //     printf("END DEBUG RADIAL SHARK\n\n");
-    // }
-
-//     if (galaxy_debug_counter % 10000 == 0) {
-//     printf("MASS-METALLICITY CHECK:\n");
-//     printf("  StellarMass: %.2e, Metallicity: %.4f\n", g->StellarMass, metallicity);
-//     printf("  Halo mass indicator: DiskScaleRadius=%.2e\n", g->DiskScaleRadius);
-//     if (g->StellarMass > 1e8) { // Significant stellar mass
-//         printf("  → This is a REAL galaxy that should be enriched!\n");
-//     } else {
-//         printf("  → Small galaxy, low metallicity expected\n");
-//     }
-// }
     
     return total_molecular_gas;
 }
 
-/**
- * calculate_bulge_molecular_gas_SHARK_EXACT - SHARK-style bulge H2 calculation
- * SHARK treats bulge and disk separately in get_molecular_gas function
- */
+
 float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_params)
 {
     // Check if we have any bulge
     if (g->BulgeMass <= 0.0) {
-        // if (galaxy_debug_counter % 100000 == 0) {
-        //     printf("DEBUG BULGE SHARK: No bulge mass, returning 0\n");
-        // }
         return 0.0;
     }
-    
-    // SHARK estimates bulge gas based on bulge-to-total ratio
+
+    // Estimate bulge gas based on bulge-to-total ratio
     float bulge_to_total = g->BulgeMass / (g->StellarMass > 0.0 ? g->StellarMass : 1.0);
     
-    // Estimate bulge gas (SHARK doesn't specify exact method, so we use reasonable approach)
+    // Estimate bulge gas
     float bulge_gas = bulge_to_total * 0.5 * g->ColdGas; // 50% of proportional share
 
     if (bulge_gas <= 0.0) {
@@ -282,27 +203,16 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
     // Get bulge metallicity (absolute fraction)
     float metallicity = 0.0;
     if (g->BulgeMass > 0.0) {
-        // SHARK uses: zgas = galaxy.bulge_gas.mass_metals / galaxy.bulge_gas.mass
+        // zgas = galaxy.bulge_gas.mass_metals / galaxy.bulge_gas.mass
         metallicity = g->MetalsBulgeMass / g->BulgeMass; // Absolute metallicity fraction
     } else if (g->ColdGas > 0.0) {
         metallicity = g->MetalsColdGas / g->ColdGas; // Fallback to cold gas metallicity
     }
     
-    // if (galaxy_debug_counter % 100000 == 0) {
-    //     printf("DEBUG BULGE SHARK: bulge_gas=%.2e, gas_surf_dens=%.2e, metallicity=%.4f\n",
-    //            bulge_gas, bulge_gas_surface_density, metallicity);
-    // }
-    
-    // Use SHARK-exact GD14 calculation
     float molecular_fraction = calculate_molecular_fraction_GD14(
         bulge_gas_surface_density, metallicity);
     
     float bulge_molecular_gas = bulge_gas * molecular_fraction;
-    
-    // if (galaxy_debug_counter % 100000 == 0) {
-    //     printf("DEBUG BULGE SHARK: molecular_fraction=%.4f, bulge_H2=%.2e\n", 
-    //            molecular_fraction, bulge_molecular_gas);
-    // }
     
     return bulge_molecular_gas;
 }
@@ -323,12 +233,10 @@ void apply_environmental_effects(struct GALAXY *g, struct GALAXY *galaxies,
     // Skip if no H2 gas
     if (g->H2_gas <= 0.0) return;
     
-    // --- IMPROVEMENT 4: REFINED ENVIRONMENTAL EFFECTS ---
-    
     // 1. Apply to all galaxies, but stronger in satellites
     float type_factor = 1.0;
     if (g->Type == 0) {  // Central galaxy
-        type_factor = 0.0;  // Environmental effects are 70% weaker in centrals
+        type_factor = 0.0;  // Environmental effects are 100% weaker in centrals
     } else if (g->Type == 1) {  // Satellite with subhalo
         type_factor = 1.0;  // Full effect
     } else if (g->Type == 2) {  // Orphan satellite
@@ -403,13 +311,10 @@ void apply_environmental_effects(struct GALAXY *g, struct GALAXY *galaxies,
         // Remove metals proportionally for the stripped gas
         g->MetalsColdGas -= h2_removed * metallicity;
         
-        // NEW: Transfer stripped mass to central galaxy's CGM
+        // Transfer stripped mass to central galaxy's CGM
         if (g->Type > 0 && central_gal_index >= 0) {  // Only for satellites with valid central
             galaxies[central_gal_index].CGMgas += h2_removed;
             galaxies[central_gal_index].MetalsCGMgas += h2_removed * metallicity;
-            
-            // Optional: Track the source of CGM enrichment (if you have these fields)
-            // galaxies[central_gal_index].CGMgas_from_stripping += h2_removed;
         }
         
         // Ensure non-negative values
@@ -425,7 +330,7 @@ void apply_environmental_effects(struct GALAXY *g, struct GALAXY *galaxies,
  * 
  * This function now uses SAGE's real disk radius (calculated via get_disk_radius 
  * in model_misc.c during galaxy initialization) instead of any approximation.
- * The GD14 molecular fraction prescription matches SHARK exactly, but uses
+ * The GD14 molecular fraction prescription but uses
  * the proper disk radius as calculated by SAGE's physics.
  */
 void update_gas_components(struct GALAXY *g, const struct params *run_params)
@@ -481,48 +386,25 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
             gas_surface_density_center, 
             g->MetalsColdGas / g->ColdGas); // Use absolute metallicity fraction
 
-        // Mass conservation check (SHARK does this)
-        // CORRECT: Comparing fraction to fraction
+        // Mass conservation check
+        // Comparing fraction to fraction
         if (total_molecular_gas > 0.95) {
-            // if (galaxy_debug_counter % 100 == 0) {
-            //     printf("  WARNING: H2 would be %.3f of cold gas, capping at 97%%\n", 
-            //         total_molecular_gas);
-            // }
             total_molecular_gas = 0.95;
         }
-    
-        
-        // if (galaxy_debug_counter % 100000 == 0) {
-        //     printf("  CALCULATION CHECK: disk_H2=%.2e, bulge_H2=%.2e, total_H2=%.2e\n", 
-        //            disk_molecular_gas, bulge_molecular_gas, total_molecular_gas);
-        //     printf("  FRACTION CHECK: total_H2/ColdGas = %.6f\n", total_molecular_gas / g->ColdGas);
-        // }
     }
-    // REMOVE OR COMMENT OUT OTHER SF PRESCRIPTIONS TO AVOID FALLBACK
     else {
-        // For debugging, let's see what happens with other models
-        // if (galaxy_debug_counter % 100000 == 0) {
-        //     printf("DEBUG: Using non-GD14 model (SFprescription=%d), setting H2=0\n", run_params->SFprescription);
-        // }
         total_molecular_gas = 0.0; // Don't use fallback for debugging
     }
     
     // Update gas components - CRITICAL: Use the actual calculated values
     g->H2_gas = total_molecular_gas * g->ColdGas;
-    // g->HI_gas = 0.0; // Initialize HI gas to zero, will be recalculated below
-
     g->HI_gas = (1.0 - total_molecular_gas) * g->ColdGas;
     
     // Apply bounds checking
     if(g->H2_gas > g->ColdGas) {
-        // if (galaxy_debug_counter % 10000 == 0) {
-        //     printf("DEBUG MAIN SHARK: H2 > ColdGas (%.2e > %.2e), capping at ColdGas\n", 
-        //            g->H2_gas, g->ColdGas);
-        // }
         g->H2_gas = g->ColdGas;
         g->HI_gas = 0.0;
     }
-    // Note: HI_gas was already calculated correctly above, no need to recalculate
 
     // Final sanity checks (as SHARK does)
     if(g->H2_gas < 0.0) g->H2_gas = 0.0;
@@ -542,20 +424,6 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         g->H2_gas *= scale;
         g->HI_gas *= scale;
     }
-    
-    // if (galaxy_debug_counter % 10000 == 0) {
-    //     float h2_fraction_cold = (g->ColdGas > 0.0) ? g->H2_gas / g->ColdGas : 0.0;
-    //     float hi_fraction_cold = (g->ColdGas > 0.0) ? g->HI_gas / g->ColdGas : 0.0;
-    //     float h2_fraction_proper = (g->H2_gas + g->HI_gas > 0.0) ? g->H2_gas / (g->H2_gas + g->HI_gas) : 0.0;
-    //     float hi_fraction_proper = (g->H2_gas + g->HI_gas > 0.0) ? g->HI_gas / (g->H2_gas + g->HI_gas) : 0.0;
-    //     printf("  FINAL RESULT: H2=%.2e, HI=%.2e\n", g->H2_gas, g->HI_gas);
-    //     printf("  f_H2 = H2/ColdGas = %.6f, f_HI = HI/ColdGas = %.6f\n", h2_fraction_cold, hi_fraction_cold);
-    //     printf("  f_H2 = H2/(H2+HI) = %.6f, f_HI = HI/(H2+HI) = %.6f\n", h2_fraction_proper, hi_fraction_proper);
-    //     printf("  CHECK: f_H2 + f_HI = %.6f (should be ~1.0)\n", h2_fraction_cold + hi_fraction_cold);
-    //     printf("  CHECK: Does f_H2=%.6f match expected from integration?\n", h2_fraction_cold);
-    //     printf("END DEBUG MAIN SHARK\n");
-    //     printf("========================================\n\n");
-    // }
 }
 
 void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_params)

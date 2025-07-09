@@ -122,14 +122,14 @@ struct GALAXY
 
     /* baryonic reservoirs */
     float ColdGas;
-    float H2_gas;  // NEW: Molecular hydrogen mass
-    float HI_gas;  // NEW: Atomic hydrogen mass
+    float H2_gas;  
+    float HI_gas; 
     float StellarMass;
     float BulgeMass;
     float HotGas;
     float BlackHoleMass;
     float ICS;
-    float CGMgas;     // NEW: Circumgalactic Medium gas reservoir
+    float CGMgas;     
 
     /* metals */
     float MetalsColdGas;
@@ -137,7 +137,7 @@ struct GALAXY
     float MetalsBulgeMass;
     float MetalsHotGas;
     float MetalsICS;
-    float MetalsCGMgas;  // NEW: Metals in the CGM
+    float MetalsCGMgas;  
 
     /* to calculate magnitudes */
     float SfrDisk[STEPS];
@@ -164,13 +164,13 @@ struct GALAXY
     float infallVvir;
     float infallVmax;
 
-    float CGMgas_pristine;      // NEW: Pristine (metal-free) CGM gas
-    float CGMgas_enriched;      // NEW: Pre-enriched CGM gas
-    float InfallRate_to_CGM;        // NEW: Rate of infall to CGM
-    float InfallRate_to_Hot;        // NEW: Rate of direct infall to hot  
-    float TransferRate_CGM_to_Hot;  // NEW: Rate of CGM→Hot transfer
+    float CGMgas_pristine;      
+    float CGMgas_enriched;      
+    float InfallRate_to_CGM;       
+    float InfallRate_to_Hot;    
+    float TransferRate_CGM_to_Hot;  
 
-    float MassLoadingFactor;        // NEW: Mass loading factor for outflows
+    float MassLoadingFactor;
 };
 
 
@@ -457,19 +457,19 @@ struct params
     double     ThresholdSatDisruption;
 
     // Parameters for star formation enhancement based on virial velocity
-    double     VvirThreshold;           // Virial velocity threshold for SF enhancement (km/s)
-    double     VvirEnhancementPower;    // Power-law exponent for velocity enhancement
+    double     VvirThreshold;           
+    double     VvirEnhancementPower;   
 
     // CGM infall and mixing parameters
-    double     CGMInfallFraction;      // Fraction of infall through CGM first (0.0-1.0)
-    double     CGMTransferEfficiency;  // CGM to hot transfer efficiency
-    double     CGMPristineFraction;    // Fraction of CGM infall that's pristine
-    double     CGMMixingTimescale;     // Mixing timescale in Gyrs
+    double     CGMInfallFraction;     
+    double     CGMTransferEfficiency; 
+    double     CGMPristineFraction;    
+    double     CGMMixingTimescale;  
 
     // Parameters for mass-dependent star formation
-    double     SFMassPivot;            // Pivot mass in 10^10 Msun/h
-    double     SFLowMassSlope;         // Power-law slope for M < Mpivot
-    double     SFHighMassSlope;        // Power-law slope for M > Mpivot
+    double     SFMassPivot;   
+    double     SFLowMassSlope;  
+    double     SFHighMassSlope;  
 
     double     UnitLength_in_cm;
     double     UnitVelocity_in_cm_per_s;
