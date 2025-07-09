@@ -173,7 +173,52 @@ double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxie
 
 }
 
-
+double get_cgm_infall_fraction(const int gal, struct GALAXY *galaxies, const struct params *run_params)
+{
+    const double z = run_params->ZZ[galaxies[gal].SnapNum];
+    double base_fraction = run_params->CGMInfallFraction;
+    double original_fraction = base_fraction;
+    
+    // Cold streams: MORE gas goes through CGM for small halos at high-z
+    if (z > 0.0 && galaxies[gal].Mvir > 0.0) {
+        double log_mass = log10(galaxies[gal].Mvir);
+    
+    if (log_mass < 2.5) {
+        // Exponential boost with redshift
+        double redshift_factor = exp(0.2 * (z - 2.0));  // Grows exponentially with z
+        double mass_factor = 1.0 + 1.0 * (2.5 - log_mass);  // Very strong mass dependence
+        
+        double boost_factor = redshift_factor * mass_factor;
+        base_fraction *= boost_factor;
+    }
+}
+    
+    // Keep reasonable bounds
+    if (base_fraction > 0.95) base_fraction = 0.95;  // Always leave some direct pathway
+    if (base_fraction < 0.0) base_fraction = 0.0;
+    
+    // Debug output
+    static int debug_counter = 0;
+    debug_counter++;
+    if (debug_counter % 10000 == 0) {
+        printf("DEBUG CGM Infall: z=%.2f, M=%.2e, original=%.3f, new=%.3f", 
+               z, galaxies[gal].Mvir, original_fraction, base_fraction);
+        
+        if (z > 0.0 && galaxies[gal].Mvir > 0.0) {
+            double log_mass = log10(galaxies[gal].Mvir);
+            if (log_mass < 2.5) {
+                printf(" [COLD STREAM BOOST]");
+            } else {
+                printf(" [HIGH-Z, MASSIVE HALO]");
+            }
+        } else {
+            printf(" [LOW-Z OR NO MASS]");
+        }
+        printf("\n");
+    }
+    
+    return base_fraction;
+}
 
 void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies, 
                        const struct params *run_params)
@@ -215,9 +260,9 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
         // }
         
         // Split infall between direct-to-hot and CGM pathways
-        double cgm_pathway = infallingGas * run_params->CGMInfallFraction;
-        double direct_pathway = infallingGas * (1.0 - run_params->CGMInfallFraction);
-        
+        double cgm_pathway = infallingGas * get_cgm_infall_fraction(gal, galaxies, run_params);
+        double direct_pathway = infallingGas * (1.0 - get_cgm_infall_fraction(gal, galaxies, run_params));
+
         // Direct pathway (original behavior)
         if(direct_pathway > 0.0) {
             galaxies[gal].HotGas += direct_pathway;

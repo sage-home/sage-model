@@ -131,7 +131,7 @@ PLOT_COLORS = {
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/millennium_noenviro/'
+DirName = './output/Infall_CGM_massredshift_dep/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -143,7 +143,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Additional simulation directories for SFR density comparison
 SFR_SimDirs = [
     {
-        'path': './output/millennium_noenviro/', 
+        'path': './output/Infall_CGM_massredshift_dep/', 
         'label': 'Millennium', 
         'color': 'black', 
         'linestyle': '-',
@@ -202,7 +202,7 @@ SFR_SimDirs = [
 SMF_SimConfigs = [
     # SAGE 2.0 simulations (solid lines)
     {
-        'path': './output/millennium_noenviro/', 
+        'path': './output/Infall_CGM_massredshift_dep/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line

@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_CGMfirst/'
+DirName = './output/Infall_CGM_massredshift_dep/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 

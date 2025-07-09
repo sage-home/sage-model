@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_enviro/'
+DirName = './output/Infall_CGM_massredshift_dep/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -25,6 +25,11 @@ Snapshot = 'Snap_63'
 Hubble_h = 0.73        # Hubble parameter
 BoxSize = 62.5         # h-1 Mpc
 VolumeFraction = 1.0  # Fraction of the full volume output by the model
+CGMsnaps = [63, 50, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
+
+# Target halo masses (in M_sun, not log10)
+TARGET_MASSES = [1e10, 1e12, 1e14]
+TARGET_MASS_TOLERANCE = 0.2  # log10 tolerance for finding halos
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
@@ -1876,7 +1881,7 @@ if __name__ == '__main__':
         valid_mask = (mvir > 0) & (stellar_mass > 0)
         
         # Create subplot figure
-        fig, axes = plt.subplots(2, 3, figsize=(20, 12))
+        fig, axes = plt.subplots(2, 2, figsize=(20, 12))
         
         # Plot 1: Infall rates vs Halo Mass
         ax = axes[0, 0]
@@ -1917,7 +1922,7 @@ if __name__ == '__main__':
         cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
         
         # Plot 3: Transfer Efficiency (Transfer Rate / CGM Mass)
-        ax = axes[0, 2]
+        ax = axes[1, 0]
         transfer_efficiency = transfer_cgm_to_hot / cgm_gas
         valid_efficiency = valid_mask & (transfer_efficiency > 0) & np.isfinite(transfer_efficiency)
         
@@ -1943,7 +1948,7 @@ if __name__ == '__main__':
         cbar.set_label(r'$\log_{10} V_{\mathrm{vir}}$ (km/s)')
         
         # Plot 6: CGM Residence Time
-        ax = axes[1, 2]
+        ax = axes[1, 1]
         cgm_residence_time = cgm_gas / (transfer_cgm_to_hot + 1e-10)  # Add small value to avoid division by zero
         valid_residence = valid_mask & (cgm_residence_time > 0) & np.isfinite(cgm_residence_time) & (cgm_gas > 0)
         
@@ -2164,7 +2169,578 @@ if __name__ == '__main__':
         print(f'Saved CGM composition evolution to {outputFile}')
         plt.close()
 
+
+    def find_halos_near_target_masses(base_dir, snap_num, target_masses, tolerance=0.2, Hubble_h=0.73):
+        """
+        Find halos close to target masses in a given snapshot.
+        
+        Parameters:
+        -----------
+        base_dir : str
+            Directory where model files are stored
+        snap_num : int
+            Snapshot number to search in
+        target_masses : list
+            List of target masses in M_sun (not log10)
+        tolerance : float
+            Log10 tolerance for mass matching
+        Hubble_h : float
+            Hubble parameter
+        
+        Returns:
+        --------
+        list
+            List of (galaxy_id, halo_mass, target_mass) tuples for selected halos
+        """
+        
+        snapshot_name = f'Snap_{snap_num}'
+        model_files = [f for f in os.listdir(base_dir) if f.startswith('model_') and f.endswith('.hdf5')]
+        model_files.sort()
+        
+        print(f"Searching for halos near target masses in snapshot {snap_num}...")
+        
+        # Store all halos with their masses
+        all_halos = []
+        
+        for model_file in model_files:
+            try:
+                with h5.File(os.path.join(base_dir, model_file), 'r') as f:
+                    if snapshot_name not in f:
+                        continue
+                    
+                    # Get masses and convert to physical units
+                    mvir = np.array(f[snapshot_name]['Mvir']) * 1.0e10 / Hubble_h
+                    galaxy_ids = np.array(f[snapshot_name]['GalaxyIndex'])
+                    
+                    # Store all halos above minimum mass
+                    min_mass = min(target_masses) * 0.1  # Use lower threshold for initial filtering
+                    valid_indices = np.where(mvir > min_mass)[0]
+                    
+                    for idx in valid_indices:
+                        all_halos.append({
+                            'galaxy_id': galaxy_ids[idx],
+                            'mass': mvir[idx],
+                            'log10_mass': np.log10(mvir[idx]),
+                            'file': model_file,
+                            'index': idx
+                        })
+                        
+            except Exception as e:
+                print(f"Error processing file {model_file}: {e}")
+        
+        # Find best matches for each target mass
+        selected_halos = []
+        
+        for target_mass in target_masses:
+            log10_target = np.log10(target_mass)
+            best_halo = None
+            best_diff = float('inf')
+            
+            for halo in all_halos:
+                diff = abs(halo['log10_mass'] - log10_target)
+                if diff < tolerance and diff < best_diff:
+                    best_diff = diff
+                    best_halo = halo
+            
+            if best_halo is not None:
+                selected_halos.append((
+                    best_halo['galaxy_id'], 
+                    best_halo['mass'], 
+                    target_mass
+                ))
+                print(f"  Target: {np.log10(target_mass):.1f}, Found: GalaxyIndex {best_halo['galaxy_id']}, "
+                    f"Mass: {best_halo['log10_mass']:.3f} log10 M_sun")
+            else:
+                print(f"  Warning: No halo found near target mass {np.log10(target_mass):.1f}")
+        
+        return selected_halos
+
+    def track_specific_galaxy_cgm(base_dir, galaxy_id, start_snap, end_snap, Hubble_h=0.73):
+        """
+        Track CGM properties of a specific galaxy across snapshots.
+        
+        Parameters:
+        -----------
+        base_dir : str
+            Directory where model files are stored
+        galaxy_id : int
+            GalaxyIndex to track
+        start_snap : int
+            Starting snapshot number
+        end_snap : int  
+            Ending snapshot number
+        Hubble_h : float
+            Hubble parameter
+            
+        Returns:
+        --------
+        dict
+            Dictionary containing tracked CGM properties
+        """
+        
+        tracked_data = {
+            'snapnum': [],
+            'redshift': [],
+            'galaxy_id': [],
+            'log10_mvir': [],
+            'log10_stellar_mass': [],
+            'log10_cgm_mass': [],
+            'log10_hot_gas': [],
+            'log10_cold_gas': [],
+            'type': []
+        }
+        
+        # Determine direction of tracking
+        step = -1 if end_snap < start_snap else 1
+        snaps_range = range(start_snap, end_snap + step, step)
+        
+        # Track the galaxy across snapshots
+        for snap in snaps_range:
+            snapshot_name = f'Snap_{snap}'
+            model_files = [f for f in os.listdir(base_dir) if f.startswith('model_') and f.endswith('.hdf5')]
+            model_files.sort()
+            
+            found = False
+            
+            # Search for the galaxy by GalaxyIndex in all files for this snapshot
+            for model_file in model_files:
+                try:
+                    with h5.File(os.path.join(base_dir, model_file), 'r') as f:
+                        if snapshot_name not in f:
+                            continue
+                            
+                        # Get all GalaxyIndexs in this file
+                        galaxy_ids = np.array(f[snapshot_name]['GalaxyIndex'])
+                        
+                        # Find the index of our target galaxy
+                        indices = np.where(galaxy_ids == galaxy_id)[0]
+                        
+                        if len(indices) > 0:
+                            idx = indices[0]
+                            
+                            # Extract CGM and related properties
+                            mvir = f[snapshot_name]['Mvir'][idx] * 1.0e10 / Hubble_h
+                            stellar_mass = f[snapshot_name]['StellarMass'][idx] * 1.0e10 / Hubble_h
+                            
+                            # CGM mass - check if available
+                            if 'CGMgas' in f[snapshot_name]:
+                                cgm_mass = f[snapshot_name]['CGMgas'][idx] * 1.0e10 / Hubble_h
+                            else:
+                                cgm_mass = 0.0
+                            
+                            # Hot gas
+                            if 'HotGas' in f[snapshot_name]:
+                                hot_gas = f[snapshot_name]['HotGas'][idx] * 1.0e10 / Hubble_h
+                            else:
+                                hot_gas = 0.0
+                            
+                            # Cold gas
+                            if 'ColdGas' in f[snapshot_name]:
+                                cold_gas = f[snapshot_name]['ColdGas'][idx] * 1.0e10 / Hubble_h
+                            else:
+                                cold_gas = 0.0
+                            
+                            # Galaxy type
+                            if 'Type' in f[snapshot_name]:
+                                gal_type = f[snapshot_name]['Type'][idx]
+                            else:
+                                gal_type = 0
+                            
+                            # Store data
+                            tracked_data['snapnum'].append(snap)
+                            tracked_data['redshift'].append(redshifts[snap])
+                            tracked_data['galaxy_id'].append(galaxy_id)
+                            tracked_data['log10_mvir'].append(np.log10(mvir) if mvir > 0 else -999)
+                            tracked_data['log10_stellar_mass'].append(np.log10(stellar_mass) if stellar_mass > 0 else -999)
+                            tracked_data['log10_cgm_mass'].append(np.log10(cgm_mass) if cgm_mass > 0 else -999)
+                            tracked_data['log10_hot_gas'].append(np.log10(hot_gas) if hot_gas > 0 else -999)
+                            tracked_data['log10_cold_gas'].append(np.log10(cold_gas) if cold_gas > 0 else -999)
+                            tracked_data['type'].append(gal_type)
+                            
+                            found = True
+                            break
+                            
+                except Exception as e:
+                    print(f"Error processing snapshot {snap} in file {model_file}: {e}")
+            
+            if not found:
+                print(f"Warning: Could not find galaxy {galaxy_id} in snapshot {snap}")
+        
+        return tracked_data
+
+    def plot_cgm_evolution_specific_halos(base_dir, start_snap=63, end_snap=0, target_masses=None, Hubble_h=0.73):
+        """
+        Plot CGM mass evolution for specific tracked halos.
+        
+        Parameters:
+        -----------
+        base_dir : str
+            Directory where model files are stored
+        start_snap : int
+            Starting snapshot (usually z=0)
+        end_snap : int
+            Ending snapshot (higher redshift)
+        target_masses : list
+            Target masses in M_sun
+        Hubble_h : float
+            Hubble parameter
+        """
+        
+        if target_masses is None:
+            target_masses = TARGET_MASSES
+        
+        # Import cosmology for age calculations
+        try:
+            from astropy.cosmology import Planck18
+            cosmo = Planck18
+        except ImportError:
+            print("Warning: astropy not available, using approximate age calculation")
+            cosmo = None
+        
+        # Function to calculate age of Universe
+        def redshift_to_age(z):
+            if cosmo is not None:
+                return cosmo.age(z).value
+            else:
+                # Approximate formula for Planck cosmology
+                H0 = 67.4
+                Omega_m = 0.315
+                Omega_lambda = 0.685
+                H0_Gyr = H0 / 977.8
+                
+                def integrand(z_prime):
+                    E_z = np.sqrt(Omega_m * (1 + z_prime)**3 + Omega_lambda)
+                    return 1.0 / ((1 + z_prime) * E_z)
+                
+                z_vals = np.linspace(z, 30, 1000)
+                y_vals = [integrand(z_val) for z_val in z_vals]
+                age = np.trapz(y_vals, z_vals) / H0_Gyr
+                return age
+        
+        print('Finding halos near target masses...')
+        selected_halos = find_halos_near_target_masses(
+            base_dir, start_snap, target_masses, TARGET_MASS_TOLERANCE, Hubble_h)
+        
+        if not selected_halos:
+            print("No suitable halos found!")
+            return
+        
+        # Define colors and labels
+        colors = ['red', 'green', 'blue']
+        labels = [
+            r'$M_{\mathrm{target}} = 10^{10}$ M$_{\odot}$',
+            r'$M_{\mathrm{target}} = 10^{12}$ M$_{\odot}$',
+            r'$M_{\mathrm{target}} = 10^{14}$ M$_{\odot}$'
+        ]
+        
+        # Create figure
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        # Track each selected halo
+        for i, (galaxy_id, actual_mass, target_mass) in enumerate(selected_halos):
+            print(f'\nTracking galaxy {galaxy_id} (target mass: {np.log10(target_mass):.1f})...')
+            
+            tracked_data = track_specific_galaxy_cgm(
+                base_dir, galaxy_id, start_snap, end_snap, Hubble_h)
+            
+            if len(tracked_data['snapnum']) == 0:
+                print(f"No data found for galaxy {galaxy_id}")
+                continue
+            
+            # Convert to arrays and filter valid CGM data
+            redshift_vals = np.array(tracked_data['redshift'])
+            cgm_masses = np.array(tracked_data['log10_cgm_mass'])
+            
+            # Filter out invalid CGM masses
+            valid_mask = cgm_masses > -900
+            if np.sum(valid_mask) == 0:
+                print(f"No valid CGM data for galaxy {galaxy_id}")
+                continue
+            
+            redshift_valid = redshift_vals[valid_mask]
+            cgm_masses_valid = cgm_masses[valid_mask]
+            
+            # Calculate ages
+            age_values = np.array([redshift_to_age(z) for z in redshift_valid])
+            
+            # Sort by age
+            sort_idx = np.argsort(age_values)
+            age_values = age_values[sort_idx]
+            cgm_masses_valid = cgm_masses_valid[sort_idx]
+            redshift_valid = redshift_valid[sort_idx]
+            
+            # Plot CGM evolution
+            color = colors[i % len(colors)]
+            actual_mass_label = f'Actual: {np.log10(actual_mass):.2f}'
+            full_label = f'{labels[i]}\n({actual_mass_label})'
+            
+            ax.plot(age_values, cgm_masses_valid, 
+                color=color, label=full_label, linewidth=3, marker='o', markersize=5)
+            
+            # Print some statistics
+            print(f"  Successfully tracked across {len(age_values)} snapshots")
+            print(f"  CGM mass range: {cgm_masses_valid.min():.2f} to {cgm_masses_valid.max():.2f} log10 M_sun")
+            print(f"  Redshift range: {redshift_valid.max():.2f} to {redshift_valid.min():.2f}")
+        
+        # Set up bottom x-axis (age)
+        ax.set_xlabel('Age of Universe (Gyr)', fontsize=14)
+        ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$', fontsize=14)
+        
+        # Create top x-axis for redshift
+        ax2 = ax.twiny()
+        
+        # Set up the relationship between age and redshift for the top axis
+        z_ticks = np.array([0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
+        age_ticks = np.array([redshift_to_age(z) for z in z_ticks])
+        
+        # Set the secondary axis limits and ticks
+        ax2.set_xlim(ax.get_xlim())
+        ax2.set_xticks(age_ticks)
+        ax2.set_xticklabels([f'{z:.1f}' for z in z_ticks])
+        ax2.set_xlabel('Redshift', fontsize=14)
+        
+        # Create legend
+        leg = ax.legend(loc='lower left', frameon=False, fontsize=10)
+        
+        # Set reasonable axis limits
+        ax.set_ylim(6.0, 14.5)
+        ax.set_xlim(min(age_ticks), 14)
+        
+        # Add grid
+        ax.grid(True, alpha=0.3)
+        
+        plt.title('CGM Mass Evolution for Specific Tracked Halos', fontsize=16)
+        plt.tight_layout()
+        
+        # Save the plot
+        OutputDir = base_dir + 'plots/'
+        if not os.path.exists(OutputDir):
+            os.makedirs(OutputDir)
+        
+        outputFile = OutputDir + '31.CGM_Evolution_Specific_Halos' + OutputFormat
+        plt.savefig(outputFile, dpi=500, bbox_inches='tight')
+        print(f'\nSaved CGM evolution plot for specific halos to {outputFile}')
+        plt.close()
+        
+        return selected_halos
+
+    def plot_cgm_evolution_with_scatter_specific_halos(base_dir, start_snap=63, end_snap=0, target_masses=None, Hubble_h=0.73):
+        """
+        Plot CGM mass evolution for specific tracked halos with additional gas components.
+        """
+        
+        if target_masses is None:
+            target_masses = TARGET_MASSES
+        
+        # Import cosmology for age calculations
+        try:
+            from astropy.cosmology import Planck18
+            cosmo = Planck18
+        except ImportError:
+            print("Warning: astropy not available, using approximate age calculation")
+            cosmo = None
+        
+        def redshift_to_age(z):
+            if cosmo is not None:
+                return cosmo.age(z).value
+            else:
+                H0 = 67.4
+                Omega_m = 0.315
+                Omega_lambda = 0.685
+                H0_Gyr = H0 / 977.8
+                
+                def integrand(z_prime):
+                    E_z = np.sqrt(Omega_m * (1 + z_prime)**3 + Omega_lambda)
+                    return 1.0 / ((1 + z_prime) * E_z)
+                
+                z_vals = np.linspace(z, 30, 1000)
+                y_vals = [integrand(z_val) for z_val in z_vals]
+                age = np.trapz(y_vals, z_vals) / H0_Gyr
+                return age
+        
+        print('Finding halos near target masses...')
+        selected_halos = find_halos_near_target_masses(
+            base_dir, start_snap, target_masses, TARGET_MASS_TOLERANCE, Hubble_h)
+        
+        if not selected_halos:
+            print("No suitable halos found!")
+            return
+        
+        # Create figure with subplots
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # Define colors and labels
+        colors = ['red', 'green', 'blue']
+        labels = [
+            r'$M_{\mathrm{target}} = 10^{10}$ M$_{\odot}$',
+            r'$M_{\mathrm{target}} = 10^{12}$ M$_{\odot}$',
+            r'$M_{\mathrm{target}} = 10^{14}$ M$_{\odot}$'
+        ]
+        
+        # Track each selected halo
+        all_tracked_data = []
+        for i, (galaxy_id, actual_mass, target_mass) in enumerate(selected_halos):
+            print(f'\nTracking galaxy {galaxy_id} (target mass: {np.log10(target_mass):.1f})...')
+            
+            tracked_data = track_specific_galaxy_cgm(
+                base_dir, galaxy_id, start_snap, end_snap, Hubble_h)
+            
+            if len(tracked_data['snapnum']) > 0:
+                tracked_data['color'] = colors[i % len(colors)]
+                tracked_data['label'] = labels[i]
+                tracked_data['actual_mass'] = actual_mass
+                tracked_data['target_mass'] = target_mass
+                all_tracked_data.append(tracked_data)
+        
+        # Plot 1: CGM Mass Evolution
+        ax = axes[0, 0]
+        for i, tracked_data in enumerate(all_tracked_data):
+            redshift_vals = np.array(tracked_data['redshift'])
+            cgm_masses = np.array(tracked_data['log10_cgm_mass'])
+            
+            valid_mask = cgm_masses > -900
+            if np.sum(valid_mask) > 0:
+                redshift_valid = redshift_vals[valid_mask]
+                cgm_masses_valid = cgm_masses[valid_mask]
+                age_values = np.array([redshift_to_age(z) for z in redshift_valid])
+                
+                sort_idx = np.argsort(age_values)
+                age_values = age_values[sort_idx]
+                cgm_masses_valid = cgm_masses_valid[sort_idx]
+                
+                actual_mass_label = f'Actual: {np.log10(tracked_data["actual_mass"]):.2f}'
+                full_label = f'{tracked_data["label"]}\n({actual_mass_label})'
+                
+                ax.plot(age_values, cgm_masses_valid, 
+                    color=tracked_data['color'], label=full_label, 
+                    linewidth=3, marker='o', markersize=4)
+        
+        ax.set_xlabel('Age of Universe (Gyr)')
+        ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+        ax.set_title('CGM Mass Evolution')
+        ax.legend(fontsize=9)
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(6.0, 14.5)
+        
+        # Plot 2: Hot Gas Evolution
+        ax = axes[0, 1]
+        for tracked_data in all_tracked_data:
+            redshift_vals = np.array(tracked_data['redshift'])
+            hot_gas_masses = np.array(tracked_data['log10_hot_gas'])
+            
+            valid_mask = hot_gas_masses > -900
+            if np.sum(valid_mask) > 0:
+                redshift_valid = redshift_vals[valid_mask]
+                hot_gas_valid = hot_gas_masses[valid_mask]
+                age_values = np.array([redshift_to_age(z) for z in redshift_valid])
+                
+                sort_idx = np.argsort(age_values)
+                age_values = age_values[sort_idx]
+                hot_gas_valid = hot_gas_valid[sort_idx]
+                
+                ax.plot(age_values, hot_gas_valid, 
+                    color=tracked_data['color'], linewidth=3, marker='s', markersize=4)
+        
+        ax.set_xlabel('Age of Universe (Gyr)')
+        ax.set_ylabel(r'$\log_{10} M_{\mathrm{Hot}}\ (M_{\odot})$')
+        ax.set_title('Hot Gas Mass Evolution')
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(6.0, 14.5)
+        
+        # Plot 3: Halo Mass Evolution
+        ax = axes[1, 0]
+        for tracked_data in all_tracked_data:
+            redshift_vals = np.array(tracked_data['redshift'])
+            halo_masses = np.array(tracked_data['log10_mvir'])
+            
+            valid_mask = halo_masses > -900
+            if np.sum(valid_mask) > 0:
+                redshift_valid = redshift_vals[valid_mask]
+                halo_masses_valid = halo_masses[valid_mask]
+                age_values = np.array([redshift_to_age(z) for z in redshift_valid])
+                
+                sort_idx = np.argsort(age_values)
+                age_values = age_values[sort_idx]
+                halo_masses_valid = halo_masses_valid[sort_idx]
+                
+                ax.plot(age_values, halo_masses_valid, 
+                    color=tracked_data['color'], linewidth=3, marker='^', markersize=4)
+        
+        ax.set_xlabel('Age of Universe (Gyr)')
+        ax.set_ylabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+        ax.set_title('Halo Mass Evolution')
+        ax.grid(True, alpha=0.3)
+        
+        # Plot 4: CGM Fraction Evolution
+        ax = axes[1, 1]
+        for tracked_data in all_tracked_data:
+            redshift_vals = np.array(tracked_data['redshift'])
+            cgm_masses = np.array(tracked_data['log10_cgm_mass'])
+            halo_masses = np.array(tracked_data['log10_mvir'])
+            
+            valid_mask = (cgm_masses > -900) & (halo_masses > -900)
+            if np.sum(valid_mask) > 0:
+                redshift_valid = redshift_vals[valid_mask]
+                cgm_masses_valid = cgm_masses[valid_mask]
+                halo_masses_valid = halo_masses[valid_mask]
+                
+                # Calculate CGM fraction (normalized by cosmic baryon fraction)
+                cgm_fraction = cgm_masses_valid - np.log10(0.17) - halo_masses_valid
+                
+                age_values = np.array([redshift_to_age(z) for z in redshift_valid])
+                
+                sort_idx = np.argsort(age_values)
+                age_values = age_values[sort_idx]
+                cgm_fraction = cgm_fraction[sort_idx]
+                
+                ax.plot(age_values, cgm_fraction, 
+                    color=tracked_data['color'], linewidth=3, marker='d', markersize=4)
+        
+        ax.set_xlabel('Age of Universe (Gyr)')
+        ax.set_ylabel(r'$\log_{10}(M_{\mathrm{CGM}} / (0.17 \times M_{\mathrm{vir}}))$')
+        ax.set_title('CGM Baryon Fraction Evolution')
+        ax.grid(True, alpha=0.3)
+        ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        OutputDir = base_dir + 'plots/'
+        if not os.path.exists(OutputDir):
+            os.makedirs(OutputDir)
+        
+        outputFile = OutputDir + '32.CGM_Evolution_Specific_Halos_MultiPanel' + OutputFormat
+        plt.savefig(outputFile, dpi=500, bbox_inches='tight')
+        print(f'\nSaved multi-panel CGM evolution plot to {outputFile}')
+        plt.close()
+        
+        return selected_halos
+
     print('\n=== Creating CGM Tracking Analysis Plots ===')
     plot_cgm_composition_analysis(data_reader)
     plot_gas_flow_rates_analysis(data_reader)
     plot_cgm_composition_evolution(data_reader)
+
+    base_dir = DirName
+    start_snap = 63  # z=0
+    end_snap = 0     # High redshift
+    target_masses = [1e10, 1e12, 1e14]  # M_sun
+    
+    # Create basic evolution plot
+    selected_halos = plot_cgm_evolution_specific_halos(
+        base_dir, start_snap, end_snap, target_masses, Hubble_h)
+    
+    # Create multi-panel plot with additional gas components
+    plot_cgm_evolution_with_scatter_specific_halos(
+        base_dir, start_snap, end_snap, target_masses, Hubble_h)
+    
+    # Print summary
+    if selected_halos:
+        print('\n=== Summary of Tracked Halos ===')
+        for i, (galaxy_id, actual_mass, target_mass) in enumerate(selected_halos):
+            print(f'Halo {i+1}: GalaxyIndex {galaxy_id}')
+            print(f'  Target mass: {np.log10(target_mass):.1f} log10 M_sun')
+            print(f'  Actual mass: {np.log10(actual_mass):.3f} log10 M_sun')
+            print(f'  Difference: {abs(np.log10(actual_mass) - np.log10(target_mass)):.3f} dex')
+    
+    print('\nCGM evolution analysis for specific halos completed!')

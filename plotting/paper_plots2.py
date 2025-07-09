@@ -131,7 +131,7 @@ PLOT_COLORS = {
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/millennium_noenviro/'
+DirName = './output/Infall_CGM_massredshift_dep/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 OutputDir = DirName + 'plots/'
@@ -144,7 +144,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Additional simulation directories for SFR density comparison
 SFR_SimDirs = [
     {
-        'path': './output/millennium_noenviro/', 
+        'path': './output/Infall_CGM_massredshift_dep/', 
         'label': 'Millennium', 
         'color': 'black', 
         'linestyle': '-',
@@ -203,7 +203,7 @@ SFR_SimDirs = [
 SMF_SimConfigs = [
     # SAGE 2.0 simulations (solid lines)
     {
-        'path': './output/millennium_noenviro/', 
+        'path': './output/Infall_CGM_massredshift_dep/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line
@@ -235,7 +235,7 @@ SMF_SimConfigs = [
 GAS_SimConfigs = [
     # Main simulation (your current one)
     {
-        'path': './output/millennium_noenviro/', 
+        'path': './output/Infall_CGM_massredshift_dep/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',
@@ -244,18 +244,6 @@ GAS_SimConfigs = [
         'VolumeFraction': 1.0,
         'linewidth': 3,
         'alpha': 0.9
-    },
-    # Your second model
-    {
-        'path': './output/millennium_br/', 
-        'label': 'Pressure-based model', 
-        'color': PLOT_COLORS['model_main'], 
-        'linestyle': '--',
-        'BoxSize': 62.5,  # adjust to your actual values
-        'Hubble_h': 0.73,  # adjust to your actual values
-        'VolumeFraction': 1.0,
-        'linewidth': 2,
-        'alpha': 0.8
     }
 ]
 

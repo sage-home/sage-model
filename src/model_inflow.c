@@ -60,6 +60,48 @@ void inflow_gas(const int centralgal, const double dt, struct GALAXY *galaxies, 
     }
 }
 
+double get_cgm_transfer_efficiency(const int gal, struct GALAXY *galaxies, const struct params *run_params)
+{
+    const double z = run_params->ZZ[galaxies[gal].SnapNum];
+    double base_efficiency = run_params->CGMTransferEfficiency;
+    double original_efficiency = base_efficiency;
+    
+    // Cold streams: REDUCE transfer efficiency for small halos at high-z
+    if (z > 0.0 && galaxies[gal].Mvir > 0.0) {
+        double log_mass = log10(galaxies[gal].Mvir);
+        
+        if (log_mass < 2.5) {  // Below ~3×10^12 Msun/h
+            // Small halos: gas stays in CGM longer (cold streams)
+            double reduction_factor = exp(-0.5 * (2.5 - log_mass));  // Gentle reduction
+            base_efficiency *= reduction_factor;
+        }
+    }
+    
+    if (base_efficiency < 0.01) base_efficiency = 0.01;  // Reasonable minimum
+    
+    // Debug output
+    static int debug_counter = 0;
+    debug_counter++;
+    if (debug_counter % 10000 == 0) {
+        printf("DEBUG CGM Transfer: z=%.2f, M=%.2e, original=%.3f, new=%.3f", 
+               z, galaxies[gal].Mvir, original_efficiency, base_efficiency);
+        
+        if (z > 0.0 && galaxies[gal].Mvir > 0.0) {
+            double log_mass = log10(galaxies[gal].Mvir);
+            if (log_mass < 2.5) {
+                printf(" [COLD STREAM REDUCTION]");
+            } else {
+                printf(" [HIGH-Z, MASSIVE HALO]");
+            }
+        } else {
+            printf(" [LOW-Z OR NO MASS]");
+        }
+        printf("\n");
+    }
+    
+    return base_efficiency;
+}
+
 void transfer_cgm_to_hot(const int centralgal, const double dt, struct GALAXY *galaxies, 
                         const struct params *run_params)
 {
@@ -71,7 +113,7 @@ void transfer_cgm_to_hot(const int centralgal, const double dt, struct GALAXY *g
     const double dynamical_time = reff / galaxies[centralgal].Vvir;
     
     // Transfer rate: fraction of CGM per dynamical time
-    double base_transfer_rate = run_params->CGMTransferEfficiency * 
+    double base_transfer_rate = get_cgm_transfer_efficiency(centralgal, galaxies, run_params) * 
                                galaxies[centralgal].CGMgas / dynamical_time;
             
     double transfer_amount = base_transfer_rate * dt;

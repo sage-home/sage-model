@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_noenviro/'
+DirName = './output/Infall_CGM_massredshift_dep/'
 FileName = 'model_0.hdf5'
 
 # Simulation details
