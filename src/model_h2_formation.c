@@ -227,7 +227,7 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
  * - Transfers stripped mass to central galaxy's CGM (NEW)
  */
 void apply_environmental_effects(struct GALAXY *g, struct GALAXY *galaxies, 
-                                 int gal_index, int central_gal_index, 
+                                 int central_gal_index, 
                                  const struct params *run_params) 
 {
     // Skip if no H2 gas

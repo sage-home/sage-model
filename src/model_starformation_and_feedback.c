@@ -51,9 +51,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 {
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
     double reheated_mass = 0.0; // initialise
-
-    // Get current redshift for this galaxy
-    double z = run_params->ZZ[galaxies[p].SnapNum];
     double sfr_eff = run_params->SfrEfficiency;
 
     // Apply virial velocity enhancement if enabled

@@ -15,7 +15,7 @@ extern void update_gas_components(struct GALAXY *g, const struct params *run_par
 extern void init_gas_components(struct GALAXY *g);
 extern void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_params);
 extern void apply_environmental_effects(struct GALAXY *g, struct GALAXY *galaxies, 
-                                 int gal_index, int central_gal_index, 
+                                 int central_gal_index, 
                                  const struct params *run_params);
 
 #ifdef __cplusplus

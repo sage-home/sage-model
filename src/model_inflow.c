@@ -62,7 +62,6 @@ double get_cgm_transfer_efficiency(const int gal, struct GALAXY *galaxies, const
 {
     const double z = run_params->ZZ[galaxies[gal].SnapNum];
     double base_efficiency = run_params->CGMTransferEfficiency;
-    double original_efficiency = base_efficiency;
     
     // Cold streams: REDUCE transfer efficiency for small halos at high-z
     if (z > 0.0 && galaxies[gal].Mvir > 0.0) {
