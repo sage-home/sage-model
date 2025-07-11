@@ -10,6 +10,7 @@
 #include "model_misc.h"
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
+#include "model_inflow.h"
 
 double calculate_mass_dependent_sf_efficiency(const struct GALAXY *galaxy, const double base_efficiency, const struct params *run_params)
 {
@@ -370,6 +371,15 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     // Initialize variables
     strdot = 0.0;
 
+    // In starformation_and_feedback, before calculating strdot
+    // if (p == 0 && step % 10 == 0) {  // Only galaxy 0, every 10 steps
+    //     printf("DEBUG GAS CYCLE: Mvir=%.2e, CGM=%.2e, Hot=%.2e, Cold=%.2e, H2=%.2e\n",
+    //         galaxies[p].Mvir, galaxies[p].CGMgas, galaxies[p].HotGas, 
+    //         galaxies[p].ColdGas, galaxies[p].H2_gas);
+    //     printf("  CGM_transfer_eff=%.3f, SFR_eff=%.3f\n", 
+    //         get_cgm_transfer_efficiency(p, galaxies, run_params), sfr_eff);
+    // }
+
     // Star formation recipes - same as original function
     if(run_params->SFprescription == 0) {
         // Original SAGE recipe (Kauffmann 1996)
@@ -387,9 +397,9 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
 
-        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
-            strdot = sfr_eff * galaxies[p].H2_gas / tdyn;  // Still use H2 for SF rate
+        const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
+        if(galaxies[p].H2_gas > h2_crit && tdyn > 0.0) {
+            strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;  // Still use H2 for SF rate
         } else {
             strdot = 0.0;
         }

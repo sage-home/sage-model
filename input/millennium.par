@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/Infall_CGM_massredshift_dep/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/novelocityboost/
 
 FirstFile         0
 LastFile          7
@@ -57,7 +57,7 @@ SupernovaRecipeOn           1   %0: switch off
 ReionizationOn              1   %0: switch off
 DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15
-VvirEnhancementOn           1   %0: switch off; 1: enable virial velocity enhancement
+VvirEnhancementOn           0   %0: switch off; 1: enable virial velocity enhancement
 MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
 
 %------------------------------------------
