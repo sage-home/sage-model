@@ -100,7 +100,7 @@ VvirEnhancementPower        1.5         % Power-law exponent for velocity scalin
 %------------------------------------------
  
 CGMInfallFraction           1.0           % Fraction of infall goes through CGM first
-CGMTransferEfficiency       0.045          % Transfer efficiency per dynamical time
+CGMTransferEfficiency       0.08          % Transfer efficiency per dynamical time
 CGMPristineFraction         0.8           % Fraction of CGM transfer that is pristine
 CGMMixingTimescale          1.0           % Gyr mixing timescale
 
@@ -110,7 +110,7 @@ CGMMixingTimescale          1.0           % Gyr mixing timescale
 
 SFMassPivot                1.0          % Pivot mass in 10^10 Msun/h
 SFLowMassSlope             0.5          % Power-law slope for M < Mpivot
-SFHighMassSlope            -0.3         % Power-law slope for M > Mpivot
+SFHighMassSlope            5.3         % Power-law slope for M > Mpivot
 
 
 %------------------------------------------

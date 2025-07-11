@@ -99,8 +99,8 @@ float integrate_molecular_gas_radial(struct GALAXY *g, const struct params *run_
     
     // Since our disk_scale_radius is the scale length, we need to convert
     const float h = run_params->Hubble_h;
-    const float re_pc = disk_scale_radius * 1.0e6 / h ; 
-    
+    const float re_pc = disk_scale_radius * 1.0e6 / h / 1.67;
+
     // Get metallicity (as absolute fraction, not relative to solar - this is key!)
     float metallicity = 0.0;
     if (g->ColdGas > 0.0) {
@@ -191,7 +191,7 @@ float calculate_bulge_molecular_gas(struct GALAXY *g, const struct params *run_p
     // Calculate bulge properties
     const float h = run_params->Hubble_h;
     float bulge_radius = g->DiskScaleRadius * 0.2; // Typical bulge size
-    float bulge_radius_pc = bulge_radius * 1.0e6 / h;
+    float bulge_radius_pc = bulge_radius * 1.0e6 / h / 1.67; // Convert to physical size in pc
     
     // Calculate bulge gas surface density
     float bulge_gas_surface_density = 0.0;
@@ -366,7 +366,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         //            g->ColdGas, g->StellarMass, g->DiskScaleRadius);
         // }
         
-        // // Calculate disk molecular gas through SHARK-exact radial integration
+        // Calculate disk molecular gas through SHARK-exact radial integration
         // float disk_molecular_gas = integrate_molecular_gas_radial(g, run_params);
         
         // // Calculate bulge molecular gas using SHARK-exact method

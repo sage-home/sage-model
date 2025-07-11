@@ -366,6 +366,39 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     // First, update the gas components to ensure H2 and HI are correctly calculated
     if (run_params->SFprescription >= 1) {
         update_gas_components(&galaxies[p], run_params);
+        
+        // Enhancement for high-mass galaxies: force more H1 to H2 conversion
+        // For galaxies with Mvir > 10^10.2 M_sun/h, boost H2 formation (lowered threshold)
+        const double high_mass_threshold = 15.85; // 10^10.2 in units of 10^10 M_sun/h
+        if (galaxies[p].Mvir > high_mass_threshold) {
+            // Calculate enhancement factor based on mass (logarithmic scaling)
+            double mass_ratio = galaxies[p].Mvir / high_mass_threshold;
+            double h2_enhancement = 1.0 + 3.0 * log10(mass_ratio); // Up to 300% more H2
+
+            // Cap the enhancement to prevent extreme values
+            if (h2_enhancement > 20.0) h2_enhancement = 20.0;
+            
+            // Get current H1 gas (total cold gas minus H2)
+            double h1_gas = galaxies[p].ColdGas - galaxies[p].H2_gas;
+            
+            // Convert additional H1 to H2 based on enhancement factor
+            if (h1_gas > 0.0) {
+                double additional_h2 = h1_gas * (h2_enhancement - 1.0) / h2_enhancement;
+                
+                // Ensure we don't exceed available H1 gas - allow up to 98% conversion
+                if (additional_h2 > h1_gas * 0.98) {
+                    additional_h2 = h1_gas * 0.98; // Max 98% of H1 can be converted
+                }
+                
+                // Update H2 gas content
+                galaxies[p].H2_gas += additional_h2;
+                
+                // Ensure H2 doesn't exceed total cold gas
+                if (galaxies[p].H2_gas > galaxies[p].ColdGas) {
+                    galaxies[p].H2_gas = galaxies[p].ColdGas;
+                }
+            }
+        }
     }
 
     // Initialize variables
@@ -397,9 +430,24 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
 
-        const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].H2_gas > h2_crit && tdyn > 0.0) {
-            strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;  // Still use H2 for SF rate
+        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
+        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
+            // Apply additional enhancement for high-mass galaxies
+            double sf_efficiency = sfr_eff;
+            const double high_mass_threshold = 15.85; // 10^10.2 in units of 10^10 M_sun/h
+            
+            if (galaxies[p].Mvir > high_mass_threshold) {
+                // Additional star formation efficiency boost for high-mass galaxies
+                double mass_ratio = galaxies[p].Mvir / high_mass_threshold;
+                double sf_enhancement = 1.0 + 1.5 * log10(mass_ratio); // Up to 150% more efficient SF
+                
+                // Cap the enhancement
+                if (sf_enhancement > 5.0) sf_enhancement = 5.0;
+                
+                sf_efficiency *= sf_enhancement;
+            }
+            
+            strdot = sf_efficiency * galaxies[p].H2_gas / tdyn;  // Still use H2 for SF rate
         } else {
             strdot = 0.0;
         }
@@ -416,6 +464,19 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     if (run_params->SupernovaRecipeOn == 1) {
         // Use Muratov mass loading factor
         double mass_loading_factor = calculate_muratov_mass_loading(p, z, galaxies);
+        
+        // Reduce feedback for high-mass galaxies to allow more star formation
+        const double high_mass_threshold = 15.85; // 10^10.2 in units of 10^10 M_sun/h
+        if (galaxies[p].Mvir > high_mass_threshold) {
+            double mass_ratio = galaxies[p].Mvir / high_mass_threshold;
+            double feedback_reduction = 1.0 / (1.0 + 0.5 * log10(mass_ratio)); // Reduce feedback by up to 50%
+            
+            // Cap the reduction
+            if (feedback_reduction < 0.1) feedback_reduction = 0.1;
+            
+            mass_loading_factor *= feedback_reduction;
+        }
+        
         galaxies[p].MassLoadingFactor = mass_loading_factor;  // Store for diagnostics
         
         reheated_mass = mass_loading_factor * stars;
