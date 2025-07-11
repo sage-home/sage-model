@@ -106,7 +106,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
         // Use H2 gas for star formation with a critical threshold
         const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].H2_gas > h2_crit && tdyn > 0.0) {
+        if(galaxies[p].ColdGas > h2_crit && tdyn > 0.0) {
             strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;
         } else {
             strdot = 0.0;
@@ -383,17 +383,13 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
             strdot = 0.0;
         }
     } else if(run_params->SFprescription >= 1) {
-        // H2-based star formation recipe with enhanced efficiency
+        // H2-based star formation recipe
         reff = 3.0 * galaxies[p].DiskScaleRadius;
-        double disk_area = M_PI * reff * reff;
-        double surface_density = galaxies[p].ColdGas / disk_area;
-        
-        // Constant surface density threshold (not velocity-dependent)
-        const double sigma_crit = 10.0; // Msun/pc^2 equivalent in your units
-        
-        if (surface_density > sigma_crit) {
-            double tdyn = reff / galaxies[p].Vvir;
-            strdot = sfr_eff * (galaxies[p].H2_gas - sigma_crit * disk_area) / tdyn;
+        tdyn = reff / galaxies[p].Vvir;
+
+        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
+        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
+            strdot = sfr_eff * galaxies[p].H2_gas / tdyn;  // Still use H2 for SF rate
         } else {
             strdot = 0.0;
         }

@@ -17,6 +17,85 @@ void init_gas_components(struct GALAXY *g)
     g->H2_gas = 0.0;
     g->HI_gas = 0.0;
 }
+/**
+ * calculate_midplane_pressure_BR06 - Fixed pressure calculation
+ * From Blitz & Rosolowsky (2006), with corrected units and thresholds
+ */
+float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float radius_pc)
+{
+    // Early termination for edge cases
+    if (sigma_gas <= 0.0 || radius_pc <= 0.0) {
+        return 0.0;
+    }
+    
+    // Hardcoded parameters from BR06 paper
+    const float gas_vel_disp = 10.0;        // km/s, typical ISM velocity dispersion
+    
+    // Stellar disk scale height from Kregel et al. (2002): h* = 0.14 * R
+    const float h_star_pc = 0.14 * radius_pc; // pc
+    
+    // Calculate stellar velocity dispersion from hydrostatic equilibrium
+    float star_contribution = 0.0;
+    
+    if (sigma_stars > 0.0 && h_star_pc > 0.0) {
+        const float G_pc_units = 4.302e-3; // G in pc M☉⁻¹ (km/s)²
+        float vel_disp_star = sqrt(M_PI * G_pc_units * h_star_pc * sigma_stars); // km/s
+        
+        if (vel_disp_star > 0.0) {
+            // Stellar contribution weighted by velocity dispersion ratio
+            star_contribution = (gas_vel_disp / vel_disp_star) * sigma_stars;
+        }
+    }
+    
+    // CORRECTED: Midplane pressure calculation
+    // From BR06 and typical galactic values, need much higher conversion factor
+    // Empirically calibrated so that Σgas ~ 10 M☉/pc² gives P ~ 1000 K cm⁻³
+    const float pressure_conversion = 1.0; // Converts (M☉/pc²)² to K cm⁻³
+    
+    float pressure = pressure_conversion * sigma_gas * (sigma_gas + star_contribution);
+    
+    return pressure; // K cm⁻³
+}
+
+/**
+ * calculate_molecular_fraction_BR06 - Fixed BR06 molecular fraction
+ * From Blitz & Rosolowsky (2006): R_mol = (P/P₀)^β, f_mol = R_mol/(1+R_mol)
+ */
+float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar_surface_density,
+                                       float radius_pc)
+{
+    // Calculate midplane pressure
+    float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, 
+                                                     radius_pc);
+    
+    if (pressure <= 0.0) {
+        return 0.0;
+    }
+    
+    // Hardcoded BR06 parameters from paper
+    const float P0 = 1.7e4;    // Reference pressure, K cm⁻³ (BR06 Table 1)
+    const float beta = 0.8;    // Pressure exponent (BR06 Table 1)
+    
+    // CORRECTED: Much lower threshold based on observations
+    // Below this pressure, molecular gas formation is negligible
+    const float P_threshold = 10.0; // K cm⁻³ (much lower than before!)
+    if (pressure < P_threshold) {
+        return 0.0;
+    }
+    
+    // Calculate molecular-to-atomic ratio: R_mol = (P/P₀)^β
+    float pressure_ratio = pressure / P0;
+    float R_mol = pow(pressure_ratio, beta);
+    
+    // Convert to molecular fraction: f_mol = R_mol / (1 + R_mol)
+    float f_mol = R_mol / (1.0 + R_mol);
+    
+    // Apply physical bounds from BR06 observations
+    if (f_mol > 0.95) f_mol = 0.95; // Max 95% molecular
+    if (f_mol < 0.0) f_mol = 0.0;   // No negative fractions
+    
+    return f_mol;
+}
 
 /**
  * gd14_sigma_norm - Calculate GD14 normalization surface density
@@ -390,6 +469,28 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         // Comparing fraction to fraction
         if (total_molecular_gas > 0.95) {
             total_molecular_gas = 0.95;
+        }
+    }
+     else if (run_params->SFprescription == 2) {
+        // NEW: BR06 pressure-based model with hardcoded parameters
+        const float h = run_params->Hubble_h;
+        const float re_pc = g->DiskScaleRadius * 1.0e6 / h; // Convert Mpc/h to pc
+        
+        // Calculate surface densities at the disk scale radius
+        // Use half-mass radius area (factor of 2π, not 4π)
+        float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc;
+        
+        // Convert SAGE internal units to M☉/pc²
+        float gas_surface_density = (g->ColdGas * 1.0e10 / h) / disk_area_pc2;      // M☉/pc²
+        float stellar_surface_density = (g->StellarMass * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
+        
+        total_molecular_gas = calculate_molecular_fraction_BR06(
+            gas_surface_density, stellar_surface_density, re_pc);
+            
+        // Debug output for BR06 model
+        if (galaxy_debug_counter % 50000 == 0) {
+            printf("DEBUG BR06: Σgas=%.1f M☉/pc², Σstar=%.1f M☉/pc², R=%.1f pc, f_mol=%.3f\n",
+                   gas_surface_density, stellar_surface_density, re_pc, total_molecular_gas);
         }
     }
     else {

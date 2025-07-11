@@ -12,7 +12,6 @@ extern "C" {
     extern double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
     extern void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies, const struct params *run_params);
     extern void update_gas_components(struct GALAXY *g, const struct params *run_params);
-    extern double get_cgm_infall_fraction(const int gal, struct GALAXY *galaxies, const struct params *run_params);
 
 #ifdef __cplusplus
 }
