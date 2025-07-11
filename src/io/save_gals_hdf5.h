@@ -55,6 +55,7 @@ struct HDF5_GALAXY_OUTPUT
     float *ColdGas;
     float *H2_gas;  // NEW: Molecular hydrogen mass array
     float *HI_gas;  // NEW: Atomic hydrogen mass array
+    float *HII_gas; // NEW: Ionized hydrogen mass array
     float *StellarMass;
     float *BulgeMass;
     float *HotGas;
