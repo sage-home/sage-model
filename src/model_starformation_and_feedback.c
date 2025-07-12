@@ -389,7 +389,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
 
         const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > h2_crit && tdyn > 0.0) {
-            strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;  // Still use H2 for SF rate
+            strdot = sfr_eff * galaxies[p].H2_gas / tdyn;  // Still use H2 for SF rate
         } else {
             strdot = 0.0;
         }
