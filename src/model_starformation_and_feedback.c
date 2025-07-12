@@ -340,6 +340,11 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     double reheated_mass = 0.0; // initialize
     // double cold_gas_before = galaxies[p].ColdGas; // Save for debugging
 
+    if(isnan(galaxies[p].ColdGas) || isnan(galaxies[p].H2_gas) || isnan(galaxies[p].Mvir)) {
+        printf("Galaxy %d has nan properties at start of SF!\n", p);
+        return; // Skip this galaxy
+    }
+
     // Get current redshift for this galaxy
     double z = run_params->ZZ[galaxies[p].SnapNum];
     double sfr_eff = run_params->SfrEfficiency;
@@ -387,9 +392,58 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
 
+        // if(tdyn <= 0.001) {  // 1 Myr minimum
+        //     // printf("FIXING tiny tdyn from %.6f to 0.001\n", tdyn);
+        //     tdyn = 0.001;
+        // }
+
         const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > h2_crit && tdyn > 0.0) {
             strdot = sfr_eff * galaxies[p].H2_gas / tdyn;  // Still use H2 for SF rate
+
+        //     if(galaxies[p].Mvir > 100.0) {  // Log massive galaxies
+        //     printf("Massive galaxy: Mvir=%.1f, H2=%.2f, tdyn=%.2f, strdot=%.4f\n", 
+        //         galaxies[p].Mvir, galaxies[p].H2_gas, tdyn, strdot);
+        // }   
+
+        // // In your star formation function, for massive galaxies:
+        // if(galaxies[p].Mvir > 100.0) {
+        //     printf("=== MASSIVE GALAXY DEBUG ===\n");
+        //     printf("Mvir=%.1f, ColdGas=%.2f, H2=%.2f, HI=%.2f\n", 
+        //         galaxies[p].Mvir, galaxies[p].ColdGas, galaxies[p].H2_gas, galaxies[p].HI_gas);
+            
+        //     // Track what limits star formation
+        //     printf("H2 available: %.2f\n", galaxies[p].H2_gas);
+        //     printf("Cold threshold: %.2f (ColdGas=%.2f)\n", h2_crit, galaxies[p].ColdGas);
+        //     printf("Above threshold? %s\n", (galaxies[p].ColdGas > h2_crit) ? "YES" : "NO");
+        //     printf("Raw strdot: %.2f\n", strdot);
+        //     printf("Stars before constraints: %.2f\n", stars);
+            
+        //     // Track constraint effects
+        //     double stars_before = stars;
+        //     double reheated_before = reheated_mass;
+            
+        //     // [Your constraint code here]
+            
+        //     printf("Stars after constraints: %.2f (reduced by %.1fx)\n", 
+        //         stars, stars_before/stars);
+        //     printf("Reheated mass: %.2f\n", reheated_mass);
+        //     printf("Net gas change: %.2f\n", -(stars + reheated_mass));
+        //     printf("H2 utilization: %.1f%%\n", 100.0 * stars / galaxies[p].H2_gas);
+        //     printf("================================\n");
+        // }
+
+        // Add these as static variables or galaxy properties
+        static double cumulative_stars = 0.0;
+        static int step_count = 0;
+
+        cumulative_stars += stars;
+        step_count++;
+
+        if(step_count % 1000 == 0) {  // Every 1000 timesteps
+            printf("Galaxy Mvir=%.1f: %d steps, cumulative stars=%.3f, avg per step=%.6f\n",
+                galaxies[p].Mvir, step_count, cumulative_stars, cumulative_stars/step_count);
+        }
         } else {
             strdot = 0.0;
         }
@@ -399,6 +453,13 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     }
 
     stars = strdot * dt;
+    // printf("IMMEDIATELY after stars=strdot*dt: strdot=%.2f, dt=%.6f, stars=%.2f\n", 
+    //     strdot, dt, stars);
+
+    if(stars < 0.0) {
+        stars = 0.0;
+        printf("Set stars to 0 due to negative value\n");
+    }
     if(stars < 0.0) {
         stars = 0.0;
     }
@@ -429,9 +490,18 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         }
     } else {
         // H2-based recipes - ensure we don't use more gas than available
+        // printf("BEFORE H2 constraint: stars=%.2f, H2=%.2f\n", stars, galaxies[p].H2_gas);
+
         if(stars > galaxies[p].H2_gas) {
+            // printf("APPLYING H2 constraint: reducing stars from %.2f to %.2f\n", 
+            //     stars, galaxies[p].H2_gas);
             stars = galaxies[p].H2_gas;
+        } else {
+            // printf("H2 constraint NOT needed: stars=%.2f <= H2=%.2f\n", 
+            //     stars, galaxies[p].H2_gas);
         }
+
+        // printf("AFTER H2 constraint: stars=%.2f\n", stars);
         
         if((stars + reheated_mass) > galaxies[p].ColdGas) {
             const double fac = galaxies[p].ColdGas / (stars + reheated_mass);

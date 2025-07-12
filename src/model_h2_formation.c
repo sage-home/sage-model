@@ -124,6 +124,9 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     // Step 5: Calculate R_mol (molecular-to-atomic ratio)
     // rmol = (Sigma_gas / sigma_norm)^alpha
     float rmol = pow(gas_surface_density / sigma_norm, alpha);
+
+    // CRITICAL: Prevent R_mol=0 which causes f_mol=0
+    rmol = fmax(rmol, 0.001);  // Minimum R_mol = 0.001
     
     // Step 6: Convert to molecular fraction
     // fmol = rmol / (1 + rmol)
@@ -455,6 +458,15 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         total_molecular_gas = calculate_molecular_fraction_GD14(
             gas_surface_density_center, 
             g->MetalsColdGas / g->ColdGas); // Use absolute metallicity fraction
+
+        // Boost for massive galaxies with high surface density + metallicity
+        // if (g->Mvir > 100.0 && gas_surface_density_center > 50.0 && g->MetalsColdGas / g->ColdGas > 0.005) {
+        //     total_molecular_gas = fmin(total_molecular_gas * 2.0, 0.8);  // Double it, cap at 80%
+        // }
+
+        // CRITICAL: Prevent f_mol=0 which causes H2_gas=0 and division by zero
+        total_molecular_gas = fmax(total_molecular_gas, 0.001);  // Minimum 0.1% molecular
+
 
         // Mass conservation check
         // Comparing fraction to fraction
