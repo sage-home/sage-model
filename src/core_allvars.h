@@ -124,7 +124,6 @@ struct GALAXY
     float ColdGas;
     float H2_gas;  
     float HI_gas; 
-    float HII_gas;   /* ionized hydrogen */
     float StellarMass;
     float BulgeMass;
     float HotGas;

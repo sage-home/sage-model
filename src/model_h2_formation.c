@@ -13,14 +13,13 @@ static long galaxy_debug_counter = 0;
  */
 void init_gas_components(struct GALAXY *g)
 {
-    // Initialize molecular, atomic, and ionized hydrogen to zero
+    // Initialize molecular and atomic hydrogen to zero
     g->H2_gas = 0.0;
     g->HI_gas = 0.0;
-    g->HII_gas = 0.0;
 }
 /**
- * calculate_midplane_pressure_BR06 - Fixed pressure calculation
- * From Blitz & Rosolowsky (2006), with corrected units and thresholds
+ * calculate_midplane_pressure_BR06 - CORRECTED BR06 pressure calculation
+ * From Blitz & Rosolowsky (2006) Equation (5) exactly
  */
 float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float radius_pc)
 {
@@ -29,43 +28,27 @@ float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float
         return 0.0;
     }
     
-    // Hardcoded parameters from BR06 paper
-    const float gas_vel_disp = 10.0;        // km/s, typical ISM velocity dispersion
+    // BR06 hardcoded parameters (from paper)
+    const float v_g = 8.0;          // km/s, gas velocity dispersion (BR06 uses 8 km/s)
     
     // Stellar disk scale height from Kregel et al. (2002): h* = 0.14 * R
     const float h_star_pc = 0.14 * radius_pc; // pc
     
-    // Calculate stellar velocity dispersion from hydrostatic equilibrium
-    float star_contribution = 0.0;
-    
-    if (sigma_stars > 0.0 && h_star_pc > 0.0) {
-        const float G_pc_units = 4.302e-3; // G in pc M☉⁻¹ (km/s)²
-        float vel_disp_star = sqrt(M_PI * G_pc_units * h_star_pc * sigma_stars); // km/s
-        
-        if (vel_disp_star > 0.0) {
-            // Stellar contribution weighted by velocity dispersion ratio
-            star_contribution = (gas_vel_disp / vel_disp_star) * sigma_stars;
-        }
-    }
-    
-    // CORRECTED: Midplane pressure calculation
-    // From BR06 and typical galactic values, need much higher conversion factor
-    // Empirically calibrated so that Σgas ~ 10 M☉/pc² gives P ~ 1000 K cm⁻³
-    const float pressure_conversion = 1.0; // Converts (M☉/pc²)² to K cm⁻³
-    
-    float pressure = pressure_conversion * sigma_gas * (sigma_gas + star_contribution);
+    // BR06 Equation (5) EXACTLY as written in paper:
+    // P_ext/k = 272 cm⁻³ K × (Σ_gas/M_⊙ pc⁻²) × (Σ_*/M_⊙ pc⁻²)^0.5 × (v_g/km s⁻¹) × (h_*/pc)^-0.5
+    float pressure = 272.0 * sigma_gas * sqrt(sigma_stars) * v_g / sqrt(h_star_pc);
     
     return pressure; // K cm⁻³
 }
 
 /**
- * calculate_molecular_fraction_BR06 - Fixed BR06 molecular fraction
- * From Blitz & Rosolowsky (2006): R_mol = (P/P₀)^β, f_mol = R_mol/(1+R_mol)
+ * calculate_molecular_fraction_BR06 - CORRECTED BR06 molecular fraction
+ * From Blitz & Rosolowsky (2006) Equation (11): R_mol = (P/P₀)^α
  */
 float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar_surface_density,
                                        float radius_pc)
 {
-    // Calculate midplane pressure
+    // Calculate midplane pressure using corrected formula
     float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, 
                                                      radius_pc);
     
@@ -73,25 +56,24 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
         return 0.0;
     }
     
-    // Hardcoded BR06 parameters from paper
-    const float P0 = 1.7e4;    // Reference pressure, K cm⁻³ (BR06 Table 1)
-    const float beta = 0.8;    // Pressure exponent (BR06 Table 1)
+    // BR06 parameters from Table 1 in paper
+    const float P0 = 1.7e4;    // Reference pressure, K cm⁻³
+    const float alpha = 0.8;   // Power law index (they call it α, you called it beta)
     
-    // CORRECTED: Much lower threshold based on observations
-    // Below this pressure, molecular gas formation is negligible
-    const float P_threshold = 10.0; // K cm⁻³ (much lower than before!)
+    // Apply pressure threshold - below this, no molecular gas forms
+    const float P_threshold = 1000.0; // K cm⁻³ (reasonable physical threshold)
     if (pressure < P_threshold) {
         return 0.0;
     }
     
-    // Calculate molecular-to-atomic ratio: R_mol = (P/P₀)^β
+    // BR06 Equation (11): R_mol = (P/P₀)^α
     float pressure_ratio = pressure / P0;
-    float R_mol = pow(pressure_ratio, beta);
+    float R_mol = pow(pressure_ratio, alpha);
     
     // Convert to molecular fraction: f_mol = R_mol / (1 + R_mol)
     float f_mol = R_mol / (1.0 + R_mol);
     
-    // Apply physical bounds from BR06 observations
+    // Apply physical bounds
     if (f_mol > 0.95) f_mol = 0.95; // Max 95% molecular
     if (f_mol < 0.0) f_mol = 0.0;   // No negative fractions
     
@@ -146,6 +128,14 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     // Step 6: Convert to molecular fraction
     // fmol = rmol / (1 + rmol)
     float fmol = rmol / (1.0 + rmol);
+
+    // Debug output for GD14 model (assuming galaxy_debug_counter is accessible)
+    // Note: This assumes galaxy_debug_counter is declared as extern or passed as parameter
+    extern long galaxy_debug_counter;
+    if (galaxy_debug_counter % 50000 == 0) {
+        printf("DEBUG GD14: Σgas=%.1f M☉/pc², Z=%.4f, d_mw=%.4f, u_mw=%.2f, α=%.3f, Σnorm=%.1f, R_mol=%.3f, f_mol=%.3f\n",
+               gas_surface_density, metallicity, d_mw, u_mw, alpha, sigma_norm, rmol, fmol);
+    }
     
     // Step 7: Apply bounds
     if (fmol > 1.0) {
@@ -372,41 +362,34 @@ void apply_environmental_effects(struct GALAXY *g, struct GALAXY *galaxies,
         }
     }
     
-    // Apply the effect - remove H2 gas and redistribute
+    // Apply the effect - remove H2 gas
     if (env_strength > 0.0) {
         float h2_affected = g->H2_gas * env_strength;
-        float hii_affected = g->HII_gas * env_strength * 0.5; // Ionized gas partially affected
         
         // 30% is completely removed, 70% converted to HI
         float h2_removed = h2_affected * 0.3;
         float h2_to_hi = h2_affected * 0.7;
-        
-        // Ionized gas: 50% removed, 50% converted to HI (recombination)
-        float hii_removed = hii_affected * 0.5;
-        float hii_to_hi = hii_affected * 0.5;
         
         // Calculate metallicity before modifying gas masses
         float metallicity = (g->ColdGas > 0.0) ? g->MetalsColdGas / g->ColdGas : 0.0;
         
         // Update gas components in current galaxy
         g->H2_gas -= h2_affected;
-        g->HII_gas -= hii_affected;
-        g->HI_gas += h2_to_hi + hii_to_hi;
-        g->ColdGas -= (h2_removed + hii_removed);  // Only the removed parts reduce total cold gas
+        g->HI_gas += h2_to_hi;
+        g->ColdGas -= h2_removed;  // Only the removed part reduces total cold gas
         
         // Remove metals proportionally for the stripped gas
-        g->MetalsColdGas -= (h2_removed + hii_removed) * metallicity;
+        g->MetalsColdGas -= h2_removed * metallicity;
         
         // Transfer stripped mass to central galaxy's CGM
         if (g->Type > 0 && central_gal_index >= 0) {  // Only for satellites with valid central
-            galaxies[central_gal_index].CGMgas += (h2_removed + hii_removed);
-            galaxies[central_gal_index].MetalsCGMgas += (h2_removed + hii_removed) * metallicity;
+            galaxies[central_gal_index].CGMgas += h2_removed;
+            galaxies[central_gal_index].MetalsCGMgas += h2_removed * metallicity;
         }
         
         // Ensure non-negative values
         if (g->H2_gas < 0.0) g->H2_gas = 0.0;
         if (g->HI_gas < 0.0) g->HI_gas = 0.0;
-        if (g->HII_gas < 0.0) g->HII_gas = 0.0;
         if (g->ColdGas < 0.0) g->ColdGas = 0.0;
         if (g->MetalsColdGas < 0.0) g->MetalsColdGas = 0.0;
     }
@@ -429,7 +412,6 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     if(g->ColdGas <= 0.0) {
         g->H2_gas = 0.0;
         g->HI_gas = 0.0;
-        g->HII_gas = 0.0;
         return;
     }
     
@@ -441,7 +423,6 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         }
         g->H2_gas = 0.0;
         g->HI_gas = g->ColdGas;
-        g->HII_gas = 0.0;
         return;
     }
     
@@ -507,151 +488,33 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         total_molecular_gas = 0.0; // Don't use fallback for debugging
     }
     
-    // Calculate ionization fraction
-    float ionization_fraction = 0.0;
-    if (run_params->SFprescription > 0) {
-        const float h = run_params->Hubble_h;
-        const float re_pc = g->DiskScaleRadius * 1.0e6 / h; // Convert to pc
-        
-        // Safety check for disk scale radius
-        if (re_pc <= 0.0) {
-            ionization_fraction = 0.0;
-        } else {
-            // Calculate surface densities
-            float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc;
-            float gas_surface_density = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
-            float stellar_surface_density = (g->StellarMass * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
-            
-            // Calculate SFR surface density (approximate from recent star formation)
-            float sfr_surface_density = 0.0;
-            if (g->SfrDisk[0] > 0.0) {
-                // Convert SFR from internal units to M☉/yr/pc²
-                float sfr_total = g->SfrDisk[0] * 1.0e10 / h; // M☉/yr
-                sfr_surface_density = sfr_total / disk_area_pc2;
-            }
-            
-            // Get metallicity
-            float metallicity = (g->ColdGas > 0.0) ? g->MetalsColdGas / g->ColdGas : 0.0;
-            
-            // Safety checks for all inputs
-            if (gas_surface_density > 0.0 && isfinite(gas_surface_density) &&
-                isfinite(sfr_surface_density) && isfinite(stellar_surface_density) && 
-                isfinite(metallicity) && metallicity >= 0.0) {
-                ionization_fraction = calculate_ionization_fraction(
-                    gas_surface_density, sfr_surface_density, stellar_surface_density, metallicity);
-            }
-            
-            // Final safety check for ionization fraction
-            if (!isfinite(ionization_fraction) || ionization_fraction < 0.0) {
-                ionization_fraction = 0.0;
-            }
-        }
-    }
-    
-    // Update gas components with three-phase model
-    // Priority: HII -> H2 -> HI (ionized gas takes precedence)
-    float remaining_gas = g->ColdGas;
-    
-    // Safety checks for all fractions
-    if (!isfinite(ionization_fraction) || ionization_fraction < 0.0) ionization_fraction = 0.0;
-    if (!isfinite(total_molecular_gas) || total_molecular_gas < 0.0) total_molecular_gas = 0.0;
-    if (ionization_fraction > 1.0) ionization_fraction = 1.0;
-    if (total_molecular_gas > 1.0) total_molecular_gas = 1.0;
-    
-    // 1. Ionized gas (HII regions and background ionization)
-    g->HII_gas = ionization_fraction * remaining_gas;
-    remaining_gas -= g->HII_gas;
-    
-    // Safety check for remaining gas
-    if (remaining_gas < 0.0) {
-        remaining_gas = 0.0;
-        g->HII_gas = g->ColdGas;
-    }
-    
-    // 2. Molecular gas (H2) from remaining neutral gas
-    g->H2_gas = total_molecular_gas * remaining_gas;
-    remaining_gas -= g->H2_gas;
-    
-    // Safety check for remaining gas
-    if (remaining_gas < 0.0) {
-        remaining_gas = 0.0;
-        g->H2_gas = g->ColdGas - g->HII_gas;
-    }
-    
-    // 3. Atomic gas (HI) is the remainder
-    g->HI_gas = remaining_gas;
+    // Update gas components - CRITICAL: Use the actual calculated values
+    g->H2_gas = total_molecular_gas * g->ColdGas;
+    g->HI_gas = (1.0 - total_molecular_gas) * g->ColdGas;
     
     // Apply bounds checking
-    if(g->HII_gas > g->ColdGas) {
-        g->HII_gas = g->ColdGas * 0.95; // Max 95% ionized
-        g->H2_gas = 0.0;
-        g->HI_gas = g->ColdGas - g->HII_gas;
-    }
-    if(g->H2_gas > g->ColdGas - g->HII_gas) {
-        g->H2_gas = g->ColdGas - g->HII_gas;
+    if(g->H2_gas > g->ColdGas) {
+        g->H2_gas = g->ColdGas;
         g->HI_gas = 0.0;
     }
 
-    // Final sanity checks
-    if(g->H2_gas < 0.0 || !isfinite(g->H2_gas)) g->H2_gas = 0.0;
-    if(g->HI_gas < 0.0 || !isfinite(g->HI_gas)) g->HI_gas = 0.0;
-    if(g->HII_gas < 0.0 || !isfinite(g->HII_gas)) g->HII_gas = 0.0;
+    // Final sanity checks (as SHARK does)
+    if(g->H2_gas < 0.0) g->H2_gas = 0.0;
+    if(g->HI_gas < 0.0) g->HI_gas = 0.0;
     
     // Mass conservation check with detailed debugging
-    float total_gas = g->H2_gas + g->HI_gas + g->HII_gas;
-    
-    // Additional safety check for total gas
-    if (!isfinite(total_gas)) {
-        // If we have invalid total gas, reset everything
-        g->H2_gas = 0.0;
-        g->HI_gas = g->ColdGas;
-        g->HII_gas = 0.0;
-        total_gas = g->ColdGas;
-    }
-    
-    if(total_gas > g->ColdGas * 1.001) {  
-        float scale = g->ColdGas / total_gas;
+    if(g->H2_gas + g->HI_gas > g->ColdGas * 1.001) {  
+        float total = g->H2_gas + g->HI_gas;
+        float scale = g->ColdGas / total;
         if (galaxy_debug_counter % 100 == 0) {
-            printf("DEBUG MAIN: Mass conservation issue - H2+HI+HII=%.2e > ColdGas=%.2e\n", 
-                   total_gas, g->ColdGas);
+            printf("DEBUG MAIN: Mass conservation issue - H2+HI=%.2e > ColdGas=%.2e\n", 
+                   total, g->ColdGas);
             printf("  Applying scale factor: %.6f\n", scale);
+            printf("  Metallicity debug: MetalsColdGas=%.4e, ColdGas=%.4e, metallicity=%.4e\n", 
+                   g->MetalsColdGas, g->ColdGas, (g->ColdGas > 0.0 ? g->MetalsColdGas / g->ColdGas : 0.0));
         }
-        
-        // Safety check for scale factor
-        if (isfinite(scale) && scale > 0.0) {
-            g->H2_gas *= scale;
-            g->HI_gas *= scale;
-            g->HII_gas *= scale;
-        } else {
-            // If scale is invalid, reset to safe state
-            g->H2_gas = 0.0;
-            g->HI_gas = g->ColdGas;
-            g->HII_gas = 0.0;
-        }
-    }
-    
-    // Final validation - ensure all gas components are finite and non-negative
-    if (!isfinite(g->H2_gas) || g->H2_gas < 0.0) g->H2_gas = 0.0;
-    if (!isfinite(g->HI_gas) || g->HI_gas < 0.0) g->HI_gas = 0.0;
-    if (!isfinite(g->HII_gas) || g->HII_gas < 0.0) g->HII_gas = 0.0;
-    
-    // Ensure total doesn't exceed cold gas
-    total_gas = g->H2_gas + g->HI_gas + g->HII_gas;
-    if (total_gas > g->ColdGas) {
-        // Simple redistribution if total exceeds cold gas
-        float excess = total_gas - g->ColdGas;
-        if (g->HI_gas >= excess) {
-            g->HI_gas -= excess;
-        } else {
-            g->HI_gas = 0.0;
-            excess -= g->HI_gas;
-            if (g->H2_gas >= excess) {
-                g->H2_gas -= excess;
-            } else {
-                g->H2_gas = 0.0;
-                g->HII_gas = g->ColdGas;
-            }
-        }
+        g->H2_gas *= scale;
+        g->HI_gas *= scale;
     }
 }
 
@@ -671,18 +534,10 @@ void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_para
     printf("  ColdGas: %.2e, StellarMass: %.2e, BulgeMass: %.2e\n", 
            g->ColdGas, g->StellarMass, g->BulgeMass);
     float h2_frac_cold = g->H2_gas / g->ColdGas;
-    float hi_frac_cold = g->HI_gas / g->ColdGas;
-    float hii_frac_cold = g->HII_gas / g->ColdGas;
-    float total_gas = g->H2_gas + g->HI_gas + g->HII_gas;
-    float h2_frac_proper = (total_gas > 0.0) ? g->H2_gas / total_gas : 0.0;
-    float hi_frac_proper = (total_gas > 0.0) ? g->HI_gas / total_gas : 0.0;
-    float hii_frac_proper = (total_gas > 0.0) ? g->HII_gas / total_gas : 0.0;
-    
-    printf("  H2_gas: %.2e, HI_gas: %.2e, HII_gas: %.2e\n", g->H2_gas, g->HI_gas, g->HII_gas);
-    printf("  Gas fractions (of ColdGas): f_H2=%.4f, f_HI=%.4f, f_HII=%.4f\n", 
-           h2_frac_cold, hi_frac_cold, hii_frac_cold);
-    printf("  Gas fractions (normalized): f_H2=%.4f, f_HI=%.4f, f_HII=%.4f\n", 
-           h2_frac_proper, hi_frac_proper, hii_frac_proper);
+    float h2_frac_proper = (g->H2_gas + g->HI_gas > 0.0) ? g->H2_gas / (g->H2_gas + g->HI_gas) : 0.0;
+    printf("  H2_gas: %.2e, HI_gas: %.2e\n", g->H2_gas, g->HI_gas);
+    printf("  f_H2 = H2/ColdGas = %.4f\n", h2_frac_cold);
+    printf("  f_H2 = H2/(H2+HI) = %.4f\n", h2_frac_proper);
     
     // Metallicity assessment
     float metallicity = g->MetalsColdGas / g->ColdGas;
@@ -788,163 +643,4 @@ void diagnose_cgm_h2_interaction(struct GALAXY *g, const struct params *run_para
     
     printf("=====================================\n\n");
     } // End of conditional check for galaxy_debug_counter % 9000000 == 0
-}
-
-/**
- * calculate_ionization_fraction - Calculate fraction of gas that is ionized
- * 
- * Based on Draine (2011) "Physics of the Interstellar and Intergalactic Medium"
- * and Krumholz (2013) "Star Formation in the Milky Way and Nearby Galaxies"
- * 
- * Uses:
- * 1. Stellar feedback ionization (Kennicutt 1998, Bigiel et al. 2008)
- * 2. Photoionization equilibrium (Draine 2011, Ch. 15)
- * 3. Recombination in dense regions (Osterbrock & Ferland 2006)
- * 
- * @param gas_surface_density: Gas surface density in M☉/pc²
- * @param sfr_surface_density: Star formation rate surface density in M☉/yr/pc²
- * @param stellar_surface_density: Stellar surface density in M☉/pc²
- * @param metallicity: Gas metallicity as absolute fraction
- * @return: Fraction of gas that is ionized (0-1)
- */
-float calculate_ionization_fraction(float gas_surface_density, float sfr_surface_density, 
-                                  float stellar_surface_density __attribute__((unused)), float metallicity)
-{
-    if (gas_surface_density <= 0.0) {
-        return 0.0;
-    }
-    
-    // 1. Stellar feedback ionization from Kennicutt (1998) and Bigiel et al. (2008)
-    // HII regions scale with young stellar populations
-    float stellar_ionization = 0.0;
-    if (sfr_surface_density > 0.0) {
-        // Kennicutt (1998): N_Lyc ∝ SFR for stellar populations < 10 Myr
-        // Typical ionizing photon production: Q_H = 10^53 s^-1 per M☉/yr (Kennicutt 1998)
-        float Q_H_per_sfr = 1.0e53; // photons s^-1 per M☉/yr
-        float ionizing_photons = Q_H_per_sfr * sfr_surface_density; // photons s^-1 pc^-2
-        
-        // Strömgren radius approach (Draine 2011, Eq. 15.4)
-        // For photoionization equilibrium: Q_H = α_B * n_e * n_p * V_HII
-        // where α_B = 2.6e-13 cm^3 s^-1 at T=10^4 K (case B recombination)
-        float alpha_B = 2.6e-13; // cm^3 s^-1
-        
-    // Convert surface density to volume density (assume scale height h = 100 pc)
-        float scale_height_pc = 100.0; // pc (typical for warm ionized medium)
-        float n_H = gas_surface_density / scale_height_pc; // M☉ pc^-3
-        n_H *= 1.989e33 / (1.673e-24 * 3.086e18); // Convert to cm^-3 (assuming pure hydrogen)
-        
-        if (n_H > 0.0 && isfinite(n_H)) {
-            // Volume of ionized gas from Strömgren sphere balance
-            float V_HII_per_pc2 = ionizing_photons / (alpha_B * n_H * n_H); // cm^3 pc^-2
-            
-            // Safety check for V_HII calculation
-            if (isfinite(V_HII_per_pc2) && V_HII_per_pc2 > 0.0) {
-                V_HII_per_pc2 /= 3.086e18; // Convert to pc^3 pc^-2 = pc
-                
-                // Fraction ionized = V_HII / V_total
-                stellar_ionization = V_HII_per_pc2 / scale_height_pc;
-                
-                // Safety check for stellar ionization result
-                if (!isfinite(stellar_ionization) || stellar_ionization < 0.0) {
-                    stellar_ionization = 0.0;
-                }
-            }
-        }
-        
-        // Cap at reasonable maximum for star-forming regions
-        if (stellar_ionization > 0.8) stellar_ionization = 0.8;
-    }
-    
-    // 2. Background photoionization (Haardt & Madau 2012 UV background)
-    // Weaker effect, mainly important in low-density regions
-    float background_ionization = 0.0;
-    if (gas_surface_density < 100.0) { // M☉/pc²
-        // Self-shielding becomes important at higher surface densities
-        // Exponential cutoff based on Rahmati et al. (2013) self-shielding prescription
-        float N_H_threshold = 1.0e21; // cm^-2 (typical HI self-shielding threshold)
-        float N_H_local = gas_surface_density * 1.989e33 / (1.673e-24 * 3.086e18); // cm^-2
-        
-        float shielding_factor = exp(-N_H_local / N_H_threshold);
-        background_ionization = 0.03 * shielding_factor; // ~3% background ionization (Draine 2011)
-    }
-    
-    // 3. Recombination suppression in dense regions
-    // Based on Osterbrock & Ferland (2006) recombination theory
-    float density_suppression = 1.0;
-    if (gas_surface_density > 10.0) { // M☉/pc²
-        // Higher density → faster recombination → lower ionization fraction
-        // Empirical scaling based on observed HII region properties
-        density_suppression = 10.0 / gas_surface_density;
-        if (density_suppression < 0.1) density_suppression = 0.1;
-    }
-    
-    // 4. Metallicity effects (Draine 2011, Section 15.6)
-    // Higher metallicity → more dust → grain recombination + photoelectric heating
-    float metallicity_factor = 1.0;
-    if (metallicity > 0.0) {
-        float metallicity_solar = metallicity / 0.02; // Assuming Z_sun = 0.02
-        // Dust-to-gas ratio scales roughly linearly with metallicity
-        // Dust provides recombination sites, reducing ionization
-        metallicity_factor = 1.0 / (1.0 + metallicity_solar * 0.3);
-    }
-    
-    // Combine effects
-    float total_ionization = (stellar_ionization + background_ionization) * density_suppression * metallicity_factor;
-    
-    // Apply observational bounds from HII region surveys
-    if (total_ionization > 0.95) total_ionization = 0.95; // Max 95% ionized
-    if (total_ionization < 0.0) total_ionization = 0.0;
-    
-    return total_ionization;
-}
-
-/**
- * calculate_recombination_timescale - Calculate recombination timescale for ionized gas
- * 
- * Based on Osterbrock & Ferland (2006) "Astrophysics of Gaseous Nebulae and Active Galactic Nuclei"
- * Case B recombination coefficient from Draine (2011), Table 14.1
- * 
- * @param gas_surface_density: Gas surface density in M☉/pc²
- * @param temperature: Gas temperature in K
- * @return: Recombination timescale in Myr
- */
-float calculate_recombination_timescale(float gas_surface_density, float temperature)
-{
-    if (gas_surface_density <= 0.0) {
-        return 1000.0; // Very long timescale for empty regions
-    }
-    
-    // Case B recombination coefficient from Osterbrock & Ferland (2006)
-    // α_B(T) = 2.6e-13 (T/10^4 K)^{-0.7} cm^3 s^-1 for hydrogen
-    // This is for T = 5,000 - 20,000 K (typical HII region temperatures)
-    float temp_factor = pow(temperature / 1.0e4, -0.7);
-    float alpha_B = 2.6e-13 * temp_factor; // cm^3 s^-1
-    
-    // Convert surface density to volume density
-    // For ionized gas, assume scale height h ~ 100 pc (Reynolds 1989, Gaensler et al. 2008)
-    float scale_height_pc = 100.0; // pc
-    float volume_density = gas_surface_density / scale_height_pc; // M☉/pc³
-    
-    // Convert to number density (assuming mean molecular weight μ = 0.6 for ionized gas)
-    float mu = 0.6; // Mean molecular weight for ionized gas
-    float m_H = 1.673e-24; // g (hydrogen mass)
-    float pc_to_cm = 3.086e18; // cm
-    float Msun_to_g = 1.989e33; // g
-    
-    float number_density = volume_density * Msun_to_g / (mu * m_H * pc_to_cm * pc_to_cm * pc_to_cm); // cm^-3
-    
-    // Recombination timescale from Draine (2011), Eq. 14.6
-    // t_rec = 1 / (α_B * n_e)
-    // For fully ionized gas: n_e ≈ n_p ≈ n_H
-    float t_rec_seconds = 1.0 / (alpha_B * number_density);
-    
-    // Convert to Myr
-    float seconds_per_year = 365.25 * 24 * 3600;
-    float t_rec_myr = t_rec_seconds / (1.0e6 * seconds_per_year);
-    
-    // Physical bounds check
-    if (t_rec_myr < 0.001) t_rec_myr = 0.001; // Minimum 1000 years
-    if (t_rec_myr > 1000.0) t_rec_myr = 1000.0; // Maximum 1 Gyr
-    
-    return t_rec_myr;
 }

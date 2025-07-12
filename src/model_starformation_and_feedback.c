@@ -285,14 +285,9 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     // Get circular velocity in km/s
     double vc = galaxies[p].Vvir;  // Using virial velocity (already in km/s)
     
-    // Add safety check to prevent division by zero or invalid values
-    if (vc <= 0.0 || !isfinite(vc)) {
+    // Add safety check to prevent division by zero
+    if (vc <= 0.0) {
         return 0.0;  // Return zero mass loading if velocity is invalid
-    }
-    
-    // Additional safety check for redshift
-    if (z < 0.0 || !isfinite(z)) {
-        return 0.0;  // Return zero if redshift is invalid
     }
     
     // Constants from Muratov et al. (2015) paper
@@ -305,11 +300,6 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     // Calculate redshift term: (1+z)^1.3
     double z_term = pow(1.0 + z, Z_EXP);
     
-    // Safety check for z_term
-    if (!isfinite(z_term)) {
-        return 0.0;
-    }
-    
     // Calculate velocity term with broken power law and smoother transition
     double v_term;
     if (vc < V_CRIT * 0.8) {
@@ -321,18 +311,7 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
         double frac = (vc - V_CRIT * 0.8) / (V_CRIT * 0.4);
         double v_term_low = pow(vc / V_CRIT, LOW_V_EXP);
         double v_term_high = pow(vc / V_CRIT, HIGH_V_EXP);
-        
-        // Safety check for power law results
-        if (!isfinite(v_term_low) || !isfinite(v_term_high)) {
-            return 0.0;
-        }
-        
         v_term = v_term_low * (1.0 - frac) + v_term_high * frac;
-    }
-    
-    // Safety check for v_term
-    if (!isfinite(v_term)) {
-        return 0.0;
     }
     
     double eta = NORM * z_term * v_term;
@@ -343,8 +322,8 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     }
     
     // Safety check for the result
-    if (!isfinite(eta) || eta < 0.0) {
-        return 0.0;  // Return zero if result is NaN, infinity, or negative
+    if (!isfinite(eta)) {
+        return 0.0;  // Return zero if result is NaN or infinity
     }
 
     return eta;
@@ -398,13 +377,8 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         tdyn = reff / galaxies[p].Vvir;
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0 && isfinite(tdyn)) {
+        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
             strdot = sfr_eff * (galaxies[p].ColdGas - cold_crit) / tdyn;
-            
-            // Safety check for star formation rate
-            if (!isfinite(strdot) || strdot < 0.0) {
-                strdot = 0.0;
-            }
         } else {
             strdot = 0.0;
         }
@@ -413,14 +387,9 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
 
-        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0 && isfinite(tdyn)) {
-            strdot = sfr_eff * galaxies[p].H2_gas / tdyn;  // Still use H2 for SF rate
-            
-            // Safety check for star formation rate
-            if (!isfinite(strdot) || strdot < 0.0) {
-                strdot = 0.0;
-            }
+        const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
+        if(galaxies[p].ColdGas > h2_crit && tdyn > 0.0) {
+            strdot = sfr_eff * (galaxies[p].H2_gas - h2_crit) / tdyn;  // Still use H2 for SF rate
         } else {
             strdot = 0.0;
         }
@@ -430,7 +399,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
     }
 
     stars = strdot * dt;
-    if(stars < 0.0 || !isfinite(stars)) {
+    if(stars < 0.0) {
         stars = 0.0;
     }
 
@@ -439,17 +408,7 @@ void starformation_and_feedback_with_muratov(const int p, const int centralgal, 
         double mass_loading_factor = calculate_muratov_mass_loading(p, z, galaxies);
         galaxies[p].MassLoadingFactor = mass_loading_factor;  // Store for diagnostics
         
-        // Safety check for mass loading factor
-        if (!isfinite(mass_loading_factor) || mass_loading_factor < 0.0) {
-            mass_loading_factor = 0.0;
-        }
-        
         reheated_mass = mass_loading_factor * stars;
-        
-        // Safety check for reheated mass
-        if (!isfinite(reheated_mass) || reheated_mass < 0.0) {
-            reheated_mass = 0.0;
-        }
         
         // Ensure we don't reheat more than the available cold gas
         if (reheated_mass > galaxies[p].ColdGas) {

@@ -22,9 +22,6 @@ extern float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars
 extern float calculate_molecular_fraction_BR06(float gas_surface_density, 
                                                 float stellar_surface_density, 
                                                 float radius_pc);
-extern float calculate_ionization_fraction(float gas_surface_density, float sfr_surface_density, 
-                                          float stellar_surface_density, float metallicity);
-extern float calculate_recombination_timescale(float gas_surface_density, float temperature);
 
 #ifdef __cplusplus
 }
