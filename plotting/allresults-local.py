@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/novelocityboost/'
+DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     ColdGas = read_hdf(snap_num = Snapshot, param = 'ColdGas') * 1.0e10 / Hubble_h
     DiskRadius = read_hdf(snap_num = Snapshot, param = 'DiskRadius') / Hubble_h
     #print(DiskRadius)
-    H1Gas = read_hdf(snap_num = Snapshot, param = 'H1_gas') * 1.0e10 / Hubble_h
+    H1Gas = read_hdf(snap_num = Snapshot, param = 'HI_gas') * 1.0e10 / Hubble_h
     #print(H1Gas)
     H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
     #print(H2Gas)
@@ -93,8 +93,8 @@ if __name__ == '__main__':
     outflowrate = read_hdf(snap_num = Snapshot, param = 'OutflowRate') * 1.0e10 / Hubble_h
     cgm = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
     #print(np.log10(CGM))
-    massload = read_hdf(snap_num = Snapshot, param = 'MassLoadingFactor')  # Mass loading factor for outflows
-    print('Mass loading factor for outflows:', massload)
+    # massload = read_hdf(snap_num = Snapshot, param = 'MassLoadingFactor')  # Mass loading factor for outflows
+    # print('Mass loading factor for outflows:', massload)
 
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
     Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
@@ -467,7 +467,7 @@ if __name__ == '__main__':
   
     # calculate BMF
     w = np.where(StellarMass + ColdGas > 0.0)[0]
-    mass = np.log10( (StellarMass[w] + 1.4*H1Gas[w]) )
+    mass = np.log10( (StellarMass[w] + 1.4*ColdGas[w]) )
 
     mi = np.floor(min(mass)) - 2
     ma = np.floor(max(mass)) + 2
@@ -477,13 +477,13 @@ if __name__ == '__main__':
 
     # additionally calculate satellites
     w_sat = np.where((StellarMass + ColdGas > 0.0) & (Type == 1))[0]
-    mass_sat = np.log10( (StellarMass[w_sat] + 1.4*H1Gas[w_sat]) )
+    mass_sat = np.log10( (StellarMass[w_sat] + 1.4*ColdGas[w_sat]) )
     (counts_sat, binedges_sat) = np.histogram(mass_sat, range=(mi, ma), bins=NB)
     xaxeshisto_sat = binedges_sat[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
 
     # additionally calculate centrals
     w_cent = np.where((StellarMass > 0.0) & (Type == 0))[0]
-    mass_cent = np.log10( (StellarMass[w_cent] + 1.4*H1Gas[w_cent]) )
+    mass_cent = np.log10( (StellarMass[w_cent] + 1.4*ColdGas[w_cent]) )
     (counts_cent, binedges_cent) = np.histogram(mass_cent, range=(mi, ma), bins=NB)
     xaxeshisto_cent = binedges_cent[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
 

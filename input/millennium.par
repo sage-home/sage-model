@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/novelocityboost/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium/
 
 FirstFile         0
 LastFile          7
@@ -16,7 +16,7 @@ LastFile          7
 NumOutputs        -1  % sets the desired number of galaxy outputs; use -1 for all outputs
 
 % List your output snapshots after the arrow, highest to lowest (ignored when NumOutputs=-1).
--> 63 40 32 27 23 20 18 16
+-> 63 37 32 27 23 20 18 16
 
 OutputFormat      sage_hdf5 % sets the desired output format. Either 'sage_binary' or 'sage_hdf5'.
 
@@ -29,15 +29,9 @@ TreeType              lhalo_binary % either 'genesis_lhalo_hdf5' or 'lhalo_binar
 NumSimulationTreeFiles 8 % Number of files the trees are split over. This can be different to `FirstFile` -> `LastFile` range.
 
 %SimulationDir   /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/
-%SimulationDir   /fred/oz004/mbradley/sage-model/input/millennium/trees/
-
 SimulationDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium/trees/
-
 %FileWithSnapList /<absolute>/<root>/<path>/sage-home/sage-model/input/millennium/trees/millennium.a_list
-%FileWithSnapList /fred/oz004/mbradley/sage-model/input/millennium/trees/millennium.a_list
-
 FileWithSnapList /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium/trees/millennium.a_list
-
 LastSnapShotNr        63
 
 Omega           0.25
@@ -51,14 +45,12 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription              1   %0: original Croton et al. 2006; 1: Gnedin & Draine; 2: Blitz & Rosolowsky
-AGNrecipeOn                 2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
-SupernovaRecipeOn           1   %0: switch off
-ReionizationOn              1   %0: switch off
-DiskInstabilityOn           1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-MassLoadingModel            1   %0: original Croton et al. 2006; 1: Muratov+15
-VvirEnhancementOn           0   %0: switch off; 1: enable virial velocity enhancement
-MassDependentSFEnabled      0   %0: switch off; 1: enable mass-dependent SF
+SFprescription        0   %0: original Croton et al. 2006
+AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
+SupernovaRecipeOn     1   %0: switch off
+ReionizationOn        1   %0: switch off
+DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
+MassLoadingOn         0   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
 
 %------------------------------------------
 %----- SAGE model parameters --------------
@@ -69,11 +61,11 @@ SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
 FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
-inflowFactor   0.0    %fraction of ejected mass reincorporated per dynamical time to hot
+ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 
-RadioModeEfficiency     0.08   %AGN radio mode efficiency (AGNrecipeOn=2)
-QuasarModeEfficiency    0.005  %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
-BlackHoleGrowthRate     0.015  %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
+RadioModeEfficiency     0.08  %AGN radio mode efficiency (AGNrecipeOn=2)
+QuasarModeEfficiency    0.005 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
+BlackHoleGrowthRate     0.015 %fraction of cold gas added to the BH during mergers (AGNrecipeOn>0)
 
 ThreshMajorMerger       0.3   %major merger when mass ratio greater than this
 ThresholdSatDisruption  1.0   %Mvir-to-baryonic mass ratio threshold for satellite merger or disruption
@@ -87,31 +79,6 @@ Reionization_zr         7.0   %using the analytic fit of Kravtsov et al. 2004 (R
 
 EnergySN                1.0e51  %energy per supernova
 EtaSN                   5.0e-3  %supernova efficiency
-
-%------------------------------------------
-%----- SF Enhancement ---------------------
-%------------------------------------------
-
-VvirThreshold               60.0        % Threshold velocity in km/s for enhancement
-VvirEnhancementPower        1.5         % Power-law exponent for velocity scaling
-
-%------------------------------------------
-%----- CGM control ------------------------
-%------------------------------------------
- 
-CGMInfallFraction           1.0           % Fraction of infall goes through CGM first
-CGMTransferEfficiency       0.08          % Transfer efficiency per dynamical time
-CGMPristineFraction         0.8           % Fraction of CGM transfer that is pristine
-CGMMixingTimescale          1.0           % Gyr mixing timescale
-
-%------------------------------------------
-%----- Mass Dependent SF ------------------
-%------------------------------------------
-
-SFMassPivot                1.0          % Pivot mass in 10^10 Msun/h
-SFLowMassSlope             0.5          % Power-law slope for M < Mpivot
-SFHighMassSlope            5.3         % Power-law slope for M > Mpivot
-
 
 %------------------------------------------
 %----- Other code-related information -----

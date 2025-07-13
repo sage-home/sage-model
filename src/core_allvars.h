@@ -122,22 +122,22 @@ struct GALAXY
 
     /* baryonic reservoirs */
     float ColdGas;
-    float H2_gas;  
-    float HI_gas; 
     float StellarMass;
     float BulgeMass;
     float HotGas;
+    float CGMgas;
     float BlackHoleMass;
     float ICS;
-    float CGMgas;     
+    float H2_gas;  
+    float HI_gas;
 
     /* metals */
     float MetalsColdGas;
     float MetalsStellarMass;
     float MetalsBulgeMass;
     float MetalsHotGas;
+    float MetalsCGMgas;
     float MetalsICS;
-    float MetalsCGMgas;  
 
     /* to calculate magnitudes */
     float SfrDisk[STEPS];
@@ -163,14 +163,6 @@ struct GALAXY
     float infallMvir;
     float infallVvir;
     float infallVmax;
-
-    float CGMgas_pristine;      
-    float CGMgas_enriched;      
-    float InfallRate_to_CGM;       
-    float InfallRate_to_Hot;    
-    float TransferRate_CGM_to_Hot;  
-
-    float MassLoadingFactor;
 };
 
 
@@ -431,60 +423,43 @@ struct params
     int32_t NumSimulationTreeFiles;
 
     /* recipe flags */
-    int32_t     SFprescription;
-    int32_t     AGNrecipeOn;
-    int32_t     SupernovaRecipeOn;
-    int32_t     ReionizationOn;
-    int32_t     DiskInstabilityOn;
-    int32_t     MassDependentSFEnabled;  
-    int32_t     MassLoadingModel;  
-    int32_t     VvirEnhancementOn;      
+    int32_t    SFprescription;
+    int32_t    AGNrecipeOn;
+    int32_t    SupernovaRecipeOn;
+    int32_t    ReionizationOn;
+    int32_t   DiskInstabilityOn;
+    int32_t    MassLoadingOn;
 
-    double     RecycleFraction;
-    double     Yield;
-    double     FracZleaveDisk;
-    double     inflowFactor;
-    double     ThreshMajorMerger;
-    double     BaryonFrac;
-    double     SfrEfficiency;
-    double     FeedbackReheatingEpsilon;
-    double     FeedbackEjectionEfficiency;
-    double     RadioModeEfficiency;
-    double     QuasarModeEfficiency;
-    double     BlackHoleGrowthRate;
-    double     Reionization_z0;
-    double     Reionization_zr;
-    double     ThresholdSatDisruption;
+    double RecycleFraction;
+    double Yield;
+    double FracZleaveDisk;
+    double ReIncorporationFactor;
+    double ThreshMajorMerger;
+    double BaryonFrac;
+    double SfrEfficiency;
+    double FeedbackReheatingEpsilon;
+    double FeedbackEjectionEfficiency;
+    double RadioModeEfficiency;
+    double QuasarModeEfficiency;
+    double BlackHoleGrowthRate;
+    double Reionization_z0;
+    double Reionization_zr;
+    double ThresholdSatDisruption;
 
-    // Parameters for star formation enhancement based on virial velocity
-    double     VvirThreshold;           
-    double     VvirEnhancementPower;   
-
-    // CGM infall and mixing parameters
-    double     CGMInfallFraction;     
-    double     CGMTransferEfficiency; 
-    double     CGMPristineFraction;    
-    double     CGMMixingTimescale;  
-
-    // Parameters for mass-dependent star formation
-    double     SFMassPivot;   
-    double     SFLowMassSlope;  
-    double     SFHighMassSlope;  
-
-    double     UnitLength_in_cm;
-    double     UnitVelocity_in_cm_per_s;
-    double     UnitMass_in_g;
-    double     UnitTime_in_s;
-    double     RhoCrit;
-    double     UnitPressure_in_cgs;
-    double     UnitDensity_in_cgs;
-    double     UnitCoolingRate_in_cgs;
-    double     UnitEnergy_in_cgs;
-    double     UnitTime_in_Megayears;
-    double     G;
-    double     Hubble;
-    double     a0;
-    double     ar;
+    double UnitLength_in_cm;
+    double UnitVelocity_in_cm_per_s;
+    double UnitMass_in_g;
+    double UnitTime_in_s;
+    double RhoCrit;
+    double UnitPressure_in_cgs;
+    double UnitDensity_in_cgs;
+    double UnitCoolingRate_in_cgs;
+    double UnitEnergy_in_cgs;
+    double UnitTime_in_Megayears;
+    double G;
+    double Hubble;
+    double a0;
+    double ar;
 
     int32_t nsnapshots;
     int32_t LastSnapshotNr;

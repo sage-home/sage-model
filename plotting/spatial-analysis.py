@@ -298,7 +298,7 @@ if __name__ == '__main__':
     ColdGas = read_hdf(snap_num=Snapshot, param='ColdGas') * 1.0e10 / Hubble_h
     HotGas = read_hdf(snap_num=Snapshot, param='HotGas') * 1.0e10 / Hubble_h
     Cgm = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-    H1Gas = read_hdf(snap_num=Snapshot, param='H1_gas') * 1.0e10 / Hubble_h
+    H1Gas = read_hdf(snap_num=Snapshot, param='HI_gas') * 1.0e10 / Hubble_h
     H2Gas = read_hdf(snap_num=Snapshot, param='H2_gas') * 1.0e10 / Hubble_h
     Type = read_hdf(snap_num=Snapshot, param='Type')
     Vvir = read_hdf(snap_num=Snapshot, param='Vvir')

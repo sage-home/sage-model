@@ -9,7 +9,6 @@
 
 #include "model_cooling_heating.h"
 #include "model_misc.h"
-#include "model_h2_formation.h"
 
 
 double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
@@ -68,6 +67,8 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
     return coolingGas;
 
 }
+
+
 
 double do_AGN_heating(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, struct GALAXY *galaxies, const struct params *run_params)
 {
@@ -158,8 +159,9 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
     return coolingGas;
 }
 
-void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies,
-                const struct params *run_params)
+
+
+void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies)
 {
     // add the fraction 1/STEPS of the total cooling gas to the cold disk
     if(coolingGas > 0.0) {
@@ -176,8 +178,4 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
             galaxies[centralgal].MetalsHotGas = 0.0;
         }
     }
-    if (run_params->SFprescription >= 1 && galaxies[centralgal].ColdGas > 0) {
-        update_gas_components(&galaxies[centralgal], run_params);
-    }
-    
 }

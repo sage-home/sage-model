@@ -47,6 +47,7 @@ extern "C" {
       float StellarMass;
       float BulgeMass;
       float HotGas;
+      float CGMgas;
       float BlackHoleMass;
       float ICS;
 
@@ -55,6 +56,7 @@ extern "C" {
       float MetalsStellarMass;
       float MetalsBulgeMass;
       float MetalsHotGas;
+      float MetalsCGMgas;
       float MetalsICS;
 
       /* to calculate magnitudes */

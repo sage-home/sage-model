@@ -7,7 +7,6 @@
 #include "core_allvars.h"
 
 #include "model_misc.h"
-#include "model_h2_formation.h"    // Add this line
 
 void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct halo_data *halos,
                  struct GALAXY *galaxies, const struct params *run_params)
@@ -45,27 +44,21 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].deltaMvir = 0.0;
 
     galaxies[p].ColdGas = 0.0;
-    galaxies[p].H2_gas = 0.0;  // Initialize H2 gas
-    galaxies[p].HI_gas = 0.0;  // Initialize HI gas
     galaxies[p].StellarMass = 0.0;
     galaxies[p].BulgeMass = 0.0;
     galaxies[p].HotGas = 0.0;
+    galaxies[p].CGMgas = 0.0;
     galaxies[p].BlackHoleMass = 0.0;
     galaxies[p].ICS = 0.0;
-    galaxies[p].CGMgas = 0.0;
-
-    // Initialize H2 fractions if using that model
-    if (run_params->SFprescription >= 1) {
-        init_gas_components(&galaxies[p]);
-    }
-
+    galaxies[p].H2_gas = 0.0;
+    galaxies[p].HI_gas = 0.0;
 
     galaxies[p].MetalsColdGas = 0.0;
     galaxies[p].MetalsStellarMass = 0.0;
     galaxies[p].MetalsBulgeMass = 0.0;
     galaxies[p].MetalsHotGas = 0.0;
-    galaxies[p].MetalsICS = 0.0;
     galaxies[p].MetalsCGMgas = 0.0;
+    galaxies[p].MetalsICS = 0.0;
 
     for(int step = 0; step < STEPS; step++) {
         galaxies[p].SfrDisk[step] = 0.0;
@@ -85,57 +78,15 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].TimeOfLastMajorMerger = -1.0;
     galaxies[p].TimeOfLastMinorMerger = -1.0;
     galaxies[p].OutflowRate = 0.0;
-	  galaxies[p].TotalSatelliteBaryons = 0.0;
+	galaxies[p].TotalSatelliteBaryons = 0.0;
 
 	// infall properties
     galaxies[p].infallMvir = -1.0;
     galaxies[p].infallVvir = -1.0;
     galaxies[p].infallVmax = -1.0;
 
-  // Initialize flow rate tracking
-    galaxies[p].CGMgas_pristine = 0.0;  // NEW: Add this line
-    galaxies[p].CGMgas_enriched = 0.0;  // NEW: Add this line
-    galaxies[p].InfallRate_to_CGM = 0.0;
-    galaxies[p].InfallRate_to_Hot = 0.0;
-    galaxies[p].TransferRate_CGM_to_Hot = 0.0;
-
-    galaxies[p].MassLoadingFactor = 0.0;  // NEW: Add this line
-
 }
 
-// Add this function to model_misc.c or create a new file
-void print_gas_flow_summary(const int gal, struct GALAXY *galaxies, const double dt, const double redshift)
-{
-    static int print_counter = 0;
-    print_counter++;
-    
-    // Only print for every 9,000,000th galaxy
-    if (print_counter % 50000 != 0) {
-        return;
-    }
-    
-    printf("=== Gas Flow Summary for Galaxy %d at z=%.2f ===\n", gal, redshift);
-    printf("Gas Reservoirs:\n");
-    printf("  Cold gas:    %.4f\n", galaxies[gal].ColdGas);
-    printf("  Hot gas:     %.4f\n", galaxies[gal].HotGas);
-    printf("  CGM total:   %.4f (Pristine: %.4f, Enriched: %.4f)\n", 
-           galaxies[gal].CGMgas, galaxies[gal].CGMgas_pristine, galaxies[gal].CGMgas_enriched);
-    
-    printf("\nFlow Rates (this timestep, dt=%.4f):\n", dt);
-    printf("  Infall to CGM:      %.6f\n", galaxies[gal].InfallRate_to_CGM);
-    printf("  Infall to Hot:      %.6f\n", galaxies[gal].InfallRate_to_Hot);
-    printf("  CGM -> Hot:         %.6f\n", galaxies[gal].TransferRate_CGM_to_Hot);
-    printf("  Total outflow:      %.6f\n", galaxies[gal].OutflowRate);
-    
-    // Calculate flow ratios
-    double total_inflow = galaxies[gal].InfallRate_to_CGM + galaxies[gal].InfallRate_to_Hot;
-    if(total_inflow > 0.0) {
-        printf("\nFlow Fractions:\n");
-        printf("  CGM pathway:    %.1f%%\n", 100.0 * galaxies[gal].InfallRate_to_CGM / total_inflow);
-        printf("  Direct pathway: %.1f%%\n", 100.0 * galaxies[gal].InfallRate_to_Hot / total_inflow);
-    }
-    printf("================================================\n\n");
-}
 
 
 double get_disk_radius(const int halonr, const int p, const struct halo_data *halos, const struct GALAXY *galaxies)
@@ -213,4 +164,6 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
 
   return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
 }
+
+
 

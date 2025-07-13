@@ -116,7 +116,7 @@ PLOT_COLORS = {
     'satellites': "#d62728",
     'all_galaxies': "#030603",
     'cold_gas': '#7f7f7f',
-    'h1_gas': '#1f77b4',
+    'HI_gas': '#1f77b4',
     'h2_gas': '#ff7f0e',
     'millennium': '#000000',
     'miniuchuu': '#1f77b4',
@@ -131,7 +131,7 @@ PLOT_COLORS = {
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/novelocityboost/'
+DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 OutputDir = DirName + 'plots/'
@@ -144,7 +144,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Additional simulation directories for SFR density comparison
 SFR_SimDirs = [
     {
-        'path': './output/novelocityboost/', 
+        'path': './output/millennium/', 
         'label': 'Millennium', 
         'color': 'black', 
         'linestyle': '-',
@@ -203,7 +203,7 @@ SFR_SimDirs = [
 SMF_SimConfigs = [
     # SAGE 2.0 simulations (solid lines)
     {
-        'path': './output/novelocityboost/', 
+        'path': './output/millennium/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line
@@ -235,7 +235,7 @@ SMF_SimConfigs = [
 GAS_SimConfigs = [
     # Main simulation (your current one)
     {
-        'path': './output/novelocityboost/', 
+        'path': './output/millennium/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',
@@ -1059,7 +1059,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             
             # Read required galaxy properties
             ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
-            H1Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+            H1Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='HI_gas', directory=directory) * 1.0e10 / hubble_h
             Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
             
             logger.info(f'  Total galaxies: {len(ColdGas)}')
@@ -1118,7 +1118,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
                 return log_vals, mask
             
             model_cold_gas_log, mask_cold = safe_log10_with_mask(counts_cold / volume / binwidth)
-            model_h1_gas_log, mask_h1 = safe_log10_with_mask(counts_h1 / volume / binwidth)
+            model_HI_gas_log, mask_h1 = safe_log10_with_mask(counts_h1 / volume / binwidth)
             
             # Calculate error bars for SAGE 2.0 (main model only)
             if i == 0 and len(w_h1) > 0:  # Only for the main model
@@ -1144,8 +1144,8 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
                             fractional_error = error_mass / (binwidth * 0.5)  # Normalize by bin width
                             log_error = fractional_error / np.log(10)  # Convert to log space
                             
-                            error_h1_upper.append(model_h1_gas_log[bin_idx] + log_error)
-                            error_h1_lower.append(model_h1_gas_log[bin_idx] - log_error)
+                            error_h1_upper.append(model_HI_gas_log[bin_idx] + log_error)
+                            error_h1_lower.append(model_HI_gas_log[bin_idx] - log_error)
                         else:
                             error_h1_upper.append(np.nan)
                             error_h1_lower.append(np.nan)
@@ -1178,7 +1178,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             else:
                 h1_label = label
             
-            h1_line = ax.plot(xaxeshisto_h1[mask_h1], model_h1_gas_log[mask_h1], 
+            h1_line = ax.plot(xaxeshisto_h1[mask_h1], model_HI_gas_log[mask_h1], 
                    color=color, linestyle=linestyle, linewidth=linewidth, 
                    label=h1_label, alpha=alpha, zorder=3)[0]
             model_handles_h1.append(h1_line)
@@ -1508,7 +1508,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             hubble_h = sim_config['Hubble_h']
             
             ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
-            H1Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+            H1Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='HI_gas', directory=directory) * 1.0e10 / hubble_h
             H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2_gas', directory=directory) * 1.0e10 / hubble_h
             
             w = np.where(ColdGas > 0.0)[0]
@@ -1827,7 +1827,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             # Read required galaxy properties
             StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
             H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2_gas', directory=directory) * 1.0e10 / hubble_h
-            HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+            HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='HI_gas', directory=directory) * 1.0e10 / hubble_h
             ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
             SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
             SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
@@ -2021,7 +2021,7 @@ def plot_h2_fraction_vs_stellar_mass_with_selection(sim_configs, snapshot, outpu
             # Read required galaxy properties
             StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
             H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2_gas', directory=directory) * 1.0e10 / hubble_h
-            HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+            HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='HI_gas', directory=directory) * 1.0e10 / hubble_h
             ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
             SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
             SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
@@ -2188,7 +2188,7 @@ def plot_h2_detection_statistics(sim_configs, snapshot, output_dir):
         # Read data (same as before)
         StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
         H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2_gas', directory=directory) * 1.0e10 / hubble_h
-        HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+        HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='HI_gas', directory=directory) * 1.0e10 / hubble_h
         ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
         SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
         SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)

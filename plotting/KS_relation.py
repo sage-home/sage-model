@@ -115,7 +115,7 @@ def read_hdf_for_ks_relation_fixed(directory, snap_num=None, galaxy_types='all')
                 
                 try:
                     h2_gas = np.array(f[snap_num]['H2_gas'])
-                    hi_gas = np.array(f[snap_num]['H1_gas'])
+                    hi_gas = np.array(f[snap_num]['HI_gas'])
                     has_h2_data = True
                 except KeyError:
                     h2_gas = np.zeros_like(cold_gas)

@@ -105,8 +105,8 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->RecycleFraction);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "inflowFactor", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->inflowFactor);
+    strncpy(ParamTag[NParam], "ReIncorporationFactor", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->ReIncorporationFactor);
     ParamID[NParam++] = DOUBLE;
 
     strncpy(ParamTag[NParam], "UnitVelocity_in_cm_per_s", MAXTAGLEN);
@@ -233,55 +233,9 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "MassLoadingModel", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->MassLoadingModel);
+    strncpy(ParamTag[NParam], "MassLoadingOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->MassLoadingOn);
     ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "MassDependentSFEnabled", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->MassDependentSFEnabled);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "SFMassPivot", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SFMassPivot);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "SFLowMassSlope", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SFLowMassSlope);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "SFHighMassSlope", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->SFHighMassSlope);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "VvirEnhancementOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->VvirEnhancementOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "VvirThreshold", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->VvirThreshold);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "VvirEnhancementPower", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->VvirEnhancementPower);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "CGMInfallFraction", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMInfallFraction);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "CGMTransferEfficiency", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMTransferEfficiency);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "CGMPristineFraction", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMPristineFraction);
-    ParamID[NParam++] = DOUBLE;
-    
-    strncpy(ParamTag[NParam], "CGMMixingTimescale", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMMixingTimescale);
-    ParamID[NParam++] = DOUBLE; 
-   
-    
 
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {

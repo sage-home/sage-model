@@ -16,10 +16,9 @@
 #include "model_misc.h"
 #include "model_mergers.h"
 #include "model_infall.h"
-#include "model_inflow.h"
+#include "model_reincorporation.h"
 #include "model_starformation_and_feedback.h"
 #include "model_cooling_heating.h"
-#include "model_h2_formation.h"
 
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
@@ -316,20 +315,15 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             centralgal, halonr, galaxies[centralgal].Type,
             halonr,  galaxies[centralgal].HaloNr);
 
-    // NEW: Initialize gas flow tracking for this timestep
-    for(int p = 0; p < ngal; p++) {
-        galaxies[p].InfallRate_to_CGM = 0.0;
-        galaxies[p].InfallRate_to_Hot = 0.0;
-        galaxies[p].TransferRate_CGM_to_Hot = 0.0;
-    }
+    /*
+      MS: Note save halo_snapnum and galaxy_snapnum to local variables
+          and replace all instances of snapnum to those local variables
+     */
+
     const int halo_snapnum = halos[halonr].SnapNum;
     const double Zcurr = run_params->ZZ[halo_snapnum];
     const double halo_age = run_params->Age[halo_snapnum];
-    const double deltaT = run_params->Age[galaxies[0].SnapNum] - halo_age;
-
-    // Calculate infall ONCE per halo, not per step
-    // This returns the hot gas portion and handles CGM internally
-    const double hot_infall_total = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
+    const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
@@ -341,6 +335,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 continue;
             }
 
+            const double deltaT = run_params->Age[galaxies[p].SnapNum] - halo_age;
             const double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * (deltaT / STEPS);
 
             if(galaxies[p].dT < 0.0) {
@@ -349,15 +344,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // For the central galaxy only
             if(p == centralgal) {
-                // Add hot gas infall (split over STEPS)
-                add_infall_to_hot(centralgal, hot_infall_total / STEPS, galaxies, run_params);
+                add_infall_to_hot(centralgal, infallingGas / STEPS, galaxies);
 
-                // Mix CGM components before transfer
-                mix_cgm_components(centralgal, deltaT / STEPS, galaxies, run_params);
-
-                // Add this call after infall but before existing inflow
-                transfer_cgm_to_hot(centralgal, deltaT / STEPS, galaxies, run_params);
-
+                if(run_params->ReIncorporationFactor > 0.0) {
+                    reincorporate_gas(centralgal, deltaT / STEPS, galaxies, run_params);
+                }
             } else {
                 if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
                     strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
@@ -366,35 +357,12 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // Determine the cooling gas given the halo properties
             double coolingGas = cooling_recipe(p, deltaT / STEPS, galaxies, run_params);
-            cool_gas_onto_galaxy(p, coolingGas, galaxies, run_params);
+            cool_gas_onto_galaxy(p, coolingGas, galaxies);
 
             // stars form and then explode!
-            switch(run_params->MassLoadingModel) {
-                case MASS_LOADING_MURATOV:
-                    starformation_and_feedback_with_muratov(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
-                    break;
-                default:
-                    starformation_and_feedback(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
-                    break;
-            }
-
-            // Apply environmental effects after star formation
-            // This ensures we use the updated H2_gas from star formation
-            // apply_environmental_effects(&galaxies[p], galaxies, p, centralgal, run_params);
-            
-            // // Update H2/HI gas components if needed (your existing function)
-            // if (run_params->SFprescription >= 1) {
-            //     update_gas_components(&galaxies[p], run_params);
-            // }
-
-            // CGM-H2 diagnostic (only for central galaxy in final step)
-            // if (p == centralgal && step == (STEPS - 1)) {
-                
-            //     diagnose_cgm_h2_interaction(&galaxies[p], run_params);
-            //     print_gas_flow_summary(centralgal, galaxies, deltaT, Zcurr);
-            // }
-            
+            starformation_and_feedback(p, centralgal, time, deltaT / STEPS, halonr, step, galaxies, run_params);
         }
+
         // check for satellite disruption and merger events
         for(int p = 0; p < ngal; p++) {
 
@@ -405,6 +373,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                         "Error: galaxies[%d].MergTime = %lf is too large! Should have been within the age of the Universe\n",
                         p, galaxies[p].MergTime);
 
+                const double deltaT = run_params->Age[galaxies[p].SnapNum] - halo_age;
                 galaxies[p].MergTime -= deltaT / STEPS;
 
                 // only consider mergers or disruption for halo-to-baryonic mass ratios below the threshold
@@ -437,8 +406,10 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         }
     } // Go on to the next STEPS substep
 
+
     // Extra miscellaneous stuff before finishing this halo
     galaxies[centralgal].TotalSatelliteBaryons = 0.0;
+    const double deltaT = run_params->Age[galaxies[0].SnapNum] - halo_age;
     const double inv_deltaT = 1.0/deltaT;
 
     for(int p = 0; p < ngal; p++) {
@@ -448,7 +419,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             continue;
         }
 
-        // Convert accumulated values to rates (per year)
         galaxies[p].Cooling *= inv_deltaT;
         galaxies[p].Heating *= inv_deltaT;
         galaxies[p].OutflowRate *= inv_deltaT;
@@ -458,6 +428,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 (galaxies[p].StellarMass + galaxies[p].BlackHoleMass + galaxies[p].ColdGas + galaxies[p].HotGas);
         }
     }
+
 
     // Attach final galaxy list to halo
     for(int p = 0, currenthalo = -1; p < ngal; p++) {

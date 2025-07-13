@@ -53,19 +53,21 @@ struct HDF5_GALAXY_OUTPUT
     
     /* baryonic reservoirs */
     float *ColdGas;
-    float *H2_gas;  // NEW: Molecular hydrogen mass array
-    float *HI_gas;  // NEW: Atomic hydrogen mass array
     float *StellarMass;
     float *BulgeMass;
     float *HotGas;
+    float *CGMgas;
     float *BlackHoleMass;
     float *ICS;
+    float *HI_gas;
+    float *H2_gas;
     
     /* metals */
     float *MetalsColdGas;
     float *MetalsStellarMass;
     float *MetalsBulgeMass;
     float *MetalsHotGas;
+    float *MetalsCGMgas;
     float *MetalsICS;
     
     /* to calculate magnitudes */
@@ -87,17 +89,6 @@ struct HDF5_GALAXY_OUTPUT
     float *infallMvir;
     float *infallVvir;
     float *infallVmax;
-
-    float *CGMgas;
-    float *MetalsCGMgas;
-
-    float *CGMgas_pristine;     // NEW: Pristine gas in CGM
-    float *CGMgas_enriched;     // NEW: Enriched gas in CGM  
-    float *InfallRate_to_CGM;   // NEW: Infall rate to CGM
-    float *InfallRate_to_Hot;   // NEW: Direct infall rate to hot
-    float *TransferRate_CGM_to_Hot; // NEW: CGM to hot transfer rate
-
-    float *MassLoadingFactor;
 };
     
     // Proto-Types //

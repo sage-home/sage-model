@@ -116,7 +116,7 @@ PLOT_COLORS = {
     'satellites': 'darkgreen',
     'all_galaxies': "#030603",
     'cold_gas': '#7f7f7f',
-    'h1_gas': '#1f77b4',
+    'HI_gas': '#1f77b4',
     'h2_gas': '#ff7f0e',
     'millennium': '#000000',
     'miniuchuu': '#1f77b4',
@@ -131,7 +131,7 @@ PLOT_COLORS = {
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/novelocityboost/'
+DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -143,7 +143,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Additional simulation directories for SFR density comparison
 SFR_SimDirs = [
     {
-        'path': './output/novelocityboost/', 
+        'path': './output/millennium/', 
         'label': 'Millennium', 
         'color': 'black', 
         'linestyle': '-',
@@ -202,7 +202,7 @@ SFR_SimDirs = [
 SMF_SimConfigs = [
     # SAGE 2.0 simulations (solid lines)
     {
-        'path': './output/novelocityboost/', 
+        'path': './output/millennium/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line
