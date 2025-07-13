@@ -344,7 +344,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // For the central galaxy only
             if(p == centralgal) {
-                add_infall_to_hot(centralgal, infallingGas / STEPS, galaxies);
+                add_infall_to_hot(centralgal, infallingGas / STEPS, Zcurr, galaxies, run_params);
 
                 if(run_params->ReIncorporationFactor > 0.0) {
                     reincorporate_gas(centralgal, deltaT / STEPS, galaxies, run_params);

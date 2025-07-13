@@ -131,7 +131,7 @@ PLOT_COLORS = {
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/millennium/'
+DirName = './output/millennium_gd14/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 OutputDir = DirName + 'plots/'
@@ -144,7 +144,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Additional simulation directories for SFR density comparison
 SFR_SimDirs = [
     {
-        'path': './output/millennium/', 
+        'path': './output/millennium_gd14/', 
         'label': 'Millennium', 
         'color': 'black', 
         'linestyle': '-',
@@ -203,7 +203,7 @@ SFR_SimDirs = [
 SMF_SimConfigs = [
     # SAGE 2.0 simulations (solid lines)
     {
-        'path': './output/millennium/', 
+        'path': './output/millennium_gd14/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line
@@ -235,7 +235,7 @@ SMF_SimConfigs = [
 GAS_SimConfigs = [
     # Main simulation (your current one)
     {
-        'path': './output/millennium/', 
+        'path': './output/millennium_gd14/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',
@@ -3241,8 +3241,8 @@ if __name__ == '__main__':
     StellarMass = read_hdf_ultra_optimized(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Main_Hubble_h
     logger.info('Loading Type...')
     Type = read_hdf_ultra_optimized(snap_num=Snapshot, param='Type')
-    logger.info('Loading Mass loading factors...')
-    MassLoadingFactor = read_hdf_ultra_optimized(snap_num=Snapshot, param='MassLoadingFactor')
+    # logger.info('Loading Mass loading factors...')
+    # MassLoadingFactor = read_hdf_ultra_optimized(snap_num=Snapshot, param='MassLoadingFactor')
 
     logger.info(f'Total galaxies: {len(Vvir)}')
     
@@ -3254,8 +3254,8 @@ if __name__ == '__main__':
         Vvir_valid = Vvir[valid_mask]
         StellarMass_valid = StellarMass[valid_mask]
         Type_valid = Type[valid_mask]
-        MassLoadingFactor_valid = MassLoadingFactor[valid_mask]
-        logger.info(f'Mass loading factors: {MassLoadingFactor_valid}')
+        # MassLoadingFactor_valid = MassLoadingFactor[valid_mask]
+        # logger.info(f'Mass loading factors: {MassLoadingFactor_valid}')
         logger.info(f'Valid galaxies: {len(Vvir_valid)}')
 
         # Calculate mass loading for all valid galaxies (vectorized)
@@ -3305,12 +3305,12 @@ if __name__ == '__main__':
             indices = sample(range(len(Vvir_valid)), dilute)
             Vvir_plot = Vvir_valid[indices]
             mass_loading_plot = mass_loading[indices]
-            MassLoadingFactor_plot = MassLoadingFactor[indices]
+            # MassLoadingFactor_plot = MassLoadingFactor[indices]
             Type_plot = Type_valid[indices]
         else:
             Vvir_plot = Vvir_valid
             mass_loading_plot = mass_loading
-            MassLoadingFactor_plot = MassLoadingFactor
+            # MassLoadingFactor_plot = MassLoadingFactor
             Type_plot = Type_valid
 
         ax.scatter(shark_x, shark_y, color='grey', marker='^', s=50, label='SHARK v2')
