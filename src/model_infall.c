@@ -369,6 +369,9 @@ double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxie
 void add_infall_to_hot(const int gal, double infallingGas, const double z, struct GALAXY *galaxies, const struct params *run_params)
 {
     float metallicity;
+    
+    // Increment debug counter for each galaxy processed
+    debug_counter++;
 
     // Handle negative infall (mass loss) - keep existing logic
     if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
@@ -384,10 +387,10 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
             infallingGas = 0.0;
         }
         // DEBUG for negative infall
-    //     if (debug_counter % 500000 == 0) {
-    //         printf("DEBUG Infall: NEGATIVE infall=%.3e from CGM (metallicity=%.6f)\n", 
-    //                infallingGas, metallicity);
-    //     }
+        // if (debug_counter % 500000 == 0) {
+        //     printf("DEBUG Infall: NEGATIVE infall=%.3e from CGM (metallicity=%.6f)\n", 
+        //            infallingGas, metallicity);
+        // }
     }
 
     if(infallingGas < 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
@@ -425,7 +428,9 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
             //            galaxies[gal].ColdGas, galaxies[gal].MetalsColdGas);
             // }
         } else {
-            // "shutdown of gas supply" - gas goes to hot but stays hot   
+            // "shutdown of gas supply" - gas goes to hot but stays hot  
+            float metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
+ 
             galaxies[gal].HotGas += infallingGas;
             galaxies[gal].MetalsHotGas += infallingGas * metallicity;
             // DEBUG: Shock heated case

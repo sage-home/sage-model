@@ -59,11 +59,11 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     // fmol = rmol / (1 + rmol)
     float fmol = rmol / (1.0 + rmol);
 
-    extern long galaxy_debug_counter;
-    if (galaxy_debug_counter % 500000 == 0) {
-        printf("DEBUG GD14: Σgas=%.1f M☉/pc², Z=%.4f, d_mw=%.4f, u_mw=%.2f, α=%.3f, Σnorm=%.1f, R_mol=%.3f, f_mol=%.3f\n",
-               gas_surface_density, metallicity, d_mw, u_mw, alpha, sigma_norm, rmol, fmol);
-    }
+    // extern long galaxy_debug_counter;
+    // if (galaxy_debug_counter % 500000 == 0) {
+    //     printf("DEBUG GD14: Σgas=%.1f M☉/pc², Z=%.4f, d_mw=%.4f, u_mw=%.2f, α=%.3f, Σnorm=%.1f, R_mol=%.3f, f_mol=%.3f\n",
+    //            gas_surface_density, metallicity, d_mw, u_mw, alpha, sigma_norm, rmol, fmol);
+    // }
     
     // Step 7: Apply bounds
     if (fmol > 1.0) {
