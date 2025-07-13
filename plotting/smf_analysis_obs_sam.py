@@ -32,7 +32,7 @@ import matplotlib.gridspec as gridspec
 MODEL_CONFIGS = [
     {
         'name': 'SAGE 2.0',           # Display name for legend
-        'dir': './output/millennium/',  # Directory path
+        'dir': './output/millennium_gd14/',  # Directory path
         'color': 'black',            # Color for plotting
         'linestyle': '-',            # Line style
         'linewidth': 3,              # Thick line for SAGE 2.0
@@ -90,7 +90,7 @@ OBSERVATIONAL_FILES = [
 ]
 
 FileName = 'model_0.hdf5'
-OutputDir = './output/millennium/plots/'
+OutputDir = './output/millennium_gd14/plots/'
 ObsDataFile = './data/SMF_data_points.ecsv'  # Path to observational data file
 MuzzinDataFile = './data/SMF_Muzzin2013.dat'  # Path to Muzzin 2013 data file
 SantiniDataFile = './data/SMF_Santini2012.dat'  # Path to Santini 2012 data file

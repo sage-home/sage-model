@@ -11,52 +11,93 @@
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
 
+// double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY *galaxies)
+// {
+//     // Get circular velocity in km/s
+//     double vc = galaxies[p].Vvir;  // Using virial velocity (already in km/s)
+    
+//     // Add safety check to prevent division by zero
+//     if (vc <= 0.0) {
+//         return 0.0;  // Return zero mass loading if velocity is invalid
+//     }
+    
+//     // Constants from Muratov et al. (2015) paper
+//     const double V_CRIT = 60.0;  // Critical velocity where the power law breaks
+//     const double NORM = 2.9;     // Normalization factor
+//     const double Z_EXP = 1.3;    // Redshift power-law exponent
+//     const double LOW_V_EXP = -3.2;  // Low velocity power-law exponent
+//     const double HIGH_V_EXP = -1.0; // High velocity power-law exponent
+    
+//     // Calculate redshift term: (1+z)^1.3
+//     double z_term = pow(1.0 + z, Z_EXP);
+    
+//     // Calculate velocity term with broken power law and smoother transition
+//     double v_term;
+//     if (vc < V_CRIT * 0.8) {
+//         v_term = pow(vc / V_CRIT, LOW_V_EXP);
+//     } else if (vc > V_CRIT * 1.2) {
+//         v_term = pow(vc / V_CRIT, HIGH_V_EXP);
+//     } else {
+//         // Interpolate between the two regimes for a smoother transition
+//         double frac = (vc - V_CRIT * 0.8) / (V_CRIT * 0.4);
+//         double v_term_low = pow(vc / V_CRIT, LOW_V_EXP);
+//         double v_term_high = pow(vc / V_CRIT, HIGH_V_EXP);
+//         v_term = v_term_low * (1.0 - frac) + v_term_high * frac;
+//     }
+    
+//     double eta = NORM * z_term * v_term;
+    
+//     // Cap the maximum mass-loading factor to prevent extreme feedback
+//     // if (eta > 50.0) {
+//     //     eta = 50.0;
+//     // }
+    
+//     // Safety check for the result
+//     if (!isfinite(eta)) {
+//         return 0.0;  // Return zero if result is NaN or infinity
+//     }
+
+//     return eta;
+// }
+
+// Muratov mass loading - exact implementation of Equations 4 & 5
 double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY *galaxies)
 {
     // Get circular velocity in km/s
-    double vc = galaxies[p].Vvir;  // Using virial velocity (already in km/s)
+    double vc = galaxies[p].Vvir;  // Using virial velocity
     
-    // Add safety check to prevent division by zero
     if (vc <= 0.0) {
-        return 0.0;  // Return zero mass loading if velocity is invalid
+        return 0.0;
     }
     
-    // Constants from Muratov et al. (2015) paper
-    const double V_CRIT = 60.0;  // Critical velocity where the power law breaks
-    const double NORM = 2.9;     // Normalization factor
-    const double Z_EXP = 1.3;    // Redshift power-law exponent
-    const double LOW_V_EXP = -3.2;  // Low velocity power-law exponent
-    const double HIGH_V_EXP = -1.0; // High velocity power-law exponent
+    // Constants from Equations 4 & 5 (exact values from paper)
+    const double NORM = 2.9;        // Normalization
+    const double Z_EXP = 1.3;       // Redshift exponent
+    const double V_BREAK = 60.0;    // Break velocity (km/s)
+    const double LOW_V_EXP = -3.2;  // Low velocity exponent  
+    const double HIGH_V_EXP = -1.0; // High velocity exponent
     
     // Calculate redshift term: (1+z)^1.3
     double z_term = pow(1.0 + z, Z_EXP);
     
-    // Calculate velocity term with broken power law and smoother transition
+    // Calculate velocity term with broken power law (Equations 4 & 5)
     double v_term;
-    if (vc < V_CRIT * 0.8) {
-        v_term = pow(vc / V_CRIT, LOW_V_EXP);
-    } else if (vc > V_CRIT * 1.2) {
-        v_term = pow(vc / V_CRIT, HIGH_V_EXP);
+    if (vc < V_BREAK) {
+        // Equation 4: η = 2.9(1+z)^1.3 * (vc/60km/s)^-3.2
+        v_term = pow(vc / V_BREAK, LOW_V_EXP);
     } else {
-        // Interpolate between the two regimes for a smoother transition
-        double frac = (vc - V_CRIT * 0.8) / (V_CRIT * 0.4);
-        double v_term_low = pow(vc / V_CRIT, LOW_V_EXP);
-        double v_term_high = pow(vc / V_CRIT, HIGH_V_EXP);
-        v_term = v_term_low * (1.0 - frac) + v_term_high * frac;
+        // Equation 5: η = 2.9(1+z)^1.3 * (vc/60km/s)^-1.0  
+        v_term = pow(vc / V_BREAK, HIGH_V_EXP);
     }
     
     double eta = NORM * z_term * v_term;
     
-    // Cap the maximum mass-loading factor to prevent extreme feedback
-    // if (eta > 50.0) {
-    //     eta = 50.0;
-    // }
-    
-    // Safety check for the result
-    if (!isfinite(eta)) {
-        return 0.0;  // Return zero if result is NaN or infinity
+    // Handle low-z suppression for massive galaxies (Section 5.2)
+    // "At z < 0.5, L*-progenitors no longer drive outflows into the CGM"
+    if (z < 0.5 && galaxies[p].Mvir > 5e11) {
+        eta *= 0.1;  // Strong suppression as observed
     }
-
+    
     return eta;
 }
 

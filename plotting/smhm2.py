@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_CGMfirst/'
+DirName = './output/millennium_gd14/'
 DirName_c16 = './output/millennium_vanilla/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'

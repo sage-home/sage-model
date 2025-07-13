@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_FIRE/
 
 FirstFile         0
 LastFile          7
@@ -45,12 +45,12 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        0   %0: original Croton et al. 2006
+SFprescription        1   %0: original Croton et al. 2006
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-MassLoadingOn         0   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
+MassLoadingOn         1   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
 
 %------------------------------------------
 %----- SAGE model parameters --------------
