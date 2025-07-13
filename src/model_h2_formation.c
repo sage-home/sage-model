@@ -11,7 +11,7 @@ void init_gas_components(struct GALAXY *g)
     g->HI_gas = 0.0;
 }
 
-float gd14_sigma_norm(float d_mw, float u_mw)
+double gd14_sigma_norm(float d_mw, float u_mw)
 {
     // g parameter calculation: g = sqrt(d_mw² + 0.0289)
     float g = sqrt(d_mw * d_mw + 0.02);
@@ -24,7 +24,7 @@ float gd14_sigma_norm(float d_mw, float u_mw)
 }
 
 
-float calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity)
+double calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity)
 {
     // Early termination for edge cases
     if (gas_surface_density <= 0.0) {
@@ -75,7 +75,7 @@ float calculate_molecular_fraction_GD14(float gas_surface_density, float metalli
     return fmol;
 }
 
-float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float radius_pc)
+double calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float radius_pc)
 {
     // Early termination for edge cases
     if (sigma_gas <= 0.0 || radius_pc <= 0.0) {
@@ -95,7 +95,7 @@ float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float
     return pressure; // K cm⁻³
 }
 
-float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar_surface_density,
+double calculate_molecular_fraction_BR06(float gas_surface_density, float stellar_surface_density,
                                        float radius_pc)
 {
     // Calculate midplane pressure using corrected formula
