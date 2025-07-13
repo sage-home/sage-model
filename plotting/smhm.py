@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_FIRE/'
+DirName = './output/millennium_dekel_h2/'
 DirName_old = './output/millennium_vanilla/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
