@@ -3241,8 +3241,8 @@ if __name__ == '__main__':
     StellarMass = read_hdf_ultra_optimized(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Main_Hubble_h
     logger.info('Loading Type...')
     Type = read_hdf_ultra_optimized(snap_num=Snapshot, param='Type')
-    # logger.info('Loading Mass loading factors...')
-    # MassLoadingFactor = read_hdf_ultra_optimized(snap_num=Snapshot, param='MassLoadingFactor')
+    logger.info('Loading Mass loading factors...')
+    MassLoading = read_hdf_ultra_optimized(snap_num=Snapshot, param='MassLoading')
 
     logger.info(f'Total galaxies: {len(Vvir)}')
     
@@ -3254,12 +3254,13 @@ if __name__ == '__main__':
         Vvir_valid = Vvir[valid_mask]
         StellarMass_valid = StellarMass[valid_mask]
         Type_valid = Type[valid_mask]
-        # MassLoadingFactor_valid = MassLoadingFactor[valid_mask]
-        # logger.info(f'Mass loading factors: {MassLoadingFactor_valid}')
+        MassLoading_valid = MassLoading[valid_mask]
+        logger.info(f'Mass loading factors: {MassLoading_valid}')
         logger.info(f'Valid galaxies: {len(Vvir_valid)}')
 
         # Calculate mass loading for all valid galaxies (vectorized)
         mass_loading = calculate_muratov_mass_loading(Vvir_valid, z=0.0)
+        # mass_loading_sage = MassLoading_valid
         
         # Create theoretical curves for comparison
         vvir_theory = np.logspace(1, 3, 100)  # 10 to 1000 km/s
@@ -3305,22 +3306,33 @@ if __name__ == '__main__':
             indices = sample(range(len(Vvir_valid)), dilute)
             Vvir_plot = Vvir_valid[indices]
             mass_loading_plot = mass_loading[indices]
-            # MassLoadingFactor_plot = MassLoadingFactor[indices]
+            MassLoading_plot = MassLoading[indices]
             Type_plot = Type_valid[indices]
+            StellarMass_plot = StellarMass_valid[indices]
         else:
             Vvir_plot = Vvir_valid
             mass_loading_plot = mass_loading
-            # MassLoadingFactor_plot = MassLoadingFactor
+            MassLoading_plot = MassLoading
             Type_plot = Type_valid
+            StellarMass_plot = StellarMass_valid
+
+        # ax.scatter(Vvir, MassLoading, c='lightblue', s=5, alpha=0.7)
 
         ax.scatter(shark_x, shark_y, color='grey', marker='^', s=50, label='SHARK v2')
         ax.scatter(chisholm_x, chisholm_y, color='grey', marker='o', s=50, label='Chisholm et al. 2017')
         ax.scatter(heckman_x, heckman_y, color='grey', marker='x', s=50, label='Heckman et al. 2015')
         ax.scatter(rupke_x, rupke_y, color='grey', marker='s', s=50, label='Rupke et al. 2005')
         ax.scatter(sugahara_x, sugahara_y, color='grey', marker='d', s=50, label='Sugahara et al. 2017')
-        ax.scatter(Vvir_plot, mass_loading_plot, c='blue',
-                   cmap='viridis', s=10, alpha=0.7, edgecolors='none', 
-                   label='SAGE 2.0 galaxies', zorder=5)
+        
+        # Color SAGE galaxies by stellar mass
+        scatter = ax.scatter(Vvir_plot, MassLoading_plot, c=np.log10(StellarMass_plot), 
+                           s=5, alpha=0.7, edgecolors='none', 
+                           label='SAGE 2.0 galaxies', zorder=5, cmap='viridis')
+        
+        # Add colorbar for stellar mass
+        cbar = plt.colorbar(scatter, ax=ax, pad=0.02, shrink=0.8)
+        cbar.set_label(r'$\log_{10}(M_* / M_{\odot})$', fontsize=16)
+        cbar.ax.tick_params(labelsize=14)
         
         # Add vertical line at critical velocity
         ax.axvline(x=60, color='gray', linestyle=':', linewidth=2, alpha=0.7, 

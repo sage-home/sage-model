@@ -51,10 +51,12 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     // if (eta > 50.0) {
     //     eta = 50.0;
     // }
+    
     // Surface density suppression - FIRE2 shows that high gas surface density can suppress star formation
-    const float re_pc = galaxies[p].DiskScaleRadius * 1.0e6 / 0.73; // Half-mass radius in pc
-    float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc; // Note: 2π for half-mass radius
-    float gas_surface_density_center = (galaxies[p].ColdGas * 1.0e10 / 0.73) / disk_area_pc2; // M☉/pc²
+    const float re_pc = galaxies[p].DiskScaleRadius * 1.0e6 / 0.73;
+    float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc;
+    float gas_surface_density_center = (galaxies[p].ColdGas * 1.0e10 / 0.73) / disk_area_pc2; 
+
     if (gas_surface_density_center > 1000.0) {  // M☉/pc²
         float suppression = pow(gas_surface_density_center / 1000.0, -0.7);
         eta *= suppression;
@@ -130,9 +132,11 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             // Use Muratov mass loading calculation
             double z = run_params->ZZ[galaxies[p].SnapNum];
             reheated_mass = calculate_muratov_mass_loading(p, z, galaxies) * stars;
+            galaxies[p].MassLoading = reheated_mass / stars;  // Store mass loading factor in the galaxy structure
         } else {
             // Use traditional feedback parameter
             reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
+            galaxies[p].MassLoading = run_params->FeedbackReheatingEpsilon;  // Store fixed feedback parameter
         }
     } else {
         reheated_mass = 0.0;

@@ -93,8 +93,18 @@ if __name__ == '__main__':
     outflowrate = read_hdf(snap_num = Snapshot, param = 'OutflowRate') * 1.0e10 / Hubble_h
     cgm = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
     #print(np.log10(CGM))
-    # massload = read_hdf(snap_num = Snapshot, param = 'MassLoadingFactor')  # Mass loading factor for outflows
-    # print('Mass loading factor for outflows:', massload)
+    massload = read_hdf(snap_num = Snapshot, param = 'MassLoading')  # Mass loading factor for outflows
+    print('Mass loading factor for outflows:', massload)
+    CriticalMassDB06 = read_hdf(snap_num = Snapshot, param = 'CriticalMassDB06') * 1.0e10 / Hubble_h
+    MvirToMcritRatio = read_hdf(snap_num = Snapshot, param = 'MvirToMcritRatio')
+    ColdInflowMass = read_hdf(snap_num = Snapshot, param = 'ColdInflowMass') * 1.0e10 / Hubble_h
+    HotInflowMass = read_hdf(snap_num = Snapshot, param = 'HotInflowMass') * 1.0e10 / Hubble_h
+
+    print('Critical mass from Dekel & Birnboim (2006):', CriticalMassDB06)
+    print('Ratio of Mvir to Mcrit:', MvirToMcritRatio)
+    print('Cumulative mass that accreted as cold streams:', ColdInflowMass)
+    print('Cumulative mass that accreted shock-heated:', HotInflowMass)
+    
 
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
     Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
@@ -1700,3 +1710,166 @@ if __name__ == '__main__':
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()
+
+# -------------------------------------------------------
+
+    print('Regime diagram showing cold streams vs shock heated galaxies')
+
+    plt.figure(figsize=(10, 8))
+
+    # Filter for central galaxies with reasonable masses
+    centrals = (Type == 0) & (StellarMass > 1e8) & (Mvir > 0)
+
+    # Plot the 1:1 line (Mvir = Mcrit)
+    mass_range = np.logspace(10, 15, 100)
+    plt.loglog(mass_range, mass_range, 'k--', linewidth=2, label='Mvir = Mcrit')
+
+    # Scatter plot colored by regime
+    cold_regime = centrals & (MvirToMcritRatio < 1.0)
+    hot_regime = centrals & (MvirToMcritRatio >= 1.0)
+    print(cold_regime)
+
+    plt.scatter(CriticalMassDB06[cold_regime], Mvir[cold_regime], 
+            c='blue', alpha=0.6, s=20, label='Cold Streams')
+    plt.scatter(CriticalMassDB06[hot_regime], Mvir[hot_regime], 
+            c='red', alpha=0.6, s=20, label='Shock Heated')
+
+    plt.xlabel('Critical Mass Mcrit [M☉]')
+    plt.ylabel('Virial Mass Mvir [M☉]')
+    plt.title('Dekel & Birnboim Regime Diagram')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    # plt.xlim(1e10, 1e15)
+    # plt.ylim(1e10, 1e15)
+    plt.savefig(OutputDir + 'dekel_regime_diagram' + OutputFormat, bbox_inches='tight')
+
+    # 2. Cold vs hot inflow fractions
+    plt.figure(figsize=(10, 8))
+
+    # Calculate total inflow and cold fraction
+    total_inflow = ColdInflowMass + HotInflowMass
+    cold_fraction = np.zeros_like(ColdInflowMass)
+    mask = total_inflow > 0
+    cold_fraction[mask] = ColdInflowMass[mask] / total_inflow[mask]
+
+    # Filter for galaxies with significant inflow
+    has_inflow = centrals & (total_inflow > 1e8)
+
+    # Bin by halo mass
+    mass_bins = np.logspace(10, 14, 20)
+    mass_centers = (mass_bins[1:] * mass_bins[:-1])**0.5
+
+    mean_cold_frac = []
+    std_cold_frac = []
+
+    for i in range(len(mass_bins)-1):
+        in_bin = has_inflow & (Mvir >= mass_bins[i]) & (Mvir < mass_bins[i+1])
+        if np.sum(in_bin) > 5:  # Need at least 5 galaxies
+            mean_cold_frac.append(np.mean(cold_fraction[in_bin]))
+            std_cold_frac.append(np.std(cold_fraction[in_bin]))
+        else:
+            mean_cold_frac.append(np.nan)
+            std_cold_frac.append(np.nan)
+
+    plt.errorbar(mass_centers, mean_cold_frac, yerr=std_cold_frac, 
+                marker='o', capsize=5, linewidth=2)
+    plt.axhline(y=0.5, color='k', linestyle='--', alpha=0.5, label='50% cold')
+    plt.xlabel('Virial Mass [M☉]')
+    plt.ylabel('Cold Inflow Fraction')
+    plt.title('Cold Stream Efficiency vs Halo Mass')
+    plt.xscale('log')
+    plt.ylim(0, 1)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.savefig(OutputDir + 'cold_inflow_fraction' + OutputFormat, bbox_inches='tight')
+
+    plt.figure(figsize=(12, 5))
+
+    # Calculate specific star formation rate
+    SFR = SfrDisk + SfrBulge
+    sSFR = np.log10(SFR / StellarMass + 1e-12)  # Add small number to avoid log(0)
+
+    # Filter star-forming galaxies
+    sf_gals = centrals & (StellarMass > 1e9) & (SFR > 1e-3)
+
+    plt.subplot(1, 2, 1)
+    # Plot sSFR vs stellar mass, colored by regime
+    cold_sf = sf_gals & (MvirToMcritRatio < 1.0)
+    hot_sf = sf_gals & (MvirToMcritRatio > 1.0)
+
+    plt.scatter(np.log10(StellarMass[cold_sf]), sSFR[cold_sf], 
+            c='blue', alpha=0.6, s=20, label='Cold Streams')
+    plt.scatter(np.log10(StellarMass[hot_sf]), sSFR[hot_sf], 
+            c='red', alpha=0.6, s=20, label='Shock Heated')
+
+    plt.xlabel('log Stellar Mass [M☉]')
+    plt.ylabel('log sSFR [yr⁻¹]')
+    plt.title('Star Formation vs Infall Mode')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+
+    plt.subplot(1, 2, 2)
+    # Cold gas fraction
+    cold_gas_frac = ColdGas / (StellarMass + ColdGas + 1e-12)
+
+    plt.scatter(np.log10(Mvir[cold_sf]), cold_gas_frac[cold_sf], 
+            c='blue', alpha=0.6, s=20, label='Cold Streams')
+    plt.scatter(np.log10(Mvir[hot_sf]), cold_gas_frac[hot_sf], 
+            c='red', alpha=0.6, s=20, label='Shock Heated')
+
+    plt.xlabel('log Virial Mass [M☉]')
+    plt.ylabel('Cold Gas Fraction')
+    plt.title('Gas Content vs Infall Mode')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(OutputDir + 'infall_impact_on_sf' + OutputFormat, bbox_inches='tight')
+
+    # 4. Molecular vs atomic gas in different regimes
+    plt.figure(figsize=(10, 8))
+
+    # Calculate H2 fraction
+    h2_fraction = H2Gas / (H1Gas + H2Gas + 1e-12)
+    has_gas = centrals & (ColdGas > 1e8)
+
+    cold_gas = has_gas & (MvirToMcritRatio < 1.0)
+    hot_gas = has_gas & (MvirToMcritRatio > 1.0)
+
+    plt.scatter(np.log10(StellarMass[cold_gas]), h2_fraction[cold_gas], 
+            c='blue', alpha=0.6, s=20, label='Cold Streams')
+    plt.scatter(np.log10(StellarMass[hot_gas]), h2_fraction[hot_gas], 
+            c='red', alpha=0.6, s=20, label='Shock Heated')
+
+    plt.xlabel('log Stellar Mass [M☉]')
+    plt.ylabel('H₂ Fraction')
+    plt.title('Molecular Gas vs Infall Mode')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, 1)
+    plt.savefig(OutputDir + 'h2_fraction_by_regime' + OutputFormat, bbox_inches='tight')
+
+    # 5. Distribution of Mvir/Mcrit ratios
+    plt.figure(figsize=(10, 6))
+
+    # Filter out invalid values (<=0) before taking log10
+    valid_ratios = centrals & (MvirToMcritRatio > 0)
+    
+    # Histogram of mass ratios
+    plt.hist(np.log10(MvirToMcritRatio[valid_ratios]), bins=50, alpha=0.7, 
+            density=True, label='All Centrals')
+    plt.axvline(x=0, color='k', linestyle='--', label='Mvir = Mcrit')
+
+    plt.xlabel('log(Mvir/Mcrit)')
+    plt.ylabel('Probability Density')
+    plt.title('Distribution of Mass Ratios')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.savefig(OutputDir + 'mass_ratio_distribution' + OutputFormat, bbox_inches='tight')
+    # plt.show()
+
+    # Print some statistics
+    valid_central_ratios = MvirToMcritRatio[centrals & (MvirToMcritRatio > 0)]
+    print(f"Fraction in cold stream regime: {np.sum(MvirToMcritRatio[centrals] < 1.0) / np.sum(centrals):.3f}")
+    print(f"Median Mvir/Mcrit ratio (valid values only): {np.median(valid_central_ratios):.3f}")
+    print(f"Number of galaxies with invalid (<=0) ratios: {np.sum(centrals & (MvirToMcritRatio <= 0))}")
