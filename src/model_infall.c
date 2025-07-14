@@ -143,27 +143,73 @@ double calculate_critical_mass_dekel_birnboim_2006(const double z, const struct 
     // From the paper's Figure 2 results, use their empirical fit
     // At z=0: Mcrit ≃ 6×10^11 M☉ for Z0=0.1 (their middle curve)
     
-    const double Mcrit_z0_Msun = 6.0e11;  // From their Figure 2
+    // const double Mcrit_z0_Msun = 6.0e11;  // From their Figure 2
     
-    // The paper shows Mcrit is roughly constant with redshift
-    // Their Figure 2 shows very weak redshift dependence
-    const double redshift_factor = 1.0;  // Approximately constant per Figure 2
+    // // The paper shows Mcrit is roughly constant with redshift
+    // // Their Figure 2 shows very weak redshift dependence
+    // const double redshift_factor = 1.0;  // Approximately constant per Figure 2
+    
+    // const double Mcrit_Msun = Mcrit_z0_Msun * redshift_factor;
+    
+    // // Convert to SAGE units (10^10 M_sun/h)
+    // const double Mcrit_SAGE = Mcrit_Msun / (1.0e10 / run_params->Hubble_h);
+    
+    // // Debug output matching the paper's approach
+    // static int debug_count = 0;
+    // if (debug_count < 5) {
+    //     printf("DEBUG DB06 PAPER: z=%.3f, M_crit=%.3e M_sun (%.3e SAGE units)\n", 
+    //            z, Mcrit_Msun, Mcrit_SAGE);
+    //     printf("  Based on Figure 2 from Dekel & Birnboim 2006\n");
+    //     debug_count++;
+    // }
+    
+    // return Mcrit_SAGE;
+
+    // const double f = 3.0;
+    
+    // double Mshock = calculate_mshock(z, run_params);
+    // double Mstar_z = calculate_press_schechter_mass(z, run_params);  // M*(z) at current redshift
+    
+    // double Mcrit;
+    // const char* regime;
+    
+    // // Equation (43) logic: check if f×M*(z) < M_shock
+    // if (f * Mstar_z < Mshock) {
+    //     // High redshift regime: f×M*(z) < M_shock, so z > z_crit
+    //     // Use equation (40): M_crit = M_shock² / (f×M*(z))
+    //     Mcrit = (Mshock * Mshock) / (f * Mstar_z);
+    //     regime = "HIGH-z: Cold streams penetrate";
+    // } else {
+    //     // Low redshift regime: f×M*(z) >= M_shock, so z <= z_crit  
+    //     // Use equation (43): M_crit = M_shock (no cold streams)
+    //     Mcrit = Mshock;
+    //     regime = "LOW-z: No cold streams";
+    // }
+
+    // // DEBUG: Print every 10000th calculation
+    // if (debug_counter % 200000 == 0) {
+    //     printf("DEBUG Mcrit: z=%.3f\n", z);
+    //     printf("  M_shock=%.3e, M*=%.3e, f*M*=%.3e\n", Mshock, Mstar_z, f * Mstar_z);
+    //     printf("  f*M* < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
+    //     printf("  REGIME: %s\n", regime);
+    //     printf("  M_crit=%.3e SAGE units\n", Mcrit);
+    // }
+    
+    // return Mcrit;
+
+    // Base value from Figure 2
+    const double Mcrit_z0_Msun = 6.0e11;
+    
+    // Simple redshift evolution from A parameter only
+    const double A_z = calculate_A_parameter(z, run_params);
+    const double A_z0 = calculate_A_parameter(0.0, run_params);
+    
+    // M_crit ∝ A^(3/8) from D&B06 equation (34)
+    const double redshift_factor = pow(A_z / A_z0, 3.0/8.0);
     
     const double Mcrit_Msun = Mcrit_z0_Msun * redshift_factor;
     
-    // Convert to SAGE units (10^10 M_sun/h)
-    const double Mcrit_SAGE = Mcrit_Msun / (1.0e10 / run_params->Hubble_h);
-    
-    // Debug output matching the paper's approach
-    static int debug_count = 0;
-    if (debug_count < 5) {
-        printf("DEBUG DB06 PAPER: z=%.3f, M_crit=%.3e M_sun (%.3e SAGE units)\n", 
-               z, Mcrit_Msun, Mcrit_SAGE);
-        printf("  Based on Figure 2 from Dekel & Birnboim 2006\n");
-        debug_count++;
-    }
-    
-    return Mcrit_SAGE;
+    return Mcrit_Msun / (1.0e10 / run_params->Hubble_h);
 }
 
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
@@ -426,7 +472,7 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
             galaxies[gal].ColdInflowMass += infallingGas;
             galaxies[gal].ColdInflowMetals += infallingGas * metallicity;
             // DEBUG: Cold stream case
-            if (debug_counter % 2000 == 0) {  // More frequent for positive infall
+            if (debug_counter % 90000 == 0) {  // More frequent for positive infall
                 printf("DEBUG Infall: COLD STREAM z=%.3f\n", z);
                 printf("  M_vir=%.3e < M_crit=%.3e → COLD STREAM\n", galaxies[gal].Mvir, Mcrit);
                 printf("  Infall=%.3e → ColdGas, metallicity=%.6f\n", infallingGas, metallicity);
@@ -443,7 +489,7 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
             galaxies[gal].HotInflowMass += infallingGas;
             galaxies[gal].HotInflowMetals += infallingGas * metallicity;
             // DEBUG: Shock heated case
-            if (debug_counter % 800000 == 0) {  // More frequent for positive infall
+            if (debug_counter % 10000 == 0) {  // More frequent for positive infall
                 printf("DEBUG Infall: SHOCK HEATED z=%.3f\n", z);
                 printf("  M_vir=%.3e >= M_crit=%.3e → SHOCK HEATED\n", galaxies[gal].Mvir, Mcrit);
                 printf("  Infall=%.3e → HotGas, metallicity=%.6f\n", infallingGas, metallicity);
