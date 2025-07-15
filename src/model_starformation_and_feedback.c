@@ -53,14 +53,14 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     // }
     
     // Surface density suppression - FIRE2 shows that high gas surface density can suppress star formation
-    const float re_pc = galaxies[p].DiskScaleRadius * 1.0e6 / 0.73;
-    float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc;
-    float gas_surface_density_center = (galaxies[p].ColdGas * 1.0e10 / 0.73) / disk_area_pc2; 
+    // const float re_pc = galaxies[p].DiskScaleRadius * 1.0e6 / 0.73;
+    // float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc;
+    // float gas_surface_density_center = (galaxies[p].ColdGas * 1.0e10 / 0.73) / disk_area_pc2; 
 
-    if (gas_surface_density_center > 1000.0) {  // M☉/pc²
-        float suppression = pow(gas_surface_density_center / 1000.0, -0.7);
-        eta *= suppression;
-    }
+    // if (gas_surface_density_center > 1000.0) {  // M☉/pc²
+    //     float suppression = pow(gas_surface_density_center / 1000.0, -0.7);
+    //     eta *= suppression;
+    // }
 
     // Safety check for the result
     if (!isfinite(eta)) {

@@ -1730,9 +1730,9 @@ if __name__ == '__main__':
     print(cold_regime)
 
     plt.scatter(CriticalMassDB06[cold_regime], Mvir[cold_regime], 
-            c='blue', alpha=0.6, s=20, label='Cold Streams')
+            c='blue', alpha=0.6, s=20, label='Cold Streams', zorder=10)
     plt.scatter(CriticalMassDB06[hot_regime], Mvir[hot_regime], 
-            c='red', alpha=0.6, s=20, label='Shock Heated')
+            c='red', alpha=0.3, s=20, label='Shock Heated', zorder=5)
 
     plt.xlabel('Critical Mass Mcrit [M☉]')
     plt.ylabel('Virial Mass Mvir [M☉]')
@@ -1798,9 +1798,9 @@ if __name__ == '__main__':
     hot_sf = sf_gals & (MvirToMcritRatio > 1.0)
 
     plt.scatter(np.log10(StellarMass[cold_sf]), sSFR[cold_sf], 
-            c='blue', alpha=0.6, s=20, label='Cold Streams')
+            c='blue', alpha=0.6, s=20, label='Cold Streams', zorder=10)
     plt.scatter(np.log10(StellarMass[hot_sf]), sSFR[hot_sf], 
-            c='red', alpha=0.6, s=20, label='Shock Heated')
+            c='red', alpha=0.3, s=20, label='Shock Heated', zorder=5)
 
     plt.xlabel('log Stellar Mass [M☉]')
     plt.ylabel('log sSFR [yr⁻¹]')
@@ -1815,7 +1815,7 @@ if __name__ == '__main__':
     plt.scatter(np.log10(Mvir[cold_sf]), cold_gas_frac[cold_sf], 
             c='blue', alpha=0.6, s=20, label='Cold Streams')
     plt.scatter(np.log10(Mvir[hot_sf]), cold_gas_frac[hot_sf], 
-            c='red', alpha=0.6, s=20, label='Shock Heated')
+            c='red', alpha=0.3, s=20, label='Shock Heated')
 
     plt.xlabel('log Virial Mass [M☉]')
     plt.ylabel('Cold Gas Fraction')
@@ -1837,9 +1837,9 @@ if __name__ == '__main__':
     hot_gas = has_gas & (MvirToMcritRatio > 1.0)
 
     plt.scatter(np.log10(StellarMass[cold_gas]), h2_fraction[cold_gas], 
-            c='blue', alpha=0.6, s=20, label='Cold Streams')
+            c='blue', alpha=0.6, s=20, label='Cold Streams', zorder=10)
     plt.scatter(np.log10(StellarMass[hot_gas]), h2_fraction[hot_gas], 
-            c='red', alpha=0.6, s=20, label='Shock Heated')
+            c='red', alpha=0.6, s=20, label='Shock Heated', zorder=5)
 
     plt.xlabel('log Stellar Mass [M☉]')
     plt.ylabel('H₂ Fraction')
