@@ -11,7 +11,7 @@ extern "C" {
     extern void strip_from_satellite(const int centralgal, const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
     extern double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
     extern void add_infall_to_hot(const int gal, double infallingGas, const double z,struct GALAXY *galaxies, const struct params *run_params);
-    extern double calculate_critical_mass_dekel_birnboim_2006(const double z, const struct params *run_params, struct GALAXY *galaxies, const int gal);
+    extern double calculate_critical_mass_dekel_birnboim_2006(const double z, const struct params *run_params);
     extern double calculate_mshock_with_sage_metallicity(const double z, const struct params *run_params);
 
     // Equation (18): A parameter calculation

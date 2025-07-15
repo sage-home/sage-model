@@ -31,19 +31,6 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     // Calculate redshift term: (1+z)^1.3
     double z_term = pow(1.0 + z, Z_EXP);
     
-    // // Calculate velocity term with broken power law and smoother transition
-    // double v_term;
-    // if (vc < V_CRIT * 0.8) {
-    //     v_term = pow(vc / V_CRIT, LOW_V_EXP);
-    // } else if (vc > V_CRIT * 1.2) {
-    //     v_term = pow(vc / V_CRIT, HIGH_V_EXP);
-    // } else {
-    //     // Interpolate between the two regimes for a smoother transition
-    //     double frac = (vc - V_CRIT * 0.8) / (V_CRIT * 0.4);
-    //     double v_term_low = pow(vc / V_CRIT, LOW_V_EXP);
-    //     double v_term_high = pow(vc / V_CRIT, HIGH_V_EXP);
-    //     v_term = v_term_low * (1.0 - frac) + v_term_high * frac;
-    // }
     // Calculate velocity term with SHARP BREAK at exactly 60 km/s
     double v_term;
     if (vc < V_CRIT) {
@@ -55,21 +42,6 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     }
     
     double eta = NORM * z_term * v_term;
-    
-    // Cap the maximum mass-loading factor to prevent extreme feedback
-    // if (eta > 50.0) {
-    //     eta = 50.0;
-    // }
-    
-    // Surface density suppression - FIRE2 shows that high gas surface density can suppress star formation
-    // const float re_pc = galaxies[p].DiskScaleRadius * 1.0e6 / 0.73;
-    // float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc;
-    // float gas_surface_density_center = (galaxies[p].ColdGas * 1.0e10 / 0.73) / disk_area_pc2; 
-
-    // if (gas_surface_density_center > 1000.0) {  // M☉/pc²
-    //     float suppression = pow(gas_surface_density_center / 1000.0, -0.7);
-    //     eta *= suppression;
-    // }
 
     // Safety check for the result
     if (!isfinite(eta)) {
