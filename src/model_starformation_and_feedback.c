@@ -31,18 +31,27 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     // Calculate redshift term: (1+z)^1.3
     double z_term = pow(1.0 + z, Z_EXP);
     
-    // Calculate velocity term with broken power law and smoother transition
+    // // Calculate velocity term with broken power law and smoother transition
+    // double v_term;
+    // if (vc < V_CRIT * 0.8) {
+    //     v_term = pow(vc / V_CRIT, LOW_V_EXP);
+    // } else if (vc > V_CRIT * 1.2) {
+    //     v_term = pow(vc / V_CRIT, HIGH_V_EXP);
+    // } else {
+    //     // Interpolate between the two regimes for a smoother transition
+    //     double frac = (vc - V_CRIT * 0.8) / (V_CRIT * 0.4);
+    //     double v_term_low = pow(vc / V_CRIT, LOW_V_EXP);
+    //     double v_term_high = pow(vc / V_CRIT, HIGH_V_EXP);
+    //     v_term = v_term_low * (1.0 - frac) + v_term_high * frac;
+    // }
+    // Calculate velocity term with SHARP BREAK at exactly 60 km/s
     double v_term;
-    if (vc < V_CRIT * 0.8) {
+    if (vc < V_CRIT) {
+        // Equation 4: For vc < 60 km/s
         v_term = pow(vc / V_CRIT, LOW_V_EXP);
-    } else if (vc > V_CRIT * 1.2) {
-        v_term = pow(vc / V_CRIT, HIGH_V_EXP);
     } else {
-        // Interpolate between the two regimes for a smoother transition
-        double frac = (vc - V_CRIT * 0.8) / (V_CRIT * 0.4);
-        double v_term_low = pow(vc / V_CRIT, LOW_V_EXP);
-        double v_term_high = pow(vc / V_CRIT, HIGH_V_EXP);
-        v_term = v_term_low * (1.0 - frac) + v_term_high * frac;
+        // Equation 5: For vc >= 60 km/s  
+        v_term = pow(vc / V_CRIT, HIGH_V_EXP);
     }
     
     double eta = NORM * z_term * v_term;
