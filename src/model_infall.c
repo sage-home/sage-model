@@ -168,53 +168,53 @@ double calculate_critical_mass_dekel_birnboim_2006(const double z, const struct 
 
     // Option 2
     // Core physics: compare f*M*(z) vs M_shock to determine regime
-    // const double f = 3.0;
+    const double f = 3.0;
     
-    // double Mshock = calculate_mshock(z, run_params);
-    // double Mstar_z = calculate_press_schechter_mass(z, run_params);  // M*(z) at current redshift
-    // // double Mstar_z = galaxies[gal].StellarMass;
+    double Mshock = calculate_mshock(z, run_params);
+    double Mstar_z = calculate_press_schechter_mass(z, run_params);  // M*(z) at current redshift
+    // double Mstar_z = galaxies[gal].StellarMass;
     
-    // double Mcrit;
-    // const char* regime;
+    double Mcrit;
+    const char* regime;
     
-    // // Equation (43) logic: check if f×M*(z) < M_shock
-    // if (f * Mstar_z < Mshock) {
-    //     // High redshift regime: f×M*(z) < M_shock, so z > z_crit
-    //     // Use equation (40): M_crit = M_shock² / (f×M*(z))
-    //     Mcrit = (Mshock * Mshock) / (f * Mstar_z);
-    //     regime = "HIGH-z: Cold streams penetrate";
-    // } else {
-    //     // Low redshift regime: f×M*(z) >= M_shock, so z <= z_crit  
-    //     // Use equation (43): M_crit = M_shock (no cold streams)
-    //     Mcrit = Mshock;
-    //     regime = "LOW-z: No cold streams";
-    // }
+    // Equation (43) logic: check if f×M*(z) < M_shock
+    if (f * Mstar_z < Mshock) {
+        // High redshift regime: f×M*(z) < M_shock, so z > z_crit
+        // Use equation (40): M_crit = M_shock² / (f×M*(z))
+        Mcrit = (Mshock * Mshock) / (f * Mstar_z);
+        regime = "HIGH-z: Cold streams penetrate";
+    } else {
+        // Low redshift regime: f×M*(z) >= M_shock, so z <= z_crit  
+        // Use equation (43): M_crit = M_shock (no cold streams)
+        Mcrit = Mshock;
+        regime = "LOW-z: No cold streams";
+    }
 
-    // // DEBUG: Print every 10000th calculation
-    // if (debug_counter % 200000 == 0) {
-    //     printf("DEBUG Mcrit: z=%.3f\n", z);
-    //     printf("  M_shock=%.3e, M*=%.3e, f*M*=%.3e\n", Mshock, Mstar_z, f * Mstar_z);
-    //     printf("  f*M* < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
-    //     printf("  REGIME: %s\n", regime);
-    //     printf("  M_crit=%.3e SAGE units\n", Mcrit);
-    // }
+    // DEBUG: Print every 10000th calculation
+    if (debug_counter % 200000 == 0) {
+        printf("DEBUG Mcrit: z=%.3f\n", z);
+        printf("  M_shock=%.3e, M*=%.3e, f*M*=%.3e\n", Mshock, Mstar_z, f * Mstar_z);
+        printf("  f*M* < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
+        printf("  REGIME: %s\n", regime);
+        printf("  M_crit=%.3e SAGE units\n", Mcrit);
+    }
 
-    // // DEBUG: Print intermediate values
-    // if (debug_counter % 100000 == 0) {
-    //     printf("=== DEKEL & BIRNBOIM DEBUG ===\n");
-    //     printf("z=%.3f\n", z);
-    //     printf("M_shock = %.3e SAGE units\n", Mshock);
-    //     printf("M*(z) = %.3e SAGE units\n", Mstar_z);
-    //     printf("f * M*(z) = %.3e SAGE units\n", f * Mstar_z);
-    //     printf("f * M*(z) < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
-    //     // Also print the F factor components
-    //     const double A = calculate_A_parameter(z, run_params);
-    //     const double F = calculate_F_factor();
-    //     printf("A parameter = %.6f\n", A);
-    //     printf("F factor = %.6f\n", F);
-    // }
+    // DEBUG: Print intermediate values
+    if (debug_counter % 100000 == 0) {
+        printf("=== DEKEL & BIRNBOIM DEBUG ===\n");
+        printf("z=%.3f\n", z);
+        printf("M_shock = %.3e SAGE units\n", Mshock);
+        printf("M*(z) = %.3e SAGE units\n", Mstar_z);
+        printf("f * M*(z) = %.3e SAGE units\n", f * Mstar_z);
+        printf("f * M*(z) < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
+        // Also print the F factor components
+        const double A = calculate_A_parameter(z, run_params);
+        const double F = calculate_F_factor();
+        printf("A parameter = %.6f\n", A);
+        printf("F factor = %.6f\n", F);
+    }
 
-    // return Mcrit;
+    return Mcrit;
 
     // Option 3
     // const double f = 3.0;  // Cosmic web filament factor (from paper)
@@ -279,98 +279,130 @@ double calculate_critical_mass_dekel_birnboim_2006(const double z, const struct 
 
     //Option 5
 
-    const double f = 3.0;
-    double Mshock = calculate_mshock(z, run_params);
-    double Mstar_z = calculate_press_schechter_mass(z, run_params);
+    // const double f = 3.0;
+    // double Mshock = calculate_mshock(z, run_params);
+    // double Mstar_z = calculate_press_schechter_mass(z, run_params);
     
-    // Calculate the ratio that determines the regime
-    double ratio = (f * Mstar_z) / Mshock;
-    double smoothing_width = 0.3;  // Controls transition sharpness
-    double transition_factor = tanh((log(ratio) - log(1.0)) / smoothing_width);
+    // // Calculate the ratio that determines the regime
+    // double ratio = (f * Mstar_z) / Mshock;
+    // double smoothing_width = 0.3;  // Controls transition sharpness
+    // double transition_factor = tanh((log(ratio) - log(1.0)) / smoothing_width);
     
-    // Calculate critical masses for both regimes
-    double Mcrit_cold = (Mshock * Mshock) / (f * Mstar_z);  // Equation (40)
-    double Mcrit_max = 10.0 * Mshock;  // Maximum allowed critical mass (to prevent runaway growth)
-    if (Mcrit_cold > Mcrit_max) {
-        Mcrit_cold = Mcrit_max;
-    }
-    double Mcrit_hot = Mshock;                               // Equation (43)
+    // // Calculate critical masses for both regimes
+    // double Mcrit_cold = (Mshock * Mshock) / (f * Mstar_z);  // Equation (40)
+    // double Mcrit_max = 10.0 * Mshock;  // Maximum allowed critical mass (to prevent runaway growth)
+    // if (Mcrit_cold > Mcrit_max) {
+    //     Mcrit_cold = Mcrit_max;
+    // }
+    // double Mcrit_hot = Mshock;                               // Equation (43)
     
-    // Smooth interpolation between regimes
-    double Mcrit = Mcrit_hot + 0.5 * (1.0 - transition_factor) * (Mcrit_cold - Mcrit_hot);
+    // // Smooth interpolation between regimes
+    // double Mcrit = Mcrit_hot + 0.5 * (1.0 - transition_factor) * (Mcrit_cold - Mcrit_hot);
     
-    // DEBUG: Print detailed breakdown every 100,000th call
-    if (debug_counter % 100000 == 0) {
-        printf("=== DEKEL & BIRNBOIM HYBRID DEBUG ===\n");
-        printf("z=%.3f\n", z);
-        printf("M_shock = %.3e SAGE units\n", Mshock);
-        printf("M*(z) = %.3e SAGE units\n", Mstar_z);
-        printf("f * M*(z) = %.3e SAGE units (f=%.1f)\n", f * Mstar_z, f);
-        printf("Ratio (f*M*/M_shock) = %.3f\n", ratio);
-        printf("Log(ratio) = %.3f\n", log(ratio));
-        printf("Transition factor = %.3f (smoothing_width=%.2f)\n", transition_factor, smoothing_width);
-        printf("M_crit_COLD (Eq.40) = %.3e SAGE units\n", Mcrit_cold);
-        printf("M_crit_HOT (Eq.43)  = %.3e SAGE units\n", Mcrit_hot);
-        printf("M_crit_FINAL = %.3e SAGE units\n", Mcrit);
+    // // DEBUG: Print detailed breakdown every 100,000th call
+    // if (debug_counter % 100000 == 0) {
+    //     printf("=== DEKEL & BIRNBOIM HYBRID DEBUG ===\n");
+    //     printf("z=%.3f\n", z);
+    //     printf("M_shock = %.3e SAGE units\n", Mshock);
+    //     printf("M*(z) = %.3e SAGE units\n", Mstar_z);
+    //     printf("f * M*(z) = %.3e SAGE units (f=%.1f)\n", f * Mstar_z, f);
+    //     printf("Ratio (f*M*/M_shock) = %.3f\n", ratio);
+    //     printf("Log(ratio) = %.3f\n", log(ratio));
+    //     printf("Transition factor = %.3f (smoothing_width=%.2f)\n", transition_factor, smoothing_width);
+    //     printf("M_crit_COLD (Eq.40) = %.3e SAGE units\n", Mcrit_cold);
+    //     printf("M_crit_HOT (Eq.43)  = %.3e SAGE units\n", Mcrit_hot);
+    //     printf("M_crit_FINAL = %.3e SAGE units\n", Mcrit);
         
-        // Regime interpretation
-        if (transition_factor < -0.5) {
-            printf("REGIME: COLD STREAMS DOMINANT (high-z, f*M* << M_shock)\n");
-        } else if (transition_factor > 0.5) {
-            printf("REGIME: SHOCK HEATED DOMINANT (low-z, f*M* >> M_shock)\n");
-        } else {
-            printf("REGIME: TRANSITION ZONE (intermediate regime)\n");
-        }
+    //     // Regime interpretation
+    //     if (transition_factor < -0.5) {
+    //         printf("REGIME: COLD STREAMS DOMINANT (high-z, f*M* << M_shock)\n");
+    //     } else if (transition_factor > 0.5) {
+    //         printf("REGIME: SHOCK HEATED DOMINANT (low-z, f*M* >> M_shock)\n");
+    //     } else {
+    //         printf("REGIME: TRANSITION ZONE (intermediate regime)\n");
+    //     }
         
-        // Show the weighting
-        double cold_weight = 0.5 * (1.0 - transition_factor);
-        double hot_weight = 1.0 - cold_weight;
-        printf("Weights: %.1f%% HOT + %.1f%% COLD\n", hot_weight*100, cold_weight*100);
-        printf("================================\n\n");
-    }
+    //     // Show the weighting
+    //     double cold_weight = 0.5 * (1.0 - transition_factor);
+    //     double hot_weight = 1.0 - cold_weight;
+    //     printf("Weights: %.1f%% HOT + %.1f%% COLD\n", hot_weight*100, cold_weight*100);
+    //     printf("================================\n\n");
+    // }
     
-    // More frequent summary output every 50,000th call
-    if (debug_counter % 50000 == 0 && debug_counter % 100000 != 0) {
-        const char* regime_str;
-        if (transition_factor < -0.5) {
-            regime_str = "COLD-DOMINATED";
-        } else if (transition_factor > 0.5) {
-            regime_str = "HOT-DOMINATED";
-        } else {
-            regime_str = "TRANSITION";
-        }
+    // // More frequent summary output every 50,000th call
+    // if (debug_counter % 50000 == 0 && debug_counter % 100000 != 0) {
+    //     const char* regime_str;
+    //     if (transition_factor < -0.5) {
+    //         regime_str = "COLD-DOMINATED";
+    //     } else if (transition_factor > 0.5) {
+    //         regime_str = "HOT-DOMINATED";
+    //     } else {
+    //         regime_str = "TRANSITION";
+    //     }
         
-        printf("D&B SUMMARY: z=%.2f, ratio=%.2f, M_crit=%.2e, regime=%s\n", 
-               z, ratio, Mcrit, regime_str);
-    }
+    //     printf("D&B SUMMARY: z=%.2f, ratio=%.2f, M_crit=%.2e, regime=%s\n", 
+    //            z, ratio, Mcrit, regime_str);
+    // }
 
-    if (z > 6.0) {
-        // At very high z, use a constant M_crit based on Figure 7
-        const double Mcrit_highz_Msun = 1.0e12;  // From Figure 7
-        Mcrit = Mcrit_highz_Msun / (1.0e10 / run_params->Hubble_h);
+    // // if (z > 6.0) {
+    // //     // At very high z, use a constant M_crit based on Figure 7
+    // //     const double Mcrit_highz_Msun = 1.0e12;  // From Figure 7
+    // //     Mcrit = Mcrit_highz_Msun / (1.0e10 / run_params->Hubble_h);
         
-        if (debug_counter % 50000 == 0) {
-            printf("HIGH-Z OVERRIDE: z=%.2f, using constant M_crit=%.2e\n", z, Mcrit);
-        }
-    }
-    
-    // Very frequent basic output for key transitions
-    if (debug_counter % 10000 == 0) {
-        // Check if we're near the critical redshift where f*M*(z) ≈ M_shock
-        if (fabs(log(ratio)) < 0.5) {  // Within factor of ~1.6 of equality
-            printf("*** NEAR CRITICAL REDSHIFT: z=%.3f, f*M*/M_shock=%.3f ***\n", z, ratio);
-        }
+    // //     if (debug_counter % 50000 == 0) {
+    // //         printf("HIGH-Z OVERRIDE: z=%.2f, using constant M_crit=%.2e\n", z, Mcrit);
+    // //     }
+    // // }
+    // // After your current calculation but before the return
+    // double Mcrit_final = Mcrit;  // Save the theoretical result
+
+    // // Apply smooth transition near critical redshift (where ratio ≈ 1)
+    // if (z > 3.0) {  // Apply smoothing in the problematic redshift range
+    //     const double Mcrit_empirical = 1.0e12 / (1.0e10 / run_params->Hubble_h);  // ~10^12 M_sun
         
-        // Check for extreme values that might indicate problems
-        if (Mcrit > 10.0 * Mshock) {
-            printf("WARNING: M_crit (%.2e) >> M_shock (%.2e) at z=%.2f\n", Mcrit, Mshock, z);
-        }
-        if (Mcrit < 0.1 * Mshock) {
-            printf("WARNING: M_crit (%.2e) << M_shock (%.2e) at z=%.2f\n", Mcrit, Mshock, z);
-        }
-    }
+    //     // Smooth transition based on how extreme the theoretical value is
+    //     double excess_factor = Mcrit / Mshock;  // How many times larger than M_shock
+        
+    //     if (excess_factor > 100.0) {  // If M_crit >> M_shock, apply smoothing
+    //         double smoothing_strength = tanh((z - 3.0) / 1.0);  // Stronger smoothing at higher z
+    //         double max_allowed = Mshock * (100.0 + 900.0 * smoothing_strength);  // Allow 100x to 1000x M_shock
+            
+    //         if (Mcrit > max_allowed) {
+    //             // Smooth blend between theoretical and capped value
+    //             double blend_factor = 1.0 / (1.0 + (excess_factor / 1000.0));
+    //             Mcrit = blend_factor * Mcrit + (1.0 - blend_factor) * max_allowed;
+    //         }
+    //     }
+        
+    //     // Additional high-z empirical transition
+    //     if (z > 7.0) {
+    //         double z_weight = tanh((z - 6.0) / 1.0);  // Smooth transition starting at z=6
+    //         Mcrit = (1.0 - z_weight) * Mcrit + z_weight * Mcrit_empirical;
+    //     }
+        
+    //     if (debug_counter % 50000 == 0 && Mcrit != Mcrit_final) {
+    //         printf("SMOOTHING APPLIED: z=%.2f, theoretical=%.2e, final=%.2e (excess=%.1fx)\n", 
+    //             z, Mcrit_final, Mcrit, excess_factor);
+    //     }
+    // }
     
-    return Mcrit;
+    // // Very frequent basic output for key transitions
+    // if (debug_counter % 10000 == 0) {
+    //     // Check if we're near the critical redshift where f*M*(z) ≈ M_shock
+    //     if (fabs(log(ratio)) < 0.5) {  // Within factor of ~1.6 of equality
+    //         printf("*** NEAR CRITICAL REDSHIFT: z=%.3f, f*M*/M_shock=%.3f ***\n", z, ratio);
+    //     }
+        
+    //     // Check for extreme values that might indicate problems
+    //     if (Mcrit > 10.0 * Mshock) {
+    //         printf("WARNING: M_crit (%.2e) >> M_shock (%.2e) at z=%.2f\n", Mcrit, Mshock, z);
+    //     }
+    //     if (Mcrit < 0.1 * Mshock) {
+    //         printf("WARNING: M_crit (%.2e) << M_shock (%.2e) at z=%.2f\n", Mcrit, Mshock, z);
+    //     }
+    // }
+    
+    // return Mcrit;
 }
 
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
