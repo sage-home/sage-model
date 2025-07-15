@@ -88,14 +88,14 @@ double calculate_mshock(const double z, const struct params *run_params)
     double Mshock_SAGE = Mshock_Msun / (1.0e10 / run_params->Hubble_h);
     
     // DEBUG: Print detailed breakdown every 10000th call
-    if (debug_counter % 500000 == 0) {
-        printf("DEBUG Mshock: z=%.3f\n", z);
-        printf("  A=%.6f → A^(3/8)=%.6f\n", A, A_term);
-        printf("  Z_cosmic=%.6f, Z_ref=%.3f → (Z/Z_ref)^0.7=%.6f\n", Z_cosmic, Z_ref, Z_term);
-        printf("  F=%.6f → (Z*F)^(3/4)=%.6f\n", F, ZF_term);
-        printf("  f_u=%.1f → f_u^(-3)=%.6f\n", f_u, fu_term);
-        printf("  M11=%.3f → M_shock=%.3e M_sun → %.3e SAGE units\n", M11, Mshock_Msun, Mshock_SAGE);
-    }
+    // if (debug_counter % 500000 == 0) {
+    //     printf("DEBUG Mshock: z=%.3f\n", z);
+    //     printf("  A=%.6f → A^(3/8)=%.6f\n", A, A_term);
+    //     printf("  Z_cosmic=%.6f, Z_ref=%.3f → (Z/Z_ref)^0.7=%.6f\n", Z_cosmic, Z_ref, Z_term);
+    //     printf("  F=%.6f → (Z*F)^(3/4)=%.6f\n", F, ZF_term);
+    //     printf("  f_u=%.1f → f_u^(-3)=%.6f\n", f_u, fu_term);
+    //     printf("  M11=%.3f → M_shock=%.3e M_sun → %.3e SAGE units\n", M11, Mshock_Msun, Mshock_SAGE);
+    // }
     
     return Mshock_SAGE;
 }
@@ -190,29 +190,29 @@ double calculate_critical_mass_dekel_birnboim_2006(const double z, const struct 
         regime = "LOW-z: No cold streams";
     }
 
-    // DEBUG: Print every 10000th calculation
-    if (debug_counter % 200000 == 0) {
-        printf("DEBUG Mcrit: z=%.3f\n", z);
-        printf("  M_shock=%.3e, M*=%.3e, f*M*=%.3e\n", Mshock, Mstar_z, f * Mstar_z);
-        printf("  f*M* < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
-        printf("  REGIME: %s\n", regime);
-        printf("  M_crit=%.3e SAGE units\n", Mcrit);
-    }
+    // // DEBUG: Print every 10000th calculation
+    // if (debug_counter % 200000 == 0) {
+    //     printf("DEBUG Mcrit: z=%.3f\n", z);
+    //     printf("  M_shock=%.3e, M*=%.3e, f*M*=%.3e\n", Mshock, Mstar_z, f * Mstar_z);
+    //     printf("  f*M* < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
+    //     printf("  REGIME: %s\n", regime);
+    //     printf("  M_crit=%.3e SAGE units\n", Mcrit);
+    // }
 
-    // DEBUG: Print intermediate values
-    if (debug_counter % 100000 == 0) {
-        printf("=== DEKEL & BIRNBOIM DEBUG ===\n");
-        printf("z=%.3f\n", z);
-        printf("M_shock = %.3e SAGE units\n", Mshock);
-        printf("M*(z) = %.3e SAGE units\n", Mstar_z);
-        printf("f * M*(z) = %.3e SAGE units\n", f * Mstar_z);
-        printf("f * M*(z) < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
-        // Also print the F factor components
-        const double A = calculate_A_parameter(z, run_params);
-        const double F = calculate_F_factor();
-        printf("A parameter = %.6f\n", A);
-        printf("F factor = %.6f\n", F);
-    }
+    // // DEBUG: Print intermediate values
+    // if (debug_counter % 200000 == 0) {
+    //     printf("=== DEKEL & BIRNBOIM DEBUG ===\n");
+    //     printf("z=%.3f\n", z);
+    //     printf("M_shock = %.3e SAGE units\n", Mshock);
+    //     printf("M*(z) = %.3e SAGE units\n", Mstar_z);
+    //     printf("f * M*(z) = %.3e SAGE units\n", f * Mstar_z);
+    //     printf("f * M*(z) < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
+    //     // Also print the F factor components
+    //     const double A = calculate_A_parameter(z, run_params);
+    //     const double F = calculate_F_factor();
+    //     printf("A parameter = %.6f\n", A);
+    //     printf("F factor = %.6f\n", F);
+    // }
 
     return Mcrit;
 
@@ -623,10 +623,10 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
             infallingGas = 0.0;
         }
         // DEBUG for negative infall
-        if (debug_counter % 500000 == 0) {
-            printf("DEBUG Infall: NEGATIVE infall=%.3e from CGM (metallicity=%.6f)\n", 
-                   infallingGas, metallicity);
-        }
+        // if (debug_counter % 500000 == 0) {
+        //     printf("DEBUG Infall: NEGATIVE infall=%.3e from CGM (metallicity=%.6f)\n", 
+        //            infallingGas, metallicity);
+        // }
     }
 
     if(infallingGas < 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
@@ -635,10 +635,10 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
         if(galaxies[gal].MetalsHotGas < 0.0) galaxies[gal].MetalsHotGas = 0.0;
 
         // DEBUG for negative infall from hot gas
-        if (debug_counter % 500000 == 0) {
-            printf("DEBUG Infall: NEGATIVE infall=%.3e from HotGas (metallicity=%.6f)\n", 
-                   infallingGas, metallicity);
-        }
+        // if (debug_counter % 500000 == 0) {
+        //     printf("DEBUG Infall: NEGATIVE infall=%.3e from HotGas (metallicity=%.6f)\n", 
+        //            infallingGas, metallicity);
+        // }
     }
 
     // CORRECTED: Apply exact Dekel & Birnboim physics for positive infall
