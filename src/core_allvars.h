@@ -173,6 +173,7 @@ struct GALAXY
     float HotInflowMass;     // Total mass that came in shock-heated
     float ColdInflowMetals;  // Metals in cold inflow
     float HotInflowMetals;   // Metals in hot inflow
+    float ReincorporatedGas; // Mass of gas reincorporated into the galaxy
 };
 
 

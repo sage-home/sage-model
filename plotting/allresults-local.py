@@ -100,6 +100,8 @@ if __name__ == '__main__':
     MvirToMcritRatio = read_hdf(snap_num = Snapshot, param = 'MvirToMcritRatio')
     ColdInflowMass = read_hdf(snap_num = Snapshot, param = 'ColdInflowMass') * 1.0e10 / Hubble_h
     HotInflowMass = read_hdf(snap_num = Snapshot, param = 'HotInflowMass') * 1.0e10 / Hubble_h
+    ReincorporatedGas = read_hdf(snap_num = Snapshot, param = 'ReincorporatedGas') * 1.0e10 / Hubble_h
+    # print('Reincorporated gas:', ReincorporatedGas)
 
     print('Critical mass from Dekel & Birnboim (2006):', CriticalMassDB06)
     print('Ratio of Mvir to Mcrit:', MvirToMcritRatio)
@@ -1910,3 +1912,38 @@ if __name__ == '__main__':
     print(f"Fraction in cold stream regime: {np.sum(MvirToMcritRatio[centrals] < 1.0) / np.sum(centrals):.3f}")
     print(f"Median Mvir/Mcrit ratio (valid values only): {np.median(valid_central_ratios):.3f}")
     print(f"Number of galaxies with invalid (<=0) ratios: {np.sum(centrals & (MvirToMcritRatio <= 0))}")
+
+
+    # -------------------------------------------------------
+    print('Reincorporation diagnostics')
+    print('Reincorporated gas:', ReincorporatedGas)
+    print('Reincorporated log 10 gas:', np.log10(ReincorporatedGas))
+    print('Reincorporated gas fraction:', ReincorporatedGas / (StellarMass + ColdGas + 1e-12))
+
+    plt.figure(figsize=(10, 8))  # New figure
+
+    w = np.where((Type == 0) & (StellarMass > 1.0e7) & (ReincorporatedGas > 0))[0]  # Central galaxies only
+    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+
+    log10_reincorporated = np.log10(ReincorporatedGas)[w]
+    log10_stellar_mass = np.log10(StellarMass)[w]
+    log10_mvir = np.log10(Mvir)[w]
+
+    sc = plt.scatter(
+        log10_stellar_mass, log10_reincorporated,
+        c=log10_mvir, cmap='viridis', alpha=0.6, s=5, label='Reincorporated Gas'
+    )
+    cb = plt.colorbar(sc)
+    cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+    
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{reincorporated}}\ (M_{\odot})$')
+    plt.title('Reincorporated Gas vs Stellar Mass')
+    plt.legend()
+    plt.xlim(6, 12)
+    plt.ylim(0, 12)
+
+    outputFile = OutputDir + 'reincorporation_diagnostics' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()

@@ -76,9 +76,9 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         } else {
             strdot = 0.0;
         }
-    } else if(run_params->SFprescription >= 1) {
-        // H2-based star formation recipe
-        // we take the typical star forming region as 3.0*r_s using the Milky Way as a guide
+    } else if(run_params->SFprescription == 1) {
+        // // H2-based star formation recipe
+        // // we take the typical star forming region as 3.0*r_s using the Milky Way as a guide
         reff = 3.0 * galaxies[p].DiskScaleRadius;
         tdyn = reff / galaxies[p].Vvir;
 
@@ -122,6 +122,36 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     } else {
         reheated_mass = 0.0;
     }
+
+    // Simple redshift boost with plateau at intermediate-z
+    double z = run_params->ZZ[galaxies[p].SnapNum];
+    double mass_threshold = 1.0 / pow(1.0 + z, 0.25);  
+
+    // Smooth transition using tanh
+    double transition_width = 0.3;  
+    double mass_ratio = galaxies[p].StellarMass / mass_threshold;
+    double suppression_factor = 0.5 * (1.0 - tanh(log10(mass_ratio) / transition_width));
+
+    // Plateau function: linear growth to z=2, plateau until z=4, then exponential decay
+    double z_boost;
+    if (z <= 2.0) {
+        z_boost = z;  // Linear growth
+    } else if (z <= 4.0) {
+        z_boost = 2.0;  // Plateau at 2x boost
+    } else {
+        z_boost = 2.0 * exp(-(z-4.0)/1.5);  // Exponential decay after z=4
+    }
+
+    // Extra boost for very low-mass galaxies at high-z (capped at z=7.5)
+    if (z > 4.5 && z <= 7.5 && galaxies[p].StellarMass < 0.1) {  // Below 10^9 M☉, z=4.5-7.5
+        double extra_boost = (z - 4.5) * 0.5;  // Additional linear boost
+        z_boost += extra_boost;
+    } else if (z > 7.5 && galaxies[p].StellarMass < 0.1) {  // Above z=7.5, use z=7.5 value
+        double extra_boost = (7.5 - 4.5) * 0.5;  // Cap at z=7.5 value
+        z_boost += extra_boost;
+    }
+
+    reheated_mass *= (1.0 + suppression_factor * z_boost);
 
 	XASSERT(reheated_mass >= 0.0, -1,
             "Error: Expected reheated gas-mass = %g to be >=0.0\n", reheated_mass);

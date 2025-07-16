@@ -30,6 +30,7 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         galaxies[centralgal].MetalsCGMgas -= metallicity * reincorporated;
         galaxies[centralgal].HotGas += reincorporated;
         galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
+        galaxies[centralgal].ReincorporatedGas = reincorporated;
     }
 
 }

@@ -96,9 +96,9 @@ def create_pdf(images, output_pdf, images_per_page=6):
 
 def main():
     folders = [
-        "/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/plots"
+        "/Users/mbradley/Downloads/plots"
     ]
-    output_pdf = "./output/millennium.pdf"
+    output_pdf = "./output/millennium_big.pdf"
 
     pdf_files = get_pdf_files(folders)
     print(f"Found {len(pdf_files)} PDF files.")

@@ -263,6 +263,61 @@ if __name__ == '__main__':
     outputFile = OutputDir + 'B.HaloStellarMass_z' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
+
+    # --------------------------------------------------------
+    # Reincorporation diagnostics: (2) Fraction of reincorporated gas to hot gas vs. redshift
+    # and (6) Cumulative reincorporated gas per galaxy vs. redshift
+
+    print('Plotting reincorporation diagnostics')
+
+    # Read ReincorporatedGas and HotGas for all snapshots
+    ReincorporatedGasFull = [0]*(LastSnap-FirstSnap+1)
+    HotGasFull = [0]*(LastSnap-FirstSnap+1)
+    for snap in range(FirstSnap, LastSnap+1):
+        Snapshot = 'Snap_'+str(snap)
+        ReincorporatedGasFull[snap] = read_hdf(snap_num=Snapshot, param='ReincorporatedGas') * 1.0e10 / Hubble_h
+        HotGasFull[snap] = read_hdf(snap_num=Snapshot, param='HotGas') * 1.0e10 / Hubble_h
+
+    # (2) Fraction of reincorporated gas to hot gas vs. redshift
+    reinc_frac = []
+    for snap in range(FirstSnap, LastSnap+1):
+        total_reinc = np.sum(ReincorporatedGasFull[snap])
+        total_hot = np.sum(HotGasFull[snap])
+        frac = total_reinc / total_hot if total_hot > 0 else np.nan
+        reinc_frac.append(frac)
+
+    plt.figure()
+    plt.plot(redshifts, reinc_frac, 'o-', color='purple')
+    plt.xlabel('Redshift')
+    plt.ylabel('Total Reincorporated Gas / Total Hot Gas')
+    plt.title('Fraction of Reincorporated Gas to Hot Gas vs. Redshift')
+    plt.gca().invert_xaxis()
+    plt.grid(True, which='both', ls=':')
+    outputFile = OutputDir + 'reincorporation_fraction_vs_redshift' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # (6) Cumulative reincorporated gas per galaxy vs. redshift (mean and median)
+    mean_cum_reinc = []
+    median_cum_reinc = []
+    for snap in range(FirstSnap, LastSnap+1):
+        vals = ReincorporatedGasFull[snap]
+        mean_cum_reinc.append(np.mean(vals))
+        median_cum_reinc.append(np.median(vals))
+
+    plt.figure()
+    plt.plot(redshifts, mean_cum_reinc, 'o-', label='Mean', color='blue')
+    plt.plot(redshifts, median_cum_reinc, 's--', label='Median', color='orange')
+    plt.xlabel('Redshift')
+    plt.ylabel('Cumulative Reincorporated Gas per Galaxy ($M_\odot$)')
+    plt.title('Cumulative Reincorporated Gas per Galaxy vs. Redshift')
+    plt.legend()
+    plt.gca().invert_xaxis()
+    plt.grid(True, which='both', ls=':')
+    outputFile = OutputDir + 'cumulative_reincorporated_gas_vs_redshift' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
     plt.close()
 
 # --------------------------------------------------------

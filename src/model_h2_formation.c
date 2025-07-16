@@ -75,61 +75,6 @@ double calculate_molecular_fraction_GD14(float gas_surface_density, float metall
     return fmol;
 }
 
-double calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float radius_pc)
-{
-    // Early termination for edge cases
-    if (sigma_gas <= 0.0 || radius_pc <= 0.0) {
-        return 0.0;
-    }
-    
-    // BR06 hardcoded parameters (from paper)
-    const float v_g = 8.0;          // km/s, gas velocity dispersion (BR06 uses 8 km/s)
-    
-    // Stellar disk scale height from Kregel et al. (2002): h* = 0.14 * R
-    const float h_star_pc = 0.14 * radius_pc; // pc
-    
-    // BR06 Equation (5) EXACTLY as written in paper:
-    // P_ext/k = 272 cm⁻³ K × (Σ_gas/M_⊙ pc⁻²) × (Σ_*/M_⊙ pc⁻²)^0.5 × (v_g/km s⁻¹) × (h_*/pc)^-0.5
-    float pressure = 272.0 * sigma_gas * sqrt(sigma_stars) * v_g / sqrt(h_star_pc);
-    
-    return pressure; // K cm⁻³
-}
-
-double calculate_molecular_fraction_BR06(float gas_surface_density, float stellar_surface_density,
-                                       float radius_pc)
-{
-    // Calculate midplane pressure using corrected formula
-    float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, 
-                                                     radius_pc);
-    
-    if (pressure <= 0.0) {
-        return 0.0;
-    }
-    
-    // BR06 parameters from Table 1 in paper
-    const float P0 = 1.7e4;    // Reference pressure, K cm⁻³
-    const float alpha = 0.8;   // Power law index (they call it α, you called it beta)
-    
-    // Apply pressure threshold - below this, no molecular gas forms
-    const float P_threshold = 1000.0; // K cm⁻³ (reasonable physical threshold)
-    if (pressure < P_threshold) {
-        return 0.0;
-    }
-    
-    // BR06 Equation (11): R_mol = (P/P₀)^α
-    float pressure_ratio = pressure / P0;
-    float R_mol = pow(pressure_ratio, alpha);
-    
-    // Convert to molecular fraction: f_mol = R_mol / (1 + R_mol)
-    float f_mol = R_mol / (1.0 + R_mol);
-    
-    // Apply physical bounds
-    if (f_mol > 0.95) f_mol = 0.95; // Max 95% molecular
-    if (f_mol < 0.0) f_mol = 0.0;   // No negative fractions
-    
-    return f_mol;
-}
-
 void update_gas_components(struct GALAXY *g, const struct params *run_params)
 {
     // Increment the galaxy counter for debug purposes
@@ -169,28 +114,6 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         // Mass conservation check
         if (total_molecular_gas > 0.95) {
             total_molecular_gas = 0.95;
-        }
-    }
-    else if (run_params->SFprescription == 2) {
-        // NEW: BR06 pressure-based model with hardcoded parameters
-        const float h = run_params->Hubble_h;
-        const float re_pc = g->DiskScaleRadius * 1.0e6 / h; // Convert Mpc/h to pc
-        
-        // Calculate surface densities at the disk scale radius
-        // Use half-mass radius area (factor of 2π, not 4π)
-        float disk_area_pc2 = 2.0 * M_PI * re_pc * re_pc;
-        
-        // Convert SAGE internal units to M☉/pc²
-        float gas_surface_density = (g->ColdGas * 1.0e10 / h) / disk_area_pc2;      // M☉/pc²
-        float stellar_surface_density = (g->StellarMass * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
-        
-        total_molecular_gas = calculate_molecular_fraction_BR06(
-            gas_surface_density, stellar_surface_density, re_pc);
-            
-        // Debug output for BR06 model
-        if (galaxy_debug_counter % 500000 == 0) {
-            printf("DEBUG BR06: Σgas=%.1f M☉/pc², Σstar=%.1f M☉/pc², R=%.1f pc, f_mol=%.3f\n",
-                   gas_surface_density, stellar_surface_density, re_pc, total_molecular_gas);
         }
     }
     else {

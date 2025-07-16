@@ -91,6 +91,9 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].ColdInflowMass = 0.0;
     galaxies[p].HotInflowMass = 0.0;
 
+    galaxies[p].MassLoading = 0.0;
+    galaxies[p].ReincorporatedGas = 0.0;
+
 }
 
 
