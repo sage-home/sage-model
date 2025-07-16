@@ -23,7 +23,7 @@ seed(42)
 MODEL_CONFIGS = [
     {
         'name': 'SAGE 2.0',
-        'dir': './output/millennium/',
+        'dir': './output/millennium_dekel_h2/',
         'color': '#2E8B57',  # Sea Green
         'linestyle': '-',
         'linewidth': 3,
@@ -62,7 +62,7 @@ SFR_UNIT_CONVERSION = 1.0e10 / Hubble_h
 MYR_TO_YR = 1.0e6
 
 FileName = 'model_0.hdf5'
-OutputDir = './output/millennium/plots/'
+OutputDir = './output/millennium_dekel_h2/plots/'
 
 # Snapshot to redshift mapping
 redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
@@ -646,7 +646,7 @@ def create_debug_ks_plots(galaxy_types='all', save_path=None):
             print(f"\nSaving debug {gas_type} gas K-S plot to {gas_save_path}")
             plt.savefig(gas_save_path, dpi=300, bbox_inches='tight')
         
-        plt.show()
+        # plt.show()
 
 
 # Main execution

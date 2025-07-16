@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium/'
+DirName = './output/millennium_dekel_h2/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 

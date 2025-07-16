@@ -45,7 +45,7 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        1   %0: original Croton et al. 2006
+SFprescription        1   %0: original Croton et al. 2006; 1: H2 Stars (GD14)
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off

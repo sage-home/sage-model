@@ -610,12 +610,12 @@ def plot_redshift_mvir_vvir(tracked_data, output_dir="./plots", normalize=True):
 
 def main():
     # User-defined parameters - you can modify these
-    base_dir = './output/millennium_CGMfirst/'  # Change to your output directory
+    base_dir = './output/millennium_dekel_h2/'  # Change to your output directory
     start_snap = 63  # Latest snapshot (z=0)
     end_snap = 15    # Earlier snapshot to track back to
     min_mass = 1e13  # Minimum halo mass to consider (in Msun, not log10)
     Hubble_h = 0.73  # Hubble parameter
-    output_dir = "./output/millennium_CGMfirst/plots"  # Directory to save output plots
+    output_dir = "./output/millennium_dekel_h2/plots"  # Directory to save output plots
 
     # Ask the user if they want to use the most massive halo or specify a GalaxyIndex
     print("\nGalaxy/Halo Selection Options:")
