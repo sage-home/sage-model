@@ -4,6 +4,7 @@ import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from collections import defaultdict
 
 from random import sample, seed
 
@@ -711,7 +712,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w2 = np.where(StellarMass > 0.01)[0]
-    if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
+    if(len(w2) > dilute): w2 = sample(list(range(len(w2))), dilute)
     mass = np.log10(StellarMass[w2])
     sSFR = np.log10( (SfrDisk[w2] + SfrBulge[w2]) / StellarMass[w2] )
     plt.scatter(mass, sSFR, marker='o', s=1, c='k', alpha=0.5, label='Model galaxies')
@@ -743,7 +744,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w2 = np.where(StellarMass > 0.01)[0]
-    if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
+    if(len(w2) > dilute): w2 = sample(list(range(len(w2))), dilute)
     mass = np.log10(StellarMass[w2])
     sSFR = np.log10( (SfrDisk[w2] + SfrBulge[w2]) / StellarMass[w2] )
 
@@ -848,7 +849,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)  # 1 plot on the figure
 
     w2 = np.where(StellarMass > 0.01)[0]
-    if(len(w) > dilute): w2 = sample(list(range(len(w))), dilute)
+    if(len(w2) > dilute): w2 = sample(list(range(len(w2))), dilute)
     mass = np.log10(StellarMass[w2])
     SFR =  (SfrDisk[w2] + SfrBulge[w2])
 
@@ -1193,71 +1194,80 @@ if __name__ == '__main__':
 
     bin_indices = np.digitize(HaloMass, HaloBins) - 1
 
+    # Pre-compute unique CentralGalaxyIndex for faster lookup
+    halo_to_galaxies = defaultdict(list)
+    for i, central_idx in enumerate(CentralGalaxyIndex):
+        halo_to_galaxies[central_idx].append(i)
+
     for i in range(Nbins - 1):
         w1 = np.where((Type == 0) & (bin_indices == i))[0]
         HalosFound = len(w1)
         
         if HalosFound > 2:
-            w2 = np.where(np.isin(CentralGalaxyIndex, CentralGalaxyIndex[w1]))[0]
+            # Pre-allocate arrays for better performance
+            BaryonFractions = np.zeros(HalosFound)
+            StarsFractions = np.zeros(HalosFound)
+            ColdFractions = np.zeros(HalosFound)
+            HotFractions = np.zeros(HalosFound)
+            CGMFractions = np.zeros(HalosFound)
+            ICSFractions = np.zeros(HalosFound)
+            BHFractions = np.zeros(HalosFound)
             
-            # Calculate fractions for each halo in this bin
-            BaryonFractions = []
-            StarsFractions = []
-            ColdFractions = []
-            HotFractions = []
-            CGMFractions = []
-            ICSFractions = []
-            BHFractions = []
-            
-            for halo_idx in w1:
-                halo_galaxies = np.where(CentralGalaxyIndex == CentralGalaxyIndex[halo_idx])[0]
+            # Vectorized calculation for each halo
+            for idx, halo_idx in enumerate(w1):
+                halo_galaxies = np.array(halo_to_galaxies[CentralGalaxyIndex[halo_idx]])
                 halo_mvir = Mvir[halo_idx]
                 
-                total_baryons = np.sum(StellarMass[halo_galaxies] + ColdGas[halo_galaxies] + 
-                                     HotGas[halo_galaxies] + cgm[halo_galaxies] + 
-                                     IntraClusterStars[halo_galaxies] + BlackHoleMass[halo_galaxies])
-                
-                BaryonFractions.append(total_baryons / halo_mvir)
-                StarsFractions.append(np.sum(StellarMass[halo_galaxies]) / halo_mvir)
-                ColdFractions.append(np.sum(ColdGas[halo_galaxies]) / halo_mvir)
-                HotFractions.append(np.sum(HotGas[halo_galaxies]) / halo_mvir)
-                CGMFractions.append(np.sum(cgm[halo_galaxies]) / halo_mvir)
-                ICSFractions.append(np.sum(IntraClusterStars[halo_galaxies]) / halo_mvir)
-                BHFractions.append(np.sum(BlackHoleMass[halo_galaxies]) / halo_mvir)
+                # Use advanced indexing for faster summing
+                BaryonFractions[idx] = np.sum(Baryons[halo_galaxies]) / halo_mvir
+                StarsFractions[idx] = np.sum(StellarMass[halo_galaxies]) / halo_mvir
+                ColdFractions[idx] = np.sum(ColdGas[halo_galaxies]) / halo_mvir
+                HotFractions[idx] = np.sum(HotGas[halo_galaxies]) / halo_mvir
+                CGMFractions[idx] = np.sum(cgm[halo_galaxies]) / halo_mvir
+                ICSFractions[idx] = np.sum(IntraClusterStars[halo_galaxies]) / halo_mvir
+                BHFractions[idx] = np.sum(BlackHoleMass[halo_galaxies]) / halo_mvir
             
+            # Calculate statistics once for all arrays
             CentralHaloMass = np.log10(Mvir[w1])
-            
             MeanCentralHaloMass.append(np.mean(CentralHaloMass))
             
             n_halos = len(BaryonFractions)
+            sqrt_n = np.sqrt(n_halos)
             
-            MeanBaryonFraction.append(np.mean(BaryonFractions))
-            MeanBaryonFractionU.append(np.mean(BaryonFractions) + np.std(BaryonFractions) / np.sqrt(n_halos))
-            MeanBaryonFractionL.append(np.mean(BaryonFractions) - np.std(BaryonFractions) / np.sqrt(n_halos))
+            # Vectorized mean and std calculations
+            means = [np.mean(arr) for arr in [BaryonFractions, StarsFractions, ColdFractions, 
+                                             HotFractions, CGMFractions, ICSFractions, BHFractions]]
+            stds = [np.std(arr) / sqrt_n for arr in [BaryonFractions, StarsFractions, ColdFractions, 
+                                                    HotFractions, CGMFractions, ICSFractions, BHFractions]]
             
-            MeanStars.append(np.mean(StarsFractions))
-            MeanStarsU.append(np.mean(StarsFractions) + np.std(StarsFractions) / np.sqrt(n_halos))
-            MeanStarsL.append(np.mean(StarsFractions) - np.std(StarsFractions) / np.sqrt(n_halos))
+            # Append all means and bounds
+            MeanBaryonFraction.append(means[0])
+            MeanBaryonFractionU.append(means[0] + stds[0])
+            MeanBaryonFractionL.append(means[0] - stds[0])
             
-            MeanCold.append(np.mean(ColdFractions))
-            MeanColdU.append(np.mean(ColdFractions) + np.std(ColdFractions) / np.sqrt(n_halos))
-            MeanColdL.append(np.mean(ColdFractions) - np.std(ColdFractions) / np.sqrt(n_halos))
+            MeanStars.append(means[1])
+            MeanStarsU.append(means[1] + stds[1])
+            MeanStarsL.append(means[1] - stds[1])
             
-            MeanHot.append(np.mean(HotFractions))
-            MeanHotU.append(np.mean(HotFractions) + np.std(HotFractions) / np.sqrt(n_halos))
-            MeanHotL.append(np.mean(HotFractions) - np.std(HotFractions) / np.sqrt(n_halos))
+            MeanCold.append(means[2])
+            MeanColdU.append(means[2] + stds[2])
+            MeanColdL.append(means[2] - stds[2])
             
-            MeanCGM.append(np.mean(CGMFractions))
-            MeanCGMU.append(np.mean(CGMFractions) + np.std(CGMFractions) / np.sqrt(n_halos))
-            MeanCGML.append(np.mean(CGMFractions) - np.std(CGMFractions) / np.sqrt(n_halos))
+            MeanHot.append(means[3])
+            MeanHotU.append(means[3] + stds[3])
+            MeanHotL.append(means[3] - stds[3])
             
-            MeanICS.append(np.mean(ICSFractions))
-            MeanICSU.append(np.mean(ICSFractions) + np.std(ICSFractions) / np.sqrt(n_halos))
-            MeanICSL.append(np.mean(ICSFractions) - np.std(ICSFractions) / np.sqrt(n_halos))
+            MeanCGM.append(means[4])
+            MeanCGMU.append(means[4] + stds[4])
+            MeanCGML.append(means[4] - stds[4])
             
-            MeanBH.append(np.mean(BHFractions))
-            MeanBHU.append(np.mean(BHFractions) + np.std(BHFractions) / np.sqrt(n_halos))
-            MeanBHL.append(np.mean(BHFractions) - np.std(BHFractions) / np.sqrt(n_halos))
+            MeanICS.append(means[5])
+            MeanICSU.append(means[5] + stds[5])
+            MeanICSL.append(means[5] - stds[5])
+            
+            MeanBH.append(means[6])
+            MeanBHU.append(means[6] + stds[6])
+            MeanBHL.append(means[6] - stds[6])
 
     # Convert lists to arrays and ensure positive values for log scale
     MeanCentralHaloMass = np.array(MeanCentralHaloMass)
@@ -1368,7 +1378,7 @@ if __name__ == '__main__':
     plt.figure()  # New figure
 
     w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
-    if(len(w) > dilute): w = sample(list((w)), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
     yy = Posy[w]
@@ -1404,7 +1414,7 @@ if __name__ == '__main__':
     plt.figure(figsize=(10, 10))  # Adjust figure size as needed
   
     w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
-    if(len(w) > dilute): w = sample(list((w)), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
     #print(xx)
@@ -1456,7 +1466,7 @@ if __name__ == '__main__':
     # First subplot - Galaxy number density (as before)
     plt.subplot(131)  # 1 row, 2 cols, plot 1
     w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
-    if(len(w) > dilute): w = sample(list((w)), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
     yy = Posy[w]
@@ -1472,7 +1482,7 @@ if __name__ == '__main__':
     # Second subplot - H2 gas density
     plt.subplot(132)  # 1 row, 2 cols, plot 2
     w = np.where((Mvir > 0.0) & (H2Gas > 0.0))[0]
-    if(len(w) > dilute): w = sample(list((w)), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
     yy = Posy[w]
@@ -1489,7 +1499,7 @@ if __name__ == '__main__':
     # Third subplot - H1 gas density
     plt.subplot(133)  # 1 row, 2 cols, plot 3
     w = np.where((Mvir > 0.0) & (H1Gas > 0.0))[0]
-    if(len(w) > dilute): w = sample(list((w)), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
     yy = Posy[w]
@@ -1513,7 +1523,7 @@ if __name__ == '__main__':
     print('Checking for holes in the galaxy distribution')
 
     w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
-    if(len(w) > dilute): w = sample(list((w)), dilute)
+    if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
     #print(xx)
@@ -1729,9 +1739,18 @@ if __name__ == '__main__':
     hot_regime = centrals & (MvirToMcritRatio >= 1.0)
     print(cold_regime)
 
-    plt.scatter(CriticalMassDB06[cold_regime], Mvir[cold_regime], 
+    # Apply dilution to both regimes
+    cold_indices = np.where(cold_regime)[0]
+    hot_indices = np.where(hot_regime)[0]
+    
+    if len(cold_indices) > dilute:
+        cold_indices = sample(list(cold_indices), dilute)
+    if len(hot_indices) > dilute:
+        hot_indices = sample(list(hot_indices), dilute)
+
+    plt.scatter(CriticalMassDB06[cold_indices], Mvir[cold_indices], 
             c='blue', alpha=0.6, s=20, label='Cold Streams', zorder=10)
-    plt.scatter(CriticalMassDB06[hot_regime], Mvir[hot_regime], 
+    plt.scatter(CriticalMassDB06[hot_indices], Mvir[hot_indices], 
             c='red', alpha=0.3, s=20, label='Shock Heated', zorder=5)
 
     plt.xlabel('Critical Mass Mcrit [M☉]')
@@ -1797,9 +1816,18 @@ if __name__ == '__main__':
     cold_sf = sf_gals & (MvirToMcritRatio < 1.0)
     hot_sf = sf_gals & (MvirToMcritRatio > 1.0)
 
-    plt.scatter(np.log10(StellarMass[cold_sf]), sSFR[cold_sf], 
+    # Apply dilution to both regimes
+    cold_sf_indices = np.where(cold_sf)[0]
+    hot_sf_indices = np.where(hot_sf)[0]
+    
+    if len(cold_sf_indices) > dilute:
+        cold_sf_indices = sample(list(cold_sf_indices), dilute)
+    if len(hot_sf_indices) > dilute:
+        hot_sf_indices = sample(list(hot_sf_indices), dilute)
+
+    plt.scatter(np.log10(StellarMass[cold_sf_indices]), sSFR[cold_sf_indices], 
             c='blue', alpha=0.6, s=20, label='Cold Streams', zorder=10)
-    plt.scatter(np.log10(StellarMass[hot_sf]), sSFR[hot_sf], 
+    plt.scatter(np.log10(StellarMass[hot_sf_indices]), sSFR[hot_sf_indices], 
             c='red', alpha=0.3, s=20, label='Shock Heated', zorder=5)
 
     plt.xlabel('log Stellar Mass [M☉]')
@@ -1812,9 +1840,9 @@ if __name__ == '__main__':
     # Cold gas fraction
     cold_gas_frac = ColdGas / (StellarMass + ColdGas + 1e-12)
 
-    plt.scatter(np.log10(Mvir[cold_sf]), cold_gas_frac[cold_sf], 
+    plt.scatter(np.log10(Mvir[cold_sf_indices]), cold_gas_frac[cold_sf_indices], 
             c='blue', alpha=0.6, s=20, label='Cold Streams')
-    plt.scatter(np.log10(Mvir[hot_sf]), cold_gas_frac[hot_sf], 
+    plt.scatter(np.log10(Mvir[hot_sf_indices]), cold_gas_frac[hot_sf_indices], 
             c='red', alpha=0.3, s=20, label='Shock Heated')
 
     plt.xlabel('log Virial Mass [M☉]')
@@ -1836,9 +1864,18 @@ if __name__ == '__main__':
     cold_gas = has_gas & (MvirToMcritRatio < 1.0)
     hot_gas = has_gas & (MvirToMcritRatio > 1.0)
 
-    plt.scatter(np.log10(StellarMass[cold_gas]), h2_fraction[cold_gas], 
+    # Apply dilution to both regimes
+    cold_gas_indices = np.where(cold_gas)[0]
+    hot_gas_indices = np.where(hot_gas)[0]
+    
+    if len(cold_gas_indices) > dilute:
+        cold_gas_indices = sample(list(cold_gas_indices), dilute)
+    if len(hot_gas_indices) > dilute:
+        hot_gas_indices = sample(list(hot_gas_indices), dilute)
+
+    plt.scatter(np.log10(StellarMass[cold_gas_indices]), h2_fraction[cold_gas_indices], 
             c='blue', alpha=0.6, s=20, label='Cold Streams', zorder=10)
-    plt.scatter(np.log10(StellarMass[hot_gas]), h2_fraction[hot_gas], 
+    plt.scatter(np.log10(StellarMass[hot_gas_indices]), h2_fraction[hot_gas_indices], 
             c='red', alpha=0.6, s=20, label='Shock Heated', zorder=5)
 
     plt.xlabel('log Stellar Mass [M☉]')
