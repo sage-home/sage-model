@@ -58,7 +58,7 @@ MassLoadingOn         1   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
 
 SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 
-FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
+FeedbackReheatingEpsilon    1.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
 FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
 ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot

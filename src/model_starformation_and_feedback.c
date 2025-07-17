@@ -112,7 +112,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         if(run_params->MassLoadingOn) {
             // Use Muratov mass loading calculation
             double z = run_params->ZZ[galaxies[p].SnapNum];
-            reheated_mass = calculate_muratov_mass_loading(p, z, galaxies) * stars;
+            reheated_mass = run_params->FeedbackReheatingEpsilon * calculate_muratov_mass_loading(p, z, galaxies) * stars;
             galaxies[p].MassLoading = reheated_mass / stars;  // Store mass loading factor in the galaxy structure
         } else {
             // Use traditional feedback parameter

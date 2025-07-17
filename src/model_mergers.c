@@ -225,7 +225,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     if(run_params->SupernovaRecipeOn == 1) {
         if(run_params->MassLoadingOn) {
             double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
-            reheated_mass = calculate_muratov_mass_loading(merger_centralgal, z, galaxies) * stars;
+            reheated_mass = run_params->FeedbackReheatingEpsilon * calculate_muratov_mass_loading(merger_centralgal, z, galaxies) * stars;
         } else {
             reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
         }
