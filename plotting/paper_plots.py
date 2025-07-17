@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/millennium_dekel_h2/'
+DirName = './output/millennium_FIRE/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 OutputDir = DirName + 'plots/'
@@ -37,7 +37,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Additional simulation directories for SFR density comparison
 SFR_SimDirs = [
     {
-        'path': './output/millennium_dekel_h2/', 
+        'path': './output/millennium_FIRE/', 
         'label': 'Millennium', 
         'color': 'black', 
         'linestyle': '-',

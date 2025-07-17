@@ -27,7 +27,7 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
     const double Z_EXP = 1.3;    // Redshift power-law exponent
     const double LOW_V_EXP = -3.2;  // Low velocity power-law exponent
     const double HIGH_V_EXP = -1.0; // High velocity power-law exponent
-    
+
     // Calculate redshift term: (1+z)^1.3
     double z_term = pow(1.0 + z, Z_EXP);
     
@@ -123,35 +123,28 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         reheated_mass = 0.0;
     }
 
-    // Simple redshift boost with plateau at intermediate-z
-    double z = run_params->ZZ[galaxies[p].SnapNum];
-    double mass_threshold = 1.0 / pow(1.0 + z, 0.25);  
+    // // Redshift boost as smooth mathematical functions
+    // double z = run_params->ZZ[galaxies[p].SnapNum];
+    // // double mass_threshold = 1.0 / pow(1.0 + z, 0.25);  
+    // double mass_threshold = 15.0 / pow(1.0 + z, 0.25);  // ~15x larger threshold
 
-    // Smooth transition using tanh
-    double transition_width = 0.3;  
-    double mass_ratio = galaxies[p].StellarMass / mass_threshold;
-    double suppression_factor = 0.5 * (1.0 - tanh(log10(mass_ratio) / transition_width));
+    // // Smooth transition using tanh
+    // double transition_width = 0.3;  
+    // // double mass_ratio = galaxies[p].StellarMass / mass_threshold;
+    // double mass_ratio = galaxies[p].Mvir / mass_threshold;
+    // double suppression_factor = 0.5 * (1.0 - tanh(log10(mass_ratio) / transition_width));
 
-    // Plateau function: linear growth to z=2, plateau until z=4, then exponential decay
-    double z_boost;
-    if (z <= 2.0) {
-        z_boost = z;  // Linear growth
-    } else if (z <= 4.0) {
-        z_boost = 2.0;  // Plateau at 2x boost
-    } else {
-        z_boost = 2.0 * exp(-(z-4.0)/1.5);  // Exponential decay after z=4
-    }
+    // // Main z_boost: smooth combination of linear growth + plateau + decay
+    // double z_boost_main = z * exp(-pow(z/4.0, 2.5)) + 2.0 * exp(-pow((z-2.5)/2.0, 2));
 
-    // Extra boost for very low-mass galaxies at high-z (capped at z=7.5)
-    if (z > 4.5 && z <= 7.5 && galaxies[p].StellarMass < 0.1) {  // Below 10^9 M☉, z=4.5-7.5
-        double extra_boost = (z - 4.5) * 0.5;  // Additional linear boost
-        z_boost += extra_boost;
-    } else if (z > 7.5 && galaxies[p].StellarMass < 0.1) {  // Above z=7.5, use z=7.5 value
-        double extra_boost = (7.5 - 4.5) * 0.5;  // Cap at z=7.5 value
-        z_boost += extra_boost;
-    }
+    // // Extra boost for low-mass galaxies: smooth in both mass and redshift
+    // double low_mass_factor = 0.5 * (1.0 - tanh(log10(galaxies[p].StellarMass / 0.1) / 0.2));
+    // double high_z_window = exp(-pow((z-6.0)/2.5, 2));  // Peaks around z=6, width ~2.5
+    // double extra_boost = low_mass_factor * high_z_window * 1.5;  // Max 1.5x extra boost
 
-    reheated_mass *= (1.0 + suppression_factor * z_boost);
+    // double z_boost = z_boost_main + extra_boost;
+
+    // reheated_mass *= (1.0 + suppression_factor * z_boost);
 
 	XASSERT(reheated_mass >= 0.0, -1,
             "Error: Expected reheated gas-mass = %g to be >=0.0\n", reheated_mass);
@@ -163,21 +156,41 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         reheated_mass *= fac;
     }
 
-    // determine ejection
+    // determine ejection using FIRE method (equations 15 & 8)
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
-            // For ejection calculation, use the appropriate reheating parameter
-            double fb_reheat_for_ejection;
-            if(run_params->MassLoadingOn) {
-                double z = run_params->ZZ[galaxies[p].SnapNum];
-                fb_reheat_for_ejection = calculate_muratov_mass_loading(p, z, galaxies);
-            } else {
-                fb_reheat_for_ejection = run_params->FeedbackReheatingEpsilon;
-            }
+            double z = run_params->ZZ[galaxies[p].SnapNum];
+            double vmax = galaxies[p].Vmax;  // Use Vmax as in FIRE paper
             
-            ejected_mass =
-                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                 fb_reheat_for_ejection) * stars;
+            if(run_params->MassLoadingOn) {
+                // FIRE energy injection rate (equation 15)
+                double alpha = (vmax < 60.0) ? -3.2 : -1.0;
+                double fire_scaling = pow(1.0 + z, 1.3) * pow(vmax / 60.0, alpha);
+                
+                // Energy feedback rate (equation 15)
+                double E_FB = run_params->FeedbackEjectionEfficiency * fire_scaling * 
+                            0.5 * stars * run_params->EtaSNcode * run_params->EnergySNcode;
+                
+                // Energy already used for reheating
+                double energy_used_reheating = 0.5 * reheated_mass * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
+                
+                // Remaining energy available for ejection (equation 8)
+                double available_energy = E_FB - energy_used_reheating;
+                
+                // Convert available energy to ejected mass (equation 8)
+                if(available_energy > 0.0) {
+                    ejected_mass = available_energy / (0.5 * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir);
+                } else {
+                    ejected_mass = 0.0;
+                }
+                
+            } else {
+                // Fallback to original SAGE method for non-mass-loading case
+                ejected_mass = (run_params->FeedbackEjectionEfficiency * 
+                            (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                            (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
+                            run_params->FeedbackReheatingEpsilon) * stars;
+            }
         } else {
             ejected_mass = 0.0;
         }

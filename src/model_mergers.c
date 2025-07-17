@@ -224,18 +224,17 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // this bursting results in SN feedback on the cold/hot gas
     if(run_params->SupernovaRecipeOn == 1) {
         if(run_params->MassLoadingOn) {
-        double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
-        reheated_mass = calculate_muratov_mass_loading(merger_centralgal, z, galaxies) * stars;
-    } else {
-        reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
-    }
+            double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
+            reheated_mass = calculate_muratov_mass_loading(merger_centralgal, z, galaxies) * stars;
+        } else {
+            reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
+        }
     } else {
         reheated_mass = 0.0;
     }
 
-	XASSERT(reheated_mass >= 0.0, -1,
-            "Error: Reheated mass = %g should be >= 0.0",
-            reheated_mass);
+    XASSERT(reheated_mass >= 0.0, -1,
+            "Error: Reheated mass = %g should be >= 0.0", reheated_mass);
 
     // can't use more cold gas than is available! so balance SF and feedback
     if((stars + reheated_mass) > galaxies[merger_centralgal].ColdGas) {
@@ -244,12 +243,33 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         reheated_mass *= fac;
     }
 
-    // determine ejection
+    // determine ejection using FIRE method (equations 15 & 8)
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
-            ejected_mass =
-                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                 run_params->FeedbackReheatingEpsilon) * stars;
+            double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
+            double vmax = galaxies[merger_centralgal].Vmax;
+            
+            if(run_params->MassLoadingOn) {
+                double alpha = (vmax < 60.0) ? -3.2 : -1.0;
+                double fire_scaling = pow(1.0 + z, 1.25) * pow(vmax / 60.0, alpha);
+                
+                double E_FB = run_params->FeedbackEjectionEfficiency * fire_scaling * 
+                            0.5 * stars * run_params->EtaSNcode * run_params->EnergySNcode;
+                
+                double energy_used_reheating = 0.5 * reheated_mass * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
+                double available_energy = E_FB - energy_used_reheating;
+                
+                if(available_energy > 0.0) {
+                    ejected_mass = available_energy / (0.5 * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir);
+                } else {
+                    ejected_mass = 0.0;
+                }
+            } else {
+                ejected_mass = (run_params->FeedbackEjectionEfficiency * 
+                            (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                            (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
+                            run_params->FeedbackReheatingEpsilon) * stars;
+            }
         } else {
             ejected_mass = 0.0;
         }

@@ -18,7 +18,7 @@ import os
 import seaborn as sns
 
 # Configuration (modify these for your setup)
-DirName = './output/millennium_dekel_h2/'
+DirName = './output/millennium_FIRE/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
