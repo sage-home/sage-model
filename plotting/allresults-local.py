@@ -274,6 +274,62 @@ if __name__ == '__main__':
     print('Saved to', outputFile, '\n')
     plt.close()
 
+    # -------------------------------------------------------
+    # H2 Mass vs. SFR
+    print('Plotting H2 Mass vs. SFR')
+    plt.figure(figsize=(8, 6))
+    # Only consider galaxies with significant H2 and SFR
+    valid = (H2Gas > 0) & (SfrDisk + SfrBulge > 0)
+    if np.sum(valid) > dilute:
+        valid_indices = sample(list(np.where(valid)[0]), dilute)
+    else:
+        valid_indices = np.where(valid)[0]
+    plt.scatter(
+        np.log10(H2Gas[valid_indices]),
+        np.log10((SfrDisk + SfrBulge)[valid_indices]),
+        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=15
+    )
+    cb = plt.colorbar()
+    cb.set_label(r'$\log_{{10}} M_\mathrm{{stars}}\ (M_\odot)$')
+    plt.xlabel(r'$\log_{{10}} M_\mathrm{{H2}}\ (M_\odot)$')
+    plt.ylabel(r'$\log_{{10}} \mathrm{{SFR}}\ (M_\odot/yr)$')
+    plt.title('H$_2$ Mass vs. SFR')
+    # plt.grid(True, alpha=0.3)
+    plt.xlim(6, 12)
+    plt.tight_layout()
+    plt.savefig(OutputDir + '19.H2_vs_SFR' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '19.H2_vs_SFR' + OutputFormat, '\n')
+
+    # -------------------------------------------------------
+    # H2 Fraction vs. sSFR
+    print('Plotting H2 Fraction vs. sSFR')
+    plt.figure(figsize=(8, 6))
+    # H2 fraction and sSFR (already defined above, but recalculate for safety)
+    h2_fraction = H2Gas / (H1Gas + H2Gas + 1e-12)
+    SFR = SfrDisk + SfrBulge
+    sSFR = np.log10(SFR / (StellarMass + 1e-12))
+    valid = (h2_fraction > 0) & (SFR > 0) & (StellarMass > 0)
+    if np.sum(valid) > dilute:
+        valid_indices = sample(list(np.where(valid)[0]), dilute)
+    else:
+        valid_indices = np.where(valid)[0]
+    plt.scatter(
+        sSFR[valid_indices],
+        h2_fraction[valid_indices],
+        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=15
+    )
+    cb = plt.colorbar()
+    cb.set_label(r'$\log_{{10}} M_\mathrm{{stars}}\ (M_\odot)$')
+    plt.xlabel(r'$\log_{{10}} \mathrm{{sSFR}}\ (yr^{{-1}})$')
+    plt.ylabel('H$_2$ Fraction')
+    plt.title('H$_2$ Fraction vs. sSFR')
+    # plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(OutputDir + '20.H2fraction_vs_sSFR' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '20.H2fraction_vs_sSFR' + OutputFormat, '\n')
+
 # --------------------------------------------------------
 
     print('Plotting the stellar mass function')
@@ -1083,7 +1139,7 @@ if __name__ == '__main__':
     w = np.where(SatelliteFractionHi > 0)[0]
     plt.plot(Mass[w], SatelliteFractionHi[w], 'r-.', label='Satellites-Hi')
     
-    plt.xlabel(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')  # Set the x-axis label
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # Set the x-axis label
     plt.ylabel(r'$\mathrm{Quescient\ Fraction}$')  # Set the y-axis label
     
     # Set the x and y axis minor ticks
@@ -1670,7 +1726,7 @@ if __name__ == '__main__':
     # Color points by halo mass
     sc = plt.scatter(mass, infall, c=smass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
     cbar = plt.colorbar(sc)
-    cbar.set_label(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
+    cbar.set_label(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
 
     plt.ylabel(r'$\log_{10} M_{\mathrm{infall}}\ (M_{\odot})$')
     plt.xlabel(r'$\log_{10} M_{\mathrm{halo}}\ (M_{\odot})$')
@@ -1763,7 +1819,7 @@ if __name__ == '__main__':
     plt.grid(True, alpha=0.3)
     # plt.xlim(1e10, 1e15)
     # plt.ylim(1e10, 1e15)
-    plt.savefig(OutputDir + 'dekel_regime_diagram' + OutputFormat, bbox_inches='tight')
+    plt.savefig(OutputDir + '21.dekel_regime_diagram' + OutputFormat, bbox_inches='tight')
 
     # 2. Cold vs hot inflow fractions
     plt.figure(figsize=(10, 8))
@@ -1803,7 +1859,7 @@ if __name__ == '__main__':
     plt.ylim(0, 1)
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(OutputDir + 'cold_inflow_fraction' + OutputFormat, bbox_inches='tight')
+    plt.savefig(OutputDir + '22.cold_inflow_fraction' + OutputFormat, bbox_inches='tight')
 
     plt.figure(figsize=(12, 5))
 
@@ -1855,7 +1911,7 @@ if __name__ == '__main__':
     plt.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(OutputDir + 'infall_impact_on_sf' + OutputFormat, bbox_inches='tight')
+    plt.savefig(OutputDir + '23.infall_impact_on_sf' + OutputFormat, bbox_inches='tight')
 
     # 4. Molecular vs atomic gas in different regimes
     plt.figure(figsize=(10, 8))
@@ -1887,7 +1943,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.ylim(0, 1)
-    plt.savefig(OutputDir + 'h2_fraction_by_regime' + OutputFormat, bbox_inches='tight')
+    plt.savefig(OutputDir + '24.h2_fraction_by_regime' + OutputFormat, bbox_inches='tight')
 
     # 5. Distribution of Mvir/Mcrit ratios
     plt.figure(figsize=(10, 6))
@@ -1905,7 +1961,7 @@ if __name__ == '__main__':
     plt.title('Distribution of Mass Ratios')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(OutputDir + 'mass_ratio_distribution' + OutputFormat, bbox_inches='tight')
+    plt.savefig(OutputDir + '25.mass_ratio_distribution' + OutputFormat, bbox_inches='tight')
     # plt.show()
 
     # Print some statistics
@@ -1944,7 +2000,62 @@ if __name__ == '__main__':
     plt.xlim(6, 12)
     plt.ylim(0, 12)
 
-    outputFile = OutputDir + 'reincorporation_diagnostics' + OutputFormat
+    outputFile = OutputDir + '30.reincorporation_diagnostics' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    print('Plotting H2 surface density vs SFR surface density')
+
+    plt.figure(figsize=(10, 8))  # New figure
+    # Σ_H2 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
+    sigma_H2 = H2Gas / (2 * np.pi * DiskRadius**2 * 1e6)  # DiskRadius in kpc, area in pc^2
+    sigma_SFR = SFR / (2 * np.pi * DiskRadius**2)          # area in kpc^2
+    log10_sigma_H2 = np.log10(sigma_H2 + 1e-12)
+    log10_sigma_SFR = np.log10(sigma_SFR + 1e-12)
+    # Color by Mvir (virial mass)
+    sc = plt.scatter(log10_sigma_H2, log10_sigma_SFR, c=np.log10(Mvir), cmap='plasma', alpha=0.6, s=15, label='SAGE 2.0')
+    cb = plt.colorbar(sc)
+    cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+    # Add canonical Kennicutt-Schmidt law (Kennicutt 1998): log(Sigma_SFR) = 1.4*log(Sigma_gas) - 3.6
+    sigma_gas_range = np.linspace(0.5, 12.5, 100)
+    ks_law = 1.4 * sigma_gas_range - 3.6
+    plt.plot(sigma_gas_range, ks_law, 'k--', label='Kennicutt (1998)')
+
+    gas_range = np.logspace(0, 12.5, 100)
+        
+    # Bigiel et al. (2008) - resolved regions in nearby galaxies
+    # Σ_SFR = 1.6e-3 × (Σ_H2)^1.0
+    ks_bigiel = np.log10(1.6e-3) + 1.0 * np.log10(gas_range)
+    plt.plot(np.log10(gas_range), ks_bigiel, 'k:', linewidth=2.5, alpha=0.8, 
+            label='Bigiel+ (2008) - resolved', zorder=2)
+    
+    # Schruba et al. (2011) - different normalization
+    # Σ_SFR = 2.1e-3 × (Σ_H2)^1.0
+    ks_schruba = np.log10(2.1e-3) + 1.0 * np.log10(gas_range)
+    plt.plot(np.log10(gas_range), ks_schruba, 'k--', linewidth=2, alpha=0.6, 
+            label='Schruba+ (2011)', zorder=2)
+            
+    # Leroy et al. (2013) - whole galaxy integrated
+    # Σ_SFR = 1.4e-3 × (Σ_H2)^1.1
+    ks_leroy = np.log10(1.4e-3) + 1.1 * np.log10(gas_range)
+    plt.plot(np.log10(gas_range), ks_leroy, 'k-', linewidth=2, alpha=0.7, 
+            label='Leroy+ (2013) - galaxies', zorder=2)
+            
+    # Saintonge et al. (2011) - COLD GASS survey
+    # Σ_SFR = 1.0e-3 × (Σ_H2)^0.96
+    ks_saintonge = np.log10(1.0e-3) + 0.96 * np.log10(gas_range)
+    plt.plot(np.log10(gas_range), ks_saintonge, 'k-.', linewidth=1.5, alpha=0.5, 
+            label='Saintonge+ (2011)', zorder=2)
+    
+    plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_2}\ (M_{\odot}/\mathrm{pc}^2)$')
+    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{kpc}^2)$')
+    # plt.title('H$_2$ Surface Density vs SFR Surface Density (K-S Law)')
+    plt.legend(loc='lower right', fontsize='small', frameon=False)
+    plt.xlim(2, 8.5)
+    plt.ylim(-1.5, 6)
+    # plt.grid(True, alpha=0.3)
+    outputFile = OutputDir + '31.h2_vs_sfr_surface_density' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()

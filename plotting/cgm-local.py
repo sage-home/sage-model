@@ -323,7 +323,7 @@ def plot_cgm_mass_histogram(data_reader):
     if not os.path.exists(OutputDir): 
         os.makedirs(OutputDir)
     
-    outputFile = OutputDir + '23.CGM_MassFunction_HaloBins' + OutputFormat
+    outputFile = OutputDir + '32.CGM_MassFunction_HaloBins' + OutputFormat
     plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     print(f'Saved CGM mass histogram to {outputFile}')
     plt.close()
@@ -476,7 +476,7 @@ def plot_cgm_mass_histogram_grid(data_reader):
     if not os.path.exists(OutputDir): 
         os.makedirs(OutputDir)
     
-    outputFile = OutputDir + '24.CGM_MassFunction_HaloBins_Grid' + OutputFormat
+    outputFile = OutputDir + '33.CGM_MassFunction_HaloBins_Grid' + OutputFormat
     plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     print(f'\nSaved CGM mass histogram grid to {outputFile}')
     plt.close()
@@ -637,7 +637,7 @@ def plot_halo_mass_histogram_grid(data_reader):
     if not os.path.exists(OutputDir): 
         os.makedirs(OutputDir)
     
-    outputFile = OutputDir + '25.Halo_MassFunction_ComponentBins_Grid' + OutputFormat
+    outputFile = OutputDir + '34.Halo_MassFunction_ComponentBins_Grid' + OutputFormat
     plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     print(f'\nSaved Halo mass histogram grid to {outputFile}')
     plt.close()
@@ -753,7 +753,7 @@ def plot_component_mass_function_evolution(data_reader):
     
     # Save the plot
     OutputDir = DirName + 'plots/'
-    outputFile = OutputDir + '26.Component_MassFunction_Evolution' + OutputFormat
+    outputFile = OutputDir + '35.Component_MassFunction_Evolution' + OutputFormat
     plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     print(f'Saved component mass function evolution to {outputFile}')
     plt.close()
@@ -925,7 +925,7 @@ def plot_cgm_mass_evolution(data_reader):
     
     # Save the plot
     OutputDir = DirName + 'plots/'
-    outputFile = OutputDir + '27.CGM_Mass_Evolution_HaloBins' + OutputFormat
+    outputFile = OutputDir + '36.CGM_Mass_Evolution_HaloBins' + OutputFormat
     plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     print(f'Saved CGM mass evolution plot to {outputFile}')
     plt.close()
@@ -1132,7 +1132,7 @@ def plot_cgm_mass_evolution2(data_reader):
     
     # Save the plot
     OutputDir = DirName + 'plots/'
-    outputFile = OutputDir + '27.CGM_Mass_Evolution_HaloBins_Scatter' + OutputFormat
+    outputFile = OutputDir + '37.CGM_Mass_Evolution_HaloBins_Scatter' + OutputFormat
     plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     print(f'Saved CGM mass evolution plot with scatter to {outputFile}')
     plt.close()
@@ -1301,7 +1301,7 @@ def plot_cgm_mass_evolution_central_satellite(data_reader):
     
     # Save the plot
     OutputDir = DirName + 'plots/'
-    outputFile = OutputDir + '27.CGM_Mass_Evolution_CentralSatellite' + OutputFormat
+    outputFile = OutputDir + '38.CGM_Mass_Evolution_CentralSatellite' + OutputFormat
     plt.savefig(outputFile, dpi=500, bbox_inches='tight')
     print(f'Saved CGM mass evolution plot (central vs satellite) to {outputFile}')
     plt.close()
@@ -1438,7 +1438,7 @@ if __name__ == '__main__':
 
         plt.tight_layout()
 
-        outputFile = OutputDir + '19.CGMMass' + OutputFormat
+        outputFile = OutputDir + '39.CGMMass' + OutputFormat
         plt.savefig(outputFile)  # Save the figure
         print('Saved file to', outputFile, '\n')
         plt.close()
@@ -1478,7 +1478,7 @@ if __name__ == '__main__':
         for t in leg.get_texts():  # Reduce the size of the text
             t.set_fontsize('medium')
 
-        outputFile = OutputDir + '20.CGMMassFunction' + OutputFormat
+        outputFile = OutputDir + '40.CGMMassFunction' + OutputFormat
         plt.savefig(outputFile)  # Save the figure
         print('Saved to', outputFile, '\n')
         plt.close()
@@ -1587,7 +1587,7 @@ if __name__ == '__main__':
         for t in leg.get_texts():  # Reduce the size of the text
             t.set_fontsize('medium')
 
-        outputFile = OutputDir + '21.CGMMassFraction' + OutputFormat
+        outputFile = OutputDir + '41.CGMMassFraction' + OutputFormat
         plt.savefig(outputFile)  # Save the figure
         print('Saved to', outputFile, '\n')
         plt.close()
@@ -1636,222 +1636,12 @@ if __name__ == '__main__':
         for t in leg.get_texts():  # Reduce the size of the text
             t.set_fontsize('medium')
 
-        outputFile = OutputDir + '22.CGMMassFraction' + OutputFormat
+        outputFile = OutputDir + '42.CGMMassFraction' + OutputFormat
         plt.savefig(outputFile)  # Save the figure
         print('Saved to', outputFile, '\n')
         plt.close()
 
     print('\nOptimized analysis completed!')
-
-    def plot_cgm_composition_analysis(data_reader):
-        """
-        Plot CGM composition: pristine vs enriched gas fractions
-        """
-        print('Creating CGM composition analysis plots')
-        
-        # Load required data
-        params = ['CGMgas', 'CGMgas_pristine', 'CGMgas_enriched', 'Mvir', 'StellarMass']
-        data = data_reader.read_hdf_batch(Snapshot, params)
-        
-        # Apply unit conversions
-        cgm_total = data['CGMgas'] * 1.0e10 / Hubble_h
-        cgm_pristine = data['CGMgas_pristine'] * 1.0e10 / Hubble_h
-        cgm_enriched = data['CGMgas_enriched'] * 1.0e10 / Hubble_h
-        mvir = data['Mvir'] * 1.0e10 / Hubble_h
-        stellar_mass = data['StellarMass'] * 1.0e10 / Hubble_h
-        
-        print(f'Initial data loaded - CGM total range: {cgm_total.min():.2e} to {cgm_total.max():.2e}')
-        print(f'CGM pristine range: {cgm_pristine.min():.2e} to {cgm_pristine.max():.2e}')
-        print(f'CGM enriched range: {cgm_enriched.min():.2e} to {cgm_enriched.max():.2e}')
-        
-        # Enhanced filtering for valid data - use more stringent thresholds
-        min_cgm_mass = 1e7  # Minimum CGM mass threshold (solar masses)
-        valid_mask = (
-            (cgm_total >= min_cgm_mass) & 
-            (mvir > 0) & 
-            (stellar_mass > 0) & 
-            np.isfinite(cgm_total) & 
-            np.isfinite(cgm_pristine) & 
-            np.isfinite(cgm_enriched) &
-            np.isfinite(mvir) &
-            np.isfinite(stellar_mass)
-        )
-        
-        print(f'Valid galaxies after filtering: {np.sum(valid_mask)} out of {len(cgm_total)}')
-        
-        cgm_total_valid = cgm_total[valid_mask]
-        cgm_pristine_valid = cgm_pristine[valid_mask]
-        cgm_enriched_valid = cgm_enriched[valid_mask]
-        mvir_valid = mvir[valid_mask]
-        stellar_mass_valid = stellar_mass[valid_mask]
-        
-        # Calculate fractions with additional safety checks
-        pristine_fraction = np.zeros_like(cgm_total_valid)
-        enriched_fraction = np.zeros_like(cgm_total_valid)
-        
-        # Only calculate fractions where cgm_total is above threshold
-        safe_division_mask = cgm_total_valid > min_cgm_mass
-        
-        pristine_fraction[safe_division_mask] = cgm_pristine_valid[safe_division_mask] / cgm_total_valid[safe_division_mask]
-        enriched_fraction[safe_division_mask] = cgm_enriched_valid[safe_division_mask] / cgm_total_valid[safe_division_mask]
-        
-        # Additional check for finite values and reasonable ranges
-        finite_mask = (
-            np.isfinite(pristine_fraction) & 
-            np.isfinite(enriched_fraction) &
-            (pristine_fraction >= 0) & 
-            (pristine_fraction <= 1) &
-            (enriched_fraction >= 0) & 
-            (enriched_fraction <= 1)
-        )
-        
-        print(f'Galaxies with valid fractions: {np.sum(finite_mask)} out of {len(pristine_fraction)}')
-        
-        # Apply the finite mask to all arrays
-        pristine_fraction = pristine_fraction[finite_mask]
-        enriched_fraction = enriched_fraction[finite_mask]
-        cgm_total_final = cgm_total_valid[finite_mask]
-        cgm_pristine_final = cgm_pristine_valid[finite_mask]
-        cgm_enriched_final = cgm_enriched_valid[finite_mask]
-        mvir_final = mvir_valid[finite_mask]
-        stellar_mass_final = stellar_mass_valid[finite_mask]
-        
-        if len(pristine_fraction) == 0:
-            print("Warning: No valid data found for CGM composition analysis!")
-            return
-        
-        print(f'Pristine fraction range: {pristine_fraction.min():.3f} to {pristine_fraction.max():.3f}')
-        print(f'Enriched fraction range: {enriched_fraction.min():.3f} to {enriched_fraction.max():.3f}')
-        
-        # Create subplot figure
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        
-        # Plot 1: Pristine fraction vs Halo Mass
-        ax = axes[0, 0]
-        if len(mvir_final) > dilute:
-            indices = sample(list(range(len(mvir_final))), dilute)
-        else:
-            indices = list(range(len(mvir_final)))
-        
-        scatter = ax.scatter(np.log10(mvir_final[indices]), pristine_fraction[indices], 
-                            c=np.log10(stellar_mass_final[indices]), cmap='viridis', s=10, alpha=0.7)
-        
-        # Add running median
-        bin_centers, bin_averages, _ = bin_average(pristine_fraction, np.log10(mvir_final), num_bins=15)
-        valid_bins = np.isfinite(bin_averages)
-        if np.sum(valid_bins) > 0:
-            ax.plot(bin_centers[valid_bins], bin_averages[valid_bins], 'r-', linewidth=3, label='Running Median')
-        
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$f_{\mathrm{pristine}} = M_{\mathrm{CGM,pristine}} / M_{\mathrm{CGM,total}}$')
-        ax.set_title('CGM Pristine Fraction vs Halo Mass')
-        ax.set_ylim(0, 1)
-        ax.legend()
-        
-        cbar = plt.colorbar(scatter, ax=ax)
-        cbar.set_label(r'$\log_{10} M_{\mathrm{stellar}}\ (M_{\odot})$')
-        
-        # Plot 2: CGM Mass vs Halo Mass (colored by pristine fraction)
-        ax = axes[0, 1]
-        scatter = ax.scatter(np.log10(mvir_final[indices]), np.log10(cgm_total_final[indices]), 
-                            c=pristine_fraction[indices], cmap='RdYlBu', s=10, alpha=0.7, vmin=0, vmax=1)
-        
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
-        ax.set_title('CGM Mass vs Halo Mass (colored by pristine fraction)')
-        
-        cbar = plt.colorbar(scatter, ax=ax)
-        cbar.set_label(r'$f_{\mathrm{pristine}}$')
-        
-        # Plot 3: Pristine vs Enriched Mass
-        ax = axes[1, 0]
-        
-        # Filter for galaxies with both pristine and enriched components > 0
-        both_components_mask = (cgm_pristine_final > 0) & (cgm_enriched_final > 0)
-        
-        if np.sum(both_components_mask) > 0:
-            pristine_subset = cgm_pristine_final[both_components_mask]
-            enriched_subset = cgm_enriched_final[both_components_mask]
-            mvir_subset = mvir_final[both_components_mask]
-            
-            if len(pristine_subset) > dilute:
-                plot_indices = sample(list(range(len(pristine_subset))), dilute)
-            else:
-                plot_indices = list(range(len(pristine_subset)))
-            
-            scatter = ax.scatter(np.log10(pristine_subset[plot_indices]), np.log10(enriched_subset[plot_indices]), 
-                        c=np.log10(mvir_subset[plot_indices]), cmap='plasma', s=10, alpha=0.7)
-            
-            # Add 1:1 line
-            min_mass = min(np.log10(pristine_subset).min(), np.log10(enriched_subset).min())
-            max_mass = max(np.log10(pristine_subset).max(), np.log10(enriched_subset).max())
-            ax.plot([min_mass, max_mass], [min_mass, max_mass], 'k--', alpha=0.5, label='1:1 line')
-            
-            cbar = plt.colorbar(scatter, ax=ax)
-            cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-        else:
-            ax.text(0.5, 0.5, 'No galaxies with both\ncomponents > 0', ha='center', va='center', transform=ax.transAxes)
-        
-        ax.set_xlabel(r'$\log_{10} M_{\mathrm{CGM,pristine}}\ (M_{\odot})$')
-        ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM,enriched}}\ (M_{\odot})$')
-        ax.set_title('Pristine vs Enriched CGM Mass')
-        ax.legend()
-        
-        # Plot 4: Pristine fraction histogram
-        ax = axes[1, 1]
-        
-        # Create histogram with finite values only
-        if len(pristine_fraction) > 0:
-            # Remove any remaining edge cases
-            histogram_data = pristine_fraction[np.isfinite(pristine_fraction) & (pristine_fraction >= 0) & (pristine_fraction <= 1)]
-            
-            if len(histogram_data) > 0:
-                ax.hist(histogram_data, bins=50, alpha=0.7, color='blue', edgecolor='black')
-                median_val = np.median(histogram_data)
-                ax.axvline(median_val, color='red', linestyle='--', linewidth=2, 
-                        label=f'Median = {median_val:.2f}')
-                
-                # Add statistics text
-                ax.text(0.05, 0.95, f'N = {len(histogram_data)}', transform=ax.transAxes, 
-                    bbox=dict(boxstyle="round", facecolor='white', alpha=0.8))
-            else:
-                ax.text(0.5, 0.5, 'No valid data\nfor histogram', ha='center', va='center', transform=ax.transAxes)
-        else:
-            ax.text(0.5, 0.5, 'No valid data\nfor histogram', ha='center', va='center', transform=ax.transAxes)
-        
-        ax.set_xlabel(r'$f_{\mathrm{pristine}}$')
-        ax.set_ylabel('Number of Galaxies')
-        ax.set_title('Distribution of CGM Pristine Fractions')
-        ax.legend()
-        
-        plt.tight_layout()
-        
-        # Save the plot
-        OutputDir = DirName + 'plots/'
-        outputFile = OutputDir + '28.CGM_Composition_Analysis' + OutputFormat
-        plt.savefig(outputFile, dpi=500, bbox_inches='tight')
-        print(f'Saved CGM composition analysis to {outputFile}')
-        plt.close()
-        
-        # Print summary statistics
-        print(f'\n=== CGM Composition Summary ===')
-        print(f'Total galaxies analyzed: {len(pristine_fraction)}')
-        if len(pristine_fraction) > 0:
-            print(f'Median pristine fraction: {np.median(pristine_fraction):.3f}')
-            print(f'Mean pristine fraction: {np.mean(pristine_fraction):.3f}')
-            print(f'Std pristine fraction: {np.std(pristine_fraction):.3f}')
-            
-            # Count galaxies by dominant component
-            pristine_dominated = np.sum(pristine_fraction > 0.5)
-            enriched_dominated = np.sum(pristine_fraction < 0.5)
-            balanced = np.sum(np.abs(pristine_fraction - 0.5) < 0.1)
-            
-            print(f'Pristine-dominated galaxies (f_pris > 0.5): {pristine_dominated} ({pristine_dominated/len(pristine_fraction)*100:.1f}%)')
-            print(f'Enriched-dominated galaxies (f_pris < 0.5): {enriched_dominated} ({enriched_dominated/len(pristine_fraction)*100:.1f}%)')
-            print(f'Balanced galaxies (0.4 < f_pris < 0.6): {balanced} ({balanced/len(pristine_fraction)*100:.1f}%)')
-        print('================================\n')
-
-
 
     def plot_gas_flow_rates_analysis(data_reader):
         """
@@ -1977,198 +1767,10 @@ if __name__ == '__main__':
         
         # Save the plot
         OutputDir = DirName + 'plots/'
-        outputFile = OutputDir + '29.Gas_Flow_Rates_Analysis' + OutputFormat
+        outputFile = OutputDir + '43.Gas_Flow_Rates_Analysis' + OutputFormat
         plt.savefig(outputFile, dpi=500, bbox_inches='tight')
         print(f'Saved gas flow rates analysis to {outputFile}')
         plt.close()
-
-    def plot_cgm_composition_evolution(data_reader):
-        """
-        Plot evolution of CGM composition (pristine fraction) across redshift
-        """
-        print('Creating CGM composition evolution plot across redshift')
-        
-        # Load all required data at once
-        params = ['CGMgas', 'CGMgas_pristine', 'CGMgas_enriched', 'Mvir', 'StellarMass']
-        data_full = load_all_snapshots_optimized(data_reader, params)
-        
-        # Define halo mass bins (in log10 solar masses)
-        halo_mass_bins = [
-            (11.5, 12.5),    # Low mass halos
-            (12.5, 13.5),    # Intermediate mass halos  
-            (13.5, 15.0)     # High mass halos
-        ]
-        
-        colors = ['red', 'green', 'blue']
-        labels = [
-            r'$10^{11.5} < M_{\mathrm{halo}} < 10^{12.5}$ M$_{\odot}$',
-            r'$10^{12.5} < M_{\mathrm{halo}} < 10^{13.5}$ M$_{\odot}$',
-            r'$10^{13.5} < M_{\mathrm{halo}}$'
-        ]
-        
-        # Create figure
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        
-        # Plot 1: Pristine fraction evolution
-        ax = axes[0, 0]
-        
-        for bin_idx, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, colors, labels)):
-            redshift_values = []
-            median_pristine_fractions = []
-            
-            for snap in CGMsnaps:
-                z = redshifts[snap]
-                
-                # Get data for this snapshot
-                cgm_total = data_full['CGMgas'][snap]
-                cgm_pristine = data_full['CGMgas_pristine'][snap]
-                mvir_snap = data_full['Mvir'][snap]
-                stellar_snap = data_full['StellarMass'][snap]
-                
-                # Filter valid data
-                valid_mask = (cgm_total > 0) & (mvir_snap > 0) & (stellar_snap > 0)
-                cgm_total_valid = cgm_total[valid_mask]
-                cgm_pristine_valid = cgm_pristine[valid_mask]
-                mvir_valid = mvir_snap[valid_mask]
-                
-                # Filter by halo mass bin
-                log_mvir = np.log10(mvir_valid)
-                mass_mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
-                
-                if np.sum(mass_mask) > 10:  # Require at least 10 galaxies
-                    pristine_fraction = cgm_pristine_valid[mass_mask] / cgm_total_valid[mass_mask]
-                    median_pristine = np.median(pristine_fraction)
-                    
-                    redshift_values.append(z)
-                    median_pristine_fractions.append(median_pristine)
-            
-            if len(redshift_values) > 0:
-                ax.plot(redshift_values, median_pristine_fractions, 
-                    color=color, label=label, linewidth=3, marker='o')
-        
-        ax.set_xlabel('Redshift')
-        ax.set_ylabel('Median CGM Pristine Fraction')
-        ax.set_title('CGM Pristine Fraction Evolution')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        # Plot 2: Total CGM mass evolution  
-        ax = axes[0, 1]
-        
-        for bin_idx, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, colors, labels)):
-            redshift_values = []
-            median_cgm_masses = []
-            
-            for snap in CGMsnaps:
-                z = redshifts[snap]
-                
-                cgm_total = data_full['CGMgas'][snap]
-                mvir_snap = data_full['Mvir'][snap]
-                stellar_snap = data_full['StellarMass'][snap]
-                
-                valid_mask = (cgm_total > 0) & (mvir_snap > 0) & (stellar_snap > 0)
-                cgm_total_valid = cgm_total[valid_mask]
-                mvir_valid = mvir_snap[valid_mask]
-                
-                log_mvir = np.log10(mvir_valid)
-                mass_mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
-                
-                if np.sum(mass_mask) > 10:
-                    median_cgm = np.median(cgm_total_valid[mass_mask])
-                    
-                    redshift_values.append(z)
-                    median_cgm_masses.append(median_cgm)
-            
-            if len(redshift_values) > 0:
-                ax.plot(redshift_values, np.log10(median_cgm_masses), 
-                    color=color, label=label, linewidth=3, marker='s')
-        
-        ax.set_xlabel('Redshift')
-        ax.set_ylabel(r'$\log_{10}$ Median CGM Mass $(M_{\odot})$')
-        ax.set_title('CGM Mass Evolution')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        # Plot 3: Pristine/Enriched ratio evolution
-        ax = axes[1, 0]
-        
-        all_redshifts = []
-        all_pristine_ratios = []
-        
-        for snap in CGMsnaps:
-            z = redshifts[snap]
-            
-            cgm_pristine = data_full['CGMgas_pristine'][snap]
-            cgm_enriched = data_full['CGMgas_enriched'][snap]
-            mvir_snap = data_full['Mvir'][snap]
-            stellar_snap = data_full['StellarMass'][snap]
-            
-            valid_mask = (cgm_pristine > 0) & (cgm_enriched > 0) & (mvir_snap > 0) & (stellar_snap > 0)
-            
-            if np.sum(valid_mask) > 100:
-                pristine_enriched_ratio = cgm_pristine[valid_mask] / cgm_enriched[valid_mask]
-                median_ratio = np.median(pristine_enriched_ratio)
-                
-                all_redshifts.append(z)
-                all_pristine_ratios.append(median_ratio)
-        
-        if len(all_redshifts) > 0:
-            ax.plot(all_redshifts, all_pristine_ratios, 'k-', linewidth=3, marker='D')
-            ax.axhline(y=1, color='gray', linestyle='--', alpha=0.5, label='Equal masses')
-        
-        ax.set_xlabel('Redshift')
-        ax.set_ylabel('Median Pristine/Enriched Mass Ratio')
-        ax.set_title('CGM Pristine/Enriched Ratio Evolution')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        # Plot 4: CGM fraction of total baryons evolution
-        ax = axes[1, 1]
-        
-        for bin_idx, ((mass_min, mass_max), color, label) in enumerate(zip(halo_mass_bins, colors, labels)):
-            redshift_values = []
-            median_cgm_fractions = []
-            
-            for snap in CGMsnaps:
-                z = redshifts[snap]
-                
-                cgm_total = data_full['CGMgas'][snap]
-                mvir_snap = data_full['Mvir'][snap]
-                stellar_snap = data_full['StellarMass'][snap]
-                
-                valid_mask = (cgm_total > 0) & (mvir_snap > 0) & (stellar_snap > 0)
-                cgm_total_valid = cgm_total[valid_mask]
-                mvir_valid = mvir_snap[valid_mask]
-                
-                log_mvir = np.log10(mvir_valid)
-                mass_mask = (log_mvir >= mass_min) & (log_mvir < mass_max)
-                
-                if np.sum(mass_mask) > 10:
-                    cgm_fraction = cgm_total_valid[mass_mask] / (0.17 * mvir_valid[mass_mask])
-                    median_fraction = np.median(cgm_fraction)
-                    
-                    redshift_values.append(z)
-                    median_cgm_fractions.append(median_fraction)
-            
-            if len(redshift_values) > 0:
-                ax.plot(redshift_values, median_cgm_fractions, 
-                    color=color, label=label, linewidth=3, marker='^')
-        
-        ax.set_xlabel('Redshift')
-        ax.set_ylabel(r'Median $f_{\mathrm{CGM}} = M_{\mathrm{CGM}} / (0.17 \times M_{\mathrm{vir}})$')
-        ax.set_title('CGM Baryon Fraction Evolution')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        
-        # Save the plot
-        OutputDir = DirName + 'plots/'
-        outputFile = OutputDir + '30.CGM_Composition_Evolution' + OutputFormat
-        plt.savefig(outputFile, dpi=500, bbox_inches='tight')
-        print(f'Saved CGM composition evolution to {outputFile}')
-        plt.close()
-
 
     def find_halos_near_target_masses(base_dir, snap_num, target_masses, tolerance=0.2, Hubble_h=0.73):
         """
@@ -2517,7 +2119,7 @@ if __name__ == '__main__':
         if not os.path.exists(OutputDir):
             os.makedirs(OutputDir)
         
-        outputFile = OutputDir + '31.CGM_Evolution_Specific_Halos' + OutputFormat
+        outputFile = OutputDir + '44.CGM_Evolution_Specific_Halos' + OutputFormat
         plt.savefig(outputFile, dpi=500, bbox_inches='tight')
         print(f'\nSaved CGM evolution plot for specific halos to {outputFile}')
         plt.close()
@@ -2709,7 +2311,7 @@ if __name__ == '__main__':
         if not os.path.exists(OutputDir):
             os.makedirs(OutputDir)
         
-        outputFile = OutputDir + '32.CGM_Evolution_Specific_Halos_MultiPanel' + OutputFormat
+        outputFile = OutputDir + '45.CGM_Evolution_Specific_Halos_MultiPanel' + OutputFormat
         plt.savefig(outputFile, dpi=500, bbox_inches='tight')
         print(f'\nSaved multi-panel CGM evolution plot to {outputFile}')
         plt.close()
@@ -2717,9 +2319,7 @@ if __name__ == '__main__':
         return selected_halos
 
     print('\n=== Creating CGM Tracking Analysis Plots ===')
-    plot_cgm_composition_analysis(data_reader)
     plot_gas_flow_rates_analysis(data_reader)
-    plot_cgm_composition_evolution(data_reader)
 
     base_dir = DirName
     start_snap = 63  # z=0
