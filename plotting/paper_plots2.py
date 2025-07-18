@@ -1904,8 +1904,8 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
                     model_line = ax.plot(mass_centers_valid, median_h2_frac_valid, 
                         color=color, linewidth=linewidth,
                         label=label, alpha=alpha, zorder=6)[0]
-                    plt.scatter(np.log10(StellarMass), h2_fraction_2, s=1, alpha=0.25, 
-                                color=color, rasterized=True)
+                    # plt.scatter(np.log10(StellarMass), h2_fraction_2, s=1, alpha=0.25, 
+                    #             color=color, rasterized=True)
 
                     # Shaded error region
                     ax.fill_between(mass_centers_valid, 
