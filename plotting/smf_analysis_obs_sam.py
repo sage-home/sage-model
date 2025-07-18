@@ -48,7 +48,8 @@ MODEL_CONFIGS = [
         'linewidth': 2,              # Thin line for Vanilla SAGE
         'alpha': 0.8,                # Transparency
         'boxsize': 62.5,             # Box size in h^-1 Mpc for this model
-        'volume_fraction': 1.0       # Fraction of the full volume output by the model
+        'volume_fraction': 1.0,       # Fraction of the full volume output by the model
+        'use_for_residuals': True    # NEW: Flag to indicate this is the comparison model
     },
     # NEW: Add your comparison model here
     {
@@ -60,7 +61,7 @@ MODEL_CONFIGS = [
         'alpha': 0.8,               # Transparency
         'boxsize': 62.5,            # Box size in h^-1 Mpc for this model
         'volume_fraction': 1.0,     # Fraction of the full volume output by the model
-        'use_for_residuals': True    # NEW: Flag to indicate this is the comparison model
+        # 'use_for_residuals': True    # NEW: Flag to indicate this is the comparison model
     }
 ]
 

@@ -14,13 +14,25 @@ void init_gas_components(struct GALAXY *g)
 double gd14_sigma_norm(float d_mw, float u_mw)
 {
     // g parameter calculation: g = sqrt(d_mw² + 0.0289)
-    float g = sqrt(d_mw * d_mw + 0.02);
+    float g = sqrt(d_mw * d_mw + 0.0289);
     
     // sigma_r1 calculation
     float sqrt_term = sqrt(0.01 + u_mw);
     float sigma_r1 = 50.0 / g * sqrt_term / (1.0 + 0.69 * sqrt_term);
+
+    // Using CORRECTED Equation (10) from the erratum:
+    // ΣR=1 = 50 M☉/pc² × g/(0.001 + 0.1×UMW)^1/2 × 1/(1 + 1.69×(0.001 + 0.1×UMW)^1/2)
+    // float s_term = sqrt(0.001 + 0.1 * u_mw);  // Changed: 0.001 + 0.1*UMW instead of 0.01 + UMW
+    // float sigma_r1 = 50.0 / g * s_term / (1.0 + 1.69 * s_term);  // Changed: 1.69 instead of 0.69
     
     return sigma_r1;
+
+    // From erratum: ΣR=1 = 40 M☉/pc² × g/s
+    // where s = (0.001 + 0.1×UMW)^0.7
+    // float g = sqrt(d_mw * d_mw + 0.0289);
+    // float s = pow(0.001 + 0.1 * u_mw, 0.7);
+    
+    // return 40.0 * g / s;
 }
 
 

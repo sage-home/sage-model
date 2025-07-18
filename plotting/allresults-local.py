@@ -102,6 +102,7 @@ if __name__ == '__main__':
     HotInflowMass = read_hdf(snap_num = Snapshot, param = 'HotInflowMass') * 1.0e10 / Hubble_h
     ReincorporatedGas = read_hdf(snap_num = Snapshot, param = 'ReincorporatedGas') * 1.0e10 / Hubble_h
     # print('Reincorporated gas:', ReincorporatedGas)
+    Cooling = read_hdf(snap_num = Snapshot, param = 'Cooling')
 
     print('Critical mass from Dekel & Birnboim (2006):', CriticalMassDB06)
     print('Ratio of Mvir to Mcrit:', MvirToMcritRatio)

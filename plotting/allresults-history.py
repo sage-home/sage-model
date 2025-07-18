@@ -297,6 +297,32 @@ if __name__ == '__main__':
     plt.savefig(outputFile)
     print('Saved file to', outputFile, '\n')
     plt.close()
+    # --------------------------------------------------------
+    # Plot median halo mass vs. redshift
+    print('Plotting median halo mass vs. redshift')
+    median_halo_mass = []
+    for snap in range(FirstSnap, LastSnap+1):
+        vals = HaloMassFull[snap]
+        # Only consider positive halo masses
+        valid = vals[vals > 0]
+        if len(valid) > 0:
+            median_halo_mass.append(np.median(valid))
+        else:
+            median_halo_mass.append(np.nan)
+
+    plt.figure()
+    plt.plot(redshifts, median_halo_mass, 'o-', color='green', label='Median Halo Mass')
+    plt.xlabel('Redshift')
+    plt.ylabel('Median Halo Mass ($M_\odot$)')
+    plt.title('Median Halo Mass vs. Redshift')
+    plt.yscale('log')
+    plt.gca().invert_xaxis()
+    plt.legend()
+    plt.grid(True, which='both', ls=':')
+    outputFile = OutputDir + 'median_halo_mass_vs_redshift' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
+    plt.close()
 
     # (6) Cumulative reincorporated gas per galaxy vs. redshift (mean and median)
     mean_cum_reinc = []
@@ -1391,5 +1417,236 @@ if __name__ == '__main__':
 
     outputFile = OutputDir + 'F.CGMMassFunction_z' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+# --------------------------------------------------------
+    print('Plotting stellar mass function evolution with redshift bins')
+
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    # Define redshift bins to match the figure
+    z_bins = [
+        (0.2, 0.5), (0.5, 0.8), (0.8, 1.1), (1.1, 1.5), (1.5, 2.0),
+        (2.0, 2.5), (2.5, 3.0), (3.0, 3.5), (3.5, 4.5), (4.5, 5.5),
+        (5.5, 6.5), (6.5, 7.5), (7.5, 8.5), (8.5, 10.0), (10.0, 12.0)
+    ]
+
+    # Define colormap - from dark to light/orange
+    colors = plt.cm.plasma(np.linspace(0.1, 0.9, len(z_bins)))
+
+    # Function to find snapshots within a redshift range
+    def find_snapshots_in_z_range(z_min, z_max, redshifts):
+        """Find snapshot indices within redshift range"""
+        snapshot_indices = []
+        for i, z in enumerate(redshifts):
+            if z_min <= z <= z_max:
+                snapshot_indices.append(i)
+        return snapshot_indices
+
+    # Calculate stellar mass function for each redshift bin
+    for i, (z_min, z_max) in enumerate(z_bins):
+        # Find snapshots in this redshift range
+        snap_indices = find_snapshots_in_z_range(z_min, z_max, redshifts)
+        
+        if len(snap_indices) == 0:
+            continue
+
+        # Use different mass bins for the last 4 redshift bins (highest z)
+        if i >= len(z_bins) - 4:  # Last 4 redshift bins
+            mass_bins = np.arange(8.0, 12.5, 0.1)
+        else:
+            mass_bins = np.arange(7.2, 12.5, 0.1)
+        
+        mass_centers = mass_bins[:-1] + 0.05
+            
+        # Calculate stellar mass function for each snapshot separately
+        phi_snapshots = []
+        bin_width = mass_bins[1] - mass_bins[0]
+        
+        for snap_idx in snap_indices:
+            if snap_idx < len(StellarMassFull):
+                # Apply minimum halo mass filter if desired
+                if 'min_halo_mass' in locals():
+                    w = np.where((StellarMassFull[snap_idx] > 0.0) & 
+                               (HaloMassFull[snap_idx] >= min_halo_mass))[0]
+                else:
+                    w = np.where(StellarMassFull[snap_idx] > 0.0)[0]
+                
+                if len(w) > 0:
+                    masses = np.log10(StellarMassFull[snap_idx][w])
+                    counts, bin_edges = np.histogram(masses, bins=mass_bins)
+                    phi_snap = counts / (volume * bin_width)
+                    phi_snapshots.append(phi_snap)
+        
+        if len(phi_snapshots) == 0:
+            continue
+            
+        # Convert to numpy array for easier manipulation
+        phi_snapshots = np.array(phi_snapshots)
+        
+        # Calculate mean and 1-sigma error (standard error of the mean)
+        phi = np.mean(phi_snapshots, axis=0)
+        phi_err = np.std(phi_snapshots, axis=0) / np.sqrt(len(phi_snapshots))
+        
+        # Only plot where we have data
+        valid = (phi > 0) & (phi_err > 0)
+        if not np.any(valid):
+            continue
+            
+        # Plot the main curve
+        label = f'{z_min:.1f} < z < {z_max:.1f}'
+        ax.plot(mass_centers[valid], phi[valid], 
+                color=colors[i], linewidth=2, label=label)
+        
+        # Add shaded error region
+        ax.fill_between(mass_centers[valid], 
+                       phi[valid] - phi_err[valid], 
+                       phi[valid] + phi_err[valid],
+                       color=colors[i], alpha=0.3)
+
+    # Set log scale and limits to match the figure and other SMF plots
+    ax.set_yscale('log')
+    ax.set_xlim(7.2, 12.0)
+    ax.set_ylim(1e-6, 1e-1)
+
+    # Labels and formatting
+    ax.set_xlabel(r'$\log_{10} M_* [M_\odot]$', fontsize=14)
+    ax.set_ylabel(r'$\phi$ [Mpc$^{-3}$ dex$^{-1}$]', fontsize=14)
+
+    # Set minor ticks
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+
+    # Create legend
+    leg = ax.legend(loc='lower left', fontsize=10, frameon=False)
+    for text in leg.get_texts():
+        text.set_fontsize(10)
+
+    # Grid
+    # ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    
+    # Save the plot
+    outputFile = OutputDir + 'G.StellarMassFunctionEvolution' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+    print('Plotting stellar mass-halo mass relation evolution')
+
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    # Define redshift bins (same as before)
+    z_bins = [
+        (0.2, 0.5), (0.5, 0.8), (0.8, 1.1), (1.1, 1.5), (1.5, 2.0),
+        (2.0, 2.5), (2.5, 3.0), (3.0, 3.5), (3.5, 4.5), (4.5, 5.5),
+        (5.5, 6.5), (6.5, 7.5), (7.5, 8.5), (8.5, 10.0), (10.0, 12.0)
+    ]
+
+    # Define colormap and line styles
+    colors = plt.cm.plasma(np.linspace(0.1, 0.9, len(z_bins)))
+    line_styles = ['-', ':', '--', '-.'] * 4  # Cycle through line styles
+
+    # Halo mass bins
+    halo_mass_bins = np.arange(10.0, 15.0, 0.1)
+    halo_mass_centers = halo_mass_bins[:-1] + 0.05
+
+    # Function to find snapshots within a redshift range
+    def find_snapshots_in_z_range(z_min, z_max, redshifts):
+        """Find snapshot indices within redshift range"""
+        snapshot_indices = []
+        for i, z in enumerate(redshifts):
+            if z_min <= z <= z_max:
+                snapshot_indices.append(i)
+        return snapshot_indices
+
+    # Calculate SMHM relation for each redshift bin
+    for i, (z_min, z_max) in enumerate(z_bins):
+        # Find snapshots in this redshift range
+        snap_indices = find_snapshots_in_z_range(z_min, z_max, redshifts)
+        
+        if len(snap_indices) == 0:
+            continue
+            
+        # Calculate SMHM relation for each snapshot separately
+        stellar_mass_binned = []
+        
+        for snap_idx in snap_indices:
+            if snap_idx < len(StellarMassFull):
+                # Get valid galaxies (positive stellar and halo masses)
+                w = np.where((StellarMassFull[snap_idx] > 0.0) & 
+                           (HaloMassFull[snap_idx] > 0.0))[0]
+                
+                if len(w) > 0:
+                    stellar_masses = StellarMassFull[snap_idx][w]  # Keep in linear units
+                    halo_masses = np.log10(HaloMassFull[snap_idx][w])
+                    
+                    # Bin by halo mass and calculate mean stellar mass in each bin
+                    stellar_mass_in_bins = np.zeros(len(halo_mass_centers))
+                    stellar_mass_in_bins.fill(np.nan)
+                    
+                    for j, halo_center in enumerate(halo_mass_centers):
+                        bin_mask = (halo_masses >= halo_mass_bins[j]) & (halo_masses < halo_mass_bins[j+1])
+                        if np.sum(bin_mask) > 0:
+                            stellar_mass_in_bins[j] = np.mean(stellar_masses[bin_mask])
+                    
+                    stellar_mass_binned.append(stellar_mass_in_bins)
+        
+        if len(stellar_mass_binned) == 0:
+            continue
+            
+        # Convert to numpy array for easier manipulation
+        stellar_mass_binned = np.array(stellar_mass_binned)
+        
+        # Calculate mean and 1-sigma error across snapshots
+        stellar_mass_mean = np.nanmean(stellar_mass_binned, axis=0)
+        stellar_mass_err = np.nanstd(stellar_mass_binned, axis=0) / np.sqrt(len(stellar_mass_binned))
+        
+        # Only plot where we have valid data
+        valid = ~np.isnan(stellar_mass_mean) & ~np.isnan(stellar_mass_err)
+        if not np.any(valid):
+            continue
+            
+        # Plot the main curve
+        label = f'{z_min:.1f} < z < {z_max:.1f}'
+        ax.plot(halo_mass_centers[valid], stellar_mass_mean[valid], 
+                color=colors[i], linewidth=2, linestyle=line_styles[i], label=label)
+        
+        # Add shaded error region
+        ax.fill_between(halo_mass_centers[valid], 
+                       stellar_mass_mean[valid] - stellar_mass_err[valid], 
+                       stellar_mass_mean[valid] + stellar_mass_err[valid],
+                       color=colors[i], alpha=0.3)
+
+    # Set log scale and limits
+    ax.set_yscale('log')
+    ax.set_xscale('linear')  # x-axis is already log10 halo mass values
+    ax.set_xlim(10.0, 15.0)
+    ax.set_ylim(1e7, 1e12)
+
+    # Labels and formatting
+    ax.set_xlabel(r'$M_{\rm vir}$ [$M_\odot$]', fontsize=14)
+    ax.set_ylabel(r'$M_*$ [$M_\odot$]', fontsize=14)
+
+    # Set minor ticks
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+
+    # Create legend
+    leg = ax.legend(loc='lower right', fontsize=10, frameon=False, ncol=2)
+    for text in leg.get_texts():
+        text.set_fontsize(10)
+
+    # Grid
+    # ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    
+    # Save the plot
+    outputFile = OutputDir + 'H.StellarMassHaloMassRelation' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
     print('Saved file to', outputFile, '\n')
     plt.close()

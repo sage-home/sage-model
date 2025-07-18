@@ -96,12 +96,12 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     stars = strdot * dt;
     // Remove stars from H2 gas
-    if(stars > 0.0) {
-        galaxies[p].H2_gas -= stars;
+    // if(stars > 0.0) {
+    //     galaxies[p].H2_gas -= stars;
         
-        // Recompute gas components after star formation
-        update_gas_components(&galaxies[p], run_params);
-    }
+    //     // Recompute gas components after star formation
+    //     update_gas_components(&galaxies[p], run_params);
+    // }
     if(stars < 0.0) {
         stars = 0.0;
     }

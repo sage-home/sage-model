@@ -2987,7 +2987,7 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
     # =============== MODEL DATA ===============
     
     # Define mass bins for median calculation
-    mass_bins = np.arange(9.0, 12.0, 0.2)
+    mass_bins = np.arange(9.0, 12.0, 0.1)
     mass_centers = mass_bins[:-1] + 0.1
     
     # Process each simulation model
