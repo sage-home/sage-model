@@ -296,7 +296,7 @@ if __name__ == '__main__':
     outputFile = OutputDir + 'reincorporation_fraction_vs_redshift' + OutputFormat
     plt.savefig(outputFile)
     print('Saved file to', outputFile, '\n')
-    plt.close()
+
     # --------------------------------------------------------
     # Plot median halo mass vs. redshift
     print('Plotting median halo mass vs. redshift')
@@ -1535,9 +1535,80 @@ if __name__ == '__main__':
     plt.close()
 
     # --------------------------------------------------------
-    print('Plotting stellar mass-halo mass relation evolution')
+    # SFR as a function of StellarMass across the same redshift bins
+    print('Plotting SFR (SFRDisk + SFRBulge) as a function of StellarMass evolution with redshift bins')
 
     plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    # Use the same z_bins and colors as above
+    # z_bins and colors already defined
+
+    for i, (z_min, z_max) in enumerate(z_bins):
+        snap_indices = find_snapshots_in_z_range(z_min, z_max, redshifts)
+        if len(snap_indices) == 0:
+            continue
+
+        # Use same mass bins as above
+        if i >= len(z_bins) - 4:
+            mass_bins = np.arange(8.0, 12.5, 0.1)
+        else:
+            mass_bins = np.arange(7.2, 12.5, 0.1)
+        mass_centers = mass_bins[:-1] + 0.05
+        bin_width = mass_bins[1] - mass_bins[0]
+
+        sfr_snapshots = []
+        for snap_idx in snap_indices:
+            if snap_idx < len(StellarMassFull):
+                # Only consider galaxies with positive stellar mass and SFR
+                sfr_total = SfrDiskFull[snap_idx] + SfrBulgeFull[snap_idx]
+                w = np.where((StellarMassFull[snap_idx] > 0.0) & (sfr_total > 0.0))[0]
+                if len(w) > 0:
+                    masses = np.log10(StellarMassFull[snap_idx][w])
+                    sfrs = np.log10(sfr_total[w])
+                    # Bin by stellar mass
+                    sfr_bin_means = np.zeros(len(mass_centers))
+                    sfr_bin_means.fill(np.nan)
+                    sfr_bin_stds = np.zeros(len(mass_centers))
+                    sfr_bin_stds.fill(np.nan)
+                    for j in range(len(mass_centers)):
+                        mask = (masses >= mass_bins[j]) & (masses < mass_bins[j+1])
+                        if np.sum(mask) > 0:
+                            sfr_bin_means[j] = np.mean(sfrs[mask])
+                            sfr_bin_stds[j] = np.std(sfrs[mask])
+                    sfr_snapshots.append((sfr_bin_means, sfr_bin_stds))
+        if len(sfr_snapshots) == 0:
+            continue
+        # Stack and compute mean and error
+        sfr_bin_means_stack = np.array([x[0] for x in sfr_snapshots])
+        sfr_bin_stds_stack = np.array([x[1] for x in sfr_snapshots])
+        sfr_mean = np.nanmean(sfr_bin_means_stack, axis=0)
+        sfr_err = np.nanstd(sfr_bin_means_stack, axis=0) / np.sqrt(len(sfr_bin_means_stack))
+        valid = ~np.isnan(sfr_mean) & ~np.isnan(sfr_err)
+        if not np.any(valid):
+            continue
+        label = f'{z_min:.1f} < z < {z_max:.1f}'
+        ax.plot(mass_centers[valid], sfr_mean[valid], color=colors[i], linewidth=2, label=label)
+        ax.fill_between(mass_centers[valid], sfr_mean[valid] - sfr_err[valid], sfr_mean[valid] + sfr_err[valid], color=colors[i], alpha=0.3)
+
+    ax.set_xlim(8.0, 12.2)
+    ax.set_ylim(-4, 3)
+    ax.set_xlabel(r'$\log_{10} M_* [M_\odot]$', fontsize=14)
+    ax.set_ylabel(r'$\log_{{10}}\mathrm{{SFR}}\ [M_\odot/yr]$', fontsize=14)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    leg = ax.legend(loc='lower right', fontsize=10, frameon=False, ncol=3)
+    for text in leg.get_texts():
+        text.set_fontsize(10)
+    plt.tight_layout()
+    outputFile = OutputDir + 'J.SFR.StellarMassFunctionEvolution' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+    print('Plotting stellar mass-halo mass relation evolution')
+
+    plt.figure()
     ax = plt.subplot(111)
 
     # Define redshift bins (same as before)
@@ -1647,6 +1718,233 @@ if __name__ == '__main__':
     
     # Save the plot
     outputFile = OutputDir + 'H.StellarMassHaloMassRelation' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+     # Quenched fraction as a function of StellarMass across the same redshift bins
+    print('Plotting quenched fraction as a function of StellarMass evolution with redshift bins')
+
+    plt.figure()
+    ax = plt.subplot(111)
+
+    for i, (z_min, z_max) in enumerate(z_bins):
+        snap_indices = find_snapshots_in_z_range(z_min, z_max, redshifts)
+        if len(snap_indices) == 0:
+            continue
+
+        if i >= len(z_bins) - 4:
+            mass_bins = np.arange(8.0, 12.5, 0.1)
+        else:
+            mass_bins = np.arange(7.2, 12.5, 0.1)
+        mass_centers = mass_bins[:-1] + 0.05
+
+        quenched_snapshots = []
+        for snap_idx in snap_indices:
+            if snap_idx < len(StellarMassFull):
+                sfr_total = SfrDiskFull[snap_idx] + SfrBulgeFull[snap_idx]
+                stellar_mass = StellarMassFull[snap_idx]
+                # Only consider galaxies with positive stellar mass and SFR
+                w = np.where((stellar_mass > 0.0) & (sfr_total > 0.0))[0]
+                if len(w) > 0:
+                    masses = np.log10(stellar_mass[w])
+                    sSFR = np.log10(sfr_total[w] / stellar_mass[w])
+                    quenched = sSFR < sSFRcut
+                    quenched_frac = np.zeros(len(mass_centers))
+                    quenched_frac.fill(np.nan)
+                    for j in range(len(mass_centers)):
+                        mask = (masses >= mass_bins[j]) & (masses < mass_bins[j+1])
+                        if np.sum(mask) > 0:
+                            quenched_frac[j] = np.sum(quenched[mask]) / np.sum(mask)
+                    quenched_snapshots.append(quenched_frac)
+        if len(quenched_snapshots) == 0:
+            continue
+        quenched_frac_mean = np.nanmean(np.array(quenched_snapshots), axis=0)
+        quenched_frac_err = np.nanstd(np.array(quenched_snapshots), axis=0) / np.sqrt(len(quenched_snapshots))
+        valid = ~np.isnan(quenched_frac_mean) & ~np.isnan(quenched_frac_err)
+        if not np.any(valid):
+            continue
+        label = f'{z_min:.1f} < z < {z_max:.1f}'
+        ax.plot(mass_centers[valid], quenched_frac_mean[valid], color=colors[i], linewidth=2, label=label)
+        ax.fill_between(mass_centers[valid], quenched_frac_mean[valid] - quenched_frac_err[valid], quenched_frac_mean[valid] + quenched_frac_err[valid], color=colors[i], alpha=0.3)
+
+    ax.set_xlim(8.0, 12.2)
+    ax.set_ylim(0, 0.8)
+    ax.set_xlabel(r'$\log_{10} M_* [M_\odot]$', fontsize=14)
+    ax.set_ylabel('Quenched Fraction', fontsize=14)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    leg = ax.legend(loc='upper left', fontsize=10, frameon=False, ncol=3)
+    for text in leg.get_texts():
+        text.set_fontsize(10)
+    plt.tight_layout()
+    outputFile = OutputDir + 'K.QuenchedFraction.StellarMassFunctionEvolution' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+    # Quenched fraction as a function of redshift for fixed stellar mass bins
+    print('Plotting quenched fraction as a function of redshift for fixed stellar mass bins')
+
+    # Define mass bins: (log10(M*) lower, upper, label)
+    fixed_mass_bins = [
+        (8.0, 8.5, r'$10^8-10^{8.5}\ M_\odot$'),
+        (8.5, 9.0, r'$10^{8.5}-10^9\ M_\odot$'),
+        (9.0, 9.5, r'$10^9-10^{9.5}\ M_\odot$'),
+        (9.5, 10.0, r'$10^{9.5}-10^{10}\ M_\odot$'),
+        (10.0, 10.5, r'$10^{10}-10^{10.5}\ M_\odot$'),
+        (10.5, 11.0, r'$10^{10.5}-10^{11}\ M_\odot$'),
+        (11.0, 11.5, r'$10^{11}-10^{11.5}\ M_\odot$'),
+        (11.5, 12.0, r'$10^{11.5}-10^{12}\ M_\odot$'),
+        (12.0, 12.5, r'$10^{12}-10^{12.5}\ M_\odot$')
+    ]
+
+
+    import matplotlib.cm as cm
+    colors_mass = [cm.plasma_r(i / max(1, len(fixed_mass_bins)-1)) for i in range(len(fixed_mass_bins))]
+
+    redshift_vals = []
+    quenched_fractions = [[] for _ in fixed_mass_bins]
+    quenched_errors = [[] for _ in fixed_mass_bins]
+
+    for snap in range(FirstSnap, LastSnap+1):
+        z = redshifts[snap]
+        redshift_vals.append(z)
+        sfr_total = SfrDiskFull[snap] + SfrBulgeFull[snap]
+        stellar_mass = StellarMassFull[snap]
+        # Only consider galaxies with positive stellar mass and SFR
+        w = np.where((stellar_mass > 0.0) & (sfr_total > 0.0))[0]
+        if len(w) == 0:
+            for i in range(len(fixed_mass_bins)):
+                quenched_fractions[i].append(np.nan)
+                quenched_errors[i].append(np.nan)
+            continue
+        masses = np.log10(stellar_mass[w])
+        sSFR = np.log10(sfr_total[w] / stellar_mass[w])
+        quenched = sSFR < sSFRcut
+        for i, (mlow, mhigh, _) in enumerate(fixed_mass_bins):
+            mask = (masses >= mlow) & (masses < mhigh)
+            if np.sum(mask) > 0:
+                frac = np.sum(quenched[mask]) / np.sum(mask)
+                # Binomial error
+                err = np.sqrt(frac * (1 - frac) / np.sum(mask))
+                quenched_fractions[i].append(frac)
+                quenched_errors[i].append(err)
+            else:
+                quenched_fractions[i].append(np.nan)
+                quenched_errors[i].append(np.nan)
+
+    # Convert to arrays and sort by redshift (z=0 left)
+    redshift_vals = np.array(redshift_vals)
+    sort_idx = np.argsort(redshift_vals)[::-1]  # z=0 left
+    redshift_vals = redshift_vals[sort_idx]
+
+    plt.figure()
+    ax = plt.subplot(111)
+
+    for i, (_, _, label) in enumerate(fixed_mass_bins):
+        frac_arr = np.array(quenched_fractions[i])[sort_idx]
+        err_arr = np.array(quenched_errors[i])[sort_idx]
+        ax.plot(redshift_vals, frac_arr, label=label, color=colors_mass[i], linestyle='-')
+        ax.fill_between(redshift_vals, frac_arr - err_arr, frac_arr + err_arr, color=colors_mass[i], alpha=0.3)
+
+    ax.set_xlim(0, 2.2)
+    ax.set_ylim(0, 1.0)
+    ax.set_xlabel('Redshift', fontsize=14)
+    ax.set_ylabel('Quenched Fraction', fontsize=14)
+    ax.legend(loc='upper right', fontsize=12, frameon=False)
+    # ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    outputFile = OutputDir + 'L.QuenchedFraction.RedshiftEvolution' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    ###############################################################
+    # Cold Gas Metallicity (Z) vs StellarMass in redshift bins (median + 1-sigma shading)
+    print('Plotting Cold Gas Metallicity (Z) as a function of StellarMass in redshift bins')
+
+    # Read ColdGas and MetalsColdGas for all snapshots
+    ColdGasFull = [0]*(LastSnap-FirstSnap+1)
+    MetalsColdGasFull = [0]*(LastSnap-FirstSnap+1)
+    for snap in range(FirstSnap, LastSnap+1):
+        Snapshot = 'Snap_' + str(snap)
+        ColdGasFull[snap] = read_hdf(snap_num=Snapshot, param='ColdGas')
+        MetalsColdGasFull[snap] = read_hdf(snap_num=Snapshot, param='MetalsColdGas')
+
+    # Use same z_bins and colors as previous plots
+    z_bins = [
+        (0.2, 0.5), (0.5, 0.8), (0.8, 1.1), (1.1, 1.5), (1.5, 2.0),
+        (2.0, 2.5), (2.5, 3.0), (3.0, 3.5), (3.5, 4.5), (4.5, 5.5),
+        (5.5, 6.5), (6.5, 7.5), (7.5, 8.5), (8.5, 10.0), (10.0, 12.0)
+    ]
+    colors = plt.cm.plasma(np.linspace(0.1, 0.9, len(z_bins)))
+
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    for i, (z_min, z_max) in enumerate(z_bins):
+        # Find snapshots in this redshift range
+        snap_indices = [idx for idx, z in enumerate(redshifts) if z_min <= z <= z_max]
+        if len(snap_indices) == 0:
+            continue
+
+        # Use same mass bins as previous plots
+        if i >= len(z_bins) - 4:
+            mass_bins = np.arange(8.0, 12.5, 0.1)
+        else:
+            mass_bins = np.arange(7.2, 12.5, 0.1)
+        mass_centers = mass_bins[:-1] + 0.05
+
+        # Collect binned medians and 1-sigma for each snapshot
+        medians = []
+        sigmas = []
+        for snap_idx in snap_indices:
+            stellar_mass = StellarMassFull[snap_idx]
+            cold_gas = ColdGasFull[snap_idx]
+            metals_cold_gas = MetalsColdGasFull[snap_idx]
+            w = np.where((stellar_mass > 0.0) & (cold_gas > 0.0) & (metals_cold_gas > 0.0))[0]
+            if len(w) == 0:
+                medians.append([np.nan]*len(mass_centers))
+                sigmas.append([np.nan]*len(mass_centers))
+                continue
+            masses = np.log10(stellar_mass[w])
+            Z = np.log10((metals_cold_gas[w] / cold_gas[w]) / 0.02) + 9.0
+            median_vals = []
+            sigma_vals = []
+            for j in range(len(mass_centers)):
+                mask = (masses >= mass_bins[j]) & (masses < mass_bins[j+1])
+                if np.sum(mask) > 0:
+                    median_vals.append(np.median(Z[mask]))
+                    sigma_vals.append(np.std(Z[mask]))
+                else:
+                    median_vals.append(np.nan)
+                    sigma_vals.append(np.nan)
+            medians.append(median_vals)
+            sigmas.append(sigma_vals)
+        medians = np.array(medians)
+        sigmas = np.array(sigmas)
+        # Median and 1-sigma across snapshots
+        median_curve = np.nanmedian(medians, axis=0)
+        sigma_curve = np.nanstd(medians, axis=0)
+        valid = ~np.isnan(median_curve)
+        label = f'{z_min:.1f} < z < {z_max:.1f}'
+        ax.plot(mass_centers[valid], median_curve[valid], color=colors[i], linewidth=2, label=label)
+        ax.fill_between(mass_centers[valid], median_curve[valid] - sigma_curve[valid], median_curve[valid] + sigma_curve[valid], color=colors[i], alpha=0.3)
+
+    ax.set_xlim(7.2, 12.0)
+    ax.set_xlabel(r'$\log_{{10}} M_* [M_\odot]$', fontsize=14)
+    ax.set_ylabel(r'$Z_\mathrm{{cold\,gas}}$', fontsize=14)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    leg = ax.legend(loc='lower right', fontsize=10, frameon=False, ncol=3)
+    for text in leg.get_texts():
+        text.set_fontsize(10)
+    plt.tight_layout()
+    outputFile = OutputDir + 'M.ColdGasMetallicity_vs_StellarMass' + OutputFormat
     plt.savefig(outputFile, dpi=300, bbox_inches='tight')
     print('Saved file to', outputFile, '\n')
     plt.close()
