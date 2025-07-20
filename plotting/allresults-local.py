@@ -290,7 +290,8 @@ if __name__ == '__main__':
         c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
     )
     cb = plt.colorbar()
-    cb.set_label(r'$\log_{{10}} M_\mathrm{{stars}}\ (M_\odot)$')
+    cb.mappable.set_clim(8, 12)
+    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
     plt.xlabel(r'$\log_{{10}} M_\mathrm{{H2}}\ (M_\odot)$')
     plt.ylabel(r'$\log_{{10}} \mathrm{{SFR}}\ (M_\odot/yr)$')
     # plt.title('H$_2$ Mass vs. SFR')
@@ -320,7 +321,8 @@ if __name__ == '__main__':
         c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
     )
     cb = plt.colorbar()
-    cb.set_label(r'$\log_{{10}} M_\mathrm{{stars}}\ (M_\odot)$')
+    cb.mappable.set_clim(8, 12)
+    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
     plt.xlabel(r'$\log_{{10}} \mathrm{{sSFR}}\ (yr^{{-1}})$')
     plt.ylabel('H$_2$ Fraction')
     # plt.title('H$_2$ Fraction vs. sSFR')
@@ -346,7 +348,8 @@ if __name__ == '__main__':
         c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
     )
     cb = plt.colorbar()
-    cb.set_label(r'$\log_{{10}} M_\mathrm{{stars}}\ (M_\odot)$')
+    cb.mappable.set_clim(8, 12)
+    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
     plt.xlabel(r'$\log_{{10}} M_\mathrm{{H1}}\ (M_\odot)$')
     plt.ylabel(r'$\log_{{10}} \mathrm{{SFR}}\ (M_\odot/yr)$')
     # plt.title('H$_I$ Mass vs. SFR')
@@ -376,7 +379,8 @@ if __name__ == '__main__':
         c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
     )
     cb = plt.colorbar()
-    cb.set_label(r'$\log_{{10}} M_\mathrm{{stars}}\ (M_\odot)$')
+    cb.mappable.set_clim(8, 12)
+    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
     plt.xlabel(r'$\log_{{10}} \mathrm{{sSFR}}\ (yr^{{-1}})$')
     plt.ylabel('H$_I$ Fraction')
     # plt.title('H$_I$ Fraction vs. sSFR')
@@ -2125,8 +2129,8 @@ if __name__ == '__main__':
     plt.plot(np.log10(gas_range), ks_saintonge, 'k-.', linewidth=1.5, alpha=0.5, 
             label='Saintonge+ (2011)', zorder=2)
     
-    plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_2}\ (M_{\odot}/\mathrm{kpc}^2)$')
-    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{kpc}^2)$')
+    plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_2}\ (M_{\odot}/\mathrm{pc}^2)$')
+    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{pc}^2)$')
     # # plt.title('H$_2$ Surface Density vs SFR Surface Density (K-S Law)')
     plt.legend(loc='lower right', fontsize='small', frameon=False)
     plt.xlim(2, 8.5)
@@ -2156,8 +2160,8 @@ if __name__ == '__main__':
     cb = plt.colorbar(sc)
     cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
     
-    plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_I}\ (M_{\odot}/\mathrm{kpc}^2)$')
-    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{kpc}^2)$')
+    plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_I}\ (M_{\odot}/\mathrm{pc}^2)$')
+    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{pc}^2)$')
     # # plt.title('H$_2$ Surface Density vs SFR Surface Density (K-S Law)')
     plt.legend(loc='lower right', fontsize='small', frameon=False)
     # plt.xlim(2, 8.5)

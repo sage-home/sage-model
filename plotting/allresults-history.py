@@ -102,6 +102,7 @@ if __name__ == '__main__':
     BulgeMassFull = [0]*(LastSnap-FirstSnap+1)
     HaloMassFull = [0]*(LastSnap-FirstSnap+1)
     cgmFull = [0]*(LastSnap-FirstSnap+1)
+    TypeFull = [0]*(LastSnap-FirstSnap+1)
 
     for snap in range(FirstSnap,LastSnap+1):
 
@@ -114,6 +115,7 @@ if __name__ == '__main__':
         BulgeMassFull[snap] = read_hdf(snap_num = Snapshot, param = 'BulgeMass') * 1.0e10 / Hubble_h
         HaloMassFull[snap] = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
         cgmFull[snap] = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
+        TypeFull[snap] = read_hdf(snap_num = Snapshot, param = 'Type')
 
     Wright = pd.read_csv('./optim/data/Wright_2018_z1_z2.csv', delimiter='\t', header=None)
 
@@ -1724,8 +1726,8 @@ if __name__ == '__main__':
 
     # --------------------------------------------------------
 
-     # Quenched fraction as a function of StellarMass across the same redshift bins
-    print('Plotting quenched fraction as a function of StellarMass evolution with redshift bins')
+    # Quenched fraction as a function of StellarMass across the same redshift bins (centrals/satellites separated)
+    print('Plotting quenched fraction as a function of StellarMass evolution with redshift bins (centrals/satellites)')
 
     plt.figure()
     ax = plt.subplot(111)
@@ -1741,43 +1743,79 @@ if __name__ == '__main__':
             mass_bins = np.arange(7.2, 12.5, 0.1)
         mass_centers = mass_bins[:-1] + 0.05
 
-        quenched_snapshots = []
+        all_snapshots = []
+        central_snapshots = []
+        satellite_snapshots = []
         for snap_idx in snap_indices:
             if snap_idx < len(StellarMassFull):
                 sfr_total = SfrDiskFull[snap_idx] + SfrBulgeFull[snap_idx]
                 stellar_mass = StellarMassFull[snap_idx]
+                galtype = TypeFull[snap_idx]
                 # Only consider galaxies with positive stellar mass and SFR
                 w = np.where((stellar_mass > 0.0) & (sfr_total > 0.0))[0]
                 if len(w) > 0:
                     masses = np.log10(stellar_mass[w])
                     sSFR = np.log10(sfr_total[w] / stellar_mass[w])
+                    gtype = galtype[w]
+                    # All galaxies
                     quenched = sSFR < sSFRcut
-                    quenched_frac = np.zeros(len(mass_centers))
-                    quenched_frac.fill(np.nan)
+                    all_frac = np.full(len(mass_centers), np.nan)
                     for j in range(len(mass_centers)):
                         mask = (masses >= mass_bins[j]) & (masses < mass_bins[j+1])
                         if np.sum(mask) > 0:
-                            quenched_frac[j] = np.sum(quenched[mask]) / np.sum(mask)
-                    quenched_snapshots.append(quenched_frac)
-        if len(quenched_snapshots) == 0:
+                            all_frac[j] = np.sum(quenched[mask]) / np.sum(mask)
+                    all_snapshots.append(all_frac)
+                    # Centrals
+                    cen_mask = gtype == 0
+                    cen_frac = np.full(len(mass_centers), np.nan)
+                    for j in range(len(mass_centers)):
+                        mask = (masses >= mass_bins[j]) & (masses < mass_bins[j+1]) & cen_mask
+                        if np.sum(mask) > 0:
+                            cen_quenched = quenched[mask]
+                            cen_frac[j] = np.sum(cen_quenched) / np.sum(mask)
+                    central_snapshots.append(cen_frac)
+                    # Satellites
+                    sat_mask = gtype == 1
+                    sat_frac = np.full(len(mass_centers), np.nan)
+                    for j in range(len(mass_centers)):
+                        mask = (masses >= mass_bins[j]) & (masses < mass_bins[j+1]) & sat_mask
+                        if np.sum(mask) > 0:
+                            sat_quenched = quenched[mask]
+                            sat_frac[j] = np.sum(sat_quenched) / np.sum(mask)
+                    satellite_snapshots.append(sat_frac)
+        if len(all_snapshots) == 0:
             continue
-        quenched_frac_mean = np.nanmean(np.array(quenched_snapshots), axis=0)
-        quenched_frac_err = np.nanstd(np.array(quenched_snapshots), axis=0) / np.sqrt(len(quenched_snapshots))
-        valid = ~np.isnan(quenched_frac_mean) & ~np.isnan(quenched_frac_err)
-        if not np.any(valid):
-            continue
+        all_snapshots_arr = np.array(all_snapshots)
+        central_snapshots_arr = np.array(central_snapshots)
+        satellite_snapshots_arr = np.array(satellite_snapshots)
+        all_frac_mean = np.nanmean(all_snapshots_arr, axis=0)
+        cen_frac_mean = np.nanmean(central_snapshots_arr, axis=0)
+        sat_frac_mean = np.nanmean(satellite_snapshots_arr, axis=0)
+        # 1-sigma for centrals
+        cen_frac_std = np.nanstd(central_snapshots_arr, axis=0)
+        valid_all = ~np.isnan(all_frac_mean)
+        valid_cen = ~np.isnan(cen_frac_mean)
+        valid_sat = ~np.isnan(sat_frac_mean)
         label = f'{z_min:.1f} < z < {z_max:.1f}'
-        ax.plot(mass_centers[valid], quenched_frac_mean[valid], color=colors[i], linewidth=2, label=label)
-        ax.fill_between(mass_centers[valid], quenched_frac_mean[valid] - quenched_frac_err[valid], quenched_frac_mean[valid] + quenched_frac_err[valid], color=colors[i], alpha=0.3)
+        # ax.plot(mass_centers[valid_all], all_frac_mean[valid_all], color=colors[i], linewidth=2, label=label+' (All)')
+        # Plot centrals with 1-sigma shading
+        ax.plot(mass_centers[valid_cen], cen_frac_mean[valid_cen], color=colors[i], linestyle='-', linewidth=2, label=label)
+        ax.fill_between(
+            mass_centers[valid_cen],
+            (cen_frac_mean - cen_frac_std)[valid_cen],
+            (cen_frac_mean + cen_frac_std)[valid_cen],
+            color=colors[i], alpha=0.18, linewidth=0)
+        # Plot satellites
+        ax.plot(mass_centers[valid_sat], sat_frac_mean[valid_sat], color=colors[i], linestyle=':', linewidth=2, alpha=0.25)
 
     ax.set_xlim(8.0, 12.2)
     ax.set_ylim(0, 0.8)
     ax.set_xlabel(r'$\log_{10} M_* [M_\odot]$', fontsize=14)
     ax.set_ylabel('Quenched Fraction', fontsize=14)
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
-    leg = ax.legend(loc='upper left', fontsize=10, frameon=False, ncol=3)
+    leg = ax.legend(loc='upper left', fontsize=8, frameon=False, ncol=3)
     for text in leg.get_texts():
-        text.set_fontsize(10)
+        text.set_fontsize(8)
     plt.tight_layout()
     outputFile = OutputDir + 'K.QuenchedFraction.StellarMassFunctionEvolution' + OutputFormat
     plt.savefig(outputFile, dpi=300, bbox_inches='tight')
@@ -1806,35 +1844,65 @@ if __name__ == '__main__':
     colors_mass = [cm.plasma_r(i / max(1, len(fixed_mass_bins)-1)) for i in range(len(fixed_mass_bins))]
 
     redshift_vals = []
-    quenched_fractions = [[] for _ in fixed_mass_bins]
-    quenched_errors = [[] for _ in fixed_mass_bins]
+    quenched_fractions_all = [[] for _ in fixed_mass_bins]
+    quenched_errors_all = [[] for _ in fixed_mass_bins]
+    quenched_fractions_cen = [[] for _ in fixed_mass_bins]
+    quenched_errors_cen = [[] for _ in fixed_mass_bins]
+    quenched_fractions_sat = [[] for _ in fixed_mass_bins]
+    quenched_errors_sat = [[] for _ in fixed_mass_bins]
 
     for snap in range(FirstSnap, LastSnap+1):
         z = redshifts[snap]
         redshift_vals.append(z)
         sfr_total = SfrDiskFull[snap] + SfrBulgeFull[snap]
         stellar_mass = StellarMassFull[snap]
+        galtype = TypeFull[snap]
         # Only consider galaxies with positive stellar mass and SFR
         w = np.where((stellar_mass > 0.0) & (sfr_total > 0.0))[0]
         if len(w) == 0:
             for i in range(len(fixed_mass_bins)):
-                quenched_fractions[i].append(np.nan)
-                quenched_errors[i].append(np.nan)
+                quenched_fractions_all[i].append(np.nan)
+                quenched_errors_all[i].append(np.nan)
+                quenched_fractions_cen[i].append(np.nan)
+                quenched_errors_cen[i].append(np.nan)
+                quenched_fractions_sat[i].append(np.nan)
+                quenched_errors_sat[i].append(np.nan)
             continue
         masses = np.log10(stellar_mass[w])
         sSFR = np.log10(sfr_total[w] / stellar_mass[w])
+        gtype = galtype[w]
         quenched = sSFR < sSFRcut
         for i, (mlow, mhigh, _) in enumerate(fixed_mass_bins):
-            mask = (masses >= mlow) & (masses < mhigh)
-            if np.sum(mask) > 0:
-                frac = np.sum(quenched[mask]) / np.sum(mask)
-                # Binomial error
-                err = np.sqrt(frac * (1 - frac) / np.sum(mask))
-                quenched_fractions[i].append(frac)
-                quenched_errors[i].append(err)
+            # All galaxies
+            mask_all = (masses >= mlow) & (masses < mhigh)
+            if np.sum(mask_all) > 0:
+                frac = np.sum(quenched[mask_all]) / np.sum(mask_all)
+                err = np.sqrt(frac * (1 - frac) / np.sum(mask_all))
+                quenched_fractions_all[i].append(frac)
+                quenched_errors_all[i].append(err)
             else:
-                quenched_fractions[i].append(np.nan)
-                quenched_errors[i].append(np.nan)
+                quenched_fractions_all[i].append(np.nan)
+                quenched_errors_all[i].append(np.nan)
+            # Centrals
+            mask_cen = mask_all & (gtype == 0)
+            if np.sum(mask_cen) > 0:
+                frac_cen = np.sum(quenched[mask_cen]) / np.sum(mask_cen)
+                err_cen = np.sqrt(frac_cen * (1 - frac_cen) / np.sum(mask_cen))
+                quenched_fractions_cen[i].append(frac_cen)
+                quenched_errors_cen[i].append(err_cen)
+            else:
+                quenched_fractions_cen[i].append(np.nan)
+                quenched_errors_cen[i].append(np.nan)
+            # Satellites
+            mask_sat = mask_all & (gtype == 1)
+            if np.sum(mask_sat) > 0:
+                frac_sat = np.sum(quenched[mask_sat]) / np.sum(mask_sat)
+                err_sat = np.sqrt(frac_sat * (1 - frac_sat) / np.sum(mask_sat))
+                quenched_fractions_sat[i].append(frac_sat)
+                quenched_errors_sat[i].append(err_sat)
+            else:
+                quenched_fractions_sat[i].append(np.nan)
+                quenched_errors_sat[i].append(np.nan)
 
     # Convert to arrays and sort by redshift (z=0 left)
     redshift_vals = np.array(redshift_vals)
@@ -1845,16 +1913,27 @@ if __name__ == '__main__':
     ax = plt.subplot(111)
 
     for i, (_, _, label) in enumerate(fixed_mass_bins):
-        frac_arr = np.array(quenched_fractions[i])[sort_idx]
-        err_arr = np.array(quenched_errors[i])[sort_idx]
-        ax.plot(redshift_vals, frac_arr, label=label, color=colors_mass[i], linestyle='-')
-        ax.fill_between(redshift_vals, frac_arr - err_arr, frac_arr + err_arr, color=colors_mass[i], alpha=0.3)
+        # All galaxies
+        # frac_arr_all = np.array(quenched_fractions_all[i])[sort_idx]
+        # err_arr_all = np.array(quenched_errors_all[i])[sort_idx]
+        # ax.plot(redshift_vals, frac_arr_all, label=label+' (All)', color=colors_mass[i], linestyle='-')
+        # ax.fill_between(redshift_vals, frac_arr_all - err_arr_all, frac_arr_all + err_arr_all, color=colors_mass[i], alpha=0.2)
+        # Centrals
+        frac_arr_cen = np.array(quenched_fractions_cen[i])[sort_idx]
+        err_arr_cen = np.array(quenched_errors_cen[i])[sort_idx]
+        ax.plot(redshift_vals, frac_arr_cen, label=label, color=colors_mass[i], linestyle='-')
+        ax.fill_between(redshift_vals, frac_arr_cen - err_arr_cen, frac_arr_cen + err_arr_cen, color=colors_mass[i], alpha=0.2)
+        # Satellites
+        frac_arr_sat = np.array(quenched_fractions_sat[i])[sort_idx]
+        err_arr_sat = np.array(quenched_errors_sat[i])[sort_idx]
+        ax.plot(redshift_vals, frac_arr_sat, color=colors_mass[i], linestyle=':', alpha=0.25)
+        # ax.fill_between(redshift_vals, frac_arr_sat - err_arr_sat, frac_arr_sat + err_arr_sat, color=colors_mass[i], alpha=0.04)
 
     ax.set_xlim(0, 2.2)
     ax.set_ylim(0, 1.0)
     ax.set_xlabel('Redshift', fontsize=14)
     ax.set_ylabel('Quenched Fraction', fontsize=14)
-    ax.legend(loc='upper right', fontsize=12, frameon=False)
+    ax.legend(loc='upper right', fontsize=10, frameon=False, ncol=3)
     # ax.grid(True, alpha=0.3)
     plt.tight_layout()
     outputFile = OutputDir + 'L.QuenchedFraction.RedshiftEvolution' + OutputFormat

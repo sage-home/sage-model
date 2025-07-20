@@ -37,7 +37,7 @@ def create_pdf(images, output_pdf, images_per_page=6):
 
     # A4 size at 300 DPI
     page_width, page_height = 2480, 3508
-    margin = 100
+    margin = 10
     cols, rows = 2, 3
 
     available_width = page_width - (2 * margin)
