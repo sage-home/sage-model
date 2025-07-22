@@ -96,7 +96,21 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
 
 }
 
+double get_hubble_time(const double z, const struct params *run_params)
+{
+    // H(z) = H_0 * sqrt(Omega_m * (1+z)^3 + Omega_Lambda)
+    const double zplus1 = 1.0 + z;
+    const double hubble_z = run_params->Hubble * sqrt(run_params->Omega * zplus1 * zplus1 * zplus1 + 
+                                                      run_params->OmegaLambda);
+    
+    // Hubble time = 1/H(z)
+    return 1.0 / hubble_z;
+}
 
+double dmin(const double x, const double y)
+{
+    return (x < y) ? x : y;
+}
 
 double get_disk_radius(const int halonr, const int p, const struct halo_data *halos, const struct GALAXY *galaxies)
 {

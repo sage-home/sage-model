@@ -52,7 +52,7 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
 }
 
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
-                                struct GALAXY *galaxies, const struct params *run_params)
+                                struct GALAXY *galaxies, const struct params *run_params, const int nsteps)
 {
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
 
@@ -202,10 +202,14 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         ejected_mass = 0.0;
     }
 
+    // Map adaptive step to fixed array index:
+    int array_step = (step * STEPS) / nsteps;
+    if(array_step >= STEPS) array_step = STEPS - 1;
+
     // update the star formation rate
-    galaxies[p].SfrDisk[step] += stars / dt;
-    galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
-    galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
+    galaxies[p].SfrDisk[array_step] += stars / dt;
+    galaxies[p].SfrDiskColdGas[array_step] = galaxies[p].ColdGas;
+    galaxies[p].SfrDiskColdGasMetals[array_step] = galaxies[p].MetalsColdGas;
 
     // update for star formation
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);

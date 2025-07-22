@@ -2987,7 +2987,7 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
     # =============== MODEL DATA ===============
     
     # Define mass bins for median calculation
-    mass_bins = np.arange(9.0, 12.0, 0.1)
+    mass_bins = np.arange(8.0, 12.5, 0.1)
     mass_centers = mass_bins[:-1] + 0.1
     
     # Process each simulation model
@@ -3124,7 +3124,7 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
     ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
     
     # Set axis limits
-    ax.set_xlim(9.0, 12.0)
+    ax.set_xlim(8.0, 12.5)
     ax.set_ylim(0.0, 1.0)
     
     # Set minor ticks with standardized styling
@@ -3429,7 +3429,7 @@ if __name__ == '__main__':
     
     # plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
     plot_h2_fraction_vs_stellar_mass(GAS_SimConfigs, Snapshot, OutputDir)
-    plot_h2_fraction_vs_stellar_mass_with_selection(GAS_SimConfigs, Snapshot, OutputDir)
+    # plot_h2_fraction_vs_stellar_mass_with_selection(GAS_SimConfigs, Snapshot, OutputDir)
 
     # Add this line to your main execution section after the other plotting calls:
     plot_bh_bulge_mass_relation(SMF_SimConfigs, Snapshot, OutputDir)

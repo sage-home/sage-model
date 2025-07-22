@@ -1451,7 +1451,7 @@ if __name__ == '__main__':
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
     plt.axis([11.1, 15.0, 0.0, 0.2])
 
-    leg = plt.legend(loc='upper right', numpoints=1, labelspacing=0.1, bbox_to_anchor=(1.0, 0.95))
+    leg = plt.legend(loc='upper right', numpoints=1, labelspacing=0.1, bbox_to_anchor=(1.0, 0.5))
     leg.draw_frame(False)
     for t in leg.get_texts():
         t.set_fontsize('medium')
@@ -2143,10 +2143,10 @@ if __name__ == '__main__':
 
     # -------------------------------------------------------
 
-    print('Plotting H2 surface density vs SFR surface density')
+    print('Plotting H1 surface density vs SFR surface density')
 
     plt.figure()  # New figure
-    # Σ_H2 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
+    # Σ_H1 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
     
     w = np.where((Mvir > 0.0) & (ColdGas > 0.0) & (SFR > 0.0))[0]
     if(len(w) > dilute): w = sample(list(w), dilute)
@@ -2164,10 +2164,73 @@ if __name__ == '__main__':
     plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{pc}^2)$')
     # # plt.title('H$_2$ Surface Density vs SFR Surface Density (K-S Law)')
     plt.legend(loc='lower right', fontsize='small', frameon=False)
-    # plt.xlim(2, 8.5)
-    # plt.ylim(-1.5, 6)
+    plt.xlim(2, 8.5)
+    plt.ylim(-1.5, 6)
     # plt.grid(True, alpha=0.3)
     outputFile = OutputDir + '32.h1_vs_sfr_surface_density' + OutputFormat
+    plt.savefig(outputFile)  # Save the figure
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting gas surface density vs SFR surface density')
+
+    plt.figure()  # New figure
+    # Σ_H2 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
+    
+    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (SFR > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    sigma_h2 = H2Gas[w] / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
+    sigma_h1 = H1Gas[w] / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
+    sigma_gas = sigma_h2 + sigma_h1 / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # Total gas surface density
+    sigma_SFR = SFR[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
+    log10_sigma_gas = np.log10(sigma_gas)
+    log10_sigma_h2 = np.log10(sigma_h2)
+    log10_sigma_h1 = np.log10(sigma_h1)
+    log10_sigma_SFR = np.log10(sigma_SFR)
+    # Color by Mvir (virial mass)
+    sc = plt.scatter(log10_sigma_gas, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE 2.0')
+    # sc1 = plt.scatter(log10_sigma_h1, log10_sigma_SFR, c='r', alpha=0.6, s=5, label='SAGE 2.0')
+    # sc2 = plt.scatter(log10_sigma_h2, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE 2.0')
+    cb = plt.colorbar(sc)
+    cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+
+    gas_range = np.logspace(0, 12.5, 100)
+        
+    # Bigiel et al. (2008) - resolved regions in nearby galaxies
+    # Σ_SFR = 1.6e-3 × (Σ_H2)^1.0
+    ks_bigiel = np.log10(1.6e-3) + 1.0 * np.log10(gas_range)
+    plt.plot(np.log10(gas_range), ks_bigiel, 'k:', linewidth=2.5, alpha=0.8, 
+            label='Bigiel+ (2008) - resolved', zorder=2)
+    
+    # Schruba et al. (2011) - different normalization
+    # Σ_SFR = 2.1e-3 × (Σ_H2)^1.0
+    ks_schruba = np.log10(2.1e-3) + 1.0 * np.log10(gas_range)
+    plt.plot(np.log10(gas_range), ks_schruba, 'k--', linewidth=2, alpha=0.6, 
+            label='Schruba+ (2011)', zorder=2)
+            
+    # Leroy et al. (2013) - whole galaxy integrated
+    # Σ_SFR = 1.4e-3 × (Σ_H2)^1.1
+    ks_leroy = np.log10(1.4e-3) + 1.1 * np.log10(gas_range)
+    plt.plot(np.log10(gas_range), ks_leroy, 'k-', linewidth=2, alpha=0.7, 
+            label='Leroy+ (2013) - galaxies', zorder=2)
+            
+    # Saintonge et al. (2011) - COLD GASS survey
+    # Σ_SFR = 1.0e-3 × (Σ_H2)^0.96
+    ks_saintonge = np.log10(1.0e-3) + 0.96 * np.log10(gas_range)
+    plt.plot(np.log10(gas_range), ks_saintonge, 'k-.', linewidth=1.5, alpha=0.5, 
+            label='Saintonge+ (2011)', zorder=2)
+
+    plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_I\ +\ \mathrm{H}_2}\ (M_{\odot}/\mathrm{pc}^2)$')
+    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{pc}^2)$')
+    # # plt.title('H$_2$ Surface Density vs SFR Surface Density (K-S Law)')
+    plt.legend(loc='lower right', fontsize='small', frameon=False)
+    plt.xlim(2, 8.5)
+    plt.ylim(-1.5, 6)
+    # plt.grid(True, alpha=0.3)
+    outputFile = OutputDir + '32.h1andh2_vs_sfr_surface_density' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()

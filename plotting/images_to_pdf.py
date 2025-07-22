@@ -96,7 +96,7 @@ def create_pdf(images, output_pdf, images_per_page=6):
 
 def main():
     folders = [
-        "/Users/mbradley/Downloads/plots"
+        "/Users/mbradley/Downloads/millennium_plots"
     ]
     output_pdf = "./output/millennium_big.pdf"
 
