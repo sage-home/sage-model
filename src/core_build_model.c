@@ -338,7 +338,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
     // Start with default 10 steps
     const double default_dt = deltaT / STEPS;  // STEPS = 10
-    const double max_allowed_dt = 0.004 * hubble_time;  // 0.2% of Hubble time
+    const double max_allowed_dt = 0.005 * hubble_time;  // 0.5% of Hubble time
     // double fraction = 0.02 + 0.08 / (1.0 + Zcurr);  // 2% at z=10, 10% at z=0
     // const double max_allowed_dt = fraction * hubble_time;
 
