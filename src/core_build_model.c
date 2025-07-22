@@ -20,6 +20,8 @@
 #include "model_starformation_and_feedback.h"
 #include "model_cooling_heating.h"
 
+static long debug_galaxy_counter = 0;
+
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
                            struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
@@ -319,19 +321,39 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
       MS: Note save halo_snapnum and galaxy_snapnum to local variables
           and replace all instances of snapnum to those local variables
      */
+    debug_galaxy_counter++;
+    // const int halo_snapnum = halos[halonr].SnapNum;
+    // const double Zcurr = run_params->ZZ[halo_snapnum];
+    // const double halo_age = run_params->Age[halo_snapnum];
+    // const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
     const int halo_snapnum = halos[halonr].SnapNum;
     const double Zcurr = run_params->ZZ[halo_snapnum];
     const double halo_age = run_params->Age[halo_snapnum];
     const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
+    // ADAPTIVE TIMESTEP: Default to 10, but use more if Hubble time requires it
     const double hubble_time = get_hubble_time(Zcurr, run_params);
-    const double max_dt = 0.1 * hubble_time;  // 10% of Hubble time as max timestep
-
     const double deltaT = run_params->Age[galaxies[0].SnapNum] - halo_age;
-    const double desired_dt = dmin(deltaT / STEPS, max_dt);
-    const int nsteps = (int)ceil(deltaT / desired_dt);
-    const double actual_dt = deltaT / nsteps;
+
+    // Start with default 10 steps
+    const double default_dt = deltaT / STEPS;  // STEPS = 10
+    const double max_allowed_dt = 0.004 * hubble_time;  // 0.2% of Hubble time
+    // double fraction = 0.02 + 0.08 / (1.0 + Zcurr);  // 2% at z=10, 10% at z=0
+    // const double max_allowed_dt = fraction * hubble_time;
+
+    int nsteps;
+    double actual_dt;
+
+    if (default_dt <= max_allowed_dt) {
+        // Default timestep is fine - use 10 steps like original
+        nsteps = STEPS;
+        actual_dt = default_dt;
+    } else {
+        // Default timestep too large - need more steps at high-z
+        nsteps = (int)ceil(deltaT / max_allowed_dt);
+        actual_dt = deltaT / nsteps;
+    }
 
 
     // We integrate things forward by using a number of intervals equal to nsteps
@@ -408,6 +430,25 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                             double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * actual_dt;
                             deal_with_galaxy_merger(p, merger_centralgal, centralgal, time, actual_dt, halonr, step, galaxies, run_params);
                         }
+                    }
+
+                    if (debug_galaxy_counter % 500 == 0) {
+                        printf("=== SAGE DEBUG [Galaxy #%ld] ===\n", debug_galaxy_counter);
+                        printf("  Redshift z = %.3f\n", Zcurr);
+                        printf("  Hubble time = %.6e Myr/h\n", hubble_time);
+                        printf("  Max allowed dt = %.6e Myr/h (10%% of H_time)\n", max_allowed_dt);
+                        printf("  Snapshot deltaT = %.6e Myr/h\n", deltaT);
+                        printf("  Default dt = %.6e Myr/h (deltaT/%d)\n", default_dt, STEPS);
+                        printf("  Adaptive nsteps = %d (default=%d)\n", nsteps, STEPS);
+                        printf("  Actual dt = %.6e Myr/h\n", actual_dt);
+                        if (nsteps == STEPS) {
+                            printf("  STATUS: Using default steps (dt small enough)\n");
+                        } else {
+                            printf("  STATUS: HIGH-Z override - using %d steps (dt too large)\n", nsteps);
+                        }
+                        printf("  Speedup factor = %.2f (vs original)\n", actual_dt / default_dt);
+                        printf("=============================\n");
+                        fflush(stdout);
                     }
                 }
 
