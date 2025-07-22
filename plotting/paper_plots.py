@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/millennium_gd14/'
+DirName = './output/millennium_FIRE/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 OutputDir = DirName + 'plots/'

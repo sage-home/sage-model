@@ -3011,7 +3011,7 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
             logger.info(f'  Total galaxies: {len(StellarMass)}')
             
             # Apply selection criteria: central galaxies with stellar mass > 1e9
-            w = np.where((Type == 0) & (StellarMass > 1.0e8))[0]
+            w = np.where((Type == 0) & (StellarMass > 0))[0]
             logger.info(f'  Galaxies passing selection: {len(w)}')
             
             if len(w) == 0:
@@ -3040,7 +3040,7 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
             
             for j in range(len(mass_bins)-1):
                 mask = (mass >= mass_bins[j]) & (mass < mass_bins[j+1])
-                if np.sum(mask) >= 5:  # Require at least 5 galaxies per bin
+                if np.sum(mask) >= 1:  # Require at least 5 galaxies per bin
                     bin_bf = bulge_fraction[mask]
                     n_gal = len(bin_bf)
                     median_bf.append(np.median(bin_bf))
