@@ -237,6 +237,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->MassLoadingOn);
     ParamID[NParam++] = INT;
 
+    strncpy(ParamTag[NParam], "DynamicalTimeResolutionFactor", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->DynamicalTimeResolutionFactor);
+    ParamID[NParam++] = INT;
+
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;

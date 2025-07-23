@@ -52,6 +52,8 @@ ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingOn         1   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
 
+DynamicalTimeResolutionFactor    2
+
 %------------------------------------------
 %----- SAGE model parameters --------------
 %------------------------------------------

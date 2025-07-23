@@ -322,35 +322,82 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
           and replace all instances of snapnum to those local variables
      */
     debug_galaxy_counter++;
-    // const int halo_snapnum = halos[halonr].SnapNum;
-    // const double Zcurr = run_params->ZZ[halo_snapnum];
-    // const double halo_age = run_params->Age[halo_snapnum];
-    // const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
     const int halo_snapnum = halos[halonr].SnapNum;
     const double Zcurr = run_params->ZZ[halo_snapnum];
     const double halo_age = run_params->Age[halo_snapnum];
     const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
-    // ADAPTIVE TIMESTEP: Default to 10, but use more if Hubble time requires it
-    const double hubble_time = get_hubble_time(Zcurr, run_params);
+    // ADAPTIVE TIMESTEP: Use dynamical time constraint
+    const double Rvir = galaxies[centralgal].Rvir;
+    const double Vvir = galaxies[centralgal].Vvir;
     const double deltaT = run_params->Age[galaxies[0].SnapNum] - halo_age;
-
-    // Start with default 10 steps
-    const double default_dt = deltaT / STEPS;  // STEPS = 10
-    const double max_allowed_dt = 0.01 * hubble_time;  // 1% of Hubble time
 
     int nsteps;
     double actual_dt;
 
-    if (default_dt <= max_allowed_dt) {
-        // Default timestep is fine - use 10 steps like original
-        nsteps = STEPS;
-        actual_dt = default_dt;
-    } else {
-        // Default timestep too large - need more steps at high-z
+    if (Vvir > 0.0 && Rvir > 0.0) {
+        // Calculate dynamical time: t_dyn = 0.1 * R_vir / V_vir
+        const double t_dyn = 0.1 * Rvir / Vvir;
+        
+        // Target: no time step should be longer than t_dyn/N
+        // where N is the resolution factor (5, 10, 20, etc.)
+        const int resolution_factor = run_params->DynamicalTimeResolutionFactor;  // 10 steps per dynamical time
+        
+        // Maximum allowed time step
+        const double max_allowed_dt = t_dyn / resolution_factor;
+        
+        // Calculate required number of steps
         nsteps = (int)ceil(deltaT / max_allowed_dt);
+        
+        // Ensure we have at least the default number of steps
+        if (nsteps < STEPS) {
+            nsteps = STEPS;
+        }
+        
+        // Cap at reasonable maximum (should naturally be ~10-30 for most cases)
+        const int max_steps = 30;
+        if (nsteps > max_steps) {
+            nsteps = max_steps;
+        }
+        
         actual_dt = deltaT / nsteps;
+        
+        // Debug output
+        if (debug_galaxy_counter % 50000 == 0) {
+            printf("=== SAGE DEBUG [Galaxy #%ld] ===\n", debug_galaxy_counter);
+            printf("  Redshift z = %.3f\n", Zcurr);
+            printf("  R_vir = %.3e, V_vir = %.3e\n", Rvir, Vvir);
+            printf("  Dynamical time = %.6e Myr/h\n", t_dyn);
+            printf("  Max allowed dt = %.6e Myr/h (t_dyn/%d)\n", max_allowed_dt, resolution_factor);
+            printf("  Snapshot deltaT = %.6e Myr/h\n", deltaT);
+            printf("  Number of dyn times in interval = %.3f\n", deltaT / t_dyn);
+            printf("  Adaptive nsteps = %d (default=%d)\n", nsteps, STEPS);
+            printf("  Actual dt = %.6e Myr/h\n", actual_dt);
+            if (nsteps == STEPS) {
+                printf("  STATUS: Using default steps (dyn time allows it)\n");
+            } else {
+                printf("  STATUS: Dynamical time constraint - using %d steps\n", nsteps);
+            }
+            printf("  Resolution: %.2f timesteps per dynamical time\n", t_dyn / actual_dt);
+            printf("  Time step safety: actual_dt/t_dyn = %.3f\n", actual_dt / t_dyn);
+            printf("=============================\n");
+            fflush(stdout);
+        }
+        
+    } else {
+        // Fallback to default if Vvir or Rvir are invalid
+        nsteps = STEPS;
+        actual_dt = deltaT / STEPS;
+        
+        if (debug_galaxy_counter % 50000 == 0) {
+            printf("=== SAGE DEBUG [Galaxy #%ld] ===\n", debug_galaxy_counter);
+            printf("  WARNING: Invalid Rvir=%.3e or Vvir=%.3e, using default steps\n", Rvir, Vvir);
+            printf("  Redshift z = %.3f\n", Zcurr);
+            printf("  Using default nsteps = %d\n", STEPS);
+            printf("=============================\n");
+            fflush(stdout);
+        }
     }
 
 

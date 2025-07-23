@@ -244,6 +244,17 @@ GAS_SimConfigs = [
         'VolumeFraction': 1.0,
         'linewidth': 3,
         'alpha': 0.9
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
+        'label': 'Broken Model', 
+        'color': 'blue', 
+        'linestyle': '-',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
     }
 ]
 
@@ -1973,6 +1984,277 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
     
     logger.info('H2 fraction vs stellar mass analysis complete')
 
+def plot_h1_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
+    """Plot H1 fraction vs halo mass with both HI_Gas and HI_Gas_broken"""
+    logger.info('=== H1 Fraction vs Halo Mass Analysis ===')
+    
+    # Create standardized figure
+    fig, ax = create_figure()
+    
+    # Lists to collect legend handles and labels
+    obs_handles = []
+    obs_labels = []
+    model_handles = []
+    model_labels = []
+
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        linestyle = sim_config['linestyle']
+        linewidth = sim_config.get('linewidth', 2)
+        alpha = sim_config.get('alpha', 0.8)
+        hubble_h = sim_config['Hubble_h']
+        
+        logger.info(f'Processing {label} for H1 fraction analysis...')
+        
+        try:
+            # Read required galaxy properties
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2_gas', directory=directory) * 1.0e10 / hubble_h
+            HI_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='HI_gas', directory=directory) * 1.0e10 / hubble_h
+            HI_Gas_broken = read_hdf_ultra_optimized(snap_num=snapshot, param='H1_gas', directory=directory) * 1.0e10 / hubble_h
+            ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
+            SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
+            SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            Mvir = read_hdf_ultra_optimized(snap_num=snapshot, param='Mvir', directory=directory) * 1.0e10 / hubble_h
+            
+            logger.info(f'  Total galaxies: {len(StellarMass)}')
+            
+            # Debug: Check data ranges safely
+            logger.info(f'  StellarMass range: {np.min(StellarMass[StellarMass > 0]):.2e} - {np.max(StellarMass):.2e}')
+            logger.info(f'  Mvir range: {np.min(Mvir[Mvir > 0]):.2e} - {np.max(Mvir):.2e}')
+            
+            # Check HI_Gas data
+            hi_gas_positive = HI_Gas[HI_Gas > 0]
+            if len(hi_gas_positive) > 0:
+                logger.info(f'  HI_Gas range: {np.min(hi_gas_positive):.2e} - {np.max(hi_gas_positive):.2e}')
+                logger.info(f'  HI_Gas positive count: {len(hi_gas_positive)}/{len(HI_Gas)}')
+            else:
+                logger.info(f'  HI_Gas: NO POSITIVE VALUES (all ≤ 0)')
+            
+            # Check HI_Gas_broken data
+            hi_gas_broken_positive = HI_Gas_broken[HI_Gas_broken > 0]
+            if len(hi_gas_broken_positive) > 0:
+                logger.info(f'  HI_Gas_broken range: {np.min(hi_gas_broken_positive):.2e} - {np.max(hi_gas_broken_positive):.2e}')
+                logger.info(f'  HI_Gas_broken positive count: {len(hi_gas_broken_positive)}/{len(HI_Gas_broken)}')
+            else:
+                logger.info(f'  HI_Gas_broken: NO POSITIVE VALUES (all ≤ 0)')
+            
+            logger.info(f'  Log Mvir range: {np.min(np.log10(Mvir[Mvir > 0])):.2f} - {np.max(np.log10(Mvir[Mvir > 0])):.2f}')
+            
+            # More lenient selection criteria - start with basic requirements
+            w1 = np.where((Mvir > 0) & (StellarMass > 0))[0]
+            logger.info(f'  Galaxies with valid Mvir and StellarMass: {len(w1)}')
+            
+            # Check if arrays are properly shaped before using in logical operations
+            w_hi = np.array([], dtype=int)  # Default empty with proper dtype
+            w_hi_broken = np.array([], dtype=int)  # Default empty with proper dtype
+            
+            # Handle HI_Gas safely
+            if len(HI_Gas) == len(Mvir) and len(HI_Gas) > 0:
+                w2 = np.where((Mvir > 0) & (StellarMass > 0) & (HI_Gas > 0))[0]
+                logger.info(f'  Galaxies with valid Mvir, StellarMass, and HI_Gas: {len(w2)}')
+                w_hi = w2
+            else:
+                logger.info(f'  HI_Gas array incompatible: shape {HI_Gas.shape} vs expected {Mvir.shape}')
+            
+            # Handle HI_Gas_broken safely  
+            if len(HI_Gas_broken) == len(Mvir) and len(HI_Gas_broken) > 0:
+                w3 = np.where((Mvir > 0) & (StellarMass > 0) & (HI_Gas_broken > 0))[0]
+                logger.info(f'  Galaxies with valid Mvir, StellarMass, and HI_Gas_broken: {len(w3)}')
+                w_hi_broken = w3
+            else:
+                logger.info(f'  HI_Gas_broken array incompatible: shape {HI_Gas_broken.shape} vs expected {Mvir.shape}')
+
+            if len(w_hi) == 0 and len(w_hi_broken) == 0:
+                logger.warning(f'  No valid galaxies for {label}')
+                continue
+            
+            logger.info(f'  Valid galaxies for HI_Gas: {len(w_hi)}')
+            logger.info(f'  Valid galaxies for HI_Gas_broken: {len(w_hi_broken)}')
+            
+            # Adjust mass bins based on actual data range
+            min_mass, max_mass = 10.0, 15.0  # Default values
+            
+            if len(w_hi) > 0:
+                log_halo_mass_hi = np.log10(Mvir[w_hi])
+                min_mass = np.floor(np.min(log_halo_mass_hi) * 2) / 2  # Round down to nearest 0.5
+                max_mass = np.ceil(np.max(log_halo_mass_hi) * 2) / 2   # Round up to nearest 0.5
+                logger.info(f'  HI_Gas mass range: {np.min(log_halo_mass_hi):.2f} - {np.max(log_halo_mass_hi):.2f}')
+            
+            if len(w_hi_broken) > 0:
+                log_halo_mass_broken = np.log10(Mvir[w_hi_broken])
+                if len(w_hi) == 0:  # Only use broken data for range if HI_Gas is empty
+                    min_mass = np.floor(np.min(log_halo_mass_broken) * 2) / 2
+                    max_mass = np.ceil(np.max(log_halo_mass_broken) * 2) / 2
+                else:  # Extend range to include both datasets
+                    min_mass = min(min_mass, np.floor(np.min(log_halo_mass_broken) * 2) / 2)
+                    max_mass = max(max_mass, np.ceil(np.max(log_halo_mass_broken) * 2) / 2)
+                logger.info(f'  HI_Gas_broken mass range: {np.min(log_halo_mass_broken):.2f} - {np.max(log_halo_mass_broken):.2f}')
+                
+            logger.info(f'  Using mass range: {min_mass:.1f} - {max_mass:.1f}')
+            
+            # Create bins based on data range
+            mass_bins = np.arange(min_mass, max_mass + 0.125, 0.25)  # Wider bins for better statistics
+            mass_centers = (mass_bins[:-1] + mass_bins[1:]) / 2
+            
+            logger.info(f'  Number of mass bins: {len(mass_bins)-1}')
+
+            # Function to calculate binned statistics
+            def calculate_binned_fraction(indices, hi_data_name):
+                if len(indices) == 0:
+                    return np.array([]), np.array([])
+                    
+                stellar_mass_sel = StellarMass[indices]
+                halo_mass_sel = Mvir[indices]
+                
+                if hi_data_name == 'HI_Gas':
+                    hi_gas_sel = HI_Gas[indices]
+                else:  # HI_Gas_broken
+                    hi_gas_sel = HI_Gas_broken[indices]
+
+                h1_fraction = np.log10(hi_gas_sel / stellar_mass_sel)
+                log_halo_mass = np.log10(halo_mass_sel)
+                
+                # Check for invalid values
+                valid_fraction = np.isfinite(h1_fraction)
+                logger.info(f'    Valid {hi_data_name} fractions: {np.sum(valid_fraction)}/{len(h1_fraction)}')
+                
+                if np.sum(valid_fraction) == 0:
+                    return np.array([]), np.array([])
+                
+                h1_fraction = h1_fraction[valid_fraction]
+                log_halo_mass = log_halo_mass[valid_fraction]
+                
+                logger.info(f'    {hi_data_name} fraction range: {np.min(h1_fraction):.3f} - {np.max(h1_fraction):.3f}')
+                
+                median_fraction = []
+                error_fraction = []
+                
+                for j in range(len(mass_bins)-1):
+                    mask = (log_halo_mass >= mass_bins[j]) & (log_halo_mass < mass_bins[j+1])
+                    n_in_bin = np.sum(mask)
+                    
+                    if n_in_bin >= 3:  # Reduced requirement to 3 galaxies per bin
+                        bin_data = h1_fraction[mask]
+                        median_fraction.append(np.median(bin_data))
+                        error_fraction.append(np.std(bin_data) / np.sqrt(len(bin_data)))
+                        logger.info(f'      Bin {mass_bins[j]:.2f}-{mass_bins[j+1]:.2f}: {n_in_bin} galaxies, median={np.median(bin_data):.3f}')
+                    else:
+                        median_fraction.append(np.nan)
+                        error_fraction.append(np.nan)
+                        if n_in_bin > 0:
+                            logger.info(f'      Bin {mass_bins[j]:.2f}-{mass_bins[j+1]:.2f}: {n_in_bin} galaxies (too few)')
+                
+                return np.array(median_fraction), np.array(error_fraction)
+
+            # Calculate binned statistics for HI_Gas
+            median_h1_frac, error_h1_frac = calculate_binned_fraction(w_hi, 'HI_Gas')
+            
+            # Calculate binned statistics for HI_Gas_broken
+            median_h1_frac_broken, error_h1_frac_broken = calculate_binned_fraction(w_hi_broken, 'HI_Gas_broken')
+            
+            # Plot HI_Gas fraction
+            if len(median_h1_frac) > 0:
+                valid_bins = ~np.isnan(median_h1_frac)
+                if np.any(valid_bins):
+                    mass_centers_valid = mass_centers[valid_bins]
+                    median_h1_frac_valid = median_h1_frac[valid_bins]
+                    error_h1_frac_valid = error_h1_frac[valid_bins]
+                    
+                    logger.info(f'    Plotting HI_Gas with {len(mass_centers_valid)} valid bins')
+                    
+                    # Plot line
+                    if i == 0:  # SAGE 2.0 model - add error bars
+                        model_line = ax.plot(mass_centers_valid, median_h1_frac_valid,
+                            color=color, linewidth=linewidth,
+                            label=f'{label} (HI_Gas)', alpha=alpha, zorder=6)[0]
+
+                        # Shaded error region
+                        ax.fill_between(mass_centers_valid, 
+                                    median_h1_frac_valid - error_h1_frac_valid,
+                                    median_h1_frac_valid + error_h1_frac_valid,
+                                    color=color, alpha=0.2, zorder=5)
+                        
+                        model_handles.append(model_line)
+                    else:  # Other models - regular line
+                        model_line = ax.plot(mass_centers_valid, median_h1_frac_valid, 
+                                        color=color, linestyle=linestyle, linewidth=linewidth,
+                                        label=f'{label} (HI_Gas)', alpha=alpha)[0]
+                        model_handles.append(model_line)
+                    
+                    model_labels.append(f'{label} (HI_Gas)')
+
+            # Plot HI_Gas_broken fraction
+            if len(median_h1_frac_broken) > 0:
+                valid_bins_broken = ~np.isnan(median_h1_frac_broken)
+                if np.any(valid_bins_broken):
+                    mass_centers_valid_broken = mass_centers[valid_bins_broken]
+                    median_h1_frac_broken_valid = median_h1_frac_broken[valid_bins_broken]
+                    error_h1_frac_broken_valid = error_h1_frac_broken[valid_bins_broken]
+                    
+                    logger.info(f'    Plotting HI_Gas_broken with {len(mass_centers_valid_broken)} valid bins')
+                    
+                    # Use dashed line style to distinguish from HI_Gas
+                    broken_linestyle = '--' if linestyle == '-' else ':'
+                    
+                    if i == 0:  # SAGE 2.0 model - add error bars
+                        model_line_broken = ax.plot(mass_centers_valid_broken, median_h1_frac_broken_valid,
+                            color=color, linewidth=linewidth, linestyle=broken_linestyle,
+                            label=f'{label} (HI_Gas_broken)', alpha=alpha, zorder=6)[0]
+
+                        # Shaded error region for broken
+                        ax.fill_between(mass_centers_valid_broken, 
+                                    median_h1_frac_broken_valid - error_h1_frac_broken_valid,
+                                    median_h1_frac_broken_valid + error_h1_frac_broken_valid,
+                                    color=color, alpha=0.15, zorder=4)
+                        
+                        model_handles.append(model_line_broken)
+                    else:  # Other models - regular line
+                        model_line_broken = ax.plot(mass_centers_valid_broken, median_h1_frac_broken_valid, 
+                                        color=color, linestyle=broken_linestyle, linewidth=linewidth,
+                                        label=f'{label} (HI_Gas_broken)', alpha=alpha)[0]
+                        model_handles.append(model_line_broken)
+                    
+                    model_labels.append(f'{label} (HI_Gas_broken)')
+                
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            import traceback
+            logger.error(traceback.format_exc())
+            continue
+    
+    # =============== FORMATTING ===============
+    
+    ax.set_xlim(10.0, 15.0)
+        
+    ax.set_ylim(-3.0, 2.0)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    
+    ax.set_xlabel(r'$\log_{10} M_{vir}\ (M_{\odot})$')
+    ax.set_ylabel(r'$\log_{10} M_{H_I} / M_{\star}$')
+    
+    # Create legends only if we have data
+    if len(obs_handles) > 0:
+        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', fontsize=14, frameon=False)
+        ax.add_artist(obs_legend)
+    
+    if len(model_handles) > 0:
+        model_legend = ax.legend(model_handles, model_labels, loc='upper right', fontsize=12, frameon=False)
+    else:
+        logger.warning('No model data to plot in legend')
+    
+    # Save plot
+    output_filename = output_dir + 'h1_fraction_vs_halo_mass' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    logger.info(f'H1 fraction vs halo mass analysis complete. Plotted {len(model_handles)} data series.')
+
 def plot_h2_fraction_vs_stellar_mass_with_selection(sim_configs, snapshot, output_dir):
     """Plot H2 fraction vs stellar mass showing selection effects"""
     logger.info('=== H2 Fraction vs Stellar Mass with Selection Effects ===')
@@ -2173,6 +2455,8 @@ def plot_h2_fraction_vs_stellar_mass_with_selection(sim_configs, snapshot, outpu
     finalize_plot(fig, output_filename)
     
     logger.info('H2 fraction selection effects analysis complete')
+
+
 
 def plot_h2_detection_statistics(sim_configs, snapshot, output_dir):
     """Additional plot showing detection statistics and selection quantification"""
@@ -3429,6 +3713,7 @@ if __name__ == '__main__':
     
     # plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
     plot_h2_fraction_vs_stellar_mass(GAS_SimConfigs, Snapshot, OutputDir)
+    plot_h1_fraction_vs_halo_mass(GAS_SimConfigs, Snapshot, OutputDir)
     # plot_h2_fraction_vs_stellar_mass_with_selection(GAS_SimConfigs, Snapshot, OutputDir)
 
     # Add this line to your main execution section after the other plotting calls:

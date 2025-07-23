@@ -438,8 +438,9 @@ struct params
     int32_t    AGNrecipeOn;
     int32_t    SupernovaRecipeOn;
     int32_t    ReionizationOn;
-    int32_t   DiskInstabilityOn;
+    int32_t    DiskInstabilityOn;
     int32_t    MassLoadingOn;
+    int32_t    DynamicalTimeResolutionFactor; 
 
     double RecycleFraction;
     double Yield;
