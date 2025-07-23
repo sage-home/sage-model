@@ -338,9 +338,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
     // Start with default 10 steps
     const double default_dt = deltaT / STEPS;  // STEPS = 10
-    const double max_allowed_dt = 0.05 * hubble_time;  // 5% of Hubble time
-    // double fraction = 0.02 + 0.08 / (1.0 + Zcurr);  // 2% at z=10, 10% at z=0
-    // const double max_allowed_dt = fraction * hubble_time;
+    const double max_allowed_dt = 0.01 * hubble_time;  // 1% of Hubble time
 
     int nsteps;
     double actual_dt;
@@ -432,24 +430,24 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                         }
                     }
 
-                    if (debug_galaxy_counter % 500 == 0) {
-                        printf("=== SAGE DEBUG [Galaxy #%ld] ===\n", debug_galaxy_counter);
-                        printf("  Redshift z = %.3f\n", Zcurr);
-                        printf("  Hubble time = %.6e Myr/h\n", hubble_time);
-                        printf("  Max allowed dt = %.6e Myr/h (10%% of H_time)\n", max_allowed_dt);
-                        printf("  Snapshot deltaT = %.6e Myr/h\n", deltaT);
-                        printf("  Default dt = %.6e Myr/h (deltaT/%d)\n", default_dt, STEPS);
-                        printf("  Adaptive nsteps = %d (default=%d)\n", nsteps, STEPS);
-                        printf("  Actual dt = %.6e Myr/h\n", actual_dt);
-                        if (nsteps == STEPS) {
-                            printf("  STATUS: Using default steps (dt small enough)\n");
-                        } else {
-                            printf("  STATUS: HIGH-Z override - using %d steps (dt too large)\n", nsteps);
-                        }
-                        printf("  Speedup factor = %.2f (vs original)\n", actual_dt / default_dt);
-                        printf("=============================\n");
-                        fflush(stdout);
-                    }
+                    // if (debug_galaxy_counter % 500 == 0) {
+                    //     printf("=== SAGE DEBUG [Galaxy #%ld] ===\n", debug_galaxy_counter);
+                    //     printf("  Redshift z = %.3f\n", Zcurr);
+                    //     printf("  Hubble time = %.6e Myr/h\n", hubble_time);
+                    //     printf("  Max allowed dt = %.6e Myr/h (10%% of H_time)\n", max_allowed_dt);
+                    //     printf("  Snapshot deltaT = %.6e Myr/h\n", deltaT);
+                    //     printf("  Default dt = %.6e Myr/h (deltaT/%d)\n", default_dt, STEPS);
+                    //     printf("  Adaptive nsteps = %d (default=%d)\n", nsteps, STEPS);
+                    //     printf("  Actual dt = %.6e Myr/h\n", actual_dt);
+                    //     if (nsteps == STEPS) {
+                    //         printf("  STATUS: Using default steps (dt small enough)\n");
+                    //     } else {
+                    //         printf("  STATUS: HIGH-Z override - using %d steps (dt too large)\n", nsteps);
+                    //     }
+                    //     printf("  Speedup factor = %.2f (vs original)\n", actual_dt / default_dt);
+                    //     printf("=============================\n");
+                    //     fflush(stdout);
+                    // }
                 }
 
             }
