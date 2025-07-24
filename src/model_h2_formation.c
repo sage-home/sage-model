@@ -49,7 +49,7 @@ double calculate_molecular_fraction_GD14(float gas_surface_density, float metall
     
     // Step 2: Calculate u_mw (surface density parameter)  
     // constants::sigma_gas_mw = 10 M☉/pc²
-    const float sigma_gas_mw = 5.0; // M☉/pc² (SHARK's normalization)
+    const float sigma_gas_mw = 2.5; // M☉/pc² (SHARK's normalization)
     float u_mw = gas_surface_density / sigma_gas_mw;
     
     // Step 3: Calculate alpha (variable exponent)
