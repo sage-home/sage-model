@@ -970,6 +970,186 @@ def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
     logger.info('Stellar mass function comparison (3-panel) plot complete')
 
 
+def plot_stellar_halo_mass_relation(sim_configs, snapshot, output_dir):
+    """Plot stellar-halo mass relation comparison with quiescent fraction overlay"""
+    logger.info('=== Stellar-Halo Mass Relation ===')
+    
+    # Create figure
+    fig, ax = create_figure(figsize=(10, 8))
+    
+    # Collect all data for density plot
+    all_log_halo = []
+    all_log_stellar = []
+    all_quiescent = []
+    
+    # Process each simulation (skip C16)
+    for sim_config in sim_configs:
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        hubble_h = sim_config['Hubble_h']
+        
+        # Skip C16 simulation
+        if 'C16' in label:
+            continue
+            
+        logger.info(f'Processing {label}...')
+        
+        try:
+            # Read required galaxy properties
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            Mvir = read_hdf_ultra_optimized(snap_num=snapshot, param='Mvir', directory=directory) * 1.0e10 / hubble_h
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
+            SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
+            
+            # Filter for central galaxies with reasonable masses
+            w = np.where((Type == 0) & (StellarMass > 1e8) & (Mvir > 1e10))[0]
+            
+            if len(w) == 0:
+                logger.warning(f'No suitable galaxies found for {label}')
+                continue
+            
+            stellar_mass = StellarMass[w]
+            halo_mass = Mvir[w]
+            sfr_total = SfrDisk[w] + SfrBulge[w]
+            
+            logger.info(f'  Found {len(w)} central galaxies with M* > 10^8 and Mvir > 10^10')
+            
+            # Convert to log10
+            log_stellar = np.log10(stellar_mass)
+            log_halo = np.log10(halo_mass)
+            
+            # Calculate specific star formation rate (sSFR)
+            sSFR = np.log10(sfr_total / stellar_mass)
+            
+            # Determine quiescent galaxies (sSFR < -11.0)
+            is_quiescent = (sSFR < sSFRcut).astype(float)
+            
+            # Collect ALL data for density plot (before sampling)
+            all_log_halo.extend(log_halo)
+            all_log_stellar.extend(log_stellar)
+            all_quiescent.extend(is_quiescent)
+            
+            # Use ALL galaxies for scatter plot - no sampling
+            # The density overlay will be the main feature anyway
+            logger.info(f'  Using all {len(log_halo)} galaxies for plotting (no sampling)')
+            
+            # Create scatter plot with very small points since we're showing all data
+            ax.scatter(log_halo, log_stellar, c=color, s=0.1, alpha=0.2, 
+                      label=label, rasterized=True)
+            
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            continue
+    
+    # Create density plot overlay based on quiescent fraction
+    if len(all_log_halo) > 0:
+        logger.info('Creating quiescent fraction density overlay...')
+        
+        # Convert to numpy arrays
+        all_log_halo = np.array(all_log_halo)
+        all_log_stellar = np.array(all_log_stellar)
+        all_quiescent = np.array(all_quiescent)
+        
+        # Get actual data range with generous padding
+        halo_min = np.min(all_log_halo)
+        halo_max = np.max(all_log_halo)
+        stellar_min = np.min(all_log_stellar)
+        stellar_max = np.max(all_log_stellar) 
+        
+        logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
+        
+        # Define ULTRA-FINE 2D grid for COMPLETE coverage of ALL data
+        halo_grid = np.arange(halo_min, halo_max + 0.04, 0.04)  # ULTRA-FINE: 0.04 dex spacing
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.04, 0.04)  # ULTRA-FINE: 0.04 dex spacing
+
+        # Create meshgrid for complete coverage
+        halo_mesh, stellar_mesh = np.meshgrid(halo_grid, stellar_grid)
+        quiescent_fraction_grid = np.full_like(halo_mesh, np.nan)
+        
+        # Calculate quiescent fraction for each grid cell with INTERPOLATION for 100% coverage
+        # But only for points that are reasonably close to actual data
+        max_distance = 0.3  # Maximum distance from nearest data point to include in grid
+        
+        for i in range(len(halo_grid) - 1):
+            for j in range(len(stellar_grid) - 1):
+                # Define bin boundaries
+                halo_bin_min, halo_bin_max = halo_grid[i], halo_grid[i + 1]
+                stellar_bin_min, stellar_bin_max = stellar_grid[j], stellar_grid[j + 1]
+                
+                # Get center of this grid cell
+                halo_center = (halo_bin_min + halo_bin_max) / 2
+                stellar_center = (stellar_bin_min + stellar_bin_max) / 2
+                
+                # Calculate distance to nearest data point
+                distances = np.sqrt((all_log_halo - halo_center)**2 + (all_log_stellar - stellar_center)**2)
+                min_distance = np.min(distances)
+                
+                # Only fill grid cells that are close enough to actual data
+                if min_distance <= max_distance:
+                    # Find galaxies in this bin
+                    mask = ((all_log_halo >= halo_bin_min) & (all_log_halo < halo_bin_max) &
+                           (all_log_stellar >= stellar_bin_min) & (all_log_stellar < stellar_bin_max))
+                    
+                    if np.sum(mask) >= 1:  # Include every bin with at least 1 galaxy
+                        quiescent_frac = np.mean(all_quiescent[mask])
+                        quiescent_fraction_grid[j, i] = quiescent_frac
+                    else:
+                        # For empty bins, interpolate from nearest neighbors
+                        # Use the 10 nearest neighbors for interpolation
+                        nearest_indices = np.argsort(distances)[:min(10, len(distances))]
+                        if len(nearest_indices) > 0:
+                            quiescent_frac = np.mean(all_quiescent[nearest_indices])
+                            quiescent_fraction_grid[j, i] = quiescent_frac
+        
+        # Create color map: coolwarm colormap for quiescent fraction
+        cmap = plt.cm.coolwarm
+        
+        # Plot the grid as an image
+        extent = [halo_grid[0], halo_grid[-1], stellar_grid[0], stellar_grid[-1]]
+        im = ax.imshow(quiescent_fraction_grid, extent=extent, origin='lower', 
+                      cmap=cmap, vmin=0, vmax=1, alpha=1.0, aspect='auto', 
+                      interpolation='bilinear', rasterized=True, zorder=5)
+        
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax, pad=0.02, aspect=30)
+        cbar.set_label(r'Quiescent Fraction', fontsize=16, labelpad=15)
+        cbar.ax.tick_params(labelsize=14)
+        
+        # Count valid grid cells
+        valid_cells = np.sum(~np.isnan(quiescent_fraction_grid))
+        total_cells = quiescent_fraction_grid.size
+        logger.info(f'Grid coverage: {valid_cells}/{total_cells} cells ({100*valid_cells/total_cells:.1f}%)')
+        logger.info(f'Grid resolution: {len(halo_grid)}x{len(stellar_grid)} = {total_cells} total cells')
+        
+        # Verify that all galaxies are covered by checking if any fall outside grid bounds
+        galaxies_outside = np.sum((all_log_halo < halo_grid[0]) | (all_log_halo > halo_grid[-1]) |
+                                 (all_log_stellar < stellar_grid[0]) | (all_log_stellar > stellar_grid[-1]))
+        logger.info(f'Galaxies outside grid bounds: {galaxies_outside}/{len(all_log_halo)}')
+        
+        if galaxies_outside > 0:
+            logger.warning(f'Found {galaxies_outside} galaxies outside grid - expanding bounds')
+            # Emergency expansion if needed
+            halo_grid = np.arange(np.min(all_log_halo) - 0.5, np.max(all_log_halo) + 0.5, 0.05)
+            stellar_grid = np.arange(np.min(all_log_stellar) - 0.5, np.max(all_log_stellar) + 0.5, 0.05)
+    
+    # Formatting
+    ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (\mathrm{M}_\odot)$')
+    ax.set_ylabel(r'$\log_{10} M_\star\ (\mathrm{M}_\odot)$')
+    ax.set_xlim(10.0, 15.0)
+    ax.set_ylim(8.0, 12.5)
+    
+    # Legend
+    ax.legend(loc='lower right', fontsize=14, frameon=False)
+    
+    # Save plot
+    output_filename = output_dir + 'stellar_halo_mass_relation' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    logger.info('Stellar-halo mass relation plot complete')
+
+
 # ========================== MAIN EXECUTION ==========================
 
 if __name__ == '__main__':
@@ -1011,6 +1191,9 @@ if __name__ == '__main__':
 
     
     plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
+    
+    # Plot stellar-halo mass relation
+    plot_stellar_halo_mass_relation(SMF_SimConfigs, Snapshot, OutputDir)
 
     logger.info(f'Total execution time: {time.time() - start_time:.2f} seconds')
     logger.info('Analysis complete!')

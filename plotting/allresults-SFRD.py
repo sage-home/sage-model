@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 
 # File details - Define all directories and their labels
 directories = {
-    'FIRE': './output/millennium_FIRE/',
+    'millennium': './output/millennium/',
     '2res': './output/millennium_2res/',
     '3res': './output/millennium_3res/',
     '4res': './output/millennium_4res/',
