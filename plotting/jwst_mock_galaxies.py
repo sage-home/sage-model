@@ -1292,8 +1292,8 @@ def run_cosmos_sage_matching():
     # Perform matching
     matches = matcher.match_galaxies(
         sage_redshifts=sage_redshifts,
-        max_matches=3,      # Find up to 10 matches per COSMOS galaxy
-        mass_tolerance=0.001  # Within 0.001 dex in stellar mass
+        max_matches=2,      # Find up to 2 matches per COSMOS galaxy
+        mass_tolerance=0.5  # Within 0.05 dex in stellar mass
     )
     
     # Validate results
@@ -1348,8 +1348,8 @@ def run_epochs_sage_matching():
     # Perform matching
     matches = matcher.match_galaxies(
         sage_redshifts=sage_redshifts,
-        max_matches=20,      # Find up to 5 matches per EPOCHS galaxy
-        mass_tolerance=0.001  # Within 0.001 dex in stellar mass
+        max_matches=2,      # Find up to 2 matches per EPOCHS galaxy
+        mass_tolerance=0.5  # Within 0.5 dex in stellar mass
     )
     
     # Validate results
@@ -1400,8 +1400,8 @@ def run_ceers_sage_matching():
     print("\n=== MASS-ONLY MATCHING ===")
     matches_mass_only = matcher.match_galaxies(
         sage_redshifts=sage_redshifts,
-        max_matches=10,      # Find up to 10 matches per CEERS galaxy
-        mass_tolerance=0.3,   # Within 0.3 dex in stellar mass
+        max_matches=100,      # Find up to 10 matches per CEERS galaxy
+        mass_tolerance=0.5,   # Within 0.5 dex in stellar mass
         use_ssfr_matching=False
     )
     
@@ -1409,9 +1409,9 @@ def run_ceers_sage_matching():
     print("\n=== COMBINED MASS + sSFR MATCHING ===")
     matches_combined = matcher.match_galaxies(
         sage_redshifts=sage_redshifts,
-        max_matches=10,      # Find up to 10 matches per CEERS galaxy
-        mass_tolerance=0.3,   # Within 0.3 dex in stellar mass
-        ssfr_tolerance=1.0,   # Within 1.0 dex in sSFR (quiescent galaxies can vary)
+        max_matches=100,       # Find up to 10 matches per CEERS galaxy
+        mass_tolerance=0.5,  # Within 1.0 dex in stellar mass
+        ssfr_tolerance=0.5,   # Within 0.5 dex in sSFR (quiescent galaxies can vary)
         use_ssfr_matching=True
     )
     
@@ -2596,9 +2596,8 @@ def create_6panel_tracking_plot(all_evolution, output_dir='./plots/', figsize=(1
     fig, axes = plt.subplots(2, 3, figsize=figsize)
     axes = axes.flatten()
     
-    # Track if we've added legend entries
-    central_legend_added = False
-    satellite_legend_added = False
+    # Track which catalogues we've added legend entries for
+    catalogue_legend_added = set()
     
     for i, panel in enumerate(panels):
         ax = axes[i]
@@ -2629,12 +2628,13 @@ def create_6panel_tracking_plot(all_evolution, output_dir='./plots/', figsize=(1
                     alpha = 0.8 if is_top_6 else 0.1
                     linewidth = 4 if is_top_6 else 2
                     
-                    label = 'Centrals' if not central_legend_added else None
+                    # Add legend entry for this catalogue (only once)
+                    label = cat_name if cat_name not in catalogue_legend_added else None
                     ax.plot(np.array(redshifts)[valid_mask], central_values[valid_mask], 
                            color=color, linewidth=linewidth, linestyle='-', alpha=alpha, label=label)
                     
-                    if not central_legend_added and label:
-                        central_legend_added = True
+                    if label:
+                        catalogue_legend_added.add(cat_name)
             
             # Plot satellites  
             satellite_data = evolution_data['satellites'].get(prop_name, [])
@@ -2648,12 +2648,9 @@ def create_6panel_tracking_plot(all_evolution, output_dir='./plots/', figsize=(1
                     alpha = 0.8 if is_top_6 else 0.1
                     linewidth = 4 if is_top_6 else 2
                     
-                    label = 'Satellites' if not satellite_legend_added else None
+                    # No label for satellites (legend entry already added with centrals)
                     ax.plot(np.array(redshifts)[valid_mask], satellite_values[valid_mask], 
-                           color=color, linewidth=linewidth, linestyle='--', alpha=alpha, label=label)
-                    
-                    if not satellite_legend_added and label:
-                        satellite_legend_added = True
+                           color=color, linewidth=linewidth, linestyle='--', alpha=alpha, label=None)
         
         # Formatting
         ax.set_xlabel('Redshift', fontsize=12)
@@ -2665,18 +2662,103 @@ def create_6panel_tracking_plot(all_evolution, output_dir='./plots/', figsize=(1
         
         # # Add grid
         # ax.grid(True, alpha=0.3)
-        
-        # Add legend only to first panel
-        if i == 0:
-            ax.legend(loc='best', fontsize=11)
     
-    # Add a text box explaining the color coding and highlighting
-    fig.text(0.02, 0.98, 'Colors: COSMOS (gold), EPOCHS (red), CEERS (purple)\n6 most massive haloes highlighted (thick lines)', 
-             transform=fig.transFigure, fontsize=10, verticalalignment='top',
-             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+    # Create horizontal legend at the bottom outside the plots
+    handles, labels = axes[0].get_legend_handles_labels()
+    
+    # Calculate statistics for the legend
+    total_galaxies = 0
+    start_quenched = 0
+    end_quenched = 0
+    satellites = 0
+    
+    for cat_key, evolution_data in all_evolution.items():
+        if 'redshifts' in evolution_data and len(evolution_data['redshifts']) > 0:
+            # Count galaxies from this catalogue
+            cat_total = 0
+            
+            # Get first and last snapshot data for quenching analysis
+            first_idx = 0  # Start of evolution
+            last_idx = -1  # End of evolution (z~0)
+            
+            # Check centrals
+            if 'centrals' in evolution_data:
+                centrals_data = evolution_data['centrals']
+                if 'log_ssfr' in centrals_data and len(centrals_data['log_ssfr']) > 0:
+                    # Count centrals
+                    n_centrals = 1  # This represents the median of all centrals in this catalogue
+                    cat_total += n_centrals
+                    
+                    # Check if quenched at start (sSFR < 1e-11 corresponds to log(sSFR) < -11)
+                    if len(centrals_data['log_ssfr']) > first_idx:
+                        if centrals_data['log_ssfr'][first_idx] < -11:
+                            start_quenched += n_centrals
+                    
+                    # Check if quenched at end
+                    if len(centrals_data['log_ssfr']) > abs(last_idx):
+                        if centrals_data['log_ssfr'][last_idx] < -11:
+                            end_quenched += n_centrals
+            
+            # Check satellites
+            if 'satellites' in evolution_data:
+                satellites_data = evolution_data['satellites']
+                if 'log_ssfr' in satellites_data and len(satellites_data['log_ssfr']) > 0:
+                    # Count satellites
+                    n_satellites = 1  # This represents the median of all satellites in this catalogue
+                    cat_total += n_satellites
+                    satellites += n_satellites  # All of these are satellites
+                    
+                    # Check if quenched at start
+                    if len(satellites_data['log_ssfr']) > first_idx:
+                        if satellites_data['log_ssfr'][first_idx] < -11:
+                            start_quenched += n_satellites
+                    
+                    # Check if quenched at end
+                    if len(satellites_data['log_ssfr']) > abs(last_idx):
+                        if satellites_data['log_ssfr'][last_idx] < -11:
+                            end_quenched += n_satellites
+            
+            total_galaxies += cat_total
+    
+    # Calculate percentages
+    start_quenched_pct = (start_quenched / total_galaxies * 100) if total_galaxies > 0 else 0
+    end_quenched_pct = (end_quenched / total_galaxies * 100) if total_galaxies > 0 else 0
+    satellites_pct = (satellites / total_galaxies * 100) if total_galaxies > 0 else 0
+    
+    # Add additional legend entries for line styles (centrals vs satellites)
+    from matplotlib.lines import Line2D
+    
+    # Create separate legend entries for catalogues and line styles
+    legend_elements = []
+    
+    # Add catalogue entries (colored)
+    for cat_name in ['COSMOS', 'EPOCHS', 'CEERS']:
+        if cat_name in catalogue_legend_added:
+            color = cat_colors[cat_name]
+            legend_elements.append(
+                Line2D([0], [0], color=color, linewidth=3, label=cat_name)
+            )
+    
+    # Add line style entries (using black)
+    legend_elements.append(
+        Line2D([0], [0], color='black', linewidth=2, linestyle='-', label='Centrals')
+    )
+    legend_elements.append(
+        Line2D([0], [0], color='black', linewidth=2, linestyle='--', label='Satellites')
+    )
+    
+    # # Add statistics as text-only entries
+    # stats_text = f'Start quenched: {start_quenched_pct:.1f}% | End quenched: {end_quenched_pct:.1f}% | Satellites: {satellites_pct:.1f}%'
+    # legend_elements.append(
+    #     Line2D([0], [0], color='none', label=stats_text)
+    # )
+    
+    if legend_elements:  # Only add legend if there are legend entries
+        fig.legend(handles=legend_elements, loc='lower center', ncol=5, fontsize=14, 
+                  bbox_to_anchor=(0.5, -0.08))
     
     plt.tight_layout()
-    plt.subplots_adjust(top=0.93)  # Make room for the text box
+    plt.subplots_adjust(bottom=0.01)  # Make room for the legend at the bottom
     
     plt.savefig(f'{output_dir}/sage_mock_evolution_tracking_6panel.pdf', dpi=300, bbox_inches='tight')
     # plt.savefig(f'{output_dir}/sage_mock_evolution_tracking_6panel.png', dpi=300, bbox_inches='tight')
@@ -2800,9 +2882,9 @@ def plot_z0_descendants(all_evolution):
     
     # Define sample fractions for each catalogue
     sample_fractions = {
-        'COSMOS': 0.1,   # 20% for COSMOS (diluted by 80%)
-        'EPOCHS': 0.8,   # 20% for EPOCHS  
-        'CEERS': 0.8     # 20% for CEERS
+        'COSMOS': 0.05,   # 5% for COSMOS (diluted by 95%)
+        'EPOCHS': 0.1,   # 10% for EPOCHS
+        'CEERS': 0.8     # 80% for CEERS
     }
     
     for cat_name in unique_catalogues:
@@ -2951,8 +3033,7 @@ def plot_z0_descendants(all_evolution):
         Line2D([0], [0], marker='^', color='gray', linestyle='None', 
                markersize=10, markeredgecolor='black', label='CEERS')
     ]
-    ax.legend(handles=legend_elements, loc='upper right', frameon=True, 
-              fancybox=True, shadow=True, fontsize=10)
+    ax.legend(handles=legend_elements, loc='upper left', frameon=False, fontsize=10)
     
     # Add statistics text
     # n_bcg = sum([1 for y in y_positions if y >= 2.5])
@@ -3047,7 +3128,7 @@ def run_galaxy_tracking_analysis():
                      0.144, 0.116, 0.089, 0.064, 0.041, 0.020, 0.000]
     
     # Configuration - UPDATE THESE PATHS!
-    sage_dir = './output/millennium_FIRE/'  # Path to your SAGE output directory
+    sage_dir = './output/millennium/'  # Path to your SAGE output directory
     cosmos_file = 'cosmos_sage_matches.csv'  # COSMOS matches file
     epochs_file = 'epochs_sage_matches.csv'  # EPOCHS matches file  
     ceers_file = 'ceers_sage_matches.csv'    # CEERS matches file
