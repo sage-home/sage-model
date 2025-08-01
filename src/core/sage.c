@@ -20,9 +20,7 @@
 #include "core_utils.h"
 #include "progressbar.h"
 #include "core_logging.h"
-#include "core_snapshot_indexing.h"
 #include "galaxy_array.h"
-#include "sage_tree_mode.h"
 
 #ifdef HDF5
 #include "../io/save_gals_hdf5.h"
@@ -328,7 +326,34 @@ static void cleanup_sage_systems(struct params *run_params, struct forest_info *
 }
 
 /**
- * @brief Snapshot-based forest evolution processor
+ * @brief Hybrid tree-based forest evolution processor with legacy control flow and modern infrastructure
+ * 
+ * This function implements the proven legacy processing pattern from src-legacy/sage.c:277-392
+ * but uses modern memory management, property system, and architectural safeguards. It represents
+ * the core of the hybrid conversion: single tree-based processing that combines legacy scientific
+ * algorithms with 5 phases of modern architectural improvements.
+ * 
+ * **Legacy Processing Flow** (from src-legacy/sage.c:277-392):
+ * - Load forest data and allocate arrays  
+ * - Initialize HaloFlag, NGalaxies, DoneFlag for all halos
+ * - Main tree processing: construct_galaxies(0, ...) for root halo
+ * - Sub-tree loop: process unreachable sub-trees with construct_galaxies()
+ * - Save galaxies and cleanup
+ * 
+ * **Modern Infrastructure** (preserved from current codebase):
+ * - GalaxyArray system instead of dangerous raw array patterns
+ * - Property system integration with GALAXY_PROP_* macros
+ * - Safe memory management and comprehensive error handling
+ * - Module system preservation via evolve_galaxies_wrapper()
+ * - Modern save_galaxies() with property-based HDF5 output
+ * 
+ * **Key Differences from Legacy**:
+ * - Uses GalaxyArray instead of raw Gal/HaloGal arrays
+ * - Calls hybrid construct_galaxies() with modern infrastructure
+ * - Preserves module system and pipeline execution
+ * - Enhanced error handling and validation throughout
+ * - Safe memory cleanup with corruption detection
+ * 
  * @param forestnr Forest number to process
  * @param save_info Galaxy count tracking structure
  * @param forest_info Forest distribution information
@@ -337,154 +362,159 @@ static void cleanup_sage_systems(struct params *run_params, struct forest_info *
  * 
  * Called by: run_sage() (main processing loop)
  * Calls: load_forest() - read merger tree data
- *        snapshot_indices_init() - create snapshot indexing
- *        snapshot_indices_build() - build O(1) FOF access
- *        process_fof_group() - process FOF groups
- *        save_galaxies() - write galaxy data
- *        galaxy_array_free() - release galaxy memory
+ *        construct_galaxies() - recursive tree processing with modern infrastructure
+ *        save_galaxies() - write galaxy data with property system
  */
 static int32_t sage_per_forest(const int64_t forestnr, struct save_info *save_info,
                                struct forest_info *forest_info, struct params *run_params)
 {
     begin_tree_memory_scope();
 
+    // **LEGACY PATTERN**: Load forest and declare galaxy/halo arrays
+    // From legacy lines 285-289, 312-314: Declare Gal, HaloGal, Halo, HaloAux
     struct halo_data *Halo = NULL;
     struct halo_aux_data *HaloAux = NULL;
 
     const int64_t nhalos = load_forest(run_params, forestnr, &Halo, forest_info);
     if(nhalos < 0) {
-        fprintf(stderr, "Error loading forest %"PRId64"\n", forestnr);
+        LOG_ERROR("Error loading forest %"PRId64, forestnr);
         end_tree_memory_scope();
         return nhalos;
     }
 
-    // Check processing mode and dispatch to appropriate handler
-    if (run_params->simulation.ProcessingMode == 1) {
-        // Tree-based processing mode
-        LOG_DEBUG("Using tree-based processing for forest %ld", forestnr);
-        int32_t tree_status = sage_process_forest_tree_mode(forestnr, save_info, forest_info, run_params);
+    LOG_DEBUG("Using hybrid tree-based processing for forest %ld with %ld halos", forestnr, nhalos);
+
+    // **MODERN ENHANCEMENT**: Use GalaxyArray instead of raw array allocation
+    // Legacy used: Gal = mymalloc(maxgals * sizeof(Gal[0])); HaloGal = mymalloc(...)
+    GalaxyArray *working_galaxies = galaxy_array_new();
+    GalaxyArray *output_galaxies = galaxy_array_new();
+    if (!working_galaxies || !output_galaxies) {
+        LOG_ERROR("Failed to allocate galaxy arrays for forest %ld", forestnr);
+        galaxy_array_free(&working_galaxies);
+        galaxy_array_free(&output_galaxies);
         myfree(Halo);
         end_tree_memory_scope();
-        return tree_status;
+        return EXIT_FAILURE;
     }
-    
-    // Default: snapshot-based processing mode
-    LOG_DEBUG("Using snapshot-based processing for forest %ld", forestnr);
 
+    // **LEGACY PATTERN**: Allocate and initialize HaloAux array
+    // From legacy lines 312-323: HaloAux allocation and flag initialization
     HaloAux = mymalloc(nhalos * sizeof(HaloAux[0]));
+    if (!HaloAux) {
+        LOG_ERROR("Failed to allocate HaloAux array for forest %ld", forestnr);
+        galaxy_array_free(&working_galaxies);
+        galaxy_array_free(&output_galaxies);
+        myfree(Halo);
+        end_tree_memory_scope();
+        return EXIT_FAILURE;
+    }
+
+    // **MODERN ENHANCEMENT**: Create local processing state arrays (legacy used HaloFlag/DoneFlag in halo_aux_data)
+    // Modern approach: Use separate arrays for processing state instead of modifying core structures
+    bool *DoneFlag = mycalloc(nhalos, sizeof(bool));   // Tree processing completion flags
+    int *HaloFlag = mycalloc(nhalos, sizeof(int));     // FOF group processing state
+    if (!DoneFlag || !HaloFlag) {
+        LOG_ERROR("Failed to allocate processing state arrays for forest %ld", forestnr);
+        myfree(DoneFlag);
+        myfree(HaloFlag);
+        galaxy_array_free(&working_galaxies);
+        galaxy_array_free(&output_galaxies);
+        myfree(HaloAux);
+        myfree(Halo);
+        end_tree_memory_scope();
+        return EXIT_FAILURE;
+    }
+
+    // **LEGACY PATTERN**: Initialize processing flags and halo auxiliary data
+    // From legacy lines 316-323: Initialize HaloFlag=0, NGalaxies=0, DoneFlag=0
     for(int i = 0; i < nhalos; i++) {
-        HaloAux[i].NGalaxies = 0;
+        HaloFlag[i] = 0;              // FOF group processing state (0=unprocessed, 1=processing, 2=complete)
+        HaloAux[i].NGalaxies = 0;     // Galaxy count per halo (keep existing field)
+        HaloAux[i].FirstGalaxy = -1;  // Initialize FirstGalaxy to -1 (no galaxies yet)
+        DoneFlag[i] = false;          // Tree processing completion flag
     }
 
-    // Build snapshot indexing
-    struct forest_snapshot_indices snapshot_indices;
-    int32_t status = snapshot_indices_init(&snapshot_indices, run_params->simulation.SimMaxSnaps, nhalos);
-    if (status != EXIT_SUCCESS) {
-        LOG_ERROR("Failed to initialize snapshot indices for forest %ld", forestnr);
-        myfree(HaloAux);
-        myfree(Halo);
-        end_tree_memory_scope();
-        return EXIT_FAILURE;
-    }
-    
-    status = snapshot_indices_build(&snapshot_indices, Halo, nhalos);
-    if (status != EXIT_SUCCESS) {
-        LOG_ERROR("Failed to build snapshot indices for forest %ld", forestnr);
-        snapshot_indices_cleanup(&snapshot_indices);
-        myfree(HaloAux);
-        myfree(Halo);
-        end_tree_memory_scope();
-        return EXIT_FAILURE;
-    }
-
-    // Snapshot-based processing with bounded memory
-    GalaxyArray* galaxies_prev_snap = galaxy_array_new();
-    GalaxyArray* galaxies_this_snap = NULL;
+    // **LEGACY PATTERN**: Initialize galaxy counters
+    // From legacy lines 325, 360: Initialize numgals and galaxycounter
+    int numgals = 0;
     int32_t galaxycounter = 0;
 
-    for (int snapshot = 0; snapshot < run_params->simulation.SimMaxSnaps; ++snapshot) {
-        galaxies_this_snap = galaxy_array_new();
-
-        // Allocate tracking array for previous snapshot's galaxies
-        int ngal_prev = galaxy_array_get_count(galaxies_prev_snap);
-        bool *processed_flags = NULL;
-        if (ngal_prev > 0) {
-            processed_flags = mycalloc(ngal_prev, sizeof(bool)); // mycalloc initializes to false
-            if (!processed_flags) {
-                LOG_ERROR("Failed to allocate processed_flags array for %d galaxies.", ngal_prev);
-                galaxy_array_free(&galaxies_prev_snap);
-                galaxy_array_free(&galaxies_this_snap);
-                snapshot_indices_cleanup(&snapshot_indices);
-                myfree(HaloAux);
-                myfree(Halo);
-                end_tree_memory_scope();
-                return EXIT_FAILURE;
-            }
-        }
-
-        for(int i = 0; i < nhalos; i++) {
-            HaloAux[i].NGalaxies = 0;
-        }
-
-        int32_t fof_count;
-        const int32_t *fof_roots = snapshot_indices_get_fof_groups(&snapshot_indices, snapshot, &fof_count);
-        
-        for (int i = 0; i < fof_count; ++i) {
-            // Process each FOF group in this snapshot
-            // fof_roots contains the root halo number for each FOF group
-            int fof_halonr = fof_roots[i];
-            
-            status = process_fof_group(fof_halonr, galaxies_prev_snap, galaxies_this_snap,
-                                       Halo, HaloAux, &galaxycounter, run_params, processed_flags);
-            if (status != EXIT_SUCCESS) {
-                if (processed_flags != NULL) {
-                    myfree(processed_flags);
-                }
-                galaxy_array_free(&galaxies_prev_snap);
-                galaxy_array_free(&galaxies_this_snap);
-                snapshot_indices_cleanup(&snapshot_indices);
-                myfree(HaloAux);
-                myfree(Halo);
-                end_tree_memory_scope();
-                return status;
-            }
-        }
-
-        // Clean up processed_flags array
-        if (processed_flags != NULL) {
-            myfree(processed_flags);
-        }
-
-        // Save galaxies for this snapshot
-        int snap_ngal = galaxy_array_get_count(galaxies_this_snap);
-        if (snap_ngal > 0) {
-            struct GALAXY *snap_gals = galaxy_array_get_raw_data(galaxies_this_snap);
-            
-            for (int i = 0; i < snap_ngal; i++) {
-                GALAXY_PROP_SnapNum(&snap_gals[i]) = snapshot;
-            }
-            
-            status = save_galaxies(forestnr, snap_ngal, Halo, forest_info, HaloAux, snap_gals, save_info, run_params);
-            if (status != EXIT_SUCCESS) {
-                LOG_ERROR("Failed to save %d galaxies for snapshot %d in forest %ld", snap_ngal, snapshot, forestnr);
-                galaxy_array_free(&galaxies_prev_snap);
-                galaxy_array_free(&galaxies_this_snap);
-                snapshot_indices_cleanup(&snapshot_indices);
-                myfree(HaloAux);
-                myfree(Halo);
-                end_tree_memory_scope();
-                return status;
-            }
-        }
-
-        // Buffer swap for next snapshot
-        galaxy_array_free(&galaxies_prev_snap);
-        galaxies_prev_snap = galaxies_this_snap;
+    // **LEGACY PATTERN**: Main tree processing  
+    // From legacy line 363: construct_galaxies(0, &numgals, &galaxycounter, ...)
+    // **MODERN IMPLEMENTATION**: Use hybrid construct_galaxies() with modern infrastructure
+    int32_t status = construct_galaxies(0, &numgals, &galaxycounter, 
+                                       &working_galaxies, &output_galaxies,
+                                       Halo, HaloAux, DoneFlag, HaloFlag, run_params);
+    if (status != EXIT_SUCCESS) {
+        LOG_ERROR("Failed to construct main tree for forest %ld", forestnr);
+        myfree(DoneFlag);
+        myfree(HaloFlag);
+        galaxy_array_free(&working_galaxies);
+        galaxy_array_free(&output_galaxies);
+        myfree(HaloAux);
+        myfree(Halo);
+        end_tree_memory_scope();
+        return status;
     }
 
-    // Cleanup
-    galaxy_array_free(&galaxies_prev_snap);
-    snapshot_indices_cleanup(&snapshot_indices);
+    // **LEGACY PATTERN**: Process unreachable sub-trees
+    // From legacy lines 369-376: Loop through halos, process if DoneFlag == 0
+    for(int halonr = 0; halonr < nhalos; halonr++) {
+        if(DoneFlag[halonr] == false) {
+            status = construct_galaxies(halonr, &numgals, &galaxycounter,
+                                      &working_galaxies, &output_galaxies, 
+                                      Halo, HaloAux, DoneFlag, HaloFlag, run_params);
+            if(status != EXIT_SUCCESS) {
+                LOG_ERROR("Failed to construct sub-tree starting at halo %d in forest %ld", halonr, forestnr);
+                myfree(DoneFlag);
+                myfree(HaloFlag);
+                galaxy_array_free(&working_galaxies);
+                galaxy_array_free(&output_galaxies);
+                myfree(HaloAux);
+                myfree(Halo);
+                end_tree_memory_scope();
+                return status;
+            }
+        }
+    }
+
+    // **LEGACY PATTERN + MODERN I/O**: Save galaxies
+    // From legacy line 380: save_galaxies(forestnr, numgals, Halo, ...)
+    // **MODERN ENHANCEMENT**: Use property-based save_galaxies() with HDF5 output
+    int total_galaxies = galaxy_array_get_count(output_galaxies);
+    if (total_galaxies > 0) {
+        struct GALAXY *output_gals = galaxy_array_get_raw_data(output_galaxies);
+        
+        // **LEGACY PATTERN**: FirstGalaxy and NGalaxies should already be set up by evolve_galaxies()
+        // The modern evolve_galaxies() function properly sets up these indices during galaxy evolution
+        // No manual setup needed here - just verify the setup is correct
+        
+        status = save_galaxies(forestnr, total_galaxies, Halo, forest_info, HaloAux, 
+                              output_gals, save_info, run_params);
+        if (status != EXIT_SUCCESS) {
+            LOG_ERROR("Failed to save %d galaxies for forest %ld", total_galaxies, forestnr);
+            myfree(DoneFlag);
+            myfree(HaloFlag);
+            galaxy_array_free(&working_galaxies);
+            galaxy_array_free(&output_galaxies);
+            myfree(HaloAux);
+            myfree(Halo);
+            end_tree_memory_scope();
+            return status;
+        }
+        
+        LOG_DEBUG("Successfully processed forest %ld: %d galaxies saved", forestnr, total_galaxies);
+    } else {
+        LOG_DEBUG("Forest %ld produced no galaxies", forestnr);
+    }
+
+    // **LEGACY PATTERN + MODERN CLEANUP**: Free memory safely
+    // From legacy lines 385-389: myfree(Gal); myfree(HaloGal); myfree(HaloAux); myfree(Halo);
+    // **MODERN ENHANCEMENT**: Use safe cleanup with corruption detection
+    myfree(DoneFlag);
+    myfree(HaloFlag);
+    galaxy_array_free(&working_galaxies);
+    galaxy_array_free(&output_galaxies);
     myfree(HaloAux);
     myfree(Halo);
     end_tree_memory_scope();

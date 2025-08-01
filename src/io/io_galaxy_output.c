@@ -235,7 +235,15 @@ int generate_unique_galaxy_indices(const struct halo_data *halos,
         
         // Get galaxy number and central galaxy number
         int32_t GalaxyNr = GALAXY_PROP_GalaxyNr(this_gal);
-        int32_t CentralGalaxyNr = GALAXY_PROP_GalaxyNr(&halogal[haloaux[halos[GALAXY_PROP_HaloNr(this_gal)].FirstHaloInFOFgroup].FirstGalaxy]);
+        
+        // Get the central halo in the FOF group
+        int halo_nr = GALAXY_PROP_HaloNr(this_gal);
+        int central_halo_nr = halos[halo_nr].FirstHaloInFOFgroup;
+        int central_galaxy_idx = haloaux[central_halo_nr].FirstGalaxy;
+        
+        // Get central galaxy number - legacy behavior (direct access)
+        // Note: This should now work correctly because evolve_galaxies() properly sets up FirstGalaxy
+        int32_t CentralGalaxyNr = GALAXY_PROP_GalaxyNr(&halogal[central_galaxy_idx]);
         
         // Check that the mechanism would produce unique galaxy index within this run
         if (GalaxyNr > forestnr_mulfac || (filenr_mulfac > 0 && forestnr*forestnr_mulfac > filenr_mulfac)) {

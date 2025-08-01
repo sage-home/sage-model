@@ -797,3 +797,181 @@ int evolve_galaxies_wrapper(const int fof_root_halonr,
     return evolve_galaxies(fof_root_halonr, temp_fof_galaxies, numgals, 
                           halos, haloaux, galaxies_this_snap, run_params);
 }
+
+/**
+ * @brief Hybrid recursive galaxy construction with legacy control flow and modern infrastructure
+ * 
+ * This function implements the proven legacy tree traversal algorithm but uses modern
+ * memory management, property system, and architectural safeguards. It represents the
+ * core of the hybrid approach: taking the scientifically validated legacy control flow
+ * while preserving 5 phases of modern architectural improvements.
+ * 
+ * **Legacy Control Flow** (taken from src-legacy/core_build_model.c:32-111):
+ * - Recursive depth-first tree traversal with DoneFlag management
+ * - FOF group processing with HaloFlag state management
+ * - Progenitor processing before FOF group evolution
+ * 
+ * **Modern Infrastructure** (preserved from current codebase):
+ * - GalaxyArray system instead of dangerous raw array manipulation
+ * - Property system integration (GALAXY_PROP_* macros)
+ * - Safe memory management with deep_copy_galaxy()
+ * - Existing copy_galaxies_from_progenitors() modernized implementation
+ * - Module system integration via evolve_galaxies_wrapper()
+ * - Comprehensive error handling and validation
+ * 
+ * @param halonr Current halo number to process
+ * @param numgals Pointer to total galaxy count (updated during processing)
+ * @param galaxycounter Pointer to galaxy ID counter (updated during processing)  
+ * @param working_galaxies Pointer to working galaxy array for temporary storage
+ * @param output_galaxies Pointer to output galaxy array for final results
+ * @param halos Halo data array for entire forest
+ * @param haloaux Auxiliary halo data with processing flags
+ * @param run_params SAGE runtime parameters
+ * @return EXIT_SUCCESS on success, error code on failure
+ * 
+ * Called by: sage_per_forest() for main tree and sub-tree processing
+ * Calls: construct_galaxies() (recursive), copy_galaxies_from_progenitors(), evolve_galaxies_wrapper()
+ */
+int construct_galaxies(const int halonr, int *numgals, int *galaxycounter, 
+                       GalaxyArray **working_galaxies, GalaxyArray **output_galaxies,
+                       struct halo_data *halos, struct halo_aux_data *haloaux, 
+                       bool *DoneFlag, int *HaloFlag, struct params *run_params)
+{
+    // Parameter validation
+    if (!working_galaxies || !output_galaxies || !halos || !haloaux || !DoneFlag || !HaloFlag || !run_params) {
+        LOG_ERROR("NULL pointer passed to construct_galaxies");
+        return EXIT_FAILURE;
+    }
+    
+    if (halonr < 0) {
+        LOG_ERROR("Invalid halo number: %d", halonr);
+        return EXIT_FAILURE;
+    }
+
+    // **LEGACY PATTERN**: Mark this halo as processed (DoneFlag management)
+    // From legacy line 38: haloaux[halonr].DoneFlag = 1;
+    DoneFlag[halonr] = true;
+    
+    // **LEGACY PATTERN**: Recursive progenitor processing 
+    // From legacy lines 40-50: Process all progenitors first (depth-first traversal)
+    int prog = halos[halonr].FirstProgenitor;
+    while (prog >= 0) {
+        if (DoneFlag[prog] == false) {
+            int status = construct_galaxies(prog, numgals, galaxycounter, 
+                                          working_galaxies, output_galaxies,
+                                          halos, haloaux, DoneFlag, HaloFlag, run_params);
+            if (status != EXIT_SUCCESS) {
+                LOG_ERROR("Failed to process progenitor halo %d", prog);
+                return status;
+            }
+        }
+        prog = halos[prog].NextProgenitor;
+    }
+    
+    // **LEGACY PATTERN**: FOF group processing with HaloFlag management
+    // From legacy lines 52-69: Process entire FOF group when first encountered
+    int fofhalo = halos[halonr].FirstHaloInFOFgroup;
+    if (HaloFlag[fofhalo] == 0) {
+        // **LEGACY PATTERN**: Mark FOF group as being processed
+        HaloFlag[fofhalo] = 1;
+        
+        // **LEGACY PATTERN**: Ensure all progenitors in FOF group are processed
+        int fof_iter = fofhalo;
+        while (fof_iter >= 0) {
+            int fof_prog = halos[fof_iter].FirstProgenitor;
+            while (fof_prog >= 0) {
+                if (DoneFlag[fof_prog] == false) {
+                    int status = construct_galaxies(fof_prog, numgals, galaxycounter,
+                                                  working_galaxies, output_galaxies, 
+                                                  halos, haloaux, DoneFlag, HaloFlag, run_params);
+                    if (status != EXIT_SUCCESS) {
+                        LOG_ERROR("Failed to process FOF progenitor halo %d", fof_prog);
+                        return status;
+                    }
+                }
+                fof_prog = halos[fof_prog].NextProgenitor;
+            }
+            fof_iter = halos[fof_iter].NextHaloInFOFgroup;
+        }
+    }
+    
+    // **LEGACY PATTERN**: Galaxy construction and evolution for complete FOF groups
+    // From legacy lines 87-107: Process FOF group when all progenitors are ready
+    fofhalo = halos[halonr].FirstHaloInFOFgroup;
+    if (HaloFlag[fofhalo] == 1) {
+        // **MODERN ENHANCEMENT**: Create temporary galaxy array for FOF processing
+        GalaxyArray *temp_fof_galaxies = galaxy_array_new();
+        if (!temp_fof_galaxies) {
+            LOG_ERROR("Failed to allocate temporary FOF galaxy array");
+            return EXIT_FAILURE;
+        }
+        
+        // **LEGACY PATTERN**: Mark FOF group as actively being processed
+        HaloFlag[fofhalo] = 2;
+        
+        // **LEGACY PATTERN + MODERN IMPLEMENTATION**: Galaxy inheritance via modernized legacy code
+        // From legacy line 95: ngal = join_galaxies_of_progenitors(fofhalo, ngal, ...)
+        // **CRITICAL**: Use existing copy_galaxies_from_progenitors() - DO NOT recreate this logic
+        int fof_iter = fofhalo;
+        while (fof_iter >= 0) {
+            // **MODERN APPROACH**: Use existing modernized implementation instead of legacy raw arrays
+            int status = copy_galaxies_from_progenitors(fof_iter, fofhalo, temp_fof_galaxies,
+                                                       galaxycounter, halos, 
+                                                       *working_galaxies, run_params, NULL);
+            if (status != EXIT_SUCCESS) {
+                LOG_ERROR("Failed to copy galaxies from progenitors for halo %d", fof_iter);
+                galaxy_array_free(&temp_fof_galaxies);
+                return status;
+            }
+            fof_iter = halos[fof_iter].NextHaloInFOFgroup;
+        }
+        
+        // **MODERN ENHANCEMENT**: Set central galaxy indices for evolution context validation
+        // Evolution system requires all galaxies to have valid CentralGal assignments
+        int temp_numgals = galaxy_array_get_count(temp_fof_galaxies);
+        if (temp_numgals > 0) {
+            struct GALAXY *fof_galaxies_raw = galaxy_array_get_raw_data(temp_fof_galaxies);
+            
+            // Find the central galaxy (Type == 0) in the FOF group
+            int central_idx = -1;
+            for (int i = 0; i < temp_numgals; i++) {
+                if (GALAXY_PROP_Type(&fof_galaxies_raw[i]) == 0) {
+                    central_idx = i;
+                    break;
+                }
+            }
+            
+            if (central_idx == -1) {
+                LOG_ERROR("No central galaxy (Type=0) found in FOF group %d with %d galaxies", fofhalo, temp_numgals);
+                galaxy_array_free(&temp_fof_galaxies);
+                return EXIT_FAILURE;
+            }
+            
+            // Set all galaxies to point to the central galaxy index
+            for (int i = 0; i < temp_numgals; i++) {
+                GALAXY_PROP_CentralGal(&fof_galaxies_raw[i]) = central_idx;
+            }
+            
+            LOG_DEBUG("Set central galaxy index %d for FOF group %d with %d galaxies", 
+                     central_idx, fofhalo, temp_numgals);
+        }
+        
+        // **LEGACY PATTERN + MODERN MODULE SYSTEM**: Physics evolution
+        // From legacy line 102: status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ...)
+        // **MODERN ENHANCEMENT**: Use evolve_galaxies() with modern module system
+        int status = evolve_galaxies(fofhalo, temp_fof_galaxies, numgals,
+                                   halos, haloaux, *output_galaxies, run_params);
+        
+        if (status != EXIT_SUCCESS) {
+            LOG_ERROR("Failed to evolve galaxies for FOF group %d", fofhalo);
+            galaxy_array_free(&temp_fof_galaxies);
+            return status;
+        }
+        
+        // **MODERN ENHANCEMENT**: Cleanup temporary array
+        // Note: evolve_galaxies() already updated *numgals and copied galaxies to output_galaxies
+        galaxy_array_free(&temp_fof_galaxies);
+    }
+    
+    return EXIT_SUCCESS;
+}
