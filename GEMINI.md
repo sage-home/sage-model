@@ -1,4 +1,4 @@
-# CLAUDE.md
+# GEMINI.md
 
 This file provides guidance to AI Coders when working with code in this repository.
 
@@ -11,7 +11,7 @@ SAGE is a modular C-based galaxy formation model designed for cosmological simul
 **Primary Build Commands:**
 ```bash
 make                    # Build with all properties (full-physics mode)
-make physics-free      # Core properties only (fastest, minimal memory)  
+make physics-free      # Core properties only (fastest, minimal memory)
 make full-physics      # All properties (default, maximum compatibility)
 make custom-physics CONFIG=input/config.json  # Properties for specific modules
 make clean             # Clean build artifacts
@@ -37,7 +37,7 @@ make tree_tests        # Run tree-based processing tests
 
 **Test Categories:**
 - **Core Tests**: Pipeline system, memory management, array utilities, physics-free mode
-- **Property Tests**: Property serialization, validation, HDF5 integration  
+- **Property Tests**: Property serialization, validation, HDF5 integration
 - **I/O Tests**: Multiple tree formats (LHalo Binary/HDF5, Gadget4, Genesis, ConsistentTrees), I/O interface abstraction
 - **Module Tests**: Dynamic loading, lifecycle, callbacks, inter-module communication
 - **Tree Tests**: Tree-based processing, galaxy inheritance, FOF processing, physics integration
@@ -51,7 +51,7 @@ make tree_tests        # Run tree-based processing tests
 Physics Modules (Cooling, Star Formation, Feedback, Mergers, etc.)
     ↓
 Property System (Dynamic property generation from YAML)
-    ↓  
+    ↓
 Pipeline System (HALO → GALAXY → POST → FINAL execution phases)
     ↓
 Core Infrastructure (Memory, I/O, Events, Module System, Configuration)
@@ -88,7 +88,7 @@ Core Infrastructure (Memory, I/O, Events, Module System, Configuration)
 
 **Core Architecture:**
 - `src/core/core_allvars.h`: Central type definitions and structures
-- `src/core/sage.h`: Main API interface  
+- `src/core/sage.h`: Main API interface
 - `src/properties.yaml`: Property definitions driving code generation
 - `src/core/core_module_system.*`: Module registration and lifecycle
 - `src/core/core_pipeline_system.*`: Pipeline execution engine
@@ -149,81 +149,4 @@ python3 allresults-history.py     # Plot higher redshift results
 - When asked to write a report or similar, put it in the `obsidian-inbox` directory
 - Assume no persistent memory — rely on logs for all continuity
 - When reporting progress in `log/progress.md` include EVERY FILE that was changed, created, and removed
-- Your code and tests should always be written to the highest professional coding standards 
-
----
-
-# Using Gemini CLI for Large Codebase Analysis
-
-When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive
-context window. Use `gemini -p` to leverage Google Gemini's large context capacity.
-
-## File and Directory Inclusion Syntax
-
-Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to WHERE you run the
-  gemini command:
-
-## Examples:
-
-Single file analysis:
-`gemini -p "@src/main.py Explain this file's purpose and structure"`
-
-Multiple files:
-`gemini -p "@package.json @src/index.js Analyze the dependencies used in the code"`
-
-Entire directory:
-`gemini -p "@src/ Summarize the architecture of this codebase"`
-
-Multiple directories:
-`gemini -p "@src/ @tests/ Analyze test coverage for the source code"`
-
-Current directory and subdirectories:
-`gemini -p "@./ Give me an overview of this entire project"`
-
-Or use --all_files flag:
-`gemini --all_files -p "Analyze the project structure and dependencies"`
-
-**Implementation Verification Examples:**
-
-Check if a feature is implemented:
-`gemini -p "@src/ @lib/ Has dark mode been implemented in this codebase? Show me the relevant files and functions"`
-
-Verify authentication implementation:
-`gemini -p "@src/ @middleware/ Is JWT authentication implemented? List all auth-related endpoints and middleware"`
-
-Check for specific patterns:
-`gemini -p "@src/ Are there any React hooks that handle WebSocket connections? List them with file paths"`
-
-Verify error handling:
-`gemini -p "@src/ @api/ Is proper error handling implemented for all API endpoints? Show examples of try-catch blocks"`
-
-Check for rate limiting:
-`gemini -p "@backend/ @middleware/ Is rate limiting implemented for the API? Show the implementation details"`
-
-Verify caching strategy:
-`gemini -p "@src/ @lib/ @services/ Is Redis caching implemented? List all cache-related functions and their usage"`
-
-Check for specific security measures:
-`gemini -p "@src/ @api/ Are SQL injection protections implemented? Show how user inputs are sanitized"`
-
-Verify test coverage for features:
-`gemini -p "@src/payment/ @tests/ Is the payment processing module fully tested? List all test cases"`
-
-## When to Use Gemini CLI
-
-Use `gemini -p` when:
-- Analyzing entire codebases or large directories
-- Comparing multiple large files
-- Need to understand project-wide patterns or architecture
-- Current context window is insufficient for the task
-- Working with files totaling more than 100KB
-- Verifying if specific features, patterns, or security measures are implemented
-- Checking for the presence of certain coding patterns across the entire codebase
-
-## Important Notes
-
-- Paths in @ syntax are relative to your current working directory when invoking gemini
-- The CLI will include file contents directly in the context
-- No need for --yolo flag for read-only analysis
-- Gemini's context window can handle entire codebases that would overflow Claude's context
-- When checking implementations, be specific about what you're looking for to get accurate results
+- Your code and tests should always be written to the highest professional coding standards
