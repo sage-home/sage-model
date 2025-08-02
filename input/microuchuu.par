@@ -29,7 +29,6 @@ TreeType                consistent_trees_hdf5           % one of genesis_lhalo_h
 SimulationDir           ./input/data/uchuu/microuchuu/mergertrees
 FileWithSnapList        ./input/data/uchuu/microuchuu/Uchuu100_scalefactor.txt
 LastSnapshotNr          49
-ProcessingMode          1             % 0=snapshot-based, 1=tree-based processing
 NumSimulationTreeFiles  1             % Number of files the trees are split over
 BoxSize                 100.0         % in Mpc/h
 

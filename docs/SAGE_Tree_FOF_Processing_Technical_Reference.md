@@ -1,19 +1,17 @@
 # SAGE Tree-Based FOF Processing: Technical Reference Guide
 
-**Document Purpose**: Definitive technical reference for Friends-of-Friends (FOF) group processing in SAGE's **tree-based processing mode**, covering the complete lifecycle from high-redshift halo formation to z=0 merger tree evolution.
+**Document Purpose**: Definitive technical reference for Friends-of-Friends (FOF) group processing in SAGE's **unified tree-based processing architecture**, covering the complete lifecycle from high-redshift halo formation to z=0 merger tree evolution.
 
 **Target Audience**: AI developers and astronomer-developers working on SAGE merger tree processing logic.
 
-**Date**: 2025-06-28
+**Date**: 2025-08-02
 **Status**: Technical Reference - Critical Logic Documentation
 
 ---
 
 ## Executive Summary
 
-**Processing Mode Note**: This document describes the **tree-based processing model** (`ProcessingMode = 1`). For details on the snapshot-based processing model (`ProcessingMode = 0`), please refer to the [Snapshot-Based FOF Processing Technical Reference](SAGE_FOF_Processing_Technical_Reference.md).
-
-SAGE's tree-based processing mode evolves galaxies by performing a depth-first traversal of the entire merger tree. This approach correctly handles galaxy evolution in complex scenarios, such as halo disruptions and gaps in the tree, ensuring scientific accuracy and mass conservation. This document defines the complete physics-to-code mapping for this process.
+SAGE uses a **unified tree-based processing model** that evolves galaxies by performing a depth-first traversal of merger trees using a hybrid approach that combines legacy scientific algorithms with modern architectural infrastructure. This approach ensures scientific accuracy while maintaining the benefits of the modular property system, robust error handling, and memory safety. This document defines the complete physics-to-code mapping for this process.
 
 **Key Concepts**:
 - **Depth-First Traversal**: Processing starts from the leaves (high-redshift) of the merger tree and proceeds to the root (z=0).

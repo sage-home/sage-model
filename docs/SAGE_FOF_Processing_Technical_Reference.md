@@ -1,19 +1,23 @@
-# SAGE FOF Processing: Technical Reference Guide
+# SAGE FOF Processing: Legacy Technical Reference Guide
 
-**Document Purpose**: Definitive technical reference for Friends-of-Friends (FOF) group processing in SAGE, covering the complete lifecycle from high-redshift halo formation to z=0 merger tree evolution.
+**IMPORTANT NOTICE**: This document describes legacy snapshot-based processing which has been superseded by SAGE's unified tree-based processing architecture as of August 2025. 
 
-**Target Audience**: AI developers and astronomer-developers working on SAGE merger tree processing logic.
+**Current Documentation**: For the active tree-based processing model, please refer to:
+- [SAGE Tree-Based FOF Processing Technical Reference](SAGE_Tree_FOF_Processing_Technical_Reference.md)
+- [Architecture Guide](architecture.md)
 
-**Date**: 2025-06-23  
-**Status**: Technical Reference - Critical Logic Documentation
+**Historical Context**: This document is preserved for reference purposes to understand the evolution of SAGE's processing architecture.
+
+**Date**: 2025-06-23 (Legacy), Deprecated: 2025-08-02  
+**Status**: Legacy Documentation - Superseded
 
 ---
 
-## Executive Summary
+## Legacy Executive Summary
 
-**Processing Mode Note**: This document describes the **snapshot-based processing model** (`ProcessingMode = 0`). For details on the tree-based processing model (`ProcessingMode = 1`), please refer to the [Architecture Guide](architecture.md).
+**DEPRECATED**: This document described the former **snapshot-based processing model** which has been replaced by unified tree-based processing that combines the scientific accuracy of tree traversal with modern architectural infrastructure.
 
-SAGE processes cosmological merger trees by tracking dark matter halos and their embedded galaxies through cosmic time. The core challenge is correctly classifying galaxies as they transition between different gravitational environments: independent halos → FOF group members → disrupted orphans. This document defines the complete physics-to-code mapping for this process.
+The legacy system processed cosmological merger trees by tracking dark matter halos and their embedded galaxies through cosmic time. While scientifically functional, this approach has been superseded by a more robust tree-based approach that eliminates dual-system complexity and provides better orphan handling.
 
 **Key Concepts**:
 - **FOF Groups**: Gravitationally bound collections of halos that will eventually merge

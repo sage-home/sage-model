@@ -249,23 +249,26 @@ The HDF5 output system integrates seamlessly with the property system:
 3. **Build Configuration Awareness**: Adapts to physics-free, full-physics, or custom builds
 4. **Transformer Integration**: Applies output transformers when specified
 
-### Integration with Processing Modes
+### Integration with Tree-Based Processing
 
-The HDF5 output system supports both snapshot-based and tree-based processing modes, ensuring a consistent output format regardless of the processing strategy.
+The HDF5 output system is fully integrated with SAGE's unified tree-based processing architecture, providing consistent output format and property-based serialization.
 
-**Snapshot-Based Mode (`ProcessingMode = 0`)**
+**Tree-Based Output Flow**
 
-In the default snapshot-based mode, galaxy data is written at the end of each snapshot. The `save_galaxies` function is called by the main snapshot loop in `sage.c` after all FOF groups for a given snapshot have been processed. This ensures that the output files are organized by snapshot, with each file containing the complete galaxy catalog for that snapshot.
+In the tree-based processing mode, galaxy data is collected throughout the recursive traversal of merger trees. The output process follows these steps:
 
-**Tree-Based Mode (`ProcessingMode = 1`)**
+1. **Galaxy Collection**: Throughout tree processing, galaxies are accumulated in `GalaxyArray` structures with comprehensive property validation
+2. **Snapshot Organization**: Processed galaxies are organized by their final snapshot numbers for structured output 
+3. **Property-Based Serialization**: The property system automatically handles output transformation and validation
+4. **HDF5 Writing**: The `save_galaxies` function writes property-validated galaxy data to HDF5 files with consistent structure
 
-In the tree-based processing mode, galaxies are collected throughout the traversal of each merger tree. Once a tree (or forest) has been fully processed, the `output_tree_galaxies` function (from `tree_output.c`) is called. This function is responsible for:
+**Output Structure Consistency**
 
-1. **Organizing Galaxies**: Grouping all the processed galaxies by their final snapshot number.
-2. **Iterating Through Snapshots**: Looping through all snapshots that contain galaxies from the processed tree.
-3. **Calling `save_galaxies`**: For each snapshot, calling the same `save_galaxies` function used by the snapshot-based mode.
-
-This design ensures that the final HDF5 output has the **exact same structure** as the snapshot-based mode, with galaxies organized into snapshot groups. This allows for direct comparison between the two modes and ensures that downstream analysis tools can work with either output without modification.
+The tree-based processing produces HDF5 output with identical structure to legacy implementations, ensuring:
+- Consistent snapshot-based organization for downstream analysis tools
+- Property-based field generation with automatic type validation
+- Identical scientific data format for direct comparison and validation
+- Seamless integration with existing analysis pipelines and visualization tools
 
 ## Endianness and Cross-Platform Support
 

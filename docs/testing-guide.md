@@ -52,13 +52,13 @@ These tests validate the fundamental infrastructure components of SAGE:
 | **test_fof_memory_management** | Tests memory management for large FOF groups and leak detection | Phase 5.3 (Jun 2025) |
 | **test_orphan_tracking** | Tests comprehensive orphan galaxy tracking for mass conservation when host halos disappear | Phase 5.3 (Jun 2025) |
 | **test_orphan_tracking_simple** | Tests simplified orphan galaxy tracking functionality with basic scenarios | Phase 5.3 (Jun 2025) |
-| **test_orphan_fof_disruption** | **REGRESSION TEST**: Documents known orphan loss bug in snapshot-based processing (ProcessingMode=0) | Phase 5.3 (Jun 2025) |
+| **test_orphan_fof_disruption** | **HISTORICAL REGRESSION TEST**: Documents legacy orphan loss patterns (now resolved by unified tree-based processing) | Phase 5.3 (Jun 2025) |
 
 **Purpose**: Core infrastructure tests should always pass, as they validate the stability of the foundation on which everything else is built.
 
-#### Special Note: test_orphan_fof_disruption Regression Test
+#### Special Note: test_orphan_fof_disruption Historical Test
 
-The `test_orphan_fof_disruption` test is a **regression test** that documents a known orphan loss bug in snapshot-based processing (ProcessingMode=0). This test **passes when it correctly detects the expected bug**, showing "REGRESSION TEST SUCCESS" and recommending tree-based processing (ProcessingMode=1) as the solution. Do not "fix" this test to expect orphan conservation in snapshot mode - it serves as documentation of why tree-based processing was implemented.
+The `test_orphan_fof_disruption` test is a **historical regression test** that documented orphan loss patterns in legacy processing modes. With the unified tree-based processing implementation, this test now serves as validation that the orphan loss issues have been resolved. The test ensures robust orphan handling and galaxy mass conservation throughout the tree-based evolution process.
 
 ### Property System Tests (7 tests)
 
@@ -110,20 +110,20 @@ These tests validate the module system that enables SAGE's pluggable architectur
 
 ### Tree-Based Processing Tests (6 tests)
 
-These tests validate the new tree-based processing mode:
+These tests validate the unified tree-based processing architecture:
 
 | Test Name | Purpose | Added in Phase |
 |-----------|---------|---------------|
 | **test_tree_infrastructure** | Validates the core tree infrastructure | Phase 6 (Jun 2025) |
 | **test_galaxy_inheritance** | Tests galaxy inheritance and orphan creation | Phase 6 (Jun 2025) |
-| **test_tree_fof_processing** | Validates FOF group processing in tree mode | Phase 6 (Jun 2025) |
-| **test_tree_physics_integration** | Tests the integration of the physics pipeline | Phase 6 (Jun 2025) |
+| **test_tree_fof_processing** | Validates FOF group processing with modern tree-based algorithms | Phase 6 (Jun 2025) |
+| **test_tree_physics_integration** | Tests the integration of the physics pipeline with tree processing | Phase 6 (Jun 2025) |
 | **test_tree_physics_simple** | A simplified test for the physics pipeline integration | Phase 6 (Jun 2025) |
-| **test_tree_mode_scientific_validation** | Validates the scientific accuracy of the tree mode, including correct orphan handling | Phase 6 (Jun 2025) |
+| **test_tree_mode_scientific_validation** | Validates the scientific accuracy of unified tree processing, including robust orphan handling | Phase 6 (Jun 2025) |
 
-**Purpose**: Tree-based processing tests ensure the scientific accuracy and robustness of the new processing mode.
+**Purpose**: Tree-based processing tests ensure the scientific accuracy and robustness of the unified processing architecture.
 
-**Note**: These tree-based tests validate the solution to the orphan loss problem documented in `test_orphan_fof_disruption`. While the regression test shows the problem in snapshot mode, these tests verify the fix in tree mode.
+**Note**: These tests validate SAGE's single tree-based processing mode, ensuring correct galaxy evolution, mass conservation, and robust orphan handling throughout merger tree traversal.
 
 ## Running Tests
 
@@ -445,7 +445,7 @@ The SAGE test suite contains:
 - **Module System**: 3 tests
 - **Tree-Based Processing**: 6 tests
 - **Test categories**: 5 main categories with specialized make targets
-- **End-to-end tests**: Scientific validation via `test_sage.sh` and `test_tree_mode_validation.py`
+- **End-to-end tests**: Scientific validation via `test_sage.sh` and tree-based processing validation
 
 ## Future Testing Enhancements
 

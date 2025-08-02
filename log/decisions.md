@@ -24,3 +24,19 @@
 - **Decision**: Consolidated SAGE's 30+ fragmented documentation files into 20 focused documents with 4 comprehensive guides
 - **Rationale**: Eliminated significant duplication, poor organization, and navigation issues hindering professional scientific use
 - **Impact**: Reduced maintenance burden, established clear ownership boundaries, achieved professional documentation standards with role-based navigation
+
+2025-08-01: [Tree Conversion] SAGE Tree Conversion Plan Strategic Architecture Decision
+- **Decision**: Adopted hybrid conversion strategy combining legacy scientific algorithms (control flow, property calculations) with modern infrastructure (property system, memory safety, modular architecture)
+- **Rationale**: Avoided wholesale legacy adoption that would lose 5 phases of architectural improvements while preserving scientifically validated tree-based processing algorithms
+- **Impact**: Enabled single tree-based processing mode while maintaining property system, memory safety, core-physics separation, and module system benefits
+
+2025-08-01: [Tree Conversion] Legacy Code Integration Strategy  
+- **Decision**: Use existing modernized `copy_galaxies_from_progenitors()` function as foundation instead of incomplete tree-based functions (`inherit_galaxies_with_orphans()`, `update_galaxy_for_new_halo()`)
+- **Rationale**: Modern snapshot-based function already contained complete legacy scientific algorithms with property system integration and memory safety enhancements
+- **Impact**: Avoided recreating proven scientific calculations while gaining modern architectural benefits including enhanced validation and fail-hard behavior
+
+2025-08-02: [Tree Conversion] Dual Processing System Elimination Decision
+- **Decision**: Completely removed ProcessingMode parameter and all dual processing infrastructure (tree_*.c/h files, snapshot indexing, mode branching)
+- **Rationale**: Dual system complexity violated core conversion objective and created maintenance burden without scientific benefit
+- **Impact**: Achieved single unified tree-based processing architecture, eliminated 18 obsolete files, simplified parameter system, reduced code complexity significantly
+EOF < /dev/null

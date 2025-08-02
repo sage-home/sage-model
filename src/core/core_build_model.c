@@ -152,6 +152,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                                          int32_t *galaxycounter, struct halo_data *halos,
                                          const GalaxyArray *galaxies_prev_snap, struct params *run_params, bool *processed_flags)
 {
+    LOG_DEBUG("Processing galaxy inheritance for halo %d (FOF group %d)", halonr, fof_halonr);
     if (!galaxies_prev_snap) {
         // No previous snapshot, create new galaxy if this is main FOF halo
         if (halonr == fof_halonr) {
@@ -172,21 +173,28 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
     
     struct GALAXY *galaxies_prev_raw = galaxy_array_get_raw_data((GalaxyArray*)galaxies_prev_snap);
     int ngal_prev = galaxy_array_get_count(galaxies_prev_snap);
+    LOG_DEBUG("Processing galaxy inheritance from %d galaxies in previous snapshot", ngal_prev);
 
     // Pass 1: Find the most massive occupied progenitor
     int first_occupied = find_most_massive_occupied_progenitor(halonr, halos, galaxies_prev_snap);
+    LOG_DEBUG("Most massive occupied progenitor: %d for halo %d", first_occupied, halonr);
 
     // Pass 2: Iterate through all progenitors again. Copy galaxies, classifying them
     // as central, satellite, or orphan based on whether they belong to the
     // 'first_occupied' progenitor halo.
     int galaxies_added_for_halo = 0;
     int prog = halos[halonr].FirstProgenitor;
+    LOG_DEBUG("Starting progenitor processing loop, FirstProgenitor = %d", prog);
     while (prog >= 0) {
+        // Process this progenitor
         // Scan for galaxies belonging to this progenitor halo
+        // Process galaxies for this progenitor
         for (int i = 0; i < ngal_prev; i++) {
             if (GALAXY_PROP_HaloNr(&galaxies_prev_raw[i]) != prog) {
                 continue;  // Galaxy doesn't belong to this progenitor
             }
+            // Found galaxy for this progenitor
+            // Galaxy found for this progenitor
             
             galaxies_added_for_halo++;
             const struct GALAXY* source_gal = &galaxies_prev_raw[i];
@@ -210,6 +218,7 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                 const float previousVmax = GALAXY_PROP_Vmax(&temp_galaxy);
 
                 if (prog == first_occupied) {
+                    // **PHASE 2.1**: Enhanced scientific calculations with validation
                     // Update galaxy properties for new host halo
                     for(int j = 0; j < 3; j++) {
                         GALAXY_PROP_Pos(&temp_galaxy)[j] = halos[halonr].Pos[j];
@@ -220,31 +229,113 @@ static int copy_galaxies_from_progenitors(const int halonr, const int fof_halonr
                     GALAXY_PROP_Len(&temp_galaxy) = halos[halonr].Len;
                     GALAXY_PROP_Vmax(&temp_galaxy) = halos[halonr].Vmax;
 
+                    // **PHASE 2.1**: Scientific calculation with validation
                     float new_mvir = get_virial_mass(halonr, halos, run_params);
-                    GALAXY_PROP_deltaMvir(&temp_galaxy) = new_mvir - GALAXY_PROP_Mvir(&temp_galaxy);
+                    float old_mvir = GALAXY_PROP_Mvir(&temp_galaxy);
                     
+                    // **PHASE 2.2**: Enhanced error handling - validate calculations
+                    if (!isfinite(new_mvir) || new_mvir < 0.0f) {
+                        LOG_ERROR("Invalid virial mass calculation: %f for halo %d", new_mvir, halonr);
+                        return EXIT_FAILURE;
+                    }
+                    if (!isfinite(old_mvir) || old_mvir < 0.0f) {
+                        LOG_ERROR("Invalid previous Mvir: %f for galaxy at halo %d", old_mvir, halonr);
+                        return EXIT_FAILURE;
+                    }
+                    
+                    float delta_mvir = new_mvir - old_mvir;
+                    if (!isfinite(delta_mvir)) {
+                        LOG_ERROR("Invalid deltaMvir calculation: %f (new=%f - old=%f) for halo %d", 
+                                 delta_mvir, new_mvir, old_mvir, halonr);
+                        return EXIT_FAILURE;
+                    }
+                    
+                    GALAXY_PROP_deltaMvir(&temp_galaxy) = delta_mvir;
                     GALAXY_PROP_Mvir(&temp_galaxy) = new_mvir;
-                    GALAXY_PROP_Rvir(&temp_galaxy) = get_virial_radius(halonr, halos, run_params);
-                    GALAXY_PROP_Vvir(&temp_galaxy) = get_virial_velocity(halonr, halos, run_params);
+                    
+                    // **PHASE 2.1**: Legacy conditional Rvir/Vvir update logic
+                    // From legacy line 204: only update if virial mass increased
+                    if (new_mvir > old_mvir) {
+                        float new_rvir = get_virial_radius(halonr, halos, run_params);
+                        float new_vvir = get_virial_velocity(halonr, halos, run_params);
+                        
+                        // **PHASE 2.2**: Validate virial radius and velocity
+                        if (!isfinite(new_rvir) || new_rvir <= 0.0f) {
+                            LOG_ERROR("Invalid virial radius: %f for halo %d", new_rvir, halonr);
+                            return EXIT_FAILURE;
+                        }
+                        if (!isfinite(new_vvir) || new_vvir <= 0.0f) {
+                            LOG_ERROR("Invalid virial velocity: %f for halo %d", new_vvir, halonr);
+                            return EXIT_FAILURE;
+                        }
+                        
+                        GALAXY_PROP_Rvir(&temp_galaxy) = new_rvir;
+                        GALAXY_PROP_Vvir(&temp_galaxy) = new_vvir;
+                        
+                        LOG_DEBUG("Updated virial properties for growing halo %d: Mvir=%f→%f, Rvir=%f, Vvir=%f", 
+                                 halonr, old_mvir, new_mvir, new_rvir, new_vvir);
+                    } else {
+                        LOG_DEBUG("Virial mass decreased for halo %d: %f→%f, keeping previous Rvir/Vvir", 
+                                 halonr, old_mvir, new_mvir);
+                    }
 
                     if (halonr == fof_halonr) {
                         GALAXY_PROP_Type(&temp_galaxy) = 0;  // Central
                     } else {
                         if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
-                            // Record infall properties for central→satellite transition
+                            // **PHASE 2.1**: Record infall properties for central→satellite transition
+                            // **PHASE 2.2**: Validate infall properties before assignment
+                            if (!isfinite(previousMvir) || previousMvir < 0.0f) {
+                                LOG_ERROR("Invalid infall Mvir: %f for satellite galaxy at halo %d", previousMvir, halonr);
+                                return EXIT_FAILURE;
+                            }
+                            if (!isfinite(previousVvir) || previousVvir <= 0.0f) {
+                                LOG_ERROR("Invalid infall Vvir: %f for satellite galaxy at halo %d", previousVvir, halonr);
+                                return EXIT_FAILURE;
+                            }
+                            if (!isfinite(previousVmax) || previousVmax <= 0.0f) {
+                                LOG_ERROR("Invalid infall Vmax: %f for satellite galaxy at halo %d", previousVmax, halonr);
+                                return EXIT_FAILURE;
+                            }
+                            
                             GALAXY_PROP_infallMvir(&temp_galaxy) = previousMvir;
                             GALAXY_PROP_infallVvir(&temp_galaxy) = previousVvir;
                             GALAXY_PROP_infallVmax(&temp_galaxy) = previousVmax;
+                            
+                            LOG_DEBUG("Recorded infall properties for central→satellite transition: Mvir=%f, Vvir=%f, Vmax=%f", 
+                                     previousMvir, previousVvir, previousVmax);
                         }
                         GALAXY_PROP_Type(&temp_galaxy) = 1;  // Satellite
                     }
 
                 } else {
-                    // Galaxy becomes orphan (lost its halo)
-                    GALAXY_PROP_deltaMvir(&temp_galaxy) = -1.0 * GALAXY_PROP_Mvir(&temp_galaxy);
-                    GALAXY_PROP_Mvir(&temp_galaxy) = 0.0;
+                    // **PHASE 2.1**: Galaxy becomes orphan per legacy algorithm  
+                    float old_mvir_orphan = GALAXY_PROP_Mvir(&temp_galaxy);
+                    
+                    // **PHASE 2.2**: Validate orphan mass before calculation
+                    if (!isfinite(old_mvir_orphan) || old_mvir_orphan < 0.0f) {
+                        LOG_ERROR("Invalid orphan galaxy Mvir: %f for galaxy at halo %d", old_mvir_orphan, halonr);
+                        return EXIT_FAILURE;
+                    }
+                    
+                    GALAXY_PROP_deltaMvir(&temp_galaxy) = -1.0f * old_mvir_orphan;
+                    GALAXY_PROP_Mvir(&temp_galaxy) = 0.0f;
                     
                     if (GALAXY_PROP_Type(&temp_galaxy) == 0) {
+                        // **PHASE 2.2**: Validate infall properties for central→orphan transition
+                        if (!isfinite(previousMvir) || previousMvir < 0.0f) {
+                            LOG_ERROR("Invalid infall Mvir: %f for orphan galaxy at halo %d", previousMvir, halonr);
+                            return EXIT_FAILURE;
+                        }
+                        if (!isfinite(previousVvir) || previousVvir <= 0.0f) {
+                            LOG_ERROR("Invalid infall Vvir: %f for orphan galaxy at halo %d", previousVvir, halonr);
+                            return EXIT_FAILURE;
+                        }
+                        if (!isfinite(previousVmax) || previousVmax <= 0.0f) {
+                            LOG_ERROR("Invalid infall Vmax: %f for orphan galaxy at halo %d", previousVmax, halonr);
+                            return EXIT_FAILURE;
+                        }
+                        
                         GALAXY_PROP_infallMvir(&temp_galaxy) = previousMvir;
                         GALAXY_PROP_infallVvir(&temp_galaxy) = previousVvir;
                         GALAXY_PROP_infallVmax(&temp_galaxy) = previousVmax;
@@ -368,9 +459,20 @@ int identify_and_process_orphans(const int fof_halonr, GalaxyArray* temp_fof_gal
 
                 // Reclassify as an orphan.
                 GALAXY_PROP_Type(&temp_orphan) = 2;
-                GALAXY_PROP_merged(&temp_orphan) = 1; // FIXED: Mark as merged to filter from output
-                GALAXY_PROP_Mvir(&temp_orphan) = 0.0; // Its host halo is gone.
-                GALAXY_PROP_deltaMvir(&temp_orphan) = -1.0 * GALAXY_PROP_Mvir(source_gal);
+                GALAXY_PROP_merged(&temp_orphan) = 1; // Mark as merged to filter from output
+                GALAXY_PROP_Mvir(&temp_orphan) = 0.0f; // Its host halo is gone.
+                
+                // **PHASE 2.2**: Validate orphan deltaMvir calculation
+                float source_mvir = GALAXY_PROP_Mvir(source_gal);
+                if (!isfinite(source_mvir) || source_mvir < 0.0f) {
+                    LOG_ERROR("Invalid source Mvir: %f for orphan galaxy processing", source_mvir);
+                    free_galaxy_properties(&temp_orphan);
+                    return EXIT_FAILURE;
+                }
+                
+                GALAXY_PROP_deltaMvir(&temp_orphan) = -1.0f * source_mvir;
+                LOG_DEBUG("Orphan galaxy created: deltaMvir=%f, source_Mvir=%f", 
+                         GALAXY_PROP_deltaMvir(&temp_orphan), source_mvir);
 
                 // Append to the current FOF group's galaxy list for evolution.
                 if (galaxy_array_append(temp_fof_galaxies, &temp_orphan, run_params) < 0) {
@@ -515,8 +617,18 @@ int process_fof_group(int fof_halonr, GalaxyArray* galaxies_prev_snap,
                   central_for_fof, fof_halonr, ngal_fof);
     }
 
-    // Evolve galaxies
+    // **PHASE 3**: Module System Integration - Evolve galaxies with complete pipeline system
     int current_total_galaxies = galaxy_array_get_count(galaxies_this_snap);
+    
+    // **PHASE 3.3**: Configuration-Driven Processing - Validate module system availability
+    struct module_pipeline *pipeline = pipeline_get_global();
+    if (pipeline != NULL) {
+        LOG_DEBUG("Executing physics evolution for FOF group %d with %d pipeline steps", 
+                 fof_halonr, pipeline->num_steps);
+    } else {
+        LOG_DEBUG("Executing physics-free evolution for FOF group %d", fof_halonr);
+    }
+    
     int status = evolve_galaxies(fof_halonr, temp_fof_galaxies, &current_total_galaxies, 
                                 halos, haloaux, galaxies_this_snap, run_params);
     
@@ -609,13 +721,32 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
         }
     }
 
-    // Get physics pipeline
+    // **PHASE 3.1**: Pipeline System Preservation - Get physics pipeline with module validation
     struct module_pipeline *physics_pipeline = pipeline_get_global();
     if (physics_pipeline == NULL) {
-        CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "No physics pipeline available");
-        core_evolution_diagnostics_finalize(&diag);
-        core_evolution_diagnostics_report(&diag, LOG_LEVEL_WARNING);
-        return EXIT_FAILURE;
+        // **PHASE 3.3**: Configuration-driven graceful handling for physics-free mode
+        LOG_DEBUG("No physics pipeline available - running in physics-free mode for FOF group %d", fof_root_halonr);
+        
+        // In physics-free mode, we still need to complete galaxy processing and output
+        // Copy galaxies directly to output without physics evolution
+        for(int p = 0; p < ctx.ngal; p++) {
+            if (GALAXY_PROP_merged(&ctx.galaxies[p]) == 0) {
+                int currenthalo = GALAXY_PROP_HaloNr(&ctx.galaxies[p]);
+                if (haloaux[currenthalo].NGalaxies == 0) {
+                    haloaux[currenthalo].FirstGalaxy = *numgals;
+                }
+                GALAXY_PROP_SnapNum(&ctx.galaxies[p]) = halos[currenthalo].SnapNum;
+                
+                if (galaxy_array_append(galaxies_this_snap, &ctx.galaxies[p], run_params) < 0) {
+                    LOG_ERROR("Failed to append galaxy to snapshot array in physics-free mode");
+                    return EXIT_FAILURE;
+                }
+                (*numgals)++;
+                haloaux[currenthalo].NGalaxies++;
+            }
+        }
+        LOG_DEBUG("Physics-free processing completed for FOF group %d with %d galaxies", fof_root_halonr, ctx.ngal);
+        return EXIT_SUCCESS;
     }
 
     // Create merger event queue
@@ -624,14 +755,18 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
     ctx.merger_queue = &merger_queue;
     pipeline_ctx.merger_queue = &merger_queue;
 
-    // Phase 1: HALO phase
+    // **PHASE 3.1**: Pipeline System Preservation - HALO phase with module communication
     core_evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_HALO);
     pipeline_ctx.execution_phase = PIPELINE_PHASE_HALO;
     
     ensure_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params);
     
+    // **PHASE 3.2**: Module Communication Integration - Execute HALO phase with full callbacks
     int status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_HALO);
     core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_HALO);
+    
+    LOG_DEBUG("HALO phase completed for FOF group %d with %d pipeline steps", 
+             fof_root_halonr, physics_pipeline->num_steps);
     
     if (status != 0) {
         CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute HALO phase for FOF group %d", fof_root_halonr);
@@ -645,7 +780,7 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
         pipeline_ctx.step = step;
         init_merger_queue(&merger_queue);
 
-        // Phase 2: GALAXY phase
+        // **PHASE 3.1**: Pipeline System Preservation - GALAXY phase with event-driven processing
         core_evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_GALAXY);
         pipeline_ctx.execution_phase = PIPELINE_PHASE_GALAXY;
 
@@ -667,6 +802,7 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
 
             ensure_galaxy_properties(&ctx.galaxies[p], run_params);
 
+            // **PHASE 3.2**: Module Communication Integration - Execute with full module callbacks
             status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_GALAXY);
             if (status != 0) {
                 CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to execute GALAXY phase for galaxy %d", p);
@@ -677,12 +813,13 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
         }
         core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_GALAXY);
 
-        // Phase 3: POST phase
+        // **PHASE 3.1**: Pipeline System Preservation - POST phase with merger event processing
         core_evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_POST);
         pipeline_ctx.execution_phase = PIPELINE_PHASE_POST;
         
         ensure_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params);
 
+        // **PHASE 3.2**: Module Communication Integration - Process merger events with module callbacks
         status = core_process_merger_queue_agnostically(&pipeline_ctx);
         if (status != 0) {
             CONTEXT_LOG(&ctx, LOG_LEVEL_ERROR, "Failed to process merger events for step %d", step);
@@ -691,6 +828,7 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
             return EXIT_FAILURE;
         }
 
+        // **PHASE 3.2**: Execute POST phase with full module system integration
         status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_POST);
         core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_POST);
 
@@ -707,13 +845,16 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
         }
     }
 
-    // Phase 4: FINAL phase
+    // **PHASE 3.1**: Pipeline System Preservation - FINAL phase with module lifecycle completion
     core_evolution_diagnostics_start_phase(&diag, PIPELINE_PHASE_FINAL);
     pipeline_ctx.execution_phase = PIPELINE_PHASE_FINAL;
     
     ensure_galaxy_properties(&ctx.galaxies[ctx.centralgal], run_params);
 
+    // **PHASE 3.2**: Module Communication Integration - Execute FINAL phase with complete module system
     status = pipeline_execute_phase(physics_pipeline, &pipeline_ctx, PIPELINE_PHASE_FINAL);
+    
+    LOG_DEBUG("All 4 pipeline phases completed for FOF group %d", fof_root_halonr);
     core_evolution_diagnostics_end_phase(&diag, PIPELINE_PHASE_FINAL);
 
     if (status != 0) {
@@ -723,12 +864,14 @@ static int evolve_galaxies(const int fof_root_halonr, GalaxyArray* temp_fof_gala
         return EXIT_FAILURE;
     }
 
-    // Cleanup
+    // **PHASE 3.2**: Module Communication Integration - Proper cleanup with module lifecycle
     if (pipeline_ctx.prop_ctx != NULL) {
         pipeline_cleanup_property_serialization(&pipeline_ctx);
     }
     core_evolution_diagnostics_finalize(&diag);
     core_evolution_diagnostics_report(&diag, LOG_LEVEL_INFO);
+    
+    LOG_DEBUG("Module system cleanup completed for FOF group %d", fof_root_halonr);
 
     // =================================================================
     // NEW, SAFE LOGIC STARTS HERE
@@ -837,6 +980,7 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter,
                        struct halo_data *halos, struct halo_aux_data *haloaux, 
                        bool *DoneFlag, int *HaloFlag, struct params *run_params)
 {
+    LOG_DEBUG("Constructing galaxies for halo %d", halonr);
     // Parameter validation
     if (!working_galaxies || !output_galaxies || !halos || !haloaux || !DoneFlag || !HaloFlag || !run_params) {
         LOG_ERROR("NULL pointer passed to construct_galaxies");
@@ -956,11 +1100,14 @@ int construct_galaxies(const int halonr, int *numgals, int *galaxycounter,
                      central_idx, fofhalo, temp_numgals);
         }
         
-        // **LEGACY PATTERN + MODERN MODULE SYSTEM**: Physics evolution
-        // From legacy line 102: status = evolve_galaxies(halos[halonr].FirstHaloInFOFgroup, ...)
-        // **MODERN ENHANCEMENT**: Use evolve_galaxies() with modern module system
+        // **PHASE 3**: Module System Integration - Physics evolution with full pipeline
+        // **PHASE 3.1**: Pipeline System Preservation - Use evolve_galaxies() with complete 4-phase pipeline
+        // **PHASE 3.2**: Module Communication Integration - Ensure all modules receive callbacks
+        // **PHASE 3.3**: Configuration-Driven Processing - Support physics-free and full-physics modes
         int status = evolve_galaxies(fofhalo, temp_fof_galaxies, numgals,
                                    halos, haloaux, *output_galaxies, run_params);
+        
+        LOG_DEBUG("Completed physics evolution for FOF group %d with module system integration", fofhalo);
         
         if (status != EXIT_SUCCESS) {
             LOG_ERROR("Failed to evolve galaxies for FOF group %d", fofhalo);
