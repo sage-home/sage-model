@@ -15,14 +15,6 @@ from pathlib import Path
 import logging
 import pandas as pd
 
-# MPI for large-scale parallelization
-try:
-    from mpi4py import MPI
-    MPI_AVAILABLE = True
-except ImportError:
-    MPI_AVAILABLE = False
-    print("Warning: mpi4py not available. Large datasets may be slower to process.")
-
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -139,7 +131,7 @@ PLOT_COLORS = {
 # ========================== USER OPTIONS ==========================
 
 # File details for the main analysis (mass loading plot)
-DirName = './output/millennium/'
+DirName = './output/millennium_FIRE/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -151,7 +143,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Additional simulation directories for SFR density comparison
 SFR_SimDirs = [
     {
-        'path': './output/millennium/', 
+        'path': './output/millennium_FIRE/', 
         'label': 'Millennium', 
         'color': 'black', 
         'linestyle': '-',
@@ -210,7 +202,7 @@ SFR_SimDirs = [
 SMF_SimConfigs = [
     # SAGE 2.0 simulations (solid lines)
     {
-        'path': './output/millennium/', 
+        'path': './output/millennium_FIRE/', 
         'label': 'SAGE 2.0', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line
@@ -978,542 +970,49 @@ def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
     logger.info('Stellar mass function comparison (3-panel) plot complete')
 
 
-def compute_grid_cell_quiescent_fraction(args):
-    """
-    Compute quiescent fraction for a single grid cell.
-    This function is designed to be used with MPI or multiprocessing.
-    """
-    (i, j, halo_grid, stellar_grid, all_log_halo, all_log_stellar, 
-     all_quiescent, max_distance) = args
-    
-    # Define bin boundaries
-    halo_bin_min, halo_bin_max = halo_grid[i], halo_grid[i + 1]
-    stellar_bin_min, stellar_bin_max = stellar_grid[j], stellar_grid[j + 1]
-    
-    # Get center of this grid cell
-    halo_center = (halo_bin_min + halo_bin_max) / 2
-    stellar_center = (stellar_bin_min + stellar_bin_max) / 2
-    
-    # Calculate distance to nearest data point
-    distances = np.sqrt((all_log_halo - halo_center)**2 + (all_log_stellar - stellar_center)**2)
-    min_distance = np.min(distances)
-    
-    # Only fill grid cells that are close enough to actual data
-    if min_distance <= max_distance:
-        # Find galaxies in this bin
-        mask = ((all_log_halo >= halo_bin_min) & (all_log_halo < halo_bin_max) &
-               (all_log_stellar >= stellar_bin_min) & (all_log_stellar < stellar_bin_max))
-
-        if np.sum(mask) >= 10:  # Include every bin with at least 10 galaxies
-            quiescent_frac = np.mean(all_quiescent[mask])
-            return (j, i, quiescent_frac)
-        else:
-            # For empty bins, interpolate from nearest neighbors
-            # Use the 10 nearest neighbors for interpolation
-            nearest_indices = np.argsort(distances)[:min(10, len(distances))]
-            if len(nearest_indices) > 0:
-                quiescent_frac = np.mean(all_quiescent[nearest_indices])
-                return (j, i, quiescent_frac)
-    
-    return (j, i, np.nan)
-
-
-def compute_quiescent_fraction_grid_mpi(all_log_halo, all_log_stellar, all_quiescent, 
-                                      halo_grid, stellar_grid, max_distance=0.3):
-    """
-    Compute quiescent fraction grid using MPI parallelization for large datasets.
-    """
-    if not MPI_AVAILABLE:
-        return compute_quiescent_fraction_grid_serial(all_log_halo, all_log_stellar, 
-                                                    all_quiescent, halo_grid, stellar_grid, max_distance)
-    
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
-    
-    # Initialize grid on all processes
-    quiescent_fraction_grid = np.full((len(stellar_grid)-1, len(halo_grid)-1), np.nan)
-    
-    # Create list of all grid cell indices
-    all_indices = [(i, j) for i in range(len(halo_grid) - 1) for j in range(len(stellar_grid) - 1)]
-    
-    # Distribute work among processes
-    indices_per_process = len(all_indices) // size
-    start_idx = rank * indices_per_process
-    if rank == size - 1:  # Last process takes any remaining indices
-        end_idx = len(all_indices)
-    else:
-        end_idx = start_idx + indices_per_process
-    
-    my_indices = all_indices[start_idx:end_idx]
-    
-    if rank == 0:
-        logger.info(f'Using MPI with {size} processes to compute {len(all_indices)} grid cells')
-        logger.info(f'Process 0 handling {len(my_indices)} cells, others handling ~{indices_per_process} cells each')
-        
-        # Memory usage info for large datasets
-        data_memory_gb = (len(all_log_halo) * 3 * 8) / (1024**3)  # 3 arrays, 8 bytes per float
-        logger.info(f'Dataset memory usage: {data_memory_gb:.2f} GB')
-    
-    # Broadcast data to all processes (more efficient than scattering for this use case)
-    all_log_halo = comm.bcast(all_log_halo, root=0)
-    all_log_stellar = comm.bcast(all_log_stellar, root=0)
-    all_quiescent = comm.bcast(all_quiescent, root=0)
-    halo_grid = comm.bcast(halo_grid, root=0)
-    stellar_grid = comm.bcast(stellar_grid, root=0)
-    
-    # Process assigned grid cells
-    my_results = []
-    for idx, (i, j) in enumerate(my_indices):
-        if rank == 0 and idx % 1000 == 0:
-            logger.info(f'Process 0: Completed {idx}/{len(my_indices)} cells ({100*idx/len(my_indices):.1f}%)')
-        
-        args = (i, j, halo_grid, stellar_grid, all_log_halo, all_log_stellar, 
-                all_quiescent, max_distance)
-        result = compute_grid_cell_quiescent_fraction(args)
-        my_results.append(result)
-    
-    # Gather all results to rank 0
-    all_results = comm.gather(my_results, root=0)
-    
-    if rank == 0:
-        # Combine results from all processes
-        for process_results in all_results:
-            for j, i, quiescent_frac in process_results:
-                quiescent_fraction_grid[j, i] = quiescent_frac
-        
-        logger.info('MPI grid computation complete')
-    
-    # Broadcast final grid to all processes (only rank 0 needs it for plotting, but keep consistent)
-    quiescent_fraction_grid = comm.bcast(quiescent_fraction_grid, root=0)
-    
-    return quiescent_fraction_grid
-
-
-def compute_quiescent_fraction_grid_serial(all_log_halo, all_log_stellar, all_quiescent, 
-                                         halo_grid, stellar_grid, max_distance=0.3):
-    """
-    Compute quiescent fraction grid using serial processing (fallback when MPI not available).
-    """
-    logger.info('Computing grid using serial processing (MPI not available)')
-    
-    quiescent_fraction_grid = np.full((len(stellar_grid)-1, len(halo_grid)-1), np.nan)
-    total_cells = (len(halo_grid) - 1) * (len(stellar_grid) - 1)
-    
-    cell_count = 0
-    for i in range(len(halo_grid) - 1):
-        for j in range(len(stellar_grid) - 1):
-            if cell_count % 5000 == 0:
-                logger.info(f'Processing cell {cell_count}/{total_cells} ({100*cell_count/total_cells:.1f}%)')
-            
-            args = (i, j, halo_grid, stellar_grid, all_log_halo, all_log_stellar, 
-                    all_quiescent, max_distance)
-            j_idx, i_idx, quiescent_frac = compute_grid_cell_quiescent_fraction(args)
-            quiescent_fraction_grid[j_idx, i_idx] = quiescent_frac
-            
-            cell_count += 1
-    
-    logger.info('Serial grid computation complete')
-    return quiescent_fraction_grid
-
-
-def plot_stellar_halo_mass_relation(sim_configs, snapshot, output_dir):
-    """Plot stellar-halo mass relation comparison with quiescent fraction overlay"""
-    logger.info('=== Stellar-Halo Mass Relation ===')
-    
-    # Create figure
-    fig, ax = create_figure(figsize=(10, 8))
-    
-    # Collect all data for density plot
-    all_log_halo = []
-    all_log_stellar = []
-    all_quiescent = []
-    
-    # Process each simulation (skip C16)
-    for sim_config in sim_configs:
-        directory = sim_config['path']
-        label = sim_config['label']
-        color = sim_config['color']
-        hubble_h = sim_config['Hubble_h']
-        
-        # Skip C16 simulation
-        if 'C16' in label:
-            continue
-            
-        logger.info(f'Processing {label}...')
-        
-        try:
-            # Read required galaxy properties
-            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
-            Mvir = read_hdf_ultra_optimized(snap_num=snapshot, param='Mvir', directory=directory) * 1.0e10 / hubble_h
-            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
-            SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
-            SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
-            
-            # Filter for central galaxies with reasonable masses
-            w = np.where((StellarMass > 0) & (Mvir > 0))[0]
-            
-            if len(w) == 0:
-                logger.warning(f'No suitable galaxies found for {label}')
-                continue
-            
-            stellar_mass = StellarMass[w]
-            halo_mass = Mvir[w]
-            sfr_total = SfrDisk[w] + SfrBulge[w]
-            
-            logger.info(f'  Found {len(w)} central galaxies with M* > 10^8 and Mvir > 10^10')
-            
-            # Convert to log10
-            log_stellar = np.log10(stellar_mass)
-            log_halo = np.log10(halo_mass)
-            
-            # Calculate specific star formation rate (sSFR)
-            sSFR = np.log10(sfr_total / stellar_mass)
-            
-            # Determine quiescent galaxies (sSFR < -11.0)
-            is_quiescent = (sSFR < sSFRcut).astype(float)
-            
-            # Collect ALL data for density plot (before sampling)
-            all_log_halo.extend(log_halo)
-            all_log_stellar.extend(log_stellar)
-            all_quiescent.extend(is_quiescent)
-            
-            # Use ALL galaxies for scatter plot - no sampling
-            # The density overlay will be the main feature anyway
-            logger.info(f'  Using all {len(log_halo)} galaxies for plotting (no sampling)')
-            
-            # Create scatter plot with very small points since we're showing all data
-            ax.scatter(log_halo, log_stellar, c=color, s=0.1, alpha=0.2, 
-                      label=label, rasterized=True)
-            
-        except Exception as e:
-            logger.error(f'Error processing {label}: {e}')
-            continue
-    
-    # Create density plot overlay based on quiescent fraction
-    if len(all_log_halo) > 0:
-        logger.info('Creating quiescent fraction density overlay...')
-        
-        # Convert to numpy arrays
-        all_log_halo = np.array(all_log_halo)
-        all_log_stellar = np.array(all_log_stellar)
-        all_quiescent = np.array(all_quiescent)
-        
-        # Get actual data range with generous padding
-        halo_min = np.min(all_log_halo)
-        halo_max = np.max(all_log_halo)
-        stellar_min = np.min(all_log_stellar)
-        stellar_max = np.max(all_log_stellar) 
-        
-        logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
-        
-        # Define ULTRA-FINE 2D grid for COMPLETE coverage of ALL data
-        halo_grid = np.arange(halo_min, halo_max + 0.05, 0.05)  # ULTRA-FINE: 0.1 dex spacing
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.05, 0.05)  # ULTRA-FINE: 0.05 dex spacing
-
-        logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
-        
-        # Use MPI-enabled grid computation for large datasets
-        max_distance = 0.2  # Maximum distance from nearest data point to include in grid
-        
-        if len(all_log_halo) > 30000:  # Use MPI for large datasets
-            logger.info(f'Large dataset detected ({len(all_log_halo)} galaxies) - using MPI parallelization')
-            quiescent_fraction_grid = compute_quiescent_fraction_grid_mpi(
-                all_log_halo, all_log_stellar, all_quiescent, 
-                halo_grid, stellar_grid, max_distance)
-        else:
-            logger.info(f'Small dataset ({len(all_log_halo)} galaxies) - using serial processing')
-            quiescent_fraction_grid = compute_quiescent_fraction_grid_serial(
-                all_log_halo, all_log_stellar, all_quiescent, 
-                halo_grid, stellar_grid, max_distance)
-        
-        # Create color map: coolwarm colormap for quiescent fraction
-        cmap = plt.cm.coolwarm
-        
-        # Plot the grid as an image
-        extent = [halo_grid[0], halo_grid[-1], stellar_grid[0], stellar_grid[-1]]
-        im = ax.imshow(quiescent_fraction_grid, extent=extent, origin='lower', 
-                      cmap=cmap, vmin=0, vmax=1, alpha=1.0, aspect='auto', 
-                      interpolation='bilinear', rasterized=True, zorder=5)
-        
-        # Add colorbar
-        cbar = plt.colorbar(im, ax=ax, pad=0.02, aspect=30)
-        cbar.set_label(r'Quiescent Fraction', fontsize=16, labelpad=15)
-        cbar.ax.tick_params(labelsize=14)
-        
-        # Count valid grid cells
-        valid_cells = np.sum(~np.isnan(quiescent_fraction_grid))
-        total_cells = quiescent_fraction_grid.size
-        logger.info(f'Grid coverage: {valid_cells}/{total_cells} cells ({100*valid_cells/total_cells:.1f}%)')
-        logger.info(f'Grid resolution: {len(halo_grid)}x{len(stellar_grid)} = {total_cells} total cells')
-        
-        # Verify that all galaxies are covered by checking if any fall outside grid bounds
-        galaxies_outside = np.sum((all_log_halo < halo_grid[0]) | (all_log_halo > halo_grid[-1]) |
-                                 (all_log_stellar < stellar_grid[0]) | (all_log_stellar > stellar_grid[-1]))
-        logger.info(f'Galaxies outside grid bounds: {galaxies_outside}/{len(all_log_halo)}')
-        
-        if galaxies_outside > 0:
-            logger.warning(f'Found {galaxies_outside} galaxies outside grid - expanding bounds')
-            # Emergency expansion if needed
-            halo_grid = np.arange(np.min(all_log_halo) - 0.5, np.max(all_log_halo) + 0.5, 0.05)
-            stellar_grid = np.arange(np.min(all_log_stellar) - 0.5, np.max(all_log_stellar) + 0.5, 0.05)
-    
-    # Formatting
-    ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (\mathrm{M}_\odot)$')
-    ax.set_ylabel(r'$\log_{10} M_\star\ (\mathrm{M}_\odot)$')
-    ax.set_xlim(9.85, 15.0)
-    ax.set_ylim(7.5, 12.5)
-    
-    # Legend
-    ax.legend(loc='lower right', fontsize=14, frameon=False)
-    
-    # Save plot
-    output_filename = output_dir + 'stellar_halo_mass_relation' + OutputFormat
-    finalize_plot(fig, output_filename)
-
-    plt.close(fig)  # Close the figure to free memory
-    
-    logger.info('Stellar-halo mass relation plot complete')
-
-
-def plot_halo_stellar_mass_relation(sim_configs, snapshot, output_dir):
-    """Plot halo-stellar mass relation (axes swapped from SHMR) with quiescent fraction overlay"""
-    logger.info('=== Halo-Stellar Mass Relation (Swapped Axes) ===')
-    
-    # Create figure
-    fig, ax = create_figure(figsize=(10, 8))
-    
-    # Collect all data for density plot
-    all_log_halo = []
-    all_log_stellar = []
-    all_quiescent = []
-    
-    # Process each simulation (skip C16)
-    for sim_config in sim_configs:
-        directory = sim_config['path']
-        label = sim_config['label']
-        color = sim_config['color']
-        hubble_h = sim_config['Hubble_h']
-        
-        # Skip C16 simulation
-        if 'C16' in label:
-            continue
-            
-        logger.info(f'Processing {label}...')
-        
-        try:
-            # Read required galaxy properties
-            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
-            Mvir = read_hdf_ultra_optimized(snap_num=snapshot, param='Mvir', directory=directory) * 1.0e10 / hubble_h
-            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
-            SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
-            SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
-            
-            # Filter for central galaxies with reasonable masses
-            w = np.where((StellarMass > 0) & (Mvir > 0))[0]
-            
-            if len(w) == 0:
-                logger.warning(f'No suitable galaxies found for {label}')
-                continue
-            
-            stellar_mass = StellarMass[w]
-            halo_mass = Mvir[w]
-            sfr_total = SfrDisk[w] + SfrBulge[w]
-            
-            logger.info(f'  Found {len(w)} central galaxies with M* > 10^8 and Mvir > 10^10')
-            
-            # Convert to log10
-            log_stellar = np.log10(stellar_mass)
-            log_halo = np.log10(halo_mass)
-            
-            # Calculate specific star formation rate (sSFR)
-            sSFR = np.log10(sfr_total / stellar_mass)
-            
-            # Determine quiescent galaxies (sSFR < -11.0)
-            is_quiescent = (sSFR < sSFRcut).astype(float)
-            
-            # Collect ALL data for density plot (before sampling)
-            all_log_halo.extend(log_halo)
-            all_log_stellar.extend(log_stellar)
-            all_quiescent.extend(is_quiescent)
-            
-            # Use ALL galaxies for scatter plot - no sampling
-            # The density overlay will be the main feature anyway
-            logger.info(f'  Using all {len(log_halo)} galaxies for plotting (no sampling)')
-            
-            # Create scatter plot with swapped axes: stellar mass on x, halo mass on y
-            ax.scatter(log_stellar, log_halo, c=color, s=0.1, alpha=0.2, 
-                      label=label, rasterized=True)
-            
-        except Exception as e:
-            logger.error(f'Error processing {label}: {e}')
-            continue
-    
-    # Create density plot overlay based on quiescent fraction
-    if len(all_log_halo) > 0:
-        logger.info('Creating quiescent fraction density overlay...')
-        
-        # Convert to numpy arrays
-        all_log_halo = np.array(all_log_halo)
-        all_log_stellar = np.array(all_log_stellar)
-        all_quiescent = np.array(all_quiescent)
-        
-        # Get actual data range with generous padding
-        halo_min = np.min(all_log_halo)
-        halo_max = np.max(all_log_halo)
-        stellar_min = np.min(all_log_stellar)
-        stellar_max = np.max(all_log_stellar) 
-        
-        logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
-        
-        # Define ULTRA-FINE 2D grid for COMPLETE coverage of ALL data
-        # Note: Grid arrays are defined in the original coordinate system (halo, stellar)
-        # but we'll transpose when plotting since we're swapping axes
-        halo_grid = np.arange(halo_min, halo_max + 0.05, 0.05)  # ULTRA-FINE: 0.05 dex spacing
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.05, 0.05)  # ULTRA-FINE: 0.05 dex spacing
-
-        logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
-        
-        # Use MPI-enabled grid computation for large datasets
-        max_distance = 0.2  # Maximum distance from nearest data point to include in grid
-        
-        if len(all_log_halo) > 30000:  # Use MPI for large datasets
-            logger.info(f'Large dataset detected ({len(all_log_halo)} galaxies) - using MPI parallelization')
-            quiescent_fraction_grid = compute_quiescent_fraction_grid_mpi(
-                all_log_halo, all_log_stellar, all_quiescent, 
-                halo_grid, stellar_grid, max_distance)
-        else:
-            logger.info(f'Small dataset ({len(all_log_halo)} galaxies) - using serial processing')
-            quiescent_fraction_grid = compute_quiescent_fraction_grid_serial(
-                all_log_halo, all_log_stellar, all_quiescent, 
-                halo_grid, stellar_grid, max_distance)
-        
-        # Create color map: coolwarm colormap for quiescent fraction
-        cmap = plt.cm.coolwarm
-        
-        # Plot the grid as an image with swapped axes: stellar on x, halo on y
-        # Need to transpose the grid and swap the extent coordinates
-        extent = [stellar_grid[0], stellar_grid[-1], halo_grid[0], halo_grid[-1]]
-        im = ax.imshow(quiescent_fraction_grid.T, extent=extent, origin='lower', 
-                      cmap=cmap, vmin=0, vmax=1, alpha=1.0, aspect='auto', 
-                      interpolation='bilinear', rasterized=True, zorder=5)
-        
-        # Add colorbar
-        cbar = plt.colorbar(im, ax=ax, pad=0.02, aspect=30)
-        cbar.set_label(r'Quiescent Fraction', fontsize=16, labelpad=15)
-        cbar.ax.tick_params(labelsize=14)
-        
-        # Count valid grid cells
-        valid_cells = np.sum(~np.isnan(quiescent_fraction_grid))
-        total_cells = quiescent_fraction_grid.size
-        logger.info(f'Grid coverage: {valid_cells}/{total_cells} cells ({100*valid_cells/total_cells:.1f}%)')
-        logger.info(f'Grid resolution: {len(halo_grid)}x{len(stellar_grid)} = {total_cells} total cells')
-        
-        # Verify that all galaxies are covered by checking if any fall outside grid bounds
-        galaxies_outside = np.sum((all_log_halo < halo_grid[0]) | (all_log_halo > halo_grid[-1]) |
-                                 (all_log_stellar < stellar_grid[0]) | (all_log_stellar > stellar_grid[-1]))
-        logger.info(f'Galaxies outside grid bounds: {galaxies_outside}/{len(all_log_halo)}')
-        
-        if galaxies_outside > 0:
-            logger.warning(f'Found {galaxies_outside} galaxies outside grid - expanding bounds')
-            # Emergency expansion if needed
-            halo_grid = np.arange(np.min(all_log_halo) - 0.5, np.max(all_log_halo) + 0.5, 0.05)
-            stellar_grid = np.arange(np.min(all_log_stellar) - 0.5, np.max(all_log_stellar) + 0.5, 0.05)
-    
-    # Formatting with swapped axis labels
-    ax.set_xlabel(r'$\log_{10} M_\star\ (\mathrm{M}_\odot)$')
-    ax.set_ylabel(r'$\log_{10} M_{\mathrm{vir}}\ (\mathrm{M}_\odot)$')
-    # Note: axis limits are also swapped to match the new orientation
-    ax.set_xlim(7.5, 12.5)   # stellar mass range
-    ax.set_ylim(9.85, 15.0)  # halo mass range
-    
-    # Legend
-    ax.legend(loc='lower right', fontsize=14, frameon=False)
-    
-    # Save plot
-    output_filename = output_dir + 'halo_stellar_mass_relation' + OutputFormat
-    finalize_plot(fig, output_filename)
-
-    plt.close(fig)  # Close the figure to free memory
-    
-    logger.info('Halo-stellar mass relation plot (swapped axes) complete')
-
-
 # ========================== MAIN EXECUTION ==========================
 
-def main():
-    """Main function that handles MPI initialization and execution"""
-    
-    # Initialize MPI if available
-    if MPI_AVAILABLE:
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
-        size = comm.Get_size()
-        
-        if rank == 0:
-            print(f'Running with MPI using {size} processes')
-            print('Ultra-optimized mass loading vs virial velocity analysis\n')
-    else:
-        rank = 0
-        size = 1
-        print('Running without MPI (single process)')
-        print('Ultra-optimized mass loading vs virial velocity analysis\n')
-    
-    # Only rank 0 needs to do the plotting setup and execution
-    if rank == 0:
-        # Setup paper plotting style FIRST
-        setup_paper_style()
-        
-        # Setup
-        setup_cache()
-        start_time = time.time()
-        
-        logger.info(f'Parallel processing: {USE_PARALLEL}')
-        logger.info(f'Max workers: {MAX_WORKERS}')
-        logger.info(f'Smart sampling: {SMART_SAMPLING}')
-        logger.info(f'Caching enabled: {ENABLE_CACHING}')
-        logger.info(f'Memory mapping: {USE_MEMMAP}')
-        if MPI_AVAILABLE:
-            logger.info(f'MPI processes: {size}')
-
-        seed(2222)
-        volume = (Main_BoxSize/Main_Hubble_h)**3.0 * Main_VolumeFraction
-
-        OutputDir = DirName + 'plots/'
-        Path(OutputDir).mkdir(exist_ok=True)
-
-        logger.info(f'Reading galaxy properties from {DirName}')
-        model_files = get_file_list(DirName)
-        logger.info(f'Found {len(model_files)} model files')
-
-        # Read galaxy properties with ultra-optimized function
-        logger.info('Loading Vvir...')
-        Vvir = read_hdf_ultra_optimized(snap_num=Snapshot, param='Vvir')
-        logger.info('Loading StellarMass...')
-        StellarMass = read_hdf_ultra_optimized(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Main_Hubble_h
-        logger.info('Loading Type...')
-        Type = read_hdf_ultra_optimized(snap_num=Snapshot, param='Type')
-
-        logger.info(f'Total galaxies: {len(Vvir)}')
-
-        
-        # plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
-        
-        # Plot stellar-halo mass relation
-        plot_stellar_halo_mass_relation(SMF_SimConfigs, Snapshot, OutputDir)
-        
-        # Plot halo-stellar mass relation (swapped axes)
-        plot_halo_stellar_mass_relation(SMF_SimConfigs, Snapshot, OutputDir)
-
-        logger.info(f'Total execution time: {time.time() - start_time:.2f} seconds')
-        logger.info('Analysis complete!')
-        
-        force_cleanup()  # Final cleanup
-    
-    # Synchronize all processes before exit
-    if MPI_AVAILABLE:
-        comm.Barrier()
-
-
 if __name__ == '__main__':
-    main()
+    
+    print('Running ultra-optimized mass loading vs virial velocity analysis\n')
+    
+    # Setup paper plotting style FIRST
+    setup_paper_style()
+    
+    # Setup
+    setup_cache()
+    start_time = time.time()
+    
+    logger.info(f'Parallel processing: {USE_PARALLEL}')
+    logger.info(f'Max workers: {MAX_WORKERS}')
+    logger.info(f'Smart sampling: {SMART_SAMPLING}')
+    logger.info(f'Caching enabled: {ENABLE_CACHING}')
+    logger.info(f'Memory mapping: {USE_MEMMAP}')
+
+    seed(2222)
+    volume = (Main_BoxSize/Main_Hubble_h)**3.0 * Main_VolumeFraction
+
+    OutputDir = DirName + 'plots/'
+    Path(OutputDir).mkdir(exist_ok=True)
+
+    logger.info(f'Reading galaxy properties from {DirName}')
+    model_files = get_file_list(DirName)
+    logger.info(f'Found {len(model_files)} model files')
+
+    # Read galaxy properties with ultra-optimized function
+    logger.info('Loading Vvir...')
+    Vvir = read_hdf_ultra_optimized(snap_num=Snapshot, param='Vvir')
+    logger.info('Loading StellarMass...')
+    StellarMass = read_hdf_ultra_optimized(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Main_Hubble_h
+    logger.info('Loading Type...')
+    Type = read_hdf_ultra_optimized(snap_num=Snapshot, param='Type')
+
+    logger.info(f'Total galaxies: {len(Vvir)}')
+
+    
+    plot_stellar_mass_function_comparison(SMF_SimConfigs, Snapshot, OutputDir)
+
+    logger.info(f'Total execution time: {time.time() - start_time:.2f} seconds')
+    logger.info('Analysis complete!')
+    
+    force_cleanup()  # Final cleanup
