@@ -216,7 +216,11 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         eburst = 0.56 * pow(mass_ratio, 0.7);
     }
 
-    stars = eburst * galaxies[merger_centralgal].ColdGas;
+    if(run_params->SFprescription == 1) {
+        stars = eburst * galaxies[merger_centralgal].H2_gas;
+    } else {
+        stars = eburst * galaxies[merger_centralgal].ColdGas;
+    }
     if(stars < 0.0) {
         stars = 0.0;
     }

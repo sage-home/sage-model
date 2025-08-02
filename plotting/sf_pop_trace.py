@@ -156,25 +156,6 @@ SMF_SimConfigs = [
         'BoxSize': 62.5,  # h-1 Mpc
         'Hubble_h': 0.73,
         'VolumeFraction': 1.0
-    },
-    {
-        'path': './output/miniuchuu_full_mod_lowerbaryonicfrac_28052025/', 
-        'label': 'SAGE 2.0 miniUchuu', 
-        'color': PLOT_COLORS['miniuchuu'], 
-        'linestyle': '-',  # solid line
-        'BoxSize': 400,  # h-1 Mpc
-        'Hubble_h': 0.677,
-        'VolumeFraction': 1.0
-    },
-    # Vanilla SAGE simulation (dashed lines)
-    {
-        'path': './output/millennium_vanilla', 
-        'label': 'SAGE C16', 
-        'color': 'darkred', 
-        'linestyle': '--',  # dashed line
-        'BoxSize': 62.5,  # h-1 Mpc
-        'Hubble_h': 0.73,
-        'VolumeFraction': 1.0
     }
 ]
 
@@ -1580,7 +1561,21 @@ def plot_galaxy_evolution_6panel(tracked_data, output_dir, hubble_h=0.73):
     ]
     
     # Color palette for different galaxies
-    colors = plt.cm.tab10(np.linspace(0, 1, len(tracked_data)))
+    colors = plt.cm.plasma(np.linspace(0, 1, len(tracked_data)))
+    
+    # Find the most massive halo at z=0 (or latest available redshift)
+    most_massive_galaxy_id = None
+    max_mvir = -np.inf
+    
+    for gal_id, gal_data in tracked_data.items():
+        if len(gal_data['log10_mvir']) > 0:
+            # Use the latest (lowest redshift) Mvir value
+            latest_mvir = gal_data['log10_mvir'][-1]  # Assuming data is sorted by redshift
+            if latest_mvir > max_mvir:
+                max_mvir = latest_mvir
+                most_massive_galaxy_id = gal_id
+    
+    logger.info(f'Most massive galaxy: {most_massive_galaxy_id} with log10(Mvir) = {max_mvir:.2f}')
     
     # Track if merger labels have been added
     major_merger_labeled = False
@@ -1596,6 +1591,10 @@ def plot_galaxy_evolution_6panel(tracked_data, output_dir, hubble_h=0.73):
         merger_status = np.array(gal_data['merger_status'])
         has_major = np.array(gal_data['has_recent_major_merger'])
         has_minor = np.array(gal_data['has_recent_minor_merger'])
+        
+        # Set alpha based on whether this is the most massive galaxy
+        alpha = 1.0 if gal_id == most_massive_galaxy_id else 0.1
+        linewidth = 3.0 if gal_id == most_massive_galaxy_id else 1.0
         
         # Sort by redshift for clean lines
         sort_idx = np.argsort(redshifts)
@@ -1620,14 +1619,14 @@ def plot_galaxy_evolution_6panel(tracked_data, output_dir, hubble_h=0.73):
                 valid_mask = np.isfinite(y_data)
                 if np.any(valid_mask):
                     # Plot the main evolution line (no label for individual galaxies)
-                    ax.plot(redshifts_sorted[valid_mask], y_data[valid_mask], color=color, alpha=0.7, linewidth=1.5)
+                    ax.plot(redshifts_sorted[valid_mask], y_data[valid_mask], color=color, alpha=alpha, linewidth=linewidth)
                     
                     # Add merger markers (only add labels once for legend)
                     # Major mergers: red stars
                     major_mask = valid_mask & has_major_sorted
                     if np.any(major_mask):
                         ax.scatter(redshifts_sorted[major_mask], y_data[major_mask], 
-                                 marker='*', s=100, c='red', edgecolors='darkred', linewidth=1,
+                                 marker='*', s=100, c='red', edgecolors='darkred', linewidth=linewidth, alpha=alpha,
                                  label='Major Merger' if j == 0 and not major_merger_labeled else "", zorder=10)
                         if j == 0:
                             major_merger_labeled = True
@@ -1636,7 +1635,7 @@ def plot_galaxy_evolution_6panel(tracked_data, output_dir, hubble_h=0.73):
                     minor_mask = valid_mask & has_minor_sorted
                     if np.any(minor_mask):
                         ax.scatter(redshifts_sorted[minor_mask], y_data[minor_mask], 
-                                 marker='^', s=60, c='orange', edgecolors='darkorange', linewidth=1,
+                                 marker='^', s=60, c='orange', edgecolors='darkorange', linewidth=linewidth, alpha=alpha,
                                  label='Minor Merger' if j == 0 and not minor_merger_labeled else "", zorder=9)
                         if j == 0:
                             minor_merger_labeled = True
@@ -1677,6 +1676,380 @@ def plot_galaxy_evolution_6panel(tracked_data, output_dir, hubble_h=0.73):
     logger.info(f'6-panel evolution plot saved as: {output_filename}')
     plt.close(fig)
 
+def plot_galaxy_evolution_6panel_zoom(tracked_data, output_dir, hubble_h=0.73):
+    """
+    Create a 6-panel figure showing galaxy evolution:
+    1. Mvir vs Redshift
+    2. StellarMass vs Redshift  
+    3. SFR vs Redshift
+    4. sSFR vs Redshift
+    5. ColdGas vs Redshift
+    6. H2 fraction vs Redshift
+    """
+    logger.info('Creating 6-panel galaxy evolution plot...')
+    
+    # Setup figure
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    axes = axes.flatten()
+    
+    # Panel titles and labels
+    panel_configs = [
+        {'title': r'Virial Mass Evolution', 'ylabel': r'$\log_{10} M_{\mathrm{vir}}\ (\mathrm{M}_\odot)$', 'data_key': 'log10_mvir'},
+        {'title': r'Stellar Mass Evolution', 'ylabel': r'$\log_{10} M_\star\ (\mathrm{M}_\odot)$', 'data_key': 'log10_stellar_mass'},
+        {'title': r'Star Formation Rate', 'ylabel': r'$\mathrm{SFR}\ (\mathrm{M}_\odot\ \mathrm{yr}^{-1})$', 'data_key': 'sfr'},
+        {'title': r'Specific Star Formation Rate', 'ylabel': r'$\log_{10} \mathrm{sSFR}\ (\mathrm{yr}^{-1})$', 'data_key': 'ssfr'},
+        {'title': r'Cold Gas Mass', 'ylabel': r'$\log_{10} M_{\mathrm{cold}}\ (\mathrm{M}_\odot)$', 'data_key': 'log10_cold_gas'},
+        {'title': r'H$_2$ Fraction', 'ylabel': r'$f_{\mathrm{H_2}} = M_{\mathrm{H_2}} / (M_{\mathrm{H_2}} + M_{\mathrm{HI}})$', 'data_key': 'h2_fraction'}
+    ]
+    
+    # Color palette for different galaxies
+    colors = plt.cm.plasma(np.linspace(0, 1, len(tracked_data)))
+    
+    # Find the most massive halo at z=0 (or latest available redshift)
+    most_massive_galaxy_id = None
+    max_mvir = -np.inf
+    
+    for gal_id, gal_data in tracked_data.items():
+        if len(gal_data['log10_mvir']) > 0:
+            # Use the latest (lowest redshift) Mvir value
+            latest_mvir = gal_data['log10_mvir'][-1]  # Assuming data is sorted by redshift
+            if latest_mvir > max_mvir:
+                max_mvir = latest_mvir
+                most_massive_galaxy_id = gal_id
+    
+    logger.info(f'Most massive galaxy: {most_massive_galaxy_id} with log10(Mvir) = {max_mvir:.2f}')
+    
+    # Track if merger labels have been added
+    major_merger_labeled = False
+    minor_merger_labeled = False
+    
+    # Plot each galaxy's evolution
+    for i, (gal_id, gal_data) in enumerate(tracked_data.items()):
+        if len(gal_data['redshift']) == 0:
+            continue
+            
+        color = colors[i % len(colors)]
+        redshifts = np.array(gal_data['redshift'])
+        merger_status = np.array(gal_data['merger_status'])
+        has_major = np.array(gal_data['has_recent_major_merger'])
+        has_minor = np.array(gal_data['has_recent_minor_merger'])
+        
+        # Set alpha based on whether this is the most massive galaxy
+        alpha = 1.0 if gal_id == most_massive_galaxy_id else 0.1
+        linewidth = 3.0 if gal_id == most_massive_galaxy_id else 1.0
+        
+        # Sort by redshift for clean lines
+        sort_idx = np.argsort(redshifts)
+        redshifts_sorted = redshifts[sort_idx]
+        merger_status_sorted = merger_status[sort_idx]
+        has_major_sorted = has_major[sort_idx]
+        has_minor_sorted = has_minor[sort_idx]
+        
+        for j, config in enumerate(panel_configs):
+            ax = axes[j]
+            data_key = config['data_key']
+            
+            if data_key in gal_data and len(gal_data[data_key]) > 0:
+                y_data = np.array(gal_data[data_key])[sort_idx]
+                
+                # Handle special case for SFR (not in log)
+                if data_key == 'sfr':
+                    y_data = np.log10(y_data)
+                    y_data[~np.isfinite(y_data)] = np.nan
+                
+                # Plot line with markers
+                valid_mask = np.isfinite(y_data)
+                if np.any(valid_mask):
+                    # Plot the main evolution line (no label for individual galaxies)
+                    ax.plot(redshifts_sorted[valid_mask], y_data[valid_mask], color=color, alpha=alpha, linewidth=linewidth)
+                    
+                    # Add merger markers (only add labels once for legend)
+                    # Major mergers: red stars
+                    major_mask = valid_mask & has_major_sorted
+                    if np.any(major_mask):
+                        ax.scatter(redshifts_sorted[major_mask], y_data[major_mask], 
+                                 marker='*', s=100, c='red', edgecolors='darkred', linewidth=linewidth, alpha=alpha,
+                                 label='Major Merger' if j == 0 and not major_merger_labeled else "", zorder=10)
+                        if j == 0:
+                            major_merger_labeled = True
+                    
+                    # Minor mergers: orange triangles
+                    minor_mask = valid_mask & has_minor_sorted
+                    if np.any(minor_mask):
+                        ax.scatter(redshifts_sorted[minor_mask], y_data[minor_mask], 
+                                 marker='^', s=60, c='orange', edgecolors='darkorange', linewidth=linewidth, alpha=alpha,
+                                 label='Minor Merger' if j == 0 and not minor_merger_labeled else "", zorder=9)
+                        if j == 0:
+                            minor_merger_labeled = True
+    
+    # Format each panel
+    for j, (ax, config) in enumerate(zip(axes, panel_configs)):
+        # ax.set_title(config['title'], fontsize=14, pad=10)
+        ax.set_ylabel(config['ylabel'], fontsize=12)
+        ax.set_xlabel('Redshift', fontsize=12)
+        # ax.grid(True, alpha=0.3)
+        ax.tick_params(labelsize=10)
+        
+        ax.set_xlim(0, 1.5)  # Set x-axis limits for zoomed view
+        
+        # Add legend showing only merger events
+        if j == 0:  # Only add legend to first panel
+            handles, labels = ax.get_legend_handles_labels()
+            
+            # Filter to only merger-related entries
+            merger_handles = []
+            merger_labels = []
+            
+            for handle, label in zip(handles, labels):
+                if 'Merger' in label:
+                    merger_handles.append(handle)
+                    merger_labels.append(label)
+            
+            # Create legend for merger events only
+            if merger_handles:
+                ax.legend(merger_handles, merger_labels, loc='upper right', fontsize=10,
+                         frameon=True, framealpha=0.8, title='Merger Events')
+    
+    # Adjust layout and save
+    plt.tight_layout()
+    output_filename = os.path.join(output_dir, 'galaxy_evolution_6panel_zoom' + OutputFormat)
+    fig.savefig(output_filename, dpi=500, bbox_inches='tight')
+    logger.info(f'6-panel evolution zoom plot saved as: {output_filename}')
+    plt.close(fig)
+
+def plot_galaxy_evolution_6panel_median(tracked_data, output_dir, hubble_h=0.73):
+    """
+    Create a 6-panel figure showing median galaxy evolution across the population:
+    1. Mvir vs Redshift
+    2. StellarMass vs Redshift  
+    3. SFR vs Redshift
+    4. sSFR vs Redshift
+    5. ColdGas vs Redshift
+    6. H2 fraction vs Redshift
+    """
+    logger.info('Creating 6-panel median galaxy evolution plot...')
+    
+    # Setup figure
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    axes = axes.flatten()
+    
+    # Panel titles and labels
+    panel_configs = [
+        {'title': r'Virial Mass Evolution', 'ylabel': r'$\log_{10} M_{\mathrm{vir}}\ (\mathrm{M}_\odot)$', 'data_key': 'log10_mvir'},
+        {'title': r'Stellar Mass Evolution', 'ylabel': r'$\log_{10} M_\star\ (\mathrm{M}_\odot)$', 'data_key': 'log10_stellar_mass'},
+        {'title': r'Star Formation Rate', 'ylabel': r'$\mathrm{SFR}\ (\mathrm{M}_\odot\ \mathrm{yr}^{-1})$', 'data_key': 'sfr'},
+        {'title': r'Specific Star Formation Rate', 'ylabel': r'$\log_{10} \mathrm{sSFR}\ (\mathrm{yr}^{-1})$', 'data_key': 'ssfr'},
+        {'title': r'Cold Gas Mass', 'ylabel': r'$\log_{10} M_{\mathrm{cold}}\ (\mathrm{M}_\odot)$', 'data_key': 'log10_cold_gas'},
+        {'title': r'H$_2$ Fraction', 'ylabel': r'$f_{\mathrm{H_2}} = M_{\mathrm{H_2}} / (M_{\mathrm{H_2}} + M_{\mathrm{HI}})$', 'data_key': 'h2_fraction'}
+    ]
+    
+    # Collect all redshifts to determine common redshift grid
+    all_redshifts = []
+    for gal_id, gal_data in tracked_data.items():
+        if len(gal_data['redshift']) > 0:
+            all_redshifts.extend(gal_data['redshift'])
+    
+    if len(all_redshifts) == 0:
+        logger.warning('No redshift data found!')
+        return
+    
+    # Create common redshift grid
+    unique_redshifts = sorted(set(all_redshifts))
+    logger.info(f'Computing medians for {len(unique_redshifts)} redshift points')
+    
+    # For each panel, compute median evolution
+    for j, config in enumerate(panel_configs):
+        ax = axes[j]
+        data_key = config['data_key']
+        
+        medians = []
+        percentile_16 = []
+        percentile_84 = []
+        redshift_points = []
+        
+        # Calculate median at each redshift
+        for z in unique_redshifts:
+            values_at_z = []
+            
+            # Collect all galaxy values at this redshift
+            for gal_id, gal_data in tracked_data.items():
+                if (data_key in gal_data and len(gal_data[data_key]) > 0 and 
+                    len(gal_data['redshift']) > 0):
+                    
+                    redshifts = np.array(gal_data['redshift'])
+                    z_indices = np.where(np.abs(redshifts - z) < 1e-10)[0]
+                    
+                    if len(z_indices) > 0:
+                        idx = z_indices[0]
+                        value = gal_data[data_key][idx]
+                        
+                        # Handle special case for SFR (convert to log)
+                        if data_key == 'sfr' and value > 0:
+                            value = np.log10(value)
+                        
+                        if np.isfinite(value):
+                            values_at_z.append(value)
+            
+            # Calculate statistics if we have enough data points
+            if len(values_at_z) >= 3:  # Minimum for meaningful statistics
+                values_at_z = np.array(values_at_z)
+                medians.append(np.median(values_at_z))
+                percentile_16.append(np.percentile(values_at_z, 16))
+                percentile_84.append(np.percentile(values_at_z, 84))
+                redshift_points.append(z)
+        
+        # Plot median evolution with uncertainty band
+        if len(medians) > 0:
+            redshift_points = np.array(redshift_points)
+            medians = np.array(medians)
+            percentile_16 = np.array(percentile_16)
+            percentile_84 = np.array(percentile_84)
+            
+            # Plot median line
+            ax.plot(redshift_points, medians, color='black', linewidth=3, zorder=10)
+            
+            # Plot uncertainty band (1-sigma)
+            ax.fill_between(redshift_points, percentile_16, percentile_84, 
+                           color='gray', alpha=0.3, zorder=5)
+        
+        # Format panel
+        ax.set_ylabel(config['ylabel'], fontsize=12)
+        ax.set_xlabel('Redshift', fontsize=12)
+        ax.tick_params(labelsize=10)
+        
+        # Add legend to first panel with galaxy count
+        if j == 0 and len(medians) > 0:
+            # Count total number of galaxies in the tracked data
+            n_galaxies = len(tracked_data)
+            ax.legend([f'Median ({n_galaxies} galaxies)'], 
+                     loc='upper right', fontsize=10, frameon=True, framealpha=0.8)
+    
+    # Adjust layout and save
+    plt.tight_layout()
+    output_filename = os.path.join(output_dir, 'galaxy_evolution_6panel_median' + OutputFormat)
+    fig.savefig(output_filename, dpi=500, bbox_inches='tight')
+    logger.info(f'6-panel median evolution plot saved as: {output_filename}')
+    plt.close(fig)
+
+def plot_galaxy_evolution_6panel_median_zoom(tracked_data, output_dir, hubble_h=0.73):
+    """
+    Create a 6-panel figure showing median galaxy evolution across the population (zoomed to z=0-1.5):
+    1. Mvir vs Redshift
+    2. StellarMass vs Redshift  
+    3. SFR vs Redshift
+    4. sSFR vs Redshift
+    5. ColdGas vs Redshift
+    6. H2 fraction vs Redshift
+    """
+    logger.info('Creating 6-panel median galaxy evolution plot (zoomed)...')
+    
+    # Setup figure
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    axes = axes.flatten()
+    
+    # Panel titles and labels
+    panel_configs = [
+        {'title': r'Virial Mass Evolution', 'ylabel': r'$\log_{10} M_{\mathrm{vir}}\ (\mathrm{M}_\odot)$', 'data_key': 'log10_mvir'},
+        {'title': r'Stellar Mass Evolution', 'ylabel': r'$\log_{10} M_\star\ (\mathrm{M}_\odot)$', 'data_key': 'log10_stellar_mass'},
+        {'title': r'Star Formation Rate', 'ylabel': r'$\mathrm{SFR}\ (\mathrm{M}_\odot\ \mathrm{yr}^{-1})$', 'data_key': 'sfr'},
+        {'title': r'Specific Star Formation Rate', 'ylabel': r'$\log_{10} \mathrm{sSFR}\ (\mathrm{yr}^{-1})$', 'data_key': 'ssfr'},
+        {'title': r'Cold Gas Mass', 'ylabel': r'$\log_{10} M_{\mathrm{cold}}\ (\mathrm{M}_\odot)$', 'data_key': 'log10_cold_gas'},
+        {'title': r'H$_2$ Fraction', 'ylabel': r'$f_{\mathrm{H_2}} = M_{\mathrm{H_2}} / (M_{\mathrm{H_2}} + M_{\mathrm{HI}})$', 'data_key': 'h2_fraction'}
+    ]
+    
+    # Collect all redshifts to determine common redshift grid (filtered for zoom range)
+    all_redshifts = []
+    for gal_id, gal_data in tracked_data.items():
+        if len(gal_data['redshift']) > 0:
+            redshifts = np.array(gal_data['redshift'])
+            zoom_redshifts = redshifts[(redshifts >= 0) & (redshifts <= 1.5)]
+            all_redshifts.extend(zoom_redshifts)
+    
+    if len(all_redshifts) == 0:
+        logger.warning('No redshift data found in zoom range!')
+        return
+    
+    # Create common redshift grid
+    unique_redshifts = sorted(set(all_redshifts))
+    logger.info(f'Computing medians for {len(unique_redshifts)} redshift points in zoom range (z=0-1.5)')
+    
+    # For each panel, compute median evolution
+    for j, config in enumerate(panel_configs):
+        ax = axes[j]
+        data_key = config['data_key']
+        
+        medians = []
+        percentile_16 = []
+        percentile_84 = []
+        redshift_points = []
+        
+        # Calculate median at each redshift
+        for z in unique_redshifts:
+            values_at_z = []
+            
+            # Collect all galaxy values at this redshift
+            for gal_id, gal_data in tracked_data.items():
+                if (data_key in gal_data and len(gal_data[data_key]) > 0 and 
+                    len(gal_data['redshift']) > 0):
+                    
+                    redshifts = np.array(gal_data['redshift'])
+                    z_indices = np.where(np.abs(redshifts - z) < 1e-10)[0]
+                    
+                    if len(z_indices) > 0:
+                        idx = z_indices[0]
+                        value = gal_data[data_key][idx]
+                        
+                        # Handle special case for SFR (convert to log)
+                        if data_key == 'sfr' and value > 0:
+                            value = np.log10(value)
+                        
+                        if np.isfinite(value):
+                            values_at_z.append(value)
+            
+            # Calculate statistics if we have enough data points
+            if len(values_at_z) >= 3:  # Minimum for meaningful statistics
+                values_at_z = np.array(values_at_z)
+                medians.append(np.median(values_at_z))
+                percentile_16.append(np.percentile(values_at_z, 16))
+                percentile_84.append(np.percentile(values_at_z, 84))
+                redshift_points.append(z)
+        
+        # Plot median evolution with uncertainty band
+        if len(medians) > 0:
+            redshift_points = np.array(redshift_points)
+            medians = np.array(medians)
+            percentile_16 = np.array(percentile_16)
+            percentile_84 = np.array(percentile_84)
+            
+            # Plot median line
+            ax.plot(redshift_points, medians, color='black', linewidth=3, zorder=10)
+            
+            # Plot uncertainty band (1-sigma)
+            ax.fill_between(redshift_points, percentile_16, percentile_84, 
+                           color='gray', alpha=0.3, zorder=5)
+        
+        # Format panel
+        ax.set_ylabel(config['ylabel'], fontsize=12)
+        ax.set_xlabel('Redshift', fontsize=12)
+        ax.tick_params(labelsize=10)
+        
+        # Set zoom limits
+        ax.set_xlim(0, 1.5)
+        
+        # Add legend to first panel with galaxy count
+        if j == 0 and len(medians) > 0:
+            # Count total number of galaxies in the tracked data
+            n_galaxies = len(tracked_data)
+            ax.legend([f'Median ({n_galaxies} galaxies)'], 
+                     loc='upper right', fontsize=10, frameon=True, framealpha=0.8)
+    
+    # Adjust layout and save
+    plt.tight_layout()
+    output_filename = os.path.join(output_dir, 'galaxy_evolution_6panel_median_zoom' + OutputFormat)
+    fig.savefig(output_filename, dpi=500, bbox_inches='tight')
+    logger.info(f'6-panel median evolution zoom plot saved as: {output_filename}')
+    plt.close(fig)
+
 def plot_merger_timeline(tracked_data, output_dir, hubble_h=0.73):
     """
     Create a dedicated plot showing merger timeline for tracked galaxies
@@ -1686,7 +2059,7 @@ def plot_merger_timeline(tracked_data, output_dir, hubble_h=0.73):
     fig, ax = create_figure(figsize=(12, 8))
     
     # Color palette for different galaxies
-    colors = plt.cm.tab10(np.linspace(0, 1, len(tracked_data)))
+    colors = plt.cm.plasma(np.linspace(0, 1, len(tracked_data)))
     
     y_positions = {}
     y_counter = 0
@@ -1735,9 +2108,9 @@ def plot_merger_timeline(tracked_data, output_dir, hubble_h=0.73):
     ax.set_title('Merger Timeline for Tracked Galaxies', fontsize=16, pad=20)
     
     # Set y-axis labels to generic galaxy labels
-    if y_positions:
-        ax.set_yticks(list(y_positions.values()))
-        ax.set_yticklabels([f'Galaxy {i+1}' for i in range(len(y_positions))])
+    # if y_positions:
+    #     ax.set_yticks(list(y_positions.values()))
+    #     ax.set_yticklabels([f'Galaxy {i+1}' for i in range(len(y_positions))])
     
     # Add grid and legend
     # ax.grid(True, alpha=0.3, axis='x')
@@ -1748,6 +2121,82 @@ def plot_merger_timeline(tracked_data, output_dir, hubble_h=0.73):
     output_filename = os.path.join(output_dir, 'merger_timeline' + OutputFormat)
     fig.savefig(output_filename, dpi=500, bbox_inches='tight')
     logger.info(f'Merger timeline plot saved as: {output_filename}')
+    plt.close(fig)
+
+def plot_merger_timeline_zoom(tracked_data, output_dir, hubble_h=0.73):
+    """
+    Create a dedicated plot showing merger timeline for tracked galaxies
+    """
+    logger.info('Creating merger timeline plot...')
+    
+    fig, ax = create_figure(figsize=(12, 8))
+    
+    # Color palette for different galaxies
+    colors = plt.cm.plasma(np.linspace(0, 1, len(tracked_data)))
+    
+    y_positions = {}
+    y_counter = 0
+    
+    # Plot each galaxy's merger history
+    major_merger_labeled = False
+    minor_merger_labeled = False
+    
+    for i, (gal_id, gal_data) in enumerate(tracked_data.items()):
+        if len(gal_data['redshift']) == 0:
+            continue
+            
+        color = colors[i % len(colors)]
+        redshifts = np.array(gal_data['redshift'])
+        has_major = np.array(gal_data['has_recent_major_merger'])
+        has_minor = np.array(gal_data['has_recent_minor_merger'])
+        
+        # Assign y position for this galaxy
+        y_positions[gal_id] = y_counter
+        y_pos = y_counter
+        
+        # Plot galaxy evolution line (no individual labels)
+        ax.plot(redshifts, [y_pos] * len(redshifts), color=color, alpha=0.5, linewidth=2)
+        
+        # Plot merger events
+        major_redshifts = redshifts[has_major]
+        minor_redshifts = redshifts[has_minor]
+        
+        if len(major_redshifts) > 0:
+            ax.scatter(major_redshifts, [y_pos] * len(major_redshifts), 
+                      marker='*', s=150, c='red', edgecolors='darkred', linewidth=1.5,
+                      label='Major Merger' if not major_merger_labeled else "", zorder=10)
+            major_merger_labeled = True
+            
+        if len(minor_redshifts) > 0:
+            ax.scatter(minor_redshifts, [y_pos] * len(minor_redshifts), 
+                      marker='^', s=100, c='orange', edgecolors='darkorange', linewidth=1.5,
+                      label='Minor Merger' if not minor_merger_labeled else "", zorder=9)
+            minor_merger_labeled = True
+        
+        y_counter += 1
+    
+    # Format the plot
+    ax.set_xlabel('Redshift', fontsize=14)
+    ax.set_ylabel('Galaxy', fontsize=14)
+    ax.set_title('Merger Timeline for Tracked Galaxies', fontsize=16, pad=20)
+
+    # Set x-axis limits for zoomed view
+    ax.set_xlim(0, 1.5)
+    
+    # Set y-axis labels to generic galaxy labels
+    # if y_positions:
+    #     ax.set_yticks(list(y_positions.values()))
+    #     ax.set_yticklabels([f'Galaxy {i+1}' for i in range(len(y_positions))])
+    
+    # Add grid and legend
+    # ax.grid(True, alpha=0.3, axis='x')
+    ax.legend(loc='upper right', fontsize=12, frameon=True, framealpha=0.8)
+    
+    # Adjust layout and save
+    plt.tight_layout()
+    output_filename = os.path.join(output_dir, 'merger_timeline_zoom' + OutputFormat)
+    fig.savefig(output_filename, dpi=500, bbox_inches='tight')
+    logger.info(f'Merger timeline zoom plot saved as: {output_filename}')
     plt.close(fig)
 
 def print_merger_summary(tracked_data):
@@ -1797,6 +2246,192 @@ def print_merger_summary(tracked_data):
     logger.info(f'Average major mergers per galaxy: {total_major_mergers/len(tracked_data):.2f}')
     logger.info(f'Average minor mergers per galaxy: {total_minor_mergers/len(tracked_data):.2f}')
 
+
+def plot_galaxy_properties_distributions(tracked_data, output_dir, redshift_range=(0.0, 1.5), hubble_h=0.73, use_density=True):
+    """
+    Create a 6-panel figure showing normalized distributions of galaxy properties:
+    1. Mvir distribution
+    2. StellarMass distribution  
+    3. SFR distribution
+    4. sSFR distribution
+    5. ColdGas distribution
+    6. H2 fraction distribution
+    
+    Parameters:
+    -----------
+    tracked_data : dict
+        Dictionary containing tracked galaxy data
+    output_dir : str
+        Output directory for saving plots
+    redshift_range : tuple
+        Redshift range to include in analysis (min, max)
+    hubble_h : float
+        Hubble parameter
+    use_density : bool
+        If True, use probability density (area under curve = 1, y-axis can be > 1)
+        If False, use frequency counts (y-axis shows actual counts)
+    """
+    density_str = "density" if use_density else "frequency"
+    logger.info(f'Creating galaxy properties {density_str} distributions plot (z={redshift_range[0]}-{redshift_range[1]})...')
+    
+    # Setup figure
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    axes = axes.flatten()
+    
+    # Panel configurations
+    panel_configs = [
+        {
+            'title': r'Virial Mass Distribution',
+            'xlabel': r'$\log_{10} M_{\mathrm{vir}}\ (\mathrm{M}_\odot)$',
+            'data_key': 'log10_mvir',
+            'bins': np.arange(13.0, 15.5, 0.1),
+            'color': '#1f77b4'
+        },
+        {
+            'title': r'Stellar Mass Distribution',
+            'xlabel': r'$\log_{10} M_\star\ (\mathrm{M}_\odot)$',
+            'data_key': 'log10_stellar_mass',
+            'bins': np.arange(10.5, 12.5, 0.05),
+            'color': '#ff7f0e'
+        },
+        {
+            'title': r'Star Formation Rate Distribution',
+            'xlabel': r'$\log_{10} \mathrm{SFR}\ (\mathrm{M}_\odot\ \mathrm{yr}^{-1})$',
+            'data_key': 'sfr',
+            'bins': np.arange(-2.0, 3.0, 0.1),
+            'color': '#2ca02c'
+        },
+        {
+            'title': r'Specific SFR Distribution',
+            'xlabel': r'$\log_{10} \mathrm{sSFR}\ (\mathrm{yr}^{-1})$',
+            'data_key': 'ssfr',
+            'bins': np.arange(-12.0, -8.0, 0.1),
+            'color': '#d62728'
+        },
+        {
+            'title': r'Cold Gas Mass Distribution',
+            'xlabel': r'$\log_{10} M_{\mathrm{cold}}\ (\mathrm{M}_\odot)$',
+            'data_key': 'log10_cold_gas',
+            'bins': np.arange(9.0, 12.0, 0.1),
+            'color': '#9467bd'
+        },
+        {
+            'title': r'H$_2$ Fraction Distribution',
+            'xlabel': r'$f_{\mathrm{H_2}} = M_{\mathrm{H_2}} / (M_{\mathrm{HI}} + M_{\mathrm{H_2}})$',
+            'data_key': 'h2_fraction',
+            'bins': np.arange(0.0, 1.0, 0.02),
+            'color': '#8c564b'
+        }
+    ]
+    
+    # Collect data from z=0 snapshot only (one data point per galaxy)
+    all_data = {config['data_key']: [] for config in panel_configs}
+    total_galaxies_found = 0
+    
+    for gal_id, gal_data in tracked_data.items():
+        if len(gal_data['redshift']) == 0:
+            continue
+            
+        redshifts = np.array(gal_data['redshift'])
+        
+        # Find the z=0 snapshot (closest to redshift 0.0)
+        z0_idx = np.argmin(np.abs(redshifts))
+        z0_redshift = redshifts[z0_idx]
+        
+        # Only include if this is actually close to z=0 (within redshift range)
+        if z0_redshift >= redshift_range[0] and z0_redshift <= redshift_range[1]:
+            total_galaxies_found += 1
+            
+            # Collect data for each property at z=0
+            for config in panel_configs:
+                data_key = config['data_key']
+                
+                if data_key in gal_data and len(gal_data[data_key]) > 0:
+                    data_values = np.array(gal_data[data_key])
+                    
+                    # Get the value at z=0 snapshot
+                    z0_value = data_values[z0_idx]
+                    
+                    # Handle special case for SFR (convert to log)
+                    if data_key == 'sfr':
+                        if z0_value > 0:
+                            log_sfr = np.log10(z0_value)
+                            if np.isfinite(log_sfr):
+                                all_data[data_key].append(log_sfr)
+                    else:
+                        # Only include finite values
+                        if np.isfinite(z0_value):
+                            all_data[data_key].append(z0_value)
+    
+    logger.info(f'Collected z=0 data from {total_galaxies_found} galaxies (one data point per galaxy)')
+    for config in panel_configs:
+        data_key = config['data_key']
+        logger.info(f'{data_key}: {len(all_data[data_key])} data points')
+    
+    # Create histograms for each panel
+    for j, config in enumerate(panel_configs):
+        ax = axes[j]
+        data_key = config['data_key']
+        
+        if len(all_data[data_key]) == 0:
+            logger.warning(f'No data available for {data_key}')
+            ax.text(0.5, 0.5, 'No Data', transform=ax.transAxes, 
+                   ha='center', va='center', fontsize=16)
+            ax.set_xlabel(config['xlabel'], fontsize=12)
+            ax.set_title(config['title'], fontsize=14, pad=10)
+            continue
+        
+        data_values = np.array(all_data[data_key])
+        
+        # Create histogram with chosen normalization
+        y_label = 'Probability Density' if use_density else 'Frequency'
+        counts, bin_edges, patches = ax.hist(data_values, bins=config['bins'], 
+                                           density=use_density, alpha=0.7, 
+                                           color=config['color'], 
+                                           edgecolor='black', linewidth=0.5)
+        
+        # Add statistics text
+        median_val = np.median(data_values)
+        mean_val = np.mean(data_values)
+        std_val = np.std(data_values)
+        n_points = len(data_values)
+        
+        # Position stats text
+        stats_text = f'N = {n_points}\nMedian = {median_val:.2f}\nMean = {mean_val:.2f}\nStd = {std_val:.2f}'
+        ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, 
+               verticalalignment='top', fontsize=10,
+               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # Add vertical line for median
+        ax.axvline(median_val, color='red', linestyle='--', linewidth=2, alpha=0.8, label=f'Median')
+        
+        # Formatting
+        ax.set_xlabel(config['xlabel'], fontsize=12)
+        ax.set_ylabel(y_label, fontsize=12)
+        ax.set_title(config['title'], fontsize=14, pad=10)
+        ax.tick_params(labelsize=10)
+        # ax.grid(True, alpha=0.3)
+        
+        # Add legend for median line
+        ax.legend(loc='upper right', fontsize=10, framealpha=0.8)
+        
+        logger.info(f'{data_key}: N={n_points}, median={median_val:.2f}, mean={mean_val:.2f}, std={std_val:.2f}')
+    
+    # Add overall title
+    fig.suptitle(f'Galaxy Properties {density_str.title()} Distributions (z={redshift_range[0]}-{redshift_range[1]})', 
+                fontsize=16, y=0.98)
+    
+    # Adjust layout and save
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.93)  # Make room for suptitle
+    
+    # Create filename with redshift range and type
+    z_str = f'z{redshift_range[0]:.1f}-{redshift_range[1]:.1f}'.replace('.', 'p')
+    output_filename = os.path.join(output_dir, f'galaxy_properties_{density_str}_{z_str}' + OutputFormat)
+    fig.savefig(output_filename, dpi=500, bbox_inches='tight')
+    logger.info(f'Galaxy properties {density_str} distributions plot saved as: {output_filename}')
+    plt.close(fig)
+
 def analyze_massive_galaxy_evolution(directory=None, snapshot='Snap_63', output_dir=None):
     """
     Main function to identify and track low quiescent fraction massive galaxies.
@@ -1818,7 +2453,7 @@ def analyze_massive_galaxy_evolution(directory=None, snapshot='Snap_63', output_
         directory=directory,
         snapshot=snapshot,
         stellar_mass_min=11.0,
-        mvir_min=13.2,
+        mvir_min=13.0,
         quiescent_fraction_max=0.4,
         hubble_h=Main_Hubble_h
     )
@@ -1842,15 +2477,52 @@ def analyze_massive_galaxy_evolution(directory=None, snapshot='Snap_63', output_
         hubble_h=Main_Hubble_h
     )
     
-    # Step 4: Create dedicated merger timeline plot
+    # Step 4: Create evolution plots with merger markers
+    plot_galaxy_evolution_6panel_zoom(
+        tracked_data=tracked_data,
+        output_dir=output_dir,
+        hubble_h=Main_Hubble_h
+    )
+
+    # Step 5: Create median evolution plots (no merger markers)
+    plot_galaxy_evolution_6panel_median(
+        tracked_data=tracked_data,
+        output_dir=output_dir,
+        hubble_h=Main_Hubble_h
+    )
+    
+    # Step 6: Create median evolution plots (zoomed, no merger markers)
+    plot_galaxy_evolution_6panel_median_zoom(
+        tracked_data=tracked_data,
+        output_dir=output_dir,
+        hubble_h=Main_Hubble_h
+    )
+
+    # Step 7: Create dedicated merger timeline plot
     plot_merger_timeline(
         tracked_data=tracked_data,
         output_dir=output_dir,
         hubble_h=Main_Hubble_h
     )
     
-    # Step 5: Print merger summary
+# Step 7: Create dedicated merger timeline plot
+    plot_merger_timeline_zoom(
+        tracked_data=tracked_data,
+        output_dir=output_dir,
+        hubble_h=Main_Hubble_h
+    )
+
+    # Step 8: Print merger summary
     print_merger_summary(tracked_data)
+
+    # Step 9: Create galaxy properties distributions at z=0 (frequency counts)
+    plot_galaxy_properties_distributions(
+        tracked_data=tracked_data,
+        output_dir=output_dir,
+        redshift_range=(0.0, 0.1),  # z=0 snapshot only
+        hubble_h=Main_Hubble_h,
+        use_density=False  # Raw frequency counts
+    )
     
     logger.info('Massive galaxy evolution analysis with merger tracking complete!')
     return tracked_data
