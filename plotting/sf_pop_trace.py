@@ -639,8 +639,8 @@ def plot_stellar_halo_mass_relation(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define ULTRA-FINE 2D grid for COMPLETE coverage of ALL data
-        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
+        halo_grid = np.arange(halo_min, halo_max + 0.01, 0.01)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.01, 0.01)
 
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -810,8 +810,8 @@ def plot_halo_stellar_mass_relation(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid
-        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
+        halo_grid = np.arange(halo_min, halo_max + 0.01, 0.01)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.01, 0.01)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -997,8 +997,8 @@ def plot_halo_stellar_mass_relation_centrals(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid (finer for centrals only)
-        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
+        halo_grid = np.arange(halo_min, halo_max + 0.01, 0.01)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.01, 0.01)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -1187,8 +1187,8 @@ def plot_halo_stellar_mass_relation_satellites(sim_configs, snapshot, output_dir
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid (finer for satellites only)
-        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
+        halo_grid = np.arange(halo_min, halo_max + 0.01, 0.01)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.01, 0.01)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -2515,7 +2515,7 @@ def analyze_massive_galaxy_evolution(directory=None, snapshot='Snap_63', output_
         directory=directory,
         snapshot=snapshot,
         stellar_mass_min=11.0,
-        mvir_min=13.0,
+        mvir_min=14.0,
         quiescent_fraction_max=0.5,
         hubble_h=Main_Hubble_h
     )
@@ -2638,10 +2638,10 @@ def main():
         logger.info(f'Total galaxies: {len(Vvir)}')
     
     # All ranks participate in plotting (MPI grid computation happens inside plot functions)
-    # plot_stellar_halo_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    # plot_halo_stellar_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    # plot_halo_stellar_mass_relation_centrals(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    # plot_halo_stellar_mass_relation_satellites(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    plot_stellar_halo_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    plot_halo_stellar_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    plot_halo_stellar_mass_relation_centrals(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    plot_halo_stellar_mass_relation_satellites(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
     
     # NEW: Massive galaxy evolution analysis
     if rank == 0:
