@@ -125,7 +125,9 @@ PLOT_COLORS = {
     'h2_gas': '#ff7f0e',
     'millennium': '#000000',
     'miniuchuu': '#1f77b4',
+    'miniUchuu': '#ff7f0e',  # Orange for your miniUchuu model
     'c16_millennium': 'darkred',
+    'your_model_name': '#ff7f0e',  # Orange - change this to match your model name
     # Reionization model colors
     'enhanced_gnedin': '#1f77b4',  # blue
     'sobacchi_mesinger': '#d62728',  # red  
@@ -135,48 +137,117 @@ PLOT_COLORS = {
 
 # ========================== USER OPTIONS ==========================
 
-# File details for the main analysis (mass loading plot)
-DirName = './output/millennium/'
-FileName = 'model_0.hdf5'
-Snapshot = 'Snap_63'
-
-# Main simulation details (for mass loading plot only)
-Main_Hubble_h = 0.73        # Hubble parameter
-Main_BoxSize = 62.5         # h-1 Mpc
-Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
-
-# Define simulation configurations for SMF comparison
-SMF_SimConfigs = [
-    # SAGE 2.0 simulations (solid lines)
+# Define model configurations to run the full analysis on
+MODEL_CONFIGS = [
+    # Model 1: Millennium
     {
-        'path': './output/millennium/', 
-        'label': 'SAGE 2.0', 
-        'color': PLOT_COLORS['millennium'], 
-        'linestyle': '-',  # solid line
-        'BoxSize': 62.5,  # h-1 Mpc
-        'Hubble_h': 0.73,
-        'VolumeFraction': 1.0
+        'name': 'millennium',
+        'directory': './output/millennium/',
+        'filename': 'model_0.hdf5',
+        'snapshot': 'Snap_63',
+        'hubble_h': 0.73,
+        'box_size': 62.5,  # h-1 Mpc
+        'volume_fraction': 1.0,
+        'first_snap': 0,
+        'last_snap': 63,
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+        'smf_snaps': [63, 40, 32, 27, 23, 20, 18, 16],
+        'bhmf_snaps': [63, 40, 32, 27, 23, 20, 18, 16]
+    },
+    # Model 2: Add your second model here
+    # TEMPLATE - uncomment and fill in your values:
+    {
+        'name': 'miniUchuu',  # This should match a key in PLOT_COLORS for coloring
+        'directory': './output/miniuchuu_full_mod_21072025/',  # Path to your model output directory
+        'filename': 'model_0.hdf5',  # HDF5 filename (usually stays the same)
+        'snapshot': 'Snap_49',  # Your final snapshot (e.g., 'Snap_127' if you have 128 snapshots)
+        'hubble_h': 0.6774,  # Your Hubble parameter (e.g., 0.6774)
+        'box_size': 400.0,  # Your box size in h-1 Mpc (e.g., 200.0)
+        'volume_fraction': 1.0,  # Usually 1.0 unless you're using a subvolume
+        'first_snap': 0,  # Usually 0
+        'last_snap': 49,  # Your last snapshot number (e.g., 127)
+        'redshifts': [13.9334, 12.67409, 11.50797, 10.44649, 9.480752, 8.58543, 7.77447, 7.032387, 6.344409, 5.721695,
+           5.153127, 4.629078, 4.26715, 3.929071, 3.610462, 3.314082, 3.128427, 2.951226, 2.77809, 2.616166,
+           2.458114, 2.309724, 2.16592, 2.027963, 1.8962, 1.770958, 1.65124, 1.535928, 1.426272, 1.321656,
+           1.220303, 1.124166, 1.031983, 0.9441787, 0.8597281, 0.779046, 0.7020205, 0.6282588, 0.5575475, 0.4899777,
+           0.4253644, 0.3640053, 0.3047063, 0.2483865, 0.1939743, 0.1425568, 0.09296665, 0.0455745, 0.02265383, 0.0001130128],  # Array of redshifts for each snapshot
+        'smf_snaps': [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4],  # Which snapshots to use for SMF plots
+        'bhmf_snaps': [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4]  # Which snapshots to use for BHMF plots
     }
-]
+    ]
 
+# Global variables (will be updated for each model during execution)
+DirName = None
+FileName = None
+Snapshot = None
+Main_Hubble_h = None
+Main_BoxSize = None
+Main_VolumeFraction = None
+FirstSnap = None
+LastSnap = None
+redshifts = None
+SMFsnaps = None
+BHMFsnaps = None
+
+# Define simulation configurations for SMF comparison (will be updated per model)
+SMF_SimConfigs = []
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
 dilute = 7000       # Number of galaxies to plot in scatter plots
 sSFRcut = -11.0     # Divide quiescent from star forming galaxies
 
-# Main simulation snapshot details (for mass loading plot)
-FirstSnap = 0          # First snapshot to read
-LastSnap = 63          # Last snapshot to read
-redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
-             9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
-             2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
-             0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
-             0.116, 0.089, 0.064, 0.041, 0.020, 0.000]  # Redshift of each snapshot
-SMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
-BHMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
-
 OutputFormat = '.pdf'
+
+def setup_model_config(model_config):
+    """
+    Set up global variables for a specific model configuration
+    
+    Parameters:
+    -----------
+    model_config : dict
+        Dictionary containing model configuration parameters
+    """
+    global DirName, FileName, Snapshot, Main_Hubble_h, Main_BoxSize, Main_VolumeFraction
+    global FirstSnap, LastSnap, redshifts, SMFsnaps, BHMFsnaps, SMF_SimConfigs
+    
+    # Update global variables
+    DirName = model_config['directory']
+    FileName = model_config['filename']
+    Snapshot = model_config['snapshot']
+    Main_Hubble_h = model_config['hubble_h']
+    Main_BoxSize = model_config['box_size']
+    Main_VolumeFraction = model_config['volume_fraction']
+    FirstSnap = model_config['first_snap']
+    LastSnap = model_config['last_snap']
+    redshifts = model_config['redshifts']
+    SMFsnaps = model_config['smf_snaps']
+    BHMFsnaps = model_config['bhmf_snaps']
+    
+    # Update SMF_SimConfigs for this model
+    SMF_SimConfigs = [
+        {
+            'path': model_config['directory'],
+            'label': f'SAGE 2.0 ({model_config["name"]})',
+            'color': PLOT_COLORS.get(model_config['name'], '#1f77b4'),  # Default color if not found
+            'linestyle': '-',
+            'BoxSize': model_config['box_size'],
+            'Hubble_h': model_config['hubble_h'],
+            'VolumeFraction': model_config['volume_fraction']
+        }
+    ]
+    
+    logger.info(f'Configured for model: {model_config["name"]}')
+    logger.info(f'  Directory: {DirName}')
+    logger.info(f'  Snapshot: {Snapshot}')
+    logger.info(f'  Hubble h: {Main_Hubble_h}')
+    logger.info(f'  Box size: {Main_BoxSize} h-1 Mpc')
+    logger.info(f'  Volume fraction: {Main_VolumeFraction}')
+    logger.info(f'  Snapshots: {FirstSnap} - {LastSnap}')
 
 # Enhanced performance optimization options
 AGGRESSIVE_CLEANUP = True  # Force garbage collection between operations
@@ -639,8 +710,8 @@ def plot_stellar_halo_mass_relation(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define ULTRA-FINE 2D grid for COMPLETE coverage of ALL data
-        halo_grid = np.arange(halo_min, halo_max + 0.01, 0.01)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.01, 0.01)
+        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
 
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -810,8 +881,8 @@ def plot_halo_stellar_mass_relation(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid
-        halo_grid = np.arange(halo_min, halo_max + 0.01, 0.01)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.01, 0.01)
+        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -997,8 +1068,8 @@ def plot_halo_stellar_mass_relation_centrals(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid (finer for centrals only)
-        halo_grid = np.arange(halo_min, halo_max + 0.01, 0.01)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.01, 0.01)
+        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -1187,8 +1258,8 @@ def plot_halo_stellar_mass_relation_satellites(sim_configs, snapshot, output_dir
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid (finer for satellites only)
-        halo_grid = np.arange(halo_min, halo_max + 0.01, 0.01)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.01, 0.01)
+        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -2592,7 +2663,7 @@ def analyze_massive_galaxy_evolution(directory=None, snapshot='Snap_63', output_
 # ========================== MAIN EXECUTION ==========================
 
 def main():
-    """Main function for plotting with MPI support"""
+    """Main function for plotting with MPI support - runs analysis for all configured models"""
     
     # Determine MPI status
     if HAS_MPI:
@@ -2604,7 +2675,7 @@ def main():
         size = 1
     
     if rank == 0:
-        print('Running stellar-halo mass relation plotting')
+        print('Running stellar-halo mass relation plotting for multiple models')
         print(f'MPI processes: {size}')
         print('Ultra-optimized mass loading vs virial velocity analysis\n')
         
@@ -2613,55 +2684,151 @@ def main():
         
         # Setup
         setup_cache()
-    
-    start_time = time.time()
-    
-    if rank == 0:
+        
         logger.info(f'Smart sampling: {SMART_SAMPLING}')
         logger.info(f'Caching enabled: {ENABLE_CACHING}')
         logger.info(f'Memory mapping: {USE_MEMMAP}')
         logger.info(f'MPI available: {HAS_MPI}')
-
-        seed(2222)
-        volume = (Main_BoxSize/Main_Hubble_h)**3.0 * Main_VolumeFraction
-
-        OutputDir = DirName + 'sf_trace_plots/'
-        Path(OutputDir).mkdir(exist_ok=True)
-
-        logger.info(f'Reading galaxy properties from {DirName}')
-        model_files = get_file_list(DirName)
-        logger.info(f'Found {len(model_files)} model files')
-
-        # Read galaxy properties with optimized function
-        logger.info('Loading basic properties for validation...')
-        Vvir = read_hdf_ultra_optimized(snap_num=Snapshot, param='Vvir')
-        logger.info(f'Total galaxies: {len(Vvir)}')
+        logger.info(f'Number of models to process: {len(MODEL_CONFIGS)}')
     
-    # All ranks participate in plotting (MPI grid computation happens inside plot functions)
-    plot_stellar_halo_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    plot_halo_stellar_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    plot_halo_stellar_mass_relation_centrals(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    plot_halo_stellar_mass_relation_satellites(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    overall_start_time = time.time()
     
-    # NEW: Massive galaxy evolution analysis
-    if rank == 0:
-        logger.info('\n' + '='*50)
-        logger.info('Starting massive galaxy evolution analysis...')
-        tracked_data = analyze_massive_galaxy_evolution(
-            directory=DirName,
-            snapshot=Snapshot,
-            output_dir=OutputDir
-        )
+    # Loop through each model configuration
+    for model_idx, model_config in enumerate(MODEL_CONFIGS):
+        if rank == 0:
+            logger.info(f'\n' + '='*80)
+            logger.info(f'PROCESSING MODEL {model_idx + 1}/{len(MODEL_CONFIGS)}: {model_config["name"].upper()}')
+            logger.info('='*80)
+            
+            # Check if model directory exists
+            model_directory = model_config['directory']
+            if not os.path.exists(model_directory):
+                logger.warning(f'Model directory does not exist: {model_directory}')
+                logger.warning(f'Skipping model {model_config["name"]} and moving to next model...')
+                skip_model = True
+            elif not os.path.isdir(model_directory):
+                logger.warning(f'Model path exists but is not a directory: {model_directory}')
+                logger.warning(f'Skipping model {model_config["name"]} and moving to next model...')
+                skip_model = True
+            else:
+                logger.info(f'Model directory found: {model_directory}')
+                skip_model = False
+        else:
+            skip_model = False
+        
+        # Broadcast directory check result to all ranks
+        if HAS_MPI:
+            skip_model = comm.bcast(skip_model, root=0)
+        
+        # All ranks skip together if directory doesn't exist
+        if skip_model:
+            continue
+        
+        # Set up global variables for this model
+        if rank == 0:
+            setup_model_config(model_config)
+        
+        # Synchronize all processes after config setup
+        if HAS_MPI:
+            comm.Barrier()
+            # Broadcast the configuration to all ranks
+            model_config = comm.bcast(model_config, root=0)
+            if rank != 0:
+                setup_model_config(model_config)
+        
+        model_start_time = time.time()
+        
+        # Initialize OutputDir for all ranks
+        OutputDir = None
+        
+        if rank == 0:
+            seed(2222)
+            volume = (Main_BoxSize/Main_Hubble_h)**3.0 * Main_VolumeFraction
 
+            OutputDir = DirName + 'sf_trace_plots/'
+            Path(OutputDir).mkdir(exist_ok=True)
+
+            logger.info(f'Reading galaxy properties from {DirName}')
+            model_files = get_file_list(DirName)
+            logger.info(f'Found {len(model_files)} model files')
+
+            # Read galaxy properties with optimized function
+            logger.info('Loading basic properties for validation...')
+            try:
+                Vvir = read_hdf_ultra_optimized(snap_num=Snapshot, param='Vvir')
+                logger.info(f'Total galaxies: {len(Vvir)}')
+                validation_success = True
+            except Exception as e:
+                logger.error(f'Error reading {Snapshot} from {DirName}: {e}')
+                logger.warning(f'Skipping model {model_config["name"]} due to read error')
+                validation_success = False
+        else:
+            validation_success = True
+        
+        # Broadcast validation result to all ranks
+        if HAS_MPI:
+            validation_success = comm.bcast(validation_success, root=0)
+        
+        # All ranks skip together if validation failed
+        if not validation_success:
+            continue
+        
+        # Synchronize before plotting
+        if HAS_MPI:
+            comm.Barrier()
+        
+        try:
+            # All ranks participate in plotting (MPI grid computation happens inside plot functions)
+            plot_stellar_halo_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+            plot_halo_stellar_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+            plot_halo_stellar_mass_relation_centrals(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+            plot_halo_stellar_mass_relation_satellites(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+            
+            # NEW: Massive galaxy evolution analysis (only rank 0)
+            if rank == 0:
+                logger.info('\n' + '='*50)
+                logger.info('Starting massive galaxy evolution analysis...')
+                tracked_data = analyze_massive_galaxy_evolution(
+                    directory=DirName,
+                    snapshot=Snapshot,
+                    output_dir=OutputDir
+                )
+            
+            if rank == 0:
+                model_time = time.time() - model_start_time
+                logger.info(f'Model {model_config["name"]} execution time: {model_time:.2f} seconds')
+                logger.info(f'Model {model_config["name"]} analysis complete!')
+        
+        except Exception as e:
+            if rank == 0:
+                logger.error(f'Error processing model {model_config["name"]}: {e}')
+                logger.warning(f'Continuing with next model...')
+        
+        # Cleanup between models (only rank 0)
+        if rank == 0 and AGGRESSIVE_CLEANUP:
+            force_cleanup()
+        
+        # Synchronize all processes before next model
+        if HAS_MPI:
+            comm.Barrier()
+
+    # Final summary and cleanup
     if rank == 0:
-        logger.info(f'Total execution time: {time.time() - start_time:.2f} seconds')
-        logger.info('Analysis complete!')
+        total_time = time.time() - overall_start_time
+        logger.info(f'\n' + '='*80)
+        logger.info(f'ALL MODELS COMPLETE!')
+        logger.info(f'Total execution time: {total_time:.2f} seconds')
+        if len(MODEL_CONFIGS) > 0:
+            logger.info(f'Average time per model: {total_time/len(MODEL_CONFIGS):.2f} seconds')
+        logger.info('='*80)
         
         force_cleanup()  # Final cleanup
     
-    # Synchronize all processes before exit
+    # Final synchronization - ensure all ranks reach this point
     if HAS_MPI:
         comm.Barrier()
+        if rank == 0:
+            logger.info('All MPI processes synchronized. Exiting...')
 
 
 if __name__ == '__main__':
