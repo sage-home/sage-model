@@ -639,8 +639,8 @@ def plot_stellar_halo_mass_relation(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define ULTRA-FINE 2D grid for COMPLETE coverage of ALL data
-        halo_grid = np.arange(halo_min, halo_max + 0.05, 0.05)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.05, 0.05)
+        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
 
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -810,8 +810,8 @@ def plot_halo_stellar_mass_relation(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid
-        halo_grid = np.arange(halo_min, halo_max + 0.05, 0.05)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.05, 0.05)
+        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -997,8 +997,8 @@ def plot_halo_stellar_mass_relation_centrals(sim_configs, snapshot, output_dir):
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid (finer for centrals only)
-        halo_grid = np.arange(halo_min, halo_max + 0.05, 0.05)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.05, 0.05)
+        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -1187,8 +1187,8 @@ def plot_halo_stellar_mass_relation_satellites(sim_configs, snapshot, output_dir
             logger.info(f'Data ranges: Halo [{halo_min:.2f}, {halo_max:.2f}], Stellar [{stellar_min:.2f}, {stellar_max:.2f}]')
         
         # Define grid (finer for satellites only)
-        halo_grid = np.arange(halo_min, halo_max + 0.05, 0.05)
-        stellar_grid = np.arange(stellar_min, stellar_max + 0.05, 0.05)
+        halo_grid = np.arange(halo_min, halo_max + 0.02, 0.02)
+        stellar_grid = np.arange(stellar_min, stellar_max + 0.02, 0.02)
         
         if rank == 0:
             logger.info(f'Grid dimensions: {len(halo_grid)-1} x {len(stellar_grid)-1} = {(len(halo_grid)-1)*(len(stellar_grid)-1)} cells')
@@ -1275,8 +1275,17 @@ def plot_halo_stellar_mass_relation_satellites(sim_configs, snapshot, output_dir
 def identify_target_galaxies(directory, snapshot, stellar_mass_min=11.0, mvir_min=14.0, 
                            quiescent_fraction_max=0.4, hubble_h=0.73):
     """
-    Identify galaxies with StellarMass > 11, Mvir > 14, and quiescent fraction < 0.4
-    at the specified snapshot.
+    Identify galaxies with high stellar and virial masses that are actively star-forming
+    and located in environments with low quiescent fractions.
+    
+    This function finds galaxies that meet the following criteria:
+    1. log10(StellarMass) > stellar_mass_min
+    2. log10(Mvir) > mvir_min  
+    3. sSFR > -11.0 (star-forming, not quiescent)
+    4. Local quiescent fraction <= quiescent_fraction_max
+    
+    The local quiescent fraction is calculated within a 0.3 dex radius in 
+    log(M*)-log(Mvir) space around each galaxy.
     
     Parameters:
     -----------
@@ -1289,7 +1298,7 @@ def identify_target_galaxies(directory, snapshot, stellar_mass_min=11.0, mvir_mi
     mvir_min : float
         Minimum log10 virial mass
     quiescent_fraction_max : float
-        Maximum quiescent fraction
+        Maximum local quiescent fraction
     hubble_h : float
         Hubble parameter
         
@@ -1313,25 +1322,78 @@ def identify_target_galaxies(directory, snapshot, stellar_mass_min=11.0, mvir_mi
     # Apply mass cuts
     mass_cut = (np.log10(StellarMass) > stellar_mass_min) & (np.log10(Mvir) > mvir_min)
     
-    # For quiescent fraction calculation, we need to group by halo
-    # For simplicity, we'll look at each individual galaxy's sSFR vs the cut
-    quiescent_cut = sSFR < sSFRcut  # Using global sSFRcut = -11.0
+    # Identify quiescent galaxies using global sSFR cut
+    is_quiescent = sSFR < sSFRcut  # Using global sSFRcut = -11.0
     
-    # Find galaxies that meet mass criteria but are NOT quiescent (i.e., have low quiescent fraction)
-    target_indices = np.where(mass_cut & ~quiescent_cut)[0]
+    # Calculate log masses for local environment analysis
+    log_stellar_mass = np.log10(StellarMass)
+    log_mvir = np.log10(Mvir)
+    
+    # Find galaxies that meet mass criteria and are star-forming (individual criterion)
+    star_forming_massive = mass_cut & ~is_quiescent
+    
+    # Now filter by local quiescent fraction
+    target_mask = np.zeros(len(StellarMass), dtype=bool)
+    
+    # For each star-forming massive galaxy, calculate local quiescent fraction
+    sf_massive_indices = np.where(star_forming_massive)[0]
+    logger.info(f'Checking local quiescent fraction for {len(sf_massive_indices)} star-forming massive galaxies...')
+    
+    for idx in sf_massive_indices:
+        # Define local environment (0.3 dex radius in log(M*)-log(Mvir) space)
+        local_radius = 0.3
+        gal_log_stellar = log_stellar_mass[idx]
+        gal_log_mvir = log_mvir[idx]
+        
+        # Find neighbors within the local radius
+        distances = np.sqrt((log_stellar_mass - gal_log_stellar)**2 + (log_mvir - gal_log_mvir)**2)
+        local_mask = distances <= local_radius
+        
+        # Calculate local quiescent fraction if we have enough neighbors
+        if np.sum(local_mask) >= 5:  # Need at least 5 galaxies for meaningful statistics
+            local_quiescent_fraction = np.mean(is_quiescent[local_mask])
+        else:
+            # Use nearest neighbors if local density is too low
+            nearest_indices = np.argsort(distances)[:min(10, len(distances))]
+            local_quiescent_fraction = np.mean(is_quiescent[nearest_indices])
+        
+        # Include galaxy if local quiescent fraction is below threshold
+        if local_quiescent_fraction <= quiescent_fraction_max:
+            target_mask[idx] = True
+    
+    target_indices = np.where(target_mask)[0]
     
     logger.info(f'Found {len(target_indices)} target galaxies out of {len(StellarMass)} total')
     logger.info(f'Mass cuts: log10(M*) > {stellar_mass_min}, log10(Mvir) > {mvir_min}')
     logger.info(f'Star-forming criteria: sSFR > {sSFRcut}')
+    logger.info(f'Local quiescent fraction criteria: f_quiescent <= {quiescent_fraction_max}')
     
     if len(target_indices) > 0:
         target_galaxy_ids = GalaxyIndex[target_indices]
+        
+        # Calculate local quiescent fractions for logging
+        local_quiescent_fractions = []
+        for idx in target_indices:
+            gal_log_stellar = log_stellar_mass[idx]
+            gal_log_mvir = log_mvir[idx]
+            distances = np.sqrt((log_stellar_mass - gal_log_stellar)**2 + (log_mvir - gal_log_mvir)**2)
+            local_mask = distances <= 0.3
+            if np.sum(local_mask) >= 5:
+                local_qf = np.mean(is_quiescent[local_mask])
+            else:
+                nearest_indices = np.argsort(distances)[:min(10, len(distances))]
+                local_qf = np.mean(is_quiescent[nearest_indices])
+            local_quiescent_fractions.append(local_qf)
+        
+        local_quiescent_fractions = np.array(local_quiescent_fractions)
         
         # Log some statistics
         logger.info(f'Sample properties:')
         logger.info(f'  Stellar mass range: {np.log10(StellarMass[target_indices]).min():.2f} - {np.log10(StellarMass[target_indices]).max():.2f}')
         logger.info(f'  Mvir range: {np.log10(Mvir[target_indices]).min():.2f} - {np.log10(Mvir[target_indices]).max():.2f}')
         logger.info(f'  sSFR range: {sSFR[target_indices].min():.2f} - {sSFR[target_indices].max():.2f}')
+        logger.info(f'  Local quiescent fraction range: {local_quiescent_fractions.min():.3f} - {local_quiescent_fractions.max():.3f}')
+        logger.info(f'  Mean local quiescent fraction: {local_quiescent_fractions.mean():.3f} ± {local_quiescent_fractions.std():.3f}')
         
         return target_galaxy_ids.tolist()
     else:
@@ -2454,7 +2516,7 @@ def analyze_massive_galaxy_evolution(directory=None, snapshot='Snap_63', output_
         snapshot=snapshot,
         stellar_mass_min=11.0,
         mvir_min=13.0,
-        quiescent_fraction_max=0.4,
+        quiescent_fraction_max=0.5,
         hubble_h=Main_Hubble_h
     )
     
@@ -2563,7 +2625,7 @@ def main():
         seed(2222)
         volume = (Main_BoxSize/Main_Hubble_h)**3.0 * Main_VolumeFraction
 
-        OutputDir = DirName + 'plots/'
+        OutputDir = DirName + 'sf_trace_plots/'
         Path(OutputDir).mkdir(exist_ok=True)
 
         logger.info(f'Reading galaxy properties from {DirName}')
@@ -2576,10 +2638,10 @@ def main():
         logger.info(f'Total galaxies: {len(Vvir)}')
     
     # All ranks participate in plotting (MPI grid computation happens inside plot functions)
-    plot_stellar_halo_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    plot_halo_stellar_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    plot_halo_stellar_mass_relation_centrals(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
-    plot_halo_stellar_mass_relation_satellites(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    # plot_stellar_halo_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    # plot_halo_stellar_mass_relation(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    # plot_halo_stellar_mass_relation_centrals(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
+    # plot_halo_stellar_mass_relation_satellites(SMF_SimConfigs, Snapshot, OutputDir if rank == 0 else None)
     
     # NEW: Massive galaxy evolution analysis
     if rank == 0:
