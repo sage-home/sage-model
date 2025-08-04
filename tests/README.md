@@ -25,6 +25,7 @@ make core_tests        # Core infrastructure tests
 make property_tests    # Property system tests
 make io_tests          # I/O system tests
 make module_tests      # Module system tests
+make tree_tests        # Tree-based processing tests
 
 # Run individual tests
 make test_pipeline
@@ -35,9 +36,9 @@ make test_property_system_hdf5
 
 ## Test Categories and Components
 
-The SAGE test suite contains **58 individual unit tests** organized into 5 main categories:
+The SAGE test suite contains **51 individual unit tests** organized into 5 main categories:
 
-### Core Infrastructure Tests (`CORE_TESTS`) - 31 tests
+### Core Infrastructure Tests (`CORE_TESTS`) - 29 tests
 
 Tests that validate the fundamental components of SAGE:
 
@@ -70,7 +71,6 @@ Tests that validate the fundamental components of SAGE:
 - **test_fof_evolution_context** - Tests FOF-centric timing and merger tree continuity
 - **test_fof_memory_management** - Tests memory management for large FOF groups and leak detection
 - **test_orphan_tracking** - Tests comprehensive orphan galaxy tracking for mass conservation when host halos disappear
-- **test_orphan_tracking_simple** - Tests simplified orphan galaxy tracking functionality with basic scenarios
 - **test_orphan_fof_disruption** - Tests critical orphan galaxy handling during FOF group disruption scenarios
 
 ### Property System Tests (`PROPERTY_TESTS`) - 7 tests
@@ -109,28 +109,11 @@ Tests for the modular plugin architecture:
 - **test_module_callback** - Tests module callback system
 - **test_module_lifecycle** - Tests complete module lifecycle management
 
-### Tree-Based Processing Tests (`TREE_TESTS`) - 6 tests
+### Tree-Based Processing Tests (`TREE_TESTS`) - 1 test
 
 Tests for the new tree-based processing mode:
 
-- **test_tree_infrastructure** - Validates the core tree infrastructure
 - **test_galaxy_inheritance** - Tests galaxy inheritance and orphan creation
-- **test_tree_fof_processing** - Validates FOF group processing in tree mode
-- **test_tree_physics_integration** - Tests the integration of the physics pipeline
-- **test_tree_physics_simple** - A simplified test for the physics pipeline integration
-- **test_tree_mode_scientific_validation** - Validates the scientific accuracy of the tree mode
-
-
-### Tree-Based Processing Tests (`TREE_TESTS`) - 6 tests
-
-Tests for the new tree-based processing mode:
-
-- **test_tree_infrastructure** - Validates the core tree infrastructure
-- **test_galaxy_inheritance** - Tests galaxy inheritance and orphan creation
-- **test_tree_fof_processing** - Validates FOF group processing in tree mode
-- **test_tree_physics_integration** - Tests the integration of the physics pipeline
-- **test_tree_physics_simple** - A simplified test for the physics pipeline integration
-- **test_tree_mode_scientific_validation** - Validates the scientific accuracy of the tree mode
 
 ## End-to-End Scientific Tests
 
@@ -239,12 +222,12 @@ During Phase 5 (Core Module Migration), unit tests should pass, but end-to-end s
 
 ## Test Suite Statistics
 
-- **Total unit tests**: 58 individual test executables
-- **Core Infrastructure**: 31 tests
+- **Total unit tests**: 51 individual test executables
+- **Core Infrastructure**: 29 tests
 - **Property System**: 7 tests
 - **I/O System**: 11 tests
 - **Module System**: 3 tests
-- **Tree-Based Processing**: 6 tests
+- **Tree-Based Processing**: 1 test
 - **Test categories**: 5 main categories with specialized make targets
 - **Scientific validation**: End-to-end testing via `test_sage.sh` and `test_tree_mode_validation.py`
 

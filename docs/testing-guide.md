@@ -16,7 +16,7 @@ The SAGE testing framework is built around three key principles:
 
 ## Test Categories
 
-### Core Infrastructure Tests (31 tests)
+### Core Infrastructure Tests (29 tests)
 
 These tests validate the fundamental infrastructure components of SAGE:
 
@@ -24,6 +24,8 @@ These tests validate the fundamental infrastructure components of SAGE:
 |-----------|---------|---------------|
 | **test_pipeline** | Tests the pipeline execution system with 4 phases (HALO, GALAXY, POST, FINAL) | Phase 2.5 (Mar 2025) |
 | **test_array_utils** | Tests the array utility functions for dynamic array manipulation | Phase 3.3 (Apr 2025) |
+| **test_galaxy_array** | Tests the galaxy array data structure and component management | Phase 5.3 (Jun 2025) |
+| **test_galaxy_array_component** | Tests individual galaxy array component access and manipulation | Phase 5.3 (Jun 2025) |
 | **test_core_property** | Tests the property system's core functionality with mock implementations | Phase 5.2.B (May 2025) |
 | **test_core_pipeline_registry** | Tests the pipeline registry for module registration and pipeline creation | Phase 5.2.F (May 2025) |
 | **test_dispatcher_access** | Tests the type-safe dispatcher functions for property access | Phase 5.2.F.4 (May 2025) |
@@ -40,18 +42,15 @@ These tests validate the fundamental infrastructure components of SAGE:
 | **test_error_recovery** | Tests system resilience and recovery from failures | Phase 5.2.G (June 2025) |
 | **test_dynamic_memory_expansion** | Tests the dynamic memory expansion system for scaling to large simulations | Phase 5.3 (Jun 2025) |
 | **test_data_integrity_physics_free** | Tests data integrity in physics-free mode with core properties only | Phase 5.3 (Jun 2025) |
-| **test_galaxy_array** | Tests the galaxy array data structure and component management | Phase 5.3 (Jun 2025) |
-| **test_galaxy_array_component** | Tests individual galaxy array component access and manipulation | Phase 5.3 (Jun 2025) |
+| **test_hdf5_output_validation** | Validates HDF5 output format and property serialization | Phase 5.3 (Jun 2025) |
 | **test_halo_progenitor_integrity** | Validates halo progenitor relationships and data integrity | Phase 5.3 (Jun 2025) |
 | **test_core_property_separation** | Tests separation between core and physics properties | Phase 5.3 (Jun 2025) |
 | **test_property_separation_scientific_accuracy** | Tests scientific accuracy with property separation enabled | Phase 5.3 (Jun 2025) |
 | **test_property_separation_memory_safety** | Tests memory safety with property separation enabled | Phase 5.3 (Jun 2025) |
-| **test_hdf5_output_validation** | Validates HDF5 output format and property serialization | Phase 5.3 (Jun 2025) |
 | **test_fof_group_assembly** | Tests FOF group galaxy type assignment and central identification | Phase 5.3 (Jun 2025) |
 | **test_fof_evolution_context** | Tests FOF-centric timing and merger tree continuity | Phase 5.3 (Jun 2025) |
 | **test_fof_memory_management** | Tests memory management for large FOF groups and leak detection | Phase 5.3 (Jun 2025) |
 | **test_orphan_tracking** | Tests comprehensive orphan galaxy tracking for mass conservation when host halos disappear | Phase 5.3 (Jun 2025) |
-| **test_orphan_tracking_simple** | Tests simplified orphan galaxy tracking functionality with basic scenarios | Phase 5.3 (Jun 2025) |
 | **test_orphan_fof_disruption** | **HISTORICAL REGRESSION TEST**: Documents legacy orphan loss patterns (now resolved by unified tree-based processing) | Phase 5.3 (Jun 2025) |
 
 **Purpose**: Core infrastructure tests should always pass, as they validate the stability of the foundation on which everything else is built.
@@ -108,18 +107,13 @@ These tests validate the module system that enables SAGE's pluggable architectur
 
 **Purpose**: Module system tests ensure that physics components can be added, removed, or replaced without breaking the core functionality.
 
-### Tree-Based Processing Tests (6 tests)
+### Tree-Based Processing Tests (1 test)
 
 These tests validate the unified tree-based processing architecture:
 
 | Test Name | Purpose | Added in Phase |
 |-----------|---------|---------------|
-| **test_tree_infrastructure** | Validates the core tree infrastructure | Phase 6 (Jun 2025) |
 | **test_galaxy_inheritance** | Tests galaxy inheritance and orphan creation | Phase 6 (Jun 2025) |
-| **test_tree_fof_processing** | Validates FOF group processing with modern tree-based algorithms | Phase 6 (Jun 2025) |
-| **test_tree_physics_integration** | Tests the integration of the physics pipeline with tree processing | Phase 6 (Jun 2025) |
-| **test_tree_physics_simple** | A simplified test for the physics pipeline integration | Phase 6 (Jun 2025) |
-| **test_tree_mode_scientific_validation** | Validates the scientific accuracy of unified tree processing, including robust orphan handling | Phase 6 (Jun 2025) |
 
 **Purpose**: Tree-based processing tests ensure the scientific accuracy and robustness of the unified processing architecture.
 
@@ -142,6 +136,7 @@ make core_tests        # Core infrastructure tests
 make property_tests    # Property system tests
 make io_tests          # I/O system tests
 make module_tests      # Module system tests
+make tree_tests        # Tree-based processing tests
 ```
 
 ### Individual Tests
@@ -438,12 +433,12 @@ SAGE includes a performance benchmarking system:
 ## Test Suite Statistics
 
 The SAGE test suite contains:
-- **Total tests**: 58 individual unit tests
-- **Core Infrastructure**: 31 tests
+- **Total tests**: 51 individual unit tests
+- **Core Infrastructure**: 29 tests
 - **Property System**: 7 tests
 - **I/O System**: 11 tests
 - **Module System**: 3 tests
-- **Tree-Based Processing**: 6 tests
+- **Tree-Based Processing**: 1 test
 - **Test categories**: 5 main categories with specialized make targets
 - **End-to-end tests**: Scientific validation via `test_sage.sh` and tree-based processing validation
 
