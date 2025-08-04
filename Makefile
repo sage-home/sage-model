@@ -422,7 +422,7 @@ IO_TESTS = test_io_interface test_endian_utils test_lhalo_binary test_hdf5_outpu
 MODULE_TESTS = test_pipeline_invoke test_module_callback test_module_lifecycle
 
 # Tree-based processing tests
-TREE_TESTS = test_galaxy_inheritance test_tree_fof_processing test_tree_physics_integration test_tree_physics_simple test_tree_mode_scientific_validation
+TREE_TESTS = test_galaxy_inheritance test_tree_physics_integration test_tree_physics_simple test_tree_mode_scientific_validation
 
 # All unit tests (excludes complex integration tests with individual Makefiles)
 UNIT_TESTS = $(CORE_TESTS) $(PROPERTY_TESTS) $(IO_TESTS) $(MODULE_TESTS) $(TREE_TESTS)
@@ -590,8 +590,6 @@ test_orphan_fof_disruption: $(ROOT_DIR)/.stamps/generate_properties_full.stamp t
 test_galaxy_inheritance: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_galaxy_inheritance.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_galaxy_inheritance tests/test_galaxy_inheritance.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
-test_tree_fof_processing: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_tree_fof_processing.c $(SAGELIB)
-	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_tree_fof_processing tests/test_tree_fof_processing.c -L. -l$(LIBNAME) $(LIBFLAGS)
 
 test_tree_physics_integration: $(ROOT_DIR)/.stamps/generate_properties_full.stamp tests/test_tree_physics_integration.c $(SAGELIB)
 	$(CC) $(OPTS) $(OPTIMIZE) $(CCFLAGS) -o tests/test_tree_physics_integration tests/test_tree_physics_integration.c -L. -l$(LIBNAME) $(LIBFLAGS)

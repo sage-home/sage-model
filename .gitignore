@@ -83,7 +83,6 @@ test_orphan_tracking_simple
 tests/test_orphan_fof_disruption
 tests/test_tree_infrastructure
 tests/test_galaxy_inheritance
-tests/test_tree_fof_processing
 tests/test_tree_physics_integration
 tests/test_tree_physics_simple
 tests/test_tree_mode_scientific_validation
