@@ -68,7 +68,7 @@ static void test_basic_orphan_functionality(void) {
     if (ngal_current > 0) {
         struct GALAXY *orphan = galaxy_array_get_raw_data(current_galaxies);
         TEST_ASSERT(GALAXY_PROP_Type(orphan) == 2, "Galaxy should be Type 2 (orphan)");
-        TEST_ASSERT(GALAXY_PROP_merged(orphan) == 0, "Orphan should remain active");
+        TEST_ASSERT(GALAXY_PROP_merged(orphan) == 1, "Orphan should be marked for output filtering");
     }
     
     // Verify: Processed flag should be set

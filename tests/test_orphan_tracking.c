@@ -174,7 +174,7 @@ static void test_satellite_becomes_orphan(void) {
         struct GALAXY *orphan = galaxy_array_get_raw_data(current_galaxies);
         TEST_ASSERT(GALAXY_PROP_Type(orphan) == 2, "Galaxy should be Type 2 (orphan)");
         TEST_ASSERT(GALAXY_PROP_GalaxyNr(orphan) == 1002, "Should be the original satellite galaxy");
-        TEST_ASSERT(GALAXY_PROP_merged(orphan) == 0, "Orphan should remain active");
+        TEST_ASSERT(GALAXY_PROP_merged(orphan) == 1, "Orphan should be marked for output filtering");
         TEST_ASSERT(GALAXY_PROP_Mvir(orphan) == 0.0f, "Orphan should have zero halo mass");
     }
     
@@ -267,7 +267,7 @@ static void test_central_becomes_orphan(void) {
     if (ngal_current > 0) {
         struct GALAXY *orphan = galaxy_array_get_raw_data(current_galaxies);
         TEST_ASSERT(GALAXY_PROP_Type(orphan) == 2, "Galaxy should be Type 2 (orphan)");
-        TEST_ASSERT(GALAXY_PROP_merged(orphan) == 0, "Orphan should remain active");
+        TEST_ASSERT(GALAXY_PROP_merged(orphan) == 1, "Orphan should be marked for output filtering");
     }
     
     // Cleanup
@@ -479,7 +479,7 @@ static void test_forward_looking_algorithm(void) {
         struct GALAXY *orphans = galaxy_array_get_raw_data(current_galaxies);
         for (int i = 0; i < ngal_current; i++) {
             TEST_ASSERT(GALAXY_PROP_Type(&orphans[i]) == 2, "All should be Type 2 orphans");
-            TEST_ASSERT(GALAXY_PROP_merged(&orphans[i]) == 0, "All orphans should remain active");
+            TEST_ASSERT(GALAXY_PROP_merged(&orphans[i]) == 1, "All orphans should be marked for output filtering");
             TEST_ASSERT(GALAXY_PROP_Mvir(&orphans[i]) == 0.0f, "Orphans should have zero halo mass");
         }
     }
