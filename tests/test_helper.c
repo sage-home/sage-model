@@ -241,6 +241,12 @@ int create_test_galaxy(struct TestContext* ctx, int galaxy_type, int halo_nr, fl
     GALAXY_PROP_ColdGas(&temp_galaxy) = stellar_mass * 0.3f;  // Realistic gas fraction
     GALAXY_PROP_HotGas(&temp_galaxy) = stellar_mass * 0.1f;
     
+    // Initialize virial properties that are required for infall property validation
+    // These values need to be physically reasonable (> 0) to pass validation checks
+    GALAXY_PROP_Vvir(&temp_galaxy) = 100.0f + halo_nr * 10.0f;  // Reasonable virial velocity
+    GALAXY_PROP_Vmax(&temp_galaxy) = ctx->halos[halo_nr].Vmax;   // Use halo's Vmax
+    GALAXY_PROP_Rvir(&temp_galaxy) = 200.0f + halo_nr * 20.0f;  // Reasonable virial radius
+    
     for (int i = 0; i < 3; i++) {
         GALAXY_PROP_Pos(&temp_galaxy)[i] = ctx->halos[halo_nr].Pos[i];
         GALAXY_PROP_Vel(&temp_galaxy)[i] = ctx->halos[halo_nr].Vel[i];
