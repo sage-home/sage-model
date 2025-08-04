@@ -52,7 +52,7 @@ double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY
 }
 
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
-                                struct GALAXY *galaxies, const struct params *run_params, const int nsteps)
+                                struct GALAXY *galaxies, const struct params *run_params)
 {
     double reff, tdyn, strdot, stars, ejected_mass, metallicity;
 
@@ -95,13 +95,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     }
 
     stars = strdot * dt;
-    // Remove stars from H2 gas
-    // if(stars > 0.0) {
-    //     galaxies[p].H2_gas -= stars;
-        
-    //     // Recompute gas components after star formation
-    //     update_gas_components(&galaxies[p], run_params);
-    // }
     if(stars < 0.0) {
         stars = 0.0;
     }
@@ -122,29 +115,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     } else {
         reheated_mass = 0.0;
     }
-
-    // // Redshift boost as smooth mathematical functions
-    // double z = run_params->ZZ[galaxies[p].SnapNum];
-    // // double mass_threshold = 1.0 / pow(1.0 + z, 0.25);  
-    // double mass_threshold = 15.0 / pow(1.0 + z, 0.25);  // ~15x larger threshold
-
-    // // Smooth transition using tanh
-    // double transition_width = 0.3;  
-    // // double mass_ratio = galaxies[p].StellarMass / mass_threshold;
-    // double mass_ratio = galaxies[p].Mvir / mass_threshold;
-    // double suppression_factor = 0.5 * (1.0 - tanh(log10(mass_ratio) / transition_width));
-
-    // // Main z_boost: smooth combination of linear growth + plateau + decay
-    // double z_boost_main = z * exp(-pow(z/4.0, 2.5)) + 2.0 * exp(-pow((z-2.5)/2.0, 2));
-
-    // // Extra boost for low-mass galaxies: smooth in both mass and redshift
-    // double low_mass_factor = 0.5 * (1.0 - tanh(log10(galaxies[p].StellarMass / 0.1) / 0.2));
-    // double high_z_window = exp(-pow((z-6.0)/2.5, 2));  // Peaks around z=6, width ~2.5
-    // double extra_boost = low_mass_factor * high_z_window * 1.5;  // Max 1.5x extra boost
-
-    // double z_boost = z_boost_main + extra_boost;
-
-    // reheated_mass *= (1.0 + suppression_factor * z_boost);
 
 	XASSERT(reheated_mass >= 0.0, -1,
             "Error: Expected reheated gas-mass = %g to be >=0.0\n", reheated_mass);
@@ -201,10 +171,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     } else {
         ejected_mass = 0.0;
     }
-
-    // Map adaptive step to fixed array index:
-    // int array_step = (step * STEPS) / nsteps;
-    // if(array_step >= STEPS) array_step = STEPS - 1;
 
     // update the star formation rate
     galaxies[p].SfrDisk[step] += stars / dt;

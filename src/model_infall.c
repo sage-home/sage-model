@@ -23,12 +23,6 @@ double calculate_A_parameter(const double z, const struct params *run_params)
     // A ≡ (Δ₂₀₀ Ω_m,0.3 h²₀.₇)^(-1/3) a
     double A = pow(Delta_200 * Omega_m_03 * h_07 * h_07, -1.0/3.0) * a;
     
-    // DEBUG: Print every 10000th calculation
-    // if (debug_counter % 500000 == 0) {
-    //     printf("DEBUG A-param: z=%.3f, a=%.3f, Ω_m=%.3f, h=%.3f → A=%.6f\n", 
-    //            z, a, run_params->Omega, run_params->Hubble_h, A);
-    // }
-    
     return A;
 }
 
@@ -87,16 +81,6 @@ double calculate_mshock(const double z, const struct params *run_params)
     // Convert to SAGE units: 10^10 M_sun/h
     double Mshock_SAGE = Mshock_Msun / (1.0e10 / run_params->Hubble_h);
     
-    // DEBUG: Print detailed breakdown every 10000th call
-    // if (debug_counter % 500000 == 0) {
-    //     printf("DEBUG Mshock: z=%.3f\n", z);
-    //     printf("  A=%.6f → A^(3/8)=%.6f\n", A, A_term);
-    //     printf("  Z_cosmic=%.6f, Z_ref=%.3f → (Z/Z_ref)^0.7=%.6f\n", Z_cosmic, Z_ref, Z_term);
-    //     printf("  F=%.6f → (Z*F)^(3/4)=%.6f\n", F, ZF_term);
-    //     printf("  f_u=%.1f → f_u^(-3)=%.6f\n", f_u, fu_term);
-    //     printf("  M11=%.3f → M_shock=%.3e M_sun → %.3e SAGE units\n", M11, Mshock_Msun, Mshock_SAGE);
-    // }
-    
     return Mshock_SAGE;
 }
 
@@ -124,12 +108,6 @@ double calculate_press_schechter_mass(const double z, const struct params *run_p
     
     // Convert to SAGE units: 10^10 M_sun/h  
     double Mstar_SAGE = Mstar_Msun / (1.0e10 / run_params->Hubble_h);
-
-    // DEBUG: Print every 10000th calculation
-    // if (debug_counter % 500000 == 0) {
-    //     printf("DEBUG M*: z=%.3f → log_M*=%.3f → M*=%.3e M_sun → %.3e SAGE units\n", 
-    //            z, log_Mstar_Msun, Mstar_Msun, Mstar_SAGE);
-    // }
     
     return Mstar_SAGE;
 }
@@ -158,30 +136,6 @@ double calculate_critical_mass_dekel_birnboim_2006(const double z, const struct 
         Mcrit = Mshock;
         // regime = "LOW-z: No cold streams";
     }
-
-    // // DEBUG: Print every 10000th calculation
-    // if (debug_counter % 200000 == 0) {
-    //     printf("DEBUG Mcrit: z=%.3f\n", z);
-    //     printf("  M_shock=%.3e, M*=%.3e, f*M*=%.3e\n", Mshock, Mstar_z, f * Mstar_z);
-    //     printf("  f*M* < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
-    //     printf("  REGIME: %s\n", regime);
-    //     printf("  M_crit=%.3e SAGE units\n", Mcrit);
-    // }
-
-    // // DEBUG: Print intermediate values
-    // if (debug_counter % 200000 == 0) {
-    //     printf("=== DEKEL & BIRNBOIM DEBUG ===\n");
-    //     printf("z=%.3f\n", z);
-    //     printf("M_shock = %.3e SAGE units\n", Mshock);
-    //     printf("M*(z) = %.3e SAGE units\n", Mstar_z);
-    //     printf("f * M*(z) = %.3e SAGE units\n", f * Mstar_z);
-    //     printf("f * M*(z) < M_shock? %s\n", (f * Mstar_z < Mshock) ? "YES" : "NO");
-    //     // Also print the F factor components
-    //     const double A = calculate_A_parameter(z, run_params);
-    //     const double F = calculate_F_factor();
-    //     printf("A parameter = %.6f\n", A);
-    //     printf("F factor = %.6f\n", F);
-    // }
 
     return Mcrit;
 }
@@ -369,11 +323,6 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
         } else {
             infallingGas = 0.0;
         }
-        // DEBUG for negative infall
-        // if (debug_counter % 500000 == 0) {
-        //     printf("DEBUG Infall: NEGATIVE infall=%.3e from CGM (metallicity=%.6f)\n", 
-        //            infallingGas, metallicity);
-        // }
     }
 
     if(infallingGas < 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
@@ -381,11 +330,6 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
         galaxies[gal].MetalsHotGas += infallingGas*metallicity;
         if(galaxies[gal].MetalsHotGas < 0.0) galaxies[gal].MetalsHotGas = 0.0;
 
-        // DEBUG for negative infall from hot gas
-        // if (debug_counter % 500000 == 0) {
-        //     printf("DEBUG Infall: NEGATIVE infall=%.3e from HotGas (metallicity=%.6f)\n", 
-        //            infallingGas, metallicity);
-        // }
     }
 
     // CORRECTED: Apply exact Dekel & Birnboim physics for positive infall
@@ -399,8 +343,6 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
 
         if (galaxies[gal].Mvir < Mcrit) {
             // "cold streams prevail" - gas can reach galaxy center
-            // Use existing hot gas metallicity (or small default if no hot gas exists)
-            // float metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
             metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
             galaxies[gal].ColdGas += infallingGas;
             galaxies[gal].MetalsColdGas += infallingGas * metallicity;
@@ -408,14 +350,7 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
             galaxies[gal].InflowRegime = 0;
             galaxies[gal].ColdInflowMass += infallingGas;
             galaxies[gal].ColdInflowMetals += infallingGas * metallicity;
-            // DEBUG: Cold stream case
-            // if (debug_counter % 90000 == 0) {  // More frequent for positive infall
-            //     printf("DEBUG Infall: COLD STREAM z=%.3f\n", z);
-            //     printf("  M_vir=%.3e < M_crit=%.3e → COLD STREAM\n", galaxies[gal].Mvir, Mcrit);
-            //     printf("  Infall=%.3e → ColdGas, metallicity=%.6f\n", infallingGas, metallicity);
-            //     printf("  New ColdGas=%.3e, MetalsColdGas=%.3e\n", 
-            //            galaxies[gal].ColdGas, galaxies[gal].MetalsColdGas);
-            // }
+
         } else {
             // "shutdown of gas supply" - gas goes to hot but stays hot
             metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
@@ -425,14 +360,7 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
             galaxies[gal].InflowRegime = 1; 
             galaxies[gal].HotInflowMass += infallingGas;
             galaxies[gal].HotInflowMetals += infallingGas * metallicity;
-            // DEBUG: Shock heated case
-            // if (debug_counter % 10000 == 0) {  // More frequent for positive infall
-            //     printf("DEBUG Infall: SHOCK HEATED z=%.3f\n", z);
-            //     printf("  M_vir=%.3e >= M_crit=%.3e → SHOCK HEATED\n", galaxies[gal].Mvir, Mcrit);
-            //     printf("  Infall=%.3e → HotGas, metallicity=%.6f\n", infallingGas, metallicity);
-            //     printf("  New HotGas=%.3e, MetalsHotGas=%.3e\n", 
-            //            galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
-            // }   
+
         }
     } else {
         // Negative infall case - use original logic

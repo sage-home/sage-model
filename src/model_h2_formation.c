@@ -19,20 +19,8 @@ double gd14_sigma_norm(float d_mw, float u_mw)
     // sigma_r1 calculation
     float sqrt_term = sqrt(0.01 + u_mw);
     float sigma_r1 = 50.0 / g * sqrt_term / (1.0 + 0.69 * sqrt_term);
-
-    // Using CORRECTED Equation (10) from the erratum:
-    // ΣR=1 = 50 M☉/pc² × g/(0.001 + 0.1×UMW)^1/2 × 1/(1 + 1.69×(0.001 + 0.1×UMW)^1/2)
-    // float s_term = sqrt(0.001 + 0.1 * u_mw);  // Changed: 0.001 + 0.1*UMW instead of 0.01 + UMW
-    // float sigma_r1 = 50.0 / g * s_term / (1.0 + 1.69 * s_term);  // Changed: 1.69 instead of 0.69
     
     return sigma_r1;
-
-    // From erratum: ΣR=1 = 40 M☉/pc² × g/s
-    // where s = (0.001 + 0.1×UMW)^0.7
-    // float g = sqrt(d_mw * d_mw + 0.0289);
-    // float s = pow(0.001 + 0.1 * u_mw, 0.7);
-    
-    // return 40.0 * g / s;
 }
 
 
@@ -70,12 +58,6 @@ double calculate_molecular_fraction_GD14(float gas_surface_density, float metall
     // Step 6: Convert to molecular fraction
     // fmol = rmol / (1 + rmol)
     float fmol = rmol / (1.0 + rmol);
-
-    // extern long galaxy_debug_counter;
-    // if (galaxy_debug_counter % 500000 == 0) {
-    //     printf("DEBUG GD14: Σgas=%.1f M☉/pc², Z=%.4f, d_mw=%.4f, u_mw=%.2f, α=%.3f, Σnorm=%.1f, R_mol=%.3f, f_mol=%.3f\n",
-    //            gas_surface_density, metallicity, d_mw, u_mw, alpha, sigma_norm, rmol, fmol);
-    // }
     
     // Step 7: Apply bounds
     if (fmol > 1.0) {

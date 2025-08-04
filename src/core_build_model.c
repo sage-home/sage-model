@@ -363,41 +363,10 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         
         actual_dt = deltaT / nsteps;
         
-        // Debug output
-        if (debug_galaxy_counter % 50000 == 0) {
-            printf("=== SAGE DEBUG [Galaxy #%ld] ===\n", debug_galaxy_counter);
-            printf("  Redshift z = %.3f\n", Zcurr);
-            printf("  R_vir = %.3e, V_vir = %.3e\n", Rvir, Vvir);
-            printf("  Dynamical time = %.6e Myr/h\n", t_dyn);
-            printf("  Max allowed dt = %.6e Myr/h (t_dyn/%d)\n", max_allowed_dt, resolution_factor);
-            printf("  Snapshot deltaT = %.6e Myr/h\n", deltaT);
-            printf("  Number of dyn times in interval = %.3f\n", deltaT / t_dyn);
-            printf("  Adaptive nsteps = %d (default=%d)\n", nsteps, STEPS);
-            printf("  Actual dt = %.6e Myr/h\n", actual_dt);
-            if (nsteps == STEPS) {
-                printf("  STATUS: Using default steps (dyn time allows it)\n");
-            } else {
-                printf("  STATUS: Dynamical time constraint - using %d steps\n", nsteps);
-            }
-            printf("  Resolution: %.2f timesteps per dynamical time\n", t_dyn / actual_dt);
-            printf("  Time step safety: actual_dt/t_dyn = %.3f\n", actual_dt / t_dyn);
-            printf("=============================\n");
-            fflush(stdout);
-        }
-        
     } else {
         // Fallback to default if Vvir or Rvir are invalid
         nsteps = STEPS;
         actual_dt = deltaT / STEPS;
-        
-        if (debug_galaxy_counter % 50000 == 0) {
-            printf("=== SAGE DEBUG [Galaxy #%ld] ===\n", debug_galaxy_counter);
-            printf("  WARNING: Invalid Rvir=%.3e or Vvir=%.3e, using default steps\n", Rvir, Vvir);
-            printf("  Redshift z = %.3f\n", Zcurr);
-            printf("  Using default nsteps = %d\n", STEPS);
-            printf("=============================\n");
-            fflush(stdout);
-        }
     }
 
 
@@ -436,7 +405,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             cool_gas_onto_galaxy(p, coolingGas, galaxies);
 
             // stars form and then explode!
-            starformation_and_feedback(p, centralgal, time, actual_dt, halonr, step, galaxies, run_params, nsteps);
+            starformation_and_feedback(p, centralgal, time, actual_dt, halonr, step, galaxies, run_params);
         }
 
         // check for satellite disruption and merger events
@@ -476,27 +445,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                             deal_with_galaxy_merger(p, merger_centralgal, centralgal, time, actual_dt, halonr, step, galaxies, run_params);
                         }
                     }
-
-                    // if (debug_galaxy_counter % 500 == 0) {
-                    //     printf("=== SAGE DEBUG [Galaxy #%ld] ===\n", debug_galaxy_counter);
-                    //     printf("  Redshift z = %.3f\n", Zcurr);
-                    //     printf("  Hubble time = %.6e Myr/h\n", hubble_time);
-                    //     printf("  Max allowed dt = %.6e Myr/h (10%% of H_time)\n", max_allowed_dt);
-                    //     printf("  Snapshot deltaT = %.6e Myr/h\n", deltaT);
-                    //     printf("  Default dt = %.6e Myr/h (deltaT/%d)\n", default_dt, STEPS);
-                    //     printf("  Adaptive nsteps = %d (default=%d)\n", nsteps, STEPS);
-                    //     printf("  Actual dt = %.6e Myr/h\n", actual_dt);
-                    //     if (nsteps == STEPS) {
-                    //         printf("  STATUS: Using default steps (dt small enough)\n");
-                    //     } else {
-                    //         printf("  STATUS: HIGH-Z override - using %d steps (dt too large)\n", nsteps);
-                    //     }
-                    //     printf("  Speedup factor = %.2f (vs original)\n", actual_dt / default_dt);
-                    //     printf("=============================\n");
-                    //     fflush(stdout);
-                    // }
                 }
-
             }
         }
     } // Go on to the next STEPS substep
