@@ -135,5 +135,5 @@ docs/make.bat
 .claude/
 
 # Local debugging files
-codesign-sage.sh
+code-sign.sh
 entitlements.plist
