@@ -178,24 +178,24 @@ MODEL_CONFIGS = [
     #     'smf_snaps': [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4],  # Which snapshots to use for SMF plots
     #     'bhmf_snaps': [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4]  # Which snapshots to use for BHMF plots
     # }
-    {
-        'name': 'Broken model',  # This should match a key in PLOT_COLORS for coloring
-        'directory': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/',  # Path to your model output directory
-        'filename': 'model_0.hdf5',  # HDF5 filename (usually stays the same)
-        'snapshot': 'Snap_63',  # Your final snapshot (e.g., 'Snap_127' if you have 128 snapshots)
-        'hubble_h': 0.73,  # Your Hubble parameter (e.g., 0.6774)
-        'box_size': 62.5,  # Your box size in h-1 Mpc (e.g., 200.0)
-        'volume_fraction': 1.0,  # Usually 1.0 unless you're using a subvolume
-        'first_snap': 0,  # Usually 0
-        'last_snap': 63,  # Your last snapshot number (e.g., 127)
-        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
-                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
-                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
-                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
-                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
-        'smf_snaps': [63, 40, 32, 27, 23, 20, 18, 16],
-        'bhmf_snaps': [63, 40, 32, 27, 23, 20, 18, 16]
-    }
+    # {
+    #     'name': 'Broken model',  # This should match a key in PLOT_COLORS for coloring
+    #     'directory': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/',  # Path to your model output directory
+    #     'filename': 'model_0.hdf5',  # HDF5 filename (usually stays the same)
+    #     'snapshot': 'Snap_63',  # Your final snapshot (e.g., 'Snap_127' if you have 128 snapshots)
+    #     'hubble_h': 0.73,  # Your Hubble parameter (e.g., 0.6774)
+    #     'box_size': 62.5,  # Your box size in h-1 Mpc (e.g., 200.0)
+    #     'volume_fraction': 1.0,  # Usually 1.0 unless you're using a subvolume
+    #     'first_snap': 0,  # Usually 0
+    #     'last_snap': 63,  # Your last snapshot number (e.g., 127)
+    #     'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+    #                  9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+    #                  2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+    #                  0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+    #                  0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+    #     'smf_snaps': [63, 40, 32, 27, 23, 20, 18, 16],
+    #     'bhmf_snaps': [63, 40, 32, 27, 23, 20, 18, 16]
+    # }
     ]
 
 # Global variables (will be updated for each model during execution)
