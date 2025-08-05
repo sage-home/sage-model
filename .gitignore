@@ -1,7 +1,9 @@
 sage
 tests/test_data/
 input/millennium/
-output/
+scrap/
+output
+input/data
 
 *.o
 *.*~
@@ -28,6 +30,7 @@ sage_analysis/plots/
 xx*
 yy*
 *.hdf5
+obsidian-inbox
 
 # sage_analysis Package Stuff #
 *.egg-info
