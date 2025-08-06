@@ -8,17 +8,28 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 
 ## Common Commands
 
-### Building the Code
+### Modern CMake Build System (Recommended)
+- `mkdir build && cd build` - Create out-of-tree build directory
+- `cmake ..` - Configure build with default options
+- `make -j$(nproc)` - Compile SAGE executable and library
+- `make clean` - Remove compiled objects and executables
+- `make lib` - Build only the SAGE library
+- `make tests` - Run test suite (requires GSL)
+
+### CMake Configuration Options
+- `cmake .. -DSAGE_USE_HDF5=ON` - Enable HDF5 support (default: ON)
+- `cmake .. -DSAGE_USE_MPI=ON` - Enable MPI parallelization
+- `cmake .. -DSAGE_USE_BUFFERED_WRITE=ON` - Enable buffered binary output (default: ON)
+- `cmake .. -DSAGE_SHARED_LIBRARY=ON` - Create shared library (default: ON)
+- `cmake .. -DSAGE_VERBOSE=ON` - Enable verbose output (default: ON)
+- `cmake .. -DSAGE_MEMORY_CHECK=ON` - Enable AddressSanitizer for memory debugging
+- `cmake .. -DCMAKE_BUILD_TYPE=Debug` - Debug build with symbols
+
+### Legacy Makefile Build System (Deprecated)
 - `make` - Compile SAGE executable (produces `sage` binary)
 - `make clean` - Remove compiled objects and executables
 - `make lib` - Build only the SAGE library (libsage.so or libsage.a)
 - `make tests` - Run test suite (requires GSL)
-
-### Configuration Options (in Makefile)
-- `USE-HDF5 := yes` - Enable HDF5 support for input/output
-- `USE-MPI := yes` - Enable MPI parallelization
-- `USE-BUFFERED-WRITE := yes` - Enable buffered binary output (better performance)
-- `MAKE-SHARED-LIB := yes` - Create shared library instead of static
 
 ### Running the Model
 - `./first_run.sh` - Initialize directories and download Mini-Millennium test data
@@ -118,8 +129,29 @@ Parameter files (`.par`) control:
 The test suite compares output against reference "correct" results from Mini-Millennium simulation, supporting both exact binary comparison and numerical tolerance comparison for cross-platform compatibility.
 
 ### Build System
-The Makefile automatically detects:
+The CMake build system automatically detects:
 - Compiler type (gcc/clang) and adjusts flags accordingly
 - Available libraries (GSL, HDF5, MPI) 
 - Platform-specific requirements (macOS vs Linux)
 - CI environments (enables stricter error checking)
+
+### Development Workflow
+```bash
+# Initial setup
+mkdir build && cd build
+cmake .. -DSAGE_USE_HDF5=ON -DCMAKE_BUILD_TYPE=Debug
+
+# Development cycle
+make -j$(nproc)          # Build
+make test                # Test (when configured)
+cd .. && ./sage input/millennium.par  # Run
+
+# Clean rebuild
+rm -rf * && cmake .. && make -j$(nproc)
+```
+
+### IDE Integration
+The CMake build system provides excellent IDE integration:
+- **VS Code**: Open folder, CMake Tools extension auto-configures
+- **CLion**: Open CMakeLists.txt directly
+- **Visual Studio**: Open as CMake project

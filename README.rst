@@ -38,7 +38,40 @@ Downloading
 Building
 --------
 
-To create the ``SAGE`` executable, simply run the following command:
+``SAGE`` supports two build systems: the traditional Makefile and the modern CMake system.
+
+**Option 1: CMake (Recommended)**
+
+The CMake build system provides better IDE integration, automatic dependency detection, and out-of-tree builds:
+
+.. code::
+
+    $ mkdir build && cd build
+    $ cmake ..
+    $ make -j$(nproc)
+
+The executable will be created as ``build/sage``. Run it from the project root:
+
+.. code::
+
+    $ ./build/sage input/millennium.par
+
+**CMake Configuration Options:**
+
+- ``SAGE_USE_MPI=ON/OFF`` - Enable MPI support (default: OFF)
+- ``SAGE_USE_HDF5=ON/OFF`` - Enable HDF5 support (default: ON)  
+- ``CMAKE_BUILD_TYPE=Release/Debug`` - Build type (default: Release)
+
+Example with MPI enabled:
+
+.. code::
+
+    $ cmake -DSAGE_USE_MPI=ON ..
+    $ make -j$(nproc)
+
+**Option 2: Traditional Makefile**
+
+To create the ``SAGE`` executable using the original build system:
 
 .. code::
 
@@ -48,7 +81,7 @@ To create the ``SAGE`` executable, simply run the following command:
 the ``Makefile``.  To run in parallel, ensure that you have a installed an MPI distribution (OpenMPI, MPICH, Intel MPI etc).
 When compiling with MPI support, the ``Makefile`` expects that the MPI compiler is called ``mpicc`` and is configured appropriately.
 
-Addtionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting
+Additionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting
 ``USE-HDF5 = yes`` in the ``Makefile``. If the input trees are in HDF5 format, or you wish to output the catalogs in HDF5 (rather than the default binary format), then please compile with the ``USE-HDF5 = yes`` option.
 
 Running the code

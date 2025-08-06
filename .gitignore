@@ -1,41 +1,79 @@
+# =============================================================================
+# SAGE (Semi-Analytic Galaxy Evolution) .gitignore
+# =============================================================================
+
+# Build Artifacts (CMake and Make)
+# --------------------------------
+build/
 sage
-tests/test_data/
-input/millennium/
-scrap/
+libsage.so
+libsage.a
+libsage.dylib
+libsage.*.dylib
+*.o
+*.so
+*.so.*
+*.a
+*.dSYM/
+
+# CMake-specific files (anywhere in project)
+# ------------------
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+
+# Python Environment & Generated Files
+# ------------------------------------
+sage_venv/
+*__pycache__*/
+*.egg-info/
+_sage_cffi.*
+
+# IDE & Editor Files
+# ------------------
+.vscode/
+.DS_Store
+*~
+*.swp
+*.swo
+.idea/
+
+# Large Data Files & Output
+# -------------------------
 output
 input/data
+tests/test_data/
+*.hdf5
+*.tar
+*.tar.gz
 
-*.o
-*.*~
-libsage.a
-libsage.so
-*.so
-*.patch
-perf.data*
-*.py
+# Temporary & Runtime Files
+# -------------------------
 tmp*
-*.par
-*vscode*
-_sage_cffi.*
-codecov
-*.tar*
-*.png
-*.ipynb_checkpoints
-*.dSYM
-sage_analysis/plots/
-*.txt
 *.log
 *.out
-*.DS_Store
+perf.data*
 xx*
 yy*
-*.hdf5
-obsidian-inbox
 
-# sage_analysis Package Stuff #
-*.egg-info
-*__pycache__*
-
-# Documentation with Sphinx #
-docs/build
+# Documentation Build Artifacts
+# -----------------------------
+docs/build/
 docs/make.bat
+
+# Personal & Development Files
+# ----------------------------
+scrap/
+obsidian-inbox
+*.patch
+codecov/
+
+# Jupyter & Python
+# ----------------
+*.ipynb_checkpoints/
+
+# Platform Specific
+# -----------------
+Thumbs.db
+*.lnk
