@@ -10,9 +10,9 @@
 #include <fcntl.h>
 
 
-#include "../core_allvars.h"
-#include "../core_utils.h"
-#include "../sglib.h"
+#include "core_allvars.h"
+#include "core_utils.h"
+#include "sglib.h"
 
 #include "ctrees_utils.h"
 #include "parse_ctrees.h"

@@ -10,7 +10,7 @@
 
 #include "read_tree_gadget4_hdf5.h"
 #include "hdf5_read_utils.h"
-#include "../core_mymalloc.h"
+#include "core_mymalloc.h"
 #include "forest_utils.h"
 
 

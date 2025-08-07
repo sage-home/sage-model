@@ -8,8 +8,8 @@
 #include "forest_utils.h"
 #include "ctrees_utils.h"
 
-#include "../core_mymalloc.h"
-#include "../core_utils.h"
+#include "core_mymalloc.h"
+#include "core_utils.h"
 
 
 #include <hdf5.h>

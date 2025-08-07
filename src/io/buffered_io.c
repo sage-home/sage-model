@@ -52,7 +52,7 @@ out the instructions. -MS 27th Jul, 2023
 
 
 #include "buffered_io.h"
-#include "../core_utils.h" //for mypwrite
+#include "core_utils.h" //for mypwrite
 
 
 int setup_buffered_io(struct buffered_io *buf_io, const size_t buffer_size, int output_fd, const off_t start_offset) 

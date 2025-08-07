@@ -38,6 +38,7 @@ _sage_cffi.*
 *.swp
 *.swo
 .idea/
+.claude/
 
 # Large Data Files & Output
 # -------------------------

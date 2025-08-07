@@ -6,8 +6,8 @@
 #include <limits.h>
 
 #include "read_tree_lhalo_binary.h"
-#include "../core_mymalloc.h"
-#include "../core_utils.h"
+#include "core_mymalloc.h"
+#include "core_utils.h"
 #include "forest_utils.h"
 
 

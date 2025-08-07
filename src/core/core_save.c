@@ -13,10 +13,10 @@
 #include "model_misc.h"
 #include "core_mymalloc.h"
 
-#include "io/save_gals_binary.h"
+#include "save_gals_binary.h"
 
 #ifdef HDF5
-#include "io/save_gals_hdf5.h"
+#include "save_gals_hdf5.h"
 #endif
 
 // Local Proto-Types //

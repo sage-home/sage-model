@@ -25,7 +25,7 @@
 #include "core_tree_utils.h"
 
 #ifdef HDF5
-#include "io/save_gals_hdf5.h"
+#include "save_gals_hdf5.h"
 #endif
 
 /* main sage -> not exposed externally */
@@ -397,7 +397,7 @@ mergertree format into the lhalotree binary format.
 */
 
 #ifdef USE_BUFFERED_WRITE
-#include "io/buffered_io.h"
+#include "buffered_io.h"
 #endif
 
 int convert_trees_to_lhalo(const int ThisTask, const int NTasks, struct params *run_params, struct forest_info *forest_info)

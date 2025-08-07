@@ -29,9 +29,9 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     message(WARNING "In-source builds are discouraged. Consider using: mkdir build && cd build && cmake ..")
 endif()
 
-# Set default build type to Release if not specified
+# Set default build type to Debug to match original Makefile behavior
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose build type: Debug Release RelWithDebInfo MinSizeRel" FORCE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose build type: Debug Release RelWithDebInfo MinSizeRel" FORCE)
 endif()
 
 # Platform detection and compiler setup
@@ -89,7 +89,7 @@ endif()
 
 # Warning flags - matching Makefile
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wshadow")
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-local-typedefs")
 endif()
 
@@ -243,26 +243,34 @@ if(SAGE_USE_HDF5)
     endif()
 endif()
 
-# Source files - matching Makefile LIBSRC
+# Core infrastructure sources - now in src/core/
 set(SAGE_CORE_SOURCES
-    ${SRC_DIR}/sage.c
-    ${SRC_DIR}/core_read_parameter_file.c
-    ${SRC_DIR}/core_init.c
-    ${SRC_DIR}/core_io_tree.c
-    ${SRC_DIR}/core_cool_func.c
-    ${SRC_DIR}/core_build_model.c
-    ${SRC_DIR}/core_save.c
-    ${SRC_DIR}/core_mymalloc.c
-    ${SRC_DIR}/core_utils.c
-    ${SRC_DIR}/progressbar.c
-    ${SRC_DIR}/core_tree_utils.c
-    ${SRC_DIR}/model_infall.c
-    ${SRC_DIR}/model_cooling_heating.c
-    ${SRC_DIR}/model_starformation_and_feedback.c
-    ${SRC_DIR}/model_disk_instability.c
-    ${SRC_DIR}/model_reincorporation.c
-    ${SRC_DIR}/model_mergers.c
-    ${SRC_DIR}/model_misc.c
+    ${SRC_DIR}/core/sage.c
+    ${SRC_DIR}/core/core_read_parameter_file.c
+    ${SRC_DIR}/core/core_init.c
+    ${SRC_DIR}/core/core_io_tree.c
+    ${SRC_DIR}/core/core_cool_func.c
+    ${SRC_DIR}/core/core_build_model.c
+    ${SRC_DIR}/core/core_save.c
+    ${SRC_DIR}/core/core_mymalloc.c
+    ${SRC_DIR}/core/core_utils.c
+    ${SRC_DIR}/core/progressbar.c
+    ${SRC_DIR}/core/core_tree_utils.c
+)
+
+# Physics modules - now in src/physics/
+set(SAGE_PHYSICS_SOURCES
+    ${SRC_DIR}/physics/model_infall.c
+    ${SRC_DIR}/physics/model_cooling_heating.c
+    ${SRC_DIR}/physics/model_starformation_and_feedback.c
+    ${SRC_DIR}/physics/model_disk_instability.c
+    ${SRC_DIR}/physics/model_reincorporation.c
+    ${SRC_DIR}/physics/model_mergers.c
+    ${SRC_DIR}/physics/model_misc.c
+)
+
+# I/O sources - remain in src/io/
+set(SAGE_IO_SOURCES
     ${SRC_DIR}/io/read_tree_lhalo_binary.c
     ${SRC_DIR}/io/read_tree_consistentrees_ascii.c
     ${SRC_DIR}/io/ctrees_utils.c
@@ -271,9 +279,12 @@ set(SAGE_CORE_SOURCES
     ${SRC_DIR}/io/buffered_io.c
 )
 
+# Combine all sources for library
+set(SAGE_ALL_SOURCES ${SAGE_CORE_SOURCES} ${SAGE_PHYSICS_SOURCES} ${SAGE_IO_SOURCES})
+
 # HDF5-specific sources
 if(SAGE_USE_HDF5)
-    list(APPEND SAGE_CORE_SOURCES
+    list(APPEND SAGE_IO_SOURCES
         ${SRC_DIR}/io/read_tree_lhalo_hdf5.c
         ${SRC_DIR}/io/save_gals_hdf5.c
         ${SRC_DIR}/io/read_tree_genesis_hdf5.c
@@ -281,14 +292,16 @@ if(SAGE_USE_HDF5)
         ${SRC_DIR}/io/read_tree_consistentrees_hdf5.c
         ${SRC_DIR}/io/read_tree_gadget4_hdf5.c
     )
+    # Update combined sources for HDF5
+    set(SAGE_ALL_SOURCES ${SAGE_CORE_SOURCES} ${SAGE_PHYSICS_SOURCES} ${SAGE_IO_SOURCES})
 endif()
 
-# Include directories
-set(SAGE_INCLUDE_DIRS ${SAGE_INCLUDE_DIRS} ${SRC_DIR} ${SRC_DIR}/io)
+# Include directories - updated for new structure
+set(SAGE_INCLUDE_DIRS ${SAGE_INCLUDE_DIRS} ${SRC_DIR}/core ${SRC_DIR}/physics ${SRC_DIR}/io)
 
 # Create the SAGE library
 if(SAGE_SHARED_LIBRARY)
-    add_library(sage SHARED ${SAGE_CORE_SOURCES})
+    add_library(sage SHARED ${SAGE_ALL_SOURCES})
     set_target_properties(sage PROPERTIES
         OUTPUT_NAME sage
         VERSION ${PROJECT_VERSION}
@@ -296,7 +309,7 @@ if(SAGE_SHARED_LIBRARY)
     )
     message(STATUS "Building shared library")
 else()
-    add_library(sage STATIC ${SAGE_CORE_SOURCES})
+    add_library(sage STATIC ${SAGE_ALL_SOURCES})
     set_target_properties(sage PROPERTIES OUTPUT_NAME sage)
     message(STATUS "Building static library")
 endif()
@@ -305,7 +318,7 @@ target_include_directories(sage PUBLIC ${SAGE_INCLUDE_DIRS})
 target_link_libraries(sage ${SAGE_LIBRARIES})
 
 # Create the main executable
-add_executable(sage_exe ${SRC_DIR}/main.c)
+add_executable(sage_exe ${SRC_DIR}/core/main.c)
 target_link_libraries(sage_exe sage ${SAGE_LIBRARIES})
 set_target_properties(sage_exe PROPERTIES OUTPUT_NAME sage)
 
@@ -359,9 +372,9 @@ install(TARGETS sage sage_exe
 )
 
 install(FILES
-    ${SRC_DIR}/core_allvars.h
-    ${SRC_DIR}/macros.h
-    ${SRC_DIR}/sage.h
+    ${SRC_DIR}/core/core_allvars.h
+    ${SRC_DIR}/core/macros.h
+    ${SRC_DIR}/core/sage.h
     DESTINATION include/sage
 )
 

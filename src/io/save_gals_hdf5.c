@@ -7,11 +7,11 @@
 #include <math.h>
 
 #include "save_gals_hdf5.h"
-#include "../core_mymalloc.h"
-#include "../core_utils.h"
-#include "../macros.h"
-#include "../model_misc.h"
-#include "../sage.h"
+#include "core_mymalloc.h"
+#include "core_utils.h"
+#include "macros.h"
+#include "model_misc.h"
+#include "sage.h"
 
 
 #ifdef USE_SAGE_IN_MCMC_MODE

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hdf5.h>
-#include "../core_allvars.h"
+#include "core_allvars.h"
 
 #ifdef __cplusplus
 extern "C" {

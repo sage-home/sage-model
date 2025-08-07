@@ -7,9 +7,9 @@
 #include <limits.h>
 
 #include "save_gals_binary.h"
-#include "../core_mymalloc.h"
-#include "../core_utils.h"
-#include "../model_misc.h"
+#include "core_mymalloc.h"
+#include "core_utils.h"
+#include "model_misc.h"
 
 #ifdef USE_BUFFERED_WRITE
 #include "buffered_io.h"
