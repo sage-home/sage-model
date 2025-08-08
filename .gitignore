@@ -69,6 +69,7 @@ scrap/
 obsidian-inbox
 *.patch
 codecov/
+sage-model-refactor-dir
 
 # Jupyter & Python
 # ----------------
