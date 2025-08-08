@@ -559,8 +559,7 @@ if(existing_unit_tests)
     add_dependencies(unit_tests ${existing_unit_tests})
     
     add_custom_command(TARGET unit_tests POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E echo "\\n=== Running All Unit Tests ==="
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -E "sage_end_to_end" || echo "Some unit tests failed (may be expected during development)"
+        COMMAND ${CMAKE_SOURCE_DIR}/run_unit_tests.sh
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 endif()

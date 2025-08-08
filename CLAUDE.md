@@ -8,15 +8,31 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 
 ## Common Commands
 
-### CMake Build System
-- `mkdir build && cd build` - Create out-of-tree build directory
-- `cmake ..` - Configure build with default options
-- `make -j$(nproc)` - Compile SAGE executable and library
-- `make clean` - Remove compiled objects and executables
-- `make lib` - Build only the SAGE library
-- `make test` - Run test suite (requires GSL)
+### Build Commands (Work from Root Directory)
+- `./build.sh` - Build SAGE executable and library (equivalent to old `make`)
+- `./build.sh clean` - Remove compiled objects and executables  
+- `./build.sh lib` - Build only the SAGE library
+- `./build.sh test` - Run complete test suite (unit + end-to-end)
+- `./build.sh unit_tests` - Run unit tests only (fast development cycle)
+- `./build.sh rebuild` - Complete clean rebuild
+- `./build.sh help` - Show all available commands
 
-### CMake Configuration Options
+### Testing Commands
+- `./build.sh test` - Run all tests (unit + end-to-end scientific validation)
+- `./build.sh unit_tests` - Run unit tests only (fast, no downloads)
+- `./build.sh core_tests` - Run core infrastructure tests
+- `./build.sh property_tests` - Run property system tests  
+- `./build.sh io_tests` - Run I/O system tests
+- `./build.sh module_tests` - Run module system tests
+- `./build.sh tree_tests` - Run tree processing tests
+
+### Configuration Commands
+- `./build.sh debug` - Configure debug build with memory checking
+- `./build.sh release` - Configure optimized release build
+- `./build.sh configure` - Reconfigure CMake (after changing options)
+- `./build.sh status` - Show current build status
+
+### Advanced CMake Options (for manual configuration)
 - `cmake .. -DSAGE_USE_HDF5=ON` - Enable HDF5 support (default: ON)
 - `cmake .. -DSAGE_USE_MPI=ON` - Enable MPI parallelization
 - `cmake .. -DSAGE_USE_BUFFERED_WRITE=ON` - Enable buffered binary output (default: ON)
@@ -29,9 +45,16 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 ```bash
 git clone <repository>
 cd sage-model
+./build.sh         # Automatically creates build/ directory and builds
+```
+
+**Simple as that!** The build wrapper handles all CMake setup automatically.
+
+### Alternative: Manual CMake Setup
+If you prefer working directly with CMake:
+```bash
 mkdir build && cd build && cmake .. && make
 ```
-The `build/` directory is excluded from git - CMakeLists.txt contains all build information.
 
 ### Running the Model
 - `./first_run.sh` - Initialize directories and download Mini-Millennium test data
@@ -141,19 +164,18 @@ The CMake build system automatically detects:
 
 ### Development Workflow
 ```bash
-# Initial setup
-mkdir build && cd build
-cmake .. -DSAGE_USE_HDF5=ON -DCMAKE_BUILD_TYPE=Debug
+# Initial setup (from root directory)
+./build.sh debug        # Configure for debugging with memory checking
 
-# Development cycle
-make -j$(nproc)          # Build
-make test                # Test (when configured)
-cd .. && ./build/sage input/millennium.par  # Run
+# Development cycle  
+./build.sh              # Build
+./build.sh unit_tests   # Quick test cycle  
+./build.sh test         # Full test suite
+./build/sage input/millennium.par  # Run
 
-# Clean rebuild (safe - only removes build artifacts)
-make clean && cmake .. && make -j$(nproc)
-# OR for complete rebuild:
-cd .. && rm -rf build && mkdir build && cd build && cmake .. && make -j$(nproc)
+# Clean rebuild
+./build.sh clean && ./build.sh     # Clean rebuild
+./build.sh rebuild                 # Complete rebuild (removes build/ directory)
 ```
 
 ### IDE Integration
