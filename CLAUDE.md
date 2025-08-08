@@ -58,6 +58,7 @@ mkdir build && cd build && cmake .. && make
 
 ### Running the Model
 - `./first_run.sh` - Initialize directories and download Mini-Millennium test data
+- `./build.sh` - Build SAGE after running first_run.sh
 - `./build/sage input/millennium.par` - Run SAGE with parameter file
 - `mpirun -np <N> ./build/sage input/millennium.par` - Run in parallel
 
@@ -165,6 +166,7 @@ The CMake build system automatically detects:
 ### Development Workflow
 ```bash
 # Initial setup (from root directory)
+./first_run.sh          # Download test data and setup directories (first time only)
 ./build.sh debug        # Configure for debugging with memory checking
 
 # Development cycle  

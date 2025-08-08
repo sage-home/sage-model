@@ -38,11 +38,34 @@ Downloading
 Building
 --------
 
-``SAGE`` supports two build systems: the traditional Makefile and the modern CMake system.
+``SAGE`` uses a modern CMake build system with a convenient wrapper script for familiar root-directory workflow:
 
-**Option 1: CMake (Recommended)**
+**Quick Start (Recommended)**
 
-The CMake build system provides better IDE integration, automatic dependency detection, and out-of-tree builds:
+.. code::
+
+    $ ./build.sh          # Automatically sets up and builds everything
+
+This creates the ``build/sage`` executable. For first-time users, start with the setup script:
+
+.. code::
+
+    $ ./first_run.sh      # Download test data and setup directories (first time only)
+    $ ./build.sh          # Build SAGE
+
+**Build Commands**
+
+- ``./build.sh`` - Build SAGE (equivalent to traditional ``make``)
+- ``./build.sh clean`` - Clean build artifacts  
+- ``./build.sh test`` - Run complete test suite
+- ``./build.sh unit_tests`` - Run fast unit tests only
+- ``./build.sh debug`` - Configure debug build with memory checking
+- ``./build.sh release`` - Configure optimized release build
+- ``./build.sh help`` - Show all available commands
+
+**Advanced: Direct CMake Usage**
+
+For users who prefer working directly with CMake:
 
 .. code::
 
@@ -50,39 +73,18 @@ The CMake build system provides better IDE integration, automatic dependency det
     $ cmake ..
     $ make -j$(nproc)
 
-The executable will be created as ``build/sage``. Run it from the project root:
-
-.. code::
-
-    $ ./build/sage input/millennium.par
-
-**CMake Configuration Options:**
+**Configuration Options:**
 
 - ``SAGE_USE_MPI=ON/OFF`` - Enable MPI support (default: OFF)
 - ``SAGE_USE_HDF5=ON/OFF`` - Enable HDF5 support (default: ON)  
-- ``CMAKE_BUILD_TYPE=Release/Debug`` - Build type (default: Release)
+- ``CMAKE_BUILD_TYPE=Release/Debug`` - Build type (default: Debug)
 
 Example with MPI enabled:
 
 .. code::
 
-    $ cmake -DSAGE_USE_MPI=ON ..
-    $ make -j$(nproc)
-
-**Option 2: Traditional Makefile**
-
-To create the ``SAGE`` executable using the original build system:
-
-.. code::
-
-    $ make
-
-``SAGE`` is MPI compatible which can be enabled setting ``USE-MPI = yes`` in
-the ``Makefile``.  To run in parallel, ensure that you have a installed an MPI distribution (OpenMPI, MPICH, Intel MPI etc).
-When compiling with MPI support, the ``Makefile`` expects that the MPI compiler is called ``mpicc`` and is configured appropriately.
-
-Additionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting
-``USE-HDF5 = yes`` in the ``Makefile``. If the input trees are in HDF5 format, or you wish to output the catalogs in HDF5 (rather than the default binary format), then please compile with the ``USE-HDF5 = yes`` option.
+    $ ./build.sh configure    # Or: cd build && cmake -DSAGE_USE_MPI=ON ..
+    $ ./build.sh              # Build with MPI support
 
 Running the code
 ================
@@ -99,13 +101,13 @@ After this, the model can be run using:
 
 .. code::
 
-    $ ./sage input/millennium.par
+    $ ./build/sage input/millennium.par
 
 or in parallel as:
 
 .. code::
 
-    $ mpirun -np <NUMBER_PROCESSORS> ./sage input/millennium.par
+    $ mpirun -np <NUMBER_PROCESSORS> ./build/sage input/millennium.par
 
 Plotting the output (basic method)
 ==================================

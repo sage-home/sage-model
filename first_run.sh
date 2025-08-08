@@ -112,9 +112,9 @@ sed -Ei"%" "s|^(FileWithSnapList[[:blank:]]*).*|$new_FileWithSnapList|g" millenn
 # For some odd reason, the '%' flag at the start makes a file named 'millennium.par%'. Remove this.
 rm -f millennium.par%
 
-echo "SAGE should be compiled with the 'make' command."
-echo "Once compiled, it can be ran by executing './sage input/millennium.par'"
-echo "Afterwards, 'cd' into the 'analysis' directory and make some gorgeous plots using 'python allresults.py'"
+echo "SAGE should be compiled with the './build.sh' command."
+echo "Once compiled, it can be ran by executing './build/sage input/millennium.par'"
+echo "Afterwards, 'cd' into the 'plotting' directory and make some gorgeous plots using 'python allresults-local.py'"
 echo ""
 
 echo "If you have any questions, queuries or comments, please feel free to open an Issue on GitHub!"
