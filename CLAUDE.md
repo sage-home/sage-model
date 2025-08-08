@@ -8,13 +8,13 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 
 ## Common Commands
 
-### Modern CMake Build System (Recommended)
+### CMake Build System
 - `mkdir build && cd build` - Create out-of-tree build directory
 - `cmake ..` - Configure build with default options
 - `make -j$(nproc)` - Compile SAGE executable and library
 - `make clean` - Remove compiled objects and executables
 - `make lib` - Build only the SAGE library
-- `make tests` - Run test suite (requires GSL)
+- `make test` - Run test suite (requires GSL)
 
 ### CMake Configuration Options
 - `cmake .. -DSAGE_USE_HDF5=ON` - Enable HDF5 support (default: ON)
@@ -25,16 +25,18 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 - `cmake .. -DSAGE_MEMORY_CHECK=ON` - Enable AddressSanitizer for memory debugging
 - `cmake .. -DCMAKE_BUILD_TYPE=Debug` - Debug build with symbols
 
-### Legacy Makefile Build System (Deprecated)
-- `make` - Compile SAGE executable (produces `sage` binary)
-- `make clean` - Remove compiled objects and executables
-- `make lib` - Build only the SAGE library (libsage.so or libsage.a)
-- `make tests` - Run test suite (requires GSL)
+### Fresh Repository Setup
+```bash
+git clone <repository>
+cd sage-model
+mkdir build && cd build && cmake .. && make
+```
+The `build/` directory is excluded from git - CMakeLists.txt contains all build information.
 
 ### Running the Model
 - `./first_run.sh` - Initialize directories and download Mini-Millennium test data
-- `./sage input/millennium.par` - Run SAGE with parameter file
-- `mpirun -np <N> ./sage input/millennium.par` - Run in parallel
+- `./build/sage input/millennium.par` - Run SAGE with parameter file
+- `mpirun -np <N> ./build/sage input/millennium.par` - Run in parallel
 
 ### Python Interface
 - `python sage.py` - Run SAGE through Python interface (auto-builds if needed)
@@ -53,25 +55,25 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 ## Code Architecture
 
 ### Core C Components
-- **Main execution**: `src/main.c`, `src/sage.c` - Entry points and main model loop
-- **Parameter handling**: `src/core_read_parameter_file.c` - Parse .par files
-- **Tree I/O**: `src/core_io_tree.c` + `src/io/` directory - Read various tree formats
-- **Galaxy output**: `src/core_save.c` + `src/io/save_gals_*.c` - Write galaxy catalogs
-- **Physics modules**: `src/model_*.c` files - Galaxy formation physics
+- **Main execution**: `src/core/main.c`, `src/core/sage.c` - Entry points and main model loop
+- **Parameter handling**: `src/core/core_read_parameter_file.c` - Parse .par files
+- **Tree I/O**: `src/core/core_io_tree.c` + `src/io/` directory - Read various tree formats
+- **Galaxy output**: `src/core/core_save.c` + `src/io/save_gals_*.c` - Write galaxy catalogs
+- **Physics modules**: `src/physics/model_*.c` files - Galaxy formation physics
 
 ### Key Header Files
-- `src/core_allvars.h` - Main data structures and global variables
-- `src/sage.h` - API definitions for Python interface
-- `src/macros.h` - Compile-time constants and macros
+- `src/core/core_allvars.h` - Main data structures and global variables
+- `src/core/sage.h` - API definitions for Python interface
+- `src/core/macros.h` - Compile-time constants and macros
 
 ### Galaxy Formation Physics
 The model includes separate modules for:
-- **Infall**: `model_infall.c` - Gas accretion onto halos
-- **Cooling/Heating**: `model_cooling_heating.c` - Gas thermal evolution
-- **Star Formation**: `model_starformation_and_feedback.c` - Star formation and feedback
-- **Mergers**: `model_mergers.c` - Galaxy-galaxy mergers
-- **Disk Instability**: `model_disk_instability.c` - Bulge formation
-- **Reincorporation**: `model_reincorporation.c` - Ejected gas return
+- **Infall**: `src/physics/model_infall.c` - Gas accretion onto halos
+- **Cooling/Heating**: `src/physics/model_cooling_heating.c` - Gas thermal evolution
+- **Star Formation**: `src/physics/model_starformation_and_feedback.c` - Star formation and feedback
+- **Mergers**: `src/physics/model_mergers.c` - Galaxy-galaxy mergers
+- **Disk Instability**: `src/physics/model_disk_instability.c` - Bulge formation
+- **Reincorporation**: `src/physics/model_reincorporation.c` - Ejected gas return
 
 ### Input/Output Formats
 **Supported Tree Formats**:
@@ -118,12 +120,14 @@ Parameter files (`.par`) control:
 ## Development Notes
 
 ### File Organization
-- `src/` - All C source code
+- `src/core/` - Core C source code (physics-agnostic)
+- `src/physics/` - Physics module C source code  
+- `src/io/` - Input/output C source code
 - `plotting/` - Python plotting scripts
 - `tests/` - Test scripts and reference data
 - `input/` - Parameter files and example data
 - `docs/` - Sphinx documentation
-- `scrap/` - Development notes and temporary files
+- `scrap/` - Development notes and obsolete files
 
 ### Testing Philosophy
 The test suite compares output against reference "correct" results from Mini-Millennium simulation, supporting both exact binary comparison and numerical tolerance comparison for cross-platform compatibility.
@@ -144,10 +148,12 @@ cmake .. -DSAGE_USE_HDF5=ON -DCMAKE_BUILD_TYPE=Debug
 # Development cycle
 make -j$(nproc)          # Build
 make test                # Test (when configured)
-cd .. && ./sage input/millennium.par  # Run
+cd .. && ./build/sage input/millennium.par  # Run
 
-# Clean rebuild
-rm -rf * && cmake .. && make -j$(nproc)
+# Clean rebuild (safe - only removes build artifacts)
+make clean && cmake .. && make -j$(nproc)
+# OR for complete rebuild:
+cd .. && rm -rf build && mkdir build && cd build && cmake .. && make -j$(nproc)
 ```
 
 ### IDE Integration

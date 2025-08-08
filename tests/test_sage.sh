@@ -118,7 +118,36 @@ fi
 tmpfile="$(mktemp)"
 sed '/^OutputFormat /s/.*$/OutputFormat        sage_binary/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
 
-${MPI_RUN_COMMAND} ./sage "${tmpfile}"
+# Use SAGE_EXECUTABLE environment variable if set (for CMake builds)
+# Otherwise, try to find sage executable in common locations (for direct execution)
+if [[ -n "${SAGE_EXECUTABLE}" ]]; then
+    SAGE_CMD="${SAGE_EXECUTABLE}"
+elif [[ -f "./sage" ]]; then
+    # Makefile build - executable in current directory
+    SAGE_CMD="./sage"
+elif [[ -f "../build/sage" ]]; then
+    # CMake build - executable in build directory (when run from tests/)
+    SAGE_CMD="../build/sage"
+elif [[ -f "build/sage" ]]; then
+    # CMake build - executable in build directory (when run from root)
+    SAGE_CMD="build/sage"
+else
+    echo "ERROR: Cannot find sage executable. Tried:"
+    echo "  - SAGE_EXECUTABLE environment variable: ${SAGE_EXECUTABLE:-not set}"
+    echo "  - ./sage (Makefile build)"
+    echo "  - ../build/sage (CMake build, run from tests/)"
+    echo "  - build/sage (CMake build, run from root)"
+    echo ""
+    echo "Please either:"
+    echo "  1. Build with 'make' (creates ./sage)"
+    echo "  2. Build with CMake and run tests via 'make test' or 'ctest'"
+    echo "  3. Set SAGE_EXECUTABLE environment variable to point to sage executable"
+    exit 1
+fi
+
+echo "Using SAGE executable: ${SAGE_CMD}"
+
+${MPI_RUN_COMMAND} ${SAGE_CMD} "${tmpfile}"
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally...aborting tests."
     echo "Failed."
@@ -187,7 +216,7 @@ tmpfile="$(mktemp)"
 sed '/^OutputFormat /s/.*$/OutputFormat        sage_hdf5/' "$parent_path"/$datadir/mini-millennium.par > ${tmpfile}
 
 # Run SAGE on this new parameter file.
-${MPI_RUN_COMMAND} ./sage "${tmpfile}"
+${MPI_RUN_COMMAND} ${SAGE_CMD} "${tmpfile}"
 if [[ $? != 0 ]]; then
     echo "sage exited abnormally when running on the HDF5 output format."
     echo "Here is the input file for this run."
