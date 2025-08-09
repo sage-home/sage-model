@@ -26,66 +26,66 @@ logger = logging.getLogger(__name__)
 
 def setup_paper_style():
     """Configure matplotlib for consistent paper-quality plots"""
-    plt.style.use('default')
+    plt.style.use('/Users/mbradley/Documents/cohare_palatino_sty.mplstyle')
     
-    # Figure settings
-    plt.rcParams['figure.figsize'] = (5, 5)
-    plt.rcParams['figure.dpi'] = 500
-    plt.rcParams['savefig.dpi'] = 500
-    plt.rcParams['savefig.bbox'] = 'tight'
-    plt.rcParams['savefig.transparent'] = False
+    # # Figure settings
+    # plt.rcParams['figure.figsize'] = (5, 5)
+    # plt.rcParams['figure.dpi'] = 500
+    # plt.rcParams['savefig.dpi'] = 500
+    # plt.rcParams['savefig.bbox'] = 'tight'
+    # plt.rcParams['savefig.transparent'] = False
     
-    # Font settings
-    plt.rcParams['font.family'] = 'serif'
-    plt.rcParams['font.serif'] = ['Times New Roman', 'DejaVu Serif', 'Computer Modern Roman']
-    plt.rcParams['font.size'] = 16
+    # # Font settings
+    # plt.rcParams['font.family'] = 'serif'
+    # plt.rcParams['font.serif'] = ['Times New Roman', 'DejaVu Serif', 'Computer Modern Roman']
+    # plt.rcParams['font.size'] = 16
     
-    # Axis label settings
-    plt.rcParams['axes.labelsize'] = 16
-    plt.rcParams['axes.labelweight'] = 'normal'
-    plt.rcParams['axes.labelpad'] = 8
+    # # Axis label settings
+    # plt.rcParams['axes.labelsize'] = 16
+    # plt.rcParams['axes.labelweight'] = 'normal'
+    # plt.rcParams['axes.labelpad'] = 8
     
-    # Tick settings
-    plt.rcParams['xtick.labelsize'] = 16
-    plt.rcParams['ytick.labelsize'] = 16    
-    plt.rcParams['xtick.major.size'] = 6
-    plt.rcParams['ytick.major.size'] = 6
-    plt.rcParams['xtick.minor.size'] = 3
-    plt.rcParams['ytick.minor.size'] = 3
-    plt.rcParams['xtick.major.width'] = 1.2
-    plt.rcParams['ytick.major.width'] = 1.2
-    plt.rcParams['xtick.minor.width'] = 0.8
-    plt.rcParams['ytick.minor.width'] = 0.8
-    plt.rcParams['xtick.direction'] = 'in'
-    plt.rcParams['ytick.direction'] = 'in'
-    plt.rcParams['xtick.top'] = True
-    plt.rcParams['ytick.right'] = True
-    plt.rcParams['xtick.minor.visible'] = True
-    plt.rcParams['ytick.minor.visible'] = True
+    # # Tick settings
+    # plt.rcParams['xtick.labelsize'] = 16
+    # plt.rcParams['ytick.labelsize'] = 16    
+    # plt.rcParams['xtick.major.size'] = 6
+    # plt.rcParams['ytick.major.size'] = 6
+    # plt.rcParams['xtick.minor.size'] = 3
+    # plt.rcParams['ytick.minor.size'] = 3
+    # plt.rcParams['xtick.major.width'] = 1.2
+    # plt.rcParams['ytick.major.width'] = 1.2
+    # plt.rcParams['xtick.minor.width'] = 0.8
+    # plt.rcParams['ytick.minor.width'] = 0.8
+    # plt.rcParams['xtick.direction'] = 'in'
+    # plt.rcParams['ytick.direction'] = 'in'
+    # plt.rcParams['xtick.top'] = True
+    # plt.rcParams['ytick.right'] = True
+    # plt.rcParams['xtick.minor.visible'] = True
+    # plt.rcParams['ytick.minor.visible'] = True
     
-    # Axis settings
-    plt.rcParams['axes.linewidth'] = 1.2
-    plt.rcParams['axes.spines.left'] = True
-    plt.rcParams['axes.spines.bottom'] = True
-    plt.rcParams['axes.spines.top'] = True
-    plt.rcParams['axes.spines.right'] = True
+    # # Axis settings
+    # plt.rcParams['axes.linewidth'] = 1.2
+    # plt.rcParams['axes.spines.left'] = True
+    # plt.rcParams['axes.spines.bottom'] = True
+    # plt.rcParams['axes.spines.top'] = True
+    # plt.rcParams['axes.spines.right'] = True
     
-    # Line settings
-    plt.rcParams['lines.linewidth'] = 2.0
-    plt.rcParams['lines.markersize'] = 8
-    plt.rcParams['lines.markeredgewidth'] = 1.0
+    # # Line settings
+    # plt.rcParams['lines.linewidth'] = 2.0
+    # plt.rcParams['lines.markersize'] = 8
+    # plt.rcParams['lines.markeredgewidth'] = 1.0
     
-    # Legend settings
-    plt.rcParams['legend.fontsize'] = 16
-    plt.rcParams['legend.frameon'] = False
-    plt.rcParams['legend.columnspacing'] = 1.0
-    plt.rcParams['legend.handlelength'] = 2.0
-    plt.rcParams['legend.handletextpad'] = 0.5
-    plt.rcParams['legend.labelspacing'] = 0.3
+    # # Legend settings
+    # plt.rcParams['legend.fontsize'] = 16
+    # plt.rcParams['legend.frameon'] = False
+    # plt.rcParams['legend.columnspacing'] = 1.0
+    # plt.rcParams['legend.handlelength'] = 2.0
+    # plt.rcParams['legend.handletextpad'] = 0.5
+    # plt.rcParams['legend.labelspacing'] = 0.3
     
-    # Math text settings
-    plt.rcParams['mathtext.fontset'] = 'stix'
-    plt.rcParams['mathtext.default'] = 'regular'
+    # # Math text settings
+    # plt.rcParams['mathtext.fontset'] = 'stix'
+    # plt.rcParams['mathtext.default'] = 'regular'
 
 def create_figure(figsize=(10, 8)):
     """Create a standardized figure with consistent styling"""

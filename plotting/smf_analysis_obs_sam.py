@@ -111,10 +111,11 @@ redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14
              0.116, 0.089, 0.064, 0.041, 0.020, 0.000]  # Redshift of each snapshot
 
 OutputFormat = '.pdf'
-plt.rcParams["figure.figsize"] = (15, 12)
-plt.rcParams["figure.dpi"] = 300
-plt.rcParams["font.size"] = 16
+# plt.rcParams["figure.figsize"] = (15, 12)
+# plt.rcParams["figure.dpi"] = 300
+# plt.rcParams["font.size"] = 16
 
+plt.style.use('/Users/mbradley/Documents/cohare_palatino_sty.mplstyle')
 
 def get_model_volume(model_config):
     """

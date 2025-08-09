@@ -109,9 +109,10 @@ SMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 BHMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 
 OutputFormat = '.pdf'
-plt.rcParams["figure.figsize"] = (10, 8)
-plt.rcParams["figure.dpi"] = 500
-plt.rcParams["font.size"] = 14
+plt.style.use('/Users/mbradley/Documents/cohare_palatino_sty.mplstyle')
+# plt.rcParams["figure.figsize"] = (10, 8)
+# plt.rcParams["figure.dpi"] = 500
+# plt.rcParams["font.size"] = 14
 
 # Enhanced performance optimization options
 USE_PARALLEL = True  # Enable parallel processing

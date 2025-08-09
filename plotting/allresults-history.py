@@ -51,9 +51,10 @@ BHMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 #BHMFsnaps = [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4]  # Snapshots to plot the BHMF
 
 OutputFormat = '.pdf'
-plt.rcParams["figure.figsize"] = (8.34,6.25)
-plt.rcParams["figure.dpi"] = 500
-plt.rcParams["font.size"] = 14
+# plt.rcParams["figure.figsize"] = (8.34,6.25)
+# plt.rcParams["figure.dpi"] = 500
+# plt.rcParams["font.size"] = 14
+plt.style.use('/Users/mbradley/Documents/cohare_palatino_sty.mplstyle')
 
 
 # ==================================================================

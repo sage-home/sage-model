@@ -267,29 +267,29 @@ class Constraint(object):
 
         elif class_name == 'SMF_z05':
             # Add SHARK for z=0
-            mass, phi = self.load_observation('/data/SHARK_SMF.csv', cols=[2,3])
+            mass, phi = self.load_observation('./data/SHARK_SMF.csv', cols=[2,3])
             ax.plot(mass, 10**phi, c='g', label='SHARK')
 
         elif class_name == 'SMF_z10':
             # Add SHARK for z=0
-            mass, phi = self.load_observation('/data/SHARK_SMF.csv', cols=[4,5])
+            mass, phi = self.load_observation('./data/SHARK_SMF.csv', cols=[4,5])
             ax.plot(mass, 10**phi, c='g', label='SHARK')
 
         elif class_name == 'SMF_z20':
             # Add SHARK for z=0
-            mass, phi = self.load_observation('/data/SHARK_SMF.csv', cols=[6,7])
+            mass, phi = self.load_observation('./data/SHARK_SMF.csv', cols=[6,7])
 
             ax.plot(mass, 10**phi, c='g', label='SHARK')
 
         elif class_name == 'SMF_z31':
             # Add SHARK for z=0
-            mass, phi = self.load_observation('/data/SHARK_SMF.csv', cols=[8,9])
+            mass, phi = self.load_observation('./data/SHARK_SMF.csv', cols=[8,9])
 
             ax.plot(mass, 10**phi, c='g', label='SHARK')
 
         elif class_name == 'SMF_z46':
             # Add SHARK for z=0
-            mass, phi = self.load_observation('/data/SHARK_SMF.csv', cols=[10,11])
+            mass, phi = self.load_observation('./data/SHARK_SMF.csv', cols=[10,11])
 
             ax.plot(mass, 10**phi, c='g', label='SHARK')
 
@@ -349,7 +349,7 @@ class Constraint(object):
 
         if class_name == 'BHBM_z0':
             # Add SHARK for z=0
-            bulgemass, blackholemass = self.load_observation('/data/SHARK_BHBM_z0.csv', cols=[0,1])
+            bulgemass, blackholemass = self.load_observation('./data/SHARK_BHBM_z0.csv', cols=[0,1])
             ax.plot(bulgemass, blackholemass, c='g', label='SHARK')
 
         plt.ylabel(r'$\log_{10} M_{\mathrm{bh}}\ (M_{\odot})$')
@@ -382,34 +382,34 @@ class Constraint(object):
 
         if class_name == 'HSMR_z0':
             # Add SHARK for z=0
-            hmass, smass = self.load_observation('/data/SHARK_HSMR.csv', cols=[0,1])
+            hmass, smass = self.load_observation('./data/SHARK_HSMR.csv', cols=[0,1])
             ax.plot(hmass, smass, c='g', label='SHARK')
 
         elif class_name == 'HSMR_z05':
             # Add SHARK for z=0
-            hmass, smass = self.load_observation('/data/SHARK_HSMR.csv', cols=[2,3])
+            hmass, smass = self.load_observation('./data/SHARK_HSMR.csv', cols=[2,3])
             ax.plot(hmass, smass, c='g', label='SHARK')
 
         elif class_name == 'HSMR_z10':
             # Add SHARK for z=0
-            hmass, smass = self.load_observation('/data/SHARK_HSMR.csv', cols=[4,5])
+            hmass, smass = self.load_observation('./data/SHARK_HSMR.csv', cols=[4,5])
             ax.plot(hmass, smass, c='g', label='SHARK')
 
         elif class_name == 'HSMR_z20':
             # Add SHARK for z=0
-            hmass, smass = self.load_observation('/data/SHARK_HSMR.csv', cols=[6,7])
+            hmass, smass = self.load_observation('./data/SHARK_HSMR.csv', cols=[6,7])
 
             ax.plot(hmass, smass, c='g', label='SHARK')
 
         elif class_name == 'HSMR_z30':
             # Add SHARK for z=0
-            hmass, smass = self.load_observation('/data/SHARK_HSMR.csv', cols=[8,9])
+            hmass, smass = self.load_observation('./data/SHARK_HSMR.csv', cols=[8,9])
 
             ax.plot(hmass, smass, c='g', label='SHARK')
 
         elif class_name == 'HSMR_z40':
             # Add SHARK for z=0
-            hmass, smass = self.load_observation('/data/SHARK_HSMR.csv', cols=[10,11])
+            hmass, smass = self.load_observation('./data/SHARK_HSMR.csv', cols=[10,11])
 
             ax.plot(hmass, smass, c='g', label='SHARK')
 
@@ -789,7 +789,7 @@ class SMD_evolution(Constraint):
         # You'll need to provide the correct file with COSMOS SMD data
         # Expected format: redshift, log10(SMD [Msun/Mpc^3]), error
         try:
-            redshift, log_smd, log_smd_err = self.load_observation('/data/SMD.ecsv', cols=[0,1,2])
+            redshift, log_smd, log_smd_err = self.load_observation('./data/SMD.ecsv', cols=[0,1,2])
             return redshift, log_smd, log_smd_err, log_smd_err
         except:
             # Fallback with some typical values if data file not available
@@ -803,7 +803,7 @@ class SMD_evolution(Constraint):
     def get_sage_x_y(self):
         """Load SAGE stellar mass density evolution reference data"""
         try:
-            redshift, log_smd = self.load_observation('/data/sage_smd_evolution.csv', cols=[0,1])
+            redshift, log_smd = self.load_observation('./data/sage_smd_evolution.csv', cols=[0,1])
             return redshift, log_smd
         except:
             # Fallback with SAGE reference values if file not available
@@ -880,7 +880,7 @@ class BHMF_z0(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[0,1])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[0,1])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -891,7 +891,7 @@ class BHMF_z0(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[0,1])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[0,1])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -907,7 +907,7 @@ class BHMF_z10(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[2,3])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[2,3])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -918,7 +918,7 @@ class BHMF_z10(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[2,3])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[2,3])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -934,7 +934,7 @@ class BHMF_z20(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[4,5])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[4,5])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -945,7 +945,7 @@ class BHMF_z20(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[4,5])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[4,5])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -961,7 +961,7 @@ class BHMF_z30(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[6,7])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[6,7])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -972,7 +972,7 @@ class BHMF_z30(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[6,7])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[6,7])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -988,7 +988,7 @@ class BHMF_z40(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[8,9])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[8,9])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -999,7 +999,7 @@ class BHMF_z40(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[8,9])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[8,9])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1015,7 +1015,7 @@ class BHMF_z50(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[10,11])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[10,11])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1026,7 +1026,7 @@ class BHMF_z50(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[10,11])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[10,11])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1042,7 +1042,7 @@ class BHMF_z60(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[12,13])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[12,13])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1053,7 +1053,7 @@ class BHMF_z60(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[12,13])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[12,13])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1069,7 +1069,7 @@ class BHMF_z70(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[14,15])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[14,15])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1080,7 +1080,7 @@ class BHMF_z70(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[14,15])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[14,15])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1096,7 +1096,7 @@ class BHMF_z80(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[16,17])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[16,17])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1107,7 +1107,7 @@ class BHMF_z80(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[16,17])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[16,17])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1123,7 +1123,7 @@ class BHMF_z100(BHMF):
 
     def get_obs_x_y_err(self):
         #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('/data/zhang_data.csv', cols=[18,19])
+        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[18,19])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1134,7 +1134,7 @@ class BHMF_z100(BHMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_bhmf_all_redshifts.csv', cols=[18,19])
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[18,19])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1180,7 +1180,7 @@ class SMF_red_z0(SMF_red):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[0,1])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[0,1])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1226,7 +1226,7 @@ class SMF_blue_z0(SMF_blue):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[0,1])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[0,1])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1278,7 +1278,7 @@ class SMF_z02(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[0,1])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[0,1])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1289,7 +1289,7 @@ class SMF_z02(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[2,3])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[2,3])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1305,7 +1305,7 @@ class SMF_z05(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[2,3])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[2,3])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1316,7 +1316,7 @@ class SMF_z05(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[4,5])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[4,5])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1332,7 +1332,7 @@ class SMF_z08(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[4,5])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[4,5])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1343,7 +1343,7 @@ class SMF_z08(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[6,7])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[6,7])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1359,7 +1359,7 @@ class SMF_z10(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/Wright_2018_z1_z2.csv', cols=[0,1])
+        logm, logphi = self.load_observation('./data/Wright_2018_z1_z2.csv', cols=[0,1])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1370,7 +1370,7 @@ class SMF_z10(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_extra_redshifts.csv', cols=[4,5])
+        logm, phi = self.load_observation('./data/sage_smf_extra_redshifts.csv', cols=[4,5])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1386,7 +1386,7 @@ class SMF_z11(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[6,7])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[6,7])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1397,7 +1397,7 @@ class SMF_z11(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[8,9])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[8,9])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1413,7 +1413,7 @@ class SMF_z15(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[8,9])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[8,9])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1424,7 +1424,7 @@ class SMF_z15(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[10,11])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[10,11])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1440,7 +1440,7 @@ class SMF_z20(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/Wright_2018_z1_z2.csv', cols=[2,3])
+        logm, logphi = self.load_observation('./data/Wright_2018_z1_z2.csv', cols=[2,3])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1451,7 +1451,7 @@ class SMF_z20(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[12,13])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[12,13])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1467,7 +1467,7 @@ class SMF_z24(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[12,13])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[12,13])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1478,7 +1478,7 @@ class SMF_z24(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[14,15])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[14,15])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1494,7 +1494,7 @@ class SMF_z31(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[14,15])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[14,15])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1505,7 +1505,7 @@ class SMF_z31(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[16,17])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[16,17])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1521,7 +1521,7 @@ class SMF_z36(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[16,17])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[16,17])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1532,7 +1532,7 @@ class SMF_z36(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[18,19])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[18,19])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1548,7 +1548,7 @@ class SMF_z46(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[18,19])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[18,19])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1559,7 +1559,7 @@ class SMF_z46(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[20,21])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[20,21])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1575,7 +1575,7 @@ class SMF_z57(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[20,21])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[20,21])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1586,7 +1586,7 @@ class SMF_z57(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[22,23])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[22,23])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1602,7 +1602,7 @@ class SMF_z63(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[22,23])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[22,23])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1613,7 +1613,7 @@ class SMF_z63(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[24,25])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[24,25])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1629,7 +1629,7 @@ class SMF_z77(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[24,25])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[24,25])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1640,7 +1640,7 @@ class SMF_z77(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[26,27])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[26,27])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1656,7 +1656,7 @@ class SMF_z85(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[26,27])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[26,27])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1667,7 +1667,7 @@ class SMF_z85(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[28,29])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[28,29])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1683,7 +1683,7 @@ class SMF_z104(SMF):
 
     def get_obs_x_y_err(self):
         # Load data from Shuntov et al. (2024)
-        logm, logphi = self.load_observation('/data/shuntov_2024_all.csv', cols=[28,29])
+        logm, logphi = self.load_observation('./data/shuntov_2024_all.csv', cols=[28,29])
         # Remove NaN values
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
@@ -1694,7 +1694,7 @@ class SMF_z104(SMF):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[30,31])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[30,31])
         # Remove NaN values
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
@@ -1709,11 +1709,11 @@ class CSFRDH(Constraint):
     domain = (0, 14) # look-back time in Gyr
     
     def get_obs_x_y_err(self):
-#        zmin, zmax, logSFRD, err1, err2, err3 = self.load_observation('/data/Driver_SFRD.dat', cols=[1,2,3,5,6,7])
+#        zmin, zmax, logSFRD, err1, err2, err3 = self.load_observation('./data/Driver_SFRD.dat', cols=[1,2,3,5,6,7])
         my_cosmo = [100*self.h0, 0.0, self.Omega0, 1.0-self.Omega0]
         D18_cosmo = [70.0, 0., 0.3, 0.7]
 
-        D23_0, D23_1, D23_2, D23_3, D23_4, D23_5 = self.load_observation('/data/CSFH_DSILVA+23_Ver_Final.csv', cols=[0,1,2,3,4,5])
+        D23_0, D23_1, D23_2, D23_3, D23_4, D23_5 = self.load_observation('./data/CSFH_DSILVA+23_Ver_Final.csv', cols=[0,1,2,3,4,5])
         D23 = np.column_stack((D23_0, D23_1, D23_2, D23_3, D23_4, D23_5))
         z_D23 = D23[:,3]
         tLB_D23 = np.array([r.z2tL(z, self.h0, self.Omega0,  1.0-self.Omega0) for z in z_D23])
@@ -1772,7 +1772,7 @@ class BHBM_z0(BHBM):
     def get_obs_x_y_err(self):
         
         # Load observational data
-        blackholemass, bulgemass = self.load_observation('/data/Haring_Rix_2004_line.csv', cols=[2,3])
+        blackholemass, bulgemass = self.load_observation('./data/Haring_Rix_2004_line.csv', cols=[2,3])
         
         # Fit line to observational data
         slope, intercept, _, _, _ = stats.linregress(bulgemass, blackholemass)
@@ -1788,7 +1788,7 @@ class BHBM_z0(BHBM):
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        bulgemass, blackholemass = self.load_observation('/data/sage_bhbm_all_redshifts.csv', cols=[0,1])
+        bulgemass, blackholemass = self.load_observation('./data/sage_bhbm_all_redshifts.csv', cols=[0,1])
         x_sage = bulgemass
         y_sage = blackholemass
 
@@ -1801,14 +1801,14 @@ class BHBM_z20(BHBM):
 
     def get_obs_x_y_err(self):
         
-        bulgemass, blackholemass = self.load_observation('/data/Zhang_BHBM_z2.csv', cols=[0,1])
+        bulgemass, blackholemass = self.load_observation('./data/Zhang_BHBM_z2.csv', cols=[0,1])
         err = np.zeros(len(bulgemass))
 
         return bulgemass, blackholemass, err, err
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        bulgemass, blackholemass = self.load_observation('/data/sage_bhbm_all_redshifts.csv', cols=[12,13])
+        bulgemass, blackholemass = self.load_observation('./data/sage_bhbm_all_redshifts.csv', cols=[12,13])
         x_sage = bulgemass
         y_sage = blackholemass
 
@@ -1848,14 +1848,14 @@ class HSMR_z0(HSMR):
 
     def get_obs_x_y_err(self):
         
-        halomass, stellarmass = self.load_observation('/data/Moster_2013.csv', cols=[0,1])
+        halomass, stellarmass = self.load_observation('./data/Moster_2013.csv', cols=[0,1])
         err = np.zeros(len(halomass))
 
         return halomass, stellarmass, err, err
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        halomass, stellarmass = self.load_observation('/data/sage_halostellar_all_redshifts.csv', cols=[0,1])
+        halomass, stellarmass = self.load_observation('./data/sage_halostellar_all_redshifts.csv', cols=[0,1])
         x_sage = halomass
         y_sage = stellarmass
 
@@ -1868,14 +1868,14 @@ class HSMR_z05(HSMR):
 
     def get_obs_x_y_err(self):
         
-        halomass, stellarmass = self.load_observation('/data/Moster_2013.csv', cols=[2,3])
+        halomass, stellarmass = self.load_observation('./data/Moster_2013.csv', cols=[2,3])
         err = np.zeros(len(halomass))
 
         return halomass, stellarmass, err, err
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        halomass, stellarmass = self.load_observation('/data/sage_halostellar_all_redshifts.csv', cols=[4,5])
+        halomass, stellarmass = self.load_observation('./data/sage_halostellar_all_redshifts.csv', cols=[4,5])
         x_sage = halomass
         y_sage = stellarmass
 
@@ -1888,14 +1888,14 @@ class HSMR_z10(HSMR):
 
     def get_obs_x_y_err(self):
         
-        halomass, stellarmass = self.load_observation('/data/Moster_2013.csv', cols=[4,5])
+        halomass, stellarmass = self.load_observation('./data/Moster_2013.csv', cols=[4,5])
         err = np.zeros(len(halomass))
 
         return halomass, stellarmass, err, err
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        halomass, stellarmass = self.load_observation('/data/sage_halostellar_all_redshifts.csv', cols=[8,9])
+        halomass, stellarmass = self.load_observation('./data/sage_halostellar_all_redshifts.csv', cols=[8,9])
         x_sage = halomass
         y_sage = stellarmass
 
@@ -1908,14 +1908,14 @@ class HSMR_z20(HSMR):
 
     def get_obs_x_y_err(self):
         
-        halomass, stellarmass = self.load_observation('/data/Moster_2013.csv', cols=[6,7])
+        halomass, stellarmass = self.load_observation('./data/Moster_2013.csv', cols=[6,7])
         err = np.zeros(len(halomass))
 
         return halomass, stellarmass, err, err
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        halomass, stellarmass = self.load_observation('/data/sage_halostellar_all_redshifts.csv', cols=[12,13])
+        halomass, stellarmass = self.load_observation('./data/sage_halostellar_all_redshifts.csv', cols=[12,13])
         x_sage = halomass
         y_sage = stellarmass
 
@@ -1928,14 +1928,14 @@ class HSMR_z30(HSMR):
 
     def get_obs_x_y_err(self):
         
-        halomass, stellarmass = self.load_observation('/data/Moster_2013.csv', cols=[8,9])
+        halomass, stellarmass = self.load_observation('./data/Moster_2013.csv', cols=[8,9])
         err = np.zeros(len(halomass))
 
         return halomass, stellarmass, err, err
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        halomass, stellarmass = self.load_observation('/data/sage_halostellar_all_redshifts.csv', cols=[16,17])
+        halomass, stellarmass = self.load_observation('./data/sage_halostellar_all_redshifts.csv', cols=[16,17])
         x_sage = halomass
         y_sage = stellarmass
 
@@ -1948,14 +1948,14 @@ class HSMR_z40(HSMR):
 
     def get_obs_x_y_err(self):
         
-        halomass, stellarmass = self.load_observation('/data/Moster_2013.csv', cols=[10,11])
+        halomass, stellarmass = self.load_observation('./data/Moster_2013.csv', cols=[10,11])
         err = np.zeros(len(halomass))
 
         return halomass, stellarmass, err, err
     
     def get_sage_x_y(self):
         # Load data from SAGE
-        halomass, stellarmass = self.load_observation('/data/sage_halostellar_all_redshifts.csv', cols=[20,21])
+        halomass, stellarmass = self.load_observation('./data/sage_halostellar_all_redshifts.csv', cols=[20,21])
         x_sage = halomass
         y_sage = stellarmass
 
@@ -1989,7 +1989,7 @@ class TARGET_SMF_z05(SMF):
     z = [0.5]
     
     def get_obs_x_y_err(self):
-        target_data = np.loadtxt('/data/target_smf_data/target_smf_z05_sage_2.0.csv', 
+        target_data = np.loadtxt('./data/target_smf_data/target_smf_z05_sage_2.0.csv', 
                                delimiter=',', comments='#')
         x_obs = target_data[:, 0]
         y_obs = target_data[:, 1]
@@ -1997,7 +1997,7 @@ class TARGET_SMF_z05(SMF):
         return x_obs, y_obs, err, err
     
     def get_sage_x_y(self):
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[4,5])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[4,5])
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         return logm[valid_mask], logphi[valid_mask]
@@ -2008,7 +2008,7 @@ class TARGET_SMF_z10(SMF):
     z = [1.0]
     
     def get_obs_x_y_err(self):
-        target_data = np.loadtxt('/data/target_smf_data/target_smf_z10_sage_2.0.csv', 
+        target_data = np.loadtxt('./data/target_smf_data/target_smf_z10_sage_2.0.csv', 
                                delimiter=',', comments='#')
         x_obs = target_data[:, 0]
         y_obs = target_data[:, 1]
@@ -2016,7 +2016,7 @@ class TARGET_SMF_z10(SMF):
         return x_obs, y_obs, err, err
     
     def get_sage_x_y(self):
-        logm, phi = self.load_observation('/data/sage_smf_extra_redshifts.csv', cols=[4,5])
+        logm, phi = self.load_observation('./data/sage_smf_extra_redshifts.csv', cols=[4,5])
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         return logm[valid_mask], logphi[valid_mask]
@@ -2027,7 +2027,7 @@ class TARGET_SMF_z20(SMF):
     z = [2.0]
     
     def get_obs_x_y_err(self):
-        target_data = np.loadtxt('/data/target_smf_data/target_smf_z20_sage_2.0.csv', 
+        target_data = np.loadtxt('./data/target_smf_data/target_smf_z20_sage_2.0.csv', 
                                delimiter=',', comments='#')
         x_obs = target_data[:, 0]
         y_obs = target_data[:, 1]
@@ -2035,7 +2035,7 @@ class TARGET_SMF_z20(SMF):
         return x_obs, y_obs, err, err
     
     def get_sage_x_y(self):
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[12,13])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[12,13])
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         return logm[valid_mask], logphi[valid_mask]
@@ -2046,7 +2046,7 @@ class TARGET_SMF_z31(SMF):
     z = [3.1]
     
     def get_obs_x_y_err(self):
-        target_data = np.loadtxt('/data/target_smf_data/target_smf_z31_sage_2.0.csv', 
+        target_data = np.loadtxt('./data/target_smf_data/target_smf_z31_sage_2.0.csv', 
                                delimiter=',', comments='#')
         x_obs = target_data[:, 0]
         y_obs = target_data[:, 1]
@@ -2054,7 +2054,7 @@ class TARGET_SMF_z31(SMF):
         return x_obs, y_obs, err, err
     
     def get_sage_x_y(self):
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[16,17])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[16,17])
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         return logm[valid_mask], logphi[valid_mask]
@@ -2065,7 +2065,7 @@ class TARGET_SMF_z46(SMF):
     z = [4.6]
     
     def get_obs_x_y_err(self):
-        target_data = np.loadtxt('/data/target_smf_data/target_smf_z46_sage_2.0.csv', 
+        target_data = np.loadtxt('./data/target_smf_data/target_smf_z46_sage_2.0.csv', 
                                delimiter=',', comments='#')
         x_obs = target_data[:, 0]
         y_obs = target_data[:, 1]
@@ -2073,7 +2073,7 @@ class TARGET_SMF_z46(SMF):
         return x_obs, y_obs, err, err
     
     def get_sage_x_y(self):
-        logm, phi = self.load_observation('/data/sage_smf_all_redshifts.csv', cols=[20,21])
+        logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[20,21])
         logphi = np.log10(phi)
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         return logm[valid_mask], logphi[valid_mask]

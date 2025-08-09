@@ -20,7 +20,7 @@ import constraints
 import execution
 import pso
 import glob
-import diagnostics
+import diagnostics2
 
 
 logger = logging.getLogger('main')
@@ -359,12 +359,11 @@ def main():
     logger.info('Found BHBM dump files: %s', dump_files3)
 
     logger.info('Running diagnostics...')
-    diagnostics.main(
+    diagnostics2.main(
         tracks_dir=os.path.join(opts.outdir, 'tracks'),
         space_file=opts.space_file, 
         output_dir=opts.outdir,
-        config_opts=opts,
-        space=space
+        config_opts=opts
     )
 
     # Clean up all files

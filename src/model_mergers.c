@@ -211,7 +211,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // The coefficients in eburst are taken from TJ Cox's PhD thesis and should be more accurate then previous.
 
     // Update the gas components to ensure H2 and HI are correctly calculated
-    if (run_params->SFprescription >= 1) {
+    if (run_params->SFprescription == 1) {
         update_gas_components(&galaxies[merger_centralgal], run_params);
     }
 

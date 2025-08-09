@@ -35,9 +35,10 @@ sSFRcut = -11.0
 bulge_ratio_cut = 0.1  # Legacy parameter - now using SAGE 2.0/C16 criteria for ETG/LTG
 
 OutputFormat = '.pdf'
-plt.rcParams["figure.figsize"] = (10,8)
-plt.rcParams["figure.dpi"] = 500
-plt.rcParams["font.size"] = 14
+# plt.rcParams["figure.figsize"] = (10,8)
+# plt.rcParams["figure.dpi"] = 500
+# plt.rcParams["font.size"] = 14
+plt.style.use('/Users/mbradley/Documents/cohare_palatino_sty.mplstyle')
 
 # ==================================================================
 

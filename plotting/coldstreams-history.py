@@ -36,9 +36,10 @@ target_redshifts = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.5, 
 
 # Plotting options
 OutputFormat = '.pdf'
-plt.rcParams["figure.figsize"] = (12, 8)
-plt.rcParams["figure.dpi"] = 150
-plt.rcParams["font.size"] = 12
+# plt.rcParams["figure.figsize"] = (12, 8)
+# plt.rcParams["figure.dpi"] = 150
+# plt.rcParams["font.size"] = 12
+plt.style.use('/Users/mbradley/Documents/cohare_palatino_sty.mplstyle')
 
 # ==================================================================
 
