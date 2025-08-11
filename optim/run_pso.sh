@@ -5,7 +5,7 @@ CONFIG_PATH="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium.
 BASE_PATH="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/sage"
 OUTPUT_PATH="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_pso"
 PARTICLES=14
-ITERATIONS=50
+ITERATIONS=10
 TEST="student-t"
 CONSTRAINTS="SMF_z0"
 AGE_ALIST_FILE_MINI_UCHUU='/fred/oz004/msinha/simulations/uchuu_suite/miniuchuu/mergertrees/u400_planck2016_50.a_list'
@@ -35,6 +35,4 @@ python3 ./main.py \
   --vol-frac "$VOL_FRAC" \
   --Omega0 "$OMEGA0" \
   --h0 "$H0" \
-  -S "$SPACEFILE" \
-  -H \
-  -C 4
+  -S "$SPACEFILE"

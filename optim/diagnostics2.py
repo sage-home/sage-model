@@ -304,7 +304,7 @@ def plot_3d_space_animation(space, pos, fx, fig=None):
     fig.set_tight_layout(True)
 
     # Color mapping setup
-    cm = plt.get_cmap('viridis')
+    cm = plt.get_cmap('plasma')
     #cNorm = matplotlib.colors.Normalize(vmin=0.0, vmax=100)
     cNorm = matplotlib.colors.Normalize(vmin=np.amin(fx), vmax=np.amax(fx))
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
@@ -324,22 +324,29 @@ def plot_3d_space_animation(space, pos, fx, fig=None):
     ax.set_xlim(lb[0], ub[0])
     ax.set_ylim(lb[1], ub[1])
     ax.set_zlim(lb[2], ub[2])
+    
+    # Make the grid lighter
+    ax.grid(True, alpha=0.3)  # Set grid transparency
+    ax.xaxis._axinfo['grid']['color'] = (0.5, 0.5, 0.5, 0.3)  # Light gray with transparency
+    ax.yaxis._axinfo['grid']['color'] = (0.5, 0.5, 0.5, 0.3)
+    ax.zaxis._axinfo['grid']['color'] = (0.5, 0.5, 0.5, 0.3)
+    
     scat = ax.scatter(pos[0][0], pos[0][1], pos[0][2],
                        c=scalarMap.to_rgba(fx[0]))
-    title = ax.text2D(0.5, 0.95, 'Iteration 0', transform=fig.transFigure,
-            ha='center', va='top')
+    # title = ax.text2D(0.5, 0.95, 'Iteration 0', transform=fig.transFigure,
+    #         ha='center', va='top')
 
-    # Colorbar indicating color mapping
-    cbar = fig.colorbar(scalarMap)
-    cbar.set_label('Log Student-t score')
+    # Colorbar indicating color mapping - FIX: specify the ax parameter
+    # cbar = fig.colorbar(scalarMap, ax=ax)
+    # cbar.set_label('Log Student-t score')
     colors = [scalarMap.to_rgba(x) for x in fx]
 
     def update(x):
         count, (pos, fx, color) = x
         scat._offsets3d = pos
         scat.set_color(color)
-        title.set_text("Iteration %d" % (count + 1))
-        return scat, title
+        # title.set_text("Iteration %d" % (count + 1))
+        return scat
 
     frames_data = list(enumerate(zip(pos, fx, colors)))
     animation = anim.FuncAnimation(fig, update, frames=frames_data, blit=False)
@@ -1074,7 +1081,7 @@ def generate_plots(space, pos, fx, D, output_folder):
     # If D == 3, you can add the 3D plot or animation
     if D == 3:
         animation = plot_3d_space_animation(space, pos, fx)
-        animation.save(os.path.join(output_folder, '3d-particles.gif'), writer='imagemagick', fps=5)
+        animation.save(os.path.join(output_folder, '3d-particles.gif'), writer='imagemagick', fps=2)
 
     # Add performance plot
     fig = plot_performance(fx)
