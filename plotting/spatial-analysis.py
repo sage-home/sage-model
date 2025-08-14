@@ -462,7 +462,7 @@ if __name__ == '__main__':
     ax3.set_zlim(0, BoxSize)
 
     plt.tight_layout()
-    OutputFormat = '.png'
+    OutputFormat = '.pdf'
 
     # Save the 3D visualization
     outputFile = OutputDir + '23.3DDensityPlotandH2andH1' + OutputFormat

@@ -421,27 +421,6 @@ if __name__ == '__main__':
     massBLU = mass[w]
     (countsBLU, binedges) = np.histogram(massBLU, range=(mi, ma), bins=NB)
 
-    # calculate different particle number cuts
-    w = np.where((StellarMass > 0.0)&(NDM > 20))[0]
-    mass20 = np.log10(StellarMass[w])
-    (counts20, binedges) = np.histogram(mass20, range=(mi, ma), bins=NB)
-
-    w = np.where((StellarMass > 0.0)&(NDM > 50))[0]
-    mass50 = np.log10(StellarMass[w])
-    (counts50, binedges) = np.histogram(mass50, range=(mi, ma), bins=NB)
-
-    w = np.where((StellarMass > 0.0)&(NDM > 100))[0]
-    mass100 = np.log10(StellarMass[w])
-    (counts100, binedges) = np.histogram(mass100, range=(mi, ma), bins=NB)
-
-    w = np.where((StellarMass > 0.0)&(NDM > 200))[0]
-    mass200 = np.log10(StellarMass[w])
-    (counts200, binedges) = np.histogram(mass200, range=(mi, ma), bins=NB)
-
-    w = np.where((StellarMass > 0.0))[0]
-    mass_cgm = np.log10(cgm[w])
-    (counts_cgm, binedges) = np.histogram(mass_cgm, range=(mi, ma), bins=NB)
-
     # Baldry+ 2008 modified data used for the MCMC fitting
     Baldry = np.array([
         [7.05, 1.3531e-01, 6.0741e-02],
@@ -564,11 +543,6 @@ if __name__ == '__main__':
     plt.plot(xaxeshisto, counts    / volume / binwidth, 'k-', lw=2, label='Model - All')
     plt.plot(xaxeshisto, countsRED / volume / binwidth, 'r-', lw=2, label='Model - Red')
     plt.plot(xaxeshisto, countsBLU / volume / binwidth, 'b-', lw=2, label='Model - Blue')
-
-    plt.plot(xaxeshisto, counts20    / volume / binwidth, 'r--', lw=1, label='Model - 20 particles or less')
-    plt.plot(xaxeshisto, counts50    / volume / binwidth, 'g--', lw=1, label='Model - 50 particles or less')
-    plt.plot(xaxeshisto, counts100    / volume / binwidth, 'b--', lw=1, label='Model - 100 particles or less')
-    plt.plot(xaxeshisto, counts200    / volume / binwidth, 'k--', lw=1, label='Model - 200 particles or less')
 
     plt.yscale('log')
     plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])

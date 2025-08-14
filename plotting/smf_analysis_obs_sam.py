@@ -38,7 +38,13 @@ MODEL_CONFIGS = [
         'linewidth': 3,              # Thick line for SAGE 2.0
         'alpha': 0.8,                # Transparency
         'boxsize': 62.5,             # Box size in h^-1 Mpc for this model
-        'volume_fraction': 1.0       # Fraction of the full volume output by the model
+        'volume_fraction': 1.0,      # Fraction of the full volume output by the model
+        'hubble_h': 0.73,            # Hubble parameter for this model
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000]  # Redshift of each snapshot for this model
     },
     {
         'name': 'SAGE C16',           # Display name for legend
@@ -48,8 +54,14 @@ MODEL_CONFIGS = [
         'linewidth': 2,              # Thin line for Vanilla SAGE
         'alpha': 0.8,                # Transparency
         'boxsize': 62.5,             # Box size in h^-1 Mpc for this model
-        'volume_fraction': 1.0,       # Fraction of the full volume output by the model
-        'use_for_residuals': True    # NEW: Flag to indicate this is the comparison model
+        'volume_fraction': 1.0,      # Fraction of the full volume output by the model
+        'use_for_residuals': True,   # NEW: Flag to indicate this is the comparison model
+        'hubble_h': 0.73,            # Different Hubble parameter for this model
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000]  # Redshift of each snapshot for this model
     },
     # NEW: Add your comparison model here
     {
@@ -61,7 +73,28 @@ MODEL_CONFIGS = [
         'alpha': 0.8,               # Transparency
         'boxsize': 62.5,            # Box size in h^-1 Mpc for this model
         'volume_fraction': 1.0,     # Fraction of the full volume output by the model
-        # 'use_for_residuals': True    # NEW: Flag to indicate this is the comparison model
+        'hubble_h': 0.73,            # Different Hubble parameter for this model
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000]  # Redshift of each snapshot for this model
+    },
+    # Model with different snapshot range (0-49 instead of 0-63) - miniUchuu simulation
+    {
+        'name': 'SAGE 2.0 miniUchuu',   # Display name matching the error message
+        'dir': './output/miniuchuu_09082025/',     # Path to your miniUchuu model directory
+        'color': 'red',              # Color for plotting
+        'linestyle': '-.',           # Dash-dot line style
+        'linewidth': 2,              # Line width
+        'alpha': 0.8,                # Transparency
+        'boxsize': 400,              # Box size in h^-1 Mpc for miniUchuu (smaller than Millennium)
+        'volume_fraction': 0.3,      # Fraction of the full volume output by the model
+        'hubble_h': 0.67,            # Hubble parameter for this model (different cosmology)
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509]  # Only 50 snapshots (0-49) for this model
     }
 ]
 
@@ -97,18 +130,19 @@ MuzzinDataFile = './data/SMF_Muzzin2013.dat'  # Path to Muzzin 2013 data file
 SantiniDataFile = './data/SMF_Santini2012.dat'  # Path to Santini 2012 data file
 WrightDataFile = './data/Wright18_CombinedSMF.dat'  # Path to Wright 2018 data file
 
-# Simulation details
-Hubble_h = 0.73        # Hubble parameter
+# Simulation details - REMOVED GLOBAL VALUES: Now each model has its own hubble_h and redshifts
 
 # IMF setting - set to 1 if using Chabrier IMF, 0 otherwise
 whichimf = 1  # Add this variable to control IMF correction
 
-# Snapshot to redshift mapping - UPDATE THIS TO MATCH YOUR SIMULATION
-redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
-             9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
-             2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
-             0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
-             0.116, 0.089, 0.064, 0.041, 0.020, 0.000]  # Redshift of each snapshot
+# Utility functions for backward compatibility and default values
+def get_default_hubble_h():
+    """Get default Hubble parameter from first model configuration"""
+    return MODEL_CONFIGS[0]['hubble_h'] if MODEL_CONFIGS else 0.73
+
+def get_default_redshifts():
+    """Get default redshift list from first model configuration"""
+    return MODEL_CONFIGS[0]['redshifts'] if MODEL_CONFIGS else []
 
 OutputFormat = '.pdf'
 # plt.rcParams["figure.figsize"] = (15, 12)
@@ -124,7 +158,7 @@ def get_model_volume(model_config):
     Parameters:
     -----------
     model_config : dict
-        Model configuration dictionary containing 'boxsize' and 'volume_fraction'
+        Model configuration dictionary containing 'boxsize', 'volume_fraction', and 'hubble_h'
         
     Returns:
     --------
@@ -132,7 +166,8 @@ def get_model_volume(model_config):
     """
     boxsize = model_config['boxsize']
     volume_fraction = model_config['volume_fraction']
-    volume = (boxsize/Hubble_h)**3.0 * volume_fraction
+    hubble_h = model_config['hubble_h']
+    volume = (boxsize/hubble_h)**3.0 * volume_fraction
     return volume
 
 def load_obs_from_file(file_path, file_type='shark'):
@@ -287,14 +322,23 @@ print(f"\nTotal observational datasets loaded: {len(obs_data_by_z)}")
 for z, info in obs_data_by_z.items():
     print(f"  z={z}: {len(info['x'])} points, label='{info['label']}'")
 
-def load_muzzin_2013_data(filename=None):
+def load_muzzin_2013_data(filename=None, hubble_h=None):
     """
     Load Muzzin et al. 2013 stellar mass function data
+    
+    Parameters:
+    -----------
+    filename : str, optional
+        Path to the data file
+    hubble_h : float, optional
+        Hubble parameter to use for cosmology conversion (default: use first model's value)
     
     Returns:
     --------
     dict : Dictionary with redshift bin strings as keys and data as values
     """
+    if hubble_h is None:
+        hubble_h = get_default_hubble_h()
     if filename is None:
         filename = MuzzinDataFile
     
@@ -359,9 +403,9 @@ def load_muzzin_2013_data(filename=None):
             
             # Convert from log(phi) to phi and apply cosmology correction
             # Muzzin uses H0=70, Omega_lambda=0.7, Omega_matter=0.3
-            # Need to convert to our cosmology (H0=73)
+            # Need to convert to our cosmology
             h_muzzin = 0.7
-            h_ours = Hubble_h
+            h_ours = hubble_h
             
             # Convert phi values (volume correction)
             phi_muzzin = 10**muzzin_data[z_bin]['logPhi']
@@ -392,14 +436,23 @@ def load_muzzin_2013_data(filename=None):
         traceback.print_exc()
         return {}
 
-def load_santini_2012_data(filename=None):
+def load_santini_2012_data(filename=None, hubble_h=None):
     """
     Load Santini et al. 2012 stellar mass function data
+    
+    Parameters:
+    -----------
+    filename : str, optional
+        Path to the data file
+    hubble_h : float, optional
+        Hubble parameter to use for cosmology conversion (default: use first model's value)
     
     Returns:
     --------
     dict : Dictionary with redshift bin strings as keys and data as values
     """
+    if hubble_h is None:
+        hubble_h = get_default_hubble_h()
     if filename is None:
         filename = SantiniDataFile
     
@@ -459,9 +512,9 @@ def load_santini_2012_data(filename=None):
                         'z_center': (z_low + z_high) / 2
                     }
                 
-                # Apply cosmology correction (Santini uses H0=70, we use H0=73)
+                # Apply cosmology correction (Santini uses H0=70)
                 h_santini = 0.7
-                h_ours = Hubble_h
+                h_ours = hubble_h
                 
                 # Convert phi values (volume correction)
                 phi_santini = 10**lg_phi
@@ -505,14 +558,23 @@ def load_santini_2012_data(filename=None):
         traceback.print_exc()
         return {}
 
-def load_wright_2018_data(filename=None):
+def load_wright_2018_data(filename=None, hubble_h=None):
     """
     Load Wright et al. 2018 stellar mass function data
+    
+    Parameters:
+    -----------
+    filename : str, optional
+        Path to the data file  
+    hubble_h : float, optional
+        Hubble parameter to use for cosmology conversion (default: use first model's value)
     
     Returns:
     --------
     dict : Dictionary with redshift values as keys and data as values
     """
+    if hubble_h is None:
+        hubble_h = get_default_hubble_h()
     if filename is None:
         filename = WrightDataFile
     
@@ -568,9 +630,9 @@ def load_wright_2018_data(filename=None):
                         'error_lo': []
                     }
                 
-                # Apply cosmology correction (Wright uses H0=70, we use H0=73)
+                # Apply cosmology correction (Wright uses H0=70)
                 h_wright = 0.7
-                h_ours = Hubble_h
+                h_ours = hubble_h
                 
                 # Convert phi values (volume correction)
                 phi_wright = 10**log_y_corrected
@@ -613,14 +675,21 @@ def load_wright_2018_data(filename=None):
         traceback.print_exc()
         return {}
     
-def get_baldry_2008_data():
+def get_baldry_2008_data(hubble_h=None):
     """
     Return Baldry et al. 2008 stellar mass function data
     
+    Parameters:
+    -----------
+    hubble_h : float, optional
+        Hubble parameter to use for unit conversion (default: use first model's value)
+        
     Returns:
     --------
     tuple : (log_mass, phi_upper, phi_lower) arrays for plotting
     """
+    if hubble_h is None:
+        hubble_h = get_default_hubble_h()
     # Baldry+ 2008 modified data used for the MCMC fitting
     Baldry = np.array([
         [7.05, 1.3531e-01, 6.0741e-02],
@@ -676,14 +745,14 @@ def get_baldry_2008_data():
     ], dtype=np.float32)
 
     # Convert mass to log scale and apply IMF correction
-    Baldry_xval = np.log10(10 ** Baldry[:, 0] / Hubble_h / Hubble_h)
+    Baldry_xval = np.log10(10 ** Baldry[:, 0] / hubble_h / hubble_h)
     if whichimf == 1:  
         Baldry_xval = Baldry_xval - 0.26  # convert back to Chabrier IMF
     
     # Convert phi values and apply volume correction
-    Baldry_yvalU = (Baldry[:, 1] + Baldry[:, 2]) * Hubble_h * Hubble_h * Hubble_h
-    Baldry_yvalL = (Baldry[:, 1] - Baldry[:, 2]) * Hubble_h * Hubble_h * Hubble_h
-    Baldry_yval = Baldry[:, 1] * Hubble_h * Hubble_h * Hubble_h
+    Baldry_yvalU = (Baldry[:, 1] + Baldry[:, 2]) * hubble_h * hubble_h * hubble_h
+    Baldry_yvalL = (Baldry[:, 1] - Baldry[:, 2]) * hubble_h * hubble_h * hubble_h
+    Baldry_yval = Baldry[:, 1] * hubble_h * hubble_h * hubble_h
     
     return Baldry_xval, Baldry_yval, Baldry_yvalU, Baldry_yvalL
 
@@ -855,8 +924,10 @@ def read_hdf(directory, filename=None, snap_num=None, param=None):
     return combined_data
 
 
-def get_redshift_from_snapshot(snap_num):
-    """Convert snapshot number to redshift using the provided redshift list"""
+def get_redshift_from_snapshot(snap_num, model_config):
+    """Convert snapshot number to redshift using the model-specific redshift list"""
+    redshifts = model_config['redshifts']
+    
     if isinstance(snap_num, str):
         # Extract number from string like 'Snap_042'
         snap_num = int(snap_num.split('_')[-1])
@@ -864,7 +935,7 @@ def get_redshift_from_snapshot(snap_num):
     if 0 <= snap_num < len(redshifts):
         return redshifts[snap_num]
     else:
-        raise ValueError(f"Snapshot {snap_num} out of range for redshift list")
+        raise ValueError(f"Snapshot {snap_num} out of range for redshift list of model {model_config['name']}")
 
 
 def get_available_snapshots(directory):
@@ -898,7 +969,7 @@ def get_available_snapshots(directory):
         return []
 
 
-def create_redshift_bins(available_snapshots, z_range=None):
+def create_redshift_bins(available_snapshots, model_config=None, z_range=None):
     """
     Create redshift bins matching observational studies
     
@@ -906,6 +977,8 @@ def create_redshift_bins(available_snapshots, z_range=None):
     -----------
     available_snapshots : list
         List of available snapshots
+    model_config : dict, optional
+        Model configuration containing redshift list. If None, uses default.
     z_range : tuple or None
         (z_min, z_max) to filter bins. If None, return all bins.
     
@@ -946,15 +1019,27 @@ def create_redshift_bins(available_snapshots, z_range=None):
     
     bins_with_data = []
     
+    # Get redshift list from model config or use default
+    if model_config is None:
+        redshifts = get_default_redshifts()
+    else:
+        redshifts = model_config['redshifts']
+    
     for z_low, z_high in redshift_bins:
         z_center = (z_low + z_high) / 2
         snapshots_in_bin = []
         
         # Find all snapshots within this redshift range
         for snap in available_snapshots:
-            z_snap = get_redshift_from_snapshot(snap)
-            if z_low <= z_snap < z_high:
-                snapshots_in_bin.append(snap)
+            if isinstance(snap, str):
+                snap_num = int(snap.split('_')[-1])
+            else:
+                snap_num = snap
+                
+            if 0 <= snap_num < len(redshifts):
+                z_snap = redshifts[snap_num]
+                if z_low <= z_snap < z_high:
+                    snapshots_in_bin.append(snap)
         
         if snapshots_in_bin:
             bins_with_data.append((z_low, z_high, z_center, snapshots_in_bin))
@@ -1728,7 +1813,7 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
     
     # Use snapshots from first valid model to create redshift bins
     first_model_snapshots = list(model_snapshots.values())[0]
-    redshift_bins = create_redshift_bins(first_model_snapshots, z_range=z_range)
+    redshift_bins = create_redshift_bins(first_model_snapshots, model_config=model_configs_valid[0], z_range=z_range)
     
     if not redshift_bins:
         raise ValueError("No redshift bins with data found for the specified range")
@@ -1801,7 +1886,7 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
                 # Find snapshots in this bin for this model
                 snapshots_in_bin = []
                 for snap in available_snaps:
-                    z_snap = get_redshift_from_snapshot(snap)
+                    z_snap = get_redshift_from_snapshot(snap, model_config)
                     if z_low <= z_snap < z_high:
                         snapshots_in_bin.append(snap)
                 
@@ -1819,7 +1904,7 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
                 else:
                     # Find snapshot with redshift just above the lower bound
                     for snap in snapshots_in_bin:
-                        z_snap = get_redshift_from_snapshot(snap)
+                        z_snap = get_redshift_from_snapshot(snap, model_config)
                         if z_snap >= target_z:
                             diff = z_snap - target_z
                             if diff < min_diff:
@@ -1829,7 +1914,7 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
                     # If no snapshot found above target_z, use closest
                     if best_snap is None:
                         for snap in snapshots_in_bin:
-                            z_snap = get_redshift_from_snapshot(snap)
+                            z_snap = get_redshift_from_snapshot(snap, model_config)
                             diff = abs(z_snap - target_z)
                             if diff < min_diff:
                                 min_diff = diff
@@ -1839,7 +1924,7 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
                     continue
                 
                 snap_str = f'Snap_{best_snap}'
-                z_best = get_redshift_from_snapshot(best_snap)
+                z_best = get_redshift_from_snapshot(best_snap, model_config)
                 model_redshifts_used[model_name] = z_best
 
                 # Read data for the selected snapshot
@@ -1851,7 +1936,7 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
                     continue
                 
                 # Convert to solar masses
-                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                stellar_mass = stellar_mass * 1.0e10 / model_config['hubble_h']
                 
                 # Apply galaxy type filter
                 if galaxy_types == 'central':
@@ -2013,13 +2098,13 @@ def create_simple_smf_plot(snap_list=None):
                 if stellar_mass is None:
                     continue
                     
-                # Convert to solar masses
-                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                # Convert to solar masses using model-specific Hubble parameter
+                stellar_mass = stellar_mass * 1.0e10 / model_config['hubble_h']
                 
                 # Only positive masses
                 stellar_mass = stellar_mass[stellar_mass > 0]
                 
-                z = get_redshift_from_snapshot(snap)
+                z = get_redshift_from_snapshot(snap, model_config)
                 
                 # Calculate SMF with model-specific volume
                 bin_centers, phi, phi_err = calculate_smf(stellar_mass, volume=volume)
@@ -2150,7 +2235,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
         
         # Find all snapshots within this redshift range
         for snap in first_model_snapshots:
-            z_snap = get_redshift_from_snapshot(snap)
+            z_snap = get_redshift_from_snapshot(snap, model_config)
             if z_low <= z_snap < z_high:
                 snapshots_in_bin.append(snap)
         
@@ -2205,7 +2290,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                 # Find snapshots in this bin for this model
                 snapshots_in_bin = []
                 for snap in available_snaps:
-                    z_snap = get_redshift_from_snapshot(snap)
+                    z_snap = get_redshift_from_snapshot(snap, model_config)
                     if z_low <= z_snap < z_high:
                         snapshots_in_bin.append(snap)
                 
@@ -2223,7 +2308,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                 else:
                     # Find snapshot with redshift just above the lower bound
                     for snap in snapshots_in_bin:
-                        z_snap = get_redshift_from_snapshot(snap)
+                        z_snap = get_redshift_from_snapshot(snap, model_config)
                         if z_snap >= target_z:
                             diff = z_snap - target_z
                             if diff < min_diff:
@@ -2233,7 +2318,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                     # If no snapshot found above target_z, use closest
                     if best_snap is None:
                         for snap in snapshots_in_bin:
-                            z_snap = get_redshift_from_snapshot(snap)
+                            z_snap = get_redshift_from_snapshot(snap, model_config)
                             diff = abs(z_snap - target_z)
                             if diff < min_diff:
                                 min_diff = diff
@@ -2243,7 +2328,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                     continue
                 
                 snap_str = f'Snap_{best_snap}'
-                z_best = get_redshift_from_snapshot(best_snap)
+                z_best = get_redshift_from_snapshot(best_snap, model_config)
                 model_redshifts_used[model_name] = z_best
 
                 # Read data for the selected snapshot
@@ -2255,7 +2340,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                     continue
                 
                 # Convert to solar masses
-                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                stellar_mass = stellar_mass * 1.0e10 / model_config['hubble_h']
                 
                 # Apply galaxy type filter
                 if galaxy_types == 'central':
@@ -2499,7 +2584,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
     
     # Use snapshots from first valid model to create ALL redshift bins (no z_range filtering)
     first_model_snapshots = list(model_snapshots.values())[0]
-    redshift_bins = create_redshift_bins(first_model_snapshots, z_range=None)  # Get ALL bins
+    redshift_bins = create_redshift_bins(first_model_snapshots, model_config=model_configs_valid[0], z_range=None)  # Get ALL bins
     
     if not redshift_bins:
         raise ValueError("No redshift bins with data found")
@@ -2601,7 +2686,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
                 # Find snapshots in this bin for this model
                 snapshots_in_bin = []
                 for snap in available_snaps:
-                    z_snap = get_redshift_from_snapshot(snap)
+                    z_snap = get_redshift_from_snapshot(snap, model_config)
                     if z_low <= z_snap < z_high:
                         snapshots_in_bin.append(snap)
                 
@@ -2619,7 +2704,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
                 else:
                     # Find snapshot with redshift just above the lower bound
                     for snap in snapshots_in_bin:
-                        z_snap = get_redshift_from_snapshot(snap)
+                        z_snap = get_redshift_from_snapshot(snap, model_config)
                         if z_snap >= target_z:
                             diff = z_snap - target_z
                             if diff < min_diff:
@@ -2629,7 +2714,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
                     # If no snapshot found above target_z, use closest
                     if best_snap is None:
                         for snap in snapshots_in_bin:
-                            z_snap = get_redshift_from_snapshot(snap)
+                            z_snap = get_redshift_from_snapshot(snap, model_config)
                             diff = abs(z_snap - target_z)
                             if diff < min_diff:
                                 min_diff = diff
@@ -2639,7 +2724,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
                     continue
                 
                 snap_str = f'Snap_{best_snap}'
-                z_best = get_redshift_from_snapshot(best_snap)
+                z_best = get_redshift_from_snapshot(best_snap, model_config)
                 model_redshifts_used[model_name] = z_best
 
                 # Read data for the selected snapshot
@@ -2651,7 +2736,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
                     continue
                 
                 # Convert to solar masses
-                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                stellar_mass = stellar_mass * 1.0e10 / model_config['hubble_h']
                 
                 # Apply galaxy type filter
                 if galaxy_types == 'central':
@@ -2903,14 +2988,14 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
     # Convert selected bins to include snapshot information
     first_model_snapshots = list(model_snapshots.values())[0]
     redshift_bins_with_data = []
-    
+    first_model_config = model_configs_valid[0]  # Use the first valid model's config for redshift mapping    
     for z_low, z_high in selected_bins:
         z_center = (z_low + z_high) / 2
         snapshots_in_bin = []
         
         # Find all snapshots within this redshift range
         for snap in first_model_snapshots:
-            z_snap = get_redshift_from_snapshot(snap)
+            z_snap = get_redshift_from_snapshot(snap, first_model_config)
             if z_low <= z_snap < z_high:
                 snapshots_in_bin.append(snap)
         
@@ -2965,7 +3050,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                 # Find snapshots in this bin for this model
                 snapshots_in_bin = []
                 for snap in available_snaps:
-                    z_snap = get_redshift_from_snapshot(snap)
+                    z_snap = get_redshift_from_snapshot(snap, model_config)
                     if z_low <= z_snap < z_high:
                         snapshots_in_bin.append(snap)
                 
@@ -2983,7 +3068,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                 else:
                     # Find snapshot with redshift just above the lower bound
                     for snap in snapshots_in_bin:
-                        z_snap = get_redshift_from_snapshot(snap)
+                        z_snap = get_redshift_from_snapshot(snap, model_config)
                         if z_snap >= target_z:
                             diff = z_snap - target_z
                             if diff < min_diff:
@@ -2993,7 +3078,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                     # If no snapshot found above target_z, use closest
                     if best_snap is None:
                         for snap in snapshots_in_bin:
-                            z_snap = get_redshift_from_snapshot(snap)
+                            z_snap = get_redshift_from_snapshot(snap, model_config)
                             diff = abs(z_snap - target_z)
                             if diff < min_diff:
                                 min_diff = diff
@@ -3003,7 +3088,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                     continue
                 
                 snap_str = f'Snap_{best_snap}'
-                z_best = get_redshift_from_snapshot(best_snap)
+                z_best = get_redshift_from_snapshot(best_snap, model_config)
                 model_redshifts_used[model_name] = z_best
 
                 # Read data for the selected snapshot
@@ -3015,7 +3100,7 @@ def plot_smf_selected_bins(galaxy_types='all', mass_range=(7, 12),
                     continue
                 
                 # Convert to solar masses
-                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                stellar_mass = stellar_mass * 1.0e10 / model_config['hubble_h']
                 
                 # Apply galaxy type filter
                 if galaxy_types == 'central':
@@ -3206,7 +3291,7 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
     
     # Use snapshots from first valid model to create ALL redshift bins (no z_range filtering)
     first_model_snapshots = list(model_snapshots.values())[0]
-    redshift_bins = create_redshift_bins(first_model_snapshots, z_range=None)  # Get ALL bins
+    redshift_bins = create_redshift_bins(first_model_snapshots, model_config=model_configs_valid[0], z_range=None)  # Get ALL bins
     
     if not redshift_bins:
         raise ValueError("No redshift bins with data found")
@@ -3265,7 +3350,7 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
                 # Find snapshots in this bin for this model
                 snapshots_in_bin = []
                 for snap in available_snaps:
-                    z_snap = get_redshift_from_snapshot(snap)
+                    z_snap = get_redshift_from_snapshot(snap, model_config)
                     if z_low <= z_snap < z_high:
                         snapshots_in_bin.append(snap)
                 
@@ -3283,7 +3368,7 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
                 else:
                     # Find snapshot with redshift just above the lower bound
                     for snap in snapshots_in_bin:
-                        z_snap = get_redshift_from_snapshot(snap)
+                        z_snap = get_redshift_from_snapshot(snap, model_config)
                         if z_snap >= target_z:
                             diff = z_snap - target_z
                             if diff < min_diff:
@@ -3293,7 +3378,7 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
                     # If no snapshot found above target_z, use closest
                     if best_snap is None:
                         for snap in snapshots_in_bin:
-                            z_snap = get_redshift_from_snapshot(snap)
+                            z_snap = get_redshift_from_snapshot(snap, model_config)
                             diff = abs(z_snap - target_z)
                             if diff < min_diff:
                                 min_diff = diff
@@ -3303,7 +3388,7 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
                     continue
                 
                 snap_str = f'Snap_{best_snap}'
-                z_best = get_redshift_from_snapshot(best_snap)
+                z_best = get_redshift_from_snapshot(best_snap, model_config)
                 model_redshifts_used[model_name] = z_best
 
                 # Read data for the selected snapshot
@@ -3315,7 +3400,7 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
                     continue
                 
                 # Convert to solar masses
-                stellar_mass = stellar_mass * 1.0e10 / Hubble_h
+                stellar_mass = stellar_mass * 1.0e10 / model_config['hubble_h']
                 
                 # Apply galaxy type filter
                 if galaxy_types == 'central':
@@ -3610,8 +3695,8 @@ if __name__ == "__main__":
             label = obs_data_by_z[obs_z].get('label', 'unknown')
             print(f"  {label} ({data_type}) z={obs_z}")
             # Check which bin this would fall into
-            redshift_bins_low = create_redshift_bins(get_available_snapshots(MODEL_CONFIGS[0]['dir']), z_range=(0, 3.5))
-            redshift_bins_high = create_redshift_bins(get_available_snapshots(MODEL_CONFIGS[0]['dir']), z_range=(3.5, 10))
+            redshift_bins_low = create_redshift_bins(get_available_snapshots(MODEL_CONFIGS[0]['dir']), model_config=MODEL_CONFIGS[0], z_range=(0, 3.5))
+            redshift_bins_high = create_redshift_bins(get_available_snapshots(MODEL_CONFIGS[0]['dir']), model_config=MODEL_CONFIGS[0], z_range=(3.5, 10))
             for z_low, z_high, z_center, _ in redshift_bins_low + redshift_bins_high:
                 if find_closest_redshift_in_range(obs_z, z_low, z_high):
                     figure_type = "LOW-Z" if z_center <= 3.5 else "HIGH-Z"

@@ -395,7 +395,7 @@ def plot_halo_evolution(tracked_data, output_dir="./plots", Hubble_h=0.73):
                       transform=axes[2, 1].transAxes)
     
     plt.tight_layout()
-    plt.savefig(f"{output_dir}/galaxy_evolution.png", dpi=300)
+    plt.savefig(f"{output_dir}/galaxy_evolution.pdf", dpi=300)
     plt.close()
     
     # Create 3D trajectory plot
@@ -422,7 +422,7 @@ def plot_halo_evolution(tracked_data, output_dir="./plots", Hubble_h=0.73):
     cbar = plt.colorbar(sc)
     cbar.set_label('Redshift (z)')
     
-    plt.savefig(f"{output_dir}/galaxy_3d_trajectory.png", dpi=300)
+    plt.savefig(f"{output_dir}/galaxy_3d_trajectory.pdf", dpi=300)
     plt.close()
     
     # Export data to CSV
@@ -586,7 +586,7 @@ def plot_redshift_mvir_vvir(tracked_data, output_dir="./plots", normalize=True):
     # Create legend
     lns = lns1 + lns2
     labs = [l.get_label() for l in lns]
-    ax1.legend(lns, labs, loc='upper right', fontsize=12)
+    # ax1.legend(lns, labs, loc='upper right', fontsize=12)
     
     # Set title
     plt.title('Evolution of log$_{10}$ $M_{vir}$ and $V_{vir}$ with Redshift', fontsize=16)
@@ -600,10 +600,10 @@ def plot_redshift_mvir_vvir(tracked_data, output_dir="./plots", normalize=True):
     plt.tight_layout()
     
     # Save figure
-    plt.savefig(f"{output_dir}/redshift_mvir_vvir.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{output_dir}/redshift_mvir_vvir.pdf", dpi=300, bbox_inches='tight')
     plt.close()
     
-    print(f"Plot saved to {output_dir}/redshift_mvir_vvir.png")
+    print(f"Plot saved to {output_dir}/redshift_mvir_vvir.pdf")
     
     # Return the calculated data for reference
     return {'redshift': redshifts, 'log10_mvir': log10_mvir_sorted, 'vvir': vvir, 'snapnums': snapnums}
@@ -768,11 +768,11 @@ def main():
         # Plot the evolution
         print("\nCreating evolution plots...")
         plot_halo_evolution(tracked_data, output_dir, Hubble_h)
-        print(f"Plots saved to {output_dir}/galaxy_evolution.png and {output_dir}/galaxy_3d_trajectory.png")
+        print(f"Plots saved to {output_dir}/galaxy_evolution.pdf and {output_dir}/galaxy_3d_trajectory.pdf")
         print(f"Data saved to {output_dir}/galaxy_evolution_data.csv")
         print("\nCreating Mvir vs Vvir plot...")
         plot_redshift_mvir_vvir(tracked_data, output_dir, normalize=True)
-        print(f"Redshift plot saved to {output_dir}/redshift_mvir_vvir.png")
+        print(f"Redshift plot saved to {output_dir}/redshift_mvir_vvir.pdf")
     else:
         print("Could not track the galaxy. Check the parameters and snapshot range.")
 
