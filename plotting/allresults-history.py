@@ -2116,3 +2116,105 @@ if __name__ == '__main__':
     plt.savefig(outputFile, dpi=300, bbox_inches='tight')
     print('Saved file to', outputFile, '\n')
     plt.close()
+
+# --------------------------------------------------------
+
+    print('Plotting Halo Mass Function vs Lookback Time for different redshift bins')
+
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    # Calculate lookback times for all snapshots
+    lookback_times = calculate_lookback_time(redshifts[FirstSnap:LastSnap+1])
+
+    # Define redshift bins for the HMF evolution (select specific snapshots)
+    hmf_snaps = [63, 50, 40, 32, 27, 23, 20, 18, 16, 14, 12, 10, 5]  # Different redshifts
+    hmf_snap_labels = []
+
+    # Use plasma colormap for different redshifts
+    colors = plt.cm.plasma(np.linspace(0, 1, len(hmf_snaps)))
+
+    # Define mass bins for the HMF
+    mass_bins = np.logspace(10.0, 15.0, 30)  # 10^10 to 10^15 Msun
+    mass_centers = np.sqrt(mass_bins[:-1] * mass_bins[1:])
+
+    # Store HMF data for each snapshot
+    for i, snap in enumerate(hmf_snaps):
+        if snap > LastSnap:
+            continue
+            
+        # Get halo masses for this snapshot
+        halo_masses = HaloMassFull[snap]
+        galaxy_types = TypeFull[snap]
+        
+        # Only consider central galaxies (Type 0) with valid masses
+        central_mask = (halo_masses > 0)
+        valid_masses = halo_masses[central_mask]
+        
+        if len(valid_masses) > 10:  # Need minimum number for bootstrap
+            # Bootstrap resampling to estimate uncertainty
+            n_bootstrap = 100
+            n_galaxies = len(valid_masses)
+            
+            # Storage for bootstrap samples
+            bootstrap_densities = []
+            
+            for boot in range(n_bootstrap):
+                # Resample with replacement
+                boot_indices = np.random.choice(n_galaxies, size=n_galaxies, replace=True)
+                boot_masses = valid_masses[boot_indices]
+                
+                # Calculate histogram for this bootstrap sample
+                hist, _ = np.histogram(boot_masses, bins=mass_bins)
+                
+                # Convert to number density per unit log mass per unit volume
+                volume = (BoxSize/Hubble_h)**3 * VolumeFraction  # Mpc^3
+                bin_widths = np.log10(mass_bins[1:]) - np.log10(mass_bins[:-1])
+                number_density = hist / (volume * bin_widths)
+                
+                bootstrap_densities.append(number_density)
+            
+            # Convert to array and calculate statistics
+            bootstrap_densities = np.array(bootstrap_densities)
+            
+            # Calculate median and percentiles for each mass bin
+            median_density = np.median(bootstrap_densities, axis=0)
+            p16_density = np.percentile(bootstrap_densities, 16, axis=0)
+            p84_density = np.percentile(bootstrap_densities, 84, axis=0)
+            
+            # Only plot bins with sufficient counts
+            valid_bins = (median_density > 0) & (p16_density > 0) & (p84_density > 0)
+            
+            if np.sum(valid_bins) > 0:
+                z_val = redshifts[snap]
+                lookback_time = lookback_times[snap]
+                
+                # Create label
+                if z_val < 0.1:
+                    snap_label = f'z = {z_val:.2f} (t = {lookback_time:.1f} Gyr)'
+                else:
+                    snap_label = f'z = {z_val:.1f} (t = {lookback_time:.1f} Gyr)'
+                
+                # Plot median line
+                plt.plot(np.log10(mass_centers[valid_bins]), np.log10(median_density[valid_bins]), 
+                        color=colors[i], label=snap_label, linewidth=2, alpha=0.8)
+                
+                # Add 1-sigma shading
+                plt.fill_between(np.log10(mass_centers[valid_bins]), 
+                               np.log10(p16_density[valid_bins]), 
+                               np.log10(p84_density[valid_bins]),
+                               color=colors[i], alpha=0.3)
+
+    ax.set_xlabel(r'$\log_{10}(M_{\mathrm{halo}}/M_\odot)$', fontsize=14)
+    ax.set_ylabel(r'$\log_{10}(\Phi/[\mathrm{Mpc}^{-3}\,\mathrm{dex}^{-1}])$', fontsize=14)
+    ax.set_xlim(10.0, 15.0)
+    
+    # Add legend
+    leg = ax.legend(title='Redshift (Lookback Time)', fontsize=9, frameon=True, 
+                   loc='upper right', title_fontsize=11, ncol=2)
+    
+    plt.tight_layout()
+    outputFile = OutputDir + 'HaloMassFunction_vs_LookbackTime' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
