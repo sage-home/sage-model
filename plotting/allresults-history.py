@@ -104,6 +104,7 @@ if __name__ == '__main__':
     HaloMassFull = [0]*(LastSnap-FirstSnap+1)
     cgmFull = [0]*(LastSnap-FirstSnap+1)
     TypeFull = [0]*(LastSnap-FirstSnap+1)
+    OutflowRateFull = [0]*(LastSnap-FirstSnap+1)
 
     for snap in range(FirstSnap,LastSnap+1):
 
@@ -117,6 +118,7 @@ if __name__ == '__main__':
         HaloMassFull[snap] = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
         cgmFull[snap] = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
         TypeFull[snap] = read_hdf(snap_num = Snapshot, param = 'Type')
+        OutflowRateFull[snap] = read_hdf(snap_num = Snapshot, param = 'OutflowRate')
 
     Wright = pd.read_csv('./optim/data/Wright_2018_z1_z2.csv', delimiter='\t', header=None)
 
@@ -1869,6 +1871,248 @@ if __name__ == '__main__':
         text.set_fontsize(10)
     plt.tight_layout()
     outputFile = OutputDir + 'M.ColdGasMetallicity_vs_StellarMass' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+# --------------------------------------------------------
+
+    def calculate_lookback_time(redshifts, H0=67.74, Om0=0.3089, OL0=0.6911):
+        """Calculate lookback time in Gyr for given redshifts"""
+        lookback_times = []
+        
+        for z in redshifts:
+            if z == 0:
+                lookback_times.append(0.0)  # Lookback time at z=0 is 0
+            else:
+                # Simplified calculation for cosmic time
+                # More accurate would use integration, but this approximation works well
+                t_H = 9.78 / (H0/100)  # Hubble time in Gyr
+                # Approximate cosmic time since Big Bang
+                t_cosmic = 13.8 / (1 + z)**0.75  # Empirical approximation
+                # Lookback time = age of universe today - cosmic time at redshift z
+                lookback_time = 13.8 - max(0.1, t_cosmic)
+                lookback_times.append(lookback_time)
+        
+        return np.array(lookback_times)
+
+    print('Plotting Outflow/SFR vs Cosmic Time for different halo mass bins')
+
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    # Calculate lookback times for all snapshots
+    lookback_times = calculate_lookback_time(redshifts[FirstSnap:LastSnap+1])
+
+    # Define 5 halo mass bins
+    n_mass_bins = 5
+    mass_bin_edges = np.logspace(10.0, 15.0, n_mass_bins+1)  # 10^10 to 10^15 Msun
+    mass_bin_centers = np.sqrt(mass_bin_edges[:-1] * mass_bin_edges[1:])
+
+    # Use plasma colormap
+    colors = plt.cm.plasma(np.linspace(0, 1, n_mass_bins))
+
+    # Store data for each mass bin
+    for i in range(n_mass_bins):
+        outflow_sfr_medians = []
+        outflow_sfr_lower = []
+        outflow_sfr_upper = []
+        times_for_bin = []
+        
+        for snap_idx, snap in enumerate(range(FirstSnap, LastSnap+1)):
+            # Get data for this snapshot
+            halo_masses = HaloMassFull[snap]
+            sfr_total = SfrDiskFull[snap] + SfrBulgeFull[snap]
+            outflow_rates = OutflowRateFull[snap]
+            galaxy_types = TypeFull[snap]
+            
+            # Only consider central galaxies (Type 0)
+            # central_mask = (galaxy_types == 0)
+            
+            # Select galaxies in this mass bin
+            mass_mask = ((halo_masses >= mass_bin_edges[i]) & 
+                        (halo_masses < mass_bin_edges[i+1]))
+            
+            if np.sum(mass_mask) > 0:
+                # Get outflow rates and SFRs for galaxies in this mass bin
+                bin_outflows = outflow_rates[mass_mask]
+                bin_sfrs = sfr_total[mass_mask]
+                
+                # Calculate outflow/SFR ratio, avoiding division by zero
+                valid_sfr_mask = bin_sfrs > 0
+                if np.sum(valid_sfr_mask) > 0:
+                    ratios = bin_outflows[valid_sfr_mask] / bin_sfrs[valid_sfr_mask]
+                    positive_ratios = ratios[ratios > 0]  # Only positive ratios
+                    
+                    if len(positive_ratios) > 0:
+                        # Calculate median and percentiles for error bars
+                        median_ratio = np.median(positive_ratios)
+                        p16 = np.percentile(positive_ratios, 16)  # Lower 1-sigma
+                        p84 = np.percentile(positive_ratios, 84)  # Upper 1-sigma
+                        
+                        if np.isfinite(median_ratio) and np.isfinite(p16) and np.isfinite(p84):
+                            outflow_sfr_medians.append(median_ratio)
+                            outflow_sfr_lower.append(p16)
+                            outflow_sfr_upper.append(p84)
+                            times_for_bin.append(lookback_times[snap_idx])
+        
+        # Plot this mass bin if we have data
+        if len(outflow_sfr_medians) > 0:
+            times_for_bin = np.array(times_for_bin)
+            outflow_sfr_medians = np.array(outflow_sfr_medians)
+            outflow_sfr_lower = np.array(outflow_sfr_lower)
+            outflow_sfr_upper = np.array(outflow_sfr_upper)
+            
+            # Sort by time
+            sort_idx = np.argsort(times_for_bin)
+            times_for_bin = times_for_bin[sort_idx]
+            outflow_sfr_medians = outflow_sfr_medians[sort_idx]
+            outflow_sfr_lower = outflow_sfr_lower[sort_idx]
+            outflow_sfr_upper = outflow_sfr_upper[sort_idx]
+            
+            # Create label for this mass bin
+            mass_label = f'${mass_bin_edges[i]:.1e}$ - ${mass_bin_edges[i+1]:.1e}$ M$_\odot$'
+            
+            # Plot median line
+            plt.plot(times_for_bin, outflow_sfr_medians, color=colors[i], 
+                    label=mass_label, linewidth=2, alpha=0.8)
+            
+            # Add 1-sigma shading
+            plt.fill_between(times_for_bin, outflow_sfr_lower, outflow_sfr_upper, 
+                           color=colors[i], alpha=0.3)
+
+    ax.set_xlabel('Lookback Time [Gyr]', fontsize=14)
+    ax.set_ylabel('Outflow Rate / SFR', fontsize=14)
+    ax.set_yscale('log')
+    ax.set_xlim(0, 14)
+    
+    # Add legend
+    leg = ax.legend(title='Halo Mass Range', fontsize=10, frameon=True, 
+                   loc='lower right', title_fontsize=12)
+    
+    plt.tight_layout()
+    outputFile = OutputDir + 'OutflowSFR_vs_LookbackTime_HaloMassBins' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    def calculate_lookback_time(redshifts, H0=67.74, Om0=0.3089, OL0=0.6911):
+        """Calculate lookback time in Gyr for given redshifts"""
+        lookback_times = []
+        
+        for z in redshifts:
+            if z == 0:
+                lookback_times.append(0.0)  # Lookback time at z=0 is 0
+            else:
+                # Simplified calculation for cosmic time
+                # More accurate would use integration, but this approximation works well
+                t_H = 9.78 / (H0/100)  # Hubble time in Gyr
+                # Approximate cosmic time since Big Bang
+                t_cosmic = 13.8 / (1 + z)**0.75  # Empirical approximation
+                # Lookback time = age of universe today - cosmic time at redshift z
+                lookback_time = 13.8 - max(0.1, t_cosmic)
+                lookback_times.append(lookback_time)
+        
+        return np.array(lookback_times)
+
+    print('Plotting Outflow/SFR vs Cosmic Time for different halo mass bins')
+
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    # Calculate lookback times for all snapshots
+    lookback_times = calculate_lookback_time(redshifts[FirstSnap:LastSnap+1])
+
+    # Define 5 halo mass bins
+    n_mass_bins = 5
+    mass_bin_edges = np.logspace(8.0, 12.0, n_mass_bins+1)  # 10^8 to 10^12 Msun
+    mass_bin_centers = np.sqrt(mass_bin_edges[:-1] * mass_bin_edges[1:])
+
+    # Use plasma colormap
+    colors = plt.cm.plasma(np.linspace(0, 1, n_mass_bins))
+
+    # Store data for each mass bin
+    for i in range(n_mass_bins):
+        outflow_sfr_medians = []
+        outflow_sfr_lower = []
+        outflow_sfr_upper = []
+        times_for_bin = []
+        
+        for snap_idx, snap in enumerate(range(FirstSnap, LastSnap+1)):
+            # Get data for this snapshot
+            halo_masses = StellarMassFull[snap]
+            sfr_total = SfrDiskFull[snap] + SfrBulgeFull[snap]
+            outflow_rates = OutflowRateFull[snap]
+            galaxy_types = TypeFull[snap]
+            
+            # Only consider central galaxies (Type 0)
+            # central_mask = (galaxy_types == 0)
+            
+            # Select galaxies in this mass bin
+            mass_mask = ((halo_masses >= mass_bin_edges[i]) & 
+                        (halo_masses < mass_bin_edges[i+1]))
+            
+            if np.sum(mass_mask) > 0:
+                # Get outflow rates and SFRs for galaxies in this mass bin
+                bin_outflows = outflow_rates[mass_mask]
+                bin_sfrs = sfr_total[mass_mask]
+                
+                # Calculate outflow/SFR ratio, avoiding division by zero
+                valid_sfr_mask = bin_sfrs > 0
+                if np.sum(valid_sfr_mask) > 0:
+                    ratios = bin_outflows[valid_sfr_mask] / bin_sfrs[valid_sfr_mask]
+                    positive_ratios = ratios[ratios > 0]  # Only positive ratios
+                    
+                    if len(positive_ratios) > 0:
+                        # Calculate median and percentiles for error bars
+                        median_ratio = np.median(positive_ratios)
+                        p16 = np.percentile(positive_ratios, 16)  # Lower 1-sigma
+                        p84 = np.percentile(positive_ratios, 84)  # Upper 1-sigma
+                        
+                        if np.isfinite(median_ratio) and np.isfinite(p16) and np.isfinite(p84):
+                            outflow_sfr_medians.append(median_ratio)
+                            outflow_sfr_lower.append(p16)
+                            outflow_sfr_upper.append(p84)
+                            times_for_bin.append(lookback_times[snap_idx])
+        
+        # Plot this mass bin if we have data
+        if len(outflow_sfr_medians) > 0:
+            times_for_bin = np.array(times_for_bin)
+            outflow_sfr_medians = np.array(outflow_sfr_medians)
+            outflow_sfr_lower = np.array(outflow_sfr_lower)
+            outflow_sfr_upper = np.array(outflow_sfr_upper)
+            
+            # Sort by time
+            sort_idx = np.argsort(times_for_bin)
+            times_for_bin = times_for_bin[sort_idx]
+            outflow_sfr_medians = outflow_sfr_medians[sort_idx]
+            outflow_sfr_lower = outflow_sfr_lower[sort_idx]
+            outflow_sfr_upper = outflow_sfr_upper[sort_idx]
+            
+            # Create label for this mass bin
+            mass_label = f'${mass_bin_edges[i]:.1e}$ - ${mass_bin_edges[i+1]:.1e}$ M$_\odot$'
+            
+            # Plot median line
+            plt.plot(times_for_bin, outflow_sfr_medians, color=colors[i], 
+                    label=mass_label, linewidth=2, alpha=0.8)
+            
+            # Add 1-sigma shading
+            plt.fill_between(times_for_bin, outflow_sfr_lower, outflow_sfr_upper, 
+                           color=colors[i], alpha=0.3)
+
+    ax.set_xlabel('Lookback Time [Gyr]', fontsize=14)
+    ax.set_ylabel('Outflow Rate / SFR', fontsize=14)
+    ax.set_yscale('log')
+    ax.set_xlim(0, 14)
+    
+    # Add legend
+    leg = ax.legend(title='Stellar Mass Range', fontsize=10, frameon=True, 
+                   loc='lower right', title_fontsize=12)
+    
+    plt.tight_layout()
+    outputFile = OutputDir + 'OutflowSFR_vs_LookbackTime_StellarMassBins_zoom' + OutputFormat
     plt.savefig(outputFile, dpi=300, bbox_inches='tight')
     print('Saved file to', outputFile, '\n')
     plt.close()
