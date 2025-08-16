@@ -82,11 +82,11 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     }
     
     // Early termination - if disk radius is effectively zero
-    // if(g->DiskScaleRadius <= 1.0e-6) {
-    //     if (galaxy_debug_counter % 90000 == 0) {
-    //         printf("DEBUG MAIN: Very small DiskScaleRadius=%.2e, setting H2=0\n", 
-    //                g->DiskScaleRadius);
-    //     }
+    if(g->DiskScaleRadius <= 1.0e-6) {
+        // if (galaxy_debug_counter % 90000 == 0) {
+        //     printf("DEBUG MAIN: Very small DiskScaleRadius=%.2e, setting H2=0\n", 
+        //            g->DiskScaleRadius);
+        // }
         g->H2_gas = 0.0;
         g->HI_gas = g->ColdGas;
         return;
