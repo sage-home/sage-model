@@ -180,7 +180,7 @@ case "$1" in
         ensure_build_configured
         echo_info "Building SAGE..."
         cd build && make -j$(nproc)
-        echo_info "Build complete! Run with: ./build/sage input/millennium.par"
+        echo_info "Build complete! Run with: ./build/sage input/<input-file>.par"
         ;;
     *)
         echo_error "Unknown command: $1"
