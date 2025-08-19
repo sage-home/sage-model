@@ -49,6 +49,10 @@ tests/test_data/
 *.tar
 *.tar.gz
 
+# Benchmark Results
+# -----------------
+benchmarks/
+
 # Temporary & Runtime Files
 # -------------------------
 tmp*
