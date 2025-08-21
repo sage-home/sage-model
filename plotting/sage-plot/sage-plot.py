@@ -165,7 +165,8 @@ class SAGEParameters:
                     continue
 
                 # Check for arrow notation for snapshots (e.g., "-> 63 37 32 27 23 20 18 16")
-                if "->" in line:
+                # Only process arrow notation if line starts with arrow (not in comments)
+                if line.strip().startswith("->"):
                     snapshot_list = line.split("->")[1].strip().split()
                     output_snapshots = [int(snap) for snap in snapshot_list]
                     self.params["OutputSnapshots"] = output_snapshots

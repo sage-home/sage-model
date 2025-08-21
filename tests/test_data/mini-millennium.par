@@ -30,7 +30,7 @@ NumSimulationTreeFiles 8 % Number of files the trees are split over. This can be
 
 SimulationDir         ./tests/test_data/
 FileWithSnapList      ./tests/test_data/millennium.a_list
-LastSnapShotNr        63
+LastSnapshotNr        63
 
 Omega           0.25
 OmegaLambda     0.75
