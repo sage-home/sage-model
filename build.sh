@@ -45,7 +45,7 @@ show_usage() {
     echo "  ./build.sh lib          Build library only"
     echo ""
     echo "Testing Commands:"
-    echo "  ./build.sh test         Run all tests (unit + end-to-end)"
+    echo "  ./build.sh tests        Run all tests (unit + end-to-end)"
     echo "  ./build.sh unit_tests   Run unit tests only (fast)"
     echo "  ./build.sh core_tests   Run core infrastructure tests"
     echo "  ./build.sh property_tests  Run property system tests"
@@ -64,7 +64,7 @@ show_usage() {
     echo ""
     echo "Examples:"
     echo "  ./build.sh && ./build/sage input/millennium.par"
-    echo "  ./build.sh test"
+    echo "  ./build.sh tests"
     echo "  ./build.sh clean && ./build.sh debug && ./build.sh"
 }
 
@@ -140,7 +140,7 @@ case "$1" in
         echo_info "Building SAGE library..."
         cd build && make lib -j$(nproc)
         ;;
-    "test")
+    "tests")
         ensure_build_configured
         echo_info "Running complete test suite..."
         cd build && make test

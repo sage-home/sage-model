@@ -57,7 +57,7 @@ This creates the ``build/sage`` executable. For first-time users, start with the
 
 - ``./build.sh`` - Build SAGE (equivalent to traditional ``make``)
 - ``./build.sh clean`` - Clean build artifacts  
-- ``./build.sh test`` - Run complete test suite
+- ``./build.sh tests`` - Run complete test suite
 - ``./build.sh unit_tests`` - Run fast unit tests only
 - ``./build.sh debug`` - Configure debug build with memory checking
 - ``./build.sh release`` - Configure optimized release build

@@ -304,7 +304,7 @@ To validate benchmark accuracy:
 
 ## Related Tools
 
-- **Test Suite**: Use `./build.sh test` for correctness validation
+- **Test Suite**: Use `./build.sh tests` for correctness validation
 - **Memory Profiling**: Tools like `valgrind` for detailed memory analysis
 - **CPU Profiling**: Tools like `gprof` or `perf` for hotspot identification
 - **Build System**: See `CLAUDE.md` for comprehensive build instructions

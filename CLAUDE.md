@@ -12,13 +12,13 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 - `./build.sh` - Build SAGE executable and library (equivalent to old `make`)
 - `./build.sh clean` - Remove compiled objects and executables  
 - `./build.sh lib` - Build only the SAGE library
-- `./build.sh test` - Run complete test suite (unit + end-to-end)
+- `./build.sh tests` - Run complete test suite (unit + end-to-end)
 - `./build.sh unit_tests` - Run unit tests only (fast development cycle)
 - `./build.sh rebuild` - Complete clean rebuild
 - `./build.sh help` - Show all available commands
 
 ### Testing Commands
-- `./build.sh test` - Run all tests (unit + end-to-end scientific validation)
+- `./build.sh tests` - Run all tests (unit + end-to-end scientific validation)
 - `./build.sh unit_tests` - Run unit tests only (fast, no downloads)
 - `./build.sh core_tests` - Run core infrastructure tests
 - `./build.sh property_tests` - Run property system tests  
@@ -172,7 +172,7 @@ The CMake build system automatically detects:
 # Development cycle  
 ./build.sh              # Build
 ./build.sh unit_tests   # Quick test cycle  
-./build.sh test         # Full test suite
+./build.sh tests        # Full test suite
 ./build/sage input/millennium.par  # Run
 
 # Clean rebuild
