@@ -62,7 +62,7 @@ if __name__ == '__main__':
                               # densities at. Set to "All" for all redshifts.
     model0_IMF = "Chabrier"  # Chabrier or Salpeter.
     model0_label = "Mini-Millennium"
-    model0_sage_file = "../input/millennium.par"
+    model0_sage_file = "../../input/millennium.par"
     model0_simulation = "Mini-Millennium"  # Used to set cosmology.
     model0_first_file = 0  # File range we're plotting.
     model0_last_file = 0  # Closed interval, [first_file, last_file].

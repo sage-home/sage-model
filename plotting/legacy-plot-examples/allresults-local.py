@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = '../output/millennium/'
+DirName = '/Volumes/Internal/results/sage-model/millennium/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -543,7 +543,7 @@ if __name__ == '__main__':
     # overplot Haring & Rix 2004
     w = 10. ** np.arange(20)
     BHdata = 10. ** (8.2 + 1.12 * np.log10(w / 1.0e11))
-    plt.plot(np.log10(w), np.log10(BHdata), 'b-', label="Haring and Rix 2004")
+    plt.plot(np.log10(w), np.log10(BHdata), 'b-', label="Haring \& Rix 2004")
     plt.ylabel(r'$\log\ M_{\mathrm{BH}}\ (M_{\odot})$')  # Set the y...
     plt.xlabel(r'$\log\ M_{\mathrm{bulge}}\ (M_{\odot})$')  # and the x-axis labels
         
