@@ -14,6 +14,37 @@ from collections import OrderedDict
 import numpy as np
 
 
+def resolve_relative_path(path, param_file_path):
+    """
+    Resolve a path relative to the SAGE root directory (parent of parameter file directory).
+    
+    Args:
+        path: Path to resolve (can be relative or absolute)
+        param_file_path: Path to the parameter file
+        
+    Returns:
+        Resolved absolute path
+    """
+    if os.path.isabs(path):
+        return path
+    
+    # Get the directory containing the parameter file, then go up one level to get SAGE root
+    param_file_abs = os.path.abspath(param_file_path)
+    param_dir = os.path.dirname(param_file_abs)
+    sage_root_dir = os.path.dirname(param_dir)  # Go up one level from input/ to sage-model/
+    
+    # For paths starting with './', resolve relative to SAGE root directory
+    if path.startswith('./'):
+        # Remove the './' prefix and join with SAGE root directory
+        relative_part = path[2:]
+        resolved_path = os.path.join(sage_root_dir, relative_part)
+    else:
+        # For other relative paths, also resolve relative to SAGE root directory
+        resolved_path = os.path.join(sage_root_dir, path)
+    
+    return os.path.abspath(resolved_path)
+
+
 class SnapshotRedshiftMapper:
     """Maps between snapshot numbers and redshifts using various data sources."""
 
@@ -93,8 +124,10 @@ class SnapshotRedshiftMapper:
 
         # Clean up the file path - remove quotes and trailing slashes if present
         a_list_file = a_list_file.strip().strip("'").strip('"')
-        # FileWithSnapList should remain as specified in parameter file
-        # Do not modify the path - it should be relative to the working directory
+        
+        # Resolve relative paths relative to the parameter file location
+        if self.param_file:
+            a_list_file = resolve_relative_path(a_list_file, self.param_file)
 
         if self.params.get("verbose", False):
             print(f"Using a_list file: {a_list_file}")

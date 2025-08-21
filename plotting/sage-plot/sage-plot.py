@@ -188,12 +188,17 @@ class SAGEParameters:
                         continue  # Skip lines that don't match our format
 
                 # Handle inline comments - crucial to remove them before type conversion
-                if ";" in value_part:
-                    value = value_part.split(";")[0].strip()
-                elif "#" in value_part:
-                    value = value_part.split("#")[0].strip()
-                elif "%" in value_part:
-                    value = value_part.split("%")[0].strip()
+                # Check for comment markers and take the earliest one
+                comment_positions = []
+                for marker in ["%", "#", ";"]:
+                    pos = value_part.find(marker)
+                    if pos != -1:
+                        comment_positions.append(pos)
+                
+                if comment_positions:
+                    # Take everything before the first comment marker
+                    first_comment_pos = min(comment_positions)
+                    value = value_part[:first_comment_pos].strip()
                 else:
                     value = value_part
 
@@ -578,6 +583,37 @@ def read_galaxies_binary(model_path, first_file, last_file, params=None, verbose
     return galaxies, volume, metadata
 
 
+def resolve_relative_path(path, param_file_path):
+    """
+    Resolve a path relative to the SAGE root directory (parent of parameter file directory).
+    
+    Args:
+        path: Path to resolve (can be relative or absolute)
+        param_file_path: Path to the parameter file
+        
+    Returns:
+        Resolved absolute path
+    """
+    if os.path.isabs(path):
+        return path
+    
+    # Get the directory containing the parameter file, then go up one level to get SAGE root
+    param_file_abs = os.path.abspath(param_file_path)
+    param_dir = os.path.dirname(param_file_abs)
+    sage_root_dir = os.path.dirname(param_dir)  # Go up one level from input/ to sage-model/
+    
+    # For paths starting with './', resolve relative to SAGE root directory
+    if path.startswith('./'):
+        # Remove the './' prefix and join with SAGE root directory
+        relative_part = path[2:]
+        resolved_path = os.path.join(sage_root_dir, relative_part)
+    else:
+        # For other relative paths, also resolve relative to SAGE root directory
+        resolved_path = os.path.join(sage_root_dir, path)
+    
+    return os.path.abspath(resolved_path)
+
+
 def parse_arguments():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="SAGE Plotting Tool")
@@ -721,10 +757,12 @@ def main():
         sys.exit(1)
     
     # Verify paths from parameter file exist
-    output_dir = params["OutputDir"]
+    output_dir = resolve_relative_path(params["OutputDir"], args.param_file)
     simulation_dir = params.get("SimulationDir")  # May not be used directly
+    if simulation_dir:
+        simulation_dir = resolve_relative_path(simulation_dir, args.param_file)
     file_name_galaxies = params["FileNameGalaxies"]
-    file_with_snap_list = params["FileWithSnapList"]
+    file_with_snap_list = resolve_relative_path(params["FileWithSnapList"], args.param_file)
 
     if args.verbose:
         print(f"Parameter file details:")
@@ -768,9 +806,13 @@ def main():
     model_output_dir = model_output_dir.strip().strip("'").strip('"')
     model_output_dir = os.path.expanduser(model_output_dir)
     
+    # Resolve relative paths relative to the parameter file location
+    model_output_dir = resolve_relative_path(model_output_dir, args.param_file)
+    
     if args.verbose:
         print(f"\nOutput directory handling:")
-        print(f"  model_output_dir from params: '{model_output_dir}'")
+        print(f"  Original from params: '{params['OutputDir']}'")
+        print(f"  Resolved model_output_dir: '{model_output_dir}'")
     
     # Check if output directory exists
     if not os.path.exists(model_output_dir):
@@ -831,7 +873,7 @@ def main():
             sys.exit(1)
             
         # Get output model path and snapshot number
-        model_path = params["OutputDir"]
+        model_path = resolve_relative_path(params["OutputDir"], args.param_file)
         snapshot = args.snapshot or params.get("LastSnapshotNr")
         
         if not snapshot:
@@ -984,7 +1026,8 @@ def main():
             print(mapper.debug_info())
 
         # Create the mapper from parameter file
-        mapper = SnapshotRedshiftMapper(args.param_file, params.params, params["OutputDir"])
+        resolved_output_dir = resolve_relative_path(params["OutputDir"], args.param_file)
+        mapper = SnapshotRedshiftMapper(args.param_file, params.params, resolved_output_dir)
         # Get the output format
         output_format = params.params.get("OutputFormat", "sage_hdf5")
         
