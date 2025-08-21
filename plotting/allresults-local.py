@@ -82,75 +82,27 @@ if __name__ == '__main__':
     BlackHoleMass = read_hdf(snap_num = Snapshot, param = 'BlackHoleMass') * 1.0e10 / Hubble_h
     ColdGas = read_hdf(snap_num = Snapshot, param = 'ColdGas') * 1.0e10 / Hubble_h
     DiskRadius = read_hdf(snap_num = Snapshot, param = 'DiskRadius') / Hubble_h
-    #print(DiskRadius)
     H1Gas = read_hdf(snap_num = Snapshot, param = 'HI_gas') * 1.0e10 / Hubble_h
-    #print(H1Gas)
     H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
-    #print(H2Gas)
     MetalsColdGas = read_hdf(snap_num = Snapshot, param = 'MetalsColdGas') * 1.0e10 / Hubble_h
     HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
-    # EjectedMass = read_hdf(snap_num = Snapshot, param = 'EjectedMass') * 1.0e10 / Hubble_h
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
     InfallMvir = read_hdf(snap_num = Snapshot, param = 'infallMvir') * 1.0e10 / Hubble_h
     outflowrate = read_hdf(snap_num = Snapshot, param = 'OutflowRate') * 1.0e10 / Hubble_h
     cgm = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
-    #print(np.log10(CGM))
     massload = read_hdf(snap_num = Snapshot, param = 'MassLoading')  # Mass loading factor for outflows
-    print('Mass loading factor for outflows:', massload)
-    CriticalMassDB06 = read_hdf(snap_num = Snapshot, param = 'CriticalMassDB06') * 1.0e10 / Hubble_h
-    MvirToMcritRatio = read_hdf(snap_num = Snapshot, param = 'MvirToMcritRatio')
-    ColdInflowMass = read_hdf(snap_num = Snapshot, param = 'ColdInflowMass') * 1.0e10 / Hubble_h
-    HotInflowMass = read_hdf(snap_num = Snapshot, param = 'HotInflowMass') * 1.0e10 / Hubble_h
-    ReincorporatedGas = read_hdf(snap_num = Snapshot, param = 'ReincorporatedGas') * 1.0e10 / Hubble_h
-    # print('Reincorporated gas:', ReincorporatedGas)
     Cooling = read_hdf(snap_num = Snapshot, param = 'Cooling')
-
-    print('Critical mass from Dekel & Birnboim (2006):', CriticalMassDB06)
-    print('Ratio of Mvir to Mcrit:', MvirToMcritRatio)
-    print('Cumulative mass that accreted as cold streams:', ColdInflowMass)
-    print('Cumulative mass that accreted shock-heated:', HotInflowMass)
-    
-
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
     Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
     Rvir = read_hdf(snap_num = Snapshot, param = 'Rvir')
     SfrDisk = read_hdf(snap_num = Snapshot, param = 'SfrDisk')
     SfrBulge = read_hdf(snap_num = Snapshot, param = 'SfrBulge')
-
     CentralGalaxyIndex = read_hdf(snap_num = Snapshot, param = 'CentralGalaxyIndex')
     Type = read_hdf(snap_num = Snapshot, param = 'Type')
     Posx = read_hdf(snap_num = Snapshot, param = 'Posx')
     Posy = read_hdf(snap_num = Snapshot, param = 'Posy')
     Posz = read_hdf(snap_num = Snapshot, param = 'Posz')
     NDM = read_hdf(snap_num = Snapshot, param = 'Len')
- 
-    mask_ndm_20 = np.where((NDM <= 20))[0]
-    print('Number of galaxies with less than or equal to 20 particles: ', len(NDM[mask_ndm_20]))
-    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_20]))
-
-    mask_ndm_30 = np.where((NDM <= 30))[0]
-    print('Number of galaxies with less than or equal to 30 particles: ', len(NDM[mask_ndm_30]))
-    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_30]))
-
-    mask_ndm_50 = np.where((NDM <= 50))[0]
-    print('Number of galaxies with less than or equal to 50 particles: ', len(NDM[mask_ndm_50]))
-    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_50]))
-
-    mask_ndm_100 = np.where((NDM <= 100))[0]
-    print('Number of galaxies with less than or equal to 100 particles: ', len(NDM[mask_ndm_100]))
-    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_100]))
-
-    mask_ndm_200 = np.where((NDM <= 200))[0]
-    print('Number of galaxies with less than or equal to 200 particles: ', len(NDM[mask_ndm_200]))
-    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_200]))
-
-    mask_ndm_massive = np.where((NDM > 100))[0]
-    print('Number of galaxies with greater than 100 particles: ', len(NDM[mask_ndm_massive]))
-    print('Maximum stellar mass of these galaxies: ', np.max(np.log10(StellarMass)[mask_ndm_massive]))
-
-    w = np.where(StellarMass > 1.0e10)[0]
-    print('Number of galaxies read:', len(StellarMass))
-    print('Galaxies more massive than 10^10 h-1 Msun:', len(w), '\n')
 
     # --------------------------------------------------------
 
@@ -274,122 +226,6 @@ if __name__ == '__main__':
     plt.savefig(outputFile)  # Save the figure
     print('Saved to', outputFile, '\n')
     plt.close()
-
-    # -------------------------------------------------------
-    # H2 Mass vs. SFR
-    print('Plotting H2 Mass vs. SFR')
-    plt.figure()
-    # Only consider galaxies with significant H2 and SFR
-    valid = (H2Gas > 0) & (SfrDisk + SfrBulge > 0)
-    if np.sum(valid) > dilute:
-        valid_indices = sample(list(np.where(valid)[0]), dilute)
-    else:
-        valid_indices = np.where(valid)[0]
-    plt.scatter(
-        np.log10(H2Gas[valid_indices]),
-        np.log10((SfrDisk + SfrBulge)[valid_indices]),
-        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
-    )
-    cb = plt.colorbar()
-    cb.mappable.set_clim(8, 12)
-    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
-    plt.xlabel(r'$\log_{{10}} M_\mathrm{{H2}}\ (M_\odot)$')
-    plt.ylabel(r'$\log_{{10}} \mathrm{{SFR}}\ (M_\odot/yr)$')
-    # plt.title('H$_2$ Mass vs. SFR')
-    # plt.grid(True, alpha=0.3)
-    plt.xlim(6, 12)
-    plt.tight_layout()
-    plt.savefig(OutputDir + '19.H2_vs_SFR' + OutputFormat, bbox_inches='tight')
-    plt.close()
-    print('Saved file to', OutputDir + '19.H2_vs_SFR' + OutputFormat, '\n')
-
-    # -------------------------------------------------------
-    # H2 Fraction vs. sSFR
-    print('Plotting H2 Fraction vs. sSFR')
-    plt.figure()
-    # H2 fraction and sSFR (already defined above, but recalculate for safety)
-    h2_fraction = H2Gas / (H1Gas + H2Gas)
-    SFR = SfrDisk + SfrBulge
-    sSFR = np.log10(SFR / (StellarMass))
-    valid = (h2_fraction > 0) & (SFR > 0) & (StellarMass > 0)
-    if np.sum(valid) > dilute:
-        valid_indices = sample(list(np.where(valid)[0]), dilute)
-    else:
-        valid_indices = np.where(valid)[0]
-    plt.scatter(
-        sSFR[valid_indices],
-        h2_fraction[valid_indices],
-        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
-    )
-    cb = plt.colorbar()
-    cb.mappable.set_clim(8, 12)
-    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
-    plt.xlabel(r'$\log_{{10}} \mathrm{{sSFR}}\ (yr^{{-1}})$')
-    plt.ylabel('H$_2$ Fraction')
-    # plt.title('H$_2$ Fraction vs. sSFR')
-    # plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(OutputDir + '20.H2fraction_vs_sSFR' + OutputFormat, bbox_inches='tight')
-    plt.close()
-    print('Saved file to', OutputDir + '20.H2fraction_vs_sSFR' + OutputFormat, '\n')
-
-  # -------------------------------------------------------
-    # H1 Mass vs. SFR
-    print('Plotting H1 Mass vs. SFR')
-    plt.figure()
-    # Only consider galaxies with significant H1 and SFR
-    valid = (H1Gas > 0) & (SfrDisk + SfrBulge > 0)
-    if np.sum(valid) > dilute:
-        valid_indices = sample(list(np.where(valid)[0]), dilute)
-    else:
-        valid_indices = np.where(valid)[0]
-    plt.scatter(
-        np.log10(H1Gas[valid_indices]),
-        np.log10((SfrDisk + SfrBulge)[valid_indices]),
-        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
-    )
-    cb = plt.colorbar()
-    cb.mappable.set_clim(8, 12)
-    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
-    plt.xlabel(r'$\log_{{10}} M_\mathrm{{H1}}\ (M_\odot)$')
-    plt.ylabel(r'$\log_{{10}} \mathrm{{SFR}}\ (M_\odot/yr)$')
-    # plt.title('H$_I$ Mass vs. SFR')
-    # plt.grid(True, alpha=0.3)
-    plt.xlim(6, 12)
-    plt.tight_layout()
-    plt.savefig(OutputDir + '19.HI_vs_SFR' + OutputFormat, bbox_inches='tight')
-    plt.close()
-    print('Saved file to', OutputDir + '19.HI_vs_SFR' + OutputFormat, '\n')
-
-    # -------------------------------------------------------
-    # H1 Fraction vs. sSFR
-    print('Plotting H1 Fraction vs. sSFR')
-    plt.figure()
-    # H1 fraction and sSFR (already defined above, but recalculate for safety)
-    h1_fraction = H1Gas / (H1Gas + H2Gas)
-    SFR = SfrDisk + SfrBulge
-    sSFR = np.log10(SFR / (StellarMass))
-    valid = (h1_fraction > 0) & (SFR > 0) & (StellarMass > 0)
-    if np.sum(valid) > dilute:
-        valid_indices = sample(list(np.where(valid)[0]), dilute)
-    else:
-        valid_indices = np.where(valid)[0]
-    plt.scatter(
-        sSFR[valid_indices],
-        h2_fraction[valid_indices],
-        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
-    )
-    cb = plt.colorbar()
-    cb.mappable.set_clim(8, 12)
-    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
-    plt.xlabel(r'$\log_{{10}} \mathrm{{sSFR}}\ (yr^{{-1}})$')
-    plt.ylabel('H$_I$ Fraction')
-    # plt.title('H$_I$ Fraction vs. sSFR')
-    # plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(OutputDir + '20.HIfraction_vs_sSFR' + OutputFormat, bbox_inches='tight')
-    plt.close()
-    print('Saved file to', OutputDir + '20.HIfraction_vs_sSFR' + OutputFormat, '\n')
 
 # --------------------------------------------------------
 
@@ -1823,250 +1659,22 @@ if __name__ == '__main__':
     print('Saved file to', outputFile, '\n')
     plt.close()
 
-# -------------------------------------------------------
-
-    print('Regime diagram showing cold streams vs shock heated galaxies')
-
-    plt.figure()
-
-    # Filter for central galaxies with reasonable masses
-    centrals = (Type == 0) & (StellarMass > 1e8) & (Mvir > 0)
-
-    # Plot the 1:1 line (Mvir = Mcrit)
-    mass_range = np.logspace(10, 15, 100)
-    plt.loglog(mass_range, mass_range, 'k--', linewidth=2, label='Mvir = Mcrit')
-
-    # Scatter plot colored by regime
-    cold_regime = centrals & (MvirToMcritRatio < 1.0)
-    hot_regime = centrals & (MvirToMcritRatio >= 1.0)
-    print(cold_regime)
-
-    # Apply dilution to both regimes
-    cold_indices = np.where(cold_regime)[0]
-    hot_indices = np.where(hot_regime)[0]
-    
-    if len(cold_indices) > dilute:
-        cold_indices = sample(list(cold_indices), dilute)
-    if len(hot_indices) > dilute:
-        hot_indices = sample(list(hot_indices), dilute)
-
-    plt.scatter(CriticalMassDB06[cold_indices], Mvir[cold_indices], 
-            c='blue', alpha=0.6, s=5, label='Cold Streams', zorder=10)
-    plt.scatter(CriticalMassDB06[hot_indices], Mvir[hot_indices], 
-            c='red', alpha=0.3, s=5, label='Shock Heated', zorder=5)
-
-    plt.xlabel('Critical Mass Mcrit [M☉]')
-    plt.ylabel('Virial Mass Mvir [M☉]')
-    # plt.title('Dekel & Birnboim Regime Diagram')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    # plt.xlim(1e10, 1e15)
-    # plt.ylim(1e10, 1e15)
-    plt.savefig(OutputDir + '21.dekel_regime_diagram' + OutputFormat, bbox_inches='tight')
-
-    # -------------------------------------------------------
-
-    # 2. Cold vs hot inflow fractions
-    plt.figure()
-
-    # Calculate total inflow and cold fraction
-    total_inflow = ColdInflowMass + HotInflowMass
-    cold_fraction = np.zeros_like(ColdInflowMass)
-    mask = total_inflow > 0
-    cold_fraction[mask] = ColdInflowMass[mask] / total_inflow[mask]
-
-    # Filter for galaxies with significant inflow
-    has_inflow = centrals & (total_inflow > 1e8)
-
-    # Bin by halo mass
-    mass_bins = np.logspace(10, 14, 20)
-    mass_centers = (mass_bins[1:] * mass_bins[:-1])**0.5
-
-    mean_cold_frac = []
-    std_cold_frac = []
-
-    for i in range(len(mass_bins)-1):
-        in_bin = has_inflow & (Mvir >= mass_bins[i]) & (Mvir < mass_bins[i+1])
-        if np.sum(in_bin) > 5:  # Need at least 5 galaxies
-            mean_cold_frac.append(np.mean(cold_fraction[in_bin]))
-            std_cold_frac.append(np.std(cold_fraction[in_bin]))
-        else:
-            mean_cold_frac.append(np.nan)
-            std_cold_frac.append(np.nan)
-
-    plt.errorbar(mass_centers, mean_cold_frac, yerr=std_cold_frac, 
-                marker='o', capsize=5, linewidth=2)
-    plt.axhline(y=0.5, color='k', linestyle='--', alpha=0.5, label='50% cold')
-    plt.xlabel('Virial Mass [M☉]')
-    plt.ylabel('Cold Inflow Fraction')
-    # plt.title('Cold Stream Efficiency vs Halo Mass')
-    plt.xscale('log')
-    plt.ylim(0, 1)
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.savefig(OutputDir + '22.cold_inflow_fraction' + OutputFormat, bbox_inches='tight')
-
-    # -------------------------------------------------------
-
-    plt.figure(figsize=(12, 5))
-
-    # Calculate specific star formation rate
-    SFR = SfrDisk + SfrBulge
-    sSFR = np.log10(SFR / StellarMass + 1e-12)  # Add small number to avoid log(0)
-
-    # Filter star-forming galaxies
-    sf_gals = centrals & (StellarMass > 1e9) & (SFR > 1e-3)
-
-    plt.subplot(1, 2, 1)
-    # Plot sSFR vs stellar mass, colored by regime
-    cold_sf = sf_gals & (MvirToMcritRatio < 1.0)
-    hot_sf = sf_gals & (MvirToMcritRatio > 1.0)
-
-    # Apply dilution to both regimes
-    cold_sf_indices = np.where(cold_sf)[0]
-    hot_sf_indices = np.where(hot_sf)[0]
-    
-    if len(cold_sf_indices) > dilute:
-        cold_sf_indices = sample(list(cold_sf_indices), dilute)
-    if len(hot_sf_indices) > dilute:
-        hot_sf_indices = sample(list(hot_sf_indices), dilute)
-
-    plt.scatter(np.log10(StellarMass[cold_sf_indices]), sSFR[cold_sf_indices], 
-            c='blue', alpha=0.6, s=5, label='Cold Streams', zorder=10)
-    plt.scatter(np.log10(StellarMass[hot_sf_indices]), sSFR[hot_sf_indices], 
-            c='red', alpha=0.3, s=5, label='Shock Heated', zorder=5)
-
-    plt.xlabel('log Stellar Mass [M☉]')
-    plt.ylabel('log sSFR [yr⁻¹]')
-    # plt.title('Star Formation vs Infall Mode')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-
-    plt.subplot(1, 2, 2)
-    # Cold gas fraction
-    cold_gas_frac = ColdGas / (StellarMass + ColdGas + 1e-12)
-
-    plt.scatter(np.log10(Mvir[cold_sf_indices]), cold_gas_frac[cold_sf_indices], 
-            c='blue', alpha=0.6, s=5, label='Cold Streams')
-    plt.scatter(np.log10(Mvir[hot_sf_indices]), cold_gas_frac[hot_sf_indices], 
-            c='red', alpha=0.3, s=5, label='Shock Heated')
-
-    plt.xlabel('log Virial Mass [M☉]')
-    plt.ylabel('Cold Gas Fraction')
-    # plt.title('Gas Content vs Infall Mode')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig(OutputDir + '23.infall_impact_on_sf' + OutputFormat, bbox_inches='tight')
-
-    # -------------------------------------------------------
-
-    # 4. Molecular vs atomic gas in different regimes
-    plt.figure()
-
-    # Calculate H2 fraction
-    h2_fraction = H2Gas / (H1Gas + H2Gas + 1e-12)
-    has_gas = centrals & (ColdGas > 1e8)
-
-    cold_gas = has_gas & (MvirToMcritRatio < 1.0)
-    hot_gas = has_gas & (MvirToMcritRatio > 1.0)
-
-    # Apply dilution to both regimes
-    cold_gas_indices = np.where(cold_gas)[0]
-    hot_gas_indices = np.where(hot_gas)[0]
-    
-    if len(cold_gas_indices) > dilute:
-        cold_gas_indices = sample(list(cold_gas_indices), dilute)
-    if len(hot_gas_indices) > dilute:
-        hot_gas_indices = sample(list(hot_gas_indices), dilute)
-
-    plt.scatter(np.log10(StellarMass[cold_gas_indices]), h2_fraction[cold_gas_indices], 
-            c='blue', alpha=0.6, s=5, label='Cold Streams', zorder=10)
-    plt.scatter(np.log10(StellarMass[hot_gas_indices]), h2_fraction[hot_gas_indices], 
-            c='red', alpha=0.6, s=5, label='Shock Heated', zorder=5)
-
-    plt.xlabel('log Stellar Mass [M☉]')
-    plt.ylabel('H₂ Fraction')
-    # plt.title('Molecular Gas vs Infall Mode')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.ylim(0, 1)
-    plt.savefig(OutputDir + '24.h2_fraction_by_regime' + OutputFormat, bbox_inches='tight')
-
-    # -------------------------------------------------------
-
-    # 5. Distribution of Mvir/Mcrit ratios
-    plt.figure()
-
-    # Filter out invalid values (<=0) before taking log10
-    valid_ratios = centrals & (MvirToMcritRatio > 0)
-    
-    # Histogram of mass ratios
-    plt.hist(np.log10(MvirToMcritRatio[valid_ratios]), bins=50, alpha=0.7, 
-            density=True, label='All Centrals')
-    plt.axvline(x=0, color='k', linestyle='--', label='Mvir = Mcrit')
-
-    plt.xlabel('log(Mvir/Mcrit)')
-    plt.ylabel('Probability Density')
-    # plt.title('Distribution of Mass Ratios')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.savefig(OutputDir + '25.mass_ratio_distribution' + OutputFormat, bbox_inches='tight')
-    # plt.show()
-
-    # Print some statistics
-    valid_central_ratios = MvirToMcritRatio[centrals & (MvirToMcritRatio > 0)]
-    print(f"Fraction in cold stream regime: {np.sum(MvirToMcritRatio[centrals] < 1.0) / np.sum(centrals):.3f}")
-    print(f"Median Mvir/Mcrit ratio (valid values only): {np.median(valid_central_ratios):.3f}")
-    print(f"Number of galaxies with invalid (<=0) ratios: {np.sum(centrals & (MvirToMcritRatio <= 0))}")
-
-    # -------------------------------------------------------
-    print('Reincorporation diagnostics')
-    print('Reincorporated gas:', ReincorporatedGas)
-    print('Reincorporated log 10 gas:', np.log10(ReincorporatedGas))
-    print('Reincorporated gas fraction:', ReincorporatedGas / (StellarMass + ColdGas + 1e-12))
-
-    plt.figure()  # New figure
-
-    w = np.where((Type == 0) & (StellarMass > 1.0e7) & (ReincorporatedGas > 0))[0]  # Central galaxies only
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-
-    log10_reincorporated = np.log10(ReincorporatedGas)[w]
-    log10_stellar_mass = np.log10(StellarMass)[w]
-    log10_mvir = np.log10(Mvir)[w]
-
-    sc = plt.scatter(
-        log10_stellar_mass, log10_reincorporated,
-        c=log10_mvir, cmap='viridis', alpha=0.6, s=5, label='Reincorporated Gas'
-    )
-    cb = plt.colorbar(sc)
-    cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-    
-    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
-    plt.ylabel(r'$\log_{10} M_{\mathrm{reincorporated}}\ (M_{\odot})$')
-    # plt.title('Reincorporated Gas vs Stellar Mass')
-    plt.legend()
-    plt.xlim(6, 12)
-    plt.ylim(0, 12)
-
-    outputFile = OutputDir + '30.reincorporation_diagnostics' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved file to', outputFile, '\n')
-    plt.close()
-
     # -------------------------------------------------------
 
     print('Plotting H2 surface density vs SFR surface density')
 
     plt.figure()  # New figure
     # Σ_H2 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
-    
-    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (SFR > 0.0))[0]
+
+    sfrdot = SfrDisk + SfrBulge
+    Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
+    H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
+
+    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (sfrdot > 0.0))[0]
     if(len(w) > dilute): w = sample(list(w), dilute)
 
     sigma_H2 = H2Gas[w] / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
-    sigma_SFR = SFR[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
+    sigma_SFR = sfrdot[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
     log10_sigma_H2 = np.log10(sigma_H2)
     log10_sigma_SFR = np.log10(sigma_SFR)
     # Color by Mvir (virial mass)
@@ -2123,11 +1731,16 @@ if __name__ == '__main__':
     plt.figure()  # New figure
     # Σ_H1 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
     
-    w = np.where((Mvir > 0.0) & (ColdGas > 0.0) & (SFR > 0.0))[0]
+    sfrdot = SfrDisk + SfrBulge
+    Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
+    H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
+    H1Gas = read_hdf(snap_num = Snapshot, param = 'HI_gas') * 1.0e10 / Hubble_h
+
+    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (sfrdot > 0.0))[0]
     if(len(w) > dilute): w = sample(list(w), dilute)
 
     sigma_H1 = (ColdGas[w] - H2Gas[w]) / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
-    sigma_SFR = SFR[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
+    sigma_SFR = sfrdot[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
     log10_sigma_H1 = np.log10(sigma_H1)
     log10_sigma_SFR = np.log10(sigma_SFR)
     # Color by Mvir (virial mass)
@@ -2154,13 +1767,18 @@ if __name__ == '__main__':
     plt.figure()  # New figure
     # Σ_H2 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
     
-    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (SFR > 0.0))[0]
+    sfrdot = SfrDisk + SfrBulge
+    Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
+    H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
+    H1Gas = read_hdf(snap_num = Snapshot, param = 'HI_gas') * 1.0e10 / Hubble_h
+
+    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (sfrdot > 0.0))[0]
     if(len(w) > dilute): w = sample(list(w), dilute)
 
     sigma_h2 = H2Gas[w] / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
     sigma_h1 = H1Gas[w] / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
     sigma_gas = sigma_h2 + sigma_h1 / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # Total gas surface density
-    sigma_SFR = SFR[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
+    sigma_SFR = sfrdot[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
     log10_sigma_gas = np.log10(sigma_gas)
     log10_sigma_h2 = np.log10(sigma_h2)
     log10_sigma_h1 = np.log10(sigma_h1)
@@ -2308,3 +1926,119 @@ if __name__ == '__main__':
     plt.savefig(outputFile)
     print('Saved file to', outputFile, '\n')
     plt.close()
+
+    # -------------------------------------------------------
+    # H2 Mass vs. SFR
+    print('Plotting H2 Mass vs. SFR')
+    plt.figure()
+    # Only consider galaxies with significant H2 and SFR
+    valid = (H2Gas > 0) & (SfrDisk + SfrBulge > 0)
+    if np.sum(valid) > dilute:
+        valid_indices = sample(list(np.where(valid)[0]), dilute)
+    else:
+        valid_indices = np.where(valid)[0]
+    plt.scatter(
+        np.log10(H2Gas[valid_indices]),
+        np.log10((SfrDisk + SfrBulge)[valid_indices]),
+        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
+    )
+    cb = plt.colorbar()
+    cb.mappable.set_clim(8, 12)
+    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
+    plt.xlabel(r'$\log_{{10}} M_\mathrm{{H2}}\ (M_\odot)$')
+    plt.ylabel(r'$\log_{{10}} \mathrm{{SFR}}\ (M_\odot/yr)$')
+    # plt.title('H$_2$ Mass vs. SFR')
+    # plt.grid(True, alpha=0.3)
+    plt.xlim(6, 12)
+    plt.tight_layout()
+    plt.savefig(OutputDir + '19.H2_vs_SFR' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '19.H2_vs_SFR' + OutputFormat, '\n')
+
+    # -------------------------------------------------------
+    # H2 Fraction vs. sSFR
+    print('Plotting H2 Fraction vs. sSFR')
+    plt.figure()
+    # H2 fraction and sSFR (already defined above, but recalculate for safety)
+    h2_fraction = H2Gas / (H1Gas + H2Gas)
+    SFR = SfrDisk + SfrBulge
+    sSFR = np.log10(SFR / (StellarMass))
+    valid = (h2_fraction > 0) & (SFR > 0) & (StellarMass > 0)
+    if np.sum(valid) > dilute:
+        valid_indices = sample(list(np.where(valid)[0]), dilute)
+    else:
+        valid_indices = np.where(valid)[0]
+    plt.scatter(
+        sSFR[valid_indices],
+        h2_fraction[valid_indices],
+        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
+    )
+    cb = plt.colorbar()
+    cb.mappable.set_clim(8, 12)
+    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
+    plt.xlabel(r'$\log_{{10}} \mathrm{{sSFR}}\ (yr^{{-1}})$')
+    plt.ylabel('H$_2$ Fraction')
+    # plt.title('H$_2$ Fraction vs. sSFR')
+    # plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(OutputDir + '20.H2fraction_vs_sSFR' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '20.H2fraction_vs_sSFR' + OutputFormat, '\n')
+
+  # -------------------------------------------------------
+    # H1 Mass vs. SFR
+    print('Plotting H1 Mass vs. SFR')
+    plt.figure()
+    # Only consider galaxies with significant H1 and SFR
+    valid = (H1Gas > 0) & (SfrDisk + SfrBulge > 0)
+    if np.sum(valid) > dilute:
+        valid_indices = sample(list(np.where(valid)[0]), dilute)
+    else:
+        valid_indices = np.where(valid)[0]
+    plt.scatter(
+        np.log10(H1Gas[valid_indices]),
+        np.log10((SfrDisk + SfrBulge)[valid_indices]),
+        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
+    )
+    cb = plt.colorbar()
+    cb.mappable.set_clim(8, 12)
+    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
+    plt.xlabel(r'$\log_{{10}} M_\mathrm{{H1}}\ (M_\odot)$')
+    plt.ylabel(r'$\log_{{10}} \mathrm{{SFR}}\ (M_\odot/yr)$')
+    # plt.title('H$_I$ Mass vs. SFR')
+    # plt.grid(True, alpha=0.3)
+    plt.xlim(6, 12)
+    plt.tight_layout()
+    plt.savefig(OutputDir + '19.HI_vs_SFR' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '19.HI_vs_SFR' + OutputFormat, '\n')
+
+    # -------------------------------------------------------
+    # H1 Fraction vs. sSFR
+    print('Plotting H1 Fraction vs. sSFR')
+    plt.figure()
+    # H1 fraction and sSFR (already defined above, but recalculate for safety)
+    h1_fraction = H1Gas / (H1Gas + H2Gas)
+    SFR = SfrDisk + SfrBulge
+    sSFR = np.log10(SFR / (StellarMass))
+    valid = (h1_fraction > 0) & (SFR > 0) & (StellarMass > 0)
+    if np.sum(valid) > dilute:
+        valid_indices = sample(list(np.where(valid)[0]), dilute)
+    else:
+        valid_indices = np.where(valid)[0]
+    plt.scatter(
+        sSFR[valid_indices],
+        h2_fraction[valid_indices],
+        c=np.log10(StellarMass[valid_indices]), cmap='plasma', alpha=0.6, s=5
+    )
+    cb = plt.colorbar()
+    cb.mappable.set_clim(8, 12)
+    cb.set_label(r'$\log_{{10}} M_{*}\ (M_\odot)$')
+    plt.xlabel(r'$\log_{{10}} \mathrm{{sSFR}}\ (yr^{{-1}})$')
+    plt.ylabel('H$_I$ Fraction')
+    # plt.title('H$_I$ Fraction vs. sSFR')
+    # plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(OutputDir + '20.HIfraction_vs_sSFR' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '20.HIfraction_vs_sSFR' + OutputFormat, '\n')

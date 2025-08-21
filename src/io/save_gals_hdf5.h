@@ -92,12 +92,6 @@ struct HDF5_GALAXY_OUTPUT
 
     float *MassLoading;
     float *ReincorporatedGas;
-    
-    int32_t   *InflowRegime;        // 0=cold streams, 1=shock heated, -1=no infall
-    float     *CriticalMassDB06;    // M_crit from Dekel & Birnboim at current z
-    float     *MvirToMcritRatio;    // Mvir/Mcrit (>1 = shock heated, <1 = cold streams)
-    float     *ColdInflowMass;      // Cumulative mass that came in as cold streams
-    float     *HotInflowMass;       // Cumulative mass that came in shock-heated
 };
     
     // Proto-Types //

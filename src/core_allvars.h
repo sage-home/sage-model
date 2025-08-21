@@ -165,14 +165,6 @@ struct GALAXY
     float infallVmax;
 
     float MassLoading;
-
-    int32_t InflowRegime;  // 0=cold streams, 1=shock heated, -1=no infall
-    float CriticalMassDB06;  // M_crit from Dekel & Birnboim at current z
-    float MvirToMcritRatio;  // Mvir/Mcrit (>1 = shock heated, <1 = cold streams)
-    float ColdInflowMass;    // Total mass that came in as cold streams
-    float HotInflowMass;     // Total mass that came in shock-heated
-    float ColdInflowMetals;  // Metals in cold inflow
-    float HotInflowMetals;   // Metals in hot inflow
     float ReincorporatedGas; // Mass of gas reincorporated into the galaxy
 };
 

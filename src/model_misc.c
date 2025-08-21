@@ -85,12 +85,6 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].infallVvir = -1.0;
     galaxies[p].infallVmax = -1.0;
 
-    galaxies[p].InflowRegime = -1;  // No infall initially
-    galaxies[p].CriticalMassDB06 = 0.0;
-    galaxies[p].MvirToMcritRatio = 0.0;
-    galaxies[p].ColdInflowMass = 0.0;
-    galaxies[p].HotInflowMass = 0.0;
-
     galaxies[p].MassLoading = 0.0;
     galaxies[p].ReincorporatedGas = 0.0;
 

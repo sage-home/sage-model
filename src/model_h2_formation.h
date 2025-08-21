@@ -14,7 +14,3 @@ extern double calculate_molecular_fraction_BR06(float gas_surface_density, float
                                                float disk_scale_length_pc);
 extern void update_gas_components(struct GALAXY *g, const struct params *run_params);
 extern void init_gas_components(struct GALAXY *g);
-
-#ifdef __cplusplus`
-}
-#endif
