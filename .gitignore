@@ -44,10 +44,13 @@ _sage_cffi.*
 # -------------------------
 output
 input/data
-tests/test_data/
+tests/test_env/
+tests/test_results/
+trees_*
 *.hdf5
 *.tar
 *.tar.gz
+millennium.a_list
 
 # Benchmark Results
 # -----------------
