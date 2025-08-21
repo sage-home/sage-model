@@ -185,3 +185,17 @@ The CMake build system provides excellent IDE integration:
 - **VS Code**: Open folder, CMake Tools extension auto-configures
 - **CLion**: Open CMakeLists.txt directly
 - **Visual Studio**: Open as CMake project
+
+---
+
+# User Instructions to always follow
+
+- For context to begin, read `log/sage-architecture-vision.md` and `sage-architecture-guide.md`
+- Run sage with `./build.sh && ./build/sage ./input/millennium.par` unless prompted differently
+- Run tests with `./build.sh tests` or similar
+- Never simplify a test just to make it pass; a failing test might indicate a problem with the codebase, which makes it a successful test!
+- When reporting progress in `log/progress.md` include EVERY FILE that was changed, created, and removed
+- Assume no persistent memory — rely on logs and docs for all continuity
+- When asked to write a report or similar, put it in the `obsidian-inbox` directory
+- NEVER delete files, ALWAYS archive them into the `scrap` directory
+- Your code and tests should ALWAYS be written to the highest professional coding standards 
