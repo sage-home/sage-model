@@ -109,68 +109,76 @@ or in parallel as:
 
     $ mpirun -np <NUMBER_PROCESSORS> ./build/sage input/millennium.par
 
-Plotting the output (basic method)
-==================================
+Plotting the output
+====================
 
-If you already have Python 3 installed, you can switch to the plotting directory, where you will find two scripts, 
-``allresults-local.py`` (for z=0 results) and ``allresults-history.py`` (for higher redshift results). 
-If you're following the above, these scripts can run as-is to produce a series of figures you can use to check the model output.
+``SAGE`` includes a comprehensive plotting tool called ``sage-plot`` that generates publication-quality figures from model output. The tool creates both snapshot plots (galaxy properties at z=0) and evolution plots (cosmic evolution across redshifts).
 
-.. code::
+Python Environment Setup  
+-------------------------
 
-    $ cd plotting/
-    $ python3 allresults-local.py
-    $ python3 allresults-history.py
-
-Near the top of both scripts, there is a "USER OPTIONS" section where you can modify the simulation and plotting details for your own needs. 
-These scripts can be used as a template to read the hdf5 ``SAGE`` model output and to make your own custom figures.
-
-
-Plotting the output (sage-analysis package)
-===========================================
-
-We have a separate `sage-analysis <https://github.com/sage-home/sage-analysis/>`_ python package for plotting ``SAGE`` output. Please refer to the `sage_analysis
-documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sage.html>`_ for more details. 
-
-
-Installing ``sage-analysis`` (requires python version >= 3.6)
---------------------------------------------------------------
+First, set up the Python environment with required dependencies:
 
 .. code::
 
-    $ cd ../    # <- Change to the location where you want to clone the sage-analysis repo
-    $ git clone https://github.com/sage-home/sage-analysis.git
-    $ cd sage-analysis  
+    $ python3 -m venv sage_venv
+    $ source sage_venv/bin/activate
+    $ pip install -r requirements.txt
 
-You may need to first create a Python virtual environment in your sage-analysis directory and source it:
+Basic Plotting Usage
+--------------------
 
-.. code::
-
-    $ python3 -m venv .sage_venv
-    $ source .sage_venv/bin/activate
-
-Then finish installing sage-analysis:
+Generate all plots (both snapshot and evolution) with a single command:
 
 .. code::
 
-    $ python3 -m pip install -e .    # Install the sage-analysis python package
-    $ cd ../sage-model 
+    $ source sage_venv/bin/activate
+    $ python plotting/sage-plot/sage-plot.py --param-file=input/millennium.par
 
-Assuming that the `sage-analysis` repo was installed successfully, you are now ready to plot the output from ``SAGE``.
+This creates comprehensive plots in ``output/millennium/plots/`` including:
 
-Plotting
---------
+**Snapshot Plots** (galaxy properties at z=0):
+- Stellar mass function, baryonic mass function, gas mass function
+- Star formation rates, gas fractions, metallicities  
+- Black hole-bulge relations, halo occupation distributions
+- Spatial and kinematic distributions
 
-The ``plotting`` directory contains an ``example.py`` script that can be run to plot the basic output from ``SAGE``.
+**Evolution Plots** (cosmic evolution):
+- Stellar mass function evolution across redshifts
+- Cosmic star formation rate density evolution
+- Stellar mass density evolution
+
+Advanced Usage
+--------------
 
 .. code::
 
-    $ cd plotting/
-    $ python3 example.py
+    # Generate only snapshot plots
+    $ python plotting/sage-plot/sage-plot.py --param-file=input/millennium.par --snapshot-plots
+    
+    # Generate only evolution plots  
+    $ python plotting/sage-plot/sage-plot.py --param-file=input/millennium.par --evolution-plots
+    
+    # Generate specific plots
+    $ python plotting/sage-plot/sage-plot.py --param-file=input/millennium.par --plots=stellar_mass_function,gas_fraction
+    
+    # Specify output format and file range
+    $ python plotting/sage-plot/sage-plot.py --param-file=input/millennium.par --format=.pdf --first-file=0 --last-file=7
 
-This will create a number of plots in the ``plotting/plots/`` directory. Please refer to the `sage_analysis
-documentation <https://sage-analysis.readthedocs.io/en/latest/user/analyzing_sage.html>`_ for a thorough guide on how
-to tweak the plotting script to suit your needs.
+The plotting tool works from any directory and automatically resolves paths relative to the SAGE root directory.
+
+Legacy Plotting Scripts  
+-----------------------
+
+For users who prefer the original approach, basic plotting scripts are available in ``plotting/legacy-plot-examples/``:
+
+.. code::
+
+    $ cd plotting/legacy-plot-examples/
+    $ python3 allresults-local.py    # z=0 results
+    $ python3 allresults-history.py  # evolution results
+
+These scripts contain a "USER OPTIONS" section for customization and can serve as templates for custom analysis.
 
 
 Citation

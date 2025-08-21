@@ -627,10 +627,10 @@ def parse_arguments():
         "--all-snapshots", action="store_true", help="Process all available snapshots"
     )
     parser.add_argument(
-        "--evolution", action="store_true", help="Generate evolution plots"
+        "--evolution-plots", action="store_true", help="Generate evolution plots only"
     )
     parser.add_argument(
-        "--snapshot-plots", action="store_true", help="Generate snapshot plots"
+        "--snapshot-plots", action="store_true", help="Generate snapshot plots only"
     )
     parser.add_argument(
         "--output-dir",
@@ -649,9 +649,10 @@ def parse_arguments():
 
     args = parser.parse_args()
 
-    # Default to snapshot plots if neither is specified
-    if not args.evolution and not args.snapshot_plots:
+    # Default to both snapshot and evolution plots if neither is specified
+    if not args.evolution_plots and not args.snapshot_plots:
         args.snapshot_plots = True
+        args.evolution_plots = True
         
     # Default to all plots if not specified
     if args.plots is None:
@@ -851,15 +852,15 @@ def main():
 
         # Check if any evolution plots are specifically requested but --evolution flag is not set
         requested_evolution_plots = [p for p in selected_plots if p in EVOLUTION_PLOTS]
-        if requested_evolution_plots and not args.evolution:
+        if requested_evolution_plots and not args.evolution_plots:
             print(
-                f"Warning: Evolution plots requested ({', '.join(requested_evolution_plots)}) but --evolution flag not set."
+                f"Warning: Evolution plots requested ({', '.join(requested_evolution_plots)}) but --evolution-plots flag not set."
             )
             print(
                 f"These plots require data from multiple snapshots to work correctly."
             )
-            print(f"Adding --evolution flag automatically.")
-            args.evolution = True
+            print(f"Adding --evolution-plots flag automatically.")
+            args.evolution_plots = True
 
     # Generate snapshot plots
     if args.snapshot_plots:
@@ -1005,7 +1006,7 @@ def main():
             print(f"Generated {len(generated_plots)} snapshot plots.")
 
     # Generate evolution plots
-    if args.evolution:
+    if args.evolution_plots:
         # Get available evolution plot modules
         plot_modules = get_available_plot_modules("evolution")
 
