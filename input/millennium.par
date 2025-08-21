@@ -45,7 +45,7 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        1   %0: original Croton et al. 2006; 1: H2 Stars (GD14)
+SFprescription        2   %0: original Croton et al. 2006; 1: H2 Stars (GD14); 2: H2 Stars (BR06) 
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
@@ -58,9 +58,9 @@ DynamicalTimeResolutionFactor    2      %Optimal balance: 2 timesteps per dynami
 %----- SAGE model parameters --------------
 %------------------------------------------
 
-SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
+SfrEfficiency          0.05  %efficiency of SF (SFprescription=0)
 
-FeedbackReheatingEpsilon    0.5   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
+FeedbackReheatingEpsilon    1.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
 FeedbackEjectionEfficiency  0.5   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
 ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot

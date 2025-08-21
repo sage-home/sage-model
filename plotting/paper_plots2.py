@@ -1850,7 +1850,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             sSFR = np.log10((SfrDisk + SfrBulge) / StellarMass)
             
             # Select star-forming galaxies with valid data
-            w = np.where((StellarMass > 1e8) & (ColdGas > 0) & (Type == 0) & (H2Gas > 1e7))[0]  # Central, star-forming galaxies
+            w = np.where((StellarMass > 0) & (ColdGas > 0) & (Type == 0) & (H2Gas > 0))[0]  # Central, star-forming galaxies
 
             if len(w) == 0:
                 logger.warning(f'  No valid galaxies for {label}')
@@ -1866,14 +1866,14 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             
             # Calculate molecular fraction
             h2_fraction = h2_gas_sel / (h2_gas_sel + hi_gas_sel)
-            h2_fraction_2 = H2Gas / (H2Gas + HI_Gas)  # Alternative fraction
+            # h2_fraction_2 = H2Gas / (H2Gas + HI_Gas)  # Alternative fraction
             
             # Alternative: H2 fraction relative to cold gas
             h2_frac_cold = h2_gas_sel / cold_gas_sel
             
             # Bin by stellar mass
             log_stellar_mass = np.log10(stellar_mass_sel)
-            mass_bins = np.arange(8.0, 12.0, 0.125)
+            mass_bins = np.arange(8.0, 12.0, 0.25)
             mass_centers = (mass_bins[:-1] + mass_bins[1:]) / 2  # True bin centers
 
             # Calculate median and error bars in each bin
@@ -1882,7 +1882,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             
             for j in range(len(mass_bins)-1):
                 mask = (log_stellar_mass >= mass_bins[j]) & (log_stellar_mass < mass_bins[j+1])
-                if np.sum(mask) > 20:  # Require at least 20 galaxies per bin
+                if np.sum(mask) > 20:  # Require at least 5 galaxies per bin
                     bin_data = h2_fraction[mask]
                     median_h2_frac.append(np.median(bin_data))
                     
@@ -1943,9 +1943,9 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
                     scatter_h2_frac = h2_fraction
                 
                 # # Only for main model, add scatter points
-                # if i == 0:
-                #     ax.scatter(scatter_mass, scatter_h2_frac, s=1, alpha=0.25, 
-                #              color=color, rasterized=True)
+                if i == 0:
+                    ax.scatter(scatter_mass, scatter_h2_frac, s=1, alpha=0.25, 
+                             color=color, rasterized=True)
                 
                 logger.info(f'  H2 fraction range: {np.min(h2_fraction):.3f} - {np.max(h2_fraction):.3f}')
                 logger.info(f'  Median H2 fraction: {np.median(h2_fraction):.3f}')
@@ -1963,7 +1963,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
     
     # Set axis limits and formatting
     ax.set_xlim(8.0, 12.2)
-    ax.set_ylim(0.0, 0.5)
+    ax.set_ylim(0.0, 1.0)
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.05))
     

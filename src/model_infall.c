@@ -9,145 +9,15 @@
 #include "model_infall.h"
 #include "model_misc.h"
 
-// Add a debug counter to limit output
-static long debug_counter = 0;
-
-// Equation (18): A parameter - ADD DEBUG
-double calculate_A_parameter(const double z, const struct params *run_params)
-{
-    const double a = 1.0 / (1.0 + z);  // Expansion factor
-    const double Delta_200 = 200.0;    // Virial density factor (approximately)
-    const double Omega_m_03 = run_params->Omega / 0.3;
-    const double h_07 = run_params->Hubble_h / 0.7;
-    
-    // A ≡ (Δ₂₀₀ Ω_m,0.3 h²₀.₇)^(-1/3) a
-    double A = pow(Delta_200 * Omega_m_03 * h_07 * h_07, -1.0/3.0) * a;
-    
-    return A;
-}
-
-// Equation (30): F factor  
-double calculate_F_factor(void)
-{
-    // These are the crude estimates from Section 3.6 of the paper
-    const double f_r = 0.1;        // r/R_v for inner halo
-    const double f_u = 2.5;        // u(r)/u(R_v) 
-    const double f_rho = 100;    // ρ(r)/ρ(R_v)
-    const double f_b_005 = 1.0;    // f_b / 0.05
-    const double f_rho_017 = 1.0;  // (ρ/ρ̄) / 0.17
-    const double u_tilde_s = 0.0;  // shock velocity (at rest)
-    
-    // F ≡ f_r f_u^(-1) / (f_ρ f_b,0.05 f_ρ,0.17 (1-3ũs)^(-1))
-    double F = (f_r / f_u) / (f_rho * f_b_005 * f_rho_017 * (1.0 - 3.0 * u_tilde_s));
-    
-    return F;
-}
-
-double calculate_cosmic_metallicity(const double z)
-{
-    // Dekel & Birnboim (2006) Section 3.4: Z(z) = Z_0 * 10^(-s*z)
-    const double Z0 = 0.03;     // Solar units - their fiducial value
-    const double s = 0.17;      // Enrichment rate
-    
-    double Z_cosmic = Z0 * pow(10.0, -s * z);
-    
-    return Z_cosmic;
-}
-
-double calculate_mshock(const double z, const struct params *run_params)
-{
-    // Equation (34): M₁₁ ≃ 25.9 A^(3/8) (Z^0.7/0.03 F)^(3/4) f_u^(-3) (1 + ũs)^(-3)
-    
-    const double A = calculate_A_parameter(z, run_params);
-    const double Z_cosmic = calculate_cosmic_metallicity(z);
-    const double Z_ref = 0.03;
-    const double F = calculate_F_factor();
-    const double f_u = 2.5;         // From Section 3.5
-    const double u_tilde_s = 0.0;   // Shock at rest
-    
-    // Break down the calculation for debugging
-    double A_term = pow(A, 3.0/8.0);
-    double Z_term = pow(Z_cosmic/Z_ref, 0.7);
-    double ZF_term = pow(Z_term * F, 3.0/4.0);
-    double fu_term = pow(f_u, -3.0);
-    double us_term = pow(1.0 + u_tilde_s, -3.0);
-    
-    // Calculate M₁₁ (in units of 10^11 M_sun)
-    double M11 = 25.9 * A_term * ZF_term * fu_term * us_term;
-    
-    // Convert to M_sun
-    double Mshock_Msun = M11 * 1.0e11;
-    
-    // Convert to SAGE units: 10^10 M_sun/h
-    double Mshock_SAGE = Mshock_Msun / (1.0e10 / run_params->Hubble_h);
-    
-    return Mshock_SAGE;
-}
-
-// NEW: Implementation of Equation (40) - Cold streams in hot halos
-double calculate_mstream_max(const double z, const struct params *run_params)
-{
-    const double f = 3.0;  // Cosmic web filament factor
-    
-    double Mshock = calculate_mshock(z, run_params);
-    double Mstar_z = calculate_press_schechter_mass(z, run_params);
-    
-    // Equation (40): M_stream = M_shock² / (f × M*(z)) when f×M*(z) < M_shock
-    if (f * Mstar_z < Mshock) {
-        return (Mshock * Mshock) / (f * Mstar_z);
-    } else {
-        return Mshock;  // No cold streams above M_shock when f×M*(z) >= M_shock
-    }
-}
-
-double calculate_press_schechter_mass(const double z, const struct params *run_params)
-{
-    // Their approximation: log M* ≃ 13.1 - 1.3*z (for z ≤ 2)
-    double log_Mstar_Msun = 13.1 - 1.3 * z;
-    double Mstar_Msun = pow(10.0, log_Mstar_Msun);
-    
-    // Convert to SAGE units: 10^10 M_sun/h  
-    double Mstar_SAGE = Mstar_Msun / (1.0e10 / run_params->Hubble_h);
-    
-    return Mstar_SAGE;
-}
-
-double calculate_critical_mass_dekel_birnboim_2006(const double z, const struct params *run_params)
-{
-    // Core physics: compare f*M*(z) vs M_shock to determine regime
-    const double f = 3.0;
-    
-    double Mshock = calculate_mshock(z, run_params);
-    double Mstar_z = calculate_press_schechter_mass(z, run_params);  // M*(z) at current redshift
-    // double Mstar_z = galaxies[gal].StellarMass;
-    
-    double Mcrit;
-    // const char* regime;
-    
-    // Equation (43) logic: check if f×M*(z) < M_shock
-    if (f * Mstar_z < Mshock) {
-        // High redshift regime: f×M*(z) < M_shock, so z > z_crit
-        // Use equation (40): M_crit = M_shock² / (f×M*(z))
-        Mcrit = (Mshock * Mshock) / (f * Mstar_z);
-        // regime = "HIGH-z: Cold streams penetrate";
-    } else {
-        // Low redshift regime: f×M*(z) >= M_shock, so z <= z_crit  
-        // Use equation (43): M_crit = M_shock (no cold streams)
-        Mcrit = Mshock;
-        // regime = "LOW-z: No cold streams";
-    }
-
-    return Mcrit;
-}
 
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
 {
-    double tot_stellarMass, tot_BHMass, tot_coldMass, tot_hotMass, tot_ejected, tot_ICS;
-    double tot_ejectedMetals, tot_ICSMetals;
+    double tot_stellarMass, tot_BHMass, tot_coldMass, tot_hotMass, tot_cgm, tot_ICS;
+    double tot_cgmMetals, tot_ICSMetals;
     double infallingMass, reionization_modifier;
 
     // need to add up all the baryonic mass asociated with the full halo
-    tot_stellarMass = tot_coldMass = tot_hotMass = tot_ejected = tot_BHMass = tot_ejectedMetals = tot_ICS = tot_ICSMetals = 0.0;
+    tot_stellarMass = tot_coldMass = tot_hotMass = tot_cgm = tot_BHMass = tot_cgmMetals = tot_ICS = tot_ICSMetals = 0.0;
 
 	// loop over all galaxies in the FoF-halo
     for(int i = 0; i < ngal; i++) {
@@ -155,8 +25,8 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         tot_BHMass += galaxies[i].BlackHoleMass;
         tot_coldMass += galaxies[i].ColdGas;
         tot_hotMass += galaxies[i].HotGas;
-        tot_ejected += galaxies[i].CGMgas;
-        tot_ejectedMetals += galaxies[i].MetalsCGMgas;
+        tot_cgm += galaxies[i].CGMgas;
+        tot_cgmMetals += galaxies[i].MetalsCGMgas;
         tot_ICS += galaxies[i].ICS;
         tot_ICSMetals += galaxies[i].MetalsICS;
 
@@ -178,12 +48,12 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     }
 
     infallingMass =
-        reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].Mvir - (tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS);
+        reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].Mvir - (tot_stellarMass + tot_coldMass + tot_hotMass + tot_cgm + tot_BHMass + tot_ICS);
     /* reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].deltaMvir - newSatBaryons; */
 
     // the central galaxy keeps all the ejected mass
-    galaxies[centralgal].CGMgas = tot_ejected;
-    galaxies[centralgal].MetalsCGMgas = tot_ejectedMetals;
+    galaxies[centralgal].CGMgas = tot_cgm;
+    galaxies[centralgal].MetalsCGMgas = tot_cgmMetals;
 
     if(galaxies[centralgal].MetalsCGMgas > galaxies[centralgal].CGMgas) {
         galaxies[centralgal].MetalsCGMgas = galaxies[centralgal].CGMgas;
@@ -218,7 +88,7 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
 
 
 
-void strip_from_satellite(const int centralgal, const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params, const double dt)
+void strip_from_satellite(const int centralgal, const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
 {
     double reionization_modifier;
 
@@ -230,7 +100,7 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
     }
 
     double strippedGas = -1.0 *
-        (reionization_modifier * run_params->BaryonFrac * galaxies[gal].Mvir - (galaxies[gal].StellarMass + galaxies[gal].ColdGas + galaxies[gal].HotGas + galaxies[gal].CGMgas + galaxies[gal].BlackHoleMass + galaxies[gal].ICS) ) * dt;
+        (reionization_modifier * run_params->BaryonFrac * galaxies[gal].Mvir - (galaxies[gal].StellarMass + galaxies[gal].ColdGas + galaxies[gal].HotGas + galaxies[gal].CGMgas + galaxies[gal].BlackHoleMass + galaxies[gal].ICS) ) / STEPS;
     // ( reionization_modifier * run_params->BaryonFrac * galaxies[gal].deltaMvir ) / STEPS;
 
     if(strippedGas > 0.0) {
@@ -303,14 +173,13 @@ double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxie
 
 }
 
-void add_infall_to_hot(const int gal, double infallingGas, const double z, struct GALAXY *galaxies, const struct params *run_params)
+
+
+void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies)
 {
     float metallicity;
-    
-    // Increment debug counter for each galaxy processed
-    debug_counter++;
 
-    // Handle negative infall (mass loss) - keep existing logic
+    // if the halo has lost mass, subtract baryons from the ejected mass first, then the hot gas
     if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
         metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
         galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
@@ -325,46 +194,15 @@ void add_infall_to_hot(const int gal, double infallingGas, const double z, struc
         }
     }
 
+    // if the halo has lost mass, subtract hot metals mass next, then the hot gas
     if(infallingGas < 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
         metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
         galaxies[gal].MetalsHotGas += infallingGas*metallicity;
         if(galaxies[gal].MetalsHotGas < 0.0) galaxies[gal].MetalsHotGas = 0.0;
-
     }
 
-    // CORRECTED: Apply exact Dekel & Birnboim physics for positive infall
-    if(infallingGas > 0.0) {
-        double Mcrit = calculate_critical_mass_dekel_birnboim_2006(z, run_params);
+    // add (subtract) the ambient (enriched) infalling gas to the central galaxy hot component
+    galaxies[gal].HotGas += infallingGas;
+    if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
 
-        // Store diagnostics
-        galaxies[gal].CriticalMassDB06 = Mcrit;
-        galaxies[gal].MvirToMcritRatio = galaxies[gal].Mvir / Mcrit;
-
-
-        if (galaxies[gal].Mvir < Mcrit) {
-            // "cold streams prevail" - gas can reach galaxy center
-            metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
-            galaxies[gal].ColdGas += infallingGas;
-            galaxies[gal].MetalsColdGas += infallingGas * metallicity;
-
-            galaxies[gal].InflowRegime = 0;
-            galaxies[gal].ColdInflowMass += infallingGas;
-            galaxies[gal].ColdInflowMetals += infallingGas * metallicity;
-
-        } else {
-            // "shutdown of gas supply" - gas goes to hot but stays hot
-            metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
-            galaxies[gal].HotGas += infallingGas;
-            galaxies[gal].MetalsHotGas += infallingGas * metallicity;
-
-            galaxies[gal].InflowRegime = 1; 
-            galaxies[gal].HotInflowMass += infallingGas;
-            galaxies[gal].HotInflowMetals += infallingGas * metallicity;
-
-        }
-    } else {
-        // Negative infall case - use original logic
-        galaxies[gal].HotGas += infallingGas;
-        if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
-    }
 }

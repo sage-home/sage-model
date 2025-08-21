@@ -389,14 +389,14 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // For the central galaxy only
             if(p == centralgal) {
-                add_infall_to_hot(centralgal, infallingGas * actual_dt / deltaT, Zcurr, galaxies, run_params);
+                add_infall_to_hot(centralgal, infallingGas * actual_dt / deltaT, galaxies);
 
                 if(run_params->ReIncorporationFactor > 0.0) {
                     reincorporate_gas(centralgal, actual_dt, galaxies, run_params);
                 }
             } else {
                 if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
-                    strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params, actual_dt);
+                    strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
                 }
             }
 
