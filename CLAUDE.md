@@ -41,6 +41,10 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 - `cmake .. -DSAGE_MEMORY_CHECK=ON` - Enable AddressSanitizer for memory debugging
 - `cmake .. -DCMAKE_BUILD_TYPE=Debug` - Debug build with symbols
 
+### Configuration System Options
+- `cmake .. -DSAGE_CONFIG_JSON_SUPPORT=ON` - Enable JSON configuration support (default: ON)
+- `cmake .. -DSAGE_CONFIG_VALIDATION=ON` - Enable configuration validation (default: ON)
+
 ### Fresh Repository Setup
 ```bash
 git clone <repository>
@@ -119,6 +123,56 @@ Parameter files (`.par`) control:
 - Physics parameters (star formation, feedback, etc.)
 - Snapshot selection (`NumOutputs`)
 
+### Configuration System (Task 1.4)
+SAGE now features a modern configuration abstraction layer that supports both legacy `.par` files and JSON configuration:
+
+**Supported Configuration Formats**:
+- **Legacy .par format**: Traditional parameter files (fully backward compatible)
+- **JSON format**: Modern hierarchical configuration with validation (requires cJSON library)
+
+**Key Features**:
+- **Unified Interface**: Single API for reading both .par and JSON configurations
+- **Automatic Format Detection**: Based on file extension (.par vs .json)
+- **Configuration Validation**: Parameter bounds checking and cross-validation
+- **Error Reporting**: Clear, helpful error messages for configuration issues
+- **Backward Compatibility**: All existing .par files work unchanged
+
+**Configuration API** (for developers):
+```c
+#include "config/config.h"
+
+config_t *config = config_create();
+int result = config_read_file(config, "input/config.json");  // or .par
+if (result == CONFIG_SUCCESS) {
+    config_validate(config);  // Optional validation
+    // Access parameters via config->params
+}
+config_destroy(config);
+```
+
+**JSON Configuration Example**:
+```json
+{
+  "simulation": {
+    "boxSize": 62.5,
+    "omega": 0.25,
+    "omegaLambda": 0.75,
+    "hubble_h": 0.73
+  },
+  "io": {
+    "treeDir": "./input/data/millennium/",
+    "outputDir": "./output/",
+    "outputFormat": "sage_hdf5"
+  },
+  "physics": {
+    "sfPrescription": 0,
+    "agnRecipeOn": 2
+  }
+}
+```
+
+**Testing**: Run `./build/test_config` to test configuration system functionality
+
 ### Python Integration
 - `sage.py` - Python wrapper using CFFI for C library calls
 - Automatically builds shared library if needed
@@ -134,6 +188,7 @@ Parameter files (`.par`) control:
 - GSL (GNU Scientific Library) - for some numerical functions
 - HDF5 libraries - for HDF5 I/O support
 - MPI implementation - for parallel execution
+- cJSON library - for JSON configuration support
 - LaTeX - for high-quality plot rendering
 
 **Python Dependencies** (see requirements.txt):

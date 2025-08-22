@@ -24,6 +24,10 @@ option(SAGE_SHARED_LIBRARY "Build shared library instead of static" ON)
 option(SAGE_VERBOSE "Enable verbose output" ON)
 option(SAGE_MEMORY_CHECK "Enable memory checking (AddressSanitizer)" OFF)
 
+# Configuration system options
+option(SAGE_CONFIG_JSON_SUPPORT "Enable JSON configuration support" ON)
+option(SAGE_CONFIG_VALIDATION "Enable configuration validation" ON)
+
 # Memory management configuration options
 option(SAGE_MEMORY_TRACKING "Enable advanced memory tracking and leak detection" OFF)
 option(SAGE_WARN_LEGACY_MEMORY "Enable deprecation warnings for legacy memory API" OFF)
@@ -147,6 +151,66 @@ if(SAGE_WARN_LEGACY_MEMORY)
     add_definitions(-DSAGE_WARN_LEGACY_MEMORY)
 endif()
 
+# Configuration system setup
+if(SAGE_CONFIG_VALIDATION)
+    add_definitions(-DSAGE_CONFIG_VALIDATION=1)
+    message(STATUS "Configuration validation enabled")
+endif()
+
+# JSON configuration support
+if(SAGE_CONFIG_JSON_SUPPORT)
+    add_definitions(-DCONFIG_JSON_SUPPORT)
+    
+    # Try to find system cJSON first
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(CJSON libcjson)
+    endif()
+    
+    if(NOT CJSON_FOUND)
+        # Try to find cJSON without pkg-config
+        find_path(CJSON_INCLUDE_DIR cjson/cJSON.h)
+        find_library(CJSON_LIBRARY NAMES cjson)
+        
+        if(CJSON_INCLUDE_DIR AND CJSON_LIBRARY)
+            set(CJSON_FOUND TRUE)
+            set(CJSON_LIBRARIES ${CJSON_LIBRARY})
+            set(CJSON_INCLUDE_DIRS ${CJSON_INCLUDE_DIR})
+        endif()
+    endif()
+    
+    if(NOT CJSON_FOUND)
+        message(STATUS "System cJSON not found, checking for bundled version")
+        
+        # Check for bundled cJSON in external directory
+        if(EXISTS "${CMAKE_SOURCE_DIR}/external/cjson/cJSON.c")
+            message(STATUS "Using bundled cJSON")
+            add_library(cjson STATIC 
+                external/cjson/cJSON.c 
+                external/cjson/cJSON.h
+            )
+            target_include_directories(cjson PUBLIC external/cjson)
+            set(CJSON_LIBRARIES cjson)
+            set(CJSON_FOUND TRUE)
+        else()
+            message(WARNING "cJSON not found. JSON configuration support will be disabled.")
+            message(WARNING "To enable JSON support:")
+            message(WARNING "  1. Install libcjson-dev (Ubuntu/Debian) or cjson (macOS)")
+            message(WARNING "  2. Or place cJSON source files in external/cjson/")
+            set(SAGE_CONFIG_JSON_SUPPORT OFF)
+            remove_definitions(-DCONFIG_JSON_SUPPORT)
+        endif()
+    endif()
+    
+    if(CJSON_FOUND)
+        message(STATUS "JSON configuration support enabled")
+        if(CJSON_INCLUDE_DIRS)
+            set(SAGE_INCLUDE_DIRS ${SAGE_INCLUDE_DIRS} ${CJSON_INCLUDE_DIRS})
+        endif()
+        set(SAGE_LIBRARIES ${SAGE_LIBRARIES} ${CJSON_LIBRARIES})
+    endif()
+endif()
+
 # Find required packages
 
 # Math library
@@ -268,6 +332,18 @@ set(MEMORY_SOURCES
     ${SRC_DIR}/core/core_mymalloc.c  # Legacy compatibility
 )
 
+# Configuration system sources
+set(CONFIG_SOURCES
+    ${SRC_DIR}/core/config/config.c
+    ${SRC_DIR}/core/config/config_legacy.c
+    ${SRC_DIR}/core/config/config_validation.c
+)
+
+# Add JSON configuration source if enabled
+if(SAGE_CONFIG_JSON_SUPPORT)
+    list(APPEND CONFIG_SOURCES ${SRC_DIR}/core/config/config_json.c)
+endif()
+
 # Core infrastructure sources - now in src/core/
 set(SAGE_CORE_SOURCES
     ${SRC_DIR}/core/sage.c
@@ -281,6 +357,7 @@ set(SAGE_CORE_SOURCES
     ${SRC_DIR}/core/progressbar.c
     ${SRC_DIR}/core/core_tree_utils.c
     ${MEMORY_SOURCES}
+    ${CONFIG_SOURCES}
 )
 
 # Physics modules - now in src/physics/
@@ -322,7 +399,7 @@ if(SAGE_USE_HDF5)
 endif()
 
 # Include directories - updated for new structure
-set(SAGE_INCLUDE_DIRS ${SAGE_INCLUDE_DIRS} ${SRC_DIR}/core ${SRC_DIR}/physics ${SRC_DIR}/io)
+set(SAGE_INCLUDE_DIRS ${SAGE_INCLUDE_DIRS} ${SRC_DIR}/core ${SRC_DIR}/core/config ${SRC_DIR}/physics ${SRC_DIR}/io)
 
 # Create the SAGE library
 if(SAGE_SHARED_LIBRARY)
@@ -397,7 +474,7 @@ set(CORE_TESTS
     test_array_utils                # Dynamic array utilities with geometric growth
     test_memory                     # Memory abstraction layer implementation (Task 1.3)
     test_memory_management          # Memory allocation and cleanup (Phase 3)
-    test_config_system             # Configuration loading and parsing (Phase 4)
+    test_config                    # Configuration abstraction layer (Task 1.4)
     
     # Property system - Phase 2 core
     test_core_property             # Property system core functionality
@@ -713,6 +790,8 @@ message(STATUS "  Buffered Write:    ${SAGE_USE_BUFFERED_WRITE}")
 message(STATUS "  Memory Check:      ${SAGE_MEMORY_CHECK}")
 message(STATUS "  Memory Tracking:   ${SAGE_MEMORY_TRACKING}")
 message(STATUS "  Legacy Warnings:   ${SAGE_WARN_LEGACY_MEMORY}")
+message(STATUS "  JSON Config:       ${SAGE_CONFIG_JSON_SUPPORT}")
+message(STATUS "  Config Validation: ${SAGE_CONFIG_VALIDATION}")
 message(STATUS "  Root Directory:    ${ROOT_DIR}")
 message(STATUS "  Git Hash:          ${GITREF_STR}")
 message(STATUS "")

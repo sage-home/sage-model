@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <ctype.h> /* for isblank()*/
+#include <ctype.h>
 
-#include "core_allvars.h"
-#include "core_mymalloc.h"
-#include "config/config.h"
+#include "config_legacy.h"
+#include "../memory.h"
+#include "../core_mymalloc.h"
 
+// Constants from original implementation
 enum datatypes {
     DOUBLE = 1,
     STRING = 2,
@@ -17,75 +17,90 @@ enum datatypes {
 #define MAXTAGS          300  /* Max number of parameters */
 #define MAXTAGLEN         50  /* Max number of characters in the string param tags */
 
-int compare_ints_descending (const void* p1, const void* p2);
-
-int compare_ints_descending (const void* p1, const void* p2)
-{
-    int i1 = *(int*) p1;
-    int i2 = *(int*) p2;
-    if (i1 < i2) {
-        return 1;
-    } else if (i1 == i2) {
-        return 0;
-    } else {
-        return -1;
-    }
- }
-
-int read_parameter_file(const char *fname, struct params *run_params)
-{
-    // Use new configuration system internally while maintaining API compatibility
-    config_t *config = config_create();
-    if (!config) {
-        fprintf(stderr, "Error: Failed to create configuration object\n");
-        return FILE_READ_ERROR;
-    }
+// String to enum conversion functions
+int string_to_tree_type(const char *tree_type_str) {
+    if (!tree_type_str) return lhalo_binary;
     
-    int result = config_read_file(config, fname);
-    if (result != CONFIG_SUCCESS) {
-        fprintf(stderr, "Error reading parameter file '%s': %s\n", 
-                fname, config_get_last_error(config));
-        config_destroy(config);
-        return result == CONFIG_ERROR_FILE_READ ? FILE_NOT_FOUND : PARSE_ERROR;
+    if (strcmp(tree_type_str, "lhalo_binary") == 0) return lhalo_binary;
+    if (strcmp(tree_type_str, "lhalo_hdf5") == 0) return lhalo_hdf5;
+    if (strcmp(tree_type_str, "genesis_hdf5") == 0) return genesis_hdf5;
+    if (strcmp(tree_type_str, "consistent_trees_ascii") == 0) return consistent_trees_ascii;
+    if (strcmp(tree_type_str, "consistent_trees_hdf5") == 0) return consistent_trees_hdf5;
+    if (strcmp(tree_type_str, "gadget4_hdf5") == 0) return gadget4_hdf5;
+    else {
+        // Optional: Log a warning if verbose mode is on
+        fprintf(stderr, "Warning: Unknown tree type '%s', defaulting to lhalo_binary.\n", tree_type_str);
+        return lhalo_binary;
     }
-    
-    // Validate configuration if validation is enabled
-#ifdef SAGE_CONFIG_VALIDATION
-    result = config_validate(config);
-    if (result != CONFIG_SUCCESS) {
-        fprintf(stderr, "Configuration validation failed for '%s':\n", fname);
-        config_print_validation_errors(config);
-        // Continue anyway for backward compatibility - just warn
-    }
-#endif
-    
-    // Copy parameters to provided structure (maintaining API compatibility)
-    if (config->params) {
-        // Preserve existing ThisTask and NTasks values before copying
-        int preserved_ThisTask = run_params->ThisTask;
-        int32_t preserved_NTasks = run_params->NTasks;
-        
-        memcpy(run_params, config->params, sizeof(struct params));
-        
-        // Restore the preserved values
-        run_params->ThisTask = preserved_ThisTask;
-        run_params->NTasks = preserved_NTasks;
-    } else {
-        fprintf(stderr, "Error: No configuration data loaded from '%s'\n", fname);
-        config_destroy(config);
-        return PARSE_ERROR;
-    }
-    
-    config_destroy(config);
-    return 0;  // Maintain legacy return code (0 = success)
 }
 
-// Legacy function implementation for backward compatibility
-static int read_parameter_file_legacy(const char *fname, struct params *run_params)
-{
+int string_to_output_format(const char *output_format_str) {
+    if (!output_format_str) return sage_binary;
+    
+    if (strcmp(output_format_str, "sage_binary") == 0) return sage_binary;
+    if (strcmp(output_format_str, "sage_hdf5") == 0) return sage_hdf5;
+    if (strcmp(output_format_str, "lhalo_binary_output") == 0) return lhalo_binary_output;
+    else {
+        // Optional: Log a warning if verbose mode is on
+        fprintf(stderr, "Warning: Unknown output format '%s', defaulting to sage_binary.\n", output_format_str);
+        return sage_binary;
+    }
+}
+
+int string_to_forest_dist_scheme(const char *forest_dist_str) {
+    if (!forest_dist_str) return uniform_in_forests;
+    
+    if (strcmp(forest_dist_str, "uniform_in_forests") == 0) return uniform_in_forests;
+    if (strcmp(forest_dist_str, "linear_in_nhalos") == 0) return linear_in_nhalos;
+    if (strcmp(forest_dist_str, "quadratic_in_nhalos") == 0) return quadratic_in_nhalos;
+    if (strcmp(forest_dist_str, "exponent_in_nhalos") == 0) return exponent_in_nhalos;
+    if (strcmp(forest_dist_str, "generic_power_in_nhalos") == 0) return generic_power_in_nhalos;
+    else {
+        // Optional: Log a warning if verbose mode is on
+        fprintf(stderr, "Warning: Unknown forest distribution scheme '%s', defaulting to uniform_in_forests.\n", forest_dist_str);
+        return uniform_in_forests;
+    }
+}
+
+// Main legacy .par file reading function
+int config_read_legacy_par(config_t *config, const char *filename) {
+    if (!config || !filename) {
+        return CONFIG_ERROR_INVALID_STATE;
+    }
+    
+    // Allocate params structure
+    config->params = sage_malloc(sizeof(struct params));
+    if (!config->params) {
+        snprintf(config->last_error, sizeof(config->last_error),
+                "Failed to allocate memory for configuration parameters");
+        return CONFIG_ERROR_MEMORY;
+    }
+    config->owns_params = true;
+    
+    // Use internal parameter reading function (extracted from existing code)
+    int result = read_parameter_file_internal(filename, config->params);
+    if (result != 0) {
+        snprintf(config->last_error, sizeof(config->last_error),
+                "Failed to read parameter file: %s", filename);
+        sage_free(config->params);
+        config->params = NULL;
+        config->owns_params = false;
+        return CONFIG_ERROR_PARSE;
+    }
+    
+    config->format = CONFIG_FORMAT_LEGACY_PAR;
+    strncpy(config->source_file, filename, sizeof(config->source_file) - 1);
+    config->source_file[sizeof(config->source_file) - 1] = '\0';
+    
+    return CONFIG_SUCCESS;
+}
+
+// Internal parameter file reading function (refactored from original core_read_parameter_file.c)
+int read_parameter_file_internal(const char *fname, struct params *run_params) {
     int errorFlag = 0;
     int *used_tag = 0;
     char my_treetype[MAX_STRING_LEN], my_outputformat[MAX_STRING_LEN], my_forest_dist_scheme[MAX_STRING_LEN];
+    
     /*  recipe parameters  */
     int NParam = 0;
     char ParamTag[MAXTAGS][MAXTAGLEN + 1];
@@ -107,6 +122,7 @@ static int read_parameter_file_legacy(const char *fname, struct params *run_para
     }
 #endif
 
+    // Set up parameter tags and addresses (extracted from original code)
     strncpy(ParamTag[NParam], "FileNameGalaxies", MAXTAGLEN);
     ParamAddr[NParam] = run_params->FileNameGalaxies;
     ParamID[NParam++] = STRING;
@@ -291,6 +307,7 @@ static int read_parameter_file_legacy(const char *fname, struct params *run_para
     FILE *fd = fopen(fname, "r");
     if (fd == NULL) {
         fprintf(stderr,"Parameter file '%s' not found.\n", fname);
+        myfree(used_tag);
         return FILE_NOT_FOUND;
     }
 
@@ -338,7 +355,7 @@ static int read_parameter_file_legacy(const char *fname, struct params *run_para
 
         if(j >= 0) {
 #ifdef VERBOSE
-            if(ThisTask == 0) {
+            if(run_params->ThisTask == 0) {
                 fprintf(stdout, "%35s\t%10s\n", buf1, buf2);
             }
 #endif
@@ -368,7 +385,6 @@ static int read_parameter_file_legacy(const char *fname, struct params *run_para
             strcat(run_params->OutputDir, "/");
     }
 
-
     for(int i = 0; i < NParam; i++) {
         if(used_tag[i]) {
             fprintf(stderr, "Error. I miss a value for tag '%s' in parameter file '%s'.\n", ParamTag[i], fname);
@@ -377,21 +393,29 @@ static int read_parameter_file_legacy(const char *fname, struct params *run_para
     }
 
     if(errorFlag) {
-        ABORT(1);
+        myfree(used_tag);
+        return 1;
     }
 #ifdef VERBOSE
     fprintf(stdout, "\n");
 #endif
 
+    // Convert string enums to enum values
+    run_params->TreeType = string_to_tree_type(my_treetype);
+    run_params->OutputFormat = string_to_output_format(my_outputformat);
+    run_params->ForestDistributionScheme = string_to_forest_dist_scheme(my_forest_dist_scheme);
+
     if( ! (run_params->LastSnapshotNr+1 > 0 && run_params->LastSnapshotNr+1 < ABSOLUTEMAXSNAPS) ) {
         fprintf(stderr,"LastSnapshotNr = %d should be in [0, %d) \n", run_params->LastSnapshotNr, ABSOLUTEMAXSNAPS);
-        ABORT(1);
+        myfree(used_tag);
+        return 1;
     }
     run_params->SimMaxSnaps = run_params->LastSnapshotNr + 1;
 
     if(!(run_params->NumSnapOutputs == -1 || (run_params->NumSnapOutputs > 0 && run_params->NumSnapOutputs <= ABSOLUTEMAXSNAPS))) {
         fprintf(stderr,"NumOutputs must be -1 or between 1 and %i\n", ABSOLUTEMAXSNAPS);
-        ABORT(1);
+        myfree(used_tag);
+        return 1;
     }
 
     // read in the output snapshot list
@@ -401,13 +425,13 @@ static int read_parameter_file_legacy(const char *fname, struct params *run_para
             run_params->ListOutputSnaps[i] = i;
         }
 #ifdef VERBOSE
-        if(ThisTask == 0) {
+        if(run_params->ThisTask == 0) {
             fprintf(stdout, "all %d snapshots selected for output\n", run_params->NumSnapOutputs);
         }
 #endif
     } else {
 #ifdef VERBOSE
-        if(ThisTask == 0) {
+        if(run_params->ThisTask == 0) {
             fprintf(stdout, "%d snapshots selected for output: ", run_params->NumSnapOutputs);
         }
 #endif
@@ -426,7 +450,7 @@ static int read_parameter_file_legacy(const char *fname, struct params *run_para
                 for(int i=0; i<run_params->NumSnapOutputs; i++) {
                     if(fscanf(fd, "%d", &(run_params->ListOutputSnaps[i])) == 1) {
 #ifdef VERBOSE
-                        if(ThisTask == 0) {
+                        if(run_params->ThisTask == 0) {
                             fprintf(stdout, "%d ", run_params->ListOutputSnaps[i]);
                         }
 #endif
@@ -440,130 +464,14 @@ static int read_parameter_file_legacy(const char *fname, struct params *run_para
         fclose(fd);
         if(! done ) {
             fprintf(stderr,"Error: Could not properly parse output snapshots\n");
-            ABORT(2);
+            myfree(used_tag);
+            return 2;
         }
 #ifdef VERBOSE
         fprintf(stdout, "\n");
 #endif
     }
 
-
-    if(run_params->FirstFile < 0 || run_params->LastFile < 0 || run_params->LastFile < run_params->FirstFile) {
-        fprintf(stderr,"Error: FirstFile = %d and LastFile = %d must both be >=0 *AND* LastFile "
-                        "should be larger than   FirstFile.\nProbably a typo in the parameter-file. "
-                        "Please change to appropriate values...exiting\n",
-                        run_params->FirstFile, run_params->LastFile);
-        ABORT(EXIT_FAILURE);
-    }
-
-    /* sort the output snapshot numbers in descending order (in case the user didn't do that already) MS: 24th Oct, 2023 */
-    qsort(run_params->ListOutputSnaps, run_params->NumSnapOutputs, sizeof(run_params->ListOutputSnaps[0]), compare_ints_descending);
-
-    /* Check for duplicate snapshot outputs */
-    int num_dup_snaps = 0;
-    for(int ii=1;ii<run_params->NumSnapOutputs;ii++) {
-        const int dsnap = run_params->ListOutputSnaps[ii-1] - run_params->ListOutputSnaps[ii];
-        if(dsnap == 0) {
-            fprintf(stderr,"Error: Found duplicate snapshots in the list of desired output snapshots\n");
-            fprintf(stderr,"Duplicate value = %d in position = %d (out of %d total output snapshots requested)\n",
-                            run_params->ListOutputSnaps[ii], ii, run_params->NumSnapOutputs);
-            num_dup_snaps++;
-        }
-    }
-    if(num_dup_snaps != 0) {
-        fprintf(stderr,"Error: Found %d duplicate snapshots - please remove them from the parameter file and then re-run sage\n\n", num_dup_snaps);
-        ABORT(EXIT_FAILURE);
-    }
-
-    /* because in the default case of 'lhalo-binary', nothing
-       gets written to "treeextension", we need to
-       null terminate tree-extension first  */
-    run_params->TreeExtension[0] = '\0';
-
-    // Check tree type is valid.
-    if (strncmp(my_treetype, "lhalo_hdf5", 511)   == 0 ||
-        strncmp(my_treetype, "genesis_hdf5", 511) == 0 ||
-        strncmp(my_treetype, "gadget4_hdf5", 511) == 0
-        ) {
-#ifndef HDF5
-        fprintf(stderr, "You have specified to use a HDF5 file but have not compiled with the HDF5 option enabled.\n");
-        fprintf(stderr, "Please check your file type and compiler options.\n");
-        ABORT(EXIT_FAILURE);
-#endif
-        // strncmp returns 0 if the two strings are equal.
-        // only relevant options are HDF5 or binary files. Consistent-trees is *always* ascii (with different filename extensions)
-        snprintf(run_params->TreeExtension, 511, ".hdf5");
-    }
-
-#define CHECK_VALID_ENUM_IN_PARAM_FILE(paramname, num_enum_types, enum_names, enum_values, string_value) { \
-        int found = 0;                                                  \
-        for(int i=0;i<num_enum_types;i++) {                             \
-            if (strcasecmp(string_value, enum_names[i]) == 0) {         \
-                run_params->paramname = enum_values[i];                 \
-                found = 1;                                              \
-                break;                                                  \
-            }                                                           \
-        }                                                               \
-        if(found == 0) {                                                \
-            fprintf(stderr, #paramname " field contains unsupported value of '%s' is not supported\n", string_value); \
-            fprintf(stderr," Please choose one of the values -- \n");   \
-            for(int i=0;i<num_enum_types;i++) {                         \
-                fprintf(stderr, #paramname " = '%s'\n", enum_names[i]); \
-            }                                                           \
-            ABORT(EXIT_FAILURE);                                        \
-        }                                                               \
- }
-
-    const char tree_names[][MAXTAGLEN] = {"lhalo_hdf5", "lhalo_binary", "genesis_hdf5",
-                                          "consistent_trees_ascii", "consistent_trees_hdf5",
-                                          "gadget4_hdf5"};
-    const enum Valid_TreeTypes tree_enums[] = {lhalo_hdf5, lhalo_binary, genesis_hdf5,
-                                               consistent_trees_ascii, consistent_trees_hdf5,
-                                               gadget4_hdf5};
-    const int nvalid_tree_types  = sizeof(tree_names)/(MAXTAGLEN*sizeof(char));
-    BUILD_BUG_OR_ZERO((nvalid_tree_types == (int) num_tree_types), number_of_tree_types_is_incorrect);
-    CHECK_VALID_ENUM_IN_PARAM_FILE(TreeType, nvalid_tree_types, tree_names, tree_enums, my_treetype);
-
-    /* Check output data type is valid. */
-#ifndef HDF5
-    if(strncmp(my_outputformat, "sage_hdf5", MAX_STRING_LEN-1) == 0) {
-        fprintf(stderr, "You have specified to use HDF5 output format but have not compiled with the HDF5 option enabled.\n");
-        fprintf(stderr, "Please check your file type and compiler options.\n");
-        ABORT(EXIT_FAILURE);
-    }
-#endif
-
-    const char format_names[][MAXTAGLEN] = {"sage_binary", "sage_hdf5", "lhalo_binary_output"};
-    const enum Valid_OutputFormats format_enums[] = {sage_binary, sage_hdf5, lhalo_binary_output};
-    const int nvalid_format_types  = sizeof(format_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_format_types == 3, EXIT_FAILURE, "nvalid_format_types = %d should have been 3\n", nvalid_format_types);
-    CHECK_VALID_ENUM_IN_PARAM_FILE(OutputFormat, nvalid_format_types, format_names, format_enums, my_outputformat);
-
-    /* Check that the way forests are distributed over (MPI) tasks is valid */
-    const char scheme_names[][MAXTAGLEN] = {"uniform_in_forests", "linear_in_nhalos", "quadratic_in_nhalos", "exponent_in_nhalos", "generic_power_in_nhalos"};
-    const enum Valid_Forest_Distribution_Schemes scheme_enums[] = {uniform_in_forests, linear_in_nhalos,
-                                                                   quadratic_in_nhalos, exponent_in_nhalos, generic_power_in_nhalos};
-    const int nvalid_scheme_types  = sizeof(scheme_names)/(MAXTAGLEN*sizeof(char));
-    XRETURN(nvalid_scheme_types == num_forest_weight_types, EXIT_FAILURE, "nvalid_format_types = %d should have been %d\n",
-            nvalid_format_types, num_forest_weight_types);
-
-    CHECK_VALID_ENUM_IN_PARAM_FILE(ForestDistributionScheme, nvalid_scheme_types, scheme_names, scheme_enums, my_forest_dist_scheme);
-#undef CHECK_VALID_ENUM_IN_PARAM_FILE
-
-
-    /* Check that exponent supplied is non-negative (for cases where the exponent will be used) */
-    if((run_params->ForestDistributionScheme == exponent_in_nhalos || run_params->ForestDistributionScheme == generic_power_in_nhalos)
-       && run_params->Exponent_Forest_Dist_Scheme < 0) {
-        fprintf(stderr,"Error: You have requested a power-law exponent but the exponent = %e must be greater than 0\n",
-                run_params->Exponent_Forest_Dist_Scheme);
-        fprintf(stderr,"Please change the value for the parameter 'ExponentForestDistributionScheme' in the parameter file (%s)\n", fname);
-        ABORT(EXIT_FAILURE);
-    }
-
     myfree(used_tag);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
-
-#undef MAXTAGS
-#undef MAXTAGLEN

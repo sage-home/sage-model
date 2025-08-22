@@ -14,6 +14,11 @@ sage-model/
 ├── src/
 │   ├── core/                   # Physics-agnostic infrastructure
 │   │   ├── auxdata/            # Auxiliary data files (cooling functions)
+│   │   ├── config/             # Configuration system (Task 1.4)
+│   │   │   ├── config.h/.c     # Unified configuration API
+│   │   │   ├── config_legacy.c # Legacy .par format support
+│   │   │   ├── config_json.c   # JSON format support
+│   │   │   └── config_validation.c # Parameter validation
 │   │   ├── main.c              # Entry point
 │   │   ├── sage.c              # Main model loop
 │   │   ├── core_allvars.h      # Global variables and data structures
@@ -21,7 +26,8 @@ sage-model/
 │   │   ├── core_init.c         # Initialization routines
 │   │   ├── core_io_tree.c      # Tree I/O coordination
 │   │   ├── core_save.c         # Galaxy output coordination
-│   │   └── [other core files]  # Utilities, memory, parameter handling
+│   │   ├── memory.h/.c         # Modern memory abstraction (Task 1.3)
+│   │   └── [other core files]  # Utilities, parameter handling
 │   ├── physics/                # Physics modules
 │   │   ├── model_cooling_heating.c
 │   │   ├── model_starformation_and_feedback.c
@@ -152,35 +158,60 @@ Dual format support with hardcoded field lists:
 - Manual synchronization between GALAXY struct and I/O
 
 ## Memory Management
-Legacy custom allocator system:
-- mymalloc/myfree wrapper around standard allocators
-- Manual memory tracking and statistics
-- Limited debugging tool compatibility
+Modern memory abstraction layer (Task 1.3 Complete):
+- Standard malloc/free with optional tracking
+- AddressSanitizer compatibility for debugging
+- RAII-pattern memory scopes for automatic cleanup
+- Backward compatible sage_malloc/sage_free API
 
 ## Configuration System
-Legacy parameter file system:
-- .par format with manual parsing
-- Hardcoded parameter validation
-- No schema validation or type safety
+Unified configuration abstraction layer (Task 1.4 Complete):
+- Dual format support: legacy .par and JSON
+- Automatic format detection based on file extensions
+- Comprehensive parameter validation with bounds checking
+- Type-safe configuration API with error handling
+- Optional cJSON integration for modern JSON configs
+
+```
+Configuration Architecture
+┌─────────────────┐      ┌─────────────────┐
+│ config_t        │─────▶│ Format Handlers │
+│ - Unified API   │      │ - config_legacy │
+│ - Auto detect   │      │ - config_json   │
+│ - Validation    │      │ - Extensible    │
+└─────────────────┘      └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ struct params   │
+│ - Populated     │
+│ - Validated     │
+│ - Ready to use  │
+└─────────────────┘
+```
 
 ## Testing Framework
-Basic end-to-end testing:
-- test_sage.sh script for scientific validation
-- sagediff.py for output comparison
-- Limited unit testing coverage
+Comprehensive testing infrastructure:
+- End-to-end scientific validation (test_sage.sh, sagediff.py)
+- Unit testing framework following standardized template
+- Automated CMake integration with CTest
+- Category-based test organization (core, property, io, module, tree)
+- Memory debugging support with AddressSanitizer integration
 
 ## Architecture Limitations
 
 ### Current Constraints:
 - **Hardcoded Physics Coupling**: Evolution pipeline has direct calls to physics modules
-- **Monolithic Data Structure**: GALAXY struct mixes core and physics properties
+- **Monolithic Data Structure**: GALAXY struct mixes core and physics properties  
 - **Manual I/O Synchronization**: Output fields hardcoded and manually maintained
-- **Legacy Memory Management**: Custom allocator with limited debugging tool support
-- **Parameter System**: Manual parsing without schema validation or type safety
 
 ### Technical Architecture Debt:
 - No separation between core infrastructure and physics knowledge
 - String-based property access in some I/O operations
 - Hardcoded array sizes (MAXSNAPS) limiting simulation flexibility
 - Direct field access throughout codebase without abstraction
-- Manual memory tracking and cleanup patterns
+
+### Recently Addressed (Tasks 1.3-1.4):
+- ✅ **Memory Management**: Modern abstraction with debugging tool compatibility
+- ✅ **Configuration System**: Unified dual-format system with validation
+- ✅ **Testing Infrastructure**: Standardized unit testing framework
