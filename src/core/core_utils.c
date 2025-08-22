@@ -156,6 +156,43 @@ int64_t getnumlines(const char *fname,const char comment)
     return nlines;
 }
 
+/* Read entire file into a string buffer */
+char* read_file_to_string(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        return NULL;
+    }
+    
+    // Get file size
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    if (file_size <= 0) {
+        fclose(file);
+        return NULL;
+    }
+    
+    // Allocate buffer
+    char *buffer = malloc(file_size + 1);
+    if (!buffer) {
+        fclose(file);
+        return NULL;
+    }
+    
+    // Read file
+    size_t bytes_read = fread(buffer, 1, file_size, file);
+    fclose(file);
+    
+    if (bytes_read != (size_t)file_size) {
+        free(buffer);
+        return NULL;
+    }
+    
+    buffer[file_size] = '\0';
+    return buffer;
+}
+
 
 size_t myfread(void *ptr, const size_t size, const size_t nmemb, FILE * stream)
 {

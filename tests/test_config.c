@@ -3,8 +3,22 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "config/config.h"
+
+// Helper function to create a temporary file and return its name
+// Returns file descriptor that should be closed by caller
+static int create_temp_file(char *filename_buffer, size_t buffer_size) {
+    snprintf(filename_buffer, buffer_size, "/tmp/sage_test_config_XXXXXX");
+    int fd = mkstemp(filename_buffer);
+    if (fd == -1) {
+        fprintf(stderr, "Error: Could not create temporary file\n");
+        assert(0);
+    }
+    return fd;
+}
 
 // Test configuration creation and destruction
 static int test_config_creation() {
@@ -94,7 +108,10 @@ void create_test_par_file(const char *filename) {
 static int test_legacy_par_reading() {
     printf("  Testing legacy .par file reading...\n");
     
-    const char *test_file = "test_config.par";
+    char test_file[256];
+    int fd = create_temp_file(test_file, sizeof(test_file));
+    close(fd);  // Close fd so create_test_par_file can open it
+    
     create_test_par_file(test_file);
     
     config_t *config = config_create();
@@ -183,7 +200,10 @@ static int test_configuration_validation() {
     printf("  Testing configuration validation...\n");
     
     // Test valid configuration
-    const char *valid_file = "test_valid.par";
+    char valid_file[256];
+    int fd = create_temp_file(valid_file, sizeof(valid_file));
+    close(fd);  // Close fd so create_test_par_file can open it
+    
     create_test_par_file(valid_file);
     
     config_t *config = config_create();
@@ -200,7 +220,10 @@ static int test_configuration_validation() {
     unlink(valid_file);
     
     // Test invalid configuration
-    const char *invalid_file = "test_invalid.par";
+    char invalid_file[256];
+    fd = create_temp_file(invalid_file, sizeof(invalid_file));
+    close(fd);  // Close fd so create_invalid_par_file can open it
+    
     create_invalid_par_file(invalid_file);
     
     config = config_create();
@@ -271,7 +294,10 @@ void create_test_json_file(const char *filename) {
 static int test_json_configuration() {
     printf("  Testing JSON configuration reading...\n");
     
-    const char *test_file = "test_config.json";
+    char test_file[256];
+    int fd = create_temp_file(test_file, sizeof(test_file));
+    close(fd);  // Close fd so create_test_json_file can open it
+    
     create_test_json_file(test_file);
     
     config_t *config = config_create();

@@ -9,43 +9,7 @@
 
 #include "config_legacy.h"
 #include "../memory.h"
-
-// Read entire file into string
-char* read_file_to_string(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        return NULL;
-    }
-    
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    
-    if (file_size <= 0) {
-        fclose(file);
-        return NULL;
-    }
-    
-    // Allocate buffer
-    char *buffer = sage_malloc(file_size + 1);
-    if (!buffer) {
-        fclose(file);
-        return NULL;
-    }
-    
-    // Read file
-    size_t bytes_read = fread(buffer, 1, file_size, file);
-    fclose(file);
-    
-    if (bytes_read != (size_t)file_size) {
-        sage_free(buffer);
-        return NULL;
-    }
-    
-    buffer[file_size] = '\0';
-    return buffer;
-}
+#include "../core_utils.h"
 
 // JSON utility functions
 double get_json_double(const void *json_obj, const char *key, double default_val) {
@@ -206,7 +170,7 @@ int config_read_json(config_t *config, const char *filename) {
     
     // Parse JSON
     cJSON *json = cJSON_Parse(json_string);
-    sage_free(json_string);
+    free(json_string);
     
     if (!json) {
         const char *error_ptr = cJSON_GetErrorPtr();
