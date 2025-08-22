@@ -70,6 +70,7 @@ mkdir build && cd build && cmake .. && make
 - `./tests/test_sage.sh` - Full test suite comparing against reference output
 - Tests both binary and HDF5 output formats
 - Downloads test data automatically if not present
+- **New unit tests**: Use template at `docs/templates/test_template.md` for standardized test development
 
 ### Plotting and Analysis
 - `cd plotting/ && python allresults-local.py` - Plot z=0 results

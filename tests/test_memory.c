@@ -1,12 +1,26 @@
+/**
+ * Unit test for Memory Abstraction Layer
+ * 
+ * Tests cover:
+ * - Basic allocation functions (malloc, calloc, realloc, free)
+ * - Memory scope functionality for automatic cleanup
+ * - Memory tracking capabilities (when enabled)
+ * - Legacy compatibility functions
+ * - Error handling and edge cases
+ * - Scope capacity expansion and resilience
+ */
+
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include "memory_scope.h"  /* This includes the complete definition */
 #include "memory.h"
 
-/* Test basic allocation functions */
-void test_basic_allocations(void) {
-    printf("Testing basic allocations...\n");
+/**
+ * Test: Basic allocation functions
+ */
+static int test_basic_allocations(void) {
+    printf("  Testing basic allocation functions...\n");
     
     void *ptr1 = sage_malloc(1024);
     assert(ptr1 != NULL);
@@ -20,12 +34,15 @@ void test_basic_allocations(void) {
     sage_free(ptr2);
     sage_free(ptr3);
     
-    printf("Basic allocations: PASSED\n");
+    printf("    SUCCESS: Basic allocation functions work\n");
+    return 0;
 }
 
-/* Test memory scope functionality */
-void test_memory_scopes(void) {
-    printf("Testing memory scopes...\n");
+/**
+ * Test: Memory scope functionality
+ */
+static int test_memory_scopes(void) {
+    printf("  Testing memory scope functionality...\n");
     
     memory_scope_t *scope = memory_scope_create();
     assert(scope != NULL);
@@ -38,12 +55,15 @@ void test_memory_scopes(void) {
     // Scope cleanup should free everything
     memory_scope_destroy(scope);
     
-    printf("Memory scopes: PASSED\n");
+    printf("    SUCCESS: Memory scope functionality works\n");
+    return 0;
 }
 
-/* Test memory tracking (if enabled) */
-void test_memory_tracking(void) {
-    printf("Testing memory tracking...\n");
+/**
+ * Test: Memory tracking capabilities
+ */
+static int test_memory_tracking(void) {
+    printf("  Testing memory tracking capabilities...\n");
     
     memory_tracking_init();
     
@@ -59,22 +79,25 @@ void test_memory_tracking(void) {
     assert(stats_after.current_allocated > stats_before.current_allocated);
     assert(stats_final.current_allocated == stats_before.current_allocated);
     assert(!memory_check_leaks());
+    printf("    SUCCESS: Memory tracking works correctly\n");
     #else
     /* Suppress unused variable warnings when tracking is disabled */
     (void)stats_before;
     (void)stats_after;
     (void)stats_final;
-    printf("Memory tracking disabled in this build - test still passed\n");
+    printf("    SUCCESS: Memory tracking disabled in this build - test passed\n");
     #endif
     
     memory_tracking_cleanup();
     
-    printf("Memory tracking: PASSED\n");
+    return 0;
 }
 
-/* Test legacy compatibility functions */
-void test_legacy_compatibility(void) {
-    printf("Testing legacy compatibility...\n");
+/**
+ * Test: Legacy compatibility functions
+ */
+static int test_legacy_compatibility(void) {
+    printf("  Testing legacy compatibility functions...\n");
     
     // Include the legacy header to test the macros
     #include "core_mymalloc.h"
@@ -91,12 +114,15 @@ void test_legacy_compatibility(void) {
     myfree(ptr2);
     myfree(ptr3);
     
-    printf("Legacy compatibility: PASSED\n");
+    printf("    SUCCESS: Legacy compatibility functions work\n");
+    return 0;
 }
 
-/* Test error handling */
-void test_error_handling(void) {
-    printf("Testing error handling...\n");
+/**
+ * Test: Error handling
+ */
+static int test_error_handling(void) {
+    printf("  Testing error handling...\n");
     
     // Test freeing NULL pointer (should not crash)
     sage_free(NULL);
@@ -105,12 +131,15 @@ void test_error_handling(void) {
     void *ptr = sage_malloc(0);
     assert(ptr == NULL); // Should return NULL for zero-size
     
-    printf("Error handling: PASSED\n");
+    printf("    SUCCESS: Error handling works correctly\n");
+    return 0;
 }
 
-/* Test scope capacity expansion and error resilience */
-void test_scope_capacity_expansion(void) {
-    printf("Testing scope capacity expansion...\n");
+/**
+ * Test: Scope capacity expansion
+ */
+static int test_scope_capacity_expansion(void) {
+    printf("  Testing scope capacity expansion...\n");
     
     memory_scope_t *scope = memory_scope_create();
     assert(scope != NULL);
@@ -129,12 +158,15 @@ void test_scope_capacity_expansion(void) {
     
     memory_scope_destroy(scope);
     
-    printf("Scope capacity expansion: PASSED\n");
+    printf("    SUCCESS: Scope capacity expansion works\n");
+    return 0;
 }
 
-/* Test memory scope registration resilience */
-void test_scope_registration_resilience(void) {
-    printf("Testing scope registration resilience...\n");
+/**
+ * Test: Scope registration resilience
+ */
+static int test_scope_registration_resilience(void) {
+    printf("  Testing scope registration resilience...\n");
     
     memory_scope_t *scope = memory_scope_create();
     assert(scope != NULL);
@@ -151,20 +183,86 @@ void test_scope_registration_resilience(void) {
     
     memory_scope_destroy(scope);
     
-    printf("Scope registration resilience: PASSED\n");
+    printf("    SUCCESS: Scope registration resilience works\n");
+    return 0;
 }
 
 int main(void) {
-    printf("=== Memory Abstraction Layer Tests ===\n");
+    printf("\nRunning %s...\n", __FILE__);
+    printf("\n=== Testing Memory Abstraction Layer ===\n");
     
-    test_basic_allocations();
-    test_memory_scopes();
-    test_memory_tracking();
-    test_legacy_compatibility();
-    test_error_handling();
-    test_scope_capacity_expansion();
-    test_scope_registration_resilience();
+    printf("This test verifies:\n");
+    printf("  1. Basic allocation functions work correctly\n");
+    printf("  2. Memory scopes provide automatic cleanup\n");
+    printf("  3. Memory tracking operates when enabled\n");
+    printf("  4. Legacy compatibility functions work\n");
+    printf("  5. Error handling is robust\n");
+    printf("  6. Scope capacity expansion works properly\n");
+    printf("  7. Registration resilience handles edge cases\n\n");
+
+    int result = 0;
+    int test_count = 0;
+    int passed_count = 0;
     
-    printf("All tests PASSED!\n");
-    return 0;
+    // Run tests
+    test_count++;
+    if (test_basic_allocations() == 0) {
+        passed_count++;
+    } else {
+        result = 1;
+    }
+    
+    test_count++;
+    if (test_memory_scopes() == 0) {
+        passed_count++;
+    } else {
+        result = 1;
+    }
+    
+    test_count++;
+    if (test_memory_tracking() == 0) {
+        passed_count++;
+    } else {
+        result = 1;
+    }
+    
+    test_count++;
+    if (test_legacy_compatibility() == 0) {
+        passed_count++;
+    } else {
+        result = 1;
+    }
+    
+    test_count++;
+    if (test_error_handling() == 0) {
+        passed_count++;
+    } else {
+        result = 1;
+    }
+    
+    test_count++;
+    if (test_scope_capacity_expansion() == 0) {
+        passed_count++;
+    } else {
+        result = 1;
+    }
+    
+    test_count++;
+    if (test_scope_registration_resilience() == 0) {
+        passed_count++;
+    } else {
+        result = 1;
+    }
+    
+    // Report results
+    printf("\n=== Test Results ===\n");
+    printf("Passed: %d/%d tests\n", passed_count, test_count);
+    
+    if (result == 0) {
+        printf("%s PASSED\n", __FILE__);
+    } else {
+        printf("%s FAILED\n", __FILE__);
+    }
+    
+    return result;
 }

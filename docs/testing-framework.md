@@ -198,11 +198,30 @@ make clean              # Clean
 
 ### Simple Process
 
-1. **Create test file**: `tests/test_your_name.c`
+1. **Create test file**: `tests/test_your_name.c` using the template
 2. **Reconfigure CMake**: `cmake ..` (from build directory)
 3. **Build and run**: `cmake --build . --target test_your_name && ctest -R test_your_name`
 
-### Test File Template
+### Unit Test Template
+
+For standardized test development, use the template at `docs/templates/test_template.md`. The template provides:
+
+- **Professional structure**: Clear organization with proper documentation headers
+- **Consistent output**: Standardized printf formatting and test result reporting
+- **Test categories**: Organized approach covering initialization, functionality, error handling, edge cases, and integration
+- **CMake integration**: Automatic detection and build system integration
+- **Simple assertions**: Uses standard `assert()` for critical failures
+- **Result tracking**: Proper test counting and pass/fail reporting
+
+### Template Usage Guidelines
+
+1. **Copy template structure**: Use the template at `docs/templates/test_template.md` as starting point
+2. **Follow naming patterns**: Name tests `test_component_name.c` for automatic categorization
+3. **Implement all sections**: Cover initialization, basic functionality, error handling, edge cases, and integration
+4. **Use clear output**: Follow template's printf formatting for consistent test output
+5. **Return proper codes**: 0 for success, non-zero for failure
+
+### Basic Test Example
 
 ```c
 #include <stdio.h>
