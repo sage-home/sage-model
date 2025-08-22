@@ -147,6 +147,7 @@ Parameter files (`.par`) control:
 - `src/core/` - Core C source code (physics-agnostic)
 - `src/physics/` - Physics module C source code  
 - `src/io/` - Input/output C source code
+- `log/` - Development tracking and AI support (decisions, progress, architecture)
 - `plotting/` - Python plotting scripts
 - `tests/` - Test scripts and reference data
 - `input/` - Parameter files and example data
@@ -188,14 +189,31 @@ The CMake build system provides excellent IDE integration:
 
 ---
 
+## Development Logging System
+
+### Log Files (for AI Development Support)
+- `log/decisions.md` - Critical architectural decisions with rationale and impact
+- `log/phase.md` - Current development phase context and progress tracking
+- `log/architecture.md` - Current system architecture snapshot  
+- `log/progress.md` - Completed milestones and achievements
+- `log/archive/` - Historical log files archived by phase
+
+### Logging Guidelines
+- **decisions.md**: Record key technical decisions affecting current/future development
+- **progress.md**: Document completed milestones with file changes (append-only with `cat << EOF`)
+- **phase.md**: Update current phase status and completion criteria
+- **architecture.md**: Maintain current system architecture snapshot (overwrite when outdated)
+
+---
+
 # User Instructions to always follow
 
-- For context to begin, read `log/sage-architecture-vision.md` and `sage-architecture-guide.md`
-- Run sage with `./build.sh && ./build/sage ./input/millennium.par` unless prompted differently
-- Run tests with `./build.sh tests` or similar
+- Before beginning, read `log/sage-architecture-vision.md` and `sage-architecture-guide.md` for context
+- All code and tests should be written to the highest professional coding standards 
 - Never simplify a test just to make it pass; a failing test might indicate a problem with the codebase, which makes it a successful test!
-- When reporting progress in `log/progress.md` include EVERY FILE that was changed, created, and removed
+- When reporting progress in `log/progress.md` include every file that was changed, created, and removed
+- Always ask before committing finished work to git
+- Before finalising a task consider if `CLAUDE.md` needs to be updated
 - Assume no persistent memory — rely on logs and docs for all continuity
 - When asked to write a report or similar, put it in the `obsidian-inbox` directory
 - NEVER delete files, ALWAYS archive them into the `scrap` directory
-- Your code and tests should ALWAYS be written to the highest professional coding standards 

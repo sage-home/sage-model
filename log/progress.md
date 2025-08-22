@@ -1,5 +1,3 @@
-# Recent Progress Log
-
 <!-- Purpose: Record completed milestones -->
 <!-- Update Rules: 
 - Append new entries to the EOF (use `cat << EOF >> ...etc`)!
@@ -9,3 +7,20 @@
   • Milestone summary
   • List of new, modified and deleted files (exclude log files)
 -->
+
+# Recent Progress Log
+
+2025-08-21: [Phase 1.1-1.2] Infrastructure Foundation Setup
+- Completed CMake build system setup and directory reorganization per master plan Tasks 1.1-1.2
+- Implemented modern CMake build with dependency detection, out-of-tree builds, and zero-warning compilation
+- Achieved clean core/physics/io separation with preserved git history using git mv commands
+- Established professional development foundation with IDE integration ready for property system implementation
+- **Files Created**: CMakeLists.txt, log/*.md (initial architecture docs)
+- **Files Modified**: .gitignore, CLAUDE.md, README.rst, all src files moved to new structure
+
+2025-08-22: [Phase 1.5] Development Logging System Setup
+- Implemented comprehensive logging system per master plan Task 1.5 with decisions.md, phase.md, architecture.md using proper headers from log-refactor reference
+- Established archive/ structure with instructions for phase transitions and historical tracking
+- Updated CLAUDE.md with logging guidelines enabling persistent development context across AI sessions
+- **Files Created**: log/decisions.md, log/phase.md, log/architecture.md, log/archive/, log/archive/decisions-phase1.md, log/archive/progress-phase1.md
+- **Files Modified**: CLAUDE.md (added logging system documentation)
