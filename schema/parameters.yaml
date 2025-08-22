@@ -1,0 +1,1039 @@
+# SAGE Parameter Metadata Schema
+# Purpose: Define simulation parameters with module awareness, inheritance, and validation
+# Version: 2.1.0 - Enhanced for runtime modularity and physics-agnostic core
+
+schema_version: "2.1.0"
+parameter_version: "1.0.0"
+
+# Global configuration for parameter system
+config:
+  # Enable compile-time parameter validation
+  compile_time_validation: true
+  # Enable runtime parameter checking
+  runtime_validation: true
+  # Support parameter inheritance and overrides
+  inheritance_support: true
+  # Enable cross-parameter validation
+  cross_validation: true
+
+# Parameter categories organized by module dependencies
+categories:
+  core:           # Always required - physics-agnostic
+  cosmology:      # Cosmological parameters
+  units:          # Unit conversion and scaling
+  io:             # Input/output configuration
+  simulation:     # Simulation setup and control
+  cooling:        # Cooling/heating physics
+  starformation:  # Star formation and feedback
+  mergers:        # Galaxy merger physics
+  reincorporation: # Gas reincorporation
+  disk_instability: # Disk instability
+  reionization:   # Reionization physics
+  misc:           # Miscellaneous physics
+
+# Parameter inheritance hierarchy
+inheritance:
+  # Base configuration that all others inherit from
+  base:
+    description: "Base parameters required for all configurations"
+    categories: [core, cosmology, units, io, simulation]
+    
+  # Physics configurations inherit from base
+  minimal_physics:
+    inherits: base
+    description: "Minimal physics with cooling and star formation"
+    categories: [cooling, starformation]
+    
+  standard_physics:
+    inherits: minimal_physics  
+    description: "Standard physics suite with all modules"
+    categories: [mergers, reincorporation, disk_instability, reionization, misc]
+    
+  custom:
+    inherits: base
+    description: "Custom configuration with runtime module selection"
+    dynamic_categories: true
+
+# Parameter definitions with module dependencies and validation
+parameters:
+
+  # =============================================================================
+  # CORE PARAMETERS - Always required
+  # =============================================================================
+  
+  FirstFile:
+    type: int32_t
+    category: core
+    description: "First tree file to process"
+    units: dimensionless
+    required_by: [core]
+    default: 0
+    range: [0, 10000]
+    validation:
+      range_check: true
+      dependency: "FirstFile <= LastFile"
+    io_mappings:
+      par: "FirstFile"
+      json: "files.first"
+      
+  LastFile:
+    type: int32_t
+    category: core
+    description: "Last tree file to process"
+    units: dimensionless
+    required_by: [core]
+    default: 0
+    range: [0, 10000]
+    validation:
+      range_check: true
+      dependency: "LastFile >= FirstFile"
+    io_mappings:
+      par: "LastFile"
+      json: "files.last"
+
+  OutputDir:
+    type: string
+    category: io
+    description: "Directory for output files"
+    required_by: [core]
+    default: "./output/"
+    max_length: 1024
+    validation:
+      path_check: true
+      writeable_check: true
+    io_mappings:
+      par: "OutputDir"
+      json: "io.output_dir"
+      
+  FileNameGalaxies:
+    type: string  
+    category: io
+    description: "Base name for galaxy output files"
+    required_by: [core]
+    default: "model"
+    max_length: 1024
+    validation:
+      filename_check: true
+    io_mappings:
+      par: "FileNameGalaxies"
+      json: "io.output_filename"
+      
+  TreeName:
+    type: string
+    category: io
+    description: "Base name for merger tree files"
+    required_by: [core]
+    default: "tree"
+    max_length: 1024
+    validation:
+      filename_check: true
+    io_mappings:
+      par: "TreeName"
+      json: "io.tree_name"
+      
+  TreeExtension:
+    type: string
+    category: io
+    description: "File extension for tree files (.hdf5 or empty for binary)"
+    required_by: [core]
+    default: ""
+    max_length: 10
+    validation:
+      enum_values: ["", ".hdf5"]
+    io_mappings:
+      par: "TreeExtension"
+      json: "io.tree_extension"
+      
+  SimulationDir:
+    type: string
+    category: io
+    description: "Directory containing simulation files"
+    required_by: [core]
+    default: "./"
+    max_length: 1024
+    validation:
+      path_check: true
+      readable_check: true
+    io_mappings:
+      par: "SimulationDir"
+      json: "io.simulation_dir"
+      
+  FileWithSnapList:
+    type: string
+    category: io
+    description: "File containing snapshot redshift list"
+    required_by: [core]
+    default: "input/millennium.snaplist"
+    max_length: 1024
+    validation:
+      file_exists_check: true
+    io_mappings:
+      par: "FileWithSnapList"
+      json: "io.snaplist_file"
+
+  NumSimulationTreeFiles:
+    type: int32_t
+    category: simulation
+    description: "Total number of tree files in simulation"
+    units: dimensionless
+    required_by: [core]
+    default: 1
+    range: [1, 100000]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "NumSimulationTreeFiles"
+      json: "simulation.num_tree_files"
+
+  TreeType:
+    type: enum
+    category: simulation
+    description: "Format of input merger trees"
+    required_by: [core]
+    default: lhalo_binary
+    validation:
+      enum_values: [lhalo_binary, lhalo_hdf5, genesis_hdf5, consistent_trees_ascii, 
+                   consistent_trees_hdf5, gadget4_hdf5]
+    io_mappings:
+      par: "TreeType"
+      json: "simulation.tree_type"
+      
+  OutputFormat:
+    type: enum
+    category: io
+    description: "Format for galaxy output files"
+    required_by: [core]
+    default: sage_hdf5
+    validation:
+      enum_values: [sage_binary, sage_hdf5, lhalo_binary_output]
+    io_mappings:
+      par: "OutputFormat"
+      json: "io.output_format"
+
+  # =============================================================================
+  # COSMOLOGICAL PARAMETERS
+  # =============================================================================
+  
+  Omega:
+    type: double
+    category: cosmology
+    description: "Total matter density parameter"
+    units: dimensionless
+    required_by: [core]
+    default: 0.25
+    range: [0.0, 1.0]
+    validation:
+      range_check: true
+      dependency: "Omega + OmegaLambda <= 1.1"  # Allow slight numerical error
+    io_mappings:
+      par: "Omega"
+      json: "cosmology.omega_matter"
+      
+  OmegaLambda:
+    type: double
+    category: cosmology
+    description: "Dark energy density parameter"
+    units: dimensionless
+    required_by: [core]
+    default: 0.75
+    range: [0.0, 1.0]
+    validation:
+      range_check: true
+      dependency: "Omega + OmegaLambda <= 1.1"
+    io_mappings:
+      par: "OmegaLambda"
+      json: "cosmology.omega_lambda"
+      
+  Hubble_h:
+    type: double
+    category: cosmology
+    description: "Reduced Hubble parameter (H0/100 km/s/Mpc)"
+    units: dimensionless
+    required_by: [core]
+    default: 0.73
+    range: [0.5, 1.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "Hubble_h"
+      json: "cosmology.hubble_h"
+      
+  BoxSize:
+    type: double
+    category: cosmology
+    description: "Simulation box size"
+    units: "Mpc/h"
+    required_by: [core]
+    default: 62.5
+    range: [1.0, 10000.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "BoxSize"
+      json: "cosmology.box_size"
+
+  # =============================================================================
+  # UNIT CONVERSION PARAMETERS
+  # =============================================================================
+  
+  PartMass:
+    type: double
+    category: units
+    description: "Particle mass in simulation units"
+    units: "1e10 Msun/h"
+    required_by: [core]
+    default: 0.0860657
+    range: [1e-6, 1e6]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "PartMass"
+      json: "units.particle_mass"
+      
+  UnitLength_in_cm:
+    type: double
+    category: units
+    description: "Length unit conversion to cm"
+    units: "cm"
+    required_by: [core]
+    default: 3.085678e24  # Mpc in cm
+    range: [1e20, 1e30]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "UnitLength_in_cm"
+      json: "units.length_in_cm"
+      
+  UnitVelocity_in_cm_per_s:
+    type: double
+    category: units
+    description: "Velocity unit conversion to cm/s"
+    units: "cm/s"
+    required_by: [core]
+    default: 1e5  # km/s in cm/s
+    range: [1e3, 1e8]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "UnitVelocity_in_cm_per_s"
+      json: "units.velocity_in_cm_per_s"
+      
+  UnitMass_in_g:
+    type: double
+    category: units
+    description: "Mass unit conversion to grams"
+    units: "g"
+    required_by: [core]
+    default: 1.989e43  # 1e10 Msun in grams
+    range: [1e40, 1e50]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "UnitMass_in_g"
+      json: "units.mass_in_g"
+
+  # Derived unit parameters (calculated from base units)
+  UnitTime_in_s:
+    type: double
+    category: units
+    description: "Time unit conversion to seconds"
+    units: "s"
+    derived: true
+    calculation: "UnitLength_in_cm / UnitVelocity_in_cm_per_s"
+    required_by: [core]
+    
+  UnitTime_in_Megayears:
+    type: double
+    category: units
+    description: "Time unit conversion to Megayears"
+    units: "Myr"
+    derived: true
+    calculation: "UnitTime_in_s / 3.155e13"
+    required_by: [core]
+    
+  RhoCrit:
+    type: double
+    category: units
+    description: "Critical density in simulation units"
+    units: "1e10 Msun/h / (Mpc/h)^3"
+    derived: true
+    calculation: "3*Hubble^2/(8*pi*G)"
+    required_by: [core]
+    
+  UnitDensity_in_cgs:
+    type: double
+    category: units
+    description: "Density unit conversion to CGS"
+    units: "g/cm^3"
+    derived: true
+    calculation: "UnitMass_in_g / (UnitLength_in_cm^3)"
+    required_by: [core]
+    
+  UnitPressure_in_cgs:
+    type: double
+    category: units
+    description: "Pressure unit conversion to CGS"
+    units: "g/(cm*s^2)"
+    derived: true
+    calculation: "UnitDensity_in_cgs * (UnitVelocity_in_cm_per_s^2)"
+    required_by: [core]
+    
+  UnitCoolingRate_in_cgs:
+    type: double
+    category: units
+    description: "Cooling rate unit conversion to CGS"
+    units: "erg*cm^3/s"
+    derived: true
+    calculation: "UnitPressure_in_cgs / UnitDensity_in_cgs * (UnitLength_in_cm^3) / UnitTime_in_s"
+    required_by: [cooling]
+    
+  UnitEnergy_in_cgs:
+    type: double
+    category: units
+    description: "Energy unit conversion to CGS"
+    units: "erg"
+    derived: true
+    calculation: "UnitMass_in_g * (UnitVelocity_in_cm_per_s^2)"
+    required_by: [core]
+    
+  G:
+    type: double
+    category: units
+    description: "Gravitational constant in simulation units"
+    units: "(Mpc/h) * (km/s)^2 / (1e10 Msun/h)"
+    derived: true
+    calculation: "6.672e-8 * UnitMass_in_g / (UnitLength_in_cm * (UnitVelocity_in_cm_per_s^2))"
+    required_by: [core]
+    
+  Hubble:
+    type: double
+    category: units
+    description: "Hubble constant in simulation units"
+    units: "1/time"
+    derived: true
+    calculation: "Hubble_h * 3.2407789e-18 * UnitTime_in_s"
+    required_by: [core]
+
+  # =============================================================================
+  # SUPERNOVA ENERGY PARAMETERS
+  # =============================================================================
+  
+  EnergySNcode:
+    type: double
+    category: starformation
+    description: "Supernova energy in code units"
+    units: "code energy"
+    required_by: [starformation]
+    default: 1.0
+    range: [0.1, 10.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "EnergySNcode"
+      json: "starformation.energy_sn_code"
+      
+  EnergySN:
+    type: double
+    category: starformation
+    description: "Supernova energy in physical units"
+    units: "erg"
+    derived: true
+    calculation: "EnergySNcode * UnitEnergy_in_cgs"
+    required_by: [starformation]
+    
+  EtaSNcode:
+    type: double
+    category: starformation
+    description: "Supernova efficiency in code units"
+    units: "code energy per unit mass"
+    required_by: [starformation]
+    default: 1.0
+    range: [0.1, 10.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "EtaSNcode"
+      json: "starformation.eta_sn_code"
+      
+  EtaSN:
+    type: double
+    category: starformation
+    description: "Supernova efficiency in physical units"
+    units: "erg/g"
+    derived: true
+    calculation: "EtaSNcode * UnitEnergy_in_cgs / UnitMass_in_g"
+    required_by: [starformation]
+
+  # =============================================================================
+  # PHYSICS MODULE PARAMETERS
+  # =============================================================================
+
+  # Recipe flags - control which physics modules are active
+  SFprescription:
+    type: int32_t
+    category: starformation
+    description: "Star formation prescription (0=Croton2006, 1=Guo2011)"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0
+    validation:
+      enum_values: [0, 1]
+    module_control: true  # Controls module activation
+    io_mappings:
+      par: "SFprescription"
+      json: "physics.starformation.prescription"
+      
+  AGNrecipeOn:
+    type: int32_t
+    category: starformation
+    description: "Enable AGN feedback (0=off, 1=on)"
+    units: dimensionless
+    required_by: [starformation]
+    default: 1
+    validation:
+      enum_values: [0, 1]
+    module_control: true
+    io_mappings:
+      par: "AGNrecipeOn"
+      json: "physics.starformation.agn_feedback"
+      
+  SupernovaRecipeOn:
+    type: int32_t
+    category: starformation
+    description: "Enable supernova feedback (0=off, 1=on)"
+    units: dimensionless
+    required_by: [starformation]
+    default: 1
+    validation:
+      enum_values: [0, 1]
+    module_control: true
+    io_mappings:
+      par: "SupernovaRecipeOn"
+      json: "physics.starformation.supernova_feedback"
+      
+  ReionizationOn:
+    type: int32_t
+    category: reionization
+    description: "Enable reionization effects (0=off, 1=on)"
+    units: dimensionless
+    required_by: [reionization]
+    default: 1
+    validation:
+      enum_values: [0, 1]
+    module_control: true
+    io_mappings:
+      par: "ReionizationOn"
+      json: "physics.reionization.enabled"
+      
+  DiskInstabilityOn:
+    type: int32_t
+    category: disk_instability
+    description: "Enable disk instability (0=off, 1=on)"
+    units: dimensionless
+    required_by: [disk_instability]
+    default: 1
+    validation:
+      enum_values: [0, 1]
+    module_control: true
+    io_mappings:
+      par: "DiskInstabilityOn"
+      json: "physics.disk_instability.enabled"
+
+  # Star formation and feedback parameters
+  RecycleFraction:
+    type: double
+    category: starformation
+    description: "Fraction of stellar mass returned to ISM"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0.43
+    range: [0.0, 1.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "RecycleFraction"
+      json: "physics.starformation.recycle_fraction"
+      
+  Yield:
+    type: double
+    category: starformation
+    description: "Metal yield from stellar evolution"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0.025
+    range: [0.0, 0.1]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "Yield"
+      json: "physics.starformation.yield"
+      
+  FracZleaveDisk:
+    type: double
+    category: starformation
+    description: "Fraction of metals that leave disk"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0.25
+    range: [0.0, 1.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "FracZleaveDisk"
+      json: "physics.starformation.frac_z_leave_disk"
+      
+  SfrEfficiency:
+    type: double
+    category: starformation
+    description: "Star formation efficiency"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0.05
+    range: [0.001, 1.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "SfrEfficiency"
+      json: "physics.starformation.efficiency"
+      
+  FeedbackReheatingEpsilon:
+    type: double
+    category: starformation
+    description: "Supernova feedback reheating efficiency"
+    units: dimensionless
+    required_by: [starformation]
+    default: 3.5
+    range: [0.0, 20.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "FeedbackReheatingEpsilon"
+      json: "physics.starformation.feedback_reheating_epsilon"
+      
+  FeedbackEjectionEfficiency:
+    type: double
+    category: starformation
+    description: "Supernova feedback ejection efficiency"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0.3
+    range: [0.0, 10.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "FeedbackEjectionEfficiency"
+      json: "physics.starformation.feedback_ejection_efficiency"
+
+  # AGN feedback parameters
+  RadioModeEfficiency:
+    type: double
+    category: starformation
+    description: "AGN radio mode feedback efficiency"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0.08
+    range: [0.0, 1.0]
+    validation:
+      range_check: true
+    available_when: "AGNrecipeOn == 1"
+    io_mappings:
+      par: "RadioModeEfficiency"
+      json: "physics.starformation.radio_mode_efficiency"
+      
+  QuasarModeEfficiency:
+    type: double
+    category: starformation
+    description: "AGN quasar mode feedback efficiency"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0.005
+    range: [0.0, 1.0]
+    validation:
+      range_check: true
+    available_when: "AGNrecipeOn == 1"
+    io_mappings:
+      par: "QuasarModeEfficiency"
+      json: "physics.starformation.quasar_mode_efficiency"
+      
+  BlackHoleGrowthRate:
+    type: double
+    category: starformation
+    description: "Black hole growth rate"
+    units: dimensionless
+    required_by: [starformation]
+    default: 0.005
+    range: [0.0, 1.0]
+    validation:
+      range_check: true
+    available_when: "AGNrecipeOn == 1"
+    io_mappings:
+      par: "BlackHoleGrowthRate"
+      json: "physics.starformation.black_hole_growth_rate"
+
+  # Gas reincorporation parameters
+  ReIncorporationFactor:
+    type: double
+    category: reincorporation
+    description: "Gas reincorporation time scale factor"
+    units: dimensionless
+    required_by: [reincorporation]
+    default: 2e10
+    range: [1e8, 1e12]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "ReIncorporationFactor"
+      json: "physics.reincorporation.factor"
+
+  # Merger parameters
+  ThreshMajorMerger:
+    type: double
+    category: mergers
+    description: "Mass ratio threshold for major mergers"
+    units: dimensionless
+    required_by: [mergers]
+    default: 0.3
+    range: [0.1, 1.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "ThreshMajorMerger"
+      json: "physics.mergers.major_merger_threshold"
+      
+  ThresholdSatDisruption:
+    type: double
+    category: mergers
+    description: "Threshold for satellite disruption"
+    units: dimensionless
+    required_by: [mergers]
+    default: 0.1
+    range: [0.01, 1.0]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "ThresholdSatDisruption"
+      json: "physics.mergers.satellite_disruption_threshold"
+
+  # Reionization parameters
+  Reionization_z0:
+    type: double
+    category: reionization
+    description: "Redshift at start of reionization"
+    units: dimensionless
+    required_by: [reionization]
+    default: 8.0
+    range: [5.0, 15.0]
+    validation:
+      range_check: true
+    available_when: "ReionizationOn == 1"
+    io_mappings:
+      par: "Reionization_z0"
+      json: "physics.reionization.z_start"
+      
+  Reionization_zr:
+    type: double
+    category: reionization
+    description: "Redshift at end of reionization"
+    units: dimensionless
+    required_by: [reionization]
+    default: 7.0
+    range: [5.0, 15.0]
+    validation:
+      range_check: true
+      dependency: "Reionization_zr < Reionization_z0"
+    available_when: "ReionizationOn == 1"
+    io_mappings:
+      par: "Reionization_zr"
+      json: "physics.reionization.z_end"
+
+  # Baryon fraction
+  BaryonFrac:
+    type: double
+    category: cosmology
+    description: "Universal baryon fraction"
+    units: dimensionless
+    required_by: [core]
+    default: 0.17
+    range: [0.1, 0.3]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "BaryonFrac"
+      json: "cosmology.baryon_fraction"
+
+  # =============================================================================
+  # ADVANCED SIMULATION CONTROL PARAMETERS
+  # =============================================================================
+  
+  ForestDistributionScheme:
+    type: enum
+    category: simulation
+    description: "Load balancing scheme for forest distribution"
+    required_by: [core]
+    default: linear_in_nhalos
+    validation:
+      enum_values: [uniform_in_forests, linear_in_nhalos, quadratic_in_nhalos, 
+                   exponent_in_nhalos, generic_power_in_nhalos]
+    io_mappings:
+      par: "ForestDistributionScheme"
+      json: "simulation.forest_distribution_scheme"
+      
+  Exponent_Forest_Dist_Scheme:
+    type: double
+    category: simulation
+    description: "Exponent for forest distribution load balancing"
+    units: dimensionless
+    required_by: [core]
+    default: 0.7
+    range: [0.1, 2.0]
+    validation:
+      range_check: true
+    available_when: "ForestDistributionScheme in [exponent_in_nhalos, generic_power_in_nhalos]"
+    io_mappings:
+      par: "Exponent_Forest_Dist_Scheme"
+      json: "simulation.forest_distribution_exponent"
+
+  FileNr_Mulfac:
+    type: int64_t
+    category: simulation
+    description: "Multiplier for file number in galaxy indexing"
+    units: dimensionless
+    required_by: [core]
+    default: 1000000000
+    range: [1000000, 1000000000000]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "FileNr_Mulfac"
+      json: "simulation.file_number_multiplier"
+      
+  ForestNr_Mulfac:
+    type: int64_t
+    category: simulation
+    description: "Multiplier for forest number in galaxy indexing"
+    units: dimensionless
+    required_by: [core]
+    default: 1000000
+    range: [1000, 1000000000]
+    validation:
+      range_check: true
+    io_mappings:
+      par: "ForestNr_Mulfac"
+      json: "simulation.forest_number_multiplier"
+
+  # =============================================================================
+  # RUNTIME/INTERNAL PARAMETERS (not user-configurable)
+  # =============================================================================
+  
+  nsnapshots:
+    type: int32_t
+    category: simulation
+    description: "Number of snapshots in simulation"
+    units: dimensionless
+    runtime_calculated: true
+    calculated_from: "FileWithSnapList"
+    
+  LastSnapshotNr:
+    type: int32_t
+    category: simulation
+    description: "Number of last snapshot"
+    units: dimensionless
+    runtime_calculated: true
+    calculated_from: "nsnapshots"
+    
+  SimMaxSnaps:
+    type: int32_t
+    category: simulation
+    description: "Maximum snapshots supported"
+    units: dimensionless
+    compile_time_constant: 1000  # ABSOLUTEMAXSNAPS
+    
+  NumSnapOutputs:
+    type: int32_t
+    category: simulation
+    description: "Number of snapshots to output"
+    units: dimensionless
+    runtime_calculated: true
+    
+  Snaplistlen:
+    type: int32_t
+    category: simulation
+    description: "Length of snapshot list"
+    units: dimensionless
+    runtime_calculated: true
+    calculated_from: "FileWithSnapList"
+    
+  # Arrays for snapshot data
+  ListOutputSnaps:
+    type: int32_t[]
+    category: simulation
+    description: "List of snapshots to output"
+    units: dimensionless
+    runtime_calculated: true
+    array_size: "ABSOLUTEMAXSNAPS"
+    
+  redshift:
+    type: double[]
+    category: simulation
+    description: "Redshift values for each snapshot"
+    units: dimensionless
+    runtime_calculated: true
+    calculated_from: "FileWithSnapList"
+    array_size: "ABSOLUTEMAXSNAPS"
+    
+  scale_factors:
+    type: double[]
+    category: simulation
+    description: "Scale factor values for each snapshot"
+    units: dimensionless
+    runtime_calculated: true
+    calculated_from: "redshift"
+    array_size: "ABSOLUTEMAXSNAPS"
+    
+  Age:
+    type: double[]
+    category: simulation
+    description: "Age of universe at each snapshot"
+    units: "Gyr"
+    runtime_calculated: true
+    calculated_from: "redshift"
+    array_size: "ABSOLUTEMAXSNAPS"
+
+  # MPI/parallel parameters
+  ThisTask:
+    type: int32_t
+    category: simulation
+    description: "MPI task ID"
+    units: dimensionless
+    runtime_set: true
+    
+  NTasks:
+    type: int32_t
+    category: simulation
+    description: "Total number of MPI tasks"
+    units: dimensionless
+    runtime_set: true
+
+  # Interrupt handling
+  interrupted:
+    type: int32_t
+    category: simulation
+    description: "Flag for interrupted execution"
+    units: dimensionless
+    runtime_set: true
+    default: 0
+
+# Parameter dependency validation rules
+dependency_rules:
+  file_consistency:
+    description: "File processing parameters must be consistent"
+    rules:
+      - "FirstFile <= LastFile"
+      - "LastFile < NumSimulationTreeFiles"
+    categories: [core]
+    
+  cosmology_consistency:
+    description: "Cosmological parameters must be physically reasonable"
+    rules:
+      - "Omega + OmegaLambda <= 1.1"  # Allow numerical tolerance
+      - "Omega > 0.0"
+      - "OmegaLambda >= 0.0"
+      - "Hubble_h > 0.0"
+      - "BoxSize > 0.0"
+    categories: [cosmology]
+    
+  physics_consistency:
+    description: "Physics parameters must be physically reasonable"
+    rules:
+      - "RecycleFraction >= 0.0 and RecycleFraction <= 1.0"
+      - "Yield >= 0.0 and Yield <= 0.1"
+      - "SfrEfficiency > 0.0 and SfrEfficiency <= 1.0"
+      - "BaryonFrac > 0.0 and BaryonFrac < 1.0"
+    categories: [starformation]
+    
+  reionization_consistency:
+    description: "Reionization parameters must be consistent"
+    rules:
+      - "Reionization_zr < Reionization_z0"
+      - "Reionization_z0 > 5.0"
+      - "Reionization_zr > 5.0"
+    categories: [reionization]
+    available_when: "ReionizationOn == 1"
+
+# Module availability matrix - defines which parameters are needed for different physics combinations
+module_requirements:
+  core_only:
+    description: "Parameters for physics-free operation"
+    required_parameters: [FirstFile, LastFile, OutputDir, FileNameGalaxies, TreeName, TreeExtension,
+                         SimulationDir, FileWithSnapList, NumSimulationTreeFiles, TreeType, OutputFormat,
+                         Omega, OmegaLambda, Hubble_h, BoxSize, PartMass, BaryonFrac]
+    optional_parameters: [ForestDistributionScheme, Exponent_Forest_Dist_Scheme]
+    
+  minimal_physics:
+    description: "Parameters for cooling and star formation"
+    inherits: core_only
+    additional_required: [EnergySNcode, EtaSNcode, SFprescription, RecycleFraction, Yield, 
+                         FracZleaveDisk, SfrEfficiency, FeedbackReheatingEpsilon, FeedbackEjectionEfficiency]
+    modules: [cooling, starformation]
+    
+  standard_physics:
+    description: "Parameters for full physics suite"
+    inherits: minimal_physics
+    additional_required: [AGNrecipeOn, SupernovaRecipeOn, ReionizationOn, DiskInstabilityOn,
+                         ReIncorporationFactor, ThreshMajorMerger, ThresholdSatDisruption]
+    conditional_parameters:
+      - parameter_group: [RadioModeEfficiency, QuasarModeEfficiency, BlackHoleGrowthRate]
+        condition: "AGNrecipeOn == 1"
+      - parameter_group: [Reionization_z0, Reionization_zr]
+        condition: "ReionizationOn == 1"
+    modules: [cooling, starformation, mergers, reincorporation, disk_instability, reionization]
+
+# Configuration inheritance examples
+configuration_examples:
+  cosmological_test:
+    inherits: standard_physics
+    description: "Standard cosmological simulation"
+    parameter_overrides:
+      OutputFormat: sage_hdf5
+      SFprescription: 0
+      AGNrecipeOn: 1
+      ReionizationOn: 1
+      DiskInstabilityOn: 1
+      
+  minimal_test:
+    inherits: minimal_physics
+    description: "Minimal physics for testing"
+    parameter_overrides:
+      OutputFormat: sage_hdf5
+      SFprescription: 0
+      AGNrecipeOn: 0
+      SupernovaRecipeOn: 1
+      
+  core_test:
+    inherits: core_only
+    description: "Core-only testing (no physics)"
+    parameter_overrides:
+      OutputFormat: sage_hdf5
+      TreeType: lhalo_hdf5
+
+# I/O format mappings for different configuration file types
+io_format_mappings:
+  legacy_par:
+    # Legacy .par file format
+    description: "Original SAGE parameter file format"
+    format: "key value"
+    comment_char: "%"
+    
+  json:
+    # Modern JSON configuration format
+    description: "Hierarchical JSON configuration"
+    format: "json"
+    supports_inheritance: true
+    supports_comments: false
+    
+  yaml:
+    # YAML configuration format (future)
+    description: "Human-readable YAML configuration"
+    format: "yaml"
+    supports_inheritance: true
+    supports_comments: true

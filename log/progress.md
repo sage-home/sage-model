@@ -47,3 +47,11 @@
 - Professional implementation with memory management, type safety, and extensible design ready for future configuration needs
 - **Files Created**: src/core/config/config.h, src/core/config/config.c, src/core/config/config_legacy.c, src/core/config/config_validation.c, src/core/config/config_json.c, tests/test_config.c
 - **Files Modified**: src/core/core_read_parameter_file.c, src/core/core_read_parameter_file.h, CMakeLists.txt (added config system options and sources)
+
+2025-08-22: [Task 2.1] Property Metadata Design Complete
+- Successfully implemented metadata-driven property system foundation enabling runtime modularity and physics-agnostic core per enhanced Task 2.1 plan
+- Created comprehensive properties.yaml with module-aware organization, multi-dimensional categorization, property availability matrix, and dynamic I/O field generation
+- Implemented parameters.yaml with module awareness, inheritance hierarchies, cross-parameter validation, and support for legacy/JSON formats
+- Established critical I/O skipping mechanism: properties without io_mappings are automatically excluded from output (deltaMvir, r_heat, SfrDiskColdGas[], etc.)
+- **Files Created**: schema/properties.yaml, schema/parameters.yaml, docs/schema-reference.md, docs/code-generation-interface.md
+- **Files Modified**: None (pure additive for metadata foundation)

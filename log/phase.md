@@ -21,10 +21,10 @@
 ## Current Progress
 
 ### Task 2.1: Property Metadata Design
-- [ ] Create properties.yaml with core/physics separation
-- [ ] Define parameters.yaml for simulation parameters
-- [ ] Establish property categorization (core, physics, derived)
-- [ ] Document metadata schema and conventions
+- [x] Create properties.yaml with core/physics separation
+- [x] Define parameters.yaml for simulation parameters
+- [x] Establish property categorization (core, physics, derived)
+- [x] Document metadata schema and conventions
 
 ### Task 2.2: Code Generation System
 - [ ] Create generate_property_headers.py script
@@ -62,7 +62,7 @@
 - All tests pass with identical scientific results
 - Build system automatically generates property code
 
-**Phase 2 Status**: 0/5 tasks completed
+**Phase 2 Status**: 1/5 tasks completed
 
 ## Inter-Phase Dependencies
 - **From Phase 1**: ✅ CMake build system (for code generation integration)

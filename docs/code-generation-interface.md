@@ -1,0 +1,571 @@
+# Code Generation Interface Specification
+
+**Purpose**: Technical specification for implementing the code generation pipeline (Task 2.2)  
+**Version**: 2.1.0  
+**Dependencies**: properties.yaml, parameters.yaml schema files  
+
+---
+
+## Overview
+
+This document specifies the exact interfaces and integration points required for implementing the schema-based code generation system. The code generation pipeline will consume the YAML schema files and produce type-safe C code for property access, parameter validation, and I/O operations.
+
+## Required Generated Files
+
+### 1. Core Generated Headers
+
+#### `generated/sage_properties.h`
+**Purpose**: Type-safe property access system
+```c
+#ifndef SAGE_PROPERTIES_H
+#define SAGE_PROPERTIES_H
+
+// Property availability compile-time flags
+#define SAGE_PROPERTY_SNAPNUM_AVAILABLE 1
+#define SAGE_PROPERTY_COLDGAS_AVAILABLE PHYSICS_MODULE_COOLING
+// ... one for each property
+
+// Property access macros with availability checking
+#define GALAXY_GET_SNAPNUM(g) ((g)->core.SnapNum)
+#define GALAXY_SET_SNAPNUM(g, val) ((g)->core.SnapNum = (val))
+
+#if PHYSICS_MODULE_COOLING
+#define GALAXY_GET_COLDGAS(g) ((g)->physics.ColdGas)
+#define GALAXY_SET_COLDGAS(g, val) ((g)->physics.ColdGas = (val))
+#else
+#define GALAXY_GET_COLDGAS(g) SAGE_PROPERTY_ERROR("ColdGas", "cooling")
+#define GALAXY_SET_COLDGAS(g, val) SAGE_PROPERTY_ERROR("ColdGas", "cooling")
+#endif
+
+// Property iteration support
+typedef enum {
+    PROPERTY_SNAPNUM = 0,
+    PROPERTY_TYPE = 1,
+    PROPERTY_COLDGAS = 2,  // Only if PHYSICS_MODULE_COOLING
+    // ... 
+    PROPERTY_COUNT
+} sage_property_id_t;
+
+// Property metadata access
+const char* sage_property_name(sage_property_id_t prop);
+const char* sage_property_units(sage_property_id_t prop);
+int sage_property_is_available(sage_property_id_t prop);
+size_t sage_property_offset(sage_property_id_t prop);
+size_t sage_property_size(sage_property_id_t prop);
+
+#endif
+```
+
+#### `generated/sage_structures.h`
+**Purpose**: Optimized data structure definitions
+```c
+#ifndef SAGE_STRUCTURES_H
+#define SAGE_STRUCTURES_H
+
+// Core structure (always present, cache-aligned)
+struct galaxy_core {
+    int32_t SnapNum;
+    int32_t Type;
+    int32_t GalaxyNr;
+    int32_t CentralGal;
+    int32_t HaloNr;
+    int64_t MostBoundID;
+    uint64_t GalaxyIndex;
+    uint64_t CentralGalaxyIndex;
+    float Pos[3];
+    float Vel[3];
+    int32_t Len;
+    float Mvir;
+    float deltaMvir;
+    float CentralMvir;
+    float Rvir;
+    float Vvir;
+    float Vmax;
+} __attribute__((aligned(64)));
+
+// Physics structure (conditionally compiled)
+#if PHYSICS_MODULES_LOADED
+struct galaxy_physics {
+#if PHYSICS_MODULE_COOLING
+    float ColdGas;
+    float HotGas;
+#endif
+#if PHYSICS_MODULE_STARFORMATION
+    float StellarMass;
+    float BulgeMass;
+    float EjectedMass;
+    float BlackHoleMass;
+    // ... other starformation properties
+#endif
+    // ... other module properties
+};
+#endif
+
+// Main galaxy structure
+struct GALAXY {
+    struct galaxy_core core;
+#if PHYSICS_MODULES_LOADED
+    struct galaxy_physics physics;
+#endif
+    
+    // Dynamic arrays (allocated separately)
+#if PHYSICS_MODULE_STARFORMATION
+    float *SfrDisk;     // Size: STEPS
+    float *SfrBulge;    // Size: STEPS
+    // ... other arrays
+#endif
+};
+
+// Array size constants (from parameters)
+#define SAGE_STEPS ${STEPS}
+#define SAGE_ABSOLUTEMAXSNAPS ${ABSOLUTEMAXSNAPS}
+
+#endif
+```
+
+#### `generated/sage_parameters.h`
+**Purpose**: Parameter validation and access
+```c
+#ifndef SAGE_PARAMETERS_H  
+#define SAGE_PARAMETERS_H
+
+// Parameter structure with module-conditional fields
+struct sage_parameters {
+    // Core parameters (always present)
+    int32_t FirstFile;
+    int32_t LastFile;
+    char OutputDir[MAX_STRING_LEN];
+    // ...
+    
+    // Cosmology parameters
+    double Omega;
+    double OmegaLambda;
+    double Hubble_h;
+    // ...
+    
+    // Physics parameters (conditionally compiled)
+#if PHYSICS_MODULE_STARFORMATION
+    double SfrEfficiency;
+    double RecycleFraction;
+    int32_t AGNrecipeOn;
+    // ...
+#endif
+    
+    // Derived parameters (calculated at runtime)
+    double UnitTime_in_s;
+    double G;
+    double Hubble;
+    // ...
+};
+
+// Parameter validation
+int sage_validate_parameters(const struct sage_parameters *params);
+int sage_calculate_derived_parameters(struct sage_parameters *params);
+
+// Parameter access with validation
+#define PARAM_GET_OMEGA(p) ((p)->Omega)
+#define PARAM_SET_OMEGA(p, val) \
+    (((val) >= 0.0 && (val) <= 1.0) ? ((p)->Omega = (val), 0) : SAGE_INVALID_PARAMETER)
+
+#endif
+```
+
+### 2. Implementation Files
+
+#### `generated/sage_properties.c`
+**Purpose**: Property system implementation
+```c
+#include "sage_properties.h"
+
+// Property metadata tables
+static const char* property_names[] = {
+    [PROPERTY_SNAPNUM] = "SnapNum",
+    [PROPERTY_TYPE] = "Type",
+#if PHYSICS_MODULE_COOLING
+    [PROPERTY_COLDGAS] = "ColdGas",
+#endif
+    // ...
+};
+
+static const char* property_units[] = {
+    [PROPERTY_SNAPNUM] = "dimensionless",
+    [PROPERTY_TYPE] = "dimensionless", 
+#if PHYSICS_MODULE_COOLING
+    [PROPERTY_COLDGAS] = "1e10 Msun/h",
+#endif
+    // ...
+};
+
+static const size_t property_offsets[] = {
+    [PROPERTY_SNAPNUM] = offsetof(struct GALAXY, core.SnapNum),
+    [PROPERTY_TYPE] = offsetof(struct GALAXY, core.Type),
+#if PHYSICS_MODULE_COOLING
+    [PROPERTY_COLDGAS] = offsetof(struct GALAXY, physics.ColdGas),
+#endif
+    // ...
+};
+
+// Implementation functions
+const char* sage_property_name(sage_property_id_t prop) {
+    if (prop >= PROPERTY_COUNT) return NULL;
+    return property_names[prop];
+}
+
+int sage_property_is_available(sage_property_id_t prop) {
+    switch (prop) {
+        case PROPERTY_SNAPNUM:
+        case PROPERTY_TYPE:
+            return 1;  // Core properties always available
+#if PHYSICS_MODULE_COOLING            
+        case PROPERTY_COLDGAS:
+            return 1;
+#endif
+        default:
+            return 0;
+    }
+}
+
+// Property iteration for I/O (only properties with io_mappings)
+int sage_iterate_output_properties(
+    int (*callback)(sage_property_id_t prop, void *data),
+    void *user_data
+) {
+    for (sage_property_id_t prop = 0; prop < PROPERTY_COUNT; prop++) {
+        if (sage_property_is_available(prop) && sage_property_has_io_mapping(prop)) {
+            int result = callback(prop, user_data);
+            if (result != 0) return result;
+        }
+    }
+    return 0;
+}
+
+int sage_property_has_io_mapping(sage_property_id_t prop) {
+    // Generated based on io_mappings in schema
+    switch (prop) {
+        case PROPERTY_SNAPNUM:
+        case PROPERTY_TYPE:
+        case PROPERTY_COLDGAS:  // Has io_mappings in schema
+            return 1;
+        case PROPERTY_DELTAMVIR:  // NO io_mappings - internal only
+        case PROPERTY_R_HEAT:     // NO io_mappings - internal only  
+        case PROPERTY_SFRDISKCOLDGAS:  // NO io_mappings - internal only
+            return 0;
+        default:
+            return 0;
+    }
+}
+```
+
+#### `generated/sage_io_hdf5.c`
+**Purpose**: Dynamic HDF5 I/O based on available properties
+```c
+#include "sage_io_hdf5.h"
+#include "sage_properties.h"
+
+// HDF5 field writing based on available properties
+int write_galaxy_properties_hdf5(hid_t file_id, const struct GALAXY *galaxies, 
+                                 int ngals) {
+    // Core properties (always written)
+    write_hdf5_property(file_id, "SnapNum", PROPERTY_SNAPNUM, galaxies, ngals);
+    write_hdf5_property(file_id, "Type", PROPERTY_TYPE, galaxies, ngals);
+    // ...
+    
+    // Physics properties (conditionally written)
+#if PHYSICS_MODULE_COOLING
+    if (sage_property_is_available(PROPERTY_COLDGAS)) {
+        write_hdf5_property(file_id, "ColdGas", PROPERTY_COLDGAS, galaxies, ngals);
+    }
+#endif
+    
+    // Derived fields (calculated at output time)
+    write_derived_star_formation_rate(file_id, galaxies, ngals);
+    
+    return 0;
+}
+
+// Helper function for property-based HDF5 writing
+static int write_hdf5_property(hid_t file_id, const char *field_name,
+                              sage_property_id_t prop, 
+                              const struct GALAXY *galaxies, int ngals) {
+    // KEY: Only write properties that are both available AND have io_mappings
+    if (!sage_property_is_available(prop) || !sage_property_has_io_mapping(prop)) {
+        return 0;  // Skip internal properties (deltaMvir, r_heat, SfrDiskColdGas, etc.)
+    }
+    
+    // Get property metadata
+    size_t offset = property_offsets[prop];
+    size_t size = property_sizes[prop];
+    hid_t dtype = property_hdf5_types[prop];
+    
+    // Write data
+    return write_hdf5_field_generic(file_id, field_name, galaxies, ngals,
+                                   offset, size, dtype);
+}
+
+// Alternative: use property iteration to automatically skip internal properties
+int write_all_available_properties_hdf5(hid_t file_id, const struct GALAXY *galaxies, int ngals) {
+    return sage_iterate_output_properties(write_single_property_callback, &write_context);
+}
+```
+
+### 3. Build System Integration
+
+#### `scripts/generate_property_headers.py`
+**Purpose**: Main code generation script
+```python
+#!/usr/bin/env python3
+"""
+SAGE Property Code Generation Script
+
+Reads properties.yaml and parameters.yaml and generates type-safe C code
+for property access, parameter validation, and I/O operations.
+"""
+
+import yaml
+import argparse
+from pathlib import Path
+from typing import Dict, List, Any
+
+class PropertyCodeGenerator:
+    def __init__(self, properties_file: Path, parameters_file: Path, 
+                 output_dir: Path, modules: List[str]):
+        self.properties = self._load_yaml(properties_file)
+        self.parameters = self._load_yaml(parameters_file) 
+        self.output_dir = output_dir
+        self.enabled_modules = set(modules)
+        
+    def generate_all(self):
+        """Generate all code files"""
+        self.generate_property_headers()
+        self.generate_structure_definitions()
+        self.generate_parameter_validation()
+        self.generate_io_functions()
+        
+    def generate_property_headers(self):
+        """Generate sage_properties.h"""
+        # Implementation using Jinja2 templates
+        pass
+        
+    def _load_yaml(self, file_path: Path) -> Dict[str, Any]:
+        with open(file_path) as f:
+            return yaml.safe_load(f)
+            
+    def _property_is_available(self, prop_name: str) -> bool:
+        """Check if property is available with current module set"""
+        prop = self.properties['properties'][prop_name]
+        required_by = prop.get('required_by', [])
+        
+        # Core properties always available
+        if prop.get('category') == 'core':
+            return True
+            
+        # Physics properties need their modules loaded
+        return any(module in self.enabled_modules for module in required_by)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Generate SAGE property code')
+    parser.add_argument('--properties', required=True, help='properties.yaml file')
+    parser.add_argument('--parameters', required=True, help='parameters.yaml file')
+    parser.add_argument('--output-dir', required=True, help='Output directory')
+    parser.add_argument('--modules', nargs='+', default=[], 
+                       help='Enabled physics modules')
+    
+    args = parser.parse_args()
+    
+    generator = PropertyCodeGenerator(
+        Path(args.properties),
+        Path(args.parameters), 
+        Path(args.output_dir),
+        args.modules
+    )
+    
+    generator.generate_all()
+```
+
+#### CMake Integration
+```cmake
+# In CMakeLists.txt
+
+# Find Python for code generation
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# Define available physics modules based on build options
+set(SAGE_PHYSICS_MODULES "")
+if(ENABLE_COOLING)
+    list(APPEND SAGE_PHYSICS_MODULES "cooling")
+    add_compile_definitions(PHYSICS_MODULE_COOLING=1)
+endif()
+if(ENABLE_STARFORMATION)
+    list(APPEND SAGE_PHYSICS_MODULES "starformation")  
+    add_compile_definitions(PHYSICS_MODULE_STARFORMATION=1)
+endif()
+# ... other modules
+
+# Generate property headers before building
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/generated/sage_properties.h
+           ${CMAKE_BINARY_DIR}/generated/sage_structures.h
+           ${CMAKE_BINARY_DIR}/generated/sage_parameters.h
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/scripts/generate_property_headers.py
+            --properties ${CMAKE_SOURCE_DIR}/schema/properties.yaml
+            --parameters ${CMAKE_SOURCE_DIR}/schema/parameters.yaml  
+            --output-dir ${CMAKE_BINARY_DIR}/generated
+            --modules ${SAGE_PHYSICS_MODULES}
+    DEPENDS schema/properties.yaml schema/parameters.yaml
+    COMMENT "Generating property system code"
+)
+
+# Create generated code target
+add_custom_target(generate_properties
+    DEPENDS ${CMAKE_BINARY_DIR}/generated/sage_properties.h
+            ${CMAKE_BINARY_DIR}/generated/sage_structures.h
+            ${CMAKE_BINARY_DIR}/generated/sage_parameters.h
+)
+
+# Include generated headers
+target_include_directories(sage PRIVATE ${CMAKE_BINARY_DIR}/generated)
+
+# Make sure generated code is built before main target
+add_dependencies(sage generate_properties)
+```
+
+## Integration Points
+
+### 1. Current Code Migration
+
+#### Property Access Migration
+**Current**: Direct struct field access
+```c
+// Old code
+gal->ColdGas += cooled_gas;
+total_stellar_mass = gal->StellarMass + gal->BulgeMass;
+```
+
+**Generated**: Type-safe macro access
+```c
+// New code
+GALAXY_SET_COLDGAS(gal, GALAXY_GET_COLDGAS(gal) + cooled_gas);
+total_stellar_mass = GALAXY_GET_STELLARMASS(gal) + GALAXY_GET_BULGEMASS(gal);
+```
+
+#### Parameter Access Migration  
+**Current**: Direct struct access
+```c
+// Old code
+if (run_params->AGNrecipeOn) {
+    // AGN feedback code
+}
+```
+
+**Generated**: Validated parameter access
+```c
+// New code  
+if (PARAM_GET_AGNRECIPEON(run_params)) {
+    // AGN feedback code
+}
+```
+
+### 2. I/O System Integration
+
+#### HDF5 Output Migration
+**Current**: Hardcoded field lists
+```c
+// Old save_gals_hdf5.c
+write_hdf5_field(file_id, "ColdGas", &gal->ColdGas, ngals, H5T_NATIVE_FLOAT);
+write_hdf5_field(file_id, "StellarMass", &gal->StellarMass, ngals, H5T_NATIVE_FLOAT);
+```
+
+**Generated**: Dynamic field generation
+```c
+// New generated code
+write_galaxy_properties_hdf5(file_id, galaxies, ngals);  // Automatically includes all available properties
+```
+
+### 3. Build Configuration Support
+
+#### Module Selection
+```bash
+# Core only build
+cmake -DENABLE_COOLING=OFF -DENABLE_STARFORMATION=OFF ..
+
+# Minimal physics build
+cmake -DENABLE_COOLING=ON -DENABLE_STARFORMATION=ON -DENABLE_MERGERS=OFF ..
+
+# Full physics build  
+cmake -DENABLE_COOLING=ON -DENABLE_STARFORMATION=ON -DENABLE_MERGERS=ON ..
+```
+
+#### Generated Build Flags
+```c
+// Automatically generated based on module selection
+#define PHYSICS_MODULE_COOLING 1
+#define PHYSICS_MODULE_STARFORMATION 1
+#define PHYSICS_MODULE_MERGERS 0
+#define PHYSICS_MODULES_LOADED (PHYSICS_MODULE_COOLING || PHYSICS_MODULE_STARFORMATION)
+
+// Array sizes from parameters
+#define SAGE_STEPS 10
+#define SAGE_ABSOLUTEMAXSNAPS 1000
+```
+
+## Validation Framework
+
+### 1. Schema Validation
+```python
+# Validate schema consistency during code generation
+def validate_schema(properties, parameters):
+    # Check that all property module dependencies exist
+    # Verify parameter inheritance chains
+    # Ensure I/O mappings are complete
+    # Validate property/parameter module alignment
+```
+
+### 2. Generated Code Testing
+```c
+// Generated test functions
+int test_property_access_core_only(void);
+int test_property_access_minimal_physics(void);
+int test_property_access_full_physics(void);
+int test_parameter_validation(void);
+int test_io_field_generation(void);
+```
+
+### 3. Runtime Validation
+```c
+// Runtime property system validation
+int sage_validate_property_system(void) {
+    // Check that all required properties are available
+    // Verify parameter consistency
+    // Validate memory layout assumptions
+    return SAGE_SUCCESS;
+}
+```
+
+## Migration Timeline
+
+### Phase 2.2: Code Generation Implementation
+1. Implement Python code generation script
+2. Create Jinja2 templates for generated files
+3. Integrate with CMake build system
+4. Generate basic property access macros
+
+### Phase 2.3: Property API Implementation  
+1. Use generated headers in core code
+2. Create property validation framework
+3. Implement runtime availability checking
+4. Build property initialization/cleanup
+
+### Phase 2.4: Core Property Migration
+1. Replace direct property access with macros
+2. Update core_allvars.h to use generated structures
+3. Adapt core_build_model.c to new property access
+4. Ensure backward compatibility
+
+### Phase 2.5: Build System Integration
+1. Complete CMake integration
+2. Support multiple build configurations
+3. Add IDE support for generated headers
+4. Implement incremental generation
+
+This specification provides the complete technical foundation for implementing the code generation pipeline that will transform SAGE's hardcoded property system into a flexible, metadata-driven architecture.

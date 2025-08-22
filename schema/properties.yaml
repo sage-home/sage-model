@@ -1,0 +1,977 @@
+# SAGE Property Metadata Schema
+# Purpose: Define galaxy properties with module awareness, memory optimization, and I/O integration
+# Version: 2.1.0 - Enhanced for runtime modularity and physics-agnostic core
+
+schema_version: "2.1.0"
+generated_code_version: "1.0.0"
+
+# Global configuration for property system
+config:
+  # Enable compile-time property availability checking
+  compile_time_checks: true
+  # Enable runtime property availability validation  
+  runtime_checks: true
+  # Enable memory layout optimization
+  memory_optimization: true
+  # Support for dynamic array sizing
+  dynamic_arrays: true
+
+# Core organizational dimensions for properties
+dimensions:
+  # Module-based organization: which modules provide/require properties
+  by_module:
+    core:           # Always available - physics-agnostic infrastructure
+    cooling:        # Cooling/heating physics module
+    starformation:  # Star formation and feedback module  
+    mergers:        # Galaxy merger physics module
+    reincorporation: # Gas reincorporation module
+    disk_instability: # Disk instability module
+    misc:           # Miscellaneous physics processes
+    
+  # Access pattern organization: how properties are typically used together
+  by_access:
+    identification: # Properties for galaxy identification and tracking
+    spatial:        # Position, velocity, and spatial properties
+    halo:          # Halo-related properties
+    baryonic:      # Baryonic mass components
+    metals:        # Metal content tracking
+    star_formation: # Star formation history and rates
+    evolution:     # Time-dependent evolution properties
+    
+  # Memory layout organization: properties grouped for cache efficiency
+  by_memory:
+    core_block:    # Frequently accessed core properties (cache-friendly)
+    physics_block: # Physics properties (may be conditionally allocated)
+    arrays_block:  # Variable-sized arrays (separate allocation)
+    derived_block: # Calculated/derived properties (lazy evaluation)
+    
+  # I/O organization: how properties map to different output formats
+  by_io:
+    essential:     # Always included in output
+    optional:      # Included based on configuration
+    derived:       # Calculated at output time
+    internal:      # Never output (internal bookkeeping)
+
+# Property definitions with enhanced metadata
+properties:
+
+  # =============================================================================
+  # CORE PROPERTIES - Physics-agnostic, always available
+  # =============================================================================
+  
+  SnapNum:
+    type: int32_t
+    category: core
+    access_group: identification
+    memory_group: core_block
+    io_group: essential
+    description: "Snapshot number for this galaxy"
+    units: dimensionless
+    range: [0, 1000]
+    required_by: [core]
+    io_mappings:
+      hdf5: "SnapNum"
+      binary: "SnapNum"
+    
+  Type:
+    type: int32_t  
+    category: core
+    access_group: identification
+    memory_group: core_block
+    io_group: essential
+    description: "Galaxy type (0=central, 1=satellite, 2=orphan)"
+    units: dimensionless
+    range: [0, 2]
+    required_by: [core]
+    validation:
+      enum_values: [0, 1, 2]
+    io_mappings:
+      hdf5: "Type"
+      binary: "Type"
+      
+  GalaxyNr:
+    type: int32_t
+    category: core
+    access_group: identification  
+    memory_group: core_block
+    io_group: essential
+    description: "Galaxy number within tree"
+    units: dimensionless
+    range: [0, 1000000]
+    required_by: [core]
+    io_mappings:
+      hdf5: "GalaxyIndex"
+      binary: "GalaxyNr"
+      
+  CentralGal:
+    type: int32_t
+    category: core
+    access_group: identification
+    memory_group: core_block
+    io_group: essential  
+    description: "Index of central galaxy in FoF group"
+    units: dimensionless
+    required_by: [core]
+    io_mappings:
+      hdf5: "CentralGalaxyIndex"
+      binary: "CentralGal"
+      
+  HaloNr:
+    type: int32_t
+    category: core
+    access_group: identification
+    memory_group: core_block
+    io_group: essential
+    description: "Halo number from merger tree"
+    units: dimensionless
+    required_by: [core]
+    io_mappings:
+      hdf5: "HaloNr"
+      binary: "HaloNr"
+      
+  MostBoundID:
+    type: int64_t
+    category: core
+    access_group: identification
+    memory_group: core_block
+    io_group: optional
+    description: "ID of most bound particle in halo"
+    units: dimensionless
+    required_by: [core]
+    io_mappings:
+      hdf5: "MostBoundID"
+      binary: "MostBoundID"
+      
+  GalaxyIndex:
+    type: uint64_t
+    category: core  
+    access_group: identification
+    memory_group: core_block
+    io_group: essential
+    description: "Unique galaxy identifier across all files"
+    units: dimensionless
+    required_by: [core]
+    io_mappings:
+      hdf5: "GalaxyIndex"
+      binary: "GalaxyIndex"
+      
+  CentralGalaxyIndex:
+    type: uint64_t
+    category: core
+    access_group: identification
+    memory_group: core_block  
+    io_group: essential
+    description: "GalaxyIndex of central galaxy"
+    units: dimensionless
+    required_by: [core]
+    io_mappings:
+      hdf5: "CentralGalaxyIndex"
+      binary: "CentralGalaxyIndex"
+
+  # Spatial properties
+  Pos:
+    type: float[3]
+    category: core
+    access_group: spatial
+    memory_group: core_block
+    io_group: essential
+    description: "Galaxy position in comoving coordinates"
+    units: "Mpc/h"
+    required_by: [core]
+    array_size: 3
+    io_mappings:
+      hdf5: "Pos"
+      binary: "Pos"
+      
+  Vel:
+    type: float[3]
+    category: core
+    access_group: spatial
+    memory_group: core_block
+    io_group: optional
+    description: "Galaxy velocity"
+    units: "km/s"
+    required_by: [core]
+    array_size: 3
+    io_mappings:
+      hdf5: "Vel"
+      binary: "Vel"
+
+  # Halo properties  
+  Len:
+    type: int32_t
+    category: core
+    access_group: halo
+    memory_group: core_block
+    io_group: essential
+    description: "Number of particles in halo"
+    units: dimensionless
+    range: [1, 1000000000]
+    required_by: [core]
+    io_mappings:
+      hdf5: "Len"
+      binary: "Len"
+      
+  Mvir:
+    type: float
+    category: core
+    access_group: halo
+    memory_group: core_block
+    io_group: essential
+    description: "Virial mass of halo"
+    units: "1e10 Msun/h"
+    range: [0.0, 1000.0]
+    required_by: [core]
+    io_mappings:
+      hdf5: "Mvir"
+      binary: "Mvir"
+      
+  deltaMvir:
+    type: float
+    category: core
+    access_group: halo
+    memory_group: core_block
+    io_group: internal
+    description: "Change in virial mass since last snapshot"
+    units: "1e10 Msun/h"
+    required_by: [core]
+    # NO io_mappings - this property is not output (internal calculation only)
+      
+  CentralMvir:
+    type: float
+    category: core
+    access_group: halo
+    memory_group: core_block
+    io_group: optional
+    description: "Virial mass of central halo"
+    units: "1e10 Msun/h"
+    required_by: [core]
+    io_mappings:
+      hdf5: "CentralMvir"
+      binary: "CentralMvir"
+      
+  Rvir:
+    type: float
+    category: core
+    access_group: halo
+    memory_group: core_block
+    io_group: essential
+    description: "Virial radius of halo"
+    units: "Mpc/h"
+    range: [0.0, 10.0]
+    required_by: [core]
+    io_mappings:
+      hdf5: "Rvir"
+      binary: "Rvir"
+      
+  Vvir:
+    type: float
+    category: core
+    access_group: halo
+    memory_group: core_block
+    io_group: essential
+    description: "Virial velocity of halo"
+    units: "km/s"
+    range: [0.0, 5000.0]
+    required_by: [core]
+    io_mappings:
+      hdf5: "Vvir"
+      binary: "Vvir"
+      
+  Vmax:
+    type: float
+    category: core
+    access_group: halo
+    memory_group: core_block
+    io_group: optional
+    description: "Maximum circular velocity"
+    units: "km/s"
+    required_by: [core]
+    io_mappings:
+      hdf5: "Vmax"
+      binary: "Vmax"
+      
+  VelDisp:
+    type: float
+    category: core
+    access_group: halo
+    memory_group: core_block
+    io_group: optional
+    description: "Velocity dispersion"
+    units: "km/s"
+    required_by: [core]
+    provided_by: [core]  # Calculated from halo data
+    io_mappings:
+      hdf5: "VelDisp"
+      binary: "VelDisp"
+
+  # =============================================================================
+  # PHYSICS PROPERTIES - Module-dependent, conditionally available
+  # =============================================================================
+
+  # Baryonic mass components
+  ColdGas:
+    type: float
+    category: physics
+    access_group: baryonic
+    memory_group: physics_block
+    io_group: essential
+    description: "Cold gas mass in galaxy disk"
+    units: "1e10 Msun/h"
+    range: [0.0, 100.0]
+    required_by: [cooling, starformation]
+    provided_by: [cooling]
+    io_mappings:
+      hdf5: "ColdGas"
+      binary: "ColdGas"
+      
+  StellarMass:
+    type: float
+    category: physics
+    access_group: baryonic
+    memory_group: physics_block
+    io_group: essential
+    description: "Total stellar mass"
+    units: "1e10 Msun/h"
+    range: [0.0, 100.0]
+    required_by: [starformation, mergers]
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "StellarMass"
+      binary: "StellarMass"
+      
+  BulgeMass:
+    type: float
+    category: physics
+    access_group: baryonic
+    memory_group: physics_block
+    io_group: essential
+    description: "Stellar mass in bulge component"
+    units: "1e10 Msun/h"
+    range: [0.0, 100.0]
+    required_by: [starformation, mergers, disk_instability]
+    provided_by: [starformation, mergers, disk_instability]
+    io_mappings:
+      hdf5: "BulgeMass"
+      binary: "BulgeMass"
+      
+  HotGas:
+    type: float
+    category: physics
+    access_group: baryonic
+    memory_group: physics_block
+    io_group: essential
+    description: "Hot gas mass in halo"
+    units: "1e10 Msun/h"
+    range: [0.0, 1000.0]
+    required_by: [cooling, reincorporation]
+    provided_by: [cooling]
+    io_mappings:
+      hdf5: "HotGas"
+      binary: "HotGas"
+      
+  EjectedMass:
+    type: float
+    category: physics
+    access_group: baryonic
+    memory_group: physics_block
+    io_group: essential
+    description: "Ejected gas mass"
+    units: "1e10 Msun/h"
+    range: [0.0, 1000.0]
+    required_by: [starformation, reincorporation]
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "EjectedMass"
+      binary: "EjectedMass"
+      
+  BlackHoleMass:
+    type: float
+    category: physics
+    access_group: baryonic
+    memory_group: physics_block
+    io_group: essential
+    description: "Central black hole mass"
+    units: "1e10 Msun/h"
+    range: [0.0, 10.0]
+    required_by: [starformation] # AGN feedback
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "BlackHoleMass"
+      binary: "BlackHoleMass"
+      
+  ICS:
+    type: float
+    category: physics
+    access_group: baryonic
+    memory_group: physics_block
+    io_group: optional
+    description: "Intracluster stellar mass"
+    units: "1e10 Msun/h"
+    range: [0.0, 100.0]
+    required_by: [mergers]
+    provided_by: [mergers]
+    io_mappings:
+      hdf5: "ICS"
+      binary: "ICS"
+
+  # Metal content tracking
+  MetalsColdGas:
+    type: float
+    category: physics
+    access_group: metals
+    memory_group: physics_block
+    io_group: optional
+    description: "Metal mass in cold gas"
+    units: "1e10 Msun/h"
+    required_by: [cooling, starformation]
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "MetalsColdGas"
+      binary: "MetalsColdGas"
+      
+  MetalsStellarMass:
+    type: float
+    category: physics
+    access_group: metals
+    memory_group: physics_block
+    io_group: optional
+    description: "Metal mass in stars"
+    units: "1e10 Msun/h" 
+    required_by: [starformation, mergers]
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "MetalsStellarMass"
+      binary: "MetalsStellarMass"
+      
+  MetalsBulgeMass:
+    type: float
+    category: physics
+    access_group: metals
+    memory_group: physics_block
+    io_group: optional
+    description: "Metal mass in bulge"
+    units: "1e10 Msun/h"
+    required_by: [starformation, mergers]
+    provided_by: [starformation, mergers]
+    io_mappings:
+      hdf5: "MetalsBulgeMass"
+      binary: "MetalsBulgeMass"
+      
+  MetalsHotGas:
+    type: float
+    category: physics
+    access_group: metals
+    memory_group: physics_block
+    io_group: optional
+    description: "Metal mass in hot gas"
+    units: "1e10 Msun/h"
+    required_by: [cooling, starformation]
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "MetalsHotGas"
+      binary: "MetalsHotGas"
+      
+  MetalsEjectedMass:
+    type: float
+    category: physics
+    access_group: metals
+    memory_group: physics_block
+    io_group: optional
+    description: "Metal mass in ejected gas"
+    units: "1e10 Msun/h"
+    required_by: [starformation, reincorporation]
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "MetalsEjectedMass"
+      binary: "MetalsEjectedMass"
+      
+  MetalsICS:
+    type: float
+    category: physics
+    access_group: metals
+    memory_group: physics_block
+    io_group: optional
+    description: "Metal mass in intracluster stars"
+    units: "1e10 Msun/h"
+    required_by: [mergers]
+    provided_by: [mergers]
+    io_mappings:
+      hdf5: "MetalsICS"
+      binary: "MetalsICS"
+
+  # Star formation history arrays - dynamic sizing
+  SfrDisk:
+    type: float[]
+    category: physics
+    access_group: star_formation
+    memory_group: arrays_block
+    io_group: derived  # Converted to rates at output
+    description: "Star formation rate in disk per integration step"
+    units: "1e10 Msun/h per step"
+    required_by: [starformation]
+    provided_by: [starformation]
+    array_size: "${STEPS}"  # Dynamic from configuration
+    dynamic_array: true
+    io_mappings:
+      hdf5: "Sfr"  # Combined and converted
+      binary: "Sfr"
+      
+  SfrBulge:
+    type: float[]
+    category: physics
+    access_group: star_formation
+    memory_group: arrays_block
+    io_group: derived
+    description: "Star formation rate in bulge per integration step"
+    units: "1e10 Msun/h per step"
+    required_by: [starformation, disk_instability]
+    provided_by: [starformation, disk_instability]
+    array_size: "${STEPS}"
+    dynamic_array: true
+    io_mappings:
+      hdf5: "SfrBulge"
+      binary: "SfrBulge"
+      
+  # Derived star formation properties (calculated at output time)
+  SfrDiskZ:
+    type: float
+    category: physics
+    access_group: star_formation
+    memory_group: derived_block
+    io_group: derived
+    description: "Average metallicity of star formation in disk"
+    units: dimensionless
+    required_by: [starformation]
+    provided_by: [starformation]
+    calculated_from: ["SfrDiskColdGasMetals", "SfrDiskColdGas"]
+    calculation: "sum(SfrDiskColdGasMetals[step]) / sum(SfrDiskColdGas[step])"
+    io_mappings:
+      hdf5: "SfrDiskZ"
+      binary: "SfrDiskZ"
+      
+  SfrBulgeZ:
+    type: float
+    category: physics
+    access_group: star_formation
+    memory_group: derived_block
+    io_group: derived
+    description: "Average metallicity of star formation in bulge"
+    units: dimensionless
+    required_by: [starformation, disk_instability]
+    provided_by: [starformation, disk_instability]
+    calculated_from: ["SfrBulgeColdGasMetals", "SfrBulgeColdGas"]
+    calculation: "sum(SfrBulgeColdGasMetals[step]) / sum(SfrBulgeColdGas[step])"
+    io_mappings:
+      hdf5: "SfrBulgeZ"
+      binary: "SfrBulgeZ"
+      
+  SfrDiskColdGas:
+    type: float[]
+    category: physics
+    access_group: star_formation
+    memory_group: arrays_block
+    io_group: internal
+    description: "Cold gas mass used for disk star formation per step"
+    units: "1e10 Msun/h per step"
+    required_by: [starformation]
+    provided_by: [starformation]
+    array_size: "${STEPS}"
+    dynamic_array: true
+    # NO io_mappings - this property is never output
+    
+  SfrDiskColdGasMetals:
+    type: float[]
+    category: physics
+    access_group: star_formation
+    memory_group: arrays_block
+    io_group: internal
+    description: "Metal mass in cold gas used for disk star formation per step"
+    units: "1e10 Msun/h per step"
+    required_by: [starformation]
+    provided_by: [starformation]
+    array_size: "${STEPS}"
+    dynamic_array: true
+    # NO io_mappings - this property is never output
+    
+  SfrBulgeColdGas:
+    type: float[]
+    category: physics
+    access_group: star_formation
+    memory_group: arrays_block
+    io_group: internal
+    description: "Cold gas mass used for bulge star formation per step"
+    units: "1e10 Msun/h per step"
+    required_by: [starformation, disk_instability]
+    provided_by: [starformation, disk_instability]
+    array_size: "${STEPS}"
+    dynamic_array: true
+    # NO io_mappings - this property is never output
+    
+  SfrBulgeColdGasMetals:
+    type: float[]
+    category: physics
+    access_group: star_formation
+    memory_group: arrays_block
+    io_group: internal
+    description: "Metal mass in cold gas used for bulge star formation per step"
+    units: "1e10 Msun/h per step"
+    required_by: [starformation, disk_instability]
+    provided_by: [starformation, disk_instability]
+    array_size: "${STEPS}"
+    dynamic_array: true
+    # NO io_mappings - this property is never output
+
+  # Evolution tracking properties
+  mergeType:
+    type: int32_t
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Type of merger (0=none, 1=minor, 2=major, 3=disk instability, 4=disruption)"
+    units: dimensionless
+    required_by: [mergers, disk_instability]
+    provided_by: [mergers, disk_instability]
+    validation:
+      enum_values: [0, 1, 2, 3, 4]
+    io_mappings:
+      hdf5: "mergeType"
+      binary: "mergeType"
+      
+  mergeIntoID:
+    type: int32_t
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "ID of galaxy this galaxy merges into"
+    units: dimensionless
+    required_by: [mergers]
+    provided_by: [mergers]
+    io_mappings:
+      hdf5: "mergeIntoID"
+      binary: "mergeIntoID"
+      
+  mergeIntoSnapNum:
+    type: int32_t
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Snapshot when merger occurs"
+    units: dimensionless
+    required_by: [mergers]
+    provided_by: [mergers]
+    io_mappings:
+      hdf5: "mergeIntoSnapNum"
+      binary: "mergeIntoSnapNum"
+      
+  dT:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: internal
+    description: "Time interval for evolution calculations"
+    units: "Gyr"
+    required_by: [starformation, cooling, reincorporation]
+    provided_by: [core]  # Calculated from snapshots
+    
+  DiskScaleRadius:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Scale radius of galactic disk"
+    units: "Mpc/h"
+    required_by: [starformation, disk_instability]
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "DiskScaleRadius"
+      binary: "DiskScaleRadius"
+      
+  MergTime:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Time until galaxy merges"
+    units: "Gyr"
+    required_by: [mergers]
+    provided_by: [mergers]
+    io_mappings:
+      hdf5: "MergTime"
+      binary: "MergTime"
+      
+  # Cooling and heating properties
+  Cooling:
+    type: double
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Cooling rate"
+    units: "1e10 Msun/h per Gyr"
+    required_by: [cooling]
+    provided_by: [cooling]
+    io_mappings:
+      hdf5: "Cooling"
+      binary: "Cooling"
+      
+  Heating:
+    type: double
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Heating rate"
+    units: "1e10 Msun/h per Gyr"
+    required_by: [cooling]
+    provided_by: [cooling]
+    io_mappings:
+      hdf5: "Heating"
+      binary: "Heating"
+      
+  r_heat:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: internal
+    description: "Heating radius"
+    units: "Mpc/h"
+    required_by: [cooling]
+    provided_by: [cooling]
+    # NO io_mappings - this property is not output (internal calculation only)
+      
+  # AGN and feedback properties
+  QuasarModeBHaccretionMass:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Black hole accretion mass in quasar mode"
+    units: "1e10 Msun/h"
+    required_by: [starformation]  # AGN feedback
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "QuasarModeBHaccretionMass"
+      binary: "QuasarModeBHaccretionMass"
+      
+  OutflowRate:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Gas outflow rate"
+    units: "1e10 Msun/h per Gyr"
+    required_by: [starformation]
+    provided_by: [starformation]
+    io_mappings:
+      hdf5: "OutflowRate"
+      binary: "OutflowRate"
+      
+  # Merger timing properties
+  TimeOfLastMajorMerger:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Time of last major merger"
+    units: "Gyr"
+    required_by: [mergers]
+    provided_by: [mergers]
+    io_mappings:
+      hdf5: "TimeOfLastMajorMerger"
+      binary: "TimeOfLastMajorMerger"
+      
+  TimeOfLastMinorMerger:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Time of last minor merger"
+    units: "Gyr"
+    required_by: [mergers]
+    provided_by: [mergers]
+    io_mappings:
+      hdf5: "TimeOfLastMinorMerger"
+      binary: "TimeOfLastMinorMerger"
+      
+  # Satellite properties
+  TotalSatelliteBaryons:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Total baryonic mass in satellite galaxies"
+    units: "1e10 Msun/h"
+    required_by: [mergers]
+    provided_by: [mergers]
+    io_mappings:
+      hdf5: "TotalSatelliteBaryons"
+      binary: "TotalSatelliteBaryons"
+      
+  # Infall properties
+  infallMvir:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Virial mass at infall"
+    units: "1e10 Msun/h"
+    required_by: [reincorporation]
+    provided_by: [core]  # Tracked from halo evolution
+    io_mappings:
+      hdf5: "infallMvir"
+      binary: "infallMvir"
+      
+  infallVvir:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Virial velocity at infall"
+    units: "km/s"
+    required_by: [reincorporation]
+    provided_by: [core]
+    io_mappings:
+      hdf5: "infallVvir"
+      binary: "infallVvir"
+      
+  infallVmax:
+    type: float
+    category: physics
+    access_group: evolution
+    memory_group: physics_block
+    io_group: optional
+    description: "Maximum velocity at infall"
+    units: "km/s"
+    required_by: [reincorporation]
+    provided_by: [core]
+    io_mappings:
+      hdf5: "infallVmax"
+      binary: "infallVmax"
+
+# Property availability matrix - defines which properties are available for different module combinations
+availability_matrix:
+  core_only:
+    # Minimal property set for physics-free operation
+    includes: [SnapNum, Type, GalaxyNr, CentralGal, HaloNr, MostBoundID, GalaxyIndex, CentralGalaxyIndex, 
+               Pos, Vel, Len, Mvir, CentralMvir, Rvir, Vvir, Vmax, VelDisp, dT]
+    excludes: [deltaMvir]  # Internal properties not output
+    
+  minimal_physics:
+    # Basic physics with cooling and star formation
+    includes: [core_only, ColdGas, StellarMass, HotGas, EjectedMass, SfrDisk, SfrBulge]
+    modules: [cooling, starformation]
+    
+  standard_physics:
+    # Full physics suite
+    includes: [minimal_physics, BulgeMass, BlackHoleMass, ICS, MetalsColdGas, MetalsStellarMass, 
+               MetalsBulgeMass, MetalsHotGas, MetalsEjectedMass, MetalsICS, mergeType, mergeIntoID,
+               mergeIntoSnapNum, DiskScaleRadius, MergTime, Cooling, Heating, QuasarModeBHaccretionMass,
+               OutflowRate, TimeOfLastMajorMerger, TimeOfLastMinorMerger, TotalSatelliteBaryons,
+               infallMvir, infallVvir, infallVmax]
+    modules: [cooling, starformation, mergers, reincorporation, disk_instability]
+    
+  custom:
+    # Runtime-determined based on loaded modules
+    dynamic: true
+
+# Memory layout specifications for code generation
+memory_layouts:
+  core_struct:
+    # Core properties in a single, cache-friendly struct
+    properties: [SnapNum, Type, GalaxyNr, CentralGal, HaloNr, MostBoundID, GalaxyIndex, 
+                CentralGalaxyIndex, Pos, Vel, Len, Mvir, CentralMvir, Rvir, Vvir, Vmax, VelDisp]
+    alignment: 64  # Cache line alignment
+    # Note: deltaMvir and other internal properties are separate
+    
+  physics_struct:
+    # Physics properties in conditional struct (excludes internal-only properties)
+    properties: [ColdGas, StellarMass, BulgeMass, HotGas, EjectedMass, BlackHoleMass, ICS,
+                MetalsColdGas, MetalsStellarMass, MetalsBulgeMass, MetalsHotGas, MetalsEjectedMass, MetalsICS,
+                mergeType, mergeIntoID, mergeIntoSnapNum, dT, DiskScaleRadius, MergTime, Cooling, Heating,
+                QuasarModeBHaccretionMass, OutflowRate, TimeOfLastMajorMerger, TimeOfLastMinorMerger,
+                TotalSatelliteBaryons, infallMvir, infallVvir, infallVmax]
+    conditional: true  # Only allocated if physics modules loaded
+    # Note: r_heat and other internal properties are separate
+    
+  internal_struct:
+    # Internal properties that are never output but needed for calculations
+    properties: [deltaMvir, r_heat, SfrDiskColdGas, SfrDiskColdGasMetals, 
+                SfrBulgeColdGas, SfrBulgeColdGasMetals]
+    conditional: true  # Based on required modules
+    
+  arrays_struct:
+    # Variable-sized arrays allocated separately
+    properties: [SfrDisk, SfrBulge]  # Only arrays that may be output
+    dynamic_allocation: true
+    
+  internal_arrays_struct:
+    # Internal arrays never output but needed for calculations
+    properties: [SfrDiskColdGas, SfrDiskColdGasMetals, SfrBulgeColdGas, SfrBulgeColdGasMetals]
+    dynamic_allocation: true
+
+# Validation rules for property combinations
+validation_rules:
+  # Mass conservation checks
+  mass_conservation:
+    description: "Ensure mass components sum correctly"
+    rule: "StellarMass + BulgeMass <= TotalStellarMass"
+    modules: [starformation]
+    
+  # Range validation
+  positive_masses:
+    description: "All mass components must be non-negative"
+    rule: "all_masses >= 0.0"
+    applies_to: [ColdGas, StellarMass, BulgeMass, HotGas, EjectedMass, BlackHoleMass, ICS]
+    
+  # Halo property consistency
+  halo_consistency:
+    description: "Halo properties must be physically consistent"
+    rule: "Vvir^2 ~ G*Mvir/Rvir"
+    tolerance: 0.1
+    applies_to: [Mvir, Rvir, Vvir]
+
+# I/O format specifications
+io_formats:
+  hdf5:
+    # HDF5 output configuration
+    groups:
+      "/": [SnapNum, Type, GalaxyNr, CentralGal, HaloNr]
+      "/Positions": [Pos]
+      "/Velocities": [Vel]  
+      "/HaloProperties": [Len, Mvir, Rvir, Vvir, Vmax]
+      "/BaryonicProperties": [ColdGas, StellarMass, BulgeMass, HotGas, EjectedMass, BlackHoleMass]
+      "/Metals": [MetalsColdGas, MetalsStellarMass, MetalsBulgeMass, MetalsHotGas, MetalsEjectedMass]
+      "/StarFormation": [calculated_sfr_disk, calculated_sfr_bulge]  # Derived from arrays
+      "/Evolution": [mergeType, DiskScaleRadius, MergTime, TimeOfLastMajorMerger]
+    
+    derived_fields:
+      calculated_sfr_disk: 
+        source: "SfrDisk"
+        transformation: "sum_and_convert_to_rate"
+        units: "Msun/yr"
+      calculated_sfr_bulge:
+        source: "SfrBulge" 
+        transformation: "sum_and_convert_to_rate"
+        units: "Msun/yr"
+        
+  binary:
+    # Legacy binary format (deprecated)
+    structure: "flat"
+    field_order: [SnapNum, Type, GalaxyNr, CentralGal, HaloNr, MostBoundID, Pos, Vel, 
+                  Len, Mvir, Rvir, Vvir, ColdGas, StellarMass, BulgeMass, HotGas, EjectedMass, BlackHoleMass]
+    skip_arrays: true  # Don't output array properties in binary format
