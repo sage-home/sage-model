@@ -1,6 +1,7 @@
 #include "memory_scope.h"
 #include "memory.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #define INITIAL_SCOPE_CAPACITY 32
@@ -28,9 +29,15 @@ void memory_scope_register_allocation(memory_scope_t *scope, void *ptr) {
     if (!scope || !ptr) return;
     
     if (scope->count >= scope->capacity) {
-        scope->capacity *= 2;
-        scope->allocations = sage_realloc(scope->allocations, 
-                                         scope->capacity * sizeof(void*));
+        size_t new_capacity = scope->capacity * 2;
+        void **new_allocations = sage_realloc(scope->allocations, 
+                                              new_capacity * sizeof(void*));
+        if (!new_allocations) {
+            fprintf(stderr, "Error: Failed to expand memory scope capacity\n");
+            return;  /* Fail the registration gracefully */
+        }
+        scope->allocations = new_allocations;
+        scope->capacity = new_capacity;
     }
     
     scope->allocations[scope->count++] = ptr;

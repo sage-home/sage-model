@@ -31,7 +31,8 @@ static void track_allocation(void *ptr, size_t size, const char *file, int line)
     
     allocation_info_t *info = malloc(sizeof(allocation_info_t));
     if (!info) {
-        fprintf(stderr, "Warning: Failed to track allocation at %s:%d\n", file, line);
+        fprintf(stderr, "Warning: Memory tracking disabled due to allocation failure at %s:%d\n", file, line);
+        tracking_initialized = false;  /* Disable tracking to prevent further failures */
         return;
     }
     

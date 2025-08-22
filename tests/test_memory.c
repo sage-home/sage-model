@@ -108,6 +108,52 @@ void test_error_handling(void) {
     printf("Error handling: PASSED\n");
 }
 
+/* Test scope capacity expansion and error resilience */
+void test_scope_capacity_expansion(void) {
+    printf("Testing scope capacity expansion...\n");
+    
+    memory_scope_t *scope = memory_scope_create();
+    assert(scope != NULL);
+    
+    // Fill the scope beyond initial capacity to trigger expansion
+    // Initial capacity is 32, so we'll allocate 40 pointers
+    for (int i = 0; i < 40; i++) {
+        void *ptr = memory_scope_malloc(scope, 100);
+        assert(ptr != NULL);
+        // The allocation should be registered even after capacity expansion
+    }
+    
+    // Verify all allocations are tracked
+    assert(scope->count == 40);
+    assert(scope->capacity >= 40);  // Should have expanded
+    
+    memory_scope_destroy(scope);
+    
+    printf("Scope capacity expansion: PASSED\n");
+}
+
+/* Test memory scope registration resilience */
+void test_scope_registration_resilience(void) {
+    printf("Testing scope registration resilience...\n");
+    
+    memory_scope_t *scope = memory_scope_create();
+    assert(scope != NULL);
+    
+    // Test that NULL pointer registration is handled gracefully
+    memory_scope_register_allocation(scope, NULL);
+    assert(scope->count == 0);  // Should not increment count for NULL
+    
+    // Test that registration with NULL scope is handled gracefully
+    void *test_ptr = sage_malloc(100);
+    memory_scope_register_allocation(NULL, test_ptr);
+    // Should not crash
+    sage_free(test_ptr);
+    
+    memory_scope_destroy(scope);
+    
+    printf("Scope registration resilience: PASSED\n");
+}
+
 int main(void) {
     printf("=== Memory Abstraction Layer Tests ===\n");
     
@@ -116,6 +162,8 @@ int main(void) {
     test_memory_tracking();
     test_legacy_compatibility();
     test_error_handling();
+    test_scope_capacity_expansion();
+    test_scope_registration_resilience();
     
     printf("All tests PASSED!\n");
     return 0;
