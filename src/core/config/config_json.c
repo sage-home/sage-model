@@ -170,7 +170,7 @@ int config_read_json(config_t *config, const char *filename) {
     
     // Parse JSON
     cJSON *json = cJSON_Parse(json_string);
-    free(json_string);
+    sage_free(json_string);
     
     if (!json) {
         const char *error_ptr = cJSON_GetErrorPtr();

@@ -38,6 +38,7 @@
 
 #include "core_allvars.h"
 #include "core_utils.h"
+#include "memory.h"
 
 
 // A real wrapper to snprintf that will exit() if the allocated buffer length
@@ -174,7 +175,7 @@ char* read_file_to_string(const char *filename) {
     }
     
     // Allocate buffer
-    char *buffer = malloc(file_size + 1);
+    char *buffer = sage_malloc(file_size + 1);
     if (!buffer) {
         fclose(file);
         return NULL;
@@ -185,7 +186,7 @@ char* read_file_to_string(const char *filename) {
     fclose(file);
     
     if (bytes_read != (size_t)file_size) {
-        free(buffer);
+        sage_free(buffer);
         return NULL;
     }
     
