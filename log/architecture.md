@@ -198,6 +198,14 @@ Comprehensive testing infrastructure:
 - Category-based test organization (core, property, io, module, tree)
 - Memory debugging support with AddressSanitizer integration
 
+## Dependencies & Integration
+**Required**: C99 compiler, Python 3.6+
+**Optional**: GSL, HDF5, MPI, cJSON, LaTeX
+**Python**: numpy, matplotlib, h5py, cffi, PyYAML, tqdm
+
+**Python Integration**: `sage.py` wrapper using CFFI with auto-build and MPI support
+**IDE Integration**: VS Code, CLion, Visual Studio via CMake
+
 ## Architecture Limitations
 
 ### Current Constraints:
