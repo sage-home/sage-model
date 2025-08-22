@@ -9,76 +9,64 @@
 - At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
-# Current Phase: 1/7 (Infrastructure Foundation) - Setting Up Modern Development Environment
+# Current Phase: 2/7 (Property System Core) - Metadata-Driven Property Management
 
 ## Phase Objectives
-- **PRIMARY**: Establish CMake build system with out-of-tree builds
-- **SECONDARY**: Create abstraction layers for smooth migration
-- Implement modern project structure per architecture guide
-- Set up development logging for AI support
-- Create memory and configuration abstraction layers
+- **PRIMARY**: Create metadata-driven property system to separate core from physics
+- **SECONDARY**: Enable compile-time type safety and runtime flexibility
+- Implement YAML-based property definitions
+- Build code generation pipeline
+- Migrate existing properties to new system while maintaining compatibility
 
 ## Current Progress
 
-### Task 1.1: CMake Build System Setup ✅ COMPLETED
-- [x] Create root CMakeLists.txt with project configuration
-- [x] Set up source file discovery and compilation flags  
-- [x] Configure HDF5 and MPI detection
-- [x] Enable out-of-tree builds
-- [x] Update README with CMake build instructions
+### Task 2.1: Property Metadata Design
+- [ ] Create properties.yaml with core/physics separation
+- [ ] Define parameters.yaml for simulation parameters
+- [ ] Establish property categorization (core, physics, derived)
+- [ ] Document metadata schema and conventions
 
-### Task 1.2: Directory Reorganization ✅ COMPLETED
-- [x] Move source files to proper subdirectories (core/, physics/, io/)
-- [x] Set up docs/ with role-based navigation
-- [x] Create log/ directory for AI development support
-- [x] Establish tests/ structure for categorized testing
-- [x] Git history preservation using git mv commands
+### Task 2.2: Code Generation System
+- [ ] Create generate_property_headers.py script
+- [ ] Implement type-safe macro generation
+- [ ] Generate property access functions
+- [ ] Create property availability checking system
+- [ ] Add property iteration support
 
-### Task 1.3: Memory Abstraction Layer ✅ COMPLETED
-- [x] Create memory.h with allocation macros and file/line tracking
-- [x] Implement memory.c with optional tracking (SAGE_MEMORY_TRACKING)
-- [x] Create memory_scope.h/c for RAII foundation (Phase 3 prep)
-- [x] Update core_mymalloc.h/c for backward compatibility via macros
-- [x] Integrate with CMake build system (tracking, AddressSanitizer options)
-- [x] Comprehensive testing (test_memory.c) - 100% pass rate
-- [x] Scientific validation - all tests pass, no regression
+### Task 2.3: Property API Implementation
+- [ ] Create property.h/c with unified property interface
+- [ ] Implement compile-time property access macros
+- [ ] Add runtime property availability checking
+- [ ] Create property initialization/cleanup functions
+- [ ] Build property validation framework
 
-### Task 1.4: Configuration Abstraction Layer ✅ COMPLETED
-- [x] Design config_t structure for unified access
-- [x] Create config.c with modular format support (legacy .par, JSON)
-- [x] Add legacy .par file reading with backward compatibility
-- [x] Implement configuration validation framework with bounds checking
-- [x] CMake integration with optional cJSON dependency
-- [x] Comprehensive testing (test_config.c) - 100% pass rate
-- [x] Scientific validation - all tests pass, HDF5 output issue resolved
+### Task 2.4: Core Property Migration
+- [ ] Migrate essential galaxy properties (Type, GalaxyNr, HaloNr, etc.)
+- [ ] Migrate halo properties (Mvir, Rvir, Vvir, etc.)
+- [ ] Update core_allvars.h to use generated structures
+- [ ] Adapt core_build_model.c to new property access
+- [ ] Ensure backward compatibility during transition
 
-### Task 1.5: Logging System Setup ✅ COMPLETED
-- [x] Create log/README.md with system description
-- [x] Set up template files for phases and decisions
-- [x] Implement log rotation/archiving system
-- [x] Create CLAUDE.md with project overview
+### Task 2.5: Build System Integration
+- [ ] Integrate code generation into CMake build
+- [ ] Create build configurations for different property sets
+- [ ] Add property-based compilation flags
+- [ ] Set up IDE support for generated headers
+- [ ] Implement incremental generation optimization
 
 ## Completion Criteria
-**Phase 1 Complete When:**
-- CMake build produces working SAGE binary ✅
-- All abstraction layers in place and tested
-- Development logging system operational ✅
+**Phase 2 Complete When:**
+- Properties defined in YAML, not hardcoded C structs
+- Code generation produces type-safe property access
+- Core properties migrated to new system
 - All tests pass with identical scientific results
+- Build system automatically generates property code
 
-**Phase 1 Status**: ✅ COMPLETED - All 5/5 tasks completed (1.1, 1.2, 1.3, 1.4, 1.5)
-
-## Phase 1 Achievement Summary
-✅ Modern CMake build system with out-of-tree builds
-✅ Professional directory structure with preserved git history  
-✅ Memory abstraction layer with AddressSanitizer integration
-✅ Configuration abstraction layer with dual format support
-✅ Development logging system for AI continuity
-✅ All tests passing (unit tests + end-to-end scientific validation)
-
-## Phase 1 → Phase 2 Transition Ready
-**Infrastructure Foundation Complete** - Ready to begin Phase 2: Property System Core
+**Phase 2 Status**: 0/5 tasks completed
 
 ## Inter-Phase Dependencies
-- Phase 2 (Property System Core): ✅ READY - All Phase 1 infrastructure in place
-- Phase 3 (Memory Management): ✅ READY - Memory abstraction foundation complete
-- Phase 4 (Configuration Unification): ✅ READY - Configuration abstraction framework complete
+- **From Phase 1**: ✅ CMake build system (for code generation integration)
+- **From Phase 1**: ✅ Memory abstraction (for property allocation)
+- **To Phase 3**: Property system needed for RAII memory management
+- **To Phase 4**: Property metadata enables configuration validation
+- **To Phase 5**: Property abstraction required for modular physics
