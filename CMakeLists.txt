@@ -24,6 +24,10 @@ option(SAGE_SHARED_LIBRARY "Build shared library instead of static" ON)
 option(SAGE_VERBOSE "Enable verbose output" ON)
 option(SAGE_MEMORY_CHECK "Enable memory checking (AddressSanitizer)" OFF)
 
+# Memory management configuration options
+option(SAGE_MEMORY_TRACKING "Enable advanced memory tracking and leak detection" OFF)
+option(SAGE_WARN_LEGACY_MEMORY "Enable deprecation warnings for legacy memory API" OFF)
+
 # Enable out-of-tree builds by default
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     message(WARNING "In-source builds are discouraged. Consider using: mkdir build && cd build && cmake ..")
@@ -111,10 +115,14 @@ endif()
 
 # Memory checking
 if(SAGE_MEMORY_CHECK)
-    set(MEMORY_CHECK_FLAGS "-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MEMORY_CHECK_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MEMORY_CHECK_FLAGS}")
-    message(STATUS "Memory checking enabled")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        set(MEMORY_CHECK_FLAGS "-fsanitize=undefined -fsanitize=bounds -fsanitize=address -fsanitize-undefined-trap-on-error -fstack-protector-all")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MEMORY_CHECK_FLAGS}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MEMORY_CHECK_FLAGS}")
+        message(STATUS "AddressSanitizer enabled (works with new memory abstraction)")
+    else()
+        message(WARNING "Memory checking requires GCC or Clang compiler")
+    endif()
 endif()
 
 # Define preprocessor macros
@@ -127,6 +135,16 @@ endif()
 
 if(SAGE_USE_BUFFERED_WRITE)
     add_definitions(-DUSE_BUFFERED_WRITE)
+endif()
+
+# Configure memory tracking
+if(SAGE_MEMORY_TRACKING)
+    add_definitions(-DSAGE_MEMORY_TRACKING=1)
+    message(STATUS "Memory tracking enabled")
+endif()
+
+if(SAGE_WARN_LEGACY_MEMORY)
+    add_definitions(-DSAGE_WARN_LEGACY_MEMORY)
 endif()
 
 # Find required packages
@@ -243,6 +261,13 @@ if(SAGE_USE_HDF5)
     endif()
 endif()
 
+# Memory management sources
+set(MEMORY_SOURCES
+    ${SRC_DIR}/core/memory.c
+    ${SRC_DIR}/core/memory_scope.c
+    ${SRC_DIR}/core/core_mymalloc.c  # Legacy compatibility
+)
+
 # Core infrastructure sources - now in src/core/
 set(SAGE_CORE_SOURCES
     ${SRC_DIR}/core/sage.c
@@ -252,10 +277,10 @@ set(SAGE_CORE_SOURCES
     ${SRC_DIR}/core/core_cool_func.c
     ${SRC_DIR}/core/core_build_model.c
     ${SRC_DIR}/core/core_save.c
-    ${SRC_DIR}/core/core_mymalloc.c
     ${SRC_DIR}/core/core_utils.c
     ${SRC_DIR}/core/progressbar.c
     ${SRC_DIR}/core/core_tree_utils.c
+    ${MEMORY_SOURCES}
 )
 
 # Physics modules - now in src/physics/
@@ -370,6 +395,7 @@ set(CORE_TESTS
     # Core pipeline and execution system
     test_pipeline                    # Pipeline execution phases (HALO → GALAXY → POST → FINAL)
     test_array_utils                # Dynamic array utilities with geometric growth
+    test_memory                     # Memory abstraction layer implementation (Task 1.3)
     test_memory_management          # Memory allocation and cleanup (Phase 3)
     test_config_system             # Configuration loading and parsing (Phase 4)
     
@@ -685,6 +711,8 @@ message(STATUS "  Shared Library:    ${SAGE_SHARED_LIBRARY}")
 message(STATUS "  Verbose Output:    ${SAGE_VERBOSE}")
 message(STATUS "  Buffered Write:    ${SAGE_USE_BUFFERED_WRITE}")
 message(STATUS "  Memory Check:      ${SAGE_MEMORY_CHECK}")
+message(STATUS "  Memory Tracking:   ${SAGE_MEMORY_TRACKING}")
+message(STATUS "  Legacy Warnings:   ${SAGE_WARN_LEGACY_MEMORY}")
 message(STATUS "  Root Directory:    ${ROOT_DIR}")
 message(STATUS "  Git Hash:          ${GITREF_STR}")
 message(STATUS "")

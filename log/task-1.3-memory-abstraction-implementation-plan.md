@@ -770,8 +770,8 @@ endif()
 - [ ] Document migration patterns for remaining files
 
 ### Validation
-- [ ] Run full test suite (`make test`)
-- [ ] Run scientific validation (`./tests/test_sage.sh`)
+- [ ] Run full test suite (`./build.sh unit_tests`)
+- [ ] Run scientific validation (`./build.sh tests`)
 - [ ] Memory leak check with tracking enabled
 - [ ] Performance benchmark vs current system
 - [ ] Code review and documentation update
