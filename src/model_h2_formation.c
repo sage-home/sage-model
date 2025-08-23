@@ -142,10 +142,10 @@ double calculate_molecular_fraction_BR06(float gas_surface_density, float stella
     
     // Apply pressure threshold - below this, no molecular gas forms
     // Paper doesn't specify exact value, but this is physically reasonable
-    const float P_threshold = 1000.0; // K cm⁻³
-    if (pressure < P_threshold) {
-        return 0.0;
-    }
+    // const float P_threshold = 1000.0; // K cm⁻³
+    // if (pressure < P_threshold) {
+    //     return 0.0;
+    // }
     
     // BR06 Equation (11): R_mol = (P_ext/P₀)^α
     float pressure_ratio = pressure / P0;
