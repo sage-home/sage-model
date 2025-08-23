@@ -84,7 +84,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
         // Use H2 gas for star formation with a critical threshold
         const double h2_crit = 0.19 * galaxies[p].Vvir * reff;
-        if((galaxies[p].H2_gas + galaxies[p].HI_gas) > h2_crit && tdyn > 0.0) {
+        if((galaxies[p].ColdGas) > h2_crit && tdyn > 0.0) {
             strdot = run_params->SfrEfficiency * galaxies[p].H2_gas / tdyn;
         } else {
             strdot = 0.0;

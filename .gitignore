@@ -18,6 +18,7 @@ _sage_cffi.*
 codecov
 *.tar*
 *.png
+*.gif
 *.ipynb_checkpoints
 *.dSYM
 sage_analysis/plots/
