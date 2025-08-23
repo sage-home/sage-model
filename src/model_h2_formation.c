@@ -11,7 +11,6 @@ void init_gas_components(struct GALAXY *g)
     g->HI_gas = 0.0;
 }
 
-
 double calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity)
 {
     // Early termination for edge cases
@@ -33,23 +32,25 @@ double calculate_molecular_fraction_GD14(float gas_surface_density, float metall
     // Calculate g parameter (GD14 equation between 5 and 6)
     float g = sqrt(D_MW * D_MW + D_star * D_star);
     
-    // Use erratum's improved formulation:
-    // s parameter from erratum
-    float s = pow(0.001 + 0.1 * U_MW, 0.7);
+    // Erratum formulation:
+    // σ ≡ (0.001 + 0.1U_MW)^0.7
+    float sigma = pow(0.001 + 0.1 * U_MW, 0.7);
     
-    // Calculate alpha using erratum's improved formula (not original equation 9)
-    float alpha = (1.0 + 0.7 * s) / (1.0 + s);
+    // α = (1 + 0.7σ^(1/2))/(1 + σ^(1/2))
+    float sqrt_sigma = sqrt(sigma);
+    float alpha = (1.0 + 0.7 * sqrt_sigma) / (1.0 + sqrt_sigma);
     
-    // Calculate Sigma_R=1 using the erratum formula
-    float Sigma_R1 = 40.0 * g / s; // M_sun/pc^2
+    // Σ_R=1 = 40 M_☉/pc² × g/σ
+    float Sigma_R1 = 40.0 * g / sigma; // M_sun/pc^2
     
-    // Calculate eta parameter (0 for kpc scale, 0.25 for 500 pc scale)
-    // Assuming we're working at ~kpc scale, so eta ≈ 0
-    float eta = 0.0;  // Could be 0.25 for finer scales
+    // Calculate η parameter (0 for kpc scale, 0.25 for 500 pc scale)
+    float eta = 0.0;  // Assuming kpc scale
     
-    // Calculate R using the complete erratum formula
+    // Calculate R using the CORRECT erratum formula:
+    // R ≈ (Σ_gas/Σ_R=1)^α / (1 + η(Σ_gas/Σ_R=1)^α)
     float ratio = gas_surface_density / Sigma_R1;
-    float R = pow(ratio, alpha) / (1.0 + eta * ratio);
+    float ratio_alpha = pow(ratio, alpha);
+    float R = ratio_alpha / (1.0 + eta * ratio_alpha);
     
     // Convert to molecular fraction: f_H2 = R / (1 + R)
     float f_mol = R / (1.0 + R);
@@ -63,6 +64,57 @@ double calculate_molecular_fraction_GD14(float gas_surface_density, float metall
     
     return f_mol;
 }
+// double calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity)
+// {
+//     // Early termination for edge cases
+//     if (gas_surface_density <= 0.0) {
+//         return 0.0;
+//     }
+    
+//     // Convert metallicity to dust-to-gas ratio relative to Milky Way
+//     const float zsun = 0.02;  // Solar metallicity
+//     float D_MW = metallicity / zsun;
+//     float U_MW = 1.0;  // Milky Way UV field strength
+    
+//     // Calculate spatial scale parameter (assume ~100 pc scale)
+//     float S = 1.0; // S = L / 100 pc, here assuming L ~ 100 pc
+    
+//     // Calculate D* parameter (GD14 equation between 5 and 6)
+//     float D_star = 0.17 * (2.0 + pow(S, 5)) / (1.0 + pow(S, 5));
+    
+//     // Calculate g parameter (GD14 equation between 5 and 6)
+//     float g = sqrt(D_MW * D_MW + D_star * D_star);
+    
+//     // Use erratum's improved formulation:
+//     // s parameter from erratum
+//     float s = pow(0.001 + 0.1 * U_MW, 0.7);
+    
+//     // Calculate alpha using erratum's improved formula (not original equation 9)
+//     float alpha = (1.0 + 0.7 * s) / (1.0 + s);
+    
+//     // Calculate Sigma_R=1 using the erratum formula
+//     float Sigma_R1 = 40.0 * g / s; // M_sun/pc^2
+    
+//     // Calculate eta parameter (0 for kpc scale, 0.25 for 500 pc scale)
+//     // Assuming we're working at ~kpc scale, so eta ≈ 0
+//     float eta = 0.0;  // Could be 0.25 for finer scales
+    
+//     // Calculate R using the complete erratum formula
+//     float ratio = gas_surface_density / Sigma_R1;
+//     float R = pow(ratio, alpha) / (1.0 + eta * ratio);
+    
+//     // Convert to molecular fraction: f_H2 = R / (1 + R)
+//     float f_mol = R / (1.0 + R);
+    
+//     // Apply bounds
+//     if (f_mol > 1.0) {
+//         f_mol = 1.0;
+//     } else if (f_mol < 0.0) {
+//         f_mol = 0.0;
+//     }
+    
+//     return f_mol;
+// }
 
 /**
  * calculate_stellar_scale_height_BR06 - Calculate stellar scale height using BR06 eq. (9)
