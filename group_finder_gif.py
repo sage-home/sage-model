@@ -27,4 +27,4 @@ def png_to_gif(folder_path=".", output_name="output.gif", duration=500):
     print(f"Created {output_name} from {len(images)} PNG files")
 
 # Run the conversion
-png_to_gif('/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/groups_SAGE_images/', 'all.gif', 1000)
+png_to_gif('/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/groups_SAGE_images/', 'xz.gif', 1000)
