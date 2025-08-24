@@ -41,7 +41,7 @@ PERFORMANCE OPTIMIZATIONS FOR GALAXY TRACKING AND 6-PANEL PLOTS:
 
 class COSMOSSageMatching:
     """
-    Simple tool to match COSMOS observations with SAGE 2.0 model galaxies
+    Simple tool to match COSMOS observations with SAGE25 model galaxies
     """
     
     def __init__(self, cosmos_file, sage_dir, hubble_h=0.73):
@@ -428,7 +428,7 @@ class COSMOSSageMatching:
 
 class ObservationalSageMatching:
     """
-    Generic tool to match observational data (COSMOS, EPOCHS, etc.) with SAGE 2.0 model galaxies
+    Generic tool to match observational data (COSMOS, EPOCHS, etc.) with SAGE25 model galaxies
     """
     
     def __init__(self, obs_file, sage_dir, dataset_name='Observatory', hubble_h=0.73):
@@ -821,7 +821,7 @@ class ObservationalSageMatching:
 
 class CEERSSageMatching:
     """
-    Tool to match CEERS quiescent galaxies with SAGE 2.0 model galaxies
+    Tool to match CEERS quiescent galaxies with SAGE25 model galaxies
     Uses pre-defined arrays of CEERS data rather than loading from CSV
     """
     

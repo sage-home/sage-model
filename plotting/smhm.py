@@ -18,7 +18,7 @@ DirName_old = './output/millennium_vanilla/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
-# Simulation details - NEW MODEL (SAGE 2.0)
+# Simulation details - NEW MODEL (SAGE25)
 Hubble_h = 0.73
 BoxSize = 62.5          # Mpc/h
 VolumeFraction = 1.0
@@ -32,7 +32,7 @@ Hubble_h_old = 0.73     # Change this if old model uses different Hubble paramet
 whichimf = 1
 dilute = 7500  # Not used for filtering anymore - only for scatter plots if needed
 sSFRcut = -11.0
-bulge_ratio_cut = 0.1  # Legacy parameter - now using SAGE 2.0/C16 criteria for ETG/LTG
+bulge_ratio_cut = 0.1  # Legacy parameter - now using SAGE25/C16 criteria for ETG/LTG
 
 OutputFormat = '.pdf'
 # plt.rcParams["figure.figsize"] = (10,8)
@@ -147,7 +147,7 @@ def smart_sampling_strategy_centrals_only(mvir, stellar_mass, galaxy_type, targe
 
 def smart_sampling_strategy_etg_ltg(mvir, stellar_mass, galaxy_type, bulge_mass, cold_gas, target_sample_size=None):
     """
-    Filter and separate ETGs and LTGs based on SAGE 2.0 and C16 criteria
+    Filter and separate ETGs and LTGs based on SAGE25 and C16 criteria
     
     For LTGs (disk-dominated/spiral galaxies):
     - Centrals only (Type == 0)
@@ -160,7 +160,7 @@ def smart_sampling_strategy_etg_ltg(mvir, stellar_mass, galaxy_type, bulge_mass,
     # Calculate bulge-to-stellar mass ratio
     bulge_ratio = np.where(stellar_mass > 0, bulge_mass / stellar_mass, 0.0)
     
-    # LTGs (Late Type Galaxies - disk dominated/spiral): SAGE 2.0 and C16 criteria
+    # LTGs (Late Type Galaxies - disk dominated/spiral): SAGE25 and C16 criteria
     ltg_mask = ((galaxy_type == 0) & 
                 (stellar_mass + cold_gas > 0.0) & 
                 (bulge_ratio > 0.1) & 
@@ -176,7 +176,7 @@ def smart_sampling_strategy_etg_ltg(mvir, stellar_mass, galaxy_type, bulge_mass,
     ltg_types = galaxy_type[ltg_indices] if len(ltg_indices) > 0 else np.array([])
     etg_types = galaxy_type[etg_indices] if len(etg_indices) > 0 else np.array([])
     
-    print(f"LTGs (SAGE 2.0/C16 criteria - centrals only, 0.1 < B/T < 0.5): {len(ltg_indices)} galaxies")
+    print(f"LTGs (SAGE25/C16 criteria - centrals only, 0.1 < B/T < 0.5): {len(ltg_indices)} galaxies")
     if len(ltg_indices) > 0:
         print(f"  - All centrals by definition: {np.sum(ltg_types == 0)}")
         ltg_bulge_ratios = bulge_ratio[ltg_indices]
@@ -292,14 +292,14 @@ def smhm_plot_fixed(compare_old_model=True):
     """Plot the stellar mass-halo mass relation with fixed sampling"""
     plt.figure(figsize=(10, 8))
 
-    # Load SAGE 2.0 data
-    print("Loading SAGE 2.0 data...")
+    # Load SAGE25 data
+    print("Loading SAGE25 data...")
     StellarMass = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
     Mvir = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h  
     Type = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='Type')
     
     if StellarMass is None or Mvir is None or Type is None:
-        print("Failed to load SAGE 2.0 data")
+        print("Failed to load SAGE25 data")
         return
     
     print(f"Loaded {len(StellarMass)} galaxies")
@@ -309,11 +309,11 @@ def smhm_plot_fixed(compare_old_model=True):
     # Apply filtering (no sampling - use all galaxies: centrals + satellites)
     filter_indices = smart_sampling_strategy_centrals_only(Mvir, StellarMass, Type)
     
-    # Get the filtered data for SAGE 2.0
+    # Get the filtered data for SAGE25
     log_mvir = np.log10(Mvir[filter_indices])
     log_stellar = np.log10(StellarMass[filter_indices])
 
-    # Plot SAGE 2.0 scatter
+    # Plot SAGE25 scatter
     # plt.scatter(log_mvir, log_stellar, s=1, alpha=0.3, color='lightblue')  # Removed label
 
     # Load and plot older SAGE model if requested
@@ -437,14 +437,14 @@ def smhm_plot_fixed(compare_old_model=True):
     if invalid_stellar > 0:
         print(f"WARNING: {invalid_stellar} galaxies with stellar mass <= 0")
     
-    # SAGE 2.0 statistics (all galaxies)
-    valid_bins, medians, std_errors = calculate_median_std(log_mvir, log_stellar, bin_edges, "SAGE 2.0 (all) ")
+    # SAGE25 statistics (all galaxies)
+    valid_bins, medians, std_errors = calculate_median_std(log_mvir, log_stellar, bin_edges, "SAGE25 (all) ")
     
-    # # Plot SAGE 2.0 median with error bars
+    # # Plot SAGE25 median with error bars
     sage2_handle = plt.errorbar(valid_bins, medians, yerr=std_errors, 
                 fmt='k-', linewidth=2, capsize=3, capthick=1.5, zorder=10)
     sage_handles.append(sage2_handle)
-    sage_labels.append('SAGE 2.0')
+    sage_labels.append('SAGE25')
     
     # Older SAGE statistics and plotting (if data available)
     if log_mvir_old is not None:
@@ -490,27 +490,27 @@ def smhm_plot_etg_ltg(compare_old_model=True):
     """Plot the stellar mass-halo mass relation separated by ETGs and LTGs"""
     plt.figure(figsize=(10, 8))
 
-    # Load SAGE 2.0 data
-    print("\nLoading SAGE 2.0 data for ETG/LTG analysis...")
+    # Load SAGE25 data
+    print("\nLoading SAGE25 data for ETG/LTG analysis...")
     StellarMass = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
     Mvir = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h  
     Type = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='Type')
     
-    # Load bulge mass and cold gas for SAGE 2.0/C16 criteria
+    # Load bulge mass and cold gas for SAGE25/C16 criteria
     BulgeMass = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='BulgeMass') * 1.0e10 / Hubble_h
     ColdGas = read_hdf_smart_sampling(DirName, snap_num=Snapshot, param='ColdGas') * 1.0e10 / Hubble_h
     
     if any(x is None for x in [StellarMass, Mvir, Type, BulgeMass, ColdGas]):
-        print("Failed to load SAGE 2.0 data")
+        print("Failed to load SAGE25 data")
         return
     
     print(f"Loaded {len(StellarMass)} galaxies")
     
-    # Apply filtering for ETGs and LTGs using SAGE 2.0/C16 criteria
+    # Apply filtering for ETGs and LTGs using SAGE25/C16 criteria
     etg_indices, ltg_indices = smart_sampling_strategy_etg_ltg(
         Mvir, StellarMass, Type, BulgeMass, ColdGas)
     
-    # Get the filtered data for SAGE 2.0 ETGs
+    # Get the filtered data for SAGE25 ETGs
     if len(etg_indices) > 0:
         log_mvir_etg = np.log10(Mvir[etg_indices])
         log_stellar_etg = np.log10(StellarMass[etg_indices])
@@ -518,7 +518,7 @@ def smhm_plot_etg_ltg(compare_old_model=True):
         log_mvir_etg = np.array([])
         log_stellar_etg = np.array([])
     
-    # Get the filtered data for SAGE 2.0 LTGs
+    # Get the filtered data for SAGE25 LTGs
     if len(ltg_indices) > 0:
         log_mvir_ltg = np.log10(Mvir[ltg_indices])
         log_stellar_ltg = np.log10(StellarMass[ltg_indices])
@@ -544,7 +544,7 @@ def smhm_plot_etg_ltg(compare_old_model=True):
             ColdGas_old = read_hdf_smart_sampling(DirName_old, snap_num=Snapshot, param='ColdGas') * 1.0e10 / Hubble_h_old
             
             if all(x is not None for x in [StellarMass_old, Mvir_old, Type_old, BulgeMass_old, ColdGas_old]):
-                # Apply filtering to older model using SAGE 2.0/C16 criteria
+                # Apply filtering to older model using SAGE25/C16 criteria
                 etg_indices_old, ltg_indices_old = smart_sampling_strategy_etg_ltg(
                     Mvir_old, StellarMass_old, Type_old, BulgeMass_old, ColdGas_old)
                 
@@ -644,27 +644,27 @@ def smhm_plot_etg_ltg(compare_old_model=True):
     handles = []
     labels = []
     
-    # Plot SAGE 2.0 ETGs
+    # Plot SAGE25 ETGs
     if len(log_mvir_etg) > 0:
         valid_bins_etg, medians_etg, std_errors_etg = calculate_median_std(
-            log_mvir_etg, log_stellar_etg, bin_edges, "SAGE 2.0 ETGs (all) ")
+            log_mvir_etg, log_stellar_etg, bin_edges, "SAGE25 ETGs (all) ")
         
         if len(valid_bins_etg) > 0:
             handle_etg = plt.errorbar(valid_bins_etg, medians_etg, yerr=std_errors_etg, 
                         fmt='r-', linewidth=2, capsize=3, capthick=1.5, zorder=10, color='red')
             handles.append(handle_etg)
-            labels.append('SAGE 2.0 ETGs')
+            labels.append('SAGE25 ETGs')
     
-    # Plot SAGE 2.0 LTGs
+    # Plot SAGE25 LTGs
     if len(log_mvir_ltg) > 0:
         valid_bins_ltg, medians_ltg, std_errors_ltg = calculate_median_std(
-            log_mvir_ltg, log_stellar_ltg, bin_edges, "SAGE 2.0 LTGs (all) ")
+            log_mvir_ltg, log_stellar_ltg, bin_edges, "SAGE25 LTGs (all) ")
         
         if len(valid_bins_ltg) > 0:
             handle_ltg = plt.errorbar(valid_bins_ltg, medians_ltg, yerr=std_errors_ltg, 
                         fmt='b-', linewidth=2, capsize=3, capthick=1.5, zorder=10, color='blue')
             handles.append(handle_ltg)
-            labels.append('SAGE 2.0 LTGs')
+            labels.append('SAGE25 LTGs')
     
     # Plot older SAGE ETGs
     if log_mvir_etg_old is not None and len(log_mvir_etg_old) > 0:
@@ -752,7 +752,7 @@ def smhm_plot_sf_passive_redshift_grid(compare_old_model=True):
         
         print(f"\nProcessing {snap_name} (z={actual_z:.3f})...")
         
-        # Load SAGE 2.0 data for this snapshot
+        # Load SAGE25 data for this snapshot
         StellarMass = read_hdf_smart_sampling(DirName, snap_num=snap_name, param='StellarMass') * 1.0e10 / Hubble_h
         Mvir = read_hdf_smart_sampling(DirName, snap_num=snap_name, param='Mvir') * 1.0e10 / Hubble_h  
         Type = read_hdf_smart_sampling(DirName, snap_num=snap_name, param='Type')
@@ -760,7 +760,7 @@ def smhm_plot_sf_passive_redshift_grid(compare_old_model=True):
         SfrBulge = read_hdf_smart_sampling(DirName, snap_num=snap_name, param='SfrBulge')
         
         if any(x is None for x in [StellarMass, Mvir, Type, SfrDisk, SfrBulge]):
-            print(f"Failed to load SAGE 2.0 data for {snap_name}")
+            print(f"Failed to load SAGE25 data for {snap_name}")
             ax.text(0.5, 0.5, f'No data for z={actual_z:.1f}', 
                    transform=ax.transAxes, ha='center', va='center', fontsize=14)
             continue
@@ -827,19 +827,19 @@ def smhm_plot_sf_passive_redshift_grid(compare_old_model=True):
         else:
             bin_edges = np.linspace(10.0, 15.0, 15)
         
-        # Plot SAGE 2.0 star forming galaxies
+        # Plot SAGE25 star forming galaxies
         if len(log_mvir_sf) > 0:
             valid_bins_sf, medians_sf, std_errors_sf = calculate_median_std(
-                log_mvir_sf, log_stellar_sf, bin_edges, f"z={actual_z:.1f} SAGE 2.0 SF ")
+                log_mvir_sf, log_stellar_sf, bin_edges, f"z={actual_z:.1f} SAGE25 SF ")
             
             if len(valid_bins_sf) > 0:
                 ax.errorbar(valid_bins_sf, medians_sf, yerr=std_errors_sf, 
                            fmt='b-', linewidth=2, capsize=2, capthick=1, zorder=10, color='blue')
         
-        # Plot SAGE 2.0 passive galaxies
+        # Plot SAGE25 passive galaxies
         if len(log_mvir_passive) > 0:
             valid_bins_passive, medians_passive, std_errors_passive = calculate_median_std(
-                log_mvir_passive, log_stellar_passive, bin_edges, f"z={actual_z:.1f} SAGE 2.0 Passive ")
+                log_mvir_passive, log_stellar_passive, bin_edges, f"z={actual_z:.1f} SAGE25 Passive ")
             
             if len(valid_bins_passive) > 0:
                 ax.errorbar(valid_bins_passive, medians_passive, yerr=std_errors_passive, 
@@ -882,8 +882,8 @@ def smhm_plot_sf_passive_redshift_grid(compare_old_model=True):
     labels = []
     
     # Add dummy handles for legend
-    handles.append(plt.Line2D([0], [0], color='blue', linewidth=2, label='SAGE 2.0 Star Forming'))
-    handles.append(plt.Line2D([0], [0], color='red', linewidth=2, label='SAGE 2.0 Passive'))
+    handles.append(plt.Line2D([0], [0], color='blue', linewidth=2, label='SAGE25 Star Forming'))
+    handles.append(plt.Line2D([0], [0], color='red', linewidth=2, label='SAGE25 Passive'))
     if compare_old_model:
         handles.append(plt.Line2D([0], [0], color='lightblue', linewidth=1.5, linestyle='--', label='SAGE C16 Star Forming'))
         handles.append(plt.Line2D([0], [0], color='lightcoral', linewidth=1.5, linestyle='--', label='SAGE C16 Passive'))
@@ -932,7 +932,7 @@ def sfms_plot_three_populations_redshift_grid(compare_old_model=True):
         
         print(f"\nProcessing {snap_name} (z={actual_z:.3f}) for SFMS...")
         
-        # Load SAGE 2.0 data for this snapshot
+        # Load SAGE25 data for this snapshot
         StellarMass = read_hdf_smart_sampling(DirName, snap_num=snap_name, param='StellarMass') * 1.0e10 / Hubble_h
         Mvir = read_hdf_smart_sampling(DirName, snap_num=snap_name, param='Mvir') * 1.0e10 / Hubble_h  
         Type = read_hdf_smart_sampling(DirName, snap_num=snap_name, param='Type')
@@ -940,7 +940,7 @@ def sfms_plot_three_populations_redshift_grid(compare_old_model=True):
         SfrBulge = read_hdf_smart_sampling(DirName, snap_num=snap_name, param='SfrBulge')
         
         if any(x is None for x in [StellarMass, Mvir, Type, SfrDisk, SfrBulge]):
-            print(f"Failed to load SAGE 2.0 data for {snap_name}")
+            print(f"Failed to load SAGE25 data for {snap_name}")
             ax.text(0.5, 0.5, f'No data for z={actual_z:.1f}', 
                    transform=ax.transAxes, ha='center', va='center', fontsize=14)
             continue
@@ -1107,7 +1107,7 @@ def sfms_plot_three_populations_single_redshift(snapshot='Snap_63', compare_old_
     
     plt.figure(figsize=(12, 9))
     
-    # Load SAGE 2.0 data
+    # Load SAGE25 data
     StellarMass = read_hdf_smart_sampling(DirName, snap_num=snapshot, param='StellarMass') * 1.0e10 / Hubble_h
     Mvir = read_hdf_smart_sampling(DirName, snap_num=snapshot, param='Mvir') * 1.0e10 / Hubble_h  
     Type = read_hdf_smart_sampling(DirName, snap_num=snapshot, param='Type')
@@ -1115,7 +1115,7 @@ def sfms_plot_three_populations_single_redshift(snapshot='Snap_63', compare_old_
     SfrBulge = read_hdf_smart_sampling(DirName, snap_num=snapshot, param='SfrBulge')
     
     if any(x is None for x in [StellarMass, Mvir, Type, SfrDisk, SfrBulge]):
-        print(f"Failed to load SAGE 2.0 data for {snapshot}")
+        print(f"Failed to load SAGE25 data for {snapshot}")
         return
     
     # Filter for galaxies with positive stellar mass (include all types: centrals + satellites)
@@ -1385,7 +1385,7 @@ if __name__ == '__main__':
 
     # Plot with smooth median line
     simple_smhm_plot(log_mvir, log_stellar, 
-                    title="SAGE 2.0 SMHM Relation", 
+                    title="SAGE25 SMHM Relation", 
                     save_name="sage2_smhm_smooth",
                     output_dir=OutputDir,
                     galaxies_per_bin=150,  # Fewer = more detail, more = smoother

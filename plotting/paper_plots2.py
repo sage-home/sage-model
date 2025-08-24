@@ -201,10 +201,10 @@ SFR_SimDirs = [
 
 # Define simulation configurations for SMF comparison
 SMF_SimConfigs = [
-    # SAGE 2.0 simulations (solid lines)
+    # SAGE25 simulations (solid lines)
     {
         'path': './output/millennium/', 
-        'label': 'SAGE 2.0', 
+        'label': 'SAGE25', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line
         'BoxSize': 62.5,  # h-1 Mpc
@@ -236,7 +236,7 @@ GAS_SimConfigs = [
     # Main simulation (your current one)
     {
         'path': './output/millennium/', 
-        'label': 'SAGE 2.0', 
+        'label': 'SAGE25', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',
         'BoxSize': 62.5,
@@ -707,7 +707,7 @@ def calculate_muratov_mass_loading(vvir, z=0.0):
     return eta
 
 def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
-    """Plot stellar mass function comparison between SAGE 2.0 and Vanilla SAGE with standardized styling"""
+    """Plot stellar mass function comparison between SAGE25 and Vanilla SAGE with standardized styling"""
     logger.info('=== Stellar Mass Function Comparison ===')
     
     # Create standardized figure
@@ -942,7 +942,7 @@ def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
     
     # Add color legend for red/blue model divisions
     if len(sim_configs) > 0:
-        # Add dummy lines for red/blue legend entries - solid for SAGE 2.0, dotted for Vanilla
+        # Add dummy lines for red/blue legend entries - solid for SAGE25, dotted for Vanilla
         ax.plot([], [], color='red', linestyle='-', linewidth=2, alpha=0.7, label='Quiescent Galaxies')
         ax.plot([], [], color='blue', linestyle='-', linewidth=2, alpha=0.7, label='Star forming Galaxies')
         ax.plot([], [], color='red', linestyle=':', linewidth=2, alpha=0.7)
@@ -1131,7 +1131,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             model_cold_gas_log, mask_cold = safe_log10_with_mask(counts_cold / volume / binwidth)
             model_HI_gas_log, mask_h1 = safe_log10_with_mask(counts_h1 / volume / binwidth)
             
-            # Calculate error bars for SAGE 2.0 (main model only)
+            # Calculate error bars for SAGE25 (main model only)
             if i == 0 and len(w_h1) > 0:  # Only for the main model
                 # Calculate bin-by-bin errors for H1
                 error_h1_upper = []
@@ -1185,7 +1185,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             
             # Plot H1 gas line for each model - use original label for main model
             if i == 0:
-                h1_label = 'SAGE 2.0'
+                h1_label = 'SAGE25'
             else:
                 h1_label = label
             
@@ -1396,7 +1396,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             model_cold_gas_log, mask_cold = safe_log10_with_mask(counts_cold / volume / binwidth)
             model_h2_gas_log, mask_h2 = safe_log10_with_mask(counts_h2 / volume / binwidth)
             
-            # Calculate error bars for SAGE 2.0 (main model only)
+            # Calculate error bars for SAGE25 (main model only)
             if i == 0 and len(w_h2) > 0:  # Only for the main model
                 # Calculate bin-by-bin errors for H2
                 error_h2_upper = []
@@ -1450,7 +1450,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             
             # Plot H2 gas line for each model - use original label for main model
             if i == 0:
-                h2_label = 'SAGE 2.0'
+                h2_label = 'SAGE25'
             else:
                 h2_label = label
             
@@ -1910,8 +1910,8 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
                 median_h2_frac_valid = median_h2_frac[valid_bins]
                 error_h2_frac_valid = error_h2_frac[valid_bins]
                 
-                # Plot with error bars for SAGE 2.0 (first model), regular line for others
-                if i == 0:  # SAGE 2.0 model - add error bars
+                # Plot with error bars for SAGE25 (first model), regular line for others
+                if i == 0:  # SAGE25 model - add error bars
                     model_line = ax.plot(mass_centers_valid, median_h2_frac_valid, 
                         color=color, linewidth=linewidth,
                         label=label, alpha=alpha, zorder=6)[0]
@@ -1950,7 +1950,7 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
                 logger.info(f'  H2 fraction range: {np.min(h2_fraction):.3f} - {np.max(h2_fraction):.3f}')
                 logger.info(f'  Median H2 fraction: {np.median(h2_fraction):.3f}')
                 
-                # Log statistics for SAGE 2.0 error bars
+                # Log statistics for SAGE25 error bars
                 if i == 0:
                     logger.info(f'  Error bar range: {np.min(error_h2_frac_valid):.3f} - {np.max(error_h2_frac_valid):.3f}')
                     logger.info(f'  Mean error bar size: {np.mean(error_h2_frac_valid):.3f}')
@@ -2170,7 +2170,7 @@ def plot_h2_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
                     logger.info(f'    Plotting HI_Gas with {len(mass_centers_valid)} valid bins')
                     
                     # Plot line
-                    if i == 0:  # SAGE 2.0 model - add error bars
+                    if i == 0:  # SAGE25 model - add error bars
                         model_line = ax.plot(mass_centers_valid, median_h1_frac_valid,
                             color=color, linewidth=linewidth,
                             label=f'{label} (HI_Gas)', alpha=alpha, zorder=6)[0]
@@ -2203,7 +2203,7 @@ def plot_h2_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
                     # Use dashed line style to distinguish from HI_Gas
                     broken_linestyle = '--' if linestyle == '-' else ':'
                     
-                    if i == 0:  # SAGE 2.0 model - add error bars
+                    if i == 0:  # SAGE25 model - add error bars
                         model_line_broken = ax.plot(mass_centers_valid_broken, median_h1_frac_broken_valid,
                             color=color, linewidth=linewidth, linestyle=broken_linestyle,
                             label=f'{label} (HI_Gas_broken)', alpha=alpha, zorder=6)[0]
@@ -2441,7 +2441,7 @@ def plot_h1_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
                     logger.info(f'    Plotting HI_Gas with {len(mass_centers_valid)} valid bins')
                     
                     # Plot line
-                    if i == 0:  # SAGE 2.0 model - add error bars
+                    if i == 0:  # SAGE25 model - add error bars
                         model_line = ax.plot(mass_centers_valid, median_h1_frac_valid,
                             color=color, linewidth=linewidth,
                             label=f'{label} (HI_Gas)', alpha=alpha, zorder=6)[0]
@@ -2474,7 +2474,7 @@ def plot_h1_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
                     # Use dashed line style to distinguish from HI_Gas
                     broken_linestyle = '--' if linestyle == '-' else ':'
                     
-                    if i == 0:  # SAGE 2.0 model - add error bars
+                    if i == 0:  # SAGE25 model - add error bars
                         model_line_broken = ax.plot(mass_centers_valid_broken, median_h1_frac_broken_valid,
                             color=color, linewidth=linewidth, linestyle=broken_linestyle,
                             label=f'{label} (HI_Gas_broken)', alpha=alpha, zorder=6)[0]
@@ -2931,16 +2931,16 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
             std_bh = np.array(std_bh)
             valid_centers = np.array(valid_centers)
             
-            if 'SAGE 2.0' in model_name or i == 0:  # Main model - thick black line with grey shading
+            if 'SAGE25' in model_name or i == 0:  # Main model - thick black line with grey shading
                 # Plot thick black median line
                 ax.plot(valid_centers, median_bh, color='black', linewidth=2.5, 
-                       label='SAGE 2.0', alpha=0.9, zorder=10)
+                       label='SAGE25', alpha=0.9, zorder=10)
                 
                 # Plot grey shading for 1-sigma errors
                 ax.fill_between(valid_centers, median_bh - std_bh, median_bh + std_bh,
                                color='grey', alpha=0.3, zorder=8)
                 
-                logger.info(f'  SAGE 2.0 median line: {len(valid_centers)} bins')
+                logger.info(f'  SAGE25 median line: {len(valid_centers)} bins')
                 
             elif 'C16' in model_name or 'Vanilla' in model_name:  # C16 model - dashed dark red line
                 # Plot dashed dark red median line (no error bars)
@@ -3094,7 +3094,7 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
     
     # Categorize legend entries
     for handle, label in zip(handles, labels):
-        if any(model_name in label for model_name in ['SAGE 2.0', 'SAGE C16', 'Centrals', 'Satellites', 'Median', '1σ']):
+        if any(model_name in label for model_name in ['SAGE25', 'SAGE C16', 'Centrals', 'Satellites', 'Median', '1σ']):
             model_handles.append(handle)
             model_labels.append(label)
         elif any(obs_name in label for obs_name in ['Terrazas', 'Davis', 'Sahu']):
@@ -3159,8 +3159,8 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
             
             # Print median line statistics
             logger.info(f'  Median lines plotted with 0.2 dex bins')
-            if 'SAGE 2.0' in main_model_name or main_model_name == list(model_data.keys())[0]:
-                logger.info(f'  SAGE 2.0: Thick black line with 1σ error bars')
+            if 'SAGE25' in main_model_name or main_model_name == list(model_data.keys())[0]:
+                logger.info(f'  SAGE25: Thick black line with 1σ error bars')
             if len(model_data) > 1:
                 second_model_name = list(model_data.keys())[1]
                 if 'C16' in second_model_name or 'Vanilla' in second_model_name:
@@ -3243,19 +3243,19 @@ def plot_mass_metallicity_relation(sim_configs, snapshot, output_dir):
                 sigma_Z = np.array(sigma_Z)
                 valid_centers = np.array(valid_centers)
                 
-                if 'SAGE 2.0' in label or i == 0:  # Main model - thick black line with error bars
+                if 'SAGE25' in label or i == 0:  # Main model - thick black line with error bars
                     # Plot thick black median line
                     line = ax.plot(valid_centers, median_Z, color='black', linewidth=2.5, 
-                                  label='SAGE 2.0', alpha=0.9, zorder=10)[0]
+                                  label='SAGE25', alpha=0.9, zorder=10)[0]
                     model_handles.append(line)
-                    model_labels.append('SAGE 2.0')
+                    model_labels.append('SAGE25')
                     
                     # Plot 1-sigma error bars (standard error of the mean)
                     # Plot grey shading for 1-sigma errors
                     ax.fill_between(valid_centers, median_Z - sigma_Z, median_Z + sigma_Z,
                                    color='grey', alpha=0.3, zorder=8)
                     
-                    logger.info(f'  SAGE 2.0 median line: {len(valid_centers)} bins')
+                    logger.info(f'  SAGE25 median line: {len(valid_centers)} bins')
                     
                 elif 'C16' in label or 'Vanilla' in label:  # C16 model - dashed dark red line
                     # Plot dashed dark red median line (no error bars)
@@ -3609,18 +3609,18 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
                 sigma_bf = np.array(sigma_bf)
                 valid_centers = np.array(valid_centers)
                 
-                if 'SAGE 2.0' in label or i == 0:  # Main model - thick black line with error bars
+                if 'SAGE25' in label or i == 0:  # Main model - thick black line with error bars
                     # Plot thick black median line
                     line = ax.plot(valid_centers, median_bf, color='black', linewidth=2.5, 
-                                  label='SAGE 2.0', alpha=0.9, zorder=10)[0]
+                                  label='SAGE25', alpha=0.9, zorder=10)[0]
                     model_handles.append(line)
-                    model_labels.append('SAGE 2.0')
+                    model_labels.append('SAGE25')
                     
                     # Plot grey shading for 1-sigma errors
                     ax.fill_between(valid_centers, median_bf - sigma_bf, median_bf + sigma_bf,
                                    color='grey', alpha=0.3, zorder=8)
                     
-                    logger.info(f'  SAGE 2.0 median line: {len(valid_centers)} bins')
+                    logger.info(f'  SAGE25 median line: {len(valid_centers)} bins')
                     
                 elif 'C16' in label or 'Vanilla' in label:  # C16 model - dashed dark red line
                     # Plot dashed dark red median line (no error bars)
@@ -3883,7 +3883,7 @@ if __name__ == '__main__':
         # Color SAGE galaxies by stellar mass
         scatter = ax.scatter(Vvir_plot, MassLoading_plot, c=np.log10(StellarMass_plot), 
                            s=5, alpha=0.7, edgecolors='none', 
-                           label='SAGE 2.0 galaxies', zorder=5, cmap='viridis')
+                           label='SAGE25 galaxies', zorder=5, cmap='viridis')
         
         # Add colorbar for stellar mass
         cbar = plt.colorbar(scatter, ax=ax, pad=0.02, shrink=0.8)

@@ -31,11 +31,11 @@ import matplotlib.gridspec as gridspec
 # Define multiple directories and their properties
 MODEL_CONFIGS = [
     {
-        'name': 'SAGE 2.0',           # Display name for legend
+        'name': 'SAGE25',           # Display name for legend
         'dir': './output/millennium/',  # Directory path
         'color': 'black',            # Color for plotting
         'linestyle': '-',            # Line style
-        'linewidth': 3,              # Thick line for SAGE 2.0
+        'linewidth': 3,              # Thick line for SAGE25
         'alpha': 0.8,                # Transparency
         'boxsize': 62.5,             # Box size in h^-1 Mpc for this model
         'volume_fraction': 1.0,      # Fraction of the full volume output by the model
@@ -82,7 +82,7 @@ MODEL_CONFIGS = [
     },
     # Model with different snapshot range (0-49 instead of 0-63) - miniUchuu simulation
     {
-        'name': 'SAGE 2.0 miniUchuu',   # Display name matching the error message
+        'name': 'SAGE25 miniUchuu',   # Display name matching the error message
         'dir': './output/miniuchuu_09082025/',     # Path to your miniUchuu model directory
         'color': 'red',              # Color for plotting
         'linestyle': '-.',           # Dash-dot line style
@@ -2449,7 +2449,7 @@ def calculate_residuals(bin_centers1, phi1, bin_centers2, phi2):
     Parameters:
     -----------
     bin_centers1, phi1 : array
-        Mass bins and phi values for first dataset (SAGE 2.0)
+        Mass bins and phi values for first dataset (SAGE25)
     bin_centers2, phi2 : array
         Mass bins and phi values for second dataset (comparison model)
         
@@ -2513,7 +2513,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
     Create a comprehensive grid plot of stellar mass functions for ALL redshift bins
     with residual plots beneath each main panel
     
-    MODIFIED: Added residual plots comparing SAGE 2.0 vs comparison model
+    MODIFIED: Added residual plots comparing SAGE25 vs comparison model
     """
     
     # Load observational data
@@ -2796,8 +2796,8 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
                 continue
         
         # CALCULATE AND PLOT RESIDUALS
-        # Find SAGE 2.0 and comparison model data
-        sage_2_data = model_smf_data[i].get('SAGE 2.0', None)
+        # Find SAGE25 and comparison model data
+        sage_2_data = model_smf_data[i].get('SAGE25', None)
         comparison_data = None
         comparison_name = None
         
@@ -2824,7 +2824,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
                 
                 # Set residual plot limits and labels
                 residual_ax.set_ylim(-1.5, 1.5)
-                residual_ax.set_ylabel(f'log(SAGE 2.0/{comparison_name})', fontsize=10)
+                residual_ax.set_ylabel(f'log(SAGE25/{comparison_name})', fontsize=10)
                 residual_ax.grid(True, alpha=0.3)
                 
                 print(f"  Plotted residuals: {len(residuals)} points, range: {np.min(residuals):.2f} to {np.max(residuals):.2f}")
@@ -2834,7 +2834,7 @@ def plot_smf_all_redshift_bins_with_residuals(galaxy_types='all', mass_range=(7,
                 residual_ax.text(0.5, 0.5, 'No residual data', ha='center', va='center', 
                                transform=residual_ax.transAxes, fontsize=10, alpha=0.5)
         else:
-            print(f"  No residuals calculated - missing data (SAGE 2.0: {sage_2_data is not None}, Comparison: {comparison_data is not None})")
+            print(f"  No residuals calculated - missing data (SAGE25: {sage_2_data is not None}, Comparison: {comparison_data is not None})")
             # Add text indicating missing data
             residual_ax.text(0.5, 0.5, 'Missing model data', ha='center', va='center', 
                            transform=residual_ax.transAxes, fontsize=10, alpha=0.5)

@@ -250,7 +250,7 @@ def setup_model_config(model_config):
     SMF_SimConfigs = [
         {
             'path': model_config['directory'],
-            'label': f'SAGE 2.0 ({model_config["name"]})',
+            'label': f'SAGE25 ({model_config["name"]})',
             'color': PLOT_COLORS.get(model_config['name'], '#1f77b4'),  # Default color if not found
             'linestyle': '-',
             'BoxSize': model_config['box_size'],

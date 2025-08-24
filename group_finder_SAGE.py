@@ -2213,11 +2213,11 @@ def plot_xz_projection_centrals_only(data_merged, group_catalog, output_dir='./'
     # Add title with snapshot info
     if snapshot is not None:
         redshift = snapshot_to_redshift(snapshot)
-        title = f'X-Z Projection - Central Galaxy Positions\n'
-        title += f'Snapshot {snapshot} (z={redshift:.3f}), Marker size ∝ Group members'
+        title = f'X-Z Projection - Group Positions\n'
+        title += f'Snapshot {snapshot} (z={redshift:.3f})'
         ax.set_title(title, fontsize=16, pad=20)
     else:
-        ax.set_title('X-Z Projection - Central Galaxy Positions\nMarker size ∝ Group members', 
+        ax.set_title('X-Z Projection - Group Positions\n', 
                     fontsize=16, pad=20)
     
     # Adjust layout

@@ -1678,7 +1678,7 @@ if __name__ == '__main__':
     log10_sigma_H2 = np.log10(sigma_H2)
     log10_sigma_SFR = np.log10(sigma_SFR)
     # Color by Mvir (virial mass)
-    sc = plt.scatter(log10_sigma_H2, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE 2.0')
+    sc = plt.scatter(log10_sigma_H2, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE25')
     cb = plt.colorbar(sc)
     cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
     # Add canonical Kennicutt-Schmidt law (Kennicutt 1998): log(Sigma_SFR) = 1.4*log(Sigma_gas) - 3.6
@@ -1744,7 +1744,7 @@ if __name__ == '__main__':
     log10_sigma_H1 = np.log10(sigma_H1)
     log10_sigma_SFR = np.log10(sigma_SFR)
     # Color by Mvir (virial mass)
-    sc = plt.scatter(log10_sigma_H1, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE 2.0')
+    sc = plt.scatter(log10_sigma_H1, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE25')
     cb = plt.colorbar(sc)
     cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
     
@@ -1784,9 +1784,9 @@ if __name__ == '__main__':
     log10_sigma_h1 = np.log10(sigma_h1)
     log10_sigma_SFR = np.log10(sigma_SFR)
     # Color by Mvir (virial mass)
-    sc = plt.scatter(log10_sigma_gas, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE 2.0')
-    # sc1 = plt.scatter(log10_sigma_h1, log10_sigma_SFR, c='r', alpha=0.6, s=5, label='SAGE 2.0')
-    # sc2 = plt.scatter(log10_sigma_h2, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE 2.0')
+    sc = plt.scatter(log10_sigma_gas, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE25')
+    # sc1 = plt.scatter(log10_sigma_h1, log10_sigma_SFR, c='r', alpha=0.6, s=5, label='SAGE25')
+    # sc2 = plt.scatter(log10_sigma_h2, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE25')
     cb = plt.colorbar(sc)
     cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
 

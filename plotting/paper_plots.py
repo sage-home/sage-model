@@ -929,11 +929,11 @@ for sim_config in SFR_SimDirs:
         vanilla_sim_path = sim_config['path']
         break
 
-# Process main simulation (SAGE 2.0)
+# Process main simulation (SAGE25)
 if os.path.exists(main_sim_path):
-    logger.info('Processing main simulation (SAGE 2.0)...')
+    logger.info('Processing main simulation (SAGE25)...')
     median_sfr_main, mass_bin_means_main, lookback_times_main, mass_bin_centers = process_simulation_sfr_evolution(
-        main_sim_path, 'SAGE 2.0', redshifts, FirstSnap, LastSnap, Main_Hubble_h)
+        main_sim_path, 'SAGE25', redshifts, FirstSnap, LastSnap, Main_Hubble_h)
     
     # Create color scheme
     colors = create_red_to_navy_colormap(len(mass_bin_centers))
@@ -1092,7 +1092,7 @@ else:
 # Create custom legend (rest of your existing legend code)
 legend_elements = []
 if os.path.exists(main_sim_path):
-    legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=3, linestyle='-', label='SAGE 2.0'))
+    legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=3, linestyle='-', label='SAGE25'))
 if vanilla_sim_path and os.path.exists(vanilla_sim_path):
     legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=3, linestyle=':', label='SAGE C16'))
 

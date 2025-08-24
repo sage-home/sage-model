@@ -200,10 +200,10 @@ SFR_SimDirs = [
 
 # Define simulation configurations for SMF comparison
 SMF_SimConfigs = [
-    # SAGE 2.0 simulations (solid lines)
+    # SAGE25 simulations (solid lines)
     {
         'path': './output/millennium/', 
-        'label': 'SAGE 2.0', 
+        'label': 'SAGE25', 
         'color': PLOT_COLORS['millennium'], 
         'linestyle': '-',  # solid line
         'BoxSize': 62.5,  # h-1 Mpc
@@ -212,7 +212,7 @@ SMF_SimConfigs = [
     },
     {
         'path': './output/miniuchuu_full_mod_lowerbaryonicfrac_28052025/', 
-        'label': 'SAGE 2.0 miniUchuu', 
+        'label': 'SAGE25 miniUchuu', 
         'color': PLOT_COLORS['miniuchuu'], 
         'linestyle': '-',  # solid line
         'BoxSize': 400,  # h-1 Mpc
@@ -575,7 +575,7 @@ def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
                 model_handles.append(line_main)
                 model_labels.append(label_all)
             
-            # Check if this is a SAGE 2.0 model (exclude C16)
+            # Check if this is a SAGE25 model (exclude C16)
             is_sage2 = 'C16' not in label
             logger.info(f'  Adding shading for {label}: {is_sage2}')
             
@@ -594,7 +594,7 @@ def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
                 ax2.plot(xaxeshisto, phi_red_log, color=color, linestyle=linestyle, 
                         linewidth=linewidth_all, alpha=0.9)
                 
-                # Red shading for SAGE 2.0 only
+                # Red shading for SAGE25 only
                 if is_sage2:
                     valid_mask = ~np.isnan(phi_red_log)
                     valid_points = np.sum(valid_mask)
@@ -609,7 +609,7 @@ def plot_stellar_mass_function_comparison(sim_configs, snapshot, output_dir):
                 ax3.plot(xaxeshisto, phi_blue_log, color=color, linestyle=linestyle, 
                         linewidth=linewidth_all, alpha=0.9)
                 
-                # Blue shading for SAGE 2.0 only
+                # Blue shading for SAGE25 only
                 if is_sage2:
                     valid_mask = ~np.isnan(phi_blue_log)
                     valid_points = np.sum(valid_mask)
