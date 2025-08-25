@@ -145,7 +145,7 @@ def create_interactive_plot(pos_x, pos_y, pos_z, properties_dict, sample_indices
         
         # Determine colorscale and range based on property
         if 'Mass' in prop_name or 'mass' in prop_name:
-            colorscale = 'Viridis'  # Purple-green for masses
+            colorscale = 'plasma'  # Purple-green for masses
             # Handle log scale for masses
             valid = prop > 0
             log_prop = np.zeros_like(prop)

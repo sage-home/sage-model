@@ -165,7 +165,7 @@ if __name__ == '__main__':
     n_bins = 50
 
     # Define colors for different redshifts
-    colors = plt.cm.viridis(np.linspace(0, 1, len(SMFsnaps)))
+    colors = plt.cm.plasma(np.linspace(0, 1, len(SMFsnaps)))
 
     for i, snap in enumerate(SMFsnaps):
         # Get valid data points - check for positive values before taking log
@@ -401,7 +401,7 @@ if __name__ == '__main__':
     n_bins = 50
 
     # Define colors for different redshifts
-    colors = plt.cm.viridis(np.linspace(0, 1, len(SMFsnaps)))
+    colors = plt.cm.plasma(np.linspace(0, 1, len(SMFsnaps)))
 
     for i, snap in enumerate(SMFsnaps):
         # Get valid data points - check for positive values before taking log

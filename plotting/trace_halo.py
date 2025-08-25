@@ -404,7 +404,7 @@ def plot_halo_evolution(tracked_data, output_dir="./plots", Hubble_h=0.73):
     
     # Color points by redshift
     sc = ax.scatter(positions[:, 0], positions[:, 1], positions[:, 2], 
-                   c=redshifts, cmap='viridis')
+                   c=redshifts, cmap='plasma')
     
     # Connect points with a line
     ax.plot(positions[:, 0], positions[:, 1], positions[:, 2], 'k-', alpha=0.3)

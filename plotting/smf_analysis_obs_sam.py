@@ -3511,6 +3511,86 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
     
     return fig, axes
 
+def create_sage_c16_plots():
+    """
+    Create two comprehensive SMF plots:
+    1. Just SAGE C16 SMFs (no observations)
+    2. SAGE C16 SMFs + observations
+    """
+    global MODEL_CONFIGS
+    
+    # Store the original MODEL_CONFIGS
+    original_configs = MODEL_CONFIGS.copy()
+    
+    # Find SAGE C16 configuration
+    sage_c16_config = None
+    for config in original_configs:
+        if config['name'] == 'SAGE C16':
+            sage_c16_config = config
+            break
+    
+    if sage_c16_config is None:
+        print("Error: SAGE C16 configuration not found!")
+        return
+    
+    try:
+        print("\n" + "="*70)
+        print("Creating additional SAGE C16 comprehensive plots...")
+        print("="*70)
+        
+        # Reset legend tracking for clean plots
+        global models_in_legend
+        
+        # Plot 1: Just SAGE C16 SMFs (no observations)
+        print("\n1. Creating SAGE C16 only comprehensive plot (no observations)...")
+        
+        # Temporarily set MODEL_CONFIGS to only SAGE C16
+        MODEL_CONFIGS[:] = [sage_c16_config]
+        models_in_legend = set()  # Reset legend tracking
+        
+        fig1, axes1 = plot_smf_all_redshift_bins(
+            galaxy_types='all',
+            mass_range=(8, 12),
+            save_path=OutputDir + 'comprehensive_sage_c16_only.pdf',
+            show_observations=False,
+            figure_title="SAGE C16 - All Galaxies (z=0-12)"
+        )
+        
+        print("   ✓ Saved: comprehensive_sage_c16_only.pdf")
+        
+        # Plot 2: SAGE C16 SMFs + observations
+        print("\n2. Creating SAGE C16 + observations comprehensive plot...")
+        
+        # Reset legend tracking again
+        models_in_legend = set()
+        
+        fig2, axes2 = plot_smf_all_redshift_bins(
+            galaxy_types='all',
+            mass_range=(8, 12),
+            save_path=OutputDir + 'comprehensive_sage_c16_with_obs.pdf',
+            show_observations=True,
+            figure_title="SAGE C16 + Observations - All Galaxies (z=0-12)"
+        )
+        
+        print("   ✓ Saved: comprehensive_sage_c16_with_obs.pdf")
+        
+        print("\n" + "="*70)
+        print("SAGE C16 comprehensive plots completed successfully!")
+        print("Generated files:")
+        print("1. comprehensive_sage_c16_only.pdf - Pure SAGE C16 model results")
+        print("2. comprehensive_sage_c16_with_obs.pdf - SAGE C16 + observational data")
+        print("="*70)
+        
+    except Exception as e:
+        print(f"Error creating SAGE C16 plots: {e}")
+        import traceback
+        traceback.print_exc()
+        
+    finally:
+        # Always restore the original MODEL_CONFIGS
+        MODEL_CONFIGS[:] = original_configs
+        print("Restored original model configurations.")
+
 # Example usage and main execution
 if __name__ == "__main__":
     print("SAGE SMF Analysis with Split Redshift Figures")
@@ -3637,6 +3717,8 @@ if __name__ == "__main__":
         # All galaxies (already included in main script)
         plot_smf_all_redshift_bins(galaxy_types='all', 
                                 save_path=OutputDir + 'comprehensive_all.pdf')
+        
+        create_sage_c16_plots()
 
         # Central galaxies only
         plot_smf_all_redshift_bins(galaxy_types='central',

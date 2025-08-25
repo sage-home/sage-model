@@ -25,7 +25,7 @@ VolumeFraction = 1.0  # Fraction of the full volume output by the model
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
-dilute = 7500       # Number of galaxies to plot in scatter plots
+dilute = 10000       # Number of galaxies to plot in scatter plots
 sSFRcut = -11.0     # Divide quiescent from star forming galaxies
 
 OutputFormat = '.pdf'
@@ -1519,7 +1519,7 @@ if __name__ == '__main__':
 
     # Color points by halo mass
     halo_mass = np.log10(Mvir[w])
-    sc = plt.scatter(mass, vel, c=halo_mass, cmap='viridis', s=5, alpha=0.7)
+    sc = plt.scatter(mass, vel, c=halo_mass, cmap='plasma', s=5, alpha=0.7)
     cbar = plt.colorbar(sc)
     cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
 
@@ -1562,7 +1562,7 @@ if __name__ == '__main__':
 
     # Color points by halo mass
     halo_mass = np.log10(Mvir[w])
-    sc = plt.scatter(mass, np.log10(ejected), c=halo_mass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
+    sc = plt.scatter(mass, np.log10(ejected), c=halo_mass, cmap='plasma', s=5, alpha=0.7, label='Centrals')
     cbar = plt.colorbar(sc)
     cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
 
@@ -1603,7 +1603,7 @@ if __name__ == '__main__':
 
     plt.scatter(sats, np.log10(InfallMvir[sat]), marker='*', s=25, c='k', alpha=0.5, label='Satellites')
     # Color points by halo mass
-    sc = plt.scatter(mass, infall, c=smass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
+    sc = plt.scatter(mass, infall, c=smass, cmap='plasma', s=5, alpha=0.7, label='Centrals')
     cbar = plt.colorbar(sc)
     cbar.set_label(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
 
@@ -1642,7 +1642,7 @@ if __name__ == '__main__':
     # Color points by halo mass
     halo_mass = np.log10(Mvir[w])
     plt.scatter(sats, np.log10(outflowrate[sat]), marker='*', s=250, c='k', alpha=0.5, label='Satellites')
-    sc = plt.scatter(mass, outflow, c=halo_mass, cmap='viridis', s=5, alpha=0.7, label='Centrals')
+    sc = plt.scatter(mass, outflow, c=halo_mass, cmap='plasma', s=5, alpha=0.7, label='Centrals')
     cbar = plt.colorbar(sc)
     cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
 
@@ -1669,24 +1669,29 @@ if __name__ == '__main__':
     sfrdot = SfrDisk + SfrBulge
     Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
     H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
+    StellarMass = read_hdf(snap_num = Snapshot, param = 'StellarMass') * 1.0e10 / Hubble_h
 
-    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (sfrdot > 0.0))[0]
+    w = np.where((StellarMass > 0.0) & (H2Gas > 0.0) & (sfrdot > 0.0))[0]
     if(len(w) > dilute): w = sample(list(w), dilute)
 
-    sigma_H2 = H2Gas[w] / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
-    sigma_SFR = sfrdot[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
+    disk_radius = DiskRadius[w] * 1.0e6 / Hubble_h
+    disk_area = 2 * np.pi * disk_radius**2
+
+    sigma_H2 = H2Gas[w] / disk_area # DiskRadius in kpc, area in pc^2
+    sigma_SFR = sfrdot[w] / disk_area * 1.0e6 # area in kpc^2
     log10_sigma_H2 = np.log10(sigma_H2)
     log10_sigma_SFR = np.log10(sigma_SFR)
     # Color by Mvir (virial mass)
-    sc = plt.scatter(log10_sigma_H2, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE25')
+    sc = plt.scatter(log10_sigma_H2, log10_sigma_SFR, c=np.log10(StellarMass[w]), cmap='plasma',
+                      alpha=0.6, s=5, vmin=8, vmax=12, label='SAGE25')
     cb = plt.colorbar(sc)
-    cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+    cb.set_label(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
     # Add canonical Kennicutt-Schmidt law (Kennicutt 1998): log(Sigma_SFR) = 1.4*log(Sigma_gas) - 3.6
-    sigma_gas_range = np.linspace(0.5, 12.5, 100)
+    sigma_gas_range = np.linspace(-4, 4, 100)
     ks_law = 1.4 * sigma_gas_range - 3.6
     plt.plot(sigma_gas_range, ks_law, 'k--', label='Kennicutt (1998)')
 
-    gas_range = np.logspace(0, 12.5, 100)
+    gas_range = np.logspace(-4, 4, 100)
         
     # Bigiel et al. (2008) - resolved regions in nearby galaxies
     # Σ_SFR = 1.6e-3 × (Σ_H2)^1.0
@@ -1713,117 +1718,14 @@ if __name__ == '__main__':
             label='Saintonge+ (2011)', zorder=2)
     
     plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_2}\ (M_{\odot}/\mathrm{pc}^2)$')
-    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{pc}^2)$')
+    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/yr/\mathrm{kpc}^2)$')
     # # plt.title('H$_2$ Surface Density vs SFR Surface Density (K-S Law)')
     plt.legend(loc='lower right', fontsize='small', frameon=False)
-    plt.xlim(2, 8.5)
-    plt.ylim(-1.5, 6)
+    plt.xlim(-3, 4)
+    plt.ylim(-6, 1)
     # plt.grid(True, alpha=0.3)
+    plt.tight_layout()
     outputFile = OutputDir + '31.h2_vs_sfr_surface_density' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved file to', outputFile, '\n')
-    plt.close()
-
-    # -------------------------------------------------------
-
-    print('Plotting H1 surface density vs SFR surface density')
-
-    plt.figure()  # New figure
-    # Σ_H1 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
-    
-    sfrdot = SfrDisk + SfrBulge
-    Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
-    H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
-    H1Gas = read_hdf(snap_num = Snapshot, param = 'HI_gas') * 1.0e10 / Hubble_h
-
-    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (sfrdot > 0.0))[0]
-    if(len(w) > dilute): w = sample(list(w), dilute)
-
-    sigma_H1 = (ColdGas[w] - H2Gas[w]) / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
-    sigma_SFR = sfrdot[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
-    log10_sigma_H1 = np.log10(sigma_H1)
-    log10_sigma_SFR = np.log10(sigma_SFR)
-    # Color by Mvir (virial mass)
-    sc = plt.scatter(log10_sigma_H1, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE25')
-    cb = plt.colorbar(sc)
-    cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-    
-    plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_I}\ (M_{\odot}/\mathrm{pc}^2)$')
-    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{pc}^2)$')
-    # # plt.title('H$_2$ Surface Density vs SFR Surface Density (K-S Law)')
-    plt.legend(loc='lower right', fontsize='small', frameon=False)
-    plt.xlim(2, 8.5)
-    plt.ylim(-1.5, 6)
-    # plt.grid(True, alpha=0.3)
-    outputFile = OutputDir + '32.h1_vs_sfr_surface_density' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved file to', outputFile, '\n')
-    plt.close()
-
-    # -------------------------------------------------------
-
-    print('Plotting gas surface density vs SFR surface density')
-
-    plt.figure()  # New figure
-    # Σ_H2 in M_sun/pc^2, Σ_SFR in M_sun/yr/kpc^2
-    
-    sfrdot = SfrDisk + SfrBulge
-    Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
-    H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
-    H1Gas = read_hdf(snap_num = Snapshot, param = 'HI_gas') * 1.0e10 / Hubble_h
-
-    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (sfrdot > 0.0))[0]
-    if(len(w) > dilute): w = sample(list(w), dilute)
-
-    sigma_h2 = H2Gas[w] / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
-    sigma_h1 = H1Gas[w] / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # DiskRadius in kpc, area in pc^2
-    sigma_gas = sigma_h2 + sigma_h1 / (2 * np.pi * DiskRadius[w]**2 * 1e6)  # Total gas surface density
-    sigma_SFR = sfrdot[w] / (2 * np.pi * DiskRadius[w]**2)          # area in kpc^2
-    log10_sigma_gas = np.log10(sigma_gas)
-    log10_sigma_h2 = np.log10(sigma_h2)
-    log10_sigma_h1 = np.log10(sigma_h1)
-    log10_sigma_SFR = np.log10(sigma_SFR)
-    # Color by Mvir (virial mass)
-    sc = plt.scatter(log10_sigma_gas, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE25')
-    # sc1 = plt.scatter(log10_sigma_h1, log10_sigma_SFR, c='r', alpha=0.6, s=5, label='SAGE25')
-    # sc2 = plt.scatter(log10_sigma_h2, log10_sigma_SFR, c=np.log10(Mvir[w]), cmap='plasma', alpha=0.6, s=5, label='SAGE25')
-    cb = plt.colorbar(sc)
-    cb.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-
-    gas_range = np.logspace(0, 12.5, 100)
-        
-    # Bigiel et al. (2008) - resolved regions in nearby galaxies
-    # Σ_SFR = 1.6e-3 × (Σ_H2)^1.0
-    ks_bigiel = np.log10(1.6e-3) + 1.0 * np.log10(gas_range)
-    plt.plot(np.log10(gas_range), ks_bigiel, 'k:', linewidth=2.5, alpha=0.8, 
-            label='Bigiel+ (2008) - resolved', zorder=2)
-    
-    # Schruba et al. (2011) - different normalization
-    # Σ_SFR = 2.1e-3 × (Σ_H2)^1.0
-    ks_schruba = np.log10(2.1e-3) + 1.0 * np.log10(gas_range)
-    plt.plot(np.log10(gas_range), ks_schruba, 'k--', linewidth=2, alpha=0.6, 
-            label='Schruba+ (2011)', zorder=2)
-            
-    # Leroy et al. (2013) - whole galaxy integrated
-    # Σ_SFR = 1.4e-3 × (Σ_H2)^1.1
-    ks_leroy = np.log10(1.4e-3) + 1.1 * np.log10(gas_range)
-    plt.plot(np.log10(gas_range), ks_leroy, 'k-', linewidth=2, alpha=0.7, 
-            label='Leroy+ (2013) - galaxies', zorder=2)
-            
-    # Saintonge et al. (2011) - COLD GASS survey
-    # Σ_SFR = 1.0e-3 × (Σ_H2)^0.96
-    ks_saintonge = np.log10(1.0e-3) + 0.96 * np.log10(gas_range)
-    plt.plot(np.log10(gas_range), ks_saintonge, 'k-.', linewidth=1.5, alpha=0.5, 
-            label='Saintonge+ (2011)', zorder=2)
-
-    plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_I\ +\ \mathrm{H}_2}\ (M_{\odot}/\mathrm{pc}^2)$')
-    plt.ylabel(r'$\log_{10} \Sigma_{\mathrm{SFR}}\ (M_{\odot}/\mathrm{pc}^2)$')
-    # # plt.title('H$_2$ Surface Density vs SFR Surface Density (K-S Law)')
-    plt.legend(loc='lower right', fontsize='small', frameon=False)
-    plt.xlim(2, 8.5)
-    plt.ylim(-1.5, 6)
-    # plt.grid(True, alpha=0.3)
-    outputFile = OutputDir + '32.h1andh2_vs_sfr_surface_density' + OutputFormat
     plt.savefig(outputFile)  # Save the figure
     print('Saved file to', outputFile, '\n')
     plt.close()

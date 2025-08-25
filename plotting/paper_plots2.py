@@ -260,7 +260,7 @@ GAS_SimConfigs = [
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
-dilute = 7000       # Number of galaxies to plot in scatter plots
+dilute = 10000       # Number of galaxies to plot in scatter plots
 sSFRcut = -11.0     # Divide quiescent from star forming galaxies
 
 # Main simulation snapshot details (for mass loading plot)
@@ -3799,6 +3799,7 @@ if __name__ == '__main__':
     Type = read_hdf_ultra_optimized(snap_num=Snapshot, param='Type')
     logger.info('Loading Mass loading factors...')
     MassLoading = read_hdf_ultra_optimized(snap_num=Snapshot, param='MassLoading')
+    log_stellarmass = np.log10(StellarMass)
 
     logger.info(f'Total galaxies: {len(Vvir)}')
     
@@ -3806,10 +3807,9 @@ if __name__ == '__main__':
         logger.info(f'Vvir range: {np.min(Vvir):.1f} - {np.max(Vvir):.1f} km/s')
 
         # Vectorized filtering for better performance
-        valid_mask = (Vvir > 0) & (StellarMass > 0) & np.isfinite(Vvir) & np.isfinite(StellarMass)
+        valid_mask = (Vvir > 0) & (log_stellarmass > 8) & np.isfinite(Vvir) & np.isfinite(StellarMass)
         Vvir_valid = Vvir[valid_mask]
         StellarMass_valid = StellarMass[valid_mask]
-        Type_valid = Type[valid_mask]
         MassLoading_valid = MassLoading[valid_mask]
         logger.info(f'Mass loading factors: {MassLoading_valid}')
         logger.info(f'Valid galaxies: {len(Vvir_valid)}')
@@ -3862,17 +3862,15 @@ if __name__ == '__main__':
             indices = sample(range(len(Vvir_valid)), dilute)
             Vvir_plot = Vvir_valid[indices]
             mass_loading_plot = mass_loading[indices]
-            MassLoading_plot = MassLoading[indices]
-            Type_plot = Type_valid[indices]
+            MassLoading_plot = MassLoading_valid[indices]
             StellarMass_plot = StellarMass_valid[indices]
         else:
             Vvir_plot = Vvir_valid
             mass_loading_plot = mass_loading
-            MassLoading_plot = MassLoading
-            Type_plot = Type_valid
+            MassLoading_plot = MassLoading_valid
             StellarMass_plot = StellarMass_valid
 
-        # ax.scatter(Vvir, MassLoading, c='lightblue', s=5, alpha=0.7)
+        # ax.scatter(Vvir, MassLoading, c='lightblue', s=5, alpha=0.7, rasterized=True)
 
         ax.scatter(shark_x, shark_y, color='grey', marker='^', s=50, label='SHARK v2')
         ax.scatter(chisholm_x, chisholm_y, color='grey', marker='o', s=50, label='Chisholm et al. 2017')
@@ -3882,8 +3880,8 @@ if __name__ == '__main__':
         
         # Color SAGE galaxies by stellar mass
         scatter = ax.scatter(Vvir_plot, MassLoading_plot, c=np.log10(StellarMass_plot), 
-                           s=5, alpha=0.7, edgecolors='none', 
-                           label='SAGE25 galaxies', zorder=5, cmap='viridis')
+                           s=5, alpha=0.7, marker='o', 
+                           label='SAGE25 galaxies', zorder=5, cmap='plasma')
         
         # Add colorbar for stellar mass
         cbar = plt.colorbar(scatter, ax=ax, pad=0.02, shrink=0.8)

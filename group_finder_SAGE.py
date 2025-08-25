@@ -262,7 +262,7 @@ def S3HM(M_stellar_3, A=46.944, M1=10.483, beta=0.249, gamma=-0.601):
 
 def SAGE_Group_Catalog(data, cosmo_params=None, group_id_col='CentralGalaxyIndex', 
                        stellar_mass_min_msun=1e8, stellar_mass_max_msun=1e12, max_group_size=1000,
-                       separate_groups_clusters=False, max_group_members=50, max_group_velocity_dispersion=600,
+                       separate_groups_clusters=False, max_group_members=1000, max_group_velocity_dispersion=2000,
                        show_progress=True):
     """
     Generate group catalog from SAGE 2.0 data with option to separate groups from clusters.
@@ -2001,7 +2001,7 @@ def plot_spatial_distribution_centrals_only(data_merged, group_catalog, output_d
             else:
                 # Color by group size
                 scatter4 = plt.scatter(valid_mass['Nm'], valid_mass['group_total_mass'], 
-                                     c=valid_mass['Nm'], cmap='plasma', alpha=0.8, vmin=3, vmax=20,
+                                     c=valid_mass['Nm'], cmap='plasma', alpha=0.8,
                                      s=60, edgecolors='black', linewidth=0.5)
                 cbar4 = plt.colorbar(scatter4, ax=ax4)
                 cbar4.set_label('Group Size (N members)', fontsize=10)
@@ -2180,7 +2180,7 @@ def plot_xz_projection_centrals_only(data_merged, group_catalog, output_dir='./'
     # Central galaxies (sized by group membership, colored by group size)
     scatter = ax.scatter(central_galaxies_df['Posx'], central_galaxies_df['Posz'], 
                         s=marker_sizes, c=group_sizes, cmap='plasma', alpha=0.8, 
-                        edgecolors='black', linewidth=0.5, vmin=3, vmax=20,
+                        edgecolors='black', linewidth=0.5,
                         label=f'Group Centers ({len(central_galaxies_df)} groups)', rasterized=True)
     
     # Set limits and labels
@@ -2193,7 +2193,7 @@ def plot_xz_projection_centrals_only(data_merged, group_catalog, output_dir='./'
     ax.grid(True, alpha=0.3)
     
     # Add colorbar for group sizes
-    cbar = plt.colorbar(scatter, ax=ax, shrink=0.8, pad=0.02)
+    cbar = plt.colorbar(scatter, ax=ax, shrink=0.8, pad=0.02, extend='max')
     cbar.set_label('Group Size (N members)', fontsize=12)
     cbar.ax.tick_params(labelsize=11)
     
@@ -2484,9 +2484,9 @@ def main():
                        help='Maximum background points for spatial plots (default: 50,000)')
     parser.add_argument('--max_group_points', type=int, default=100000,
                        help='Maximum group member points for spatial plots (default: 100,000)')
-    parser.add_argument('--max_group_members', type=int, default=50,
+    parser.add_argument('--max_group_members', type=int, default=1000,
                        help='Maximum members for galaxy groups (vs clusters)')
-    parser.add_argument('--max_group_velocity_dispersion', type=float, default=600,
+    parser.add_argument('--max_group_velocity_dispersion', type=float, default=2000,
                        help='Maximum velocity dispersion for groups (km/s)')
     parser.add_argument('--separate_groups_clusters', action='store_true',
                        help='Apply cuts to separate groups from clusters')

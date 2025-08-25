@@ -239,7 +239,7 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         
         const float h = run_params->Hubble_h;
         const float rs_pc = g->DiskScaleRadius * 1.0e6 / h;
-        float disk_area_pc2 = 2.0 * M_PI * rs_pc * rs_pc; 
+        float disk_area_pc2 = M_PI * rs_pc * rs_pc; 
         float gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
         float metallicity = (g->ColdGas > 0.0) ? g->MetalsColdGas / g->ColdGas : 0.0;
 
@@ -259,8 +259,8 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     else if (run_params->SFprescription == 2) {
         // BR06 model
         const float h = run_params->Hubble_h;
-        const float rs_pc = g->DiskScaleRadius * 1.0e6 / h; // Half-mass radius in pc
-        float disk_area_pc2 = 2.0 * M_PI * rs_pc * rs_pc; // Note: 2π for half-mass radius
+        const float rs_pc = g->DiskScaleRadius * 1.0e6 / h;
+        float disk_area_pc2 = M_PI * rs_pc * rs_pc; // Note: 2π for half-mass radius
         float gas_surface_density = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
         float stellar_surface_density = (g->StellarMass * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
         
