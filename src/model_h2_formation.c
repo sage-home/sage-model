@@ -214,6 +214,77 @@ double calculate_molecular_fraction_BR06(float gas_surface_density, float stella
     return f_mol;
 }
 
+/**
+ * calculate_molecular_fraction_darksage_pressure - DarkSAGE pressure-based H2 formation
+ * Implements the exact pressure-based prescription from DarkSAGE H2prescription==0
+ */
+double calculate_molecular_fraction_darksage_pressure(float gas_surface_density, 
+                                                     float stellar_surface_density, 
+                                                     float gas_velocity_dispersion,
+                                                     float stellar_velocity_dispersion,
+                                                     float disk_alignment_angle_deg)
+{
+    // Early termination for edge cases
+    if (gas_surface_density <= 0.0) {
+        return 0.0;
+    }
+    
+    // DarkSAGE constants 
+    const float ThetaThresh = 30.0;  // degrees
+    const float H2FractionFactor = 1.0;  
+    const float H2FractionExponent = 0.92;  
+    const float P_0 = 4.3e4;  // Reference pressure in K cm^-3
+    
+    // Physical constants in CGS
+    const float G_cgs = 6.67e-8;  // cm^3 g^-1 s^-2
+    const float Msun_g = 1.989e33;  // g
+    const float pc_cm = 3.086e18;   // cm
+    const float kB = 1.38e-16;      // erg K^-1
+    const float mH = 1.67e-24;      // g
+    
+    // Convert surface densities to CGS (g cm^-2)
+    float sigma_gas_cgs = gas_surface_density * Msun_g / (pc_cm * pc_cm);
+    float sigma_stars_cgs = stellar_surface_density * Msun_g / (pc_cm * pc_cm);
+    
+    // Calculate velocity dispersion ratio
+    float f_sigma = (stellar_velocity_dispersion > 0.0) ? 
+                    gas_velocity_dispersion / stellar_velocity_dispersion : 1.0;
+    
+    // Calculate midplane pressure using thin disk theory
+    // P = (π/2) × G × Σ_gas × (Σ_gas + f_σ × Σ_stars)
+    float pressure_cgs; // dyne cm^-2
+    if (disk_alignment_angle_deg <= ThetaThresh) {
+        // Aligned discs - both gas and stars contribute
+        pressure_cgs = 0.5 * M_PI * G_cgs * sigma_gas_cgs * 
+                      (sigma_gas_cgs + f_sigma * sigma_stars_cgs);
+    } else {
+        // Misaligned discs - only gas self-gravity
+        pressure_cgs = 0.5 * M_PI * G_cgs * sigma_gas_cgs * sigma_gas_cgs;
+    }
+    
+    // Convert pressure to K cm^-3
+    // P/k = P_cgs / (n_gas × k_B) where n_gas = ρ_gas/m_H
+    // For midplane: n_gas ≈ σ_gas / (h_gas × m_H)
+    // Assuming h_gas ≈ 100 pc for typical ISM
+    const float h_gas_cm = 100.0 * pc_cm;
+    float n_gas = sigma_gas_cgs / (h_gas_cm * mH);  // cm^-3
+    float pressure_K_cm3 = pressure_cgs / (n_gas * kB);
+    
+    // Apply the power-law relation
+    float pressure_ratio = pressure_K_cm3 / P_0;
+    float f_H2_HI = H2FractionFactor * pow(pressure_ratio, H2FractionExponent);
+    
+    // Convert H2/(H2+HI) ratio to H2/total_gas fraction
+    const float X_H = 0.76;
+    double f_mol = X_H * f_H2_HI / (1.0 + f_H2_HI);
+    
+    // Apply physical bounds
+    if (f_mol > 0.95) f_mol = 0.95;
+    if (f_mol < 0.0) f_mol = 0.0;
+    
+    return f_mol;
+}
+
 void update_gas_components(struct GALAXY *g, const struct params *run_params)
 {
     // Increment the galaxy counter for debug purposes
@@ -239,8 +310,8 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         
         const float h = run_params->Hubble_h;
         const float rs_pc = g->DiskScaleRadius * 1.0e6 / h;
-        // float disk_area_pc2 = M_PI * rs_pc * rs_pc;
-        float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2); // 3× scale radius captures ~95% of mass 
+        float disk_area_pc2 = M_PI * rs_pc * rs_pc;
+        // float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2); // 3× scale radius captures ~95% of mass 
         float gas_surface_density_center = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
         float metallicity = (g->ColdGas > 0.0) ? g->MetalsColdGas / g->ColdGas : 0.0;
 
@@ -261,8 +332,8 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         // BR06 model
         const float h = run_params->Hubble_h;
         const float rs_pc = g->DiskScaleRadius * 1.0e6 / h;
-        // float disk_area_pc2 = M_PI * rs_pc * rs_pc; 
-        float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2); // 3× scale radius captures ~95% of mass
+        float disk_area_pc2 = M_PI * rs_pc * rs_pc; 
+        // float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2); // 3× scale radius captures ~95% of mass 
         float gas_surface_density = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
         float stellar_surface_density = (g->StellarMass * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
         
@@ -279,6 +350,48 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
                    gas_surface_density, stellar_surface_density);
         }
                 
+        // Mass conservation check
+        if (total_molecular_gas > 0.95) {
+            total_molecular_gas = 0.95;
+        }
+    }
+    else if (run_params->SFprescription == 3) {
+        // DarkSAGE pressure-based H2 formation
+        const float h = run_params->Hubble_h;
+        const float rs_pc = g->DiskScaleRadius * 1.0e6 / h;
+        float disk_area_pc2 = M_PI * rs_pc * rs_pc;
+        float gas_surface_density = (g->ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
+        float stellar_surface_density = (g->StellarMass * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
+        
+        // Estimate velocity dispersions (you might want to track these in your galaxy structure)
+        float gas_velocity_dispersion = 8.0;  // km/s, typical for cold ISM
+        float stellar_velocity_dispersion = fmax(30.0, 0.5 * g->Vvir);  // km/s, scale with Vvir
+        
+        // Assume aligned discs for simplicity (you could track disc misalignment)
+        float disk_alignment_angle = 0.0;  // degrees
+        
+        total_molecular_gas = calculate_molecular_fraction_darksage_pressure(
+            gas_surface_density, stellar_surface_density, 
+            gas_velocity_dispersion, stellar_velocity_dispersion,
+            disk_alignment_angle);
+            
+        if (galaxy_debug_counter % 10000 == 0) {
+            // Calculate pressure for debugging
+            const float G_cgs = 6.67e-8, Msun_g = 1.989e33, pc_cm = 3.086e18;
+            const float kB = 1.38e-16, mH = 1.67e-24, h_gas_cm = 100.0 * pc_cm;
+            
+            float sigma_gas_cgs = gas_surface_density * Msun_g / (pc_cm * pc_cm);
+            float sigma_stars_cgs = stellar_surface_density * Msun_g / (pc_cm * pc_cm);
+            float f_sigma = gas_velocity_dispersion / stellar_velocity_dispersion;
+            
+            float pressure_cgs = 0.5 * M_PI * G_cgs * sigma_gas_cgs * 
+                                (sigma_gas_cgs + f_sigma * sigma_stars_cgs);
+            float n_gas = sigma_gas_cgs / (h_gas_cm * mH);
+            float pressure_K_cm3 = pressure_cgs / (n_gas * kB);
+            
+            printf("DEBUG DarkSAGE: gas_sigma=%.2e, star_sigma=%.2e, P=%.2e K cm^-3, f_mol=%.4f\n",
+                gas_surface_density, stellar_surface_density, pressure_K_cm3, total_molecular_gas);
+        }
         // Mass conservation check
         if (total_molecular_gas > 0.95) {
             total_molecular_gas = 0.95;
