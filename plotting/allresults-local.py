@@ -85,6 +85,7 @@ if __name__ == '__main__':
     H1Gas = read_hdf(snap_num = Snapshot, param = 'HI_gas') * 1.0e10 / Hubble_h
     H2Gas = read_hdf(snap_num = Snapshot, param = 'H2_gas') * 1.0e10 / Hubble_h
     MetalsColdGas = read_hdf(snap_num = Snapshot, param = 'MetalsColdGas') * 1.0e10 / Hubble_h
+    MetalsCGMgas = read_hdf(snap_num = Snapshot, param = 'MetalsCGMgas') * 1.0e10 / Hubble_h
     HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
     InfallMvir = read_hdf(snap_num = Snapshot, param = 'infallMvir') * 1.0e10 / Hubble_h
@@ -103,6 +104,7 @@ if __name__ == '__main__':
     Posy = read_hdf(snap_num = Snapshot, param = 'Posy')
     Posz = read_hdf(snap_num = Snapshot, param = 'Posz')
     NDM = read_hdf(snap_num = Snapshot, param = 'Len')
+    cooling = read_hdf(snap_num = Snapshot, param = 'Cooling')
 
     # --------------------------------------------------------
 
@@ -485,7 +487,13 @@ if __name__ == '__main__':
 
     mi = np.floor(min(mass)) - 2
     ma = np.floor(max(mass)) + 2
-    
+
+    mi_h1 = np.floor(min(h1)) - 2
+    ma_h1 = np.floor(max(h1)) + 2
+
+    mi_h2 = np.floor(min(h2)) - 2
+    ma_h2 = np.floor(max(h2)) + 2
+
     NB = int((ma - mi) / binwidth)
     (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
     xaxeshisto = binedges[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
@@ -1296,8 +1304,13 @@ if __name__ == '__main__':
     plt.axis([10.0, 15.0, 7.5, 14.0])
 
     leg = plt.legend(loc='upper left')
-    leg.draw_frame(False)  # Don't want a box frame
-    for t in leg.get_texts():  # Reduce the size of the text
+    leg.draw_frame(False)
+
+    # Set all legend markers to the same size
+    for handle in leg.legend_handles:
+        handle.set_sizes([50])  # Set consistent size for all legend markers
+
+    for t in leg.get_texts():
         t.set_fontsize('medium')
         
     outputFile = OutputDir + '12.MassReservoirScatter' + OutputFormat
@@ -1401,35 +1414,35 @@ if __name__ == '__main__':
 
     # First subplot - Galaxy number density (as before)
     plt.subplot(131)  # 1 row, 2 cols, plot 1
-    w = np.where((Mvir > 0.0) & (StellarMass > 0.1))[0]
+    w = np.where((Mvir > 0.0))[0]
     if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
-    yy = Posy[w]
+    yy = Posz[w]
 
-    h, xedges, yedges = np.histogram2d(xx, yy, bins=100)
+    h, xedges, yedges = np.histogram2d(xx, yy, bins=250)
     plt.imshow(h.T, origin='lower', extent=[0, BoxSize, 0, BoxSize], 
             aspect='equal', cmap='gist_heat')
     #plt.colorbar(label='Number of galaxies')
     plt.xlabel('x (Mpc/h)')
-    plt.ylabel('y (Mpc/h)')
+    plt.ylabel('z (Mpc/h)')
     # plt.title('Galaxy Number Density')
 
     # Second subplot - H2 gas density
     plt.subplot(132)  # 1 row, 2 cols, plot 2
-    w = np.where((Mvir > 0.0) & (H2Gas > 0.0))[0]
+    w = np.where((Mvir > 0.0) & (H2Gas > 0.0) & (Type==0))[0]
     if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
-    yy = Posy[w]
+    yy = Posz[w]
     weights = np.log10(H2Gas[w])  # Use H2 gas mass as weights
 
-    h, xedges, yedges = np.histogram2d(xx, yy, bins=100, weights=weights)
+    h, xedges, yedges = np.histogram2d(xx, yy, bins=250, weights=weights)
     plt.imshow(h.T, origin='lower', extent=[0, BoxSize, 0, BoxSize], 
             aspect='equal', cmap='CMRmap')
     #plt.colorbar(label=r'$log_{10}\ H^2\ M_{\odot}/h$')
     plt.xlabel('x (Mpc/h)')
-    plt.ylabel('y (Mpc/h)')
+    plt.ylabel('z (Mpc/h)')
     # plt.title('H2 Gas Density')
 
     # Third subplot - H1 gas density
@@ -1438,15 +1451,15 @@ if __name__ == '__main__':
     if(len(w) > dilute): w = sample(list(w), dilute)
 
     xx = Posx[w]
-    yy = Posy[w]
+    yy = Posz[w]
     weights = np.log10(H1Gas[w])  # Use H1 gas mass as weights
 
-    h, xedges, yedges = np.histogram2d(xx, yy, bins=100, weights=weights)
+    h, xedges, yedges = np.histogram2d(xx, yy, bins=250, weights=weights)
     plt.imshow(h.T, origin='lower', extent=[0, BoxSize, 0, BoxSize], 
             aspect='equal', cmap='CMRmap')
     #plt.colorbar(label=r'$log_{10}\ H^1\ M_{\odot}/h$')
     plt.xlabel('x (Mpc/h)')
-    plt.ylabel('y (Mpc/h)')
+    plt.ylabel('z (Mpc/h)')
     # plt.title('H1 Gas Density')
 
     plt.tight_layout()
@@ -1689,32 +1702,32 @@ if __name__ == '__main__':
     # Add canonical Kennicutt-Schmidt law (Kennicutt 1998): log(Sigma_SFR) = 1.4*log(Sigma_gas) - 3.6
     sigma_gas_range = np.linspace(-4, 4, 100)
     ks_law = 1.4 * sigma_gas_range - 3.6
-    plt.plot(sigma_gas_range, ks_law, 'k--', label='Kennicutt (1998)')
+    plt.plot(sigma_gas_range, ks_law, linestyle='--', color='red', label='Kennicutt (1998)')
 
     gas_range = np.logspace(-4, 4, 100)
         
     # Bigiel et al. (2008) - resolved regions in nearby galaxies
     # Σ_SFR = 1.6e-3 × (Σ_H2)^1.0
     ks_bigiel = np.log10(1.6e-3) + 1.0 * np.log10(gas_range)
-    plt.plot(np.log10(gas_range), ks_bigiel, 'k:', linewidth=2.5, alpha=0.8, 
+    plt.plot(np.log10(gas_range), ks_bigiel, linestyle=':', color='red', linewidth=2.5, alpha=0.8, 
             label='Bigiel+ (2008) - resolved', zorder=2)
     
     # Schruba et al. (2011) - different normalization
     # Σ_SFR = 2.1e-3 × (Σ_H2)^1.0
     ks_schruba = np.log10(2.1e-3) + 1.0 * np.log10(gas_range)
-    plt.plot(np.log10(gas_range), ks_schruba, 'k--', linewidth=2, alpha=0.6, 
+    plt.plot(np.log10(gas_range), ks_schruba, linestyle='--', color='red', linewidth=2, alpha=0.6, 
             label='Schruba+ (2011)', zorder=2)
             
     # Leroy et al. (2013) - whole galaxy integrated
     # Σ_SFR = 1.4e-3 × (Σ_H2)^1.1
     ks_leroy = np.log10(1.4e-3) + 1.1 * np.log10(gas_range)
-    plt.plot(np.log10(gas_range), ks_leroy, 'k-', linewidth=2, alpha=0.7, 
+    plt.plot(np.log10(gas_range), ks_leroy, linestyle='-', color='red', linewidth=2, alpha=0.7, 
             label='Leroy+ (2013) - galaxies', zorder=2)
             
     # Saintonge et al. (2011) - COLD GASS survey
     # Σ_SFR = 1.0e-3 × (Σ_H2)^0.96
     ks_saintonge = np.log10(1.0e-3) + 0.96 * np.log10(gas_range)
-    plt.plot(np.log10(gas_range), ks_saintonge, 'k-.', linewidth=1.5, alpha=0.5, 
+    plt.plot(np.log10(gas_range), ks_saintonge, linestyle='-.', color='red', linewidth=1.5, alpha=0.5, 
             label='Saintonge+ (2011)', zorder=2)
     
     plt.xlabel(r'$\log_{10} \Sigma_{\mathrm{H}_2}\ (M_{\odot}/\mathrm{pc}^2)$')
@@ -1945,3 +1958,146 @@ if __name__ == '__main__':
     plt.savefig(OutputDir + '20.HIfraction_vs_sSFR' + OutputFormat, bbox_inches='tight')
     plt.close()
     print('Saved file to', OutputDir + '20.HIfraction_vs_sSFR' + OutputFormat, '\n')
+
+    # -------------------------------------------------------
+    print('Plotting CGM temperature')
+
+    plt.figure()
+
+    log_tvir = np.log10(35.9 * Vvir**2)
+    log_hmass = np.log10(Mvir)
+    log_smass = np.log10(StellarMass)
+    log_cgm = np.log10(cgm)
+
+    low_mass = np.where((log_hmass >= 10) & (log_hmass < 11))[0]
+    med_mass = np.where((log_hmass >= 11) & (log_hmass < 12))[0]
+    high_mass = np.where((log_hmass >= 12))[0]
+
+    # Apply dilution to each mass bin
+    if(len(low_mass) > dilute): low_mass = low_mass[sample(list(range(len(low_mass))), dilute)]
+    if(len(med_mass) > dilute): med_mass = med_mass[sample(list(range(len(med_mass))), dilute)]
+    if(len(high_mass) > dilute): high_mass = high_mass[sample(list(range(len(high_mass))), dilute)]
+
+    plt.scatter(log_cgm[low_mass], log_tvir[low_mass], c='blue', s=5, alpha=0.9, label=r'$10^{10} < M_{vir} < 10^{11}\ M_\odot$')
+    plt.scatter(log_cgm[med_mass], log_tvir[med_mass], c='green', s=5, alpha=0.9, label=r'$10^{11} < M_{vir} < 10^{12}\ M_\odot$')
+    plt.scatter(log_cgm[high_mass], log_tvir[high_mass], c='red', s=5, alpha=0.9, label=r'$M_{vir} > 10^{12}\ M_\odot$')
+
+    # cb = plt.colorbar()
+    # cb.mappable.set_clim(10, 15)
+    # cb.set_label(r'$\log_{{10}} M_{vir}\ (M_\odot)$')
+    plt.xlabel(r'$\log_{{10}} M_\mathrm{{cgm}}\ (M_\odot)$')
+    plt.ylabel(r'$\log_{{10}} T_\mathrm{{vir}}\ (K)$')
+
+    leg = plt.legend(loc='upper left')
+    leg.draw_frame(False)
+
+    # Set all legend markers to the same size
+    for handle in leg.legend_handles:
+        handle.set_sizes([50])  # Set consistent size for all legend markers
+
+    for t in leg.get_texts():
+        t.set_fontsize('medium')
+    # plt.title('CGM Temperature vs. Stellar Mass')
+    # plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(OutputDir + '21.CGM_temperature' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '21.CGM_temperature' + OutputFormat, '\n')
+
+    # -------------------------------------------------------
+    print('Plotting CGM temperature with metals coloring')
+
+    plt.figure()
+
+    log_tvir = np.log10(35.9 * Vvir**2)
+    log_hmass = np.log10(Mvir)
+    log_smass = np.log10(StellarMass)
+    log_cgm = np.log10(cgm)
+    
+    # Calculate metallicity for coloring using the same method as the metallicity plot
+    # 12 + log10[O/H] = log10((Metals/Gas) / 0.02) + 9.0
+    valid_metals = (MetalsCGMgas > 0) & (cgm > 0)
+    metallicity_12_plus_logOH = np.zeros_like(MetalsCGMgas)
+    metallicity_12_plus_logOH[valid_metals] = np.log10((MetalsCGMgas[valid_metals] / cgm[valid_metals]) / 0.02) + 9.0
+
+    low_mass = np.where((log_hmass >= 10) & (log_hmass < 11) & valid_metals)[0]
+    med_mass = np.where((log_hmass >= 11) & (log_hmass < 12) & valid_metals)[0]
+    high_mass = np.where((log_hmass >= 12) & valid_metals)[0]
+
+    # Apply dilution to each mass bin
+    if(len(low_mass) > dilute): low_mass = low_mass[sample(list(range(len(low_mass))), dilute)]
+    if(len(med_mass) > dilute): med_mass = med_mass[sample(list(range(len(med_mass))), dilute)]
+    if(len(high_mass) > dilute): high_mass = high_mass[sample(list(range(len(high_mass))), dilute)]
+
+    # Create scatter plot with metallicity coloring using plasma colormap
+    if len(low_mass) > 0:
+        sc1 = plt.scatter(log_cgm[low_mass], log_tvir[low_mass], c=metallicity_12_plus_logOH[low_mass], 
+                         s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5)
+    if len(med_mass) > 0:
+        sc2 = plt.scatter(log_cgm[med_mass], log_tvir[med_mass], c=metallicity_12_plus_logOH[med_mass], 
+                         s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5)
+    if len(high_mass) > 0:
+        sc3 = plt.scatter(log_cgm[high_mass], log_tvir[high_mass], c=metallicity_12_plus_logOH[high_mass], 
+                         s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5)
+
+    # Add colorbar
+    cb = plt.colorbar(sc1 if len(low_mass) > 0 else (sc2 if len(med_mass) > 0 else sc3))
+    cb.set_label(r'$12 + \log_{10}[\mathrm{O/H}]_{\mathrm{CGM}}$')
+    
+    # Add horizontal dashed lines to separate mass bins based on virial temperature
+    # Calculate virial temperatures corresponding to mass boundaries
+    # For M_vir = 10^11 M_sun: T_vir = 35.9 * (V_vir)^2, where V_vir scales with (M_vir)^(1/3)
+    # Approximate virial temperatures for mass boundaries
+    all_y_data = np.concatenate([log_tvir[low_mass], log_tvir[med_mass], log_tvir[high_mass]]) if len(low_mass) + len(med_mass) + len(high_mass) > 0 else []
+    all_x_data = np.concatenate([log_cgm[low_mass], log_cgm[med_mass], log_cgm[high_mass]]) if len(low_mass) + len(med_mass) + len(high_mass) > 0 else []
+    
+    if len(all_x_data) > 0:
+        x_min, x_max = np.min(all_x_data), np.max(all_x_data)
+        y_min, y_max = np.min(all_y_data), np.max(all_y_data)
+        
+        # Calculate approximate virial temperatures for mass boundaries
+        # T_vir ≈ 35.9 * V_vir^2, and V_vir ∝ (M_vir/M_0)^(1/3) * V_0
+        # For typical values: log T_vir ≈ 5.5 for 10^11 M_sun, log T_vir ≈ 6.0 for 10^12 M_sun
+        log_tvir_11 = np.log10(35.9) + 2 * np.log10(200 * (11.0/12.0)**(1/3))  # Approximate for 10^11
+        log_tvir_12 = np.log10(35.9) + 2 * np.log10(200)  # Approximate for 10^12
+        
+        # Use actual data to find better separation lines
+        if len(low_mass) > 0 and len(med_mass) > 0:
+            # Find the boundary between low and medium mass in temperature space
+            low_tvir_max = np.percentile(log_tvir[low_mass], 90)
+            med_tvir_min = np.percentile(log_tvir[med_mass], 10)
+            sep_line_1 = (low_tvir_max + med_tvir_min) / 2
+            plt.axhline(y=sep_line_1, color='black', linestyle='--', alpha=0.7, linewidth=1)
+            
+        if len(med_mass) > 0 and len(high_mass) > 0:
+            # Find the boundary between medium and high mass in temperature space
+            med_tvir_max = np.percentile(log_tvir[med_mass], 90)
+            high_tvir_min = np.percentile(log_tvir[high_mass], 10)
+            sep_line_2 = (med_tvir_max + high_tvir_min) / 2
+            plt.axhline(y=sep_line_2, color='black', linestyle='--', alpha=0.7, linewidth=1)
+        
+        # Add text labels for mass bins
+        y_range = y_max - y_min
+        if len(low_mass) > 0:
+            low_y_center = np.median(log_tvir[low_mass])
+            plt.text(x_min + 0.05 * (x_max - x_min), low_y_center, 
+                    r'$10^{10} < M_{\mathrm{vir}} < 10^{11}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8))
+        if len(med_mass) > 0:
+            med_y_center = np.median(log_tvir[med_mass])
+            plt.text(x_min + 0.05 * (x_max - x_min), med_y_center, 
+                    r'$10^{11} < M_{\mathrm{vir}} < 10^{12}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgreen", alpha=0.8))
+        if len(high_mass) > 0:
+            high_y_center = np.median(log_tvir[high_mass])
+            plt.text(x_min + 0.05 * (x_max - x_min), high_y_center, 
+                    r'$M_{\mathrm{vir}} > 10^{12}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightcoral", alpha=0.8))
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{cgm}}\ (M_\odot)$')
+    plt.ylabel(r'$\log_{10} T_{\mathrm{vir}}\ (K)$')
+
+    plt.tight_layout()
+    plt.savefig(OutputDir + '22.CGM_temperature_metals' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '22.CGM_temperature_metals' + OutputFormat, '\n')

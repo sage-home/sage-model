@@ -76,12 +76,12 @@ def setup_paper_style():
     # plt.rcParams['lines.markeredgewidth'] = 1.0
     
     # # Legend settings
-    # plt.rcParams['legend.fontsize'] = 16
-    # plt.rcParams['legend.frameon'] = False
-    # plt.rcParams['legend.columnspacing'] = 1.0
-    # plt.rcParams['legend.handlelength'] = 2.0
-    # plt.rcParams['legend.handletextpad'] = 0.5
-    # plt.rcParams['legend.labelspacing'] = 0.3
+    plt.rcParams['legend.fontsize'] = 16
+    plt.rcParams['legend.frameon'] = False
+    plt.rcParams['legend.columnspacing'] = 1.0
+    plt.rcParams['legend.handlelength'] = 2.0
+    plt.rcParams['legend.handletextpad'] = 0.5
+    plt.rcParams['legend.labelspacing'] = 0.3
     
     # # Math text settings
     # plt.rcParams['mathtext.fontset'] = 'stix'
@@ -1098,7 +1098,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
                 mi_h1 = np.floor(min(h1)) - 2
                 ma_h1 = np.floor(max(h1)) + 2
             else:
-                mi_h1, ma_h1 = 8, 12
+                mi_h1, ma_h1 = 6, 12
             
             # Use combined range for consistency
             mi = min(mi_cold, mi_h1)
@@ -1176,12 +1176,12 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
                                   color=color, alpha=0.2, zorder=1)
             
             # Plot cold gas line (dotted) only for main model
-            if i == 0:  # Only for the main (first) model
-                cold_gas_line = ax.plot(xaxeshisto_cold[mask_cold], model_cold_gas_log[mask_cold], 
-                       color=PLOT_COLORS['cold_gas'], linestyle=':', linewidth=3, 
-                       label='Cold Gas', alpha=0.9)[0]
-                model_handles_h1.append(cold_gas_line)
-                model_labels_h1.append('Cold Gas')
+            # if i == 0:  # Only for the main (first) model
+                # cold_gas_line = ax.plot(xaxeshisto_cold[mask_cold], model_cold_gas_log[mask_cold], 
+                #        color=PLOT_COLORS['cold_gas'], linestyle=':', linewidth=3, 
+                #        label='Cold Gas', alpha=0.9)[0]
+                # model_handles_h1.append(cold_gas_line)
+                # model_labels_h1.append('Cold Gas')
             
             # Plot H1 gas line for each model - use original label for main model
             if i == 0:
@@ -1370,7 +1370,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
                 mi_h2 = np.floor(min(h2)) - 2
                 ma_h2 = np.floor(max(h2)) + 2
             else:
-                mi_h2, ma_h2 = 8, 12
+                mi_h2, ma_h2 = 6, 12
             
             # Use combined range for consistency
             mi = min(mi_cold, mi_h2)
@@ -1441,12 +1441,12 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
                                   color=color, alpha=0.2, zorder=1)
             
             # Plot cold gas line (dotted) only for main model
-            if i == 0:  # Only for the main (first) model
-                cold_gas_line_h2 = ax.plot(xaxeshisto_cold[mask_cold], model_cold_gas_log[mask_cold], 
-                       color=PLOT_COLORS['cold_gas'], linestyle=':', linewidth=3, 
-                       label='Cold Gas', alpha=0.9)[0]
-                model_handles_h2.append(cold_gas_line_h2)
-                model_labels_h2.append('Cold Gas')
+            # if i == 0:  # Only for the main (first) model
+            #     cold_gas_line_h2 = ax.plot(xaxeshisto_cold[mask_cold], model_cold_gas_log[mask_cold], 
+            #            color=PLOT_COLORS['cold_gas'], linestyle=':', linewidth=3, 
+            #            label='Cold Gas', alpha=0.9)[0]
+            #     model_handles_h2.append(cold_gas_line_h2)
+            #     model_labels_h2.append('Cold Gas')
             
             # Plot H2 gas line for each model - use original label for main model
             if i == 0:
@@ -1492,7 +1492,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             continue
     
     # Set axis limits and formatting for log scale
-    ax.set_xlim(8.0, 11.5)
+    ax.set_xlim(6.0, 12.5)
     ax.set_ylim(-6.0, -1.0)
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
     
@@ -1501,7 +1501,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
 
     # Create two separate legends for H2 plot
     # First legend: Observations (lower left)
-    obs_legend_h2 = ax.legend(obs_handles_h2, obs_labels_h2, loc='lower left', fontsize=14, frameon=False)
+    obs_legend_h2 = ax.legend(obs_handles_h2, obs_labels_h2, loc='lower left', fontsize=16, frameon=False)
     ax.add_artist(obs_legend_h2)  # Add this legend to the plot
     
     # Second legend: Models (upper right)
@@ -1972,11 +1972,11 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
     
     # Create two separate legends with new locations
     # First legend: Observations (lower left)
-    obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', fontsize=14, frameon=False)
+    obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', fontsize=16, frameon=False)
     ax.add_artist(obs_legend)
     
     # Second legend: Models (upper right)
-    model_legend = ax.legend(model_handles, model_labels, loc='upper right', fontsize=14, frameon=False)
+    model_legend = ax.legend(model_handles, model_labels, loc='upper right', fontsize=16, frameon=False)
     
     # Save plot
     output_filename = output_dir + 'h2_fraction_vs_stellar_mass' + OutputFormat
@@ -2242,7 +2242,7 @@ def plot_h2_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
     
     # Create legends only if we have data
     if len(obs_handles) > 0:
-        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', fontsize=14, frameon=False)
+        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', fontsize=16, frameon=False)
         ax.add_artist(obs_legend)
     
     if len(model_handles) > 0:
@@ -2513,7 +2513,7 @@ def plot_h1_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
     
     # Create legends only if we have data
     if len(obs_handles) > 0:
-        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', fontsize=14, frameon=False)
+        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', fontsize=16, frameon=False)
         ax.add_artist(obs_legend)
     
     if len(model_handles) > 0:
@@ -2697,8 +2697,8 @@ def plot_h2_fraction_vs_stellar_mass_with_selection(sim_configs, snapshot, outpu
     # Main plot formatting
     ax1.set_xlim(8.5, 11.5)
     ax1.set_ylim(0.0, 0.4)
-    ax1.set_xlabel(r'$\log_{10} M_\star\ (M_{\odot})$', fontsize=14)
-    ax1.set_ylabel(r'$f_{\mathrm{H_2}} = M_{\mathrm{H_2}} / (M_{\mathrm{H_2}} + M_{\mathrm{HI}})$', fontsize=14)
+    ax1.set_xlabel(r'$\log_{10} M_\star\ (M_{\odot})$', fontsize=16)
+    ax1.set_ylabel(r'$f_{\mathrm{H_2}} = M_{\mathrm{H_2}} / (M_{\mathrm{H_2}} + M_{\mathrm{HI}})$', fontsize=16)
     ax1.legend(loc='upper right', fontsize=11, frameon=True, fancybox=True, shadow=True)
     ax1.grid(True, alpha=0.3)
     ax1.set_title('Selection Effects in Molecular Gas Surveys', fontsize=16, weight='bold')
@@ -2707,8 +2707,8 @@ def plot_h2_fraction_vs_stellar_mass_with_selection(sim_configs, snapshot, outpu
     ax2.set_xscale('log')
     ax2.set_yscale('log')
     ax2.set_xlim(0.001, 1.0)
-    ax2.set_xlabel(r'$f_{\mathrm{H_2}}$', fontsize=14)
-    ax2.set_ylabel('Probability Density', fontsize=14)
+    ax2.set_xlabel(r'$f_{\mathrm{H_2}}$', fontsize=16)
+    ax2.set_ylabel('Probability Density', fontsize=16)
     ax2.legend(loc='upper right', fontsize=11)
     ax2.grid(True, alpha=0.3)
     ax2.set_title('H₂ Fraction Distributions', fontsize=16, weight='bold')
@@ -3474,7 +3474,7 @@ def plot_mass_metallicity_relation(sim_configs, snapshot, output_dir):
     # Models legend (lower right)
     if model_handles:
         model_legend = ax.legend(model_handles, model_labels, loc='lower right', 
-                               fontsize=14, frameon=False)
+                               fontsize=16, frameon=False)
     
     # Save plot
     output_filename = output_dir + 'mass_metallicity_relation' + OutputFormat
@@ -3703,7 +3703,7 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
     # Models legend (lower right)
     if model_handles:
         model_legend = ax.legend(model_handles, model_labels, loc='lower right', 
-                               fontsize=14, frameon=False)
+                               fontsize=16, frameon=False)
     
     # Save plot
     output_filename = output_dir + 'mass_bulge_fraction_relation' + OutputFormat

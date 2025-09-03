@@ -2020,7 +2020,7 @@ def plot_spatial_distribution_centrals_only(data_merged, group_catalog, output_d
     cbar_ax = fig.add_axes([0.15, 0.46, 0.7, 0.02])  # [left, bottom, width, height]
     cbar_spatial = fig.colorbar(scatter1, ax=[ax1, ax2, ax3], cax=cbar_ax,
                                location='top', shrink=0.8, pad=0.1)
-    cbar_spatial.set_label('Group Size (N members)', fontsize=12)
+    # cbar_spatial.set_label('Group Size (N members)', fontsize=12)
     
     # Add marker size legend
     # Create a few example sizes to show the scaling
@@ -2194,7 +2194,7 @@ def plot_xz_projection_centrals_only(data_merged, group_catalog, output_dir='./'
     
     # Add colorbar for group sizes
     cbar = plt.colorbar(scatter, ax=ax, shrink=0.8, pad=0.02, extend='max')
-    cbar.set_label('Group Size (N members)', fontsize=12)
+    # cbar.set_label('Group Size (N members)', fontsize=12)
     cbar.ax.tick_params(labelsize=11)
     
     # Add marker size legend - create a few example sizes

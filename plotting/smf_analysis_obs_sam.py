@@ -3552,8 +3552,7 @@ def create_sage_c16_plots():
             galaxy_types='all',
             mass_range=(8, 12),
             save_path=OutputDir + 'comprehensive_sage_c16_only.pdf',
-            show_observations=False,
-            figure_title="SAGE C16 - All Galaxies (z=0-12)"
+            show_observations=False
         )
         
         print("   ✓ Saved: comprehensive_sage_c16_only.pdf")
@@ -3568,8 +3567,7 @@ def create_sage_c16_plots():
             galaxy_types='all',
             mass_range=(8, 12),
             save_path=OutputDir + 'comprehensive_sage_c16_with_obs.pdf',
-            show_observations=True,
-            figure_title="SAGE C16 + Observations - All Galaxies (z=0-12)"
+            show_observations=True
         )
         
         print("   ✓ Saved: comprehensive_sage_c16_with_obs.pdf")

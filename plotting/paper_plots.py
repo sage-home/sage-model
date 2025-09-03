@@ -58,7 +58,7 @@ SFR_SimDirs = [
         'path': './output/miniuchuu_full/', 
         'label': 'miniUchuu', 
         'color': 'blue', 
-        'linestyle': '--',
+        'linestyle': '.',
         'BoxSize': 400,  # h-1 Mpc  (example - adjust to your actual values)
         'Hubble_h': 0.677,  # (example - adjust to your actual values)
         'VolumeFraction': 1.0,
@@ -76,7 +76,7 @@ SFR_SimDirs = [
         'path': './output/millennium_vanilla/', 
         'label': 'C16 Millennium', 
         'color': 'black', 
-        'linestyle': ':',
+        'linestyle': '--',
         'BoxSize': 62.5,  # h-1 Mpc  (example - adjust to your actual values)
         'Hubble_h': 0.73,  # (example - adjust to your actual values)
         'VolumeFraction': 1.0,
@@ -991,7 +991,7 @@ if vanilla_sim_path and os.path.exists(vanilla_sim_path):
             # Plot dashed line for vanilla simulation
             line_color = colors[bin_idx] if bin_idx < len(colors) else 'black'
             plt.plot(lookback_reversed, np.log10(sfr_reversed + 1e-5), 
-                    color=line_color, linewidth=3.0, linestyle=':',
+                    color=line_color, linewidth=3.0, linestyle='--',
                     alpha=0.8)
     # Replace your existing xlabel/ylabel calls with this:
 
