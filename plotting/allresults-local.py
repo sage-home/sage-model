@@ -105,6 +105,7 @@ if __name__ == '__main__':
     Posz = read_hdf(snap_num = Snapshot, param = 'Posz')
     NDM = read_hdf(snap_num = Snapshot, param = 'Len')
     cooling = read_hdf(snap_num = Snapshot, param = 'Cooling')
+    metalshotgas = read_hdf(snap_num = Snapshot, param = 'MetalsHotGas') * 1.0e10 / Hubble_h
 
     # --------------------------------------------------------
 
@@ -698,8 +699,8 @@ if __name__ == '__main__':
     sfr_BLU = sSFR[w]
     mass_BLU = mass[w]
 
-    plt.scatter(mass_BLU, sfr_BLU, marker='o', s=1, c='#0072B2', alpha=0.3)
-    plt.scatter(mass_RED, sfr_RED, marker='o', s=1, c='#D55E00', alpha=0.3)
+    plt.scatter(mass_BLU, sfr_BLU, marker='o', s=1, c='#0072B2', alpha=0.8)
+    plt.scatter(mass_RED, sfr_RED, marker='o', s=1, c='#D55E00', alpha=0.8)
 
     # Define mass bins
     mass_bins = np.arange(8.0, 12.0, 0.2)  # 0.2 dex bins
@@ -793,21 +794,10 @@ if __name__ == '__main__':
     w2 = np.where(StellarMass > 0.01)[0]
     if(len(w2) > dilute): w2 = sample(list(range(len(w2))), dilute)
     mass = np.log10(StellarMass[w2])
-    SFR =  (SfrDisk[w2] + SfrBulge[w2])
-
-    # additionally calculate red
-    w = np.where(sSFR < sSFRcut)[0]
-    sfr_RED = SFR[w]
-    mass_RED = mass[w]
-
-    # additionally calculate blue
-    w = np.where(sSFR > sSFRcut)[0]
-    sfr_BLU = SFR[w]
-    mass_BLU = mass[w]
+    starformationrate =  (SfrDisk[w2] + SfrBulge[w2])
 
     # Create scatter plot with metallicity coloring
-    plt.scatter(mass_BLU, np.log10(sfr_BLU), c='b', marker='o', s=1, alpha=0.7, label='Star forming')
-    plt.scatter(mass_RED, np.log10(sfr_RED), c='r', marker='o', s=1, alpha=0.7, label='Passive')
+    plt.scatter(mass, np.log10(starformationrate), c='b', marker='o', s=1, alpha=0.7)
 
     plt.ylabel(r'$\log_{10} \mathrm{SFR}\ (M_{\odot}\ \mathrm{yr^{-1}})$')  # Set the y...
     plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
@@ -1554,46 +1544,6 @@ if __name__ == '__main__':
     print('Saved file to', outputFile, '\n')
     plt.close()
 
-# -------------------------------------------------------
-
-    print('Plotting galaxy ejection diagnostics')
-
-    plt.figure()  # New figure
-
-    # First subplot: Vmax vs Stellar Mass
-    ax1 = plt.subplot(111)  # Top plot
-
-    w = np.where((Type == 0) & (Vmax > 0))[0]  # Central galaxies only
-    if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
-
-    sat = np.where((Type == 1) & (Vmax > 0))[0]  
-    if(len(sat) > dilute): sat = sample(list(range(len(sat))), dilute)
-
-    mass = np.log10(StellarMass[w])
-    sats = np.log10(StellarMass[sat])
-    ejected = np.log10(cgm[w])
-
-    # Color points by halo mass
-    halo_mass = np.log10(Mvir[w])
-    sc = plt.scatter(mass, np.log10(ejected), c=halo_mass, cmap='plasma', s=5, alpha=0.7, label='Centrals')
-    cbar = plt.colorbar(sc)
-    cbar.set_label(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
-
-    # plt.scatter(sats, np.log10(cgm[sat]), marker='*', s=250, c='k', alpha=0.5, label='Satellites')
-
-    plt.ylabel(r'$\log_{10} M_{\mathrm{ejected}}\ (M_{\odot})$')
-    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
-    # plt.title('Ejected Mass vs Stellar Mass')
-
-    plt.legend(loc='upper left')
-
-    plt.tight_layout()
-
-    outputFile = OutputDir + '16.CGMDiagnostics' + OutputFormat
-    plt.savefig(outputFile)  # Save the figure
-    print('Saved file to', outputFile, '\n')
-    plt.close()
-
     # -------------------------------------------------------
 
     print('Plotting galaxy infall diagnostics')
@@ -2094,10 +2044,257 @@ if __name__ == '__main__':
                     r'$M_{\mathrm{vir}} > 10^{12}\ M_\odot$', 
                     fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightcoral", alpha=0.8))
 
-    plt.xlabel(r'$\log_{10} M_{\mathrm{cgm}}\ (M_\odot)$')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{processedCGM}}\ (M_\odot)$')
     plt.ylabel(r'$\log_{10} T_{\mathrm{vir}}\ (K)$')
 
     plt.tight_layout()
     plt.savefig(OutputDir + '22.CGM_temperature_metals' + OutputFormat, bbox_inches='tight')
     plt.close()
     print('Saved file to', OutputDir + '22.CGM_temperature_metals' + OutputFormat, '\n')
+
+
+    # -------------------------------------------------------
+    print('Plotting Hot halo temperature with metals coloring')
+
+    plt.figure()
+
+    log_tvir = np.log10(35.9 * Vvir**2)
+    log_hmass = np.log10(Mvir)
+    log_smass = np.log10(StellarMass)
+    log_hotgas = np.log10(HotGas)
+
+    
+    # Calculate metallicity for coloring using the same method as the metallicity plot
+    # 12 + log10[O/H] = log10((Metals/Gas) / 0.02) + 9.0
+    valid_metals = (metalshotgas > 0) & (log_hotgas > 0)
+    metallicity_12_plus_logOH = np.zeros_like(metalshotgas)
+    metallicity_12_plus_logOH[valid_metals] = np.log10((metalshotgas[valid_metals] / HotGas[valid_metals]) / 0.02) + 9.0
+
+    low_mass = np.where((log_hmass >= 10) & (log_hmass < 11) & valid_metals)[0]
+    med_mass = np.where((log_hmass >= 11) & (log_hmass < 12) & valid_metals)[0]
+    high_mass = np.where((log_hmass >= 12) & valid_metals)[0]
+
+    # Apply dilution to each mass bin
+    if(len(low_mass) > dilute): low_mass = low_mass[sample(list(range(len(low_mass))), dilute)]
+    if(len(med_mass) > dilute): med_mass = med_mass[sample(list(range(len(med_mass))), dilute)]
+    if(len(high_mass) > dilute): high_mass = high_mass[sample(list(range(len(high_mass))), dilute)]
+
+    # Create scatter plot with metallicity coloring using plasma colormap
+    if len(low_mass) > 0:
+        sc1 = plt.scatter(log_hotgas[low_mass], log_tvir[low_mass], c=metallicity_12_plus_logOH[low_mass], 
+                         s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5)
+    if len(med_mass) > 0:
+        sc2 = plt.scatter(log_hotgas[med_mass], log_tvir[med_mass], c=metallicity_12_plus_logOH[med_mass], 
+                         s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5)
+    if len(high_mass) > 0:
+        sc3 = plt.scatter(log_hotgas[high_mass], log_tvir[high_mass], c=metallicity_12_plus_logOH[high_mass], 
+                         s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5)
+
+    # Add colorbar
+    cb = plt.colorbar(sc1 if len(low_mass) > 0 else (sc2 if len(med_mass) > 0 else sc3))
+    cb.set_label(r'$12 + \log_{10}[\mathrm{O/H}]_{\mathrm{CGM}}$')
+    
+    # Add horizontal dashed lines to separate mass bins based on virial temperature
+    # Calculate virial temperatures corresponding to mass boundaries
+    # For M_vir = 10^11 M_sun: T_vir = 35.9 * (V_vir)^2, where V_vir scales with (M_vir)^(1/3)
+    # Approximate virial temperatures for mass boundaries
+    all_y_data = np.concatenate([log_tvir[low_mass], log_tvir[med_mass], log_tvir[high_mass]]) if len(low_mass) + len(med_mass) + len(high_mass) > 0 else []
+    all_x_data = np.concatenate([log_hotgas[low_mass], log_hotgas[med_mass], log_hotgas[high_mass]]) if len(low_mass) + len(med_mass) + len(high_mass) > 0 else []
+
+    if len(all_x_data) > 0:
+        x_min, x_max = np.min(all_x_data), np.max(all_x_data)
+        y_min, y_max = np.min(all_y_data), np.max(all_y_data)
+        
+        # Calculate approximate virial temperatures for mass boundaries
+        # T_vir ≈ 35.9 * V_vir^2, and V_vir ∝ (M_vir/M_0)^(1/3) * V_0
+        # For typical values: log T_vir ≈ 5.5 for 10^11 M_sun, log T_vir ≈ 6.0 for 10^12 M_sun
+        log_tvir_11 = np.log10(35.9) + 2 * np.log10(200 * (11.0/12.0)**(1/3))  # Approximate for 10^11
+        log_tvir_12 = np.log10(35.9) + 2 * np.log10(200)  # Approximate for 10^12
+        
+        # Use actual data to find better separation lines
+        if len(low_mass) > 0 and len(med_mass) > 0:
+            # Find the boundary between low and medium mass in temperature space
+            low_tvir_max = np.percentile(log_tvir[low_mass], 90)
+            med_tvir_min = np.percentile(log_tvir[med_mass], 10)
+            sep_line_1 = (low_tvir_max + med_tvir_min) / 2
+            plt.axhline(y=sep_line_1, color='black', linestyle='--', alpha=0.7, linewidth=1)
+            
+        if len(med_mass) > 0 and len(high_mass) > 0:
+            # Find the boundary between medium and high mass in temperature space
+            med_tvir_max = np.percentile(log_tvir[med_mass], 90)
+            high_tvir_min = np.percentile(log_tvir[high_mass], 10)
+            sep_line_2 = (med_tvir_max + high_tvir_min) / 2
+            plt.axhline(y=sep_line_2, color='black', linestyle='--', alpha=0.7, linewidth=1)
+        
+        # Add text labels for mass bins
+        y_range = y_max - y_min
+        if len(low_mass) > 0:
+            low_y_center = np.median(log_tvir[low_mass])
+            plt.text(x_min + 0.05 * (x_max - x_min), low_y_center, 
+                    r'$10^{10} < M_{\mathrm{vir}} < 10^{11}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8))
+        if len(med_mass) > 0:
+            med_y_center = np.median(log_tvir[med_mass])
+            plt.text(x_min + 0.05 * (x_max - x_min), med_y_center, 
+                    r'$10^{11} < M_{\mathrm{vir}} < 10^{12}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgreen", alpha=0.8))
+        if len(high_mass) > 0:
+            high_y_center = np.median(log_tvir[high_mass])
+            plt.text(x_min + 0.05 * (x_max - x_min), high_y_center, 
+                    r'$M_{\mathrm{vir}} > 10^{12}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightcoral", alpha=0.8))
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{hotgasCGM}}\ (M_\odot)$')
+    plt.ylabel(r'$\log_{10} T_{\mathrm{vir}}\ (K)$')
+
+    plt.tight_layout()
+    plt.savefig(OutputDir + '23.HotGas_temperature_metals' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '23.HotGas_temperature_metals' + OutputFormat, '\n')
+
+    # -------------------------------------------------------
+    print('Plotting full CGM temperature with metals coloring')
+
+    plt.figure()
+
+    log_tvir = np.log10(35.9 * Vvir**2)
+    log_hmass = np.log10(Mvir)
+    log_cgm = np.log10(cgm)
+    log_hotgas = np.log10(HotGas)
+
+    # Calculate separate metallicity arrays with correct filters
+    # CGM metallicity
+    valid_cgm = (MetalsCGMgas > 0) & (cgm > 0)
+    metallicity_cgm = np.zeros_like(MetalsCGMgas)
+    metallicity_cgm[valid_cgm] = np.log10((MetalsCGMgas[valid_cgm] / cgm[valid_cgm]) / 0.02) + 9.0
+
+    # HotGas metallicity  
+    valid_hotgas = (metalshotgas > 0) & (HotGas > 0)
+    metallicity_hotgas = np.zeros_like(metalshotgas)
+    metallicity_hotgas[valid_hotgas] = np.log10((metalshotgas[valid_hotgas] / HotGas[valid_hotgas]) / 0.02) + 9.0
+
+    # Create separate mass bins for each component
+    cgm_low = np.where((log_hmass >= 10) & (log_hmass < 11) & valid_cgm)[0]
+    cgm_med = np.where((log_hmass >= 11) & (log_hmass < 12) & valid_cgm)[0]  
+    cgm_high = np.where((log_hmass >= 12) & valid_cgm)[0]
+
+    hotgas_low = np.where((log_hmass >= 10) & (log_hmass < 11) & valid_hotgas)[0]
+    hotgas_med = np.where((log_hmass >= 11) & (log_hmass < 12) & valid_hotgas)[0]
+    hotgas_high = np.where((log_hmass >= 12) & valid_hotgas)[0]
+
+    # Apply dilution to each mass bin
+    if(len(cgm_low) > dilute): cgm_low = cgm_low[sample(list(range(len(cgm_low))), dilute)]
+    if(len(cgm_med) > dilute): cgm_med = cgm_med[sample(list(range(len(cgm_med))), dilute)]
+    if(len(cgm_high) > dilute): cgm_high = cgm_high[sample(list(range(len(cgm_high))), dilute)]
+
+    if(len(hotgas_low) > dilute): hotgas_low = hotgas_low[sample(list(range(len(hotgas_low))), dilute)]
+    if(len(hotgas_med) > dilute): hotgas_med = hotgas_med[sample(list(range(len(hotgas_med))), dilute)]
+    if(len(hotgas_high) > dilute): hotgas_high = hotgas_high[sample(list(range(len(hotgas_high))), dilute)]
+
+    # Plot CGM component (processed, should be more metal-rich)
+    if len(cgm_low) > 0:
+        plt.scatter(log_cgm[cgm_low], log_tvir[cgm_low], c=metallicity_cgm[cgm_low], 
+                s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='o')
+    if len(cgm_med) > 0:
+        plt.scatter(log_cgm[cgm_med], log_tvir[cgm_med], c=metallicity_cgm[cgm_med], 
+                s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='o')
+    if len(cgm_high) > 0:
+        sc_cgm = plt.scatter(log_cgm[cgm_high], log_tvir[cgm_high], c=metallicity_cgm[cgm_high], 
+                            s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='o')
+
+    # Plot HotGas component (pristine, should be less metal-rich)
+    if len(hotgas_low) > 0:
+        plt.scatter(log_hotgas[hotgas_low], log_tvir[hotgas_low], c=metallicity_hotgas[hotgas_low], 
+                s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='s')
+    if len(hotgas_med) > 0:
+        plt.scatter(log_hotgas[hotgas_med], log_tvir[hotgas_med], c=metallicity_hotgas[hotgas_med], 
+                s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='s')
+    if len(hotgas_high) > 0:
+        sc_hot = plt.scatter(log_hotgas[hotgas_high], log_tvir[hotgas_high], c=metallicity_hotgas[hotgas_high], 
+                            s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='s')
+
+    # Add colorbar (use the last scatter plot that was created)
+    sc = sc_cgm if 'sc_cgm' in locals() else sc_hot
+    cb = plt.colorbar(sc)
+    cb.set_label(r'$12 + \log_{10}[\mathrm{O/H}]_{\mathrm{CGM}}$')
+
+    # Calculate axis ranges including both datasets
+    all_y_data = []
+    all_x_data = []
+
+    # Add CGM data
+    for mass_bin in [cgm_low, cgm_med, cgm_high]:
+        if len(mass_bin) > 0:
+            all_y_data.extend(log_tvir[mass_bin])
+            all_x_data.extend(log_cgm[mass_bin])
+
+    # Add HotGas data        
+    for mass_bin in [hotgas_low, hotgas_med, hotgas_high]:
+        if len(mass_bin) > 0:
+            all_y_data.extend(log_tvir[mass_bin])
+            all_x_data.extend(log_hotgas[mass_bin])
+
+    if len(all_x_data) > 0:
+        x_min, x_max = np.min(all_x_data), np.max(all_x_data)
+        y_min, y_max = np.min(all_y_data), np.max(all_y_data)
+        
+        # Add mass separation lines based on combined data
+        all_cgm_bins = [cgm_low, cgm_med, cgm_high]
+        all_hot_bins = [hotgas_low, hotgas_med, hotgas_high] 
+        
+        # Low-medium boundary
+        low_y_data = []
+        if len(cgm_low) > 0: low_y_data.extend(log_tvir[cgm_low])
+        if len(hotgas_low) > 0: low_y_data.extend(log_tvir[hotgas_low])
+        
+        med_y_data = []
+        if len(cgm_med) > 0: med_y_data.extend(log_tvir[cgm_med])
+        if len(hotgas_med) > 0: med_y_data.extend(log_tvir[hotgas_med])
+        
+        if len(low_y_data) > 0 and len(med_y_data) > 0:
+            low_max = np.percentile(low_y_data, 90)
+            med_min = np.percentile(med_y_data, 10)
+            sep_line_1 = (low_max + med_min) / 2
+            plt.axhline(y=sep_line_1, color='black', linestyle='--', alpha=0.7, linewidth=1)
+        
+        # Medium-high boundary
+        high_y_data = []
+        if len(cgm_high) > 0: high_y_data.extend(log_tvir[cgm_high])
+        if len(hotgas_high) > 0: high_y_data.extend(log_tvir[hotgas_high])
+        
+        if len(med_y_data) > 0 and len(high_y_data) > 0:
+            med_max = np.percentile(med_y_data, 90)
+            high_min = np.percentile(high_y_data, 10)
+            sep_line_2 = (med_max + high_min) / 2
+            plt.axhline(y=sep_line_2, color='black', linestyle='--', alpha=0.7, linewidth=1)
+        
+        # Add mass labels
+        if len(low_y_data) > 0:
+            low_y_center = np.median(low_y_data)
+            plt.text(x_min + 0.05 * (x_max - x_min), low_y_center, 
+                    r'$10^{10} < M_{\mathrm{vir}} < 10^{11}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8))
+        if len(med_y_data) > 0:
+            med_y_center = np.median(med_y_data)
+            plt.text(x_min + 0.05 * (x_max - x_min), med_y_center, 
+                    r'$10^{11} < M_{\mathrm{vir}} < 10^{12}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgreen", alpha=0.8))
+        if len(high_y_data) > 0:
+            high_y_center = np.median(high_y_data)
+            plt.text(x_min + 0.05 * (x_max - x_min), high_y_center, 
+                    r'$M_{\mathrm{vir}} > 10^{12}\ M_\odot$', 
+                    fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightcoral", alpha=0.8))
+
+    # Add legend to distinguish components
+    from matplotlib.lines import Line2D
+    legend_elements = [Line2D([0], [0], marker='o', color='w', markerfacecolor='purple', markersize=8, alpha=0.7, label='Feedback-driven CGM'),
+                    Line2D([0], [0], marker='s', color='w', markerfacecolor='blue', markersize=8, alpha=0.7, label='Infall/Reincorporation-driven CGM')]
+    plt.legend(handles=legend_elements, loc='upper left')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{CGM\ component}}\ (M_\odot)$')
+    plt.ylabel(r'$\log_{10} T_{\mathrm{vir}}\ (K)$')
+
+    plt.tight_layout()
+    plt.savefig(OutputDir + '24.fullCGM_temperature_metals' + OutputFormat, bbox_inches='tight')
+    plt.close()
+    print('Saved file to', OutputDir + '24.fullCGM_temperature_metals' + OutputFormat, '\n')
