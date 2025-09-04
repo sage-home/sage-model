@@ -432,6 +432,7 @@ struct params
     int32_t    ReionizationOn;
     int32_t    DiskInstabilityOn;
     int32_t    MassLoadingOn;
+    int32_t    CgmOn;
     int32_t    DynamicalTimeResolutionFactor; 
 
     double RecycleFraction;
@@ -449,6 +450,8 @@ struct params
     double Reionization_z0;
     double Reionization_zr;
     double ThresholdSatDisruption;
+    double CgmMassThreshold;
+    double CgmEjectionFraction;
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

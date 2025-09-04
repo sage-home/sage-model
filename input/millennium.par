@@ -51,7 +51,7 @@ SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingOn         1   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
-
+CgmOn                 0   %0: switch off; 1: use CGM model for group/galaxy scale halos below CgmMassThreshold
 DynamicalTimeResolutionFactor    2      %Optimal balance: 2 timesteps per dynamical time
 
 %------------------------------------------
@@ -61,7 +61,7 @@ DynamicalTimeResolutionFactor    2      %Optimal balance: 2 timesteps per dynami
 SfrEfficiency          0.05  %efficiency of SF (SFprescription=0)
 
 FeedbackReheatingEpsilon    1.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
-FeedbackEjectionEfficiency  0.5   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
+FeedbackEjectionEfficiency  1.0   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
 ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 
@@ -71,6 +71,8 @@ BlackHoleGrowthRate     0.015 %fraction of cold gas added to the BH during merge
 
 ThreshMajorMerger       0.3   %major merger when mass ratio greater than this
 ThresholdSatDisruption  1.0   %Mvir-to-baryonic mass ratio threshold for satellite merger or disruption
+CgmMassThreshold        13.0  %Halo mass threshold as log10(Mass in Msun) - halos below use CGM, above use HotGas (when CgmOn=1)
+CgmEjectionFraction     1.0   %Fraction of calculated ejected mass that actually leaves CGM regime halos (0.0=no ejection, 1.0=full ejection)
 
 Yield                   0.025 %fraction of SF mass produced as metals
 RecycleFraction         0.43  %fraction of SF mass instantaneously recycled back to cold

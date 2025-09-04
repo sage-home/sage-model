@@ -237,6 +237,18 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->MassLoadingOn);
     ParamID[NParam++] = INT;
 
+    strncpy(ParamTag[NParam], "CgmOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CgmOn);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "CgmMassThreshold", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CgmMassThreshold);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "CgmEjectionFraction", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CgmEjectionFraction);
+    ParamID[NParam++] = DOUBLE;
+
     strncpy(ParamTag[NParam], "DynamicalTimeResolutionFactor", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->DynamicalTimeResolutionFactor);
     ParamID[NParam++] = INT;
@@ -337,6 +349,19 @@ int read_parameter_file(const char *fname, struct params *run_params)
     if(errorFlag) {
         ABORT(1);
     }
+    
+    // Convert CgmMassThreshold from log10(Mass in Msun) to units of 10^13 Msun
+    // Input: log10(Mass in Msun), e.g., 13.0 for 10^13 Msun
+    // Internal: Mass / 10^13 Msun = 10^(input - 13)
+    if(run_params->CgmOn) {
+        run_params->CgmMassThreshold = pow(10.0, run_params->CgmMassThreshold - 13.0);
+#ifdef VERBOSE
+        if(ThisTask == 0) {
+            fprintf(stdout, "CgmMassThreshold converted from log10(Mass) to internal units: %.2e\n", run_params->CgmMassThreshold);
+        }
+#endif
+    }
+    
 #ifdef VERBOSE
     fprintf(stdout, "\n");
 #endif
