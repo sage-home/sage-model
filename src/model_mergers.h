@@ -12,7 +12,6 @@ extern "C" {
     extern void deal_with_galaxy_merger(const int p, int merger_centralgal, const int centralgal, const double time,
                                         const double dt, const int halonr, const int step, struct GALAXY *galaxies, const struct params *run_params);
     extern void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *galaxies, const struct params *run_params);
-    extern void quasar_mode_wind_regime(const int gal, const double BHaccrete, struct GALAXY *galaxies, const struct params *run_params);
     extern void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies);
     extern void make_bulge_from_burst(const int p, struct GALAXY *galaxies);
     extern void grow_black_hole(const int merger_centralgal, const double mass_ratio, struct GALAXY *galaxies, const struct params *run_params);

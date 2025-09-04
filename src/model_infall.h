@@ -11,11 +11,6 @@ extern "C" {
     extern void strip_from_satellite(const int centralgal, const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
     extern double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
     extern void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies);
-    extern void add_infall_to_cgm(const int gal, double infallingGas, struct GALAXY *galaxies);
-    extern void add_infall_to_hot_only(const int gal, double infallingGas, struct GALAXY *galaxies);
-    extern void add_infall_to_regime(const int gal, double infallingGas, struct GALAXY *galaxies, const struct params *run_params);
-    extern void strip_from_satellite_regime(const int centralgal, const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
-    extern void strip_from_satellite_cgm(const int centralgal, const int gal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params);
 
 #ifdef __cplusplus
 }

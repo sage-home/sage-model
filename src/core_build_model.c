@@ -389,20 +389,20 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // For the central galaxy only
             if(p == centralgal) {
-                add_infall_to_regime(centralgal, infallingGas * actual_dt / deltaT, galaxies, run_params);
+                add_infall_to_hot(centralgal, infallingGas * actual_dt / deltaT, galaxies);
 
                 if(run_params->ReIncorporationFactor > 0.0) {
-                    reincorporate_gas_regime(centralgal, actual_dt, galaxies, run_params);
+                    reincorporate_gas(centralgal, actual_dt, galaxies, run_params);
                 }
             } else {
-                if(galaxies[p].Type == 1 && (galaxies[p].HotGas > 0.0 || galaxies[p].CGMgas > 0.0)) {
-                    strip_from_satellite_regime(centralgal, p, Zcurr, galaxies, run_params);
+                if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
+                    strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
                 }
             }
 
             // Determine the cooling gas given the halo properties
-            double coolingGas = cooling_recipe_regime(p, actual_dt, galaxies, run_params);
-            cool_gas_onto_galaxy_regime(p, coolingGas, galaxies, run_params);
+            double coolingGas = cooling_recipe(p, actual_dt, galaxies, run_params);
+            cool_gas_onto_galaxy(p, coolingGas, galaxies);
 
             // stars form and then explode!
             starformation_and_feedback(p, centralgal, time, actual_dt, halonr, step, galaxies, run_params);

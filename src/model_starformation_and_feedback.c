@@ -11,9 +11,6 @@
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
 
-// Debug counter for regime tracking
-static long feedback_debug_counter = 0;
-
 double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY *galaxies)
 {
     // Get circular velocity in km/s
@@ -190,7 +187,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
 
     // update from SN feedback
-    update_from_feedback_regime(p, centralgal, reheated_mass, ejected_mass, metallicity, galaxies, run_params);
+    update_from_feedback(p, centralgal, reheated_mass, ejected_mass, metallicity, galaxies, run_params);
 
     // check for disk instability
     if(run_params->DiskInstabilityOn) {
@@ -198,7 +195,15 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     }
 
     // formation of new metals - instantaneous recycling approximation - only SNII
-    update_metals_from_star_formation_regime(p, centralgal, stars, galaxies, run_params);
+    if(galaxies[p].ColdGas > 1.0e-8) {
+        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+        galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+        galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * FracZleaveDiskVal * stars;
+    } else {
+        galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * stars;
+    }
 }
 
 
@@ -251,166 +256,5 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[centralgal].MetalsCGMgas += metallicityHot * ejected_mass;
 
         galaxies[p].OutflowRate += reheated_mass;
-    }
-}
-
-void update_from_feedback_regime(const int p, const int centralgal, const double reheated_mass, double ejected_mass, const double metallicity,
-                          struct GALAXY *galaxies, const struct params *run_params)
-{
-    // Increment debug counter
-    feedback_debug_counter++;
-
-    // If CGM toggle is off, use original behavior
-    if(run_params->CgmOn == 0) {
-        update_from_feedback(p, centralgal, reheated_mass, ejected_mass, metallicity, galaxies, run_params);
-        return;
-    }
-
-    XASSERT(reheated_mass >= 0.0, -1,
-            "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
-            p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
-    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
-            "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
-            reheated_mass, galaxies[p].ColdGas);
-
-    // Convert halo mass to units of 10^13 Msun for comparison with threshold
-    double halo_mass_1e13 = galaxies[centralgal].Mvir / 1000.0;
-
-    if(run_params->SupernovaRecipeOn == 1) {
-        // Remove cold gas and metals (same for both regimes)
-        galaxies[p].ColdGas -= reheated_mass;
-        galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
-
-        if(halo_mass_1e13 < run_params->CgmMassThreshold) {
-            // Low-mass regime: CGM-based physics with tunable ejection
-            // Reheating goes directly to CGM (no hot gas reservoir)
-            galaxies[centralgal].CGMgas += reheated_mass;
-            galaxies[centralgal].MetalsCGMgas += metallicity * reheated_mass;
-
-            // Partial ejection based on CgmEjectionFraction parameter
-            double actual_ejection = ejected_mass * run_params->CgmEjectionFraction;
-
-            // Check if we have enough CGM gas for ejection and ensure no negative values
-            if(actual_ejection > galaxies[centralgal].CGMgas) {
-                actual_ejection = galaxies[centralgal].CGMgas;
-            }
-            if(actual_ejection < 0.0) {
-                actual_ejection = 0.0;
-            }
-
-            if(actual_ejection > 0.0 && galaxies[centralgal].CGMgas > 0.0) {
-                // Calculate metallicity of CGM gas for ejection
-                const double metallicityCGM = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
-                
-                // Remove ejected mass from CGM (true ejection from halo)
-                galaxies[centralgal].CGMgas -= actual_ejection;
-                galaxies[centralgal].MetalsCGMgas -= metallicityCGM * actual_ejection;
-
-                // Ensure no negative values after subtraction
-                if(galaxies[centralgal].CGMgas < 0.0) {
-                    galaxies[centralgal].CGMgas = 0.0;
-                }
-                if(galaxies[centralgal].MetalsCGMgas < 0.0) {
-                    galaxies[centralgal].MetalsCGMgas = 0.0;
-                }
-            }
-
-            // Update ejected_mass for debug output (actual ejection amount)
-            ejected_mass = actual_ejection;
-
-            // Ensure no hot gas exists in low-mass regime
-            galaxies[centralgal].HotGas = 0.0;
-            galaxies[centralgal].MetalsHotGas = 0.0;
-
-        } else {
-            // High-mass regime: No CGM, All HotGas
-            // Standard reheating to hot gas
-            galaxies[centralgal].HotGas += reheated_mass;
-            galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
-
-            // NO EJECTION: All feedback stays in hot gas reservoir (clusters retain gas)
-            // Set ejected_mass to 0 for accounting but no mass is actually lost
-            ejected_mass = 0.0;
-
-            // Ensure no CGM exists in high-mass regime
-            galaxies[centralgal].CGMgas = 0.0;
-            galaxies[centralgal].MetalsCGMgas = 0.0;
-        }
-
-        // Debug output AFTER regime-aware modifications
-        if(feedback_debug_counter % 50000 == 0) {
-            const char* regime = (halo_mass_1e13 < run_params->CgmMassThreshold) ? "CGM" : "HOT";
-            if(halo_mass_1e13 < run_params->CgmMassThreshold) {
-                printf("DEBUG FEEDBACK [gal %ld]: Mvir=%.2e (%.2e x10^13), regime=%s, reheat=%.2e, eject=%.2e (%.1f%% ejection)\n",
-                       feedback_debug_counter, galaxies[centralgal].Mvir, halo_mass_1e13, regime, reheated_mass, ejected_mass, 
-                       run_params->CgmEjectionFraction * 100.0);
-            } else {
-                printf("DEBUG FEEDBACK [gal %ld]: Mvir=%.2e (%.2e x10^13), regime=%s, reheat=%.2e, eject=%.2e (NO EJECTION)\n",
-                       feedback_debug_counter, galaxies[centralgal].Mvir, halo_mass_1e13, regime, reheated_mass, ejected_mass);
-            }
-        }
-
-        galaxies[p].OutflowRate += reheated_mass;
-    }
-}
-
-void update_metals_from_star_formation_original(const int p, const int centralgal, const double stars, struct GALAXY *galaxies, const struct params *run_params)
-{
-    if(galaxies[p].ColdGas > 1.0e-8) {
-        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
-        galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-    } else {
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-    }
-}
-
-void update_metals_from_star_formation_regime(const int p, const int centralgal, const double stars, struct GALAXY *galaxies, const struct params *run_params)
-{
-    static long debug_count = 0;
-    static long cgm_regime_count = 0;
-    static long hot_regime_count = 0;
-    
-    debug_count++;
-    
-    if (run_params->CgmOn) {
-        double halo_mass_1e13 = galaxies[centralgal].Mvir / 1000.0;
-        
-        if (halo_mass_1e13 < run_params->CgmMassThreshold) {
-            // CGM regime: metals from star formation go to CGM
-            if(galaxies[p].ColdGas > 1.0e-8) {
-                const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);
-                galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-                galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
-            } else {
-                galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
-            }
-            cgm_regime_count++;
-            
-            // Ensure no HotGas metals exist in CGM regime
-            galaxies[centralgal].MetalsHotGas = 0.0;
-        } else {
-            // HotGas regime: metals from star formation go to HotGas (original behavior)
-            if(galaxies[p].ColdGas > 1.0e-8) {
-                const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);
-                galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-                galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-            } else {
-                galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-            }
-            hot_regime_count++;
-            
-            // Ensure no CGM metals exist in HotGas regime
-            galaxies[centralgal].MetalsCGMgas = 0.0;
-        }
-    } else {
-        // Original behavior when CgmOn=0
-        update_metals_from_star_formation_original(p, centralgal, stars, galaxies, run_params);
-        hot_regime_count++;
-    }
-    
-    if (debug_count % 50000 == 0) {
-        printf("Metal production: Processed %ld galaxies - CGM regime: %ld, HotGas regime: %ld\n", 
-               debug_count, cgm_regime_count, hot_regime_count);
     }
 }

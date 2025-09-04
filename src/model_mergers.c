@@ -12,9 +12,6 @@
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
 
-// Debug counter for regime tracking
-static long quasar_debug_counter = 0;
-
 double estimate_merging_time(const int sat_halo, const int mother_halo, const int ngal, struct halo_data *halos, struct GALAXY *galaxies, const struct params *run_params)
 {
     double mergtime;
@@ -119,7 +116,7 @@ void grow_black_hole(const int merger_centralgal, const double mass_ratio, struc
 
         galaxies[merger_centralgal].QuasarModeBHaccretionMass += BHaccrete;
 
-        quasar_mode_wind_regime(merger_centralgal, BHaccrete, galaxies, run_params);
+        quasar_mode_wind(merger_centralgal, BHaccrete, galaxies, run_params);
     }
 }
 
@@ -148,73 +145,6 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
 
         galaxies[gal].HotGas = 0.0;
         galaxies[gal].MetalsHotGas = 0.0;
-    }
-}
-
-void quasar_mode_wind_regime(const int gal, const double BHaccrete, struct GALAXY *galaxies, const struct params *run_params)
-{
-    // Increment debug counter
-    quasar_debug_counter++;
-
-    // If CGM toggle is off, use original behavior
-    if(run_params->CgmOn == 0) {
-        quasar_mode_wind(gal, BHaccrete, galaxies, run_params);
-        return;
-    }
-
-    // Convert halo mass to units of 10^13 Msun for comparison with threshold
-    double halo_mass_1e13 = galaxies[gal].Mvir / 1000.0;
-
-    // Debug output every 50,000 galaxies  
-    if(quasar_debug_counter % 50000 == 0) {
-        const char* regime = (halo_mass_1e13 < run_params->CgmMassThreshold) ? "CGM" : "HOT";
-        printf("DEBUG QUASAR [gal %ld]: Mvir=%.2e (%.2e x10^13), regime=%s, BHaccrete=%.2e\n",
-               quasar_debug_counter, galaxies[gal].Mvir, halo_mass_1e13, regime, BHaccrete);
-    }
-
-    // work out total energies in quasar wind (eta*m*c^2), cold and hot gas (1/2*m*Vvir^2)
-    const double quasar_energy = run_params->QuasarModeEfficiency * 0.1 * BHaccrete * (C / run_params->UnitVelocity_in_cm_per_s) * (C / run_params->UnitVelocity_in_cm_per_s);
-    const double cold_gas_energy = 0.5 * galaxies[gal].ColdGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
-
-    if(halo_mass_1e13 < run_params->CgmMassThreshold) {
-        // Low-mass regime: NO HotGas, All CGM
-        const double cgm_gas_energy = 0.5 * galaxies[gal].CGMgas * galaxies[gal].Vvir * galaxies[gal].Vvir;
-
-        // NO EJECTION: AGN wind transfers cold gas to CGM instead of ejecting
-        if(quasar_energy > cold_gas_energy) {
-            // Move cold gas to CGM reservoir instead of ejecting
-            galaxies[gal].CGMgas += galaxies[gal].ColdGas;
-            galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsColdGas;
-            galaxies[gal].ColdGas = 0.0;
-            galaxies[gal].MetalsColdGas = 0.0;
-        }
-
-        // NO EJECTION: AGN wind heats CGM but doesn't eject it
-        // CGM gas stays in CGM reservoir (no mass loss)
-
-        // Ensure no hot gas exists in low-mass regime
-        galaxies[gal].HotGas = 0.0;
-        galaxies[gal].MetalsHotGas = 0.0;
-
-    } else {
-        // High-mass regime: No CGM, All HotGas
-        const double hot_gas_energy = 0.5 * galaxies[gal].HotGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
-
-        // NO EJECTION: AGN wind transfers cold gas to hot gas instead of ejecting
-        if(quasar_energy > cold_gas_energy) {
-            // Move cold gas to hot gas reservoir instead of ejecting
-            galaxies[gal].HotGas += galaxies[gal].ColdGas;
-            galaxies[gal].MetalsHotGas += galaxies[gal].MetalsColdGas;
-            galaxies[gal].ColdGas = 0.0;
-            galaxies[gal].MetalsColdGas = 0.0;
-        }
-
-        // NO EJECTION: AGN wind heats hot gas but doesn't eject it
-        // Hot gas stays in hot gas reservoir (no mass loss)
-
-        // Ensure no CGM exists in high-mass regime
-        galaxies[gal].CGMgas = 0.0;
-        galaxies[gal].MetalsCGMgas = 0.0;
     }
 }
 
