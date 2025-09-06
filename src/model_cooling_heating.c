@@ -572,4 +572,27 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
         printf("  Corrections made: %d galaxies\n", corrections_made);
     }
     #endif
+    
+    // Additional safety check: Ensure low-mass halos are in CGM regime
+    // Mass-based regime enforcement for Mvir < 10^11.5 M_sun
+    for(int p = 0; p < ngal; p++) {
+        // Skip merged galaxies
+        if(galaxies[p].mergeType > 0) {
+            continue;
+        }
+        
+        // Convert SAGE units (1e10 M_sun/h) to M_sun and check if below 10^11.5 M_sun
+        const double hubble_h = 0.73;  // Should match run_params->Hubble/100 
+        const double mvir_solar = galaxies[p].Mvir * 1.0e10 / hubble_h;
+        
+        if(mvir_solar < 3.16e11) {  // 10^11.5 M_sun threshold
+            // Force low-mass halos into CGM regime: transfer any HotGas to CGMgas
+            if(galaxies[p].HotGas > 1e-10) {
+                galaxies[p].CGMgas += galaxies[p].HotGas;
+                galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
+                galaxies[p].HotGas = 0.0;
+                galaxies[p].MetalsHotGas = 0.0;
+            }
+        }
+    }
 }
