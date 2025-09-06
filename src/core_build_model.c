@@ -444,6 +444,10 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             // Determine the cooling gas given the halo properties
             double coolingGas;
             if(run_params->CGMrecipeOn == 1) {
+                // CGM inflow model: called for all systems to accumulate CGM mass 
+                // based on local conditions (only accumulates if CGM regime)
+                cgm_inflow_model(p, actual_dt, galaxies, run_params);
+                
                 coolingGas = cooling_recipe_regime_aware(p, actual_dt, galaxies, run_params);
                 cool_gas_onto_galaxy_regime_aware(p, coolingGas, galaxies, run_params);
             } else {

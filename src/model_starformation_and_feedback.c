@@ -244,26 +244,34 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
             
             if(rcool_to_rvir > 1.0) {
-                // CGM REGIME: Reheated gas goes to CGM, ejected gas stays in CGM (no gas leaves halo)
+                // CGM REGIME: Reheated gas goes to CGM
                 galaxies[centralgal].CGMgas += reheated_mass;
                 galaxies[centralgal].MetalsCGMgas += metallicity * reheated_mass;
                 
-                // For ejected mass, limit it to available CGM gas and keep it in CGM
+                // Ejected gas is removed from CGM (actually ejected from halo)
                 if(ejected_mass > galaxies[centralgal].CGMgas) {
                     ejected_mass = galaxies[centralgal].CGMgas;
                 }
-                // Ejected gas stays in CGM (no movement) - just track the ejection for diagnostics
+                if(ejected_mass > 0.0) {
+                    const double metallicityCGM = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
+                    galaxies[centralgal].CGMgas -= ejected_mass;
+                    galaxies[centralgal].MetalsCGMgas -= metallicityCGM * ejected_mass;
+                }
                 
             } else {
-                // HOT REGIME: Reheated gas goes to HotGas, ejected gas stays in HotGas (no gas leaves halo)  
+                // HOT REGIME: Reheated gas goes to HotGas  
                 galaxies[centralgal].HotGas += reheated_mass;
                 galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
 
-                // For ejected mass, limit it to available hot gas and keep it in HotGas
+                // Ejected gas is removed from HotGas (actually ejected from halo)
                 if(ejected_mass > galaxies[centralgal].HotGas) {
                     ejected_mass = galaxies[centralgal].HotGas;
                 }
-                // Ejected gas stays in HotGas (no movement) - just track the ejection for diagnostics
+                if(ejected_mass > 0.0) {
+                    const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
+                    galaxies[centralgal].HotGas -= ejected_mass;
+                    galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
+                }
             }
         } else {
             // Original behavior: reheated gas goes to HotGas, ejected gas goes to CGM

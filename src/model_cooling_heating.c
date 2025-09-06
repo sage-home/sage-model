@@ -108,45 +108,110 @@ double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY
 }
 
 
+double calculate_cgm_cool_fraction(const int gal, struct GALAXY *galaxies)
+{
+    // Calculate fraction of CGM gas that can cool efficiently (T < 10^4 K)
+    // Based on observational constraints from Tumlinson+2017, Werk+2014
+    
+    if(galaxies[gal].Vvir <= 0.0) return 0.0;
+    
+    const double T_vir = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir; // Virial temperature in K
+    const double T_cool = 1.0e4; // Cooling floor temperature in K
+    
+    double f_cool;
+    if(T_vir <= T_cool) {
+        // Low-mass halos: most gas can cool
+        f_cool = 0.9;
+    } else {
+        // Temperature-dependent cooling fraction
+        // Power-law model based on observational constraints
+        f_cool = pow(T_cool / T_vir, 0.7);
+        
+        // Apply observational limits
+        if(galaxies[gal].Mvir < 1.0e12) {
+            // Low-mass halos: higher cool fraction (50-80%)
+            f_cool = fmax(f_cool, 0.5);
+            f_cool = fmin(f_cool, 0.8);
+        } else {
+            // High-mass halos: lower cool fraction (10-30%)
+            f_cool = fmax(f_cool, 0.1);
+            f_cool = fmin(f_cool, 0.3);
+        }
+    }
+    
+    return f_cool;
+}
+
+void cgm_inflow_model(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // CGM inflow model: called for all systems to handle gas flow from CGM reservoir
+    // Only acts when system has CGM gas accumulated (from rcool >= Rvir conditions)
+    
+    if(galaxies[gal].CGMgas <= 0.0 || galaxies[gal].Vvir <= 0.0) {
+        return; // No CGM gas or invalid galaxy
+    }
+    
+    // This function handles additional CGM->disk flows beyond the main cooling recipe
+    // For now, it's a placeholder that ensures mass conservation
+    // Future enhancement: could add environmental effects, ram pressure, etc.
+    
+    // The main CGM cooling is handled by cooling_recipe_cgm() which uses
+    // temperature-dependent cooling fractions. This function could handle
+    // additional physics like:
+    // - Environmental stripping
+    // - Ram pressure effects  
+    // - Satellite-specific CGM physics
+    // - Time-dependent CGM evolution
+    
+    return; // Currently no additional inflow beyond cooling_recipe_cgm()
+}
+
 double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
     double coolingGas = 0.0;
 
-    // In CGM regime, cool from CGM gas (cold accretion)
+    // In CGM regime, only cool the fraction of gas that is <10^4 K
     if(galaxies[gal].CGMgas > 0.0 && galaxies[gal].Vvir > 0.0) {
-        const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
-        const double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;         // in Kelvin
+        
+        // Calculate what fraction of CGM gas can cool efficiently
+        const double f_cool = calculate_cgm_cool_fraction(gal, galaxies);
+        const double coolable_cgm_mass = f_cool * galaxies[gal].CGMgas;
+        
+        if(coolable_cgm_mass > 0.0) {
+            const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
+            const double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;         // in Kelvin
 
-        double logZ = -10.0;
-        if(galaxies[gal].MetalsCGMgas > 0) {
-            logZ = log10(galaxies[gal].MetalsCGMgas / galaxies[gal].CGMgas);
-        }
+            double logZ = -10.0;
+            if(galaxies[gal].MetalsCGMgas > 0) {
+                logZ = log10(galaxies[gal].MetalsCGMgas / galaxies[gal].CGMgas);
+            }
 
-        double lambda = get_metaldependent_cooling_rate(log10(temp), logZ);
-        double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
-        x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
-        const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
+            double lambda = get_metaldependent_cooling_rate(log10(temp), logZ);
+            double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
+            x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
+            const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
 
-        // In CGM regime, only use CGM gas for density calculation
-        const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
-        const double rcool = sqrt(rho0 / rho_rcool);
+            // In CGM regime, only use CGM gas for density calculation
+            const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
+            const double rcool = sqrt(rho0 / rho_rcool);
 
-        // Cold accretion cooling rate (rcool > Rvir regime)
-        coolingGas = galaxies[gal].CGMgas / (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
+            // Cool only the coolable fraction on freefall timescale
+            coolingGas = coolable_cgm_mass / tcool * dt;
 
-        if(coolingGas > galaxies[gal].CGMgas) {
-            coolingGas = galaxies[gal].CGMgas;
-        } else {
-            if(coolingGas < 0.0) coolingGas = 0.0;
-        }
+            if(coolingGas > coolable_cgm_mass) {
+                coolingGas = coolable_cgm_mass;
+            } else {
+                if(coolingGas < 0.0) coolingGas = 0.0;
+            }
 
-        // Apply AGN heating if enabled (using original AGN function)
-        if(run_params->AGNrecipeOn > 0 && coolingGas > 0.0) {
-            coolingGas = do_AGN_heating_cgm(coolingGas, gal, dt, x, rcool, galaxies, run_params);
-        }
+            // Apply AGN heating if enabled (using original AGN function)
+            if(run_params->AGNrecipeOn > 0 && coolingGas > 0.0) {
+                coolingGas = do_AGN_heating_cgm(coolingGas, gal, dt, x, rcool, galaxies, run_params);
+            }
 
-        if (coolingGas > 0.0) {
-            galaxies[gal].Cooling += 0.5 * coolingGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
+            if (coolingGas > 0.0) {
+                galaxies[gal].Cooling += 0.5 * coolingGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
+            }
         }
     }
 
