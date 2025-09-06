@@ -318,10 +318,10 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         total_molecular_gas = calculate_molecular_fraction_GD14(
             gas_surface_density_center, metallicity);
 
-        if (galaxy_debug_counter % 10000 == 0) {
-            printf("DEBUG MAIN: disk radius=%.4e\n disk area (pc^2)=%.4e\n gas surface density=%.4e\n metallicity=%.4e\n H2_gas=%.4e\n HI_gas=%.4e\n",
-                   rs_pc, disk_area_pc2, gas_surface_density_center, metallicity, g->H2_gas, g->HI_gas);
-        }
+        // if (galaxy_debug_counter % 10000 == 0) {
+        //     printf("DEBUG MAIN: disk radius=%.4e\n disk area (pc^2)=%.4e\n gas surface density=%.4e\n metallicity=%.4e\n H2_gas=%.4e\n HI_gas=%.4e\n",
+        //            rs_pc, disk_area_pc2, gas_surface_density_center, metallicity, g->H2_gas, g->HI_gas);
+        // }
 
         // Mass conservation check
         if (total_molecular_gas > 0.95) {
@@ -340,15 +340,15 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
         total_molecular_gas = calculate_molecular_fraction_BR06(gas_surface_density, stellar_surface_density, 
                                                                rs_pc);
         
-        if (galaxy_debug_counter % 10000 == 0) {
-            // Calculate additional quantities for debugging
-            float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, rs_pc);
-            float h_star = calculate_stellar_scale_height_BR06(rs_pc);
-            printf("DEBUG BR06: rs_pc=%.2e, h_star_pc=%.2e, pressure=%.2e K cm^-3, f_mol=%.4f\n",
-                   rs_pc, h_star, pressure, total_molecular_gas);
-            printf("DEBUG BR06: gas_sigma=%.2e, star_sigma=%.2e M_sun/pc^2\n",
-                   gas_surface_density, stellar_surface_density);
-        }
+        // if (galaxy_debug_counter % 10000 == 0) {
+        //     // Calculate additional quantities for debugging
+        //     float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, rs_pc);
+        //     float h_star = calculate_stellar_scale_height_BR06(rs_pc);
+        //     printf("DEBUG BR06: rs_pc=%.2e, h_star_pc=%.2e, pressure=%.2e K cm^-3, f_mol=%.4f\n",
+        //            rs_pc, h_star, pressure, total_molecular_gas);
+        //     printf("DEBUG BR06: gas_sigma=%.2e, star_sigma=%.2e M_sun/pc^2\n",
+        //            gas_surface_density, stellar_surface_density);
+        // }
                 
         // Mass conservation check
         if (total_molecular_gas > 0.95) {
@@ -389,8 +389,8 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
             float n_gas = sigma_gas_cgs / (h_gas_cm * mH);
             float pressure_K_cm3 = pressure_cgs / (n_gas * kB);
             
-            printf("DEBUG DarkSAGE: gas_sigma=%.2e, star_sigma=%.2e, P=%.2e K cm^-3, f_mol=%.4f\n",
-                gas_surface_density, stellar_surface_density, pressure_K_cm3, total_molecular_gas);
+            // printf("DEBUG DarkSAGE: gas_sigma=%.2e, star_sigma=%.2e, P=%.2e K cm^-3, f_mol=%.4f\n",
+            //     gas_surface_density, stellar_surface_density, pressure_K_cm3, total_molecular_gas);
         }
         // Mass conservation check
         if (total_molecular_gas > 0.95) {

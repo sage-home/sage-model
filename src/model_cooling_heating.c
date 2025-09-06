@@ -459,3 +459,117 @@ void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct 
         }
     }
 }
+
+
+void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Final consistency check: ensure gas is in the correct reservoir based on halo mass regime
+    // Called at the end of evolve_galaxies to fix any inconsistencies
+    
+    if(run_params->CGMrecipeOn != 1) {
+        return; // Only applies when CGM recipe is active
+    }
+    
+    #ifdef DEBUG_REGIME_CONSISTENCY
+    // Mass conservation tracking (only when debugging)
+    double total_gas_before = 0.0;
+    double total_metals_before = 0.0;
+    double total_gas_after = 0.0;
+    double total_metals_after = 0.0;
+    int corrections_made = 0;
+    
+    // Calculate total mass before corrections
+    for(int p = 0; p < ngal; p++) {
+        if(galaxies[p].mergeType > 0) continue;
+        total_gas_before += galaxies[p].HotGas + galaxies[p].CGMgas;
+        total_metals_before += galaxies[p].MetalsHotGas + galaxies[p].MetalsCGMgas;
+    }
+    #endif
+    
+    for(int p = 0; p < ngal; p++) {
+        // Skip merged galaxies
+        if(galaxies[p].mergeType > 0) {
+            continue;
+        }
+        
+        // Calculate regime for this galaxy
+        const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
+        
+        if(rcool_to_rvir > 1.0) {
+            // CGM REGIME: r_cool > R_vir (low-mass halos)
+            // All hot gas should be moved to CGM reservoir
+            if(galaxies[p].HotGas > 0.0) {
+                const double hot_to_move = galaxies[p].HotGas;
+                const double metals_to_move = galaxies[p].MetalsHotGas;
+                
+                // Transfer gas from Hot to CGM
+                galaxies[p].CGMgas += hot_to_move;
+                galaxies[p].MetalsCGMgas += metals_to_move;
+                galaxies[p].HotGas = 0.0;
+                galaxies[p].MetalsHotGas = 0.0;
+                #ifdef DEBUG_REGIME_CONSISTENCY
+                corrections_made++;
+                #endif
+                
+                // Optional: log the correction for debugging
+                #ifdef DEBUG_REGIME_CONSISTENCY
+                printf("REGIME CORRECTION: CGM regime galaxy %d moved %.3e Hot->CGM, now CGM=%.3e, Hot=%.3e\n",
+                       p, hot_to_move, galaxies[p].CGMgas, galaxies[p].HotGas);
+                #endif
+            }
+            
+        } else {
+            // HOT REGIME: r_cool < R_vir (high-mass halos)
+            // All CGM gas should be moved to Hot reservoir
+            if(galaxies[p].CGMgas > 0.0) {
+                const double cgm_to_move = galaxies[p].CGMgas;
+                const double metals_to_move = galaxies[p].MetalsCGMgas;
+                
+                // Transfer gas from CGM to Hot
+                galaxies[p].HotGas += cgm_to_move;
+                galaxies[p].MetalsHotGas += metals_to_move;
+                galaxies[p].CGMgas = 0.0;
+                galaxies[p].MetalsCGMgas = 0.0;
+                #ifdef DEBUG_REGIME_CONSISTENCY
+                corrections_made++;
+                #endif
+                
+                // Optional: log the correction for debugging
+                #ifdef DEBUG_REGIME_CONSISTENCY
+                printf("REGIME CORRECTION: HOT regime galaxy %d moved %.3e CGM->Hot, now CGM=%.3e, Hot=%.3e\n",
+                       p, cgm_to_move, galaxies[p].CGMgas, galaxies[p].HotGas);
+                #endif
+            }
+        }
+        
+        // Ensure no negative values (sanity check)
+        if(galaxies[p].HotGas < 0.0) galaxies[p].HotGas = 0.0;
+        if(galaxies[p].CGMgas < 0.0) galaxies[p].CGMgas = 0.0;
+        if(galaxies[p].MetalsHotGas < 0.0) galaxies[p].MetalsHotGas = 0.0;
+        if(galaxies[p].MetalsCGMgas < 0.0) galaxies[p].MetalsCGMgas = 0.0;
+    }
+    
+    #ifdef DEBUG_REGIME_CONSISTENCY
+    // Calculate total mass after corrections
+    for(int p = 0; p < ngal; p++) {
+        if(galaxies[p].mergeType > 0) continue;
+        total_gas_after += galaxies[p].HotGas + galaxies[p].CGMgas;
+        total_metals_after += galaxies[p].MetalsHotGas + galaxies[p].MetalsCGMgas;
+    }
+    
+    // Mass conservation check
+    const double gas_conservation_error = fabs(total_gas_after - total_gas_before) / (total_gas_before + 1e-20);
+    const double metals_conservation_error = fabs(total_metals_after - total_metals_before) / (total_metals_before + 1e-20);
+    
+    // Report conservation errors if significant (> 1% relative error)
+    // Note: Very small errors (< 0.1%) are typically due to fixing negative values to zero
+    if(gas_conservation_error > 1e-2 || metals_conservation_error > 1e-2) {
+        printf("WARNING: Mass conservation error in final regime consistency check!\n");
+        printf("  Gas conservation error: %.6e (before=%.6e, after=%.6e)\n", 
+               gas_conservation_error, total_gas_before, total_gas_after);
+        printf("  Metals conservation error: %.6e (before=%.6e, after=%.6e)\n", 
+               metals_conservation_error, total_metals_before, total_metals_after);
+        printf("  Corrections made: %d galaxies\n", corrections_made);
+    }
+    #endif
+}

@@ -20,8 +20,6 @@
 #include "model_starformation_and_feedback.h"
 #include "model_cooling_heating.h"
 
-static long debug_galaxy_counter = 0;
-
 
 static int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals, struct halo_data *halos,
                            struct halo_aux_data *haloaux, struct GALAXY **ptr_to_galaxies, struct GALAXY **ptr_to_halogal, struct params *run_params);
@@ -321,7 +319,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
       MS: Note save halo_snapnum and galaxy_snapnum to local variables
           and replace all instances of snapnum to those local variables
      */
-    debug_galaxy_counter++;
 
     const int halo_snapnum = halos[halonr].SnapNum;
     const double Zcurr = run_params->ZZ[halo_snapnum];
@@ -402,34 +399,13 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     if(rcool_to_rvir > 1.0) {
                         // Low-mass regime: r_cool > R_vir, all gas goes to CGM
                         add_infall_to_cgm(centralgal, infall_amount, galaxies);
-                        
-                        // Diagnostics every 50,000 galaxies
-                        if(debug_galaxy_counter % 50000 == 0) {
-                            printf("CGM REGIME: Galaxy %ld, Mvir=%.3e, Rvir=%.3f, rcool/Rvir=%.3f, infall=%.3e, CGM=%.3e, Hot=%.3e\n",
-                                   debug_galaxy_counter, galaxies[centralgal].Mvir, galaxies[centralgal].Rvir, 
-                                   rcool_to_rvir, infall_amount, galaxies[centralgal].CGMgas, galaxies[centralgal].HotGas);
-                        }
                     } else {
                         // High-mass regime: r_cool < R_vir, all gas goes to hot halo (pure)
                         add_infall_to_hot_pure(centralgal, infall_amount, galaxies);
-                        
-                        // Diagnostics every 50,000 galaxies
-                        if(debug_galaxy_counter % 50000 == 0) {
-                            printf("HOT REGIME: Galaxy %ld, Mvir=%.3e, Rvir=%.3f, rcool/Rvir=%.3f, infall=%.3e, CGM=%.3e, Hot=%.3e\n",
-                                   debug_galaxy_counter, galaxies[centralgal].Mvir, galaxies[centralgal].Rvir, 
-                                   rcool_to_rvir, infall_amount, galaxies[centralgal].CGMgas, galaxies[centralgal].HotGas);
-                        }
                     }
                 } else {
                     // Original SAGE behavior: all gas goes to hot halo (with CGM interaction for backwards compatibility)
                     add_infall_to_hot(centralgal, infallingGas * actual_dt / deltaT, galaxies);
-                    
-                    // Diagnostics every 50,000 galaxies for original behavior
-                    if(debug_galaxy_counter % 50000 == 0) {
-                        printf("ORIGINAL: Galaxy %ld, Mvir=%.3e, Rvir=%.3f, infall=%.3e, CGM=%.3e, Hot=%.3e\n",
-                               debug_galaxy_counter, galaxies[centralgal].Mvir, galaxies[centralgal].Rvir, 
-                               infallingGas * actual_dt / deltaT, galaxies[centralgal].CGMgas, galaxies[centralgal].HotGas);
-                    }
                 }
 
                 if(run_params->ReIncorporationFactor > 0.0) {
@@ -457,33 +433,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // stars form and then explode!
             starformation_and_feedback(p, centralgal, time, actual_dt, halonr, step, galaxies, run_params);
-            
-            // Regime separation diagnostics every 50,000 galaxies (after all physics)
-            if(run_params->CGMrecipeOn == 1 && debug_galaxy_counter % 50000 == 0) {
-                const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                const double cgm_gas = galaxies[p].CGMgas;
-                const double hot_gas = galaxies[p].HotGas;
-                
-                if(rcool_to_rvir > 1.0) {
-                    // CGM regime - should have NO HotGas
-                    if(hot_gas > 1e-10) {
-                        printf("REGIME VIOLATION! CGM regime galaxy %ld has HotGas=%.3e (should be 0), CGM=%.3e, rcool/Rvir=%.3f\n",
-                               debug_galaxy_counter, hot_gas, cgm_gas, rcool_to_rvir);
-                    } else {
-                        printf("REGIME OK: CGM regime galaxy %ld, HotGas=%.3e, CGM=%.3e, rcool/Rvir=%.3f\n",
-                               debug_galaxy_counter, hot_gas, cgm_gas, rcool_to_rvir);
-                    }
-                } else {
-                    // HOT regime - should have NO CGMgas
-                    if(cgm_gas > 1e-10) {
-                        printf("REGIME VIOLATION! HOT regime galaxy %ld has CGMgas=%.3e (should be 0), Hot=%.3e, rcool/Rvir=%.3f\n",
-                               debug_galaxy_counter, cgm_gas, hot_gas, rcool_to_rvir);
-                    } else {
-                        printf("REGIME OK: HOT regime galaxy %ld, CGMgas=%.3e, Hot=%.3e, rcool/Rvir=%.3f\n",
-                               debug_galaxy_counter, cgm_gas, hot_gas, rcool_to_rvir);
-                    }
-                }
-            }
         }
 
         // check for satellite disruption and merger events
@@ -528,6 +477,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         }
     } // Go on to the next STEPS substep
 
+
+    // FINAL REGIME CONSISTENCY CHECK: Ensure gas is in correct reservoir based on halo mass
+    if(run_params->CGMrecipeOn == 1) {
+        final_regime_consistency_check(ngal, galaxies, run_params);
+    }
 
     // Extra miscellaneous stuff before finishing this halo
     galaxies[centralgal].TotalSatelliteBaryons = 0.0;
