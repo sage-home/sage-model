@@ -18,7 +18,7 @@
 #define NUM_OUTPUT_FIELDS 2
 #pragma message "Using SAGE in MCMC mode (will only write " STR(NUM_OUTPUT_FIELDS) " fields into the hdf5 file)"
 #else
-#define NUM_OUTPUT_FIELDS 58
+#define NUM_OUTPUT_FIELDS 59
 #endif
 
 #define NUM_GALS_PER_BUFFER 8192
@@ -311,6 +311,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Regime);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, GalaxyIndex);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralGalaxyIndex);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGEHaloIndex);
@@ -583,6 +584,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
 
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Regime);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, GalaxyIndex);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralGalaxyIndex);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGEHaloIndex);
@@ -753,7 +755,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
     char tmp_units[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"", ""};
     hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_FLOAT};//, H5T_NATIVE_FLOAT};
 #else
-    char tmp_names[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"SnapNum", "Type", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
+    char tmp_names[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"SnapNum", "Type", "Regime", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
                                                          "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
                                                          "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
                                                          "Spinx", "Spiny", "Spinz", "Len", "Mvir", "CentralMvir", "Rvir", "Vvir",
@@ -767,6 +769,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
     // Must accurately describe what exactly each field is and any special considerations.
     char tmp_descriptions[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Snapshot the galaxy is located at.",
                                                                 "0: Central galaxy of the main FoF halo. 1: Central of a sub-halo. 2: Orphan galaxy that will merge within the current timestep.",
+                                                                "Mass regime for CGM physics. 0: Low-mass (CGM regime, <10^12 M_sun). 1: High-mass (Hot regime, >=10^12 M_sun).",
                                                                 "Galaxy ID, unique across all trees and files. Calculated as local galaxy number + tree number * factor + file number * factor ",
                                                                 "GalaxyIndex of the central galaxy within this galaxy's FoF group.  Calculated the same as 'GalaxyIndex'.",
                                                                 "Halo number from the restructured trees. This is different to the tree file because we order the trees. Note: This is the host halo, not necessarily the main FoF halo.",
@@ -813,7 +816,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                          "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s", "Unitless", "1.0e10 Msun/h"};
 
     // These are the HDF5 datatypes for each field.
-    hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT,
+    hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT,
                                             H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_INT, H5T_NATIVE_INT,
                                             H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT, H5T_NATIVE_FLOAT,
@@ -855,6 +858,7 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
         return EXIT_FAILURE;
     }
     save_info->buffer_output_gals[output_snap_idx].Type[gals_in_buffer] = g->Type;
+    save_info->buffer_output_gals[output_snap_idx].Regime[gals_in_buffer] = g->Regime;
 
     save_info->buffer_output_gals[output_snap_idx].GalaxyIndex[gals_in_buffer] = g->GalaxyIndex;
     save_info->buffer_output_gals[output_snap_idx].CentralGalaxyIndex[gals_in_buffer] = g->CentralGalaxyIndex;
@@ -1097,6 +1101,7 @@ int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write,
 #else
     EXTEND_AND_WRITE_GALAXY_DATASET(SnapNum);
     EXTEND_AND_WRITE_GALAXY_DATASET(Type);
+    EXTEND_AND_WRITE_GALAXY_DATASET(Regime);
     EXTEND_AND_WRITE_GALAXY_DATASET(GalaxyIndex);
     EXTEND_AND_WRITE_GALAXY_DATASET(CentralGalaxyIndex);
     EXTEND_AND_WRITE_GALAXY_DATASET(SAGEHaloIndex);

@@ -17,6 +17,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
             halonr, halos[halonr].FirstHaloInFOFgroup);
 
     galaxies[p].Type = 0;
+    galaxies[p].Regime = 0; // Initialize regime (will be set properly at final consistency check)
 
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;

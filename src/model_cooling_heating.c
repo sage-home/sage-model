@@ -594,6 +594,8 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
                 galaxies[p].HotGas = 0.0;
                 galaxies[p].MetalsHotGas = 0.0;
             }
+            // Set regime flag: 0 = low-mass (CGM regime)
+            galaxies[p].Regime = 0;
         } else {
             // High-mass halos (>= 10^12 M_sun): Force into HOT regime
             // Transfer any CGMgas to HotGas
@@ -603,6 +605,8 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
                 galaxies[p].CGMgas = 0.0;
                 galaxies[p].MetalsCGMgas = 0.0;
             }
+            // Set regime flag: 1 = high-mass (HOT regime)
+            galaxies[p].Regime = 1;
         }
     }
 }

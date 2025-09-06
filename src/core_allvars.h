@@ -93,6 +93,7 @@ struct GALAXY
 {
     int32_t   SnapNum;
     int32_t  Type;
+    int32_t  Regime;
 
     int32_t   GalaxyNr;
     int32_t   CentralGal;

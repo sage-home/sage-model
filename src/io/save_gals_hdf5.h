@@ -18,6 +18,7 @@ struct HDF5_GALAXY_OUTPUT
 #else
     int32_t *Type;
 #endif
+    int32_t *Regime;
     
     long long   *GalaxyIndex;
     long long   *CentralGalaxyIndex;
