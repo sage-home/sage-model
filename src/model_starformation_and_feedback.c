@@ -200,11 +200,36 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     if(galaxies[p].ColdGas > 1.0e-8) {
         const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
         galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * FracZleaveDiskVal * stars;
+        
+        // Regime-aware metal deposition for metals that leave the disk
+        if(run_params->CGMrecipeOn == 1) {
+            double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
+            if(rcool_to_rvir > 1.0) {
+                // CGM regime: metals go to CGM
+                galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+            } else {
+                // Hot regime: metals go to hot gas
+                galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+            }
+        } else {
+            // Original behavior: metals go to hot gas
+            galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+        }
     } else {
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-        // galaxies[centralgal].MetalsEjectedMass += run_params->Yield * stars;
+        // When no cold gas, all metals leave the disk - make this regime-aware too
+        if(run_params->CGMrecipeOn == 1) {
+            double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
+            if(rcool_to_rvir > 1.0) {
+                // CGM regime: metals go to CGM
+                galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
+            } else {
+                // Hot regime: metals go to hot gas
+                galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+            }
+        } else {
+            // Original behavior: metals go to hot gas
+            galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+        }
     }
 }
 

@@ -12,6 +12,7 @@
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
 #include "core_cool_func.h"
+#include "model_cooling_heating.h"
 #include "model_infall.h"
 
 double estimate_merging_time(const int sat_halo, const int mother_halo, const int ngal, struct halo_data *halos, struct GALAXY *galaxies, const struct params *run_params)
@@ -395,11 +396,36 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     if(galaxies[merger_centralgal].ColdGas > 1e-8 && mass_ratio < run_params->ThreshMajorMerger) {
         const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
         galaxies[merger_centralgal].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-        // galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+        
+        // Regime-aware metal deposition for metals that leave the disk
+        if(run_params->CGMrecipeOn == 1) {
+            double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
+            if(rcool_to_rvir > 1.0) {
+                // CGM regime: metals go to CGM
+                galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+            } else {
+                // Hot regime: metals go to hot gas
+                galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+            }
+        } else {
+            // Original behavior: metals go to hot gas
+            galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+        }
     } else {
-        galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-        // galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
+        // When no cold gas or major merger, all metals leave the disk - make this regime-aware too
+        if(run_params->CGMrecipeOn == 1) {
+            double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
+            if(rcool_to_rvir > 1.0) {
+                // CGM regime: metals go to CGM
+                galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
+            } else {
+                // Hot regime: metals go to hot gas
+                galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+            }
+        } else {
+            // Original behavior: metals go to hot gas
+            galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+        }
     }
 }
 
