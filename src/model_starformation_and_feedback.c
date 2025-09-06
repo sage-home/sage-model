@@ -10,6 +10,8 @@
 #include "model_misc.h"
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
+#include "core_cool_func.h"
+#include "model_infall.h"
 
 double calculate_muratov_mass_loading(const int p, const double z, struct GALAXY *galaxies)
 {
@@ -231,29 +233,53 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
             reheated_mass, galaxies[p].ColdGas);
 
-    XASSERT(reheated_mass >= 0.0, -1,
-            "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
-            p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
-    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
-            "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
-            reheated_mass, galaxies[p].ColdGas);
 
     if(run_params->SupernovaRecipeOn == 1) {
+        // Remove gas from cold reservoir (always)
         galaxies[p].ColdGas -= reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
 
-        galaxies[centralgal].HotGas += reheated_mass;
-        galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
+        if(run_params->CGMrecipeOn == 1) {
+            // Regime-aware feedback: determine where reheated gas goes
+            double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
+            
+            if(rcool_to_rvir > 1.0) {
+                // CGM REGIME: Reheated gas goes to CGM, ejected gas stays in CGM (no gas leaves halo)
+                galaxies[centralgal].CGMgas += reheated_mass;
+                galaxies[centralgal].MetalsCGMgas += metallicity * reheated_mass;
+                
+                // For ejected mass, limit it to available CGM gas and keep it in CGM
+                if(ejected_mass > galaxies[centralgal].CGMgas) {
+                    ejected_mass = galaxies[centralgal].CGMgas;
+                }
+                // Ejected gas stays in CGM (no movement) - just track the ejection for diagnostics
+                
+            } else {
+                // HOT REGIME: Reheated gas goes to HotGas, ejected gas stays in HotGas (no gas leaves halo)  
+                galaxies[centralgal].HotGas += reheated_mass;
+                galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
 
-        if(ejected_mass > galaxies[centralgal].HotGas) {
-            ejected_mass = galaxies[centralgal].HotGas;
+                // For ejected mass, limit it to available hot gas and keep it in HotGas
+                if(ejected_mass > galaxies[centralgal].HotGas) {
+                    ejected_mass = galaxies[centralgal].HotGas;
+                }
+                // Ejected gas stays in HotGas (no movement) - just track the ejection for diagnostics
+            }
+        } else {
+            // Original behavior: reheated gas goes to HotGas, ejected gas goes to CGM
+            galaxies[centralgal].HotGas += reheated_mass;
+            galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
+
+            if(ejected_mass > galaxies[centralgal].HotGas) {
+                ejected_mass = galaxies[centralgal].HotGas;
+            }
+            const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
+
+            galaxies[centralgal].HotGas -= ejected_mass;
+            galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
+            galaxies[centralgal].CGMgas += ejected_mass;
+            galaxies[centralgal].MetalsCGMgas += metallicityHot * ejected_mass;
         }
-        const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
-
-        galaxies[centralgal].HotGas -= ejected_mass;
-        galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
-        galaxies[centralgal].CGMgas += ejected_mass;
-        galaxies[centralgal].MetalsCGMgas += metallicityHot * ejected_mass;
 
         galaxies[p].OutflowRate += reheated_mass;
     }

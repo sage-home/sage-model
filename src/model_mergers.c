@@ -11,6 +11,8 @@
 #include "model_starformation_and_feedback.h"
 #include "model_disk_instability.h"
 #include "model_h2_formation.h"
+#include "core_cool_func.h"
+#include "model_infall.h"
 
 double estimate_merging_time(const int sat_halo, const int mother_halo, const int ngal, struct halo_data *halos, struct GALAXY *galaxies, const struct params *run_params)
 {
@@ -70,7 +72,7 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
         mass_ratio = 1.0;
     }
 
-    add_galaxies_together(merger_centralgal, p, galaxies);
+    add_galaxies_together(merger_centralgal, p, galaxies, run_params);
 
     // grow black hole through accretion from cold disk during mergers, a la Kauffmann & Haehnelt (2000)
     if(run_params->AGNrecipeOn) {
@@ -129,45 +131,119 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
     const double cold_gas_energy = 0.5 * galaxies[gal].ColdGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
     const double hot_gas_energy = 0.5 * galaxies[gal].HotGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
 
-    // compare quasar wind and cold gas energies and eject cold
-    if(quasar_energy > cold_gas_energy) {
-        galaxies[gal].CGMgas += galaxies[gal].ColdGas;
-        galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsColdGas;
+    if(run_params->CGMrecipeOn == 1) {
+        // Regime-aware quasar winds: determine destination based on r_cool/R_vir ratio
+        double rcool_to_rvir = calculate_rcool_to_rvir_ratio(gal, galaxies, run_params);
+        
+        if(rcool_to_rvir > 1.0) {
+            // CGM REGIME: All ejected gas stays in CGM (no gas leaves halo)
+            
+            // Eject cold gas to CGM if quasar energy exceeds cold gas energy
+            if(quasar_energy > cold_gas_energy) {
+                galaxies[gal].CGMgas += galaxies[gal].ColdGas;
+                galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsColdGas;
 
-        galaxies[gal].ColdGas = 0.0;
-        galaxies[gal].MetalsColdGas = 0.0;
-    }
+                galaxies[gal].ColdGas = 0.0;
+                galaxies[gal].MetalsColdGas = 0.0;
+            }
 
-    // compare quasar wind and cold+hot gas energies and eject hot
-    if(quasar_energy > cold_gas_energy + hot_gas_energy) {
-        galaxies[gal].CGMgas += galaxies[gal].HotGas;
-        galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsHotGas;
+            // Eject hot gas to CGM if quasar energy exceeds cold+hot gas energy
+            if(quasar_energy > cold_gas_energy + hot_gas_energy) {
+                galaxies[gal].CGMgas += galaxies[gal].HotGas;
+                galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsHotGas;
 
-        galaxies[gal].HotGas = 0.0;
-        galaxies[gal].MetalsHotGas = 0.0;
+                galaxies[gal].HotGas = 0.0;
+                galaxies[gal].MetalsHotGas = 0.0;
+            }
+            
+        } else {
+            // HOT REGIME: All ejected gas stays in HotGas (no gas leaves halo)
+            
+            // Move cold gas to HotGas if quasar energy exceeds cold gas energy  
+            if(quasar_energy > cold_gas_energy) {
+                galaxies[gal].HotGas += galaxies[gal].ColdGas;
+                galaxies[gal].MetalsHotGas += galaxies[gal].MetalsColdGas;
+
+                galaxies[gal].ColdGas = 0.0;
+                galaxies[gal].MetalsColdGas = 0.0;
+            }
+
+            // For hot gas ejection, it stays in HotGas (no movement needed)
+            // Just track that ejection energy was available but gas remains in halo
+        }
+        
+    } else {
+        // Original behavior: eject to CGM reservoir
+        
+        // compare quasar wind and cold gas energies and eject cold
+        if(quasar_energy > cold_gas_energy) {
+            galaxies[gal].CGMgas += galaxies[gal].ColdGas;
+            galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsColdGas;
+
+            galaxies[gal].ColdGas = 0.0;
+            galaxies[gal].MetalsColdGas = 0.0;
+        }
+
+        // compare quasar wind and cold+hot gas energies and eject hot
+        if(quasar_energy > cold_gas_energy + hot_gas_energy) {
+            galaxies[gal].CGMgas += galaxies[gal].HotGas;
+            galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsHotGas;
+
+            galaxies[gal].HotGas = 0.0;
+            galaxies[gal].MetalsHotGas = 0.0;
+        }
     }
 }
 
 
 
-void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies)
+void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, const struct params *run_params)
 {
+    // Always add these components directly (no regime dependence)
     galaxies[t].ColdGas += galaxies[p].ColdGas;
     galaxies[t].MetalsColdGas += galaxies[p].MetalsColdGas;
 
     galaxies[t].StellarMass += galaxies[p].StellarMass;
     galaxies[t].MetalsStellarMass += galaxies[p].MetalsStellarMass;
 
-    galaxies[t].HotGas += galaxies[p].HotGas;
-    galaxies[t].MetalsHotGas += galaxies[p].MetalsHotGas;
-
-    galaxies[t].CGMgas += galaxies[p].CGMgas;
-    galaxies[t].MetalsCGMgas += galaxies[p].MetalsCGMgas;
-
     galaxies[t].ICS += galaxies[p].ICS;
     galaxies[t].MetalsICS += galaxies[p].MetalsICS;
 
     galaxies[t].BlackHoleMass += galaxies[p].BlackHoleMass;
+
+    // Regime-aware gas merging
+    if (run_params->CGMrecipeOn == 1) {
+        // Calculate the regime of the final merged galaxy
+        double final_rcool_to_rvir = calculate_rcool_to_rvir_ratio(t, galaxies, run_params);
+        
+        // Collect all gas from both galaxies
+        double total_gas = galaxies[t].HotGas + galaxies[t].CGMgas + galaxies[p].HotGas + galaxies[p].CGMgas;
+        double total_metals = galaxies[t].MetalsHotGas + galaxies[t].MetalsCGMgas + galaxies[p].MetalsHotGas + galaxies[p].MetalsCGMgas;
+        
+        // Clear existing gas reservoirs
+        galaxies[t].HotGas = 0.0;
+        galaxies[t].MetalsHotGas = 0.0;
+        galaxies[t].CGMgas = 0.0;
+        galaxies[t].MetalsCGMgas = 0.0;
+        
+        // Place all gas in the correct reservoir based on final regime
+        if (final_rcool_to_rvir >= 1.0) {
+            // CGM regime: all gas goes to CGM
+            galaxies[t].CGMgas = total_gas;
+            galaxies[t].MetalsCGMgas = total_metals;
+        } else {
+            // HOT regime: all gas goes to HotGas
+            galaxies[t].HotGas = total_gas;
+            galaxies[t].MetalsHotGas = total_metals;
+        }
+    } else {
+        // Original behavior when CGM recipe is off
+        galaxies[t].HotGas += galaxies[p].HotGas;
+        galaxies[t].MetalsHotGas += galaxies[p].MetalsHotGas;
+
+        galaxies[t].CGMgas += galaxies[p].CGMgas;
+        galaxies[t].MetalsCGMgas += galaxies[p].MetalsCGMgas;
+    }
 
     // add merger to bulge
     galaxies[t].BulgeMass += galaxies[p].StellarMass;
@@ -329,14 +405,37 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
 
 
 
-void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies)
+void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies, const struct params *run_params)
 {
-    galaxies[centralgal].HotGas += galaxies[gal].ColdGas + galaxies[gal].HotGas;
-    galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas;
+    // Regime-aware satellite disruption
+    if (run_params->CGMrecipeOn == 1) {
+        // Calculate the regime of the central galaxy
+        double central_rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
+        
+        // Collect all gas from the satellite
+        double total_gas = galaxies[gal].ColdGas + galaxies[gal].HotGas + galaxies[gal].CGMgas;
+        double total_metals = galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas + galaxies[gal].MetalsCGMgas;
+        
+        // Add gas to central's reservoir based on central's regime
+        if (central_rcool_to_rvir >= 1.0) {
+            // CGM regime: all gas goes to CGM
+            galaxies[centralgal].CGMgas += total_gas;
+            galaxies[centralgal].MetalsCGMgas += total_metals;
+        } else {
+            // HOT regime: all gas goes to HotGas
+            galaxies[centralgal].HotGas += total_gas;
+            galaxies[centralgal].MetalsHotGas += total_metals;
+        }
+    } else {
+        // Original behavior when CGM recipe is off
+        galaxies[centralgal].HotGas += galaxies[gal].ColdGas + galaxies[gal].HotGas;
+        galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas;
 
-    galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
-    galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;
+        galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
+        galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;
+    }
 
+    // Always add ICS and stellar mass to ICS (no regime dependence)
     galaxies[centralgal].ICS += galaxies[gal].ICS;
     galaxies[centralgal].MetalsICS += galaxies[gal].MetalsICS;
 

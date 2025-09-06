@@ -52,6 +52,7 @@ ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingOn         1   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
 DynamicalTimeResolutionFactor    2      %Optimal balance: 2 timesteps per dynamical time
+CGMrecipeOn           1
 
 %------------------------------------------
 %----- SAGE model parameters --------------
@@ -60,9 +61,9 @@ DynamicalTimeResolutionFactor    2      %Optimal balance: 2 timesteps per dynami
 SfrEfficiency          0.05  %efficiency of SF (SFprescription=0)
 
 FeedbackReheatingEpsilon    1.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
-FeedbackEjectionEfficiency  1.0   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
+FeedbackEjectionEfficiency  0.5   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
-ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
+ReIncorporationFactor   0.0    %fraction of ejected mass reincorporated per dynamical time to hot
 
 RadioModeEfficiency     0.08  %AGN radio mode efficiency (AGNrecipeOn=2)
 QuasarModeEfficiency    0.005 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)

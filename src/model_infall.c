@@ -8,6 +8,7 @@
 
 #include "model_infall.h"
 #include "model_misc.h"
+#include "core_cool_func.h"
 
 
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
@@ -104,17 +105,68 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
     // ( reionization_modifier * run_params->BaryonFrac * galaxies[gal].deltaMvir ) / STEPS;
 
     if(strippedGas > 0.0) {
-        const double metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
-        double strippedGasMetals = strippedGas * metallicity;
+        if(run_params->CGMrecipeOn > 0) {
+            // Regime-aware stripping: strip from correct reservoir based on satellite's regime
+            double satellite_rcool_to_rvir = calculate_rcool_to_rvir_ratio(gal, galaxies, run_params);
+            double central_rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
+            
+            if(satellite_rcool_to_rvir > 1.0) {
+                // CGM regime satellite: strip from CGMgas
+                const double metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
+                double strippedGasMetals = strippedGas * metallicity;
 
-        if(strippedGas > galaxies[gal].HotGas) strippedGas = galaxies[gal].HotGas;
-        if(strippedGasMetals > galaxies[gal].MetalsHotGas) strippedGasMetals = galaxies[gal].MetalsHotGas;
+                if(strippedGas > galaxies[gal].CGMgas) strippedGas = galaxies[gal].CGMgas;
+                if(strippedGasMetals > galaxies[gal].MetalsCGMgas) strippedGasMetals = galaxies[gal].MetalsCGMgas;
 
-        galaxies[gal].HotGas -= strippedGas;
-        galaxies[gal].MetalsHotGas -= strippedGasMetals;
+                galaxies[gal].CGMgas -= strippedGas;
+                galaxies[gal].MetalsCGMgas -= strippedGasMetals;
+                
+                // Add to central galaxy's correct reservoir
+                if(central_rcool_to_rvir > 1.0) {
+                    // Central is CGM regime
+                    galaxies[centralgal].CGMgas += strippedGas;
+                    galaxies[centralgal].MetalsCGMgas += strippedGas * metallicity;
+                } else {
+                    // Central is HOT regime
+                    galaxies[centralgal].HotGas += strippedGas;
+                    galaxies[centralgal].MetalsHotGas += strippedGas * metallicity;
+                }
+            } else {
+                // HOT regime satellite: strip from HotGas  
+                const double metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
+                double strippedGasMetals = strippedGas * metallicity;
 
-        galaxies[centralgal].HotGas += strippedGas;
-        galaxies[centralgal].MetalsHotGas += strippedGas * metallicity;
+                if(strippedGas > galaxies[gal].HotGas) strippedGas = galaxies[gal].HotGas;
+                if(strippedGasMetals > galaxies[gal].MetalsHotGas) strippedGasMetals = galaxies[gal].MetalsHotGas;
+
+                galaxies[gal].HotGas -= strippedGas;
+                galaxies[gal].MetalsHotGas -= strippedGasMetals;
+                
+                // Add to central galaxy's correct reservoir
+                if(central_rcool_to_rvir > 1.0) {
+                    // Central is CGM regime
+                    galaxies[centralgal].CGMgas += strippedGas;
+                    galaxies[centralgal].MetalsCGMgas += strippedGas * metallicity;
+                } else {
+                    // Central is HOT regime
+                    galaxies[centralgal].HotGas += strippedGas;
+                    galaxies[centralgal].MetalsHotGas += strippedGas * metallicity;
+                }
+            }
+        } else {
+            // Original behavior when CGMrecipeOn = 0
+            const double metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
+            double strippedGasMetals = strippedGas * metallicity;
+
+            if(strippedGas > galaxies[gal].HotGas) strippedGas = galaxies[gal].HotGas;
+            if(strippedGasMetals > galaxies[gal].MetalsHotGas) strippedGasMetals = galaxies[gal].MetalsHotGas;
+
+            galaxies[gal].HotGas -= strippedGas;
+            galaxies[gal].MetalsHotGas -= strippedGasMetals;
+
+            galaxies[centralgal].HotGas += strippedGas;
+            galaxies[centralgal].MetalsHotGas += strippedGas * metallicity;
+        }
     }
 
 }
@@ -205,4 +257,122 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
     galaxies[gal].HotGas += infallingGas;
     if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
 
+}
+
+
+
+void add_infall_to_cgm(const int gal, double infallingGas, struct GALAXY *galaxies)
+{
+    float metallicity;
+
+    // In the low-mass regime (CGM regime), ALL gas goes to/from CGM, NO HotGas
+    // For mass loss (negative infall), remove from CGM only
+    if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
+        metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
+        galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
+        if(galaxies[gal].MetalsCGMgas < 0.0) galaxies[gal].MetalsCGMgas = 0.0;
+
+        galaxies[gal].CGMgas += infallingGas;
+        if(galaxies[gal].CGMgas < 0.0) {
+            galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
+        }
+    } else {
+        // For positive infall, add to CGM
+        galaxies[gal].CGMgas += infallingGas;
+        if(galaxies[gal].CGMgas < 0.0) galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
+    }
+
+}
+
+
+
+void add_infall_to_hot_pure(const int gal, double infallingGas, struct GALAXY *galaxies)
+{
+    float metallicity;
+
+    // In the high-mass regime (hot halo regime), ALL gas goes to/from HotGas, NO CGM
+    // For mass loss (negative infall), remove from HotGas only
+    if(infallingGas < 0.0 && galaxies[gal].HotGas > 0.0) {
+        metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
+        galaxies[gal].MetalsHotGas += infallingGas*metallicity;
+        if(galaxies[gal].MetalsHotGas < 0.0) galaxies[gal].MetalsHotGas = 0.0;
+
+        galaxies[gal].HotGas += infallingGas;
+        if(galaxies[gal].HotGas < 0.0) {
+            galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
+        }
+    } else {
+        // For positive infall, add to HotGas
+        galaxies[gal].HotGas += infallingGas;
+        if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
+    }
+
+}
+
+
+
+double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Check basic requirements for physics calculation
+    if(galaxies[gal].Vvir <= 0.0) {
+        return 2.0;  // Return > 1.0 to indicate CGM regime for very small halos
+    }
+
+    const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
+    const double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;         // in Kelvin
+
+    // Use metallicity from either HotGas or CGM gas, whichever exists
+    double logZ = -10.0;
+    if(galaxies[gal].HotGas > 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
+        logZ = log10(galaxies[gal].MetalsHotGas / galaxies[gal].HotGas);
+    } else if(galaxies[gal].CGMgas > 0.0 && galaxies[gal].MetalsCGMgas > 0.0) {
+        logZ = log10(galaxies[gal].MetalsCGMgas / galaxies[gal].CGMgas);
+    }
+
+    double lambda = get_metaldependent_cooling_rate(log10(temp), logZ);
+    double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
+    x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
+    const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
+
+    // For density calculation, use total gas (HotGas + CGMgas) to represent potential hot halo
+    double total_gas = galaxies[gal].HotGas + galaxies[gal].CGMgas;
+    if(total_gas <= 0.0) {
+        return 2.0;  // Return > 1.0 to indicate CGM regime if no gas at all
+    }
+
+    // an isothermal density profile for the hot gas is assumed here
+    const double rho0 = total_gas / (4 * M_PI * galaxies[gal].Rvir);
+    const double rcool = sqrt(rho0 / rho_rcool);
+
+    return rcool / galaxies[gal].Rvir;
+}
+
+
+
+void handle_regime_transition(const int gal, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Only handle transitions when CGM recipe is enabled
+    if(run_params->CGMrecipeOn != 1) {
+        return;
+    }
+    
+    const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(gal, galaxies, run_params);
+    
+    if(rcool_to_rvir > 1.0) {
+        // CGM regime: transfer all HotGas to CGM
+        if(galaxies[gal].HotGas > 1e-10) {
+            galaxies[gal].CGMgas += galaxies[gal].HotGas;
+            galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsHotGas;
+            galaxies[gal].HotGas = 0.0;
+            galaxies[gal].MetalsHotGas = 0.0;
+        }
+    } else {
+        // HOT regime: transfer all CGMgas to HotGas
+        if(galaxies[gal].CGMgas > 1e-10) {
+            galaxies[gal].HotGas += galaxies[gal].CGMgas;
+            galaxies[gal].MetalsHotGas += galaxies[gal].MetalsCGMgas;
+            galaxies[gal].CGMgas = 0.0;
+            galaxies[gal].MetalsCGMgas = 0.0;
+        }
+    }
 }

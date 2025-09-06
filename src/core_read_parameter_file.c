@@ -145,6 +145,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->AGNrecipeOn);
     ParamID[NParam++] = INT;
 
+    strncpy(ParamTag[NParam], "CGMrecipeOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMrecipeOn);
+    ParamID[NParam++] = INT;
+
     strncpy(ParamTag[NParam], "BaryonFrac", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->BaryonFrac);
     ParamID[NParam++] = DOUBLE;

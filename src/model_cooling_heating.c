@@ -9,9 +9,21 @@
 
 #include "model_cooling_heating.h"
 #include "model_misc.h"
+#include "model_infall.h"
 
 
 double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Check if CGM recipe is enabled for backwards compatibility
+    if(run_params->CGMrecipeOn > 0) {
+        return cooling_recipe_regime_aware(gal, dt, galaxies, run_params);
+    } else {
+        return cooling_recipe_hot(gal, dt, galaxies, run_params);
+    }
+}
+
+
+double cooling_recipe_hot(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
     double coolingGas;
 
@@ -65,7 +77,80 @@ double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, c
 	XASSERT(coolingGas >= 0.0, -1,
             "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
     return coolingGas;
+}
 
+
+double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+{
+    double coolingGas = 0.0;
+    
+    // Check basic requirements for cooling
+    if(galaxies[gal].Vvir <= 0.0) {
+        return 0.0;
+    }
+
+    // Determine the regime based on cooling physics
+    const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(gal, galaxies, run_params);
+
+    if(rcool_to_rvir > 1.0) {
+        // CGM REGIME: rcool > Rvir (cold accretion regime)
+        // Cool from CGM gas reservoir
+        coolingGas = cooling_recipe_cgm(gal, dt, galaxies, run_params);
+    } else {
+        // HOT REGIME: rcool < Rvir (hot halo cooling regime)  
+        // Cool from HotGas reservoir
+        coolingGas = cooling_recipe_hot(gal, dt, galaxies, run_params);
+    }
+
+    XASSERT(coolingGas >= 0.0, -1,
+            "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
+    return coolingGas;
+}
+
+
+double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
+{
+    double coolingGas = 0.0;
+
+    // In CGM regime, cool from CGM gas (cold accretion)
+    if(galaxies[gal].CGMgas > 0.0 && galaxies[gal].Vvir > 0.0) {
+        const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
+        const double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;         // in Kelvin
+
+        double logZ = -10.0;
+        if(galaxies[gal].MetalsCGMgas > 0) {
+            logZ = log10(galaxies[gal].MetalsCGMgas / galaxies[gal].CGMgas);
+        }
+
+        double lambda = get_metaldependent_cooling_rate(log10(temp), logZ);
+        double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
+        x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
+        const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
+
+        // In CGM regime, only use CGM gas for density calculation
+        const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
+        const double rcool = sqrt(rho0 / rho_rcool);
+
+        // Cold accretion cooling rate (rcool > Rvir regime)
+        coolingGas = galaxies[gal].CGMgas / (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
+
+        if(coolingGas > galaxies[gal].CGMgas) {
+            coolingGas = galaxies[gal].CGMgas;
+        } else {
+            if(coolingGas < 0.0) coolingGas = 0.0;
+        }
+
+        // Apply AGN heating if enabled (using original AGN function)
+        if(run_params->AGNrecipeOn > 0 && coolingGas > 0.0) {
+            coolingGas = do_AGN_heating_cgm(coolingGas, gal, dt, x, rcool, galaxies, run_params);
+        }
+
+        if (coolingGas > 0.0) {
+            galaxies[gal].Cooling += 0.5 * coolingGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
+        }
+    }
+
+    return coolingGas;
 }
 
 
@@ -160,6 +245,136 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
 }
 
 
+
+double do_AGN_heating_cgm(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, struct GALAXY *galaxies, const struct params *run_params)
+{
+    double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity;
+
+    // first update the cooling rate based on the past AGN heating
+    if(galaxies[centralgal].r_heat < rcool) {
+        coolingGas = (1.0 - galaxies[centralgal].r_heat / rcool) * coolingGas;
+    } else {
+        coolingGas = 0.0;
+    }
+
+    XASSERT(coolingGas >= 0.0, -1,
+            "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
+
+    // now calculate the new heating rate - for CGM regime we need to check for gas availability
+    if(galaxies[centralgal].CGMgas > 0.0) {
+        if(run_params->AGNrecipeOn == 2) {
+            // Bondi-Hoyle accretion recipe
+            AGNrate = (2.5 * M_PI * run_params->G) * (0.375 * 0.6 * x) * galaxies[centralgal].BlackHoleMass * run_params->RadioModeEfficiency;
+        } else if(run_params->AGNrecipeOn == 3) {
+            // Cold cloud accretion: trigger: rBH > 1.0e-4 Rsonic, and accretion rate = 0.01% cooling rate
+            if(galaxies[centralgal].BlackHoleMass > 0.0001 * galaxies[centralgal].Mvir * CUBE(rcool/galaxies[centralgal].Rvir)) {
+                AGNrate = 0.0001 * coolingGas / dt;
+            } else {
+                AGNrate = 0.0;
+            }
+        } else {
+            // empirical (standard) accretion recipe - modified for CGM regime
+            if(galaxies[centralgal].Mvir > 0.0) {
+                AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
+                    * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0)
+                    * ((galaxies[centralgal].CGMgas / galaxies[centralgal].Mvir) / 0.1);
+            } else {
+                AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
+                    * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0);
+            }
+        }
+
+        // Eddington rate
+        EDDrate = (1.3e38 * galaxies[centralgal].BlackHoleMass * 1e10 / run_params->Hubble_h) / (run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s) / (0.1 * 9e10);
+
+        // accretion onto BH is always limited by the Eddington rate
+        if(AGNrate > EDDrate) {
+            AGNrate = EDDrate;
+        }
+
+        // accreted mass onto black hole
+        AGNaccreted = AGNrate * dt;
+
+        // cannot accrete more mass than is available in CGM!
+        if(AGNaccreted > galaxies[centralgal].CGMgas) {
+            AGNaccreted = galaxies[centralgal].CGMgas;
+        }
+
+        // coefficient to heat the cooling gas back to the virial temperature of the halo
+        // 1.34e5 = sqrt(2*eta*c^2), eta=0.1 (standard efficiency) and c in km/s
+        AGNcoeff = (1.34e5 / galaxies[centralgal].Vvir) * (1.34e5 / galaxies[centralgal].Vvir);
+
+        // cooling mass that can be suppresed from AGN heating
+        AGNheating = AGNcoeff * AGNaccreted;
+
+        /// the above is the maximal heating rate. we now limit it to the current cooling rate
+        if(AGNheating > coolingGas) {
+            AGNaccreted = coolingGas / AGNcoeff;
+            AGNheating = coolingGas;
+        }
+
+        // accreted mass onto black hole from CGM
+        metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
+        galaxies[centralgal].BlackHoleMass += AGNaccreted;
+        galaxies[centralgal].CGMgas -= AGNaccreted;
+        galaxies[centralgal].MetalsCGMgas -= metallicity * AGNaccreted;
+
+        // update the heating radius as needed
+        if(galaxies[centralgal].r_heat < rcool && coolingGas > 0.0) {
+            double r_heat_new = (AGNheating / coolingGas) * rcool;
+            if(r_heat_new > galaxies[centralgal].r_heat) {
+                galaxies[centralgal].r_heat = r_heat_new;
+            }
+        }
+
+        if (AGNheating > 0.0) {
+            galaxies[centralgal].Heating += 0.5 * AGNheating * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
+        }
+    }
+
+    return coolingGas;
+}
+
+
+
+void cool_gas_onto_galaxy_regime_aware(const int centralgal, const double coolingGas, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Determine which regime we're in based on rcool/Rvir ratio
+    const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
+    
+    // add the fraction 1/STEPS of the total cooling gas to the cold disk
+    if(coolingGas > 0.0) {
+        if(rcool_to_rvir > 1.0) {
+            // CGM regime - cool from CGM reservoir
+            if(coolingGas < galaxies[centralgal].CGMgas) {
+                const double metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
+                galaxies[centralgal].ColdGas += coolingGas;
+                galaxies[centralgal].MetalsColdGas += metallicity * coolingGas;
+                galaxies[centralgal].CGMgas -= coolingGas;
+                galaxies[centralgal].MetalsCGMgas -= metallicity * coolingGas;
+            } else {
+                galaxies[centralgal].ColdGas += galaxies[centralgal].CGMgas;
+                galaxies[centralgal].MetalsColdGas += galaxies[centralgal].MetalsCGMgas;
+                galaxies[centralgal].CGMgas = 0.0;
+                galaxies[centralgal].MetalsCGMgas = 0.0;
+            }
+        } else {
+            // Hot regime - cool from HotGas reservoir
+            if(coolingGas < galaxies[centralgal].HotGas) {
+                const double metallicity = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
+                galaxies[centralgal].ColdGas += coolingGas;
+                galaxies[centralgal].MetalsColdGas += metallicity * coolingGas;
+                galaxies[centralgal].HotGas -= coolingGas;
+                galaxies[centralgal].MetalsHotGas -= metallicity * coolingGas;
+            } else {
+                galaxies[centralgal].ColdGas += galaxies[centralgal].HotGas;
+                galaxies[centralgal].MetalsColdGas += galaxies[centralgal].MetalsHotGas;
+                galaxies[centralgal].HotGas = 0.0;
+                galaxies[centralgal].MetalsHotGas = 0.0;
+            }
+        }
+    }
+}
 
 void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies)
 {
