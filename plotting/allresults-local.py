@@ -1928,7 +1928,10 @@ if __name__ == '__main__':
     # if(len(med_mass) > dilute): med_mass = med_mass[sample(list(range(len(med_mass))), dilute)]
     # if(len(high_mass) > dilute): high_mass = high_mass[sample(list(range(len(high_mass))), dilute)]
 
-    plt.scatter(log_hmass, log_cgm, c='blue', s=5)
+    # Add stellar mass condition: 10^8 - 10^12 solar masses
+    stellar_mass_condition = (StellarMass >= 1e8) & (StellarMass <= 1e12)
+    
+    plt.scatter(log_hmass[stellar_mass_condition], log_cgm[stellar_mass_condition], c='blue', s=5)
     # plt.scatter(log_cgm[med_mass], log_tvir[med_mass], c='green', s=5, alpha=0.9, label=r'$10^{11} < M_{vir} < 10^{12}\ M_\odot$')
     # plt.scatter(log_cgm[high_mass], log_tvir[high_mass], c='red', s=5, alpha=0.9, label=r'$M_{vir} > 10^{12}\ M_\odot$')
 
@@ -1990,7 +1993,11 @@ if __name__ == '__main__':
     #     sc3 = plt.scatter(log_cgm[high_mass], log_tvir[high_mass], c=metallicity_12_plus_logOH[high_mass], 
     #                      s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5)
 
-    plt.scatter(log_hmass[valid_metals], log_cgm[valid_metals], c=metallicity_12_plus_logOH[valid_metals], 
+    # Add stellar mass condition: 10^8 - 10^12 solar masses
+    stellar_mass_condition = (StellarMass >= 1e8) & (StellarMass <= 1e12)
+    valid_metals_stellar = valid_metals & stellar_mass_condition
+    
+    plt.scatter(log_hmass[valid_metals_stellar], log_cgm[valid_metals_stellar], c=metallicity_12_plus_logOH[valid_metals_stellar], 
                      s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5)
 
     # Add colorbar
@@ -2069,7 +2076,8 @@ if __name__ == '__main__':
     
     # Calculate metallicity for coloring using the same method as the metallicity plot
     # 12 + log10[O/H] = log10((Metals/Gas) / 0.02) + 9.0
-    valid_metals = (metalshotgas > 0) & (log_hotgas > 0)
+    stellar_mass_condition = (log_smass >= 8) & (log_smass <= 12)
+    valid_metals = (metalshotgas > 0) & (log_hotgas > 0) & stellar_mass_condition
     metallicity_12_plus_logOH = np.zeros_like(metalshotgas)
     metallicity_12_plus_logOH[valid_metals] = np.log10((metalshotgas[valid_metals] / HotGas[valid_metals]) / 0.02) + 9.0
 
@@ -2219,9 +2227,16 @@ if __name__ == '__main__':
     #     sc_hot = plt.scatter(log_hotgas[hotgas_high], log_tvir[hotgas_high], c=metallicity_hotgas[hotgas_high], 
     #                         s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='s')
 
-    plt.scatter(log_hmass[valid_cgm], log_cgm[valid_cgm], c=metallicity_cgm[valid_cgm], 
+    # Add stellar mass condition: 10^8 - 10^12 solar masses
+    stellar_mass_condition = (StellarMass >= 1e8) & (StellarMass <= 1e12)
+    
+    # Apply stellar mass condition to existing filters
+    valid_cgm_stellar = valid_cgm & stellar_mass_condition
+    valid_hotgas_stellar = valid_hotgas & stellar_mass_condition
+    
+    plt.scatter(log_hmass[valid_cgm_stellar], log_cgm[valid_cgm_stellar], c=metallicity_cgm[valid_cgm_stellar], 
                 s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='o', label='Feedback-driven CGM')
-    plt.scatter(log_hmass[valid_hotgas], log_hotgas[valid_hotgas], c=metallicity_hotgas[valid_hotgas], 
+    plt.scatter(log_hmass[valid_hotgas_stellar], log_hotgas[valid_hotgas_stellar], c=metallicity_hotgas[valid_hotgas_stellar], 
                 s=5, alpha=0.7, cmap='plasma', vmin=7.0, vmax=9.5, marker='s', label='Infall/Reincorporation-driven CGM')
 
     # # Add colorbar (use the last scatter plot that was created)

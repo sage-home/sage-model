@@ -470,7 +470,7 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
         return; // Only applies when CGM recipe is active
     }
     
-    #ifdef DEBUG_REGIME_CONSISTENCY
+    // DEBUG_REGIME_CONSISTENCY enabled
     // Mass conservation tracking (only when debugging)
     double total_gas_before = 0.0;
     double total_metals_before = 0.0;
@@ -484,7 +484,6 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
         total_gas_before += galaxies[p].HotGas + galaxies[p].CGMgas;
         total_metals_before += galaxies[p].MetalsHotGas + galaxies[p].MetalsCGMgas;
     }
-    #endif
     
     for(int p = 0; p < ngal; p++) {
         // Skip merged galaxies
@@ -497,6 +496,8 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
         
         if(rcool_to_rvir > 1.0) {
             // CGM REGIME: r_cool > R_vir (low-mass halos)
+            galaxies[p].Regime = 0;  // Set CGM regime flag
+            
             // All hot gas should be moved to CGM reservoir
             if(galaxies[p].HotGas > 0.0) {
                 const double hot_to_move = galaxies[p].HotGas;
@@ -507,19 +508,17 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
                 galaxies[p].MetalsCGMgas += metals_to_move;
                 galaxies[p].HotGas = 0.0;
                 galaxies[p].MetalsHotGas = 0.0;
-                #ifdef DEBUG_REGIME_CONSISTENCY
                 corrections_made++;
-                #endif
                 
                 // Optional: log the correction for debugging
-                #ifdef DEBUG_REGIME_CONSISTENCY
                 printf("REGIME CORRECTION: CGM regime galaxy %d moved %.3e Hot->CGM, now CGM=%.3e, Hot=%.3e\n",
                        p, hot_to_move, galaxies[p].CGMgas, galaxies[p].HotGas);
-                #endif
             }
             
         } else {
             // HOT REGIME: r_cool < R_vir (high-mass halos)
+            galaxies[p].Regime = 1;  // Set HOT regime flag
+            
             // All CGM gas should be moved to Hot reservoir
             if(galaxies[p].CGMgas > 0.0) {
                 const double cgm_to_move = galaxies[p].CGMgas;
@@ -530,15 +529,11 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
                 galaxies[p].MetalsHotGas += metals_to_move;
                 galaxies[p].CGMgas = 0.0;
                 galaxies[p].MetalsCGMgas = 0.0;
-                #ifdef DEBUG_REGIME_CONSISTENCY
                 corrections_made++;
-                #endif
                 
                 // Optional: log the correction for debugging
-                #ifdef DEBUG_REGIME_CONSISTENCY
                 printf("REGIME CORRECTION: HOT regime galaxy %d moved %.3e CGM->Hot, now CGM=%.3e, Hot=%.3e\n",
                        p, cgm_to_move, galaxies[p].CGMgas, galaxies[p].HotGas);
-                #endif
             }
         }
         
@@ -549,7 +544,6 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
         if(galaxies[p].MetalsCGMgas < 0.0) galaxies[p].MetalsCGMgas = 0.0;
     }
     
-    #ifdef DEBUG_REGIME_CONSISTENCY
     // Calculate total mass after corrections
     for(int p = 0; p < ngal; p++) {
         if(galaxies[p].mergeType > 0) continue;
@@ -571,42 +565,41 @@ void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, con
                metals_conservation_error, total_metals_before, total_metals_after);
         printf("  Corrections made: %d galaxies\n", corrections_made);
     }
-    #endif
     
     // Additional safety check: Ensure galaxies are in the correct regime based on mass
     // Bidirectional enforcement for robust regime assignment
-    for(int p = 0; p < ngal; p++) {
-        // Skip merged galaxies
-        if(galaxies[p].mergeType > 0) {
-            continue;
-        }
+    // for(int p = 0; p < ngal; p++) {
+    //     // Skip merged galaxies
+    //     if(galaxies[p].mergeType > 0) {
+    //         continue;
+    //     }
         
-        // Convert SAGE units (1e10 M_sun/h) to M_sun
-        const double hubble_h = 0.73;  // Should match run_params->Hubble/100 
-        const double mvir_solar = galaxies[p].Mvir * 1.0e10 / hubble_h;
+    //     // Convert SAGE units (1e10 M_sun/h) to M_sun
+    //     const double hubble_h = 0.73;  // Should match run_params->Hubble/100 
+    //     const double mvir_solar = galaxies[p].Mvir * 1.0e10 / hubble_h;
         
-        if(mvir_solar < 1.0e12) {
-            // Low-mass halos (< 10^12 M_sun): Force into CGM regime
-            // Transfer any HotGas to CGMgas
-            if(galaxies[p].HotGas > 1e-10) {
-                galaxies[p].CGMgas += galaxies[p].HotGas;
-                galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
-                galaxies[p].HotGas = 0.0;
-                galaxies[p].MetalsHotGas = 0.0;
-            }
-            // Set regime flag: 0 = low-mass (CGM regime)
-            galaxies[p].Regime = 0;
-        } else {
-            // High-mass halos (>= 10^12 M_sun): Force into HOT regime
-            // Transfer any CGMgas to HotGas
-            if(galaxies[p].CGMgas > 1e-10) {
-                galaxies[p].HotGas += galaxies[p].CGMgas;
-                galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
-                galaxies[p].CGMgas = 0.0;
-                galaxies[p].MetalsCGMgas = 0.0;
-            }
-            // Set regime flag: 1 = high-mass (HOT regime)
-            galaxies[p].Regime = 1;
-        }
-    }
+    //     if(mvir_solar < 1.0e12) {
+    //         // Low-mass halos (< 10^12 M_sun): Force into CGM regime
+    //         // Transfer any HotGas to CGMgas
+    //         if(galaxies[p].HotGas > 1e-10) {
+    //             galaxies[p].CGMgas += galaxies[p].HotGas;
+    //             galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
+    //             galaxies[p].HotGas = 0.0;
+    //             galaxies[p].MetalsHotGas = 0.0;
+    //         }
+    //         // Set regime flag: 0 = low-mass (CGM regime)
+    //         galaxies[p].Regime = 0;
+    //     } else {
+    //         // High-mass halos (>= 10^12 M_sun): Force into HOT regime
+    //         // Transfer any CGMgas to HotGas
+    //         if(galaxies[p].CGMgas > 1e-10) {
+    //             galaxies[p].HotGas += galaxies[p].CGMgas;
+    //             galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
+    //             galaxies[p].CGMgas = 0.0;
+    //             galaxies[p].MetalsCGMgas = 0.0;
+    //         }
+    //         // Set regime flag: 1 = high-mass (HOT regime)
+    //         galaxies[p].Regime = 1;
+    //     }
+    // }
 }

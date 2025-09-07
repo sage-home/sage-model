@@ -54,10 +54,10 @@ def analyze_mass_regime():
     """Main analysis function for mass-regime aware CGM physics"""
     
     print('=' * 60)
-    print('MASS-REGIME AWARE CGM PHYSICS DIAGNOSTIC')
+    print('PHYSICS-BASED REGIME CGM DIAGNOSTIC')
     print('=' * 60)
     print(f'Analyzing snapshot: {Snapshot} (z=0)')
-    print(f'Mass threshold for regime separation: {MASS_THRESHOLD:.0e} M☉')
+    print('Using physics-based regime determination (rcool/Rvir ratio)')
     print()
     
     # Read galaxy properties
@@ -73,6 +73,7 @@ def analyze_mass_regime():
     SfrDisk = read_hdf(snap_num=Snapshot, param='SfrDisk')
     SfrBulge = read_hdf(snap_num=Snapshot, param='SfrBulge')
     Cooling = read_hdf(snap_num=Snapshot, param='Cooling')
+    Regime = read_hdf(snap_num=Snapshot, param='Regime')
     
     print(f'Total galaxies loaded: {len(Mvir):,}')
     
@@ -89,6 +90,7 @@ def analyze_mass_regime():
     SfrDisk_c = SfrDisk[mask]
     SfrBulge_c = SfrBulge[mask]
     Cooling_c = Cooling[mask]
+    Regime_c = Regime[mask]
     
     print(f'Central galaxies analyzed: {len(Mvir_c):,}')
     print()
@@ -98,7 +100,11 @@ def analyze_mass_regime():
     TotalGas = HotGas_c + CGMgas_c + ColdGas_c
     Tvir = 35.9 * Vvir_c * Vvir_c  # Virial temperature in K
     
-    # Mass-based regime classification
+    # Physics-based regime classification
+    cgm_regime = (Regime_c == 0)  # CGM regime: rcool > Rvir
+    hot_regime = (Regime_c == 1)  # HOT regime: rcool < Rvir
+    
+    # Also keep mass-based for comparison
     low_mass = Mvir_c < MASS_THRESHOLD
     high_mass = Mvir_c >= MASS_THRESHOLD
     
@@ -108,30 +114,98 @@ def analyze_mass_regime():
     has_both_gas = has_hotgas & has_cgmgas
     has_no_gas = (~has_hotgas) & (~has_cgmgas)
     
-    # Regime compliance check
-    low_mass_compliant = low_mass & (~has_hotgas)  # Low mass should have no HotGas
-    high_mass_compliant = high_mass & (~has_cgmgas)  # High mass should have no CGMgas
+    # Regime compliance check (physics-based)
+    cgm_compliant = cgm_regime & (~has_hotgas)  # CGM regime should have no HotGas
+    hot_compliant = hot_regime & (~has_cgmgas)  # HOT regime should have no CGMgas
     
-    print_diagnostics(Mvir_c, low_mass, high_mass, has_hotgas, has_cgmgas, 
-                     has_both_gas, has_no_gas, low_mass_compliant, high_mass_compliant)
+    # Cross-contamination
+    cgm_contaminated = cgm_regime & has_hotgas  # CGM regime with HotGas (violation)
+    hot_contaminated = hot_regime & has_cgmgas  # HOT regime with CGMgas (violation)
+    
+    print_physics_diagnostics(Mvir_c, cgm_regime, hot_regime, low_mass, high_mass, 
+                             has_hotgas, has_cgmgas, has_both_gas, has_no_gas, 
+                             cgm_compliant, hot_compliant, cgm_contaminated, hot_contaminated)
     
     create_diagnostic_plots(Mvir_c, StellarMass_c, HotGas_c, CGMgas_c, ColdGas_c, 
-                           TotalSfr, Tvir, low_mass, high_mass, has_hotgas, has_cgmgas,
-                           low_mass_compliant, high_mass_compliant)
+                           TotalSfr, Tvir, cgm_regime, hot_regime, has_hotgas, has_cgmgas,
+                           cgm_compliant, hot_compliant)
     
     return {
         'total_galaxies': len(Mvir_c),
-        'low_mass_count': np.sum(low_mass),
-        'high_mass_count': np.sum(high_mass),
-        'low_mass_compliant': np.sum(low_mass_compliant),
-        'high_mass_compliant': np.sum(high_mass_compliant),
-        'compliance_rate_low': np.sum(low_mass_compliant) / np.sum(low_mass) * 100 if np.sum(low_mass) > 0 else 0,
-        'compliance_rate_high': np.sum(high_mass_compliant) / np.sum(high_mass) * 100 if np.sum(high_mass) > 0 else 0
+        'cgm_regime_count': np.sum(cgm_regime),
+        'hot_regime_count': np.sum(hot_regime),
+        'cgm_compliant': np.sum(cgm_compliant),
+        'hot_compliant': np.sum(hot_compliant),
+        'cgm_contaminated': np.sum(cgm_contaminated),
+        'hot_contaminated': np.sum(hot_contaminated),
+        'compliance_rate_cgm': np.sum(cgm_compliant) / np.sum(cgm_regime) * 100 if np.sum(cgm_regime) > 0 else 0,
+        'compliance_rate_hot': np.sum(hot_compliant) / np.sum(hot_regime) * 100 if np.sum(hot_regime) > 0 else 0
     }
+
+def print_physics_diagnostics(Mvir, cgm_regime, hot_regime, low_mass, high_mass, 
+                            has_hotgas, has_cgmgas, has_both_gas, has_no_gas, 
+                            cgm_compliant, hot_compliant, cgm_contaminated, hot_contaminated):
+    """Print detailed diagnostic information based on physics regime"""
+    
+    print('PHYSICS-BASED REGIME DISTRIBUTION:')
+    print(f'  CGM regime (rcool > Rvir): {np.sum(cgm_regime):,} ({100*np.sum(cgm_regime)/len(Mvir):.1f}%)')
+    print(f'  HOT regime (rcool < Rvir): {np.sum(hot_regime):,} ({100*np.sum(hot_regime)/len(Mvir):.1f}%)')
+    print()
+    
+    print('MASS DISTRIBUTION BY REGIME:')
+    if np.sum(cgm_regime) > 0:
+        cgm_mvir = Mvir[cgm_regime]
+        print(f'  CGM regime Mvir range: {cgm_mvir.min():.2e} to {cgm_mvir.max():.2e} M☉')
+    if np.sum(hot_regime) > 0:
+        hot_mvir = Mvir[hot_regime]
+        print(f'  HOT regime Mvir range: {hot_mvir.min():.2e} to {hot_mvir.max():.2e} M☉')
+    print()
+    
+    print('GAS CONTENT DISTRIBUTION:')
+    print(f'  Galaxies with significant HotGas: {np.sum(has_hotgas):,} ({100*np.sum(has_hotgas)/len(Mvir):.1f}%)')
+    print(f'  Galaxies with significant CGMgas: {np.sum(has_cgmgas):,} ({100*np.sum(has_cgmgas)/len(Mvir):.1f}%)')
+    print(f'  Galaxies with both gas types: {np.sum(has_both_gas):,} ({100*np.sum(has_both_gas)/len(Mvir):.1f}%)')
+    print(f'  Galaxies with no significant gas: {np.sum(has_no_gas):,} ({100*np.sum(has_no_gas)/len(Mvir):.1f}%)')
+    print()
+    
+    print('REGIME COMPLIANCE (Physics-based):')
+    print(f'  CGM regime galaxies (should have no HotGas):')
+    print(f'    Total: {np.sum(cgm_regime):,}')
+    print(f'    Compliant: {np.sum(cgm_compliant):,} ({100*np.sum(cgm_compliant)/np.sum(cgm_regime):.1f}%)')
+    print(f'    Contaminated: {np.sum(cgm_contaminated):,} ({100*np.sum(cgm_contaminated)/np.sum(cgm_regime):.1f}%)')
+    print()
+    print(f'  HOT regime galaxies (should have no CGMgas):')
+    print(f'    Total: {np.sum(hot_regime):,}')
+    print(f'    Compliant: {np.sum(hot_compliant):,} ({100*np.sum(hot_compliant)/np.sum(hot_regime):.1f}%)')
+    print(f'    Contaminated: {np.sum(hot_contaminated):,} ({100*np.sum(hot_contaminated)/np.sum(hot_regime):.1f}%)')
+    print()
+    
+    # Show mass-based vs physics-based disagreement
+    physics_hot_mass_low = hot_regime & low_mass
+    physics_cgm_mass_high = cgm_regime & high_mass
+    
+    if np.sum(physics_hot_mass_low) > 0:
+        print(f'  Low-mass galaxies in HOT regime: {np.sum(physics_hot_mass_low):,}')
+        print(f'    (These are correctly in HOT regime despite low mass)')
+    
+    if np.sum(physics_cgm_mass_high) > 0:
+        print(f'  High-mass galaxies in CGM regime: {np.sum(physics_cgm_mass_high):,}')
+        print(f'    (These are correctly in CGM regime despite high mass)')
+    
+    # Detailed breakdown of actual contamination
+    if np.sum(cgm_contaminated) > 0:
+        problem_mvir = Mvir[cgm_contaminated]
+        print(f'  ACTUAL CONTAMINATION - CGM regime with HotGas:')
+        print(f'    Mvir range: {problem_mvir.min():.2e} to {problem_mvir.max():.2e} M☉')
+    
+    if np.sum(hot_contaminated) > 0:
+        problem_mvir = Mvir[hot_contaminated]
+        print(f'  ACTUAL CONTAMINATION - HOT regime with CGMgas:')
+        print(f'    Mvir range: {problem_mvir.min():.2e} to {problem_mvir.max():.2e} M☉')
 
 def print_diagnostics(Mvir, low_mass, high_mass, has_hotgas, has_cgmgas, 
                      has_both_gas, has_no_gas, low_mass_compliant, high_mass_compliant):
-    """Print detailed diagnostic information"""
+    """Print detailed diagnostic information - DEPRECATED: Use print_physics_diagnostics"""
     
     print('MASS DISTRIBUTION:')
     print(f'  Low mass (<{MASS_THRESHOLD:.0e} M☉): {np.sum(low_mass):,} ({100*np.sum(low_mass)/len(Mvir):.1f}%)')
@@ -169,8 +243,8 @@ def print_diagnostics(Mvir, low_mass, high_mass, has_hotgas, has_cgmgas,
         print(f'    Mvir range: {problem_mvir.min():.2e} to {problem_mvir.max():.2e} M☉')
 
 def create_diagnostic_plots(Mvir, StellarMass, HotGas, CGMgas, ColdGas, TotalSfr, Tvir,
-                          low_mass, high_mass, has_hotgas, has_cgmgas,
-                          low_mass_compliant, high_mass_compliant):
+                          cgm_regime, hot_regime, has_hotgas, has_cgmgas,
+                          cgm_compliant, hot_compliant):
     """Create comprehensive diagnostic plots"""
     
     # Create output directory
@@ -296,18 +370,18 @@ def create_diagnostic_plots(Mvir, StellarMass, HotGas, CGMgas, ColdGas, TotalSfr
                edgecolors='none', label='All galaxies')
     
     # Highlight regime violations
-    violations_low = low_mass & has_hotgas
-    violations_high = high_mass & has_cgmgas
+    violations_cgm = cgm_regime & has_hotgas  # CGM regime with HotGas
+    violations_hot = hot_regime & has_cgmgas  # HOT regime with CGMgas
     
-    if np.sum(violations_low) > 0:
-        plt.scatter(Mvir[violations_low], StellarMass[violations_low], alpha=0.8, s=20, 
+    if np.sum(violations_cgm) > 0:
+        plt.scatter(Mvir[violations_cgm], StellarMass[violations_cgm], alpha=0.8, s=20, 
                    c='orange', edgecolors='black', linewidth=0.5,
-                   label=f'Low-mass violations ({np.sum(violations_low)})')
+                   label=f'CGM violations ({np.sum(violations_cgm)})')
     
-    if np.sum(violations_high) > 0:
-        plt.scatter(Mvir[violations_high], StellarMass[violations_high], alpha=0.8, s=20, 
+    if np.sum(violations_hot) > 0:
+        plt.scatter(Mvir[violations_hot], StellarMass[violations_hot], alpha=0.8, s=20, 
                    c='purple', edgecolors='black', linewidth=0.5,
-                   label=f'High-mass violations ({np.sum(violations_high)})')
+                   label=f'HOT violations ({np.sum(violations_hot)})')
     
     plt.axvline(MASS_THRESHOLD, color='gray', linestyle='--', alpha=0.7)
     plt.xscale('log')
@@ -335,20 +409,20 @@ def create_diagnostic_plots(Mvir, StellarMass, HotGas, CGMgas, ColdGas, TotalSfr
     ax8 = plt.subplot(3, 4, 8)
     bins = np.logspace(9, 14, 30)
     
-    plt.hist(Mvir[low_mass_compliant], bins=bins, alpha=0.7, color='blue', 
-             label=f'Low-mass compliant ({np.sum(low_mass_compliant):,})')
-    plt.hist(Mvir[high_mass_compliant], bins=bins, alpha=0.7, color='red', 
-             label=f'High-mass compliant ({np.sum(high_mass_compliant):,})')
+    plt.hist(Mvir[cgm_compliant], bins=bins, alpha=0.7, color='blue', 
+             label=f'CGM compliant ({np.sum(cgm_compliant):,})')
+    plt.hist(Mvir[hot_compliant], bins=bins, alpha=0.7, color='red', 
+             label=f'HOT compliant ({np.sum(hot_compliant):,})')
     
-    if np.sum(low_mass & has_hotgas) > 0:
-        plt.hist(Mvir[low_mass & has_hotgas], bins=bins, alpha=0.7, color='orange', 
-                 label=f'Low-mass violations ({np.sum(low_mass & has_hotgas):,})')
+    if np.sum(violations_cgm) > 0:
+        plt.hist(Mvir[violations_cgm], bins=bins, alpha=0.7, color='orange', 
+                 label=f'CGM violations ({np.sum(violations_cgm):,})')
     
-    if np.sum(high_mass & has_cgmgas) > 0:
-        plt.hist(Mvir[high_mass & has_cgmgas], bins=bins, alpha=0.7, color='purple', 
-                 label=f'High-mass violations ({np.sum(high_mass & has_cgmgas):,})')
+    if np.sum(violations_hot) > 0:
+        plt.hist(Mvir[violations_hot], bins=bins, alpha=0.7, color='purple', 
+                 label=f'HOT violations ({np.sum(violations_hot):,})')
     
-    plt.axvline(MASS_THRESHOLD, color='gray', linestyle='--', alpha=0.7)
+    plt.axvline(MASS_THRESHOLD, color='gray', linestyle='--', alpha=0.7, label='Mass threshold')
     plt.xscale('log')
     plt.xlabel('Halo Mass [M☉]')
     plt.ylabel('Number of Galaxies')
@@ -358,9 +432,9 @@ def create_diagnostic_plots(Mvir, StellarMass, HotGas, CGMgas, ColdGas, TotalSfr
     
     # Plot 9: Gas content summary
     ax9 = plt.subplot(3, 4, 9)
-    categories = ['Low Mass\n(CGM)', 'High Mass\n(Hot)']
-    compliant_counts = [np.sum(low_mass_compliant), np.sum(high_mass_compliant)]
-    violation_counts = [np.sum(low_mass & has_hotgas), np.sum(high_mass & has_cgmgas)]
+    categories = ['CGM\nRegime', 'HOT\nRegime']
+    compliant_counts = [np.sum(cgm_compliant), np.sum(hot_compliant)]
+    violation_counts = [np.sum(violations_cgm), np.sum(violations_hot)]
     
     x = np.arange(len(categories))
     width = 0.35
@@ -387,10 +461,10 @@ def create_diagnostic_plots(Mvir, StellarMass, HotGas, CGMgas, ColdGas, TotalSfr
     ax10 = plt.subplot(3, 4, 10)
     active_sf = TotalSfr > 0
     
-    plt.scatter(Mvir[active_sf & low_mass], TotalSfr[active_sf & low_mass], 
-               alpha=0.6, s=8, c='blue', label='Low mass', edgecolors='none')
-    plt.scatter(Mvir[active_sf & high_mass], TotalSfr[active_sf & high_mass], 
-               alpha=0.6, s=8, c='red', label='High mass', edgecolors='none')
+    plt.scatter(Mvir[active_sf & cgm_regime], TotalSfr[active_sf & cgm_regime], 
+               alpha=0.6, s=8, c='blue', label='CGM regime', edgecolors='none')
+    plt.scatter(Mvir[active_sf & hot_regime], TotalSfr[active_sf & hot_regime], 
+               alpha=0.6, s=8, c='red', label='HOT regime', edgecolors='none')
     plt.axvline(MASS_THRESHOLD, color='gray', linestyle='--', alpha=0.7)
     plt.xscale('log')
     plt.yscale('log')
@@ -404,21 +478,21 @@ def create_diagnostic_plots(Mvir, StellarMass, HotGas, CGMgas, ColdGas, TotalSfr
     ax11 = plt.subplot(3, 4, 11)
     ax11.axis('off')
     
-    stats_text = f"""REGIME COMPLIANCE SUMMARY
+    stats_text = f"""PHYSICS-BASED REGIME ANALYSIS
 
 Total Galaxies: {len(Mvir):,}
 
-LOW MASS (<{MASS_THRESHOLD:.0e} M☉):
-• Total: {np.sum(low_mass):,}
-• Compliant: {np.sum(low_mass_compliant):,} ({100*np.sum(low_mass_compliant)/np.sum(low_mass):.1f}%)
-• Violations: {np.sum(low_mass & has_hotgas):,}
+CGM REGIME (rcool/Rvir < 1.0):
+• Total: {np.sum(cgm_regime):,}
+• Compliant: {np.sum(cgm_compliant):,} ({100*np.sum(cgm_compliant)/np.sum(cgm_regime):.1f}%)
+• Violations: {np.sum(violations_cgm):,}
 
-HIGH MASS (≥{MASS_THRESHOLD:.0e} M☉):
-• Total: {np.sum(high_mass):,}
-• Compliant: {np.sum(high_mass_compliant):,} ({100*np.sum(high_mass_compliant)/np.sum(high_mass):.1f}%)
-• Violations: {np.sum(high_mass & has_cgmgas):,}
+HOT REGIME (rcool/Rvir ≥ 1.0):
+• Total: {np.sum(hot_regime):,}
+• Compliant: {np.sum(hot_compliant):,} ({100*np.sum(hot_compliant)/np.sum(hot_regime):.1f}%)
+• Violations: {np.sum(violations_hot):,}
 
-OVERALL: {100*(np.sum(low_mass_compliant) + np.sum(high_mass_compliant))/len(Mvir):.1f}% compliant
+OVERALL: {100*(np.sum(cgm_compliant) + np.sum(hot_compliant))/len(Mvir):.1f}% compliant
 """
     
     ax11.text(0.05, 0.95, stats_text, transform=ax11.transAxes, fontsize=10,
@@ -438,5 +512,5 @@ if __name__ == "__main__":
     
     print('=' * 60)
     print('FINAL SUMMARY:')
-    print(f'Overall compliance rate: {(results["compliance_rate_low"] * results["low_mass_count"] + results["compliance_rate_high"] * results["high_mass_count"]) / results["total_galaxies"]:.1f}%')
+    print(f'Overall compliance rate: {(results["compliance_rate_cgm"] * results["cgm_regime_count"] + results["compliance_rate_hot"] * results["hot_regime_count"]) / results["total_galaxies"]:.1f}%')
     print('=' * 60)

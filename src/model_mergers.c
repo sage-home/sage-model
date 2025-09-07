@@ -147,15 +147,6 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
                 galaxies[gal].ColdGas = 0.0;
                 galaxies[gal].MetalsColdGas = 0.0;
             }
-
-            // Eject hot gas to CGM if quasar energy exceeds cold+hot gas energy
-            if(quasar_energy > cold_gas_energy + hot_gas_energy) {
-                galaxies[gal].CGMgas += galaxies[gal].HotGas;
-                galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsHotGas;
-
-                galaxies[gal].HotGas = 0.0;
-                galaxies[gal].MetalsHotGas = 0.0;
-            }
             
         } else {
             // HOT REGIME: All ejected gas stays in HotGas (no gas leaves halo)
