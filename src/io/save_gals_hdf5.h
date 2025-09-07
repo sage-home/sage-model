@@ -93,6 +93,7 @@ struct HDF5_GALAXY_OUTPUT
 
     float *MassLoading;
     float *ReincorporatedGas;
+    float *RcoolToRvir;
 };
     
     // Proto-Types //

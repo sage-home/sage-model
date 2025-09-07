@@ -74,6 +74,7 @@ def analyze_mass_regime():
     SfrBulge = read_hdf(snap_num=Snapshot, param='SfrBulge')
     Cooling = read_hdf(snap_num=Snapshot, param='Cooling')
     Regime = read_hdf(snap_num=Snapshot, param='Regime')
+    RcoolToRvir = read_hdf(snap_num=Snapshot, param='RcoolToRvir')
     
     print(f'Total galaxies loaded: {len(Mvir):,}')
     
@@ -91,6 +92,7 @@ def analyze_mass_regime():
     SfrBulge_c = SfrBulge[mask]
     Cooling_c = Cooling[mask]
     Regime_c = Regime[mask]
+    RcoolToRvir_c = RcoolToRvir[mask]
     
     print(f'Central galaxies analyzed: {len(Mvir_c):,}')
     print()
@@ -109,8 +111,8 @@ def analyze_mass_regime():
     high_mass = Mvir_c >= MASS_THRESHOLD
     
     # Gas content classification
-    has_hotgas = HotGas_c > 1e6  # Significant HotGas (>1e6 M_sun)
-    has_cgmgas = CGMgas_c > 1e6  # Significant CGMgas (>1e6 M_sun)
+    has_hotgas = HotGas_c > 1.0e-10  # Significant HotGas (>1e6 M_sun)
+    has_cgmgas = CGMgas_c > 1.0e-10  # Significant CGMgas (>1e6 M_sun)
     has_both_gas = has_hotgas & has_cgmgas
     has_no_gas = (~has_hotgas) & (~has_cgmgas)
     
@@ -121,6 +123,19 @@ def analyze_mass_regime():
     # Cross-contamination
     cgm_contaminated = cgm_regime & has_hotgas  # CGM regime with HotGas (violation)
     hot_contaminated = hot_regime & has_cgmgas  # HOT regime with CGMgas (violation)
+
+    # Check for ANY non-zero contamination, even tiny amounts
+    tiny_cgm_violations = cgm_regime & (HotGas_c > 0) & (HotGas_c <= 1.0e-10)
+    tiny_hot_violations = hot_regime & (CGMgas_c > 0) & (CGMgas_c <= 1.0e-10)
+
+    print(f"CGM regime with tiny HotGas (≤1e-10): {np.sum(tiny_cgm_violations)} galaxies")
+    print(f"HOT regime with tiny CGMgas (≤1e-10): {np.sum(tiny_hot_violations)} galaxies")
+
+    if np.sum(tiny_cgm_violations) > 0:
+        print(f"  HotGas range: {np.min(HotGas_c[tiny_cgm_violations]):.2e} to {np.max(HotGas_c[tiny_cgm_violations]):.2e}")
+
+    if np.sum(tiny_hot_violations) > 0:
+        print(f"  CGMgas range: {np.min(CGMgas_c[tiny_hot_violations]):.2e} to {np.max(CGMgas_c[tiny_hot_violations]):.2e}")
     
     print_physics_diagnostics(Mvir_c, cgm_regime, hot_regime, low_mass, high_mass, 
                              has_hotgas, has_cgmgas, has_both_gas, has_no_gas, 
@@ -129,6 +144,18 @@ def analyze_mass_regime():
     create_diagnostic_plots(Mvir_c, StellarMass_c, HotGas_c, CGMgas_c, ColdGas_c, 
                            TotalSfr, Tvir, cgm_regime, hot_regime, has_hotgas, has_cgmgas,
                            cgm_compliant, hot_compliant)
+    
+    print('SAMPLE of r_cool/Rvir values:')
+    print(RcoolToRvir_c)
+    print(f"  Min: {np.min(RcoolToRvir_c):.2e}, Max: {np.max(RcoolToRvir_c):.2e}")
+
+    create_rcool_diagnostic_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, RcoolToRvir_c)
+    
+    # In your plotting function, before creating scatter plots:
+    print(f"Galaxies with any HotGas > 0: {np.sum(HotGas > 0)}")
+    print(f"Galaxies with any CGMgas > 0: {np.sum(CGMgas > 0)}")
+    print(f"CGM regime galaxies with HotGas > 0: {np.sum((Regime_c == 0) & (HotGas_c > 0))}")
+    print(f"HOT regime galaxies with CGMgas > 0: {np.sum((Regime_c == 1) & (CGMgas_c > 0))}")
     
     return {
         'total_galaxies': len(Mvir_c),
@@ -241,6 +268,109 @@ def print_diagnostics(Mvir, low_mass, high_mass, has_hotgas, has_cgmgas,
         problem_mvir = Mvir[high_mass & has_cgmgas]
         print(f'  Problem high-mass galaxies (with CGMgas):')
         print(f'    Mvir range: {problem_mvir.min():.2e} to {problem_mvir.max():.2e} M☉')
+
+# Add this to your diagnostic script to create the key figure
+
+def create_rcool_diagnostic_plot(Mvir, HotGas, CGMgas, Regime_c, rcool_to_rvir,OutputDir='./output/millennium/plots/'):
+    """Create diagnostic plot showing r_cool/R_vir vs mass with regime coloring"""
+    
+    # Calculate r_cool/R_vir for each galaxy
+    # You'll need to read these from your HDF5 file or calculate them
+    # For now, let's approximate based on regime assignments
+    # rcool_to_rvir = np.ones(len(Mvir))  # Placeholder
+    
+    # If you have the actual r_cool/R_vir values in your output, read them:
+    # rcool_to_rvir = read_hdf(snap_num=Snapshot, param='RcoolToRvir') 
+    
+    # For demonstration, let's create approximate values based on regime
+    cgm_regime = (Regime_c == 0)
+    hot_regime = (Regime_c == 1)
+    
+    # Create the diagnostic figure
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    
+    # Plot 1: r_cool/R_vir vs Mass, colored by regime
+    ax1.scatter(Mvir[cgm_regime], rcool_to_rvir[cgm_regime], 
+               c='blue', alpha=0.6, s=12, label='CGM regime (r_cool > R_vir)', 
+               edgecolors='none')
+    ax1.scatter(Mvir[hot_regime], rcool_to_rvir[hot_regime], 
+               c='red', alpha=0.6, s=12, label='HOT regime (r_cool < R_vir)', 
+               edgecolors='none')
+    
+    # Add the critical boundary
+    ax1.axhline(y=1.0, color='black', linestyle='--', linewidth=2, 
+               label='r_cool = R_vir (regime boundary)')
+    ax1.axvline(x=1e12, color='gray', linestyle=':', alpha=0.7, 
+               label='1e12 M☉ (mass threshold)')
+    
+    ax1.set_xscale('log')
+    ax1.set_yscale('log')
+    ax1.set_xlabel('Halo Mass [M☉]')
+    ax1.set_ylabel('r_cool / R_vir')
+    ax1.set_title('Regime Determination: r_cool/R_vir vs Halo Mass')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    ax1.set_ylim(0.1, 10)
+    
+    # Plot 2: Same plot but colored by gas content
+    has_hotgas = HotGas > 1e-10
+    has_cgmgas = CGMgas > 1e-10
+    has_no_gas = (~has_hotgas) & (~has_cgmgas)
+    
+    ax2.scatter(Mvir[has_hotgas], rcool_to_rvir[has_hotgas], 
+               c='red', alpha=0.6, s=12, label=f'Has HotGas ({np.sum(has_hotgas)})', 
+               edgecolors='none')
+    ax2.scatter(Mvir[has_cgmgas], rcool_to_rvir[has_cgmgas], 
+               c='blue', alpha=0.6, s=12, label=f'Has CGMgas ({np.sum(has_cgmgas)})', 
+               edgecolors='none')
+    ax2.scatter(Mvir[has_no_gas], rcool_to_rvir[has_no_gas], 
+               c='gray', alpha=0.3, s=8, label=f'No significant gas ({np.sum(has_no_gas)})', 
+               edgecolors='none')
+    
+    ax2.axhline(y=1.0, color='black', linestyle='--', linewidth=2, 
+               label='r_cool = R_vir')
+    ax2.axvline(x=1e12, color='gray', linestyle=':', alpha=0.7, 
+               label='1e12 M☉')
+    
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.set_xlabel('Halo Mass [M☉]')
+    ax2.set_ylabel('r_cool / R_vir')
+    ax2.set_title('Gas Content vs r_cool/R_vir')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    ax2.set_ylim(0.1, 10)
+    
+    plt.tight_layout()
+    
+    # Add annotations to explain the physics
+    ax1.text(0.05, 0.95, 
+             'CGM regime: r_cool > R_vir\n→ Cold accretion\n→ CGMgas reservoir', 
+             transform=ax1.transAxes, fontsize=10, va='top',
+             bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
+    
+    ax1.text(0.05, 0.45, 
+             'HOT regime: r_cool < R_vir\n→ Virial shock heating\n→ HotGas reservoir', 
+             transform=ax1.transAxes, fontsize=10, va='top',
+             bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.8))
+    
+    plt.savefig(OutputDir + 'rcool_regime_diagnostic.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig(OutputDir + 'rcool_regime_diagnostic.png', dpi=300, bbox_inches='tight')
+    print(f'r_cool diagnostic plots saved to {OutputDir}rcool_regime_diagnostic.[pdf/png]')
+    
+    # Print key statistics
+    low_mass = Mvir < 1e12
+    high_mass = Mvir >= 1e12
+    
+    print(f"\nKEY PHYSICS INSIGHTS:")
+    print(f"Low-mass haloes in HOT regime: {np.sum(low_mass & hot_regime):,}")
+    print(f"  These have r_cool < R_vir despite low mass")
+    print(f"  Mass range: {Mvir[low_mass & hot_regime].min():.2e} to {Mvir[low_mass & hot_regime].max():.2e} M☉")
+    
+    print(f"\nHigh-mass haloes in CGM regime: {np.sum(high_mass & cgm_regime):,}")
+    print(f"  These have r_cool > R_vir despite high mass")
+    if np.sum(high_mass & cgm_regime) > 0:
+        print(f"  Mass range: {Mvir[high_mass & cgm_regime].min():.2e} to {Mvir[high_mass & cgm_regime].max():.2e} M☉")
 
 def create_diagnostic_plots(Mvir, StellarMass, HotGas, CGMgas, ColdGas, TotalSfr, Tvir,
                           cgm_regime, hot_regime, has_hotgas, has_cgmgas,
@@ -509,6 +639,8 @@ if __name__ == "__main__":
     volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
     
     results = analyze_mass_regime()
+
+    
     
     print('=' * 60)
     print('FINAL SUMMARY:')

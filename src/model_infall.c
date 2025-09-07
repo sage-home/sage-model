@@ -308,7 +308,7 @@ double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, con
 {
     // Check basic requirements for physics calculation
     if(galaxies[gal].Vvir <= 0.0) {
-        return 2.0;  // Return > 1.0 to indicate CGM regime for very small halos
+        return 1.1;  // Return > 1.0 to indicate CGM regime for very small halos
     }
 
     const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
@@ -316,7 +316,7 @@ double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, con
 
     // SAFETY: Check for reasonable temperature
     if(temp <= 0.0 || tcool <= 0.0) {
-        return 2.0;
+        return 0.0;
     }
 
     // Use metallicity from either HotGas or CGM gas, whichever exists
@@ -335,7 +335,7 @@ double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, con
     // For density calculation, use total gas (HotGas + CGMgas) to represent potential hot halo
     double total_gas = galaxies[gal].HotGas + galaxies[gal].CGMgas;
     if(total_gas <= 0.0) {
-        return 2.0;  // Return > 1.0 to indicate CGM regime if no gas at all
+        return 1.1;  // Return > 1.0 to indicate CGM regime if no gas at all
     }
 
     // an isothermal density profile for the hot gas is assumed here
@@ -346,7 +346,7 @@ double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, con
     double result = rcool / galaxies[gal].Rvir;
     
     // SAFETY: Clamp to reasonable range
-    if(result < 0.01) result = 0.01;
+    if(result < 0.001) result = 0.001;
     if(result > 100.0) result = 100.0;
     
     return result;
@@ -361,7 +361,7 @@ void determine_and_cache_regime(const int ngal, struct GALAXY *galaxies, const s
         galaxies[p].Regime = (rcool_to_rvir > 1.0) ? 0 : 1; // 0=CGM, 1=HOT
         
         // ALSO enforce the regime immediately to prevent inconsistencies
-        if(galaxies[p].Regime == 0) {
+        if(rcool_to_rvir > 1.0) {
             // CGM regime: transfer all HotGas to CGM
             if(galaxies[p].HotGas > 1e-10) {
                 galaxies[p].CGMgas += galaxies[p].HotGas;
@@ -388,9 +388,9 @@ void handle_regime_transition(const int gal, struct GALAXY *galaxies, const stru
         return;
     }
     
-    const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(gal, galaxies, run_params);
+    // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(gal, galaxies, run_params);
     
-    if(rcool_to_rvir > 1.0) {
+    if(galaxies[gal].Regime == 0) {
         // CGM regime: transfer all HotGas to CGM
         if(galaxies[gal].HotGas > 1e-10) {
             galaxies[gal].CGMgas += galaxies[gal].HotGas;

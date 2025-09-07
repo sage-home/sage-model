@@ -167,6 +167,7 @@ struct GALAXY
 
     float MassLoading;
     float ReincorporatedGas; // Mass of gas reincorporated into the galaxy
+    float RcoolToRvir; // Ratio of cooling radius to virial radius, calculated at each snapshot for output
 };
 
 
