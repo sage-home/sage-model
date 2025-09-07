@@ -106,11 +106,7 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
 
     if(strippedGas > 0.0) {
         if(run_params->CGMrecipeOn > 0) {
-            // Regime-aware stripping: strip from correct reservoir based on satellite's regime
-            double satellite_rcool_to_rvir = calculate_rcool_to_rvir_ratio(gal, galaxies, run_params);
-            double central_rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
-            
-            if(satellite_rcool_to_rvir > 1.0) {
+            if(galaxies[gal].Regime == 0) {
                 // CGM regime satellite: strip from CGMgas
                 const double metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
                 double strippedGasMetals = strippedGas * metallicity;
@@ -122,7 +118,7 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
                 galaxies[gal].MetalsCGMgas -= strippedGasMetals;
                 
                 // Add to central galaxy's correct reservoir
-                if(central_rcool_to_rvir > 1.0) {
+                if(galaxies[centralgal].Regime == 0) {
                     // Central is CGM regime
                     galaxies[centralgal].CGMgas += strippedGas;
                     galaxies[centralgal].MetalsCGMgas += strippedGas * metallicity;
@@ -142,8 +138,7 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
                 galaxies[gal].HotGas -= strippedGas;
                 galaxies[gal].MetalsHotGas -= strippedGasMetals;
                 
-                // Add to central galaxy's correct reservoir
-                if(central_rcool_to_rvir > 1.0) {
+                if(galaxies[gal].Regime == 0) {
                     // Central is CGM regime
                     galaxies[centralgal].CGMgas += strippedGas;
                     galaxies[centralgal].MetalsCGMgas += strippedGas * metallicity;
@@ -309,8 +304,6 @@ void add_infall_to_hot_pure(const int gal, double infallingGas, struct GALAXY *g
 
 }
 
-
-
 double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, const struct params *run_params)
 {
     // Check basic requirements for physics calculation
@@ -320,6 +313,11 @@ double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, con
 
     const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
     const double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;         // in Kelvin
+
+    // SAFETY: Check for reasonable temperature
+    if(temp <= 0.0 || tcool <= 0.0) {
+        return 2.0;
+    }
 
     // Use metallicity from either HotGas or CGM gas, whichever exists
     double logZ = -10.0;
@@ -344,10 +342,44 @@ double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, con
     const double rho0 = total_gas / (4 * M_PI * galaxies[gal].Rvir);
     const double rcool = sqrt(rho0 / rho_rcool);
 
-    return rcool / galaxies[gal].Rvir;
+    // Continue with physics but add bounds checking...
+    double result = rcool / galaxies[gal].Rvir;
+    
+    // SAFETY: Clamp to reasonable range
+    if(result < 0.01) result = 0.01;
+    if(result > 100.0) result = 100.0;
+    
+    return result;
 }
 
-
+void determine_and_cache_regime(const int ngal, struct GALAXY *galaxies, const struct params *run_params)
+{
+    for(int p = 0; p < ngal; p++) {
+        if(galaxies[p].mergeType > 0) continue;
+        
+        const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
+        galaxies[p].Regime = (rcool_to_rvir > 1.0) ? 0 : 1; // 0=CGM, 1=HOT
+        
+        // ALSO enforce the regime immediately to prevent inconsistencies
+        if(galaxies[p].Regime == 0) {
+            // CGM regime: transfer all HotGas to CGM
+            if(galaxies[p].HotGas > 1e-10) {
+                galaxies[p].CGMgas += galaxies[p].HotGas;
+                galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
+                galaxies[p].HotGas = 0.0;
+                galaxies[p].MetalsHotGas = 0.0;
+            }
+        } else {
+            // HOT regime: transfer all CGMgas to HotGas
+            if(galaxies[p].CGMgas > 1e-10) {
+                galaxies[p].HotGas += galaxies[p].CGMgas;
+                galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
+                galaxies[p].CGMgas = 0.0;
+                galaxies[p].MetalsCGMgas = 0.0;
+            }
+        }
+    }
+}
 
 void handle_regime_transition(const int gal, struct GALAXY *galaxies, const struct params *run_params)
 {

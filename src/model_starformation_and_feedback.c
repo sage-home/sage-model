@@ -203,8 +203,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         
         // Regime-aware metal deposition for metals that leave the disk
         if(run_params->CGMrecipeOn == 1) {
-            double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
-            if(rcool_to_rvir > 1.0) {
+            if(galaxies[centralgal].Regime == 0) {
                 // CGM regime: metals go to CGM
                 galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
             } else {
@@ -218,8 +217,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     } else {
         // When no cold gas, all metals leave the disk - make this regime-aware too
         if(run_params->CGMrecipeOn == 1) {
-            double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
-            if(rcool_to_rvir > 1.0) {
+            if(galaxies[centralgal].Regime == 0) {
                 // CGM regime: metals go to CGM
                 galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
             } else {
@@ -265,10 +263,7 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
 
         if(run_params->CGMrecipeOn == 1) {
-            // Regime-aware feedback: determine where reheated gas goes
-            double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
-            
-            if(rcool_to_rvir > 1.0) {
+            if(galaxies[centralgal].Regime == 0) {
                 // CGM REGIME: Reheated gas goes to CGM
                 galaxies[centralgal].CGMgas += reheated_mass;
                 galaxies[centralgal].MetalsCGMgas += metallicity * reheated_mass;

@@ -19,7 +19,8 @@ extern "C" {
                                  struct GALAXY *galaxies, const struct params *run_params);
     extern double do_AGN_heating_cgm(double coolingGas, const int centralgal, const double dt, const double x, const double rcool,
                                      struct GALAXY *galaxies, const struct params *run_params);
-    extern void final_regime_consistency_check(const int ngal, struct GALAXY *galaxies, const struct params *run_params);
+
+    extern void track_gas_allocation(const int gal, const char* source, const char* action, double hotgas_change, double cgm_change, struct GALAXY *galaxies, const struct params *run_params);
 
 #ifdef __cplusplus
 }

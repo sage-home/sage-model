@@ -15,6 +15,8 @@ extern "C" {
     extern void add_infall_to_hot_pure(const int gal, double infallingGas, struct GALAXY *galaxies);
     extern double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, const struct params *run_params);
     extern void handle_regime_transition(const int gal, struct GALAXY *galaxies, const struct params *run_params);
+    extern void determine_and_cache_regime(const int ngal, struct GALAXY *galaxies, const struct params *run_params);
+    extern void final_regime_gas_cleanup(const int ngal, struct GALAXY *galaxies, const struct params *run_params);
 
 #ifdef __cplusplus
 }

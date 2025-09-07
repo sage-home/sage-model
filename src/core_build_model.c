@@ -366,9 +366,19 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         actual_dt = deltaT / STEPS;
     }
 
+    // Initialize regimes for first time (before main evolution loop)
+    if(run_params->CGMrecipeOn > 0) {
+        determine_and_cache_regime(ngal, galaxies, run_params);
+    }
+
 
     // We integrate things forward by using a number of intervals equal to nsteps
     for(int step = 0; step < nsteps; step++) {
+
+        // CACHE REGIMES FOR ALL GALAXIES AT START OF TIMESTEP
+        if(run_params->CGMrecipeOn > 0) {
+            determine_and_cache_regime(ngal, galaxies, run_params);
+        }
 
         // Loop over all galaxies in the halo
         for(int p = 0; p < ngal; p++) {
@@ -386,17 +396,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // For the central galaxy only
             if(p == centralgal) {
-                // Handle regime transitions before processing infall
-                if(run_params->CGMrecipeOn > 0) {
-                    handle_regime_transition(centralgal, galaxies, run_params);
-                }
                 
                 if(run_params->CGMrecipeOn > 0) {
-                    // Use regime-aware infall based on r_cool/R_vir ratio
-                    double rcool_to_rvir = calculate_rcool_to_rvir_ratio(centralgal, galaxies, run_params);
                     double infall_amount = infallingGas * actual_dt / deltaT;
                     
-                    if(rcool_to_rvir > 1.0) {
+                    if(galaxies[p].Regime == 0) {
                         // Low-mass regime: r_cool > R_vir, all gas goes to CGM
                         add_infall_to_cgm(centralgal, infall_amount, galaxies);
                     } else {
@@ -412,7 +416,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 //     reincorporate_gas(centralgal, actual_dt, galaxies, run_params);
                 // }
             } else {
-                if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
+                if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0 && galaxies[p].CGMgas > 0.0) {
                     strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
                 }
             }
@@ -475,13 +479,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 }
             }
         }
+        // Handle regime transitions before processing infall
+        if(run_params->CGMrecipeOn > 0) {
+            handle_regime_transition(centralgal, galaxies, run_params);
+        }
     } // Go on to the next STEPS substep
-
-
-    // FINAL REGIME CONSISTENCY CHECK: Ensure gas is in correct reservoir based on halo mass
-    if(run_params->CGMrecipeOn == 1) {
-        final_regime_consistency_check(ngal, galaxies, run_params);
-    }
 
     // Extra miscellaneous stuff before finishing this halo
     galaxies[centralgal].TotalSatelliteBaryons = 0.0;
