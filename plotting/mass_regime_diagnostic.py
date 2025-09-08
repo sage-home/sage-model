@@ -75,6 +75,8 @@ def analyze_mass_regime():
     Cooling = read_hdf(snap_num=Snapshot, param='Cooling')
     Regime = read_hdf(snap_num=Snapshot, param='Regime')
     RcoolToRvir = read_hdf(snap_num=Snapshot, param='RcoolToRvir')
+    Tvir = 35.9 * Vvir * Vvir  # Virial temperature in K
+    TmaxTvir = 2.5e5 / Tvir  # Threshold ratio for regime determination
     
     print(f'Total galaxies loaded: {len(Mvir):,}')
     
@@ -93,15 +95,17 @@ def analyze_mass_regime():
     Cooling_c = Cooling[mask]
     Regime_c = Regime[mask]
     RcoolToRvir_c = RcoolToRvir[mask]
-    
+    Tvir_c = Tvir[mask]
+    TmaxTvir_c = TmaxTvir[mask]
+
     print(f'Central galaxies analyzed: {len(Mvir_c):,}')
     print(Regime_c)
     
     # Calculate derived properties
     TotalSfr = SfrDisk_c + SfrBulge_c
     TotalGas = HotGas_c + CGMgas_c + ColdGas_c
-    Tvir = 35.9 * Vvir_c * Vvir_c  # Virial temperature in K
-    
+    Tvir = Tvir_c  # Virial temperature in K
+
     # Physics-based regime classification
     cgm_regime = (Regime_c == 0)  # CGM regime: rcool > Rvir
     hot_regime = (Regime_c == 1)  # HOT regime: rcool < Rvir

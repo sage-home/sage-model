@@ -46,13 +46,15 @@ double cooling_recipe_hot(const int gal, const double dt, struct GALAXY *galaxie
         const double rcool = sqrt(rho0 / rho_rcool);
 
         coolingGas = 0.0;
-        if(rcool > galaxies[gal].Rvir) {
-            // "cold accretion" regime
-            coolingGas = galaxies[gal].HotGas / (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
-        } else {
-            // "hot halo cooling" regime
-            coolingGas = (galaxies[gal].HotGas / galaxies[gal].Rvir) * (rcool / (2.0 * tcool)) * dt;
-        }
+        // if(rcool > galaxies[gal].Rvir) {
+        //     // "cold accretion" regime
+        //     coolingGas = galaxies[gal].HotGas / (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
+        // } else {
+        //     // "hot halo cooling" regime
+        //     coolingGas = (galaxies[gal].HotGas / galaxies[gal].Rvir) * (rcool / (2.0 * tcool)) * dt;
+        // }
+
+        coolingGas = (galaxies[gal].HotGas / galaxies[gal].Rvir) * (rcool / (2.0 * tcool)) * dt;
 
         if(coolingGas > galaxies[gal].HotGas) {
             coolingGas = galaxies[gal].HotGas;

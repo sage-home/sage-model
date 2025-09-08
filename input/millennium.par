@@ -51,8 +51,7 @@ SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 MassLoadingOn         1   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
-DynamicalTimeResolutionFactor    2      %Optimal balance: 2 timesteps per dynamical time
-CGMrecipeOn           1
+CGMrecipeOn           1   %0: switch off
 
 %------------------------------------------
 %----- SAGE model parameters --------------
@@ -81,6 +80,8 @@ Reionization_zr         7.0   %using the analytic fit of Kravtsov et al. 2004 (R
 
 EnergySN                1.0e51  %energy per supernova
 EtaSN                   5.0e-3  %supernova efficiency
+
+DynamicalTimeResolutionFactor    2      %Optimal balance: 2 timesteps per dynamical time
 
 %------------------------------------------
 %----- Other code-related information -----

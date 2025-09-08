@@ -511,9 +511,9 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     add_infall_to_hot(centralgal, infallingGas * actual_dt / deltaT, galaxies);
                 }
 
-                // if(run_params->ReIncorporationFactor > 0.0) {
-                //     reincorporate_gas(centralgal, actual_dt, galaxies, run_params);
-                // }
+                if(run_params->ReIncorporationFactor > 0.0) {
+                    reincorporate_gas(centralgal, actual_dt, galaxies, run_params);
+                }
             } else {
                 if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0 && galaxies[p].CGMgas > 0.0) {
                     strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
@@ -683,13 +683,15 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 if(run_params->CGMrecipeOn > 0) {
                     final_regime_mass_enforcement(ngal, galaxies, run_params);
                 }
-                double final_rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                const double Vvir_threshold = 90.0;  // km/s
+                // double final_rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
+                // const double Vvir_threshold = 90.0;  // km/s
                 // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
+                const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
+                const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
                 
                 // The ENFORCED regime should be based on velocity threshold
-                int velocity_based_regime = (galaxies[p].Regime == 0 || galaxies[p].Vvir < Vvir_threshold) ? 0 : 1;
-                
+                int velocity_based_regime = (Tvir < Tvir_threshold) ? 0 : 1;
+
                 // Check for violations against the ENFORCED regime (velocity-based)
                 if(galaxies[p].Regime != velocity_based_regime) {
                     printf("ENFORCEMENT FAILURE: Galaxy %d cached_regime=%d expected_velocity_regime=%d Vvir=%.1f\n", 
