@@ -109,33 +109,27 @@ double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY
 
 double calculate_cgm_cool_fraction(const int gal, struct GALAXY *galaxies)
 {
-    // Calculate fraction of CGM gas that can cool efficiently (T < 10^4 K)
-    // Based on observational constraints from Tumlinson+2017, Werk+2014
-    
     if(galaxies[gal].Vvir <= 0.0) return 0.0;
     
-    const double T_vir = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir; // Virial temperature in K
-    const double T_cool = 1.0e4; // Cooling floor temperature in K
+    const double T_vir = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;
+    const double T_threshold = 2.5e5;  // Keres threshold - consistent with regime classification
+    const double T_cool = 1.0e4;       // Cooling floor
     
     double f_cool;
+    
     if(T_vir <= T_cool) {
-        // Low-mass halos: most gas can cool
-        f_cool = 0.9;
+        // Very low temperature: almost all gas can cool
+        f_cool = 0.95;
+    } else if(T_vir <= T_threshold) {
+        // CGM regime: efficient cooling but temperature-dependent
+        // Smooth transition from 95% to 60%
+        double temp_factor = (T_vir - T_cool) / (T_threshold - T_cool);
+        f_cool = 0.95 - 0.35 * temp_factor;
     } else {
-        // Temperature-dependent cooling fraction
-        // Power-law model based on observational constraints
-        f_cool = pow(T_cool / T_vir, 0.7);
-        
-        // Apply observational limits
-        if(galaxies[gal].Mvir < 1.0e12) {
-            // Low-mass halos: higher cool fraction (50-80%)
-            f_cool = fmax(f_cool, 0.5);
-            f_cool = fmin(f_cool, 0.8);
-        } else {
-            // High-mass halos: lower cool fraction (10-30%)
-            f_cool = fmax(f_cool, 0.1);
-            f_cool = fmin(f_cool, 0.3);
-        }
+        // HOT regime: poor cooling efficiency
+        f_cool = 0.6 * pow(T_threshold / T_vir, 0.7);
+        f_cool = fmax(f_cool, 0.05);  // Minimum cooling
+        f_cool = fmin(f_cool, 0.30);  // Maximum for hot regime
     }
     
     return f_cool;
