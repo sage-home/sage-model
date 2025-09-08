@@ -95,7 +95,7 @@ def analyze_mass_regime():
     RcoolToRvir_c = RcoolToRvir[mask]
     
     print(f'Central galaxies analyzed: {len(Mvir_c):,}')
-    print()
+    print(Regime_c)
     
     # Calculate derived properties
     TotalSfr = SfrDisk_c + SfrBulge_c
@@ -150,7 +150,9 @@ def analyze_mass_regime():
     print(f"  Min: {np.min(RcoolToRvir_c):.2e}, Max: {np.max(RcoolToRvir_c):.2e}")
 
     create_rcool_diagnostic_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, RcoolToRvir_c)
-    
+    create_regime_colored_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, RcoolToRvir_c)
+    create_single_regime_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, RcoolToRvir_c)
+
     # In your plotting function, before creating scatter plots:
     print(f"Galaxies with any HotGas > 0: {np.sum(HotGas > 0)}")
     print(f"Galaxies with any CGMgas > 0: {np.sum(CGMgas > 0)}")
@@ -363,14 +365,144 @@ def create_rcool_diagnostic_plot(Mvir, HotGas, CGMgas, Regime_c, rcool_to_rvir,O
     high_mass = Mvir >= 1e12
     
     print(f"\nKEY PHYSICS INSIGHTS:")
-    print(f"Low-mass haloes in HOT regime: {np.sum(low_mass & hot_regime):,}")
+
+    n_low_hot = np.sum(low_mass & hot_regime)
+    print(f"Low-mass haloes in HOT regime: {n_low_hot:,}")
     print(f"  These have r_cool < R_vir despite low mass")
-    print(f"  Mass range: {Mvir[low_mass & hot_regime].min():.2e} to {Mvir[low_mass & hot_regime].max():.2e} M☉")
+    subset = Mvir[low_mass & hot_regime]
+    if subset.size > 0:
+        print(f"  Mass range: {subset.min():.2e} to {subset.max():.2e} M☉")
+    else:
+        print("  Mass range: N/A (no low-mass HOT regime haloes)")
     
     print(f"\nHigh-mass haloes in CGM regime: {np.sum(high_mass & cgm_regime):,}")
     print(f"  These have r_cool > R_vir despite high mass")
     if np.sum(high_mass & cgm_regime) > 0:
         print(f"  Mass range: {Mvir[high_mass & cgm_regime].min():.2e} to {Mvir[high_mass & cgm_regime].max():.2e} M☉")
+
+def create_regime_colored_plot(Mvir, HotGas, CGMgas, Regime_c, rcool_to_rvir, OutputDir='./output/millennium/plots/'):
+    """Create r_cool/R_vir vs mass plot colored by regime (like Keres et al.)"""
+    
+    cgm_regime = (Regime_c == 0)
+    hot_regime = (Regime_c == 1)
+
+    print(f"CGM regime count: {np.sum(cgm_regime)}")
+    print(f"CGM regime Mvir range: {Mvir[cgm_regime].min() if np.sum(cgm_regime) else 'N/A'} to {Mvir[cgm_regime].max() if np.sum(cgm_regime) else 'N/A'}")
+    print(f"CGM regime rcool_to_rvir range: {rcool_to_rvir[cgm_regime].min() if np.sum(cgm_regime) else 'N/A'} to {rcool_to_rvir[cgm_regime].max() if np.sum(cgm_regime) else 'N/A'}")
+    
+    # Create the figure in Keres-style layout
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
+    
+    # Left panel: CGM regime systems (blue)
+    ax1.scatter(Mvir[cgm_regime], rcool_to_rvir[cgm_regime], 
+               c='blue', alpha=0.6, s=8, edgecolors='none')
+    
+    # Add regime boundary and mass threshold
+    ax1.axhline(y=1.0, color='black', linestyle='--', linewidth=2)
+    ax1.axvline(x=1e12, color='gray', linestyle=':', alpha=0.7)
+    
+    # Add text annotations like Keres
+    ax1.text(0.5, 0.85, 'systems in the\n"rapid cooling"\ninfall regime', 
+             transform=ax1.transAxes, fontsize=12, ha='center',
+             bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
+    
+    ax1.set_xlim(1e10, 5e11)
+    ax1.set_ylim(0.8, 7.0)
+    ax1.set_xscale('log')
+    ax1.set_xlabel('M_vir / M☉')
+    ax1.set_ylabel('r_cool / R_vir')
+    ax1.grid(True, alpha=0.3)
+    
+    # Right panel: HOT regime systems (red)  
+    ax2.scatter(Mvir[hot_regime], rcool_to_rvir[hot_regime], 
+               c='red', alpha=0.6, s=8, edgecolors='none')
+    
+    # Add regime boundary and mass threshold
+    ax2.axhline(y=1.0, color='black', linestyle='--', linewidth=2)
+    ax2.axvline(x=1e12, color='gray', linestyle=':', alpha=0.7)
+    
+    # Add text annotations
+    ax2.text(0.5, 0.85, 'systems that have\nformed a static\nhot halo', 
+             transform=ax2.transAxes, fontsize=12, ha='center',
+             bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.8))
+    
+    ax2.set_xlim(5e10, 1e15)
+    ax2.set_ylim(0, 1.0)
+    ax2.set_xscale('log')
+    ax2.set_xlabel('M_vir / M☉')
+    ax2.set_ylabel('r_cool / R_vir')
+    ax2.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    
+    # Add figure caption
+    fig.text(0.5, 0.02, 
+             'Figure: The ratio of cooling radius to virial radius for simulated systems at z=0 plotted against their dark\n'
+             'matter virial mass. Systems in the "rapid cooling" regime are shown in the left panel, while those that have\n'
+             'formed a static hot halo are shown in the right panel. A sharp transition between the two regimes is seen\n'
+             'close to that found by Kereš et al. (2005).', 
+             fontsize=10, ha='center', va='bottom', wrap=True)
+    
+    plt.subplots_adjust(bottom=0.15)  # Make room for caption
+    
+    plt.savefig(OutputDir + 'keres_style_regime_plot.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig(OutputDir + 'keres_style_regime_plot.png', dpi=300, bbox_inches='tight')
+    print(f'Keres-style regime plots saved to {OutputDir}keres_style_regime_plot.[pdf/png]')
+    
+    # Print statistics
+    print(f"\nREGIME STATISTICS:")
+    print(f"CGM regime galaxies: {np.sum(cgm_regime):,} ({100*np.sum(cgm_regime)/len(Mvir):.1f}%)")
+    print(f"HOT regime galaxies: {np.sum(hot_regime):,} ({100*np.sum(hot_regime)/len(Mvir):.1f}%)")
+    
+    # Mass ranges
+    if np.sum(cgm_regime) > 0:
+        cgm_masses = Mvir[cgm_regime]
+        print(f"CGM regime mass range: {cgm_masses.min():.2e} to {cgm_masses.max():.2e} M☉")
+    
+    if np.sum(hot_regime) > 0:
+        hot_masses = Mvir[hot_regime]
+        print(f"HOT regime mass range: {hot_masses.min():.2e} to {hot_masses.max():.2e} M☉")
+
+# Alternative single panel version (like your original plot)
+def create_single_regime_plot(Mvir, HotGas, CGMgas, Regime_c, rcool_to_rvir, OutputDir='./output/millennium/plots/'):
+    """Create single panel version colored by regime"""
+    
+    cgm_regime = (Regime_c == 0)
+    hot_regime = (Regime_c == 1)
+    
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+    
+    # Plot both regimes on same panel
+    ax.scatter(Mvir[cgm_regime], rcool_to_rvir[cgm_regime], 
+               c='blue', alpha=0.6, s=12, label=f'CGM regime ({np.sum(cgm_regime):,})', 
+               edgecolors='none')
+    ax.scatter(Mvir[hot_regime], rcool_to_rvir[hot_regime], 
+               c='red', alpha=0.6, s=12, label=f'HOT regime ({np.sum(hot_regime):,})', 
+               edgecolors='none')
+    
+    # Add boundaries
+    ax.axhline(y=1.0, color='black', linestyle='--', linewidth=2, 
+               label='r_cool = R_vir (regime boundary)')
+    ax.axvline(x=1e12, color='gray', linestyle=':', alpha=0.7, 
+               label='1e12 M☉')
+    
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel('Halo Mass [M☉]')
+    ax.set_ylabel('r_cool / R_vir')
+    ax.set_title('Regime Classification: r_cool/R_vir vs Halo Mass')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(0.1, 10)
+    
+    plt.tight_layout()
+    plt.savefig(OutputDir + 'single_regime_plot.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig(OutputDir + 'single_regime_plot.png', dpi=300, bbox_inches='tight')
+    print(f'Single regime plot saved to {OutputDir}single_regime_plot.[pdf/png]')
+
+# Call whichever version you prefer:
+# create_regime_colored_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, rcool_to_rvir_c)
+# create_single_regime_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, rcool_to_rvir_c)
 
 def create_diagnostic_plots(Mvir, StellarMass, HotGas, CGMgas, ColdGas, TotalSfr, Tvir,
                           cgm_regime, hot_regime, has_hotgas, has_cgmgas,
