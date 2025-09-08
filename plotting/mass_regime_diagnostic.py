@@ -483,8 +483,7 @@ def create_single_regime_plot(Mvir, HotGas, CGMgas, Regime_c, rcool_to_rvir, Out
     # Add boundaries
     ax.axhline(y=1.0, color='black', linestyle='--', linewidth=2, 
                label='r_cool = R_vir (regime boundary)')
-    ax.axvline(x=1e12, color='gray', linestyle=':', alpha=0.7, 
-               label='1e12 M☉')
+    ax.axvline(x=2e11, color='black', linestyle=':', alpha=0.7)
     
     ax.set_xscale('log')
     ax.set_yscale('log')
@@ -494,6 +493,7 @@ def create_single_regime_plot(Mvir, HotGas, CGMgas, Regime_c, rcool_to_rvir, Out
     ax.legend()
     ax.grid(True, alpha=0.3)
     ax.set_ylim(0.1, 10)
+    ax.set_xlim(1e10, 1e15)
     
     plt.tight_layout()
     plt.savefig(OutputDir + 'single_regime_plot.pdf', dpi=300, bbox_inches='tight')

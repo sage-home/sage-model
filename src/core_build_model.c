@@ -579,10 +579,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             }
         }
     } // Go on to the next STEPS substep
-    // FINAL REGIME MASS ENFORCEMENT: Apply mass threshold at end of timestep
-    if(run_params->CGMrecipeOn > 0) {
-        final_regime_mass_enforcement(ngal, galaxies, run_params);
-    }
 
     // Extra miscellaneous stuff before finishing this halo
     galaxies[centralgal].TotalSatelliteBaryons = 0.0;
@@ -682,18 +678,17 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // FINAL REGIME CONSISTENCY CHECK BEFORE OUTPUT (UPDATED FOR VVIR)
             if(run_params->CGMrecipeOn > 0) {
+
+                // FINAL REGIME MASS ENFORCEMENT: Apply mass threshold at end of timestep
+                if(run_params->CGMrecipeOn > 0) {
+                    final_regime_mass_enforcement(ngal, galaxies, run_params);
+                }
                 double final_rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                const double Vvir_threshold = 80.0;  // km/s
+                const double Vvir_threshold = 90.0;  // km/s
+                // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
                 
                 // The ENFORCED regime should be based on velocity threshold
-                int velocity_based_regime = (galaxies[p].Vvir < Vvir_threshold) ? 0 : 1;
-                int physics_regime = (final_rcool_ratio > 1.0) ? 0 : 1;
-                
-                // Print diagnostic info about regime determination
-                // if(physics_regime != velocity_based_regime) {
-                //     printf("REGIME OVERRIDE: Galaxy %d physics_regime=%d velocity_regime=%d rcool/Rvir=%.3f Vvir=%.1f\n", 
-                //         p, physics_regime, velocity_based_regime, final_rcool_ratio, galaxies[p].Vvir);
-                // }
+                int velocity_based_regime = (galaxies[p].Regime == 0 || galaxies[p].Vvir < Vvir_threshold) ? 0 : 1;
                 
                 // Check for violations against the ENFORCED regime (velocity-based)
                 if(galaxies[p].Regime != velocity_based_regime) {
