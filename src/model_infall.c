@@ -360,12 +360,12 @@ void determine_and_cache_regime(const int ngal, struct GALAXY *galaxies, const s
         const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
         
         // Use Vvir threshold instead of mass threshold
-        const double Vvir_threshold = 60.0;  // km/s, corresponds to ~1e12 M☉ and T_vir ~1e5 K
+        const double Vvir_threshold = 80.0;  // km/s, corresponds to ~1e12 M☉ and T_vir ~1e5 K
         
         // FIXED: Determine regime based on BOTH cooling radius AND virial velocity
-        // CGM regime (0): BOTH rcool > Rvir AND Vvir < 60 km/s
-        // HOT regime (1): EITHER rcool <= Rvir OR Vvir >= 60 km/s
-        
+        // CGM regime (0): BOTH rcool > Rvir AND Vvir < 100 km/s
+        // HOT regime (1): EITHER rcool <= Rvir OR Vvir >= 100 km/s
+
         galaxies[p].Regime = (rcool_to_rvir > 1.0 && galaxies[p].Vvir < Vvir_threshold) ? 0 : 1;
         
         // ALSO enforce the regime immediately to prevent inconsistencies
@@ -399,7 +399,7 @@ void handle_regime_transition(const int gal, struct GALAXY *galaxies, const stru
     const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(gal, galaxies, run_params);
     
     // Use Vvir threshold instead of mass threshold
-    const double Vvir_threshold = 120.0;  // km/s
+    const double Vvir_threshold = 80.0;  // km/s
     
     // FIXED: Use BOTH conditions to determine current regime
     const int current_regime = (rcool_to_rvir > 1.0 && galaxies[gal].Vvir < Vvir_threshold) ? 0 : 1;
@@ -437,7 +437,7 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
         if(galaxies[p].mergeType > 0) continue;
         
         // Use Vvir threshold instead of mass threshold
-        const double Vvir_threshold = 120.0;  // km/s
+        const double Vvir_threshold = 80.0;  // km/s
         
         // ENFORCE VELOCITY THRESHOLD: Vvir < 60 km/s -> CGM, Vvir >= 60 km/s -> HOT
         // This is the final arbiter that overrides physics-based regime determination

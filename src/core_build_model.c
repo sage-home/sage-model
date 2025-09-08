@@ -683,7 +683,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             // FINAL REGIME CONSISTENCY CHECK BEFORE OUTPUT (UPDATED FOR VVIR)
             if(run_params->CGMrecipeOn > 0) {
                 double final_rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                const double Vvir_threshold = 120.0;  // km/s
+                const double Vvir_threshold = 80.0;  // km/s
                 
                 // The ENFORCED regime should be based on velocity threshold
                 int velocity_based_regime = (galaxies[p].Vvir < Vvir_threshold) ? 0 : 1;
