@@ -423,10 +423,12 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             }
             
             if(violation) {
+                double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir;
+                double Tvir_threshold = 2.5e5;
                 double rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                printf("  Galaxy %d: Regime=%s, r_cool/R_vir=%.3f, Mvir=%.2e\n", 
+                printf("  Galaxy %d: Regime=%s, r_cool/R_vir=%.3f, Tmax/Tvir=%.3f, Mvir=%.2e\n", 
                     p, (galaxies[p].Regime == 0) ? "CGM" : "HOT", 
-                    rcool_ratio, galaxies[p].Mvir);
+                    rcool_ratio, Tvir_threshold / Tvir, galaxies[p].Mvir); 
             }
         }
         
@@ -580,6 +582,10 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         }
     } // Go on to the next STEPS substep
 
+    if(run_params->CGMrecipeOn > 0) {
+        final_regime_mass_enforcement(ngal, galaxies, run_params);
+    }
+
     // Extra miscellaneous stuff before finishing this halo
     galaxies[centralgal].TotalSatelliteBaryons = 0.0;
     // const double deltaT = run_params->Age[galaxies[0].SnapNum] - halo_age;
@@ -601,17 +607,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 (galaxies[p].StellarMass + galaxies[p].BlackHoleMass + galaxies[p].ColdGas + galaxies[p].HotGas);
         }
     }
-
-    // FINAL REGIME CLEANUP: Apply current physics-based regimes to all galaxies
-    // if(run_params->CGMrecipeOn > 0) {
-    //     determine_and_cache_regime(ngal, galaxies, run_params);
-    //     for(int p = 0; p < ngal; p++) {
-    //         handle_regime_transition(p, galaxies, run_params);
-    //     }
-        
-    //     // FINAL MASS ENFORCEMENT: Override physics with mass threshold
-    //     final_regime_mass_enforcement(ngal, galaxies, run_params);
-    // }
 
     // Attach final galaxy list to halo
     for(int p = 0, currenthalo = -1; p < ngal; p++) {
@@ -676,13 +671,13 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     "This would result in invalid memory access...exiting\n",
                     *numgals, *maxgals);
 
+            // FINAL REGIME MASS ENFORCEMENT: Apply mass threshold at end of timestep
+                // if(run_params->CGMrecipeOn > 0) {
+                //     final_regime_mass_enforcement(ngal, galaxies, run_params);
+                // }
             // FINAL REGIME CONSISTENCY CHECK BEFORE OUTPUT (UPDATED FOR VVIR)
             if(run_params->CGMrecipeOn > 0) {
 
-                // FINAL REGIME MASS ENFORCEMENT: Apply mass threshold at end of timestep
-                if(run_params->CGMrecipeOn > 0) {
-                    final_regime_mass_enforcement(ngal, galaxies, run_params);
-                }
                 // double final_rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
                 // const double Vvir_threshold = 90.0;  // km/s
                 // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);

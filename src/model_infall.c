@@ -431,7 +431,6 @@ void handle_regime_transition(const int gal, struct GALAXY *galaxies, const stru
     }
 }
 
-// UPDATED: Final mass enforcement now uses Vvir instead of Mvir
 void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, const struct params *run_params)
 {
     if(run_params->CGMrecipeOn != 1) {

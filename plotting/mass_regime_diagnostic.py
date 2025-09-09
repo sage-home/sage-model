@@ -156,6 +156,10 @@ def analyze_mass_regime():
     create_rcool_diagnostic_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, RcoolToRvir_c)
     create_regime_colored_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, RcoolToRvir_c)
     create_single_regime_plot(Mvir_c, HotGas_c, CGMgas_c, Regime_c, RcoolToRvir_c)
+    create_regime_fraction_vs_stellar_mass_plot(Mvir_c, StellarMass_c, Regime_c)
+    create_regime_fraction_vs_halo_mass_plot(Mvir_c, StellarMass_c, Regime_c)
+
+
 
     # In your plotting function, before creating scatter plots:
     print(f"Galaxies with any HotGas > 0: {np.sum(HotGas > 0)}")
@@ -275,7 +279,367 @@ def print_diagnostics(Mvir, low_mass, high_mass, has_hotgas, has_cgmgas,
         print(f'  Problem high-mass galaxies (with CGMgas):')
         print(f'    Mvir range: {problem_mvir.min():.2e} to {problem_mvir.max():.2e} M☉')
 
-# Add this to your diagnostic script to create the key figure
+def create_regime_fraction_vs_halo_mass_plot(Mvir, StellarMass, Regime_c, OutputDir='./output/millennium/plots/'):
+    """
+    Create plot showing fraction of CGM/Hot regime galaxies vs halo mass
+    
+    Parameters:
+    -----------
+    Mvir : array
+        Halo masses
+    StellarMass : array  
+        Stellar masses
+    Regime_c : array
+        Regime classification (0=CGM, 1=HOT)
+    OutputDir : str
+        Output directory for plots
+    """
+    
+    # Filter galaxies with halo mass in the range 10^10 to 10^15 M_sun
+    halo_mass_min = 1e10
+    halo_mass_max = 1e15
+    valid_halo = (Mvir >= halo_mass_min) & (Mvir <= halo_mass_max)
+    
+    Mvir_valid = Mvir[valid_halo]
+    Regime_valid = Regime_c[valid_halo]
+    StellarMass_valid = StellarMass[valid_halo]
+    
+    print(f"Galaxies in halo mass range {halo_mass_min:.0e} - {halo_mass_max:.0e} M☉: {len(Mvir_valid):,}")
+    
+    # Define halo mass bins (logarithmic spacing) - covering typical range
+    halo_mass_bins = np.logspace(np.log10(halo_mass_min), np.log10(halo_mass_max), 25)
+    halo_mass_centers = (halo_mass_bins[1:] + halo_mass_bins[:-1]) / 2
+    
+    # Calculate regime fractions in each halo mass bin
+    cgm_fractions = []
+    hot_fractions = []
+    galaxy_counts = []
+    
+    for i in range(len(halo_mass_bins)-1):
+        # Find galaxies in this halo mass bin
+        mask_bin = (Mvir_valid >= halo_mass_bins[i]) & (Mvir_valid < halo_mass_bins[i+1])
+        n_galaxies_in_bin = np.sum(mask_bin)
+        
+        galaxy_counts.append(n_galaxies_in_bin)
+        
+        if n_galaxies_in_bin > 5:  # Only calculate fractions if enough galaxies
+            regime_in_bin = Regime_valid[mask_bin]
+            
+            # Calculate fractions
+            n_cgm = np.sum(regime_in_bin == 0)  # CGM regime
+            n_hot = np.sum(regime_in_bin == 1)  # HOT regime
+            
+            cgm_fraction = n_cgm / n_galaxies_in_bin
+            hot_fraction = n_hot / n_galaxies_in_bin
+            
+            cgm_fractions.append(cgm_fraction)
+            hot_fractions.append(hot_fraction)
+        else:
+            cgm_fractions.append(np.nan)
+            hot_fractions.append(np.nan)
+    
+    # Create the plot
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+    
+    # Top panel: Regime fractions vs halo mass
+    valid_points = ~np.isnan(cgm_fractions)
+    
+    ax1.plot(halo_mass_centers[valid_points], np.array(cgm_fractions)[valid_points], 
+             'b-o', linewidth=2, markersize=6, label='CGM regime fraction', markerfacecolor='lightblue')
+    ax1.plot(halo_mass_centers[valid_points], np.array(hot_fractions)[valid_points], 
+             'r-s', linewidth=2, markersize=6, label='HOT regime fraction', markerfacecolor='lightcoral')
+    
+    # Add regime boundary indicators
+    ax1.axhline(y=0.5, color='gray', linestyle='--', alpha=0.7, label='50% transition')
+    ax1.axvline(x=1e12, color='black', linestyle=':', alpha=0.7, label='10^12 M☉ (classic threshold)')
+    
+    # Formatting to match your reference figure style
+    ax1.set_xscale('log')
+    ax1.set_xlabel('log M_vir [M☉]')
+    ax1.set_ylabel('f')
+    ax1.set_title('CGM vs HOT Regime Fractions vs Halo Mass')
+    ax1.legend(fontsize=11, loc='center right')
+    ax1.grid(True, alpha=0.3)
+    ax1.set_ylim(0, 1.0)
+    ax1.set_xlim(1e10, 1e14)  # Focus on the interesting mass range
+    
+    # Format x-axis to show log values like in your figure
+    ax1.set_xticks([1e10, 1e11, 1e12, 1e13, 1e14])
+    ax1.set_xticklabels(['10', '11', '12', '13', '14'])
+    
+    # Add text annotation
+    ax1.text(0.05, 0.95, 
+             'CGM regime: r_cool > R_vir\n(cold accretion)', 
+             transform=ax1.transAxes, fontsize=10, va='top',
+             bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
+    
+    ax1.text(0.05, 0.75, 
+             'HOT regime: r_cool < R_vir\n(virial shock heating)', 
+             transform=ax1.transAxes, fontsize=10, va='top',
+             bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.8))
+    
+    # Bottom panel: Number of galaxies in each bin
+    ax2.bar(halo_mass_centers, galaxy_counts, 
+            width=np.diff(halo_mass_bins), alpha=0.6, color='gray', 
+            edgecolor='black', linewidth=0.5)
+    
+    ax2.set_xscale('log')
+    ax2.set_xlabel('log M_vir [M☉]')
+    ax2.set_ylabel('Number of Galaxies')
+    ax2.set_title('Galaxy Count Distribution')
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xlim(1e10, 1e14)  # Match main plot limits
+    
+    # Format x-axis consistently
+    ax2.set_xticks([1e10, 1e11, 1e12, 1e13, 1e14])
+    ax2.set_xticklabels(['10', '11', '12', '13', '14'])
+    
+    # Add minimum count threshold line
+    ax2.axhline(y=5, color='red', linestyle=':', alpha=0.7, 
+                label='Min. count for statistics')
+    ax2.legend(fontsize=10)
+    
+    plt.tight_layout()
+    
+    # Save the plot
+    plt.savefig(OutputDir + 'regime_fraction_vs_halo_mass.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig(OutputDir + 'regime_fraction_vs_halo_mass.png', dpi=300, bbox_inches='tight')
+    print(f'Regime fraction vs halo mass plot saved to {OutputDir}regime_fraction_vs_halo_mass.[pdf/png]')
+    
+    # Print some key statistics
+    print(f"\nREGIME TRANSITION ANALYSIS (M_vir range: 10^10 - 10^15 M☉):")
+    print(f"Total galaxies in halo mass range: {len(Mvir_valid):,}")
+    
+    # Find halo mass where regimes are roughly equal (50% transition)
+    if np.any(valid_points):
+        cgm_fracs_valid = np.array(cgm_fractions)[valid_points]
+        halo_centers_valid = halo_mass_centers[valid_points]
+        
+        # Find where CGM fraction drops below 0.5
+        transition_indices = np.where(cgm_fracs_valid < 0.5)[0]
+        if len(transition_indices) > 0:
+            transition_halo_mass = halo_centers_valid[transition_indices[0]]
+            transition_log_mass = np.log10(transition_halo_mass)
+            print(f"Regime transition around log M_vir: {transition_log_mass:.1f} (M_vir = {transition_halo_mass:.2e} M☉)")
+        
+        # Show halo mass ranges for each regime
+        cgm_dominant = cgm_fracs_valid > 0.5
+        hot_dominant = cgm_fracs_valid < 0.5
+        
+        if np.any(cgm_dominant):
+            cgm_halo_range = halo_centers_valid[cgm_dominant]
+            cgm_log_min = np.log10(cgm_halo_range.min())
+            cgm_log_max = np.log10(cgm_halo_range.max())
+            print(f"CGM-dominated log M_vir range: {cgm_log_min:.1f} to {cgm_log_max:.1f}")
+        
+        if np.any(hot_dominant):
+            hot_halo_range = halo_centers_valid[hot_dominant]
+            hot_log_min = np.log10(hot_halo_range.min())
+            hot_log_max = np.log10(hot_halo_range.max())
+            print(f"HOT-dominated log M_vir range: {hot_log_min:.1f} to {hot_log_max:.1f}")
+    
+    # Show overall regime distribution
+    n_cgm_total = np.sum(Regime_valid == 0)
+    n_hot_total = np.sum(Regime_valid == 1)
+    total_valid = len(Regime_valid)
+    
+    print(f"\nOVERALL REGIME DISTRIBUTION:")
+    print(f"CGM regime: {n_cgm_total:,} ({100*n_cgm_total/total_valid:.1f}%)")
+    print(f"HOT regime: {n_hot_total:,} ({100*n_hot_total/total_valid:.1f}%)")
+    
+    # Compare with classic 10^12 M_sun threshold
+    low_mass_classic = Mvir_valid < 1e12
+    high_mass_classic = Mvir_valid >= 1e12
+    
+    print(f"\nCOMPARISON WITH CLASSIC 10^12 M☉ THRESHOLD:")
+    if np.sum(low_mass_classic) > 0:
+        cgm_frac_low = np.sum((Regime_valid[low_mass_classic] == 0)) / np.sum(low_mass_classic)
+        print(f"CGM regime fraction in M_vir < 10^12: {cgm_frac_low:.2f}")
+    
+    if np.sum(high_mass_classic) > 0:
+        hot_frac_high = np.sum((Regime_valid[high_mass_classic] == 1)) / np.sum(high_mass_classic)
+        print(f"HOT regime fraction in M_vir ≥ 10^12: {hot_frac_high:.2f}")
+    
+    return {
+        'halo_mass_centers': halo_mass_centers,
+        'cgm_fractions': cgm_fractions,
+        'hot_fractions': hot_fractions,
+        'galaxy_counts': galaxy_counts
+    }
+
+def create_regime_fraction_vs_stellar_mass_plot(Mvir, StellarMass, Regime_c, OutputDir='./output/millennium/plots/'):
+    """
+    Create plot showing fraction of CGM/Hot regime galaxies vs stellar mass
+    
+    Parameters:
+    -----------
+    Mvir : array
+        Halo masses
+    StellarMass : array  
+        Stellar masses
+    Regime_c : array
+        Regime classification (0=CGM, 1=HOT)
+    OutputDir : str
+        Output directory for plots
+    """
+    
+    # Filter galaxies with stellar mass in the range 10^8 to 10^12 M_sun
+    stellar_mass_min = 1e8
+    stellar_mass_max = 1e12
+    valid_stellar = (StellarMass >= stellar_mass_min) & (StellarMass <= stellar_mass_max)
+    
+    StellarMass_valid = StellarMass[valid_stellar]
+    Regime_valid = Regime_c[valid_stellar]
+    Mvir_valid = Mvir[valid_stellar]
+    
+    print(f"Galaxies in stellar mass range {stellar_mass_min:.0e} - {stellar_mass_max:.0e} M☉: {len(StellarMass_valid):,}")
+    
+    # Define stellar mass bins (logarithmic spacing) - matching your figure range
+    stellar_mass_bins = np.logspace(np.log10(stellar_mass_min), np.log10(stellar_mass_max), 25)
+    stellar_mass_centers = (stellar_mass_bins[1:] + stellar_mass_bins[:-1]) / 2
+    
+    # Calculate regime fractions in each stellar mass bin
+    cgm_fractions = []
+    hot_fractions = []
+    galaxy_counts = []
+    
+    for i in range(len(stellar_mass_bins)-1):
+        # Find galaxies in this stellar mass bin
+        mask_bin = (StellarMass_valid >= stellar_mass_bins[i]) & (StellarMass_valid < stellar_mass_bins[i+1])
+        n_galaxies_in_bin = np.sum(mask_bin)
+        
+        galaxy_counts.append(n_galaxies_in_bin)
+        
+        if n_galaxies_in_bin > 5:  # Only calculate fractions if enough galaxies
+            regime_in_bin = Regime_valid[mask_bin]
+            
+            # Calculate fractions
+            n_cgm = np.sum(regime_in_bin == 0)  # CGM regime
+            n_hot = np.sum(regime_in_bin == 1)  # HOT regime
+            
+            cgm_fraction = n_cgm / n_galaxies_in_bin
+            hot_fraction = n_hot / n_galaxies_in_bin
+            
+            cgm_fractions.append(cgm_fraction)
+            hot_fractions.append(hot_fraction)
+        else:
+            cgm_fractions.append(np.nan)
+            hot_fractions.append(np.nan)
+    
+    # Create the plot
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+    
+    # Top panel: Regime fractions vs stellar mass
+    valid_points = ~np.isnan(cgm_fractions)
+    
+    ax1.plot(stellar_mass_centers[valid_points], np.array(cgm_fractions)[valid_points], 
+             'b-o', linewidth=2, markersize=6, label='CGM regime fraction', markerfacecolor='lightblue')
+    ax1.plot(stellar_mass_centers[valid_points], np.array(hot_fractions)[valid_points], 
+             'r-s', linewidth=2, markersize=6, label='HOT regime fraction', markerfacecolor='lightcoral')
+    
+    # Add regime boundary indicators
+    ax1.axhline(y=0.5, color='gray', linestyle='--', alpha=0.7, label='50% transition')
+    
+    # Formatting to match your reference figure
+    ax1.set_xscale('log')
+    ax1.set_xlabel('log M* [M☉]')
+    ax1.set_ylabel('f')
+    ax1.set_title('CGM vs HOT Regime Fractions vs Stellar Mass')
+    ax1.legend(fontsize=11, loc='center right')
+    ax1.grid(True, alpha=0.3)
+    ax1.set_ylim(0, 1.0)
+    ax1.set_xlim(1e9, 1e12)  # Match your figure axis limits
+    
+    # Format x-axis to show log values like in your figure
+    ax1.set_xticks([1e9, 1e10, 1e11, 1e12])
+    ax1.set_xticklabels(['9', '10', '11', '12'])
+    
+    # Add text annotation
+    ax1.text(0.05, 0.95, 
+             'CGM regime: r_cool > R_vir\n(cold accretion)', 
+             transform=ax1.transAxes, fontsize=10, va='top',
+             bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
+    
+    ax1.text(0.05, 0.75, 
+             'HOT regime: r_cool < R_vir\n(virial shock heating)', 
+             transform=ax1.transAxes, fontsize=10, va='top',
+             bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.8))
+    
+    # Bottom panel: Number of galaxies in each bin
+    ax2.bar(stellar_mass_centers, galaxy_counts, 
+            width=np.diff(stellar_mass_bins), alpha=0.6, color='gray', 
+            edgecolor='black', linewidth=0.5)
+    
+    ax2.set_xscale('log')
+    ax2.set_xlabel('log M* [M☉]')
+    ax2.set_ylabel('Number of Galaxies')
+    ax2.set_title('Galaxy Count Distribution')
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xlim(1e9, 1e12)  # Match main plot limits
+    
+    # Format x-axis consistently
+    ax2.set_xticks([1e9, 1e10, 1e11, 1e12])
+    ax2.set_xticklabels(['9', '10', '11', '12'])
+    
+    # Add minimum count threshold line
+    ax2.axhline(y=5, color='red', linestyle=':', alpha=0.7, 
+                label='Min. count for statistics')
+    ax2.legend(fontsize=10)
+    
+    plt.tight_layout()
+    
+    # Save the plot
+    plt.savefig(OutputDir + 'regime_fraction_vs_stellar_mass.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig(OutputDir + 'regime_fraction_vs_stellar_mass.png', dpi=300, bbox_inches='tight')
+    print(f'Regime fraction vs stellar mass plot saved to {OutputDir}regime_fraction_vs_stellar_mass.[pdf/png]')
+    
+    # Print some key statistics
+    print(f"\nREGIME TRANSITION ANALYSIS (M* range: 10^8 - 10^12 M☉):")
+    print(f"Total galaxies in stellar mass range: {len(StellarMass_valid):,}")
+    
+    # Find stellar mass where regimes are roughly equal (50% transition)
+    if np.any(valid_points):
+        cgm_fracs_valid = np.array(cgm_fractions)[valid_points]
+        stellar_centers_valid = stellar_mass_centers[valid_points]
+        
+        # Find where CGM fraction drops below 0.5
+        transition_indices = np.where(cgm_fracs_valid < 0.5)[0]
+        if len(transition_indices) > 0:
+            transition_stellar_mass = stellar_centers_valid[transition_indices[0]]
+            transition_log_mass = np.log10(transition_stellar_mass)
+            print(f"Regime transition around log M*: {transition_log_mass:.1f} (M* = {transition_stellar_mass:.2e} M☉)")
+        
+        # Show stellar mass ranges for each regime
+        cgm_dominant = cgm_fracs_valid > 0.5
+        hot_dominant = cgm_fracs_valid < 0.5
+        
+        if np.any(cgm_dominant):
+            cgm_stellar_range = stellar_centers_valid[cgm_dominant]
+            cgm_log_min = np.log10(cgm_stellar_range.min())
+            cgm_log_max = np.log10(cgm_stellar_range.max())
+            print(f"CGM-dominated log M* range: {cgm_log_min:.1f} to {cgm_log_max:.1f}")
+        
+        if np.any(hot_dominant):
+            hot_stellar_range = stellar_centers_valid[hot_dominant]
+            hot_log_min = np.log10(hot_stellar_range.min())
+            hot_log_max = np.log10(hot_stellar_range.max())
+            print(f"HOT-dominated log M* range: {hot_log_min:.1f} to {hot_log_max:.1f}")
+    
+    # Show overall regime distribution
+    n_cgm_total = np.sum(Regime_valid == 0)
+    n_hot_total = np.sum(Regime_valid == 1)
+    total_valid = len(Regime_valid)
+    
+    print(f"\nOVERALL REGIME DISTRIBUTION:")
+    print(f"CGM regime: {n_cgm_total:,} ({100*n_cgm_total/total_valid:.1f}%)")
+    print(f"HOT regime: {n_hot_total:,} ({100*n_hot_total/total_valid:.1f}%)")
+    
+    return {
+        'stellar_mass_centers': stellar_mass_centers,
+        'cgm_fractions': cgm_fractions,
+        'hot_fractions': hot_fractions,
+        'galaxy_counts': galaxy_counts
+    }
 
 def create_rcool_diagnostic_plot(Mvir, HotGas, CGMgas, Regime_c, rcool_to_rvir,OutputDir='./output/millennium/plots/'):
     """Create diagnostic plot showing r_cool/R_vir vs mass with regime coloring"""
