@@ -192,6 +192,12 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
     galaxies[t].ColdGas += galaxies[p].ColdGas;
     galaxies[t].MetalsColdGas += galaxies[p].MetalsColdGas;
 
+    // Add H2 and HI gas components when using H2-based star formation
+    if (run_params->SFprescription > 0) {
+        galaxies[t].H2_gas += galaxies[p].H2_gas;
+        galaxies[t].HI_gas += galaxies[p].HI_gas;
+    }
+
     galaxies[t].StellarMass += galaxies[p].StellarMass;
     galaxies[t].MetalsStellarMass += galaxies[p].MetalsStellarMass;
 
@@ -274,7 +280,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // The coefficients in eburst are taken from TJ Cox's PhD thesis and should be more accurate then previous.
 
     // Update the gas components to ensure H2 and HI are correctly calculated
-    if (run_params->SFprescription == 1 || run_params->SFprescription == 2) {
+    if (run_params->SFprescription == 1 || run_params->SFprescription == 2 || run_params->SFprescription == 3) {
         update_gas_components(&galaxies[merger_centralgal], run_params);
     }
 
@@ -285,7 +291,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         eburst = 0.56 * pow(mass_ratio, 0.7);
     }
 
-    if(run_params->SFprescription == 1 || run_params->SFprescription == 2) {
+    if(run_params->SFprescription == 1 || run_params->SFprescription == 2 || run_params->SFprescription == 3) {
         stars = eburst * galaxies[merger_centralgal].H2_gas;
     } else {
         stars = eburst * galaxies[merger_centralgal].ColdGas;

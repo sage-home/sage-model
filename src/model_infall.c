@@ -16,6 +16,7 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     double tot_stellarMass, tot_BHMass, tot_coldMass, tot_hotMass, tot_cgm, tot_ICS;
     double tot_cgmMetals, tot_ICSMetals;
     double infallingMass, reionization_modifier;
+    double tot_H2gas, tot_HIgas;
 
     // need to add up all the baryonic mass asociated with the full halo
     tot_stellarMass = tot_coldMass = tot_hotMass = tot_cgm = tot_BHMass = tot_cgmMetals = tot_ICS = tot_ICSMetals = 0.0;
@@ -31,6 +32,11 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         tot_ICS += galaxies[i].ICS;
         tot_ICSMetals += galaxies[i].MetalsICS;
 
+        // Add H2 and HI gas when using H2-based prescriptions
+        if(run_params->SFprescription > 0) {
+            tot_H2gas += galaxies[i].H2_gas;
+            tot_HIgas += galaxies[i].HI_gas;
+        }
 
         if(i != centralgal) {
             // satellite ejected gas goes to central ejected reservior
@@ -38,6 +44,12 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
 
             // satellite ICS goes to central ICS
             galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
+
+            // satellite H2/HI components go to central (when using H2 prescriptions)
+            if(run_params->SFprescription > 0) {
+                galaxies[i].H2_gas = 0.0;
+                galaxies[i].HI_gas = 0.0;
+            }
         }
     }
 
@@ -66,6 +78,16 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
 
     if(galaxies[centralgal].MetalsCGMgas < 0.0) {
         galaxies[centralgal].MetalsCGMgas = 0.0;
+    }
+
+    // the central galaxy keeps all the H2/HI gas (when using H2 prescriptions)
+    if(run_params->SFprescription > 0) {
+        galaxies[centralgal].H2_gas = tot_H2gas;
+        galaxies[centralgal].HI_gas = tot_HIgas;
+        
+        // Sanity checks
+        if(galaxies[centralgal].H2_gas < 0.0) galaxies[centralgal].H2_gas = 0.0;
+        if(galaxies[centralgal].HI_gas < 0.0) galaxies[centralgal].HI_gas = 0.0;
     }
 
     // the central galaxy keeps all the ICS (mostly for numerical convenience)
