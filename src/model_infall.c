@@ -479,6 +479,7 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
                 galaxies[p].CGMgas += galaxies[p].ReincorporatedGas;
                 galaxies[p].HotGas = 0.0;
                 galaxies[p].MetalsHotGas = 0.0;
+                galaxies[p].ReincorporatedGas = 0.0;
             }
             galaxies[p].Regime = 0;
         } else {
@@ -489,6 +490,7 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
                 galaxies[p].HotGas += galaxies[p].ReincorporatedGas;
                 galaxies[p].CGMgas = 0.0;
                 galaxies[p].MetalsCGMgas = 0.0;
+                galaxies[p].ReincorporatedGas = 0.0;
             }
             galaxies[p].Regime = 1;
         }
