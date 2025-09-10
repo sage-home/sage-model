@@ -21,7 +21,7 @@ BoxSize = 62.5         # h-1 Mpc
 VolumeFraction = 1.0   # Fraction of the full volume output by the model
 
 # Mass thresholds for regime classification
-MASS_THRESHOLD = 1e12  # M_sun - threshold for CGM vs Hot regime
+MASS_THRESHOLD = 2e11  # M_sun - threshold for CGM vs Hot regime
 
 # Plotting options
 plt.style.use('default')  # Use default style for now
@@ -81,7 +81,7 @@ def analyze_mass_regime():
     print(f'Total galaxies loaded: {len(Mvir):,}')
     
     # Filter for central galaxies with reasonable masses
-    mask = (Type == 0) & (Mvir > 1e9) & (Vvir > 0)
+    mask = (Type == 0) & (Mvir > 1e10) & (Vvir > 0)
     
     Mvir_c = Mvir[mask]
     StellarMass_c = StellarMass[mask]
@@ -448,18 +448,18 @@ def create_regime_fraction_vs_halo_mass_plot(Mvir, StellarMass, Regime_c, Output
     print(f"HOT regime: {n_hot_total:,} ({100*n_hot_total/total_valid:.1f}%)")
     
     # Compare with classic 10^12 M_sun threshold
-    low_mass_classic = Mvir_valid < 1e12
-    high_mass_classic = Mvir_valid >= 1e12
+    low_mass_classic = Mvir_valid < 2e11
+    high_mass_classic = Mvir_valid >= 2e11
     
     print(f"\nCOMPARISON WITH CLASSIC 10^12 M☉ THRESHOLD:")
     if np.sum(low_mass_classic) > 0:
         cgm_frac_low = np.sum((Regime_valid[low_mass_classic] == 0)) / np.sum(low_mass_classic)
-        print(f"CGM regime fraction in M_vir < 10^12: {cgm_frac_low:.2f}")
-    
+        print(f"CGM regime fraction in M_vir < 10^11: {cgm_frac_low:.2f}")
+
     if np.sum(high_mass_classic) > 0:
         hot_frac_high = np.sum((Regime_valid[high_mass_classic] == 1)) / np.sum(high_mass_classic)
-        print(f"HOT regime fraction in M_vir ≥ 10^12: {hot_frac_high:.2f}")
-    
+        print(f"HOT regime fraction in M_vir ≥ 10^11: {hot_frac_high:.2f}")
+
     return {
         'halo_mass_centers': halo_mass_centers,
         'cgm_fractions': cgm_fractions,

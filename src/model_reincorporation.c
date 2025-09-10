@@ -13,6 +13,13 @@
 void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
 
+    // Early return if reincorporation is disabled
+    if(run_params->ReIncorporationFactor <= 0.0) {
+        printf("DEBUG REINCORP: Early return - ReIncorporationFactor <= 0, setting ReincorporatedGas=0\n");
+        galaxies[centralgal].ReincorporatedGas = 0.0;
+        return;
+    }
+
     // SN velocity is 630km/s, and the condition for reincorporation is that the
     // halo has an escape velocity greater than this, i.e. V_SN/sqrt(2) = 445.48km/s
     const double Vcrit = 445.48 * run_params->ReIncorporationFactor;
