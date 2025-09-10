@@ -31,8 +31,19 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
         const double star_fraction  = 1.0 - gas_fraction;
         const double unstable_stars = star_fraction * (diskmass - Mcrit);
 
-        // This is where ReincorporatedGas should be reset to zero each time, i don't know why it is here but it works
-        galaxies[p].ReincorporatedGas = 0.0;
+        // Move ReincorporatedGas according to CGM regime logic
+        if(run_params->CGMrecipeOn == 1) {
+            if(galaxies[p].Regime == 0) {
+                galaxies[p].CGMgas += galaxies[p].ReincorporatedGas;
+                galaxies[p].ReincorporatedGas = 0.0;
+            } else {
+                galaxies[p].HotGas += galaxies[p].ReincorporatedGas;
+                galaxies[p].ReincorporatedGas = 0.0;
+            }
+        } else {
+            galaxies[p].HotGas += galaxies[p].ReincorporatedGas;
+            galaxies[p].ReincorporatedGas = 0.0;
+        }
 
         // add excess stars to the bulge
         if(unstable_stars > 0.0) {
