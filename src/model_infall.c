@@ -459,14 +459,29 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
         return;
     }
     
+    static int total_galaxies_processed = 0;  // Track total galaxies across all calls
+    int moves_this_batch = 0;                 // Track moves in this batch
+    
     for(int p = 0; p < ngal; p++) {
         if(galaxies[p].mergeType > 0) continue;
+        
+        total_galaxies_processed++;
         
         // Use Vvir threshold instead of mass threshold
         // const double Vvir_threshold = 90.0;  // km/s
         // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
         const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
         const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
+        
+        // Store original values for diagnostic output
+        double original_hot_gas = galaxies[p].HotGas;
+        double original_cgm_gas = galaxies[p].CGMgas;
+        double original_metals_hot = galaxies[p].MetalsHotGas;
+        double original_metals_cgm = galaxies[p].MetalsCGMgas;
+        double original_reincorp = galaxies[p].ReincorporatedGas;
+        int original_regime = galaxies[p].Regime;
+        
+        int gas_moved = 0;  // Track if any gas was moved for this galaxy
         
         // ENFORCE VELOCITY THRESHOLD: Vvir < 90 km/s -> CGM, Vvir >= 90 km/s -> HOT
         // This is the final arbiter that overrides physics-based regime determination
@@ -480,6 +495,7 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
                 galaxies[p].HotGas = 0.0;
                 galaxies[p].MetalsHotGas = 0.0;
                 galaxies[p].ReincorporatedGas = 0.0;
+                gas_moved = 1;
             }
             galaxies[p].Regime = 0;
         } else {
@@ -491,8 +507,29 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
                 galaxies[p].CGMgas = 0.0;
                 galaxies[p].MetalsCGMgas = 0.0;
                 galaxies[p].ReincorporatedGas = 0.0;
+                gas_moved = 1;
             }
             galaxies[p].Regime = 1;
+        }
+        
+        // Print diagnostics only when gas is moved
+        if(gas_moved) {
+            printf("\n=== REGIME ENFORCEMENT DIAGNOSTICS (Galaxy #%d) ===\n", total_galaxies_processed);
+            printf("  *** GAS MOVED FOR THIS GALAXY ***\n");
+            printf("  Before -> After:\n");
+            printf("    HotGas:     %.3e -> %.3e Msun\n", original_hot_gas, galaxies[p].HotGas);
+            printf("    CGMgas:     %.3e -> %.3e Msun\n", original_cgm_gas, galaxies[p].CGMgas);
+            printf("    MetalsHot:  %.3e -> %.3e Msun\n", original_metals_hot, galaxies[p].MetalsHotGas);
+            printf("    MetalsCGM:  %.3e -> %.3e Msun\n", original_metals_cgm, galaxies[p].MetalsCGMgas);
+            printf("    Reincorp:   %.3e -> %.3e Msun\n", original_reincorp, galaxies[p].ReincorporatedGas);
+            // Total gas mass conservation check
+            double original_total = original_hot_gas + original_cgm_gas + original_reincorp;
+            double final_total = galaxies[p].HotGas + galaxies[p].CGMgas + galaxies[p].ReincorporatedGas;
+            printf("  Total gas: %.3e -> %.3e Msun", original_total, final_total);
+            if(fabs(original_total - final_total) > 1e-12) {
+                printf(" [WARNING: Mass not conserved!");
+            }
+            printf("\n======================================================\n");
         }
     }
 }

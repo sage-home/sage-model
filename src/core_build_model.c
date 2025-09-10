@@ -517,11 +517,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 if(run_params->ReIncorporationFactor > 0.0) {
                     reincorporate_gas(centralgal, actual_dt, galaxies, run_params);
                 }
-
-                if(galaxies[centralgal].ReincorporatedGas > 1.0e-20) {
-                    printf("DEBUG OUTPUT: Snap=%d, Galaxy %d, Mvir=%.2e, ReincorporatedGas=%.6e\n", 
-                        galaxies[centralgal].SnapNum, centralgal, galaxies[centralgal].Mvir, galaxies[centralgal].ReincorporatedGas);
-}
             } else {
                 if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0 && galaxies[p].CGMgas > 0.0) {
                     strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
@@ -677,36 +672,33 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     "This would result in invalid memory access...exiting\n",
                     *numgals, *maxgals);
 
-            // FINAL REGIME MASS ENFORCEMENT: Apply mass threshold at end of timestep
+
+            // FINAL REGIME CONSISTENCY CHECK BEFORE OUTPUT (UPDATED FOR VVIR)
             if(run_params->CGMrecipeOn > 0) {
-                final_regime_mass_enforcement(ngal, galaxies, run_params);
-            }
-                // FINAL REGIME CONSISTENCY CHECK BEFORE OUTPUT (UPDATED FOR VVIR)
-                if(run_params->CGMrecipeOn > 0) {
 
-                    // double final_rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                    // const double Vvir_threshold = 90.0;  // km/s
-                    // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                    const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
-                    const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
-                    
-                    // The ENFORCED regime should be based on velocity threshold
-                    int velocity_based_regime = (Tvir < Tvir_threshold) ? 0 : 1;
+                // double final_rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
+                // const double Vvir_threshold = 90.0;  // km/s
+                // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
+                const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
+                const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
+                
+                // The ENFORCED regime should be based on velocity threshold
+                int velocity_based_regime = (Tvir < Tvir_threshold) ? 0 : 1;
 
-                    // Check for violations against the ENFORCED regime (velocity-based)
-                    if(galaxies[p].Regime != velocity_based_regime) {
-                        printf("ENFORCEMENT FAILURE: Galaxy %d cached_regime=%d expected_velocity_regime=%d Vvir=%.1f\n", 
-                            p, galaxies[p].Regime, velocity_based_regime, galaxies[p].Vvir);
-                    }
-                    
-                    // Check for gas violations against the ENFORCED regime
-                    if(galaxies[p].Regime == 0 && galaxies[p].HotGas > 1e-10) {
-                        printf("FINAL VIOLATION: CGM regime galaxy has HotGas=%.2e\n", galaxies[p].HotGas);
-                    }
-                    if(galaxies[p].Regime == 1 && galaxies[p].CGMgas > 1e-10) {
-                        printf("FINAL VIOLATION: HOT regime galaxy has CGMgas=%.2e\n", galaxies[p].CGMgas);
-                    }
+                // Check for violations against the ENFORCED regime (velocity-based)
+                if(galaxies[p].Regime != velocity_based_regime) {
+                    printf("ENFORCEMENT FAILURE: Galaxy %d cached_regime=%d expected_velocity_regime=%d Vvir=%.1f\n", 
+                        p, galaxies[p].Regime, velocity_based_regime, galaxies[p].Vvir);
                 }
+                
+                // Check for gas violations against the ENFORCED regime
+                if(galaxies[p].Regime == 0 && galaxies[p].HotGas > 1e-10) {
+                    printf("FINAL VIOLATION: CGM regime galaxy has HotGas=%.2e\n", galaxies[p].HotGas);
+                }
+                if(galaxies[p].Regime == 1 && galaxies[p].CGMgas > 1e-10) {
+                    printf("FINAL VIOLATION: HOT regime galaxy has CGMgas=%.2e\n", galaxies[p].CGMgas);
+                }
+            }
 
             galaxies[p].SnapNum = halos[currenthalo].SnapNum;
             halogal[*numgals] = galaxies[p];
@@ -714,11 +706,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             haloaux[currenthalo].NGalaxies++;
         }
     }
-
-    // Handle regime transitions before processing infall
-    // if(run_params->CGMrecipeOn > 0) {
-    //     handle_regime_transition(centralgal, galaxies, run_params);
-    // }
 
     return EXIT_SUCCESS;
 }
