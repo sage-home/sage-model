@@ -3,9 +3,11 @@
 Group Mass Function Evolution Plotter - FINAL COMPLETE VERSION
 
 Creates mass function evolution plots for galaxy groups, similar to stellar mass function plots.
-Generates two figures:
+Generates multiple figures:
 1. Group Halo Mass Function Evolution vs redshift (with 1-sigma shading)
 2. Group Total Stellar Mass Function Evolution vs redshift (with 1-sigma shading)
+3. Group SFR vs Stellar Mass Relation Evolution vs redshift
+4. Group Stellar Mass vs Halo Mass Relation Evolution vs redshift
 
 Features:
 - Proper y-axis limits that match actual data range
@@ -547,6 +549,187 @@ def plot_group_sfr_stellar_mass_relation_evolution(data, output_dir='./'):
     
     plt.close()
 
+def plot_group_stellar_mass_halo_mass_relation_evolution(data, output_dir='./'):
+    """
+    Plot group stellar mass vs halo mass relation evolution with redshift.
+    Shows the relationship between group total stellar mass (x-axis) and group halo mass (y-axis).
+    """
+    print('Plotting group stellar mass vs halo mass relation evolution with redshift bins')
+
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    # Use same redshift bins and colors
+    z_bins = [
+        (0.2, 0.5), (0.5, 0.8), (0.8, 1.1), (1.1, 1.5), (1.5, 2.0),
+        (2.0, 2.5), (2.5, 3.0), (3.0, 3.5), (3.5, 4.5), (4.5, 5.5),
+        (5.5, 6.5), (6.5, 7.5), (7.5, 8.5), (8.5, 10.0), (10.0, 12.0)
+    ]
+
+    colors = plt.cm.plasma(np.linspace(0.1, 0.9, len(z_bins)))
+
+    # Check what columns are available
+    halo_columns = [col for col in data.columns if 'mvir' in col.lower() or 'm_200' in col]
+    stellar_columns = [col for col in data.columns if 'stellar' in col.lower()]
+    
+    print(f"Available halo mass columns: {halo_columns}")
+    print(f"Available stellar mass columns: {stellar_columns}")
+
+    for i, (z_min, z_max) in enumerate(z_bins):
+        # Find groups in this redshift range (NO DUPLICATES)
+        z_data = find_snapshots_in_z_range(z_min, z_max, data)
+        
+        if len(z_data) == 0:
+            continue
+
+        # Get stellar masses - check available columns
+        stellar_mass_found = False
+        stellar_masses = None
+        stellar_column_name = None
+        
+        if 'total_StellarMass' in z_data.columns:
+            stellar_masses = z_data['total_StellarMass'].dropna()
+            stellar_column_name = 'total_StellarMass'
+            stellar_mass_found = True
+        elif 'Sig_M' in z_data.columns:
+            # Sig_M is already in log10, convert to linear first
+            sig_m_data = z_data['Sig_M'].dropna()
+            stellar_masses = 10**sig_m_data
+            stellar_column_name = 'Sig_M (converted from log)'
+            stellar_mass_found = True
+
+        # Get halo masses - check available columns
+        halo_mass_found = False
+        halo_masses = None
+        halo_column_name = None
+        
+        if 'central_Mvir' in z_data.columns:
+            halo_masses = z_data['central_Mvir'].dropna()
+            halo_column_name = 'central_Mvir'
+            halo_mass_found = True
+        elif 'total_Mvir' in z_data.columns:
+            halo_masses = z_data['total_Mvir'].dropna()
+            halo_column_name = 'total_Mvir'
+            halo_mass_found = True
+        elif 'Mvir' in z_data.columns:
+            halo_masses = z_data['Mvir'].dropna()
+            halo_column_name = 'Mvir'
+            halo_mass_found = True
+        elif 'M_200' in z_data.columns:
+            halo_masses = z_data['M_200'].dropna()
+            halo_column_name = 'M_200'
+            halo_mass_found = True
+
+        if not stellar_mass_found or not halo_mass_found:
+            print(f"  Warning: Missing required columns for redshift bin {z_min}-{z_max}")
+            print(f"    Stellar mass found: {stellar_mass_found}")
+            print(f"    Halo mass found: {halo_mass_found}")
+            continue
+
+        # Filter for groups with both valid stellar and halo masses
+        if stellar_column_name == 'total_StellarMass':
+            valid_groups = z_data[(z_data[stellar_column_name] > 0) & 
+                                 (z_data[halo_column_name] > 0)].copy()
+        else:  # Sig_M case
+            valid_groups = z_data[(~z_data['Sig_M'].isna()) & 
+                                 (z_data[halo_column_name] > 0)].copy()
+        
+        if len(valid_groups) == 0:
+            print(f"  No valid groups with both stellar and halo masses for redshift bin {z_min}-{z_max}")
+            continue
+        
+        print(f"  Redshift bin {z_min}-{z_max}: {len(valid_groups)} groups with valid {stellar_column_name} and {halo_column_name}")
+        
+        # Convert stellar masses to log10 if needed
+        if stellar_column_name == 'total_StellarMass':
+            if valid_groups[stellar_column_name].max() > 100:
+                log_stellar_masses = np.log10(valid_groups[stellar_column_name])
+            else:
+                log_stellar_masses = valid_groups[stellar_column_name]
+        else:  # Sig_M case - already in log
+            log_stellar_masses = valid_groups['Sig_M']
+            
+        # Convert halo masses to log10 if needed  
+        if valid_groups[halo_column_name].max() > 100:
+            log_halo_masses = np.log10(valid_groups[halo_column_name])
+        else:
+            log_halo_masses = valid_groups[halo_column_name]
+        
+        print(f"    Stellar mass range: {log_stellar_masses.min():.2f} - {log_stellar_masses.max():.2f}")
+        print(f"    Halo mass range: {log_halo_masses.min():.2f} - {log_halo_masses.max():.2f}")
+        
+        # Use same stellar mass bins as stellar mass function
+        if i >= len(z_bins) - 4:  # Last 4 redshift bins
+            stellar_mass_bins = np.arange(8.0, 12.5, 0.2)  # Wider bins for high-z
+        else:
+            stellar_mass_bins = np.arange(7.5, 12.5, 0.2)  # Wider bins for better statistics
+            
+        mass_centers = stellar_mass_bins[:-1] + 0.1
+        
+        # Bin by stellar mass and calculate mean halo mass
+        halo_mass_bin_means = np.zeros(len(mass_centers))
+        halo_mass_bin_means.fill(np.nan)
+        halo_mass_bin_stds = np.zeros(len(mass_centers))
+        halo_mass_bin_stds.fill(np.nan)
+        
+        for j in range(len(mass_centers)):
+            mask = (log_stellar_masses >= stellar_mass_bins[j]) & (log_stellar_masses < stellar_mass_bins[j+1])
+            if np.sum(mask) > 2:  # Need at least 3 groups per bin
+                halo_mass_bin_means[j] = np.mean(log_halo_masses.values[mask])
+                halo_mass_bin_stds[j] = np.std(log_halo_masses.values[mask])
+        
+        # Plot only where we have valid data
+        valid = ~np.isnan(halo_mass_bin_means)
+        if not np.any(valid):
+            print(f"    No valid binned data for plotting")
+            continue
+        
+        print(f"    Plotting {np.sum(valid)} valid stellar mass bins")
+            
+        label = f'{z_min:.1f} < z < {z_max:.1f}'
+        ax.plot(mass_centers[valid], halo_mass_bin_means[valid], 
+                color=colors[i], linewidth=2, label=label)
+        
+        # Add error shading if we have standard deviations
+        valid_with_std = valid & ~np.isnan(halo_mass_bin_stds)
+        if np.any(valid_with_std):
+            ax.fill_between(mass_centers[valid_with_std], 
+                           halo_mass_bin_means[valid_with_std] - halo_mass_bin_stds[valid_with_std], 
+                           halo_mass_bin_means[valid_with_std] + halo_mass_bin_stds[valid_with_std],
+                           color=colors[i], alpha=0.3)
+
+    # Set limits and labels
+    ax.set_xlim(8.7, 13.2)
+    ax.set_ylim(10.5, 15.0)
+    ax.set_xlabel(r'$\log_{10} M_{*,\mathrm{group}} [M_\odot]$', fontsize=14)
+    ax.set_ylabel(r'$\log_{10} M_{\mathrm{halo}} [M_\odot]$', fontsize=14)
+    
+    # Minor ticks
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    
+    # Legend
+    leg = ax.legend(loc='lower right', fontsize=10, frameon=False, ncol=3)
+    for text in leg.get_texts():
+        text.set_fontsize(10)
+    
+    # Title
+    ax.set_title('Group Stellar Mass vs Halo Mass Relation Evolution', fontsize=16, fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Save
+    output_path = Path(output_dir)
+    output_file = output_path / 'group_stellar_mass_halo_mass_evolution.png'
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    print(f'Saved stellar mass-halo mass relation plot to {output_file}')
+    
+    output_file_pdf = output_path / 'group_stellar_mass_halo_mass_evolution.pdf'
+    plt.savefig(output_file_pdf, bbox_inches='tight')
+    print(f'Saved PDF to {output_file_pdf}')
+    
+    plt.close()
+
 def main():
     parser = argparse.ArgumentParser(description='Plot group mass function evolution')
     
@@ -560,7 +743,7 @@ def main():
                        help='Volume fraction of simulation used')
     parser.add_argument('--output_dir', type=str, default='./',
                        help='Output directory for plots')
-    parser.add_argument('--plot_type', type=str, choices=['all', 'halo', 'stellar', 'sfr'],
+    parser.add_argument('--plot_type', type=str, choices=['all', 'halo', 'stellar', 'sfr', 'smhm'],
                        default='all', help='Which plots to create')
     
     args = parser.parse_args()
@@ -605,6 +788,10 @@ def main():
     if args.plot_type in ['all', 'sfr']:
         print("\nCreating group SFR-stellar mass relation evolution plot...")
         plot_group_sfr_stellar_mass_relation_evolution(data, args.output_dir)
+    
+    if args.plot_type in ['all', 'smhm']:
+        print("\nCreating group stellar mass-halo mass relation evolution plot...")
+        plot_group_stellar_mass_halo_mass_relation_evolution(data, args.output_dir)
     
     print("\n" + "="*60)
     print("PLOTTING COMPLETE")

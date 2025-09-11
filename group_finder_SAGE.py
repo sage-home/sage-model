@@ -2452,7 +2452,7 @@ def create_group_aggregated_properties(data_merged, group_catalog, output_dir='.
     sum_properties = [
         'StellarMass', 'BulgeMass', 'BlackHoleMass', 'ColdGas', 'HotGas', 
         'HI_gas', 'H2_gas', 'MetalsColdGas', 'IntraClusterStars', 
-        'OutflowRate', 'CGMgas', 'SfrDisk', 'SfrBulge', 'Cooling'
+        'OutflowRate', 'CGMgas', 'SfrDisk', 'SfrBulge', 'Cooling', 'Mvir'
     ]
     
     # Properties to average (intensive properties)
@@ -3172,7 +3172,6 @@ def main():
             print(f"\nCreating group-aggregated properties...")
             aggregated_df = create_group_aggregated_properties(data_merged, group_catalog, args.output_dir)
             aggregated_df.to_csv(Path(args.output_dir) / 'group_aggregated_properties.csv', index=False)
-
             
             # Print summary statistics
             print("\n" + "="*50)
