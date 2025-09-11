@@ -160,7 +160,7 @@ void strip_from_satellite(const int centralgal, const int gal, const double Zcur
                 galaxies[gal].HotGas -= strippedGas;
                 galaxies[gal].MetalsHotGas -= strippedGasMetals;
                 
-                if(galaxies[gal].Regime == 0) {
+                if(galaxies[centralgal].Regime == 0) {
                     // Central is CGM regime
                     galaxies[centralgal].CGMgas += strippedGas;
                     galaxies[centralgal].MetalsCGMgas += strippedGas * metallicity;

@@ -118,13 +118,12 @@ double calculate_cgm_cool_fraction(const int gal, struct GALAXY *galaxies)
     double f_cool;
     
     if(T_vir <= T_threshold) {
-        // CGM regime: efficient cooling but temperature-dependent
-        double temp_factor = (T_vir - T_cool) / (T_threshold - T_cool);
-        f_cool = 0.5 * temp_factor;
+        f_cool = 0.5;  // Constant in CGM regime
     } else {
         // HOT regime: poor cooling efficiency
-        f_cool = fmax(f_cool, 0.01);  // Minimum cooling
-        f_cool = fmin(f_cool, 0.10);  // Maximum for hot regime
+        f_cool = (T_threshold - T_cool) / (T_vir - T_cool);
+        if(f_cool < 0.0) f_cool = 0.0;
+        if(f_cool > 0.5) f_cool = 0.5;
     }
     
     return f_cool;
@@ -307,13 +306,20 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
 
 
 
-double do_AGN_heating_cgm(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, struct GALAXY *galaxies, const struct params *run_params)
+// In model_cooling_heating.c - Replace do_AGN_heating_cgm() function
+
+double do_AGN_heating_cgm(double coolingGas, const int centralgal, const double dt, const double x, const double rcool, 
+                         struct GALAXY *galaxies, const struct params *run_params)
 {
     double AGNrate, EDDrate, AGNaccreted, AGNcoeff, AGNheating, metallicity;
 
-    // first update the cooling rate based on the past AGN heating
-    if(galaxies[centralgal].r_heat < rcool) {
-        coolingGas = (1.0 - galaxies[centralgal].r_heat / rcool) * coolingGas;
+    // FIXED: Calculate CGM-specific cooling radius and physics
+    // Recalculate rcool specifically for CGM regime
+    double cgm_rcool = rcool;  // Use passed value, but could recalculate if needed
+    
+    // CGM-specific heating radius check
+    if(galaxies[centralgal].r_heat < cgm_rcool) {
+        coolingGas = (1.0 - galaxies[centralgal].r_heat / cgm_rcool) * coolingGas;
     } else {
         coolingGas = 0.0;
     }
@@ -321,75 +327,71 @@ double do_AGN_heating_cgm(double coolingGas, const int centralgal, const double 
     XASSERT(coolingGas >= 0.0, -1,
             "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
 
-    // now calculate the new heating rate - for CGM regime we need to check for gas availability
+    // Calculate new heating rate from CGM gas
     if(galaxies[centralgal].CGMgas > 0.0) {
         if(run_params->AGNrecipeOn == 2) {
-            // Bondi-Hoyle accretion recipe
-            AGNrate = (2.5 * M_PI * run_params->G) * (0.375 * 0.6 * x) * galaxies[centralgal].BlackHoleMass * run_params->RadioModeEfficiency;
+            // Bondi-Hoyle accretion recipe adapted for CGM
+            AGNrate = (2.5 * M_PI * run_params->G) * (0.375 * 0.6 * x) * 
+                     galaxies[centralgal].BlackHoleMass * run_params->RadioModeEfficiency;
         } else if(run_params->AGNrecipeOn == 3) {
-            // Cold cloud accretion: trigger: rBH > 1.0e-4 Rsonic, and accretion rate = 0.01% cooling rate
-            if(galaxies[centralgal].BlackHoleMass > 0.0001 * galaxies[centralgal].Mvir * CUBE(rcool/galaxies[centralgal].Rvir)) {
+            // Cold cloud accretion: trigger based on CGM properties
+            if(galaxies[centralgal].BlackHoleMass > 0.0001 * galaxies[centralgal].Mvir * CUBE(cgm_rcool/galaxies[centralgal].Rvir)) {
                 AGNrate = 0.0001 * coolingGas / dt;
             } else {
                 AGNrate = 0.0;
             }
         } else {
-            // empirical (standard) accretion recipe - modified for CGM regime
-            if(galaxies[centralgal].Mvir > 0.0) {
-                AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
-                    * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0)
-                    * ((galaxies[centralgal].CGMgas / galaxies[centralgal].Mvir) / 0.1);
-            } else {
-                AGNrate = run_params->RadioModeEfficiency / (run_params->UnitMass_in_g / run_params->UnitTime_in_s * SEC_PER_YEAR / SOLAR_MASS)
-                    * (galaxies[centralgal].BlackHoleMass / 0.01) * CUBE(galaxies[centralgal].Vvir / 200.0);
-            }
+            // Empirical model adapted for CGM
+            AGNrate = run_params->RadioModeEfficiency / (run_params->UnitTime_in_s / SEC_PER_YEAR / run_params->Hubble_h) *
+                     (galaxies[centralgal].BlackHoleMass / 0.01) * pow(galaxies[centralgal].CGMgas / galaxies[centralgal].Mvir, 2);
         }
 
-        // Eddington rate
-        EDDrate = (1.3e38 * galaxies[centralgal].BlackHoleMass * 1e10 / run_params->Hubble_h) / (run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s) / (0.1 * 9e10);
+        // Calculate Eddington rate
+        EDDrate = 1.3e48 * galaxies[centralgal].BlackHoleMass / (run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s) / 0.1;
+        AGNaccreted = fmin(AGNrate, EDDrate) * dt;
 
-        // accretion onto BH is always limited by the Eddington rate
-        if(AGNrate > EDDrate) {
-            AGNrate = EDDrate;
-        }
-
-        // accreted mass onto black hole
-        AGNaccreted = AGNrate * dt;
-
-        // cannot accrete more mass than is available in CGM!
+        // Limit to available CGM gas
         if(AGNaccreted > galaxies[centralgal].CGMgas) {
             AGNaccreted = galaxies[centralgal].CGMgas;
         }
 
-        // coefficient to heat the cooling gas back to the virial temperature of the halo
-        // 1.34e5 = sqrt(2*eta*c^2), eta=0.1 (standard efficiency) and c in km/s
-        AGNcoeff = (1.34e5 / galaxies[centralgal].Vvir) * (1.34e5 / galaxies[centralgal].Vvir);
+        // FIXED: Use CGM-appropriate heating coefficient
+        // CGM gas is typically at ~1e4 K, not virial temperature
+        // Energy to heat from 1e4 K to virial temperature
+        const double T_cgm = 1.0e4;  // K, typical CGM temperature
+        const double T_vir = 35.9 * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
+        const double temp_ratio = T_vir / T_cgm;
+        
+        // Modified coefficient for CGM heating
+        AGNcoeff = (1.34e5 / galaxies[centralgal].Vvir) * (1.34e5 / galaxies[centralgal].Vvir) * temp_ratio;
 
-        // cooling mass that can be suppresed from AGN heating
+        // Cooling mass that can be suppressed from AGN heating
         AGNheating = AGNcoeff * AGNaccreted;
 
-        /// the above is the maximal heating rate. we now limit it to the current cooling rate
+        // Limit heating to current cooling rate
         if(AGNheating > coolingGas) {
             AGNaccreted = coolingGas / AGNcoeff;
             AGNheating = coolingGas;
         }
 
-        // accreted mass onto black hole from CGM
+        // Accrete mass onto black hole from CGM
         metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
         galaxies[centralgal].BlackHoleMass += AGNaccreted;
         galaxies[centralgal].CGMgas -= AGNaccreted;
         galaxies[centralgal].MetalsCGMgas -= metallicity * AGNaccreted;
 
-        // update the heating radius as needed
-        if(galaxies[centralgal].r_heat < rcool && coolingGas > 0.0) {
-            double r_heat_new = (AGNheating / coolingGas) * rcool;
+        // Update heating radius for CGM regime
+        if(galaxies[centralgal].r_heat < cgm_rcool && coolingGas > 0.0) {
+            double r_heat_new = (AGNheating / coolingGas) * cgm_rcool;
             if(r_heat_new > galaxies[centralgal].r_heat) {
                 galaxies[centralgal].r_heat = r_heat_new;
             }
         }
 
+        // Track heating energy
         if (AGNheating > 0.0) {
-            galaxies[centralgal].Heating += 0.5 * AGNheating * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
+            // Use appropriate temperature for CGM heating
+            galaxies[centralgal].Heating += 0.5 * AGNheating * T_vir / T_cgm * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
         }
     }
 

@@ -44,7 +44,7 @@ redshifts = [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
 dilute = 10000       # Number of galaxies to plot in scatter plots
-sSFRcut = -10.5     # Divide quiescent from star forming galaxies
+sSFRcut = -11.0     # Divide quiescent from star forming galaxies
 SMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 BHMFsnaps = [63, 40, 32, 27, 23, 20, 18, 16]  # Snapshots to plot the SMF
 #SMFsnaps = [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4]  # Snapshots to plot the SMF

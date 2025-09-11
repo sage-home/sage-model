@@ -339,11 +339,26 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
     static int cgm_regime_count = 0;
     static int hot_regime_count = 0; 
 
-    // Initialize regimes for first time (before main evolution loop)
+    static int *previous_regimes = NULL;
+    static int max_stored_galaxies = 0;
+
+    // Initialize regimes ONCE before main evolution loop
     if(run_params->CGMrecipeOn > 0) {
+        // Allocate/reallocate regime storage if needed
+        if(ngal > max_stored_galaxies) {
+            if(previous_regimes != NULL) {
+                free(previous_regimes);
+            }
+            previous_regimes = malloc(ngal * sizeof(int));
+            max_stored_galaxies = ngal;
+        }
+        
+        // Determine and cache regimes
         determine_and_cache_regime(ngal, galaxies, run_params);
-        // Apply initial regime transitions to clean up inconsistent states
+        
+        // Store initial regimes and apply initial cleanup
         for(int p = 0; p < ngal; p++) {
+            previous_regimes[p] = galaxies[p].Regime;
             handle_regime_transition(p, galaxies, run_params);
         }
     }
@@ -385,14 +400,16 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
     // We integrate things forward by using a number of intervals equal to nsteps
     for(int step = 0; step < nsteps; step++) {
 
-        // CACHE REGIMES FOR ALL GALAXIES AT START OF TIMESTEP
+        // Check for regime changes ONLY
         if(run_params->CGMrecipeOn > 0) {
             determine_and_cache_regime(ngal, galaxies, run_params);
-        }
-
-        if(run_params->CGMrecipeOn > 0) {
+            
+            // Apply transitions ONLY when regime actually changes
             for(int p = 0; p < ngal; p++) {
-                handle_regime_transition(p, galaxies, run_params);
+                if(galaxies[p].Regime != previous_regimes[p]) {
+                    handle_regime_transition(p, galaxies, run_params);
+                    previous_regimes[p] = galaxies[p].Regime;  // Update stored regime
+                }
             }
         }
 

@@ -134,32 +134,24 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             double z = run_params->ZZ[galaxies[p].SnapNum];
-            double vmax = galaxies[p].Vmax;  // Use Vmax as in FIRE paper
+            double vmax = galaxies[p].Vmax;
             
             if(run_params->MassLoadingOn) {
-                // FIRE energy injection rate (equation 15)
                 double alpha = (vmax < 60.0) ? -3.2 : -1.0;
                 double fire_scaling = pow(1.0 + z, 1.3) * pow(vmax / 60.0, alpha);
                 
-                // Energy feedback rate (equation 15)
                 double E_FB = run_params->FeedbackEjectionEfficiency * fire_scaling * 
                             0.5 * stars * run_params->EtaSNcode * run_params->EnergySNcode;
                 
-                // Energy already used for reheating
                 double energy_used_reheating = 0.5 * reheated_mass * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
-                
-                // Remaining energy available for ejection (equation 8)
                 double available_energy = E_FB - energy_used_reheating;
                 
-                // Convert available energy to ejected mass (equation 8)
                 if(available_energy > 0.0) {
                     ejected_mass = available_energy / (0.5 * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir);
                 } else {
                     ejected_mass = 0.0;
                 }
-                
             } else {
-                // Fallback to original SAGE method for non-mass-loading case
                 ejected_mass = (run_params->FeedbackEjectionEfficiency * 
                             (run_params->EtaSNcode * run_params->EnergySNcode) / 
                             (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
@@ -245,10 +237,11 @@ void update_from_star_formation(const int p, const double stars, const double me
 
 
 
+// In model_starformation_and_feedback.c - Replace update_from_feedback() function
+
 void update_from_feedback(const int p, const int centralgal, const double reheated_mass, double ejected_mass, const double metallicity,
                           struct GALAXY *galaxies, const struct params *run_params)
 {
-
     XASSERT(reheated_mass >= 0.0, -1,
             "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
             p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
@@ -256,19 +249,21 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
             reheated_mass, galaxies[p].ColdGas);
 
-
     if(run_params->SupernovaRecipeOn == 1) {
-        // Remove gas from cold reservoir (always)
+        // Remove gas from cold reservoir (always from galaxy p)
         galaxies[p].ColdGas -= reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
 
         if(run_params->CGMrecipeOn == 1) {
+            // FIXED: Use CENTRAL galaxy's regime for routing (reheated gas goes to central)
+            // But use STAR-FORMING galaxy's regime for ejection constraints
+            
             if(galaxies[centralgal].Regime == 0) {
-                // CGM REGIME: Reheated gas goes to CGM
+                // CENTRAL is CGM REGIME: Reheated gas goes to central's CGM
                 galaxies[centralgal].CGMgas += reheated_mass;
                 galaxies[centralgal].MetalsCGMgas += metallicity * reheated_mass;
                 
-                // Ejected gas is removed from CGM (actually ejected from halo)
+                // Ejection from central's CGM reservoir
                 if(ejected_mass > galaxies[centralgal].CGMgas) {
                     ejected_mass = galaxies[centralgal].CGMgas;
                 }
@@ -279,11 +274,11 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
                 }
                 
             } else {
-                // HOT REGIME: Reheated gas goes to HotGas  
+                // CENTRAL is HOT REGIME: Reheated gas goes to central's HotGas  
                 galaxies[centralgal].HotGas += reheated_mass;
                 galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
 
-                // Ejected gas is removed from HotGas (actually ejected from halo)
+                // Ejection from central's HotGas reservoir
                 if(ejected_mass > galaxies[centralgal].HotGas) {
                     ejected_mass = galaxies[centralgal].HotGas;
                 }
@@ -294,21 +289,24 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
                 }
             }
         } else {
-            // Original behavior: reheated gas goes to HotGas, ejected gas goes to CGM
+            // Original behavior: reheated gas goes to HotGas
             galaxies[centralgal].HotGas += reheated_mass;
             galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
 
+            // Ejection logic: remove from HotGas, add to CGM (original SAGE behavior)
             if(ejected_mass > galaxies[centralgal].HotGas) {
                 ejected_mass = galaxies[centralgal].HotGas;
             }
-            const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
-
-            galaxies[centralgal].HotGas -= ejected_mass;
-            galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
-            galaxies[centralgal].CGMgas += ejected_mass;
-            galaxies[centralgal].MetalsCGMgas += metallicityHot * ejected_mass;
+            if(ejected_mass > 0.0) {
+                const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
+                galaxies[centralgal].HotGas -= ejected_mass;
+                galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
+                galaxies[centralgal].CGMgas += ejected_mass;
+                galaxies[centralgal].MetalsCGMgas += metallicityHot * ejected_mass;
+            }
         }
 
+        // Track outflow rate for star-forming galaxy
         galaxies[p].OutflowRate += reheated_mass;
     }
 }
