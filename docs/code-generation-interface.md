@@ -14,7 +14,7 @@ This document specifies the exact interfaces and integration points required for
 
 ### 1. Core Generated Headers
 
-#### `generated/sage_properties.h`
+#### `build/src/core/property_access.h`
 **Purpose**: Type-safe property access system
 ```c
 #ifndef SAGE_PROPERTIES_H
@@ -56,7 +56,7 @@ size_t sage_property_size(sage_property_id_t prop);
 #endif
 ```
 
-#### `generated/sage_structures.h`
+#### `build/src/core/property_generated.h`
 **Purpose**: Optimized data structure definitions
 ```c
 #ifndef SAGE_STRUCTURES_H
@@ -123,7 +123,7 @@ struct GALAXY {
 #endif
 ```
 
-#### `generated/sage_parameters.h`
+#### `build/src/core/property_enums.h`
 **Purpose**: Parameter validation and access
 ```c
 #ifndef SAGE_PARAMETERS_H  
@@ -403,9 +403,9 @@ endif()
 
 # Generate property headers before building
 add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/generated/sage_properties.h
-           ${CMAKE_BINARY_DIR}/generated/sage_structures.h
-           ${CMAKE_BINARY_DIR}/generated/sage_parameters.h
+    OUTPUT ${CMAKE_BINARY_DIR}/src/core/property_access.h
+           ${CMAKE_BINARY_DIR}/src/core/property_generated.h
+           ${CMAKE_BINARY_DIR}/src/core/property_enums.h
     COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/scripts/generate_property_headers.py
             --properties ${CMAKE_SOURCE_DIR}/schema/properties.yaml
@@ -418,13 +418,13 @@ add_custom_command(
 
 # Create generated code target
 add_custom_target(generate_properties
-    DEPENDS ${CMAKE_BINARY_DIR}/generated/sage_properties.h
-            ${CMAKE_BINARY_DIR}/generated/sage_structures.h
-            ${CMAKE_BINARY_DIR}/generated/sage_parameters.h
+    DEPENDS ${CMAKE_BINARY_DIR}/src/core/property_access.h
+            ${CMAKE_BINARY_DIR}/src/core/property_generated.h
+            ${CMAKE_BINARY_DIR}/src/core/property_enums.h
 )
 
 # Include generated headers
-target_include_directories(sage PRIVATE ${CMAKE_BINARY_DIR}/generated)
+target_include_directories(sage PRIVATE ${CMAKE_BINARY_DIR}/src/core)
 
 # Make sure generated code is built before main target
 add_dependencies(sage generate_properties)

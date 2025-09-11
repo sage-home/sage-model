@@ -40,6 +40,11 @@ sage-model/
 │       ├── save_gals_*.c       # Galaxy output formats
 │       └── read_tree_*.c       # Tree input formats
 ├── CMakeLists.txt              # Modern build system
+├── schema/                     # Property system metadata (Task 2.1-2.2)
+│   ├── properties.yaml         # Property definitions with module awareness
+│   └── parameters.yaml         # Parameter definitions with validation
+├── scripts/                    # Code generation tools (Task 2.2)
+│   └── generate_property_headers.py # YAML-to-C property header generator
 ├── log/                        # Development tracking
 ├── tests/                      # Testing framework
 ├── input/                      # Parameter files
@@ -98,36 +103,30 @@ Galaxy Evolution Flow
 - Direct coupling between core and physics modules
 
 ### Data Structures
-Primary galaxy data structure with direct field access:
+**NEW: Metadata-Driven Property System (Task 2.2 Complete)**
+
+Modern property system with core/physics separation:
 
 ```c
 struct GALAXY {
-    // Core properties
-    int   Type;
-    int   GalaxyIndex;
-    int   HaloIndex;
-    float Mvir;
-    float Rvir;
+    sage_galaxy_core_t core;           // Always available 
+    sage_galaxy_physics_t* physics;    // Conditional allocation
+    sage_galaxy_internal_t* internal;  // Calculation-only properties
     
-    // Physics properties - direct coupling
-    float ColdGas;
-    float HotGas;
-    float StellarMass;
-    float BulgeMass;
-    float BlackHoleMass;
-    
-    // Arrays with hardcoded sizing
-    float SfrDisk[MAXSNAPS];
-    float SfrBulge[MAXSNAPS];
-    // ... many more hardcoded physics fields
+    struct {
+        float* SfrDisk;      // [STEPS] Dynamic arrays
+        float* SfrBulge;     // [STEPS] Memory efficient
+        int array_size;      // Actual allocation size
+    } arrays;
 };
 ```
 
-**Current Architecture Issues:**
-- No separation between core and physics properties
-- Hardcoded array sizes limiting flexibility
-- String-based property access in some I/O code
-- No type safety for property access
+**Property System Features:**
+- YAML metadata drives C code generation (scripts/generate_property_headers.py)
+- Type-safe macros: `GALAXY_GET_SNAPNUM(gal)`, `GALAXY_SET_MVIR(gal, val)`
+- Compile-time availability checking with BUILD_BUG_OR_ZERO assertions
+- Runtime modularity support with module-aware property masks
+- Memory optimization with cache-aligned core structure (64-byte aligned)
 
 ## I/O System
 

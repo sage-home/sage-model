@@ -193,10 +193,9 @@ if(SAGE_CONFIG_JSON_SUPPORT)
             set(CJSON_LIBRARIES cjson)
             set(CJSON_FOUND TRUE)
         else()
-            message(WARNING "cJSON not found. JSON configuration support will be disabled.")
-            message(WARNING "To enable JSON support:")
-            message(WARNING "  1. Install libcjson-dev (Ubuntu/Debian) or cjson (macOS)")
-            message(WARNING "  2. Or place cJSON source files in external/cjson/")
+            message(STATUS "cJSON not found - JSON configuration support will be disabled")
+            message(STATUS "Legacy .par file support remains available")
+            message(STATUS "To enable JSON support: install libcjson-dev or place cJSON in external/cjson/")
             set(SAGE_CONFIG_JSON_SUPPORT OFF)
             remove_definitions(-DCONFIG_JSON_SUPPORT)
         endif()
@@ -325,6 +324,61 @@ if(SAGE_USE_HDF5)
     endif()
 endif()
 
+# ==============================================================================
+# Property System Code Generation (Task 2.2)
+# ==============================================================================
+
+# Find Python for code generation
+find_program(PYTHON_EXECUTABLE python3 python)
+if(NOT PYTHON_EXECUTABLE)
+    message(FATAL_ERROR "Python is required for property system code generation")
+endif()
+
+# Check for PyYAML dependency
+execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} -c "import yaml; print('PyYAML found')"
+    OUTPUT_VARIABLE PYYAML_CHECK
+    ERROR_QUIET
+    RESULT_VARIABLE PYYAML_RESULT
+)
+
+if(NOT PYYAML_RESULT EQUAL 0)
+    message(FATAL_ERROR "PyYAML is required for property system. Install with: pip install PyYAML")
+endif()
+
+# Define paths for property system
+set(PROPERTY_SCHEMA_FILE ${CMAKE_SOURCE_DIR}/schema/properties.yaml)
+set(PROPERTY_GENERATOR ${CMAKE_SOURCE_DIR}/scripts/generate_property_headers.py)
+set(PROPERTY_OUTPUT_DIR ${CMAKE_BINARY_DIR}/src/core)
+
+# Generated property header files
+set(PROPERTY_GENERATED_HEADERS
+    ${PROPERTY_OUTPUT_DIR}/property_generated.h
+    ${PROPERTY_OUTPUT_DIR}/property_enums.h  
+    ${PROPERTY_OUTPUT_DIR}/property_access.h
+)
+
+# Custom command to generate property headers
+add_custom_command(
+    OUTPUT ${PROPERTY_GENERATED_HEADERS}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PROPERTY_OUTPUT_DIR}
+    COMMAND ${PYTHON_EXECUTABLE} ${PROPERTY_GENERATOR} ${PROPERTY_SCHEMA_FILE} ${PROPERTY_OUTPUT_DIR}
+    DEPENDS ${PROPERTY_SCHEMA_FILE} ${PROPERTY_GENERATOR}
+    COMMENT "Generating property system headers from YAML schema"
+    VERBATIM
+)
+
+# Create a target for property generation
+add_custom_target(generate_property_headers DEPENDS ${PROPERTY_GENERATED_HEADERS})
+
+# Add generated headers to include path
+set(SAGE_INCLUDE_DIRS ${SAGE_INCLUDE_DIRS} ${PROPERTY_OUTPUT_DIR})
+
+message(STATUS "Property system code generation configured")
+message(STATUS "  Schema file: ${PROPERTY_SCHEMA_FILE}")
+message(STATUS "  Generator:   ${PROPERTY_GENERATOR}")  
+message(STATUS "  Output dir:  ${PROPERTY_OUTPUT_DIR}")
+
 # Memory management sources
 set(MEMORY_SOURCES
     ${SRC_DIR}/core/memory.c
@@ -418,6 +472,9 @@ endif()
 
 target_include_directories(sage PUBLIC ${SAGE_INCLUDE_DIRS})
 target_link_libraries(sage ${SAGE_LIBRARIES})
+
+# Ensure property headers are generated before building the library
+add_dependencies(sage generate_property_headers)
 
 # Create the main executable
 add_executable(sage_exe ${SRC_DIR}/core/main.c)

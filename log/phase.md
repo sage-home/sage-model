@@ -27,11 +27,11 @@
 - [x] Document metadata schema and conventions
 
 ### Task 2.2: Code Generation System
-- [ ] Create generate_property_headers.py script
-- [ ] Implement type-safe macro generation
-- [ ] Generate property access functions
-- [ ] Create property availability checking system
-- [ ] Add property iteration support
+- [x] Create generate_property_headers.py script
+- [x] Implement type-safe macro generation
+- [x] Generate property access functions
+- [x] Create property availability checking system
+- [x] Add property iteration support
 
 ### Task 2.3: Property API Implementation
 - [ ] Create property.h/c with unified property interface
@@ -62,7 +62,7 @@
 - All tests pass with identical scientific results
 - Build system automatically generates property code
 
-**Phase 2 Status**: 1/5 tasks completed
+**Phase 2 Status**: 2/5 tasks completed
 
 ## Inter-Phase Dependencies
 - **From Phase 1**: ✅ CMake build system (for code generation integration)

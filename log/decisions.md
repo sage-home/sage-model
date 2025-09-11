@@ -18,3 +18,13 @@
 - **Decision**: Brief description of the decision made
 - **Rationale**: Why this decision was made (technical/scientific reasons)
 - **Impact**: Effect on current and future development
+
+2025-09-11: [Phase 2.2] Python-based property header code generation system
+- **Decision**: Implemented YAML-to-C code generation with BUILD_BUG_OR_ZERO compile-time assertions
+- **Rationale**: Enables metadata-driven property system with type safety and runtime modularity while maintaining compatibility
+- **Impact**: Foundation for core/physics separation; enables future dynamic module loading and optimized memory layouts
+
+2025-09-11: [Phase 2.2] CMake WARNING to STATUS message conversion for dependency resolution  
+- **Decision**: Changed cJSON dependency messages from WARNING to STATUS level
+- **Rationale**: Dependency resolution is informational, not error condition; reduces noise in build output
+- **Impact**: Cleaner build experience; maintains proper severity levels for actual errors vs. status updates

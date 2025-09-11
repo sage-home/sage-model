@@ -42,14 +42,21 @@
 /* Taken from
    http://stackoverflow.com/questions/19403233/compile-time-struct-size-check-error-out-if-odd which
    is in turn taken from the linux kernel */
-/* #define BUILD_BUG_OR_ZERO(e) (sizeof(struct{ int:-!!(e);})) */
-/* #define ENSURE_STRUCT_SIZE(e, size)  BUILD_BUG_OR_ZERO(sizeof(e) != size) */
-/* However, the previous one gives me an unused-value warning and I do not want
-   to turn that compiler warning off. Therefore, this version, which results in
-   an unused local typedef warning is used. I turn off the corresponding warning
-   in common.mk (-Wno-unused-local-typedefs) via CFLAGS
-*/
-#define BUILD_BUG_OR_ZERO(cond, msg) typedef volatile char assertion_on_##msg[(!!(cond)) * 2 - 1]
+/*
+ * Compile-time assertion macro
+ * Fails compilation if 'cond' is false, with meaningful error message 'msg'
+ * 
+ * Implementation: Creates array with size -1 (invalid) when condition fails,
+ * causing compilation error. The volatile typedef prevents optimization,
+ * sizeof() usage prevents unused variable warnings.
+ * 
+ * Example: BUILD_BUG_OR_ZERO(sizeof(int) == 4, int_must_be_4_bytes)
+ */
+#define BUILD_BUG_OR_ZERO(cond, msg) \
+    do { \
+        typedef volatile char assertion_on_##msg[(!!(cond)) * 2 - 1]; \
+        (void)sizeof(assertion_on_##msg); \
+    } while(0)
 #define ENSURE_STRUCT_SIZE(e, size)                                                                \
   BUILD_BUG_OR_ZERO(sizeof(e) == size, sizeof_struct_config_options)
 
