@@ -129,7 +129,7 @@ double calculate_cgm_cool_fraction(const int gal, struct GALAXY *galaxies)
         // HOT regime: poor cooling efficiency
         f_cool = 0.6 * pow(T_threshold / T_vir, 0.7);
         f_cool = fmax(f_cool, 0.01);  // Minimum cooling
-        f_cool = fmin(f_cool, 0.20);  // Maximum for hot regime
+        f_cool = fmin(f_cool, 0.80);  // Maximum for hot regime
     }
     
     return f_cool;
@@ -193,10 +193,10 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
             coolingGas = 0.0;
             if(rcool > galaxies[gal].Rvir) {
                 // "cold accretion" regime
-                coolingGas = galaxies[gal].CGMgas / (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
+                coolingGas = coolable_cgm_mass / (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
             } else {
                 // "hot halo cooling" regime
-                coolingGas = (galaxies[gal].CGMgas / galaxies[gal].Rvir) * (rcool / (2.0 * tcool)) * dt;
+                coolingGas = (coolable_cgm_mass / galaxies[gal].Rvir) * (rcool / (2.0 * tcool)) * dt;
             }
 
             if(coolingGas > coolable_cgm_mass) {

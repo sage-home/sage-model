@@ -795,7 +795,7 @@ def create_regime_colored_plot(Mvir, HotGas, CGMgas, Regime_c, rcool_to_rvir, Ou
              bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.8))
     
     ax2.set_xlim(5e10, 1e15)
-    ax2.set_ylim(0, 1.0)
+    ax2.set_ylim(0, 7.0)
     ax2.set_xscale('log')
     ax2.set_xlabel('M_vir / M☉')
     ax2.set_ylabel('r_cool / R_vir')

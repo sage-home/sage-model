@@ -131,13 +131,14 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
     const double quasar_energy = run_params->QuasarModeEfficiency * 0.1 * BHaccrete * (C / run_params->UnitVelocity_in_cm_per_s) * (C / run_params->UnitVelocity_in_cm_per_s);
     const double cold_gas_energy = 0.5 * galaxies[gal].ColdGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
     const double hot_gas_energy = 0.5 * galaxies[gal].HotGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
+    const double cgm_gas_energy = 0.5 * galaxies[gal].CGMgas * galaxies[gal].Vvir * galaxies[gal].Vvir;
 
     if(run_params->CGMrecipeOn == 1) {
         if(galaxies[gal].Regime == 0) {
             // CGM REGIME: All ejected gas stays in CGM (no gas leaves halo)
             
             // Eject cold gas to CGM if quasar energy exceeds cold gas energy
-            if(quasar_energy > cold_gas_energy) {
+            if(quasar_energy > cold_gas_energy + cgm_gas_energy) {
                 galaxies[gal].CGMgas += galaxies[gal].ColdGas;
                 galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsColdGas;
 
@@ -147,9 +148,9 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
             
         } else {
             // HOT REGIME: All ejected gas stays in HotGas (no gas leaves halo)
-            
-            // Move cold gas to HotGas if quasar energy exceeds cold gas energy  
-            if(quasar_energy > cold_gas_energy) {
+
+            // Move cold gas to HotGas if quasar energy exceeds cold gas energy
+            if(quasar_energy > cold_gas_energy + hot_gas_energy) {
                 galaxies[gal].HotGas += galaxies[gal].ColdGas;
                 galaxies[gal].MetalsHotGas += galaxies[gal].MetalsColdGas;
 
@@ -165,7 +166,7 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
         // Original behavior: eject to CGM reservoir
         
         // compare quasar wind and cold gas energies and eject cold
-        if(quasar_energy > cold_gas_energy) {
+        if(quasar_energy > cold_gas_energy + hot_gas_energy) {
             galaxies[gal].CGMgas += galaxies[gal].ColdGas;
             galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsColdGas;
 
@@ -214,10 +215,10 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
         double total_metals = galaxies[t].MetalsHotGas + galaxies[t].MetalsCGMgas + galaxies[p].MetalsHotGas + galaxies[p].MetalsCGMgas;
         
         // Clear existing gas reservoirs
-        // galaxies[t].HotGas = 0.0;
-        // galaxies[t].MetalsHotGas = 0.0;
-        // galaxies[t].CGMgas = 0.0;
-        // galaxies[t].MetalsCGMgas = 0.0;
+        galaxies[t].HotGas = 0.0;
+        galaxies[t].MetalsHotGas = 0.0;
+        galaxies[t].CGMgas = 0.0;
+        galaxies[t].MetalsCGMgas = 0.0;
         
         // Place all gas in the correct reservoir based on final regime
         if (galaxies[t].Regime == 0) {
