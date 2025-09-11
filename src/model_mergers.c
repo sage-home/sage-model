@@ -189,12 +189,18 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
 
 void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, const struct params *run_params)
 {
+
+    if (run_params->SFprescription > 0) {
+        update_gas_components(&galaxies[t], run_params);
+    }
+    
     // Always add these components directly (no regime dependence)
     galaxies[t].ColdGas += galaxies[p].ColdGas;
     galaxies[t].MetalsColdGas += galaxies[p].MetalsColdGas;
 
     // Add H2 and HI gas components when using H2-based star formation
     if (run_params->SFprescription > 0) {
+        update_gas_components(&galaxies[p], run_params);
         galaxies[t].H2_gas += galaxies[p].H2_gas;
         galaxies[t].HI_gas += galaxies[p].HI_gas;
     }

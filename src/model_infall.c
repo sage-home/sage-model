@@ -513,23 +513,23 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
         }
         
         // Print diagnostics only when gas is moved
-        if(gas_moved) {
-            printf("\n=== REGIME ENFORCEMENT DIAGNOSTICS (Galaxy #%d) ===\n", total_galaxies_processed);
-            printf("  *** GAS MOVED FOR THIS GALAXY ***\n");
-            printf("  Before -> After:\n");
-            printf("    HotGas:     %.3e -> %.3e Msun\n", original_hot_gas, galaxies[p].HotGas);
-            printf("    CGMgas:     %.3e -> %.3e Msun\n", original_cgm_gas, galaxies[p].CGMgas);
-            printf("    MetalsHot:  %.3e -> %.3e Msun\n", original_metals_hot, galaxies[p].MetalsHotGas);
-            printf("    MetalsCGM:  %.3e -> %.3e Msun\n", original_metals_cgm, galaxies[p].MetalsCGMgas);
-            printf("    Reincorp:   %.3e -> %.3e Msun\n", original_reincorp, galaxies[p].ReincorporatedGas);
-            // Total gas mass conservation check
-            double original_total = original_hot_gas + original_cgm_gas + original_reincorp;
-            double final_total = galaxies[p].HotGas + galaxies[p].CGMgas + galaxies[p].ReincorporatedGas;
-            printf("  Total gas: %.3e -> %.3e Msun", original_total, final_total);
-            if(fabs(original_total - final_total) > 1e-12) {
-                printf(" [WARNING: Mass not conserved!");
-            }
-            printf("\n======================================================\n");
-        }
+        // if(gas_moved) {
+        //     printf("\n=== REGIME ENFORCEMENT DIAGNOSTICS (Galaxy #%d) ===\n", total_galaxies_processed);
+        //     printf("  *** GAS MOVED FOR THIS GALAXY ***\n");
+        //     printf("  Before -> After:\n");
+        //     printf("    HotGas:     %.3e -> %.3e Msun\n", original_hot_gas, galaxies[p].HotGas);
+        //     printf("    CGMgas:     %.3e -> %.3e Msun\n", original_cgm_gas, galaxies[p].CGMgas);
+        //     printf("    MetalsHot:  %.3e -> %.3e Msun\n", original_metals_hot, galaxies[p].MetalsHotGas);
+        //     printf("    MetalsCGM:  %.3e -> %.3e Msun\n", original_metals_cgm, galaxies[p].MetalsCGMgas);
+        //     printf("    Reincorp:   %.3e -> %.3e Msun\n", original_reincorp, galaxies[p].ReincorporatedGas);
+        //     // Total gas mass conservation check
+        //     double original_total = original_hot_gas + original_cgm_gas + original_reincorp;
+        //     double final_total = galaxies[p].HotGas + galaxies[p].CGMgas + galaxies[p].ReincorporatedGas;
+        //     printf("  Total gas: %.3e -> %.3e Msun", original_total, final_total);
+        //     if(fabs(original_total - final_total) > 1e-12) {
+        //         printf(" [WARNING: Mass not conserved!");
+        //     }
+        //     printf("\n======================================================\n");
+        // }
     }
 }
